@@ -5,6 +5,8 @@
   "scripts": {
     "dev:studio": "pnpm --filter @presence/app-studio dev",
     "dev:player": "pnpm --filter @presence/app-player dev",
+    "dev:api": "pnpm --filter @presence/api dev",
+    "db:seed": "pnpm --filter @presence/api db:seed",
     "build": "pnpm -r build",
     "test": "vitest run",
     "test:watch": "vitest",
