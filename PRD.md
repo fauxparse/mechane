@@ -38,7 +38,7 @@ Shared packages (indicative, not prescriptive of final folder names): domain mod
 - **Database**: PostgreSQL
 - **Blob storage**: S3-compatible; MinIO in a container for local dev
 - **Auth**: Better Auth — email/password + Google OAuth
-- **Styling/components**: Tailwind CSS, BaseUI + shadcn/ui
+- **Styling/components**: Tailwind CSS v4 (CSS-first `@theme` config), shadcn/ui built on a Base UI adapter (not Radix) as the primitive layer, Lucide for icons
 - **Flow editor**: React Flow (Show/Flow graph UI)
 - **Expression evaluation**: JEXL subset, server-side only — see [ADR-0004](./docs/adr/0004-server-side-sandboxed-transformers.md)
 - **Component docs/dev**: Storybook
@@ -119,6 +119,7 @@ Built on React Flow, for the Scene/Flow state-machine graph (Flows, Navigate Act
   - Theme system should be trivially extensible to more themes later (token-driven, not one-off hardcoded overrides).
 - **Aesthetic**: flat, minimalist, subtle — content should read as the focal point, not the chrome.
 - **Typeface**: Space Grotesk.
+- **Implementation**: Tailwind v4 for styling/theming, with theme tokens (mode + palette) defined once as CSS variables that every component consumes — no component hardcodes a color. Components are shadcn/ui, generated via the shadcn CLI onto a Base UI adapter (not Radix), so every atomic primitive (button, input, label, etc.) is a real shadcn component rather than hand-rolled markup. Icons via Lucide.
 
 ## 8. Testing & CI
 
