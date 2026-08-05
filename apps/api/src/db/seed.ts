@@ -11,7 +11,7 @@ import { sql } from "drizzle-orm";
 
 import { auth } from "../auth";
 import { db } from "./client";
-import { user } from "./schema";
+import { shows, user } from "./schema";
 
 const DEFAULT_USER = {
   name: "Lauren Ipsum",
@@ -19,20 +19,30 @@ const DEFAULT_USER = {
   password: "P4$$w0rd!",
 };
 
+// New resource types added by later tickets should extend this list rather
+// than adding their own separate seed script, per the project rule that new
+// functionality ships with seed data so the app is immediately testable.
+const DEFAULT_SHOW_NAMES = ["Hamlet", "A Midsummer Night's Dream"];
+
 async function nukeDatabase(): Promise<void> {
   await db.execute(
-    sql`TRUNCATE TABLE "account", "session", "verification", "user" RESTART IDENTITY CASCADE`,
+    sql`TRUNCATE TABLE "shows", "account", "session", "verification", "user" RESTART IDENTITY CASCADE`,
   );
 }
 
-async function seedDefaultUser(): Promise<void> {
-  await auth.api.signUpEmail({ body: DEFAULT_USER });
+async function seedDefaultUser(): Promise<string> {
+  const { user: createdUser } = await auth.api.signUpEmail({ body: DEFAULT_USER });
   // Seed data should be immediately usable for local dev/testing — skip the
   // "click the verification link" step rather than wiring up real email.
   await db
     .update(user)
     .set({ emailVerified: true })
     .where(sql`${user.email} = ${DEFAULT_USER.email}`);
+  return createdUser.id;
+}
+
+async function seedDefaultShows(userId: string): Promise<void> {
+  await db.insert(shows).values(DEFAULT_SHOW_NAMES.map((name) => ({ name, userId })));
 }
 
 async function main(): Promise<void> {
@@ -40,7 +50,10 @@ async function main(): Promise<void> {
   await nukeDatabase();
 
   console.log(`Seeding default user (${DEFAULT_USER.email})...`);
-  await seedDefaultUser();
+  const userId = await seedDefaultUser();
+
+  console.log(`Seeding default Shows for ${DEFAULT_USER.email}...`);
+  await seedDefaultShows(userId);
 
   console.log("Done.");
   process.exit(0);
