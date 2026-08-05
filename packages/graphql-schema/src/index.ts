@@ -1,2 +1,3 @@
 // GraphQL schema definitions and generated client types.
-export {};
+export * from "./client";
+export * from "./show";
