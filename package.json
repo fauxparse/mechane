@@ -7,6 +7,7 @@
     "dev:player": "pnpm --filter @presence/app-player dev",
     "dev:api": "pnpm --filter @presence/api dev",
     "db:seed": "pnpm --filter @presence/api db:seed",
+    "storybook": "pnpm --filter @presence/app-studio storybook",
     "build": "pnpm -r build",
     "test": "vitest run",
     "test:watch": "vitest",
