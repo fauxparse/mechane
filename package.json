@@ -1,0 +1,20 @@
+{
+  "name": "presencedotshow",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:studio": "pnpm --filter @presence/app-studio dev",
+    "dev:player": "pnpm --filter @presence/app-player dev",
+    "build": "pnpm -r build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "oxlint .",
+    "format": "oxfmt .",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  },
+  "packageManager": "pnpm@11.5.2"
+}
