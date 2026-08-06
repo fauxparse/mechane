@@ -89,3 +89,38 @@ export function toShowGraph(graph: ApiGraph | null | undefined): ShowGraph {
   if (!graph) return { nodes: [], edges: [] };
   return { nodes: graph.nodes.map(toNode), edges: graph.edges.map(toEdge) };
 }
+
+/**
+ * The graph as the `saveShowGraph` mutation wants it (issue #42): the same flat
+ * node/edge shape the query returns, minus the fields the server derives.
+ *
+ * The inverse of `toShowGraph`, and the reason the round trip is lossless in
+ * the direction that matters: what the editor holds is the domain graph, and
+ * this is the one place it becomes input again.
+ */
+export function toGraphInput(graph: ShowGraph) {
+  return {
+    nodes: graph.nodes.map((node) => ({
+      id: node.id,
+      kind: node.kind,
+      name: node.name,
+      parentId: node.parentId,
+      defaultSceneId: node.kind === "flow" ? node.defaultSceneId : null,
+      position: { x: node.position.x, y: node.position.y },
+      variables:
+        node.kind === "scene" ? node.variables.map((v) => ({ id: v.id, name: v.name })) : [],
+    })),
+    edges: graph.edges.map((edge) => ({
+      id: edge.id,
+      kind: edge.kind,
+      sourceId: edge.sourceId,
+      targetId: edge.targetId,
+      sourcePath: edge.sourcePath,
+      targetPath: edge.targetPath,
+      // `targetVariableId` is derived by the server from `targetPath`, so it
+      // isn't sent — see `serializeShowGraph` in apps/api.
+      cueId: edge.kind === "navigate" ? edge.cueId : null,
+      actionId: edge.kind === "navigate" ? edge.actionId : null,
+    })),
+  };
+}

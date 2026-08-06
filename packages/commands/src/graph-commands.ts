@@ -2,8 +2,8 @@
 // `ShowGraph`.
 //
 // These are the *atoms*: add or remove one node, move one node, rename one
-// node, add or remove one edge, change a Flow's default Scene. The
-// interaction slice (#42) composes them into the operations a director
+// node, add or remove one edge, add/rename/remove a Scene Variable, change a
+// Flow's default Scene. The interaction slice (#42) composes them into the operations a director
 // actually performs — a recursive Flow delete, a promote-into-Flow with its
 // side effects — because which nodes a cascade collects is a policy question
 // about the editor, while "removing a node takes its edges with it" is just
@@ -28,7 +28,14 @@
 // children. Validating each atom would reject the very sequences that make
 // the composite correct.
 
-import type { GraphEdge, GraphNode, Position, ShowGraph } from "@presence/domain";
+import type {
+  GraphEdge,
+  GraphNode,
+  Position,
+  SceneNode,
+  SceneVariable,
+  ShowGraph,
+} from "@presence/domain";
 
 import { capturing } from "./command";
 import type { Command } from "./command";
@@ -45,6 +52,9 @@ export const GRAPH_COMMAND_TYPES = {
   addEdge: "graph.addEdge",
   removeEdge: "graph.removeEdge",
   setFlowDefaultScene: "graph.setFlowDefaultScene",
+  addSceneVariable: "graph.addSceneVariable",
+  renameSceneVariable: "graph.renameSceneVariable",
+  removeSceneVariable: "graph.removeSceneVariable",
 } as const;
 
 export class UnknownGraphTargetError extends Error {
@@ -328,6 +338,146 @@ function withFlowDefaultScene(graph: ShowGraph, flowId: string, sceneId: string 
   const node = graph.nodes[index] as GraphNode;
   if (node.kind !== "flow") throw new UnknownGraphTargetError("Flow", flowId);
   return replaceNode(graph, index, { ...node, defaultSceneId: sceneId });
+}
+
+// ---------------------------------------------------------------------------
+// Scene Variables
+// ---------------------------------------------------------------------------
+
+function sceneAt(graph: ShowGraph, sceneId: string): { index: number; scene: SceneNode } {
+  const index = nodeIndex(graph, sceneId);
+  const scene = graph.nodes[index] as GraphNode;
+  if (scene.kind !== "scene") throw new UnknownGraphTargetError("Scene", sceneId);
+  return { index, scene };
+}
+
+function withVariables(graph: ShowGraph, sceneId: string, variables: SceneVariable[]): ShowGraph {
+  const { index, scene } = sceneAt(graph, sceneId);
+  return replaceNode(graph, index, { ...scene, variables });
+}
+
+/**
+ * Adds a Variable to a Scene — a named input port, not a node (#20). Variables
+ * are edited here rather than through their own surface because that's what
+ * they are: a property of the Scene, and the thing a wiring edge lands on.
+ */
+export function addSceneVariable(
+  sceneId: string,
+  variable: SceneVariable,
+  label = "Add Variable",
+): ShowGraphCommand {
+  return capturing<ShowGraph, null>({
+    type: GRAPH_COMMAND_TYPES.addSceneVariable,
+    label,
+    scope: "selection",
+    capture: () => null,
+    apply: (graph) => {
+      const { scene } = sceneAt(graph, sceneId);
+      return withVariables(graph, sceneId, [...scene.variables, { ...variable }]);
+    },
+    restore: (graph) => {
+      const { scene } = sceneAt(graph, sceneId);
+      return withVariables(
+        graph,
+        sceneId,
+        scene.variables.filter((existing) => existing.id !== variable.id),
+      );
+    },
+  });
+}
+
+/** Renames a Variable. Coalesced per gesture like any other typed edit (#28). */
+export function renameSceneVariable(
+  sceneId: string,
+  variableId: string,
+  name: string,
+  label = "Rename Variable",
+): ShowGraphCommand {
+  return capturing<ShowGraph, string>({
+    type: GRAPH_COMMAND_TYPES.renameSceneVariable,
+    label,
+    scope: "selection",
+    capture: (graph) => {
+      const { scene } = sceneAt(graph, sceneId);
+      const variable = scene.variables.find((candidate) => candidate.id === variableId);
+      if (!variable) throw new UnknownGraphTargetError("Variable", variableId);
+      return variable.name;
+    },
+    isEmpty: (_graph, captured) => captured === name,
+    apply: (graph) => renamed(graph, sceneId, variableId, name),
+    restore: (graph, captured) => renamed(graph, sceneId, variableId, captured),
+  });
+}
+
+function renamed(graph: ShowGraph, sceneId: string, variableId: string, name: string): ShowGraph {
+  const { scene } = sceneAt(graph, sceneId);
+  return withVariables(
+    graph,
+    sceneId,
+    scene.variables.map((variable) =>
+      variable.id === variableId ? { ...variable, name } : variable,
+    ),
+  );
+}
+
+/** A removed Variable, and the wiring that fed it (#28). */
+interface RemovedVariable {
+  index: number;
+  variable: SceneVariable;
+  edges: { index: number; edge: GraphEdge }[];
+}
+
+/**
+ * Removes a Variable from a Scene, taking any wiring edge that fed it — the
+ * edge addresses the Variable by id (#20), so it can't outlive it. Both come
+ * back on undo, at their original positions.
+ */
+export function removeSceneVariable(
+  sceneId: string,
+  variableId: string,
+  label = "Delete Variable",
+): ShowGraphCommand {
+  return capturing<ShowGraph, RemovedVariable>({
+    type: GRAPH_COMMAND_TYPES.removeSceneVariable,
+    label,
+    scope: "selection",
+    capture: (graph) => {
+      const { scene } = sceneAt(graph, sceneId);
+      const index = scene.variables.findIndex((candidate) => candidate.id === variableId);
+      if (index === -1) throw new UnknownGraphTargetError("Variable", variableId);
+      return {
+        index,
+        variable: scene.variables[index] as SceneVariable,
+        edges: graph.edges
+          .map((edge, edgeIdx) => ({ index: edgeIdx, edge }))
+          .filter(({ edge }) => edge.kind === "wiring" && edge.targetPath[0] === variableId),
+      };
+    },
+    apply: (graph) => {
+      const { scene } = sceneAt(graph, sceneId);
+      const next = withVariables(
+        graph,
+        sceneId,
+        scene.variables.filter((variable) => variable.id !== variableId),
+      );
+      return {
+        ...next,
+        edges: next.edges.filter(
+          (edge) => !(edge.kind === "wiring" && edge.targetPath[0] === variableId),
+        ),
+      };
+    },
+    restore: (graph, captured) => {
+      const { scene } = sceneAt(graph, sceneId);
+      const variables = [...scene.variables];
+      variables.splice(Math.min(captured.index, variables.length), 0, captured.variable);
+      let next = withVariables(graph, sceneId, variables);
+      for (const { index, edge } of captured.edges) {
+        next = insertEdge(next, index, edge);
+      }
+      return next;
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------

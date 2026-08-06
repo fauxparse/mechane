@@ -22,8 +22,13 @@ import { isId, publishState } from "@presence/domain";
 import type { ShowId } from "@presence/domain";
 import { GraphQLRequestError } from "@presence/graphql-schema";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 
-import { usePublishShowGraph, useShowGraph } from "../../../api/show-graph";
+import {
+  useDebouncedShowGraphSave,
+  usePublishShowGraph,
+  useShowGraph,
+} from "../../../api/show-graph";
 import { useDeleteShow, useRenameShow, useShow } from "../../../api/shows";
 import { ShowEditorChrome } from "../../../components/ShowEditorChrome";
 import { ShowGraphEditor } from "../../../editors/show/ShowGraphEditor";
@@ -44,9 +49,23 @@ function ShowEditorRoute() {
   // (ADR-0002 stores no "dirty" flag).
   const draft = useShowGraph(showId, "draft");
   const published = useShowGraph(showId, "published");
+  const saveGraph = useDebouncedShowGraphSave(showId);
   const renameShow = useRenameShow();
   const deleteShow = useDeleteShow();
   const publish = usePublishShowGraph();
+
+  // The graph the editor *opens* with, captured once. After that the editor
+  // owns it: it holds the draft in a command stack (#41), and handing it a new
+  // object — which every save does, since the response refreshes the cache for
+  // the badge — would reset that stack and throw the undo history away. A
+  // refetch is not a different document.
+  const [openedWith, setOpenedWith] = useState<typeof draft.data | null>(null);
+  useEffect(() => {
+    if (draft.data && !openedWith) setOpenedWith(draft.data);
+  }, [draft.data, openedWith]);
+  // Which is also why "is the Show still empty?" is tracked here rather than
+  // read back off `openedWith`: that snapshot never changes again.
+  const [edited, setEdited] = useState(false);
 
   if (showId !== null && show.isPending) {
     return <p className="p-6 text-muted-foreground">Loading…</p>;
@@ -92,14 +111,22 @@ function ShowEditorRoute() {
       />
 
       {/* The draft graph is what the editor shows and edits; the published
-          one is only ever read for the badge above (ADR-0002). */}
-      <ShowGraphEditor graph={draft.data} />
+          one is only ever read for the badge above (ADR-0002). Every edit —
+          including an undo, which is an ordinary forward command (ADR-0005) —
+          arrives here and is written after a pause in the editing (#42). */}
+      <ShowGraphEditor
+        graph={openedWith}
+        onEdit={(graph) => {
+          setEdited(true);
+          saveGraph.scheduleSave(graph);
+        }}
+      />
 
-      {draft.data && draft.data.nodes.length === 0 ? (
+      {openedWith && openedWith.nodes.length === 0 && !edited ? (
         // An empty Show is valid and unremarkable (#25), but an empty
         // grid with no explanation reads as a failure to load.
         <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
-          Nothing here yet.
+          Nothing here yet. Right-click the canvas, or press ⌘K, to create something.
         </p>
       ) : null}
     </div>

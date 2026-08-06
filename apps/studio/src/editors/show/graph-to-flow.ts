@@ -60,13 +60,21 @@ export interface MappableEdge {
 }
 
 /**
- * Placeholder node geometry. React Flow measures rendered nodes itself, but
- * a Flow's size has to be known *before* first render (an unsized parent
- * clips its children to nothing), so the placeholder commits to a fixed box
- * and this module can do the arithmetic.
+ * Node geometry. React Flow measures rendered nodes itself, but a Flow's size
+ * has to be known *before* first render (an unsized parent clips its children
+ * to nothing), so the node bodies commit to a fixed width (#35 — no user
+ * resizing, values live in the inspector) and this module does the arithmetic.
  */
 export const NODE_WIDTH = 208;
+
+/** A node with no rows: the header alone. */
 export const NODE_HEIGHT = 56;
+
+/** One Variable row on a Scene (#35 puts each Variable's handle on its row). */
+export const VARIABLE_ROW_HEIGHT = 24;
+
+/** Padding below the last Variable row. */
+const VARIABLE_LIST_PADDING = 8;
 
 /** Breathing room between a Flow's boundary and the nodes inside it. */
 const FLOW_PADDING = 24;
@@ -81,16 +89,33 @@ export interface ShowNodeData {
   variables: { id: string; name: string }[];
   /** The Scene a Flow enters by default (#23), if one has been chosen. */
   defaultSceneId: string | null;
+  /**
+   * Variables with a producer wired into them. #35's dangling-input marker is
+   * the complement: a Variable *not* in here has nothing feeding it, which is
+   * the one state that breaks the Show at performance time and is otherwise
+   * invisible.
+   */
+  wiredVariableIds: string[];
+  /** Whether this Flow is the default-Scene owner of a Scene in the graph. */
+  isDefaultScene: boolean;
+  /** Nodes inside this Flow — how a Flow says "3 scenes" (#35, #44). */
+  childCount: number;
 }
 
 export interface ShowEdgeData {
   kind: EdgeKind;
-  /**
-   * The Scene Variable a wiring edge feeds — `targetPath[0]`, kept here
-   * until nodes grow per-Variable handles (#35).
-   */
+  /** The Scene Variable a wiring edge feeds — the head of its target path. */
   targetVariableId: string | null;
 }
+
+/**
+ * Handle ids. A wiring edge lands on the Variable's *own* handle (#35), which
+ * is why the Variable id is the handle id — React Flow addresses handles by
+ * string, and the Variable already has a stable one. The two constants below
+ * are for everything that isn't a Variable.
+ */
+export const OUTPUT_HANDLE = "out";
+export const INPUT_HANDLE = "in";
 
 export type ShowFlowNode = Node<ShowNodeData>;
 export type ShowFlowEdge = Edge<ShowEdgeData>;
@@ -119,16 +144,35 @@ function nodeKindOf(node: MappableNode): NodeKind {
  * A childless Flow still gets one node's worth of room, so an empty Flow
  * reads as an empty container rather than as a collapsed sliver.
  */
+/**
+ * How tall a node is. Every kind is one header tall except a Scene, which
+ * grows a row per Variable — #20 makes Variables named handles, and a handle
+ * with nowhere to sit can't be aimed at.
+ */
+export function nodeHeight(node: MappableNode): number {
+  const variables = node.variables?.length ?? 0;
+  if (node.kind !== "scene" || variables === 0) return NODE_HEIGHT;
+  return NODE_HEIGHT + variables * VARIABLE_ROW_HEIGHT + VARIABLE_LIST_PADDING;
+}
+
 export function flowSize(children: readonly MappableNode[]): { width: number; height: number } {
   const right = children.reduce((max, child) => Math.max(max, child.position.x + NODE_WIDTH), 0);
-  const bottom = children.reduce((max, child) => Math.max(max, child.position.y + NODE_HEIGHT), 0);
+  const bottom = children.reduce(
+    (max, child) => Math.max(max, child.position.y + nodeHeight(child)),
+    0,
+  );
   return {
     width: Math.max(NODE_WIDTH, right) + FLOW_PADDING,
     height: Math.max(FLOW_HEADER_HEIGHT + NODE_HEIGHT, bottom) + FLOW_PADDING,
   };
 }
 
-function toFlowNode(node: MappableNode, children: readonly MappableNode[]): ShowFlowNode {
+function toFlowNode(
+  node: MappableNode,
+  children: readonly MappableNode[],
+  wiredVariableIds: Set<string>,
+  defaultSceneIds: Set<string>,
+): ShowFlowNode {
   const kind = nodeKindOf(node);
   const isFlow = kind === "flow";
   return {
@@ -142,12 +186,17 @@ function toFlowNode(node: MappableNode, children: readonly MappableNode[]): Show
     // rendered nodes, but `fitView` on first paint runs *before* the first
     // measurement — an unsized node contributes nothing to the bounds, so
     // opening a Show would frame a graph with some of its nodes off-screen.
-    style: isFlow ? flowSize(children) : { width: NODE_WIDTH, height: NODE_HEIGHT },
+    style: isFlow ? flowSize(children) : { width: NODE_WIDTH, height: nodeHeight(node) },
     data: {
       kind,
       name: node.name,
       variables: [...(node.variables ?? [])],
       defaultSceneId: node.defaultSceneId ?? null,
+      wiredVariableIds: (node.variables ?? [])
+        .filter((variable) => wiredVariableIds.has(variable.id))
+        .map((variable) => variable.id),
+      isDefaultScene: defaultSceneIds.has(node.id),
+      childCount: children.length,
     },
   };
 }
@@ -156,16 +205,21 @@ function toFlowEdge(edge: MappableEdge): ShowFlowEdge {
   if (!isEdgeKind(edge.kind)) {
     throw new Error(`Unknown Show graph edge kind "${edge.kind}" on edge "${edge.id}".`);
   }
+  const targetVariableId = edge.targetVariableId ?? edge.targetPath?.[0] ?? null;
   return {
     id: edge.id,
     source: edge.sourceId,
     target: edge.targetId,
+    sourceHandle: OUTPUT_HANDLE,
+    // A wiring edge terminates on its Variable's row; the other two kinds have
+    // one input to aim at, so they take the node's own handle.
+    targetHandle: edge.kind === "wiring" && targetVariableId ? targetVariableId : INPUT_HANDLE,
     data: {
       kind: edge.kind,
       // The wire shape resolves the Variable for the client; the domain shape
       // carries it as the head of the target path (`wiringTargetVariableId`),
       // so read whichever one is there.
-      targetVariableId: edge.targetVariableId ?? edge.targetPath?.[0] ?? null,
+      targetVariableId,
     },
   };
 }
@@ -194,8 +248,23 @@ export function graphToFlow(
   const flows = graph.nodes.filter((node) => node.kind === "flow");
   const rest = graph.nodes.filter((node) => node.kind !== "flow");
 
+  // Which Variables have a producer, and which Scenes are their Flow's entry
+  // point — both are facts about the *graph* that a single node has to display
+  // (#35), so they're gathered once here rather than by each node body.
+  const wiredVariableIds = new Set(
+    graph.edges
+      .filter((edge) => edge.kind === "wiring")
+      .map((edge) => edge.targetVariableId ?? edge.targetPath?.[0])
+      .filter((id): id is string => Boolean(id)),
+  );
+  const defaultSceneIds = new Set(
+    graph.nodes.map((node) => node.defaultSceneId).filter((id): id is string => Boolean(id)),
+  );
+
   return {
-    nodes: [...flows, ...rest].map((node) => toFlowNode(node, childrenByParent.get(node.id) ?? [])),
+    nodes: [...flows, ...rest].map((node) =>
+      toFlowNode(node, childrenByParent.get(node.id) ?? [], wiredVariableIds, defaultSceneIds),
+    ),
     edges: graph.edges.map(toFlowEdge),
   };
 }
