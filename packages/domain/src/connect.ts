@@ -13,10 +13,9 @@
 // or "a Flow-local Source can't feed outside its Flow" is written down. A
 // rule added there is enforced here for free.
 //
-// What is *not* here: fan-in, wiring cycles, and one-target-per-Device.
-// Those are connection rules rather than structural ones and belong to issue
-// #43, which will extend the same seam — a caller asking `canConnect` today
-// keeps working when they land.
+// Connection rules are enforced by `assertValidShowGraph`, which this module
+// uses on a candidate edge. That keeps persisted graphs and drag validation
+// on the same seam.
 
 import { assertValidShowGraph, findNode, InvalidShowGraphError } from "./graph";
 import type { EdgeKind, GraphEdge, ShowGraph } from "./graph";
@@ -139,6 +138,15 @@ function humanise(error: InvalidShowGraphError, kind: EdgeKind): string {
   }
   if (reason.includes("nested Scene is reached via its Flow")) {
     return "A Device is driven by a Flow or a top-level Scene, not by a Scene inside a Flow.";
+  }
+  if (reason.includes("overlapping paths")) {
+    return "That Variable path is already connected.";
+  }
+  if (reason.includes("more than one driver")) {
+    return "That Device already has a driver.";
+  }
+  if (reason.includes("wiring edges form a cycle")) {
+    return "Wiring can't form a cycle.";
   }
   return reason.replace(/^Invalid Show graph: /, "");
 }

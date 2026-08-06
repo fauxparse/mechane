@@ -249,6 +249,25 @@ describe("assertValidShowGraph", () => {
       expect(() => assertValidShowGraph(showGraph)).not.toThrow();
     });
 
+    it("rejects overlapping producers for one Variable path", () => {
+      const showGraph = graph(
+        [source("r1"), source("r2"), scene("c1", null, ["v1"])],
+        [
+          wiring("e1", "r1", "c1", ["v1"]),
+          wiring("e2", "r2", "c1", ["v1", "name"]),
+        ],
+      );
+      expect(() => assertValidShowGraph(showGraph)).toThrow(/overlapping paths/);
+    });
+
+    it("rejects a Device with more than one driver", () => {
+      const showGraph = graph(
+        [flow("f1"), scene("c1"), device("d1")],
+        [deviceEdge("e1", "f1", "d1"), deviceEdge("e2", "c1", "d1")],
+      );
+      expect(() => assertValidShowGraph(showGraph)).toThrow(/more than one driver/);
+    });
+
     it("rejects a wiring edge with no target path at all", () => {
       const showGraph = graph(
         [source("r1"), scene("c1", null, ["v1"])],
