@@ -91,6 +91,36 @@ export interface DeviceNode extends BaseNode {
   kind: "device";
   /** Always null: a Device is a Show-level endpoint, never inside a Flow. */
   parentId: null;
+  /**
+   * How many logical instances this Device represents (#45) — *not* how
+   * many screens are plugged into it, which is unbounded either way.
+   *
+   *   - `false` (**shared**, the default): one instance. Every connection
+   *     sees identical state, and an Event from any of them is an Event
+   *     from *the Device*. A projector, or three laptops sharing one
+   *     scorekeeper view.
+   *   - `true` (**per-connection**, shown to directors as an *Audience*
+   *     Device): one instance per connection. Each phone navigates its
+   *     Flow independently and holds its own Flow-local Source values
+   *     (#29); Events are anonymous and aggregated.
+   *
+   * This is the field that decides Event attribution, so it is fixed at
+   * creation — flipping it would silently rewrite the meaning of every
+   * edge already pointing here.
+   */
+  perConnection: boolean;
+  /**
+   * The Show-level pairing code a physical device joins with (#8), or null
+   * before the server has minted one.
+   *
+   * Null is the normal state of a Device that has just been created: ids
+   * are generated client-side (#47) so a node exists before any round
+   * trip, but a *unique* code can only be minted where uniqueness is
+   * enforceable. The code itself belongs to the Show and outlives any one
+   * draft (PRD §4.3) — this field is a read-through copy of it, not where
+   * it lives.
+   */
+  pairingCode: string | null;
 }
 
 export type GraphNode = SceneNode | FlowNode | SourceNode | TransformerNode | DeviceNode;
@@ -149,7 +179,16 @@ export interface NavigateEdge extends BaseEdge {
   actionId: string | null;
 }
 
-/** Flow | top-level Scene → Device: "this Device displays whatever's here." */
+/**
+ * Flow | top-level Scene → Device: "this Device displays whatever's here."
+ *
+ * The consumer's `perConnection` decides how many times what's at the
+ * producer end is instantiated: a shared Device drives one instance of
+ * that Flow, a per-connection Device drives one per connected phone (#45).
+ * Nothing here enforces that — it's the reading #29 will build Flow-local
+ * Source scoping on, recorded so that ticket inherits the meaning rather
+ * than re-deciding it.
+ */
 export interface DeviceEdge extends BaseEdge {
   kind: "device";
 }
@@ -258,6 +297,17 @@ export function nodesInFlow(graph: ShowGraph, flowId: string): GraphNode[] {
 /** The Show-level nodes — those not inside any Flow. */
 export function topLevelNodes(graph: ShowGraph): GraphNode[] {
   return graph.nodes.filter((node) => node.parentId === null);
+}
+
+/**
+ * How many logical instances a Device stands for — `"one"` for a shared
+ * Device, `"perConnection"` for an Audience one (#45).
+ *
+ * A named reading of the boolean, so that call sites say what they mean
+ * and the two words exist in one place for #29 to build on.
+ */
+export function deviceInstanceCardinality(device: DeviceNode): "one" | "perConnection" {
+  return device.perConnection ? "perConnection" : "one";
 }
 
 /** Looks a node up by id, or null if the graph has no such node. */

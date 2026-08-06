@@ -10,7 +10,9 @@ import { assertValidShowGraph, emptyShowGraph, generateId, isEdgeKind } from "@m
 import { and, eq } from "drizzle-orm";
 
 import { db } from "./client";
-import { graphEdges, graphNodeVariables, graphNodes, showGraphs } from "./schema";
+import type { StoredDevice } from "./devices";
+import { retireUnreferencedDevices, syncDevices } from "./devices";
+import { devices, graphEdges, graphNodeVariables, graphNodes, showGraphs } from "./schema";
 
 /** A stored graph, plus the row metadata a caller may want to show. */
 export interface StoredShowGraph extends ShowGraph {
@@ -23,7 +25,11 @@ type NodeRow = typeof graphNodes.$inferSelect;
 type VariableRow = typeof graphNodeVariables.$inferSelect;
 type EdgeRow = typeof graphEdges.$inferSelect;
 
-function toNode(row: NodeRow, variablesByScene: Map<string, SceneVariable[]>): GraphNode {
+function toNode(
+  row: NodeRow,
+  variablesByScene: Map<string, SceneVariable[]>,
+  deviceIdentities: Map<string, StoredDevice>,
+): GraphNode {
   const base = {
     id: row.id,
     name: row.name,
@@ -43,8 +49,21 @@ function toNode(row: NodeRow, variablesByScene: Map<string, SceneVariable[]>): G
       return { ...base, kind: "source", parentId: row.parentId };
     case "transformer":
       return { ...base, kind: "transformer", parentId: row.parentId };
-    case "device":
-      return { ...base, kind: "device", parentId: null };
+    case "device": {
+      // A Device node carries its identity rather than owning it: the row
+      // in `devices` is the Show-level thing that survives publish and
+      // Runs. A node with no row yet has never been through a write —
+      // it reads as "code not minted", the same state a brand-new node is
+      // in on the canvas.
+      const identity = deviceIdentities.get(row.id);
+      return {
+        ...base,
+        kind: "device",
+        parentId: null,
+        perConnection: identity?.perConnection ?? false,
+        pairingCode: identity?.pairingCode ?? null,
+      };
+    }
     default:
       // Only reachable if a row was written around the domain validation —
       // loudly, rather than by silently dropping the node off the graph.
@@ -102,7 +121,7 @@ export async function readShowGraph(showId: string, state: GraphState): Promise<
   }
   // Ordered by id so a graph reads back the same way twice — the graph
   // doesn't care, but a diff of two reads (or a test) does. (See issue #43.)
-  const [nodeRows, variableRows, edgeRows] = await Promise.all([
+  const [nodeRows, variableRows, edgeRows, deviceRows] = await Promise.all([
     db.select().from(graphNodes).where(eq(graphNodes.graphId, row.id)).orderBy(graphNodes.id),
     db
       .select()
@@ -110,13 +129,23 @@ export async function readShowGraph(showId: string, state: GraphState): Promise<
       .where(eq(graphNodeVariables.graphId, row.id))
       .orderBy(graphNodeVariables.id),
     db.select().from(graphEdges).where(eq(graphEdges.graphId, row.id)).orderBy(graphEdges.id),
+    // Every Device on the Show, retired ones included: a published graph
+    // read during a Run may well name a Device the draft has since
+    // deleted, and it still has to render with its code.
+    db.select().from(devices).where(eq(devices.showId, showId)),
   ]);
   const variablesByScene = groupVariables(variableRows);
+  const deviceIdentities = new Map(
+    deviceRows.map((device) => [
+      device.id,
+      { pairingCode: device.pairingCode, perConnection: device.perConnection },
+    ]),
+  );
   return {
     showId,
     state,
     updatedAt: row.updatedAt,
-    nodes: nodeRows.map((node) => toNode(node, variablesByScene)),
+    nodes: nodeRows.map((node) => toNode(node, variablesByScene, deviceIdentities)),
     edges: edgeRows.map(toEdge),
   };
 }
@@ -157,6 +186,13 @@ export async function writeShowGraph(
     // Cascades take the nodes' variables and edges with them, so this is
     // the only delete needed to empty the graph.
     await tx.delete(graphNodes).where(eq(graphNodes.graphId, row.id));
+
+    // Device identity is Show-level and outlives this write (#45), so it
+    // is reconciled rather than rewritten: new Devices get a row and a
+    // minted code, and known ones keep the code and `perConnection` they
+    // already had. What comes back is what the caller is told, so a client
+    // that guessed at either is corrected rather than obeyed.
+    const deviceIdentities = await syncDevices(tx, showId, graph.nodes);
 
     // Show-level nodes first: a nested node's `parent_id` foreign key needs
     // its Flow to already exist.
@@ -221,7 +257,13 @@ export async function writeShowGraph(
       );
     }
 
-    return { showId, state, updatedAt: now, nodes: graph.nodes, edges: graph.edges };
+    const nodes = graph.nodes.map((node) => {
+      if (node.kind !== "device") return node;
+      const identity = deviceIdentities.get(node.id);
+      return identity ? { ...node, ...identity } : node;
+    });
+
+    return { showId, state, updatedAt: now, nodes, edges: graph.edges };
   });
 }
 
@@ -233,5 +275,14 @@ export async function writeShowGraph(
  */
 export async function publishShowGraph(showId: string): Promise<StoredShowGraph> {
   const draft = await readShowGraph(showId, "draft");
-  return writeShowGraph(showId, "published", { nodes: draft.nodes, edges: draft.edges });
+  const published = await writeShowGraph(showId, "published", {
+    nodes: draft.nodes,
+    edges: draft.edges,
+  });
+  // Publish is the only moment a Device may be retired (#45). Until it
+  // happens, a Device deleted from the draft is still named by the
+  // published graph, so its code keeps working for a Run already under
+  // way — a draft edit must never take a projector off the air (ADR-0002).
+  await db.transaction((tx) => retireUnreferencedDevices(tx, showId));
+  return published;
 }

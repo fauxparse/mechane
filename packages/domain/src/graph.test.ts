@@ -4,6 +4,7 @@ import {
   assertValidGraphState,
   assertValidShowGraph,
   containingFlowId,
+  deviceInstanceCardinality,
   emptyShowGraph,
   findNode,
   formatValuePath,
@@ -53,8 +54,16 @@ function transformer(id: string, parentId: string | null = null): TransformerNod
   return { id, kind: "transformer", name: id, position: at, parentId };
 }
 
-function device(id: string): DeviceNode {
-  return { id, kind: "device", name: id, position: at, parentId: null };
+function device(id: string, perConnection = false): DeviceNode {
+  return {
+    id,
+    kind: "device",
+    name: id,
+    position: at,
+    parentId: null,
+    perConnection,
+    pairingCode: null,
+  };
 }
 
 function wiring(
@@ -252,10 +261,7 @@ describe("assertValidShowGraph", () => {
     it("rejects overlapping producers for one Variable path", () => {
       const showGraph = graph(
         [source("r1"), source("r2"), scene("c1", null, ["v1"])],
-        [
-          wiring("e1", "r1", "c1", ["v1"]),
-          wiring("e2", "r2", "c1", ["v1", "name"]),
-        ],
+        [wiring("e1", "r1", "c1", ["v1"]), wiring("e2", "r2", "c1", ["v1", "name"])],
       );
       expect(() => assertValidShowGraph(showGraph)).toThrow(/overlapping paths/);
     });
@@ -450,6 +456,11 @@ describe("structural queries", () => {
 
   it("returns null for an unknown node", () => {
     expect(findNode(showGraph, "nope")).toBeNull();
+  });
+
+  it("reads a Device's instance cardinality from perConnection", () => {
+    expect(deviceInstanceCardinality(device("shared"))).toBe("one");
+    expect(deviceInstanceCardinality(device("phones", true))).toBe("perConnection");
   });
 });
 

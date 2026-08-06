@@ -51,7 +51,16 @@ function toNode(node: ApiNode): GraphNode {
       // read, and a wire graph that disagrees fails `assertValidShowGraph`.
       return { ...base, kind: "flow", parentId: null, defaultSceneId: node.defaultSceneId ?? null };
     case "device":
-      return { ...base, kind: "device", parentId: null };
+      return {
+        ...base,
+        kind: "device",
+        parentId: null,
+        perConnection: node.perConnection,
+        // Null while the server hasn't minted one yet (#45) — the state a
+        // Device is in between being created on the canvas and the first
+        // save coming back.
+        pairingCode: node.pairingCode ?? null,
+      };
     case "source":
       return { ...base, kind: "source", parentId: node.parentId ?? null };
     case "transformer":

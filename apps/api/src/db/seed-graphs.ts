@@ -101,6 +101,12 @@ function hamletGraph(): ShowGraph {
         name: "Audience phones",
         parentId: null,
         position: { x: 880, y: 0 },
+        // Every phone is its own instance, navigating the Flow
+        // independently (#45) — the one Device here that is.
+        perConnection: true,
+        // Minted by `writeShowGraph`, which the seed goes through like any
+        // other write, so seeded Shows get real codes.
+        pairingCode: null,
       },
       {
         id: foyerScreen,
@@ -108,6 +114,8 @@ function hamletGraph(): ShowGraph {
         name: "Foyer screen",
         parentId: null,
         position: { x: 880, y: 480 },
+        perConnection: false,
+        pairingCode: null,
       },
     ],
     edges: [
@@ -283,6 +291,8 @@ function midsummerGraph(): ShowGraph {
         name: "House screen",
         parentId: null,
         position: { x: 880, y: 400 },
+        perConnection: false,
+        pairingCode: null,
       },
     ],
     edges: [

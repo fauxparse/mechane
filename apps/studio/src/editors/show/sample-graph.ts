@@ -37,6 +37,8 @@ function node(overrides: Partial<ShowGraphNodeShape> & Pick<ShowGraphNodeShape, 
     defaultSceneId: null,
     position: { x: 0, y: 0 },
     variables: [],
+    perConnection: false,
+    pairingCode: null,
     ...overrides,
   } as Graph["nodes"][number];
 }
@@ -100,7 +102,18 @@ export const SAMPLE_GRAPH: Graph = {
       variables: [{ id: HOUSE_VARIABLE, name: "message" }],
     }),
     node({ id: WINNER, kind: "transformer", name: "Winning option", position: { x: 40, y: 480 } }),
-    node({ id: PHONE, kind: "device", name: "Audience phones", position: { x: 900, y: 300 } }),
+    node({
+      id: PHONE,
+      kind: "device",
+      name: "Audience phones",
+      position: { x: 900, y: 300 },
+      // The per-connection kind (#45): every phone its own instance.
+      perConnection: true,
+      pairingCode: "V9BEZ",
+    }),
+    // Deliberately code-less, so the state between creating a Device and
+    // the first save coming back is one Storybook can actually show — it's
+    // otherwise only ever seen against a live server.
     node({ id: FOYER, kind: "device", name: "Foyer screen", position: { x: 900, y: 460 } }),
   ],
   edges: [

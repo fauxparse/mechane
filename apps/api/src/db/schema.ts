@@ -343,3 +343,59 @@ export const graphEdges = pgTable(
     ),
   ],
 );
+
+// A Device's identity (issue #45), which is a *Show*-level thing and so
+// deliberately not a graph table: a pairing code is stable at the Show
+// level and persists across every Run (PRD.md §4.3), while a graph row
+// belongs to one draft-or-published state and is rewritten wholesale on
+// every save. Storing the code on `graph_nodes` would fork it at publish
+// and lose it on the next write.
+//
+// A row's `id` *is* the id of the Device node that owns it. Node ids are
+// generated client-side (#47) and copied verbatim by publish, so they are
+// already the stable, cross-state name for "this Device" — a separate
+// `device_id` column would only be a second name for the same thing.
+// That's also what makes undo safe: undoing and redoing a Device's
+// creation restores the same node id, so it finds the same row and the
+// same code, rather than invalidating a QR already printed in a programme.
+export const devices = pgTable(
+  "devices",
+  {
+    id: text("id").notNull(),
+    showId: text("show_id")
+      .notNull()
+      .references(() => shows.id, { onDelete: "cascade" }),
+    // The code a physical device pairs with (#8), and the Device's whole
+    // public identity — the QR, the join URL and the code read aloud are
+    // all this one string. Five characters from an alphabet with no
+    // look-alikes (see `CODE_ALPHABET` in ./devices), unique within the
+    // Show, minted server-side because a client can't check uniqueness.
+    pairingCode: text("pairing_code").notNull(),
+    // How many logical instances this Device is — see `DeviceNode` in
+    // @mechane/domain. Fixed at creation: it decides Event attribution,
+    // and flipping it would silently rewrite what existing edges mean.
+    perConnection: boolean("per_connection").notNull().default(false),
+    // Set when no graph state references this Device any more. Retirement
+    // happens at publish, never at draft-edit time: a director deleting a
+    // node from the draft must not drop a Device that a live Run is still
+    // serving (ADR-0002).
+    retiredAt: timestamp("retired_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.showId, table.id] }),
+    // Codes only need to be unique within the Show that resolves them —
+    // a joining device supplies the Show's identity along with the code.
+    // Retired codes stay in the index so a retired Device's code isn't
+    // recycled onto a different Device while the old QR is still out
+    // there in the world.
+    unique("devices_pairing_code_unique").on(table.showId, table.pairingCode),
+    // The alphabet, restated as a constraint: A-Z and 1-9, less I, L and O
+    // (and 0), so a stored code can't be one a human would mistype.
+    check(
+      "devices_pairing_code_is_unambiguous",
+      sql`${table.pairingCode} ~ '^[1-9A-HJKMNP-Z]{5}$'`,
+    ),
+  ],
+);

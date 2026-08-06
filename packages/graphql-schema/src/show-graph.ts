@@ -29,6 +29,8 @@ export const GetShowGraphQuery = graphql(`
           id
           name
         }
+        perConnection
+        pairingCode
       }
       edges {
         id
@@ -65,6 +67,8 @@ export const SaveShowGraphMutation = graphql(`
           id
           name
         }
+        perConnection
+        pairingCode
       }
       edges {
         id

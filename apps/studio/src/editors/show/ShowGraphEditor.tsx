@@ -49,7 +49,7 @@ import {
   ContextMenuSubmenuTrigger,
   ContextMenuTrigger,
 } from "@mechane/design-system";
-import type { GraphNode, NodeKind, Position, ShowGraph } from "@mechane/domain";
+import type { GraphNode, Position, ShowGraph } from "@mechane/domain";
 import { Maximize2, Pencil, Plus, Redo2, Trash2, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type {
@@ -90,7 +90,8 @@ import {
 } from "./graph-to-flow";
 import type { ShowFlowEdge, ShowFlowNode } from "./graph-to-flow";
 import { NodeInteractionProvider } from "./node-interaction";
-import { CREATABLE_KINDS, NODE_KIND_META } from "./node-kinds";
+import type { CreatableNode } from "./node-kinds";
+import { CREATABLE_NODES } from "./node-kinds";
 import { ShowFlowNode as FlowNodeBody, ShowNode } from "./ShowGraphNodes";
 import { useEditorKeys } from "./use-editor-keys";
 import { useGraphEditing } from "./use-graph-editing";
@@ -431,7 +432,7 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
 interface ShowGraphContextMenuProps {
   menuPosition: MutableRefObject<Position>;
   screenToFlowPosition: ReturnType<typeof useReactFlow>["screenToFlowPosition"];
-  create(kind: NodeKind, at: Position): unknown;
+  create(creatable: CreatableNode, at: Position): unknown;
   fitView(options: FitViewOptions): void;
   selectedNodeIds: string[];
   selectedEdgeIds: string[];
@@ -539,12 +540,14 @@ function ShowGraphContextMenu({
             <Plus /> Create
           </ContextMenuSubmenuTrigger>
           <ContextMenuSubmenuContent>
-            {CREATABLE_KINDS.map((kind) => {
-              const meta = NODE_KIND_META[kind];
-              const Icon = meta.icon;
+            {CREATABLE_NODES.map((creatable) => {
+              const Icon = creatable.icon;
               return (
-                <ContextMenuItem key={kind} onClick={() => create(kind, menuPosition.current)}>
-                  <Icon /> {meta.label}
+                <ContextMenuItem
+                  key={creatable.id}
+                  onClick={() => create(creatable, menuPosition.current)}
+                >
+                  <Icon /> {creatable.label}
                 </ContextMenuItem>
               );
             })}
@@ -643,7 +646,7 @@ type PaletteOptions = {
   commands: ReturnType<typeof useGraphEditing>["commands"];
   selectedNodes: GraphNode[];
   selectedEdgeIds: string[];
-  create(kind: NodeKind, at: Position): unknown;
+  create(creatable: CreatableNode, at: Position): unknown;
   centreOfView(): Position;
   selectAll(): void;
   fitView(options: FitViewOptions): void;
@@ -694,12 +697,12 @@ function useShowGraphEditorPalette({
       },
       // One entry per node kind (#27), verb-first so typing "cre" surfaces them
       // together (#37).
-      ...CREATABLE_KINDS.map((kind) => ({
-        id: `create-${kind}`,
-        label: `Create ${NODE_KIND_META[kind].label}`,
+      ...CREATABLE_NODES.map((creatable) => ({
+        id: `create-${creatable.id}`,
+        label: `Create ${creatable.label}`,
         scope: "canvas" as const,
-        icon: NODE_KIND_META[kind].icon,
-        run: () => create(kind, centreOfView()),
+        icon: creatable.icon,
+        run: () => create(creatable, centreOfView()),
       })),
       {
         id: "select-all",

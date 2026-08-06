@@ -65,11 +65,12 @@ Two distinct write paths — see [ADR-0002](./docs/adr/0002-draft-publish-vs-liv
 ### 4.3 Runs and Devices
 
 - A **Run** is a discrete live instance of a Show; starting one resets live data to defaults. At most one Run is active per Show at a time (concurrent Runs are out of scope, §1).
-- Devices are defined in the Show graph at authoring time, each with a stable 6-digit pairing code that lives at the **Show** level and persists across every Run (not regenerated per performance).
-- Two pairing tiers:
-  - **Audience code**: public (shown as an on-screen QR/code), many phones connect to the same logical Device, Events are anonymous/aggregated, no session tracking.
-  - **Crew codes**: one distinct code per single-endpoint Device (projector, laptop, scorekeeper view, etc.), never displayed publicly, given directly to techs.
-- Device **role** is a first-class distinction (Audience vs. single-endpoint), because it changes Event attribution — not because connections are restricted by count. There is **no enforcement of single-connection exclusivity** in v1: a second device can pair with a single-endpoint code at any time and takes over (last-connection-wins) with no rejection — this deliberately supports recovering from a dead laptop mid-show without a "kick" workflow.
+- Devices are defined in the Show graph at authoring time, each with a stable pairing code that lives at the **Show** level and persists across every Run (not regenerated per performance). A code is five characters drawn from uppercase letters and digits with the look-alikes removed (no `I`, `L`, `O` or `0`), so a code read aloud over a headset or squinted at from the back of the venue can only be typed one way.
+- Every Device has one code, and that code can be presented either as digits or as a QR — the QR is an encoding of the code, not a second kind of credential. Whether a given code is shown publicly is a production decision, not a property of the Device.
+- What _is_ a first-class distinction is how many **logical instances** a Device represents, because that is what changes Event attribution (#45):
+  - **Shared** (the default): one instance. Every connection sees identical state, and an Event from any of them is an Event from _the Device_. Covers projectors, laptops, and views several crew share at once.
+  - **Per-connection** (presented to directors as an _Audience_ Device): one instance per connection. Each phone navigates independently and holds its own Flow-local data; Events are anonymous and aggregated, with no session tracking.
+- Connections are never restricted by count, and none takes precedence: any number of physical devices may hold a shared Device's code simultaneously, all equal and all seeing the same state. This is what supports both several crew working a view together and recovering from a dead laptop mid-show — the replacement simply connects — without needing a "kick" workflow.
 
 ### 4.4 Realtime layer
 

@@ -16,6 +16,8 @@ function apiNode(overrides: Pick<ApiNode, "id" | "kind"> & Partial<ApiNode>): Ap
     defaultSceneId: null,
     position: { x: 0, y: 0 },
     variables: [],
+    perConnection: false,
+    pairingCode: null,
     ...overrides,
   };
 }
