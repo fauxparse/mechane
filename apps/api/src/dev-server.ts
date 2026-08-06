@@ -9,11 +9,21 @@ import { toNodeHandler } from "better-auth/node";
 
 import { auth } from "./auth";
 import { yoga } from "./graphql/server";
+import { applyCorsHeaders } from "./lib/cors";
 
 const authHandler = toNodeHandler(auth);
 
 const server = createServer((req: IncomingMessage, res: ServerResponse) => {
+  // graphql-yoga applies its own CORS headers (configured in
+  // graphql/server.ts) for /api/graphql; Better Auth's handler doesn't, so
+  // it needs the same treatment applied manually here.
   if (req.url?.startsWith("/api/auth")) {
+    const isPreflight = applyCorsHeaders(res, req.headers.origin, req.method);
+    if (isPreflight) {
+      res.statusCode = 204;
+      res.end();
+      return;
+    }
     authHandler(req, res);
     return;
   }

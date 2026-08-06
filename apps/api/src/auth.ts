@@ -11,12 +11,17 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "./db/client";
 import * as schema from "./db/schema";
 import { sendEmail } from "./lib/email";
+import { ALLOWED_ORIGINS } from "./lib/cors";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
     schema,
   }),
+  // apps/app-studio (a different origin — see lib/cors.ts) is the only
+  // client allowed to complete auth flows, e.g. the Google OAuth redirect
+  // back from Google.
+  trustedOrigins: ALLOWED_ORIGINS,
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,

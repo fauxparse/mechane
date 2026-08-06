@@ -124,6 +124,12 @@ importers:
       '@tanstack/react-router':
         specifier: ^1.150.0
         version: 1.170.19(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      better-auth:
+        specifier: ^1.6.26
+        version: 1.6.26(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@types/pg@8.20.4)(kysely@0.29.4)(pg@8.22.0))(pg@8.22.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(vitest@3.2.7(@edge-runtime/vm@3.2.0)(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.8))
+      lucide-react:
+        specifier: ^1.28.0
+        version: 1.28.0(react@19.2.8)
       react:
         specifier: ^19.0.0
         version: 19.2.8

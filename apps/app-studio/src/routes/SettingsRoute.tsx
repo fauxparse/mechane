@@ -5,7 +5,7 @@
 import { ThemeSwitcher } from "@presence/design-system";
 import type { ThemeMode, ThemePalette } from "@presence/domain";
 import { DEFAULT_THEME_MODE, DEFAULT_THEME_PALETTE } from "@presence/domain";
-import { Link } from "@tanstack/react-router";
+import { Link, Navigate } from "@tanstack/react-router";
 
 import { useMe } from "../api/me";
 import { useUpdateUserSettings, useUserSettings } from "../api/settings";
@@ -20,7 +20,7 @@ export function SettingsRoute() {
   }
 
   if (!me.data) {
-    return <p>Sign in to change your settings.</p>;
+    return <Navigate to="/sign-in" replace />;
   }
 
   const mode = (settings.data?.themeMode ?? DEFAULT_THEME_MODE) as ThemeMode;
