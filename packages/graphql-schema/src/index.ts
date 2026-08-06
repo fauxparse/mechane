@@ -4,4 +4,5 @@ export * from "./client";
 export * from "./graphql";
 export * from "./me";
 export * from "./show";
+export * from "./show-graph";
 export * from "./user-settings";

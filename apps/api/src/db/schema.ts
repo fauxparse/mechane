@@ -9,7 +9,20 @@
 // single-user ownership model (PRD.md §1, §9) — see @presence/domain's
 // `ownership` module for the shared invariant this schema exists to support.
 import { generateId } from "@presence/domain";
-import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import {
+  boolean,
+  check,
+  doublePrecision,
+  foreignKey,
+  index,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  unique,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -99,3 +112,234 @@ export const userSettings = pgTable("user_settings", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+// The Show graph (issue #38) — the unified node graph that is both the
+// Scene/Flow state machine and the Show-level wiring graph (PRD.md §6.2).
+// Modelled relationally rather than as one JSON blob per Show so the
+// structural rules are constraints the database enforces, not just
+// comments: an edge physically can't point at a node that isn't there.
+//
+// The domain model and its invariants live in @presence/domain's `graph`
+// module; every write goes through `assertValidShowGraph` first. The
+// constraints here are the backstop for the subset a table can express.
+
+// One row per (Show, state). Draft and published are two independently
+// readable graphs for the same Show per ADR-0002 — publishing copies the
+// draft's nodes/edges over the published row's, so a Device keeps seeing
+// the last published structure while the director edits.
+//
+// `state` stays plain text for the same reason `user_settings.theme_mode`
+// does: the valid set is a domain concern (@presence/domain's
+// `assertValidGraphState`), not a storage one.
+export const showGraphs = pgTable(
+  "show_graphs",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateId("graph")),
+    showId: text("show_id")
+      .notNull()
+      .references(() => shows.id, { onDelete: "cascade" }),
+    state: text("state").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [unique("show_graphs_show_state_unique").on(table.showId, table.state)],
+);
+
+// The five node kinds (#20) in one table: they share every structural
+// field (identity, name, placement, position) and differ only in which
+// edges may touch them, which is an edge-side rule. `kind` stays text, as
+// above.
+//
+// Keyed by (graph, node) rather than node alone: publishing copies the
+// draft's nodes into the published graph *keeping their ids*, so a node
+// id means the same thing in both states — and every foreign key below is
+// composite, which makes an edge that joins two different graphs
+// unrepresentable rather than merely unlikely.
+//
+// `parent_id` is the *entire* representation of both Scene nesting and
+// Flow-local placement (#29) — deliberately no `flow_local` column. The
+// check constraints below are where "no Flow-in-Flow" (#23) and "Devices
+// are Show-level peers" (#26) stop being conventions.
+export const graphNodes = pgTable(
+  "graph_nodes",
+  {
+    id: text("id").notNull(),
+    graphId: text("graph_id")
+      .notNull()
+      .references(() => showGraphs.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    name: text("name").notNull(),
+    // The containing Flow, or null for a Show-level node.
+    parentId: text("parent_id"),
+    // Flow nodes only: the design-time entry Scene (#23). Deliberately not
+    // a foreign key: the only available composite-FK delete behaviours are
+    // cascade (a Flow shouldn't die with its default Scene) and no action
+    // (which would block deleting that Scene) — neither is the rule, which
+    // is "the Flow survives with no default". @presence/domain's
+    // `assertValidShowGraph` is what keeps this pointing at a Scene of
+    // this Flow.
+    defaultSceneId: text("default_scene_id"),
+    positionX: doublePrecision("position_x").notNull().default(0),
+    positionY: doublePrecision("position_y").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.graphId, table.id] }),
+    index("graph_nodes_parent_idx").on(table.graphId, table.parentId),
+    // Self-referencing: the parent must be a real node *in the same graph*,
+    // and deleting a Flow takes its contents with it (#27's cascade).
+    foreignKey({
+      name: "graph_nodes_parent_fk",
+      columns: [table.graphId, table.parentId],
+      foreignColumns: [table.graphId, table.id],
+    }).onDelete("cascade"),
+    // No Flow-in-Flow (#23), and no Device inside a Flow (#26).
+    check(
+      "graph_nodes_no_nested_containers",
+      sql`${table.kind} not in ('flow', 'device') or ${table.parentId} is null`,
+    ),
+    // Only a Flow has a default Scene.
+    check(
+      "graph_nodes_default_scene_is_flow_only",
+      sql`${table.kind} = 'flow' or ${table.defaultSceneId} is null`,
+    ),
+  ],
+);
+
+// A Variable is a port on a Scene, not a node of its own (#20) — so it
+// lives in its own table keyed to a Scene node, and a wiring edge points
+// at a row here rather than at the Scene generally.
+export const graphNodeVariables = pgTable(
+  "graph_node_variables",
+  {
+    id: text("id").notNull(),
+    graphId: text("graph_id")
+      .notNull()
+      .references(() => showGraphs.id, { onDelete: "cascade" }),
+    sceneId: text("scene_id").notNull(),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.graphId, table.id] }),
+    foreignKey({
+      name: "graph_node_variables_scene_fk",
+      columns: [table.graphId, table.sceneId],
+      foreignColumns: [graphNodes.graphId, graphNodes.id],
+    }).onDelete("cascade"),
+    unique("graph_node_variables_scene_name_unique").on(table.graphId, table.sceneId, table.name),
+  ],
+);
+
+// The three edge kinds (#20, direction corrected by #26), all running
+// producer → consumer, in one table:
+//
+//   wiring    Source | Transformer   → Scene Variable  (paths set)
+//   navigate  Scene                  → Scene           (same Flow, #25)
+//   device    Flow | top-level Scene → Device
+//
+// A wiring edge addresses a value at each end by path, so it can carry one
+// field of a structured Source into one field of a Scene Variable rather
+// than only whole values. `target_variable_id` is therefore *derived*: it's
+// a stored generated column holding `target_path[1]`, which is what lets
+// the foreign key below still guarantee that the Variable a wiring edge
+// lands on exists (#20) even though the column is no longer written
+// directly.
+//
+// Which node kinds may sit at each end is checked in @presence/domain — it
+// needs both endpoints' rows, which a row-level check can't see. What the
+// table does enforce is that only a wiring edge addresses values, that only
+// a Navigate edge carries a Cue/Action pairing, and that an edge is never
+// duplicated: parallel Navigate edges between the same two Scenes are
+// allowed (one per distinct pairing, #20), as are parallel wiring edges
+// moving different fields.
+export const graphEdges = pgTable(
+  "graph_edges",
+  {
+    id: text("id").notNull(),
+    graphId: text("graph_id")
+      .notNull()
+      .references(() => showGraphs.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    sourceNodeId: text("source_node_id").notNull(),
+    targetNodeId: text("target_node_id").notNull(),
+    // Field paths into the producer's and consumer's values, outermost
+    // segment first; empty means "the whole value", and both are empty on
+    // Navigate and Device edges, which don't address values at all.
+    sourcePath: text("source_path")
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
+    targetPath: text("target_path")
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
+    // The head of `target_path` — the Scene Variable a wiring edge lands
+    // on. Generated rather than written so it can't disagree with the path
+    // it comes from, while still being a real column the foreign key below
+    // can point at.
+    targetVariableId: text("target_variable_id").generatedAlwaysAs(sql`target_path[1]`),
+    // Cues and Actions aren't modelled yet, so these are opaque ids with no
+    // FK — they exist now because the pairing is what makes parallel
+    // Navigate edges distinguishable, and retrofitting that into the
+    // uniqueness rule later would mean rewriting existing rows.
+    cueId: text("cue_id"),
+    actionId: text("action_id"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.graphId, table.id] }),
+    index("graph_edges_source_idx").on(table.graphId, table.sourceNodeId),
+    index("graph_edges_target_idx").on(table.graphId, table.targetNodeId),
+    foreignKey({
+      name: "graph_edges_source_fk",
+      columns: [table.graphId, table.sourceNodeId],
+      foreignColumns: [graphNodes.graphId, graphNodes.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "graph_edges_target_fk",
+      columns: [table.graphId, table.targetNodeId],
+      foreignColumns: [graphNodes.graphId, graphNodes.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "graph_edges_target_variable_fk",
+      columns: [table.graphId, table.targetVariableId],
+      foreignColumns: [graphNodeVariables.graphId, graphNodeVariables.id],
+    }).onDelete("cascade"),
+    // Coalesced because Postgres treats NULLs as distinct, which would let
+    // two identical Navigate edges with no Cue coexist.
+    uniqueIndex("graph_edges_no_duplicates").on(
+      table.graphId,
+      table.kind,
+      table.sourceNodeId,
+      table.targetNodeId,
+      // The arrays index directly (btree compares text[] fine) — joining
+      // them into a string would need `array_to_string`, which is only
+      // STABLE, and an index expression has to be IMMUTABLE.
+      table.sourcePath,
+      table.targetPath,
+      sql`coalesce(${table.cueId}, '')`,
+      sql`coalesce(${table.actionId}, '')`,
+    ),
+    // Only a wiring edge addresses a value, and it must name at least the
+    // Scene Variable it feeds.
+    check(
+      "graph_edges_paths_are_wiring_only",
+      sql`(${table.kind} = 'wiring') = (cardinality(${table.targetPath}) > 0)`,
+    ),
+    check(
+      "graph_edges_source_path_is_wiring_only",
+      sql`${table.kind} = 'wiring' or cardinality(${table.sourcePath}) = 0`,
+    ),
+    // Only a Navigate edge means anything by a Cue/Action pairing.
+    check(
+      "graph_edges_pairing_is_navigate_only",
+      sql`${table.kind} = 'navigate' or (${table.cueId} is null and ${table.actionId} is null)`,
+    ),
+  ],
+);
