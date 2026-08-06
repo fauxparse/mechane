@@ -8,7 +8,8 @@
 //
 //   - **Containment.** The domain says "this node's parent is that Flow"
 //     (`parentId`, #29). React Flow says "this node is a child of that
-//     node, and its position is relative to it" (`parentNode`). Same fact,
+//     node, and its position is relative to it" (also `parentId` — spelled
+//     `parentNode` before v12, so the shared name is coincidence). Same fact,
 //     and the domain's stored positions for Flow-local nodes are already
 //     relative to their Flow — but React Flow additionally needs the parent
 //     to be *sized*, and to appear before its children in the array. Both
@@ -29,7 +30,7 @@
 // the same way, and neither has to be converted just to be rendered.
 import { isEdgeKind, isNodeKind } from "@mechane/domain";
 import type { EdgeKind, NodeKind, Position } from "@mechane/domain";
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 
 /**
  * A node as this mapper needs it described. Structural rather than named, so
@@ -88,7 +89,10 @@ export const FLOW_CONTENT_ORIGIN: Position = {
   y: FLOW_HEADER_HEIGHT + FLOW_PADDING,
 };
 
-export interface ShowNodeData {
+// `type`, not `interface`: React Flow v12 constrains node and edge data to
+// `Record<string, unknown>`, which an interface does not satisfy structurally
+// (interfaces have no implicit index signature).
+export type ShowNodeData = {
   kind: NodeKind;
   name: string;
   /** Scene Variables, in graph order. Empty for every other kind. */
@@ -108,13 +112,13 @@ export interface ShowNodeData {
   childCount: number;
   /** Local canvas view state; never persisted or commanded (#44). */
   collapsed?: boolean;
-}
+};
 
-export interface ShowEdgeData {
+export type ShowEdgeData = {
   kind: EdgeKind;
   /** The Scene Variable a wiring edge feeds — the head of its target path. */
   targetVariableId: string | null;
-}
+};
 
 /**
  * Handle ids. A wiring edge lands on the Variable's *own* handle (#35), which
@@ -127,6 +131,25 @@ export const INPUT_HANDLE = "in";
 
 export type ShowFlowNode = Node<ShowNodeData>;
 export type ShowFlowEdge = Edge<ShowEdgeData>;
+
+/**
+ * A node's position in canvas coordinates. A Flow-local node's `position` is
+ * relative to its Flow (see the containment note above); v11 precomputed the
+ * absolute one as `positionAbsolute`, and v12 keeps it on the *internal* node
+ * instead. Since containment is this module's mapping, it resolves it too,
+ * which also keeps the callers that hold a plain node array pure.
+ *
+ * Nesting is one level deep by construction: only a Flow can be a parent, and
+ * a Flow is always top-level (#29).
+ */
+export function absolutePosition(
+  node: ShowFlowNode,
+  byId: ReadonlyMap<string, ShowFlowNode>,
+): Position {
+  const parent = node.parentId ? byId.get(node.parentId) : undefined;
+  if (!parent) return node.position;
+  return { x: parent.position.x + node.position.x, y: parent.position.y + node.position.y };
+}
 
 /** The React Flow node type every kind currently renders as. */
 export const PLACEHOLDER_NODE_TYPE = "showNode";
@@ -188,9 +211,9 @@ function toFlowNode(
     id: node.id,
     type: isFlow ? FLOW_NODE_TYPE : PLACEHOLDER_NODE_TYPE,
     position: { x: node.position.x, y: node.position.y },
-    // React Flow reads `parentNode` positions as relative to the parent,
-    // which is already how the domain stores a Flow-local node's position.
-    ...(node.parentId ? { parentNode: node.parentId } : {}),
+    // React Flow reads a child's position as relative to its parent, which is
+    // already how the domain stores a Flow-local node's position.
+    ...(node.parentId ? { parentId: node.parentId } : {}),
     // Every node is sized up front, not just Flows. React Flow measures
     // rendered nodes, but `fitView` on first paint runs *before* the first
     // measurement — an unsized node contributes nothing to the bounds, so
@@ -240,7 +263,7 @@ function toFlowEdge(edge: MappableEdge): ShowFlowEdge {
 }
 
 /**
- * The graph as React Flow wants it. Flows come first: React Flow v11
+ * The graph as React Flow wants it. Flows come first: React Flow still
  * requires a parent to appear before its children, and sorting here means
  * no caller has to remember that.
  */
