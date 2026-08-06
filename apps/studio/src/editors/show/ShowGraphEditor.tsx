@@ -76,6 +76,7 @@ import {
   FLOW_CONTENT_ORIGIN,
   FLOW_NODE_TYPE,
   graphToFlow,
+  NODE_HEIGHT,
   NODE_WIDTH,
   PLACEHOLDER_NODE_TYPE,
 } from "./graph-to-flow";
@@ -194,6 +195,8 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
   // thing I just made" has to be handed to the redraw below rather than set
   // directly — a `setNodes` before it would be overwritten by it.
   const selectOnArrival = useRef<string | null>(null);
+  /** A newly created Flow should become the camera's destination (#64). */
+  const focusOnArrival = useRef<string | null>(null);
   useEffect(() => {
     // While a drag is in flight React Flow is already showing the right
     // positions, frame by frame; replacing its nodes underneath it would
@@ -201,6 +204,24 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
     if (dragging.current) return;
     const arriving = selectOnArrival.current;
     selectOnArrival.current = null;
+    const focusId = focusOnArrival.current;
+    focusOnArrival.current = null;
+    if (focusId) {
+      // React Flow has not received the replacement nodes until this effect's
+      // state update commits, so wait one frame before asking it for the new
+      // Flow's absolute position.
+      window.requestAnimationFrame(() => {
+        const target = getNodes().find((node) => node.id === focusId);
+        if (!target) return;
+        const position = target.positionAbsolute ?? target.position;
+        const width = Number(target.style?.width ?? NODE_WIDTH);
+        const height = Number(target.style?.height ?? NODE_HEIGHT);
+        setCenter(position.x + width / 2, position.y + height / 2, {
+          zoom: getZoom(),
+          duration: 200,
+        });
+      });
+    }
     setNodes((previous) => {
       const interaction = new Map(previous.map((node) => [node.id, node]));
       return drawn.nodes.map((node) => {
@@ -216,7 +237,7 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
         return existing ? { ...edge, selected: existing.selected } : edge;
       });
     });
-  }, [drawn, setNodes, setEdges]);
+  }, [drawn, getNodes, getZoom, setCenter, setNodes, setEdges]);
 
   const say = useCallback((text: string) => {
     setMessage(text);
@@ -299,7 +320,20 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
 
   const create = useCallback(
     (kind: NodeKind, at: Position) => {
-      const flow = kind === "flow" || kind === "device" ? null : flowAt(at);
+      // Creating a Flow over the current selection is one command: create the
+      // container, then promote only eligible top-level content into it.
+      if (kind === "flow") {
+        const nodeIds = selectedNodes
+          .filter(
+            (node) => node.parentId === null && node.kind !== "device" && node.kind !== "flow",
+          )
+          .map((node) => node.id);
+        const node = editing.createFlowWithNodes(nodeIds, at, FLOW_CONTENT_ORIGIN);
+        selectOnArrival.current = node.id;
+        focusOnArrival.current = node.id;
+        return node;
+      }
+      const flow = kind === "device" ? null : flowAt(at);
       // A nested node's position is relative to its Flow (#29), which is
       // exactly how React Flow reads it too.
       const position = flow ? { x: at.x - flow.position.x, y: at.y - flow.position.y } : at;
@@ -309,7 +343,7 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
       selectOnArrival.current = node.id;
       return node;
     },
-    [editing, flowAt],
+    [editing, flowAt, selectedNodes],
   );
 
   /** Where a palette-created node goes: near the selection, else viewport centre (#27). */
@@ -317,7 +351,8 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
     const selected = getNodes().filter((node) => node.selected);
     if (selected.length > 0) {
       const first = selected[0] as ShowFlowNode;
-      return { x: first.position.x + NODE_WIDTH + 48, y: first.position.y };
+      const position = first.positionAbsolute ?? first.position;
+      return { x: position.x + NODE_WIDTH + 48, y: position.y };
     }
     const bounds = document.querySelector(".mechane-show-graph")?.getBoundingClientRect();
     if (!bounds) return { x: 0, y: 0 };
