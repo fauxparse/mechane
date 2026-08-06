@@ -1,0 +1,3 @@
+{
+  "ignorePatterns": ["dist", "storybook-static", "node_modules", "coverage", "apps/api/drizzle/**"]
+}

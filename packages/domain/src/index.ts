@@ -3,3 +3,4 @@
 // Property, Block, Slot, Event, Cue, Action, Shape, Run, Wiring.
 export * from "./ownership";
 export * from "./show";
+export * from "./theme-settings";

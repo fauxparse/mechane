@@ -12,6 +12,9 @@ import { sql } from "drizzle-orm";
 import { auth } from "../auth";
 import { db } from "./client";
 import { shows, user } from "./schema";
+// user_settings deliberately isn't truncated with a row inserted here: an
+// absent row is the "using defaults" state the app already handles (see
+// the `userSettings` resolver), so seed data doesn't need to fabricate one.
 
 const DEFAULT_USER = {
   name: "Lauren Ipsum",
@@ -26,7 +29,7 @@ const DEFAULT_SHOW_NAMES = ["Hamlet", "A Midsummer Night's Dream"];
 
 async function nukeDatabase(): Promise<void> {
   await db.execute(
-    sql`TRUNCATE TABLE "shows", "account", "session", "verification", "user" RESTART IDENTITY CASCADE`,
+    sql`TRUNCATE TABLE "shows", "user_settings", "account", "session", "verification", "user" RESTART IDENTITY CASCADE`,
   );
 }
 

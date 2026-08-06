@@ -1,0 +1,178 @@
+/*
+ * Presence design system tokens (PRD.md §7).
+ *
+ * Every color a component uses must come from a `--color-*` Tailwind
+ * utility (bg-background, text-foreground, border-border, ...) which in
+ * turn resolves to one of the semantic CSS variables below — never a raw
+ * hex/oklch value inside a component. That's what makes the theme system
+ * "token-driven, not one-off hardcoded overrides": adding a third theme
+ * later is a matter of adding one more `[data-theme-palette="..."]` block
+ * per mode, nothing else in the codebase changes.
+ *
+ * Two independent axes, both switchable per-account (apps/api's
+ * `userSettings` resolver, @presence/design-system's ThemeProvider):
+ *   - `data-theme-mode`    "dark" (default) | "light"
+ *   - `data-theme-palette` "slate" (default) | "gruvbox"
+ * Both attributes live on <html>. `:root` alone (no attributes set, e.g.
+ * before the ThemeProvider has resolved a preference) matches the PRD
+ * default: dark + slate.
+ */
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/space-grotesk";
+
+/*
+ * Explicit content sources: this file is consumed by apps whose Vite build
+ * runs from a different package directory (e.g. apps/app-studio), and
+ * Tailwind v4's automatic content detection walks the filesystem from
+ * *its own* project root outward — it isn't guaranteed to reach a sibling
+ * workspace package through a pnpm symlink. Every package whose classes
+ * should end up in the generated CSS needs to be listed here explicitly,
+ * this package included.
+ */
+@source "../components";
+@source "../theme";
+@source "../../../../apps/app-studio/src";
+
+@custom-variant dark (&:is([data-theme-mode="dark"] *));
+
+@theme inline {
+  --font-sans: "Space Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.85);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.5);
+}
+
+/* Flat, minimalist, subtle (PRD.md §7) — a small consistent radius, no
+   heavy shadows/gradients baked into the tokens themselves. */
+:root {
+  --radius: 0.5rem;
+}
+
+/* --- slate (default): slate greys, pink/purple accent --- */
+
+:root,
+[data-theme-palette="slate"][data-theme-mode="dark"] {
+  --background: oklch(0.17 0.012 285);
+  --foreground: oklch(0.92 0.01 285);
+  --card: oklch(0.21 0.013 285);
+  --card-foreground: oklch(0.92 0.01 285);
+  --popover: oklch(0.21 0.013 285);
+  --popover-foreground: oklch(0.92 0.01 285);
+  --primary: oklch(0.72 0.19 330);
+  --primary-foreground: oklch(0.15 0.02 285);
+  --secondary: oklch(0.28 0.015 285);
+  --secondary-foreground: oklch(0.92 0.01 285);
+  --muted: oklch(0.24 0.012 285);
+  --muted-foreground: oklch(0.63 0.02 285);
+  --accent: oklch(0.32 0.05 305);
+  --accent-foreground: oklch(0.94 0.01 305);
+  --destructive: oklch(0.62 0.21 25);
+  --destructive-foreground: oklch(0.97 0.01 25);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.72 0.19 330 / 55%);
+}
+
+[data-theme-palette="slate"][data-theme-mode="light"] {
+  --background: oklch(0.985 0.003 285);
+  --foreground: oklch(0.22 0.012 285);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.012 285);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.012 285);
+  --primary: oklch(0.55 0.2 330);
+  --primary-foreground: oklch(0.98 0.005 330);
+  --secondary: oklch(0.93 0.006 285);
+  --secondary-foreground: oklch(0.22 0.012 285);
+  --muted: oklch(0.94 0.005 285);
+  --muted-foreground: oklch(0.5 0.015 285);
+  --accent: oklch(0.9 0.03 310);
+  --accent-foreground: oklch(0.25 0.02 310);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.98 0.01 25);
+  --border: oklch(0.9 0.005 285);
+  --input: oklch(0.88 0.006 285);
+  --ring: oklch(0.55 0.2 330 / 45%);
+}
+
+/* --- gruvbox: browns/oranges --- */
+
+[data-theme-palette="gruvbox"][data-theme-mode="dark"] {
+  --background: oklch(0.19 0.012 60);
+  --foreground: oklch(0.87 0.02 80);
+  --card: oklch(0.23 0.015 60);
+  --card-foreground: oklch(0.87 0.02 80);
+  --popover: oklch(0.23 0.015 60);
+  --popover-foreground: oklch(0.87 0.02 80);
+  --primary: oklch(0.68 0.16 45);
+  --primary-foreground: oklch(0.16 0.02 45);
+  --secondary: oklch(0.3 0.02 60);
+  --secondary-foreground: oklch(0.87 0.02 80);
+  --muted: oklch(0.27 0.015 60);
+  --muted-foreground: oklch(0.62 0.03 70);
+  --accent: oklch(0.42 0.08 50);
+  --accent-foreground: oklch(0.95 0.02 70);
+  --destructive: oklch(0.58 0.19 20);
+  --destructive-foreground: oklch(0.96 0.01 20);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.68 0.16 45 / 50%);
+}
+
+[data-theme-palette="gruvbox"][data-theme-mode="light"] {
+  --background: oklch(0.95 0.02 75);
+  --foreground: oklch(0.27 0.02 50);
+  --card: oklch(0.97 0.015 75);
+  --card-foreground: oklch(0.27 0.02 50);
+  --popover: oklch(0.97 0.015 75);
+  --popover-foreground: oklch(0.27 0.02 50);
+  --primary: oklch(0.55 0.17 40);
+  --primary-foreground: oklch(0.97 0.01 40);
+  --secondary: oklch(0.9 0.02 75);
+  --secondary-foreground: oklch(0.27 0.02 50);
+  --muted: oklch(0.9 0.02 75);
+  --muted-foreground: oklch(0.45 0.02 60);
+  --accent: oklch(0.8 0.05 60);
+  --accent-foreground: oklch(0.25 0.02 50);
+  --destructive: oklch(0.5 0.19 20);
+  --destructive-foreground: oklch(0.97 0.01 20);
+  --border: oklch(0.85 0.02 70);
+  --input: oklch(0.82 0.02 70);
+  --ring: oklch(0.55 0.17 40 / 45%);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}

@@ -1,6 +1,10 @@
 // A single row in the Show list. Presentational only — the route wires
 // `onOpen`/`onDelete` to navigation and the delete mutation, so this stays
-// easy to render in Storybook without a router or network.
+// easy to render in Storybook without a router or network. Built from
+// @presence/design-system's Button primitive (issue #14) rather than raw
+// <button> elements.
+import { Button } from "@presence/design-system";
+
 export interface ShowListItemProps {
   name: string;
   updatedAt: string;
@@ -11,22 +15,28 @@ export interface ShowListItemProps {
 
 export function ShowListItem({ name, updatedAt, onOpen, onDelete, deleting }: ShowListItemProps) {
   return (
-    <li className="show-list-item">
-      <button type="button" className="show-list-item__name" onClick={onOpen}>
+    <li className="flex items-center gap-3 border-b border-border py-3 last:border-b-0">
+      <Button
+        type="button"
+        variant="link"
+        className="h-auto flex-1 justify-start px-0 text-left text-base"
+        onClick={onOpen}
+      >
         {name}
-      </button>
-      <span className="show-list-item__meta">
+      </Button>
+      <span className="text-sm text-muted-foreground">
         Updated {new Date(updatedAt).toLocaleDateString()}
       </span>
-      <button
+      <Button
         type="button"
-        className="show-list-item__delete"
+        variant="ghost"
+        size="sm"
         onClick={onDelete}
         disabled={deleting}
         aria-label={`Delete ${name}`}
       >
         {deleting ? "Deleting…" : "Delete"}
-      </button>
+      </Button>
     </li>
   );
 }

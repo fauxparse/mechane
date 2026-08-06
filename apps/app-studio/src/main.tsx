@@ -3,6 +3,9 @@ import { RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+import "@presence/design-system/styles/globals.css";
+
+import { AppThemeProvider } from "./AppThemeProvider";
 import { router } from "./router";
 
 // Authoring + show-running app: Show/Flow editor, Scene/Canvas editor,
@@ -12,7 +15,9 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <AppThemeProvider>
+        <RouterProvider router={router} />
+      </AppThemeProvider>
     </QueryClientProvider>
   );
 }

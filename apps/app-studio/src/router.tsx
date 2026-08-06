@@ -4,6 +4,7 @@
 // enough to want it).
 import { createRootRoute, createRoute, createRouter, Outlet } from "@tanstack/react-router";
 
+import { SettingsRoute } from "./routes/SettingsRoute";
 import { ShowDetailRoute } from "./routes/ShowDetailRoute";
 import { ShowsListRoute } from "./routes/ShowsListRoute";
 
@@ -23,7 +24,13 @@ const showDetailRoute = createRoute({
   component: ShowDetailRoute,
 });
 
-const routeTree = rootRoute.addChildren([showsListRoute, showDetailRoute]);
+const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/settings",
+  component: SettingsRoute,
+});
+
+const routeTree = rootRoute.addChildren([showsListRoute, showDetailRoute, settingsRoute]);
 
 export const router = createRouter({ routeTree });
 

@@ -2,6 +2,7 @@
 // Show. `useShow` scopes to the signed-in user server-side (see
 // apps/api/src/graphql/schema.ts's `show` resolver), so an id belonging to
 // someone else resolves to null here rather than leaking its existence.
+import { Button } from "@presence/design-system";
 import { GraphQLRequestError } from "@presence/graphql-schema";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 
@@ -31,9 +32,11 @@ export function ShowDetailRoute() {
   const currentShow = show.data;
 
   return (
-    <main className="show-detail">
-      <Link to="/">Back to Shows</Link>
-      <h1>{currentShow.name}</h1>
+    <main className="mx-auto flex max-w-2xl flex-col gap-6 p-6">
+      <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
+        Back to Shows
+      </Link>
+      <h1 className="text-2xl font-semibold">{currentShow.name}</h1>
 
       <ShowNameForm
         key={currentShow.updatedAt}
@@ -46,8 +49,10 @@ export function ShowDetailRoute() {
         onSubmit={(name) => renameShow.mutate({ id: currentShow.id, name })}
       />
 
-      <button
+      <Button
         type="button"
+        variant="destructive"
+        className="self-start"
         disabled={deleteShow.isPending}
         onClick={() => {
           deleteShow.mutate(currentShow.id, {
@@ -56,7 +61,7 @@ export function ShowDetailRoute() {
         }}
       >
         {deleteShow.isPending ? "Deleting…" : "Delete Show"}
-      </button>
+      </Button>
     </main>
   );
 }

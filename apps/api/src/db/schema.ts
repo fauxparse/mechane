@@ -8,12 +8,7 @@
 // table is expected to carry a `userId` column referencing `user.id`, per the
 // single-user ownership model (PRD.md §1, §9) — see @presence/domain's
 // `ownership` module for the shared invariant this schema exists to support.
-import {
-  boolean,
-  pgTable,
-  text,
-  timestamp,
-} from "drizzle-orm/pg-core";
+import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -76,6 +71,24 @@ export const shows = pgTable("shows", {
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Per-account design-system preference (issue #14, PRD.md §7): at most one
+// row per user, created on first write (see the `userSettings` resolver in
+// apps/api/src/graphql/schema.ts). Values are validated against
+// @presence/domain's `assertValidThemeMode`/`assertValidThemePalette`
+// before they reach here, the same way Show names are validated before
+// `shows` insert/update — the column types stay plain `text` because the
+// set of valid values is a domain concern, not a storage concern (adding a
+// theme later shouldn't require a migration).
+export const userSettings = pgTable("user_settings", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  themeMode: text("theme_mode").notNull().default("dark"),
+  themePalette: text("theme_palette").notNull().default("slate"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
