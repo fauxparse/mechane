@@ -132,7 +132,7 @@ export function createNode(
       return { ...base, kind: "scene", parentId, variables: [] };
     case "flow":
       // A Flow is always a Show-level peer (#23), and starts with no entry
-      // Scene because it starts with no Scenes — promoting one into it assigns
+      // Scene because it starts with no Scenes — moving one into it assigns
       // the default (#44).
       return { ...base, kind: "flow", parentId: null, defaultSceneId: null };
     case "device":

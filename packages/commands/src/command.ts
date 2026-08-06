@@ -39,7 +39,7 @@ export const COMMAND_SCOPES = [
   "global",
   /** The graph surface has focus: select-all, fit, zoom, node creation. */
   "canvas",
-  /** Acts on the current selection: delete, rename, promote, extract. */
+  /** Acts on the current selection: delete, rename, move into Flow, move out of Flow. */
   "selection",
 ] as const;
 
@@ -215,7 +215,7 @@ export interface CompositeSpec<S> {
  * Flow is a composite of "remove this Scene", "remove that edge", "remove
  * the Flow", and undoing it restores the whole destroyed subtree in one
  * press, never N. It is also how a command's *side effects* stay welded to
- * it — a promote that auto-assigns a Flow's default Scene is the membership
+ * it — moving a node into a Flow while auto-assigning its default Scene is the membership
  * change and the assignment in one composite, so one undo reverts both
  * (#28).
  *

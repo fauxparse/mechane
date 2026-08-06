@@ -20,10 +20,10 @@ import {
   removeEdge,
   removeNode,
   renameNode,
-  extractNode,
-  promoteNode,
-  promoteNodes,
-  extractNodes,
+  moveNodeOutOfFlow,
+  moveNodeIntoFlow,
+  moveNodesIntoFlow,
+  moveNodesOutOfFlow,
   InvalidReparentError,
   reparentNode,
   setFlowDefaultScene,
@@ -199,7 +199,7 @@ describe("renameNode", () => {
 });
 
 describe("createFlowWithNodes", () => {
-  it("creates a Flow and promotes its selection as one undo", () => {
+  it("creates a Flow and moves its selection into it as one undo", () => {
     const flow: FlowNode = {
       id: "flow_new",
       kind: "flow",
@@ -225,9 +225,9 @@ describe("createFlowWithNodes", () => {
 describe("reparentNode", () => {
   it("moves a node into a Flow, position and all, and inverts exactly", () => {
     const applied = expectExactRoundTrip(reparentNode(LOBBY.id, VOTE_FLOW.id, { x: 24, y: 88 }));
-    const promoted = applied.state.nodes.find((node) => node.id === LOBBY.id);
-    expect(promoted?.parentId).toBe(VOTE_FLOW.id);
-    expect(promoted?.position).toEqual({ x: 24, y: 88 });
+    const movedIntoFlow = applied.state.nodes.find((node) => node.id === LOBBY.id);
+    expect(movedIntoFlow?.parentId).toBe(VOTE_FLOW.id);
+    expect(movedIntoFlow?.position).toEqual({ x: 24, y: 88 });
   });
 
   it("moves a node back out to Show level", () => {
@@ -235,26 +235,28 @@ describe("reparentNode", () => {
   });
 
   it("labels itself by direction", () => {
-    expect(reparentNode(LOBBY.id, VOTE_FLOW.id, LOBBY.position).label).toBe("Promote");
-    expect(reparentNode(RESULTS.id, null, RESULTS.position).label).toBe("Extract");
+    expect(reparentNode(LOBBY.id, VOTE_FLOW.id, LOBBY.position).label).toBe("Move into Flow");
+    expect(reparentNode(RESULTS.id, null, RESULTS.position).label).toBe("Move out of Flow");
   });
 });
 
-describe("promoteNode / extractNode", () => {
-  it("promotes into an empty Flow and assigns its default in one undo", () => {
+describe("moveNodeIntoFlow / moveNodeOutOfFlow", () => {
+  it("moves into an empty Flow and assigns its default in one undo", () => {
     const empty: FlowNode = { ...VOTE_FLOW, id: "flow_empty", defaultSceneId: null };
     const graph = { ...GRAPH, nodes: [...GRAPH.nodes, empty] };
-    const promoted = promoteNode(graph, LOBBY.id, empty.id, { x: 1, y: 1 }).apply(graph).state;
-    expect(promoted.nodes.find((node) => node.id === LOBBY.id)?.parentId).toBe(empty.id);
-    expect((promoted.nodes.find((node) => node.id === empty.id) as FlowNode).defaultSceneId).toBe(
-      LOBBY.id,
-    );
+    const movedIntoFlow = moveNodeIntoFlow(graph, LOBBY.id, empty.id, { x: 1, y: 1 }).apply(
+      graph,
+    ).state;
+    expect(movedIntoFlow.nodes.find((node) => node.id === LOBBY.id)?.parentId).toBe(empty.id);
+    expect(
+      (movedIntoFlow.nodes.find((node) => node.id === empty.id) as FlowNode).defaultSceneId,
+    ).toBe(LOBBY.id);
   });
 
-  it("promotes multiple nodes in one command without overlap", () => {
+  it("moves multiple nodes into one Flow without overlap", () => {
     const empty: FlowNode = { ...VOTE_FLOW, id: "flow_empty", defaultSceneId: null };
     const graph = { ...GRAPH, nodes: [...GRAPH.nodes, empty] };
-    const command = promoteNodes(graph, [TALLY.id, LOBBY.id], empty.id, { x: 24, y: 60 });
+    const command = moveNodesIntoFlow(graph, [TALLY.id, LOBBY.id], empty.id, { x: 24, y: 60 });
     const applied = command.apply(graph);
     const tally = applied.state.nodes.find((node) => node.id === TALLY.id)!;
     const lobby = applied.state.nodes.find((node) => node.id === LOBBY.id)!;
@@ -266,21 +268,21 @@ describe("promoteNode / extractNode", () => {
     expect(applied.inverse.apply(applied.state).state).toEqual(graph);
   });
 
-  it("refuses extraction while a Navigate edge is attached", () => {
-    expect(() => extractNode(GRAPH, VOTING.id, { x: 0, y: 0 })).toThrow(InvalidReparentError);
+  it("refuses moving out while a Navigate edge is attached", () => {
+    expect(() => moveNodeOutOfFlow(GRAPH, VOTING.id, { x: 0, y: 0 })).toThrow(InvalidReparentError);
   });
 
-  it("extracts and drops wiring, while restoring both on undo", () => {
-    // Use a scene without Navigate edges for the extraction case.
+  it("moves out and drops wiring, while restoring both on undo", () => {
+    // Use a scene without Navigate edges for the move-out case.
     const graph = { ...GRAPH, edges: [WIRE, TO_PHONE] };
-    const result = extractNode(graph, VOTING.id, { x: 500, y: 500 }).apply(graph);
+    const result = moveNodeOutOfFlow(graph, VOTING.id, { x: 500, y: 500 }).apply(graph);
     expect(result.state.edges.map((edge) => edge.id)).toEqual([TO_PHONE.id]);
     expect(result.inverse.apply(result.state).state).toEqual(graph);
   });
 
-  it("extracts multiple nodes in one command and clears their Flow default", () => {
+  it("moves multiple nodes out in one command and clears their Flow default", () => {
     const graph = { ...GRAPH, edges: [WIRE, TO_PHONE] };
-    const result = extractNodes(
+    const result = moveNodesOutOfFlow(
       graph,
       [VOTING.id, RESULTS.id],
       [
@@ -385,8 +387,8 @@ describe("a cascading delete, composed", () => {
   });
 });
 
-// The other half of #28: a promote's side effect undoes with it.
-describe("a promote with its side effect, composed", () => {
+// The other half of #28: moving into a Flow's side effect undoes with it.
+describe("moving into a Flow with its side effect, composed", () => {
   const EMPTY_FLOW: FlowNode = {
     id: "flow_empty",
     kind: "flow",
@@ -397,11 +399,11 @@ describe("a promote with its side effect, composed", () => {
   };
   const graph: ShowGraph = { ...GRAPH, nodes: [...GRAPH.nodes, EMPTY_FLOW] };
 
-  // Promoting into an *empty* Flow also makes the promoted Scene that Flow's
+  // Moving into an *empty* Flow also makes the moved Scene that Flow's
   // default, because a Flow always has one — a side effect of the same
   // action, so it lives in the same entry.
-  const promote = composite({
-    label: "Promote to Flow",
+  const moveIntoFlow = composite({
+    label: "Move into Flow",
     commands: [
       reparentNode(LOBBY.id, EMPTY_FLOW.id, { x: 24, y: 24 }),
       setFlowDefaultScene(EMPTY_FLOW.id, LOBBY.id),
@@ -409,7 +411,7 @@ describe("a promote with its side effect, composed", () => {
   });
 
   it("applies membership and side effect together", () => {
-    const after = promote.apply(graph).state;
+    const after = moveIntoFlow.apply(graph).state;
     expect(after.nodes.find((node) => node.id === LOBBY.id)?.parentId).toBe(EMPTY_FLOW.id);
     expect((after.nodes.find((node) => node.id === EMPTY_FLOW.id) as FlowNode).defaultSceneId).toBe(
       LOBBY.id,
@@ -419,7 +421,7 @@ describe("a promote with its side effect, composed", () => {
 
   it("reverts both in one undo", () => {
     const commands = new CommandStack<ShowGraph>({ state: graph });
-    commands.execute(promote);
+    commands.execute(moveIntoFlow);
     expect(commands.depth).toBe(1);
     commands.undo();
     expect(commands.state).toEqual(graph);
