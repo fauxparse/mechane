@@ -49,6 +49,8 @@ const PHONE: DeviceNode = {
   name: "Phones",
   position: at,
   parentId: null,
+  perConnection: true,
+  pairingCode: null,
 };
 
 const GRAPH: ShowGraph = {
