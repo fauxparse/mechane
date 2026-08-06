@@ -29,6 +29,13 @@
       "when": 1785998816525,
       "tag": "0003_bumpy_gravity",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786058721711,
+      "tag": "0004_common_scalphunter",
+      "breakpoints": true
     }
   ]
 }

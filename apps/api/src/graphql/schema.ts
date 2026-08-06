@@ -169,6 +169,19 @@ export const schema = createSchema<GraphQLContext>({
       position: Position!
       "Scene nodes only: the Variables wiring edges can target."
       variables: [SceneVariable!]!
+      """
+      Device nodes only: whether this Device is one logical instance per
+      connection (an Audience Device, each phone independent) rather than
+      one shared instance every connection sees alike. False for every
+      other kind of node.
+      """
+      perConnection: Boolean!
+      """
+      Device nodes only: the Show-level pairing code a physical device
+      joins with. Null until the server has minted one, which happens the
+      first time the graph is saved.
+      """
+      pairingCode: String
     }
 
     """
@@ -228,6 +241,13 @@ export const schema = createSchema<GraphQLContext>({
       defaultSceneId: ID
       position: PositionInput!
       variables: [SceneVariableInput!]
+      """
+      Device nodes only: whether each connection is its own instance.
+      Defaults to false, and is only read when the Device is new — it is
+      fixed at creation, so a later change is ignored rather than obeyed.
+      There is no pairingCode input: codes are minted server-side.
+      """
+      perConnection: Boolean
     }
 
     input GraphEdgeInput {

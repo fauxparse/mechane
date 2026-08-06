@@ -6,6 +6,7 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 
 import { absolutePosition, FLOW_CONTENT_ORIGIN, FLOW_NODE_TYPE, NODE_WIDTH } from "./graph-to-flow";
 import type { ShowFlowNode } from "./graph-to-flow";
+import type { CreatableNode } from "./node-kinds";
 import { composite } from "@mechane/commands";
 import { useCallback, useRef } from "react";
 import type { DeletionScope } from "@mechane/commands";
@@ -122,7 +123,8 @@ export function useShowGraphEditorActions({
   );
 
   const create = useCallback(
-    (kind: NodeKind, at: Position) => {
+    (creatable: CreatableNode, at: Position) => {
+      const { kind } = creatable;
       // Creating a Flow over the current selection is one command: create the
       // container, then move eligible top-level content into it.
       if (kind === "flow") {
@@ -143,7 +145,10 @@ export function useShowGraphEditorActions({
       const position = flow ? { x: at.x - flow.position.x, y: at.y - flow.position.y } : at;
       // A freshly created node becomes the selection, so the inspector opens on
       // it and F2 renames it without a click first.
-      const node = editing.createNodeOfKind(kind, position, flow?.id ?? null);
+      const node = editing.createNodeOfKind(kind, position, flow?.id ?? null, {
+        perConnection: creatable.perConnection,
+        defaultName: creatable.defaultName,
+      });
       selectOnArrival.current = node.id;
       return node;
     },

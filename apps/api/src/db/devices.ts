@@ -1,0 +1,168 @@
+// Device identity (issue #45): the Show-level row behind every Device node
+// on the canvas, and the pairing code a physical device joins with (#8).
+//
+// A Device leads two lives. On the canvas it is a graph node — draft or
+// published, rewritten wholesale on every save, deleted the moment the
+// director deletes it. At the Show level it is an identity with a code
+// that must stay put across every Run (PRD.md §4.3) and survive a draft
+// edit that a live Run hasn't been shown yet (ADR-0002). This module is
+// the seam between the two: `syncDevices` is called from inside the graph
+// write, `retireUnreferencedDevices` from inside publish, and nothing else
+// writes the `devices` table.
+import type { DeviceNode, GraphNode } from "@mechane/domain";
+import { and, eq, inArray, isNotNull, isNull, notInArray } from "drizzle-orm";
+
+import { devices, graphNodes, showGraphs } from "./schema";
+
+/** The transaction type every function here runs inside. */
+type Tx = Parameters<Parameters<typeof import("./client").db.transaction>[0]>[0];
+
+/** What a stored Device contributes to its node on the canvas. */
+export interface StoredDevice {
+  pairingCode: string;
+  perConnection: boolean;
+}
+
+const CODE_LENGTH = 6;
+
+/**
+ * How many codes to try before giving up. Collisions are drawn against one
+ * Show's Devices, not the whole table, so even a Show with a hundred
+ * Devices is choosing from a million codes — a second attempt is already
+ * vanishingly unlikely, and eight makes "we ran out" mean a real bug
+ * rather than bad luck.
+ */
+const CODE_ATTEMPTS = 8;
+
+/**
+ * A candidate 6-digit pairing code, leading zeros included — it's read
+ * aloud and typed in by a tech, so it's a string of digits, not a number.
+ */
+function candidatePairingCode(): string {
+  return String(Math.floor(Math.random() * 10 ** CODE_LENGTH)).padStart(CODE_LENGTH, "0");
+}
+
+/**
+ * Inserts a Device row, retrying until its code doesn't collide with one
+ * already in use on this Show. The uniqueness that matters is the
+ * database's, not the generator's: two directors saving at once would both
+ * see an empty result from a pre-check, so the insert itself has to be
+ * what decides.
+ */
+async function insertDevice(tx: Tx, showId: string, node: DeviceNode): Promise<StoredDevice> {
+  for (let attempt = 0; attempt < CODE_ATTEMPTS; attempt += 1) {
+    const pairingCode = candidatePairingCode();
+    const [row] = await tx
+      .insert(devices)
+      .values({ id: node.id, showId, pairingCode, perConnection: node.perConnection })
+      .onConflictDoNothing({ target: [devices.showId, devices.pairingCode] })
+      .returning();
+    if (row) return { pairingCode: row.pairingCode, perConnection: row.perConnection };
+  }
+  throw new Error(
+    `Couldn't mint a unique pairing code for Device "${node.id}" on Show "${showId}" in ${CODE_ATTEMPTS} attempts.`,
+  );
+}
+
+/**
+ * Brings the `devices` table in line with the Device nodes in a graph
+ * being written, and answers with what each node should carry.
+ *
+ * Three things happen here, all of them consequences of a Device's
+ * identity outliving any one graph state:
+ *
+ *   - A Device the table hasn't seen gets a row and a freshly minted code.
+ *   - A Device it has seen keeps the code and `perConnection` it already
+ *     had. `perConnection` is fixed at creation, so an incoming node that
+ *     disagrees is not obeyed — the stored value wins and is what comes
+ *     back, rather than the write silently rewriting Event attribution for
+ *     every edge already pointing at it.
+ *   - A Device that had been retired is un-retired, because it is
+ *     referenced again. That is what makes undo of a delete restore the
+ *     *same* code rather than mint a new one.
+ */
+export async function syncDevices(
+  tx: Tx,
+  showId: string,
+  nodes: GraphNode[],
+): Promise<Map<string, StoredDevice>> {
+  const deviceNodes = nodes.filter((node): node is DeviceNode => node.kind === "device");
+  if (deviceNodes.length === 0) return new Map();
+
+  const existing = await tx
+    .select()
+    .from(devices)
+    .where(
+      and(
+        eq(devices.showId, showId),
+        inArray(
+          devices.id,
+          deviceNodes.map((node) => node.id),
+        ),
+      ),
+    );
+  const stored = new Map<string, StoredDevice>(
+    existing.map((row) => [
+      row.id,
+      { pairingCode: row.pairingCode, perConnection: row.perConnection },
+    ]),
+  );
+
+  const returning = await Promise.all(
+    deviceNodes.map(async (node) => {
+      const known = stored.get(node.id);
+      if (known) return [node.id, known] as const;
+      return [node.id, await insertDevice(tx, showId, node)] as const;
+    }),
+  );
+
+  const revived = existing.filter((row) => row.retiredAt !== null).map((row) => row.id);
+  if (revived.length > 0) {
+    await tx
+      .update(devices)
+      .set({ retiredAt: null, updatedAt: new Date() })
+      .where(and(eq(devices.showId, showId), inArray(devices.id, revived)));
+  }
+
+  return new Map(returning);
+}
+
+/**
+ * Retires every Device on the Show that no graph state names any more, and
+ * un-retires any that a state names again.
+ *
+ * Called from publish, and only from publish. A Device deleted from the
+ * draft is still referenced by the published graph until the director
+ * publishes, so its code keeps working for a Run that is already under
+ * way — which is the whole point of ADR-0002's split, and the difference
+ * between an edit and an outage.
+ */
+export async function retireUnreferencedDevices(tx: Tx, showId: string): Promise<void> {
+  const referenced = tx
+    .select({ id: graphNodes.id })
+    .from(graphNodes)
+    .innerJoin(showGraphs, eq(graphNodes.graphId, showGraphs.id))
+    .where(and(eq(showGraphs.showId, showId), eq(graphNodes.kind, "device")));
+
+  const now = new Date();
+  await tx
+    .update(devices)
+    .set({ retiredAt: now, updatedAt: now })
+    .where(
+      and(
+        eq(devices.showId, showId),
+        isNull(devices.retiredAt),
+        notInArray(devices.id, referenced),
+      ),
+    );
+  await tx
+    .update(devices)
+    .set({ retiredAt: null, updatedAt: now })
+    .where(
+      and(
+        eq(devices.showId, showId),
+        isNotNull(devices.retiredAt),
+        inArray(devices.id, referenced),
+      ),
+    );
+}

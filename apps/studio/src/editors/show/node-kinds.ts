@@ -78,6 +78,49 @@ export const NODE_KIND_META: Record<NodeKind, NodeKindMeta> = {
 export const CREATABLE_KINDS: NodeKind[] = ["scene", "flow", "source", "transformer", "device"];
 
 /**
+ * What a create menu or palette actually offers. Not the same list as the
+ * node kinds: a Device comes in two flavours the director chooses between
+ * up front (#45), because `perConnection` is fixed at creation and a
+ * dropdown inside the inspector would imply it can be changed later.
+ *
+ * "Audience" rather than "Per-connection Device" — the mechanism is the
+ * honest name for the field, but the use case is the honest name for the
+ * menu item.
+ */
+export interface CreatableNode {
+  /** Unique among the entries; the palette's command id is built from it. */
+  id: string;
+  kind: NodeKind;
+  /** Devices only; false everywhere else. */
+  perConnection: boolean;
+  label: string;
+  icon: LucideIcon;
+  defaultName: string;
+  description: string;
+}
+
+export const CREATABLE_NODES: CreatableNode[] = [
+  ...CREATABLE_KINDS.map((kind) => ({
+    id: kind,
+    kind,
+    perConnection: false,
+    label: NODE_KIND_META[kind].label,
+    icon: NODE_KIND_META[kind].icon,
+    defaultName: NODE_KIND_META[kind].defaultName,
+    description: NODE_KIND_META[kind].description,
+  })),
+  {
+    id: "audience",
+    kind: "device",
+    perConnection: true,
+    label: "Audience",
+    icon: Smartphone,
+    defaultName: "Audience phones",
+    description: "A code many phones join, each on its own",
+  },
+];
+
+/**
  * A Source's icon reflects the *type of data it holds* (#35) rather than
  * "Source" in general — the icon is doing the work a hue would otherwise do.
  *
@@ -96,13 +139,16 @@ export const SOURCE_TYPE_ICONS = {
 /**
  * The icon a node shows. Two kinds don't answer with a constant:
  *
- *   - **Device** resolves by role (#35, #26): a `Smartphone` for an
- *     Audience-role Device, a `Projector` for a single-endpoint one. Roles
- *     reach the graph with #45, so every Device is a projector for now.
+ *   - **Device** resolves by instance cardinality (#35, #45): a
+ *     `Smartphone` for a per-connection (Audience) Device, a `Projector`
+ *     for a shared one.
  *   - **Source** resolves by data type, per `SOURCE_TYPE_ICONS` above.
  */
-export function nodeIcon(kind: NodeKind, hints: { deviceRole?: string; sourceType?: string } = {}) {
-  if (kind === "device" && hints.deviceRole === "audience") return Smartphone;
+export function nodeIcon(
+  kind: NodeKind,
+  hints: { perConnection?: boolean; sourceType?: string } = {},
+) {
+  if (kind === "device" && hints.perConnection) return Smartphone;
   if (kind === "source") {
     return SOURCE_TYPE_ICONS[hints.sourceType as keyof typeof SOURCE_TYPE_ICONS] ?? Box;
   }
@@ -121,10 +167,11 @@ export function createNode(
   kind: NodeKind,
   position: Position,
   parentId: string | null = null,
+  options: { perConnection?: boolean; defaultName?: string } = {},
 ): GraphNode {
   const base = {
     id: generateId(NODE_ID_ENTITIES[kind]),
-    name: NODE_KIND_META[kind].defaultName,
+    name: options.defaultName ?? NODE_KIND_META[kind].defaultName,
     position: { x: Math.round(position.x), y: Math.round(position.y) },
   };
   switch (kind) {
@@ -136,7 +183,16 @@ export function createNode(
       // the default (#44).
       return { ...base, kind: "flow", parentId: null, defaultSceneId: null };
     case "device":
-      return { ...base, kind: "device", parentId: null };
+      // `perConnection` is settled here and never again — it decides Event
+      // attribution, so the inspector shows it rather than edits it (#45).
+      // The code is the server's to mint, so a new Device has none yet.
+      return {
+        ...base,
+        kind: "device",
+        parentId: null,
+        perConnection: options.perConnection ?? false,
+        pairingCode: null,
+      };
     case "source":
       return { ...base, kind: "source", parentId };
     case "transformer":

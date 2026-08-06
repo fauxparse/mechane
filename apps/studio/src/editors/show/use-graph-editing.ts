@@ -45,7 +45,12 @@ export interface GraphEditing {
   graph: ShowGraph;
 
   /** Creates a node of `kind` at `position` (flow coordinates), and returns it. */
-  createNodeOfKind(kind: NodeKind, position: Position, parentId?: string | null): GraphNode;
+  createNodeOfKind(
+    kind: NodeKind,
+    position: Position,
+    parentId?: string | null,
+    options?: { perConnection?: boolean; defaultName?: string },
+  ): GraphNode;
   createFlowWithNodes(nodeIds: string[], position: Position, childOrigin: Position): GraphNode;
 
   /** The node being renamed inline, if any. */
@@ -106,8 +111,13 @@ export function useGraphEditing(
   );
 
   const createNodeOfKind = useCallback(
-    (kind: NodeKind, position: Position, parentId: string | null = null) => {
-      const node = createNode(kind, position, parentId);
+    (
+      kind: NodeKind,
+      position: Position,
+      parentId: string | null = null,
+      options: { perConnection?: boolean; defaultName?: string } = {},
+    ) => {
+      const node = createNode(kind, position, parentId, options);
       execute(addNode(node, `Add ${kind}`));
       return node;
     },

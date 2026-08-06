@@ -72,6 +72,8 @@ const PHONE: DeviceNode = {
   name: "Phones",
   position: { x: 400, y: 0 },
   parentId: null,
+  perConnection: true,
+  pairingCode: null,
 };
 
 const WIRE: WiringEdge = {

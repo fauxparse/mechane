@@ -32,6 +32,7 @@ export interface GraphNodeInput {
   defaultSceneId?: string | null;
   position: PositionInput;
   variables?: SceneVariableInput[] | null;
+  perConnection?: boolean | null;
 }
 
 export interface GraphEdgeInput {
@@ -96,7 +97,17 @@ function parseNode(input: GraphNodeInput): GraphNode {
       if (parentId !== null) {
         throw badInput(`Device "${input.id}" was given a parentId; Devices are Show-level.`);
       }
-      return { ...base, kind: "device", parentId: null };
+      return {
+        ...base,
+        kind: "device",
+        parentId: null,
+        perConnection: input.perConnection ?? false,
+        // Never taken from the client (#45): the code is minted and owned
+        // server-side, and `writeShowGraph` answers with the real one. A
+        // client that sends one is not lying so much as guessing, and
+        // either way the stored row wins.
+        pairingCode: null,
+      };
   }
 }
 
@@ -155,6 +166,8 @@ export function serializeShowGraph(graph: StoredShowGraph) {
       defaultSceneId: node.kind === "flow" ? node.defaultSceneId : null,
       position: node.position,
       variables: node.kind === "scene" ? node.variables : [],
+      perConnection: node.kind === "device" && node.perConnection,
+      pairingCode: node.kind === "device" ? node.pairingCode : null,
     })),
     edges: graph.edges.map((edge) => ({
       id: edge.id,
