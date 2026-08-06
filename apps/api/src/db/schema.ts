@@ -8,6 +8,7 @@
 // table is expected to carry a `userId` column referencing `user.id`, per the
 // single-user ownership model (PRD.md §1, §9) — see @presence/domain's
 // `ownership` module for the shared invariant this schema exists to support.
+import { generateId } from "@presence/domain";
 import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
@@ -63,10 +64,16 @@ export const verification = pgTable("verification", {
 // First application resource (issue #3). Every Show belongs to exactly one
 // user — see @presence/domain's `ownership` module, which resolvers use to
 // enforce that a user can only see/mutate their own Shows.
+//
+// The id is a short readable id rather than a UUID (issue #47) because it
+// appears in the URL of the Show editor: `generateId` is the same
+// generator every URL-visible resource uses, and the column stays `text`
+// so there's no migration in the change. Better Auth's tables above keep
+// their own id format — they never appear in a URL.
 export const shows = pgTable("shows", {
   id: text("id")
     .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
+    .$defaultFn(() => generateId("show")),
   name: text("name").notNull(),
   userId: text("user_id")
     .notNull()

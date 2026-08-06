@@ -10,6 +10,7 @@ import {
   assertValidThemePalette,
   defaultThemeSettings,
   InvalidShowNameError,
+  isId,
   InvalidThemeModeError,
   InvalidThemePaletteError,
 } from "@presence/domain";
@@ -18,6 +19,7 @@ import { GraphQLError } from "graphql";
 import { createSchema } from "graphql-yoga";
 
 import { db } from "../db/client";
+import { withUniqueId } from "../db/ids";
 import { shows, userSettings } from "../db/schema";
 import { requireUserId } from "./context";
 import type { GraphQLContext } from "./context";
@@ -65,6 +67,13 @@ function validThemePalette(value: string): string {
 }
 
 async function findOwnShowOrThrow(id: string, userId: string) {
+  // A malformed id can't match any row, so don't ask the database — but
+  // report it the same way a missing row is reported, since telling the
+  // client "that's not even a valid Show id" is information about the id
+  // format they don't need from a mutation.
+  if (!isId("show", id)) {
+    throw new GraphQLError("Show not found.", { extensions: { code: "NOT_FOUND" } });
+  }
   const [show] = await db.select().from(shows).where(eq(shows.id, id));
   if (!show) {
     throw new GraphQLError("Show not found.", { extensions: { code: "NOT_FOUND" } });
@@ -134,6 +143,9 @@ export const schema = createSchema<GraphQLContext>({
       },
       show: async (_parent, { id }: { id: string }, context) => {
         const userId = requireUserId(context);
+        // Same reasoning as `findOwnShowOrThrow`: a malformed id is just a
+        // miss, and this query already returns null for "not yours".
+        if (!isId("show", id)) return null;
         const [show] = await db
           .select()
           .from(shows)
@@ -161,8 +173,12 @@ export const schema = createSchema<GraphQLContext>({
       createShow: async (_parent, { name }: { name: string }, context) => {
         const userId = requireUserId(context);
         const validName = validShowName(name);
-        const [show] = await db.insert(shows).values({ name: validName, userId }).returning();
-        return show;
+        // Ids are random, so the insert generates one per attempt and
+        // retries if the primary key is already taken (../db/ids.ts).
+        return withUniqueId("show", async (id) => {
+          const [show] = await db.insert(shows).values({ id, name: validName, userId }).returning();
+          return show;
+        });
       },
       renameShow: async (_parent, { id, name }: { id: string; name: string }, context) => {
         const userId = requireUserId(context);
