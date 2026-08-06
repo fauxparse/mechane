@@ -1,21 +1,32 @@
 // Code-based TanStack Router setup (no file-based-routing plugin wired up
-// yet — this is deliberately the minimal shape for the two Show screens;
-// later tickets can migrate to file-based routing if the route tree grows
-// enough to want it).
+// yet — this is deliberately the minimal shape for the app's small number
+// of screens; later tickets can migrate to file-based routing if the route
+// tree grows enough to want it).
 import { createRootRoute, createRoute, createRouter, Outlet } from "@tanstack/react-router";
 
+import { DashboardRoute } from "./routes/DashboardRoute";
 import { SettingsRoute } from "./routes/SettingsRoute";
 import { ShowDetailRoute } from "./routes/ShowDetailRoute";
-import { ShowsListRoute } from "./routes/ShowsListRoute";
+import { SignInRoute } from "./routes/SignInRoute";
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
 });
 
-const showsListRoute = createRoute({
+// The post-login home base (issue #13) — signed-out visitors are redirected
+// to /sign-in by DashboardRoute itself (see its `useMe` guard).
+const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  component: ShowsListRoute,
+  component: DashboardRoute,
+});
+
+// Sign-in/sign-up (issue #13) — signed-in visitors are redirected to "/" by
+// SignInRoute itself (see its `useMe` guard).
+const signInRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/sign-in",
+  component: SignInRoute,
 });
 
 const showDetailRoute = createRoute({
@@ -30,7 +41,12 @@ const settingsRoute = createRoute({
   component: SettingsRoute,
 });
 
-const routeTree = rootRoute.addChildren([showsListRoute, showDetailRoute, settingsRoute]);
+const routeTree = rootRoute.addChildren([
+  dashboardRoute,
+  signInRoute,
+  showDetailRoute,
+  settingsRoute,
+]);
 
 export const router = createRouter({ routeTree });
 

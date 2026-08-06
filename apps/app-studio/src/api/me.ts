@@ -6,9 +6,11 @@ import { useQuery } from "@tanstack/react-query";
 
 import { GRAPHQL_ENDPOINT } from "./client";
 
+export const meQueryKey = ["me"] as const;
+
 export function useMe() {
   return useQuery({
-    queryKey: ["me"],
+    queryKey: meQueryKey,
     queryFn: async () => {
       const data = await graphqlRequest(GRAPHQL_ENDPOINT, MeQuery);
       return data.me;
