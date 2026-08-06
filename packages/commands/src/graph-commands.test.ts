@@ -21,6 +21,8 @@ import {
   renameNode,
   extractNode,
   promoteNode,
+  promoteNodes,
+  extractNodes,
   InvalidReparentError,
   reparentNode,
   setFlowDefaultScene,
@@ -224,6 +226,21 @@ describe("promoteNode / extractNode", () => {
     );
   });
 
+  it("promotes multiple nodes in one command without overlap", () => {
+    const empty: FlowNode = { ...VOTE_FLOW, id: "flow_empty", defaultSceneId: null };
+    const graph = { ...GRAPH, nodes: [...GRAPH.nodes, empty] };
+    const command = promoteNodes(graph, [TALLY.id, LOBBY.id], empty.id, { x: 24, y: 60 });
+    const applied = command.apply(graph);
+    const tally = applied.state.nodes.find((node) => node.id === TALLY.id)!;
+    const lobby = applied.state.nodes.find((node) => node.id === LOBBY.id)!;
+    expect(tally.position).toEqual({ x: 24, y: 60 });
+    expect(lobby.position).toEqual({ x: 24, y: 140 });
+    expect(
+      (applied.state.nodes.find((node) => node.id === empty.id) as FlowNode).defaultSceneId,
+    ).toBe(LOBBY.id);
+    expect(applied.inverse.apply(applied.state).state).toEqual(graph);
+  });
+
   it("refuses extraction while a Navigate edge is attached", () => {
     expect(() => extractNode(GRAPH, VOTING.id, { x: 0, y: 0 })).toThrow(InvalidReparentError);
   });
@@ -232,6 +249,29 @@ describe("promoteNode / extractNode", () => {
     // Use a scene without Navigate edges for the extraction case.
     const graph = { ...GRAPH, edges: [WIRE, TO_PHONE] };
     const result = extractNode(graph, VOTING.id, { x: 500, y: 500 }).apply(graph);
+    expect(result.state.edges.map((edge) => edge.id)).toEqual([TO_PHONE.id]);
+    expect(result.inverse.apply(result.state).state).toEqual(graph);
+  });
+
+  it("extracts multiple nodes in one command and clears their Flow default", () => {
+    const graph = { ...GRAPH, edges: [WIRE, TO_PHONE] };
+    const result = extractNodes(
+      graph,
+      [VOTING.id, RESULTS.id],
+      [
+        { x: 500, y: 500 },
+        { x: 750, y: 500 },
+      ],
+    ).apply(graph);
+    expect(result.state.nodes.filter((node) => [VOTING.id, RESULTS.id].includes(node.id))).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: VOTING.id, parentId: null, position: { x: 500, y: 500 } }),
+        expect.objectContaining({ id: RESULTS.id, parentId: null, position: { x: 750, y: 500 } }),
+      ]),
+    );
+    expect(
+      (result.state.nodes.find((node) => node.id === VOTE_FLOW.id) as FlowNode).defaultSceneId,
+    ).toBe(null);
     expect(result.state.edges.map((edge) => edge.id)).toEqual([TO_PHONE.id]);
     expect(result.inverse.apply(result.state).state).toEqual(graph);
   });

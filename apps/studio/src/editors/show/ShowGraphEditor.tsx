@@ -136,6 +136,25 @@ export interface ShowGraphEditorProps {
   ref?: Ref<ShowGraphEditorHandle>;
 }
 
+function extractDisabledReason(selectedNodes: GraphNode[]): string | undefined {
+  if (selectedNodes.length === 0) return "select a Flow-local node first";
+  if (selectedNodes.some((node) => node.parentId === null)) {
+    return "select only Flow-local nodes";
+  }
+  return undefined;
+}
+
+function promoteDisabledReason(selectedNodes: GraphNode[]): string | undefined {
+  const flows = selectedNodes.filter((node) => node.kind === "flow");
+  if (flows.length === 0) return "select a Flow and top-level nodes";
+  if (flows.length > 1) return "select only one Flow";
+  const nodes = selectedNodes.filter((node) => node.kind !== "flow");
+  if (nodes.length === 0) return "select at least one top-level node";
+  if (nodes.some((node) => node.parentId !== null)) return "nested nodes must be extracted first";
+  if (nodes.some((node) => node.kind === "device")) return "Devices cannot be promoted into a Flow";
+  return undefined;
+}
+
 function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditorProps) {
   const editing = useGraphEditing(graph, onEdit);
   const { commands } = editing;
@@ -509,28 +528,25 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
         id: "promote",
         label: "Promote into selected Flow",
         scope: "selection",
-        disabledReason:
-          selectedNodes.length === 2 &&
-          selectedNodes.some((node) => node.kind === "flow") &&
-          selectedNodes.some((node) => node.kind !== "flow" && node.parentId === null)
-            ? undefined
-            : "select a top-level node and a Flow",
+        disabledReason: promoteDisabledReason(selectedNodes),
         run: () => {
           const flow = selectedNodes.find((node) => node.kind === "flow");
-          const node = selectedNodes.find((candidate) => candidate.kind !== "flow");
-          if (flow && node) editing.promote(node.id, flow.id, FLOW_CONTENT_ORIGIN);
+          const nodeIds = selectedNodes
+            .filter((node) => node.kind !== "flow")
+            .map((node) => node.id);
+          if (flow && nodeIds.length > 0) editing.promote(nodeIds, flow.id, FLOW_CONTENT_ORIGIN);
         },
       },
       {
         id: "extract",
         label: "Extract from Flow",
         scope: "selection",
-        disabledReason: single?.parentId ? undefined : "select one Flow-local node first",
+        disabledReason: extractDisabledReason(selectedNodes),
         run: () => {
-          if (single?.parentId) {
-            const reason = editing.extract(single.id, extractionPosition(single.id, nodes));
-            if (reason) say(reason);
-          }
+          const nodeIds = selectedNodes.map((node) => node.id);
+          const positions = extractionPositions(nodeIds, nodes);
+          const reason = editing.extract(nodeIds, positions);
+          if (reason) say(reason);
         },
       },
       {
@@ -752,47 +768,83 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
  * Scene's apparent place while the search moves it just far enough away from
  * every other rendered node and Flow.
  */
-function extractionPosition(nodeId: string, rendered: ShowFlowNode[]): Position {
-  const source = rendered.find((node) => node.id === nodeId);
-  if (!source) return { x: 0, y: 0 };
-  const origin = source.positionAbsolute ?? source.position;
-  const width = NODE_WIDTH;
-  const height = Number(source.style?.height ?? 56);
-  const obstacles = rendered
-    .filter((node) => node.id !== nodeId)
-    .map((node) => {
-      const position = node.positionAbsolute ?? node.position;
-      return {
-        left: position.x,
-        top: position.y,
-        right: position.x + Number(node.style?.width ?? NODE_WIDTH),
-        bottom: position.y + Number(node.style?.height ?? 56),
-      };
-    });
-  const overlaps = (left: number, top: number) =>
-    obstacles.some(
-      (obstacle) =>
-        left < obstacle.right &&
-        left + width > obstacle.left &&
-        top < obstacle.bottom &&
-        top + height > obstacle.top,
-    );
-  if (!overlaps(origin.x, origin.y)) return { x: origin.x, y: origin.y };
+/**
+ * Finds one compact, non-overlapping top-level layout for an extraction.
+ * Child positions are relative to their different Flow parents, so using each
+ * child's absolute position independently makes a multi-selection look
+ * scattered. The selected nodes instead share an anchor and are stacked.
+ */
+function extractionPositions(nodeIds: string[], rendered: ShowFlowNode[]): Position[] {
+  const selected = nodeIds
+    .map((nodeId) => rendered.find((node) => node.id === nodeId))
+    .filter((node): node is ShowFlowNode => Boolean(node));
+  if (selected.length === 0) return nodeIds.map(() => ({ x: 0, y: 0 }));
 
-  // Search rings in canvas coordinates. The first free candidate is the
-  // closest one in this deterministic order, which keeps extraction stable.
-  for (let radius = 1; radius <= 40; radius += 1) {
+  const origin = {
+    x: Math.min(...selected.map((node) => (node.positionAbsolute ?? node.position).x)),
+    y: Math.min(...selected.map((node) => (node.positionAbsolute ?? node.position).y)),
+  };
+  const obstacles = rendered
+    .filter((node) => !nodeIds.includes(node.id))
+    .map((node) => rectangleFor(node, node.positionAbsolute ?? node.position));
+  const sizes = selected.map((node) => ({
+    width: Number(node.style?.width ?? NODE_WIDTH),
+    height: Number(node.style?.height ?? 56),
+  }));
+
+  const layoutAt = (anchor: Position): Position[] => {
+    let y = anchor.y;
+    return sizes.map((size) => {
+      const position = { x: anchor.x, y };
+      y += size.height + 32;
+      return position;
+    });
+  };
+  const isFree = (positions: Position[]) =>
+    positions.every((position, index) => {
+      const size = sizes[index]!;
+      return !obstacles.some((obstacle) => overlaps(position, size, obstacle));
+    });
+
+  for (let radius = 0; radius <= 40; radius += 1) {
     const distance = radius * 32;
-    const candidates = [
-      { x: origin.x + distance, y: origin.y },
-      { x: origin.x - distance, y: origin.y },
-      { x: origin.x, y: origin.y + distance },
-      { x: origin.x, y: origin.y - distance },
-    ];
-    const free = candidates.find((candidate) => !overlaps(candidate.x, candidate.y));
-    if (free) return free;
+    const candidates =
+      radius === 0
+        ? [origin]
+        : [
+            { x: origin.x + distance, y: origin.y },
+            { x: origin.x - distance, y: origin.y },
+            { x: origin.x, y: origin.y + distance },
+            { x: origin.x, y: origin.y - distance },
+          ];
+    const candidate = candidates.find((position) => isFree(layoutAt(position)));
+    if (candidate) return layoutAt(candidate);
   }
-  return { x: origin.x + 32, y: origin.y + 32 };
+  return layoutAt({ x: origin.x + 32, y: origin.y + 32 });
+}
+
+function rectangleFor(node: ShowFlowNode, position: Position) {
+  const width = Number(node.style?.width ?? NODE_WIDTH);
+  const height = Number(node.style?.height ?? 56);
+  return {
+    left: position.x,
+    top: position.y,
+    right: position.x + width,
+    bottom: position.y + height,
+  };
+}
+
+function overlaps(
+  position: Position,
+  size: { width: number; height: number },
+  obstacle: ReturnType<typeof rectangleFor>,
+): boolean {
+  return (
+    position.x < obstacle.right &&
+    position.x + size.width > obstacle.left &&
+    position.y < obstacle.bottom &&
+    position.y + size.height > obstacle.top
+  );
 }
 
 function moveComposite(moved: { id: string; position: Position }[]) {
