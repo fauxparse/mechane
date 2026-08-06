@@ -3,16 +3,20 @@
 // UserSettings via GraphQL (api/settings.ts); ThemeSwitcher itself is
 // presentational and knows nothing about persistence. Signed-out visitors
 // never reach this component — the parent `authenticatedRoute` layout's
-// `beforeLoad` (router.tsx, issue #30) redirects them to /sign-in before
-// it renders.
+// `beforeLoad` (_authenticated.tsx, issue #30) redirects them to /sign-in
+// before it renders.
 import { ThemeSwitcher } from "@presence/design-system";
 import type { ThemeMode, ThemePalette } from "@presence/domain";
 import { DEFAULT_THEME_MODE, DEFAULT_THEME_PALETTE } from "@presence/domain";
-import { Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { useUpdateUserSettings, useUserSettings } from "../api/settings";
 
-export function SettingsRoute() {
+export const Route = createFileRoute("/_authenticated/settings")({
+  component: SettingsRoute,
+});
+
+function SettingsRoute() {
   const settings = useUserSettings();
   const updateSettings = useUpdateUserSettings();
 
