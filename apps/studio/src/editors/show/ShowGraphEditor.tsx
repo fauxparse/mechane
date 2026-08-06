@@ -49,7 +49,7 @@ import {
   ContextMenuSubmenuTrigger,
   ContextMenuTrigger,
 } from "@mechane/design-system";
-import type { GraphNode, NodeKind, Position, ShowGraph } from "@mechane/domain";
+import type { GraphNode, Position, ShowGraph } from "@mechane/domain";
 import { Maximize2, Pencil, Plus, Redo2, Trash2, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type {
@@ -91,7 +91,7 @@ import {
 import type { ShowFlowEdge, ShowFlowNode } from "./graph-to-flow";
 import { NodeInteractionProvider } from "./node-interaction";
 import type { CreatableNode } from "./node-kinds";
-import { CREATABLE_NODES, NODE_KIND_META } from "./node-kinds";
+import { CREATABLE_NODES } from "./node-kinds";
 import { ShowFlowNode as FlowNodeBody, ShowNode } from "./ShowGraphNodes";
 import { useEditorKeys } from "./use-editor-keys";
 import { useGraphEditing } from "./use-graph-editing";

@@ -1,5 +1,5 @@
 import { moveNode } from "@mechane/commands";
-import type { GraphNode, NodeKind, Position } from "@mechane/domain";
+import type { GraphNode, Position } from "@mechane/domain";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { Connection, FitViewOptions, OnNodeDrag, XYPosition } from "@xyflow/react";
 import type { MouseEvent as ReactMouseEvent } from "react";
