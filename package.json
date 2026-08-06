@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "lint": "oxlint .",
     "format": "oxfmt .",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "codegen": "pnpm --filter @presence/graphql-schema codegen"
   },
   "devDependencies": {
     "oxfmt": "^0.62.0",

@@ -1,0 +1,56 @@
+type User {
+  id: ID!
+  name: String!
+  email: String!
+  emailVerified: Boolean!
+}
+
+type Show {
+  id: ID!
+  name: String!
+  createdAt: String!
+  updatedAt: String!
+}
+
+"""The signed-in user's design-system preference (PRD.md §7)."""
+type UserSettings {
+  """Display mode: "light" or "dark"."""
+  themeMode: String!
+
+  """Which built-in theme is active: "slate" or "gruvbox"."""
+  themePalette: String!
+}
+
+type Query {
+  """The signed-in user, or null if the request has no valid session."""
+  me: User
+
+  """The signed-in user's own Shows, most recently updated first."""
+  shows: [Show!]!
+
+  """
+  A single Show owned by the signed-in user, or null if it doesn't exist or isn't theirs.
+  """
+  show(id: ID!): Show
+
+  """
+  The signed-in user's theme settings, or PRD.md §7 defaults if they haven't set any yet.
+  """
+  userSettings: UserSettings!
+}
+
+type Mutation {
+  """Creates a new Show owned by the signed-in user."""
+  createShow(name: String!): Show!
+
+  """Renames a Show owned by the signed-in user."""
+  renameShow(id: ID!, name: String!): Show!
+
+  """Deletes a Show owned by the signed-in user. Returns true on success."""
+  deleteShow(id: ID!): Boolean!
+
+  """
+  Updates the signed-in user's theme settings. Omitted fields are left unchanged.
+  """
+  updateUserSettings(themeMode: String, themePalette: String): UserSettings!
+}

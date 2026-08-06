@@ -1,54 +1,62 @@
-// Client-side mirror of the Show type in apps/api/src/graphql/schema.ts.
-// Hand-written until a codegen tool is chosen (see client.ts) — keep this in
-// sync with the server typeDefs when the Show type changes.
-export interface Show {
-  id: string;
-  name: string;
-  createdAt: string;
-  updatedAt: string;
-}
+// Typed Show query/mutation documents (issue #15), replacing the
+// hand-mirrored raw-string operations this package used before gql.tada was
+// wired up. Each document selects the same field set directly (no
+// fragment) since gql.tada's fragment masking would otherwise force every
+// caller to unwrap via `readFragment` for no benefit at this field count —
+// see apps/api/src/graphql/schema.ts for the server-side Show type these
+// mirror. `Show` is derived from a query's own result type rather than
+// hand-mirrored, so it can't drift from the fields actually selected below.
+import { graphql } from "./graphql";
+import type { ResultOf } from "gql.tada";
 
-export const SHOW_FIELDS = /* GraphQL */ `
-  id
-  name
-  createdAt
-  updatedAt
-`;
-
-export const LIST_SHOWS_QUERY = /* GraphQL */ `
+export const ListShowsQuery = graphql(`
   query ListShows {
     shows {
-      ${SHOW_FIELDS}
+      id
+      name
+      createdAt
+      updatedAt
     }
   }
-`;
+`);
 
-export const GET_SHOW_QUERY = /* GraphQL */ `
+export const GetShowQuery = graphql(`
   query GetShow($id: ID!) {
     show(id: $id) {
-      ${SHOW_FIELDS}
+      id
+      name
+      createdAt
+      updatedAt
     }
   }
-`;
+`);
 
-export const CREATE_SHOW_MUTATION = /* GraphQL */ `
+export const CreateShowMutation = graphql(`
   mutation CreateShow($name: String!) {
     createShow(name: $name) {
-      ${SHOW_FIELDS}
+      id
+      name
+      createdAt
+      updatedAt
     }
   }
-`;
+`);
 
-export const RENAME_SHOW_MUTATION = /* GraphQL */ `
+export const RenameShowMutation = graphql(`
   mutation RenameShow($id: ID!, $name: String!) {
     renameShow(id: $id, name: $name) {
-      ${SHOW_FIELDS}
+      id
+      name
+      createdAt
+      updatedAt
     }
   }
-`;
+`);
 
-export const DELETE_SHOW_MUTATION = /* GraphQL */ `
+export const DeleteShowMutation = graphql(`
   mutation DeleteShow($id: ID!) {
     deleteShow(id: $id)
   }
-`;
+`);
+
+export type Show = NonNullable<ResultOf<typeof GetShowQuery>["show"]>;

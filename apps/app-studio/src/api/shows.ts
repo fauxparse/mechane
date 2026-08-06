@@ -3,13 +3,12 @@
 // out of the route components, which only care about the resulting data
 // and mutation callbacks.
 import {
-  CREATE_SHOW_MUTATION,
-  DELETE_SHOW_MUTATION,
-  GET_SHOW_QUERY,
+  CreateShowMutation,
+  DeleteShowMutation,
+  GetShowQuery,
   graphqlRequest,
-  LIST_SHOWS_QUERY,
-  RENAME_SHOW_MUTATION,
-  type Show,
+  ListShowsQuery,
+  RenameShowMutation,
 } from "@presence/graphql-schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -22,7 +21,7 @@ export function useShows() {
   return useQuery({
     queryKey: showsQueryKey,
     queryFn: async () => {
-      const data = await graphqlRequest<{ shows: Show[] }>(GRAPHQL_ENDPOINT, LIST_SHOWS_QUERY);
+      const data = await graphqlRequest(GRAPHQL_ENDPOINT, ListShowsQuery);
       return data.shows;
     },
   });
@@ -32,11 +31,7 @@ export function useShow(id: string) {
   return useQuery({
     queryKey: showQueryKey(id),
     queryFn: async () => {
-      const data = await graphqlRequest<{ show: Show | null }, { id: string }>(
-        GRAPHQL_ENDPOINT,
-        GET_SHOW_QUERY,
-        { id },
-      );
+      const data = await graphqlRequest(GRAPHQL_ENDPOINT, GetShowQuery, { id });
       return data.show;
     },
   });
@@ -46,11 +41,7 @@ export function useCreateShow() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (name: string) => {
-      const data = await graphqlRequest<{ createShow: Show }, { name: string }>(
-        GRAPHQL_ENDPOINT,
-        CREATE_SHOW_MUTATION,
-        { name },
-      );
+      const data = await graphqlRequest(GRAPHQL_ENDPOINT, CreateShowMutation, { name });
       return data.createShow;
     },
     onSuccess: () => {
@@ -63,11 +54,7 @@ export function useRenameShow() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, name }: { id: string; name: string }) => {
-      const data = await graphqlRequest<{ renameShow: Show }, { id: string; name: string }>(
-        GRAPHQL_ENDPOINT,
-        RENAME_SHOW_MUTATION,
-        { id, name },
-      );
+      const data = await graphqlRequest(GRAPHQL_ENDPOINT, RenameShowMutation, { id, name });
       return data.renameShow;
     },
     onSuccess: (show) => {
@@ -81,11 +68,7 @@ export function useDeleteShow() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      await graphqlRequest<{ deleteShow: boolean }, { id: string }>(
-        GRAPHQL_ENDPOINT,
-        DELETE_SHOW_MUTATION,
-        { id },
-      );
+      await graphqlRequest(GRAPHQL_ENDPOINT, DeleteShowMutation, { id });
       return id;
     },
     onSuccess: () => {
