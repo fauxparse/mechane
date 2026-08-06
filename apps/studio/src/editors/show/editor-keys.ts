@@ -6,7 +6,7 @@
 //
 // #37's organising principle is palette-first: every command is reachable
 // through Cmd+K, and a dedicated binding is an optimisation granted only to
-// frequent operations. So this table is deliberately short — promote, extract,
+// frequent operations. So this table is deliberately short — move into Flow, move out of Flow,
 // and collapse have no keys at all and live in the palette only.
 //
 // The bindings #37 settled, and who owns each:

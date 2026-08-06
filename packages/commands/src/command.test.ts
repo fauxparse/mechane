@@ -125,14 +125,14 @@ describe("composite", () => {
     expect(undone.inverse.apply(undone.state).state.items).toEqual(["b"]);
   });
 
-  // A promote's side effect belongs inside the same composite as the
+  // Moving into a Flow's side effect belongs inside the same composite as the
   // membership change, so one undo reverts both (#28).
   it("welds a side effect to the change that caused it", () => {
-    const promote = composite<Doc>({
-      label: "Promote",
+    const moveIntoFlow = composite<Doc>({
+      label: "Move into Flow",
       commands: [appendItem("scene"), setTitle("Flow with a default")],
     });
-    const applied = promote.apply(DOC);
+    const applied = moveIntoFlow.apply(DOC);
     expect(applied.state).toEqual({
       title: "Flow with a default",
       items: ["a", "b", "c", "scene"],

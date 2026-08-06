@@ -144,7 +144,7 @@ export interface ShowGraphEditorProps {
   ref?: Ref<ShowGraphEditorHandle>;
 }
 
-function extractDisabledReason(selectedNodes: GraphNode[]): string | undefined {
+function moveOutOfFlowDisabledReason(selectedNodes: GraphNode[]): string | undefined {
   if (selectedNodes.length === 0) return "select a Flow-local node first";
   if (selectedNodes.some((node) => node.parentId === null)) {
     return "select only Flow-local nodes";
@@ -152,14 +152,15 @@ function extractDisabledReason(selectedNodes: GraphNode[]): string | undefined {
   return undefined;
 }
 
-function promoteDisabledReason(selectedNodes: GraphNode[]): string | undefined {
+function moveIntoFlowDisabledReason(selectedNodes: GraphNode[]): string | undefined {
   const flows = selectedNodes.filter((node) => node.kind === "flow");
   if (flows.length === 0) return "select a Flow and top-level nodes";
   if (flows.length > 1) return "select only one Flow";
   const nodes = selectedNodes.filter((node) => node.kind !== "flow");
   if (nodes.length === 0) return "select at least one top-level node";
-  if (nodes.some((node) => node.parentId !== null)) return "nested nodes must be extracted first";
-  if (nodes.some((node) => node.kind === "device")) return "Devices cannot be promoted into a Flow";
+  if (nodes.some((node) => node.parentId !== null))
+    return "move nested nodes out of their Flow first";
+  if (nodes.some((node) => node.kind === "device")) return "Devices cannot be moved into a Flow";
   return undefined;
 }
 
@@ -731,28 +732,29 @@ function useShowGraphEditorPalette({
         run: renameSelected,
       },
       {
-        id: "promote",
-        label: "Promote into selected Flow",
+        id: "move-into-flow",
+        label: "Move into selected Flow",
         scope: "selection",
-        disabledReason: promoteDisabledReason(selectedNodes),
+        disabledReason: moveIntoFlowDisabledReason(selectedNodes),
         run: () => {
           const flow = selectedNodes.find((node) => node.kind === "flow");
           const nodeIds = selectedNodes.reduce<string[]>((ids, node) => {
             if (node.kind !== "flow") ids.push(node.id);
             return ids;
           }, []);
-          if (flow && nodeIds.length > 0) editing.promote(nodeIds, flow.id, FLOW_CONTENT_ORIGIN);
+          if (flow && nodeIds.length > 0)
+            editing.moveIntoFlow(nodeIds, flow.id, FLOW_CONTENT_ORIGIN);
         },
       },
       {
-        id: "extract",
-        label: "Extract from Flow",
+        id: "move-out-of-flow",
+        label: "Move out of Flow",
         scope: "selection",
-        disabledReason: extractDisabledReason(selectedNodes),
+        disabledReason: moveOutOfFlowDisabledReason(selectedNodes),
         run: () => {
           const nodeIds = selectedNodes.map((node) => node.id);
-          const positions = extractionPositions(nodeIds, nodes);
-          const reason = editing.extract(nodeIds, positions);
+          const positions = moveOutPositions(nodeIds, nodes);
+          const reason = editing.moveOutOfFlow(nodeIds, positions);
           if (reason) say(reason);
         },
       },
@@ -795,18 +797,18 @@ function useShowGraphEditorPalette({
 }
 
 /**
- * Finds a top-level landing spot for palette extraction. React Flow stores a
+ * Finds a top-level landing spot for moving nodes out of a Flow. React Flow stores a
  * child position relative to its parent, so `positionAbsolute` preserves the
  * Scene's apparent place while the search moves it just far enough away from
  * every other rendered node and Flow.
  */
 /**
- * Finds one compact, non-overlapping top-level layout for an extraction.
+ * Finds one compact, non-overlapping top-level layout for moving nodes out.
  * Child positions are relative to their different Flow parents, so using each
  * child's absolute position independently makes a multi-selection look
  * scattered. The selected nodes instead share an anchor and are stacked.
  */
-function extractionPositions(nodeIds: string[], rendered: ShowFlowNode[]): Position[] {
+function moveOutPositions(nodeIds: string[], rendered: ShowFlowNode[]): Position[] {
   const nodeIdSet = new Set(nodeIds);
   const renderedById = new Map(rendered.map((node) => [node.id, node]));
   const orderedSelected: ShowFlowNode[] = [];

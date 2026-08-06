@@ -122,7 +122,7 @@ export function useShowGraphEditorActions({
   const create = useCallback(
     (kind: NodeKind, at: Position) => {
       // Creating a Flow over the current selection is one command: create the
-      // container, then promote only eligible top-level content into it.
+      // container, then move eligible top-level content into it.
       if (kind === "flow") {
         const nodeIds = selectedNodes.reduce<string[]>((ids, node) => {
           if (node.parentId === null && node.kind !== "device" && node.kind !== "flow") {

@@ -18,8 +18,8 @@ import {
   removeSceneVariable,
   renameNode,
   renameSceneVariable,
-  promoteNodes,
-  extractNodes,
+  moveNodesIntoFlow,
+  moveNodesOutOfFlow,
 } from "@mechane/commands";
 import type { Gesture } from "@mechane/commands";
 import { connectionEdge, connectionError, connectionTargets, generateId } from "@mechane/domain";
@@ -75,8 +75,8 @@ export interface GraphEditing {
   renameVariable(sceneId: string, variableId: string, name: string): void;
   removeVariable(sceneId: string, variableId: string): void;
   /** Structural Flow moves; collapse is intentionally not part of this API. */
-  promote(nodeIds: string[], flowId: string, origin: Position): void;
-  extract(nodeIds: string[], positions: Position[]): string | null;
+  moveIntoFlow(nodeIds: string[], flowId: string, origin: Position): void;
+  moveOutOfFlow(nodeIds: string[], positions: Position[]): string | null;
 }
 
 /**
@@ -233,20 +233,22 @@ export function useGraphEditing(
     [execute],
   );
 
-  const promote = useCallback(
+  const moveIntoFlow = useCallback(
     (nodeIds: string[], flowId: string, origin: Position) => {
-      execute(promoteNodes(graph, nodeIds, flowId, origin));
+      execute(moveNodesIntoFlow(graph, nodeIds, flowId, origin));
     },
     [execute, graph],
   );
 
-  const extract = useCallback(
+  const moveOutOfFlow = useCallback(
     (nodeIds: string[], positions: Position[]) => {
       try {
-        execute(extractNodes(graph, nodeIds, positions));
+        execute(moveNodesOutOfFlow(graph, nodeIds, positions));
         return null;
       } catch (error) {
-        return error instanceof Error ? error.message : "Those nodes cannot be extracted.";
+        return error instanceof Error
+          ? error.message
+          : "Those nodes cannot be moved out of their Flow.";
       }
     },
     [execute, graph],
@@ -273,8 +275,8 @@ export function useGraphEditing(
     addVariable,
     renameVariable,
     removeVariable,
-    promote,
-    extract,
+    moveIntoFlow,
+    moveOutOfFlow,
   };
 }
 

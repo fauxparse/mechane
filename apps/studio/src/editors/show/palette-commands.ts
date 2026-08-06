@@ -13,7 +13,7 @@
 //   - **Inapplicable commands are shown disabled, with a reason** rather than
 //     hidden. The palette is the *only* discovery surface for commands with no
 //     keybinding, so hiding them means a director who hasn't selected anything
-//     can't find out that extraction exists.
+//     can't find out that moving nodes out of a Flow exists.
 
 import type { CommandScope } from "@mechane/commands";
 import type { LucideIcon } from "lucide-react";

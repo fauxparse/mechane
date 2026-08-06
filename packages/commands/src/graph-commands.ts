@@ -4,7 +4,7 @@
 // These are the *atoms*: add or remove one node, move one node, rename one
 // node, add or remove one edge, add/rename/remove a Scene Variable, change a
 // Flow's default Scene. The interaction slice (#42) composes them into the operations a director
-// actually performs — a recursive Flow delete, a promote-into-Flow with its
+// actually performs — a recursive Flow delete, a move-into-Flow operation with its
 // side effects — because which nodes a cascade collects is a policy question
 // about the editor, while "removing a node takes its edges with it" is just
 // what the graph *is*.
@@ -55,8 +55,8 @@ export const GRAPH_COMMAND_TYPES = {
   addSceneVariable: "graph.addSceneVariable",
   renameSceneVariable: "graph.renameSceneVariable",
   removeSceneVariable: "graph.removeSceneVariable",
-  promoteNode: "graph.promoteNode",
-  extractNode: "graph.extractNode",
+  moveNodeIntoFlow: "graph.moveNodeIntoFlow",
+  moveNodeOutOfFlow: "graph.moveNodeOutOfFlow",
 } as const;
 
 export class UnknownGraphTargetError extends Error {
@@ -142,7 +142,7 @@ export function createFlowWithNodes(
   const graphWithFlow = { ...graph, nodes: [...graph.nodes, flow] };
   const commands: ShowGraphCommand[] = [addNode(flow, "Create Flow")];
   if (nodeIds.length > 0) {
-    commands.push(promoteNodes(graphWithFlow, nodeIds, flow.id, childOrigin));
+    commands.push(moveNodesIntoFlow(graphWithFlow, nodeIds, flow.id, childOrigin));
   }
   return composite({ label: "Create Flow", commands });
 }
@@ -165,7 +165,7 @@ interface RemovedNode {
  * The default-Scene clearing is the small case of #28's "side effects live
  * inside the snapshot": deleting a Flow's entry Scene has to leave the Flow
  * without one, and one undo has to bring back both the Scene and the Flow's
- * pointer to it. Same principle as promote's auto-assignment, one order of
+ * pointer to it. Same principle as moving into a Flow's auto-assignment, one order of
  * magnitude smaller.
  *
  * This removes *one* node. Nested Scenes inside a deleted Flow are the
@@ -284,11 +284,11 @@ interface Placement {
 
 /**
  * Moves a node into a Flow or out to Show level — the membership half of
- * promote and extract (#42). Position moves with it, because a Flow-local
+ * moving into and out of a Flow (#42). Position moves with it, because a Flow-local
  * node's position is relative to its Flow (#29) and keeping the old
  * coordinates would fling the node somewhere arbitrary.
  *
- * The *side effects* of a promote (auto-assigning the Flow's default Scene
+ * The *side effects* of moving into a Flow (auto-assigning the Flow's default Scene
  * when it was empty) are separate commands, composed with this one into a
  * single entry — see `setFlowDefaultScene` and #28.
  */
@@ -296,7 +296,7 @@ export function reparentNode(
   nodeId: string,
   parentId: string | null,
   position: Position,
-  label = parentId === null ? "Extract" : "Promote",
+  label = parentId === null ? "Move out of Flow" : "Move into Flow",
 ): ShowGraphCommand {
   return capturing<ShowGraph, Placement>({
     type: GRAPH_COMMAND_TYPES.reparentNode,
@@ -321,7 +321,7 @@ export function reparentNode(
         }
         if (node.parentId !== null && node.parentId !== parentId) {
           throw new InvalidReparentError(
-            "Moving a Scene between Flows is not allowed; extract it first.",
+            "Move the Scene out of its Flow before moving it into another.",
           );
         }
       }
@@ -348,25 +348,25 @@ export function reparentNode(
 }
 
 /**
- * Promotes a top-level node into an empty or populated Flow. The default Scene
+ * Moves a top-level node into an empty or populated Flow. The default Scene
  * assignment is welded to membership, so one undo reverses both effects.
  */
-export function promoteNode(
+export function moveNodeIntoFlow(
   graph: ShowGraph,
   nodeId: string,
   flowId: string,
   position: Position,
 ): ShowGraphCommand {
-  return promoteNodes(graph, [nodeId], flowId, position);
+  return moveNodesIntoFlow(graph, [nodeId], flowId, position);
 }
 
 /**
- * Promotes several top-level nodes as one command. Nodes are placed in a
+ * Moves several top-level nodes into a Flow as one command. Nodes are placed in a
  * column below the Flow's existing children, starting at `origin`; this keeps
- * the operation deterministic and prevents either existing or newly promoted
+ * the operation deterministic and prevents either existing or newly moved
  * nodes from overlapping.
  */
-export function promoteNodes(
+export function moveNodesIntoFlow(
   graph: ShowGraph,
   nodeIds: string[],
   flowId: string,
@@ -379,27 +379,28 @@ export function promoteNodes(
     const node = graph.nodes.find((candidate) => candidate.id === nodeId);
     if (!node) throw new UnknownGraphTargetError("node", nodeId);
     if (node.kind === "flow" || node.kind === "device") {
-      throw new InvalidReparentError("Flows and Devices cannot be promoted into a Flow.");
+      throw new InvalidReparentError("Devices cannot be moved into a Flow.");
     }
     if (node.parentId !== null) {
-      throw new InvalidReparentError("A node must be extracted before it can enter another Flow.");
+      throw new InvalidReparentError("Move the node out of its Flow first.");
     }
     return node;
   });
-  if (nodes.length === 0) throw new InvalidReparentError("Select at least one node to promote.");
+  if (nodes.length === 0)
+    throw new InvalidReparentError("Select at least one node to move into a Flow.");
 
   const children = graph.nodes.filter((node) => node.parentId === flowId);
   let y = Math.max(origin.y, ...children.map((node) => node.position.y + nodeHeight(node) + 24));
   const parts: ShowGraphCommand[] = [];
   for (const node of nodes) {
-    parts.push(reparentNode(node.id, flowId, { x: origin.x, y }, "Promote"));
+    parts.push(reparentNode(node.id, flowId, { x: origin.x, y }, "Move into Flow"));
     y += nodeHeight(node) + 24;
   }
   if (flow.defaultSceneId === null) {
     const firstScene = nodes.find((node) => node.kind === "scene");
     if (firstScene) parts.push(setFlowDefaultScene(flowId, firstScene.id));
   }
-  return composite({ label: "Promote into Flow", commands: parts });
+  return composite({ label: "Move into Flow", commands: parts });
 }
 
 function nodeHeight(node: GraphNode): number {
@@ -407,40 +408,42 @@ function nodeHeight(node: GraphNode): number {
 }
 
 /**
- * Extracts a node to Show level. Navigate edges are intentionally a hard
- * block: extraction preserves the Scene, so dangling state-machine edges
+ * Moves a node to Show level. Navigate edges are intentionally a hard
+ * block: moving it out preserves the Scene, so dangling state-machine edges
  * must be removed explicitly first. Wiring edges are disposable and are
  * removed as part of this command.
  */
-export function extractNode(
+export function moveNodeOutOfFlow(
   graph: ShowGraph,
   nodeId: string,
   position: Position,
 ): ShowGraphCommand {
-  return extractNodes(graph, [nodeId], [position]);
+  return moveNodesOutOfFlow(graph, [nodeId], [position]);
 }
 
-/** Extracts several Flow-local nodes as one command. */
-export function extractNodes(
+/** Moves several Flow-local nodes out of a Flow as one command. */
+export function moveNodesOutOfFlow(
   graph: ShowGraph,
   nodeIds: string[],
   positions: readonly Position[],
 ): ShowGraphCommand {
   if (nodeIds.length === 0 || nodeIds.length !== positions.length) {
-    throw new InvalidReparentError("Select at least one Flow-local node to extract.");
+    throw new InvalidReparentError("Select at least one Flow-local node to move out.");
   }
 
   const nodes = nodeIds.map((nodeId) => {
     const node = graph.nodes.find((candidate) => candidate.id === nodeId);
     if (!node) throw new UnknownGraphTargetError("node", nodeId);
     if (node.parentId === null) {
-      throw new InvalidReparentError("Only Flow-local nodes can be extracted.");
+      throw new InvalidReparentError("Only Flow-local nodes can be moved out.");
     }
     const navigate = graph.edges.find(
       (edge) => edge.kind === "navigate" && (edge.sourceId === nodeId || edge.targetId === nodeId),
     );
     if (navigate) {
-      throw new InvalidReparentError("Remove the Scene's Navigate edges before extracting it.");
+      throw new InvalidReparentError(
+        "Remove the Scene's Navigate edges before moving it out of the Flow.",
+      );
     }
     return node;
   });
@@ -458,14 +461,14 @@ export function extractNodes(
   );
   for (const owner of defaultOwners) parts.push(setFlowDefaultScene(owner.id, null));
   nodes.forEach((node, index) => {
-    parts.push(reparentNode(node.id, null, positions[index]!, "Extract"));
+    parts.push(reparentNode(node.id, null, positions[index]!, "Move out of Flow"));
   });
-  return composite({ label: "Extract from Flow", commands: parts });
+  return composite({ label: "Move out of Flow", commands: parts });
 }
 
 /**
  * Sets (or clears) a Flow's design-time entry Scene (#23). Small on its own;
- * its reason for existing is composition — a promote into an empty Flow
+ * its reason for existing is composition — moving a node into an empty Flow
  * auto-assigns the default Scene, and that assignment must undo together
  * with the membership change (#28).
  */
