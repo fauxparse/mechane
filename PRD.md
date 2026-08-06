@@ -9,6 +9,7 @@ Domain vocabulary (Show, Scene, Device, Flow, Variable, Source, Transformer, Ele
 **In scope for v1**: the full domain model in CONTEXT.md — Shows, Scenes, Canvas/Elements, Devices, Flows, Sources, Transformers, Shapes, Blocks/Slots, Events/Cues/Actions, Runs — plus a Figma-lite Canvas editor with auto-layout, a Flow-based Show editor, a Command-K palette with undo/redo across both, and a themeable design system.
 
 **Out of scope for v1** (explicitly deferred, not forgotten):
+
 - Multiplayer/concurrent editing of a Show (target: v1.5)
 - Audio/video Elements and cross-device playback sync
 - Cross-Show Block libraries (Blocks are scoped to a single Show)
@@ -22,10 +23,10 @@ Domain vocabulary (Show, Scene, Device, Flow, Variable, Source, Transformer, Ele
 
 Monorepo, two deployable apps plus shared packages:
 
-| App | Purpose | Users |
-|---|---|---|
-| **`app-studio`** | Authoring *and* running shows: Show (Flow) editor, Scene (Canvas) editor, Device/Run management, going live | Directors/technicians |
-| **`app-player`** | Renders whatever Scene the connected Device is showing, emits Events | Audience phones, projectors, laptops, any paired Device |
+| App              | Purpose                                                                                                     | Users                                                   |
+| ---------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| **`app-studio`** | Authoring _and_ running shows: Show (Flow) editor, Scene (Canvas) editor, Device/Run management, going live | Directors/technicians                                   |
+| **`app-player`** | Renders whatever Scene the connected Device is showing, emits Events                                        | Audience phones, projectors, laptops, any paired Device |
 
 Shared packages (indicative, not prescriptive of final folder names): domain model/types, GraphQL schema & generated client, design system (theme tokens, primitives), realtime abstraction (§4.4), command/undo-redo engine (§6.3).
 

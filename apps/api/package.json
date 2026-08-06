@@ -1,7 +1,7 @@
 {
   "name": "@presence/api",
-  "private": true,
   "version": "0.0.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/dev-server.ts",
