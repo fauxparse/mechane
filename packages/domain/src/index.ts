@@ -4,5 +4,6 @@
 export * from "./graph";
 export * from "./id";
 export * from "./ownership";
+export * from "./publish";
 export * from "./show";
 export * from "./theme-settings";
