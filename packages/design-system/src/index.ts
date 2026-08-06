@@ -4,6 +4,7 @@
 // story in the same change — see PRD.md §9 "Component convention".
 export { cn } from "./lib/utils";
 
+export { Badge, badgeVariants } from "./components/ui/badge";
 export { Button, buttonVariants } from "./components/ui/button";
 export {
   Card,
@@ -14,6 +15,15 @@ export {
   CardHeader,
   CardTitle,
 } from "./components/ui/card";
+export {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  dropdownMenuItemVariants,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./components/ui/dropdown-menu";
 export { Input } from "./components/ui/input";
 export { Label } from "./components/ui/label";
 export { ThemeSwitcher } from "./components/theme-switcher";
