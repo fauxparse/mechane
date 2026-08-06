@@ -2,7 +2,13 @@ import { assertValidShowGraph, isId } from "@mechane/domain";
 import type { ShowGraph } from "@mechane/domain";
 import { describe, expect, it } from "vitest";
 
-import { createNode, nodeIcon, NODE_KIND_META, CREATABLE_KINDS } from "./node-kinds";
+import {
+  createNode,
+  nodeIcon,
+  NODE_KIND_META,
+  CREATABLE_KINDS,
+  CREATABLE_NODES,
+} from "./node-kinds";
 
 describe("createNode", () => {
   // A node's id announces its kind (#47), which is what lets a log line or an
@@ -51,9 +57,50 @@ describe("createNode", () => {
     expect(() => assertValidShowGraph(graph)).not.toThrow();
   });
 
+  // #45: perConnection is fixed at creation, so this is the only place it
+  // is ever set — and a Device that isn't explicitly per-connection is the
+  // shared kind, never the other way round.
+  it("makes a shared Device unless asked for a per-connection one", () => {
+    const shared = createNode("device", { x: 0, y: 0 });
+    expect(shared.kind === "device" && shared.perConnection).toBe(false);
+    const audience = createNode("device", { x: 0, y: 0 }, null, { perConnection: true });
+    expect(audience.kind === "device" && audience.perConnection).toBe(true);
+  });
+
+  it("leaves a new Device's pairing code for the server to mint", () => {
+    const device = createNode("device", { x: 0, y: 0 });
+    expect(device.kind === "device" && device.pairingCode).toBeNull();
+  });
+
   it("names a new node after its kind until it's renamed", () => {
     for (const kind of CREATABLE_KINDS) {
       expect(createNode(kind, { x: 0, y: 0 }).name).toBe(NODE_KIND_META[kind].defaultName);
+    }
+  });
+});
+
+describe("CREATABLE_NODES", () => {
+  // The menu offers one more entry than there are node kinds: a Device
+  // comes in two flavours chosen up front, because the choice can't be
+  // revisited later (#45).
+  it("offers Audience as a second kind of Device", () => {
+    const devices = CREATABLE_NODES.filter((creatable) => creatable.kind === "device");
+    expect(devices.map((creatable) => creatable.perConnection)).toEqual([false, true]);
+  });
+
+  it("gives every entry a distinct id", () => {
+    const ids = CREATABLE_NODES.map((creatable) => creatable.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("creates what each entry advertises", () => {
+    for (const creatable of CREATABLE_NODES) {
+      const node = createNode(creatable.kind, { x: 0, y: 0 }, null, {
+        perConnection: creatable.perConnection,
+        defaultName: creatable.defaultName,
+      });
+      expect(node.kind).toBe(creatable.kind);
+      expect(node.name).toBe(creatable.defaultName);
     }
   });
 });

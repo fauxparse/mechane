@@ -76,6 +76,10 @@ describe("graphToFlow", () => {
       wiredVariableIds: [],
       isDefaultScene: false,
       childCount: 0,
+      // Device-only fields, at their defaults on every other kind (#45).
+      perConnection: false,
+      pairingCode: null,
+      driven: false,
     });
   });
 
@@ -183,6 +187,41 @@ describe("graphToFlow", () => {
       edges: [],
     });
     expect(nodes[0]?.style).toEqual({ width: NODE_WIDTH, height: NODE_HEIGHT });
+  });
+
+  // A Device with nothing driving it displays nothing at performance time,
+  // which the node marks — but it stays a legal graph, because creating the
+  // projector before the Flow exists is ordinary work (#45).
+  describe("Devices", () => {
+    it("marks a Device nothing drives as undriven", () => {
+      const { nodes } = graphToFlow({
+        nodes: [
+          node({ id: "flow_1", kind: "flow" }),
+          node({ id: "device_1", kind: "device" }),
+          node({ id: "device_2", kind: "device" }),
+        ],
+        edges: [{ id: "edge_1", kind: "device", sourceId: "flow_1", targetId: "device_1" }],
+      });
+      const byId = new Map(nodes.map((flowNode) => [flowNode.id, flowNode]));
+      expect(byId.get("device_1")?.data.driven).toBe(true);
+      expect(byId.get("device_2")?.data.driven).toBe(false);
+    });
+
+    it("carries instance cardinality and the pairing code through", () => {
+      const { nodes } = graphToFlow({
+        nodes: [
+          node({
+            id: "device_1",
+            kind: "device",
+            perConnection: true,
+            pairingCode: "482913",
+          }),
+        ],
+        edges: [],
+      });
+      expect(nodes[0]?.data.perConnection).toBe(true);
+      expect(nodes[0]?.data.pairingCode).toBe("482913");
+    });
   });
 
   describe("containment", () => {

@@ -24,8 +24,8 @@
 // Inline rename lives in the node (double-click, or F2) because the name is
 // the node's own text (#27); everything fuller is the inspector's.
 import { cn } from "@mechane/design-system";
-import { ChevronDown, ChevronRight, House, TriangleAlert } from "lucide-react";
-import { useLayoutEffect, useRef } from "react";
+import { Check, ChevronDown, ChevronRight, Copy, House, TriangleAlert } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Handle, Position, useConnection } from "@xyflow/react";
 import type { NodeProps } from "@xyflow/react";
 
@@ -72,7 +72,7 @@ interface HeaderProps {
 function NodeHeader({ nodeId, data, variant = "node" }: HeaderProps) {
   const { renaming, renameTo, commitRename, cancelRename } = useNodeInteraction();
   const isRenaming = renaming === nodeId;
-  const Icon = nodeIcon(data.kind);
+  const Icon = nodeIcon(data.kind, { perConnection: data.perConnection });
   const wiredVariableIds = new Set(data.wiredVariableIds);
   const dangling = data.variables.filter((variable) => !wiredVariableIds.has(variable.id));
 
@@ -103,6 +103,16 @@ function NodeHeader({ nodeId, data, variant = "node" }: HeaderProps) {
         <TriangleAlert
           className="size-3.5 shrink-0 text-destructive"
           aria-label={`${dangling.length} Variable${dangling.length === 1 ? "" : "s"} with nothing wired in`}
+        />
+      ) : null}
+      {data.kind === "device" && !data.driven ? (
+        // A Device nothing drives displays nothing at performance time —
+        // the same class of invisible-until-too-late mistake as a dangling
+        // Variable, and marked the same way. It is not an error: creating
+        // the projector before the Flow is ordinary work (#45).
+        <TriangleAlert
+          className="size-3.5 shrink-0 text-destructive"
+          aria-label="Nothing is wired to this Device"
         />
       ) : null}
       {variant === "flow" && data.childCount > 0 ? (
@@ -175,6 +185,65 @@ function useDragState(nodeId: string) {
   };
 }
 
+/**
+ * A Device's pairing code, with a button to copy it (#6's criterion, kept
+ * in #45).
+ *
+ * The code, not the QR: a QR small enough to sit on a canvas node is too
+ * small to scan and too loud for chrome PRD §7 wants recessive, so the
+ * scannable one lives in the inspector, where it can be big. What a
+ * director needs *here* is to read a code off the node they're wiring.
+ *
+ * Before the first save there is no code to show — ids are minted on the
+ * client, codes on the server (#45) — so the row holds its place with a
+ * placeholder rather than appearing later and reflowing the node.
+ */
+function PairingCode({ code }: { code: string | null }) {
+  const [copied, setCopied] = useState(false);
+
+  // Copying is a canvas gesture on a node that also responds to clicks and
+  // double-clicks; without this the copy would also select or rename.
+  const copy = useCallback(
+    (event: React.MouseEvent) => {
+      event.stopPropagation();
+      if (!code) return;
+      void navigator.clipboard.writeText(code).then(() => setCopied(true));
+    },
+    [code],
+  );
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
+  return (
+    <div className="flex items-center gap-1.5 px-3 pb-2">
+      <span
+        className={cn(
+          "min-w-0 flex-1 font-mono text-xs tabular-nums",
+          code ? "text-muted-foreground" : "text-muted-foreground/50",
+        )}
+      >
+        {code ?? "······"}
+      </span>
+      <button
+        type="button"
+        // Nothing to copy until the graph has been saved once.
+        disabled={!code}
+        onClick={copy}
+        // React Flow would otherwise start a node drag from the button.
+        onMouseDown={(event) => event.stopPropagation()}
+        className="nodrag shrink-0 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
+        aria-label={code ? `Copy pairing code ${code}` : "Pairing code not assigned yet"}
+      >
+        {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+      </button>
+    </div>
+  );
+}
+
 export function ShowNode({ id, data, selected }: NodeProps<ShowFlowNodeType>) {
   const { targetable, dimmed, variableIds } = useDragState(id);
   const { beginRename } = useNodeInteraction();
@@ -190,6 +259,8 @@ export function ShowNode({ id, data, selected }: NodeProps<ShowFlowNodeType>) {
       aria-label={`${NODE_KIND_META[data.kind].label}: ${data.name}`}
     >
       <NodeHeader nodeId={id} data={data} />
+
+      {data.kind === "device" ? <PairingCode code={data.pairingCode} /> : null}
 
       {hasVariables ? (
         <ul className="flex flex-col pb-2">

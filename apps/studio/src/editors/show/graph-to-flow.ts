@@ -48,6 +48,8 @@ export interface MappableNode {
   parentId?: string | null;
   defaultSceneId?: string | null;
   variables?: readonly { id: string; name: string }[] | null;
+  perConnection?: boolean | null;
+  pairingCode?: string | null;
 }
 
 export interface MappableEdge {
@@ -110,6 +112,21 @@ export type ShowNodeData = {
   isDefaultScene: boolean;
   /** Nodes inside this Flow — how a Flow says "3 scenes" (#35, #44). */
   childCount: number;
+  /** Devices only: one instance per connection rather than one shared (#45). */
+  perConnection: boolean;
+  /**
+   * Devices only: whether a Flow or top-level Scene drives this Device.
+   * An undriven Device is legal and expected — the director will often
+   * place the projector before the Flow exists — so it reads as a warning
+   * on the node, never as a blocked publish (#45).
+   */
+  driven: boolean;
+  /**
+   * Devices only: the Show-level pairing code, or null while the server
+   * hasn't minted one — the state a Device is in between appearing on the
+   * canvas and the first save coming back (#45).
+   */
+  pairingCode: string | null;
   /** Local canvas view state; never persisted or commanded (#44). */
   collapsed?: boolean;
 };
@@ -203,6 +220,7 @@ function toFlowNode(
   children: readonly MappableNode[],
   wiredVariableIds: Set<string>,
   defaultSceneIds: Set<string>,
+  drivenDeviceIds: Set<string>,
   collapsed: boolean,
 ): ShowFlowNode {
   const kind = nodeKindOf(node);
@@ -234,6 +252,9 @@ function toFlowNode(
       }, []),
       isDefaultScene: defaultSceneIds.has(node.id),
       childCount: children.length,
+      perConnection: node.perConnection ?? false,
+      pairingCode: node.pairingCode ?? null,
+      driven: drivenDeviceIds.has(node.id),
       ...(isFlow ? { collapsed } : {}),
     },
   };
@@ -304,6 +325,12 @@ export function graphToFlow(
   for (const node of graph.nodes) {
     if (node.defaultSceneId) defaultSceneIds.add(node.defaultSceneId);
   }
+  // Which Devices something drives. Same reasoning as the wired-Variable
+  // set above: a fact about the graph that one node has to display.
+  const drivenDeviceIds = new Set<string>();
+  for (const edge of graph.edges) {
+    if (edge.kind === "device") drivenDeviceIds.add(edge.targetId);
+  }
 
   return {
     nodes: [...flows, ...rest].reduce<ShowFlowNode[]>((nodes, node) => {
@@ -314,6 +341,7 @@ export function graphToFlow(
             childrenByParent.get(node.id) ?? [],
             wiredVariableIds,
             defaultSceneIds,
+            drivenDeviceIds,
             collapsed.has(node.id),
           ),
         );
