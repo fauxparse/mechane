@@ -109,7 +109,7 @@ export const SAMPLE_GRAPH: Graph = {
       position: { x: 900, y: 300 },
       // The per-connection kind (#45): every phone its own instance.
       perConnection: true,
-      pairingCode: "482913",
+      pairingCode: "V9BEZ",
     }),
     // Deliberately code-less, so the state between creating a Device and
     // the first save coming back is one Storybook can actually show — it's

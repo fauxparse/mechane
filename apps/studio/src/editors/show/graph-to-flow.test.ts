@@ -214,13 +214,13 @@ describe("graphToFlow", () => {
             id: "device_1",
             kind: "device",
             perConnection: true,
-            pairingCode: "482913",
+            pairingCode: "V9BEZ",
           }),
         ],
         edges: [],
       });
       expect(nodes[0]?.data.perConnection).toBe(true);
-      expect(nodes[0]?.data.pairingCode).toBe("482913");
+      expect(nodes[0]?.data.pairingCode).toBe("V9BEZ");
     });
   });
 

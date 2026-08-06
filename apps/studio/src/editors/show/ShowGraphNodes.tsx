@@ -222,11 +222,11 @@ function PairingCode({ code }: { code: string | null }) {
     <div className="flex items-center gap-1.5 px-3 pb-2">
       <span
         className={cn(
-          "min-w-0 flex-1 font-mono text-xs tabular-nums",
+          "min-w-0 flex-1 font-mono text-xs",
           code ? "text-muted-foreground" : "text-muted-foreground/50",
         )}
       >
-        {code ?? "······"}
+        {code ?? "·····"}
       </span>
       <button
         type="button"

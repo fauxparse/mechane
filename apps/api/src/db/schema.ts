@@ -365,9 +365,11 @@ export const devices = pgTable(
     showId: text("show_id")
       .notNull()
       .references(() => shows.id, { onDelete: "cascade" }),
-    // The code a physical device pairs with (#8). Six digits, unique
-    // within the Show, minted server-side on first save because a client
-    // can't check uniqueness.
+    // The code a physical device pairs with (#8), and the Device's whole
+    // public identity — the QR, the join URL and the code read aloud are
+    // all this one string. Five characters from an alphabet with no
+    // look-alikes (see `CODE_ALPHABET` in ./devices), unique within the
+    // Show, minted server-side because a client can't check uniqueness.
     pairingCode: text("pairing_code").notNull(),
     // How many logical instances this Device is — see `DeviceNode` in
     // @mechane/domain. Fixed at creation: it decides Event attribution,
@@ -389,6 +391,11 @@ export const devices = pgTable(
     // recycled onto a different Device while the old QR is still out
     // there in the world.
     unique("devices_pairing_code_unique").on(table.showId, table.pairingCode),
-    check("devices_pairing_code_is_six_digits", sql`${table.pairingCode} ~ '^[0-9]{6}$'`),
+    // The alphabet, restated as a constraint: A-Z and 1-9, less I, L and O
+    // (and 0), so a stored code can't be one a human would mistype.
+    check(
+      "devices_pairing_code_is_unambiguous",
+      sql`${table.pairingCode} ~ '^[1-9A-HJKMNP-Z]{5}$'`,
+    ),
   ],
 );

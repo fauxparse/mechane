@@ -6,7 +6,7 @@ const meta: Meta<typeof QrCode> = {
   title: "design-system/QrCode",
   component: QrCode,
   args: {
-    value: "482913",
+    value: "V9BEZ",
   },
   decorators: [
     (Story) => (
@@ -56,5 +56,5 @@ export const Small: Story = {
  * the quiet zone and `crispEdges` matter more the denser it gets.
  */
 export const LongerValue: Story = {
-  args: { value: "https://mechane.show/join/482913" },
+  args: { value: "https://mechane.show/join/V9BEZ" },
 };

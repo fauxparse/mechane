@@ -65,7 +65,7 @@ Two distinct write paths — see [ADR-0002](./docs/adr/0002-draft-publish-vs-liv
 ### 4.3 Runs and Devices
 
 - A **Run** is a discrete live instance of a Show; starting one resets live data to defaults. At most one Run is active per Show at a time (concurrent Runs are out of scope, §1).
-- Devices are defined in the Show graph at authoring time, each with a stable 6-digit pairing code that lives at the **Show** level and persists across every Run (not regenerated per performance).
+- Devices are defined in the Show graph at authoring time, each with a stable pairing code that lives at the **Show** level and persists across every Run (not regenerated per performance). A code is five characters drawn from uppercase letters and digits with the look-alikes removed (no `I`, `L`, `O` or `0`), so a code read aloud over a headset or squinted at from the back of the venue can only be typed one way.
 - Every Device has one code, and that code can be presented either as digits or as a QR — the QR is an encoding of the code, not a second kind of credential. Whether a given code is shown publicly is a production decision, not a property of the Device.
 - What _is_ a first-class distinction is how many **logical instances** a Device represents, because that is what changes Event attribution (#45):
   - **Shared** (the default): one instance. Every connection sees identical state, and an Event from any of them is an Event from _the Device_. Covers projectors, laptops, and views several crew share at once.

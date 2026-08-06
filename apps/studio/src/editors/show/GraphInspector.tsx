@@ -153,7 +153,7 @@ function DevicePairing({ device }: { device: DeviceNode }) {
         <Label>Pairing code</Label>
         {code ? (
           <div className="flex items-center gap-2">
-            <span className="font-mono text-lg tracking-widest tabular-nums">{code}</span>
+            <span className="font-mono text-lg tracking-widest">{code}</span>
             <Button
               size="sm"
               variant="ghost"

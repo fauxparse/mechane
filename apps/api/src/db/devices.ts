@@ -25,31 +25,48 @@ export interface StoredDevice {
   perConnection: boolean;
 }
 
-const CODE_LENGTH = 6;
+const CODE_LENGTH = 5;
+
+/**
+ * The alphabet a pairing code is drawn from: uppercase letters and digits,
+ * minus the four characters that read as each other. `I`/`L` vs `1`, and
+ * `O` vs `0` — the letters go, the digits stay, so a code read aloud over
+ * a headset or squinted at from the back of a venue can only be typed one
+ * way. (`1` survives because with `I` and `L` gone nothing collides with
+ * it.)
+ *
+ * 32 characters, which is not a coincidence worth relying on but is worth
+ * noting: 32^5 is about 33.5 million codes, against 10^6 for the six
+ * digits this replaces. Shorter to read out *and* 33× harder to guess.
+ */
+const CODE_ALPHABET = "123456789ABCDEFGHJKMNPQRSTUVWXYZ";
 
 /**
  * How many codes to try before giving up. Collisions are drawn against one
  * Show's Devices, not the whole table, so even a Show with a hundred
- * Devices is choosing from a million codes — a second attempt is already
+ * Devices is choosing from tens of millions — a second attempt is already
  * vanishingly unlikely, and eight makes "we ran out" mean a real bug
  * rather than bad luck.
  */
 const CODE_ATTEMPTS = 8;
 
 /**
- * A candidate 6-digit pairing code, leading zeros included — it's read
- * aloud and typed in by a tech, so it's a string of digits, not a number.
+ * A candidate pairing code: five characters from `CODE_ALPHABET`.
  *
- * Drawn from `randomInt`, not `Math.random`, because this one string is
- * both how a Device is named publicly and the entire trust boundary for
- * joining it (PRD.md §4.3: no login, possession of the code is the
- * credential). `Math.random` is seeded, unseeded-but-predictable output —
+ * Drawn character by character from `randomInt`, not `Math.random`,
+ * because this one string is both how a Device is named publicly and the
+ * entire trust boundary for joining it (PRD.md §4.3: no login, possession
+ * of the code is the credential). `Math.random` is predictable output —
  * fine for picking a colour, not for something an attacker profits from
- * guessing. `randomInt` also draws uniformly over the range, where the
- * usual `floor(random() * n)` skews very slightly toward low values.
+ * guessing. `randomInt` also draws uniformly, where the usual
+ * `floor(random() * n)` skews very slightly toward low values.
  */
 function candidatePairingCode(): string {
-  return String(randomInt(10 ** CODE_LENGTH)).padStart(CODE_LENGTH, "0");
+  let code = "";
+  for (let index = 0; index < CODE_LENGTH; index += 1) {
+    code += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
+  }
+  return code;
 }
 
 /**

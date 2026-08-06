@@ -36,6 +36,13 @@
       "when": 1786058721711,
       "tag": "0004_common_scalphunter",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786060026357,
+      "tag": "0005_light_ender_wiggin",
+      "breakpoints": true
     }
   ]
 }
