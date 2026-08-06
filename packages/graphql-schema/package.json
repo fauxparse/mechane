@@ -6,12 +6,16 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "codegen": "tsx scripts/generate-schema.ts && gql.tada generate-output"
   },
   "dependencies": {
-    "@presence/domain": "workspace:*"
+    "@presence/domain": "workspace:*",
+    "gql.tada": "^1.11.3",
+    "graphql": "^17.0.2"
   },
   "devDependencies": {
+    "tsx": "^4.23.8",
     "typescript": "^5.9.0"
   }
 }

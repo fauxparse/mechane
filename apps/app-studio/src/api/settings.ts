@@ -4,10 +4,9 @@
 // itself has no idea how settings are fetched/persisted, it just calls the
 // callbacks this hook supplies.
 import {
-  GET_USER_SETTINGS_QUERY,
+  GetUserSettingsQuery,
   graphqlRequest,
-  UPDATE_USER_SETTINGS_MUTATION,
-  type UserSettings,
+  UpdateUserSettingsMutation,
 } from "@presence/graphql-schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -20,10 +19,7 @@ export function useUserSettings(options: { enabled?: boolean } = {}) {
     queryKey: userSettingsQueryKey,
     enabled: options.enabled,
     queryFn: async () => {
-      const data = await graphqlRequest<{ userSettings: UserSettings }>(
-        GRAPHQL_ENDPOINT,
-        GET_USER_SETTINGS_QUERY,
-      );
+      const data = await graphqlRequest(GRAPHQL_ENDPOINT, GetUserSettingsQuery);
       return data.userSettings;
     },
   });
@@ -33,10 +29,7 @@ export function useUpdateUserSettings() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (patch: { themeMode?: string; themePalette?: string }) => {
-      const data = await graphqlRequest<
-        { updateUserSettings: UserSettings },
-        { themeMode?: string; themePalette?: string }
-      >(GRAPHQL_ENDPOINT, UPDATE_USER_SETTINGS_MUTATION, patch);
+      const data = await graphqlRequest(GRAPHQL_ENDPOINT, UpdateUserSettingsMutation, patch);
       return data.updateUserSettings;
     },
     onSuccess: (settings) => {
