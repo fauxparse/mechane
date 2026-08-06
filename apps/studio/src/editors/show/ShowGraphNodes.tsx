@@ -73,9 +73,8 @@ function NodeHeader({ nodeId, data, variant = "node" }: HeaderProps) {
   const { renaming, renameTo, commitRename, cancelRename } = useNodeInteraction();
   const isRenaming = renaming === nodeId;
   const Icon = nodeIcon(data.kind);
-  const dangling = data.variables.filter(
-    (variable) => !data.wiredVariableIds.includes(variable.id),
-  );
+  const wiredVariableIds = new Set(data.wiredVariableIds);
+  const dangling = data.variables.filter((variable) => !wiredVariableIds.has(variable.id));
 
   return (
     <div
@@ -177,6 +176,7 @@ function useDragState(nodeId: string) {
 export function ShowNode({ id, data, selected }: NodeProps<ShowNodeData>) {
   const { targetable, dimmed, variableIds } = useDragState(id);
   const { beginRename } = useNodeInteraction();
+  const wiredVariableIds = new Set(data.wiredVariableIds);
   const hasVariables = data.variables.length > 0;
 
   return (
@@ -192,7 +192,7 @@ export function ShowNode({ id, data, selected }: NodeProps<ShowNodeData>) {
       {hasVariables ? (
         <ul className="flex flex-col pb-2">
           {data.variables.map((variable) => {
-            const wired = data.wiredVariableIds.includes(variable.id);
+            const wired = wiredVariableIds.has(variable.id);
             return (
               <li
                 key={variable.id}

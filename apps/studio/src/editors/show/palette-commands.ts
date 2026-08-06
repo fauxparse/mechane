@@ -65,17 +65,29 @@ export function groupCommands(
   commands: PaletteCommand[],
   query: string,
 ): { scope: CommandScope; label: string; commands: PaletteCommand[] }[] {
-  const matched = commands.filter((command) => matchesQuery(command.label, query));
-  return SCOPE_ORDER.map((scope) => ({
-    scope,
-    label: SCOPE_LABELS[scope],
-    commands: matched.filter((command) => command.scope === scope),
-  })).filter((group) => group.commands.length > 0);
+  const matched = new Map<CommandScope, PaletteCommand[]>();
+  for (const command of commands) {
+    if (!matchesQuery(command.label, query)) continue;
+    const group = matched.get(command.scope);
+    if (group) group.push(command);
+    else matched.set(command.scope, [command]);
+  }
+  return SCOPE_ORDER.reduce<{ scope: CommandScope; label: string; commands: PaletteCommand[] }[]>(
+    (groups, scope) => {
+      const group = matched.get(scope);
+      if (group) groups.push({ scope, label: SCOPE_LABELS[scope], commands: group });
+      return groups;
+    },
+    [],
+  );
 }
 
 /** Every enabled command, in the order shown — what the arrow keys walk. */
 export function enabledCommands(commands: PaletteCommand[], query: string): PaletteCommand[] {
-  return groupCommands(commands, query)
-    .flatMap((group) => group.commands)
-    .filter((command) => !command.disabledReason);
+  return groupCommands(commands, query).reduce<PaletteCommand[]>((enabled, group) => {
+    for (const command of group.commands) {
+      if (!command.disabledReason) enabled.push(command);
+    }
+    return enabled;
+  }, []);
 }
