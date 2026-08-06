@@ -20,10 +20,6 @@ export default {
   // gated. Tighten to "error" once we trust the signal (issue #69).
   blocking: "none",
 
-  // The CLI reports run traces and anonymous usage counters to Sentry by
-  // default; opt out.
-  noScore: true,
-
   ignore: {
     files: [
       "**/routeTree.gen.ts",

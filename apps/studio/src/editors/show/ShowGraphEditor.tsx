@@ -852,6 +852,7 @@ function extractionPositions(nodeIds: string[], rendered: ShowFlowNode[]): Posit
     });
   };
   const isFree = (positions: Position[]) =>
+    positions.length === sizes.length &&
     positions.every((position, index) => {
       const size = sizes[index]!;
       return !obstacles.some((obstacle) => overlaps(position, size, obstacle));
