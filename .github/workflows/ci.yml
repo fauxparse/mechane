@@ -32,3 +32,8 @@ jobs:
         run: |
           pnpm codegen
           git diff --exit-code -- packages/graphql-schema/schema.graphql packages/graphql-schema/src/graphql-env.d.ts
+
+      - name: Check generated app-studio route tree is up to date
+        run: |
+          pnpm --filter @presence/app-studio build
+          git diff --exit-code -- apps/app-studio/src/routeTree.gen.ts

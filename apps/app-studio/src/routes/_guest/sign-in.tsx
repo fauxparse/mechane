@@ -3,19 +3,23 @@
 // since Better Auth's endpoints and the surrounding layout are identical.
 // A polished entry point per PRD.md §7/issue #13: a two-panel layout
 // (brand statement + form Card) instead of a bare centered form.
-// Signed-in visitors never reach this component — the parent `guestRoute`
-// layout's `beforeLoad` (router.tsx, issue #30) redirects them to the
+// Signed-in visitors never reach this component — the parent `_guest`
+// layout's `beforeLoad` (_guest/route.tsx, issue #30) redirects them to the
 // dashboard before it renders.
-import { Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { useSignIn, useSignInWithGoogle, useSignUp } from "../api/auth";
-import { AuthForm } from "../components/AuthForm";
-import type { AuthMode } from "../components/AuthForm";
+import { useSignIn, useSignInWithGoogle, useSignUp } from "../../api/auth";
+import { AuthForm } from "../../components/AuthForm";
+import type { AuthMode } from "../../components/AuthForm";
 
 const GOOGLE_OAUTH_ENABLED = import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === "true";
 
-export function SignInRoute() {
+export const Route = createFileRoute("/_guest/sign-in")({
+  component: SignInRoute,
+});
+
+function SignInRoute() {
   const [mode, setMode] = useState<AuthMode>("sign-in");
   const signIn = useSignIn();
   const signUp = useSignUp();

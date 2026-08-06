@@ -4,13 +4,17 @@
 // someone else resolves to null here rather than leaking its existence.
 import { Button } from "@presence/design-system";
 import { GraphQLRequestError } from "@presence/graphql-schema";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 
-import { useDeleteShow, useRenameShow, useShow } from "../api/shows";
-import { ShowNameForm } from "../components/ShowNameForm";
+import { useDeleteShow, useRenameShow, useShow } from "../../../api/shows";
+import { ShowNameForm } from "../../../components/ShowNameForm";
 
-export function ShowDetailRoute() {
-  const { showId } = useParams({ from: "/_authenticated/shows/$showId" });
+export const Route = createFileRoute("/_authenticated/shows/$showId")({
+  component: ShowDetailRoute,
+});
+
+function ShowDetailRoute() {
+  const { showId } = Route.useParams();
   const navigate = useNavigate();
   const show = useShow(showId);
   const renameShow = useRenameShow();

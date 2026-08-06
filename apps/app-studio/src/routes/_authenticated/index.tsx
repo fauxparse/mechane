@@ -1,20 +1,24 @@
 // The post-login home base ("/", issue #13) — replaces the old bare
 // ShowsListRoute with a proper layout: a header (wordmark, Settings, sign
 // out) around the same Show list/create flow from issue #3. Signed-out
-// visitors never reach this component — the parent `authenticatedRoute`
-// layout's `beforeLoad` (router.tsx, issue #30) redirects them to
-// /sign-in before it renders.
+// visitors never reach this component — the parent `_authenticated`
+// layout's `beforeLoad` (_authenticated/route.tsx, issue #30) redirects
+// them to /sign-in before it renders.
 import { GraphQLRequestError } from "@presence/graphql-schema";
 import { Button, buttonVariants } from "@presence/design-system";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Settings } from "lucide-react";
 
-import { useSignOut } from "../api/auth";
-import { useCreateShow, useDeleteShow, useShows } from "../api/shows";
-import { ShowListItem } from "../components/ShowListItem";
-import { ShowNameForm } from "../components/ShowNameForm";
+import { useSignOut } from "../../api/auth";
+import { useCreateShow, useDeleteShow, useShows } from "../../api/shows";
+import { ShowListItem } from "../../components/ShowListItem";
+import { ShowNameForm } from "../../components/ShowNameForm";
 
-export function DashboardRoute() {
+export const Route = createFileRoute("/_authenticated/")({
+  component: DashboardRoute,
+});
+
+function DashboardRoute() {
   const navigate = useNavigate();
   const shows = useShows();
   const createShow = useCreateShow();
