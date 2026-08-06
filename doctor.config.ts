@@ -2,8 +2,8 @@
 // and in CI. See AGENTS.md § React code quality.
 //
 // Docs: https://react.doctor/docs/configuration/config-files
-// Prefer `pnpm doctor rules explain <rule>` over guessing at a rule's intent,
-// and `pnpm doctor rules disable <rule>` over hand-editing this file.
+// Prefer `pnpm react-doctor rules explain <rule>` over guessing at a rule's intent,
+// and `pnpm react-doctor rules disable <rule>` over hand-editing this file.
 // Typed via `satisfies` rather than react-doctor's `defineConfig`: that helper
 // lives on the `react-doctor/api` subpath, and importing it for real makes the
 // CLI's config loader fail. A type-only import is erased, so this stays typed
@@ -30,16 +30,18 @@ export default {
       "**/graphql-env.d.ts",
       "**/schema.graphql",
       "**/dist/**",
-      "**/storybook-static/**"
+      "**/storybook-static/**",
     ],
 
-    overrides: [{
-      files: ["src/components/ui/**"],
-      rules: ["react-doctor/only-export-components"]
-    }]
+    overrides: [
+      {
+        files: ["src/components/ui/**"],
+        rules: ["react-doctor/only-export-components"],
+      },
+    ],
   },
 
   rules: {
-    "react-doctor/no-autofocus": "off"
-  }
+    "react-doctor/no-autofocus": "off",
+  },
 } satisfies ReactDoctorConfig;

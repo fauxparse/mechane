@@ -13,7 +13,7 @@ Triggers: "why did this rule fire", "I disagree with this rule", "turn this rule
 2. Explain it before changing anything:
 
 ```bash
-pnpm doctor rules explain react-doctor/no-array-index-as-key
+pnpm react-doctor rules explain react-doctor/no-array-index-as-key
 ```
 
 3. Pick the narrowest control that matches the user's intent (see decision guide).
@@ -21,22 +21,22 @@ pnpm doctor rules explain react-doctor/no-array-index-as-key
 5. Validate the change did what they wanted:
 
 ```bash
-pnpm doctor --verbose --diff
+pnpm react-doctor --verbose --diff
 ```
 
 ## Commands
 
 ```bash
-pnpm doctor rules list                         # every rule + its effective severity
-pnpm doctor rules list --configured            # only what your config changed
-pnpm doctor rules list --category Performance   # filter by category
-pnpm doctor rules explain <rule>               # why it matters + how to configure
-pnpm doctor rules disable <rule>               # rule never runs
-pnpm doctor rules enable <rule>                # turn back on at its recommended severity
-pnpm doctor rules set <rule> warn              # off | warn | error
-pnpm doctor rules category "React Native" off   # whole category
-pnpm doctor rules ignore-tag design            # skip a rule family (design, test-noise, …)
-pnpm doctor rules unignore-tag design
+pnpm react-doctor rules list                         # every rule + its effective severity
+pnpm react-doctor rules list --configured            # only what your config changed
+pnpm react-doctor rules list --category Performance   # filter by category
+pnpm react-doctor rules explain <rule>               # why it matters + how to configure
+pnpm react-doctor rules disable <rule>               # rule never runs
+pnpm react-doctor rules enable <rule>                # turn back on at its recommended severity
+pnpm react-doctor rules set <rule> warn              # off | warn | error
+pnpm react-doctor rules category "React Native" off   # whole category
+pnpm react-doctor rules ignore-tag design            # skip a rule family (design, test-noise, …)
+pnpm react-doctor rules unignore-tag design
 ```
 
 Rule references accept the full key (`react-doctor/no-danger`), the bare id (`no-danger`), or a legacy key (`react/no-danger`).
