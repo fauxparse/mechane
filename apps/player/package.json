@@ -10,9 +10,7 @@
   },
   "dependencies": {
     "@mechane/design-system": "workspace:*",
-    "@mechane/domain": "workspace:*",
     "@mechane/graphql-schema": "workspace:*",
-    "@mechane/realtime": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

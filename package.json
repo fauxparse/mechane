@@ -16,11 +16,13 @@
     "lint": "oxlint .",
     "format": "oxfmt .",
     "typecheck": "pnpm -r typecheck",
-    "codegen": "pnpm --filter @mechane/graphql-schema codegen"
+    "codegen": "pnpm --filter @mechane/graphql-schema codegen",
+    "doctor": "react-doctor"
   },
   "devDependencies": {
     "oxfmt": "^0.62.0",
     "oxlint": "^1.77.0",
+    "react-doctor": "^0.9.5",
     "typescript": "^5.9.0",
     "vitest": "^3.2.0"
   },

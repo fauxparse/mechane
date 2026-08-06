@@ -56,6 +56,10 @@ export function useSignUp() {
 }
 
 export function useSignInWithGoogle() {
+  // No cache to invalidate: this hands the browser off to Google and comes
+  // back through `callbackURL` as a fresh page load, so every query is
+  // re-fetched anyway.
+  // react-doctor-disable-next-line react-doctor/query-mutation-missing-invalidation
   return useMutation({
     mutationFn: async () => {
       const { data, error } = await authClient.signIn.social({

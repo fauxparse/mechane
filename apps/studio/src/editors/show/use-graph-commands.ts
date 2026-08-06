@@ -57,8 +57,14 @@ export function useGraphCommands(
 ): GraphCommands {
   // Held in a ref so a caller passing an inline callback doesn't rebuild the
   // stack — the stack is built once, on purpose (see the `useMemo` below).
+  // Written in an effect rather than during render: React may replay or throw
+  // away a render, and a mutation from one that never commits would leak.
+  // Commands only ever dispatch from an event handler, so the ref is always
+  // current by the time `dispatch` reads it.
   const edited = useRef(onEdit);
-  edited.current = onEdit;
+  useEffect(() => {
+    edited.current = onEdit;
+  }, [onEdit]);
   const [graph, setGraph] = useState<ShowGraph>(() => toShowGraph(source));
   // Bumped whenever something changes that isn't visible in `graph` itself —
   // a gesture committing lands an entry without moving the state, and the
@@ -75,6 +81,7 @@ export function useGraphCommands(
     // Deliberately built from the first `source` only: replacing it later is
     // `reset`'s job below, so the stack instance (and the gesture that may be
     // open on it) survives a refetch that changes nothing.
+    // react-doctor-disable-next-line react-doctor/exhaustive-deps
     [],
   );
 
