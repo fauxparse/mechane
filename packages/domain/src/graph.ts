@@ -451,14 +451,79 @@ function assertNoDuplicateEdges(edges: GraphEdge[]): void {
   }
 }
 
+function isPathPrefix(prefix: string[], path: string[]): boolean {
+  return prefix.length <= path.length && prefix.every((segment, index) => segment === path[index]);
+}
+
+/** A target path and one of its descendants cannot both have producers. */
+function assertNoWiringFanIn(edges: GraphEdge[]): void {
+  const wiring = edges.filter((edge): edge is WiringEdge => edge.kind === "wiring");
+  for (let i = 0; i < wiring.length; i += 1) {
+    const left = wiring[i];
+    if (!left) continue;
+    for (let j = i + 1; j < wiring.length; j += 1) {
+      const right = wiring[j];
+      if (!right) continue;
+      if (left.targetId !== right.targetId) continue;
+      if (left.targetPath[0] !== right.targetPath[0]) continue;
+      if (
+        !isPathPrefix(left.targetPath, right.targetPath) &&
+        !isPathPrefix(right.targetPath, left.targetPath)
+      ) {
+        continue;
+      }
+      throw new InvalidShowGraphError(
+        `wiring edges "${left.id}" and "${right.id}" both feed overlapping paths on Variable "${left.targetPath[0]}".`,
+      );
+    }
+  }
+}
+
+function assertOneDriverPerDevice(edges: GraphEdge[]): void {
+  const drivers = new Map<string, string>();
+  for (const edge of edges) {
+    if (edge.kind !== "device") continue;
+    const previous = drivers.get(edge.targetId);
+    if (previous) {
+      throw new InvalidShowGraphError(
+        `Device "${edge.targetId}" has more than one driver (edges "${previous}" and "${edge.id}").`,
+      );
+    }
+    drivers.set(edge.targetId, edge.id);
+  }
+}
+
+function assertNoWiringCycles(edges: GraphEdge[]): void {
+  const outgoing = new Map<string, string[]>();
+  for (const edge of edges) {
+    if (edge.kind !== "wiring") continue;
+    outgoing.set(edge.sourceId, [...(outgoing.get(edge.sourceId) ?? []), edge.targetId]);
+  }
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const visit = (nodeId: string): void => {
+    if (visiting.has(nodeId)) {
+      throw new InvalidShowGraphError(`wiring edges form a cycle at node "${nodeId}".`);
+    }
+    if (visited.has(nodeId)) return;
+    visiting.add(nodeId);
+    for (const targetId of outgoing.get(nodeId) ?? []) visit(targetId);
+    visiting.delete(nodeId);
+    visited.add(nodeId);
+  };
+  for (const nodeId of outgoing.keys()) visit(nodeId);
+}
+
 /**
  * Throws `InvalidShowGraphError` unless `graph` is structurally well-formed:
  * ids unique, nesting legal, every edge endpoint of the right kind and in
  * the right place. Run this before a graph reaches storage, so a malformed
  * graph fails at the boundary rather than as a confusing render later.
  *
- * What this does *not* check: fan-in, wiring cycles, and one-target-per-
- * Device — all connection *rules* owned by issue #24.
+ * Connection rules are checked here as part of the same boundary: a Scene
+ * Variable path has one producer, wiring cannot cycle, and a Device has one
+ * driver. Keeping these checks here means graph writes and drag validation
+ * cannot disagree.
  */
 export function assertValidShowGraph(graph: ShowGraph): ShowGraph {
   const nodes = new Map(graph.nodes.map((node) => [node.id, node]));
@@ -506,6 +571,9 @@ export function assertValidShowGraph(graph: ShowGraph): ShowGraph {
     }
   }
   assertNoDuplicateEdges(graph.edges);
+  assertNoWiringFanIn(graph.edges);
+  assertNoWiringCycles(graph.edges);
+  assertOneDriverPerDevice(graph.edges);
 
   return graph;
 }
