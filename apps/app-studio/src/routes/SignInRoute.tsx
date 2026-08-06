@@ -23,6 +23,13 @@ export function SignInRoute() {
   const signUp = useSignUp();
   const signInWithGoogle = useSignInWithGoogle();
 
+  // Avoids a flash of the sign-in form for an already-signed-in visitor
+  // while the `me` query's first response is in flight (mirrors
+  // DashboardRoute's equivalent check).
+  if (me.isPending) {
+    return <p className="p-6 text-muted-foreground">Loading…</p>;
+  }
+
   // Signed-in visitors hitting /sign-in land on the dashboard instead
   // (issue #13's route-guard requirement) — `<Navigate>` rather than an
   // imperative `navigate()` call so the redirect happens as a render
