@@ -2,6 +2,8 @@
 // Show. `useShow` scopes to the signed-in user server-side (see
 // apps/api/src/graphql/schema.ts's `show` resolver), so an id belonging to
 // someone else resolves to null here rather than leaking its existence.
+import { isId } from "@presence/domain";
+import type { ShowId } from "@presence/domain";
 import { Button } from "@presence/design-system";
 import { GraphQLRequestError } from "@presence/graphql-schema";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -14,17 +16,21 @@ export const Route = createFileRoute("/_authenticated/shows/$showId")({
 });
 
 function ShowDetailRoute() {
-  const { showId } = Route.useParams();
+  const params = Route.useParams();
+  // The one place a Show id arrives from outside the system, so the one
+  // place it gets validated (issue #47). An id that isn't well-formed
+  // can't match any Show, and says so without a round trip.
+  const showId: ShowId | null = isId("show", params.showId) ? params.showId : null;
   const navigate = useNavigate();
   const show = useShow(showId);
   const renameShow = useRenameShow();
   const deleteShow = useDeleteShow();
 
-  if (show.isPending) {
+  if (showId !== null && show.isPending) {
     return <p>Loading…</p>;
   }
 
-  if (show.isError || !show.data) {
+  if (showId === null || show.isError || !show.data) {
     return (
       <main>
         <p role="alert">This Show doesn't exist, or isn't yours.</p>
