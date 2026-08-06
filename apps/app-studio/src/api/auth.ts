@@ -5,26 +5,35 @@
 // mutationFn throws the error itself to fit the rest of the app's
 // "mutation.error" handling (e.g. ShowNameForm's `error` prop).
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 
 import { authClient } from "./auth-client";
 import { meQueryKey } from "./me";
 
 export function useSignIn() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   return useMutation({
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
       const { data, error } = await authClient.signIn.email({ email, password });
       if (error) throw new Error(error.message ?? "Sign in failed.");
       return data;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: meQueryKey });
+    onSuccess: async () => {
+      // Invalidating alone doesn't refetch `me` — nothing subscribes to it
+      // once mounted (the auth guard lives in the router's `beforeLoad`,
+      // issue #30), so the redirect has to come from an explicit
+      // navigation, which re-runs `beforeLoad` against the now-invalidated
+      // query.
+      await queryClient.invalidateQueries({ queryKey: meQueryKey });
+      void navigate({ to: "/" });
     },
   });
 }
 
 export function useSignUp() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   return useMutation({
     mutationFn: async ({
       name,
@@ -39,8 +48,9 @@ export function useSignUp() {
       if (error) throw new Error(error.message ?? "Sign up failed.");
       return data;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: meQueryKey });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: meQueryKey });
+      void navigate({ to: "/" });
     },
   });
 }
@@ -60,13 +70,15 @@ export function useSignInWithGoogle() {
 
 export function useSignOut() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   return useMutation({
     mutationFn: async () => {
       const { error } = await authClient.signOut();
       if (error) throw new Error(error.message ?? "Sign out failed.");
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: meQueryKey });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: meQueryKey });
+      void navigate({ to: "/sign-in" });
     },
   });
 }

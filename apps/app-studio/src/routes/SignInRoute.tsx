@@ -2,41 +2,24 @@
 // between the two modes (AuthForm), rather than two near-identical routes,
 // since Better Auth's endpoints and the surrounding layout are identical.
 // A polished entry point per PRD.md §7/issue #13: a two-panel layout
-// (brand statement + form Card) instead of a bare centered form. Guarded
-// the same way ShowsListRoute/SettingsRoute read auth state — via `useMe`
-// rather than router-level context, matching the codebase's existing
-// pattern — redirecting to the dashboard once a session exists.
-import { Link, Navigate } from "@tanstack/react-router";
+// (brand statement + form Card) instead of a bare centered form.
+// Signed-in visitors never reach this component — the parent `guestRoute`
+// layout's `beforeLoad` (router.tsx, issue #30) redirects them to the
+// dashboard before it renders.
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { useSignIn, useSignInWithGoogle, useSignUp } from "../api/auth";
-import { useMe } from "../api/me";
 import { AuthForm } from "../components/AuthForm";
 import type { AuthMode } from "../components/AuthForm";
 
 const GOOGLE_OAUTH_ENABLED = import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === "true";
 
 export function SignInRoute() {
-  const me = useMe();
   const [mode, setMode] = useState<AuthMode>("sign-in");
   const signIn = useSignIn();
   const signUp = useSignUp();
   const signInWithGoogle = useSignInWithGoogle();
-
-  // Avoids a flash of the sign-in form for an already-signed-in visitor
-  // while the `me` query's first response is in flight (mirrors
-  // DashboardRoute's equivalent check).
-  if (me.isPending) {
-    return <p className="p-6 text-muted-foreground">Loading…</p>;
-  }
-
-  // Signed-in visitors hitting /sign-in land on the dashboard instead
-  // (issue #13's route-guard requirement) — `<Navigate>` rather than an
-  // imperative `navigate()` call so the redirect happens as a render
-  // result, not a side effect during render.
-  if (me.data) {
-    return <Navigate to="/" replace />;
-  }
 
   const activeMutation = mode === "sign-in" ? signIn : signUp;
 
