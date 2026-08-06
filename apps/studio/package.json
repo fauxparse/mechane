@@ -17,12 +17,12 @@
     "@mechane/graphql-schema": "workspace:*",
     "@tanstack/react-query": "^5.90.0",
     "@tanstack/react-router": "^1.150.0",
+    "@xyflow/react": "^12.11.2",
     "better-auth": "^1.6.26",
     "es-toolkit": "^1.50.0",
     "lucide-react": "^1.28.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "reactflow": "^11.11.4"
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@storybook/react-vite": "^10.5.6",

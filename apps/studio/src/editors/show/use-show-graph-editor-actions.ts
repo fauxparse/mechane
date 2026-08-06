@@ -1,10 +1,10 @@
 import { moveNode } from "@mechane/commands";
 import type { GraphNode, NodeKind, Position } from "@mechane/domain";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import type { Connection, FitViewOptions, XYPosition } from "reactflow";
+import type { Connection, FitViewOptions, OnNodeDrag, XYPosition } from "@xyflow/react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 
-import { FLOW_CONTENT_ORIGIN, FLOW_NODE_TYPE, NODE_WIDTH } from "./graph-to-flow";
+import { absolutePosition, FLOW_CONTENT_ORIGIN, FLOW_NODE_TYPE, NODE_WIDTH } from "./graph-to-flow";
 import type { ShowFlowNode } from "./graph-to-flow";
 import { composite } from "@mechane/commands";
 import { useCallback, useRef } from "react";
@@ -29,11 +29,13 @@ interface Options {
   selectedNodes: GraphNode[];
   selectedNodeIds: string[];
   selectedEdgeIds: string[];
-  getNodes: ReturnType<typeof import("reactflow").useReactFlow>["getNodes"];
-  getZoom: ReturnType<typeof import("reactflow").useReactFlow>["getZoom"];
-  setCenter: ReturnType<typeof import("reactflow").useReactFlow>["setCenter"];
-  fitView: ReturnType<typeof import("reactflow").useReactFlow>["fitView"];
-  project: ReturnType<typeof import("reactflow").useReactFlow>["project"];
+  getNodes: ReturnType<typeof import("@xyflow/react").useReactFlow>["getNodes"];
+  getZoom: ReturnType<typeof import("@xyflow/react").useReactFlow>["getZoom"];
+  setCenter: ReturnType<typeof import("@xyflow/react").useReactFlow>["setCenter"];
+  fitView: ReturnType<typeof import("@xyflow/react").useReactFlow>["fitView"];
+  screenToFlowPosition: ReturnType<
+    typeof import("@xyflow/react").useReactFlow
+  >["screenToFlowPosition"];
   say(text: string): void;
   setPendingDelete: Dispatch<SetStateAction<DeletionScope | null>>;
   dragging: MutableRefObject<boolean>;
@@ -51,7 +53,7 @@ export function useShowGraphEditorActions({
   getZoom,
   setCenter,
   fitView,
-  project,
+  screenToFlowPosition,
   say,
   setPendingDelete,
   dragging,
@@ -75,7 +77,7 @@ export function useShowGraphEditorActions({
       // A mixed-scope selection can't be dragged coherently (#36): React Flow
       // pins nested children to their Flow, so top-level members would move
       // freely while nested ones clamped, silently deforming the selection.
-      const parents = new Set(moved.map((node) => node.parentNode ?? null));
+      const parents = new Set(moved.map((node) => node.parentId ?? null));
       if (parents.size > 1) return;
       dragGesture.current?.update(
         moveComposite(moved.map((node) => ({ id: node.id, position: node.position }))),
@@ -84,8 +86,8 @@ export function useShowGraphEditorActions({
     [dragGesture],
   );
 
-  const endDrag = useCallback(
-    (_event: ReactMouseEvent, _node: ShowFlowNode, moved: ShowFlowNode[]) => {
+  const endDrag: OnNodeDrag<ShowFlowNode> = useCallback(
+    (_event, _node, moved: ShowFlowNode[]) => {
       dragTo(moved);
       dragging.current = false;
       dragGesture.current?.commit();
@@ -150,16 +152,22 @@ export function useShowGraphEditorActions({
 
   /** Where a palette-created node goes: near the selection, else viewport centre (#27). */
   const centreOfView = useCallback((): Position => {
-    const selected = (getNodes() as ShowFlowNode[]).filter((node) => node.selected);
+    const rendered = getNodes() as ShowFlowNode[];
+    const selected = rendered.filter((node) => node.selected);
     if (selected.length > 0) {
       const first = selected[0] as ShowFlowNode;
-      const position = first.positionAbsolute ?? first.position;
+      const position = absolutePosition(first, new Map(rendered.map((node) => [node.id, node])));
       return { x: position.x + NODE_WIDTH + 48, y: position.y };
     }
     const bounds = document.querySelector(".mechane-show-graph")?.getBoundingClientRect();
     if (!bounds) return { x: 0, y: 0 };
-    return project({ x: bounds.width / 2 - NODE_WIDTH / 2, y: bounds.height / 2 });
-  }, [getNodes, project]);
+    // `screenToFlowPosition` reads screen coordinates, so the pane's own
+    // origin goes back in — v11's `project` took them pane-relative.
+    return screenToFlowPosition({
+      x: bounds.left + bounds.width / 2 - NODE_WIDTH / 2,
+      y: bounds.top + bounds.height / 2,
+    });
+  }, [getNodes, screenToFlowPosition]);
 
   // ---------------------------------------------------------------------------
   // Deleting

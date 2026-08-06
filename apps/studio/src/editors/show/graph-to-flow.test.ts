@@ -194,8 +194,8 @@ describe("graphToFlow", () => {
         ],
         edges: [],
       });
-      expect(nodes.find((n) => n.id === "scene_1")?.parentNode).toBe("flow_1");
-      expect(nodes.find((n) => n.id === "flow_1")?.parentNode).toBeUndefined();
+      expect(nodes.find((n) => n.id === "scene_1")?.parentId).toBe("flow_1");
+      expect(nodes.find((n) => n.id === "flow_1")?.parentId).toBeUndefined();
     });
 
     // React Flow v11 drops a child whose parent it hasn't seen yet.

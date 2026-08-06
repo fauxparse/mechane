@@ -59,7 +59,8 @@ import type {
   SetStateAction,
   MouseEvent as ReactMouseEvent,
 } from "react";
-import ReactFlow, {
+import {
+  ReactFlow,
   Background,
   BackgroundVariant,
   Controls,
@@ -70,15 +71,16 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
   useReactFlow,
-} from "reactflow";
-import type { Connection, FitViewOptions, XYPosition } from "reactflow";
+} from "@xyflow/react";
+import type { Connection, FitViewOptions, OnNodeDrag, XYPosition } from "@xyflow/react";
 
-import "reactflow/dist/style.css";
+import "@xyflow/react/dist/style.css";
 import "./show-graph-editor.css";
 
 import { CommandPalette } from "./CommandPalette";
 import { GraphInspector } from "./GraphInspector";
 import {
+  absolutePosition,
   FLOW_CONTENT_ORIGIN,
   FLOW_NODE_TYPE,
   graphToFlow,
@@ -183,7 +185,7 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
   }, []);
   const [nodes, setNodes, onNodesChange] = useNodesState(drawn.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(drawn.edges);
-  const { fitView, getNodes, getZoom, setCenter, screenToFlowPosition, project } = useReactFlow();
+  const { fitView, getNodes, getZoom, setCenter, screenToFlowPosition } = useReactFlow();
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<DeletionScope | null>(null);
@@ -218,9 +220,10 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
       // state update commits, so wait one frame before asking it for the new
       // Flow's absolute position.
       window.requestAnimationFrame(() => {
-        const target = getNodes().find((node) => node.id === focusId);
+        const rendered = getNodes() as ShowFlowNode[];
+        const target = rendered.find((node) => node.id === focusId);
         if (!target) return;
-        const position = target.positionAbsolute ?? target.position;
+        const position = absolutePosition(target, new Map(rendered.map((node) => [node.id, node])));
         const width = Number(target.style?.width ?? NODE_WIDTH);
         const height = Number(target.style?.height ?? NODE_HEIGHT);
         setCenter(position.x + width / 2, position.y + height / 2, {
@@ -297,7 +300,7 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
     getZoom,
     setCenter,
     fitView,
-    project,
+    screenToFlowPosition,
     say,
     setPendingDelete,
     dragging,
@@ -438,7 +441,7 @@ interface ShowGraphContextMenuProps {
   onEdgesChange: ReturnType<typeof useEdgesState<ShowFlowEdge>>[2];
   beginDrag(): void;
   dragTo(moved: ShowFlowNode[]): void;
-  endDrag(event: ReactMouseEvent, node: ShowFlowNode, moved: ShowFlowNode[]): void;
+  endDrag: OnNodeDrag<ShowFlowNode>;
   editing: ReturnType<typeof useGraphEditing>;
   onConnect(connection: Connection): void;
   isValidConnection(connection: Connection | ShowFlowEdge): boolean;
@@ -817,12 +820,12 @@ function extractionPositions(nodeIds: string[], rendered: ShowFlowNode[]): Posit
   if (orderedSelected.length === 0) return nodeIds.map(() => ({ x: 0, y: 0 }));
 
   const origin = {
-    x: Math.min(...orderedSelected.map((node) => (node.positionAbsolute ?? node.position).x)),
-    y: Math.min(...orderedSelected.map((node) => (node.positionAbsolute ?? node.position).y)),
+    x: Math.min(...orderedSelected.map((node) => absolutePosition(node, renderedById).x)),
+    y: Math.min(...orderedSelected.map((node) => absolutePosition(node, renderedById).y)),
   };
   const obstacles = rendered.reduce<ReturnType<typeof rectangleFor>[]>((obstacles, node) => {
     if (!nodeIdSet.has(node.id)) {
-      obstacles.push(rectangleFor(node, node.positionAbsolute ?? node.position));
+      obstacles.push(rectangleFor(node, absolutePosition(node, renderedById)));
     }
     return obstacles;
   }, []);

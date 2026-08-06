@@ -26,11 +26,11 @@
 import { cn } from "@mechane/design-system";
 import { ChevronDown, ChevronRight, House, TriangleAlert } from "lucide-react";
 import { useLayoutEffect, useRef } from "react";
-import { Handle, Position, useStore } from "reactflow";
-import type { NodeProps } from "reactflow";
+import { Handle, Position, useConnection } from "@xyflow/react";
+import type { NodeProps } from "@xyflow/react";
 
 import { INPUT_HANDLE, OUTPUT_HANDLE, VARIABLE_ROW_HEIGHT } from "./graph-to-flow";
-import type { ShowNodeData } from "./graph-to-flow";
+import type { ShowFlowNode as ShowFlowNodeType, ShowNodeData } from "./graph-to-flow";
 import { nodeIcon, NODE_KIND_META } from "./node-kinds";
 import { useNodeInteraction } from "./node-interaction";
 
@@ -161,7 +161,9 @@ function useDragState(nodeId: string) {
   const { targets, connecting } = useNodeInteraction();
   // React Flow knows when a connection is in flight; the *targets* are the
   // domain's answer (`connectionTargets`), gathered at drag start.
-  const connectionNodeId = useStore((state) => state.connectionNodeId);
+  const connectionNodeId = useConnection((connection) =>
+    connection.inProgress ? connection.fromNode.id : null,
+  );
   const inFlight = connecting || connectionNodeId !== null;
   const targetable = inFlight && (targets?.nodeIds.has(nodeId) ?? false);
   return {
@@ -173,7 +175,7 @@ function useDragState(nodeId: string) {
   };
 }
 
-export function ShowNode({ id, data, selected }: NodeProps<ShowNodeData>) {
+export function ShowNode({ id, data, selected }: NodeProps<ShowFlowNodeType>) {
   const { targetable, dimmed, variableIds } = useDragState(id);
   const { beginRename } = useNodeInteraction();
   const wiredVariableIds = new Set(data.wiredVariableIds);
@@ -252,7 +254,7 @@ export function ShowNode({ id, data, selected }: NodeProps<ShowNodeData>) {
  * entirely (#28), and the title bar is deliberately the same shape either way
  * so collapsing reads as the node shrinking rather than becoming a new thing.
  */
-export function ShowFlowNode({ id, data, selected }: NodeProps<ShowNodeData>) {
+export function ShowFlowNode({ id, data, selected }: NodeProps<ShowFlowNodeType>) {
   const { targetable, dimmed } = useDragState(id);
   const { beginRename, toggleCollapse } = useNodeInteraction();
 
