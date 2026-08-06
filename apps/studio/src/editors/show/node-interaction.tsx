@@ -25,6 +25,8 @@ export interface NodeInteraction {
   connecting: boolean;
   /** What that drag may land on (`connectionTargets`), or null when idle. */
   targets: ConnectionTargets | null;
+  /** Toggles a Flow's local collapsed view state; not an edit command. */
+  toggleCollapse(flowId: string): void;
 }
 
 const IDLE: NodeInteraction = {
@@ -35,6 +37,7 @@ const IDLE: NodeInteraction = {
   cancelRename: () => {},
   connecting: false,
   targets: null,
+  toggleCollapse: () => {},
 };
 
 const NodeInteractionContext = createContext<NodeInteraction>(IDLE);

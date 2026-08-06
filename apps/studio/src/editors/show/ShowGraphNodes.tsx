@@ -24,7 +24,7 @@
 // Inline rename lives in the node (double-click, or F2) because the name is
 // the node's own text (#27); everything fuller is the inspector's.
 import { cn } from "@mechane/design-system";
-import { House, TriangleAlert } from "lucide-react";
+import { ChevronDown, ChevronRight, House, TriangleAlert } from "lucide-react";
 import { useLayoutEffect, useRef } from "react";
 import { Handle, Position, useStore } from "reactflow";
 import type { NodeProps } from "reactflow";
@@ -254,7 +254,7 @@ export function ShowNode({ id, data, selected }: NodeProps<ShowNodeData>) {
  */
 export function ShowFlowNode({ id, data, selected }: NodeProps<ShowNodeData>) {
   const { targetable, dimmed } = useDragState(id);
-  const { beginRename } = useNodeInteraction();
+  const { beginRename, toggleCollapse } = useNodeInteraction();
 
   return (
     <div
@@ -279,7 +279,26 @@ export function ShowFlowNode({ id, data, selected }: NodeProps<ShowNodeData>) {
       aria-label={`Flow: ${data.name}`}
     >
       <div className="border-b border-border/60 bg-card/40">
-        <NodeHeader nodeId={id} data={data} variant="flow" />
+        <div className="flex items-center">
+          <button
+            type="button"
+            className="nodrag nopan shrink-0 p-1 text-muted-foreground hover:text-foreground"
+            aria-label={data.collapsed ? `Expand Flow ${data.name}` : `Collapse Flow ${data.name}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              toggleCollapse(id);
+            }}
+          >
+            {data.collapsed ? (
+              <ChevronRight className="size-3.5" />
+            ) : (
+              <ChevronDown className="size-3.5" />
+            )}
+          </button>
+          <div className="min-w-0 flex-1">
+            <NodeHeader nodeId={id} data={data} variant="flow" />
+          </div>
+        </div>
       </div>
       <Handle
         id={INPUT_HANDLE}

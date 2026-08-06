@@ -72,7 +72,13 @@ import "./show-graph-editor.css";
 
 import { CommandPalette } from "./CommandPalette";
 import { GraphInspector } from "./GraphInspector";
-import { FLOW_NODE_TYPE, graphToFlow, NODE_WIDTH, PLACEHOLDER_NODE_TYPE } from "./graph-to-flow";
+import {
+  FLOW_CONTENT_ORIGIN,
+  FLOW_NODE_TYPE,
+  graphToFlow,
+  NODE_WIDTH,
+  PLACEHOLDER_NODE_TYPE,
+} from "./graph-to-flow";
 import type { ShowFlowNode } from "./graph-to-flow";
 import { NodeInteractionProvider } from "./node-interaction";
 import { CREATABLE_KINDS, NODE_KIND_META } from "./node-kinds";
@@ -133,7 +139,21 @@ export interface ShowGraphEditorProps {
 function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditorProps) {
   const editing = useGraphEditing(graph, onEdit);
   const { commands } = editing;
-  const drawn = useMemo(() => graphToFlow(editing.graph), [editing.graph]);
+  // Collapse is deliberately local view state (#44): it never enters the
+  // graph, command stack, persistence, or undo history.
+  const [collapsedFlowIds, setCollapsedFlowIds] = useState<Set<string>>(() => new Set());
+  const drawn = useMemo(
+    () => graphToFlow(editing.graph, { collapsedFlowIds }),
+    [collapsedFlowIds, editing.graph],
+  );
+  const toggleCollapse = useCallback((flowId: string) => {
+    setCollapsedFlowIds((current) => {
+      const next = new Set(current);
+      if (next.has(flowId)) next.delete(flowId);
+      else next.add(flowId);
+      return next;
+    });
+  }, []);
   const [nodes, setNodes, onNodesChange] = useNodesState(drawn.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(drawn.edges);
   const { fitView, getNodes, getZoom, setCenter, screenToFlowPosition, project } = useReactFlow();
@@ -486,6 +506,34 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
         run: renameSelected,
       },
       {
+        id: "promote",
+        label: "Promote into selected Flow",
+        scope: "selection",
+        disabledReason:
+          selectedNodes.length === 2 &&
+          selectedNodes.some((node) => node.kind === "flow") &&
+          selectedNodes.some((node) => node.kind !== "flow" && node.parentId === null)
+            ? undefined
+            : "select a top-level node and a Flow",
+        run: () => {
+          const flow = selectedNodes.find((node) => node.kind === "flow");
+          const node = selectedNodes.find((candidate) => candidate.kind !== "flow");
+          if (flow && node) editing.promote(node.id, flow.id, FLOW_CONTENT_ORIGIN);
+        },
+      },
+      {
+        id: "extract",
+        label: "Extract from Flow",
+        scope: "selection",
+        disabledReason: single?.parentId ? undefined : "select one Flow-local node first",
+        run: () => {
+          if (single?.parentId) {
+            const reason = editing.extract(single.id, extractionPosition(single.id, nodes));
+            if (reason) say(reason);
+          }
+        },
+      },
+      {
         id: "add-variable",
         label: "Add Variable to Scene",
         scope: "selection",
@@ -514,9 +562,11 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
     fitView,
     renameSelected,
     requestDelete,
+    say,
     selectAll,
     selectedEdgeIds.length,
     selectedNodes,
+    nodes,
     zoomToSelection,
   ]);
 
@@ -529,8 +579,9 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
       cancelRename: editing.cancelRename,
       connecting: editing.connecting,
       targets: editing.targets,
+      toggleCollapse,
     }),
-    [editing],
+    [editing, toggleCollapse],
   );
 
   return (
@@ -695,6 +746,55 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
  * one entry in the gesture rather than three, which keeps the undo entry a
  * description of the gesture rather than of its parts (#28, #36).
  */
+/**
+ * Finds a top-level landing spot for palette extraction. React Flow stores a
+ * child position relative to its parent, so `positionAbsolute` preserves the
+ * Scene's apparent place while the search moves it just far enough away from
+ * every other rendered node and Flow.
+ */
+function extractionPosition(nodeId: string, rendered: ShowFlowNode[]): Position {
+  const source = rendered.find((node) => node.id === nodeId);
+  if (!source) return { x: 0, y: 0 };
+  const origin = source.positionAbsolute ?? source.position;
+  const width = NODE_WIDTH;
+  const height = Number(source.style?.height ?? 56);
+  const obstacles = rendered
+    .filter((node) => node.id !== nodeId)
+    .map((node) => {
+      const position = node.positionAbsolute ?? node.position;
+      return {
+        left: position.x,
+        top: position.y,
+        right: position.x + Number(node.style?.width ?? NODE_WIDTH),
+        bottom: position.y + Number(node.style?.height ?? 56),
+      };
+    });
+  const overlaps = (left: number, top: number) =>
+    obstacles.some(
+      (obstacle) =>
+        left < obstacle.right &&
+        left + width > obstacle.left &&
+        top < obstacle.bottom &&
+        top + height > obstacle.top,
+    );
+  if (!overlaps(origin.x, origin.y)) return { x: origin.x, y: origin.y };
+
+  // Search rings in canvas coordinates. The first free candidate is the
+  // closest one in this deterministic order, which keeps extraction stable.
+  for (let radius = 1; radius <= 40; radius += 1) {
+    const distance = radius * 32;
+    const candidates = [
+      { x: origin.x + distance, y: origin.y },
+      { x: origin.x - distance, y: origin.y },
+      { x: origin.x, y: origin.y + distance },
+      { x: origin.x, y: origin.y - distance },
+    ];
+    const free = candidates.find((candidate) => !overlaps(candidate.x, candidate.y));
+    if (free) return free;
+  }
+  return { x: origin.x + 32, y: origin.y + 32 };
+}
+
 function moveComposite(moved: { id: string; position: Position }[]) {
   return composite({
     label: "Move",
