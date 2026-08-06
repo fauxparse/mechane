@@ -17,7 +17,7 @@
     "format": "oxfmt .",
     "typecheck": "pnpm -r typecheck",
     "codegen": "pnpm --filter @mechane/graphql-schema codegen",
-    "doctor": "react-doctor"
+    "react-doctor": "react-doctor"
   },
   "devDependencies": {
     "oxfmt": "^0.62.0",

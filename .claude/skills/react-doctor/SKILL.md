@@ -8,19 +8,21 @@ version: "1.2.0"
 
 Scans React codebases for security, performance, correctness, and architecture issues. Outputs a 0–100 health score.
 
+In this repo it runs as `pnpm react-doctor` — the pinned dev dependency. Never `pnpm doctor`: that is pnpm's own built-in environment check and has nothing to do with React.
+
 ## After making React code changes:
 
-Run `pnpm doctor --verbose --scope changed` and check the score did not regress.
+Run `pnpm react-doctor --verbose --scope changed` and check the score did not regress.
 
 If the score dropped, fix the regressions before committing.
 
 ## For general cleanup or code improvement:
 
-Run `pnpm doctor --verbose` (the default `--scope full`) to scan the full codebase. Fix issues by severity — errors first, then warnings.
+Run `pnpm react-doctor --verbose` (the default `--scope full`) to scan the full codebase. Fix issues by severity — errors first, then warnings.
 
 ## For a focused UI design audit:
 
-Run `pnpm doctor design --verbose`. This selects only design-tagged UI composition, typography, interaction, accessibility, and motion rules, including focused rules that remain opt-in during a general health scan.
+Run `pnpm react-doctor design --verbose`. This selects only design-tagged UI composition, typography, interaction, accessibility, and motion rules, including focused rules that remain opt-in during a general health scan.
 
 ## /doctor — full local triage workflow
 
@@ -38,12 +40,12 @@ Pair it with the matching per-rule prompts at `https://www.react.doctor/prompts/
 
 ## Configuring or explaining rules
 
-When the user wants to understand a rule, disagrees with one, or wants to disable / tune which rules run (not fix code), read [references/explain.md](references/explain.md) and follow it. Start with `pnpm doctor rules explain <rule>`, then apply the narrowest control via `pnpm doctor rules disable|set|category|ignore-tag …`, which edits your `doctor.config.*` (or `package.json#reactDoctor`).
+When the user wants to understand a rule, disagrees with one, or wants to disable / tune which rules run (not fix code), read [references/explain.md](references/explain.md) and follow it. Start with `pnpm react-doctor rules explain <rule>`, then apply the narrowest control via `pnpm react-doctor rules disable|set|category|ignore-tag …`, which edits your `doctor.config.*` (or `package.json#reactDoctor`).
 
 ## Command
 
 ```bash
-pnpm doctor --verbose --scope changed
+pnpm react-doctor --verbose --scope changed
 ```
 
 | Flag              | Purpose                                                          |
