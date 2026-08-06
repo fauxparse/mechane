@@ -9,6 +9,8 @@
 //   ./command        what a Command is, and how one produces its inverse
 //   ./stack          the undo/redo stack, including open gestures
 //   ./graph-commands the primitive Show-graph commands built on both
+//   ./graph-cascade  what one user-facing delete is made of (#42)
 export * from "./command";
+export * from "./graph-cascade";
 export * from "./graph-commands";
 export * from "./stack";

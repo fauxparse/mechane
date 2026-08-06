@@ -11,11 +11,11 @@
 // rebasing it, because an inverse captured against the old graph has no
 // honest meaning against a new one.
 //
-// Persistence is *not* wired here. `saveShowGraph` and the mutation surface
-// belong to the CRUD slice (#42); this slice makes the edits and their
-// inverses, and leaves the `dispatch` seam on `CommandStack` for #42 to
-// attach the server to. Undo will travel that same seam as an ordinary
-// forward command when it does.
+// Persistence rides the stack's `dispatch` seam (#42): `onEdit` is called with
+// the graph every landed command produced — including the ones an undo
+// produced, because an undo *is* an ordinary forward command (ADR-0005). One
+// path to the server, whichever direction the edit came from. Debouncing is the
+// caller's business; this hook reports every edit as it happens.
 import { CommandStack } from "@presence/commands";
 import type { Gesture, ShowGraphCommand } from "@presence/commands";
 import type { ShowGraph } from "@presence/domain";
@@ -51,7 +51,14 @@ export interface GraphCommands {
  * `source` is the graph as the API returned it, or null while it's loading.
  * A new `source` object replaces the graph and clears the history.
  */
-export function useGraphCommands(source: ApiGraph | null | undefined): GraphCommands {
+export function useGraphCommands(
+  source: ApiGraph | null | undefined,
+  onEdit?: (graph: ShowGraph) => void,
+): GraphCommands {
+  // Held in a ref so a caller passing an inline callback doesn't rebuild the
+  // stack — the stack is built once, on purpose (see the `useMemo` below).
+  const edited = useRef(onEdit);
+  edited.current = onEdit;
   const [graph, setGraph] = useState<ShowGraph>(() => toShowGraph(source));
   // Bumped whenever something changes that isn't visible in `graph` itself —
   // a gesture committing lands an entry without moving the state, and the
@@ -59,7 +66,12 @@ export function useGraphCommands(source: ApiGraph | null | undefined): GraphComm
   const [, setRevision] = useState(0);
 
   const stack = useMemo(
-    () => new CommandStack<ShowGraph>({ state: toShowGraph(source), onChange: setGraph }),
+    () =>
+      new CommandStack<ShowGraph>({
+        state: toShowGraph(source),
+        onChange: setGraph,
+        dispatch: (_command, next) => edited.current?.(next),
+      }),
     // Deliberately built from the first `source` only: replacing it later is
     // `reset`'s job below, so the stack instance (and the gesture that may be
     // open on it) survives a refetch that changes nothing.
