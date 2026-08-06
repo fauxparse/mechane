@@ -15,6 +15,7 @@ import { composite } from "./command";
 import {
   addEdge,
   addNode,
+  createFlowWithNodes,
   moveNode,
   removeEdge,
   removeNode,
@@ -194,6 +195,30 @@ describe("renameNode", () => {
 
   it("changes nothing when the name is unchanged", () => {
     expect(renameNode(TALLY.id, TALLY.name).apply(GRAPH).inverse.isEmpty).toBe(true);
+  });
+});
+
+describe("createFlowWithNodes", () => {
+  it("creates a Flow and promotes its selection as one undo", () => {
+    const flow: FlowNode = {
+      id: "flow_new",
+      kind: "flow",
+      name: "New Flow",
+      position: { x: 300, y: 100 },
+      parentId: null,
+      defaultSceneId: null,
+    };
+    const command = createFlowWithNodes(GRAPH, flow, [LOBBY.id, TALLY.id], { x: 24, y: 60 });
+    const stack = new CommandStack({ state: GRAPH });
+    stack.execute(command);
+    expect(stack.depth).toBe(1);
+    expect(stack.state.nodes.find((node) => node.id === LOBBY.id)?.parentId).toBe(flow.id);
+    expect(stack.state.nodes.find((node) => node.id === TALLY.id)?.parentId).toBe(flow.id);
+    expect((stack.state.nodes.find((node) => node.id === flow.id) as FlowNode).defaultSceneId).toBe(
+      LOBBY.id,
+    );
+    expect(stack.undo()).toBe(true);
+    expect(stack.state).toEqual(GRAPH);
   });
 });
 

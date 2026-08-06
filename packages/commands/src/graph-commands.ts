@@ -131,6 +131,22 @@ export function addNode(node: GraphNode, label = `Add ${node.kind}`): ShowGraphC
   });
 }
 
+/** Creates a Flow and optionally puts eligible existing nodes inside it. */
+export function createFlowWithNodes(
+  graph: ShowGraph,
+  flow: GraphNode,
+  nodeIds: string[],
+  childOrigin: Position,
+): ShowGraphCommand {
+  if (flow.kind !== "flow") throw new InvalidReparentError("Only a Flow can contain nodes.");
+  const graphWithFlow = { ...graph, nodes: [...graph.nodes, flow] };
+  const commands: ShowGraphCommand[] = [addNode(flow, "Create Flow")];
+  if (nodeIds.length > 0) {
+    commands.push(promoteNodes(graphWithFlow, nodeIds, flow.id, childOrigin));
+  }
+  return composite({ label: "Create Flow", commands });
+}
+
 /** Everything one node's removal destroyed, captured as it happened (#28). */
 interface RemovedNode {
   index: number;

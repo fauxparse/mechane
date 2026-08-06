@@ -11,6 +11,7 @@
 import {
   addEdge,
   addNode,
+  createFlowWithNodes,
   addSceneVariable,
   deleteGraphElements,
   deletionScope,
@@ -45,6 +46,7 @@ export interface GraphEditing {
 
   /** Creates a node of `kind` at `position` (flow coordinates), and returns it. */
   createNodeOfKind(kind: NodeKind, position: Position, parentId?: string | null): GraphNode;
+  createFlowWithNodes(nodeIds: string[], position: Position, childOrigin: Position): GraphNode;
 
   /** The node being renamed inline, if any. */
   renaming: string | null;
@@ -110,6 +112,15 @@ export function useGraphEditing(
       return node;
     },
     [execute],
+  );
+
+  const createFlowWithSelection = useCallback(
+    (nodeIds: string[], position: Position, childOrigin: Position) => {
+      const flow = createNode("flow", position);
+      execute(createFlowWithNodes(graph, flow, nodeIds, childOrigin));
+      return flow;
+    },
+    [execute, graph],
   );
 
   // Renaming is a gesture, so N keystrokes are one undo entry (#28). The
@@ -245,6 +256,7 @@ export function useGraphEditing(
     commands,
     graph,
     createNodeOfKind,
+    createFlowWithNodes: createFlowWithSelection,
     renaming,
     beginRename,
     renameTo,
