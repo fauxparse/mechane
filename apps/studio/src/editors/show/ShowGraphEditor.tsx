@@ -28,7 +28,7 @@
 //   - **A drag's valid targets are the domain's answer** (`connectionTargets`),
 //     computed once at drag start; the affordance itself is #35's dashed
 //     outline plus dimming, painted by ./ShowGraphNodes.
-import { composite, describeDeletion, moveNode } from "@mechane/commands";
+import { describeDeletion } from "@mechane/commands";
 import type { DeletionScope } from "@mechane/commands";
 import {
   AlertDialog,
@@ -52,7 +52,13 @@ import {
 import type { GraphNode, NodeKind, Position, ShowGraph } from "@mechane/domain";
 import { Maximize2, Pencil, Plus, Redo2, Trash2, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import type { MouseEvent as ReactMouseEvent, Ref } from "react";
+import type {
+  Dispatch,
+  MutableRefObject,
+  Ref,
+  SetStateAction,
+  MouseEvent as ReactMouseEvent,
+} from "react";
 import ReactFlow, {
   Background,
   BackgroundVariant,
@@ -80,7 +86,7 @@ import {
   NODE_WIDTH,
   PLACEHOLDER_NODE_TYPE,
 } from "./graph-to-flow";
-import type { ShowFlowNode } from "./graph-to-flow";
+import type { ShowFlowEdge, ShowFlowNode } from "./graph-to-flow";
 import { NodeInteractionProvider } from "./node-interaction";
 import { CREATABLE_KINDS, NODE_KIND_META } from "./node-kinds";
 import { ShowFlowNode as FlowNodeBody, ShowNode } from "./ShowGraphNodes";
@@ -88,6 +94,7 @@ import { useEditorKeys } from "./use-editor-keys";
 import { useGraphEditing } from "./use-graph-editing";
 import { useUndoKeys } from "./use-undo-keys";
 import { useViewportKeys } from "./use-viewport-keys";
+import { useShowGraphEditorActions } from "./use-show-graph-editor-actions";
 import type { ApiGraph } from "./api-graph";
 import type { PaletteCommand } from "./palette-commands";
 
@@ -267,194 +274,36 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
     [editing.graph.nodes, selectedNodeIdSet],
   );
 
-  // ---------------------------------------------------------------------------
-  // Moving
-  // ---------------------------------------------------------------------------
-
-  const { beginGesture } = commands;
-  const dragGesture = useRef<ReturnType<typeof beginGesture> | null>(null);
-
-  const beginDrag = useCallback(() => {
-    dragging.current = true;
-    dragGesture.current = beginGesture({ key: "drag", label: "Move" });
-  }, [beginGesture]);
-
-  const dragTo = useCallback((moved: ShowFlowNode[]) => {
-    // A mixed-scope selection can't be dragged coherently (#36): React Flow
-    // pins nested children to their Flow, so top-level members would move
-    // freely while nested ones clamped, silently deforming the selection.
-    const parents = new Set(moved.map((node) => node.parentNode ?? null));
-    if (parents.size > 1) return;
-    dragGesture.current?.update(
-      moveComposite(moved.map((node) => ({ id: node.id, position: node.position }))),
-    );
-  }, []);
-
-  const endDrag = useCallback(
-    (_event: ReactMouseEvent, _node: ShowFlowNode, moved: ShowFlowNode[]) => {
-      dragTo(moved);
-      dragging.current = false;
-      dragGesture.current?.commit();
-      dragGesture.current = null;
-    },
-    [dragTo],
-  );
-
-  // ---------------------------------------------------------------------------
-  // Creating
-  // ---------------------------------------------------------------------------
-
-  /**
-   * The Flow a point lands inside, if any — so a node created by right-clicking
-   * within a Flow's boundary belongs to that Flow. Containment *is* placement
-   * (#29), so this is the whole of "created inside a Flow".
-   */
-  const flowAt = useCallback(
-    (point: Position): ShowFlowNode | null =>
-      getNodes().find((node) => {
-        if (node.type !== FLOW_NODE_TYPE) return false;
-        const width = Number(node.style?.width ?? NODE_WIDTH);
-        const height = Number(node.style?.height ?? 0);
-        return (
-          point.x >= node.position.x &&
-          point.x <= node.position.x + width &&
-          point.y >= node.position.y &&
-          point.y <= node.position.y + height
-        );
-      }) ?? null,
-    [getNodes],
-  );
-
-  const create = useCallback(
-    (kind: NodeKind, at: Position) => {
-      // Creating a Flow over the current selection is one command: create the
-      // container, then promote only eligible top-level content into it.
-      if (kind === "flow") {
-        const nodeIds = selectedNodes.reduce<string[]>((ids, node) => {
-          if (node.parentId === null && node.kind !== "device" && node.kind !== "flow") {
-            ids.push(node.id);
-          }
-          return ids;
-        }, []);
-        const node = editing.createFlowWithNodes(nodeIds, at, FLOW_CONTENT_ORIGIN);
-        selectOnArrival.current = node.id;
-        focusOnArrival.current = node.id;
-        return node;
-      }
-      const flow = kind === "device" ? null : flowAt(at);
-      // A nested node's position is relative to its Flow (#29), which is
-      // exactly how React Flow reads it too.
-      const position = flow ? { x: at.x - flow.position.x, y: at.y - flow.position.y } : at;
-      // A freshly created node becomes the selection, so the inspector opens on
-      // it and F2 renames it without a click first.
-      const node = editing.createNodeOfKind(kind, position, flow?.id ?? null);
-      selectOnArrival.current = node.id;
-      return node;
-    },
-    [editing, flowAt, selectedNodes],
-  );
-
-  /** Where a palette-created node goes: near the selection, else viewport centre (#27). */
-  const centreOfView = useCallback((): Position => {
-    const selected = getNodes().filter((node) => node.selected);
-    if (selected.length > 0) {
-      const first = selected[0] as ShowFlowNode;
-      const position = first.positionAbsolute ?? first.position;
-      return { x: position.x + NODE_WIDTH + 48, y: position.y };
-    }
-    const bounds = document.querySelector(".mechane-show-graph")?.getBoundingClientRect();
-    if (!bounds) return { x: 0, y: 0 };
-    return project({ x: bounds.width / 2 - NODE_WIDTH / 2, y: bounds.height / 2 });
-  }, [getNodes, project]);
-
-  // ---------------------------------------------------------------------------
-  // Deleting
-  // ---------------------------------------------------------------------------
-
-  const requestDelete = useCallback(() => {
-    const scope = editing.scopeOf(selectedNodeIds, selectedEdgeIds);
-    if (scope.nodes.length === 0 && scope.edgeIds.length === 0) return;
-    // Undo is the safety net for everything except a non-empty Flow, whose
-    // blast radius earns an interruption — once, for the whole selection
-    // (#27, #36).
-    if (scope.needsConfirmation) {
-      setPendingDelete(scope);
-      return;
-    }
-    editing.deleteElements(selectedNodeIds, selectedEdgeIds);
-  }, [editing, selectedEdgeIds, selectedNodeIds]);
-
-  const confirmDelete = useCallback(() => {
-    setPendingDelete(null);
-    editing.deleteElements(selectedNodeIds, selectedEdgeIds);
-  }, [editing, selectedEdgeIds, selectedNodeIds]);
-
-  // ---------------------------------------------------------------------------
-  // Connecting
-  // ---------------------------------------------------------------------------
-
-  const onConnect = useCallback(
-    (connection: Connection) => {
-      if (!connection.source || !connection.target) return;
-      const reason = editing.connect({
-        source: connection.source,
-        target: connection.target,
-        targetHandle: connection.targetHandle,
-      });
-      if (reason) say(reason);
-    },
-    [editing, say],
-  );
-
-  const isValidConnection = useCallback(
-    (connection: Connection) =>
-      Boolean(
-        connection.source &&
-        connection.target &&
-        editing.canDrop({
-          source: connection.source,
-          target: connection.target,
-          targetHandle: connection.targetHandle,
-        }),
-      ),
-    [editing],
-  );
-
-  // ---------------------------------------------------------------------------
-  // Camera
-  // ---------------------------------------------------------------------------
-
-  const fitToNodes = useCallback(
-    (nodeIds: string[]) => {
-      const wanted = new Set(nodeIds);
-      // `fitView` wants nodes, not ids, and silently frames *everything* if
-      // handed an empty list — which is the opposite of what a caller asking
-      // for a specific set wants, so an empty match moves nothing.
-      const targets = getNodes().filter((node) => wanted.has(node.id));
-      if (targets.length === 0) return;
-      fitView({ ...FIT_VIEW_OPTIONS, nodes: targets });
-    },
-    [fitView, getNodes],
-  );
-
-  const zoomToSelection = useCallback(() => {
-    const selected = getNodes().filter((node) => node.selected);
-    if (selected.length === 0) return false;
-    fitView({ ...FIT_VIEW_OPTIONS, nodes: selected });
-    return true;
-  }, [fitView, getNodes]);
-
-  // Click-to-jump (#21). `pannable` only buys *dragging* the minimap; a
-  // click does nothing until it's wired, and clicking where you want to be
-  // is the whole reason an overview map earns its corner of the screen.
-  const jumpToMinimapPoint = useCallback(
-    (_event: ReactMouseEvent, position: XYPosition) => {
-      // Same zoom, new centre: a jump is a change of *place*, and having it
-      // also change scale would lose the director's place twice over.
-      setCenter(position.x, position.y, { zoom: getZoom(), duration: 200 });
-    },
-    [getZoom, setCenter],
-  );
+  const {
+    beginDrag,
+    dragTo,
+    endDrag,
+    create,
+    centreOfView,
+    requestDelete,
+    confirmDelete,
+    onConnect,
+    isValidConnection,
+    fitToNodes,
+    zoomToSelection,
+    jumpToMinimapPoint,
+  } = useShowGraphEditorActions({
+    editing,
+    commands,
+    selectedNodes,
+    selectedNodeIds,
+    selectedEdgeIds,
+    getNodes,
+    getZoom,
+    setCenter,
+    fitView,
+    project,
+    say,
+    setPendingDelete,
+    dragging,
+    selectOnArrival,
+    focusOnArrival,
+  });
 
   useImperativeHandle(
     ref,
@@ -503,7 +352,321 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
     ),
   );
 
-  const paletteCommands = useMemo<PaletteCommand[]>(() => {
+  const paletteCommands = useShowGraphEditorPalette({
+    commands,
+    selectedNodes,
+    selectedEdgeIds,
+    create,
+    centreOfView,
+    selectAll,
+    fitView,
+    zoomToSelection,
+    renameSelected,
+    editing,
+    say,
+    requestDelete,
+    nodes,
+  });
+
+  const interaction = useMemo(
+    () => ({
+      renaming: editing.renaming,
+      beginRename: editing.beginRename,
+      renameTo: editing.renameTo,
+      commitRename: editing.commitRename,
+      cancelRename: editing.cancelRename,
+      connecting: editing.connecting,
+      targets: editing.targets,
+      toggleCollapse,
+    }),
+    [editing, toggleCollapse],
+  );
+
+  return (
+    <NodeInteractionProvider value={interaction}>
+      {/* `mechane-show-graph` is what ./show-graph-editor.css hangs its
+          overrides off, so they can't leak into another React Flow instance. */}
+      <div className={cn("mechane-show-graph relative h-full w-full bg-background", className)}>
+        <ShowGraphContextMenu
+          menuPosition={menuPosition}
+          screenToFlowPosition={screenToFlowPosition}
+          create={create}
+          fitView={fitView}
+          selectedNodeIds={selectedNodeIds}
+          selectedEdgeIds={selectedEdgeIds}
+          requestDelete={requestDelete}
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          beginDrag={beginDrag}
+          dragTo={dragTo}
+          endDrag={endDrag}
+          editing={editing}
+          onConnect={onConnect}
+          isValidConnection={(connection) => isValidConnection(connection as Connection)}
+          jumpToMinimapPoint={jumpToMinimapPoint}
+        />
+
+        <ShowGraphEditorOverlays
+          selectedNodes={selectedNodes}
+          editing={editing}
+          message={message}
+          paletteOpen={paletteOpen}
+          setPaletteOpen={setPaletteOpen}
+          paletteCommands={paletteCommands}
+          pendingDelete={pendingDelete}
+          setPendingDelete={setPendingDelete}
+          confirmDelete={confirmDelete}
+        />
+      </div>
+    </NodeInteractionProvider>
+  );
+}
+
+interface ShowGraphContextMenuProps {
+  menuPosition: MutableRefObject<Position>;
+  screenToFlowPosition: ReturnType<typeof useReactFlow>["screenToFlowPosition"];
+  create(kind: NodeKind, at: Position): unknown;
+  fitView(options: FitViewOptions): void;
+  selectedNodeIds: string[];
+  selectedEdgeIds: string[];
+  requestDelete(): void;
+  nodes: ShowFlowNode[];
+  edges: ShowFlowEdge[];
+  onNodesChange: ReturnType<typeof useNodesState<ShowFlowNode>>[2];
+  onEdgesChange: ReturnType<typeof useEdgesState<ShowFlowEdge>>[2];
+  beginDrag(): void;
+  dragTo(moved: ShowFlowNode[]): void;
+  endDrag(event: ReactMouseEvent, node: ShowFlowNode, moved: ShowFlowNode[]): void;
+  editing: ReturnType<typeof useGraphEditing>;
+  onConnect(connection: Connection): void;
+  isValidConnection(connection: Connection | ShowFlowEdge): boolean;
+  jumpToMinimapPoint(event: ReactMouseEvent, position: XYPosition): void;
+}
+
+function ShowGraphContextMenu({
+  menuPosition,
+  screenToFlowPosition,
+  create,
+  fitView,
+  selectedNodeIds,
+  selectedEdgeIds,
+  requestDelete,
+  nodes,
+  edges,
+  onNodesChange,
+  onEdgesChange,
+  beginDrag,
+  dragTo,
+  endDrag,
+  editing,
+  onConnect,
+  isValidConnection,
+  jumpToMinimapPoint,
+}: ShowGraphContextMenuProps) {
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger
+        className="h-full w-full"
+        onContextMenu={(event) => {
+          // The menu opens at the pointer; a node created from it lands
+          // exactly there (#27), so the click is converted to flow
+          // coordinates before React Flow's own transform moves on.
+          menuPosition.current = screenToFlowPosition({
+            x: event.clientX,
+            y: event.clientY,
+          });
+        }}
+      >
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          // The three halves of the drag gesture: open it, feed it each
+          // frame, and land the whole thing as one undo entry (#28).
+          onNodeDragStart={beginDrag}
+          onNodeDrag={(_event, _node, moved) => dragTo(moved)}
+          onNodeDragStop={endDrag}
+          onConnectStart={(_event, { nodeId }) => nodeId && editing.beginConnect(nodeId)}
+          onConnectEnd={editing.endConnect}
+          onConnect={onConnect}
+          isValidConnection={(connection) => isValidConnection(connection as Connection)}
+          // Deletion goes through a Command instead (see the header note).
+          deleteKeyCode={null}
+          // A box-select takes only what it fully encloses (#36).
+          selectionMode={SelectionMode.Full}
+          // Match Figma's canvas gestures (#57): an unmodified drag selects,
+          // while holding Space temporarily enables panning.
+          selectionKeyCode={null}
+          selectionOnDrag
+          panActivationKeyCode="Space"
+          panOnDrag={false}
+          // Plain wheel input scrolls the canvas; React Flow switches back
+          // to its zoom handler while the platform zoom activation key is
+          // held (Cmd on macOS, Ctrl on Windows/Linux).
+          panOnScroll
+          panOnScrollMode={PanOnScrollMode.Free}
+          zoomOnScroll
+          minZoom={MIN_ZOOM}
+          maxZoom={MAX_ZOOM}
+          fitView
+          fitViewOptions={FIT_VIEW_OPTIONS}
+          proOptions={{ hideAttribution: true }}
+          aria-label="Show graph"
+        >
+          <Background variant={BackgroundVariant.Dots} gap={24} size={1} />
+
+          {/* Both restyled in ./show-graph-editor.css — React Flow ships
+                  them with hardcoded near-white chrome. */}
+          <Controls fitViewOptions={FIT_VIEW_OPTIONS} />
+          <MiniMap pannable zoomable onClick={jumpToMinimapPoint} ariaLabel="Show graph minimap" />
+        </ReactFlow>
+      </ContextMenuTrigger>
+
+      <ContextMenuContent>
+        <ContextMenuGroup>
+          <ContextMenuLabel>Canvas</ContextMenuLabel>
+        </ContextMenuGroup>
+        <ContextMenuSubmenu>
+          <ContextMenuSubmenuTrigger>
+            <Plus /> Create
+          </ContextMenuSubmenuTrigger>
+          <ContextMenuSubmenuContent>
+            {CREATABLE_KINDS.map((kind) => {
+              const meta = NODE_KIND_META[kind];
+              const Icon = meta.icon;
+              return (
+                <ContextMenuItem key={kind} onClick={() => create(kind, menuPosition.current)}>
+                  <Icon /> {meta.label}
+                </ContextMenuItem>
+              );
+            })}
+          </ContextMenuSubmenuContent>
+        </ContextMenuSubmenu>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={() => fitView(FIT_VIEW_OPTIONS)}>
+          <Maximize2 /> Fit whole Show
+        </ContextMenuItem>
+        <ContextMenuItem
+          disabled={selectedNodeIds.length === 0 && selectedEdgeIds.length === 0}
+          variant="destructive"
+          onClick={requestDelete}
+        >
+          <Trash2 /> Delete selection
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}
+
+interface ShowGraphEditorOverlaysProps {
+  selectedNodes: GraphNode[];
+  editing: ReturnType<typeof useGraphEditing>;
+  message: string | null;
+  paletteOpen: boolean;
+  setPaletteOpen: Dispatch<SetStateAction<boolean>>;
+  paletteCommands: PaletteCommand[];
+  pendingDelete: DeletionScope | null;
+  setPendingDelete: Dispatch<SetStateAction<DeletionScope | null>>;
+  confirmDelete(): void;
+}
+
+function ShowGraphEditorOverlays({
+  selectedNodes,
+  editing,
+  message,
+  paletteOpen,
+  setPaletteOpen,
+  paletteCommands,
+  pendingDelete,
+  setPendingDelete,
+  confirmDelete,
+}: ShowGraphEditorOverlaysProps) {
+  return (
+    <>
+      {/* Floats over the canvas rather than taking layout from it, so the
+    graph doesn't reflow when a selection appears. */}
+      <div className="pointer-events-none absolute inset-y-4 right-4 flex max-h-full flex-col items-end">
+        <GraphInspector selected={selectedNodes} editing={editing} className="max-h-full" />
+      </div>
+
+      {message ? (
+        <p
+          role="status"
+          aria-live="polite"
+          className="absolute inset-x-0 bottom-6 mx-auto w-fit rounded-full border border-border bg-card px-4 py-1.5 text-sm text-card-foreground shadow-lg"
+        >
+          {message}
+        </p>
+      ) : null}
+
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} commands={paletteCommands} />
+
+      {/* The one deletion worth interrupting for (#27), asked once for the
+            whole selection however many Flows it contains (#36). */}
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogTitle>
+            {pendingDelete && pendingDelete.nonEmptyFlows.length === 1
+              ? `Delete “${pendingDelete.nonEmptyFlows[0]?.name}”?`
+              : "Delete these Flows?"}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {pendingDelete ? `This deletes ${describeDeletion(pendingDelete)}.` : ""} You can undo
+            it.
+          </AlertDialogDescription>
+          <AlertDialogFooter>
+            <Button variant="ghost" onClick={() => setPendingDelete(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Delete
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+type PaletteOptions = {
+  commands: ReturnType<typeof useGraphEditing>["commands"];
+  selectedNodes: GraphNode[];
+  selectedEdgeIds: string[];
+  create(kind: NodeKind, at: Position): unknown;
+  centreOfView(): Position;
+  selectAll(): void;
+  fitView(options: FitViewOptions): void;
+  zoomToSelection(): void;
+  renameSelected(): void;
+  editing: ReturnType<typeof useGraphEditing>;
+  say(text: string): void;
+  requestDelete(): void;
+  nodes: ShowFlowNode[];
+};
+
+function useShowGraphEditorPalette({
+  commands,
+  selectedNodes,
+  selectedEdgeIds,
+  create,
+  centreOfView,
+  selectAll,
+  fitView,
+  zoomToSelection,
+  renameSelected,
+  editing,
+  say,
+  requestDelete,
+  nodes,
+}: PaletteOptions): PaletteCommand[] {
+  return useMemo<PaletteCommand[]>(() => {
     const single = selectedNodes.length === 1 ? (selectedNodes[0] as GraphNode) : null;
     const nothingSelected = selectedNodes.length === 0 && selectedEdgeIds.length === 0;
     return [
@@ -629,183 +792,8 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
     nodes,
     zoomToSelection,
   ]);
-
-  const interaction = useMemo(
-    () => ({
-      renaming: editing.renaming,
-      beginRename: editing.beginRename,
-      renameTo: editing.renameTo,
-      commitRename: editing.commitRename,
-      cancelRename: editing.cancelRename,
-      connecting: editing.connecting,
-      targets: editing.targets,
-      toggleCollapse,
-    }),
-    [editing, toggleCollapse],
-  );
-
-  return (
-    <NodeInteractionProvider value={interaction}>
-      {/* `mechane-show-graph` is what ./show-graph-editor.css hangs its
-          overrides off, so they can't leak into another React Flow instance. */}
-      <div className={cn("mechane-show-graph relative h-full w-full bg-background", className)}>
-        <ContextMenu>
-          <ContextMenuTrigger
-            className="h-full w-full"
-            onContextMenu={(event) => {
-              // The menu opens at the pointer; a node created from it lands
-              // exactly there (#27), so the click is converted to flow
-              // coordinates before React Flow's own transform moves on.
-              menuPosition.current = screenToFlowPosition({
-                x: event.clientX,
-                y: event.clientY,
-              });
-            }}
-          >
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              nodeTypes={nodeTypes}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              // The three halves of the drag gesture: open it, feed it each
-              // frame, and land the whole thing as one undo entry (#28).
-              onNodeDragStart={beginDrag}
-              onNodeDrag={(_event, _node, moved) => dragTo(moved)}
-              onNodeDragStop={endDrag}
-              onConnectStart={(_event, { nodeId }) => nodeId && editing.beginConnect(nodeId)}
-              onConnectEnd={editing.endConnect}
-              onConnect={onConnect}
-              isValidConnection={isValidConnection}
-              // Deletion goes through a Command instead (see the header note).
-              deleteKeyCode={null}
-              // A box-select takes only what it fully encloses (#36).
-              selectionMode={SelectionMode.Full}
-              // Match Figma's canvas gestures (#57): an unmodified drag selects,
-              // while holding Space temporarily enables panning.
-              selectionKeyCode={null}
-              selectionOnDrag
-              panActivationKeyCode="Space"
-              panOnDrag={false}
-              // Plain wheel input scrolls the canvas; React Flow switches back
-              // to its zoom handler while the platform zoom activation key is
-              // held (Cmd on macOS, Ctrl on Windows/Linux).
-              panOnScroll
-              panOnScrollMode={PanOnScrollMode.Free}
-              zoomOnScroll
-              minZoom={MIN_ZOOM}
-              maxZoom={MAX_ZOOM}
-              fitView
-              fitViewOptions={FIT_VIEW_OPTIONS}
-              proOptions={{ hideAttribution: true }}
-              aria-label="Show graph"
-            >
-              <Background variant={BackgroundVariant.Dots} gap={24} size={1} />
-
-              {/* Both restyled in ./show-graph-editor.css — React Flow ships
-                  them with hardcoded near-white chrome. */}
-              <Controls fitViewOptions={FIT_VIEW_OPTIONS} />
-              <MiniMap
-                pannable
-                zoomable
-                onClick={jumpToMinimapPoint}
-                ariaLabel="Show graph minimap"
-              />
-            </ReactFlow>
-          </ContextMenuTrigger>
-
-          <ContextMenuContent>
-            <ContextMenuGroup>
-              <ContextMenuLabel>Canvas</ContextMenuLabel>
-            </ContextMenuGroup>
-            <ContextMenuSubmenu>
-              <ContextMenuSubmenuTrigger>
-                <Plus /> Create
-              </ContextMenuSubmenuTrigger>
-              <ContextMenuSubmenuContent>
-                {CREATABLE_KINDS.map((kind) => {
-                  const meta = NODE_KIND_META[kind];
-                  const Icon = meta.icon;
-                  return (
-                    <ContextMenuItem key={kind} onClick={() => create(kind, menuPosition.current)}>
-                      <Icon /> {meta.label}
-                    </ContextMenuItem>
-                  );
-                })}
-              </ContextMenuSubmenuContent>
-            </ContextMenuSubmenu>
-            <ContextMenuSeparator />
-            <ContextMenuItem onClick={() => fitView(FIT_VIEW_OPTIONS)}>
-              <Maximize2 /> Fit whole Show
-            </ContextMenuItem>
-            <ContextMenuItem
-              disabled={selectedNodeIds.length === 0 && selectedEdgeIds.length === 0}
-              variant="destructive"
-              onClick={requestDelete}
-            >
-              <Trash2 /> Delete selection
-            </ContextMenuItem>
-          </ContextMenuContent>
-        </ContextMenu>
-
-        {/* Floats over the canvas rather than taking layout from it, so the
-            graph doesn't reflow when a selection appears. */}
-        <div className="pointer-events-none absolute inset-y-4 right-4 flex max-h-full flex-col items-end">
-          <GraphInspector selected={selectedNodes} editing={editing} className="max-h-full" />
-        </div>
-
-        {message ? (
-          <p
-            role="status"
-            aria-live="polite"
-            className="absolute inset-x-0 bottom-6 mx-auto w-fit rounded-full border border-border bg-card px-4 py-1.5 text-sm text-card-foreground shadow-lg"
-          >
-            {message}
-          </p>
-        ) : null}
-
-        <CommandPalette
-          open={paletteOpen}
-          onOpenChange={setPaletteOpen}
-          commands={paletteCommands}
-        />
-
-        {/* The one deletion worth interrupting for (#27), asked once for the
-            whole selection however many Flows it contains (#36). */}
-        <AlertDialog
-          open={pendingDelete !== null}
-          onOpenChange={(open) => !open && setPendingDelete(null)}
-        >
-          <AlertDialogContent>
-            <AlertDialogTitle>
-              {pendingDelete && pendingDelete.nonEmptyFlows.length === 1
-                ? `Delete “${pendingDelete.nonEmptyFlows[0]?.name}”?`
-                : "Delete these Flows?"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingDelete ? `This deletes ${describeDeletion(pendingDelete)}.` : ""} You can undo
-              it.
-            </AlertDialogDescription>
-            <AlertDialogFooter>
-              <Button variant="ghost" onClick={() => setPendingDelete(null)}>
-                Cancel
-              </Button>
-              <Button variant="destructive" onClick={confirmDelete}>
-                Delete
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-    </NodeInteractionProvider>
-  );
 }
 
-/**
- * One frame of a drag, as one command: moving three selected nodes together is
- * one entry in the gesture rather than three, which keeps the undo entry a
- * description of the gesture rather than of its parts (#28, #36).
- */
 /**
  * Finds a top-level landing spot for palette extraction. React Flow stores a
  * child position relative to its parent, so `positionAbsolute` preserves the
@@ -897,15 +885,6 @@ function overlaps(
     position.y < obstacle.bottom &&
     position.y + size.height > obstacle.top
   );
-}
-
-function moveComposite(moved: { id: string; position: Position }[]) {
-  return composite({
-    label: "Move",
-    // A child's React Flow position is relative to its Flow, which is already
-    // how the domain stores it (#29) — no conversion needed.
-    commands: moved.map((node) => moveNode(node.id, node.position)),
-  });
 }
 
 /**
