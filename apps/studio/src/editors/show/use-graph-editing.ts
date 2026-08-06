@@ -17,6 +17,8 @@ import {
   removeSceneVariable,
   renameNode,
   renameSceneVariable,
+  promoteNode,
+  extractNode,
 } from "@mechane/commands";
 import type { Gesture } from "@mechane/commands";
 import { connectionEdge, connectionError, connectionTargets, generateId } from "@mechane/domain";
@@ -70,6 +72,9 @@ export interface GraphEditing {
   addVariable(sceneId: string): void;
   renameVariable(sceneId: string, variableId: string, name: string): void;
   removeVariable(sceneId: string, variableId: string): void;
+  /** Structural Flow moves; collapse is intentionally not part of this API. */
+  promote(nodeId: string, flowId: string, position: Position): void;
+  extract(nodeId: string, position: Position): string | null;
 }
 
 /**
@@ -217,6 +222,25 @@ export function useGraphEditing(
     [execute],
   );
 
+  const promote = useCallback(
+    (nodeId: string, flowId: string, position: Position) => {
+      execute(promoteNode(graph, nodeId, flowId, position));
+    },
+    [execute, graph],
+  );
+
+  const extract = useCallback(
+    (nodeId: string, position: Position) => {
+      try {
+        execute(extractNode(graph, nodeId, position));
+        return null;
+      } catch (error) {
+        return error instanceof Error ? error.message : "That node cannot be extracted.";
+      }
+    },
+    [execute, graph],
+  );
+
   return {
     commands,
     graph,
@@ -237,6 +261,8 @@ export function useGraphEditing(
     addVariable,
     renameVariable,
     removeVariable,
+    promote,
+    extract,
   };
 }
 
