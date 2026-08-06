@@ -22,10 +22,42 @@
 //
 // Node bodies are deliberately placeholders: issue #40 is about the camera,
 // and the visual language is #35's.
-import { isNodeKind } from "@presence/domain";
-import type { NodeKind } from "@presence/domain";
-import type { ShowGraph, ShowGraphEdge, ShowGraphNode } from "@presence/graphql-schema";
+//
+// The input types are structural rather than named (see `MappableNode`),
+// because the editor now holds the *domain* graph so that commands can act on
+// it (#41), while a freshly fetched graph is still the wire shape. Both draw
+// the same way, and neither has to be converted just to be rendered.
+import { isEdgeKind, isNodeKind } from "@presence/domain";
+import type { EdgeKind, NodeKind, Position } from "@presence/domain";
 import type { Edge, Node } from "reactflow";
+
+/**
+ * A node as this mapper needs it described. Structural rather than named, so
+ * both the wire shape (`@presence/graphql-schema`'s `ShowGraphNode`, where
+ * every kind's fields are present and nullable) and the domain's
+ * discriminated union (where a Source simply has no `defaultSceneId`) satisfy
+ * it. The editor holds the domain shape (#41); a freshly fetched graph is
+ * still the wire shape until ./api-graph converts it.
+ */
+export interface MappableNode {
+  id: string;
+  kind: string;
+  name: string;
+  position: Position;
+  parentId?: string | null;
+  defaultSceneId?: string | null;
+  variables?: readonly { id: string; name: string }[] | null;
+}
+
+export interface MappableEdge {
+  id: string;
+  kind: string;
+  sourceId: string;
+  targetId: string;
+  targetPath?: readonly string[] | null;
+  /** The wire shape resolves this for the client; the domain reads it off the path. */
+  targetVariableId?: string | null;
+}
 
 /**
  * Placeholder node geometry. React Flow measures rendered nodes itself, but
@@ -52,7 +84,7 @@ export interface ShowNodeData {
 }
 
 export interface ShowEdgeData {
-  kind: ShowGraphEdge["kind"];
+  kind: EdgeKind;
   /**
    * The Scene Variable a wiring edge feeds — `targetPath[0]`, kept here
    * until nodes grow per-Variable handles (#35).
@@ -69,7 +101,7 @@ export const PLACEHOLDER_NODE_TYPE = "showNode";
 /** The React Flow node type a Flow renders as: a sized container. */
 export const FLOW_NODE_TYPE = "showFlow";
 
-function nodeKindOf(node: ShowGraphNode): NodeKind {
+function nodeKindOf(node: MappableNode): NodeKind {
   // The API types `kind` as a string, so this is the boundary that turns it
   // back into the closed set the domain defines. A graph that gained a kind
   // this build doesn't know about should say so, not render as a blank box.
@@ -87,7 +119,7 @@ function nodeKindOf(node: ShowGraphNode): NodeKind {
  * A childless Flow still gets one node's worth of room, so an empty Flow
  * reads as an empty container rather than as a collapsed sliver.
  */
-export function flowSize(children: ShowGraphNode[]): { width: number; height: number } {
+export function flowSize(children: readonly MappableNode[]): { width: number; height: number } {
   const right = children.reduce((max, child) => Math.max(max, child.position.x + NODE_WIDTH), 0);
   const bottom = children.reduce((max, child) => Math.max(max, child.position.y + NODE_HEIGHT), 0);
   return {
@@ -96,7 +128,7 @@ export function flowSize(children: ShowGraphNode[]): { width: number; height: nu
   };
 }
 
-function toFlowNode(node: ShowGraphNode, children: ShowGraphNode[]): ShowFlowNode {
+function toFlowNode(node: MappableNode, children: readonly MappableNode[]): ShowFlowNode {
   const kind = nodeKindOf(node);
   const isFlow = kind === "flow";
   return {
@@ -114,20 +146,26 @@ function toFlowNode(node: ShowGraphNode, children: ShowGraphNode[]): ShowFlowNod
     data: {
       kind,
       name: node.name,
-      variables: node.variables ?? [],
+      variables: [...(node.variables ?? [])],
       defaultSceneId: node.defaultSceneId ?? null,
     },
   };
 }
 
-function toFlowEdge(edge: ShowGraphEdge): ShowFlowEdge {
+function toFlowEdge(edge: MappableEdge): ShowFlowEdge {
+  if (!isEdgeKind(edge.kind)) {
+    throw new Error(`Unknown Show graph edge kind "${edge.kind}" on edge "${edge.id}".`);
+  }
   return {
     id: edge.id,
     source: edge.sourceId,
     target: edge.targetId,
     data: {
       kind: edge.kind,
-      targetVariableId: edge.targetVariableId ?? null,
+      // The wire shape resolves the Variable for the client; the domain shape
+      // carries it as the head of the target path (`wiringTargetVariableId`),
+      // so read whichever one is there.
+      targetVariableId: edge.targetVariableId ?? edge.targetPath?.[0] ?? null,
     },
   };
 }
@@ -137,13 +175,15 @@ function toFlowEdge(edge: ShowGraphEdge): ShowFlowEdge {
  * requires a parent to appear before its children, and sorting here means
  * no caller has to remember that.
  */
-export function graphToFlow(graph: Pick<ShowGraph, "nodes" | "edges"> | null | undefined): {
+export function graphToFlow(
+  graph: { nodes: readonly MappableNode[]; edges: readonly MappableEdge[] } | null | undefined,
+): {
   nodes: ShowFlowNode[];
   edges: ShowFlowEdge[];
 } {
   if (!graph) return { nodes: [], edges: [] };
 
-  const childrenByParent = new Map<string, ShowGraphNode[]>();
+  const childrenByParent = new Map<string, MappableNode[]>();
   for (const node of graph.nodes) {
     if (!node.parentId) continue;
     const siblings = childrenByParent.get(node.parentId);

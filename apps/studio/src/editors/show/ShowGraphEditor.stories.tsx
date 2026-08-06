@@ -29,6 +29,24 @@ type Story = StoryObj<typeof ShowGraphEditor>;
  */
 export const Default: Story = {};
 
+/**
+ * Undo/redo (#41). Drag a node — however far, through however many frames —
+ * and press Cmd+Z (Ctrl+Z on Windows): the node returns to where the drag
+ * started, in **one** press, because a whole gesture is one undo entry (#28).
+ * Shift+Cmd+Z puts it back.
+ *
+ * Two things worth trying, because both are decisions rather than accidents:
+ *
+ *   - Box-select several nodes (Shift+drag) and drag them together — that's
+ *     still one entry, not one per node.
+ *   - Click a node and release without moving it. Nothing lands on the stack,
+ *     so the next Cmd+Z reaches the edit before it.
+ *
+ * Nothing is saved: persistence arrives with the CRUD slice (#42), which
+ * attaches to the command stack's `dispatch` seam.
+ */
+export const UndoRedo: Story = {};
+
 /** A Show nobody has drawn on yet — valid and unremarkable (#25). */
 export const EmptyShow: Story = {
   args: { graph: { nodes: [], edges: [] } },

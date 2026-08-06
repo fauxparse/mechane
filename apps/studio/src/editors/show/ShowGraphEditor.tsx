@@ -16,13 +16,21 @@
 //     prototype), so ./show-graph-editor.css is load-bearing, not polish.
 //   - Drag pans, Shift+drag box-selects: React Flow's default, kept.
 //
-// Node positions are local state: dragging a node moves it for this session
-// and is not saved, because the graph-mutation slice hasn't landed. Nodes
-// stay draggable anyway — a graph whose nodes are nailed down can't be used
-// to judge the camera, and "a focused node moves itself with the arrows"
-// (PRD §6.3) is exactly what the pan rule has to defer to.
+// Node positions are session-local: dragging a node moves it and lands an
+// undo entry, but nothing is saved server-side — the mutation surface belongs
+// to the CRUD slice (#42), which attaches to the `dispatch` seam on the
+// command stack. Nodes stay draggable regardless: "a focused node moves
+// itself with the arrows" (PRD §6.3) is exactly what the pan rule defers to.
+//
+// Every position change goes through a Command (issue #41) rather than
+// straight into React Flow's state, which is what makes Cmd+Z work here at
+// all — and a whole drag is *one* entry, not one per frame (#28), because the
+// drag runs inside a gesture that only lands when the mouse comes up.
+import { composite, moveNode } from "@presence/commands";
+import type { Gesture } from "@presence/commands";
 import { cn } from "@presence/design-system";
-import { useCallback, useEffect, useImperativeHandle, useMemo } from "react";
+import type { ShowGraph } from "@presence/domain";
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import type { MouseEvent as ReactMouseEvent, Ref } from "react";
 import ReactFlow, {
   Background,
@@ -39,9 +47,12 @@ import type { FitViewOptions, XYPosition } from "reactflow";
 import "reactflow/dist/style.css";
 import "./show-graph-editor.css";
 
+import type { ApiGraph } from "./api-graph";
 import { FLOW_NODE_TYPE, graphToFlow, PLACEHOLDER_NODE_TYPE } from "./graph-to-flow";
 import type { ShowFlowNode } from "./graph-to-flow";
 import { ShowFlowNode as FlowNodeBody, ShowNode } from "./ShowGraphNodes";
+import { useGraphCommands } from "./use-graph-commands";
+import { useUndoKeys } from "./use-undo-keys";
 import { useViewportKeys } from "./use-viewport-keys";
 
 /** Widened from React Flow's 0.5 default so a whole Show fits on screen (#21). */
@@ -76,27 +87,83 @@ export interface ShowGraphEditorHandle {
 }
 
 export interface ShowGraphEditorProps {
-  /** The graph to draw, or null while it's still loading. */
-  graph: Parameters<typeof graphToFlow>[0];
+  /** The graph as the API returned it, or null while it's still loading. */
+  graph: ApiGraph | null | undefined;
   className?: string;
   ref?: Ref<ShowGraphEditorHandle>;
 }
 
 function ShowGraphEditorInner({ graph, className, ref }: ShowGraphEditorProps) {
-  const initial = useMemo(() => graphToFlow(graph), [graph]);
-  const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges);
+  // The editable graph and its undo history. Everything drawn below is
+  // derived from `commands.graph`, so an undo redraws for the same reason an
+  // edit does — there's one source of truth, not two that have to agree.
+  const commands = useGraphCommands(graph);
+  const drawn = useMemo(() => graphToFlow(commands.graph), [commands.graph]);
+  const [nodes, setNodes, onNodesChange] = useNodesState(drawn.nodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(drawn.edges);
   const { fitView, getNodes, getZoom, setCenter } = useReactFlow();
 
   useViewportKeys();
+  useUndoKeys(commands);
 
-  // The graph arriving (or being refetched) replaces what's drawn. Local
-  // drag positions are discarded with it — see the header note on why
-  // they're local in the first place.
+  // React Flow owns the *interaction* state — which nodes are selected, which
+  // is mid-drag — and it lives on the same objects as the positions, so a
+  // redraw has to carry it across or clicking a node would deselect it.
+  const dragging = useRef(false);
   useEffect(() => {
-    setNodes(initial.nodes);
-    setEdges(initial.edges);
-  }, [initial, setNodes, setEdges]);
+    // While a drag is in flight React Flow is already showing the right
+    // positions, frame by frame; replacing its nodes underneath it would
+    // interrupt the very gesture that's producing them.
+    if (dragging.current) return;
+    setNodes((previous) => {
+      const interaction = new Map(previous.map((node) => [node.id, node]));
+      return drawn.nodes.map((node) => {
+        const existing = interaction.get(node.id);
+        return existing ? { ...node, selected: existing.selected } : node;
+      });
+    });
+    setEdges((previous) => {
+      const interaction = new Map(previous.map((edge) => [edge.id, edge]));
+      return drawn.edges.map((edge) => {
+        const existing = interaction.get(edge.id);
+        return existing ? { ...edge, selected: existing.selected } : edge;
+      });
+    });
+  }, [drawn, setNodes, setEdges]);
+
+  // One gesture per drag, so N frames of movement are one undo entry (#28).
+  // React Flow hands over every node the drag is moving, which is what makes
+  // dragging a multi-node selection one entry too, rather than one per node.
+  const { beginGesture } = commands;
+  const drag = useRef<Gesture<ShowGraph> | null>(null);
+
+  const beginDrag = useCallback(() => {
+    dragging.current = true;
+    drag.current = beginGesture({ key: "drag", label: "Move" });
+  }, [beginGesture]);
+
+  const dragTo = useCallback((moved: ShowFlowNode[]) => {
+    drag.current?.update(
+      composite({
+        label: "Move",
+        // A child's React Flow position is relative to its Flow, which is
+        // already how the domain stores it (#29) — no conversion needed.
+        commands: moved.map((node) => moveNode(node.id, node.position)),
+      }),
+    );
+  }, []);
+
+  const endDrag = useCallback(
+    (_event: ReactMouseEvent, _node: ShowFlowNode, moved: ShowFlowNode[]) => {
+      // The final position comes from the stop event: React Flow doesn't
+      // guarantee a last `onNodeDrag` at the position the mouse came up at.
+      dragTo(moved);
+      dragging.current = false;
+      drag.current?.commit();
+      drag.current = null;
+    },
+    [dragTo],
+  );
 
   const fitToNodes = useCallback(
     (nodeIds: string[]) => {
@@ -148,6 +215,11 @@ function ShowGraphEditorInner({ graph, className, ref }: ShowGraphEditorProps) {
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        // The three halves of the drag gesture: open it, feed it each frame,
+        // and land the whole thing as one undo entry on mouse-up (#28).
+        onNodeDragStart={beginDrag}
+        onNodeDrag={(_event, _node, moved) => dragTo(moved)}
+        onNodeDragStop={endDrag}
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
         fitView

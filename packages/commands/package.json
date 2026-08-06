@@ -8,6 +8,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@presence/domain": "workspace:*"
+  },
   "devDependencies": {
     "typescript": "^5.9.0"
   }
