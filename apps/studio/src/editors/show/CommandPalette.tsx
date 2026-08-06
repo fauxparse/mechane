@@ -16,7 +16,8 @@ import {
   Input,
   cn,
 } from "@mechane/design-system";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { clamp } from "es-toolkit";
+import { useMemo, useState } from "react";
 
 import { enabledCommands, groupCommands } from "./palette-commands";
 import type { PaletteCommand } from "./palette-commands";
@@ -27,27 +28,22 @@ export interface CommandPaletteProps {
   commands: PaletteCommand[];
 }
 
-export function CommandPalette({ open, onOpenChange, commands }: CommandPaletteProps) {
+export function CommandPalette(props: CommandPaletteProps) {
+  // Opening starts fresh: a palette that remembers last time's query is a
+  // palette you have to clear before you can use it.
+  return <CommandPaletteDialog key={props.open ? "open" : "closed"} {...props} />;
+}
+
+function CommandPaletteDialog({ open, onOpenChange, commands }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [highlighted, setHighlighted] = useState(0);
-  const list = useRef<HTMLDivElement>(null);
 
   const groups = useMemo(() => groupCommands(commands, query), [commands, query]);
   const runnable = useMemo(() => enabledCommands(commands, query), [commands, query]);
-
-  // Opening starts fresh: a palette that remembers last time's query is a
-  // palette you have to clear before you can use it.
-  useEffect(() => {
-    if (open) {
-      setQuery("");
-      setHighlighted(0);
-    }
-  }, [open]);
-
-  // Narrowing the list can leave the highlight past its end.
-  useEffect(() => {
-    setHighlighted((current) => Math.min(current, Math.max(runnable.length - 1, 0)));
-  }, [runnable.length]);
+  // Narrowing the list can leave the highlight past its end. Derive the
+  // visible selection instead of correcting state in an effect.
+  const maxIndex = Math.max(runnable.length - 1, 0);
+  const selectedIndex = clamp(highlighted, 0, maxIndex);
 
   const run = (command: PaletteCommand) => {
     if (command.disabledReason) return;
@@ -79,15 +75,15 @@ export function CommandPalette({ open, onOpenChange, commands }: CommandPaletteP
             onKeyDown={(event) => {
               if (event.key === "ArrowDown") {
                 event.preventDefault();
-                setHighlighted((current) => Math.min(current + 1, runnable.length - 1));
+                setHighlighted((current) => clamp(current + 1, 0, maxIndex));
               }
               if (event.key === "ArrowUp") {
                 event.preventDefault();
-                setHighlighted((current) => Math.max(current - 1, 0));
+                setHighlighted((current) => clamp(current - 1, 0, maxIndex));
               }
               if (event.key === "Enter") {
                 event.preventDefault();
-                const command = runnable[highlighted];
+                const command = runnable[selectedIndex];
                 if (command) run(command);
               }
             }}
@@ -95,7 +91,6 @@ export function CommandPalette({ open, onOpenChange, commands }: CommandPaletteP
         </div>
 
         <div
-          ref={list}
           id="command-palette-list"
           role="listbox"
           className="max-h-80 overflow-y-auto px-1 pb-2"
@@ -111,7 +106,7 @@ export function CommandPalette({ open, onOpenChange, commands }: CommandPaletteP
               <p className="px-3 py-1 text-xs font-medium text-muted-foreground">{group.label}</p>
               {group.commands.map((command) => {
                 const index = runnable.indexOf(command);
-                const active = index !== -1 && index === highlighted;
+                const active = index !== -1 && index === selectedIndex;
                 const Icon = command.icon;
                 return (
                   <button
