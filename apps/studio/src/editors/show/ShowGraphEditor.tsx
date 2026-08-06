@@ -8,7 +8,8 @@
 //   - `<Controls/>` and `<MiniMap/>` are React Flow's own, restyled — they ship
 //     hardcoded white chrome and are unreadable on a dark background, so
 //     ./show-graph-editor.css is load-bearing, not polish.
-//   - Drag pans, Shift+drag box-selects: React Flow's default, kept.
+//   - Wheel scrolls, Cmd/Ctrl+wheel zooms, click-drag box-selects, and
+//     Space+drag pans: the Figma-compatible pointer model (#57).
 //
 // Editing decisions (#42):
 //
@@ -57,6 +58,7 @@ import ReactFlow, {
   BackgroundVariant,
   Controls,
   MiniMap,
+  PanOnScrollMode,
   ReactFlowProvider,
   SelectionMode,
   useEdgesState,
@@ -568,6 +570,18 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
               deleteKeyCode={null}
               // A box-select takes only what it fully encloses (#36).
               selectionMode={SelectionMode.Full}
+              // Match Figma's canvas gestures (#57): an unmodified drag selects,
+              // while holding Space temporarily enables panning.
+              selectionKeyCode={null}
+              selectionOnDrag
+              panActivationKeyCode="Space"
+              panOnDrag={false}
+              // Plain wheel input scrolls the canvas; React Flow switches back
+              // to its zoom handler while the platform zoom activation key is
+              // held (Cmd on macOS, Ctrl on Windows/Linux).
+              panOnScroll
+              panOnScrollMode={PanOnScrollMode.Free}
+              zoomOnScroll
               minZoom={MIN_ZOOM}
               maxZoom={MAX_ZOOM}
               fitView

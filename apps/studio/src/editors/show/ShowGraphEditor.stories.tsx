@@ -23,9 +23,10 @@ export default meta;
 type Story = StoryObj<typeof ShowGraphEditor>;
 
 /**
- * The camera, end to end: drag to pan, scroll or the Controls to zoom, arrow
- * keys to pan (click the background first so no node holds focus), `+`/`-`
- * to zoom, and click anywhere in the minimap to jump.
+ * The camera, end to end: wheel to scroll, Cmd/Ctrl+wheel to zoom,
+ * click-drag to rubber-band select, Space+drag to pan, arrow keys to pan
+ * (click the background first so no node holds focus), `+`/`-` to zoom, and
+ * click anywhere in the minimap to jump.
  */
 export const Default: Story = {};
 
@@ -97,7 +98,7 @@ export const Inspector: Story = {};
  *
  * Two things worth trying, because both are decisions rather than accidents:
  *
- *   - Box-select several nodes (Shift+drag) and drag them together — that's
+ *   - Box-select several nodes (click-drag) and drag them together — that's
  *     still one entry, not one per node.
  *   - Click a node and release without moving it. Nothing lands on the stack,
  *     so the next Cmd+Z reaches the edit before it.
@@ -120,7 +121,7 @@ export const Loading: Story = {
 /**
  * Zoom-to-selection and zoom-to-set, driven through the imperative handle —
  * which is how they'll be driven by the shortcut map (#37) and the command
- * palette. Select some nodes (Shift+drag box-selects) and press the button.
+ * palette. Select some nodes (click-drag box-selects) and press the button.
  */
 export const FramingNodes: Story = {
   render: () => <FramingDemo />,
