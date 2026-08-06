@@ -341,18 +341,53 @@ export function promoteNode(
   flowId: string,
   position: Position,
 ): ShowGraphCommand {
-  const node = graph.nodes.find((candidate) => candidate.id === nodeId);
+  return promoteNodes(graph, [nodeId], flowId, position);
+}
+
+/**
+ * Promotes several top-level nodes as one command. Nodes are placed in a
+ * column below the Flow's existing children, starting at `origin`; this keeps
+ * the operation deterministic and prevents either existing or newly promoted
+ * nodes from overlapping.
+ */
+export function promoteNodes(
+  graph: ShowGraph,
+  nodeIds: string[],
+  flowId: string,
+  origin: Position,
+): ShowGraphCommand {
   const flow = graph.nodes.find((candidate) => candidate.id === flowId);
-  if (!node) throw new UnknownGraphTargetError("node", nodeId);
   if (!flow || flow.kind !== "flow") throw new UnknownGraphTargetError("Flow", flowId);
-  if (node.parentId !== null) {
-    throw new InvalidReparentError("A node must be extracted before it can enter another Flow.");
+
+  const nodes = nodeIds.map((nodeId) => {
+    const node = graph.nodes.find((candidate) => candidate.id === nodeId);
+    if (!node) throw new UnknownGraphTargetError("node", nodeId);
+    if (node.kind === "flow" || node.kind === "device") {
+      throw new InvalidReparentError("Flows and Devices cannot be promoted into a Flow.");
+    }
+    if (node.parentId !== null) {
+      throw new InvalidReparentError("A node must be extracted before it can enter another Flow.");
+    }
+    return node;
+  });
+  if (nodes.length === 0) throw new InvalidReparentError("Select at least one node to promote.");
+
+  const children = graph.nodes.filter((node) => node.parentId === flowId);
+  let y = Math.max(origin.y, ...children.map((node) => node.position.y + nodeHeight(node) + 24));
+  const parts: ShowGraphCommand[] = [];
+  for (const node of nodes) {
+    parts.push(reparentNode(node.id, flowId, { x: origin.x, y }, "Promote"));
+    y += nodeHeight(node) + 24;
   }
-  const parts: ShowGraphCommand[] = [reparentNode(nodeId, flowId, position, "Promote")];
-  if (flow.defaultSceneId === null && node.kind === "scene") {
-    parts.push(setFlowDefaultScene(flowId, nodeId));
+  if (flow.defaultSceneId === null) {
+    const firstScene = nodes.find((node) => node.kind === "scene");
+    if (firstScene) parts.push(setFlowDefaultScene(flowId, firstScene.id));
   }
   return composite({ label: "Promote into Flow", commands: parts });
+}
+
+function nodeHeight(node: GraphNode): number {
+  return node.kind === "scene" ? 56 + node.variables.length * 24 + 8 : 56;
 }
 
 /**
@@ -366,26 +401,49 @@ export function extractNode(
   nodeId: string,
   position: Position,
 ): ShowGraphCommand {
-  const node = graph.nodes.find((candidate) => candidate.id === nodeId);
-  if (!node) throw new UnknownGraphTargetError("node", nodeId);
-  const navigate = graph.edges.find(
-    (edge) => edge.kind === "navigate" && (edge.sourceId === nodeId || edge.targetId === nodeId),
-  );
-  if (navigate) {
-    throw new InvalidReparentError("Remove the Scene's Navigate edges before extracting it.");
+  return extractNodes(graph, [nodeId], [position]);
+}
+
+/** Extracts several Flow-local nodes as one command. */
+export function extractNodes(
+  graph: ShowGraph,
+  nodeIds: string[],
+  positions: readonly Position[],
+): ShowGraphCommand {
+  if (nodeIds.length === 0 || nodeIds.length !== positions.length) {
+    throw new InvalidReparentError("Select at least one Flow-local node to extract.");
   }
+
+  const nodes = nodeIds.map((nodeId) => {
+    const node = graph.nodes.find((candidate) => candidate.id === nodeId);
+    if (!node) throw new UnknownGraphTargetError("node", nodeId);
+    if (node.parentId === null) {
+      throw new InvalidReparentError("Only Flow-local nodes can be extracted.");
+    }
+    const navigate = graph.edges.find(
+      (edge) => edge.kind === "navigate" && (edge.sourceId === nodeId || edge.targetId === nodeId),
+    );
+    if (navigate) {
+      throw new InvalidReparentError("Remove the Scene's Navigate edges before extracting it.");
+    }
+    return node;
+  });
+
+  const selected = new Set(nodeIds);
   const parts: ShowGraphCommand[] = graph.edges
     .filter(
-      (edge) => edge.kind === "wiring" && (edge.sourceId === nodeId || edge.targetId === nodeId),
+      (edge) =>
+        edge.kind === "wiring" && (selected.has(edge.sourceId) || selected.has(edge.targetId)),
     )
     .map((edge) => removeEdge(edge.id, "Remove wiring"));
-  if (node.kind === "scene") {
-    const owner = graph.nodes.find(
-      (candidate) => candidate.kind === "flow" && candidate.defaultSceneId === nodeId,
-    );
-    if (owner) parts.push(setFlowDefaultScene(owner.id, null));
-  }
-  parts.push(reparentNode(nodeId, null, position, "Extract"));
+  const defaultOwners = graph.nodes.filter(
+    (node) =>
+      node.kind === "flow" && node.defaultSceneId !== null && selected.has(node.defaultSceneId),
+  );
+  for (const owner of defaultOwners) parts.push(setFlowDefaultScene(owner.id, null));
+  nodes.forEach((node, index) => {
+    parts.push(reparentNode(node.id, null, positions[index]!, "Extract"));
+  });
   return composite({ label: "Extract from Flow", commands: parts });
 }
 

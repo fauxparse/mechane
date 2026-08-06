@@ -17,8 +17,8 @@ import {
   removeSceneVariable,
   renameNode,
   renameSceneVariable,
-  promoteNode,
-  extractNode,
+  promoteNodes,
+  extractNodes,
 } from "@mechane/commands";
 import type { Gesture } from "@mechane/commands";
 import { connectionEdge, connectionError, connectionTargets, generateId } from "@mechane/domain";
@@ -73,8 +73,8 @@ export interface GraphEditing {
   renameVariable(sceneId: string, variableId: string, name: string): void;
   removeVariable(sceneId: string, variableId: string): void;
   /** Structural Flow moves; collapse is intentionally not part of this API. */
-  promote(nodeId: string, flowId: string, position: Position): void;
-  extract(nodeId: string, position: Position): string | null;
+  promote(nodeIds: string[], flowId: string, origin: Position): void;
+  extract(nodeIds: string[], positions: Position[]): string | null;
 }
 
 /**
@@ -223,19 +223,19 @@ export function useGraphEditing(
   );
 
   const promote = useCallback(
-    (nodeId: string, flowId: string, position: Position) => {
-      execute(promoteNode(graph, nodeId, flowId, position));
+    (nodeIds: string[], flowId: string, origin: Position) => {
+      execute(promoteNodes(graph, nodeIds, flowId, origin));
     },
     [execute, graph],
   );
 
   const extract = useCallback(
-    (nodeId: string, position: Position) => {
+    (nodeIds: string[], positions: Position[]) => {
       try {
-        execute(extractNode(graph, nodeId, position));
+        execute(extractNodes(graph, nodeIds, positions));
         return null;
       } catch (error) {
-        return error instanceof Error ? error.message : "That node cannot be extracted.";
+        return error instanceof Error ? error.message : "Those nodes cannot be extracted.";
       }
     },
     [execute, graph],
