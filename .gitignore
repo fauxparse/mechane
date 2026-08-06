@@ -1,4 +1,5 @@
 node_modules/
+.pnpm-store/
 dist/
 build/
 .turbo/
@@ -8,3 +9,5 @@ build/
 .DS_Store
 storybook-static/
 coverage/
+.claude/worktrees/
+.claude/settings.local.json
