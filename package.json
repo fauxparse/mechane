@@ -14,7 +14,8 @@
     "lint": "oxlint .",
     "format": "oxfmt .",
     "typecheck": "pnpm -r typecheck",
-    "codegen": "pnpm --filter @presence/graphql-schema codegen"
+    "codegen": "pnpm --filter @presence/graphql-schema codegen",
+    "prototype:graph-visuals": "echo \"PROTOTYPE (throwaway, issue #35): open /prototype-graph-visuals on the port Vite reports below\" && pnpm dev:studio"
   },
   "devDependencies": {
     "oxfmt": "^0.62.0",

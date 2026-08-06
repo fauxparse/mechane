@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as GuestRouteRouteImport } from './routes/_guest/route'
+import { Route as PrototypeGraphVisualsRouteImport } from './routes/prototype-graph-visuals'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as GuestSignInRouteImport } from './routes/_guest/sign-in'
@@ -22,6 +23,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 } as any)
 const GuestRouteRoute = GuestRouteRouteImport.update({
   id: '/_guest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrototypeGraphVisualsRoute = PrototypeGraphVisualsRouteImport.update({
+  id: '/prototype-graph-visuals',
+  path: '/prototype-graph-visuals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
@@ -48,12 +54,14 @@ const AuthenticatedShowsShowIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
+  '/prototype-graph-visuals': typeof PrototypeGraphVisualsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/sign-in': typeof GuestSignInRoute
   '/shows/$showId': typeof AuthenticatedShowsShowIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
+  '/prototype-graph-visuals': typeof PrototypeGraphVisualsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/sign-in': typeof GuestSignInRoute
   '/shows/$showId': typeof AuthenticatedShowsShowIdRoute
@@ -62,6 +70,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/_guest': typeof GuestRouteRouteWithChildren
+  '/prototype-graph-visuals': typeof PrototypeGraphVisualsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_guest/sign-in': typeof GuestSignInRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -69,13 +78,24 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/settings' | '/sign-in' | '/shows/$showId'
+  fullPaths:
+    | '/'
+    | '/prototype-graph-visuals'
+    | '/settings'
+    | '/sign-in'
+    | '/shows/$showId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/settings' | '/sign-in' | '/shows/$showId'
+  to:
+    | '/'
+    | '/prototype-graph-visuals'
+    | '/settings'
+    | '/sign-in'
+    | '/shows/$showId'
   id:
     | '__root__'
     | '/_authenticated'
     | '/_guest'
+    | '/prototype-graph-visuals'
     | '/_authenticated/settings'
     | '/_guest/sign-in'
     | '/_authenticated/'
@@ -85,6 +105,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   GuestRouteRoute: typeof GuestRouteRouteWithChildren
+  PrototypeGraphVisualsRoute: typeof PrototypeGraphVisualsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -101,6 +122,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof GuestRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prototype-graph-visuals': {
+      id: '/prototype-graph-visuals'
+      path: '/prototype-graph-visuals'
+      fullPath: '/prototype-graph-visuals'
+      preLoaderRoute: typeof PrototypeGraphVisualsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/': {
@@ -164,6 +192,7 @@ const GuestRouteRouteWithChildren = GuestRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   GuestRouteRoute: GuestRouteRouteWithChildren,
+  PrototypeGraphVisualsRoute: PrototypeGraphVisualsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
