@@ -4,14 +4,14 @@
 // A polished entry point per PRD.md §7/issue #13: a two-panel layout
 // (brand statement + form Card) instead of a bare centered form.
 // Signed-in visitors never reach this component — the parent `_guest`
-// layout's `beforeLoad` (_guest.tsx, issue #30) redirects them to the
+// layout's `beforeLoad` (_guest/route.tsx, issue #30) redirects them to the
 // dashboard before it renders.
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { useSignIn, useSignInWithGoogle, useSignUp } from "../api/auth";
-import { AuthForm } from "../components/AuthForm";
-import type { AuthMode } from "../components/AuthForm";
+import { useSignIn, useSignInWithGoogle, useSignUp } from "../../api/auth";
+import { AuthForm } from "../../components/AuthForm";
+import type { AuthMode } from "../../components/AuthForm";
 
 const GOOGLE_OAUTH_ENABLED = import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === "true";
 

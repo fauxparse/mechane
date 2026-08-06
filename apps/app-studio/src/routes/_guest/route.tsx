@@ -3,7 +3,7 @@
 // requirement).
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
-import { meQueryOptions } from "../api/me";
+import { meQueryOptions } from "../../api/me";
 
 export const Route = createFileRoute("/_guest")({
   beforeLoad: async ({ context }) => {

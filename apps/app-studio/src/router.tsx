@@ -9,8 +9,9 @@ import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 
 // Shared with main.tsx's QueryClientProvider — the route guards'
-// `beforeLoad` (src/routes/_authenticated.tsx, src/routes/_guest.tsx) and
-// the app's components read/write the same cache.
+// `beforeLoad` (src/routes/_authenticated/route.tsx and
+// src/routes/_guest/route.tsx) and the app's components read/write the
+// same cache.
 export const queryClient = new QueryClient();
 
 export const router = createRouter({ routeTree, context: { queryClient } });

@@ -6,8 +6,8 @@ import { Button } from "@presence/design-system";
 import { GraphQLRequestError } from "@presence/graphql-schema";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 
-import { useDeleteShow, useRenameShow, useShow } from "../api/shows";
-import { ShowNameForm } from "../components/ShowNameForm";
+import { useDeleteShow, useRenameShow, useShow } from "../../../api/shows";
+import { ShowNameForm } from "../../../components/ShowNameForm";
 
 export const Route = createFileRoute("/_authenticated/shows/$showId")({
   component: ShowDetailRoute,
