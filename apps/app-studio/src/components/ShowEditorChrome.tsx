@@ -1,5 +1,5 @@
 // The Show editor's top chrome (issue #39, spec'd by #22): a bar that
-// floats *over* the canvas rather than sitting above it, so the canvas is
+// floats *over* the editor rather than sitting above it, so the editor is
 // genuinely full-bleed.
 //
 // Presentational, like ShowListItem/ShowNameForm — the route wires the
@@ -13,7 +13,7 @@
 //     (#22 demotes Show settings here rather than giving two rarely-used
 //     actions a route of their own).
 //   - Rename happens inline, in place of the title, rather than in a
-//     dialog: it's a one-field edit, and a modal over a canvas the director
+//     dialog: it's a one-field edit, and a modal over an editor the director
 //     is mid-thought in costs more than it buys. Escape cancels, Enter
 //     commits.
 import {
@@ -83,7 +83,7 @@ export function ShowEditorChrome({
 
   return (
     // `pointer-events-none` on the bar and `pointer-events-auto` on its
-    // controls means the gaps between them stay part of the canvas — the
+    // controls means the gaps between them stay part of the editor — the
     // chrome floats over it without stealing a full-width strip of clicks.
     <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start gap-3 p-4">
       <Button

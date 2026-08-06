@@ -109,7 +109,7 @@ Built on React Flow, for the Scene/Flow state-machine graph (Flows, Navigate Act
 - A Command-K style palette is available throughout `app-studio`.
 - All mutations in both editors go through one shared internal Command abstraction (single package, used by both the Canvas and Flow editors) — this is what makes consistent keyboard shortcuts, palette entries, and undo/redo possible across both editors rather than building each twice.
 - Undo/redo is **session-local** (in-memory stack, cleared on reload) and implemented as **forward commands**: undoing computes and sends the inverse of a change as an ordinary command, not a special rollback operation. See [ADR-0005](./docs/adr/0005-undo-as-forward-commands.md).
-- Near-total keyboard operability for both editors is a requirement, with one accepted exception: **creating an edge** in the Show/Flow diagram, which is mouse-drag-only. (This exception was originally written as *dragging nodes*, but React Flow moves a focused node with the arrow keys for free — see issue #21 — so node movement is keyboard-operable and needs no exception. Edge creation is the genuinely mouse-only operation; a keyboard alternative was deferred by issue #27. Re-pointed by issue #37.)
+- Near-total keyboard operability for both editors is a requirement, with one accepted exception: **creating an edge** in the Show/Flow diagram, which is mouse-drag-only. (This exception was originally written as _dragging nodes_, but React Flow moves a focused node with the arrow keys for free — see issue #21 — so node movement is keyboard-operable and needs no exception. Edge creation is the genuinely mouse-only operation; a keyboard alternative was deferred by issue #27. Re-pointed by issue #37.)
 
 ## 7. Design system
 

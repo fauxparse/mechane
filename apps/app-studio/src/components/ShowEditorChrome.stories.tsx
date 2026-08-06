@@ -13,7 +13,7 @@ const meta: Meta<typeof ShowEditorChrome> = {
     onDelete: () => {},
     onPublish: () => {},
   },
-  // The chrome is positioned absolutely over the canvas, so it needs a
+  // The chrome is positioned absolutely over the editor, so it needs a
   // relatively positioned stand-in for one to float over.
   render: (args) => (
     <div className="relative h-64 w-full overflow-hidden rounded-lg bg-muted/40">

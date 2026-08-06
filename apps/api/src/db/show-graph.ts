@@ -47,7 +47,7 @@ function toNode(row: NodeRow, variablesByScene: Map<string, SceneVariable[]>): G
       return { ...base, kind: "device", parentId: null };
     default:
       // Only reachable if a row was written around the domain validation —
-      // loudly, rather than by silently dropping the node off the canvas.
+      // loudly, rather than by silently dropping the node off the graph.
       throw new Error(`Stored graph node "${row.id}" has unknown kind "${row.kind}".`);
   }
 }
@@ -96,12 +96,12 @@ export async function readShowGraph(showId: string, state: GraphState): Promise<
     .where(and(eq(showGraphs.showId, showId), eq(showGraphs.state, state)));
   if (!row) {
     // The epoch stands in for "never written" — the caller renders it as
-    // an empty canvas either way, and a null would make every consumer
+    // an empty graph either way, and a null would make every consumer
     // handle a case that isn't meaningfully different.
     return { ...emptyShowGraph(), showId, state, updatedAt: new Date(0) };
   }
-  // Ordered by id so a graph reads back the same way twice — the canvas
-  // doesn't care, but a diff of two reads (or a test) does.
+  // Ordered by id so a graph reads back the same way twice — the graph
+  // doesn't care, but a diff of two reads (or a test) does. (See issue #43.)
   const [nodeRows, variableRows, edgeRows] = await Promise.all([
     db.select().from(graphNodes).where(eq(graphNodes.graphId, row.id)).orderBy(graphNodes.id),
     db
@@ -124,7 +124,7 @@ export async function readShowGraph(showId: string, state: GraphState): Promise<
 /**
  * Replaces the Show's graph in `state` with `graph`, wholesale, inside one
  * transaction. Whole-graph replacement rather than per-node CRUD because
- * the editor's unit of work is "the canvas as it now stands" — fine-grained
+ * the editor's unit of work is "the graph as it now stands" — fine-grained
  * commands are issue #42's, and they can layer on top of this.
  *
  * Throws `InvalidShowGraphError` before touching the database if the graph
