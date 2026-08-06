@@ -5,6 +5,7 @@
 import { useEffect } from "react";
 import { useReactFlow } from "reactflow";
 
+import { focusContext } from "./focus-context";
 import { viewportIntentFor } from "./viewport-keys";
 
 /**
@@ -19,25 +20,6 @@ import { viewportIntentFor } from "./viewport-keys";
 const TRANSITION_MS = 120;
 
 /**
- * Roles whose owner is already using the arrow keys. `.react-flow__node`
- * isn't here because a focused node is a *separate* fact — panning defers to
- * it, zooming doesn't (see `FocusContext`).
- */
-const KEY_CONSUMING_SELECTOR =
-  'input, textarea, select, [contenteditable="true"], [role="menu"], [role="listbox"], [role="dialog"], [role="combobox"]';
-
-function focusContext() {
-  const active = document.activeElement;
-  if (!(active instanceof HTMLElement)) {
-    return { nodeHasFocus: false, inKeyConsumingWidget: false };
-  }
-  return {
-    nodeHasFocus: active.closest(".react-flow__node") !== null,
-    inKeyConsumingWidget: active.closest(KEY_CONSUMING_SELECTOR) !== null,
-  };
-}
-
-/**
  * Binds arrow-key panning and `+`/`-` zooming to the enclosing React Flow
  * instance. Must be called inside a `<ReactFlowProvider>`.
  *
@@ -45,7 +27,7 @@ function focusContext() {
  * camera should answer to the arrow keys when *nothing* is focused, which is
  * the state the editor is in when it opens — a wrapper-scoped listener would
  * mean pressing Tab first to get a camera you can steer. The cost is that
- * the guard has to be explicit, which is what `focusContext` above is for.
+ * the guard has to be explicit, which is what `focusContext` is for.
  */
 export function useViewportKeys(): void {
   const { getViewport, setViewport, zoomIn, zoomOut } = useReactFlow();
