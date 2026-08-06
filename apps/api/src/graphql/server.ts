@@ -11,7 +11,7 @@ export const yoga = createYoga({
   schema,
   context: ({ request }) => createContext(request),
   graphqlEndpoint: "/api/graphql",
-  // apps/app-studio sends the Better Auth session cookie with every
+  // apps/studio sends the Better Auth session cookie with every
   // request (`credentials: "include"`, see graphql-schema's
   // `graphqlRequest`) — that only reaches the browser's response if the
   // origin is explicitly allow-listed (a wildcard "*" is rejected by

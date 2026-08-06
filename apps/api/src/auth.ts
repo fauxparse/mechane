@@ -18,7 +18,7 @@ export const auth = betterAuth({
     provider: "pg",
     schema,
   }),
-  // apps/app-studio (a different origin — see lib/cors.ts) is the only
+  // apps/studio (a different origin — see lib/cors.ts) is the only
   // client allowed to complete auth flows, e.g. the Google OAuth redirect
   // back from Google.
   trustedOrigins: ALLOWED_ORIGINS,

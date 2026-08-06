@@ -7,7 +7,7 @@ import type { ShowGraphEditorHandle } from "./ShowGraphEditor";
 import { SAMPLE_GRAPH, VOTE_FLOW_NODE_IDS } from "./sample-graph";
 
 const meta: Meta<typeof ShowGraphEditor> = {
-  title: "app-studio/ShowGraphEditor",
+  title: "studio/ShowGraphEditor",
   component: ShowGraphEditor,
   parameters: { layout: "fullscreen" },
   args: { graph: SAMPLE_GRAPH },

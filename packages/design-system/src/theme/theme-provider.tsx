@@ -1,8 +1,8 @@
 // Applies the active mode/palette to the DOM (PRD.md §7). Deliberately
-// network-free — like ShowListItem/ShowNameForm in app-studio, this takes
+// network-free — like ShowListItem/ShowNameForm in studio, this takes
 // already-resolved data as props rather than fetching anything itself.
 // Persisting a user's choice (the GraphQL mutation) is the consuming app's
-// job: see apps/app-studio's api/settings.ts + SettingsRoute, which reads
+// job: see apps/studio's api/settings.ts + SettingsRoute, which reads
 // @presence/graphql-schema's userSettings query/mutation and passes the
 // result down as `mode`/`palette` here.
 import { createContext, useContext, useEffect, useMemo } from "react";

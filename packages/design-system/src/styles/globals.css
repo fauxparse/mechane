@@ -24,7 +24,7 @@
 
 /*
  * Explicit content sources: this file is consumed by apps whose Vite build
- * runs from a different package directory (e.g. apps/app-studio), and
+ * runs from a different package directory (e.g. apps/studio), and
  * Tailwind v4's automatic content detection walks the filesystem from
  * *its own* project root outward — it isn't guaranteed to reach a sibling
  * workspace package through a pnpm symlink. Every package whose classes
@@ -33,7 +33,7 @@
  */
 @source "../components";
 @source "../theme";
-@source "../../../../apps/app-studio/src";
+@source "../../../../apps/studio/src";
 
 @custom-variant dark (&:is([data-theme-mode="dark"] *));
 
