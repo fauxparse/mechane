@@ -9,6 +9,8 @@
 // the seam between the two: `syncDevices` is called from inside the graph
 // write, `retireUnreferencedDevices` from inside publish, and nothing else
 // writes the `devices` table.
+import { randomInt } from "node:crypto";
+
 import type { DeviceNode, GraphNode } from "@mechane/domain";
 import { and, eq, inArray, isNotNull, isNull, notInArray } from "drizzle-orm";
 
@@ -37,9 +39,17 @@ const CODE_ATTEMPTS = 8;
 /**
  * A candidate 6-digit pairing code, leading zeros included — it's read
  * aloud and typed in by a tech, so it's a string of digits, not a number.
+ *
+ * Drawn from `randomInt`, not `Math.random`, because this one string is
+ * both how a Device is named publicly and the entire trust boundary for
+ * joining it (PRD.md §4.3: no login, possession of the code is the
+ * credential). `Math.random` is seeded, unseeded-but-predictable output —
+ * fine for picking a colour, not for something an attacker profits from
+ * guessing. `randomInt` also draws uniformly over the range, where the
+ * usual `floor(random() * n)` skews very slightly toward low values.
  */
 function candidatePairingCode(): string {
-  return String(Math.floor(Math.random() * 10 ** CODE_LENGTH)).padStart(CODE_LENGTH, "0");
+  return String(randomInt(10 ** CODE_LENGTH)).padStart(CODE_LENGTH, "0");
 }
 
 /**
