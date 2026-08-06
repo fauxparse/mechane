@@ -37,7 +37,7 @@ import type {
   ShowGraph,
 } from "@mechane/domain";
 
-import { capturing } from "./command";
+import { capturing, composite } from "./command";
 import type { Command } from "./command";
 
 export type ShowGraphCommand = Command<ShowGraph>;
@@ -55,12 +55,22 @@ export const GRAPH_COMMAND_TYPES = {
   addSceneVariable: "graph.addSceneVariable",
   renameSceneVariable: "graph.renameSceneVariable",
   removeSceneVariable: "graph.removeSceneVariable",
+  promoteNode: "graph.promoteNode",
+  extractNode: "graph.extractNode",
 } as const;
 
 export class UnknownGraphTargetError extends Error {
   constructor(what: string, id: string) {
     super(`Show graph has no ${what} "${id}".`);
     this.name = "UnknownGraphTargetError";
+  }
+}
+
+/** A structural move was refused without changing the graph. */
+export class InvalidReparentError extends Error {
+  constructor(reason: string) {
+    super(reason);
+    this.name = "InvalidReparentError";
   }
 }
 
@@ -283,6 +293,22 @@ export function reparentNode(
     apply: (graph) => {
       const index = nodeIndex(graph, nodeId);
       const node = graph.nodes[index] as GraphNode;
+      if (node.kind === "flow" || node.kind === "device") {
+        throw new InvalidReparentError(
+          `${node.kind === "flow" ? "Flows" : "Devices"} cannot be nested.`,
+        );
+      }
+      if (parentId !== null) {
+        const parent = graph.nodes.find((candidate) => candidate.id === parentId);
+        if (!parent || parent.kind !== "flow") {
+          throw new InvalidReparentError("A node can only be placed inside a Flow.");
+        }
+        if (node.parentId !== null && node.parentId !== parentId) {
+          throw new InvalidReparentError(
+            "Moving a Scene between Flows is not allowed; extract it first.",
+          );
+        }
+      }
       // Cast: only Scenes, Sources, and Transformers are ever reparented
       // (#23, #26 type Flow and Device `parentId` as `null`), and the
       // caller is the one that knows which it has. Structural legality is
@@ -303,6 +329,64 @@ export function reparentNode(
       } as GraphNode);
     },
   });
+}
+
+/**
+ * Promotes a top-level node into an empty or populated Flow. The default Scene
+ * assignment is welded to membership, so one undo reverses both effects.
+ */
+export function promoteNode(
+  graph: ShowGraph,
+  nodeId: string,
+  flowId: string,
+  position: Position,
+): ShowGraphCommand {
+  const node = graph.nodes.find((candidate) => candidate.id === nodeId);
+  const flow = graph.nodes.find((candidate) => candidate.id === flowId);
+  if (!node) throw new UnknownGraphTargetError("node", nodeId);
+  if (!flow || flow.kind !== "flow") throw new UnknownGraphTargetError("Flow", flowId);
+  if (node.parentId !== null) {
+    throw new InvalidReparentError("A node must be extracted before it can enter another Flow.");
+  }
+  const parts: ShowGraphCommand[] = [reparentNode(nodeId, flowId, position, "Promote")];
+  if (flow.defaultSceneId === null && node.kind === "scene") {
+    parts.push(setFlowDefaultScene(flowId, nodeId));
+  }
+  return composite({ label: "Promote into Flow", commands: parts });
+}
+
+/**
+ * Extracts a node to Show level. Navigate edges are intentionally a hard
+ * block: extraction preserves the Scene, so dangling state-machine edges
+ * must be removed explicitly first. Wiring edges are disposable and are
+ * removed as part of this command.
+ */
+export function extractNode(
+  graph: ShowGraph,
+  nodeId: string,
+  position: Position,
+): ShowGraphCommand {
+  const node = graph.nodes.find((candidate) => candidate.id === nodeId);
+  if (!node) throw new UnknownGraphTargetError("node", nodeId);
+  const navigate = graph.edges.find(
+    (edge) => edge.kind === "navigate" && (edge.sourceId === nodeId || edge.targetId === nodeId),
+  );
+  if (navigate) {
+    throw new InvalidReparentError("Remove the Scene's Navigate edges before extracting it.");
+  }
+  const parts: ShowGraphCommand[] = graph.edges
+    .filter(
+      (edge) => edge.kind === "wiring" && (edge.sourceId === nodeId || edge.targetId === nodeId),
+    )
+    .map((edge) => removeEdge(edge.id, "Remove wiring"));
+  if (node.kind === "scene") {
+    const owner = graph.nodes.find(
+      (candidate) => candidate.kind === "flow" && candidate.defaultSceneId === nodeId,
+    );
+    if (owner) parts.push(setFlowDefaultScene(owner.id, null));
+  }
+  parts.push(reparentNode(nodeId, null, position, "Extract"));
+  return composite({ label: "Extract from Flow", commands: parts });
 }
 
 /**

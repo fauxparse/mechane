@@ -19,6 +19,9 @@ import {
   removeEdge,
   removeNode,
   renameNode,
+  extractNode,
+  promoteNode,
+  InvalidReparentError,
   reparentNode,
   setFlowDefaultScene,
   UnknownGraphTargetError,
@@ -207,6 +210,30 @@ describe("reparentNode", () => {
   it("labels itself by direction", () => {
     expect(reparentNode(LOBBY.id, VOTE_FLOW.id, LOBBY.position).label).toBe("Promote");
     expect(reparentNode(RESULTS.id, null, RESULTS.position).label).toBe("Extract");
+  });
+});
+
+describe("promoteNode / extractNode", () => {
+  it("promotes into an empty Flow and assigns its default in one undo", () => {
+    const empty: FlowNode = { ...VOTE_FLOW, id: "flow_empty", defaultSceneId: null };
+    const graph = { ...GRAPH, nodes: [...GRAPH.nodes, empty] };
+    const promoted = promoteNode(graph, LOBBY.id, empty.id, { x: 1, y: 1 }).apply(graph).state;
+    expect(promoted.nodes.find((node) => node.id === LOBBY.id)?.parentId).toBe(empty.id);
+    expect((promoted.nodes.find((node) => node.id === empty.id) as FlowNode).defaultSceneId).toBe(
+      LOBBY.id,
+    );
+  });
+
+  it("refuses extraction while a Navigate edge is attached", () => {
+    expect(() => extractNode(GRAPH, VOTING.id, { x: 0, y: 0 })).toThrow(InvalidReparentError);
+  });
+
+  it("extracts and drops wiring, while restoring both on undo", () => {
+    // Use a scene without Navigate edges for the extraction case.
+    const graph = { ...GRAPH, edges: [WIRE, TO_PHONE] };
+    const result = extractNode(graph, VOTING.id, { x: 500, y: 500 }).apply(graph);
+    expect(result.state.edges.map((edge) => edge.id)).toEqual([TO_PHONE.id]);
+    expect(result.inverse.apply(result.state).state).toEqual(graph);
   });
 });
 
