@@ -10,7 +10,7 @@ import { useDeleteShow, useRenameShow, useShow } from "../api/shows";
 import { ShowNameForm } from "../components/ShowNameForm";
 
 export function ShowDetailRoute() {
-  const { showId } = useParams({ from: "/shows/$showId" });
+  const { showId } = useParams({ from: "/_authenticated/shows/$showId" });
   const navigate = useNavigate();
   const show = useShow(showId);
   const renameShow = useRenameShow();

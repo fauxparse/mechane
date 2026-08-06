@@ -1,37 +1,25 @@
 // The post-login home base ("/", issue #13) — replaces the old bare
 // ShowsListRoute with a proper layout: a header (wordmark, Settings, sign
-// out) around the same Show list/create flow from issue #3. Guarded via
-// `useMe` (the codebase's existing pattern — see SettingsRoute) rather than
-// router-level context: signed-out visitors are redirected to /sign-in.
+// out) around the same Show list/create flow from issue #3. Signed-out
+// visitors never reach this component — the parent `authenticatedRoute`
+// layout's `beforeLoad` (router.tsx, issue #30) redirects them to
+// /sign-in before it renders.
 import { GraphQLRequestError } from "@presence/graphql-schema";
 import { Button, buttonVariants } from "@presence/design-system";
-import { Link, Navigate, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Settings } from "lucide-react";
 
 import { useSignOut } from "../api/auth";
-import { useMe } from "../api/me";
 import { useCreateShow, useDeleteShow, useShows } from "../api/shows";
 import { ShowListItem } from "../components/ShowListItem";
 import { ShowNameForm } from "../components/ShowNameForm";
 
 export function DashboardRoute() {
   const navigate = useNavigate();
-  const me = useMe();
   const shows = useShows();
   const createShow = useCreateShow();
   const deleteShow = useDeleteShow();
   const signOut = useSignOut();
-
-  if (me.isPending) {
-    return <p className="p-6 text-muted-foreground">Loading…</p>;
-  }
-
-  // Signed-out visitors are sent to sign in (issue #13's route-guard
-  // requirement) — `<Navigate>` so the redirect is a render result, not an
-  // imperative call made as a side effect during render.
-  if (!me.data) {
-    return <Navigate to="/sign-in" replace />;
-  }
 
   return (
     <div className="min-h-screen">

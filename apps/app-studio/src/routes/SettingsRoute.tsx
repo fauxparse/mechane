@@ -1,27 +1,20 @@
 // Minimal Settings screen ("/settings", issue #14) — currently just the
 // theme switcher (PRD.md §7). Reads/writes the signed-in user's
 // UserSettings via GraphQL (api/settings.ts); ThemeSwitcher itself is
-// presentational and knows nothing about persistence.
+// presentational and knows nothing about persistence. Signed-out visitors
+// never reach this component — the parent `authenticatedRoute` layout's
+// `beforeLoad` (router.tsx, issue #30) redirects them to /sign-in before
+// it renders.
 import { ThemeSwitcher } from "@presence/design-system";
 import type { ThemeMode, ThemePalette } from "@presence/domain";
 import { DEFAULT_THEME_MODE, DEFAULT_THEME_PALETTE } from "@presence/domain";
-import { Link, Navigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 
-import { useMe } from "../api/me";
 import { useUpdateUserSettings, useUserSettings } from "../api/settings";
 
 export function SettingsRoute() {
-  const me = useMe();
   const settings = useUserSettings();
   const updateSettings = useUpdateUserSettings();
-
-  if (me.isPending) {
-    return <p>Loading…</p>;
-  }
-
-  if (!me.data) {
-    return <Navigate to="/sign-in" replace />;
-  }
 
   const mode = (settings.data?.themeMode ?? DEFAULT_THEME_MODE) as ThemeMode;
   const palette = (settings.data?.themePalette ?? DEFAULT_THEME_PALETTE) as ThemePalette;
