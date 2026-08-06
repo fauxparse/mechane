@@ -82,6 +82,12 @@ const FLOW_PADDING = 24;
 /** Height of a Flow's own title row, above the area its children sit in. */
 const FLOW_HEADER_HEIGHT = 36;
 
+/** First safe child position: below the header and inside the Flow padding. */
+export const FLOW_CONTENT_ORIGIN: Position = {
+  x: FLOW_PADDING,
+  y: FLOW_HEADER_HEIGHT + FLOW_PADDING,
+};
+
 export interface ShowNodeData {
   kind: NodeKind;
   name: string;
@@ -100,6 +106,8 @@ export interface ShowNodeData {
   isDefaultScene: boolean;
   /** Nodes inside this Flow — how a Flow says "3 scenes" (#35, #44). */
   childCount: number;
+  /** Local canvas view state; never persisted or commanded (#44). */
+  collapsed?: boolean;
 }
 
 export interface ShowEdgeData {
@@ -172,6 +180,7 @@ function toFlowNode(
   children: readonly MappableNode[],
   wiredVariableIds: Set<string>,
   defaultSceneIds: Set<string>,
+  collapsed: boolean,
 ): ShowFlowNode {
   const kind = nodeKindOf(node);
   const isFlow = kind === "flow";
@@ -186,7 +195,11 @@ function toFlowNode(
     // rendered nodes, but `fitView` on first paint runs *before* the first
     // measurement — an unsized node contributes nothing to the bounds, so
     // opening a Show would frame a graph with some of its nodes off-screen.
-    style: isFlow ? flowSize(children) : { width: NODE_WIDTH, height: nodeHeight(node) },
+    style: isFlow
+      ? collapsed
+        ? { width: NODE_WIDTH, height: FLOW_HEADER_HEIGHT + FLOW_PADDING }
+        : flowSize(children)
+      : { width: NODE_WIDTH, height: nodeHeight(node) },
     data: {
       kind,
       name: node.name,
@@ -197,6 +210,7 @@ function toFlowNode(
         .map((variable) => variable.id),
       isDefaultScene: defaultSceneIds.has(node.id),
       childCount: children.length,
+      ...(isFlow ? { collapsed } : {}),
     },
   };
 }
@@ -231,12 +245,14 @@ function toFlowEdge(edge: MappableEdge): ShowFlowEdge {
  */
 export function graphToFlow(
   graph: { nodes: readonly MappableNode[]; edges: readonly MappableEdge[] } | null | undefined,
+  options: { collapsedFlowIds?: ReadonlySet<string> } = {},
 ): {
   nodes: ShowFlowNode[];
   edges: ShowFlowEdge[];
 } {
   if (!graph) return { nodes: [], edges: [] };
 
+  const collapsed = options.collapsedFlowIds ?? new Set<string>();
   const childrenByParent = new Map<string, MappableNode[]>();
   for (const node of graph.nodes) {
     if (!node.parentId) continue;
@@ -262,9 +278,24 @@ export function graphToFlow(
   );
 
   return {
-    nodes: [...flows, ...rest].map((node) =>
-      toFlowNode(node, childrenByParent.get(node.id) ?? [], wiredVariableIds, defaultSceneIds),
-    ),
-    edges: graph.edges.map(toFlowEdge),
+    nodes: [...flows, ...rest]
+      .filter((node) => !node.parentId || !collapsed.has(node.parentId))
+      .map((node) =>
+        toFlowNode(
+          node,
+          childrenByParent.get(node.id) ?? [],
+          wiredVariableIds,
+          defaultSceneIds,
+          collapsed.has(node.id),
+        ),
+      ),
+    edges: graph.edges.map((edge) => {
+      const hiddenTarget = graph.nodes.find((node) => node.id === edge.targetId);
+      const flowId = hiddenTarget?.parentId;
+      if (edge.kind === "wiring" && flowId && collapsed.has(flowId)) {
+        return { ...toFlowEdge(edge), target: flowId, targetHandle: INPUT_HANDLE };
+      }
+      return toFlowEdge(edge);
+    }),
   };
 }
