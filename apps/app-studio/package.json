@@ -1,7 +1,7 @@
 {
   "name": "@presence/app-studio",
-  "private": true,
   "version": "0.0.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -24,10 +24,12 @@
   },
   "devDependencies": {
     "@storybook/react-vite": "^10.5.6",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^5.0.0",
     "storybook": "^10.5.6",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.9.0",
     "vite": "^7.0.0"
   }

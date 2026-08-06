@@ -15,6 +15,13 @@
       "when": 1785972274546,
       "tag": "0001_awesome_serpent_society",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785973966858,
+      "tag": "0002_solid_random",
+      "breakpoints": true
     }
   ]
 }

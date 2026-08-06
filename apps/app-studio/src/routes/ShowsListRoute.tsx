@@ -1,10 +1,10 @@
 // The Show list screen — root route ("/"). Create, list, and delete a
 // Show; renaming happens on the detail screen (ShowDetailRoute).
 import { GraphQLRequestError } from "@presence/graphql-schema";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 
-import { useCreateShow, useDeleteShow, useShows } from "../api/shows";
 import { useMe } from "../api/me";
+import { useCreateShow, useDeleteShow, useShows } from "../api/shows";
 import { ShowListItem } from "../components/ShowListItem";
 import { ShowNameForm } from "../components/ShowNameForm";
 
@@ -24,17 +24,20 @@ export function ShowsListRoute() {
   }
 
   return (
-    <main className="shows-list">
-      <h1>Shows</h1>
+    <main className="mx-auto flex max-w-2xl flex-col gap-6 p-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Shows</h1>
+        <Link to="/settings" className="text-sm text-muted-foreground hover:text-foreground">
+          Settings
+        </Link>
+      </div>
 
       <ShowNameForm
         key={createShow.isSuccess ? createShow.data.id : "new"}
         submitLabel="Create Show"
         pending={createShow.isPending}
         error={
-          createShow.error instanceof GraphQLRequestError
-            ? createShow.error.message
-            : undefined
+          createShow.error instanceof GraphQLRequestError ? createShow.error.message : undefined
         }
         onSubmit={(name) => createShow.mutate(name)}
       />
@@ -45,7 +48,7 @@ export function ShowsListRoute() {
       {shows.data && shows.data.length === 0 ? <p>No Shows yet — create one above.</p> : null}
 
       {shows.data && shows.data.length > 0 ? (
-        <ul className="shows-list__items">
+        <ul className="flex flex-col">
           {shows.data.map((show) => (
             <ShowListItem
               key={show.id}
