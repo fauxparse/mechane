@@ -1,4 +1,4 @@
-// Insert-time collision handling for the short ids in @presence/domain's
+// Insert-time collision handling for the short ids in @mechane/domain's
 // `id` module (issue #47). Ids are 7 random characters, so a collision is
 // vanishingly unlikely — but "vanishingly unlikely" over a long enough
 // life is a user-facing 500, and the fix is small enough that there's no
@@ -7,8 +7,8 @@
 // The database's primary-key constraint is what actually detects the
 // collision; this just retries against it. Checking for the id with a
 // SELECT first would be a race, not a fix.
-import type { EntityName, Id } from "@presence/domain";
-import { generateId } from "@presence/domain";
+import type { EntityName, Id } from "@mechane/domain";
+import { generateId } from "@mechane/domain";
 
 /** Postgres `unique_violation`. */
 const UNIQUE_VIOLATION = "23505";

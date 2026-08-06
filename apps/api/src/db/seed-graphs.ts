@@ -8,8 +8,8 @@
 // Show-level one, a wiring edge that carries a whole value and one that
 // picks a field out of a structured one, parallel Navigate edges, and both
 // legal Device edge producers (a Flow and a top-level Scene).
-import type { ShowGraph } from "@presence/domain";
-import { generateId } from "@presence/domain";
+import type { ShowGraph } from "@mechane/domain";
+import { generateId } from "@mechane/domain";
 
 /**
  * "Hamlet" — an audience vote, the canonical shape from the PRD: a Flow

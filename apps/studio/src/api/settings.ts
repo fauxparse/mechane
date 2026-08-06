@@ -1,13 +1,13 @@
 // TanStack Query hooks over the UserSettings GraphQL operations
-// (@presence/graphql-schema) — mirrors api/shows.ts. Backs the theme
-// switcher (@presence/design-system's ThemeProvider): the design system
+// (@mechane/graphql-schema) — mirrors api/shows.ts. Backs the theme
+// switcher (@mechane/design-system's ThemeProvider): the design system
 // itself has no idea how settings are fetched/persisted, it just calls the
 // callbacks this hook supplies.
 import {
   GetUserSettingsQuery,
   graphqlRequest,
   UpdateUserSettingsMutation,
-} from "@presence/graphql-schema";
+} from "@mechane/graphql-schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { GRAPHQL_ENDPOINT } from "./client";

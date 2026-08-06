@@ -31,7 +31,7 @@ function SignInRoute() {
     <main className="grid min-h-screen lg:grid-cols-2">
       <section className="hidden flex-col justify-between bg-muted p-12 lg:flex">
         <Link to="/sign-in" className="text-lg font-semibold tracking-tight">
-          Presence
+          Mechanē
         </Link>
         <div className="max-w-md">
           <p className="text-4xl leading-tight font-semibold text-balance">
@@ -42,12 +42,12 @@ function SignInRoute() {
             phone in the audience.
           </p>
         </div>
-        <p className="text-sm text-muted-foreground">&copy; {new Date().getFullYear()} Presence</p>
+        <p className="text-sm text-muted-foreground">&copy; {new Date().getFullYear()} Mechanē</p>
       </section>
 
       <section className="flex flex-col items-center justify-center gap-8 p-6 py-16">
         <Link to="/sign-in" className="text-lg font-semibold tracking-tight lg:hidden">
-          Presence
+          Mechanē
         </Link>
 
         <AuthForm

@@ -23,7 +23,7 @@ importers:
 
   apps/api:
     dependencies:
-      '@presence/domain':
+      '@mechane/domain':
         specifier: workspace:*
         version: link:../../packages/domain
       better-auth:
@@ -66,16 +66,16 @@ importers:
 
   apps/player:
     dependencies:
-      '@presence/design-system':
+      '@mechane/design-system':
         specifier: workspace:*
         version: link:../../packages/design-system
-      '@presence/domain':
+      '@mechane/domain':
         specifier: workspace:*
         version: link:../../packages/domain
-      '@presence/graphql-schema':
+      '@mechane/graphql-schema':
         specifier: workspace:*
         version: link:../../packages/graphql-schema
-      '@presence/realtime':
+      '@mechane/realtime':
         specifier: workspace:*
         version: link:../../packages/realtime
       react:
@@ -103,19 +103,19 @@ importers:
 
   apps/studio:
     dependencies:
-      '@presence/commands':
+      '@mechane/commands':
         specifier: workspace:*
         version: link:../../packages/commands
-      '@presence/design-system':
+      '@mechane/design-system':
         specifier: workspace:*
         version: link:../../packages/design-system
-      '@presence/domain':
+      '@mechane/domain':
         specifier: workspace:*
         version: link:../../packages/domain
-      '@presence/graphql-schema':
+      '@mechane/graphql-schema':
         specifier: workspace:*
         version: link:../../packages/graphql-schema
-      '@presence/realtime':
+      '@mechane/realtime':
         specifier: workspace:*
         version: link:../../packages/realtime
       '@tanstack/react-query':
@@ -173,7 +173,7 @@ importers:
 
   packages/commands:
     dependencies:
-      '@presence/domain':
+      '@mechane/domain':
         specifier: workspace:*
         version: link:../domain
     devDependencies:
@@ -189,7 +189,7 @@ importers:
       '@fontsource-variable/space-grotesk':
         specifier: ^5.3.0
         version: 5.3.0
-      '@presence/domain':
+      '@mechane/domain':
         specifier: workspace:*
         version: link:../domain
       class-variance-authority:
@@ -247,7 +247,7 @@ importers:
 
   packages/graphql-schema:
     dependencies:
-      '@presence/domain':
+      '@mechane/domain':
         specifier: workspace:*
         version: link:../domain
       gql.tada:

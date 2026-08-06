@@ -3,7 +3,7 @@ import { RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import "@presence/design-system/styles/globals.css";
+import "@mechane/design-system/styles/globals.css";
 
 import { AppThemeProvider } from "./AppThemeProvider";
 import { queryClient, router } from "./router";

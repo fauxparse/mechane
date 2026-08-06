@@ -1,11 +1,11 @@
 // Shared form for both "create a Show" (empty initialName) and "rename a
 // Show" (existing initialName) — same shape, same validation-error display,
 // different submit label. Presentational: the route supplies onSubmit and
-// any server-side error message (e.g. from @presence/domain's
+// any server-side error message (e.g. from @mechane/domain's
 // InvalidShowNameError, surfaced through the GraphQL error). Built from
-// @presence/design-system's Button/Input/Label primitives (issue #14)
+// @mechane/design-system's Button/Input/Label primitives (issue #14)
 // rather than raw <form>/<input>/<label> elements.
-import { Button, Input, Label } from "@presence/design-system";
+import { Button, Input, Label } from "@mechane/design-system";
 import { useState } from "react";
 import type { FormEvent } from "react";
 

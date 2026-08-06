@@ -1,4 +1,4 @@
-# Presence
+# Mechanē
 
 An application for building interactive tech for live theatre shows across multiple devices — projectors, laptops, and audience mobile phones.
 
@@ -27,7 +27,7 @@ packages/
 pnpm install
 docker compose up -d        # local Postgres for apps/api
 cp apps/api/.env.example apps/api/.env
-pnpm --filter @presence/api db:migrate   # apply Better Auth's tables
+pnpm --filter @mechane/api db:migrate   # apply Better Auth's tables
 pnpm db:seed      # wipe + recreate a default dev account (test@example.com)
 pnpm dev:studio   # authoring app
 pnpm dev:player   # device client
@@ -51,7 +51,7 @@ schema change shows up as a reviewable diff:
   schema-types file, generated from `schema.graphql` by the `gql.tada` CLI.
 
 Regenerate both with `pnpm codegen` (root) or
-`pnpm --filter @presence/graphql-schema codegen` after changing `apps/api`'s
+`pnpm --filter @mechane/graphql-schema codegen` after changing `apps/api`'s
 schema. CI runs the same command and fails the build if it produces a git
 diff, so these files can never silently go stale (see
 `.github/workflows/ci.yml`).
@@ -95,7 +95,7 @@ while writing them.
 
 If another package or app starts authoring its own `graphql()` documents
 (rather than just importing the typed exports from
-`@presence/graphql-schema`, as `apps/studio` does today), add the same
+`@mechane/graphql-schema`, as `apps/studio` does today), add the same
 `gql.tada/ts-plugin` entry to its `tsconfig.json`, pointing `schema` at
 `packages/graphql-schema/schema.graphql` and `tadaOutputLocation` at
 `packages/graphql-schema/src/graphql-env.d.ts` (paths relative to that

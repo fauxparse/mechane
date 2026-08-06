@@ -4,20 +4,20 @@
 // The graph arrives from GraphQL with every field of every node kind present
 // and nullable — `defaultSceneId` on a Source, `variables` on a Device —
 // because that's what one GraphQL type covering five node kinds looks like.
-// @presence/domain's `ShowGraph` is a discriminated union instead, where a
+// @mechane/domain's `ShowGraph` is a discriminated union instead, where a
 // Source simply has no `defaultSceneId` to be null.
 //
 // Commands (#41) are written against the domain union, not against the wire
 // shape, so this is where a graph stops being a query result and becomes the
 // thing the editor edits. The conversion is lossy on purpose: fields that
 // don't belong to a kind are dropped rather than carried along as nulls.
-import { isNodeKind } from "@presence/domain";
-import type { GraphEdge, GraphNode, ShowGraph } from "@presence/domain";
+import { isNodeKind } from "@mechane/domain";
+import type { GraphEdge, GraphNode, ShowGraph } from "@mechane/domain";
 import type {
   ShowGraph as ApiShowGraph,
   ShowGraphEdge as ApiEdge,
   ShowGraphNode as ApiNode,
-} from "@presence/graphql-schema";
+} from "@mechane/graphql-schema";
 
 /** Just the parts of the query result this module needs. */
 export type ApiGraph = Pick<ApiShowGraph, "nodes" | "edges">;

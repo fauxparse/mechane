@@ -1,5 +1,5 @@
 {
-  "name": "@presence/studio",
+  "name": "@mechane/studio",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,11 +11,11 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@presence/commands": "workspace:*",
-    "@presence/design-system": "workspace:*",
-    "@presence/domain": "workspace:*",
-    "@presence/graphql-schema": "workspace:*",
-    "@presence/realtime": "workspace:*",
+    "@mechane/commands": "workspace:*",
+    "@mechane/design-system": "workspace:*",
+    "@mechane/domain": "workspace:*",
+    "@mechane/graphql-schema": "workspace:*",
+    "@mechane/realtime": "workspace:*",
     "@tanstack/react-query": "^5.90.0",
     "@tanstack/react-router": "^1.150.0",
     "better-auth": "^1.6.26",

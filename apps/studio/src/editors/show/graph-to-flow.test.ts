@@ -1,4 +1,4 @@
-import type { ShowGraphEdge, ShowGraphNode } from "@presence/graphql-schema";
+import type { ShowGraphEdge, ShowGraphNode } from "@mechane/graphql-schema";
 import { describe, expect, it } from "vitest";
 
 import {

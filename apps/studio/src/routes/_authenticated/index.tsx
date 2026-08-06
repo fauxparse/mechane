@@ -4,8 +4,8 @@
 // visitors never reach this component — the parent `_authenticated`
 // layout's `beforeLoad` (_authenticated/route.tsx, issue #30) redirects
 // them to /sign-in before it renders.
-import { GraphQLRequestError } from "@presence/graphql-schema";
-import { Button, buttonVariants } from "@presence/design-system";
+import { GraphQLRequestError } from "@mechane/graphql-schema";
+import { Button, buttonVariants } from "@mechane/design-system";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Settings } from "lucide-react";
 
@@ -28,7 +28,7 @@ function DashboardRoute() {
   return (
     <div className="min-h-screen">
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
-        <span className="text-lg font-semibold tracking-tight">Presence</span>
+        <span className="text-lg font-semibold tracking-tight">Mechanē</span>
         <nav className="flex items-center gap-2">
           <Link to="/settings" className={buttonVariants({ variant: "ghost", size: "sm" })}>
             <Settings /> Settings

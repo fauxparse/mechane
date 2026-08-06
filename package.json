@@ -1,20 +1,20 @@
 {
-  "name": "presencedotshow",
+  "name": "mechane",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev:studio": "pnpm --filter @presence/studio dev",
-    "dev:player": "pnpm --filter @presence/player dev",
-    "dev:api": "pnpm --filter @presence/api dev",
-    "db:seed": "pnpm --filter @presence/api db:seed",
-    "storybook": "pnpm --filter @presence/studio storybook",
+    "dev:studio": "pnpm --filter @mechane/studio dev",
+    "dev:player": "pnpm --filter @mechane/player dev",
+    "dev:api": "pnpm --filter @mechane/api dev",
+    "db:seed": "pnpm --filter @mechane/api db:seed",
+    "storybook": "pnpm --filter @mechane/studio storybook",
     "build": "pnpm -r build",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "oxlint .",
     "format": "oxfmt .",
     "typecheck": "pnpm -r typecheck",
-    "codegen": "pnpm --filter @presence/graphql-schema codegen"
+    "codegen": "pnpm --filter @mechane/graphql-schema codegen"
   },
   "devDependencies": {
     "oxfmt": "^0.62.0",

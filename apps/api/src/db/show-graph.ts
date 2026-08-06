@@ -1,12 +1,12 @@
 // Reading and writing a Show's graph (issue #38) — the translation between
-// @presence/domain's `ShowGraph` (what the rest of the system reasons
+// @mechane/domain's `ShowGraph` (what the rest of the system reasons
 // about) and the four tables in ./schema.ts that store it.
 //
 // Kept out of the resolvers so the GraphQL layer stays a thin adapter: the
 // resolvers authenticate, check ownership, validate through the domain, and
 // call one of the three functions below.
-import type { GraphEdge, GraphNode, GraphState, SceneVariable, ShowGraph } from "@presence/domain";
-import { assertValidShowGraph, emptyShowGraph, generateId, isEdgeKind } from "@presence/domain";
+import type { GraphEdge, GraphNode, GraphState, SceneVariable, ShowGraph } from "@mechane/domain";
+import { assertValidShowGraph, emptyShowGraph, generateId, isEdgeKind } from "@mechane/domain";
 import { and, eq } from "drizzle-orm";
 
 import { db } from "./client";

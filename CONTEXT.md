@@ -1,4 +1,4 @@
-# Presence
+# Mechanē
 
 An application for building interactive tech for live theatre shows across multiple devices, including projectors, laptops, and audience mobile phones.
 
@@ -6,7 +6,7 @@ An application for building interactive tech for live theatre shows across multi
 
 ### Show
 
-The top-level project a director or technician builds in Presence. A Show is a directed graph of Scenes, Devices, Flows, Sources, Transformers, and the wiring between them.
+The top-level project a director or technician builds in Mechanē. A Show is a directed graph of Scenes, Devices, Flows, Sources, Transformers, and the wiring between them.
 _Avoid_: Project, production
 
 ### Run

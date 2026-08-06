@@ -1,5 +1,5 @@
 {
-  "name": "@presence/api",
+  "name": "@mechane/api",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
     "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
-    "@presence/domain": "workspace:*",
+    "@mechane/domain": "workspace:*",
     "better-auth": "^1.6.26",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",

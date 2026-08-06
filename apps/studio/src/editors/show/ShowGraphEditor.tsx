@@ -27,8 +27,8 @@
 //   - **A drag's valid targets are the domain's answer** (`connectionTargets`),
 //     computed once at drag start; the affordance itself is #35's dashed
 //     outline plus dimming, painted by ./ShowGraphNodes.
-import { composite, describeDeletion, moveNode } from "@presence/commands";
-import type { DeletionScope } from "@presence/commands";
+import { composite, describeDeletion, moveNode } from "@mechane/commands";
+import type { DeletionScope } from "@mechane/commands";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -47,8 +47,8 @@ import {
   ContextMenuSubmenuContent,
   ContextMenuSubmenuTrigger,
   ContextMenuTrigger,
-} from "@presence/design-system";
-import type { GraphNode, NodeKind, Position, ShowGraph } from "@presence/domain";
+} from "@mechane/design-system";
+import type { GraphNode, NodeKind, Position, ShowGraph } from "@mechane/domain";
 import { Maximize2, Pencil, Plus, Redo2, Trash2, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent, Ref } from "react";
@@ -278,7 +278,7 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
       const first = selected[0] as ShowFlowNode;
       return { x: first.position.x + NODE_WIDTH + 48, y: first.position.y };
     }
-    const bounds = document.querySelector(".presence-show-graph")?.getBoundingClientRect();
+    const bounds = document.querySelector(".mechane-show-graph")?.getBoundingClientRect();
     if (!bounds) return { x: 0, y: 0 };
     return project({ x: bounds.width / 2 - NODE_WIDTH / 2, y: bounds.height / 2 });
   }, [getNodes, project]);
@@ -533,9 +533,9 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
 
   return (
     <NodeInteractionProvider value={interaction}>
-      {/* `presence-show-graph` is what ./show-graph-editor.css hangs its
+      {/* `mechane-show-graph` is what ./show-graph-editor.css hangs its
           overrides off, so they can't leak into another React Flow instance. */}
-      <div className={cn("presence-show-graph relative h-full w-full bg-background", className)}>
+      <div className={cn("mechane-show-graph relative h-full w-full bg-background", className)}>
         <ContextMenu>
           <ContextMenuTrigger
             className="h-full w-full"

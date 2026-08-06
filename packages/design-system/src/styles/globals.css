@@ -1,5 +1,5 @@
 /*
- * Presence design system tokens (PRD.md §7).
+ * Mechanē design system tokens (PRD.md §7).
  *
  * Every color a component uses must come from a `--color-*` Tailwind
  * utility (bg-background, text-foreground, border-border, ...) which in
@@ -10,7 +10,7 @@
  * per mode, nothing else in the codebase changes.
  *
  * Two independent axes, both switchable per-account (apps/api's
- * `userSettings` resolver, @presence/design-system's ThemeProvider):
+ * `userSettings` resolver, @mechane/design-system's ThemeProvider):
  *   - `data-theme-mode`    "dark" (default) | "light"
  *   - `data-theme-palette` "slate" (default) | "gruvbox"
  * Both attributes live on <html>. `:root` alone (no attributes set, e.g.

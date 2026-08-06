@@ -1,4 +1,4 @@
-// The primitive Show-graph commands (issue #41), over @presence/domain's
+// The primitive Show-graph commands (issue #41), over @mechane/domain's
 // `ShowGraph`.
 //
 // These are the *atoms*: add or remove one node, move one node, rename one
@@ -35,7 +35,7 @@ import type {
   SceneNode,
   SceneVariable,
   ShowGraph,
-} from "@presence/domain";
+} from "@mechane/domain";
 
 import { capturing } from "./command";
 import type { Command } from "./command";

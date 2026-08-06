@@ -23,7 +23,7 @@
 //
 // Inline rename lives in the node (double-click, or F2) because the name is
 // the node's own text (#27); everything fuller is the inspector's.
-import { cn } from "@presence/design-system";
+import { cn } from "@mechane/design-system";
 import { House, TriangleAlert } from "lucide-react";
 import { useLayoutEffect, useRef } from "react";
 import { Handle, Position, useStore } from "reactflow";

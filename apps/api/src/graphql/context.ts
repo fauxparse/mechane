@@ -23,7 +23,7 @@ export async function createContext(request: Request): Promise<GraphQLContext> {
  * Every resolver that reads/writes an owned resource (Show, etc.) should
  * call this first — it's the single point where "must be signed in" is
  * enforced, so resolvers don't each re-derive their own unauthenticated
- * error. Pair with @presence/domain's `assertOwnedBy` once a resource has
+ * error. Pair with @mechane/domain's `assertOwnedBy` once a resource has
  * been fetched, to enforce "owns *this* resource" as well as "is signed in".
  */
 export function requireUserId(context: GraphQLContext): string {

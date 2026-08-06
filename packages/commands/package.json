@@ -1,5 +1,5 @@
 {
-  "name": "@presence/commands",
+  "name": "@mechane/commands",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@presence/domain": "workspace:*"
+    "@mechane/domain": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.9.0"

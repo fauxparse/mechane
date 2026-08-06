@@ -1,4 +1,4 @@
-// Single-user ownership model (PRD.md §1, §9): every resource in Presence
+// Single-user ownership model (PRD.md §1, §9): every resource in Mechanē
 // belongs to exactly one authenticated user account — there are no
 // orgs/teams or sharing/permissions model in v1. This module is the one
 // place that invariant is checked, so every resource type (Show, and

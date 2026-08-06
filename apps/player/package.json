@@ -1,5 +1,5 @@
 {
-  "name": "@presence/player",
+  "name": "@mechane/player",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,10 +9,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@presence/design-system": "workspace:*",
-    "@presence/domain": "workspace:*",
-    "@presence/graphql-schema": "workspace:*",
-    "@presence/realtime": "workspace:*",
+    "@mechane/design-system": "workspace:*",
+    "@mechane/domain": "workspace:*",
+    "@mechane/graphql-schema": "workspace:*",
+    "@mechane/realtime": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
