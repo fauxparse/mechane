@@ -9,8 +9,8 @@
 // `card` chrome, no per-kind hue, because the design system's tokens are
 // strictly semantic and hue is reserved for *state* (selection, a dangling
 // input) rather than type — and PRD §7 wants the chrome recessive.
-import { generateId, NODE_ID_ENTITIES } from "@presence/domain";
-import type { GraphNode, NodeKind, Position } from "@presence/domain";
+import { generateId, NODE_ID_ENTITIES } from "@mechane/domain";
+import type { GraphNode, NodeKind, Position } from "@mechane/domain";
 import {
   Bot,
   Box,

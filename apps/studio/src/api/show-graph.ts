@@ -4,16 +4,16 @@
 //
 // The editor chrome (issue #39) needs *both* states of the graph, because
 // "are there unpublished changes?" is derived by comparing their
-// timestamps (ADR-0002 — see @presence/domain's `publishState`), not
+// timestamps (ADR-0002 — see @mechane/domain's `publishState`), not
 // stored on either.
-import type { GraphState, ShowGraph as DomainShowGraph, ShowId } from "@presence/domain";
+import type { GraphState, ShowGraph as DomainShowGraph, ShowId } from "@mechane/domain";
 import {
   GetShowGraphQuery,
   graphqlRequest,
   PublishShowGraphMutation,
   SaveShowGraphMutation,
-} from "@presence/graphql-schema";
-import type { ShowGraph } from "@presence/graphql-schema";
+} from "@mechane/graphql-schema";
+import type { ShowGraph } from "@mechane/graphql-schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef } from "react";
 

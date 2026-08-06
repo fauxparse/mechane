@@ -17,10 +17,10 @@ import {
   removeSceneVariable,
   renameNode,
   renameSceneVariable,
-} from "@presence/commands";
-import type { Gesture } from "@presence/commands";
-import { connectionEdge, connectionError, connectionTargets, generateId } from "@presence/domain";
-import type { ConnectionTargets, GraphNode, NodeKind, Position, ShowGraph } from "@presence/domain";
+} from "@mechane/commands";
+import type { Gesture } from "@mechane/commands";
+import { connectionEdge, connectionError, connectionTargets, generateId } from "@mechane/domain";
+import type { ConnectionTargets, GraphNode, NodeKind, Position, ShowGraph } from "@mechane/domain";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import { INPUT_HANDLE, OUTPUT_HANDLE } from "./graph-to-flow";

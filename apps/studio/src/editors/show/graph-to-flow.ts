@@ -27,13 +27,13 @@
 // because the editor now holds the *domain* graph so that commands can act on
 // it (#41), while a freshly fetched graph is still the wire shape. Both draw
 // the same way, and neither has to be converted just to be rendered.
-import { isEdgeKind, isNodeKind } from "@presence/domain";
-import type { EdgeKind, NodeKind, Position } from "@presence/domain";
+import { isEdgeKind, isNodeKind } from "@mechane/domain";
+import type { EdgeKind, NodeKind, Position } from "@mechane/domain";
 import type { Edge, Node } from "reactflow";
 
 /**
  * A node as this mapper needs it described. Structural rather than named, so
- * both the wire shape (`@presence/graphql-schema`'s `ShowGraphNode`, where
+ * both the wire shape (`@mechane/graphql-schema`'s `ShowGraphNode`, where
  * every kind's fields are present and nullable) and the domain's
  * discriminated union (where a Source simply has no `defaultSceneId`) satisfy
  * it. The editor holds the domain shape (#41); a freshly fetched graph is

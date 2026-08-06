@@ -15,7 +15,7 @@
 //     keybinding, so hiding them means a director who hasn't selected anything
 //     can't find out that extraction exists.
 
-import type { CommandScope } from "@presence/commands";
+import type { CommandScope } from "@mechane/commands";
 import type { LucideIcon } from "lucide-react";
 
 /** One row in the palette. */

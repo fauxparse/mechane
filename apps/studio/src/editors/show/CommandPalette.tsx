@@ -15,7 +15,7 @@ import {
   DialogTitle,
   Input,
   cn,
-} from "@presence/design-system";
+} from "@mechane/design-system";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { enabledCommands, groupCommands } from "./palette-commands";

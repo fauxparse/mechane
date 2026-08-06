@@ -16,9 +16,9 @@
 // produced, because an undo *is* an ordinary forward command (ADR-0005). One
 // path to the server, whichever direction the edit came from. Debouncing is the
 // caller's business; this hook reports every edit as it happens.
-import { CommandStack } from "@presence/commands";
-import type { Gesture, ShowGraphCommand } from "@presence/commands";
-import type { ShowGraph } from "@presence/domain";
+import { CommandStack } from "@mechane/commands";
+import type { Gesture, ShowGraphCommand } from "@mechane/commands";
+import type { ShowGraph } from "@mechane/domain";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { toShowGraph } from "./api-graph";

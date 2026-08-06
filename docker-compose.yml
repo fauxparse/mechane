@@ -3,13 +3,13 @@ services:
     image: postgres:16
     restart: unless-stopped
     environment:
-      POSTGRES_USER: presence
-      POSTGRES_PASSWORD: presence
-      POSTGRES_DB: presence
+      POSTGRES_USER: mechane
+      POSTGRES_PASSWORD: mechane
+      POSTGRES_DB: mechane
     ports:
       - "5432:5432"
     volumes:
-      - presence-postgres-data:/var/lib/postgresql/data
+      - mechane-postgres-data:/var/lib/postgresql/data
 
 volumes:
-  presence-postgres-data:
+  mechane-postgres-data:

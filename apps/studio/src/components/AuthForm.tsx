@@ -4,7 +4,7 @@
 // near-duplicate screens. Presentational, like ShowNameForm: the route
 // (SignInRoute) wires onSubmit/onGoogleSignIn to Better Auth's client and
 // supplies pending/error state. Built entirely from
-// @presence/design-system primitives — no raw <input>/<button>.
+// @mechane/design-system primitives — no raw <input>/<button>.
 import {
   Button,
   Card,
@@ -15,7 +15,7 @@ import {
   CardTitle,
   Input,
   Label,
-} from "@presence/design-system";
+} from "@mechane/design-system";
 import { useId, useState } from "react";
 import type { FormEvent } from "react";
 

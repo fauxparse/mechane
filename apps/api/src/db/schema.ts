@@ -6,9 +6,9 @@
 //
 // Application resources (Show, etc.) are added by later tickets. Every such
 // table is expected to carry a `userId` column referencing `user.id`, per the
-// single-user ownership model (PRD.md §1, §9) — see @presence/domain's
+// single-user ownership model (PRD.md §1, §9) — see @mechane/domain's
 // `ownership` module for the shared invariant this schema exists to support.
-import { generateId } from "@presence/domain";
+import { generateId } from "@mechane/domain";
 import { sql } from "drizzle-orm";
 import {
   boolean,
@@ -75,7 +75,7 @@ export const verification = pgTable("verification", {
 });
 
 // First application resource (issue #3). Every Show belongs to exactly one
-// user — see @presence/domain's `ownership` module, which resolvers use to
+// user — see @mechane/domain's `ownership` module, which resolvers use to
 // enforce that a user can only see/mutate their own Shows.
 //
 // The id is a short readable id rather than a UUID (issue #47) because it
@@ -98,7 +98,7 @@ export const shows = pgTable("shows", {
 // Per-account design-system preference (issue #14, PRD.md §7): at most one
 // row per user, created on first write (see the `userSettings` resolver in
 // apps/api/src/graphql/schema.ts). Values are validated against
-// @presence/domain's `assertValidThemeMode`/`assertValidThemePalette`
+// @mechane/domain's `assertValidThemeMode`/`assertValidThemePalette`
 // before they reach here, the same way Show names are validated before
 // `shows` insert/update — the column types stay plain `text` because the
 // set of valid values is a domain concern, not a storage concern (adding a
@@ -119,7 +119,7 @@ export const userSettings = pgTable("user_settings", {
 // structural rules are constraints the database enforces, not just
 // comments: an edge physically can't point at a node that isn't there.
 //
-// The domain model and its invariants live in @presence/domain's `graph`
+// The domain model and its invariants live in @mechane/domain's `graph`
 // module; every write goes through `assertValidShowGraph` first. The
 // constraints here are the backstop for the subset a table can express.
 
@@ -129,7 +129,7 @@ export const userSettings = pgTable("user_settings", {
 // the last published structure while the director edits.
 //
 // `state` stays plain text for the same reason `user_settings.theme_mode`
-// does: the valid set is a domain concern (@presence/domain's
+// does: the valid set is a domain concern (@mechane/domain's
 // `assertValidGraphState`), not a storage one.
 export const showGraphs = pgTable(
   "show_graphs",
@@ -177,7 +177,7 @@ export const graphNodes = pgTable(
     // a foreign key: the only available composite-FK delete behaviours are
     // cascade (a Flow shouldn't die with its default Scene) and no action
     // (which would block deleting that Scene) — neither is the rule, which
-    // is "the Flow survives with no default". @presence/domain's
+    // is "the Flow survives with no default". @mechane/domain's
     // `assertValidShowGraph` is what keeps this pointing at a Scene of
     // this Flow.
     defaultSceneId: text("default_scene_id"),
@@ -250,7 +250,7 @@ export const graphNodeVariables = pgTable(
 // lands on exists (#20) even though the column is no longer written
 // directly.
 //
-// Which node kinds may sit at each end is checked in @presence/domain — it
+// Which node kinds may sit at each end is checked in @mechane/domain — it
 // needs both endpoints' rows, which a row-level check can't see. What the
 // table does enforce is that only a wiring edge addresses values, that only
 // a Navigate edge carries a Cue/Action pairing, and that an edge is never

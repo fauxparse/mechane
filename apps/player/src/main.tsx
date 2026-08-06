@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 // Device client: renders whatever Scene the paired Device is showing and
 // emits Events. Runs on audience phones, projectors, and laptops. See /PRD.md.
 function App() {
-  return <div>Presence</div>;
+  return <div>Mechanē</div>;
 }
 
 const root = document.getElementById("root");

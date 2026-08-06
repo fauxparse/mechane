@@ -25,7 +25,7 @@
 import { composite } from "./command";
 import { removeEdge, removeNode } from "./graph-commands";
 import type { ShowGraphCommand } from "./graph-commands";
-import type { GraphNode, ShowGraph } from "@presence/domain";
+import type { GraphNode, ShowGraph } from "@mechane/domain";
 
 /**
  * Everything a delete of `nodeIds` would destroy — the whole point being that

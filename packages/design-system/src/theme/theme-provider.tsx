@@ -3,13 +3,13 @@
 // already-resolved data as props rather than fetching anything itself.
 // Persisting a user's choice (the GraphQL mutation) is the consuming app's
 // job: see apps/studio's api/settings.ts + SettingsRoute, which reads
-// @presence/graphql-schema's userSettings query/mutation and passes the
+// @mechane/graphql-schema's userSettings query/mutation and passes the
 // result down as `mode`/`palette` here.
 import { createContext, useContext, useEffect, useMemo } from "react";
 import type { ReactNode } from "react";
 
-import { DEFAULT_THEME_MODE, DEFAULT_THEME_PALETTE } from "@presence/domain";
-import type { ThemeMode, ThemePalette } from "@presence/domain";
+import { DEFAULT_THEME_MODE, DEFAULT_THEME_PALETTE } from "@mechane/domain";
+import type { ThemeMode, ThemePalette } from "@mechane/domain";
 
 export interface ThemeContextValue {
   mode: ThemeMode;

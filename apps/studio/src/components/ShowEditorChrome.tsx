@@ -25,8 +25,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
-} from "@presence/design-system";
-import type { PublishState } from "@presence/domain";
+} from "@mechane/design-system";
+import type { PublishState } from "@mechane/domain";
 import { ChevronDown, LayoutGrid, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { FormEvent } from "react";

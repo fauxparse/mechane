@@ -1,6 +1,6 @@
-# Presence — v1 PRD
+# Mechanē — v1 PRD
 
-Presence is an application for building interactive tech for live theatre shows across multiple devices — projectors, laptops, and audience mobile phones. This document specifies the initial (v1) release: functionality, architecture, tech choices, and the process for handing implementation to agents.
+Mechanē is an application for building interactive tech for live theatre shows across multiple devices — projectors, laptops, and audience mobile phones. This document specifies the initial (v1) release: functionality, architecture, tech choices, and the process for handing implementation to agents.
 
 Domain vocabulary (Show, Scene, Device, Flow, Variable, Source, Transformer, Element, Block, Slot, Event, Cue, Action, Shape, Run, Wiring/Connecting) is defined in [CONTEXT.md](./CONTEXT.md) — read that first. This PRD does not redefine those terms; it specifies how they get built. Architectural decisions with lasting consequences are recorded as ADRs in [docs/adr/](./docs/adr/) and referenced inline below.
 

@@ -15,8 +15,8 @@
 //     need model that doesn't exist (ADR-0004's JEXL subset; PRD §10 defers
 //     the Shape schema), so the panel says so rather than shipping a field
 //     that writes nowhere.
-import { Button, cn, Input, Label } from "@presence/design-system";
-import type { GraphNode, SceneNode } from "@presence/domain";
+import { Button, cn, Input, Label } from "@mechane/design-system";
+import type { GraphNode, SceneNode } from "@mechane/domain";
 import { Plus, X } from "lucide-react";
 
 import { NODE_KIND_META } from "./node-kinds";

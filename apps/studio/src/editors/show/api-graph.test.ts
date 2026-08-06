@@ -1,5 +1,5 @@
-import { assertValidShowGraph } from "@presence/domain";
-import type { FlowNode, NavigateEdge, SceneNode, WiringEdge } from "@presence/domain";
+import { assertValidShowGraph } from "@mechane/domain";
+import type { FlowNode, NavigateEdge, SceneNode, WiringEdge } from "@mechane/domain";
 import { describe, expect, it } from "vitest";
 
 import { toShowGraph } from "./api-graph";

@@ -1,7 +1,7 @@
 // GraphQL schema. `me` proves a signed-in user is resolvable in the
 // resolver layer; the Show query/mutations (issue #3) are the first real
 // owned-resource vertical slice, using `requireUserId` (./context.ts) and
-// `assertOwnedBy`/`assertValidShowName` (@presence/domain) the same way
+// `assertOwnedBy`/`assertValidShowName` (@mechane/domain) the same way
 // every later owned resource (Scene, Device, ...) should.
 import {
   assertOwnedBy,
@@ -16,8 +16,8 @@ import {
   isId,
   InvalidThemeModeError,
   InvalidThemePaletteError,
-} from "@presence/domain";
-import type { GraphState } from "@presence/domain";
+} from "@mechane/domain";
+import type { GraphState } from "@mechane/domain";
 import { and, eq } from "drizzle-orm";
 import { GraphQLError } from "graphql";
 import { createSchema } from "graphql-yoga";
@@ -33,7 +33,7 @@ import type { ShowGraphInput } from "./show-graph";
 
 // graphql-yoga masks any thrown error that isn't a GraphQLError as a generic
 // "Unexpected error" (sound default — it stops internal error messages
-// leaking to clients). @presence/domain's validation errors are plain
+// leaking to clients). @mechane/domain's validation errors are plain
 // Errors so they stay usable outside a GraphQL context, so translate them
 // here into a GraphQLError the client can actually read.
 function validShowName(name: string): string {
@@ -47,7 +47,7 @@ function validShowName(name: string): string {
   }
 }
 
-// Mirrors `validShowName` above: @presence/domain's validators are plain
+// Mirrors `validShowName` above: @mechane/domain's validators are plain
 // Errors so they stay usable outside a GraphQL context, so translate them
 // into a GraphQLError the client can read rather than the generic
 // "Unexpected error" graphql-yoga masks non-GraphQLErrors as.

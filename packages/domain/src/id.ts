@@ -6,7 +6,7 @@
 //
 // The alphabet deliberately omits characters that are ambiguous when read
 // aloud or off a screen (`0`/`O`, `1`/`I`/`l`) plus `u` (so ids are less
-// likely to spell something). Presence is theatre software: an id gets
+// likely to spell something). Mechanē is theatre software: an id gets
 // read across a dark auditorium, and legibility matters more than the
 // density base62 would buy.
 //

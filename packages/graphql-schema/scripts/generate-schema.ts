@@ -13,7 +13,7 @@
 // time, so placeholders are supplied unless real ones are already set (e.g.
 // via a local apps/api/.env picked up by dotenv).
 //
-// Run via `pnpm codegen` (root) or `pnpm --filter @presence/graphql-schema
+// Run via `pnpm codegen` (root) or `pnpm --filter @mechane/graphql-schema
 // codegen`. CI re-runs this and fails the build on any resulting git diff
 // (.github/workflows/ci.yml) so `schema.graphql` and the gql.tada
 // schema-types file can never silently drift from the live schema.

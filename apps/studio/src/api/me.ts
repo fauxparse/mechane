@@ -1,7 +1,7 @@
 // Whether anyone is signed in. Backs both the router's `beforeLoad` auth
 // guards (issue #30) and any in-route reads of the signed-in user.
-import type { Me } from "@presence/graphql-schema";
-import { graphqlRequest, MeQuery } from "@presence/graphql-schema";
+import type { Me } from "@mechane/graphql-schema";
+import { graphqlRequest, MeQuery } from "@mechane/graphql-schema";
 import type { UseQueryOptions } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 

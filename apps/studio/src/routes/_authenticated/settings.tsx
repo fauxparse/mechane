@@ -5,9 +5,9 @@
 // never reach this component — the parent `_authenticated` layout's
 // `beforeLoad` (_authenticated/route.tsx, issue #30) redirects them to
 // /sign-in before it renders.
-import { ThemeSwitcher } from "@presence/design-system";
-import type { ThemeMode, ThemePalette } from "@presence/domain";
-import { DEFAULT_THEME_MODE, DEFAULT_THEME_PALETTE } from "@presence/domain";
+import { ThemeSwitcher } from "@mechane/design-system";
+import type { ThemeMode, ThemePalette } from "@mechane/domain";
+import { DEFAULT_THEME_MODE, DEFAULT_THEME_PALETTE } from "@mechane/domain";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { useUpdateUserSettings, useUserSettings } from "../../api/settings";

@@ -1,7 +1,7 @@
 // Keyboard viewport navigation for the Show editor (issue #40, spec'd by
 // #21): arrow keys pan the camera, `+`/`-` (and Cmd+/Cmd-) zoom.
 //
-// "Canvas" is deliberately absent from this whole directory: in Presence's
+// "Canvas" is deliberately absent from this whole directory: in Mechanē's
 // vocabulary a Canvas is the element tree a Scene owns (/CONTEXT.md), which
 // is the *other* editor. This one edits the Show graph.
 //

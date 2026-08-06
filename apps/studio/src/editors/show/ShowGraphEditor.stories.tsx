@@ -1,4 +1,4 @@
-import { Button } from "@presence/design-system";
+import { Button } from "@mechane/design-system";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useRef } from "react";
 

@@ -1,5 +1,5 @@
 {
-  "name": "@presence/graphql-schema",
+  "name": "@mechane/graphql-schema",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "codegen": "tsx scripts/generate-schema.ts && gql.tada generate-output"
   },
   "dependencies": {
-    "@presence/domain": "workspace:*",
+    "@mechane/domain": "workspace:*",
     "gql.tada": "^1.11.3",
     "graphql": "^17.0.2"
   },

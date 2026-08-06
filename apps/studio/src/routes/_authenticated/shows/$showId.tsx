@@ -18,9 +18,9 @@
 // Leaving with unpublished changes prompts nothing, on purpose (#22): the
 // draft lives server-side (ADR-0002), so leaving and coming back resumes
 // exactly the same in-progress state.
-import { isId, publishState } from "@presence/domain";
-import type { ShowId } from "@presence/domain";
-import { GraphQLRequestError } from "@presence/graphql-schema";
+import { isId, publishState } from "@mechane/domain";
+import type { ShowId } from "@mechane/domain";
+import { GraphQLRequestError } from "@mechane/graphql-schema";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 

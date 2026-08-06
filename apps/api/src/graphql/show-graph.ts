@@ -1,5 +1,5 @@
 // The GraphQL ⇄ domain boundary for the Show graph (issue #38): turning
-// loosely-typed mutation input into @presence/domain's `ShowGraph`, and a
+// loosely-typed mutation input into @mechane/domain's `ShowGraph`, and a
 // stored graph back into the shape the schema's types describe.
 //
 // GraphQL can express "a node has a kind" but not "a Flow never has a
@@ -8,8 +8,8 @@
 // `assertValidShowGraph` sees it. Anything malformed becomes a
 // BAD_USER_INPUT GraphQLError here rather than a generic "Unexpected
 // error" further in.
-import type { GraphEdge, GraphNode, ShowGraph } from "@presence/domain";
-import { isEdgeKind, isNodeKind, wiringTargetVariableId } from "@presence/domain";
+import type { GraphEdge, GraphNode, ShowGraph } from "@mechane/domain";
+import { isEdgeKind, isNodeKind, wiringTargetVariableId } from "@mechane/domain";
 import { GraphQLError } from "graphql";
 
 import type { StoredShowGraph } from "../db/show-graph";

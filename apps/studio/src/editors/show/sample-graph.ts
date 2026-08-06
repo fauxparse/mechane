@@ -8,7 +8,7 @@
 //
 // Between them the nodes and edges cover all five node kinds and all three
 // edge kinds, so the placeholder bodies and the mapper are both exercised.
-import type { ShowGraph } from "@presence/graphql-schema";
+import type { ShowGraph } from "@mechane/graphql-schema";
 
 type Graph = Pick<ShowGraph, "nodes" | "edges">;
 type ShowGraphNodeShape = Graph["nodes"][number];

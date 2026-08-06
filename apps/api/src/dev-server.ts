@@ -32,7 +32,7 @@ const server = createServer((req: IncomingMessage, res: ServerResponse) => {
 
 const port = Number(process.env.PORT ?? 4000);
 server.listen(port, () => {
-  console.log(`@presence/api listening on http://localhost:${port}`);
+  console.log(`@mechane/api listening on http://localhost:${port}`);
   console.log(`GraphQL: http://localhost:${port}/api/graphql`);
   console.log(`Auth:    http://localhost:${port}/api/auth`);
 });

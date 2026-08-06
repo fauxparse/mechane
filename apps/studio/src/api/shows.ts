@@ -1,8 +1,8 @@
 // TanStack Query hooks over the Show GraphQL operations
-// (@presence/graphql-schema). Keeps the "how do we talk to the API" concern
+// (@mechane/graphql-schema). Keeps the "how do we talk to the API" concern
 // out of the route components, which only care about the resulting data
 // and mutation callbacks.
-import type { ShowId } from "@presence/domain";
+import type { ShowId } from "@mechane/domain";
 import {
   CreateShowMutation,
   DeleteShowMutation,
@@ -10,7 +10,7 @@ import {
   graphqlRequest,
   ListShowsQuery,
   RenameShowMutation,
-} from "@presence/graphql-schema";
+} from "@mechane/graphql-schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { GRAPHQL_ENDPOINT } from "./client";
@@ -19,7 +19,7 @@ export const showsQueryKey = ["shows"] as const;
 export const showQueryKey = (id: ShowId) => ["shows", id] as const;
 
 // gql.tada types every `ID!` as a plain `string`, so ids arriving from the
-// API need re-branding to be usable as `ShowId` (@presence/domain). This
+// API need re-branding to be usable as `ShowId` (@mechane/domain). This
 // is an unchecked cast on purpose: the server generated these ids, and
 // re-validating our own data on every read would only ever fire if the
 // database and the id format had already drifted apart. Ids arriving from

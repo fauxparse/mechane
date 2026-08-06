@@ -1,9 +1,9 @@
 // A single row in the Show list. Presentational only — the route wires
 // `onOpen`/`onDelete` to navigation and the delete mutation, so this stays
 // easy to render in Storybook without a router or network. Built from
-// @presence/design-system's Button primitive (issue #14) rather than raw
+// @mechane/design-system's Button primitive (issue #14) rather than raw
 // <button> elements.
-import { Button } from "@presence/design-system";
+import { Button } from "@mechane/design-system";
 
 export interface ShowListItemProps {
   name: string;

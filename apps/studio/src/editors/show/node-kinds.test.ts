@@ -1,5 +1,5 @@
-import { assertValidShowGraph, isId } from "@presence/domain";
-import type { ShowGraph } from "@presence/domain";
+import { assertValidShowGraph, isId } from "@mechane/domain";
+import type { ShowGraph } from "@mechane/domain";
 import { describe, expect, it } from "vitest";
 
 import { createNode, nodeIcon, NODE_KIND_META, CREATABLE_KINDS } from "./node-kinds";
