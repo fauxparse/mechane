@@ -6,11 +6,13 @@ import {
   containingFlowId,
   emptyShowGraph,
   findNode,
+  formatValuePath,
   InvalidGraphStateError,
   InvalidShowGraphError,
   isFlowLocal,
   nodesInFlow,
   topLevelNodes,
+  wiringTargetVariableId,
 } from "./graph";
 import type {
   DeviceEdge,
@@ -55,8 +57,14 @@ function device(id: string): DeviceNode {
   return { id, kind: "device", name: id, position: at, parentId: null };
 }
 
-function wiring(id: string, sourceId: string, targetId: string, variableId: string): WiringEdge {
-  return { id, kind: "wiring", sourceId, targetId, targetVariableId: variableId };
+function wiring(
+  id: string,
+  sourceId: string,
+  targetId: string,
+  targetPath: string[],
+  sourcePath: string[] = [],
+): WiringEdge {
+  return { id, kind: "wiring", sourceId, targetId, sourcePath, targetPath };
 }
 
 function navigate(
@@ -65,11 +73,20 @@ function navigate(
   targetId: string,
   cueId: string | null = null,
 ): NavigateEdge {
-  return { id, kind: "navigate", sourceId, targetId, cueId, actionId: null };
+  return {
+    id,
+    kind: "navigate",
+    sourceId,
+    targetId,
+    sourcePath: [],
+    targetPath: [],
+    cueId,
+    actionId: null,
+  };
 }
 
 function deviceEdge(id: string, sourceId: string, targetId: string): DeviceEdge {
-  return { id, kind: "device", sourceId, targetId };
+  return { id, kind: "device", sourceId, targetId, sourcePath: [], targetPath: [] };
 }
 
 function graph(nodes: GraphNode[], edges: GraphEdge[] = []): ShowGraph {
@@ -95,8 +112,8 @@ function fullShowGraph(): ShowGraph {
       device("d2"),
     ],
     [
-      wiring("e1", "r1", "c1", "v1"),
-      wiring("e2", "t1", "c3", "v2"),
+      wiring("e1", "r1", "c1", ["v1"]),
+      wiring("e2", "t1", "c3", ["v2"]),
       navigate("e3", "c1", "c2", "cue-a"),
       navigate("e4", "c1", "c2", "cue-b"),
       navigate("e5", "c2", "c1"),
@@ -184,7 +201,7 @@ describe("assertValidShowGraph", () => {
     it("accepts a Source and a Transformer feeding Scene Variables", () => {
       const showGraph = graph(
         [source("r1"), transformer("t1"), scene("c1", null, ["v1", "v2"])],
-        [wiring("e1", "r1", "c1", "v1"), wiring("e2", "t1", "c1", "v2")],
+        [wiring("e1", "r1", "c1", ["v1"]), wiring("e2", "t1", "c1", ["v2"])],
       );
       expect(() => assertValidShowGraph(showGraph)).not.toThrow();
     });
@@ -192,28 +209,66 @@ describe("assertValidShowGraph", () => {
     it("rejects a wiring edge that starts anywhere but a Source or Transformer", () => {
       const showGraph = graph(
         [scene("c1", null, ["v1"]), scene("c2", null, ["v2"])],
-        [wiring("e1", "c1", "c2", "v2")],
+        [wiring("e1", "c1", "c2", ["v2"])],
       );
       expect(() => assertValidShowGraph(showGraph)).toThrow(/only a Source or Transformer/);
     });
 
     it("rejects a wiring edge targeting a node that isn't a Scene", () => {
-      const showGraph = graph([source("r1"), device("d1")], [wiring("e1", "r1", "d1", "v1")]);
+      const showGraph = graph([source("r1"), device("d1")], [wiring("e1", "r1", "d1", ["v1"])]);
       expect(() => assertValidShowGraph(showGraph)).toThrow(/wiring always targets a Variable/);
     });
 
     it("rejects a wiring edge targeting a Variable the Scene doesn't have", () => {
       const showGraph = graph(
         [source("r1"), scene("c1", null, ["v1"])],
-        [wiring("e1", "r1", "c1", "v-nope")],
+        [wiring("e1", "r1", "c1", ["v-nope"])],
       );
       expect(() => assertValidShowGraph(showGraph)).toThrow(/doesn't have/);
+    });
+
+    it("carries a field path at each end", () => {
+      const showGraph = graph(
+        [source("r1"), scene("c1", null, ["v1"])],
+        [wiring("e1", "r1", "c1", ["v1", "count"], ["tally", "total"])],
+      );
+      expect(() => assertValidShowGraph(showGraph)).not.toThrow();
+      const [edge] = showGraph.edges;
+      expect(wiringTargetVariableId(edge as WiringEdge)).toBe("v1");
+      expect(formatValuePath((edge as WiringEdge).sourcePath)).toBe("tally.total");
+    });
+
+    it("allows two edges feeding different fields of one Variable", () => {
+      const showGraph = graph(
+        [source("r1"), scene("c1", null, ["v1"])],
+        [
+          wiring("e1", "r1", "c1", ["v1", "name"], ["voter", "name"]),
+          wiring("e2", "r1", "c1", ["v1", "score"], ["voter", "score"]),
+        ],
+      );
+      expect(() => assertValidShowGraph(showGraph)).not.toThrow();
+    });
+
+    it("rejects a wiring edge with no target path at all", () => {
+      const showGraph = graph(
+        [source("r1"), scene("c1", null, ["v1"])],
+        [wiring("e1", "r1", "c1", [])],
+      );
+      expect(() => assertValidShowGraph(showGraph)).toThrow(/empty target path/);
+    });
+
+    it("rejects an empty segment in a path", () => {
+      const showGraph = graph(
+        [source("r1"), scene("c1", null, ["v1"])],
+        [wiring("e1", "r1", "c1", ["v1"], ["tally", ""])],
+      );
+      expect(() => assertValidShowGraph(showGraph)).toThrow(/empty segment/);
     });
 
     it("rejects a duplicate wiring edge", () => {
       const showGraph = graph(
         [source("r1"), scene("c1", null, ["v1"])],
-        [wiring("e1", "r1", "c1", "v1"), wiring("e2", "r1", "c1", "v1")],
+        [wiring("e1", "r1", "c1", ["v1"]), wiring("e2", "r1", "c1", ["v1"])],
       );
       expect(() => assertValidShowGraph(showGraph)).toThrow(/duplicate wiring edge/);
     });
@@ -223,7 +278,7 @@ describe("assertValidShowGraph", () => {
     it("lets a Flow-local Source feed a Scene in the same Flow", () => {
       const showGraph = graph(
         [flow("f1"), source("r1", "f1"), scene("c1", "f1", ["v1"])],
-        [wiring("e1", "r1", "c1", "v1")],
+        [wiring("e1", "r1", "c1", ["v1"])],
       );
       expect(() => assertValidShowGraph(showGraph)).not.toThrow();
     });
@@ -231,7 +286,7 @@ describe("assertValidShowGraph", () => {
     it("rejects a Flow-local Source feeding a Scene outside its Flow", () => {
       const showGraph = graph(
         [flow("f1"), source("r1", "f1"), scene("c1", null, ["v1"])],
-        [wiring("e1", "r1", "c1", "v1")],
+        [wiring("e1", "r1", "c1", ["v1"])],
       );
       expect(() => assertValidShowGraph(showGraph)).toThrow(/outside its Flow/);
     });
@@ -239,7 +294,7 @@ describe("assertValidShowGraph", () => {
     it("rejects a Flow-local Source feeding a Scene in a different Flow", () => {
       const showGraph = graph(
         [flow("f1"), flow("f2"), source("r1", "f1"), scene("c1", "f2", ["v1"])],
-        [wiring("e1", "r1", "c1", "v1")],
+        [wiring("e1", "r1", "c1", ["v1"])],
       );
       expect(() => assertValidShowGraph(showGraph)).toThrow(/outside its Flow/);
     });
@@ -247,7 +302,7 @@ describe("assertValidShowGraph", () => {
     it("lets a Show-level Source feed a Scene inside a Flow", () => {
       const showGraph = graph(
         [flow("f1"), source("r1"), scene("c1", "f1", ["v1"])],
-        [wiring("e1", "r1", "c1", "v1")],
+        [wiring("e1", "r1", "c1", ["v1"])],
       );
       expect(() => assertValidShowGraph(showGraph)).not.toThrow();
     });
@@ -289,6 +344,12 @@ describe("assertValidShowGraph", () => {
     it("rejects an edge between top-level Scenes — a Flow is the state machine", () => {
       const showGraph = graph([scene("c1"), scene("c2")], [navigate("e1", "c1", "c2")]);
       expect(() => assertValidShowGraph(showGraph)).toThrow(/same Flow/);
+    });
+
+    it("rejects an edge carrying a value path — a Navigate edge moves no value", () => {
+      const withPath: NavigateEdge = { ...navigate("e1", "c1", "c2"), targetPath: ["v1"] };
+      const showGraph = graph([flow("f1"), scene("c1", "f1"), scene("c2", "f1")], [withPath]);
+      expect(() => assertValidShowGraph(showGraph)).toThrow(/only wiring edges address values/);
     });
 
     it("rejects an edge that doesn't run Scene → Scene", () => {

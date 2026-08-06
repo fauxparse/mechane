@@ -17,6 +17,10 @@
 //     anywhere below, by design (#29).
 //   - No Flow-in-Flow (#23); Devices are always Show-level peers (#26).
 //   - Three edge kinds, all producer → consumer (#20 as corrected by #26).
+//     A wiring edge addresses values by *path* at both ends, so it can move
+//     one field of a structured Source into one field of a Scene Variable —
+//     the Variable target of #20 is the head of that path, not a special
+//     case beside it.
 //   - Positions are free-form stored data; no auto-layout (#25).
 //   - A Show with zero Flows is valid and unremarkable (#25).
 
@@ -91,13 +95,46 @@ export interface DeviceNode extends BaseNode {
 
 export type GraphNode = SceneNode | FlowNode | SourceNode | TransformerNode | DeviceNode;
 
-/** Source | Transformer output → a named Variable handle on a Scene. */
-export interface WiringEdge {
+/**
+ * A path into a structured value: the field names to walk, outermost
+ * first. `[]` addresses the whole value.
+ *
+ * Paths are what let an edge carry *part* of a value rather than all of
+ * it — pulling one field out of a Source holding a Shape (`["voter",
+ * "name"]`), or feeding one field of a structured Scene Variable while
+ * something else feeds its siblings. Segments are field names only; array
+ * indices are deliberately not addressable, because an edge is design-time
+ * structure and "the 3rd element" isn't a stable design-time thing to
+ * point at.
+ */
+export type ValuePath = string[];
+
+interface BaseEdge {
   id: string;
-  kind: "wiring";
   sourceId: string;
   targetId: string;
-  targetVariableId: string;
+  /**
+   * Which part of the producer's value travels down this edge. Empty for
+   * the whole value.
+   */
+  sourcePath: ValuePath;
+  /**
+   * Which part of the consumer this edge feeds. Empty for edges that don't
+   * address a value at all; for a wiring edge, the first segment is the id
+   * of the Scene Variable being fed and any further segments name a field
+   * within it.
+   */
+  targetPath: ValuePath;
+}
+
+/**
+ * Source | Transformer output → a named Variable handle on a Scene, or one
+ * field of one. `targetPath[0]` is that Variable's id — the port a wiring
+ * edge lands on is still a Variable (#20), the path just says which part
+ * of it, and which part of the producer feeds it.
+ */
+export interface WiringEdge extends BaseEdge {
+  kind: "wiring";
 }
 
 /**
@@ -106,24 +143,36 @@ export interface WiringEdge {
  * exists (#20). Cues and Actions aren't modelled yet, so the pairing is
  * carried as opaque ids that are null until they are.
  */
-export interface NavigateEdge {
-  id: string;
+export interface NavigateEdge extends BaseEdge {
   kind: "navigate";
-  sourceId: string;
-  targetId: string;
   cueId: string | null;
   actionId: string | null;
 }
 
 /** Flow | top-level Scene → Device: "this Device displays whatever's here." */
-export interface DeviceEdge {
-  id: string;
+export interface DeviceEdge extends BaseEdge {
   kind: "device";
-  sourceId: string;
-  targetId: string;
 }
 
 export type GraphEdge = WiringEdge | NavigateEdge | DeviceEdge;
+
+/**
+ * The Scene Variable a wiring edge lands on — the head of its target path.
+ * Use this rather than reaching for `targetPath[0]` at call sites, so
+ * "the first segment is the Variable" is stated in one place.
+ */
+export function wiringTargetVariableId(edge: WiringEdge): string {
+  const [variableId] = edge.targetPath;
+  if (variableId === undefined) {
+    throw new InvalidShowGraphError(`wiring edge "${edge.id}" has an empty target path.`);
+  }
+  return variableId;
+}
+
+/** Renders a path for display or comparison: `["a","b"]` → `"a.b"`. */
+export function formatValuePath(path: ValuePath): string {
+  return path.join(".");
+}
 
 /** A whole Show graph in one state (draft or published). */
 export interface ShowGraph {
@@ -275,6 +324,34 @@ function assertValidDefaultScene(flow: FlowNode, nodes: Map<string, GraphNode>):
   }
 }
 
+function assertValidPathSegments(edge: GraphEdge): void {
+  for (const [name, path] of [
+    ["source", edge.sourcePath],
+    ["target", edge.targetPath],
+  ] as const) {
+    if (path.some((segment) => segment.length === 0)) {
+      throw new InvalidShowGraphError(
+        `edge "${edge.id}" has an empty segment in its ${name} path.`,
+      );
+    }
+  }
+}
+
+/**
+ * Navigate and Device edges carry a Scene or a whole display, not a value,
+ * so there's nothing for a path to address. Keeping the fields on every
+ * edge (rather than only on wiring edges) is what lets the canvas treat
+ * edges uniformly; keeping them empty here is what stops that uniformity
+ * turning into meaningless data.
+ */
+function assertNoPaths(edge: NavigateEdge | DeviceEdge): void {
+  if (edge.sourcePath.length > 0 || edge.targetPath.length > 0) {
+    throw new InvalidShowGraphError(
+      `${edge.kind === "navigate" ? "Navigate" : "Device"} edge "${edge.id}" carries a value path; only wiring edges address values.`,
+    );
+  }
+}
+
 function assertValidWiringEdge(edge: WiringEdge, nodes: Map<string, GraphNode>): void {
   const producer = requireNode(nodes, edge.sourceId, `Wiring edge "${edge.id}"`);
   if (producer.kind !== "source" && producer.kind !== "transformer") {
@@ -288,9 +365,15 @@ function assertValidWiringEdge(edge: WiringEdge, nodes: Map<string, GraphNode>):
       `wiring edge "${edge.id}" targets a ${consumer.kind}; wiring always targets a Variable on a Scene.`,
     );
   }
-  if (!consumer.variables.some((variable) => variable.id === edge.targetVariableId)) {
+  if (edge.targetPath.length === 0) {
     throw new InvalidShowGraphError(
-      `wiring edge "${edge.id}" targets Variable "${edge.targetVariableId}", which Scene "${consumer.id}" doesn't have.`,
+      `wiring edge "${edge.id}" has an empty target path; it must at least name the Scene Variable it feeds.`,
+    );
+  }
+  const variableId = wiringTargetVariableId(edge);
+  if (!consumer.variables.some((variable) => variable.id === variableId)) {
+    throw new InvalidShowGraphError(
+      `wiring edge "${edge.id}" targets Variable "${variableId}", which Scene "${consumer.id}" doesn't have.`,
     );
   }
   // Flow-local scoping (#29): a Flow-local producer's value only exists
@@ -351,9 +434,11 @@ function assertNoDuplicateEdges(edges: GraphEdge[]): void {
     const discriminator =
       edge.kind === "navigate"
         ? `${edge.cueId ?? ""} ${edge.actionId ?? ""}`
-        : edge.kind === "wiring"
-          ? edge.targetVariableId
-          : "";
+        : // Two wiring edges between the same pair of nodes are distinct if
+          // they move different fields: feeding a Scene Variable's `name`
+          // and `score` from two fields of one Source is two edges, not a
+          // duplicate.
+          `${formatValuePath(edge.sourcePath)} > ${formatValuePath(edge.targetPath)}`;
     const key = `${edge.kind} ${edge.sourceId} ${edge.targetId} ${discriminator}`;
     if (seen.has(key)) {
       throw new InvalidShowGraphError(
@@ -405,14 +490,17 @@ export function assertValidShowGraph(graph: ShowGraph): ShowGraph {
   }
 
   for (const edge of graph.edges) {
+    assertValidPathSegments(edge);
     switch (edge.kind) {
       case "wiring":
         assertValidWiringEdge(edge, nodes);
         break;
       case "navigate":
+        assertNoPaths(edge);
         assertValidNavigateEdge(edge, nodes);
         break;
       case "device":
+        assertNoPaths(edge);
         assertValidDeviceEdge(edge, nodes);
         break;
     }

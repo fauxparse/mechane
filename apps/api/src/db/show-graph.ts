@@ -56,28 +56,20 @@ function toEdge(row: EdgeRow): GraphEdge {
   if (!isEdgeKind(row.kind)) {
     throw new Error(`Stored graph edge "${row.id}" has unknown kind "${row.kind}".`);
   }
+  const base = {
+    id: row.id,
+    sourceId: row.sourceNodeId,
+    targetId: row.targetNodeId,
+    sourcePath: row.sourcePath,
+    targetPath: row.targetPath,
+  };
   switch (row.kind) {
     case "wiring":
-      return {
-        id: row.id,
-        kind: "wiring",
-        sourceId: row.sourceNodeId,
-        targetId: row.targetNodeId,
-        // Non-null by the `graph_edges_variable_target_is_wiring_only`
-        // check constraint; the cast is that constraint restated for TS.
-        targetVariableId: row.targetVariableId as string,
-      };
+      return { ...base, kind: "wiring" };
     case "navigate":
-      return {
-        id: row.id,
-        kind: "navigate",
-        sourceId: row.sourceNodeId,
-        targetId: row.targetNodeId,
-        cueId: row.cueId,
-        actionId: row.actionId,
-      };
+      return { ...base, kind: "navigate", cueId: row.cueId, actionId: row.actionId };
     case "device":
-      return { id: row.id, kind: "device", sourceId: row.sourceNodeId, targetId: row.targetNodeId };
+      return { ...base, kind: "device" };
   }
 }
 
@@ -219,7 +211,10 @@ export async function writeShowGraph(
           kind: edge.kind,
           sourceNodeId: edge.sourceId,
           targetNodeId: edge.targetId,
-          targetVariableId: edge.kind === "wiring" ? edge.targetVariableId : null,
+          sourcePath: edge.sourcePath,
+          targetPath: edge.targetPath,
+          // `target_variable_id` is a generated column — the database
+          // derives it from `target_path`, so it isn't written here.
           cueId: edge.kind === "navigate" ? edge.cueId : null,
           actionId: edge.kind === "navigate" ? edge.actionId : null,
         })),

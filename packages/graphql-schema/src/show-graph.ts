@@ -35,6 +35,8 @@ export const GetShowGraphQuery = graphql(`
         kind
         sourceId
         targetId
+        sourcePath
+        targetPath
         targetVariableId
         cueId
         actionId
@@ -69,6 +71,8 @@ export const SaveShowGraphMutation = graphql(`
         kind
         sourceId
         targetId
+        sourcePath
+        targetPath
         targetVariableId
         cueId
         actionId

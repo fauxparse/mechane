@@ -238,16 +238,25 @@ export const graphNodeVariables = pgTable(
 // The three edge kinds (#20, direction corrected by #26), all running
 // producer → consumer, in one table:
 //
-//   wiring    Source | Transformer   → Scene Variable  (target_variable_id set)
+//   wiring    Source | Transformer   → Scene Variable  (paths set)
 //   navigate  Scene                  → Scene           (same Flow, #25)
 //   device    Flow | top-level Scene → Device
 //
+// A wiring edge addresses a value at each end by path, so it can carry one
+// field of a structured Source into one field of a Scene Variable rather
+// than only whole values. `target_variable_id` is therefore *derived*: it's
+// a stored generated column holding `target_path[1]`, which is what lets
+// the foreign key below still guarantee that the Variable a wiring edge
+// lands on exists (#20) even though the column is no longer written
+// directly.
+//
 // Which node kinds may sit at each end is checked in @presence/domain — it
 // needs both endpoints' rows, which a row-level check can't see. What the
-// table does enforce is that only a wiring edge names a Variable, that
-// only a Navigate edge carries a Cue/Action pairing, and that an edge is
-// never duplicated: parallel Navigate edges between the same two Scenes
-// are allowed, but only one per distinct pairing (#20).
+// table does enforce is that only a wiring edge addresses values, that only
+// a Navigate edge carries a Cue/Action pairing, and that an edge is never
+// duplicated: parallel Navigate edges between the same two Scenes are
+// allowed (one per distinct pairing, #20), as are parallel wiring edges
+// moving different fields.
 export const graphEdges = pgTable(
   "graph_edges",
   {
@@ -258,7 +267,22 @@ export const graphEdges = pgTable(
     kind: text("kind").notNull(),
     sourceNodeId: text("source_node_id").notNull(),
     targetNodeId: text("target_node_id").notNull(),
-    targetVariableId: text("target_variable_id"),
+    // Field paths into the producer's and consumer's values, outermost
+    // segment first; empty means "the whole value", and both are empty on
+    // Navigate and Device edges, which don't address values at all.
+    sourcePath: text("source_path")
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
+    targetPath: text("target_path")
+      .array()
+      .notNull()
+      .default(sql`'{}'`),
+    // The head of `target_path` — the Scene Variable a wiring edge lands
+    // on. Generated rather than written so it can't disagree with the path
+    // it comes from, while still being a real column the foreign key below
+    // can point at.
+    targetVariableId: text("target_variable_id").generatedAlwaysAs(sql`target_path[1]`),
     // Cues and Actions aren't modelled yet, so these are opaque ids with no
     // FK — they exist now because the pairing is what makes parallel
     // Navigate edges distinguishable, and retrofitting that into the
@@ -294,14 +318,23 @@ export const graphEdges = pgTable(
       table.kind,
       table.sourceNodeId,
       table.targetNodeId,
-      sql`coalesce(${table.targetVariableId}, '')`,
+      // The arrays index directly (btree compares text[] fine) — joining
+      // them into a string would need `array_to_string`, which is only
+      // STABLE, and an index expression has to be IMMUTABLE.
+      table.sourcePath,
+      table.targetPath,
       sql`coalesce(${table.cueId}, '')`,
       sql`coalesce(${table.actionId}, '')`,
     ),
-    // A wiring edge targets a Variable; nothing else may, and it must.
+    // Only a wiring edge addresses a value, and it must name at least the
+    // Scene Variable it feeds.
     check(
-      "graph_edges_variable_target_is_wiring_only",
-      sql`(${table.kind} = 'wiring') = (${table.targetVariableId} is not null)`,
+      "graph_edges_paths_are_wiring_only",
+      sql`(${table.kind} = 'wiring') = (cardinality(${table.targetPath}) > 0)`,
+    ),
+    check(
+      "graph_edges_source_path_is_wiring_only",
+      sql`${table.kind} = 'wiring' or cardinality(${table.sourcePath}) = 0`,
     ),
     // Only a Navigate edge means anything by a Cue/Action pairing.
     check(

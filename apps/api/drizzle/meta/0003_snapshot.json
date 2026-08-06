@@ -1,5 +1,5 @@
 {
-  "id": "42aadd55-911a-4c00-8472-a36c1408d8de",
+  "id": "52073f8e-441c-4501-8bdb-af0249676eac",
   "prevId": "4b163efa-3504-4d0f-9677-4cb745ce944d",
   "version": "7",
   "dialect": "postgresql",
@@ -145,11 +145,29 @@
           "primaryKey": false,
           "notNull": true
         },
+        "source_path": {
+          "name": "source_path",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
+        "target_path": {
+          "name": "target_path",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
         "target_variable_id": {
           "name": "target_variable_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": false,
+          "generated": {
+            "as": "target_path[1]",
+            "type": "stored"
+          }
         },
         "cue_id": {
           "name": "cue_id",
@@ -249,9 +267,15 @@
               "nulls": "last"
             },
             {
-              "expression": "coalesce(\"target_variable_id\", '')",
+              "expression": "source_path",
+              "isExpression": false,
               "asc": true,
-              "isExpression": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "target_path",
+              "isExpression": false,
+              "asc": true,
               "nulls": "last"
             },
             {
@@ -345,9 +369,13 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "graph_edges_variable_target_is_wiring_only": {
-          "name": "graph_edges_variable_target_is_wiring_only",
-          "value": "(\"graph_edges\".\"kind\" = 'wiring') = (\"graph_edges\".\"target_variable_id\" is not null)"
+        "graph_edges_paths_are_wiring_only": {
+          "name": "graph_edges_paths_are_wiring_only",
+          "value": "(\"graph_edges\".\"kind\" = 'wiring') = (cardinality(\"graph_edges\".\"target_path\") > 0)"
+        },
+        "graph_edges_source_path_is_wiring_only": {
+          "name": "graph_edges_source_path_is_wiring_only",
+          "value": "\"graph_edges\".\"kind\" = 'wiring' or cardinality(\"graph_edges\".\"source_path\") = 0"
         },
         "graph_edges_pairing_is_navigate_only": {
           "name": "graph_edges_pairing_is_navigate_only",

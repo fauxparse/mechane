@@ -9,7 +9,7 @@
 // BAD_USER_INPUT GraphQLError here rather than a generic "Unexpected
 // error" further in.
 import type { GraphEdge, GraphNode, ShowGraph } from "@presence/domain";
-import { isEdgeKind, isNodeKind } from "@presence/domain";
+import { isEdgeKind, isNodeKind, wiringTargetVariableId } from "@presence/domain";
 import { GraphQLError } from "graphql";
 
 import type { StoredShowGraph } from "../db/show-graph";
@@ -39,7 +39,8 @@ export interface GraphEdgeInput {
   kind: string;
   sourceId: string;
   targetId: string;
-  targetVariableId?: string | null;
+  sourcePath?: string[] | null;
+  targetPath?: string[] | null;
   cueId?: string | null;
   actionId?: string | null;
 }
@@ -103,34 +104,30 @@ function parseEdge(input: GraphEdgeInput): GraphEdge {
   if (!isEdgeKind(input.kind)) {
     throw badInput(`Unknown edge kind "${input.kind}" on edge "${input.id}".`);
   }
+  const base = {
+    id: input.id,
+    sourceId: input.sourceId,
+    targetId: input.targetId,
+    sourcePath: input.sourcePath ?? [],
+    targetPath: input.targetPath ?? [],
+  };
   switch (input.kind) {
     case "wiring":
-      if (!input.targetVariableId) {
-        throw badInput(`Wiring edge "${input.id}" must name the Scene Variable it targets.`);
+      if (base.targetPath.length === 0) {
+        throw badInput(
+          `Wiring edge "${input.id}" needs a targetPath naming at least the Scene Variable it feeds.`,
+        );
       }
-      return {
-        id: input.id,
-        kind: "wiring",
-        sourceId: input.sourceId,
-        targetId: input.targetId,
-        targetVariableId: input.targetVariableId,
-      };
+      return { ...base, kind: "wiring" };
     case "navigate":
       return {
-        id: input.id,
+        ...base,
         kind: "navigate",
-        sourceId: input.sourceId,
-        targetId: input.targetId,
         cueId: input.cueId ?? null,
         actionId: input.actionId ?? null,
       };
     case "device":
-      return {
-        id: input.id,
-        kind: "device",
-        sourceId: input.sourceId,
-        targetId: input.targetId,
-      };
+      return { ...base, kind: "device" };
   }
 }
 
@@ -164,7 +161,12 @@ export function serializeShowGraph(graph: StoredShowGraph) {
       kind: edge.kind,
       sourceId: edge.sourceId,
       targetId: edge.targetId,
-      targetVariableId: edge.kind === "wiring" ? edge.targetVariableId : null,
+      sourcePath: edge.sourcePath,
+      targetPath: edge.targetPath,
+      // Derived, not stored input: the head of a wiring edge's target path
+      // is the Variable it lands on, and a client that only cares which
+      // Variable is fed shouldn't have to know that.
+      targetVariableId: edge.kind === "wiring" ? wiringTargetVariableId(edge) : null,
       cueId: edge.kind === "navigate" ? edge.cueId : null,
       actionId: edge.kind === "navigate" ? edge.actionId : null,
     })),

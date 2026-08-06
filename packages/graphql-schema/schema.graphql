@@ -70,7 +70,23 @@ type GraphEdge {
   sourceId: ID!
   targetId: ID!
 
-  """Wiring edges only: the Scene Variable this edge feeds."""
+  """
+  Wiring edges only: which field of the producer's value travels down
+  this edge, outermost segment first. Empty means the whole value.
+  """
+  sourcePath: [String!]!
+
+  """
+  Wiring edges only: which part of the consumer this edge feeds. The
+  first segment is the Scene Variable's id; any further segments name a
+  field within it, so one field of a structured Variable can be fed
+  without disturbing its siblings.
+  """
+  targetPath: [String!]!
+
+  """
+  Wiring edges only: the Scene Variable this edge feeds — the head of targetPath.
+  """
   targetVariableId: ID
 
   """
@@ -118,7 +134,14 @@ input GraphEdgeInput {
   kind: String!
   sourceId: ID!
   targetId: ID!
-  targetVariableId: ID
+
+  """Defaults to the empty path (the whole value)."""
+  sourcePath: [String!]
+
+  """
+  Wiring edges must give at least the Scene Variable's id. Defaults to empty.
+  """
+  targetPath: [String!]
   cueId: ID
   actionId: ID
 }
