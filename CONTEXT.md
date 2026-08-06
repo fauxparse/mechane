@@ -17,7 +17,7 @@ _Avoid_: Session, performance, instance
 ### Scene
 
 A named visual unit designed to be displayed on a Device. A Scene has a Canvas, plus Variables that can be connected to Sources in the Show graph and Cues that respond to Events.
-_Avoid_: Screen (code term), page, slide
+_Avoid_: Screen (code term), page, slide. Matt sometimes says "screen" conversationally when he means Scene — treat it as shorthand, not a different concept.
 
 ### Canvas
 
