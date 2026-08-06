@@ -5,15 +5,19 @@
 // every later owned resource (Scene, Device, ...) should.
 import {
   assertOwnedBy,
+  assertValidGraphState,
   assertValidShowName,
   assertValidThemeMode,
   assertValidThemePalette,
   defaultThemeSettings,
+  InvalidGraphStateError,
+  InvalidShowGraphError,
   InvalidShowNameError,
   isId,
   InvalidThemeModeError,
   InvalidThemePaletteError,
 } from "@presence/domain";
+import type { GraphState } from "@presence/domain";
 import { and, eq } from "drizzle-orm";
 import { GraphQLError } from "graphql";
 import { createSchema } from "graphql-yoga";
@@ -21,8 +25,11 @@ import { createSchema } from "graphql-yoga";
 import { db } from "../db/client";
 import { withUniqueId } from "../db/ids";
 import { shows, userSettings } from "../db/schema";
+import { publishShowGraph, readShowGraph, writeShowGraph } from "../db/show-graph";
 import { requireUserId } from "./context";
 import type { GraphQLContext } from "./context";
+import { parseShowGraphInput, serializeShowGraph } from "./show-graph";
+import type { ShowGraphInput } from "./show-graph";
 
 // graphql-yoga masks any thrown error that isn't a GraphQLError as a generic
 // "Unexpected error" (sound default — it stops internal error messages
@@ -60,6 +67,29 @@ function validThemePalette(value: string): string {
     return assertValidThemePalette(value);
   } catch (error) {
     if (error instanceof InvalidThemePaletteError) {
+      throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
+    }
+    throw error;
+  }
+}
+
+// Same translation again, for the two Show-graph domain errors (#38).
+function validGraphState(value: string): GraphState {
+  try {
+    return assertValidGraphState(value);
+  } catch (error) {
+    if (error instanceof InvalidGraphStateError) {
+      throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
+    }
+    throw error;
+  }
+}
+
+async function saveGraph(showId: string, state: GraphState, input: ShowGraphInput) {
+  try {
+    return await writeShowGraph(showId, state, parseShowGraphInput(input));
+  } catch (error) {
+    if (error instanceof InvalidShowGraphError) {
       throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
     }
     throw error;
@@ -112,6 +142,97 @@ export const schema = createSchema<GraphQLContext>({
       themePalette: String!
     }
 
+    "Free-form canvas coordinates for a graph node (issue #25 — no auto-layout)."
+    type Position {
+      x: Float!
+      y: Float!
+    }
+
+    "A named port on a Scene. A wiring edge targets one of these, not the Scene as a whole."
+    type SceneVariable {
+      id: ID!
+      name: String!
+    }
+
+    """
+    A node in the Show graph. One flat shape for all five kinds: \`kind\` is
+    "scene", "flow", "source", "transformer", or "device".
+    """
+    type GraphNode {
+      id: ID!
+      kind: String!
+      name: String!
+      "The Flow containing this node, or null if it's Show-level. This is also what makes a Source Flow-local."
+      parentId: ID
+      "Flow nodes only: the Flow's design-time entry Scene, if one is set."
+      defaultSceneId: ID
+      position: Position!
+      "Scene nodes only: the Variables wiring edges can target."
+      variables: [SceneVariable!]!
+    }
+
+    """
+    An edge in the Show graph, always running producer → consumer. \`kind\` is
+    "wiring" (Source/Transformer → Scene Variable), "navigate" (Scene → Scene
+    within one Flow), or "device" (Flow/top-level Scene → Device).
+    """
+    type GraphEdge {
+      id: ID!
+      kind: String!
+      sourceId: ID!
+      targetId: ID!
+      "Wiring edges only: the Scene Variable this edge feeds."
+      targetVariableId: ID
+      "Navigate edges only: which Cue/Action pairing this transition represents."
+      cueId: ID
+      actionId: ID
+    }
+
+    "A Show's graph in one state. Draft and published are independently readable (ADR-0002)."
+    type ShowGraph {
+      showId: ID!
+      "Either \\"draft\\" or \\"published\\"."
+      state: String!
+      nodes: [GraphNode!]!
+      edges: [GraphEdge!]!
+      updatedAt: String!
+    }
+
+    input PositionInput {
+      x: Float!
+      y: Float!
+    }
+
+    input SceneVariableInput {
+      id: ID!
+      name: String!
+    }
+
+    input GraphNodeInput {
+      id: ID!
+      kind: String!
+      name: String!
+      parentId: ID
+      defaultSceneId: ID
+      position: PositionInput!
+      variables: [SceneVariableInput!]
+    }
+
+    input GraphEdgeInput {
+      id: ID!
+      kind: String!
+      sourceId: ID!
+      targetId: ID!
+      targetVariableId: ID
+      cueId: ID
+      actionId: ID
+    }
+
+    input ShowGraphInput {
+      nodes: [GraphNodeInput!]!
+      edges: [GraphEdgeInput!]!
+    }
+
     type Query {
       "The signed-in user, or null if the request has no valid session."
       me: User
@@ -121,6 +242,12 @@ export const schema = createSchema<GraphQLContext>({
       show(id: ID!): Show
       "The signed-in user's theme settings, or PRD.md §7 defaults if they haven't set any yet."
       userSettings: UserSettings!
+      """
+      A Show's graph in the given state (default "draft"). A Show that has
+      never been edited or published reads as an empty graph — a Show with
+      no Flows at all is valid (issue #25).
+      """
+      showGraph(showId: ID!, state: String): ShowGraph!
     }
 
     type Mutation {
@@ -132,6 +259,10 @@ export const schema = createSchema<GraphQLContext>({
       deleteShow(id: ID!): Boolean!
       "Updates the signed-in user's theme settings. Omitted fields are left unchanged."
       updateUserSettings(themeMode: String, themePalette: String): UserSettings!
+      "Replaces the draft graph of a Show owned by the signed-in user, wholesale."
+      saveShowGraph(showId: ID!, graph: ShowGraphInput!): ShowGraph!
+      "Publishes a Show's draft graph, making it the published graph immediately (ADR-0002)."
+      publishShowGraph(showId: ID!): ShowGraph!
     }
   `,
   resolvers: {
@@ -167,6 +298,18 @@ export const schema = createSchema<GraphQLContext>({
           return { themeMode: defaults.mode, themePalette: defaults.palette };
         }
         return settings;
+      },
+      showGraph: async (
+        _parent,
+        { showId, state }: { showId: string; state?: string | null },
+        context,
+      ) => {
+        const userId = requireUserId(context);
+        // Ownership first: the graph is part of the Show, so it's readable
+        // exactly when the Show is.
+        await findOwnShowOrThrow(showId, userId);
+        const graphState = validGraphState(state ?? "draft");
+        return serializeShowGraph(await readShowGraph(showId, graphState));
       },
     },
     Mutation: {
@@ -229,6 +372,24 @@ export const schema = createSchema<GraphQLContext>({
           })
           .returning();
         return updated;
+      },
+      saveShowGraph: async (
+        _parent,
+        { showId, graph }: { showId: string; graph: ShowGraphInput },
+        context,
+      ) => {
+        const userId = requireUserId(context);
+        await findOwnShowOrThrow(showId, userId);
+        const saved = await saveGraph(showId, "draft", graph);
+        // The Show's own timestamp tracks "last edited", which the
+        // dashboard orders by — a graph edit is an edit to the Show.
+        await db.update(shows).set({ updatedAt: new Date() }).where(eq(shows.id, showId));
+        return serializeShowGraph(saved);
+      },
+      publishShowGraph: async (_parent, { showId }: { showId: string }, context) => {
+        const userId = requireUserId(context);
+        await findOwnShowOrThrow(showId, userId);
+        return serializeShowGraph(await publishShowGraph(showId));
       },
     },
   },

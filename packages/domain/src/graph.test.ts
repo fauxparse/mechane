@@ -1,0 +1,385 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  assertValidGraphState,
+  assertValidShowGraph,
+  containingFlowId,
+  emptyShowGraph,
+  findNode,
+  InvalidGraphStateError,
+  InvalidShowGraphError,
+  isFlowLocal,
+  nodesInFlow,
+  topLevelNodes,
+} from "./graph";
+import type {
+  DeviceEdge,
+  DeviceNode,
+  FlowNode,
+  GraphEdge,
+  GraphNode,
+  NavigateEdge,
+  SceneNode,
+  ShowGraph,
+  SourceNode,
+  TransformerNode,
+  WiringEdge,
+} from "./graph";
+
+const at = { x: 0, y: 0 };
+
+function scene(id: string, parentId: string | null = null, variableIds: string[] = []): SceneNode {
+  return {
+    id,
+    kind: "scene",
+    name: id,
+    position: at,
+    parentId,
+    variables: variableIds.map((variableId) => ({ id: variableId, name: variableId })),
+  };
+}
+
+function flow(id: string, defaultSceneId: string | null = null): FlowNode {
+  return { id, kind: "flow", name: id, position: at, parentId: null, defaultSceneId };
+}
+
+function source(id: string, parentId: string | null = null): SourceNode {
+  return { id, kind: "source", name: id, position: at, parentId };
+}
+
+function transformer(id: string, parentId: string | null = null): TransformerNode {
+  return { id, kind: "transformer", name: id, position: at, parentId };
+}
+
+function device(id: string): DeviceNode {
+  return { id, kind: "device", name: id, position: at, parentId: null };
+}
+
+function wiring(id: string, sourceId: string, targetId: string, variableId: string): WiringEdge {
+  return { id, kind: "wiring", sourceId, targetId, targetVariableId: variableId };
+}
+
+function navigate(
+  id: string,
+  sourceId: string,
+  targetId: string,
+  cueId: string | null = null,
+): NavigateEdge {
+  return { id, kind: "navigate", sourceId, targetId, cueId, actionId: null };
+}
+
+function deviceEdge(id: string, sourceId: string, targetId: string): DeviceEdge {
+  return { id, kind: "device", sourceId, targetId };
+}
+
+function graph(nodes: GraphNode[], edges: GraphEdge[] = []): ShowGraph {
+  return { nodes, edges };
+}
+
+/**
+ * A Show exercising every node kind and every edge kind at once: a Flow
+ * with two nested Scenes and a Flow-local Source, plus a top-level Scene
+ * fed by a Show-level Source through a Transformer, with a Device on each.
+ */
+function fullShowGraph(): ShowGraph {
+  return graph(
+    [
+      flow("f1", "c1"),
+      scene("c1", "f1", ["v1"]),
+      scene("c2", "f1"),
+      source("r1", "f1"),
+      scene("c3", null, ["v2"]),
+      source("r2"),
+      transformer("t1"),
+      device("d1"),
+      device("d2"),
+    ],
+    [
+      wiring("e1", "r1", "c1", "v1"),
+      wiring("e2", "t1", "c3", "v2"),
+      navigate("e3", "c1", "c2", "cue-a"),
+      navigate("e4", "c1", "c2", "cue-b"),
+      navigate("e5", "c2", "c1"),
+      deviceEdge("e6", "f1", "d1"),
+      deviceEdge("e7", "c3", "d2"),
+    ],
+  );
+}
+
+describe("assertValidShowGraph", () => {
+  it("accepts the empty graph — a Show with no Flows is valid", () => {
+    expect(assertValidShowGraph(emptyShowGraph())).toEqual({ nodes: [], edges: [] });
+  });
+
+  it("accepts a graph with all five node kinds and all three edge kinds", () => {
+    const showGraph = fullShowGraph();
+    expect(assertValidShowGraph(showGraph)).toBe(showGraph);
+  });
+
+  it("rejects duplicate node ids", () => {
+    expect(() => assertValidShowGraph(graph([scene("c1"), scene("c1")]))).toThrow(
+      InvalidShowGraphError,
+    );
+  });
+
+  it("rejects duplicate edge ids", () => {
+    const showGraph = graph(
+      [flow("f1"), scene("c1", "f1"), scene("c2", "f1")],
+      [navigate("e1", "c1", "c2", "cue-a"), navigate("e1", "c2", "c1", "cue-b")],
+    );
+    expect(() => assertValidShowGraph(showGraph)).toThrow(InvalidShowGraphError);
+  });
+
+  it("rejects two Variables with the same name on one Scene", () => {
+    const withDuplicateNames = scene("c1");
+    withDuplicateNames.variables = [
+      { id: "v1", name: "tally" },
+      { id: "v2", name: "tally" },
+    ];
+    expect(() => assertValidShowGraph(graph([withDuplicateNames]))).toThrow(InvalidShowGraphError);
+  });
+
+  it("rejects a node whose position isn't a finite number", () => {
+    const adrift = scene("c1");
+    adrift.position = { x: Number.NaN, y: 0 };
+    expect(() => assertValidShowGraph(graph([adrift]))).toThrow(InvalidShowGraphError);
+  });
+
+  describe("nesting", () => {
+    it("accepts Scenes both nested in a Flow and top-level", () => {
+      const showGraph = graph([flow("f1"), scene("c1", "f1"), scene("c2")]);
+      expect(() => assertValidShowGraph(showGraph)).not.toThrow();
+    });
+
+    it("rejects a Flow nested inside another Flow", () => {
+      const nested = { ...flow("f2"), parentId: "f1" } as unknown as FlowNode;
+      expect(() => assertValidShowGraph(graph([flow("f1"), nested]))).toThrow(
+        /Flow "f2" is nested/,
+      );
+    });
+
+    it("rejects a Device nested inside a Flow", () => {
+      const nested = { ...device("d1"), parentId: "f1" } as unknown as DeviceNode;
+      expect(() => assertValidShowGraph(graph([flow("f1"), nested]))).toThrow(/Device "d1"/);
+    });
+
+    it("rejects a node nested inside something that isn't a Flow", () => {
+      expect(() => assertValidShowGraph(graph([scene("c1"), source("r1", "c1")]))).toThrow(
+        /which is a scene, not a Flow/,
+      );
+    });
+
+    it("rejects a node whose parent isn't in the graph", () => {
+      expect(() => assertValidShowGraph(graph([scene("c1", "f1")]))).toThrow(InvalidShowGraphError);
+    });
+
+    it("rejects a Flow whose default Scene isn't one of its own Scenes", () => {
+      expect(() => assertValidShowGraph(graph([flow("f1", "c1"), scene("c1")]))).toThrow(
+        /default Scene must be a Scene inside that Flow/,
+      );
+    });
+  });
+
+  describe("wiring edges", () => {
+    it("accepts a Source and a Transformer feeding Scene Variables", () => {
+      const showGraph = graph(
+        [source("r1"), transformer("t1"), scene("c1", null, ["v1", "v2"])],
+        [wiring("e1", "r1", "c1", "v1"), wiring("e2", "t1", "c1", "v2")],
+      );
+      expect(() => assertValidShowGraph(showGraph)).not.toThrow();
+    });
+
+    it("rejects a wiring edge that starts anywhere but a Source or Transformer", () => {
+      const showGraph = graph(
+        [scene("c1", null, ["v1"]), scene("c2", null, ["v2"])],
+        [wiring("e1", "c1", "c2", "v2")],
+      );
+      expect(() => assertValidShowGraph(showGraph)).toThrow(/only a Source or Transformer/);
+    });
+
+    it("rejects a wiring edge targeting a node that isn't a Scene", () => {
+      const showGraph = graph([source("r1"), device("d1")], [wiring("e1", "r1", "d1", "v1")]);
+      expect(() => assertValidShowGraph(showGraph)).toThrow(/wiring always targets a Variable/);
+    });
+
+    it("rejects a wiring edge targeting a Variable the Scene doesn't have", () => {
+      const showGraph = graph(
+        [source("r1"), scene("c1", null, ["v1"])],
+        [wiring("e1", "r1", "c1", "v-nope")],
+      );
+      expect(() => assertValidShowGraph(showGraph)).toThrow(/doesn't have/);
+    });
+
+    it("rejects a duplicate wiring edge", () => {
+      const showGraph = graph(
+        [source("r1"), scene("c1", null, ["v1"])],
+        [wiring("e1", "r1", "c1", "v1"), wiring("e2", "r1", "c1", "v1")],
+      );
+      expect(() => assertValidShowGraph(showGraph)).toThrow(/duplicate wiring edge/);
+    });
+  });
+
+  describe("Flow-local placement", () => {
+    it("lets a Flow-local Source feed a Scene in the same Flow", () => {
+      const showGraph = graph(
+        [flow("f1"), source("r1", "f1"), scene("c1", "f1", ["v1"])],
+        [wiring("e1", "r1", "c1", "v1")],
+      );
+      expect(() => assertValidShowGraph(showGraph)).not.toThrow();
+    });
+
+    it("rejects a Flow-local Source feeding a Scene outside its Flow", () => {
+      const showGraph = graph(
+        [flow("f1"), source("r1", "f1"), scene("c1", null, ["v1"])],
+        [wiring("e1", "r1", "c1", "v1")],
+      );
+      expect(() => assertValidShowGraph(showGraph)).toThrow(/outside its Flow/);
+    });
+
+    it("rejects a Flow-local Source feeding a Scene in a different Flow", () => {
+      const showGraph = graph(
+        [flow("f1"), flow("f2"), source("r1", "f1"), scene("c1", "f2", ["v1"])],
+        [wiring("e1", "r1", "c1", "v1")],
+      );
+      expect(() => assertValidShowGraph(showGraph)).toThrow(/outside its Flow/);
+    });
+
+    it("lets a Show-level Source feed a Scene inside a Flow", () => {
+      const showGraph = graph(
+        [flow("f1"), source("r1"), scene("c1", "f1", ["v1"])],
+        [wiring("e1", "r1", "c1", "v1")],
+      );
+      expect(() => assertValidShowGraph(showGraph)).not.toThrow();
+    });
+  });
+
+  describe("Navigate edges", () => {
+    it("allows parallel edges for distinct Cue/Action pairings", () => {
+      const showGraph = graph(
+        [flow("f1"), scene("c1", "f1"), scene("c2", "f1")],
+        [navigate("e1", "c1", "c2", "cue-a"), navigate("e2", "c1", "c2", "cue-b")],
+      );
+      expect(() => assertValidShowGraph(showGraph)).not.toThrow();
+    });
+
+    it("rejects two edges for the same Cue/Action pairing", () => {
+      const showGraph = graph(
+        [flow("f1"), scene("c1", "f1"), scene("c2", "f1")],
+        [navigate("e1", "c1", "c2", "cue-a"), navigate("e2", "c1", "c2", "cue-a")],
+      );
+      expect(() => assertValidShowGraph(showGraph)).toThrow(/duplicate Navigate edge/);
+    });
+
+    it("allows self-loops and bidirectional pairs", () => {
+      const showGraph = graph(
+        [flow("f1"), scene("c1", "f1"), scene("c2", "f1")],
+        [navigate("e1", "c1", "c1"), navigate("e2", "c1", "c2"), navigate("e3", "c2", "c1")],
+      );
+      expect(() => assertValidShowGraph(showGraph)).not.toThrow();
+    });
+
+    it("rejects an edge between Scenes in different Flows", () => {
+      const showGraph = graph(
+        [flow("f1"), flow("f2"), scene("c1", "f1"), scene("c2", "f2")],
+        [navigate("e1", "c1", "c2")],
+      );
+      expect(() => assertValidShowGraph(showGraph)).toThrow(/same Flow/);
+    });
+
+    it("rejects an edge between top-level Scenes — a Flow is the state machine", () => {
+      const showGraph = graph([scene("c1"), scene("c2")], [navigate("e1", "c1", "c2")]);
+      expect(() => assertValidShowGraph(showGraph)).toThrow(/same Flow/);
+    });
+
+    it("rejects an edge that doesn't run Scene → Scene", () => {
+      const showGraph = graph(
+        [flow("f1"), scene("c1", "f1"), source("r1", "f1")],
+        [navigate("e1", "c1", "r1")],
+      );
+      expect(() => assertValidShowGraph(showGraph)).toThrow(/from a Scene to a Scene/);
+    });
+  });
+
+  describe("Device edges", () => {
+    it("accepts a Flow and a top-level Scene driving Devices", () => {
+      const showGraph = graph(
+        [flow("f1"), scene("c1"), device("d1"), device("d2")],
+        [deviceEdge("e1", "f1", "d1"), deviceEdge("e2", "c1", "d2")],
+      );
+      expect(() => assertValidShowGraph(showGraph)).not.toThrow();
+    });
+
+    it("accepts many Devices wired to the same Flow", () => {
+      const showGraph = graph(
+        [flow("f1"), device("d1"), device("d2")],
+        [deviceEdge("e1", "f1", "d1"), deviceEdge("e2", "f1", "d2")],
+      );
+      expect(() => assertValidShowGraph(showGraph)).not.toThrow();
+    });
+
+    it("rejects an edge from a Scene nested inside a Flow", () => {
+      const showGraph = graph(
+        [flow("f1"), scene("c1", "f1"), device("d1")],
+        [deviceEdge("e1", "c1", "d1")],
+      );
+      expect(() => assertValidShowGraph(showGraph)).toThrow(/reached via its Flow/);
+    });
+
+    it("rejects an edge from a Source", () => {
+      const showGraph = graph([source("r1"), device("d1")], [deviceEdge("e1", "r1", "d1")]);
+      expect(() => assertValidShowGraph(showGraph)).toThrow(/only a Flow or top-level Scene/);
+    });
+
+    it("rejects an edge that doesn't end at a Device", () => {
+      const showGraph = graph([flow("f1"), scene("c1")], [deviceEdge("e1", "f1", "c1")]);
+      expect(() => assertValidShowGraph(showGraph)).toThrow(/must end at a Device/);
+    });
+
+    it("rejects an edge whose Device isn't in the graph", () => {
+      expect(() =>
+        assertValidShowGraph(graph([flow("f1")], [deviceEdge("e1", "f1", "d1")])),
+      ).toThrow(InvalidShowGraphError);
+    });
+  });
+});
+
+describe("structural queries", () => {
+  const showGraph = fullShowGraph();
+
+  it("reports Flow-local placement from containment alone", () => {
+    expect(isFlowLocal(findNode(showGraph, "r1")!)).toBe(true);
+    expect(isFlowLocal(findNode(showGraph, "r2")!)).toBe(false);
+    expect(containingFlowId(findNode(showGraph, "c1")!)).toBe("f1");
+    expect(containingFlowId(findNode(showGraph, "c3")!)).toBeNull();
+  });
+
+  it("lists the nodes inside a Flow", () => {
+    expect(nodesInFlow(showGraph, "f1").map((node) => node.id)).toEqual(["c1", "c2", "r1"]);
+  });
+
+  it("lists the Show-level nodes", () => {
+    expect(topLevelNodes(showGraph).map((node) => node.id)).toEqual([
+      "f1",
+      "c3",
+      "r2",
+      "t1",
+      "d1",
+      "d2",
+    ]);
+  });
+
+  it("returns null for an unknown node", () => {
+    expect(findNode(showGraph, "nope")).toBeNull();
+  });
+});
+
+describe("assertValidGraphState", () => {
+  it("accepts the two states ADR-0002 defines", () => {
+    expect(assertValidGraphState("draft")).toBe("draft");
+    expect(assertValidGraphState("published")).toBe("published");
+  });
+
+  it("rejects anything else", () => {
+    expect(() => assertValidGraphState("live")).toThrow(InvalidGraphStateError);
+  });
+});

@@ -32,6 +32,17 @@ export const ID_PREFIXES = {
   show: "s",
   scene: "c",
   block: "b",
+  // Show graph (issue #38). Nodes are identified by their kind rather than
+  // by a single "node" prefix, so an id says what it points at without a
+  // lookup — a Navigate edge's endpoints being `c…` ids is visible in a log
+  // line. `graph` identifies a draft/published graph revision.
+  graph: "g",
+  flow: "f",
+  source: "r",
+  transformer: "t",
+  device: "d",
+  variable: "v",
+  edge: "e",
 } as const;
 
 export type EntityName = keyof typeof ID_PREFIXES;
@@ -45,6 +56,13 @@ const ENTITY_BY_PREFIX = {
   s: "show",
   c: "scene",
   b: "block",
+  g: "graph",
+  f: "flow",
+  r: "source",
+  t: "transformer",
+  d: "device",
+  v: "variable",
+  e: "edge",
 } as const satisfies Record<IdPrefix, EntityName>;
 
 // ...and this asserts the other direction: every entity is reachable from
@@ -67,6 +85,13 @@ export type Id<E extends EntityName> = string & { readonly __entity: E };
 export type ShowId = Id<"show">;
 export type SceneId = Id<"scene">;
 export type BlockId = Id<"block">;
+export type GraphId = Id<"graph">;
+export type FlowId = Id<"flow">;
+export type SourceId = Id<"source">;
+export type TransformerId = Id<"transformer">;
+export type DeviceId = Id<"device">;
+export type VariableId = Id<"variable">;
+export type EdgeId = Id<"edge">;
 
 export class InvalidIdError extends Error {
   constructor(entity: EntityName, reason: string) {
