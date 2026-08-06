@@ -11,7 +11,11 @@ import { sql } from "drizzle-orm";
 
 import { auth } from "../auth";
 import { db } from "./client";
+import { SEED_GRAPHS } from "./seed-graphs";
 import { shows, user } from "./schema";
+// `TRUNCATE ... CASCADE` on `shows` takes the graph tables with it, so they
+// don't need naming in the truncate list below.
+import { publishShowGraph, writeShowGraph } from "./show-graph";
 // user_settings deliberately isn't truncated with a row inserted here: an
 // absent row is the "using defaults" state the app already handles (see
 // the `userSettings` resolver), so seed data doesn't need to fabricate one.
@@ -25,7 +29,9 @@ const DEFAULT_USER = {
 // New resource types added by later tickets should extend this list rather
 // than adding their own separate seed script, per the project rule that new
 // functionality ships with seed data so the app is immediately testable.
-const DEFAULT_SHOW_NAMES = ["Hamlet", "A Midsummer Night's Dream"];
+// "The Tempest" deliberately gets no graph: an empty graph is valid, and it's
+// the state the editor shows on a brand-new Show, so it's worth having one to open.
+const DEFAULT_SHOW_NAMES = ["Hamlet", "A Midsummer Night's Dream", "The Tempest"];
 
 async function nukeDatabase(): Promise<void> {
   await db.execute(
@@ -45,7 +51,22 @@ async function seedDefaultUser(): Promise<string> {
 }
 
 async function seedDefaultShows(userId: string): Promise<void> {
-  await db.insert(shows).values(DEFAULT_SHOW_NAMES.map((name) => ({ name, userId })));
+  const created = await db
+    .insert(shows)
+    .values(DEFAULT_SHOW_NAMES.map((name) => ({ name, userId })))
+    .returning();
+
+  for (const show of created) {
+    const buildGraph = SEED_GRAPHS[show.name];
+    if (!buildGraph) continue;
+    await writeShowGraph(show.id, "draft", buildGraph());
+    // Publish one of them, so the two draft-state badges the editor can
+    // show (#39) are both reachable without editing anything first:
+    // Hamlet reads as published, the Dream as having unpublished changes.
+    if (show.name === "Hamlet") {
+      await publishShowGraph(show.id);
+    }
+  }
 }
 
 async function main(): Promise<void> {

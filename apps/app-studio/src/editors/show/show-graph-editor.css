@@ -1,0 +1,91 @@
+/*
+ * Design-system overrides for the chrome React Flow ships (issue #40, #21).
+ *
+ * React Flow's `<Controls/>` and `<MiniMap/>` hardcode near-white surfaces
+ * and near-black icons, which are unreadable on a dark background — found by the
+ * #35 prototype, and the reason #21 made restyling them mandatory rather
+ * than cosmetic. #21 also settled that these stay React Flow's components,
+ * restyled: a visual override, not a rebuild.
+ *
+ * Plain CSS rather than Tailwind classes on the components, for two reasons
+ * that both come down to *what* needs overriding:
+ *
+ *   - The minimap's mask and node colours are SVG `fill` **presentation
+ *     attributes**, which can't take a `var()`. So React Flow's own
+ *     `maskColor`/`nodeColor` props can only be handed a literal colour —
+ *     the one thing a themed app must never hardcode (PRD §7). A CSS rule
+ *     outranks a presentation attribute, so `fill` is settable here and
+ *     nowhere else.
+ *   - Everything else needed `!important` and a descendant selector to reach
+ *     inside a vendor component anyway. Spelling that as CSS says what's
+ *     happening; spelling it as `[&_button]:!bg-card` only obscures it.
+ *
+ * Scoped under one class so this can't leak into any other React Flow
+ * instance (the Scene/Canvas editor is a separate surface with its own
+ * chrome needs).
+ */
+
+.presence-show-graph .react-flow__controls,
+.presence-show-graph .react-flow__minimap {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg, 0.5rem);
+  box-shadow: 0 4px 6px -1px oklch(0 0 0 / 25%);
+}
+
+.presence-show-graph .react-flow__controls-button {
+  border-bottom-color: var(--color-border);
+  background-color: var(--color-card);
+  fill: var(--color-card-foreground);
+}
+
+.presence-show-graph .react-flow__controls-button:hover {
+  background-color: var(--color-secondary);
+}
+
+.presence-show-graph .react-flow__controls-button:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: -2px;
+}
+
+.presence-show-graph .react-flow__minimap {
+  background-color: var(--color-card);
+}
+
+/* The dot grid, also hardcoded (`#91919a`) by React Flow. Quiet on purpose:
+   the graph is the content, the grid is only there for parallax while
+   panning (PRD §7 — chrome recedes). */
+.presence-show-graph .react-flow__background-pattern {
+  fill: var(--color-muted-foreground);
+  fill-opacity: 0.35;
+}
+
+/* The dimmed area outside the current viewport. */
+.presence-show-graph .react-flow__minimap-mask {
+  fill: var(--color-background);
+  fill-opacity: 0.7;
+}
+
+.presence-show-graph .react-flow__minimap-node {
+  fill: var(--color-muted-foreground);
+  stroke: none;
+}
+
+/* Selection is worth seeing at overview scale — it's what zoom-to-selection
+   is about to frame. */
+.presence-show-graph .react-flow__minimap-node.selected {
+  fill: var(--color-primary);
+}
+
+/*
+ * React Flow paints edges with a hardcoded `#b1b1b7`, which reads as noise
+ * on a dark background and as too-dark on a light one. Edge *styling* proper is
+ * #35's; this is just enough to make the graph legible in both modes.
+ */
+.presence-show-graph .react-flow__edge-path {
+  stroke: var(--color-muted-foreground);
+}
+
+.presence-show-graph .react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--color-primary);
+}

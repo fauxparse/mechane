@@ -8,7 +8,7 @@
 // the canvas. No behaviour was dropped in the move.
 //
 // The layout deliberately opts out of the `max-w-2xl` centering the
-// dashboard and settings use: the canvas is full-bleed, and the chrome
+// dashboard and settings use: the editor is full-bleed, and the chrome
 // floats over it.
 //
 // `useShow` scopes to the signed-in user server-side (see apps/api's `show`
@@ -26,6 +26,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { usePublishShowGraph, useShowGraph } from "../../../api/show-graph";
 import { useDeleteShow, useRenameShow, useShow } from "../../../api/shows";
 import { ShowEditorChrome } from "../../../components/ShowEditorChrome";
+import { ShowGraphEditor } from "../../../editors/show/ShowGraphEditor";
 
 export const Route = createFileRoute("/_authenticated/shows/$showId")({
   component: ShowEditorRoute,
@@ -90,10 +91,17 @@ function ShowEditorRoute() {
         publishing={publish.isPending}
       />
 
-      {/* The canvas itself is issue #40's — this is the space it will fill. */}
-      <div className="flex h-full w-full items-center justify-center bg-muted/20">
-        <p className="text-sm text-muted-foreground">The canvas goes here.</p>
-      </div>
+      {/* The draft graph is what the editor shows and edits; the published
+          one is only ever read for the badge above (ADR-0002). */}
+      <ShowGraphEditor graph={draft.data} />
+
+      {draft.data && draft.data.nodes.length === 0 ? (
+        // An empty Show is valid and unremarkable (#25), but an empty
+        // grid with no explanation reads as a failure to load.
+        <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
+          Nothing here yet.
+        </p>
+      ) : null}
     </div>
   );
 }

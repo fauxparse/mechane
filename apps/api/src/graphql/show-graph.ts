@@ -138,7 +138,7 @@ export function parseShowGraphInput(input: ShowGraphInput): ShowGraph {
 
 /**
  * The wire shape of a graph. The GraphQL `GraphNode`/`GraphEdge` types are
- * one flat shape each — a client rendering a canvas branches on `kind`
+ * one flat shape each — a client rendering a graph branches on `kind`
  * anyway, and an interface per node kind would make every query five
  * inline fragments long for two extra fields.
  */
