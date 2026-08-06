@@ -10,8 +10,8 @@ An application for building interactive tech for live theatre shows across multi
 
 ```
 apps/
-  app-studio/   Authoring + show-running app (directors/technicians)
-  app-player/   Device client — renders Scenes, emits Events (audience phones, projectors, laptops)
+  studio/       Authoring + show-running app (directors/technicians)
+  player/       Device client — renders Scenes, emits Events (audience phones, projectors, laptops)
   api/          GraphQL API (graphql-yoga) + Better Auth, deployed as Vercel serverless functions
 packages/
   domain/            Domain model types and logic
@@ -95,7 +95,7 @@ while writing them.
 
 If another package or app starts authoring its own `graphql()` documents
 (rather than just importing the typed exports from
-`@presence/graphql-schema`, as `apps/app-studio` does today), add the same
+`@presence/graphql-schema`, as `apps/studio` does today), add the same
 `gql.tada/ts-plugin` entry to its `tsconfig.json`, pointing `schema` at
 `packages/graphql-schema/schema.graphql` and `tadaOutputLocation` at
 `packages/graphql-schema/src/graphql-env.d.ts` (paths relative to that

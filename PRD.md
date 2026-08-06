@@ -23,10 +23,10 @@ Domain vocabulary (Show, Scene, Device, Flow, Variable, Source, Transformer, Ele
 
 Monorepo, two deployable apps plus shared packages:
 
-| App              | Purpose                                                                                                     | Users                                                   |
-| ---------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| **`app-studio`** | Authoring _and_ running shows: Show (Flow) editor, Scene (Canvas) editor, Device/Run management, going live | Directors/technicians                                   |
-| **`app-player`** | Renders whatever Scene the connected Device is showing, emits Events                                        | Audience phones, projectors, laptops, any paired Device |
+| App          | Purpose                                                                                                     | Users                                                   |
+| ------------ | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| **`studio`** | Authoring _and_ running shows: Show (Flow) editor, Scene (Canvas) editor, Device/Run management, going live | Directors/technicians                                   |
+| **`player`** | Renders whatever Scene the connected Device is showing, emits Events                                        | Audience phones, projectors, laptops, any paired Device |
 
 Shared packages (indicative, not prescriptive of final folder names): domain model/types, GraphQL schema & generated client, design system (theme tokens, primitives), realtime abstraction (§4.4), command/undo-redo engine (§6.3).
 
@@ -83,7 +83,7 @@ Transformer expressions (JEXL subset) evaluate **server-side only**, never on-De
 
 ### 4.6 Canvas rendering
 
-Elements render as DOM + CSS (React components), shared between the Screen editor's live preview and `app-player`'s rendering — not a canvas/WebGL renderer. Chosen for flexible, responsive layout across a wide range of phone screen sizes over pixel-identical cross-device rendering; see the auto-layout requirements in §6.1.
+Elements render as DOM + CSS (React components), shared between the Screen editor's live preview and `player`'s rendering — not a canvas/WebGL renderer. Chosen for flexible, responsive layout across a wide range of phone screen sizes over pixel-identical cross-device rendering; see the auto-layout requirements in §6.1.
 
 ## 5. Data model additions beyond CONTEXT.md's glossary
 
@@ -106,7 +106,7 @@ Built on React Flow, for the Scene/Flow state-machine graph (Flows, Navigate Act
 
 ### 6.3 Command palette, keyboard access, undo/redo
 
-- A Command-K style palette is available throughout `app-studio`.
+- A Command-K style palette is available throughout `studio`.
 - All mutations in both editors go through one shared internal Command abstraction (single package, used by both the Canvas and Flow editors) — this is what makes consistent keyboard shortcuts, palette entries, and undo/redo possible across both editors rather than building each twice.
 - Undo/redo is **session-local** (in-memory stack, cleared on reload) and implemented as **forward commands**: undoing computes and sends the inverse of a change as an ordinary command, not a special rollback operation. See [ADR-0005](./docs/adr/0005-undo-as-forward-commands.md).
 - Near-total keyboard operability for both editors is a requirement, with one accepted exception: **creating an edge** in the Show/Flow diagram, which is mouse-drag-only. (This exception was originally written as _dragging nodes_, but React Flow moves a focused node with the arrow keys for free — see issue #21 — so node movement is keyboard-operable and needs no exception. Edge creation is the genuinely mouse-only operation; a keyboard alternative was deferred by issue #27. Re-pointed by issue #37.)

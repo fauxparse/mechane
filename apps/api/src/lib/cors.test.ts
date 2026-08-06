@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { applyCorsHeaders, isAllowedOrigin } from "./cors";
 
 describe("isAllowedOrigin", () => {
-  it("accepts the configured app-studio origin", () => {
+  it("accepts the configured studio origin", () => {
     expect(isAllowedOrigin("http://localhost:5173")).toBe(true);
   });
 

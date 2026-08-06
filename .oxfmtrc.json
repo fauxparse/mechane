@@ -5,7 +5,7 @@
     "node_modules",
     "coverage",
     "apps/api/drizzle/**",
-    "apps/app-studio/src/routeTree.gen.ts",
+    "apps/studio/src/routeTree.gen.ts",
     "packages/graphql-schema/src/graphql-env.d.ts",
     "packages/graphql-schema/schema.graphql"
   ]

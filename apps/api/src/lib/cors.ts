@@ -1,4 +1,4 @@
-// apps/app-studio is served from a different origin than apps/api (even in
+// apps/studio is served from a different origin than apps/api (even in
 // local dev — Vite on :5173, this API on :4000), so both the GraphQL
 // endpoint and Better Auth's routes need CORS headers that allow credentialed
 // requests from it, or the browser drops the session cookie entirely. Kept

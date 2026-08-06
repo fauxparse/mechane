@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ShowEditorChrome } from "./ShowEditorChrome";
 
 const meta: Meta<typeof ShowEditorChrome> = {
-  title: "app-studio/ShowEditorChrome",
+  title: "studio/ShowEditorChrome",
   component: ShowEditorChrome,
   args: {
     name: "The Tempest",
