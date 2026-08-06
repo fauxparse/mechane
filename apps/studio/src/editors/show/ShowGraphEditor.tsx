@@ -247,17 +247,24 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
     );
   }, []);
 
-  const selectedNodeIds = useMemo(
-    () => nodes.filter((node) => node.selected).map((node) => node.id),
-    [nodes],
-  );
-  const selectedEdgeIds = useMemo(
-    () => edges.filter((edge) => edge.selected).map((edge) => edge.id),
-    [edges],
-  );
+  const selectedNodeIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const node of nodes) {
+      if (node.selected) ids.push(node.id);
+    }
+    return ids;
+  }, [nodes]);
+  const selectedEdgeIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const edge of edges) {
+      if (edge.selected) ids.push(edge.id);
+    }
+    return ids;
+  }, [edges]);
+  const selectedNodeIdSet = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds]);
   const selectedNodes = useMemo(
-    () => editing.graph.nodes.filter((node) => selectedNodeIds.includes(node.id)),
-    [editing.graph.nodes, selectedNodeIds],
+    () => editing.graph.nodes.filter((node) => selectedNodeIdSet.has(node.id)),
+    [editing.graph.nodes, selectedNodeIdSet],
   );
 
   // ---------------------------------------------------------------------------
@@ -323,11 +330,12 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
       // Creating a Flow over the current selection is one command: create the
       // container, then promote only eligible top-level content into it.
       if (kind === "flow") {
-        const nodeIds = selectedNodes
-          .filter(
-            (node) => node.parentId === null && node.kind !== "device" && node.kind !== "flow",
-          )
-          .map((node) => node.id);
+        const nodeIds = selectedNodes.reduce<string[]>((ids, node) => {
+          if (node.parentId === null && node.kind !== "device" && node.kind !== "flow") {
+            ids.push(node.id);
+          }
+          return ids;
+        }, []);
         const node = editing.createFlowWithNodes(nodeIds, at, FLOW_CONTENT_ORIGIN);
         selectOnArrival.current = node.id;
         focusOnArrival.current = node.id;
@@ -566,9 +574,10 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
         disabledReason: promoteDisabledReason(selectedNodes),
         run: () => {
           const flow = selectedNodes.find((node) => node.kind === "flow");
-          const nodeIds = selectedNodes
-            .filter((node) => node.kind !== "flow")
-            .map((node) => node.id);
+          const nodeIds = selectedNodes.reduce<string[]>((ids, node) => {
+            if (node.kind !== "flow") ids.push(node.id);
+            return ids;
+          }, []);
           if (flow && nodeIds.length > 0) editing.promote(nodeIds, flow.id, FLOW_CONTENT_ORIGIN);
         },
       },
@@ -810,19 +819,26 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
  * scattered. The selected nodes instead share an anchor and are stacked.
  */
 function extractionPositions(nodeIds: string[], rendered: ShowFlowNode[]): Position[] {
-  const selected = nodeIds
-    .map((nodeId) => rendered.find((node) => node.id === nodeId))
-    .filter((node): node is ShowFlowNode => Boolean(node));
-  if (selected.length === 0) return nodeIds.map(() => ({ x: 0, y: 0 }));
+  const nodeIdSet = new Set(nodeIds);
+  const renderedById = new Map(rendered.map((node) => [node.id, node]));
+  const orderedSelected: ShowFlowNode[] = [];
+  for (const nodeId of nodeIds) {
+    const node = renderedById.get(nodeId);
+    if (node) orderedSelected.push(node);
+  }
+  if (orderedSelected.length === 0) return nodeIds.map(() => ({ x: 0, y: 0 }));
 
   const origin = {
-    x: Math.min(...selected.map((node) => (node.positionAbsolute ?? node.position).x)),
-    y: Math.min(...selected.map((node) => (node.positionAbsolute ?? node.position).y)),
+    x: Math.min(...orderedSelected.map((node) => (node.positionAbsolute ?? node.position).x)),
+    y: Math.min(...orderedSelected.map((node) => (node.positionAbsolute ?? node.position).y)),
   };
-  const obstacles = rendered
-    .filter((node) => !nodeIds.includes(node.id))
-    .map((node) => rectangleFor(node, node.positionAbsolute ?? node.position));
-  const sizes = selected.map((node) => ({
+  const obstacles = rendered.reduce<ReturnType<typeof rectangleFor>[]>((obstacles, node) => {
+    if (!nodeIdSet.has(node.id)) {
+      obstacles.push(rectangleFor(node, node.positionAbsolute ?? node.position));
+    }
+    return obstacles;
+  }, []);
+  const sizes = orderedSelected.map((node) => ({
     width: Number(node.style?.width ?? NODE_WIDTH),
     height: Number(node.style?.height ?? 56),
   }));

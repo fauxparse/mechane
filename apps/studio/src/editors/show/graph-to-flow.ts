@@ -205,9 +205,10 @@ function toFlowNode(
       name: node.name,
       variables: [...(node.variables ?? [])],
       defaultSceneId: node.defaultSceneId ?? null,
-      wiredVariableIds: (node.variables ?? [])
-        .filter((variable) => wiredVariableIds.has(variable.id))
-        .map((variable) => variable.id),
+      wiredVariableIds: (node.variables ?? []).reduce<string[]>((ids, variable) => {
+        if (wiredVariableIds.has(variable.id)) ids.push(variable.id);
+        return ids;
+      }, []),
       isDefaultScene: defaultSceneIds.has(node.id),
       childCount: children.length,
       ...(isFlow ? { collapsed } : {}),
@@ -261,34 +262,41 @@ export function graphToFlow(
     else childrenByParent.set(node.parentId, [node]);
   }
 
-  const flows = graph.nodes.filter((node) => node.kind === "flow");
-  const rest = graph.nodes.filter((node) => node.kind !== "flow");
+  const flows: MappableNode[] = [];
+  const rest: MappableNode[] = [];
+  for (const node of graph.nodes) {
+    (node.kind === "flow" ? flows : rest).push(node);
+  }
 
   // Which Variables have a producer, and which Scenes are their Flow's entry
   // point — both are facts about the *graph* that a single node has to display
   // (#35), so they're gathered once here rather than by each node body.
-  const wiredVariableIds = new Set(
-    graph.edges
-      .filter((edge) => edge.kind === "wiring")
-      .map((edge) => edge.targetVariableId ?? edge.targetPath?.[0])
-      .filter((id): id is string => Boolean(id)),
-  );
-  const defaultSceneIds = new Set(
-    graph.nodes.map((node) => node.defaultSceneId).filter((id): id is string => Boolean(id)),
-  );
+  const wiredVariableIds = new Set<string>();
+  for (const edge of graph.edges) {
+    if (edge.kind !== "wiring") continue;
+    const id = edge.targetVariableId ?? edge.targetPath?.[0];
+    if (id) wiredVariableIds.add(id);
+  }
+  const defaultSceneIds = new Set<string>();
+  for (const node of graph.nodes) {
+    if (node.defaultSceneId) defaultSceneIds.add(node.defaultSceneId);
+  }
 
   return {
-    nodes: [...flows, ...rest]
-      .filter((node) => !node.parentId || !collapsed.has(node.parentId))
-      .map((node) =>
-        toFlowNode(
-          node,
-          childrenByParent.get(node.id) ?? [],
-          wiredVariableIds,
-          defaultSceneIds,
-          collapsed.has(node.id),
-        ),
-      ),
+    nodes: [...flows, ...rest].reduce<ShowFlowNode[]>((nodes, node) => {
+      if (!node.parentId || !collapsed.has(node.parentId)) {
+        nodes.push(
+          toFlowNode(
+            node,
+            childrenByParent.get(node.id) ?? [],
+            wiredVariableIds,
+            defaultSceneIds,
+            collapsed.has(node.id),
+          ),
+        );
+      }
+      return nodes;
+    }, []),
     edges: graph.edges.map((edge) => {
       const hiddenTarget = graph.nodes.find((node) => node.id === edge.targetId);
       const flowId = hiddenTarget?.parentId;
