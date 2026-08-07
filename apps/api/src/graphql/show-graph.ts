@@ -341,6 +341,15 @@ export function serializeShowGraph(graph: StoredShowGraph) {
     version: graph.version,
     nodes: graph.nodes.map(serializeNode),
     edges: graph.edges.map(serializeEdge),
+    shapes: (graph.shapes ?? []).map(serializeShape),
+  };
+}
+
+function serializeShape(shape: import("@mechane/domain").Shape) {
+  return {
+    id: shape.id,
+    name: shape.name,
+    fields: shape.fields.map((field, position) => ({ ...field, position })),
   };
 }
 

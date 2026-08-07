@@ -25,6 +25,8 @@
 //   - A Show with zero Flows is valid and unremarkable (#25).
 
 import type { EntityName } from "./id";
+import { assertValidShapes, InvalidShapeError } from "./shapes";
+import type { Shape } from "./shapes";
 
 /** The kinds of node that render on the Show canvas. Nothing else does. */
 export const NODE_KINDS = ["scene", "flow", "source", "transformer", "device"] as const;
@@ -214,13 +216,15 @@ export function formatValuePath(path: ValuePath): string {
 
 /** A whole Show graph in one state (draft or published). */
 export interface ShowGraph {
+  /** Show-scoped type definitions, independent of the canvas node graph. */
+  shapes?: Shape[];
   nodes: GraphNode[];
   edges: GraphEdge[];
 }
 
 /** The empty graph a Show starts life with. Valid — zero Flows is fine (#25). */
 export function emptyShowGraph(): ShowGraph {
-  return { nodes: [], edges: [] };
+  return { shapes: [], nodes: [], edges: [] };
 }
 
 export class InvalidShowGraphError extends Error {
@@ -586,6 +590,14 @@ function assertNoWiringCycles(edges: GraphEdge[]): void {
  * cannot disagree.
  */
 export function assertValidShowGraph(graph: ShowGraph): ShowGraph {
+  try {
+    assertValidShapes(graph.shapes ?? []);
+  } catch (error) {
+    if (error instanceof InvalidShapeError) {
+      throw new InvalidShowGraphError(error.message);
+    }
+    throw error;
+  }
   const nodes = new Map(graph.nodes.map((node) => [node.id, node]));
   assertUniqueIds(
     graph.nodes.map((node) => node.id),

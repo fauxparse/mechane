@@ -126,7 +126,7 @@ export function connectionError(graph: ShowGraph, request: ConnectionRequest): s
               : node,
           )
         : graph.nodes;
-    assertValidShowGraph({ nodes, edges: [...graph.edges, candidate] });
+    assertValidShowGraph({ shapes: graph.shapes, nodes, edges: [...graph.edges, candidate] });
   } catch (error) {
     if (error instanceof InvalidShowGraphError) return humanise(error, kind);
     throw error;

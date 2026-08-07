@@ -7,14 +7,32 @@
 // call one of the three functions below.
 import type { GraphEdit } from "@mechane/commands";
 import { applyGraphEdits } from "@mechane/commands";
-import type { GraphEdge, GraphNode, GraphState, SceneVariable, ShowGraph } from "@mechane/domain";
+import type {
+  GraphEdge,
+  GraphNode,
+  GraphState,
+  SceneVariable,
+  Shape,
+  ShapeField,
+  ShowGraph,
+  Type,
+} from "@mechane/domain";
 import { assertValidShowGraph, emptyShowGraph, generateId, isEdgeKind } from "@mechane/domain";
 import { and, eq } from "drizzle-orm";
 
 import { db } from "./client";
 import type { StoredDevice } from "./devices";
 import { retireUnreferencedDevices, syncDevices } from "./devices";
-import { devices, graphEdges, graphNodeVariables, graphNodes, showGraphs } from "./schema";
+import {
+  devices,
+  graphEdges,
+  graphNodeVariables,
+  graphNodes,
+  shapeFields,
+  shapeFieldRefs,
+  shapes,
+  showGraphs,
+} from "./schema";
 
 /** A stored graph, plus the row metadata a caller may want to show. */
 export interface StoredShowGraph extends ShowGraph {
@@ -78,6 +96,8 @@ export class GraphVersionConflictError extends Error {
 type NodeRow = typeof graphNodes.$inferSelect;
 type VariableRow = typeof graphNodeVariables.$inferSelect;
 type EdgeRow = typeof graphEdges.$inferSelect;
+type ShapeRow = typeof shapes.$inferSelect;
+type ShapeFieldRow = typeof shapeFields.$inferSelect;
 
 function toNode(
   row: NodeRow,
@@ -123,6 +143,23 @@ function toNode(
       // loudly, rather than by silently dropping the node off the graph.
       throw new Error(`Stored graph node "${row.id}" has unknown kind "${row.kind}".`);
   }
+}
+
+function toShape(row: ShapeRow, fields: ShapeFieldRow[]): Shape {
+  return {
+    id: row.id,
+    name: row.name,
+    fields: fields
+      .filter((field) => field.shapeId === row.id)
+      .sort((a, b) => a.position - b.position)
+      .map((field): ShapeField => ({
+        id: field.id,
+        name: field.name,
+        type: field.type as Type,
+        required: field.required,
+        defaultValue: field.defaultValue,
+      })),
+  };
 }
 
 function toEdge(row: EdgeRow): GraphEdge {
@@ -186,6 +223,16 @@ export async function readShowGraph(
   // transaction is one connection, which can only be running one query at a
   // time. Four small reads of one Show cost little enough that branching on
   // which executor this is would be the expensive part.
+  const shapeRows = await executor
+    .select()
+    .from(shapes)
+    .where(eq(shapes.graphId, row.id))
+    .orderBy(shapes.id);
+  const shapeFieldRows = await executor
+    .select()
+    .from(shapeFields)
+    .where(eq(shapeFields.graphId, row.id))
+    .orderBy(shapeFields.position);
   const nodeRows = await executor
     .select()
     .from(graphNodes)
@@ -217,6 +264,7 @@ export async function readShowGraph(
     state,
     updatedAt: row.updatedAt,
     version: row.version,
+    shapes: shapeRows.map((shape) => toShape(shape, shapeFieldRows)),
     nodes: nodeRows.map((node) => toNode(node, variablesByScene, deviceIdentities)),
     edges: edgeRows.map(toEdge),
   };
@@ -277,9 +325,48 @@ async function writeGraph(
     throw new Error(`Failed to upsert the ${state} graph row for Show "${showId}".`);
   }
 
-  // Cascades take the nodes' variables and edges with them, so this is
-  // the only delete needed to empty the graph.
+  // Cascades take the graph's child rows with them. Shapes are independent
+  // of nodes, so clear them explicitly before writing the new definition set.
+  await tx.delete(shapes).where(eq(shapes.graphId, row.id));
   await tx.delete(graphNodes).where(eq(graphNodes.graphId, row.id));
+
+  const graphShapes = graph.shapes ?? [];
+  if (graphShapes.length > 0) {
+    await tx.insert(shapes).values(
+      graphShapes.map((shape) => ({ id: shape.id, graphId: row.id, name: shape.name })),
+    );
+    await tx.insert(shapeFields).values(
+      graphShapes.flatMap((shape) =>
+        shape.fields.map((field, position) => ({
+          id: field.id,
+          graphId: row.id,
+          shapeId: shape.id,
+          name: field.name,
+          position,
+          type: field.type,
+          required: field.required,
+          defaultValue: field.defaultValue,
+        })),
+      ),
+    );
+    const refs = graphShapes.flatMap((shape) =>
+      shape.fields.flatMap((field) => {
+        const referenced = new Set<string>();
+        const collect = (type: Type): void => {
+          if (typeof type === "string") return;
+          if (type.kind === "shape") referenced.add(type.shapeId);
+          else collect(type.of);
+        };
+        collect(field.type);
+        return [...referenced].map((referencedShapeId) => ({
+          graphId: row.id,
+          fieldId: field.id,
+          referencedShapeId,
+        }));
+      }),
+    );
+    if (refs.length > 0) await tx.insert(shapeFieldRefs).values(refs);
+  }
 
   // Device identity is Show-level and outlives this write (#45), so it
   // is reconciled rather than rewritten: new Devices get a row and a
@@ -453,6 +540,7 @@ function amendments(intended: ShowGraph, written: StoredShowGraph): GraphEdit[] 
 export async function publishShowGraph(showId: string): Promise<StoredShowGraph> {
   const draft = await readShowGraph(showId, "draft");
   const published = await writeShowGraph(showId, "published", {
+    shapes: draft.shapes ?? [],
     nodes: draft.nodes,
     edges: draft.edges,
   });
