@@ -24,6 +24,7 @@ import {
   removeNode,
   removeSceneVariable,
   renameNode,
+  setDevicePairingCode,
   renameSceneVariable,
   reparentNode,
   setFlowDefaultScene,
@@ -416,5 +417,59 @@ describe("coalesceGraphEdits", () => {
     expect(batches.map((batch) => batch.length)).toEqual([1, 1]);
     // And the two together still put the server back where it started.
     expect(stored(applyGraphEdits(GRAPH, batches.flat()))).toEqual(stored(GRAPH));
+  });
+});
+
+describe("amendments (#111)", () => {
+  it("records a server-minted pairing code as an ordinary edit", () => {
+    expectEditsReproduce(setDevicePairingCode(PHONE.id, "AB12C"));
+  });
+
+  it("refuses to set a pairing code on something that isn't a Device", () => {
+    expect(() => setDevicePairingCode(LOBBY.id, "AB12C").apply(GRAPH)).toThrow(
+      /Show graph has no Device/,
+    );
+  });
+
+  it("applies to the editor's graph without touching undo or the wire", () => {
+    // The whole point of `amend`: the Device on the canvas gains its code,
+    // but "undo the server telling me the code" is not an operation, and the
+    // client must not send it back to the server it came from.
+    const batches: GraphEdit[][] = [];
+    const stack = new CommandStack<ShowGraph, GraphEdit>({
+      state: GRAPH,
+      dispatch: (_command, _state, edits) => batches.push([...edits]),
+    });
+
+    stack.execute(renameNode(LOBBY.id, "Foyer"));
+    expect(stack.depth).toBe(1);
+
+    stack.amend(
+      commandForEdit({
+        type: "graph.setDevicePairingCode",
+        nodeId: PHONE.id,
+        pairingCode: "AB12C",
+      }),
+    );
+
+    expect(stack.state.nodes.find((node) => node.id === PHONE.id)).toMatchObject({
+      pairingCode: "AB12C",
+    });
+    expect(stack.depth).toBe(1);
+    expect(batches).toHaveLength(1);
+  });
+
+  it("leaves an undo of the user's own edits landing where it should", () => {
+    const stack = new CommandStack<ShowGraph, GraphEdit>({ state: GRAPH });
+    stack.execute(renameNode(LOBBY.id, "Foyer"));
+    stack.amend(setDevicePairingCode(PHONE.id, "AB12C"));
+    stack.undo();
+
+    const undone = stack.state;
+    expect(undone.nodes.find((node) => node.id === LOBBY.id)?.name).toBe(LOBBY.name);
+    // The amendment survives the undo — it was never part of that entry.
+    expect(undone.nodes.find((node) => node.id === PHONE.id)).toMatchObject({
+      pairingCode: "AB12C",
+    });
   });
 });

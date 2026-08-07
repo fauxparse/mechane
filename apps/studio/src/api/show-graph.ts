@@ -19,7 +19,7 @@ import type { ShowGraph } from "@mechane/graphql-schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { toEditInput } from "../editors/show/data/api-graph";
+import { toEditInput, toGraphEdit } from "../editors/show/data/api-graph";
 import { GRAPHQL_ENDPOINT } from "./client";
 
 export const showGraphQueryKey = (id: ShowId, state: GraphState) =>
@@ -79,6 +79,15 @@ export function usePublishShowGraph() {
 /** How long editing has to pause before the pending edits are sent. */
 const SAVE_DEBOUNCE_MS = 700;
 
+export interface ShowGraphEditsOptions {
+  /**
+   * Called with the edits the server made that the client didn't ask for
+   * (#111) — a Device's minted pairing code, today. The editor applies these
+   * to the graph it is editing; nobody else can, because nobody else has it.
+   */
+  onAmend?(edits: readonly GraphEdit[]): void;
+}
+
 export interface ShowGraphEdits {
   /**
    * Queues edits for the next flush. Called once per landed command — a
@@ -116,8 +125,16 @@ export interface ShowGraphEdits {
 export function useShowGraphEdits(
   showId: ShowId | null,
   baseVersion: number | undefined,
+  { onAmend }: ShowGraphEditsOptions = {},
 ): ShowGraphEdits {
   const queryClient = useQueryClient();
+  // Read through a ref for the same reason `useGraphCommands` does: an inline
+  // callback shouldn't rebuild the flush loop, and this only ever fires from
+  // a settled request.
+  const amend = useRef(onAmend);
+  useEffect(() => {
+    amend.current = onAmend;
+  }, [onAmend]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const pending = useRef<GraphEdit[]>([]);
@@ -150,13 +167,24 @@ export function useShowGraphEdits(
       edits: edits.map(toEditInput),
     })
       .then((data) => {
-        const graph = data.applyShowGraphEdits;
-        version.current = graph.version;
-        // The badge is derived from the two graphs' timestamps (ADR-0002), so
-        // the cache entry is refreshed for that — not so the editor re-reads
-        // it. See the route's note on why the graph it opens with is the
-        // graph it keeps editing.
-        queryClient.setQueryData(showGraphQueryKey(graph.showId as ShowId, "draft"), graph);
+        const result = data.applyShowGraphEdits;
+        version.current = result.version;
+        // Only the metadata comes back now (#111), so the cached draft is
+        // *updated* rather than replaced: its timestamp is what the
+        // "unpublished changes" badge compares against the published graph's
+        // (ADR-0002), and its nodes and edges are nobody's source of truth —
+        // the editor's own copy is. See the route's note on why the graph it
+        // opens with is the graph it keeps editing.
+        queryClient.setQueryData(
+          showGraphQueryKey(result.showId as ShowId, "draft"),
+          (previous: ShowGraph | undefined) =>
+            previous
+              ? { ...previous, updatedAt: result.updatedAt, version: result.version }
+              : undefined,
+        );
+        if (result.amendments.length > 0) {
+          amend.current?.(result.amendments.map(toGraphEdit));
+        }
       })
       .catch((reason: unknown) => {
         // No retry, and no putting the edits back in the queue to be sent

@@ -6,7 +6,7 @@ import { GRAPH_COMMAND_TYPES } from "@mechane/commands";
 import { GraphQLError } from "graphql";
 import { describe, expect, it } from "vitest";
 
-import { parseGraphEdit } from "./show-graph";
+import { parseGraphEdit, serializeGraphEdit } from "./show-graph";
 import type { GraphEditInput } from "./show-graph";
 
 const NODE = {
@@ -80,5 +80,34 @@ describe("parseGraphEdit", () => {
     } catch (error) {
       expect((error as GraphQLError).extensions.code).toBe("BAD_USER_INPUT");
     }
+  });
+});
+
+describe("pairing codes are the server's (#45, #111)", () => {
+  it("refuses an edit that tries to set one", () => {
+    // The input type has no `pairingCode` field at all, so this can't arrive
+    // with a code attached — but naming the type is a misunderstanding worth
+    // correcting rather than ignoring.
+    expect(() =>
+      parseGraphEdit({ type: "graph.setDevicePairingCode", nodeId: "device_phone" }),
+    ).toThrow(/minted server-side/);
+  });
+
+  it("sends one out as an amendment", () => {
+    expect(
+      serializeGraphEdit({
+        type: "graph.setDevicePairingCode",
+        nodeId: "device_phone",
+        pairingCode: "AB12C",
+      }),
+    ).toMatchObject({
+      type: "graph.setDevicePairingCode",
+      nodeId: "device_phone",
+      pairingCode: "AB12C",
+      // Everything an amendment of this type isn't about comes back null,
+      // because one flat type covers every edit (GraphQL has no unions here).
+      name: null,
+      node: null,
+    });
   });
 });

@@ -196,6 +196,32 @@ export class CommandStack<S, E = unknown> {
   }
 
   /**
+   * Applies `command` **without** recording it: no undo entry, no dispatch,
+   * and the redoable future left standing.
+   *
+   * For a change that arrives from outside and is not the user's edit — the
+   * pairing code the server minted for a Device it was told about (#45,
+   * #111). The state has to move, because the editor is looking at it; the
+   * history must not, because "undo the server telling me the code" is not an
+   * operation, and neither is sending it back to the server that sent it.
+   *
+   * Deliberately not a way to sneak edits past the history. Anything the user
+   * did goes through `execute` or a gesture.
+   *
+   * An open gesture is left open: a response arriving mid-drag must not end
+   * the drag. That's safe because an amendment records nothing — the
+   * gesture's inverses still restore exactly what the gesture displaced.
+   */
+  amend(command: Command<S, E>): S {
+    if (command.isEmpty) return this.#state;
+    const applied = command.apply(this.#state);
+    if (applied.inverse.isEmpty) return this.#state;
+    this.#state = applied.state;
+    this.#onChange?.(applied.state);
+    return applied.state;
+  }
+
+  /**
    * Opens a continuous gesture, or returns the one already open under the
    * same `key` — so a drag handler can call this on every frame without
    * tracking gesture lifecycle itself.

@@ -22,12 +22,13 @@ import { isId, publishState } from "@mechane/domain";
 import type { ShowId } from "@mechane/domain";
 import { GraphQLRequestError } from "@mechane/graphql-schema";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { usePublishShowGraph, useShowGraph, useShowGraphEdits } from "../../../api/show-graph";
 import { useDeleteShow, useRenameShow, useShow } from "../../../api/shows";
 import { ShowEditorChrome } from "../../../components/ShowEditorChrome";
 import { ShowGraphEditor } from "../../../editors/show/ShowGraphEditor";
+import type { ShowGraphEditorHandle } from "../../../editors/show/ShowGraphEditor";
 
 export const Route = createFileRoute("/_authenticated/shows/$showId")({
   component: ShowEditorRoute,
@@ -48,7 +49,14 @@ function ShowEditorRoute() {
   // Seeded with the version the draft was read at: every edit batch says
   // which graph it was composed against (#103), and the first one has to get
   // that from the read that opened the editor.
-  const saveGraph = useShowGraphEdits(showId, draft.data?.version);
+  //
+  // `onAmend` is the way back in (#111): what the server decided for itself —
+  // a new Device's pairing code — has to reach the graph the editor is
+  // holding, and the editor is the only thing that has it.
+  const editor = useRef<ShowGraphEditorHandle>(null);
+  const saveGraph = useShowGraphEdits(showId, draft.data?.version, {
+    onAmend: (edits) => editor.current?.applyAmendments(edits),
+  });
   const renameShow = useRenameShow();
   const deleteShow = useDeleteShow();
   const publish = usePublishShowGraph();
@@ -114,6 +122,7 @@ function ShowEditorRoute() {
           including an undo, which is an ordinary forward command (ADR-0005) —
           arrives here and is written after a pause in the editing (#42). */}
       <ShowGraphEditor
+        ref={editor}
         graph={openedWith}
         onEdit={(edits) => {
           setEdited(true);

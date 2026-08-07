@@ -2,7 +2,7 @@ import { assertValidShowGraph } from "@mechane/domain";
 import type { FlowNode, NavigateEdge, SceneNode, WiringEdge } from "@mechane/domain";
 import { describe, expect, it } from "vitest";
 
-import { toEditInput, toShowGraph } from "./api-graph";
+import { toEditInput, toGraphEdit, toShowGraph } from "./api-graph";
 import type { ApiGraph } from "./api-graph";
 
 type ApiNode = ApiGraph["nodes"][number];
@@ -210,5 +210,39 @@ describe("toEditInput", () => {
     });
     expect(input.node).not.toHaveProperty("pairingCode");
     expect(input.node).toMatchObject({ perConnection: true });
+  });
+});
+
+describe("toGraphEdit", () => {
+  it("reads a minted pairing code back as an edit the editor can apply", () => {
+    expect(
+      toGraphEdit({
+        type: "graph.setDevicePairingCode",
+        nodeId: "device_phone",
+        pairingCode: "AB12C",
+      }),
+    ).toEqual({
+      type: "graph.setDevicePairingCode",
+      nodeId: "device_phone",
+      pairingCode: "AB12C",
+    });
+  });
+
+  it("refuses an amendment this build doesn't understand", () => {
+    // A server ahead of this client. Applying half of what it sent would put
+    // the editor on a graph neither of them believes in.
+    expect(() => toGraphEdit({ type: "graph.explode", nodeId: null, pairingCode: null })).toThrow(
+      /Unknown Show graph amendment/,
+    );
+  });
+
+  it("won't send a pairing code back the other way", () => {
+    expect(() =>
+      toEditInput({
+        type: "graph.setDevicePairingCode",
+        nodeId: "device_phone",
+        pairingCode: "AB12C",
+      }),
+    ).toThrow(/server's to mint/);
   });
 });

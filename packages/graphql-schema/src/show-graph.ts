@@ -55,6 +55,13 @@ export const GetShowGraphQuery = graphql(`
  * graph the edits were composed against, so a batch that raced another
  * writer is refused rather than applied over the top. The response carries
  * the new `version`, which is what the next batch is composed against.
+ *
+ * Deliberately not the graph (#111): the editor composed these edits against
+ * its own copy and already applied them. What it can't know is the version to
+ * build on next, and anything the server decided for itself — which today is
+ * only a new Device's pairing code, so those are the amendment fields
+ * selected here. A wider amendment vocabulary (ADR-0003's realtime push)
+ * would widen this selection.
  */
 export const ApplyShowGraphEditsMutation = graphql(`
   mutation ApplyShowGraphEdits($showId: ID!, $baseVersion: Int!, $edits: [GraphEditInput!]!) {
@@ -63,33 +70,10 @@ export const ApplyShowGraphEditsMutation = graphql(`
       state
       updatedAt
       version
-      nodes {
-        id
-        kind
-        name
-        parentId
-        defaultSceneId
-        position {
-          x
-          y
-        }
-        variables {
-          id
-          name
-        }
-        perConnection
+      amendments {
+        type
+        nodeId
         pairingCode
-      }
-      edges {
-        id
-        kind
-        sourceId
-        targetId
-        sourcePath
-        targetPath
-        targetVariableId
-        cueId
-        actionId
       }
     }
   }
@@ -107,5 +91,8 @@ export const PublishShowGraphMutation = graphql(`
 `);
 
 export type ShowGraph = ResultOf<typeof GetShowGraphQuery>["showGraph"];
+export type ApplyShowGraphEditsResult = ResultOf<
+  typeof ApplyShowGraphEditsMutation
+>["applyShowGraphEdits"];
 export type ShowGraphNode = ShowGraph["nodes"][number];
 export type ShowGraphEdge = ShowGraph["edges"][number];

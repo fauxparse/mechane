@@ -45,6 +45,8 @@ export interface ConnectionAttempt {
 export interface GraphEditing {
   commands: GraphCommands;
   graph: ShowGraph;
+  /** Applies server-side amendments to the graph, off the undo stack (#111). */
+  amend(edits: readonly GraphEdit[]): void;
 
   /** Creates a node of `kind` at `position` (flow coordinates), and returns it. */
   createNodeOfKind(
@@ -289,6 +291,7 @@ export function useGraphEditing(
   return {
     commands,
     graph,
+    amend: commands.amend,
     createNodeOfKind,
     createFlowWithNodes: createFlowWithSelection,
     renaming,

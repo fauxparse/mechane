@@ -14,7 +14,7 @@ import type { GraphEdge, GraphNode } from "@mechane/domain";
 import { isEdgeKind, isNodeKind, wiringTargetVariableId } from "@mechane/domain";
 import { GraphQLError } from "graphql";
 
-import type { StoredShowGraph } from "../db/show-graph";
+import type { AppliedShowGraphEdits, StoredShowGraph } from "../db/show-graph";
 
 export interface PositionInput {
   x: number;
@@ -238,12 +238,92 @@ export function parseGraphEdit(edit: GraphEditInput): GraphEdit {
         sceneId: required(edit, "sceneId", edit.sceneId),
         variableId: required(edit, "variableId", edit.variableId),
       };
+    case GRAPH_COMMAND_TYPES.setDevicePairingCode:
+      // Only ever travels server → client (#45, #111). `GraphEditInput` has
+      // no `pairingCode` field, so this isn't reachable with a code attached
+      // — but a client naming the type at all has misunderstood who decides,
+      // and being told so beats having it silently ignored.
+      throw badInput("Pairing codes are minted server-side and can't be set by an edit.");
     default:
       // A client speaking a newer dialect than this server. Refusing the
       // batch is the only safe answer: skipping the edit would leave the
       // client believing in a graph the server never built.
       throw badInput(`Unknown Show graph edit "${edit.type}".`);
   }
+}
+
+/**
+ * One amendment on its way *out* (#111) — the same flat shape as
+ * `GraphEditInput`, plus the one field that only ever travels this direction.
+ *
+ * A shared shape rather than "a pairing code response", because what the
+ * server has to tell a client about a change it didn't make is the same thing
+ * a realtime channel has to tell a client about a change someone *else* made
+ * (ADR-0003): a list of edits. One vocabulary, sent from two places.
+ */
+export function serializeGraphEdit(edit: GraphEdit) {
+  const base = {
+    type: edit.type,
+    nodeId: null as string | null,
+    node: null as ReturnType<typeof serializeNode> | null,
+    edgeId: null as string | null,
+    edge: null as ReturnType<typeof serializeEdge> | null,
+    position: null as { x: number; y: number } | null,
+    parentId: null as string | null,
+    name: null as string | null,
+    flowId: null as string | null,
+    sceneId: null as string | null,
+    variableId: null as string | null,
+    variable: null as { id: string; name: string } | null,
+    pairingCode: null as string | null,
+  };
+  switch (edit.type) {
+    case "graph.addNode":
+      return { ...base, node: serializeNode(edit.node) };
+    case "graph.removeNode":
+      return { ...base, nodeId: edit.nodeId };
+    case "graph.moveNode":
+      return { ...base, nodeId: edit.nodeId, position: edit.position };
+    case "graph.renameNode":
+      return { ...base, nodeId: edit.nodeId, name: edit.name };
+    case "graph.reparentNode":
+      return {
+        ...base,
+        nodeId: edit.nodeId,
+        parentId: edit.parentId,
+        position: edit.position,
+      };
+    case "graph.addEdge":
+      return { ...base, edge: serializeEdge(edit.edge) };
+    case "graph.removeEdge":
+      return { ...base, edgeId: edit.edgeId };
+    case "graph.setFlowDefaultScene":
+      return { ...base, flowId: edit.flowId, sceneId: edit.sceneId };
+    case "graph.addSceneVariable":
+      return { ...base, sceneId: edit.sceneId, variable: edit.variable };
+    case "graph.renameSceneVariable":
+      return {
+        ...base,
+        sceneId: edit.sceneId,
+        variableId: edit.variableId,
+        name: edit.name,
+      };
+    case "graph.removeSceneVariable":
+      return { ...base, sceneId: edit.sceneId, variableId: edit.variableId };
+    case "graph.setDevicePairingCode":
+      return { ...base, nodeId: edit.nodeId, pairingCode: edit.pairingCode };
+  }
+}
+
+/** The answer to an edit batch: a version, a timestamp, and any amendments. */
+export function serializeAppliedEdits(applied: AppliedShowGraphEdits) {
+  return {
+    showId: applied.showId,
+    state: applied.state,
+    updatedAt: applied.updatedAt.toISOString(),
+    version: applied.version,
+    amendments: applied.amendments.map(serializeGraphEdit),
+  };
 }
 
 /**
@@ -259,31 +339,39 @@ export function serializeShowGraph(graph: StoredShowGraph) {
     updatedAt: graph.updatedAt.toISOString(),
     // What the next edit batch has to be composed against (#103).
     version: graph.version,
-    nodes: graph.nodes.map((node) => ({
-      id: node.id,
-      kind: node.kind,
-      name: node.name,
-      parentId: node.parentId,
-      defaultSceneId: node.kind === "flow" ? node.defaultSceneId : null,
-      position: node.position,
-      variables: node.kind === "scene" ? node.variables : [],
-      perConnection: node.kind === "device" && node.perConnection,
-      pairingCode: node.kind === "device" ? node.pairingCode : null,
-    })),
-    edges: graph.edges.map((edge) => ({
-      id: edge.id,
-      kind: edge.kind,
-      sourceId: edge.sourceId,
-      targetId: edge.targetId,
-      sourcePath: edge.sourcePath,
-      targetPath: edge.targetPath,
-      // Derived, not stored input: the head of a wiring edge's target path
-      // is the Variable it lands on, and a client that only cares which
-      // Variable is fed shouldn't have to know that.
-      targetVariableId:
-        edge.kind === "wiring" && edge.targetPath.length > 0 ? wiringTargetVariableId(edge) : null,
-      cueId: edge.kind === "navigate" ? edge.cueId : null,
-      actionId: edge.kind === "navigate" ? edge.actionId : null,
-    })),
+    nodes: graph.nodes.map(serializeNode),
+    edges: graph.edges.map(serializeEdge),
+  };
+}
+
+function serializeNode(node: GraphNode) {
+  return {
+    id: node.id,
+    kind: node.kind,
+    name: node.name,
+    parentId: node.parentId,
+    defaultSceneId: node.kind === "flow" ? node.defaultSceneId : null,
+    position: node.position,
+    variables: node.kind === "scene" ? node.variables : [],
+    perConnection: node.kind === "device" && node.perConnection,
+    pairingCode: node.kind === "device" ? node.pairingCode : null,
+  };
+}
+
+function serializeEdge(edge: GraphEdge) {
+  return {
+    id: edge.id,
+    kind: edge.kind,
+    sourceId: edge.sourceId,
+    targetId: edge.targetId,
+    sourcePath: edge.sourcePath,
+    targetPath: edge.targetPath,
+    // Derived, not stored input: the head of a wiring edge's target path
+    // is the Variable it lands on, and a client that only cares which
+    // Variable is fed shouldn't have to know that.
+    targetVariableId:
+      edge.kind === "wiring" && edge.targetPath.length > 0 ? wiringTargetVariableId(edge) : null,
+    cueId: edge.kind === "navigate" ? edge.cueId : null,
+    actionId: edge.kind === "navigate" ? edge.actionId : null,
   };
 }
