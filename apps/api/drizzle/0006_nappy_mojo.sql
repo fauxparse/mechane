@@ -1,0 +1,1 @@
+ALTER TABLE "show_graphs" ADD COLUMN "version" integer DEFAULT 0 NOT NULL;

@@ -17,6 +17,13 @@
 //   - **Redo for free**: applying an inverse yields *its* inverse, which is
 //     the redo command. Nothing special-cases the direction of travel.
 //
+// The same decision covers a fourth thing it wasn't originally asked to
+// (#103): a command that builds its inverse at apply time can, at the same
+// moment and from the same capture, describe *what it changed* — see
+// `AppliedCommand.edits`. That description is what goes to the server, in
+// place of the whole graph, and undo sends its inverse's description down
+// the identical path.
+//
 // Commands are pure functions of state, not mutators: `apply` returns a new
 // state and never touches the one it was given. That's what lets the stack
 // (./stack) hold onto previous states, and what makes every rule here a
@@ -45,15 +52,37 @@ export const COMMAND_SCOPES = [
 
 export type CommandScope = (typeof COMMAND_SCOPES)[number];
 
-/** The result of applying a command: the new state, and the way back. */
-export interface AppliedCommand<S> {
+/**
+ * The result of applying a command: the new state, the way back, and what
+ * changed.
+ *
+ * `edits` is the third thing a command owes its caller (#103). A command
+ * knows the mutation it just made in a way a diff of before-and-after never
+ * recovers — that it was a *rename*, not a coincidental name equality — and
+ * that description is what travels to the server instead of the whole graph.
+ * It is produced here, at apply time, for the same reason the inverse is: an
+ * inverse only knows what it restores because it closed over state that no
+ * longer exists, and its edits have to be built from the same capture.
+ *
+ * `E` is the edit vocabulary of the state being edited — `GraphEdit` for a
+ * Show graph (./graph-edits). It defaults to `unknown` so a surface that
+ * only cares about undo can name a `Command<S>` without naming an edit type
+ * it never reads.
+ */
+export interface AppliedCommand<S, E = unknown> {
   readonly state: S;
   /**
    * A command that returns the state to what it was before this one ran.
    * An ordinary forward command (ADR-0005) — applying it yields *its*
    * inverse, which is how redo works.
    */
-  readonly inverse: Command<S>;
+  readonly inverse: Command<S, E>;
+  /**
+   * The change, described in terms something other than this process can
+   * apply — in order, and empty for a command that has no wire
+   * representation. Absent means the same as empty.
+   */
+  readonly edits?: readonly E[];
 }
 
 /**
@@ -63,7 +92,7 @@ export interface AppliedCommand<S> {
  * the undo stack reports for its next undo/redo — so it reads as a
  * description of the *edit*, not of the direction.
  */
-export interface Command<S> {
+export interface Command<S, E = unknown> {
   readonly type: string;
   readonly label: string;
   readonly scope: CommandScope;
@@ -78,15 +107,29 @@ export interface Command<S> {
    * to reverse. That's what the stack tests.
    */
   readonly isEmpty: boolean;
-  apply(state: S): AppliedCommand<S>;
+  /**
+   * What this command overwrites, if it overwrites rather than adjusts —
+   * "the position of node n", "the name of node n". Two commands sharing a
+   * key are two absolute writes to the same thing, so inside one gesture the
+   * later one replaces the earlier: a drag keeps the first frame's inverse
+   * (which is what undo restores to) and the last frame's value (which is
+   * where the node ended up), and drops the 148 in between (#28, #103).
+   *
+   * Only for commands whose `apply` is idempotent in this sense. A command
+   * expressed as a delta — "nudge by 4px", "append an item" — must leave this
+   * undefined, because collapsing two of those loses one of them.
+   */
+  readonly coalesceKey?: string;
+  apply(state: S): AppliedCommand<S, E>;
 }
 
-export interface CommandSpec<S> {
+export interface CommandSpec<S, E = unknown> {
   type: string;
   label: string;
   scope: CommandScope;
   isEmpty?: boolean;
-  apply(state: S): AppliedCommand<S>;
+  coalesceKey?: string;
+  apply(state: S): AppliedCommand<S, E>;
 }
 
 /**
@@ -94,20 +137,39 @@ export interface CommandSpec<S> {
  * Reach for `capturing` instead unless the inverse genuinely can't be
  * expressed as "restore what I captured".
  */
-export function defineCommand<S>(spec: CommandSpec<S>): Command<S> {
+export function defineCommand<S, E = unknown>(spec: CommandSpec<S, E>): Command<S, E> {
   return {
     type: spec.type,
     label: spec.label,
     scope: spec.scope,
     isEmpty: spec.isEmpty ?? false,
+    coalesceKey: spec.coalesceKey,
     apply: spec.apply,
   };
 }
 
-export interface CapturingSpec<S, C> {
+export interface CapturingSpec<S, C, E = unknown> {
   type: string;
   label: string;
   scope: CommandScope;
+  /** See `Command.coalesceKey`. Carried by both the command and its inverse. */
+  coalesceKey?: string;
+  /**
+   * The forward change on the wire (#103) — the same mutation `apply` makes,
+   * said in terms the server can apply to its own copy. Static, because a
+   * forward command is fully described by the arguments it was built with:
+   * "move node n to (x, y)" needs nothing from the state to be transmitted.
+   */
+  edits?: readonly E[];
+  /**
+   * The *inverse* on the wire, which is the half that does need the capture:
+   * putting a deleted node back means sending the node, and only the capture
+   * still has it.
+   *
+   * Order matters — the server applies these in sequence, so a node comes
+   * back before the edges that reference it.
+   */
+  restoreEdits?(captured: C): readonly E[];
   /**
    * The part of the state this command is about to change, captured
    * *before* it changes. Everything the inverse will need must come out of
@@ -133,13 +195,16 @@ export interface CapturingSpec<S, C> {
  * A command that changes nothing, and reverses to itself. What a command
  * hands back as its inverse when it turned out to have nothing to do.
  */
-export function noop<S>(label = "Nothing to do", scope: CommandScope = "global"): Command<S> {
-  const command: Command<S> = {
+export function noop<S, E = unknown>(
+  label = "Nothing to do",
+  scope: CommandScope = "global",
+): Command<S, E> {
+  const command: Command<S, E> = {
     type: "noop",
     label,
     scope,
     isEmpty: true,
-    apply: (state) => ({ state, inverse: command }),
+    apply: (state) => ({ state, inverse: command, edits: [] }),
   };
   return command;
 }
@@ -159,19 +224,23 @@ export function noop<S>(label = "Nothing to do", scope: CommandScope = "global")
  * `restore` pair, so undo → redo → undo can run indefinitely and each hop
  * captures the state it actually found.
  */
-export function capturing<S, C>(spec: CapturingSpec<S, C>): Command<S> {
-  return defineCommand<S>({
+export function capturing<S, C, E = unknown>(spec: CapturingSpec<S, C, E>): Command<S, E> {
+  return defineCommand<S, E>({
     type: spec.type,
     label: spec.label,
     scope: spec.scope,
+    coalesceKey: spec.coalesceKey,
     apply(state) {
       const captured = spec.capture(state);
       // Nothing displaced, nothing to reverse — and the stack reads that
       // empty inverse as "don't land an entry for this".
-      if (spec.isEmpty?.(state, captured)) return { state, inverse: noop(spec.label, spec.scope) };
+      if (spec.isEmpty?.(state, captured)) {
+        return { state, inverse: noop(spec.label, spec.scope), edits: [] };
+      }
       return {
         state: spec.apply(state),
         inverse: restoring(spec, captured),
+        edits: spec.edits ?? [],
       };
     },
   });
@@ -187,25 +256,27 @@ export function capturing<S, C>(spec: CapturingSpec<S, C>): Command<S> {
  * and redo alternate between `restore` and `apply`, which is right for both
  * shapes.
  */
-function restoring<S, C>(spec: CapturingSpec<S, C>, captured: C): Command<S> {
-  return defineCommand<S>({
+function restoring<S, C, E>(spec: CapturingSpec<S, C, E>, captured: C): Command<S, E> {
+  return defineCommand<S, E>({
     type: spec.type,
     label: spec.label,
     scope: spec.scope,
+    coalesceKey: spec.coalesceKey,
     apply: (state) => ({
       state: spec.restore(state, captured),
       // Recaptures when it runs, so a redo carries what *it* displaced.
       inverse: capturing(spec),
+      edits: spec.restoreEdits?.(captured) ?? [],
     }),
   });
 }
 
-export interface CompositeSpec<S> {
+export interface CompositeSpec<S, E = unknown> {
   type?: string;
   label: string;
   /** Defaults to the scope of the first part; `global` when there are none. */
   scope?: CommandScope;
-  commands: readonly Command<S>[];
+  commands: readonly Command<S, E>[];
 }
 
 /**
@@ -223,21 +294,26 @@ export interface CompositeSpec<S> {
  * order, which is what makes "remove children, then remove the parent"
  * invert to "restore the parent, then its children".
  */
-export function composite<S>(spec: CompositeSpec<S>): Command<S> {
+export function composite<S, E = unknown>(spec: CompositeSpec<S, E>): Command<S, E> {
   const parts = spec.commands.filter((command) => !command.isEmpty);
   const scope = spec.scope ?? parts[0]?.scope ?? "global";
-  return defineCommand<S>({
+  return defineCommand<S, E>({
     type: spec.type ?? "composite",
     label: spec.label,
     scope,
     isEmpty: parts.length === 0,
     apply(state) {
-      const inverses: Command<S>[] = [];
+      const inverses: Command<S, E>[] = [];
+      // One composite is one edit to the user and one *batch* on the wire:
+      // its parts' edits in the order they were applied, so the server walks
+      // the same path this state just did.
+      const edits: E[] = [];
       let next = state;
       for (const part of parts) {
         const applied = part.apply(next);
         next = applied.state;
         inverses.push(applied.inverse);
+        edits.push(...(applied.edits ?? []));
       }
       return {
         state: next,
@@ -247,6 +323,7 @@ export function composite<S>(spec: CompositeSpec<S>): Command<S> {
           scope,
           commands: inverses.reverse(),
         }),
+        edits,
       };
     },
   });

@@ -26,6 +26,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@mechane/commands':
+        specifier: workspace:*
+        version: link:../../packages/commands
       '@mechane/domain':
         specifier: workspace:*
         version: link:../../packages/domain

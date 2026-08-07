@@ -12,12 +12,17 @@
 // honest meaning against a new one.
 //
 // Persistence rides the stack's `dispatch` seam (#42): `onEdit` is called with
-// the graph every landed command produced — including the ones an undo
-// produced, because an undo *is* an ordinary forward command (ADR-0005). One
-// path to the server, whichever direction the edit came from. Debouncing is the
-// caller's business; this hook reports every edit as it happens.
+// the *edits* every landed command produced, and the graph they produced —
+// including the ones an undo produced, because an undo is an ordinary forward
+// command (ADR-0005). One path to the server, whichever direction the edit
+// came from.
+//
+// The edits are what actually goes over the wire (#103): the graph comes with
+// them because a caller may want to show something about it, not because it
+// is sent. Debouncing and batching are the caller's business; this hook
+// reports every edit as it happens.
 import { CommandStack } from "@mechane/commands";
-import type { Gesture, ShowGraphCommand } from "@mechane/commands";
+import type { GraphEdit, Gesture, ShowGraphCommand } from "@mechane/commands";
 import type { ShowGraph } from "@mechane/domain";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -33,7 +38,7 @@ export interface GraphCommands {
    * Opens (or joins) a continuous gesture — a drag, a rename being typed.
    * Every update inside it lands as a single undo entry when it commits (#28).
    */
-  beginGesture(options: { key: string; label: string }): Gesture<ShowGraph>;
+  beginGesture(options: { key: string; label: string }): Gesture<ShowGraph, GraphEdit>;
   /** True while a gesture is mid-flight, so the view can hold its own state. */
   hasOpenGesture: boolean;
   undo(): void;
@@ -53,7 +58,7 @@ export interface GraphCommands {
  */
 export function useGraphCommands(
   source: ApiGraph | null | undefined,
-  onEdit?: (graph: ShowGraph) => void,
+  onEdit?: (edits: readonly GraphEdit[], graph: ShowGraph) => void,
 ): GraphCommands {
   // Held in a ref so a caller passing an inline callback doesn't rebuild the
   // stack — the stack is built once, on purpose (see the `useMemo` below).
@@ -73,10 +78,10 @@ export function useGraphCommands(
 
   const stack = useMemo(
     () =>
-      new CommandStack<ShowGraph>({
+      new CommandStack<ShowGraph, GraphEdit>({
         state: toShowGraph(source),
         onChange: setGraph,
-        dispatch: (_command, next) => edited.current?.(next),
+        dispatch: (_command, next, edits) => edited.current?.(edits, next),
       }),
     // Deliberately built from the first `source` only: replacing it later is
     // `reset`'s job below, so the stack instance (and the gesture that may be
@@ -107,7 +112,7 @@ export function useGraphCommands(
   );
 
   const beginGesture = useCallback(
-    (options: { key: string; label: string }): Gesture<ShowGraph> => {
+    (options: { key: string; label: string }): Gesture<ShowGraph, GraphEdit> => {
       const gesture = stack.beginGesture(options);
       changed();
       // Wrapped so the ends of a gesture re-render too: committing changes

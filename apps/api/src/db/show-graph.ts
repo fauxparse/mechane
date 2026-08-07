@@ -5,6 +5,8 @@
 // Kept out of the resolvers so the GraphQL layer stays a thin adapter: the
 // resolvers authenticate, check ownership, validate through the domain, and
 // call one of the three functions below.
+import type { GraphEdit } from "@mechane/commands";
+import { applyGraphEdits } from "@mechane/commands";
 import type { GraphEdge, GraphNode, GraphState, SceneVariable, ShowGraph } from "@mechane/domain";
 import { assertValidShowGraph, emptyShowGraph, generateId, isEdgeKind } from "@mechane/domain";
 import { and, eq } from "drizzle-orm";
@@ -19,6 +21,39 @@ export interface StoredShowGraph extends ShowGraph {
   showId: string;
   state: GraphState;
   updatedAt: Date;
+  /**
+   * How many writes this graph has had. A client composes an edit batch
+   * against the version it last saw and sends it back, so the server can
+   * tell "applied to what I have" from "applied to something else" (#103).
+   */
+  version: number;
+}
+
+/** The transaction type the graph functions run inside. */
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Anything a query can run on — the pool, or a transaction on it. Reads take
+ * one so a read can be part of the same transaction as the write that
+ * follows it, which is what makes read-modify-write on a graph safe (#103).
+ */
+type Executor = Tx | typeof db;
+
+/**
+ * An edit batch composed against a version of the graph that has since been
+ * written by someone else. The batch is refused whole: applying half of a
+ * cascade would leave the graph in a state no user asked for.
+ */
+export class GraphVersionConflictError extends Error {
+  constructor(
+    readonly expected: number,
+    readonly actual: number,
+  ) {
+    super(
+      `The ${expected === actual ? "" : "draft "}graph has changed since these edits were made (expected version ${expected}, found ${actual}).`,
+    );
+    this.name = "GraphVersionConflictError";
+  }
 }
 
 type NodeRow = typeof graphNodes.$inferSelect;
@@ -108,32 +143,49 @@ function groupVariables(rows: VariableRow[]): Map<string, SceneVariable[]> {
  * error, since "no Flows, no Scenes" is a valid Show (#25), not a missing
  * one.
  */
-export async function readShowGraph(showId: string, state: GraphState): Promise<StoredShowGraph> {
-  const [row] = await db
+export async function readShowGraph(
+  showId: string,
+  state: GraphState,
+  executor: Executor = db,
+): Promise<StoredShowGraph> {
+  const [row] = await executor
     .select()
     .from(showGraphs)
     .where(and(eq(showGraphs.showId, showId), eq(showGraphs.state, state)));
   if (!row) {
     // The epoch stands in for "never written" — the caller renders it as
     // an empty graph either way, and a null would make every consumer
-    // handle a case that isn't meaningfully different.
-    return { ...emptyShowGraph(), showId, state, updatedAt: new Date(0) };
+    // handle a case that isn't meaningfully different. Version 0 for the
+    // same reason: an edit batch against a Show nobody has saved yet is
+    // composed against nothing, and says so.
+    return { ...emptyShowGraph(), showId, state, updatedAt: new Date(0), version: 0 };
   }
   // Ordered by id so a graph reads back the same way twice — the graph
   // doesn't care, but a diff of two reads (or a test) does. (See issue #43.)
-  const [nodeRows, variableRows, edgeRows, deviceRows] = await Promise.all([
-    db.select().from(graphNodes).where(eq(graphNodes.graphId, row.id)).orderBy(graphNodes.id),
-    db
-      .select()
-      .from(graphNodeVariables)
-      .where(eq(graphNodeVariables.graphId, row.id))
-      .orderBy(graphNodeVariables.id),
-    db.select().from(graphEdges).where(eq(graphEdges.graphId, row.id)).orderBy(graphEdges.id),
-    // Every Device on the Show, retired ones included: a published graph
-    // read during a Run may well name a Device the draft has since
-    // deleted, and it still has to render with its code.
-    db.select().from(devices).where(eq(devices.showId, showId)),
-  ]);
+  //
+  // In sequence, not in parallel: `executor` may be a transaction, and a
+  // transaction is one connection, which can only be running one query at a
+  // time. Four small reads of one Show cost little enough that branching on
+  // which executor this is would be the expensive part.
+  const nodeRows = await executor
+    .select()
+    .from(graphNodes)
+    .where(eq(graphNodes.graphId, row.id))
+    .orderBy(graphNodes.id);
+  const variableRows = await executor
+    .select()
+    .from(graphNodeVariables)
+    .where(eq(graphNodeVariables.graphId, row.id))
+    .orderBy(graphNodeVariables.id);
+  const edgeRows = await executor
+    .select()
+    .from(graphEdges)
+    .where(eq(graphEdges.graphId, row.id))
+    .orderBy(graphEdges.id);
+  // Every Device on the Show, retired ones included: a published graph
+  // read during a Run may well name a Device the draft has since
+  // deleted, and it still has to render with its code.
+  const deviceRows = await executor.select().from(devices).where(eq(devices.showId, showId));
   const variablesByScene = groupVariables(variableRows);
   const deviceIdentities = new Map(
     deviceRows.map((device) => [
@@ -145,125 +197,196 @@ export async function readShowGraph(showId: string, state: GraphState): Promise<
     showId,
     state,
     updatedAt: row.updatedAt,
+    version: row.version,
     nodes: nodeRows.map((node) => toNode(node, variablesByScene, deviceIdentities)),
     edges: edgeRows.map(toEdge),
   };
 }
 
 /**
- * Replaces the Show's graph in `state` with `graph`, wholesale, inside one
- * transaction. Whole-graph replacement rather than per-node CRUD because
- * the editor's unit of work is "the graph as it now stands" — fine-grained
- * commands are issue #42's, and they can layer on top of this.
+ * Replaces the Show's graph in `state` with `graph`, wholesale, inside `tx`.
+ *
+ * Whole-graph replacement is now a *storage* decision rather than the
+ * protocol (#103): the wire carries edits, and this is where a graph that
+ * has already had them applied gets written down. Rewriting four small
+ * tables is cheaper than working out which rows an edit batch touched, and —
+ * unlike the wholesale mutation this replaced — it happens with the version
+ * that was read still held under a row lock, so it can't overwrite a write
+ * it never saw.
+ *
+ * `expectedVersion` is that check: `undefined` means "whatever is there"
+ * (publish, which is a copy rather than an edit), a number means the write
+ * is refused if the stored version has moved on.
  *
  * Throws `InvalidShowGraphError` before touching the database if the graph
  * isn't structurally well-formed.
+ */
+async function writeGraph(
+  tx: Tx,
+  showId: string,
+  state: GraphState,
+  graph: ShowGraph,
+  expectedVersion?: number,
+): Promise<StoredShowGraph> {
+  assertValidShowGraph(graph);
+
+  const now = new Date();
+  // Locked, not just read: two batches landing at once must queue here
+  // rather than both read version 3 and both write version 4.
+  const [current] = await tx
+    .select({ version: showGraphs.version })
+    .from(showGraphs)
+    .where(and(eq(showGraphs.showId, showId), eq(showGraphs.state, state)))
+    .for("update");
+  const currentVersion = current?.version ?? 0;
+  if (expectedVersion !== undefined && expectedVersion !== currentVersion) {
+    throw new GraphVersionConflictError(expectedVersion, currentVersion);
+  }
+  const version = currentVersion + 1;
+  const [row] = await tx
+    .insert(showGraphs)
+    .values({ id: generateId("graph"), showId, state, version })
+    .onConflictDoUpdate({
+      target: [showGraphs.showId, showGraphs.state],
+      set: { updatedAt: now, version },
+    })
+    .returning();
+  if (!row) {
+    // `onConflictDoUpdate ... returning()` always yields the row it
+    // inserted or updated; this is here so the rest of the transaction
+    // can talk about `row.id` without a non-null assertion.
+    throw new Error(`Failed to upsert the ${state} graph row for Show "${showId}".`);
+  }
+
+  // Cascades take the nodes' variables and edges with them, so this is
+  // the only delete needed to empty the graph.
+  await tx.delete(graphNodes).where(eq(graphNodes.graphId, row.id));
+
+  // Device identity is Show-level and outlives this write (#45), so it
+  // is reconciled rather than rewritten: new Devices get a row and a
+  // minted code, and known ones keep the code and `perConnection` they
+  // already had. What comes back is what the caller is told, so a client
+  // that guessed at either is corrected rather than obeyed.
+  const deviceIdentities = await syncDevices(tx, showId, graph.nodes);
+
+  // Show-level nodes first: a nested node's `parent_id` foreign key needs
+  // its Flow to already exist.
+  const [topLevel, nested] = [
+    graph.nodes.filter((node) => node.parentId === null),
+    graph.nodes.filter((node) => node.parentId !== null),
+  ];
+  for (const nodes of [topLevel, nested]) {
+    if (nodes.length === 0) continue;
+    await tx.insert(graphNodes).values(
+      nodes.map((node) => ({
+        id: node.id,
+        graphId: row.id,
+        kind: node.kind,
+        name: node.name,
+        parentId: node.parentId,
+        positionX: node.position.x,
+        positionY: node.position.y,
+      })),
+    );
+  }
+
+  // A Flow's default Scene is one of its own children, so it can only be
+  // set once those children exist.
+  for (const node of graph.nodes) {
+    if (node.kind !== "flow" || node.defaultSceneId === null) continue;
+    await tx
+      .update(graphNodes)
+      .set({ defaultSceneId: node.defaultSceneId })
+      .where(eq(graphNodes.id, node.id));
+  }
+
+  const variables = graph.nodes.flatMap((node) =>
+    node.kind === "scene"
+      ? node.variables.map((variable) => ({
+          id: variable.id,
+          graphId: row.id,
+          sceneId: node.id,
+          name: variable.name,
+        }))
+      : [],
+  );
+  if (variables.length > 0) {
+    await tx.insert(graphNodeVariables).values(variables);
+  }
+
+  if (graph.edges.length > 0) {
+    await tx.insert(graphEdges).values(
+      graph.edges.map((edge) => ({
+        id: edge.id,
+        graphId: row.id,
+        kind: edge.kind,
+        sourceNodeId: edge.sourceId,
+        targetNodeId: edge.targetId,
+        sourcePath: edge.sourcePath,
+        targetPath: edge.targetPath,
+        // `target_variable_id` is a generated column — the database
+        // derives it from `target_path`, so it isn't written here.
+        cueId: edge.kind === "navigate" ? edge.cueId : null,
+        actionId: edge.kind === "navigate" ? edge.actionId : null,
+      })),
+    );
+  }
+
+  const nodes = graph.nodes.map((node) => {
+    if (node.kind !== "device") return node;
+    const identity = deviceIdentities.get(node.id);
+    return identity ? { ...node, ...identity } : node;
+  });
+
+  return { showId, state, updatedAt: now, version, nodes, edges: graph.edges };
+}
+
+/**
+ * Replaces the Show's graph in `state`, in a transaction of its own.
+ *
+ * The unconditional door into `writeGraph`, used by publish and by seeding.
+ * An *edit* goes through `applyShowGraphEdits` instead, which is the one
+ * that has a base version to check.
  */
 export async function writeShowGraph(
   showId: string,
   state: GraphState,
   graph: ShowGraph,
 ): Promise<StoredShowGraph> {
-  assertValidShowGraph(graph);
+  return db.transaction((tx) => writeGraph(tx, showId, state, graph));
+}
 
+/**
+ * Applies `edits` to the Show's draft graph and stores the result (#103).
+ *
+ * This is the whole point of the delta protocol landing server-side: the
+ * graph the edits apply to is read *here*, under the same lock the write
+ * takes, so what the client sent is a description of a change rather than a
+ * claim about the whole document. A batch composed against a stale version is
+ * refused whole — never partially applied, because half a cascade is a graph
+ * nobody asked for.
+ *
+ * The edits are applied through `@mechane/commands`, which is the same code
+ * that produced them in the editor. There is no second implementation of what
+ * a delete does, and therefore no way for the two to disagree.
+ *
+ * Throws `GraphVersionConflictError` on a stale base, `UnknownGraphTargetError`
+ * on an edit naming something that isn't there, and `InvalidShowGraphError` if
+ * the batch as a whole leaves the graph malformed — intermediate states are
+ * not validated, because a cascade legitimately passes through them.
+ */
+export async function applyShowGraphEdits(
+  showId: string,
+  edits: readonly GraphEdit[],
+  baseVersion: number,
+): Promise<StoredShowGraph> {
   return db.transaction(async (tx) => {
-    const now = new Date();
-    const [row] = await tx
-      .insert(showGraphs)
-      .values({ id: generateId("graph"), showId, state })
-      .onConflictDoUpdate({
-        target: [showGraphs.showId, showGraphs.state],
-        set: { updatedAt: now },
-      })
-      .returning();
-    if (!row) {
-      // `onConflictDoUpdate ... returning()` always yields the row it
-      // inserted or updated; this is here so the rest of the transaction
-      // can talk about `row.id` without a non-null assertion.
-      throw new Error(`Failed to upsert the ${state} graph row for Show "${showId}".`);
+    const current = await readShowGraph(showId, "draft", tx);
+    if (current.version !== baseVersion) {
+      throw new GraphVersionConflictError(baseVersion, current.version);
     }
-
-    // Cascades take the nodes' variables and edges with them, so this is
-    // the only delete needed to empty the graph.
-    await tx.delete(graphNodes).where(eq(graphNodes.graphId, row.id));
-
-    // Device identity is Show-level and outlives this write (#45), so it
-    // is reconciled rather than rewritten: new Devices get a row and a
-    // minted code, and known ones keep the code and `perConnection` they
-    // already had. What comes back is what the caller is told, so a client
-    // that guessed at either is corrected rather than obeyed.
-    const deviceIdentities = await syncDevices(tx, showId, graph.nodes);
-
-    // Show-level nodes first: a nested node's `parent_id` foreign key needs
-    // its Flow to already exist.
-    const [topLevel, nested] = [
-      graph.nodes.filter((node) => node.parentId === null),
-      graph.nodes.filter((node) => node.parentId !== null),
-    ];
-    for (const nodes of [topLevel, nested]) {
-      if (nodes.length === 0) continue;
-      await tx.insert(graphNodes).values(
-        nodes.map((node) => ({
-          id: node.id,
-          graphId: row.id,
-          kind: node.kind,
-          name: node.name,
-          parentId: node.parentId,
-          positionX: node.position.x,
-          positionY: node.position.y,
-        })),
-      );
-    }
-
-    // A Flow's default Scene is one of its own children, so it can only be
-    // set once those children exist.
-    for (const node of graph.nodes) {
-      if (node.kind !== "flow" || node.defaultSceneId === null) continue;
-      await tx
-        .update(graphNodes)
-        .set({ defaultSceneId: node.defaultSceneId })
-        .where(eq(graphNodes.id, node.id));
-    }
-
-    const variables = graph.nodes.flatMap((node) =>
-      node.kind === "scene"
-        ? node.variables.map((variable) => ({
-            id: variable.id,
-            graphId: row.id,
-            sceneId: node.id,
-            name: variable.name,
-          }))
-        : [],
-    );
-    if (variables.length > 0) {
-      await tx.insert(graphNodeVariables).values(variables);
-    }
-
-    if (graph.edges.length > 0) {
-      await tx.insert(graphEdges).values(
-        graph.edges.map((edge) => ({
-          id: edge.id,
-          graphId: row.id,
-          kind: edge.kind,
-          sourceNodeId: edge.sourceId,
-          targetNodeId: edge.targetId,
-          sourcePath: edge.sourcePath,
-          targetPath: edge.targetPath,
-          // `target_variable_id` is a generated column — the database
-          // derives it from `target_path`, so it isn't written here.
-          cueId: edge.kind === "navigate" ? edge.cueId : null,
-          actionId: edge.kind === "navigate" ? edge.actionId : null,
-        })),
-      );
-    }
-
-    const nodes = graph.nodes.map((node) => {
-      if (node.kind !== "device") return node;
-      const identity = deviceIdentities.get(node.id);
-      return identity ? { ...node, ...identity } : node;
-    });
-
-    return { showId, state, updatedAt: now, nodes, edges: graph.edges };
+    const next = applyGraphEdits({ nodes: current.nodes, edges: current.edges }, edits);
+    return writeGraph(tx, showId, "draft", next, baseVersion);
   });
 }
 

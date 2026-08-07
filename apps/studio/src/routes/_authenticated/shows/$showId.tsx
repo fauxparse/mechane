@@ -24,11 +24,7 @@ import { GraphQLRequestError } from "@mechane/graphql-schema";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import {
-  useDebouncedShowGraphSave,
-  usePublishShowGraph,
-  useShowGraph,
-} from "../../../api/show-graph";
+import { usePublishShowGraph, useShowGraph, useShowGraphEdits } from "../../../api/show-graph";
 import { useDeleteShow, useRenameShow, useShow } from "../../../api/shows";
 import { ShowEditorChrome } from "../../../components/ShowEditorChrome";
 import { ShowGraphEditor } from "../../../editors/show/ShowGraphEditor";
@@ -49,7 +45,10 @@ function ShowEditorRoute() {
   // (ADR-0002 stores no "dirty" flag).
   const draft = useShowGraph(showId, "draft");
   const published = useShowGraph(showId, "published");
-  const saveGraph = useDebouncedShowGraphSave(showId);
+  // Seeded with the version the draft was read at: every edit batch says
+  // which graph it was composed against (#103), and the first one has to get
+  // that from the read that opened the editor.
+  const saveGraph = useShowGraphEdits(showId, draft.data?.version);
   const renameShow = useRenameShow();
   const deleteShow = useDeleteShow();
   const publish = usePublishShowGraph();
@@ -116,11 +115,24 @@ function ShowEditorRoute() {
           arrives here and is written after a pause in the editing (#42). */}
       <ShowGraphEditor
         graph={openedWith}
-        onEdit={(graph) => {
+        onEdit={(edits) => {
           setEdited(true);
-          saveGraph.scheduleSave(graph);
+          saveGraph.enqueue(edits);
         }}
       />
+
+      {saveGraph.error ? (
+        // A refused batch is the one failure the director has to know about:
+        // the editor still works, but nothing more is being written, and the
+        // way back is to reload and pick up the stored draft.
+        <p
+          role="alert"
+          className="absolute inset-x-0 bottom-0 bg-destructive px-4 py-2 text-center text-sm text-destructive-foreground"
+        >
+          Your changes couldn't be saved: {saveGraph.error.message} Reload to pick up the stored
+          draft.
+        </p>
+      ) : null}
 
       {openedWith && openedWith.nodes.length === 0 && !edited ? (
         // An empty Show is valid and unremarkable (#25), but an empty

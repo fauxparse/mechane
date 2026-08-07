@@ -2,7 +2,7 @@ import { assertValidShowGraph } from "@mechane/domain";
 import type { FlowNode, NavigateEdge, SceneNode, WiringEdge } from "@mechane/domain";
 import { describe, expect, it } from "vitest";
 
-import { toShowGraph } from "./api-graph";
+import { toEditInput, toShowGraph } from "./api-graph";
 import type { ApiGraph } from "./api-graph";
 
 type ApiNode = ApiGraph["nodes"][number];
@@ -135,5 +135,80 @@ describe("toShowGraph", () => {
         edges: [apiEdge({ id: "e", kind: "telepathy", sourceId: "a", targetId: "b" })],
       }),
     ).toThrow(/Unknown Show graph edge kind/);
+  });
+});
+
+describe("toEditInput", () => {
+  it("sends a whole node for an add, ready to be restored by an undo", () => {
+    // The awkward one: an undone delete arrives back as `graph.addNode`
+    // carrying the node the delete destroyed, Variables and all, so the
+    // server rebuilds it rather than being told to remember it.
+    expect(
+      toEditInput({
+        type: "graph.addNode",
+        node: {
+          id: "scene_lobby",
+          kind: "scene",
+          name: "Lobby",
+          parentId: "flow_vote",
+          position: { x: 3, y: 4 },
+          variables: [{ id: "variable_prompt", name: "prompt" }],
+        },
+      }),
+    ).toEqual({
+      type: "graph.addNode",
+      node: {
+        id: "scene_lobby",
+        kind: "scene",
+        name: "Lobby",
+        parentId: "flow_vote",
+        defaultSceneId: null,
+        position: { x: 3, y: 4 },
+        variables: [{ id: "variable_prompt", name: "prompt" }],
+        perConnection: false,
+      },
+    });
+  });
+
+  it("sends only what an edit's type is about", () => {
+    expect(toEditInput({ type: "graph.removeNode", nodeId: "scene_lobby" })).toEqual({
+      type: "graph.removeNode",
+      nodeId: "scene_lobby",
+    });
+    expect(
+      toEditInput({ type: "graph.renameSceneVariable", sceneId: "s", variableId: "v", name: "n" }),
+    ).toEqual({ type: "graph.renameSceneVariable", sceneId: "s", variableId: "v", name: "n" });
+  });
+
+  it("carries the nulls that mean something", () => {
+    // "Out to Show level" and "no entry Scene" are values, not omissions.
+    expect(
+      toEditInput({
+        type: "graph.reparentNode",
+        nodeId: "scene_lobby",
+        parentId: null,
+        position: { x: 0, y: 0 },
+      }),
+    ).toMatchObject({ parentId: null });
+    expect(
+      toEditInput({ type: "graph.setFlowDefaultScene", flowId: "flow_vote", sceneId: null }),
+    ).toMatchObject({ sceneId: null });
+  });
+
+  it("doesn't send a pairing code, which is the server's to mint (#45)", () => {
+    const input = toEditInput({
+      type: "graph.addNode",
+      node: {
+        id: "device_phone",
+        kind: "device",
+        name: "Phones",
+        parentId: null,
+        position: { x: 0, y: 0 },
+        perConnection: true,
+        pairingCode: "AB12C",
+      },
+    });
+    expect(input.node).not.toHaveProperty("pairingCode");
+    expect(input.node).toMatchObject({ perConnection: true });
   });
 });

@@ -1,0 +1,16 @@
+# Graph edits travel as commands against a base version, not as whole-graph replacements
+
+The Show editor sends a list of serialised edits — one per primitive command the editor performed — together with the version of the draft graph they were composed against. The server applies them in order, through the same `@mechane/commands` code that produced them, validates the result once at the end, and refuses the whole batch if the stored version has moved on since. It used to send the entire draft graph on every change, and store it wholesale.
+
+Two things made that untenable rather than merely wasteful. A whole-graph replacement is last-write-wins by construction: it carries no claim about what it was based on, so there is nothing for the server to check and no way to notice that two editors disagreed. And it says only _what the graph is now_, never _what changed_ — which is precisely what a realtime channel (ADR-0003) has to broadcast and what an audit trail has to record. Payload size was never the argument; a Show graph is tens to low hundreds of nodes.
+
+The delta was already there. Commands (ADR-0005) model every edit as an invertible, granular operation and produce their inverse at apply time; the client was flattening that into a full-graph POST at the network boundary and throwing the structure away. So a command now also describes itself as a `GraphEdit` at that same moment, from the same capture the inverse comes from — a delete's edit list is the node it destroyed, because only the capture still has it.
+
+Consequences worth naming:
+
+- **The server applies edits by building the command and running it.** There is no second implementation of what a delete cascades to, and so no way for client and server to drift apart about it.
+- **Undo is still an ordinary edit** (ADR-0005). Its inverse carries edits of its own; the server is never told a direction of travel.
+- **A refused batch stops the client rather than retrying.** A stale base version means the server is on a graph these edits were not composed against, and sending more of them builds on the divergence. The editor keeps working from its own state and says so; reloading re-reads the draft. Merging a rejected batch is a real question, and it belongs with multiplayer (PRD §1, v1.5) rather than ahead of it.
+- **Storage is still a whole-graph rewrite inside the transaction.** That is now an implementation detail of four small tables rather than the protocol, and it happens with the version held under a row lock.
+- **A run of absolute writes collapses to its last value.** A drag emits a position per frame and a rename a name per keystroke. A command that overwrites rather than adjusts declares a `coalesceKey`, and a gesture keeps one frame per key — the last command, with the first frame's inverse — so the stack holds two commands for a drag rather than 150 and the wire carries one edit. Delta commands ("nudge by 4px") declare no key and are never collapsed, which is what keeps this safe. The same reduction runs again at the wire, where it also spans separate commands inside one debounce window.
+- **Graph order does not travel.** The editor restores a deleted node at the index it sat at; the server reads its rows back by id and never knew about the order. Order stays a client concern.

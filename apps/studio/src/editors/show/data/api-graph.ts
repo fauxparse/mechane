@@ -11,6 +11,12 @@
 // shape, so this is where a graph stops being a query result and becomes the
 // thing the editor edits. The conversion is lossy on purpose: fields that
 // don't belong to a kind are dropped rather than carried along as nulls.
+//
+// The other direction is no longer a whole graph (#103): what goes back is a
+// list of edits, so `toEditInput` is the outbound half — the same widening
+// from a discriminated union to one flat wire shape, per edit instead of per
+// graph.
+import type { GraphEdit } from "@mechane/commands";
 import { isNodeKind } from "@mechane/domain";
 import type { GraphEdge, GraphNode, ShowGraph } from "@mechane/domain";
 import type {
@@ -100,36 +106,94 @@ export function toShowGraph(graph: ApiGraph | null | undefined): ShowGraph {
 }
 
 /**
- * The graph as the `saveShowGraph` mutation wants it (issue #42): the same flat
- * node/edge shape the query returns, minus the fields the server derives.
- *
- * The inverse of `toShowGraph`, and the reason the round trip is lossless in
- * the direction that matters: what the editor holds is the domain graph, and
- * this is the one place it becomes input again.
+ * A node as mutation input: the same flat shape the query returns, minus the
+ * fields the server derives (a Device's pairing code is minted server-side,
+ * #45) and minus the fields that don't belong to this kind.
  */
-export function toGraphInput(graph: ShowGraph) {
+function toNodeInput(node: GraphNode) {
   return {
-    nodes: graph.nodes.map((node) => ({
-      id: node.id,
-      kind: node.kind,
-      name: node.name,
-      parentId: node.parentId,
-      defaultSceneId: node.kind === "flow" ? node.defaultSceneId : null,
-      position: { x: node.position.x, y: node.position.y },
-      variables:
-        node.kind === "scene" ? node.variables.map((v) => ({ id: v.id, name: v.name })) : [],
-    })),
-    edges: graph.edges.map((edge) => ({
-      id: edge.id,
-      kind: edge.kind,
-      sourceId: edge.sourceId,
-      targetId: edge.targetId,
-      sourcePath: edge.sourcePath,
-      targetPath: edge.targetPath,
-      // `targetVariableId` is derived by the server from `targetPath`, so it
-      // isn't sent — see `serializeShowGraph` in apps/api.
-      cueId: edge.kind === "navigate" ? edge.cueId : null,
-      actionId: edge.kind === "navigate" ? edge.actionId : null,
-    })),
+    id: node.id,
+    kind: node.kind,
+    name: node.name,
+    parentId: node.parentId,
+    defaultSceneId: node.kind === "flow" ? node.defaultSceneId : null,
+    position: { x: node.position.x, y: node.position.y },
+    variables: node.kind === "scene" ? node.variables.map((v) => ({ id: v.id, name: v.name })) : [],
+    perConnection: node.kind === "device" ? node.perConnection : false,
   };
+}
+
+function toEdgeInput(edge: GraphEdge) {
+  return {
+    id: edge.id,
+    kind: edge.kind,
+    sourceId: edge.sourceId,
+    targetId: edge.targetId,
+    sourcePath: [...edge.sourcePath],
+    targetPath: [...edge.targetPath],
+    // `targetVariableId` is derived by the server from `targetPath`, so it
+    // isn't sent — see `serializeShowGraph` in apps/api.
+    cueId: edge.kind === "navigate" ? edge.cueId : null,
+    actionId: edge.kind === "navigate" ? edge.actionId : null,
+  };
+}
+
+/**
+ * One edit as the `applyShowGraphEdits` mutation wants it (#103).
+ *
+ * The command layer's `GraphEdit` is already a plain, serialisable value —
+ * this only widens it to the flat input shape GraphQL needs, since GraphQL
+ * has no input unions and every edit type therefore shares one field set.
+ * Nothing is decided here: an edit that carries a node carries the node it
+ * always carried.
+ */
+export function toEditInput(edit: GraphEdit) {
+  const input: {
+    type: string;
+    nodeId?: string;
+    node?: ReturnType<typeof toNodeInput>;
+    edgeId?: string;
+    edge?: ReturnType<typeof toEdgeInput>;
+    position?: { x: number; y: number };
+    parentId?: string | null;
+    name?: string;
+    flowId?: string;
+    sceneId?: string | null;
+    variableId?: string;
+    variable?: { id: string; name: string };
+  } = { type: edit.type };
+  switch (edit.type) {
+    case "graph.addNode":
+      return { ...input, node: toNodeInput(edit.node) };
+    case "graph.removeNode":
+      return { ...input, nodeId: edit.nodeId };
+    case "graph.moveNode":
+      return { ...input, nodeId: edit.nodeId, position: edit.position };
+    case "graph.renameNode":
+      return { ...input, nodeId: edit.nodeId, name: edit.name };
+    case "graph.reparentNode":
+      return {
+        ...input,
+        nodeId: edit.nodeId,
+        parentId: edit.parentId,
+        position: edit.position,
+      };
+    case "graph.addEdge":
+      return { ...input, edge: toEdgeInput(edit.edge) };
+    case "graph.removeEdge":
+      return { ...input, edgeId: edit.edgeId };
+    case "graph.setFlowDefaultScene":
+      return { ...input, flowId: edit.flowId, sceneId: edit.sceneId };
+    case "graph.addSceneVariable":
+      return { ...input, sceneId: edit.sceneId, variable: edit.variable };
+    case "graph.renameSceneVariable":
+      return {
+        ...input,
+        sceneId: edit.sceneId,
+        variableId: edit.variableId,
+        name: edit.name,
+      };
+    case "graph.removeSceneVariable":
+      return { ...input, sceneId: edit.sceneId, variableId: edit.variableId };
+  }
 }
