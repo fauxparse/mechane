@@ -116,18 +116,20 @@ function toNode(node: ApiGraphNode): GraphNode {
         // save coming back.
         pairingCode: node.pairingCode ?? null,
       };
-    case "source":
+    case "source": {
+      if (!node.type) throw new Error(`Source "${node.id}" has no Type.`);
       return {
         ...base,
         kind: "source",
         parentId: node.parentId ?? null,
-        type: node.type ? toType(node.type as ApiType) : null,
+        type: toType(node.type as ApiType),
         fieldDefaults: (node.fieldDefaults ?? []).map((fieldDefault) => ({
           nodeId: node.id,
           fieldPath: [...fieldDefault.fieldPath],
           value: fieldDefault.value,
         })),
       };
+    }
     case "transformer":
       return {
         ...base,
