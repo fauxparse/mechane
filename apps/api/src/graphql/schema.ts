@@ -4,6 +4,12 @@
 // `assertOwnedBy`/`assertValidShowName` (@mechane/domain) the same way
 // every later owned resource (Scene, Device, ...) should.
 import {
+  InvalidReparentError,
+  UnknownGraphEditError,
+  UnknownGraphTargetError,
+} from "@mechane/commands";
+import type { GraphEdit } from "@mechane/commands";
+import {
   assertOwnedBy,
   assertValidGraphState,
   assertValidShowName,
@@ -25,11 +31,16 @@ import { createSchema } from "graphql-yoga";
 import { db } from "../db/client";
 import { withUniqueId } from "../db/ids";
 import { shows, userSettings } from "../db/schema";
-import { publishShowGraph, readShowGraph, writeShowGraph } from "../db/show-graph";
+import {
+  applyShowGraphEdits,
+  GraphVersionConflictError,
+  publishShowGraph,
+  readShowGraph,
+} from "../db/show-graph";
 import { requireUserId } from "./context";
 import type { GraphQLContext } from "./context";
-import { parseShowGraphInput, serializeShowGraph } from "./show-graph";
-import type { ShowGraphInput } from "./show-graph";
+import { parseGraphEdit, serializeShowGraph } from "./show-graph";
+import type { GraphEditInput } from "./show-graph";
 
 // graphql-yoga masks any thrown error that isn't a GraphQLError as a generic
 // "Unexpected error" (sound default — it stops internal error messages
@@ -85,11 +96,27 @@ function validGraphState(value: string): GraphState {
   }
 }
 
-async function saveGraph(showId: string, state: GraphState, input: ShowGraphInput) {
+// The three ways an edit batch can be refused, each translated from a plain
+// Error into something the client can actually read and act on. CONFLICT is
+// the one that's new (#103): it means "re-read the draft and try again",
+// which is a different instruction from "this batch was nonsense".
+async function applyEdits(showId: string, baseVersion: number, edits: GraphEdit[]) {
   try {
-    return await writeShowGraph(showId, state, parseShowGraphInput(input));
+    return await applyShowGraphEdits(showId, edits, baseVersion);
   } catch (error) {
-    if (error instanceof InvalidShowGraphError) {
+    if (error instanceof GraphVersionConflictError) {
+      throw new GraphQLError(error.message, { extensions: { code: "CONFLICT" } });
+    }
+    // An edit naming a node that isn't there, an illegal structural move, or
+    // a type this server doesn't know: all of them mean the batch was built
+    // against a graph this server doesn't have, and none of them is a bug in
+    // the server.
+    if (
+      error instanceof InvalidShowGraphError ||
+      error instanceof UnknownGraphTargetError ||
+      error instanceof UnknownGraphEditError ||
+      error instanceof InvalidReparentError
+    ) {
       throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
     }
     throw error;
@@ -221,6 +248,12 @@ export const schema = createSchema<GraphQLContext>({
       nodes: [GraphNode!]!
       edges: [GraphEdge!]!
       updatedAt: String!
+      """
+      How many times this graph has been written. An edit batch names the
+      version it was composed against, and is refused if that isn't the
+      version stored — see \`applyShowGraphEdits\`.
+      """
+      version: Int!
     }
 
     input PositionInput {
@@ -263,9 +296,40 @@ export const schema = createSchema<GraphQLContext>({
       actionId: ID
     }
 
-    input ShowGraphInput {
-      nodes: [GraphNodeInput!]!
-      edges: [GraphEdgeInput!]!
+    """
+    One edit to a Show's graph (issue #103) — the unit the editor produces
+    and the server applies, in place of a whole-graph replacement.
+
+    \`type\` is the command that made it: "graph.addNode", "graph.removeNode",
+    "graph.moveNode", "graph.renameNode", "graph.reparentNode",
+    "graph.addEdge", "graph.removeEdge", "graph.setFlowDefaultScene",
+    "graph.addSceneVariable", "graph.renameSceneVariable", or
+    "graph.removeSceneVariable".
+
+    Every other field is optional because GraphQL has no input unions:
+    \`type\` decides which of them are read, and an edit missing one its type
+    needs is rejected. Undoing an edit is an ordinary edit here, not a
+    direction of travel the server knows about (ADR-0005).
+    """
+    input GraphEditInput {
+      type: String!
+      "The node an edit acts on: remove, move, rename, reparent."
+      nodeId: ID
+      "The whole node, for graph.addNode — including a restored one."
+      node: GraphNodeInput
+      edgeId: ID
+      edge: GraphEdgeInput
+      "Where a moved or reparented node lands. Flow-local coordinates when it has a parent."
+      position: PositionInput
+      "The Flow a node is being placed in, or null for Show level."
+      parentId: ID
+      "The new name, for a rename."
+      name: String
+      flowId: ID
+      "The Flow's entry Scene, or the Scene owning a Variable. Null clears a Flow's default."
+      sceneId: ID
+      variableId: ID
+      variable: SceneVariableInput
     }
 
     type Query {
@@ -294,8 +358,18 @@ export const schema = createSchema<GraphQLContext>({
       deleteShow(id: ID!): Boolean!
       "Updates the signed-in user's theme settings. Omitted fields are left unchanged."
       updateUserSettings(themeMode: String, themePalette: String): UserSettings!
-      "Replaces the draft graph of a Show owned by the signed-in user, wholesale."
-      saveShowGraph(showId: ID!, graph: ShowGraphInput!): ShowGraph!
+      """
+      Applies edits to the draft graph of a Show owned by the signed-in user
+      (issue #103).
+
+      \`baseVersion\` is the version the edits were composed against. If the
+      stored graph has moved on, the whole batch is refused with a CONFLICT
+      error rather than applied over the top — half a cascade is a graph
+      nobody asked for. The edits are applied in order, and the graph is
+      validated once at the end, since a batch legitimately passes through
+      states no valid Show could be left in.
+      """
+      applyShowGraphEdits(showId: ID!, baseVersion: Int!, edits: [GraphEditInput!]!): ShowGraph!
       "Publishes a Show's draft graph, making it the published graph immediately (ADR-0002)."
       publishShowGraph(showId: ID!): ShowGraph!
     }
@@ -408,14 +482,18 @@ export const schema = createSchema<GraphQLContext>({
           .returning();
         return updated;
       },
-      saveShowGraph: async (
+      applyShowGraphEdits: async (
         _parent,
-        { showId, graph }: { showId: string; graph: ShowGraphInput },
+        {
+          showId,
+          baseVersion,
+          edits,
+        }: { showId: string; baseVersion: number; edits: GraphEditInput[] },
         context,
       ) => {
         const userId = requireUserId(context);
         await findOwnShowOrThrow(showId, userId);
-        const saved = await saveGraph(showId, "draft", graph);
+        const saved = await applyEdits(showId, baseVersion, edits.map(parseGraphEdit));
         // The Show's own timestamp tracks "last edited", which the
         // dashboard orders by — a graph edit is an edit to the Show.
         await db.update(shows).set({ updatedAt: new Date() }).where(eq(shows.id, showId));

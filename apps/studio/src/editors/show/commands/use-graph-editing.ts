@@ -23,7 +23,7 @@ import {
   moveNodesIntoFlow,
   moveNodesOutOfFlow,
 } from "@mechane/commands";
-import type { Gesture } from "@mechane/commands";
+import type { GraphEdit, Gesture } from "@mechane/commands";
 import { connectionEdge, connectionError, connectionTargets, generateId } from "@mechane/domain";
 import type { ConnectionTargets, GraphNode, NodeKind, Position, ShowGraph } from "@mechane/domain";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -89,19 +89,20 @@ export interface GraphEditing {
 /**
  * The editing surface over a Show's graph.
  *
- * `save` is called with every graph the stack produces — including the ones an
- * undo produces, since an undo is an ordinary forward command (ADR-0005). It's
- * the caller's job to debounce or batch; this hook just reports.
+ * `save` is called with the edits every landed command produced — including
+ * the ones an undo produces, since an undo is an ordinary forward command
+ * (ADR-0005) with edits of its own (#103). It's the caller's job to debounce
+ * or batch; this hook just reports.
  */
 export function useGraphEditing(
   source: ApiGraph | null | undefined,
-  save?: (graph: ShowGraph) => void,
+  save?: (edits: readonly GraphEdit[], graph: ShowGraph) => void,
 ): GraphEditing {
   const commands = useGraphCommands(source, save);
   const { graph, execute, beginGesture } = commands;
 
   const [renaming, setRenaming] = useState<string | null>(null);
-  const rename = useRef<Gesture<ShowGraph> | null>(null);
+  const rename = useRef<Gesture<ShowGraph, GraphEdit> | null>(null);
 
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   // Computed once when the drag starts, not per hover: the answer is about the

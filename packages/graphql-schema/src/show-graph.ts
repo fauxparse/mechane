@@ -15,6 +15,7 @@ export const GetShowGraphQuery = graphql(`
       showId
       state
       updatedAt
+      version
       nodes {
         id
         kind
@@ -47,12 +48,21 @@ export const GetShowGraphQuery = graphql(`
   }
 `);
 
-export const SaveShowGraphMutation = graphql(`
-  mutation SaveShowGraph($showId: ID!, $graph: ShowGraphInput!) {
-    saveShowGraph(showId: $showId, graph: $graph) {
+/**
+ * Applies a batch of edits to the draft graph (issue #103).
+ *
+ * `baseVersion` is what makes this safe to send fine-grained: it says which
+ * graph the edits were composed against, so a batch that raced another
+ * writer is refused rather than applied over the top. The response carries
+ * the new `version`, which is what the next batch is composed against.
+ */
+export const ApplyShowGraphEditsMutation = graphql(`
+  mutation ApplyShowGraphEdits($showId: ID!, $baseVersion: Int!, $edits: [GraphEditInput!]!) {
+    applyShowGraphEdits(showId: $showId, baseVersion: $baseVersion, edits: $edits) {
       showId
       state
       updatedAt
+      version
       nodes {
         id
         kind
@@ -91,6 +101,7 @@ export const PublishShowGraphMutation = graphql(`
       showId
       state
       updatedAt
+      version
     }
   }
 `);

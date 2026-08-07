@@ -13,6 +13,7 @@
     "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
+    "@mechane/commands": "workspace:*",
     "@mechane/domain": "workspace:*",
     "better-auth": "^1.6.26",
     "dotenv": "^17.4.2",

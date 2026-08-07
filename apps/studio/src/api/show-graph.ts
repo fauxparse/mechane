@@ -6,18 +6,19 @@
 // "are there unpublished changes?" is derived by comparing their
 // timestamps (ADR-0002 — see @mechane/domain's `publishState`), not
 // stored on either.
-import type { GraphState, ShowGraph as DomainShowGraph, ShowId } from "@mechane/domain";
+import type { GraphEdit } from "@mechane/commands";
+import type { GraphState, ShowId } from "@mechane/domain";
 import {
+  ApplyShowGraphEditsMutation,
   GetShowGraphQuery,
   graphqlRequest,
   PublishShowGraphMutation,
-  SaveShowGraphMutation,
 } from "@mechane/graphql-schema";
 import type { ShowGraph } from "@mechane/graphql-schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import { toGraphInput } from "../editors/show/data/api-graph";
+import { toEditInput } from "../editors/show/data/api-graph";
 import { GRAPHQL_ENDPOINT } from "./client";
 
 export const showGraphQueryKey = (id: ShowId, state: GraphState) =>
@@ -74,60 +75,106 @@ export function usePublishShowGraph() {
   });
 }
 
-/**
- * Saves a Show's draft graph (issue #42). Whole-graph replacement, matching the
- * server's own unit of work (`writeShowGraph`) — the editor's commands are
- * fine-grained, the write is not, and that's deliberate: a command's inverse is
- * how a change is undone, not a diff the server has to reconcile.
- *
- * The draft graph's *cache entry* is refreshed from the response so the
- * "unpublished changes" badge (ADR-0002 derives it from timestamps) moves, but
- * the editor deliberately doesn't re-read it — see the route's note on why the
- * graph it opens with is the graph it keeps editing.
- */
-export function useSaveShowGraph() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ showId, graph }: { showId: ShowId; graph: DomainShowGraph }) => {
-      const data = await graphqlRequest(GRAPHQL_ENDPOINT, SaveShowGraphMutation, {
-        showId,
-        graph: toGraphInput(graph),
-      });
-      return data.saveShowGraph;
-    },
-    onSuccess: (graph) => {
-      queryClient.setQueryData(showGraphQueryKey(graph.showId as ShowId, "draft"), graph);
-    },
-  });
-}
-
-/** How long editing has to pause before the draft is written. */
+/** How long editing has to pause before the pending edits are sent. */
 const SAVE_DEBOUNCE_MS = 700;
 
+export interface ShowGraphEdits {
+  /**
+   * Queues edits for the next flush. Called once per landed command — a
+   * gesture included, since the stack coalesces one (#28).
+   */
+  enqueue(edits: readonly GraphEdit[]): void;
+  /** True while a batch is in flight. */
+  saving: boolean;
+  /**
+   * Set when a batch was refused. The editor keeps working from its own
+   * state, but nothing further is sent — see below for why that's the
+   * honest behaviour rather than a retry loop.
+   */
+  error: Error | null;
+}
+
 /**
- * A save that waits for a gap in the editing. Commands land per gesture (#28),
- * which is already the right *granularity* for undo but far too chatty for a
- * whole-graph write — dragging four nodes in a row would be four writes of the
- * entire Show.
+ * The draft graph's write path (issue #103): a queue of edits, flushed after a
+ * pause in the editing.
  *
- * The latest graph wins: an intermediate state that never got written is one
- * nobody asked to keep, since every write replaces the whole graph anyway.
+ * What replaced what: this used to hold *the latest graph*, because every
+ * write replaced the whole thing and an intermediate state nobody had written
+ * was one nobody wanted. Edits are the opposite — each one is a step, and a
+ * step that never arrives leaves the server on a different graph from the
+ * client. So they accumulate rather than overwrite, and the debounce is now
+ * about *batching* rather than about discarding.
+ *
+ * One batch is in flight at a time, in order. Edits are relative to the graph
+ * before them, so two batches racing would be two batches composed against the
+ * same version, and the second would be refused — correctly, but avoidably.
+ *
+ * `baseVersion` seeds the version the first batch is composed against; after
+ * that every response says what the next one should use.
  */
-export function useDebouncedShowGraphSave(showId: ShowId | null) {
-  const save = useSaveShowGraph();
-  const pending = useRef<DomainShowGraph | null>(null);
+export function useShowGraphEdits(
+  showId: ShowId | null,
+  baseVersion: number | undefined,
+): ShowGraphEdits {
+  const queryClient = useQueryClient();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const pending = useRef<GraphEdit[]>([]);
   const timer = useRef<number | null>(null);
+  const inFlight = useRef(false);
+  // Not state: the version is a fact about the last response, and re-rendering
+  // on it would re-render the editor for something it never displays.
+  const version = useRef<number | null>(null);
+  const failed = useRef(false);
+
+  useEffect(() => {
+    if (version.current === null && baseVersion !== undefined) version.current = baseVersion;
+  }, [baseVersion]);
 
   const flush = useCallback(() => {
     timer.current = null;
-    const graph = pending.current;
-    pending.current = null;
-    if (!graph || !showId) return;
-    save.mutate({ showId, graph });
-  }, [save, showId]);
+    if (inFlight.current || failed.current) return;
+    const edits = pending.current;
+    const base = version.current;
+    if (edits.length === 0 || !showId || base === null) return;
+    pending.current = [];
+    inFlight.current = true;
+    setSaving(true);
+    graphqlRequest(GRAPHQL_ENDPOINT, ApplyShowGraphEditsMutation, {
+      showId,
+      baseVersion: base,
+      edits: edits.map(toEditInput),
+    })
+      .then((data) => {
+        const graph = data.applyShowGraphEdits;
+        version.current = graph.version;
+        // The badge is derived from the two graphs' timestamps (ADR-0002), so
+        // the cache entry is refreshed for that — not so the editor re-reads
+        // it. See the route's note on why the graph it opens with is the
+        // graph it keeps editing.
+        queryClient.setQueryData(showGraphQueryKey(graph.showId as ShowId, "draft"), graph);
+      })
+      .catch((reason: unknown) => {
+        // No retry, and no putting the edits back in the queue to be sent
+        // after the ones that follow them. A refused batch means the server
+        // is on a graph these edits weren't composed against — sending more
+        // of them would build on a divergence rather than close it. Stopping
+        // and saying so is the recoverable state; reloading re-reads the
+        // draft, which is where recovery actually lives until #103's
+        // follow-up gives the editor something better to do about it.
+        failed.current = true;
+        setError(reason instanceof Error ? reason : new Error(String(reason)));
+      })
+      .finally(() => {
+        inFlight.current = false;
+        setSaving(false);
+        // Anything queued while that was in flight goes now, in order.
+        if (pending.current.length > 0 && !failed.current) flush();
+      });
+  }, [queryClient, showId]);
 
   // A pending edit outliving the editor would be an edit silently dropped, so
-  // unmounting writes it rather than cancelling it.
+  // unmounting sends it rather than cancelling it.
   useEffect(
     () => () => {
       if (timer.current !== null) {
@@ -138,14 +185,15 @@ export function useDebouncedShowGraphSave(showId: ShowId | null) {
     [flush],
   );
 
-  const scheduleSave = useCallback(
-    (graph: DomainShowGraph) => {
-      pending.current = graph;
+  const enqueue = useCallback(
+    (edits: readonly GraphEdit[]) => {
+      if (edits.length === 0) return;
+      pending.current.push(...edits);
       if (timer.current !== null) window.clearTimeout(timer.current);
       timer.current = window.setTimeout(flush, SAVE_DEBOUNCE_MS);
     },
     [flush],
   );
 
-  return { scheduleSave, saving: save.isPending, error: save.error };
+  return { enqueue, saving, error };
 }

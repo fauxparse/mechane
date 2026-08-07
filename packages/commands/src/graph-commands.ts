@@ -39,8 +39,15 @@ import type {
 
 import { capturing, composite } from "./command";
 import type { Command } from "./command";
+import type { GraphEdit } from "./graph-edits";
 
-export type ShowGraphCommand = Command<ShowGraph>;
+/**
+ * A command over a Show graph, which also knows how to say what it did on the
+ * wire (#103) — see ./graph-edits for the vocabulary, and note that the
+ * *inverse* of one of these carries edits too, so an undo is transmitted the
+ * same way as any other edit (ADR-0005).
+ */
+export type ShowGraphCommand = Command<ShowGraph, GraphEdit>;
 
 /** Command `type` strings, so surfaces can recognise commands they care about. */
 export const GRAPH_COMMAND_TYPES = {
@@ -116,12 +123,14 @@ function insertEdge(graph: ShowGraph, index: number, edge: GraphEdge): ShowGraph
  * direction, below.
  */
 export function addNode(node: GraphNode, label = `Add ${node.kind}`): ShowGraphCommand {
-  return capturing<ShowGraph, null>({
+  return capturing<ShowGraph, null, GraphEdit>({
     type: GRAPH_COMMAND_TYPES.addNode,
     label,
     // Creation needs the canvas, not a selection: it comes from a
     // right-click on empty space or a palette entry (#37, #42).
     scope: "canvas",
+    edits: [{ type: GRAPH_COMMAND_TYPES.addNode, node }],
+    restoreEdits: () => [{ type: GRAPH_COMMAND_TYPES.removeNode, nodeId: node.id }],
     capture: () => null,
     apply: (graph) => ({ ...graph, nodes: [...graph.nodes, node] }),
     restore: (graph) => ({
@@ -173,10 +182,24 @@ interface RemovedNode {
  * makes the cascade one undo entry.
  */
 export function removeNode(nodeId: string, label?: string): ShowGraphCommand {
-  return capturing<ShowGraph, RemovedNode>({
+  return capturing<ShowGraph, RemovedNode, GraphEdit>({
     type: GRAPH_COMMAND_TYPES.removeNode,
     label: label ?? "Delete",
     scope: "selection",
+    edits: [{ type: GRAPH_COMMAND_TYPES.removeNode, nodeId }],
+    // The node first, then what referred to it: an edge can't be added to a
+    // graph whose endpoint isn't back yet, and a Flow can't point at a
+    // default Scene that doesn't exist. The indices the capture holds are
+    // for this process only — the wire doesn't carry graph order, and the
+    // server doesn't store it (./graph-edits).
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.addNode, node: captured.node },
+      ...captured.edges.map(({ edge }) => ({ type: GRAPH_COMMAND_TYPES.addEdge, edge }) as const),
+      ...captured.defaultSceneFlowIds.map(
+        (flowId) =>
+          ({ type: GRAPH_COMMAND_TYPES.setFlowDefaultScene, flowId, sceneId: nodeId }) as const,
+      ),
+    ],
     capture: (graph) => {
       const index = nodeIndex(graph, nodeId);
       const node = graph.nodes[index] as GraphNode;
@@ -231,10 +254,14 @@ export function removeNode(nodeId: string, label?: string): ShowGraphCommand {
  * jiggles a node by nothing doesn't land an entry.
  */
 export function moveNode(nodeId: string, position: Position, label = "Move"): ShowGraphCommand {
-  return capturing<ShowGraph, Position>({
+  return capturing<ShowGraph, Position, GraphEdit>({
     type: GRAPH_COMMAND_TYPES.moveNode,
     label,
     scope: "selection",
+    edits: [{ type: GRAPH_COMMAND_TYPES.moveNode, nodeId, position }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.moveNode, nodeId, position: captured },
+    ],
     capture: (graph) => {
       const node = graph.nodes[nodeIndex(graph, nodeId)] as GraphNode;
       return { ...node.position };
@@ -259,10 +286,12 @@ export function moveNode(nodeId: string, position: Position, label = "Move"): Sh
  * entry and not six (#28).
  */
 export function renameNode(nodeId: string, name: string, label = "Rename"): ShowGraphCommand {
-  return capturing<ShowGraph, string>({
+  return capturing<ShowGraph, string, GraphEdit>({
     type: GRAPH_COMMAND_TYPES.renameNode,
     label,
     scope: "selection",
+    edits: [{ type: GRAPH_COMMAND_TYPES.renameNode, nodeId, name }],
+    restoreEdits: (captured) => [{ type: GRAPH_COMMAND_TYPES.renameNode, nodeId, name: captured }],
     capture: (graph) => (graph.nodes[nodeIndex(graph, nodeId)] as GraphNode).name,
     isEmpty: (_graph, captured) => captured === name,
     apply: (graph) => {
@@ -298,10 +327,19 @@ export function reparentNode(
   position: Position,
   label = parentId === null ? "Move out of Flow" : "Move into Flow",
 ): ShowGraphCommand {
-  return capturing<ShowGraph, Placement>({
+  return capturing<ShowGraph, Placement, GraphEdit>({
     type: GRAPH_COMMAND_TYPES.reparentNode,
     label,
     scope: "selection",
+    edits: [{ type: GRAPH_COMMAND_TYPES.reparentNode, nodeId, parentId, position }],
+    restoreEdits: (captured) => [
+      {
+        type: GRAPH_COMMAND_TYPES.reparentNode,
+        nodeId,
+        parentId: captured.parentId,
+        position: captured.position,
+      },
+    ],
     capture: (graph) => {
       const node = graph.nodes[nodeIndex(graph, nodeId)] as GraphNode;
       return { parentId: node.parentId, position: { ...node.position } };
@@ -479,10 +517,14 @@ export function setFlowDefaultScene(
   sceneId: string | null,
   label = "Set default Scene",
 ): ShowGraphCommand {
-  return capturing<ShowGraph, string | null>({
+  return capturing<ShowGraph, string | null, GraphEdit>({
     type: GRAPH_COMMAND_TYPES.setFlowDefaultScene,
     label,
     scope: "selection",
+    edits: [{ type: GRAPH_COMMAND_TYPES.setFlowDefaultScene, flowId, sceneId }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.setFlowDefaultScene, flowId, sceneId: captured },
+    ],
     capture: (graph) => {
       const node = graph.nodes[nodeIndex(graph, flowId)] as GraphNode;
       if (node.kind !== "flow") {
@@ -529,10 +571,14 @@ export function addSceneVariable(
   variable: SceneVariable,
   label = "Add Variable",
 ): ShowGraphCommand {
-  return capturing<ShowGraph, null>({
+  return capturing<ShowGraph, null, GraphEdit>({
     type: GRAPH_COMMAND_TYPES.addSceneVariable,
     label,
     scope: "selection",
+    edits: [{ type: GRAPH_COMMAND_TYPES.addSceneVariable, sceneId, variable }],
+    restoreEdits: () => [
+      { type: GRAPH_COMMAND_TYPES.removeSceneVariable, sceneId, variableId: variable.id },
+    ],
     capture: () => null,
     apply: (graph) => {
       const { scene } = sceneAt(graph, sceneId);
@@ -556,10 +602,14 @@ export function renameSceneVariable(
   name: string,
   label = "Rename Variable",
 ): ShowGraphCommand {
-  return capturing<ShowGraph, string>({
+  return capturing<ShowGraph, string, GraphEdit>({
     type: GRAPH_COMMAND_TYPES.renameSceneVariable,
     label,
     scope: "selection",
+    edits: [{ type: GRAPH_COMMAND_TYPES.renameSceneVariable, sceneId, variableId, name }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.renameSceneVariable, sceneId, variableId, name: captured },
+    ],
     capture: (graph) => {
       const { scene } = sceneAt(graph, sceneId);
       const variable = scene.variables.find((candidate) => candidate.id === variableId);
@@ -600,10 +650,17 @@ export function removeSceneVariable(
   variableId: string,
   label = "Delete Variable",
 ): ShowGraphCommand {
-  return capturing<ShowGraph, RemovedVariable>({
+  return capturing<ShowGraph, RemovedVariable, GraphEdit>({
     type: GRAPH_COMMAND_TYPES.removeSceneVariable,
     label,
     scope: "selection",
+    edits: [{ type: GRAPH_COMMAND_TYPES.removeSceneVariable, sceneId, variableId }],
+    // The Variable before the wiring that targets it, for the same reason a
+    // restored node precedes its edges.
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.addSceneVariable, sceneId, variable: captured.variable },
+      ...captured.edges.map(({ edge }) => ({ type: GRAPH_COMMAND_TYPES.addEdge, edge }) as const),
+    ],
     capture: (graph) => {
       const { scene } = sceneAt(graph, sceneId);
       const index = scene.variables.findIndex((candidate) => candidate.id === variableId);
@@ -649,9 +706,11 @@ export function removeSceneVariable(
 
 /** Adds an edge. Inverts to removing that edge (#28). */
 export function addEdge(edge: GraphEdge, label = "Connect"): ShowGraphCommand {
-  return capturing<ShowGraph, null>({
+  return capturing<ShowGraph, null, GraphEdit>({
     type: GRAPH_COMMAND_TYPES.addEdge,
     label,
+    edits: [{ type: GRAPH_COMMAND_TYPES.addEdge, edge }],
+    restoreEdits: () => [{ type: GRAPH_COMMAND_TYPES.removeEdge, edgeId: edge.id }],
     // Edge creation is a canvas drag between handles, and the one accepted
     // keyboard exception in PRD §6.3.
     scope: "canvas",
@@ -666,10 +725,12 @@ export function addEdge(edge: GraphEdge, label = "Connect"): ShowGraphCommand {
 
 /** Removes an edge, capturing it and its position in graph order (#28). */
 export function removeEdge(edgeId: string, label = "Disconnect"): ShowGraphCommand {
-  return capturing<ShowGraph, { index: number; edge: GraphEdge }>({
+  return capturing<ShowGraph, { index: number; edge: GraphEdge }, GraphEdit>({
     type: GRAPH_COMMAND_TYPES.removeEdge,
     label,
     scope: "selection",
+    edits: [{ type: GRAPH_COMMAND_TYPES.removeEdge, edgeId }],
+    restoreEdits: (captured) => [{ type: GRAPH_COMMAND_TYPES.addEdge, edge: captured.edge }],
     capture: (graph) => {
       const index = edgeIndex(graph, edgeId);
       return { index, edge: graph.edges[index] as GraphEdge };

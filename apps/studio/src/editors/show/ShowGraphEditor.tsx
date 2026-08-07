@@ -29,7 +29,7 @@
 //     computed once at drag start; the affordance itself is #35's dashed
 //     outline plus dimming, painted by ./ShowGraphNodes.
 import { describeDeletion } from "@mechane/commands";
-import type { DeletionScope } from "@mechane/commands";
+import type { DeletionScope, GraphEdit } from "@mechane/commands";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -140,11 +140,12 @@ export interface ShowGraphEditorProps {
   /** The graph as the API returned it, or null while it's still loading. */
   graph: ApiGraph | null | undefined;
   /**
-   * Called with the graph after every edit — including the ones an undo
-   * produced, since an undo is an ordinary forward command (ADR-0005). The
-   * caller owns debouncing and the mutation.
+   * Called after every edit with what changed (#103), and the graph it
+   * changed into — including the ones an undo produced, since an undo is an
+   * ordinary forward command (ADR-0005). The caller owns debouncing and the
+   * mutation.
    */
-  onEdit?: (graph: ShowGraph) => void;
+  onEdit?: (edits: readonly GraphEdit[], graph: ShowGraph) => void;
   className?: string;
   ref?: Ref<ShowGraphEditorHandle>;
 }

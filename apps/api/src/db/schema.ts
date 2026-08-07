@@ -16,6 +16,7 @@ import {
   doublePrecision,
   foreignKey,
   index,
+  integer,
   pgTable,
   primaryKey,
   text,
@@ -141,6 +142,12 @@ export const showGraphs = pgTable(
       .notNull()
       .references(() => shows.id, { onDelete: "cascade" }),
     state: text("state").notNull(),
+    // How many times this graph has been written, and the whole of optimistic
+    // concurrency for it (#103): an edit batch names the version it was
+    // composed against, and a batch whose base has moved is refused rather
+    // than applied over the top of whatever moved it. Wholesale replacement
+    // had nothing to check, which is exactly what made it last-write-wins.
+    version: integer("version").notNull().default(0),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
