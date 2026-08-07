@@ -4,9 +4,14 @@ import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { Connection, FitViewOptions, OnNodeDrag, XYPosition } from "@xyflow/react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 
-import { absolutePosition, FLOW_CONTENT_ORIGIN, FLOW_NODE_TYPE, NODE_WIDTH } from "./graph-to-flow";
-import type { ShowFlowNode } from "./graph-to-flow";
-import type { CreatableNode } from "./node-kinds";
+import {
+  absolutePosition,
+  FLOW_CONTENT_ORIGIN,
+  FLOW_NODE_TYPE,
+  NODE_WIDTH,
+} from "../graph/graph-to-flow";
+import type { ShowFlowNode } from "../graph/graph-to-flow";
+import type { CreatableNode } from "../graph/node-kinds";
 import { composite } from "@mechane/commands";
 import { useCallback, useRef } from "react";
 import type { DeletionScope } from "@mechane/commands";

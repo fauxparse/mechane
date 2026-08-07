@@ -21,7 +21,7 @@ import { Check, Copy, Plus, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { nodeIcon, NODE_KIND_META } from "./node-kinds";
-import type { GraphEditing } from "./use-graph-editing";
+import type { GraphEditing } from "../commands/use-graph-editing";
 
 export interface GraphInspectorProps {
   /** The selected nodes, in graph order. */
