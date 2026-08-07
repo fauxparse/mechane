@@ -39,7 +39,12 @@ import {
 } from "../db/show-graph";
 import { requireUserId } from "./context";
 import type { GraphQLContext } from "./context";
-import { parseGraphEdit, serializeAppliedEdits, serializeShowGraph } from "./show-graph";
+import {
+  parseGraphEdit,
+  resolveGraphNodeType,
+  serializeAppliedEdits,
+  serializeShowGraph,
+} from "./show-graph";
 import type { GraphEditInput } from "./show-graph";
 
 // graphql-yoga masks any thrown error that isn't a GraphQLError as a generic
@@ -250,35 +255,62 @@ export const schema = createSchema<GraphQLContext>({
     }
 
     """
-    A node in the Show graph. One flat shape for all five kinds: \`kind\` is
-    "scene", "flow", "source", "transformer", or "device".
+    The fields shared by every node on the Show graph. Kind-specific data is
+    exposed by the concrete node types below; clients use __typename rather
+    than a nullable field bag and a string discriminator.
     """
-    type GraphNode {
+    interface GraphNode {
       id: ID!
-      kind: String!
       name: String!
-      "The Flow containing this node, or null if it's Show-level. This is also what makes a Source Flow-local."
+      "The Flow containing this node, or null if it's Show-level."
       parentId: ID
-      "Flow nodes only: the Flow's design-time entry Scene, if one is set."
-      defaultSceneId: ID
-      type: Type
       position: Position!
-      "Scene nodes only: the Variables wiring edges can target."
+    }
+
+    type SceneNode implements GraphNode {
+      id: ID!
+      name: String!
+      parentId: ID
+      position: Position!
+      "The Variables wiring edges can target."
       variables: [SceneVariable!]!
+    }
+
+    type FlowNode implements GraphNode {
+      id: ID!
+      name: String!
+      parentId: ID
+      position: Position!
+      "The Flow's design-time entry Scene, if one is set."
+      defaultSceneId: ID
+    }
+
+    type SourceNode implements GraphNode {
+      id: ID!
+      name: String!
+      parentId: ID
+      position: Position!
+      type: Type!
       "Sparse default overrides for Source fields, keyed by stable field ids."
       fieldDefaults: [SourceFieldDefault!]!
-      """
-      Device nodes only: whether this Device is one logical instance per
-      connection (an Audience Device, each phone independent) rather than
-      one shared instance every connection sees alike. False for every
-      other kind of node.
-      """
+    }
+
+    type TransformerNode implements GraphNode {
+      id: ID!
+      name: String!
+      parentId: ID
+      position: Position!
+      type: Type
+    }
+
+    type DeviceNode implements GraphNode {
+      id: ID!
+      name: String!
+      parentId: ID
+      position: Position!
+      "Whether each connection is its own logical instance."
       perConnection: Boolean!
-      """
-      Device nodes only: the Show-level pairing code a physical device
-      joins with. Null until the server has minted one, which happens the
-      first time the graph is saved.
-      """
+      "The server-minted pairing code, absent before the first save."
       pairingCode: String
     }
 
@@ -522,6 +554,9 @@ export const schema = createSchema<GraphQLContext>({
         return null;
       },
     }),
+    GraphNode: {
+      __resolveType: resolveGraphNodeType,
+    },
     Type: {
       kind: (type: string | { kind: "array"; of: unknown } | { kind: "shape"; shapeId: string }) =>
         typeof type === "string" ? type : type.kind,

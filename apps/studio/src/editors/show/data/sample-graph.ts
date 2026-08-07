@@ -11,7 +11,18 @@
 import type { ShowGraph } from "@mechane/graphql-schema";
 
 type Graph = Pick<ShowGraph, "nodes" | "edges">;
-type ShowGraphNodeShape = Graph["nodes"][number];
+type ShowGraphNodeShape = {
+  id: string;
+  kind: string;
+  name?: string;
+  parentId?: string | null;
+  defaultSceneId?: string | null;
+  type?: { kind: string; shapeId: string | null; of: unknown } | null;
+  position?: { x: number; y: number };
+  variables?: unknown[];
+  perConnection?: boolean;
+  pairingCode?: string | null;
+};
 type ShowGraphEdgeShape = Graph["edges"][number];
 
 const VOTE_FLOW = "flow_vote";
@@ -31,17 +42,24 @@ const HOUSE_VARIABLE = "variable_house";
 export const VOTE_FLOW_NODE_IDS = [VOTE_FLOW, WAITING, VOTING, RESULTS];
 
 function node(overrides: Partial<ShowGraphNodeShape> & Pick<ShowGraphNodeShape, "id" | "kind">) {
+  const { kind, ...rest } = overrides;
+  const typeName =
+    { scene: "SceneNode", flow: "FlowNode", source: "SourceNode", transformer: "TransformerNode", device: "DeviceNode" }[
+      kind
+    ] ?? kind;
   return {
+    __typename: typeName,
     name: overrides.id,
     parentId: null,
     defaultSceneId: null,
-    type: overrides.kind === "source" ? { kind: "text", shapeId: null, of: null } : null,
+    sourceType: kind === "source" ? { kind: "text", shapeId: null, of: null } : undefined,
+    transformerType: kind === "transformer" ? null : undefined,
     position: { x: 0, y: 0 },
     variables: [],
     perConnection: false,
     pairingCode: null,
-    ...overrides,
-  } as Graph["nodes"][number];
+    ...rest,
+  } as unknown as Graph["nodes"][number];
 }
 
 function edge(overrides: Partial<ShowGraphEdgeShape> & Pick<ShowGraphEdgeShape, "id" | "kind">) {

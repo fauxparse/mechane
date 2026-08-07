@@ -1,4 +1,4 @@
-import type { ShowGraphEdge, ShowGraphNode } from "@mechane/graphql-schema";
+import type { ShowGraphEdge } from "@mechane/graphql-schema";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -13,9 +13,20 @@ import {
   VARIABLE_ROW_HEIGHT,
 } from "./graph-to-flow";
 
-// The API's node/edge shapes have every field on every kind (a Source
-// carries a null `defaultSceneId`, and so on), so the fixtures spell out
-// the whole shape and override the parts a case is about.
+// These fixtures exercise the mapper's structural wire input rather than
+// the generated GraphQL result union.
+type ShowGraphNode = {
+  id: string;
+  kind: string;
+  name: string;
+  parentId: string | null;
+  defaultSceneId: string | null;
+  position: { x: number; y: number };
+  variables: { id: string; name: string; type?: unknown }[];
+  type?: unknown;
+  perConnection?: boolean;
+  pairingCode?: string | null;
+};
 function node(overrides: Partial<ShowGraphNode> & Pick<ShowGraphNode, "id" | "kind">) {
   return {
     name: overrides.id,

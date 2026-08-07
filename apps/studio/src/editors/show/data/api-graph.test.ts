@@ -8,20 +8,27 @@ import type { ApiGraph } from "./api-graph";
 type ApiNode = ApiGraph["nodes"][number];
 type ApiEdge = ApiGraph["edges"][number];
 
-/** A node as GraphQL returns it: every kind's fields present, most of them null. */
-function apiNode(overrides: Pick<ApiNode, "id" | "kind"> & Partial<ApiNode>): ApiNode {
+/** A node fixture using the domain kind vocabulary as a shorthand for __typename. */
+function apiNode(overrides: { id: string; kind: string } & Partial<ApiNode>): ApiNode {
+  const { kind, ...rest } = overrides;
+  const typeName =
+    { scene: "SceneNode", flow: "FlowNode", source: "SourceNode", transformer: "TransformerNode", device: "DeviceNode" }[
+      kind
+    ] ?? kind;
   return {
+    __typename: typeName,
     name: overrides.id,
     parentId: null,
     defaultSceneId: null,
-    type: overrides.kind === "source" ? { kind: "text", shapeId: null, of: null } : null,
+    sourceType: kind === "source" ? { kind: "text", shapeId: null, of: null } : undefined,
+    transformerType: kind === "transformer" ? null : undefined,
     fieldDefaults: [],
     position: { x: 0, y: 0 },
     variables: [],
     perConnection: false,
     pairingCode: null,
-    ...overrides,
-  };
+    ...rest,
+  } as ApiNode;
 }
 
 function apiEdge(overrides: Pick<ApiEdge, "id" | "kind" | "sourceId" | "targetId">): ApiEdge {
@@ -131,7 +138,7 @@ describe("toShowGraph", () => {
   it("refuses a kind this build doesn't know", () => {
     expect(() =>
       toShowGraph({ nodes: [apiNode({ id: "x", kind: "hologram" })], edges: [] }),
-    ).toThrow(/Unknown Show graph node kind/);
+    ).toThrow(/Unknown Show graph node typename/);
     expect(() =>
       toShowGraph({
         nodes: [],
