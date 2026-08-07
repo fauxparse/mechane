@@ -7,6 +7,7 @@ export function BatchSmartSmoothStepEdge(props: EdgeProps) {
   const routed = useSmartEdgeRoute(props);
   if (!routed) return <SmoothStepEdge {...props} />;
 
+  const label = props.data?.invalidReason ? "!" : props.data?.coercing ? "↝" : undefined;
   return (
     <BaseEdge
       id={props.id}
@@ -17,6 +18,8 @@ export function BatchSmartSmoothStepEdge(props: EdgeProps) {
       markerEnd={props.markerEnd}
       interactionWidth={props.interactionWidth}
       style={props.style}
+      label={label}
+      labelStyle={{ fill: props.data?.invalidReason ? "var(--destructive)" : undefined, fontWeight: 700 }}
     />
   );
 }

@@ -69,10 +69,18 @@ interface HeaderProps {
   variant?: "node" | "flow";
 }
 
+function typeLabel(type: ShowNodeData["type"]): string | null {
+  if (!type) return null;
+  return typeof type === "string" ? type : type.kind === "array" ? `array<${typeLabel(type.of) ?? "?"}>` : `Shape:${type.shapeId}`;
+}
+
 function NodeHeader({ nodeId, data, variant = "node" }: HeaderProps) {
   const { renaming, renameTo, commitRename, cancelRename } = useNodeInteraction();
   const isRenaming = renaming === nodeId;
-  const Icon = nodeIcon(data.kind, { perConnection: data.perConnection });
+  const Icon = nodeIcon(data.kind, {
+    perConnection: data.perConnection,
+    sourceType: data.kind === "source" && typeof data.type === "string" ? data.type : undefined,
+  });
   const wiredVariableIds = new Set(data.wiredVariableIds);
   const dangling = data.variables.filter((variable) => !wiredVariableIds.has(variable.id));
 
@@ -91,6 +99,11 @@ function NodeHeader({ nodeId, data, variant = "node" }: HeaderProps) {
       ) : (
         <span className="min-w-0 flex-1 truncate text-sm font-medium">{data.name}</span>
       )}
+      {typeLabel(data.type) ? (
+        <span className="shrink-0 rounded bg-muted px-1 text-[10px] text-muted-foreground">
+          {typeLabel(data.type)}
+        </span>
+      ) : null}
       {data.isDefaultScene ? (
         // The Flow's design-time entry point (#23) — not a runtime "current
         // Scene", which this canvas deliberately doesn't represent (#35).
