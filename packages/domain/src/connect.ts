@@ -18,6 +18,7 @@
 // on the same seam.
 
 import { assertValidShowGraph, findNode, InvalidShowGraphError } from "./graph";
+import { resolveShapeFieldMapping } from "./shapes";
 import type { EdgeKind, GraphEdge, GraphNode, ShowGraph } from "./graph";
 
 /** A drag from one node's handle to another's, as the editor reports it. */
@@ -68,7 +69,23 @@ export function connectionEdge(
       }
       const variableId = request.targetVariableId;
       if (!variableId) return null;
-      return { ...base, kind: "wiring", targetPath: [variableId] };
+      const producer = findNode(graph, request.sourceId);
+      const target =
+        consumer?.kind === "scene"
+          ? consumer.variables.find((variable) => variable.id === variableId)
+          : undefined;
+      const producerType =
+        producer?.kind === "source" || producer?.kind === "transformer" ? producer.type : undefined;
+      const fieldMapping =
+        producerType && target?.type
+          ? resolveShapeFieldMapping(producerType, target.type, graph.shapes ?? [])
+          : undefined;
+      return {
+        ...base,
+        kind: "wiring",
+        targetPath: [variableId],
+        ...(fieldMapping && Object.keys(fieldMapping).length > 0 ? { fieldMapping } : {}),
+      };
     }
     case "navigate":
       // Cues and Actions aren't modelled yet (#20), so a hand-drawn Navigate

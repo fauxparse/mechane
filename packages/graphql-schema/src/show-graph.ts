@@ -60,6 +60,7 @@ export const GetShowGraphQuery = graphql(`
         targetId
         sourcePath
         targetPath
+        fieldMapping
         targetVariableId
         cueId
         actionId

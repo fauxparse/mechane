@@ -182,6 +182,7 @@ function toEdge(row: EdgeRow): GraphEdge {
     targetId: row.targetNodeId,
     sourcePath: row.sourcePath,
     targetPath: row.targetPath,
+    ...(row.fieldMapping ? { fieldMapping: row.fieldMapping as Record<string, string> } : {}),
   };
   switch (row.kind) {
     case "wiring":
@@ -470,6 +471,7 @@ async function writeGraph(
         targetNodeId: edge.targetId,
         sourcePath: edge.sourcePath,
         targetPath: edge.targetPath,
+        fieldMapping: edge.kind === "wiring" ? edge.fieldMapping ?? null : null,
         // `target_variable_id` is a generated column — the database
         // derives it from `target_path`, so it isn't written here.
         cueId: edge.kind === "navigate" ? edge.cueId : null,

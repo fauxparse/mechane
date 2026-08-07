@@ -52,6 +52,7 @@ export interface GraphEdgeInput {
   targetId: string;
   sourcePath?: string[] | null;
   targetPath?: string[] | null;
+  fieldMapping?: Record<string, string> | null;
   cueId?: string | null;
   actionId?: string | null;
 }
@@ -166,7 +167,7 @@ function parseEdge(input: GraphEdgeInput): GraphEdge {
   };
   switch (input.kind) {
     case "wiring":
-      return { ...base, kind: "wiring" };
+      return { ...base, kind: "wiring", fieldMapping: input.fieldMapping ?? undefined };
     case "navigate":
       return {
         ...base,
@@ -400,6 +401,7 @@ function serializeEdge(edge: GraphEdge) {
     targetId: edge.targetId,
     sourcePath: edge.sourcePath,
     targetPath: edge.targetPath,
+    fieldMapping: edge.kind === "wiring" ? edge.fieldMapping ?? null : null,
     // Derived, not stored input: the head of a wiring edge's target path
     // is the Variable it lands on, and a client that only cares which
     // Variable is fed shouldn't have to know that.

@@ -143,6 +143,9 @@ function toEdge(edge: ApiEdge): GraphEdge {
     targetId: edge.targetId,
     sourcePath: [...(edge.sourcePath ?? [])],
     targetPath: [...(edge.targetPath ?? [])],
+    ...(edge.kind === "wiring" && edge.fieldMapping
+      ? { fieldMapping: { ...edge.fieldMapping } }
+      : {}),
   };
   switch (edge.kind) {
     case "navigate":
@@ -212,6 +215,7 @@ function toEdgeInput(edge: GraphEdge) {
     targetId: edge.targetId,
     sourcePath: [...edge.sourcePath],
     targetPath: [...edge.targetPath],
+    ...(edge.kind === "wiring" ? { fieldMapping: edge.fieldMapping ?? null } : {}),
     // `targetVariableId` is derived by the server from `targetPath`, so it
     // isn't sent — see `serializeShowGraph` in apps/api.
     cueId: edge.kind === "navigate" ? edge.cueId : null,

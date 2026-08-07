@@ -1,0 +1,1 @@
+ALTER TABLE "graph_edges" ADD COLUMN "field_mapping" jsonb;

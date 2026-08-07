@@ -344,6 +344,58 @@ export function findCoercion(from: PrimitiveType, to: PrimitiveType): Coercion |
   return COERCIONS.find((coercion) => coercion.from === from && coercion.to === to);
 }
 
+/** Whether an assignment is supported by the coercion and Shape rules. */
+export function areTypesCompatible(
+  from: Type,
+  to: Type,
+  shapes: readonly Shape[] = [],
+): boolean {
+  if (from === to) return true;
+  if (typeof from === "string" && typeof to === "string") return !!findCoercion(from, to);
+  if (typeof to !== "string" && to.kind === "array") {
+    return typeof from !== "string" && from.kind === "array"
+      ? areTypesCompatible(from.of, to.of, shapes)
+      : areTypesCompatible(from, to.of, shapes);
+  }
+  if (typeof from !== "string" && from.kind === "array") return false;
+  if (typeof from !== "string" && from.kind === "shape" && typeof to !== "string" && to.kind === "shape") {
+    const source = shapes.find((shape) => shape.id === from.shapeId);
+    const target = shapes.find((shape) => shape.id === to.shapeId);
+    if (!source || !target) return false;
+    return target.fields.every((targetField) => {
+      const normal = targetField.name.replace(/\\s+/g, "").toLowerCase();
+      const sourceField = source.fields.find(
+        (field) => field.name.replace(/\\s+/g, "").toLowerCase() === normal,
+      );
+      return !sourceField || areTypesCompatible(sourceField.type, targetField.type, shapes);
+    });
+  }
+  return false;
+}
+
+/** Resolves fuzzy Shape field matching once, using stable field ids thereafter. */
+export function resolveShapeFieldMapping(
+  from: Type,
+  to: Type,
+  shapes: readonly Shape[],
+): Record<string, string> {
+  if (typeof from === "string" || typeof to === "string" || from.kind !== "shape" || to.kind !== "shape") {
+    return {};
+  }
+  const source = shapes.find((shape) => shape.id === from.shapeId);
+  const target = shapes.find((shape) => shape.id === to.shapeId);
+  if (!source || !target) return {};
+  const mapping: Record<string, string> = {};
+  for (const targetField of target.fields) {
+    const normal = targetField.name.replace(/\\s+/g, "").toLowerCase();
+    const sourceField = source.fields.find(
+      (field) => field.name.replace(/\\s+/g, "").toLowerCase() === normal,
+    );
+    if (sourceField) mapping[sourceField.id] = targetField.id;
+  }
+  return mapping;
+}
+
 export function coerceValue(value: unknown, from: PrimitiveType, to: PrimitiveType): unknown {
   if (from === to) return value;
   const coercion = findCoercion(from, to);

@@ -29,6 +29,7 @@ function apiEdge(overrides: Pick<ApiEdge, "id" | "kind" | "sourceId" | "targetId
     sourcePath: [],
     targetPath: [],
     targetVariableId: null,
+    fieldMapping: null,
     cueId: null,
     actionId: null,
     ...overrides,
