@@ -413,10 +413,9 @@ function nodeHeight(node: GraphNode): number {
 }
 
 /**
- * Moves a node to Show level. Navigate edges are intentionally a hard
- * block: moving it out preserves the Scene, so dangling state-machine edges
- * must be removed explicitly first. Wiring edges are disposable and are
- * removed as part of this command.
+ * Moves a node to Show level. Navigate edges are removed because top-level
+ * Scenes cannot participate in the Flow-local state machine. Wiring edges to
+ * unselected nodes are disposable; wiring between moved nodes is preserved.
  */
 export function moveNodeOutOfFlow(
   graph: ShowGraph,
@@ -442,24 +441,22 @@ export function moveNodesOutOfFlow(
     if (node.parentId === null) {
       throw new InvalidReparentError("Only Flow-local nodes can be moved out.");
     }
-    const navigate = graph.edges.find(
-      (edge) => edge.kind === "navigate" && (edge.sourceId === nodeId || edge.targetId === nodeId),
-    );
-    if (navigate) {
-      throw new InvalidReparentError(
-        "Remove the Scene's Navigate edges before moving it out of the Flow.",
-      );
-    }
     return node;
   });
 
   const selected = new Set(nodeIds);
   const parts: ShowGraphCommand[] = graph.edges
-    .filter(
-      (edge) =>
-        edge.kind === "wiring" && (selected.has(edge.sourceId) || selected.has(edge.targetId)),
-    )
-    .map((edge) => removeEdge(edge.id, "Remove wiring"));
+    .filter((edge) => {
+      const touchesSelected = selected.has(edge.sourceId) || selected.has(edge.targetId);
+      if (!touchesSelected) return false;
+      if (edge.kind === "navigate") return true;
+      // Wiring between moved nodes remains valid after both nodes change scope;
+      // only wiring crossing the extraction boundary is discarded.
+      return selected.has(edge.sourceId) !== selected.has(edge.targetId);
+    })
+    .map((edge) =>
+      removeEdge(edge.id, edge.kind === "navigate" ? "Remove Navigate" : "Remove wiring"),
+    );
   const defaultOwners = graph.nodes.filter(
     (node) =>
       node.kind === "flow" && node.defaultSceneId !== null && selected.has(node.defaultSceneId),
