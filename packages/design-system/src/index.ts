@@ -59,6 +59,36 @@ export { Label } from "./components/ui/label";
 export { QrCode } from "./components/ui/qr-code";
 export { ThemeSwitcher } from "./components/theme-switcher";
 export type { ThemeSwitcherProps } from "./components/theme-switcher";
+export { CanvasRenderer, ElementRenderer } from "./components/canvas-renderer";
+export { renderCanvas } from "./components/canvas-render";
+export type {
+  Anchor,
+  AnchorPosition,
+  AspectRatioLock,
+  AxisSize,
+  BlendMode,
+  Canvas,
+  ElementSizing,
+  Element,
+  ElementBase,
+  ElementKind,
+  ElementLayout,
+  Fill,
+  FrameElement,
+  FrameLayoutMode,
+  GradientFill,
+  GradientStop,
+  ImageElement,
+  LayoutAlignment,
+  LayoutDirection,
+  Padding,
+  RectElement,
+  Rotation,
+  SizeMode,
+  SizeUnit,
+  SizeValue,
+  TextElement,
+} from "./components/canvas-model";
 
 export { ThemeProvider, useTheme } from "./theme/theme-provider";
 export type { ThemeContextValue, ThemeProviderProps } from "./theme/theme-provider";
