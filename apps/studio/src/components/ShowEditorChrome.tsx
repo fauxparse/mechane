@@ -27,7 +27,7 @@ import {
   Input,
 } from "@mechane/design-system";
 import type { PublishState } from "@mechane/domain";
-import { ChevronDown, LayoutGrid, Pencil, Trash2 } from "lucide-react";
+import { ChevronDown, LayoutGrid, Pencil, Play, Square, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { FormEvent } from "react";
 
@@ -38,6 +38,10 @@ export interface ShowEditorChromeProps {
   onRename: (name: string) => void;
   onDelete: () => void;
   onPublish: () => void;
+  runActive?: boolean;
+  onStartRun?: () => void;
+  onEndRun?: () => void;
+  runPending?: boolean;
   renaming?: boolean;
   renameError?: string;
   deleting?: boolean;
@@ -66,6 +70,10 @@ export function ShowEditorChrome({
   onRename,
   onDelete,
   onPublish,
+  runActive = false,
+  onStartRun,
+  onEndRun,
+  runPending = false,
   renaming,
   renameError,
   deleting,
@@ -149,6 +157,30 @@ export function ShowEditorChrome({
         <Badge variant={PUBLISH_STATE_VARIANTS[publishState]}>
           {PUBLISH_STATE_LABELS[publishState]}
         </Badge>
+        {runActive ? <Badge variant="default">Run active</Badge> : null}
+        {runActive && onEndRun ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="shadow-md"
+            disabled={runPending}
+            onClick={onEndRun}
+          >
+            <Square /> {runPending ? "Ending…" : "End Run"}
+          </Button>
+        ) : onStartRun ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="shadow-md"
+            disabled={runPending}
+            onClick={onStartRun}
+          >
+            <Play /> {runPending ? "Starting…" : "Start Run"}
+          </Button>
+        ) : null}
         <Button
           type="button"
           size="lg"

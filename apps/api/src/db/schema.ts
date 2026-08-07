@@ -105,6 +105,30 @@ export const shows = pgTable("shows", {
 // `shows` insert/update — the column types stay plain `text` because the
 // set of valid values is a domain concern, not a storage concern (adding a
 // theme later shouldn't require a migration).
+export const runs = pgTable(
+  "runs",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateId("run")),
+    showId: text("show_id")
+      .notNull()
+      .references(() => shows.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("active"),
+    startedAt: timestamp("started_at").notNull().defaultNow(),
+    endedAt: timestamp("ended_at"),
+    // A Run owns the live values for its Sources. This is a snapshot of the
+    // published graph's defaults at start time, so later graph edits cannot
+    // rewrite history or mutate a live performance.
+    sourceValues: jsonb("source_values")
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [index("runs_show_status_idx").on(table.showId, table.status)],
+);
+
 export const userSettings = pgTable("user_settings", {
   userId: text("user_id")
     .primaryKey()
@@ -167,7 +191,10 @@ export const shapes = pgTable(
       .references(() => showGraphs.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
   },
-  (table) => [primaryKey({ columns: [table.graphId, table.id] }), unique("shapes_graph_name_unique").on(table.graphId, table.name)],
+  (table) => [
+    primaryKey({ columns: [table.graphId, table.id] }),
+    unique("shapes_graph_name_unique").on(table.graphId, table.name),
+  ],
 );
 
 export const shapeFields = pgTable(
@@ -304,7 +331,6 @@ export const sourceFieldDefaults = pgTable(
     }).onDelete("cascade"),
   ],
 );
-
 
 // A Variable is a port on a Scene, not a node of its own (#20) — so it
 // lives in its own table keyed to a Scene node, and a wiring edge points

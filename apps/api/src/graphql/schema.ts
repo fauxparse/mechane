@@ -30,6 +30,7 @@ import { createSchema } from "graphql-yoga";
 
 import { db } from "../db/client";
 import { withUniqueId } from "../db/ids";
+import { endRun, readActiveRun, startRun } from "../db/runs";
 import { shows, userSettings } from "../db/schema";
 import {
   applyShowGraphEdits,
@@ -47,6 +48,17 @@ import {
   serializeShowGraph,
 } from "./show-graph";
 import type { GraphEditInput } from "./show-graph";
+
+function serializeRun(run: Awaited<ReturnType<typeof startRun>>) {
+  return {
+    id: run.id,
+    showId: run.showId,
+    status: run.status,
+    startedAt: run.startedAt.toISOString(),
+    endedAt: run.endedAt?.toISOString() ?? null,
+    sourceValues: run.sourceValues,
+  };
+}
 
 // graphql-yoga masks any thrown error that isn't a GraphQLError as a generic
 // "Unexpected error" (sound default — it stops internal error messages
@@ -176,6 +188,15 @@ export const schema = createSchema<GraphQLContext>({
       updatedAt: String!
     }
 
+    type Run {
+      id: ID!
+      showId: ID!
+      status: String!
+      startedAt: String!
+      endedAt: String
+      sourceValues: JSON!
+    }
+
     "The signed-in user's design-system preference (PRD.md §7)."
     type UserSettings {
       "Display mode: \\"light\\" or \\"dark\\"."
@@ -212,16 +233,43 @@ export const schema = createSchema<GraphQLContext>({
       shapeId: ID
     }
 
-    type TextValue { value: String! }
-    type NumberValue { value: Float! }
-    type BooleanValue { value: Boolean! }
-    type ImageValue { value: String! }
-    type ColourValue { value: String! }
-    type DateValue { value: String! }
-    type DateTimeValue { value: String! }
-    type ObjectValue { value: JSON! }
-    type ArrayValue { value: JSON! }
-    union ShapeValue = TextValue | NumberValue | BooleanValue | ImageValue | ColourValue | DateValue | DateTimeValue | ObjectValue | ArrayValue
+    type TextValue {
+      value: String!
+    }
+    type NumberValue {
+      value: Float!
+    }
+    type BooleanValue {
+      value: Boolean!
+    }
+    type ImageValue {
+      value: String!
+    }
+    type ColourValue {
+      value: String!
+    }
+    type DateValue {
+      value: String!
+    }
+    type DateTimeValue {
+      value: String!
+    }
+    type ObjectValue {
+      value: JSON!
+    }
+    type ArrayValue {
+      value: JSON!
+    }
+    union ShapeValue =
+      | TextValue
+      | NumberValue
+      | BooleanValue
+      | ImageValue
+      | ColourValue
+      | DateValue
+      | DateTimeValue
+      | ObjectValue
+      | ArrayValue
 
     input ShapeValueInput @oneOf {
       text: String
@@ -513,6 +561,8 @@ export const schema = createSchema<GraphQLContext>({
       show(id: ID!): Show
       "The signed-in user's theme settings, or PRD.md §7 defaults if they haven't set any yet."
       userSettings: UserSettings!
+      "The active Run for a Show, or null when the Show is stopped."
+      activeRun(showId: ID!): Run
       """
       A Show's graph in the given state (default "draft"). A Show that has
       never been edited or published reads as an empty graph — a Show with
@@ -551,6 +601,10 @@ export const schema = createSchema<GraphQLContext>({
       ): AppliedShowGraphEdits!
       "Publishes a Show's draft graph, making it the published graph immediately (ADR-0002)."
       publishShowGraph(showId: ID!): ShowGraph!
+      "Ends the active Run, if one exists."
+      endRun(showId: ID!): Run
+      "Ends the previous Run and starts a new one with reset Source values."
+      startRun(showId: ID!): Run!
     }
   `,
   resolvers: {
@@ -563,8 +617,10 @@ export const schema = createSchema<GraphQLContext>({
         if (node.kind === Kind.BOOLEAN) return node.value;
         if (node.kind === Kind.INT || node.kind === Kind.FLOAT) return Number(node.value);
         if (node.kind === Kind.NULL) return null;
-        if (node.kind === Kind.LIST) return node.values.map((value) => value.kind === Kind.STRING ? value.value : null);
-        if (node.kind === Kind.OBJECT) return Object.fromEntries(node.fields.map((field) => [field.name.value, null]));
+        if (node.kind === Kind.LIST)
+          return node.values.map((value) => (value.kind === Kind.STRING ? value.value : null));
+        if (node.kind === Kind.OBJECT)
+          return Object.fromEntries(node.fields.map((field) => [field.name.value, null]));
         return null;
       },
     }),
@@ -582,7 +638,8 @@ export const schema = createSchema<GraphQLContext>({
         type.kind === "shape" ? type.shapeId : null,
     },
     ShapeValue: {
-      __resolveType: (value: { kind: string }) => `${value.kind[0]?.toUpperCase()}${value.kind.slice(1)}Value`,
+      __resolveType: (value: { kind: string }) =>
+        `${value.kind[0]?.toUpperCase()}${value.kind.slice(1)}Value`,
     },
     ShapeField: {
       position: (field: { position?: number }) => field.position ?? 0,
@@ -607,6 +664,12 @@ export const schema = createSchema<GraphQLContext>({
           .from(shows)
           .where(and(eq(shows.id, id), eq(shows.userId, userId)));
         return show ?? null;
+      },
+      activeRun: async (_parent, { showId }: { showId: string }, context) => {
+        const userId = requireUserId(context);
+        await findOwnShowOrThrow(showId, userId);
+        const run = await readActiveRun(showId);
+        return run ? serializeRun(run) : null;
       },
       userSettings: async (_parent, _args, context) => {
         const userId = requireUserId(context);
@@ -714,6 +777,17 @@ export const schema = createSchema<GraphQLContext>({
         // dashboard orders by — a graph edit is an edit to the Show.
         await db.update(shows).set({ updatedAt: new Date() }).where(eq(shows.id, showId));
         return serializeAppliedEdits(applied);
+      },
+      startRun: async (_parent, { showId }: { showId: string }, context) => {
+        const userId = requireUserId(context);
+        await findOwnShowOrThrow(showId, userId);
+        return serializeRun(await startRun(showId));
+      },
+      endRun: async (_parent, { showId }: { showId: string }, context) => {
+        const userId = requireUserId(context);
+        await findOwnShowOrThrow(showId, userId);
+        const run = await endRun(showId);
+        return run ? serializeRun(run) : null;
       },
       publishShowGraph: async (_parent, { showId }: { showId: string }, context) => {
         const userId = requireUserId(context);

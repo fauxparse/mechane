@@ -71,6 +71,13 @@
       "when": 1786079642955,
       "tag": "0009_great_hellfire_club",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786089795503,
+      "tag": "0010_many_emma_frost",
+      "breakpoints": true
     }
   ]
 }
