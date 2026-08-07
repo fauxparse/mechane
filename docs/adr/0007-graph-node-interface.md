@@ -19,7 +19,7 @@ The GraphQL output representation of Show graph nodes is a `GraphNode` interface
 - Studio converts `__typename` back into the domain's existing discriminated union.
 - A newly-created Device may have a nullable `pairingCode` until its first save; the schema reflects that lifecycle.
 - The domain model, database schema, and persistence representation remain unchanged.
-- `GraphEdge` remains a flat type and is deferred to a follow-up decision because its variants have different semantics and the benefit is smaller.
+- GraphEdge was deferred during this decision and is addressed separately in ADR 0008.
 
 ## Rationale
 

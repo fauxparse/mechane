@@ -104,6 +104,20 @@ export function resolveGraphNodeType(node: Pick<GraphNode, "kind">): string {
   }
 }
 
+/** Resolves the domain edge discriminator to the concrete GraphQL edge type. */
+export function resolveGraphEdgeType(edge: Pick<GraphEdge, "kind">): string {
+  switch (edge.kind) {
+    case "wiring":
+      return "WiringEdge";
+    case "navigate":
+      return "NavigateEdge";
+    case "device":
+      return "DeviceEdge";
+    default:
+      throw new GraphQLError(`Unknown graph edge kind "${edge.kind}".`);
+  }
+}
+
 function parseType(input: TypeInput | null | undefined): Type | undefined {
   if (!input) return undefined;
   if (["text", "number", "boolean", "image", "colour", "date", "datetime"].includes(input.kind)) {

@@ -45,16 +45,20 @@ export const GetShowGraphQuery = graphql(`
         }
       }
       edges {
+        __typename
         id
-        kind
         sourceId
         targetId
         sourcePath
         targetPath
-        fieldMapping
-        targetVariableId
-        cueId
-        actionId
+        ... on WiringEdge {
+          fieldMapping
+          targetVariableId
+        }
+        ... on NavigateEdge {
+          cueId
+          actionId
+        }
       }
       shapes {
         id

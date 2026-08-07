@@ -31,15 +31,20 @@ function apiNode(overrides: { id: string; kind: string } & Partial<ApiNode>): Ap
   } as ApiNode;
 }
 
-function apiEdge(overrides: Pick<ApiEdge, "id" | "kind" | "sourceId" | "targetId">): ApiEdge {
+function apiEdge(
+  overrides: { id: string; kind: string; sourceId: string; targetId: string } & Partial<ApiEdge>,
+): ApiEdge {
+  const { kind, ...rest } = overrides;
+  const typeName = { wiring: "WiringEdge", navigate: "NavigateEdge", device: "DeviceEdge" }[kind] ?? kind;
   return {
+    __typename: typeName,
     sourcePath: [],
     targetPath: [],
     targetVariableId: null,
     fieldMapping: null,
     cueId: null,
     actionId: null,
-    ...overrides,
+    ...rest,
   };
 }
 
@@ -144,7 +149,7 @@ describe("toShowGraph", () => {
         nodes: [],
         edges: [apiEdge({ id: "e", kind: "telepathy", sourceId: "a", targetId: "b" })],
       }),
-    ).toThrow(/Unknown Show graph edge kind/);
+    ).toThrow(/Unknown Show graph edge typename/);
   });
 });
 
