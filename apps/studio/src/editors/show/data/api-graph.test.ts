@@ -121,8 +121,8 @@ describe("toShowGraph", () => {
   });
 
   it("treats a missing graph as the empty graph", () => {
-    expect(toShowGraph(null)).toEqual({ nodes: [], edges: [] });
-    expect(toShowGraph(undefined)).toEqual({ nodes: [], edges: [] });
+    expect(toShowGraph(null)).toEqual({ shapes: [], nodes: [], edges: [] });
+    expect(toShowGraph(undefined)).toEqual({ shapes: [], nodes: [], edges: [] });
   });
 
   it("refuses a kind this build doesn't know", () => {

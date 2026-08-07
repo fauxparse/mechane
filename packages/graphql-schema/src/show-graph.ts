@@ -44,6 +44,25 @@ export const GetShowGraphQuery = graphql(`
         cueId
         actionId
       }
+      shapes {
+        id
+        name
+        fields {
+          id
+          name
+          position
+          required
+          default
+          type {
+            kind
+            shapeId
+            of {
+              kind
+              shapeId
+            }
+          }
+        }
+      }
     }
   }
 `);

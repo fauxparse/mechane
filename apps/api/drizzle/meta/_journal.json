@@ -50,6 +50,13 @@
       "when": 1786076048422,
       "tag": "0006_nappy_mojo",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786078726242,
+      "tag": "0007_natural_wild_pack",
+      "breakpoints": true
     }
   ]
 }

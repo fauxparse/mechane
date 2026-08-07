@@ -17,6 +17,7 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -152,6 +153,73 @@ export const showGraphs = pgTable(
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => [unique("show_graphs_show_state_unique").on(table.showId, table.state)],
+);
+
+// Shape definitions are graph-scoped type-system data, not graph nodes. Keeping
+// them beside each graph state gives draft and published Shapes the same
+// isolation as nodes and edges (#106).
+export const shapes = pgTable(
+  "shapes",
+  {
+    id: text("id").notNull(),
+    graphId: text("graph_id")
+      .notNull()
+      .references(() => showGraphs.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.graphId, table.id] }), unique("shapes_graph_name_unique").on(table.graphId, table.name)],
+);
+
+export const shapeFields = pgTable(
+  "shape_fields",
+  {
+    id: text("id").notNull(),
+    graphId: text("graph_id")
+      .notNull()
+      .references(() => showGraphs.id, { onDelete: "cascade" }),
+    shapeId: text("shape_id").notNull(),
+    name: text("name").notNull(),
+    position: integer("position").notNull(),
+    type: jsonb("type").notNull(),
+    required: boolean("required").notNull(),
+    defaultValue: jsonb("default_value"),
+  },
+  (table) => [
+    primaryKey({ columns: [table.graphId, table.id] }),
+    unique("shape_fields_graph_shape_name_unique").on(table.graphId, table.shapeId, table.name),
+    foreignKey({
+      name: "shape_fields_shape_fk",
+      columns: [table.graphId, table.shapeId],
+      foreignColumns: [shapes.graphId, shapes.id],
+    }).onDelete("cascade"),
+  ],
+);
+
+// A separate reference table makes Shape references inside nested array types
+// visible to the database and gives the domain's topological validation a
+// compact relational input (#93).
+export const shapeFieldRefs = pgTable(
+  "shape_field_refs",
+  {
+    graphId: text("graph_id")
+      .notNull()
+      .references(() => showGraphs.id, { onDelete: "cascade" }),
+    fieldId: text("field_id").notNull(),
+    referencedShapeId: text("referenced_shape_id").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.graphId, table.fieldId, table.referencedShapeId] }),
+    foreignKey({
+      name: "shape_field_refs_field_fk",
+      columns: [table.graphId, table.fieldId],
+      foreignColumns: [shapeFields.graphId, shapeFields.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "shape_field_refs_shape_fk",
+      columns: [table.graphId, table.referencedShapeId],
+      foreignColumns: [shapes.graphId, shapes.id],
+    }).onDelete("cascade"),
+  ],
 );
 
 // The five node kinds (#20) in one table: they share every structural

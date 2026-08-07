@@ -25,7 +25,7 @@ import {
 } from "@mechane/domain";
 import type { GraphState } from "@mechane/domain";
 import { and, eq } from "drizzle-orm";
-import { GraphQLError } from "graphql";
+import { GraphQLError, GraphQLScalarType, Kind } from "graphql";
 import { createSchema } from "graphql-yoga";
 
 import { db } from "../db/client";
@@ -181,6 +181,30 @@ export const schema = createSchema<GraphQLContext>({
       name: String!
     }
 
+    scalar JSON
+
+    "A recursive Type descriptor: primitive, array, or a named Shape reference."
+    type Type {
+      kind: String!
+      of: Type
+      shapeId: ID
+    }
+
+    type ShapeField {
+      id: ID!
+      name: String!
+      type: Type!
+      position: Int!
+      required: Boolean!
+      default: JSON
+    }
+
+    type Shape {
+      id: ID!
+      name: String!
+      fields: [ShapeField!]!
+    }
+
     """
     A node in the Show graph. One flat shape for all five kinds: \`kind\` is
     "scene", "flow", "source", "transformer", or "device".
@@ -247,6 +271,7 @@ export const schema = createSchema<GraphQLContext>({
       state: String!
       nodes: [GraphNode!]!
       edges: [GraphEdge!]!
+      shapes: [Shape!]!
       updatedAt: String!
       """
       How many times this graph has been written. An edit batch names the
@@ -431,6 +456,30 @@ export const schema = createSchema<GraphQLContext>({
     }
   `,
   resolvers: {
+    JSON: new GraphQLScalarType({
+      name: "JSON",
+      serialize: (value) => value,
+      parseValue: (value) => value,
+      parseLiteral: (node) => {
+        if (node.kind === Kind.STRING) return node.value;
+        if (node.kind === Kind.BOOLEAN) return node.value;
+        if (node.kind === Kind.INT || node.kind === Kind.FLOAT) return Number(node.value);
+        if (node.kind === Kind.NULL) return null;
+        if (node.kind === Kind.LIST) return node.values.map((value) => value.kind === Kind.STRING ? value.value : null);
+        if (node.kind === Kind.OBJECT) return Object.fromEntries(node.fields.map((field) => [field.name.value, null]));
+        return null;
+      },
+    }),
+    Type: {
+      kind: (type: string | { kind: "array"; of: unknown } | { kind: "shape"; shapeId: string }) =>
+        typeof type === "string" ? type : type.kind,
+      of: (type: { kind: "array"; of: unknown }) => (type.kind === "array" ? type.of : null),
+      shapeId: (type: { kind: "shape"; shapeId: string }) =>
+        type.kind === "shape" ? type.shapeId : null,
+    },
+    ShapeField: {
+      position: (field: { position?: number }) => field.position ?? 0,
+    },
     Query: {
       me: (_parent, _args, context) => context.user,
       shows: async (_parent, _args, context) => {

@@ -18,7 +18,7 @@
 // graph.
 import type { GraphEdit } from "@mechane/commands";
 import { isNodeKind } from "@mechane/domain";
-import type { GraphEdge, GraphNode, ShowGraph } from "@mechane/domain";
+import type { GraphEdge, GraphNode, Shape, Type, ShowGraph } from "@mechane/domain";
 import type {
   ApplyShowGraphEditsResult,
   ShowGraph as ApiShowGraph,
@@ -27,7 +27,42 @@ import type {
 } from "@mechane/graphql-schema";
 
 /** Just the parts of the query result this module needs. */
-export type ApiGraph = Pick<ApiShowGraph, "nodes" | "edges">;
+export type ApiGraph = Pick<ApiShowGraph, "nodes" | "edges"> &
+  Partial<Pick<ApiShowGraph, "shapes">>;
+
+type ApiType = ApiShowGraph["shapes"][number]["fields"][number]["type"];
+
+function toType(type: ApiType): Type {
+  if (type.kind === "array") {
+    if (!type.of) throw new Error("Array Shape types must include an element type.");
+    return { kind: "array", of: toType(type.of as ApiType) };
+  }
+  if (type.kind === "shape") {
+    if (!type.shapeId) throw new Error("Shape references must include a Shape id.");
+    return { kind: "shape", shapeId: type.shapeId };
+  }
+  if (["text", "number", "boolean", "image", "colour", "date", "datetime"].includes(type.kind)) {
+    return type.kind as Type;
+  }
+  throw new Error(`Unknown Shape type "${type.kind}".`);
+}
+
+function toShape(shape: ApiShowGraph["shapes"][number]): Shape {
+  return {
+    id: shape.id,
+    name: shape.name,
+    fields: shape.fields
+      .slice()
+      .sort((a, b) => a.position - b.position)
+      .map((field) => ({
+        id: field.id,
+        name: field.name,
+        type: toType(field.type),
+        required: field.required,
+        defaultValue: field.default,
+      })),
+  };
+}
 
 function toNode(node: ApiNode): GraphNode {
   // Same check, and same reason, as ./graph-to-flow's: `kind` is a string on
@@ -102,8 +137,12 @@ function toEdge(edge: ApiEdge): GraphEdge {
 
 /** The graph as the domain (and therefore as the command layer) wants it. */
 export function toShowGraph(graph: ApiGraph | null | undefined): ShowGraph {
-  if (!graph) return { nodes: [], edges: [] };
-  return { nodes: graph.nodes.map(toNode), edges: graph.edges.map(toEdge) };
+  if (!graph) return { shapes: [], nodes: [], edges: [] };
+  return {
+    shapes: (graph.shapes ?? []).map(toShape),
+    nodes: graph.nodes.map(toNode),
+    edges: graph.edges.map(toEdge),
+  };
 }
 
 /**
