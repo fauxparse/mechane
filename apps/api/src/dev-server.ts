@@ -10,6 +10,7 @@ import { toNodeHandler } from "better-auth/node";
 import { auth } from "./auth";
 import { yoga } from "./graphql/server";
 import { applyCorsHeaders } from "./lib/cors";
+import { localRealtimeServer } from "./realtime";
 
 const authHandler = toNodeHandler(auth);
 
@@ -30,9 +31,22 @@ const server = createServer((req: IncomingMessage, res: ServerResponse) => {
   yoga(req, res);
 });
 
+server.on("upgrade", (request, socket, head) => {
+  if (new URL(request.url ?? "/", "http://localhost").pathname !== "/api/realtime") {
+    socket.destroy();
+    return;
+  }
+  if (!localRealtimeServer) {
+    socket.destroy();
+    return;
+  }
+  localRealtimeServer.handleUpgrade(request, socket, head);
+});
+
 const port = Number(process.env.PORT ?? 4000);
 server.listen(port, () => {
   console.log(`@mechane/api listening on http://localhost:${port}`);
   console.log(`GraphQL: http://localhost:${port}/api/graphql`);
   console.log(`Auth:    http://localhost:${port}/api/auth`);
+  if (localRealtimeServer) console.log(`Realtime: ws://localhost:${port}/api/realtime`);
 });
