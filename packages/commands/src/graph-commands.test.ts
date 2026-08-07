@@ -243,6 +243,12 @@ describe("reparentNode", () => {
 });
 
 describe("moveNodeIntoFlow / moveNodeOutOfFlow", () => {
+  it("keeps a single moved node at the drop position", () => {
+    const origin = { x: 240, y: 10 };
+    const result = moveNodeIntoFlow(GRAPH, LOBBY.id, VOTE_FLOW.id, origin).apply(GRAPH);
+    expect(result.state.nodes.find((node) => node.id === LOBBY.id)?.position).toEqual(origin);
+  });
+
   it("moves into an empty Flow and assigns its default in one undo", () => {
     const empty: FlowNode = { ...VOTE_FLOW, id: "flow_empty", defaultSceneId: null };
     const graph = { ...GRAPH, nodes: [...GRAPH.nodes, empty] };

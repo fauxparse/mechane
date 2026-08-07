@@ -443,7 +443,7 @@ interface ShowGraphContextMenuProps {
   edges: ShowFlowEdge[];
   onNodesChange: ReturnType<typeof useNodesState<ShowFlowNode>>[2];
   onEdgesChange: ReturnType<typeof useEdgesState<ShowFlowEdge>>[2];
-  beginDrag(): void;
+  beginDrag: OnNodeDrag<ShowFlowNode>;
   dragTo(moved: ShowFlowNode[]): void;
   endDrag: OnNodeDrag<ShowFlowNode>;
   editing: ReturnType<typeof useGraphEditing>;

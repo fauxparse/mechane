@@ -390,7 +390,12 @@ export function moveNodesIntoFlow(
     throw new InvalidReparentError("Select at least one node to move into a Flow.");
 
   const children = graph.nodes.filter((node) => node.parentId === flowId);
-  let y = Math.max(origin.y, ...children.map((node) => node.position.y + nodeHeight(node) + 24));
+  // A single drag target must stay under the pointer. Bulk moves retain the
+  // non-overlapping column placement used by palette and create-flow actions.
+  let y =
+    nodes.length === 1
+      ? origin.y
+      : Math.max(origin.y, ...children.map((node) => node.position.y + nodeHeight(node) + 24));
   const parts: ShowGraphCommand[] = [];
   for (const node of nodes) {
     parts.push(reparentNode(node.id, flowId, { x: origin.x, y }, "Move into Flow"));

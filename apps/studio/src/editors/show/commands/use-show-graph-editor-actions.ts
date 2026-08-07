@@ -1,4 +1,4 @@
-import { moveNode } from "@mechane/commands";
+import { moveNode, moveNodesIntoFlow, moveNodesOutOfFlow } from "@mechane/commands";
 import type { GraphNode, Position } from "@mechane/domain";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { Connection, FitViewOptions, OnNodeDrag, XYPosition } from "@xyflow/react";
@@ -67,16 +67,35 @@ export function useShowGraphEditorActions({
   focusOnArrival,
 }: Options) {
   const { beginGesture } = commands;
+  const flowAt = useCallback(
+    (point: Position): ShowFlowNode | null =>
+      (getNodes() as ShowFlowNode[]).find((node) => {
+        if (node.type !== FLOW_NODE_TYPE) return false;
+        const width = Number(node.style?.width ?? NODE_WIDTH);
+        const height = Number(node.style?.height ?? 0);
+        return (
+          point.x >= node.position.x &&
+          point.x <= node.position.x + width &&
+          point.y >= node.position.y &&
+          point.y <= node.position.y + height
+        );
+      }) ?? null,
+    [getNodes],
+  );
+
   // ---------------------------------------------------------------------------
   // Moving
   // ---------------------------------------------------------------------------
 
   const dragGesture = useRef<ReturnType<typeof beginGesture> | null>(null);
 
-  const beginDrag = useCallback(() => {
-    dragging.current = true;
-    dragGesture.current = beginGesture({ key: "drag", label: "Move" });
-  }, [beginGesture, dragGesture, dragging]);
+  const beginDrag: OnNodeDrag<ShowFlowNode> = useCallback(
+    (_event, _node, _moved) => {
+      dragging.current = true;
+      dragGesture.current = beginGesture({ key: "drag", label: "Move" });
+    },
+    [beginGesture, dragGesture, dragging],
+  );
 
   const dragTo = useCallback(
     (moved: ShowFlowNode[]) => {
@@ -95,11 +114,57 @@ export function useShowGraphEditorActions({
   const endDrag: OnNodeDrag<ShowFlowNode> = useCallback(
     (_event, _node, moved: ShowFlowNode[]) => {
       dragTo(moved);
+      const gesture = dragGesture.current;
+      const node = moved.length === 1 ? moved[0] : undefined;
+      const rendered = getNodes() as ShowFlowNode[];
+      const byId = new Map(rendered.map((renderedNode) => [renderedNode.id, renderedNode]));
+      if (gesture && node?.data.kind === "scene") {
+        const absolute = absolutePosition(node, byId);
+        const targetFlow = flowAt(absolute);
+        const currentFlowId = node.parentId ?? null;
+        const targetFlowId = targetFlow?.id ?? null;
+
+        if (targetFlow && targetFlowId !== currentFlowId) {
+          if (currentFlowId !== null) {
+            gesture.abort();
+            say("Move the Scene out of its Flow before moving it into another.");
+          } else {
+            const flowPosition = absolutePosition(targetFlow, byId);
+            gesture.update(
+              moveNodesIntoFlow(editing.graph, [node.id], targetFlow.id, {
+                x: absolute.x - flowPosition.x,
+                y: absolute.y - flowPosition.y,
+              }),
+            );
+            gesture.commit();
+          }
+          dragging.current = false;
+          dragGesture.current = null;
+          return;
+        }
+
+        if (currentFlowId !== null && targetFlowId === null) {
+          try {
+            gesture.update(moveNodesOutOfFlow(editing.graph, [node.id], [absolute]));
+            gesture.commit();
+          } catch (error) {
+            gesture.abort();
+            say(
+              error instanceof Error
+                ? error.message
+                : "Those nodes cannot be moved out of their Flow.",
+            );
+          }
+          dragging.current = false;
+          dragGesture.current = null;
+          return;
+        }
+      }
       dragging.current = false;
-      dragGesture.current?.commit();
+      gesture?.commit();
       dragGesture.current = null;
     },
-    [dragTo, dragGesture, dragging],
+    [dragTo, dragGesture, dragging, editing, flowAt, getNodes, say],
   );
 
   // ---------------------------------------------------------------------------
@@ -111,22 +176,6 @@ export function useShowGraphEditorActions({
    * within a Flow's boundary belongs to that Flow. Containment *is* placement
    * (#29), so this is the whole of "created inside a Flow".
    */
-  const flowAt = useCallback(
-    (point: Position): ShowFlowNode | null =>
-      (getNodes() as ShowFlowNode[]).find((node) => {
-        if (node.type !== FLOW_NODE_TYPE) return false;
-        const width = Number(node.style?.width ?? NODE_WIDTH);
-        const height = Number(node.style?.height ?? 0);
-        return (
-          point.x >= node.position.x &&
-          point.x <= node.position.x + width &&
-          point.y >= node.position.y &&
-          point.y <= node.position.y + height
-        );
-      }) ?? null,
-    [getNodes],
-  );
-
   const create = useCallback(
     (creatable: CreatableNode, at: Position) => {
       const { kind } = creatable;
