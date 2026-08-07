@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./ably": "./src/ably.ts",
+    "./browser": "./src/browser.ts",
     "./local": "./src/local.ts"
   },
   "scripts": {

@@ -25,6 +25,10 @@ export interface RealtimeChannel {
   subscribe(handler: RealtimeMessageHandler, options?: RealtimeSubscribeOptions): RealtimeSubscription;
 }
 
+export interface RealtimeSubscriber {
+  subscribe(handler: RealtimeMessageHandler, options?: RealtimeSubscribeOptions): RealtimeSubscription;
+}
+
 export interface RealtimeProvider {
   channel(name: RealtimeChannelName): RealtimeChannel;
 }
