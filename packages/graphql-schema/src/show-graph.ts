@@ -132,6 +132,13 @@ export const PublishShowGraphMutation = graphql(`
       state
       updatedAt
       version
+      losses {
+        sourceId
+        fieldId
+        fieldName
+        path
+        reason
+      }
     }
   }
 `);
