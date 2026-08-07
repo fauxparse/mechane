@@ -41,6 +41,7 @@ import { requireUserId } from "./context";
 import type { GraphQLContext } from "./context";
 import {
   parseGraphEdit,
+  resolveGraphEdgeType,
   resolveGraphNodeType,
   serializeAppliedEdits,
   serializeShowGraph,
@@ -315,34 +316,47 @@ export const schema = createSchema<GraphQLContext>({
     }
 
     """
-    An edge in the Show graph, always running producer → consumer. \`kind\` is
-    "wiring" (Source/Transformer → Transformer input or Scene Variable), "navigate" (Scene → Scene
-    within one Flow), or "device" (Flow/top-level Scene → Device).
+    The fields shared by every edge on the Show graph. Edge-specific data is
+    exposed by the concrete edge types below; clients use __typename rather
+    than a nullable field bag and a string discriminator.
     """
-    type GraphEdge {
+    interface GraphEdge {
       id: ID!
-      kind: String!
       sourceId: ID!
       targetId: ID!
-      """
-      Wiring edges only: which field of the producer's value travels down
-      this edge, outermost segment first. Empty means the whole value.
-      """
       sourcePath: [String!]!
-      """
-      Wiring edges only: which part of the consumer this edge feeds. The
-      first segment is the Scene Variable's id; any further segments name a
-      field within it, so one field of a structured Variable can be fed
-      without disturbing its siblings.
-      """
       targetPath: [String!]!
-      "Wiring edges only: resolved stable field-id mapping."
+    }
+
+    type WiringEdge implements GraphEdge {
+      id: ID!
+      sourceId: ID!
+      targetId: ID!
+      sourcePath: [String!]!
+      targetPath: [String!]!
+      "Resolved stable field-id mapping."
       fieldMapping: JSON
-      "Wiring edges only: the Scene Variable this edge feeds — the head of targetPath."
+      "The Scene Variable this edge feeds — the head of targetPath."
       targetVariableId: ID
-      "Navigate edges only: which Cue/Action pairing this transition represents."
+    }
+
+    type NavigateEdge implements GraphEdge {
+      id: ID!
+      sourceId: ID!
+      targetId: ID!
+      sourcePath: [String!]!
+      targetPath: [String!]!
+      "The Cue/Action pairing this transition represents."
       cueId: ID
       actionId: ID
+    }
+
+    type DeviceEdge implements GraphEdge {
+      id: ID!
+      sourceId: ID!
+      targetId: ID!
+      sourcePath: [String!]!
+      targetPath: [String!]!
     }
 
     "A Show's graph in one state. Draft and published are independently readable (ADR-0002)."
@@ -556,6 +570,9 @@ export const schema = createSchema<GraphQLContext>({
     }),
     GraphNode: {
       __resolveType: resolveGraphNodeType,
+    },
+    GraphEdge: {
+      __resolveType: resolveGraphEdgeType,
     },
     Type: {
       kind: (type: string | { kind: "array"; of: unknown } | { kind: "shape"; shapeId: string }) =>

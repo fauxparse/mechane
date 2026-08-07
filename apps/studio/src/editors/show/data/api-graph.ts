@@ -20,7 +20,6 @@ import type { GraphEdge, GraphNode, Shape, Type, ShowGraph } from "@mechane/doma
 import type {
   ApplyShowGraphEditsResult,
   ShowGraph as ApiShowGraph,
-  ShowGraphEdge as ApiEdge,
 } from "@mechane/graphql-schema";
 
 type ApiType = ApiShowGraph["shapes"][number]["fields"][number]["type"];
@@ -49,11 +48,23 @@ type ApiTransformerNode = ApiGraphNode & {
   __typename: "TransformerNode";
   transformerType?: ApiType | null;
 };
+type ApiGraphEdge = {
+  __typename: string;
+  id: string;
+  sourceId: string;
+  targetId: string;
+  sourcePath?: string[] | null;
+  targetPath?: string[] | null;
+  fieldMapping?: unknown;
+  targetVariableId?: string | null;
+  cueId?: string | null;
+  actionId?: string | null;
+};
 
 /** Just the parts of the query result this module needs. */
 export type ApiGraph = {
   nodes: ApiGraphNode[];
-  edges: ApiShowGraph["edges"];
+  edges: ApiGraphEdge[];
   shapes?: ApiShowGraph["shapes"];
 };
 
@@ -152,31 +163,33 @@ function toNode(node: ApiGraphNode): GraphNode {
   }
 }
 
-function toEdge(edge: ApiEdge): GraphEdge {
+function toEdge(edge: ApiGraphEdge): GraphEdge {
   const base = {
     id: edge.id,
     sourceId: edge.sourceId,
     targetId: edge.targetId,
     sourcePath: [...(edge.sourcePath ?? [])],
     targetPath: [...(edge.targetPath ?? [])],
-    ...(edge.kind === "wiring" && edge.fieldMapping
-      ? { fieldMapping: { ...edge.fieldMapping } }
+    ...(edge.__typename === "WiringEdge" && edge.fieldMapping
+      ? { fieldMapping: { ...(edge.fieldMapping as Record<string, string>) } }
       : {}),
   };
-  switch (edge.kind) {
-    case "navigate":
+  switch (edge.__typename) {
+    case "NavigateEdge":
       return {
         ...base,
         kind: "navigate",
         cueId: edge.cueId ?? null,
         actionId: edge.actionId ?? null,
       };
-    case "device":
+    case "DeviceEdge":
       return { ...base, kind: "device" };
-    case "wiring":
+    case "WiringEdge":
       return { ...base, kind: "wiring" };
     default:
-      throw new Error(`Unknown Show graph edge kind "${edge.kind}" on edge "${edge.id}".`);
+      throw new Error(
+        `Unknown Show graph edge typename "${edge.__typename}" on edge "${edge.id}".`,
+      );
   }
 }
 

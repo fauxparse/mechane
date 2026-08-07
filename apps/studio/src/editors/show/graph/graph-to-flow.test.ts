@@ -1,4 +1,3 @@
-import type { ShowGraphEdge } from "@mechane/graphql-schema";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -37,6 +36,19 @@ function node(overrides: Partial<ShowGraphNode> & Pick<ShowGraphNode, "id" | "ki
     ...overrides,
   } as ShowGraphNode;
 }
+
+type ShowGraphEdge = {
+  id: string;
+  kind: string;
+  sourceId: string;
+  targetId: string;
+  sourcePath: string[];
+  targetPath: string[];
+  targetVariableId: string | null;
+  cueId: string | null;
+  actionId: string | null;
+  fieldMapping?: unknown;
+};
 
 function edge(overrides: Partial<ShowGraphEdge> & Pick<ShowGraphEdge, "id" | "kind">) {
   return {

@@ -6,7 +6,12 @@ import { GRAPH_COMMAND_TYPES } from "@mechane/commands";
 import { GraphQLError } from "graphql";
 import { describe, expect, it } from "vitest";
 
-import { parseGraphEdit, resolveGraphNodeType, serializeGraphEdit } from "./show-graph";
+import {
+  parseGraphEdit,
+  resolveGraphEdgeType,
+  resolveGraphNodeType,
+  serializeGraphEdit,
+} from "./show-graph";
 import type { GraphEditInput } from "./show-graph";
 
 describe("GraphNode interface resolution", () => {
@@ -23,6 +28,22 @@ describe("GraphNode interface resolution", () => {
   it("refuses an unknown domain kind", () => {
     expect(() => resolveGraphNodeType({ kind: "hologram" } as never)).toThrow(
       /Unknown graph node kind/,
+    );
+  });
+});
+
+describe("GraphEdge interface resolution", () => {
+  it.each([
+    ["wiring", "WiringEdge"],
+    ["navigate", "NavigateEdge"],
+    ["device", "DeviceEdge"],
+  ] as const)("maps %s to %s", (kind, typeName) => {
+    expect(resolveGraphEdgeType({ kind })).toBe(typeName);
+  });
+
+  it("refuses an unknown domain kind", () => {
+    expect(() => resolveGraphEdgeType({ kind: "telepathy" } as never)).toThrow(
+      /Unknown graph edge kind/,
     );
   });
 });

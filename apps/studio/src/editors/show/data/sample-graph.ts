@@ -62,15 +62,18 @@ function node(overrides: Partial<ShowGraphNodeShape> & Pick<ShowGraphNodeShape, 
   } as unknown as Graph["nodes"][number];
 }
 
-function edge(overrides: Partial<ShowGraphEdgeShape> & Pick<ShowGraphEdgeShape, "id" | "kind">) {
+function edge(overrides: Partial<ShowGraphEdgeShape> & { id: string; kind: string }) {
+  const { kind, ...rest } = overrides;
+  const typeName = { wiring: "WiringEdge", navigate: "NavigateEdge", device: "DeviceEdge" }[kind] ?? kind;
   return {
+    __typename: typeName,
     sourcePath: [],
     targetPath: [],
     targetVariableId: null,
     cueId: null,
     actionId: null,
-    ...overrides,
-  } as Graph["edges"][number];
+    ...rest,
+  } as unknown as Graph["edges"][number];
 }
 
 export const SAMPLE_GRAPH: Graph = {
