@@ -97,7 +97,8 @@ import { useGraphEditing } from "./use-graph-editing";
 import { useUndoKeys } from "./use-undo-keys";
 import { useViewportKeys } from "./use-viewport-keys";
 import { useShowGraphEditorActions } from "./use-show-graph-editor-actions";
-import { ShowEdgeRoutingProvider, showEdgeTypes } from "./show-edge-rendering";
+import { ShowEdgeRoutingProvider } from "./show-edge-rendering";
+import { showEdgeTypes } from "./show-edge-types";
 import type { ApiGraph } from "./api-graph";
 import type { PaletteCommand } from "./palette-commands";
 
