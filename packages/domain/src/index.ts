@@ -7,5 +7,7 @@ export * from "./id";
 export * from "./ownership";
 export * from "./publish";
 export * from "./show";
+export * from "./source-defaults";
+export * from "./runs";
 export * from "./shapes";
 export * from "./theme-settings";

@@ -25,6 +25,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
 import { usePublishShowGraph, useShowGraph, useShowGraphEdits } from "../../../api/show-graph";
+import { useActiveRun, useEndRun, useStartRun } from "../../../api/runs";
 import { useDeleteShow, useRenameShow, useShow } from "../../../api/shows";
 import { ShowEditorChrome } from "../../../components/ShowEditorChrome";
 import { ShowGraphEditor } from "../../../editors/show/ShowGraphEditor";
@@ -46,6 +47,7 @@ function ShowEditorRoute() {
   // (ADR-0002 stores no "dirty" flag).
   const draft = useShowGraph(showId, "draft");
   const published = useShowGraph(showId, "published");
+  const activeRun = useActiveRun(showId);
   // Seeded with the version the draft was read at: every edit batch says
   // which graph it was composed against (#103), and the first one has to get
   // that from the read that opened the editor.
@@ -60,6 +62,8 @@ function ShowEditorRoute() {
   const renameShow = useRenameShow();
   const deleteShow = useDeleteShow();
   const publish = usePublishShowGraph();
+  const startRun = useStartRun();
+  const endRun = useEndRun();
 
   // The graph the editor *opens* with, captured once. After that the editor
   // owns it: it holds the draft in a command stack (#41), and handing it a new
@@ -109,6 +113,10 @@ function ShowEditorRoute() {
           });
         }}
         onPublish={() => publish.mutate(currentShow.id)}
+        runActive={activeRun.data !== null && activeRun.data !== undefined}
+        onStartRun={() => startRun.mutate(currentShow.id)}
+        onEndRun={() => endRun.mutate(currentShow.id)}
+        runPending={startRun.isPending || endRun.isPending}
         renaming={renameShow.isPending}
         renameError={
           renameShow.error instanceof GraphQLRequestError ? renameShow.error.message : undefined

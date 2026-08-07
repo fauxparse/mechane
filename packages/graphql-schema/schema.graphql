@@ -12,6 +12,15 @@ type Show {
   updatedAt: String!
 }
 
+type Run {
+  id: ID!
+  showId: ID!
+  status: String!
+  startedAt: String!
+  endedAt: String
+  sourceValues: JSON!
+}
+
 """The signed-in user's design-system preference (PRD.md §7)."""
 type UserSettings {
   """Display mode: "light" or "dark"."""
@@ -428,6 +437,9 @@ type Query {
   """
   userSettings: UserSettings!
 
+  """The active Run for a Show, or null when the Show is stopped."""
+  activeRun(showId: ID!): Run
+
   """
   A Show's graph in the given state (default "draft"). A Show that has
   never been edited or published reads as an empty graph — a Show with
@@ -471,4 +483,10 @@ type Mutation {
   Publishes a Show's draft graph, making it the published graph immediately (ADR-0002).
   """
   publishShowGraph(showId: ID!): ShowGraph!
+
+  """Ends the active Run, if one exists."""
+  endRun(showId: ID!): Run
+
+  """Ends the previous Run and starts a new one with reset Source values."""
+  startRun(showId: ID!): Run!
 }

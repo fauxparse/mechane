@@ -39,6 +39,20 @@ export const Publishing: Story = {
   args: { publishing: true },
 };
 
+export const RunActive: Story = {
+  args: {
+    runActive: true,
+    onEndRun: () => {},
+  },
+};
+
+export const StartingRun: Story = {
+  args: {
+    onStartRun: () => {},
+    runPending: true,
+  },
+};
+
 export const LongName: Story = {
   args: { name: "A Midsummer Night's Dream, Abridged and Interactive" },
 };

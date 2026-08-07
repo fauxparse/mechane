@@ -43,6 +43,7 @@ export const ID_PREFIXES = {
   device: "d",
   variable: "v",
   edge: "e",
+  run: "n",
 } as const;
 
 export type EntityName = keyof typeof ID_PREFIXES;
@@ -63,6 +64,7 @@ const ENTITY_BY_PREFIX = {
   d: "device",
   v: "variable",
   e: "edge",
+  n: "run",
 } as const satisfies Record<IdPrefix, EntityName>;
 
 // ...and this asserts the other direction: every entity is reachable from
@@ -88,6 +90,7 @@ export type BlockId = Id<"block">;
 export type GraphId = Id<"graph">;
 export type FlowId = Id<"flow">;
 export type SourceId = Id<"source">;
+export type RunId = Id<"run">;
 export type TransformerId = Id<"transformer">;
 export type DeviceId = Id<"device">;
 export type VariableId = Id<"variable">;
