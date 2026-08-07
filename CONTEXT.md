@@ -83,10 +83,20 @@ _Avoid_: Interaction (code term), trigger, event handler
 An individual operation within a Cue — for example, navigating to a Scene, evaluating an expression, or incrementing a value. A Cue may contain multiple Actions that fire in order.
 _Avoid_: Step, command
 
+### Type
+
+What kind of value something holds. Every Source, Variable and Transformer output has a Type — there is one type system across the whole Show, not a separate one per concept. A Type is either simple (text, number, boolean, image, colour, date, datetime), a list of some other Type, or a Shape.
+_Avoid_: Kind (used for the varieties of graph node), data type
+
 ### Shape
 
-A show-scoped type definition that describes the structure of a data object — its fields, their types, and defaults. Shapes are used when Sources hold structured data.
-_Avoid_: Type (code term), schema, model, shape
+A named, show-scoped Type describing a structured object: an ordered list of Fields, reusable across as many Sources, Variables and Transformers as need it. A Shape's Field may itself be a Shape, but a Shape can never contain itself, directly or through another Shape.
+_Avoid_: Schema, model, struct, record
+
+### Field
+
+One named slot within a Shape. A Field has a Type, a default, and is either required or optional. An optional Field may hold no value at all; a required one always holds one, which is why every Field has a default — starting a Run resets live data to defaults, and a Run must always begin in a valid state. Field names are unique within their Shape and are how expressions refer to them.
+_Avoid_: Property (element term), attribute, column, key
 
 ### Wiring
 
@@ -114,7 +124,9 @@ _Avoid_: Binding (acceptable as a synonym), linking
 - A **Cue** lives on a **Scene** or **Block** and fires its **Actions** when a connected **Event** or direct nested **Block** **Cue** occurs
 - A **Cue** contains one or more **Actions**
 - A **Slot** maps parent **Variables** or runtime context into child **Block** **Variables**
-- A **Shape** defines the structure of data held in a **Source**
+- A **Source**, a **Variable** and a **Transformer**'s output each have a **Type**
+- A **Shape** is a **Type**, made of an ordered list of **Fields**, each of which has its own **Type**
+- A **Shape** may be reused by any number of **Sources**, **Variables** and **Transformers** within its **Show**
 - Audience members connect their phones to a **Device** by scanning a QR code or entering an alphanumeric code; their individual sessions are not tracked — interactions are aggregated
 - A **Show** has zero or more **Runs**; starting a **Run** resets live data to defaults, and **Devices** connect to the active **Run**
 
