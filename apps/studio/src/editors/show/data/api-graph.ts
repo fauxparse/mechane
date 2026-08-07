@@ -69,7 +69,9 @@ function toShape(shape: ApiShowGraph["shapes"][number]): Shape {
         name: field.name,
         type: toType(field.type),
         required: field.required,
-        defaultValue: field.default ? field.default.value : null,
+        defaultValue: field.default
+          ? Object.entries(field.default).find(([key]) => key !== "__typename")?.[1] ?? null
+          : null,
       })),
   };
 }

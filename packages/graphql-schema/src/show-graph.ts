@@ -75,15 +75,15 @@ export const GetShowGraphQuery = graphql(`
           required
           default {
             __typename
-            ... on TextValue { value }
-            ... on NumberValue { value }
-            ... on BooleanValue { value }
-            ... on ImageValue { value }
-            ... on ColourValue { value }
-            ... on DateValue { value }
-            ... on DateTimeValue { value }
-            ... on ObjectValue { value }
-            ... on ArrayValue { value }
+            ... on TextValue { textValue: value }
+            ... on NumberValue { numberValue: value }
+            ... on BooleanValue { booleanValue: value }
+            ... on ImageValue { imageValue: value }
+            ... on ColourValue { colourValue: value }
+            ... on DateValue { dateValue: value }
+            ... on DateTimeValue { datetimeValue: value }
+            ... on ObjectValue { objectValue: value }
+            ... on ArrayValue { arrayValue: value }
           }
           type {
             kind
