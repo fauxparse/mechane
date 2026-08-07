@@ -14,7 +14,7 @@ function apiNode(overrides: Pick<ApiNode, "id" | "kind"> & Partial<ApiNode>): Ap
     name: overrides.id,
     parentId: null,
     defaultSceneId: null,
-    type: null,
+    type: overrides.kind === "source" ? { kind: "text", shapeId: null, of: null } : null,
     fieldDefaults: [],
     position: { x: 0, y: 0 },
     variables: [],

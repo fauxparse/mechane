@@ -47,7 +47,7 @@ function flow(id: string, defaultSceneId: string | null = null): FlowNode {
 }
 
 function source(id: string, parentId: string | null = null): SourceNode {
-  return { id, kind: "source", name: id, position: at, parentId };
+  return { id, kind: "source", name: id, position: at, parentId, type: "text" };
 }
 
 function transformer(id: string, parentId: string | null = null): TransformerNode {

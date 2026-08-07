@@ -133,7 +133,8 @@ function parseNode(input: GraphNodeInput): GraphNode {
         defaultSceneId: input.defaultSceneId ?? null,
       };
     case "source":
-      return { ...base, kind: "source", parentId, type: type ?? null };
+      if (!type) throw badInput(`Source "${input.id}" must have a Type.`);
+      return { ...base, kind: "source", parentId, type };
     case "transformer":
       return { ...base, kind: "transformer", parentId, type: type ?? null };
     case "device":

@@ -128,7 +128,7 @@ function toNode(
         ...base,
         kind: "source",
         parentId: row.parentId,
-        type: row.type as Type | null,
+        type: row.type as Type,
         fieldDefaults: sourceDefaultsByNode.get(row.id) ?? [],
       };
     case "transformer":
