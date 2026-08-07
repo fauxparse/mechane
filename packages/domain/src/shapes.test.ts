@@ -95,7 +95,7 @@ describe("Shape values", () => {
 describe("type compatibility", () => {
   it("allows table coercions and single-to-array wrapping", () => {
     expect(areTypesCompatible("number", "text")).toBe(true);
-    expect(areTypesCompatible("text", { kind: "array", of: "number" })).toBe(false);
+    expect(areTypesCompatible("boolean", { kind: "array", of: "number" })).toBe(false);
     expect(areTypesCompatible("number", { kind: "array", of: "number" })).toBe(true);
     expect(areTypesCompatible({ kind: "array", of: "number" }, "number")).toBe(false);
   });
