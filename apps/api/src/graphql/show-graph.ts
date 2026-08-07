@@ -10,7 +10,7 @@
 // error" further in.
 import type { GraphEdit } from "@mechane/commands";
 import { GRAPH_COMMAND_TYPES } from "@mechane/commands";
-import type { GraphEdge, GraphNode } from "@mechane/domain";
+import type { GraphEdge, GraphNode, Type } from "@mechane/domain";
 import { isEdgeKind, isNodeKind, wiringTargetVariableId } from "@mechane/domain";
 import { GraphQLError } from "graphql";
 
@@ -21,9 +21,16 @@ export interface PositionInput {
   y: number;
 }
 
+export interface TypeInput {
+  kind: string;
+  of?: TypeInput | null;
+  shapeId?: string | null;
+}
+
 export interface SceneVariableInput {
   id: string;
   name: string;
+  type?: TypeInput | null;
 }
 
 export interface GraphNodeInput {
@@ -33,6 +40,7 @@ export interface GraphNodeInput {
   parentId?: string | null;
   defaultSceneId?: string | null;
   position: PositionInput;
+  type?: TypeInput | null;
   variables?: SceneVariableInput[] | null;
   perConnection?: boolean | null;
 }
@@ -77,6 +85,16 @@ function badInput(message: string): GraphQLError {
   return new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
 }
 
+function parseType(input: TypeInput | null | undefined): Type | undefined {
+  if (!input) return undefined;
+  if (["text", "number", "boolean", "image", "colour", "date", "datetime"].includes(input.kind)) {
+    return input.kind as Type;
+  }
+  if (input.kind === "array" && input.of) return { kind: "array", of: parseType(input.of)! };
+  if (input.kind === "shape" && input.shapeId) return { kind: "shape", shapeId: input.shapeId };
+  throw badInput(`Invalid Shape type "${input.kind}".`);
+}
+
 function parseNode(input: GraphNodeInput): GraphNode {
   if (!isNodeKind(input.kind)) {
     throw badInput(`Unknown node kind "${input.kind}" on node "${input.id}".`);
@@ -86,6 +104,7 @@ function parseNode(input: GraphNodeInput): GraphNode {
     name: input.name,
     position: { x: input.position.x, y: input.position.y },
   };
+  const type = parseType(input.type);
   const parentId = input.parentId ?? null;
   switch (input.kind) {
     case "scene":
@@ -96,6 +115,7 @@ function parseNode(input: GraphNodeInput): GraphNode {
         variables: (input.variables ?? []).map((variable) => ({
           id: variable.id,
           name: variable.name,
+          type: parseType(variable.type),
         })),
       };
     case "flow":
@@ -112,9 +132,9 @@ function parseNode(input: GraphNodeInput): GraphNode {
         defaultSceneId: input.defaultSceneId ?? null,
       };
     case "source":
-      return { ...base, kind: "source", parentId };
+      return { ...base, kind: "source", parentId, type: type ?? null };
     case "transformer":
-      return { ...base, kind: "transformer", parentId };
+      return { ...base, kind: "transformer", parentId, type: type ?? null };
     case "device":
       if (parentId !== null) {
         throw badInput(`Device "${input.id}" was given a parentId; Devices are Show-level.`);
@@ -361,7 +381,12 @@ function serializeNode(node: GraphNode) {
     parentId: node.parentId,
     defaultSceneId: node.kind === "flow" ? node.defaultSceneId : null,
     position: node.position,
-    variables: node.kind === "scene" ? node.variables : [],
+    variables:
+      node.kind === "scene"
+        ? node.variables.map((variable) => ({ ...variable, type: variable.type ?? null }))
+        : [],
+    type: node.kind === "source" || node.kind === "transformer" ? node.type ?? null : null,
+    fieldDefaults: node.kind === "source" ? node.fieldDefaults ?? [] : [],
     perConnection: node.kind === "device" && node.perConnection,
     pairingCode: node.kind === "device" ? node.pairingCode : null,
   };

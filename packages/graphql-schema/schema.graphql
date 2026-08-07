@@ -35,6 +35,7 @@ A named port on a Scene. A wiring edge targets one of these, not the Scene as a 
 type SceneVariable {
   id: ID!
   name: String!
+  type: Type
 }
 
 scalar JSON
@@ -48,19 +49,80 @@ type Type {
   shapeId: ID
 }
 
+input TypeInput {
+  kind: String!
+  of: TypeInput
+  shapeId: ID
+}
+
+type TextValue {
+  value: String!
+}
+
+type NumberValue {
+  value: Float!
+}
+
+type BooleanValue {
+  value: Boolean!
+}
+
+type ImageValue {
+  value: String!
+}
+
+type ColourValue {
+  value: String!
+}
+
+type DateValue {
+  value: String!
+}
+
+type DateTimeValue {
+  value: String!
+}
+
+type ObjectValue {
+  value: JSON!
+}
+
+type ArrayValue {
+  value: JSON!
+}
+
+union ShapeValue = TextValue | NumberValue | BooleanValue | ImageValue | ColourValue | DateValue | DateTimeValue | ObjectValue | ArrayValue
+
+input ShapeValueInput @oneOf {
+  text: String
+  number: Float
+  boolean: Boolean
+  image: String
+  colour: String
+  date: String
+  datetime: String
+  object: JSON
+  array: JSON
+}
+
 type ShapeField {
   id: ID!
   name: String!
   type: Type!
   position: Int!
   required: Boolean!
-  default: JSON
+  default: ShapeValue
 }
 
 type Shape {
   id: ID!
   name: String!
   fields: [ShapeField!]!
+}
+
+type SourceFieldDefault {
+  fieldPath: [ID!]!
+  value: JSON
 }
 
 """
@@ -79,10 +141,14 @@ type GraphNode {
 
   """Flow nodes only: the Flow's design-time entry Scene, if one is set."""
   defaultSceneId: ID
+  type: Type
   position: Position!
 
   """Scene nodes only: the Variables wiring edges can target."""
   variables: [SceneVariable!]!
+
+  """Sparse default overrides for Source fields, keyed by stable field ids."""
+  fieldDefaults: [SourceFieldDefault!]!
 
   """
   Device nodes only: whether this Device is one logical instance per
@@ -166,6 +232,7 @@ input PositionInput {
 input SceneVariableInput {
   id: ID!
   name: String!
+  type: TypeInput
 }
 
 input GraphNodeInput {
@@ -174,6 +241,7 @@ input GraphNodeInput {
   name: String!
   parentId: ID
   defaultSceneId: ID
+  type: TypeInput
   position: PositionInput!
   variables: [SceneVariableInput!]
 

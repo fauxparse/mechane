@@ -22,6 +22,18 @@ export const GetShowGraphQuery = graphql(`
         name
         parentId
         defaultSceneId
+        type {
+          kind
+          shapeId
+          of {
+            kind
+            shapeId
+          }
+        }
+        fieldDefaults {
+          fieldPath
+          value
+        }
         position {
           x
           y
@@ -29,6 +41,14 @@ export const GetShowGraphQuery = graphql(`
         variables {
           id
           name
+          type {
+            kind
+            shapeId
+            of {
+              kind
+              shapeId
+            }
+          }
         }
         perConnection
         pairingCode
@@ -52,7 +72,18 @@ export const GetShowGraphQuery = graphql(`
           name
           position
           required
-          default
+          default {
+            __typename
+            ... on TextValue { value }
+            ... on NumberValue { value }
+            ... on BooleanValue { value }
+            ... on ImageValue { value }
+            ... on ColourValue { value }
+            ... on DateValue { value }
+            ... on DateTimeValue { value }
+            ... on ObjectValue { value }
+            ... on ArrayValue { value }
+          }
           type {
             kind
             shapeId

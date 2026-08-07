@@ -23,14 +23,24 @@ import type {
   ApplyShowGraphEditsResult,
   ShowGraph as ApiShowGraph,
   ShowGraphEdge as ApiEdge,
-  ShowGraphNode as ApiNode,
 } from "@mechane/graphql-schema";
 
-/** Just the parts of the query result this module needs. */
-export type ApiGraph = Pick<ApiShowGraph, "nodes" | "edges"> &
-  Partial<Pick<ApiShowGraph, "shapes">>;
-
 type ApiType = ApiShowGraph["shapes"][number]["fields"][number]["type"];
+type ApiVariable = Omit<ApiShowGraph["nodes"][number]["variables"][number], "type"> & {
+  type?: ApiType | null;
+};
+type ApiGraphNode = Omit<ApiShowGraph["nodes"][number], "type" | "variables" | "fieldDefaults"> & {
+  type?: ApiType | null;
+  fieldDefaults?: ApiShowGraph["nodes"][number]["fieldDefaults"];
+  variables?: ApiVariable[] | null;
+};
+
+/** Just the parts of the query result this module needs. */
+export type ApiGraph = {
+  nodes: ApiGraphNode[];
+  edges: ApiShowGraph["edges"];
+  shapes?: ApiShowGraph["shapes"];
+};
 
 function toType(type: ApiType): Type {
   if (type.kind === "array") {
@@ -59,12 +69,12 @@ function toShape(shape: ApiShowGraph["shapes"][number]): Shape {
         name: field.name,
         type: toType(field.type),
         required: field.required,
-        defaultValue: field.default,
+        defaultValue: field.default ? field.default.value : null,
       })),
   };
 }
 
-function toNode(node: ApiNode): GraphNode {
+function toNode(node: ApiGraphNode): GraphNode {
   // Same check, and same reason, as ./graph-to-flow's: `kind` is a string on
   // the wire, and a kind this build doesn't know about should say so rather
   // than become a silently malformed node.
@@ -85,6 +95,7 @@ function toNode(node: ApiNode): GraphNode {
         variables: (node.variables ?? []).map((variable) => ({
           id: variable.id,
           name: variable.name,
+          type: variable.type ? toType(variable.type as ApiType) : null,
         })),
       };
     case "flow":
@@ -104,9 +115,24 @@ function toNode(node: ApiNode): GraphNode {
         pairingCode: node.pairingCode ?? null,
       };
     case "source":
-      return { ...base, kind: "source", parentId: node.parentId ?? null };
+      return {
+        ...base,
+        kind: "source",
+        parentId: node.parentId ?? null,
+        type: node.type ? toType(node.type as ApiType) : null,
+        fieldDefaults: (node.fieldDefaults ?? []).map((fieldDefault) => ({
+          nodeId: node.id,
+          fieldPath: [...fieldDefault.fieldPath],
+          value: fieldDefault.value,
+        })),
+      };
     case "transformer":
-      return { ...base, kind: "transformer", parentId: node.parentId ?? null };
+      return {
+        ...base,
+        kind: "transformer",
+        parentId: node.parentId ?? null,
+        type: node.type ? toType(node.type as ApiType) : null,
+      };
   }
 }
 
@@ -150,6 +176,17 @@ export function toShowGraph(graph: ApiGraph | null | undefined): ShowGraph {
  * fields the server derives (a Device's pairing code is minted server-side,
  * #45) and minus the fields that don't belong to this kind.
  */
+type TypeInput = { kind: string; of?: TypeInput | null; shapeId?: string | null };
+
+function toTypeInput(type: Type | null | undefined): TypeInput | null {
+  if (!type) return null;
+  return typeof type === "string"
+    ? { kind: type }
+    : type.kind === "array"
+      ? { kind: "array", of: toTypeInput(type.of) }
+      : { kind: "shape", shapeId: type.shapeId };
+}
+
 function toNodeInput(node: GraphNode) {
   return {
     id: node.id,
@@ -157,8 +194,12 @@ function toNodeInput(node: GraphNode) {
     name: node.name,
     parentId: node.parentId,
     defaultSceneId: node.kind === "flow" ? node.defaultSceneId : null,
+    type: node.kind === "source" || node.kind === "transformer" ? toTypeInput(node.type) : null,
     position: { x: node.position.x, y: node.position.y },
-    variables: node.kind === "scene" ? node.variables.map((v) => ({ id: v.id, name: v.name })) : [],
+    variables:
+      node.kind === "scene"
+        ? node.variables.map((v) => ({ id: v.id, name: v.name, type: toTypeInput(v.type) }))
+        : [],
     perConnection: node.kind === "device" ? node.perConnection : false,
   };
 }
@@ -200,7 +241,7 @@ export function toEditInput(edit: GraphEdit) {
     flowId?: string;
     sceneId?: string | null;
     variableId?: string;
-    variable?: { id: string; name: string };
+    variable?: { id: string; name: string; type?: TypeInput | null };
   } = { type: edit.type };
   switch (edit.type) {
     case "graph.addNode":
@@ -225,7 +266,11 @@ export function toEditInput(edit: GraphEdit) {
     case "graph.setFlowDefaultScene":
       return { ...input, flowId: edit.flowId, sceneId: edit.sceneId };
     case "graph.addSceneVariable":
-      return { ...input, sceneId: edit.sceneId, variable: edit.variable };
+      return {
+        ...input,
+        sceneId: edit.sceneId,
+        variable: { ...edit.variable, type: toTypeInput(edit.variable.type) },
+      };
     case "graph.renameSceneVariable":
       return {
         ...input,

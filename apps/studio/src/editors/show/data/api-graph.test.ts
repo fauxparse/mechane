@@ -14,6 +14,8 @@ function apiNode(overrides: Pick<ApiNode, "id" | "kind"> & Partial<ApiNode>): Ap
     name: overrides.id,
     parentId: null,
     defaultSceneId: null,
+    type: null,
+    fieldDefaults: [],
     position: { x: 0, y: 0 },
     variables: [],
     perConnection: false,
@@ -41,7 +43,7 @@ const GRAPH: ApiGraph = {
       kind: "scene",
       parentId: "flow_vote",
       position: { x: 24, y: 48 },
-      variables: [{ id: "variable_prompt", name: "prompt" }],
+      variables: [{ id: "variable_prompt", name: "prompt", type: null }],
     }),
     apiNode({ id: "source_tally", kind: "source", position: { x: 300, y: 0 } }),
     apiNode({ id: "transformer_winner", kind: "transformer" }),
@@ -86,7 +88,7 @@ describe("toShowGraph", () => {
     expect(voting.name).toBe("scene_voting");
     expect(voting.position).toEqual({ x: 24, y: 48 });
     expect(voting.parentId).toBe("flow_vote");
-    expect(voting.variables).toEqual([{ id: "variable_prompt", name: "prompt" }]);
+    expect(voting.variables).toEqual([{ id: "variable_prompt", name: "prompt", type: null }]);
   });
 
   it("keeps a Flow's default Scene", () => {
@@ -152,7 +154,7 @@ describe("toEditInput", () => {
           name: "Lobby",
           parentId: "flow_vote",
           position: { x: 3, y: 4 },
-          variables: [{ id: "variable_prompt", name: "prompt" }],
+          variables: [{ id: "variable_prompt", name: "prompt", type: null }],
         },
       }),
     ).toEqual({
@@ -163,8 +165,9 @@ describe("toEditInput", () => {
         name: "Lobby",
         parentId: "flow_vote",
         defaultSceneId: null,
+        type: null,
         position: { x: 3, y: 4 },
-        variables: [{ id: "variable_prompt", name: "prompt" }],
+        variables: [{ id: "variable_prompt", name: "prompt", type: null }],
         perConnection: false,
       },
     });

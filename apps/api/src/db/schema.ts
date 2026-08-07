@@ -256,6 +256,7 @@ export const graphNodes = pgTable(
     // `assertValidShowGraph` is what keeps this pointing at a Scene of
     // this Flow.
     defaultSceneId: text("default_scene_id"),
+    type: jsonb("type"),
     positionX: doublePrecision("position_x").notNull().default(0),
     positionY: doublePrecision("position_y").notNull().default(0),
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -284,6 +285,27 @@ export const graphNodes = pgTable(
   ],
 );
 
+export const sourceFieldDefaults = pgTable(
+  "source_field_defaults",
+  {
+    graphId: text("graph_id")
+      .notNull()
+      .references(() => showGraphs.id, { onDelete: "cascade" }),
+    nodeId: text("node_id").notNull(),
+    fieldPath: text("field_path").array().notNull(),
+    value: jsonb("value"),
+  },
+  (table) => [
+    primaryKey({ columns: [table.graphId, table.nodeId, table.fieldPath] }),
+    foreignKey({
+      name: "source_field_defaults_node_fk",
+      columns: [table.graphId, table.nodeId],
+      foreignColumns: [graphNodes.graphId, graphNodes.id],
+    }).onDelete("cascade"),
+  ],
+);
+
+
 // A Variable is a port on a Scene, not a node of its own (#20) — so it
 // lives in its own table keyed to a Scene node, and a wiring edge points
 // at a row here rather than at the Scene generally.
@@ -296,6 +318,7 @@ export const graphNodeVariables = pgTable(
       .references(() => showGraphs.id, { onDelete: "cascade" }),
     sceneId: text("scene_id").notNull(),
     name: text("name").notNull(),
+    type: jsonb("type"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
