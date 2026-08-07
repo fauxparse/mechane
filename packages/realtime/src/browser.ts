@@ -33,8 +33,9 @@ export class WebSocketRealtimeSubscriber implements RealtimeSubscriber {
 
   subscribe(handler: RealtimeMessageHandler, options: RealtimeSubscribeOptions = {}): RealtimeSubscription {
     if (options.after !== undefined) this.lastSequence = options.after;
+    const wasEmpty = this.handlers.size === 0;
     this.handlers.add(handler);
-    if (this.socket.readyState === WebSocket.OPEN) this.subscribeOnSocket();
+    if (wasEmpty && this.socket.readyState === WebSocket.OPEN) this.subscribeOnSocket();
     return {
       close: () => {
         this.handlers.delete(handler);
