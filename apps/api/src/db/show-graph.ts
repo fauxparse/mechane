@@ -22,6 +22,7 @@ import { assertValidShowGraph, emptyShowGraph, generateId, isEdgeKind } from "@m
 import { and, eq } from "drizzle-orm";
 
 import { db } from "./client";
+import { reconcileActiveRunValues } from "./runs";
 import type { StoredDevice } from "./devices";
 import { retireUnreferencedDevices, syncDevices } from "./devices";
 import {
@@ -34,6 +35,7 @@ import {
   shapes,
   sourceFieldDefaults,
   showGraphs,
+  shows,
 } from "./schema";
 
 /** A stored graph, plus the row metadata a caller may want to show. */
@@ -579,17 +581,22 @@ function amendments(intended: ShowGraph, written: StoredShowGraph): GraphEdit[] 
  * is left exactly as it is — publishing is a snapshot, not a hand-off, so
  * the director keeps editing from where they were.
  */
-export async function publishShowGraph(showId: string): Promise<StoredShowGraph> {
-  const draft = await readShowGraph(showId, "draft");
-  const published = await writeShowGraph(showId, "published", {
-    shapes: draft.shapes ?? [],
-    nodes: draft.nodes,
-    edges: draft.edges,
+export async function publishShowGraph(
+  showId: string,
+): Promise<StoredShowGraph & { losses: Awaited<ReturnType<typeof reconcileActiveRunValues>>["losses"] }> {
+  return db.transaction(async (tx) => {
+    await tx.select({ id: shows.id }).from(shows).where(eq(shows.id, showId)).for("update");
+    const draft = await readShowGraph(showId, "draft", tx);
+    const publishedBefore = await readShowGraph(showId, "published", tx);
+    const reconciled = await reconcileActiveRunValues(showId, publishedBefore, draft, tx);
+    const published = await writeGraph(tx, showId, "published", {
+      shapes: draft.shapes ?? [],
+      nodes: draft.nodes,
+      edges: draft.edges,
+    });
+    // Publish is the only moment a Device may be retired (#45). Keeping this
+    // in the same transaction preserves the all-or-nothing cutover.
+    await retireUnreferencedDevices(tx, showId);
+    return { ...published, losses: reconciled.losses };
   });
-  // Publish is the only moment a Device may be retired (#45). Until it
-  // happens, a Device deleted from the draft is still named by the
-  // published graph, so its code keeps working for a Run already under
-  // way — a draft edit must never take a projector off the air (ADR-0002).
-  await db.transaction((tx) => retireUnreferencedDevices(tx, showId));
-  return published;
 }
