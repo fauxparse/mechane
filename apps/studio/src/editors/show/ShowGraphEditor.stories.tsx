@@ -4,7 +4,7 @@ import { useRef } from "react";
 
 import { ShowGraphEditor } from "./ShowGraphEditor";
 import type { ShowGraphEditorHandle } from "./ShowGraphEditor";
-import { SAMPLE_GRAPH, VOTE_FLOW_NODE_IDS } from "./sample-graph";
+import { SAMPLE_GRAPH, VOTE_FLOW_NODE_IDS } from "./data/sample-graph";
 
 const meta: Meta<typeof ShowGraphEditor> = {
   title: "studio/ShowGraphEditor",

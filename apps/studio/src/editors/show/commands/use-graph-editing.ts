@@ -28,11 +28,11 @@ import { connectionEdge, connectionError, connectionTargets, generateId } from "
 import type { ConnectionTargets, GraphNode, NodeKind, Position, ShowGraph } from "@mechane/domain";
 import { useCallback, useMemo, useRef, useState } from "react";
 
-import { INPUT_HANDLE, OUTPUT_HANDLE } from "./graph-to-flow";
-import { createNode } from "./node-kinds";
+import { INPUT_HANDLE, OUTPUT_HANDLE } from "../graph/graph-to-flow";
+import { createNode } from "../graph/node-kinds";
 import { useGraphCommands } from "./use-graph-commands";
 import type { GraphCommands } from "./use-graph-commands";
-import type { ApiGraph } from "./api-graph";
+import type { ApiGraph } from "../data/api-graph";
 
 /** A connection the user is trying to make, as React Flow reports it. */
 export interface ConnectionAttempt {
