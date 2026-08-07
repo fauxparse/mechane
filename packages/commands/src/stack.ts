@@ -21,6 +21,13 @@
 // well as absolute ones: the entry's inverse is every update's inverse in
 // reverse order, not just the first one's, so a gesture built from "nudge by
 // 4px" steps inverts as exactly as one built from "set position to (x, y)".
+//
+// Which is exactly why a gesture doesn't keep every frame it was given. A run
+// of commands sharing a `coalesceKey` — 150 absolute positions for one node —
+// is kept as *one* frame: the last command, with the first frame's inverse.
+// The middle 148 can't be observed by undo, and sending them would be sending
+// the same fact 150 times (#103). A delta command declares no key and so is
+// never collapsed, which keeps the paragraph above true.
 
 import { composite } from "./command";
 import type { Command } from "./command";
@@ -89,15 +96,24 @@ interface StackEntry<S, E> {
   reverse: Command<S, E>;
 }
 
+/**
+ * One recorded step of a gesture: what was done, the way back from it, and
+ * how to say it on the wire.
+ *
+ * Kept as a triple rather than as three parallel arrays because a coalescing
+ * frame replaces two of the three and keeps the other — see `#updateGesture`.
+ */
+interface GestureFrame<S, E> {
+  command: Command<S, E>;
+  inverse: Command<S, E>;
+  edits: readonly E[];
+}
+
 interface OpenGesture<S, E> {
   key: string;
   label: string;
-  /** Each update's inverse, in the order the updates were applied. */
-  inverses: Command<S, E>[];
-  /** The updates themselves, kept only to dispatch the coalesced edit. */
-  updates: Command<S, E>[];
-  /** Every update's edits, concatenated — the gesture as one wire batch. */
-  edits: E[];
+  /** The steps so far, oldest first. */
+  frames: GestureFrame<S, E>[];
   open: boolean;
 }
 
@@ -197,9 +213,7 @@ export class CommandStack<S, E = unknown> {
     const gesture: OpenGesture<S, E> = {
       key: options.key,
       label: options.label,
-      inverses: [],
-      updates: [],
-      edits: [],
+      frames: [],
       open: true,
     };
     this.#gesture = gesture;
@@ -259,7 +273,7 @@ export class CommandStack<S, E = unknown> {
         return gesture.open;
       },
       get isEmpty() {
-        return gesture.updates.length === 0;
+        return gesture.frames.length === 0;
       },
       update: (command) => this.#updateGesture(gesture, command),
       commit: () => this.#commitGesture(gesture),
@@ -277,9 +291,24 @@ export class CommandStack<S, E = unknown> {
     // started on — isn't recorded, so a gesture made entirely of those
     // commits to nothing rather than to an empty entry.
     if (applied.inverse.isEmpty) return this.#state;
-    gesture.updates.push(command);
-    gesture.inverses.push(applied.inverse);
-    gesture.edits.push(...(applied.edits ?? []));
+    const previous = gesture.frames.at(-1);
+    if (
+      previous !== undefined &&
+      command.coalesceKey !== undefined &&
+      previous.command.coalesceKey === command.coalesceKey
+    ) {
+      // Two absolute writes to the same thing. The gesture keeps this frame's
+      // value and *the older frame's inverse* — which restores further back,
+      // to before the run started — so a 150-frame drag is two commands and
+      // one edit, not 150 of each, and undo still lands where the drag began.
+      gesture.frames[gesture.frames.length - 1] = {
+        command,
+        inverse: previous.inverse,
+        edits: applied.edits ?? [],
+      };
+    } else {
+      gesture.frames.push({ command, inverse: applied.inverse, edits: applied.edits ?? [] });
+    }
     this.#state = applied.state;
     // Mid-gesture states are shown, not dispatched: the server hears about
     // the gesture once, when it commits (#28).
@@ -291,21 +320,28 @@ export class CommandStack<S, E = unknown> {
     if (!gesture.open) return false;
     gesture.open = false;
     if (this.#gesture === gesture) this.#gesture = null;
-    if (gesture.updates.length === 0) return false;
+    if (gesture.frames.length === 0) return false;
 
-    const forward = composite({ label: gesture.label, commands: gesture.updates });
+    const forward = composite({
+      label: gesture.label,
+      commands: gesture.frames.map((frame) => frame.command),
+    });
     const reverse = composite({
       label: gesture.label,
-      commands: [...gesture.inverses].reverse(),
+      commands: gesture.frames.map((frame) => frame.inverse).reverse(),
     });
     this.#redoable = [];
     this.#push(this.#undoable, { label: gesture.label, reverse });
     // The state is already where the updates left it — committing lands the
     // entry, it doesn't re-apply the work.
-    // Every frame's edits, not just the last frame's: a drag ended where it
-    // did by way of all of them, and the server is told the whole run at
-    // once — but it is told all of it.
-    this.#dispatch?.(forward, this.#state, gesture.edits);
+    // Every surviving frame's edits. A run of absolute writes has already
+    // collapsed to its last value above; anything that didn't collapse is a
+    // step the server genuinely has to be told about.
+    this.#dispatch?.(
+      forward,
+      this.#state,
+      gesture.frames.flatMap((frame) => frame.edits),
+    );
     return true;
   }
 
@@ -314,8 +350,8 @@ export class CommandStack<S, E = unknown> {
     gesture.open = false;
     if (this.#gesture === gesture) this.#gesture = null;
     let next = this.#state;
-    for (const inverse of [...gesture.inverses].reverse()) {
-      next = inverse.apply(next).state;
+    for (const frame of [...gesture.frames].reverse()) {
+      next = frame.inverse.apply(next).state;
     }
     this.#state = next;
     this.#onChange?.(next);

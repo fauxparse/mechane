@@ -30,6 +30,8 @@ function moveTo(x: number): Command<Doc> {
     type: "doc.moveTo",
     label: "Move",
     scope: "selection",
+    // Absolute writes to one thing, so a run of them collapses in a gesture.
+    coalesceKey: "doc.x",
     capture: (doc) => doc.x,
     isEmpty: (_doc, captured) => captured === x,
     apply: (doc) => ({ ...doc, x }),
@@ -214,6 +216,66 @@ describe("CommandStack gestures", () => {
     // One Cmd+Z, back to where the drag started — not to frame three.
     expect(commands.state.x).toBe(0);
     expect(commands.canUndo).toBe(false);
+  });
+
+  it("keeps one frame for a run of absolute writes, not one per frame", () => {
+    // The gesture is what the user sees as one edit; it should also be what
+    // the *stack* holds. 150 frames of a drag is 150 statements of the same
+    // fact, and only the last one is true (#103).
+    const dispatched: { command: Command<Doc>; edits: readonly unknown[] }[] = [];
+    const commands = stack({
+      dispatch: (command, _state, edits) => dispatched.push({ command, edits }),
+    });
+    const drag = commands.beginGesture({ key: "drag", label: "Move" });
+    for (let x = 1; x <= 150; x += 1) drag.update(moveTo(x));
+    drag.commit();
+
+    expect(commands.state.x).toBe(150);
+    expect(dispatched).toHaveLength(1);
+    // One command in the composite that reached `dispatch` — the last frame.
+    expect(dispatched[0]?.command.apply(DOC).state).toEqual({ ...DOC, x: 150 });
+    // And undo still goes back to before the drag, not to frame 149.
+    commands.undo();
+    expect(commands.state.x).toBe(0);
+  });
+
+  it("aborts a collapsed drag back to where it started", () => {
+    const commands = stack();
+    const drag = commands.beginGesture({ key: "drag", label: "Move" });
+    for (const x of [4, 12, 28]) drag.update(moveTo(x));
+    expect(drag.abort()).toEqual({ ...DOC, x: 0 });
+    expect(commands.canUndo).toBe(false);
+  });
+
+  it("does not collapse writes to different things", () => {
+    // Two nodes dragged together: each keeps its own last position.
+    const commands = stack();
+    const drag = commands.beginGesture({ key: "drag", label: "Edit" });
+    drag.update(moveTo(4));
+    drag.update(setTitle("Lear"));
+    drag.update(moveTo(9));
+    drag.commit();
+
+    expect(commands.state).toEqual({ title: "Lear", x: 9 });
+    commands.undo();
+    expect(commands.state).toEqual(DOC);
+  });
+
+  it("never collapses a gesture built from deltas", () => {
+    // The rule that makes the collapse safe: a nudge declares no key, so
+    // three of them stay three, and undo walks all three back.
+    const dispatched: Command<Doc>[] = [];
+    const commands = stack({ dispatch: (command) => dispatched.push(command) });
+    const drag = commands.beginGesture({ key: "drag", label: "Nudge" });
+    drag.update(nudge(4));
+    drag.update(nudge(4));
+    drag.update(nudge(-2));
+    drag.commit();
+
+    expect(commands.state.x).toBe(6);
+    expect(dispatched[0]?.apply(DOC).state.x).toBe(6);
+    commands.undo();
+    expect(commands.state.x).toBe(0);
   });
 
   it("collapses a gesture built from deltas just as exactly", () => {

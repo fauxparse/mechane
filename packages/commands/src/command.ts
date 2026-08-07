@@ -107,6 +107,19 @@ export interface Command<S, E = unknown> {
    * to reverse. That's what the stack tests.
    */
   readonly isEmpty: boolean;
+  /**
+   * What this command overwrites, if it overwrites rather than adjusts —
+   * "the position of node n", "the name of node n". Two commands sharing a
+   * key are two absolute writes to the same thing, so inside one gesture the
+   * later one replaces the earlier: a drag keeps the first frame's inverse
+   * (which is what undo restores to) and the last frame's value (which is
+   * where the node ended up), and drops the 148 in between (#28, #103).
+   *
+   * Only for commands whose `apply` is idempotent in this sense. A command
+   * expressed as a delta — "nudge by 4px", "append an item" — must leave this
+   * undefined, because collapsing two of those loses one of them.
+   */
+  readonly coalesceKey?: string;
   apply(state: S): AppliedCommand<S, E>;
 }
 
@@ -115,6 +128,7 @@ export interface CommandSpec<S, E = unknown> {
   label: string;
   scope: CommandScope;
   isEmpty?: boolean;
+  coalesceKey?: string;
   apply(state: S): AppliedCommand<S, E>;
 }
 
@@ -129,6 +143,7 @@ export function defineCommand<S, E = unknown>(spec: CommandSpec<S, E>): Command<
     label: spec.label,
     scope: spec.scope,
     isEmpty: spec.isEmpty ?? false,
+    coalesceKey: spec.coalesceKey,
     apply: spec.apply,
   };
 }
@@ -137,6 +152,8 @@ export interface CapturingSpec<S, C, E = unknown> {
   type: string;
   label: string;
   scope: CommandScope;
+  /** See `Command.coalesceKey`. Carried by both the command and its inverse. */
+  coalesceKey?: string;
   /**
    * The forward change on the wire (#103) — the same mutation `apply` makes,
    * said in terms the server can apply to its own copy. Static, because a
@@ -212,6 +229,7 @@ export function capturing<S, C, E = unknown>(spec: CapturingSpec<S, C, E>): Comm
     type: spec.type,
     label: spec.label,
     scope: spec.scope,
+    coalesceKey: spec.coalesceKey,
     apply(state) {
       const captured = spec.capture(state);
       // Nothing displaced, nothing to reverse — and the stack reads that
@@ -243,6 +261,7 @@ function restoring<S, C, E>(spec: CapturingSpec<S, C, E>, captured: C): Command<
     type: spec.type,
     label: spec.label,
     scope: spec.scope,
+    coalesceKey: spec.coalesceKey,
     apply: (state) => ({
       state: spec.restore(state, captured),
       // Recaptures when it runs, so a redo carries what *it* displaced.

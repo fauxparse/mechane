@@ -258,6 +258,8 @@ export function moveNode(nodeId: string, position: Position, label = "Move"): Sh
     type: GRAPH_COMMAND_TYPES.moveNode,
     label,
     scope: "selection",
+    // Absolute, so a drag's frames collapse to the last one (./stack).
+    coalesceKey: `${GRAPH_COMMAND_TYPES.moveNode}:${nodeId}`,
     edits: [{ type: GRAPH_COMMAND_TYPES.moveNode, nodeId, position }],
     restoreEdits: (captured) => [
       { type: GRAPH_COMMAND_TYPES.moveNode, nodeId, position: captured },
@@ -290,6 +292,8 @@ export function renameNode(nodeId: string, name: string, label = "Rename"): Show
     type: GRAPH_COMMAND_TYPES.renameNode,
     label,
     scope: "selection",
+    // Typing "Voting" is six commands and one name (./stack).
+    coalesceKey: `${GRAPH_COMMAND_TYPES.renameNode}:${nodeId}`,
     edits: [{ type: GRAPH_COMMAND_TYPES.renameNode, nodeId, name }],
     restoreEdits: (captured) => [{ type: GRAPH_COMMAND_TYPES.renameNode, nodeId, name: captured }],
     capture: (graph) => (graph.nodes[nodeIndex(graph, nodeId)] as GraphNode).name,
@@ -331,6 +335,7 @@ export function reparentNode(
     type: GRAPH_COMMAND_TYPES.reparentNode,
     label,
     scope: "selection",
+    coalesceKey: `${GRAPH_COMMAND_TYPES.reparentNode}:${nodeId}`,
     edits: [{ type: GRAPH_COMMAND_TYPES.reparentNode, nodeId, parentId, position }],
     restoreEdits: (captured) => [
       {
@@ -521,6 +526,7 @@ export function setFlowDefaultScene(
     type: GRAPH_COMMAND_TYPES.setFlowDefaultScene,
     label,
     scope: "selection",
+    coalesceKey: `${GRAPH_COMMAND_TYPES.setFlowDefaultScene}:${flowId}`,
     edits: [{ type: GRAPH_COMMAND_TYPES.setFlowDefaultScene, flowId, sceneId }],
     restoreEdits: (captured) => [
       { type: GRAPH_COMMAND_TYPES.setFlowDefaultScene, flowId, sceneId: captured },
@@ -606,6 +612,7 @@ export function renameSceneVariable(
     type: GRAPH_COMMAND_TYPES.renameSceneVariable,
     label,
     scope: "selection",
+    coalesceKey: `${GRAPH_COMMAND_TYPES.renameSceneVariable}:${sceneId}:${variableId}`,
     edits: [{ type: GRAPH_COMMAND_TYPES.renameSceneVariable, sceneId, variableId, name }],
     restoreEdits: (captured) => [
       { type: GRAPH_COMMAND_TYPES.renameSceneVariable, sceneId, variableId, name: captured },

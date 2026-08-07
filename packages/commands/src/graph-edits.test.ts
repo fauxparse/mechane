@@ -29,7 +29,12 @@ import {
   setFlowDefaultScene,
 } from "./graph-commands";
 import type { GraphEdit } from "./graph-edits";
-import { applyGraphEdits, commandForEdit, UnknownGraphEditError } from "./graph-edits";
+import {
+  applyGraphEdits,
+  coalesceGraphEdits,
+  commandForEdit,
+  UnknownGraphEditError,
+} from "./graph-edits";
 import { CommandStack } from "./stack";
 
 // The same shape of Show as ./graph-commands.test.ts: a Flow with two Scenes
@@ -247,7 +252,7 @@ describe("composed commands", () => {
 });
 
 describe("a gesture", () => {
-  it("transmits every frame of a drag, not just the last", () => {
+  it("transmits where a drag ended, not every frame of it", () => {
     const batches: GraphEdit[][] = [];
     const stack = new CommandStack<ShowGraph, GraphEdit>({
       state: GRAPH,
@@ -261,7 +266,9 @@ describe("a gesture", () => {
     drag.commit();
 
     expect(batches).toHaveLength(1);
-    expect(batches[0]).toHaveLength(3);
+    expect(batches[0]).toEqual([
+      { type: "graph.moveNode", nodeId: LOBBY.id, position: { x: 3, y: 3 } },
+    ]);
     expect(stored(applyGraphEdits(GRAPH, batches[0] as GraphEdit[]))).toEqual(stored(stack.state));
   });
 
@@ -299,5 +306,115 @@ describe("commandForEdit", () => {
     const before = structuredClone(GRAPH);
     applyGraphEdits(GRAPH, [{ type: "graph.renameNode", nodeId: LOBBY.id, name: "Foyer" }]);
     expect(GRAPH).toEqual(before);
+  });
+});
+
+describe("coalesceGraphEdits", () => {
+  /** Coalescing may shorten a batch, but never change where it lands. */
+  function expectSameOutcome(edits: GraphEdit[], graph: ShowGraph = GRAPH) {
+    const coalesced = coalesceGraphEdits(edits);
+    expect(stored(applyGraphEdits(graph, coalesced))).toEqual(
+      stored(applyGraphEdits(graph, edits)),
+    );
+    return coalesced;
+  }
+
+  it("sends one position for a drag, not one per frame", () => {
+    // The bug this exists for: a single node moved once was 150 edits.
+    const frames = Array.from({ length: 150 }, (_, index) => ({
+      type: "graph.moveNode" as const,
+      nodeId: LOBBY.id,
+      position: { x: index, y: index * 2 },
+    }));
+    const coalesced = expectSameOutcome(frames);
+    expect(coalesced).toEqual([
+      { type: "graph.moveNode", nodeId: LOBBY.id, position: { x: 149, y: 298 } },
+    ]);
+  });
+
+  it("keeps one position per node when several are dragged at once", () => {
+    // Interleaved, which is what a multi-node drag emits — so a rule that
+    // only collapsed *consecutive* frames would collapse none of these.
+    const frames: GraphEdit[] = [];
+    for (let index = 0; index < 20; index += 1) {
+      frames.push({ type: "graph.moveNode", nodeId: LOBBY.id, position: { x: index, y: 0 } });
+      frames.push({ type: "graph.moveNode", nodeId: TALLY.id, position: { x: 0, y: index } });
+    }
+    expect(expectSameOutcome(frames)).toEqual([
+      { type: "graph.moveNode", nodeId: LOBBY.id, position: { x: 19, y: 0 } },
+      { type: "graph.moveNode", nodeId: TALLY.id, position: { x: 0, y: 19 } },
+    ]);
+  });
+
+  it("sends one name for a rename typed a character at a time", () => {
+    const typed = ["F", "Fo", "Foy", "Foye", "Foyer"].map((name) => ({
+      type: "graph.renameNode" as const,
+      nodeId: LOBBY.id,
+      name,
+    }));
+    expect(expectSameOutcome(typed)).toEqual([
+      { type: "graph.renameNode", nodeId: LOBBY.id, name: "Foyer" },
+    ]);
+  });
+
+  it("keeps a real drag of a real gesture end to end", () => {
+    const batches: GraphEdit[][] = [];
+    const stack = new CommandStack<ShowGraph, GraphEdit>({
+      state: GRAPH,
+      dispatch: (_command, _state, edits) => batches.push(coalesceGraphEdits(edits)),
+    });
+    const drag = stack.beginGesture({ key: "drag", label: "Move" });
+    for (let index = 1; index <= 60; index += 1) {
+      drag.update(moveNode(LOBBY.id, { x: index, y: index }));
+    }
+    drag.commit();
+    // One edit for the drag, one entry on the stack, and an undo that lands
+    // back where the drag started rather than 59 pixels into it.
+    expect(batches).toEqual([
+      [{ type: "graph.moveNode", nodeId: LOBBY.id, position: { x: 60, y: 60 } }],
+    ]);
+    expect(stack.canUndo).toBe(true);
+    stack.undo();
+    expect(stored(stack.state)).toEqual(stored(GRAPH));
+  });
+
+  it("doesn't collapse across the destruction of what it names", () => {
+    // Two moves of two different lifetimes of the same node. Dropping the
+    // first would move a node that, at that point in the batch, is the one
+    // about to be deleted.
+    const edits: GraphEdit[] = [
+      { type: "graph.moveNode", nodeId: LOBBY.id, position: { x: 1, y: 1 } },
+      { type: "graph.removeNode", nodeId: LOBBY.id },
+      { type: "graph.addNode", node: scene(LOBBY.id, null) },
+      { type: "graph.moveNode", nodeId: LOBBY.id, position: { x: 9, y: 9 } },
+    ];
+    expect(expectSameOutcome(edits)).toHaveLength(4);
+  });
+
+  it("leaves steps alone — two connections are two connections", () => {
+    const edits: GraphEdit[] = [
+      { type: "graph.removeEdge", edgeId: NAVIGATE.id },
+      { type: "graph.addEdge", edge: NAVIGATE },
+      { type: "graph.removeEdge", edgeId: NAVIGATE.id },
+    ];
+    expect(expectSameOutcome(edits)).toHaveLength(3);
+  });
+
+  it("collapses the setters a gesture's undo produces too", () => {
+    const stack = new CommandStack<ShowGraph, GraphEdit>({ state: GRAPH });
+    const batches: GraphEdit[][] = [];
+    const tracked = new CommandStack<ShowGraph, GraphEdit>({
+      state: GRAPH,
+      dispatch: (_command, _state, edits) => batches.push(coalesceGraphEdits(edits)),
+    });
+    void stack;
+    const drag = tracked.beginGesture({ key: "drag", label: "Move" });
+    drag.update(moveNode(LOBBY.id, { x: 1, y: 1 }));
+    drag.update(moveNode(LOBBY.id, { x: 2, y: 2 }));
+    drag.commit();
+    tracked.undo();
+    expect(batches.map((batch) => batch.length)).toEqual([1, 1]);
+    // And the two together still put the server back where it started.
+    expect(stored(applyGraphEdits(GRAPH, batches.flat()))).toEqual(stored(GRAPH));
   });
 });

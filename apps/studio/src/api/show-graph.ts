@@ -6,6 +6,7 @@
 // "are there unpublished changes?" is derived by comparing their
 // timestamps (ADR-0002 — see @mechane/domain's `publishState`), not
 // stored on either.
+import { coalesceGraphEdits } from "@mechane/commands";
 import type { GraphEdit } from "@mechane/commands";
 import type { GraphState, ShowId } from "@mechane/domain";
 import {
@@ -134,7 +135,10 @@ export function useShowGraphEdits(
   const flush = useCallback(() => {
     timer.current = null;
     if (inFlight.current || failed.current) return;
-    const edits = pending.current;
+    // Coalesced here, at the wire, rather than as they arrive: a batch is
+    // only knowable as a whole, and two drags of the same node inside one
+    // debounce window collapse for the same reason one drag's frames do.
+    const edits = coalesceGraphEdits(pending.current);
     const base = version.current;
     if (edits.length === 0 || !showId || base === null) return;
     pending.current = [];

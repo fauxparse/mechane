@@ -22,6 +22,11 @@
 //     server stores rows and reads them back ordered by id (apps/api's
 //     `readShowGraph`), so an index would be a field nothing could honour.
 //     Order stays a client concern, as it already was.
+//   - **Every frame of a gesture.** The stack keeps all 150 positions a drag
+//     emitted, because it has to invert them; the wire wants the last one.
+//     `coalesceGraphEdits` is that reduction, and it belongs here rather than
+//     in the stack because knowing that a move supersedes a move is knowing
+//     what a move *is*.
 //   - **Intent beyond the atom.** A cascade arrives as the list of atoms it
 //     was composed from, not as "delete Flow, recursively". The server
 //     applies what it is told; blast radius is the editor's policy (#42).
@@ -144,6 +149,99 @@ export function commandForEdit(edit: GraphEdit): ShowGraphCommand {
       );
     }
   }
+}
+
+/**
+ * An edit that *sets* a value rather than nudging one, and therefore makes
+ * any earlier edit setting the same thing redundant: the key it writes, and
+ * the ids whose creation or destruction in between would mean the two edits
+ * aren't talking about the same thing after all.
+ *
+ * Deliberately not every edit type. `addEdge`/`removeEdge` and the add/remove
+ * pairs are *steps* — two of them in a batch mean two different things
+ * happened, and collapsing them would lose one.
+ */
+function supersedes(edit: GraphEdit): { key: string; ids: readonly string[] } | null {
+  switch (edit.type) {
+    case GRAPH_COMMAND_TYPES.moveNode:
+      return { key: `move:${edit.nodeId}`, ids: [edit.nodeId] };
+    case GRAPH_COMMAND_TYPES.renameNode:
+      return { key: `rename:${edit.nodeId}`, ids: [edit.nodeId] };
+    case GRAPH_COMMAND_TYPES.reparentNode:
+      // Absolute like a move: it carries both the Flow and the position, so
+      // the last one is the whole answer.
+      return {
+        key: `reparent:${edit.nodeId}`,
+        ids: edit.parentId === null ? [edit.nodeId] : [edit.nodeId, edit.parentId],
+      };
+    case GRAPH_COMMAND_TYPES.setFlowDefaultScene:
+      return {
+        key: `defaultScene:${edit.flowId}`,
+        ids: edit.sceneId === null ? [edit.flowId] : [edit.flowId, edit.sceneId],
+      };
+    case GRAPH_COMMAND_TYPES.renameSceneVariable:
+      return {
+        key: `renameVariable:${edit.sceneId}:${edit.variableId}`,
+        ids: [edit.sceneId, edit.variableId],
+      };
+    default:
+      return null;
+  }
+}
+
+/** Ids this edit brings into existence or destroys — a barrier for the above. */
+function structuralIds(edit: GraphEdit): readonly string[] {
+  switch (edit.type) {
+    case GRAPH_COMMAND_TYPES.addNode:
+      return [edit.node.id];
+    case GRAPH_COMMAND_TYPES.removeNode:
+      return [edit.nodeId];
+    case GRAPH_COMMAND_TYPES.addSceneVariable:
+      return [edit.variable.id];
+    case GRAPH_COMMAND_TYPES.removeSceneVariable:
+      return [edit.variableId];
+    default:
+      return [];
+  }
+}
+
+/**
+ * `edits` with the ones a later edit makes redundant dropped.
+ *
+ * A drag emits a position every frame and a rename a name every keystroke —
+ * which is right for the undo stack, where the whole run is one entry the
+ * user can step back through as a unit, and absurd on the wire, where 150
+ * absolute positions for one node say exactly what the last one says. This is
+ * the difference between the two: the stack keeps every frame because it
+ * needs to invert them, the network sends the outcome.
+ *
+ * Only *absolute setters* collapse (see `supersedes`), and only across a span
+ * with no add or remove of the ids involved: "move n, delete n, restore n,
+ * move n" is two moves of two different lifetimes of that node, and the first
+ * one stays. Everything else keeps its order and its multiplicity, so the
+ * batch still replays to exactly the graph the client is looking at.
+ */
+export function coalesceGraphEdits(edits: readonly GraphEdit[]): GraphEdit[] {
+  // Backwards, because the *last* setter is the one that survives: an edit is
+  // dropped when a key it wrote has already been seen further along.
+  const superseded = new Set<number>();
+  const seen = new Map<string, readonly string[]>();
+  for (let index = edits.length - 1; index >= 0; index -= 1) {
+    const edit = edits[index] as GraphEdit;
+    // A node coming or going resets everything it takes part in: edits either
+    // side of it are about different lifetimes, not the same value twice.
+    const barriers = structuralIds(edit);
+    if (barriers.length > 0) {
+      for (const [key, ids] of seen) {
+        if (ids.some((id) => barriers.includes(id))) seen.delete(key);
+      }
+    }
+    const setter = supersedes(edit);
+    if (!setter) continue;
+    if (seen.has(setter.key)) superseded.add(index);
+    else seen.set(setter.key, setter.ids);
+  }
+  return superseded.size === 0 ? [...edits] : edits.filter((_, index) => !superseded.has(index));
 }
 
 /**
