@@ -17,7 +17,7 @@ import type { ShowGraph } from "@mechane/graphql-schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef } from "react";
 
-import { toGraphInput } from "../editors/show/api-graph";
+import { toGraphInput } from "../editors/show/data/api-graph";
 import { GRAPHQL_ENDPOINT } from "./client";
 
 export const showGraphQueryKey = (id: ShowId, state: GraphState) =>

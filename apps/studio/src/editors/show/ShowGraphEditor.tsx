@@ -75,10 +75,10 @@ import {
 import type { Connection, FitViewOptions, OnNodeDrag, XYPosition } from "@xyflow/react";
 
 import "@xyflow/react/dist/style.css";
-import "./show-graph-editor.css";
+import "./graph/show-graph-editor.css";
 
-import { CommandPalette } from "./CommandPalette";
-import { GraphInspector } from "./GraphInspector";
+import { CommandPalette } from "./commands/CommandPalette";
+import { GraphInspector } from "./graph/GraphInspector";
 import {
   absolutePosition,
   FLOW_CONTENT_ORIGIN,
@@ -87,21 +87,21 @@ import {
   NODE_HEIGHT,
   NODE_WIDTH,
   PLACEHOLDER_NODE_TYPE,
-} from "./graph-to-flow";
-import type { ShowFlowEdge, ShowFlowNode } from "./graph-to-flow";
-import { NodeInteractionProvider } from "./node-interaction";
-import type { CreatableNode } from "./node-kinds";
-import { CREATABLE_NODES } from "./node-kinds";
-import { ShowFlowNode as FlowNodeBody, ShowNode } from "./ShowGraphNodes";
-import { useEditorKeys } from "./use-editor-keys";
-import { useGraphEditing } from "./use-graph-editing";
-import { useUndoKeys } from "./use-undo-keys";
-import { useViewportKeys } from "./use-viewport-keys";
-import { useShowGraphEditorActions } from "./use-show-graph-editor-actions";
-import { ShowEdgeRoutingProvider } from "./show-edge-rendering";
-import { showEdgeTypes } from "./show-edge-types";
-import type { ApiGraph } from "./api-graph";
-import type { PaletteCommand } from "./palette-commands";
+} from "./graph/graph-to-flow";
+import type { ShowFlowEdge, ShowFlowNode } from "./graph/graph-to-flow";
+import { NodeInteractionProvider } from "./graph/node-interaction";
+import type { CreatableNode } from "./graph/node-kinds";
+import { CREATABLE_NODES } from "./graph/node-kinds";
+import { ShowFlowNode as FlowNodeBody, ShowNode } from "./graph/ShowGraphNodes";
+import { useEditorKeys } from "./keyboard/use-editor-keys";
+import { useGraphEditing } from "./commands/use-graph-editing";
+import { useUndoKeys } from "./keyboard/use-undo-keys";
+import { useViewportKeys } from "./keyboard/use-viewport-keys";
+import { useShowGraphEditorActions } from "./commands/use-show-graph-editor-actions";
+import { ShowEdgeRoutingProvider } from "./graph/show-edge-rendering";
+import { showEdgeTypes } from "./graph/show-edge-types";
+import type { ApiGraph } from "./data/api-graph";
+import type { PaletteCommand } from "./commands/palette-commands";
 
 /** Widened from React Flow's 0.5 default so a whole Show fits on screen (#21). */
 export const MIN_ZOOM = 0.1;
@@ -443,7 +443,7 @@ interface ShowGraphContextMenuProps {
   edges: ShowFlowEdge[];
   onNodesChange: ReturnType<typeof useNodesState<ShowFlowNode>>[2];
   onEdgesChange: ReturnType<typeof useEdgesState<ShowFlowEdge>>[2];
-  beginDrag(): void;
+  beginDrag: OnNodeDrag<ShowFlowNode>;
   dragTo(moved: ShowFlowNode[]): void;
   endDrag: OnNodeDrag<ShowFlowNode>;
   editing: ReturnType<typeof useGraphEditing>;

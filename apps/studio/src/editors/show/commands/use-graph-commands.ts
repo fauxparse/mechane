@@ -21,8 +21,8 @@ import type { Gesture, ShowGraphCommand } from "@mechane/commands";
 import type { ShowGraph } from "@mechane/domain";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { toShowGraph } from "./api-graph";
-import type { ApiGraph } from "./api-graph";
+import { toShowGraph } from "../data/api-graph";
+import type { ApiGraph } from "../data/api-graph";
 
 export interface GraphCommands {
   /** The graph as edited — what the editor draws. */
