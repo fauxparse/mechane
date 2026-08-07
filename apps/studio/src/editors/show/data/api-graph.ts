@@ -1,11 +1,10 @@
 // The API boundary for graph *content* (issue #41), the counterpart to
 // ./graph-to-flow's boundary for graph *shape*.
 //
-// The graph arrives from GraphQL with every field of every node kind present
-// and nullable — `defaultSceneId` on a Source, `variables` on a Device —
-// because that's what one GraphQL type covering five node kinds looks like.
-// @mechane/domain's `ShowGraph` is a discriminated union instead, where a
-// Source simply has no `defaultSceneId` to be null.
+// The graph arrives from GraphQL as a GraphNode interface with one concrete
+// fragment per node kind. This boundary converts __typename back into
+// @mechane/domain's discriminated union, where a Source simply has no
+// defaultSceneId field at all.
 //
 // Commands (#41) are written against the domain union, not against the wire
 // shape, so this is where a graph stops being a query result and becomes the
@@ -17,7 +16,6 @@
 // from a discriminated union to one flat wire shape, per edit instead of per
 // graph.
 import type { GraphEdit } from "@mechane/commands";
-import { isNodeKind } from "@mechane/domain";
 import type { GraphEdge, GraphNode, Shape, Type, ShowGraph } from "@mechane/domain";
 import type {
   ApplyShowGraphEditsResult,
@@ -26,13 +24,30 @@ import type {
 } from "@mechane/graphql-schema";
 
 type ApiType = ApiShowGraph["shapes"][number]["fields"][number]["type"];
-type ApiVariable = Omit<ApiShowGraph["nodes"][number]["variables"][number], "type"> & {
+type ApiGraphNode = {
+  __typename: string;
+  id: string;
+  name: string;
+  parentId: string | null;
+  position: { x: number; y: number };
+  defaultSceneId?: string | null;
   type?: ApiType | null;
+  sourceType?: ApiType;
+  transformerType?: ApiType | null;
+  fieldDefaults?: { fieldPath: string[]; value: unknown }[];
+  variables?: { id: string; name: string; type?: ApiType | null }[];
+  perConnection?: boolean;
+  pairingCode?: string | null;
 };
-type ApiGraphNode = Omit<ApiShowGraph["nodes"][number], "type" | "variables" | "fieldDefaults"> & {
-  type?: ApiType | null;
-  fieldDefaults?: ApiShowGraph["nodes"][number]["fieldDefaults"];
-  variables?: ApiVariable[] | null;
+type ApiSceneNode = ApiGraphNode & { __typename: "SceneNode"; variables: NonNullable<ApiGraphNode["variables"]> };
+type ApiSourceNode = ApiGraphNode & {
+  __typename: "SourceNode";
+  sourceType: ApiType;
+  fieldDefaults: NonNullable<ApiGraphNode["fieldDefaults"]>;
+};
+type ApiTransformerNode = ApiGraphNode & {
+  __typename: "TransformerNode";
+  transformerType?: ApiType | null;
 };
 
 /** Just the parts of the query result this module needs. */
@@ -77,66 +92,63 @@ function toShape(shape: ApiShowGraph["shapes"][number]): Shape {
 }
 
 function toNode(node: ApiGraphNode): GraphNode {
-  // Same check, and same reason, as ./graph-to-flow's: `kind` is a string on
-  // the wire, and a kind this build doesn't know about should say so rather
-  // than become a silently malformed node.
-  if (!isNodeKind(node.kind)) {
-    throw new Error(`Unknown Show graph node kind "${node.kind}" on node "${node.id}".`);
-  }
   const base = {
     id: node.id,
     name: node.name,
     position: { x: node.position.x, y: node.position.y },
   };
-  switch (node.kind) {
-    case "scene":
+  switch (node.__typename) {
+    case "SceneNode": {
+      const scene = node as ApiSceneNode;
       return {
         ...base,
         kind: "scene",
-        parentId: node.parentId ?? null,
-        variables: (node.variables ?? []).map((variable) => ({
+        parentId: scene.parentId ?? null,
+        variables: scene.variables.map((variable) => ({
           id: variable.id,
           name: variable.name,
           type: variable.type ? toType(variable.type as ApiType) : null,
         })),
       };
-    case "flow":
+    }
+    case "FlowNode":
       // Flows and Devices are always Show-level peers (#23, #26), which the
-      // domain types as `parentId: null` — so it's asserted here rather than
-      // read, and a wire graph that disagrees fails `assertValidShowGraph`.
+      // domain types as `parentId: null` — so it is asserted here rather than
+      // read, and a wire graph that disagrees fails domain validation.
       return { ...base, kind: "flow", parentId: null, defaultSceneId: node.defaultSceneId ?? null };
-    case "device":
+    case "DeviceNode":
       return {
         ...base,
         kind: "device",
         parentId: null,
-        perConnection: node.perConnection,
-        // Null while the server hasn't minted one yet (#45) — the state a
-        // Device is in between being created on the canvas and the first
-        // save coming back.
+        perConnection: node.perConnection ?? false,
         pairingCode: node.pairingCode ?? null,
       };
-    case "source": {
-      if (!node.type) throw new Error(`Source "${node.id}" has no Type.`);
+    case "SourceNode": {
+      const source = node as ApiSourceNode;
       return {
         ...base,
         kind: "source",
-        parentId: node.parentId ?? null,
-        type: toType(node.type as ApiType),
-        fieldDefaults: (node.fieldDefaults ?? []).map((fieldDefault) => ({
-          nodeId: node.id,
+        parentId: source.parentId ?? null,
+        type: toType(source.sourceType as ApiType),
+        fieldDefaults: source.fieldDefaults.map((fieldDefault) => ({
+          nodeId: source.id,
           fieldPath: [...fieldDefault.fieldPath],
           value: fieldDefault.value,
         })),
       };
     }
-    case "transformer":
+    case "TransformerNode": {
+      const transformer = node as ApiTransformerNode;
       return {
         ...base,
         kind: "transformer",
-        parentId: node.parentId ?? null,
-        type: node.type ? toType(node.type as ApiType) : null,
+        parentId: transformer.parentId ?? null,
+        type: transformer.transformerType ? toType(transformer.transformerType as ApiType) : null,
       };
+    }
+    default:
+      throw new Error(`Unknown Show graph node typename "${node.__typename}" on node "${node.id}".`);
   }
 }
 

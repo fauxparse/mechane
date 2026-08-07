@@ -17,41 +17,32 @@ export const GetShowGraphQuery = graphql(`
       updatedAt
       version
       nodes {
+        __typename
         id
-        kind
         name
         parentId
-        defaultSceneId
-        type {
-          kind
-          shapeId
-          of {
-            kind
-            shapeId
+        position { x y }
+        ... on SceneNode {
+          variables {
+            id
+            name
+            type { kind shapeId of { kind shapeId } }
           }
         }
-        fieldDefaults {
-          fieldPath
-          value
+        ... on FlowNode {
+          defaultSceneId
         }
-        position {
-          x
-          y
+        ... on SourceNode {
+          sourceType: type { kind shapeId of { kind shapeId } }
+          fieldDefaults { fieldPath value }
         }
-        variables {
-          id
-          name
-          type {
-            kind
-            shapeId
-            of {
-              kind
-              shapeId
-            }
-          }
+        ... on TransformerNode {
+          transformerType: type { kind shapeId of { kind shapeId } }
         }
-        perConnection
-        pairingCode
+        ... on DeviceNode {
+          perConnection
+          pairingCode
+        }
       }
       edges {
         id

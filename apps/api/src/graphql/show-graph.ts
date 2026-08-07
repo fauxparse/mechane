@@ -86,6 +86,24 @@ function badInput(message: string): GraphQLError {
   return new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
 }
 
+/** Resolves the domain discriminator to the concrete GraphQL node type. */
+export function resolveGraphNodeType(node: Pick<GraphNode, "kind">): string {
+  switch (node.kind) {
+    case "scene":
+      return "SceneNode";
+    case "flow":
+      return "FlowNode";
+    case "source":
+      return "SourceNode";
+    case "transformer":
+      return "TransformerNode";
+    case "device":
+      return "DeviceNode";
+    default:
+      throw new GraphQLError(`Unknown graph node kind "${node.kind}".`);
+  }
+}
+
 function parseType(input: TypeInput | null | undefined): Type | undefined {
   if (!input) return undefined;
   if (["text", "number", "boolean", "image", "colour", "date", "datetime"].includes(input.kind)) {
@@ -349,10 +367,10 @@ export function serializeAppliedEdits(applied: AppliedShowGraphEdits) {
 }
 
 /**
- * The wire shape of a graph. The GraphQL `GraphNode`/`GraphEdge` types are
- * one flat shape each — a client rendering a graph branches on `kind`
- * anyway, and an interface per node kind would make every query five
- * inline fragments long for two extra fields.
+ * The wire shape of a graph. Graph nodes retain their domain `kind` internally
+ * so GraphQL's GraphNode interface resolver can select the concrete output
+ * type; `kind` is not exposed as a GraphQL field. Inputs remain flat because
+ * GraphQL has no input unions.
  */
 export function serializeShowGraph(graph: StoredShowGraph) {
   return {

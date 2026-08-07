@@ -34,11 +34,9 @@ import type { Edge, Node } from "@xyflow/react";
 
 /**
  * A node as this mapper needs it described. Structural rather than named, so
- * both the wire shape (`@mechane/graphql-schema`'s `ShowGraphNode`, where
- * every kind's fields are present and nullable) and the domain's
- * discriminated union (where a Source simply has no `defaultSceneId`) satisfy
- * it. The editor holds the domain shape (#41); a freshly fetched graph is
- * still the wire shape until ./api-graph converts it.
+ * the domain's discriminated union and other graph fixtures can use the same
+ * rendering path. The GraphQL interface has already been converted by
+ * ./api-graph before the editor reaches this mapper.
  */
 export interface MappableNode {
   id: string;

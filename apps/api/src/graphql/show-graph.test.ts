@@ -6,8 +6,26 @@ import { GRAPH_COMMAND_TYPES } from "@mechane/commands";
 import { GraphQLError } from "graphql";
 import { describe, expect, it } from "vitest";
 
-import { parseGraphEdit, serializeGraphEdit } from "./show-graph";
+import { parseGraphEdit, resolveGraphNodeType, serializeGraphEdit } from "./show-graph";
 import type { GraphEditInput } from "./show-graph";
+
+describe("GraphNode interface resolution", () => {
+  it.each([
+    ["scene", "SceneNode"],
+    ["flow", "FlowNode"],
+    ["source", "SourceNode"],
+    ["transformer", "TransformerNode"],
+    ["device", "DeviceNode"],
+  ] as const)("maps %s to %s", (kind, typeName) => {
+    expect(resolveGraphNodeType({ kind })).toBe(typeName);
+  });
+
+  it("refuses an unknown domain kind", () => {
+    expect(() => resolveGraphNodeType({ kind: "hologram" } as never)).toThrow(
+      /Unknown graph node kind/,
+    );
+  });
+});
 
 const NODE = {
   id: "scene_lobby",
