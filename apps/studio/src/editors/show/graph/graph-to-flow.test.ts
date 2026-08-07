@@ -69,6 +69,7 @@ describe("graphToFlow", () => {
     expect(nodes[0]?.data).toEqual({
       kind: "scene",
       name: "Cast your vote",
+      type: null,
       variables: [{ id: "variable_1", name: "prompt", type: null }],
       defaultSceneId: null,
       // Nothing feeds the Variable, so it's dangling (#35) — and nothing is

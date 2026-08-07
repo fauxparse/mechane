@@ -14,6 +14,9 @@ import type { GraphNode, NodeKind, Position } from "@mechane/domain";
 import {
   Bot,
   Box,
+  Calendar,
+  CalendarClock,
+  Circle,
   Hash,
   List,
   Projector,
@@ -124,9 +127,8 @@ export const CREATABLE_NODES: CreatableNode[] = [
  * A Source's icon reflects the *type of data it holds* (#35) rather than
  * "Source" in general — the icon is doing the work a hue would otherwise do.
  *
- * The Source/Shape type set doesn't exist yet: PRD.md §10 defers it, and #35
- * flagged this mapping as inferred and extensible. `Box` (an object) is the
- * fallback until Shapes land, which is why every Source currently shows it.
+ * Structured and semantic Source types extend the original mapping without
+ * introducing hue-based node chrome (#109).
  */
 export const SOURCE_TYPE_ICONS = {
   text: Type,
@@ -134,6 +136,10 @@ export const SOURCE_TYPE_ICONS = {
   boolean: ToggleLeft,
   object: Box,
   array: List,
+  image: Box,
+  colour: Circle,
+  date: Calendar,
+  datetime: CalendarClock,
 } as const satisfies Record<string, LucideIcon>;
 
 /**

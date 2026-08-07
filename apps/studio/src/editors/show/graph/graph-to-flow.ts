@@ -28,8 +28,8 @@
 // because the editor now holds the *domain* graph so that commands can act on
 // it (#41), while a freshly fetched graph is still the wire shape. Both draw
 // the same way, and neither has to be converted just to be rendered.
-import { isEdgeKind, isNodeKind } from "@mechane/domain";
-import type { EdgeKind, NodeKind, Position } from "@mechane/domain";
+import { areTypesCompatible, findCoercion, isEdgeKind, isNodeKind } from "@mechane/domain";
+import type { EdgeKind, NodeKind, Position, PrimitiveType, Shape, Type } from "@mechane/domain";
 import type { Edge, Node } from "@xyflow/react";
 
 /**
@@ -47,7 +47,9 @@ export interface MappableNode {
   position: Position;
   parentId?: string | null;
   defaultSceneId?: string | null;
-  variables?: readonly { id: string; name: string }[] | null;
+  type?: unknown;
+  variables?: readonly { id: string; name: string; type?: unknown }[] | null;
+  fieldDefaults?: readonly unknown[] | null;
   perConnection?: boolean | null;
   pairingCode?: string | null;
 }
@@ -60,6 +62,7 @@ export interface MappableEdge {
   targetPath?: readonly string[] | null;
   /** The wire shape resolves this for the client; the domain reads it off the path. */
   targetVariableId?: string | null;
+  fieldMapping?: unknown;
 }
 
 /**
@@ -97,8 +100,9 @@ export const FLOW_CONTENT_ORIGIN: Position = {
 export type ShowNodeData = {
   kind: NodeKind;
   name: string;
+  type: Type | null;
   /** Scene Variables, in graph order. Empty for every other kind. */
-  variables: { id: string; name: string }[];
+  variables: { id: string; name: string; type?: Type | null }[];
   /** The Scene a Flow enters by default (#23), if one has been chosen. */
   defaultSceneId: string | null;
   /**
@@ -135,6 +139,8 @@ export type ShowEdgeData = {
   kind: EdgeKind;
   /** The Scene Variable a wiring edge feeds — the head of its target path. */
   targetVariableId: string | null;
+  coercing: boolean;
+  invalidReason: string | null;
 };
 
 /**
@@ -245,7 +251,11 @@ function toFlowNode(
     data: {
       kind,
       name: node.name,
-      variables: [...(node.variables ?? [])],
+      type: (node.type as Type | null | undefined) ?? null,
+      variables: [...(node.variables ?? [])].map((variable) => ({
+        ...variable,
+        type: variable.type as Type | null | undefined,
+      })),
       defaultSceneId: node.defaultSceneId ?? null,
       wiredVariableIds: (node.variables ?? []).reduce<string[]>((ids, variable) => {
         if (wiredVariableIds.has(variable.id)) ids.push(variable.id);
@@ -261,11 +271,32 @@ function toFlowNode(
   };
 }
 
-function toFlowEdge(edge: MappableEdge): ShowFlowEdge {
+function toFlowEdge(
+  edge: MappableEdge,
+  graphNodes: readonly MappableNode[],
+  shapes: readonly Shape[] = [],
+): ShowFlowEdge {
   if (!isEdgeKind(edge.kind)) {
     throw new Error(`Unknown Show graph edge kind "${edge.kind}" on edge "${edge.id}".`);
   }
   const targetVariableId = edge.targetVariableId ?? edge.targetPath?.[0] ?? null;
+  const source = graphNodes.find((node) => node.id === edge.sourceId);
+  const target = graphNodes.find((node) => node.id === edge.targetId);
+  const targetType =
+    (target?.variables?.find((variable) => variable.id === targetVariableId)?.type as Type | null | undefined) ?? null;
+  const coercing =
+    edge.kind === "wiring" &&
+    typeof source?.type === "string" &&
+    typeof targetType === "string" &&
+    source.type !== targetType &&
+    findCoercion(source.type as PrimitiveType, targetType as PrimitiveType) !== undefined;
+  const invalidReason =
+    edge.kind === "wiring" &&
+    source?.type &&
+    targetType &&
+    !areTypesCompatible(source.type as Type, targetType, shapes)
+      ? "Incompatible types"
+      : null;
   return {
     id: edge.id,
     type: SMART_SMOOTH_STEP_EDGE_TYPE,
@@ -281,6 +312,8 @@ function toFlowEdge(edge: MappableEdge): ShowFlowEdge {
       // carries it as the head of the target path (`wiringTargetVariableId`),
       // so read whichever one is there.
       targetVariableId,
+      coercing,
+      invalidReason,
     },
   };
 }
@@ -291,7 +324,11 @@ function toFlowEdge(edge: MappableEdge): ShowFlowEdge {
  * no caller has to remember that.
  */
 export function graphToFlow(
-  graph: { nodes: readonly MappableNode[]; edges: readonly MappableEdge[] } | null | undefined,
+  graph: {
+    nodes: readonly MappableNode[];
+    edges: readonly MappableEdge[];
+    shapes?: readonly Shape[];
+  } | null | undefined,
   options: { collapsedFlowIds?: ReadonlySet<string> } = {},
 ): {
   nodes: ShowFlowNode[];
@@ -354,9 +391,9 @@ export function graphToFlow(
       const hiddenTarget = graph.nodes.find((node) => node.id === edge.targetId);
       const flowId = hiddenTarget?.parentId;
       if (edge.kind === "wiring" && flowId && collapsed.has(flowId)) {
-        return { ...toFlowEdge(edge), target: flowId, targetHandle: INPUT_HANDLE };
+          return { ...toFlowEdge(edge, graph.nodes, graph.shapes), target: flowId, targetHandle: INPUT_HANDLE };
       }
-      return toFlowEdge(edge);
+      return toFlowEdge(edge, graph.nodes, graph.shapes);
     }),
   };
 }
