@@ -407,6 +407,14 @@ export const schema = createSchema<GraphQLContext>({
       targetPath: [String!]!
     }
 
+    type PublishLoss {
+      sourceId: ID!
+      fieldId: ID!
+      fieldName: String!
+      path: [String!]!
+      reason: String!
+    }
+
     "A Show's graph in one state. Draft and published are independently readable (ADR-0002)."
     type ShowGraph {
       showId: ID!
@@ -422,6 +430,8 @@ export const schema = createSchema<GraphQLContext>({
       version stored — see \`applyShowGraphEdits\`.
       """
       version: Int!
+      "Fields that lost data while this graph was published."
+      losses: [PublishLoss!]!
     }
 
     input PositionInput {

@@ -396,6 +396,7 @@ export function serializeShowGraph(graph: StoredShowGraph) {
     nodes: graph.nodes.map(serializeNode),
     edges: graph.edges.map(serializeEdge),
     shapes: (graph.shapes ?? []).map(serializeShape),
+    losses: graph.losses ?? [],
   };
 }
 

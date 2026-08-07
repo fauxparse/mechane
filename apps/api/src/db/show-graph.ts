@@ -38,6 +38,14 @@ import {
   shows,
 } from "./schema";
 
+export interface PublishLoss {
+  sourceId: string;
+  fieldId: string;
+  fieldName: string;
+  path: string[];
+  reason: string;
+}
+
 /** A stored graph, plus the row metadata a caller may want to show. */
 export interface StoredShowGraph extends ShowGraph {
   showId: string;
@@ -49,6 +57,8 @@ export interface StoredShowGraph extends ShowGraph {
    * tell "applied to what I have" from "applied to something else" (#103).
    */
   version: number;
+  /** Data loss reported while publishing this graph, if applicable. */
+  losses?: PublishLoss[];
 }
 
 /**
