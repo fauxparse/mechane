@@ -18,7 +18,7 @@
 // on the same seam.
 
 import { assertValidShowGraph, findNode, InvalidShowGraphError } from "./graph";
-import type { EdgeKind, GraphEdge, ShowGraph } from "./graph";
+import type { EdgeKind, GraphEdge, GraphNode, ShowGraph } from "./graph";
 
 /** A drag from one node's handle to another's, as the editor reports it. */
 export interface ConnectionRequest {
@@ -45,7 +45,7 @@ export function connectionKindFor(graph: ShowGraph, request: ConnectionRequest):
   const consumer = findNode(graph, request.targetId);
   if (!producer || !consumer) return null;
   if (consumer.kind === "device") return "device";
-  if (consumer.kind !== "scene") return null;
+  if (consumer.kind !== "scene" && consumer.kind !== "transformer") return null;
   if (producer.kind === "source" || producer.kind === "transformer") return "wiring";
   if (producer.kind === "scene") return "navigate";
   return null;
@@ -62,6 +62,10 @@ export function connectionEdge(
   const base = { id, sourceId: request.sourceId, targetId: request.targetId, sourcePath: [] };
   switch (kind) {
     case "wiring": {
+      const consumer = findNode(graph, request.targetId);
+      if (consumer?.kind === "transformer") {
+        return { ...base, kind: "wiring", targetPath: [] };
+      }
       const variableId = request.targetVariableId;
       if (!variableId) return null;
       return { ...base, kind: "wiring", targetPath: [variableId] };
@@ -98,14 +102,31 @@ export function connectionError(graph: ShowGraph, request: ConnectionRequest): s
   if (kind === null) {
     return `A ${producer.kind} can't connect to a ${consumer.kind}.`;
   }
-  if (kind === "wiring" && !request.targetVariableId) {
+  if (
+    kind === "wiring" &&
+    findNode(graph, request.targetId)?.kind === "scene" &&
+    !request.targetVariableId
+  ) {
     return "Drop onto one of the Scene's Variables.";
   }
 
   const candidate = connectionEdge(graph, request, CANDIDATE_EDGE_ID);
   if (!candidate) return `A ${producer.kind} can't connect to a ${consumer.kind}.`;
   try {
-    assertValidShowGraph({ nodes: graph.nodes, edges: [...graph.edges, candidate] });
+    const producer = findNode(graph, request.sourceId);
+    const consumer = findNode(graph, request.targetId);
+    const nodes =
+      producer?.parentId !== null &&
+      producer?.parentId !== undefined &&
+      consumer?.kind === "transformer" &&
+      consumer.parentId === null
+        ? graph.nodes.map((node) =>
+            node.id === consumer.id
+              ? ({ ...node, parentId: producer.parentId } as GraphNode)
+              : node,
+          )
+        : graph.nodes;
+    assertValidShowGraph({ nodes, edges: [...graph.edges, candidate] });
   } catch (error) {
     if (error instanceof InvalidShowGraphError) return humanise(error, kind);
     throw error;
@@ -134,7 +155,7 @@ function humanise(error: InvalidShowGraphError, kind: EdgeKind): string {
     return "Navigate edges connect two Scenes in the same Flow.";
   }
   if (reason.includes("Flow-local")) {
-    return "A Source inside a Flow can only feed Scenes in that Flow.";
+    return "A Source inside a Flow can only feed nodes in that Flow.";
   }
   if (reason.includes("nested Scene is reached via its Flow")) {
     return "A Device is driven by a Flow or a top-level Scene, not by a Scene inside a Flow.";

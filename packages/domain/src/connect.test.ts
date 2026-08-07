@@ -7,7 +7,14 @@ import {
   connectionKindFor,
   connectionTargets,
 } from "./connect";
-import type { DeviceNode, FlowNode, SceneNode, ShowGraph, SourceNode } from "./graph";
+import type {
+  DeviceNode,
+  FlowNode,
+  SceneNode,
+  ShowGraph,
+  SourceNode,
+  TransformerNode,
+} from "./graph";
 
 const at = { x: 0, y: 0 };
 
@@ -43,6 +50,19 @@ const TALLY: SourceNode = {
   parentId: null,
 };
 const LOCAL: SourceNode = { ...TALLY, id: "source_local", name: "Local", parentId: VOTE.id };
+const TRANSFORMER: TransformerNode = {
+  id: "transformer_total",
+  kind: "transformer",
+  name: "Total",
+  position: at,
+  parentId: null,
+};
+const OTHER_LOCAL: SourceNode = { ...LOCAL, id: "source_other", parentId: INTERVAL.id };
+const LOCAL_TRANSFORMER: TransformerNode = {
+  ...TRANSFORMER,
+  id: "transformer_local",
+  parentId: VOTE.id,
+};
 const PHONE: DeviceNode = {
   id: "device_phone",
   kind: "device",
@@ -54,11 +74,17 @@ const PHONE: DeviceNode = {
 };
 
 const GRAPH: ShowGraph = {
-  nodes: [VOTE, INTERVAL, VOTING, RESULTS, INTERMISSION, LOBBY, TALLY, LOCAL, PHONE],
+  nodes: [VOTE, INTERVAL, VOTING, RESULTS, INTERMISSION, LOBBY, TALLY, LOCAL, TRANSFORMER, PHONE],
   edges: [],
 };
 
 describe("connectionKindFor", () => {
+  it("reads wiring to a Transformer as a data connection", () => {
+    expect(connectionKindFor(GRAPH, { sourceId: TALLY.id, targetId: TRANSFORMER.id })).toBe(
+      "wiring",
+    );
+  });
+
   it("reads the edge kind off the pair of node kinds", () => {
     expect(connectionKindFor(GRAPH, { sourceId: TALLY.id, targetId: VOTING.id })).toBe("wiring");
     expect(connectionKindFor(GRAPH, { sourceId: VOTING.id, targetId: RESULTS.id })).toBe(
@@ -75,6 +101,12 @@ describe("connectionKindFor", () => {
 });
 
 describe("connectionEdge", () => {
+  it("leaves Transformer input paths unnamed", () => {
+    expect(
+      connectionEdge(GRAPH, { sourceId: TALLY.id, targetId: TRANSFORMER.id }, "edge_new"),
+    )?.toEqual(expect.objectContaining({ kind: "wiring", targetPath: [] }));
+  });
+
   it("puts the Variable at the head of a wiring edge's target path", () => {
     const edge = connectionEdge(
       GRAPH,
@@ -134,6 +166,16 @@ describe("canConnect", () => {
     );
   });
 
+  it("allows a Flow-local Source to pull a top-level Transformer into its Flow", () => {
+    expect(connectionError(GRAPH, { sourceId: LOCAL.id, targetId: TRANSFORMER.id })).toBeNull();
+    expect(
+      connectionError(
+        { ...GRAPH, nodes: [...GRAPH.nodes, OTHER_LOCAL, LOCAL_TRANSFORMER] },
+        { sourceId: OTHER_LOCAL.id, targetId: LOCAL_TRANSFORMER.id },
+      ),
+    ).toContain("Source inside a Flow");
+  });
+
   // #29's placement rule, enforced here because it's structural.
   it("refuses a Flow-local Source feeding outside its Flow", () => {
     expect(
@@ -142,7 +184,7 @@ describe("canConnect", () => {
         targetId: LOBBY.id,
         targetVariableId: "variable_house",
       }),
-    ).toBe("A Source inside a Flow can only feed Scenes in that Flow.");
+    ).toBe("A Source inside a Flow can only feed nodes in that Flow.");
     expect(
       canConnect(GRAPH, {
         sourceId: LOCAL.id,
@@ -216,13 +258,13 @@ describe("canConnect", () => {
 describe("connectionTargets", () => {
   it("lists the Scenes and Variables a Source may feed", () => {
     const targets = connectionTargets(GRAPH, TALLY.id);
-    expect([...targets.nodeIds].sort()).toEqual([LOBBY.id, VOTING.id]);
+    expect([...targets.nodeIds].sort()).toEqual([LOBBY.id, VOTING.id, TRANSFORMER.id]);
     expect([...targets.variableIds].sort()).toEqual(["variable_house", "variable_prompt"]);
   });
 
   it("narrows to its own Flow for a Flow-local Source", () => {
     const targets = connectionTargets(GRAPH, LOCAL.id);
-    expect([...targets.nodeIds]).toEqual([VOTING.id]);
+    expect([...targets.nodeIds]).toEqual([VOTING.id, TRANSFORMER.id]);
     expect([...targets.variableIds]).toEqual(["variable_prompt"]);
   });
 

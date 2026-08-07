@@ -11,6 +11,8 @@
 import {
   addEdge,
   addNode,
+  composite,
+  reparentNode,
   createFlowWithNodes,
   addSceneVariable,
   deleteGraphElements,
@@ -206,7 +208,26 @@ export function useGraphEditing(
       if (reason) return reason;
       const edge = connectionEdge(graph, request, generateId("edge"));
       if (!edge) return "That connection can't be made.";
-      execute(addEdge(edge, "Connect"));
+      const producer = graph.nodes.find((node) => node.id === request.sourceId);
+      const consumer = graph.nodes.find((node) => node.id === request.targetId);
+      if (
+        producer?.parentId !== null &&
+        producer?.parentId !== undefined &&
+        consumer?.kind === "transformer" &&
+        consumer.parentId === null
+      ) {
+        execute(
+          composite({
+            label: "Connect",
+            commands: [
+              reparentNode(consumer.id, producer.parentId, consumer.position),
+              addEdge(edge, "Connect"),
+            ],
+          }),
+        );
+      } else {
+        execute(addEdge(edge, "Connect"));
+      }
       return null;
     },
     [execute, graph, requestOf],

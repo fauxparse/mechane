@@ -225,7 +225,7 @@ describe("assertValidShowGraph", () => {
 
     it("rejects a wiring edge targeting a node that isn't a Scene", () => {
       const showGraph = graph([source("r1"), device("d1")], [wiring("e1", "r1", "d1", ["v1"])]);
-      expect(() => assertValidShowGraph(showGraph)).toThrow(/wiring always targets a Variable/);
+      expect(() => assertValidShowGraph(showGraph)).toThrow(/targets a device/);
     });
 
     it("rejects a wiring edge targeting a Variable the Scene doesn't have", () => {
@@ -330,6 +330,22 @@ describe("assertValidShowGraph", () => {
         [wiring("e1", "r1", "c1", ["v1"])],
       );
       expect(() => assertValidShowGraph(showGraph)).not.toThrow();
+    });
+
+    it("accepts multiple Flow-local inputs into a Transformer in their Flow", () => {
+      const showGraph = graph(
+        [flow("f1"), source("r1", "f1"), source("r2", "f1"), transformer("t1", "f1")],
+        [wiring("e1", "r1", "t1", []), wiring("e2", "r2", "t1", [])],
+      );
+      expect(() => assertValidShowGraph(showGraph)).not.toThrow();
+    });
+
+    it("rejects a Flow-local Source feeding a Transformer outside its Flow", () => {
+      const showGraph = graph(
+        [flow("f1"), source("r1", "f1"), transformer("t1")],
+        [wiring("e1", "r1", "t1", [])],
+      );
+      expect(() => assertValidShowGraph(showGraph)).toThrow(/outside its Flow/);
     });
   });
 

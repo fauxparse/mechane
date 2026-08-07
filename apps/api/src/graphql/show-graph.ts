@@ -124,11 +124,6 @@ function parseEdge(input: GraphEdgeInput): GraphEdge {
   };
   switch (input.kind) {
     case "wiring":
-      if (base.targetPath.length === 0) {
-        throw badInput(
-          `Wiring edge "${input.id}" needs a targetPath naming at least the Scene Variable it feeds.`,
-        );
-      }
       return { ...base, kind: "wiring" };
     case "navigate":
       return {
@@ -179,7 +174,8 @@ export function serializeShowGraph(graph: StoredShowGraph) {
       // Derived, not stored input: the head of a wiring edge's target path
       // is the Variable it lands on, and a client that only cares which
       // Variable is fed shouldn't have to know that.
-      targetVariableId: edge.kind === "wiring" ? wiringTargetVariableId(edge) : null,
+      targetVariableId:
+        edge.kind === "wiring" && edge.targetPath.length > 0 ? wiringTargetVariableId(edge) : null,
       cueId: edge.kind === "navigate" ? edge.cueId : null,
       actionId: edge.kind === "navigate" ? edge.actionId : null,
     })),

@@ -238,7 +238,7 @@ export const graphNodeVariables = pgTable(
 // The three edge kinds (#20, direction corrected by #26), all running
 // producer → consumer, in one table:
 //
-//   wiring    Source | Transformer   → Scene Variable  (paths set)
+//   wiring    Source | Transformer → Transformer input or Scene Variable
 //   navigate  Scene                  → Scene           (same Flow, #25)
 //   device    Flow | top-level Scene → Device
 //
