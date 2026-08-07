@@ -1,9 +1,0 @@
-# Event payload expressions evaluate on the Device, at fire time
-
-An Element's Event carries an authorable payload: a list of named values, each produced by a director-authored JEXL expression evaluated at the moment the Event fires. Those expressions evaluate **on the Device**, not on the server — the one deliberate exception to [[0004]], which evaluates Transformer expressions server-side only.
-
-[[0004]] has two rationales, and they come apart here. Its **sandboxing** rationale applies with full force: a director is not a developer, the expression is untrusted input, and it runs as a JEXL subset rather than raw JavaScript wherever it runs. Its **determinism** rationale — every connected Device sees an identical result computed once — does not apply, because a tap payload is not shared state. It is per-Device and per-tap by construction, and the context it needs exists nowhere else: which Element was tapped, the chain of Slot iterations containing it, and the Scene's Variable values as resolved on that Device. Navigation and Flow-local Variables resolve in the `player` client rather than on the server, so a server-side evaluation of a tap payload is not undesirable so much as impossible.
-
-The exception is narrow: it covers Event payloads only. Transformers remain server-only and are untouched.
-
-**Considered and rejected**: a fixed, non-authorable payload (no client evaluator to ship and no new exception to make, but the author cannot say what a tap *means* in their Show, and every interaction would carry the same shape regardless of context); round-tripping to the server to evaluate the payload (preserves [[0004]] verbatim, but the server does not hold the Device-local context the expression reads, so it would have to be shipped up first — evaluating it in the place it already lives, with the same sandbox, for a round-trip's less latency).
