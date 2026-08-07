@@ -156,6 +156,7 @@ export const PLACEHOLDER_NODE_TYPE = "showNode";
 
 /** The React Flow node type a Flow renders as: a sized container. */
 export const FLOW_NODE_TYPE = "showFlow";
+export const SMART_SMOOTH_STEP_EDGE_TYPE = "smartSmoothStep";
 
 function nodeKindOf(node: MappableNode): NodeKind {
   // The API types `kind` as a string, so this is the boundary that turns it
@@ -246,6 +247,7 @@ function toFlowEdge(edge: MappableEdge): ShowFlowEdge {
   const targetVariableId = edge.targetVariableId ?? edge.targetPath?.[0] ?? null;
   return {
     id: edge.id,
+    type: SMART_SMOOTH_STEP_EDGE_TYPE,
     source: edge.sourceId,
     target: edge.targetId,
     sourceHandle: OUTPUT_HANDLE,
