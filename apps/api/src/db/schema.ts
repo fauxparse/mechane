@@ -376,6 +376,7 @@ export const graphEdges = pgTable(
       .array()
       .notNull()
       .default(sql`'{}'`),
+    fieldMapping: jsonb("field_mapping"),
     // The head of `target_path` — the Scene Variable a wiring edge lands
     // on. Generated rather than written so it can't disagree with the path
     // it comes from, while still being a real column the foreign key below

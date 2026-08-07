@@ -191,6 +191,9 @@ type GraphEdge {
   """
   targetPath: [String!]!
 
+  """Wiring edges only: resolved stable field-id mapping."""
+  fieldMapping: JSON
+
   """
   Wiring edges only: the Scene Variable this edge feeds — the head of targetPath.
   """
@@ -267,6 +270,7 @@ input GraphEdgeInput {
   Wiring edges must give at least the Scene Variable's id. Defaults to empty.
   """
   targetPath: [String!]
+  fieldMapping: JSON
   cueId: ID
   actionId: ID
 }

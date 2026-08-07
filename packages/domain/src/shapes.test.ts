@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  areTypesCompatible,
   assertValidShapes,
   topologicallySortShapes,
   assertValueConformsToShape,
@@ -88,6 +89,32 @@ describe("Shape values", () => {
     expect(() =>
       assertValueConformsToShape({ name: "Ada", addresses: [{ street: "Main" }] }, person, [person, address]),
     ).not.toThrow();
+  });
+});
+
+describe("type compatibility", () => {
+  it("allows table coercions and single-to-array wrapping", () => {
+    expect(areTypesCompatible("number", "text")).toBe(true);
+    expect(areTypesCompatible("text", { kind: "array", of: "number" })).toBe(false);
+    expect(areTypesCompatible("number", { kind: "array", of: "number" })).toBe(true);
+    expect(areTypesCompatible({ kind: "array", of: "number" }, "number")).toBe(false);
+  });
+
+  it("matches Shape fields by normalized names and ignores unmatched targets", () => {
+    const source: Shape = {
+      id: "source",
+      name: "Source",
+      fields: [{ id: "source_count", name: "Count Value", type: "number", required: true, defaultValue: 0 }],
+    };
+    const target: Shape = {
+      id: "target",
+      name: "Target",
+      fields: [
+        { id: "target_count", name: "countvalue", type: "text", required: true, defaultValue: "" },
+        { id: "target_extra", name: "Extra", type: "text", required: false, defaultValue: null },
+      ],
+    };
+    expect(areTypesCompatible({ kind: "shape", shapeId: source.id }, { kind: "shape", shapeId: target.id }, [source, target])).toBe(true);
   });
 });
 

@@ -304,6 +304,8 @@ export const schema = createSchema<GraphQLContext>({
       without disturbing its siblings.
       """
       targetPath: [String!]!
+      "Wiring edges only: resolved stable field-id mapping."
+      fieldMapping: JSON
       "Wiring edges only: the Scene Variable this edge feeds — the head of targetPath."
       targetVariableId: ID
       "Navigate edges only: which Cue/Action pairing this transition represents."
@@ -366,6 +368,7 @@ export const schema = createSchema<GraphQLContext>({
       sourcePath: [String!]
       "Wiring edges must give at least the Scene Variable's id. Defaults to empty."
       targetPath: [String!]
+      fieldMapping: JSON
       cueId: ID
       actionId: ID
     }

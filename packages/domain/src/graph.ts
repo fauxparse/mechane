@@ -25,7 +25,7 @@
 //   - A Show with zero Flows is valid and unremarkable (#25).
 
 import type { EntityName } from "./id";
-import { assertValidShapes, InvalidShapeError } from "./shapes";
+import { areTypesCompatible, assertValidShapes, InvalidShapeError } from "./shapes";
 import type { Shape, Type } from "./shapes";
 
 /** The kinds of node that render on the Show canvas. Nothing else does. */
@@ -171,6 +171,8 @@ interface BaseEdge {
  */
 export interface WiringEdge extends BaseEdge {
   kind: "wiring";
+  /** Stable source-field id → target-field id mapping resolved at connection time. */
+  fieldMapping?: Record<string, string>;
 }
 
 /**
@@ -418,7 +420,11 @@ function assertNoPaths(edge: NavigateEdge | DeviceEdge): void {
   }
 }
 
-function assertValidWiringEdge(edge: WiringEdge, nodes: Map<string, GraphNode>): void {
+function assertValidWiringEdge(
+  edge: WiringEdge,
+  nodes: Map<string, GraphNode>,
+  shapes: readonly Shape[],
+): void {
   const producer = requireNode(nodes, edge.sourceId, `Wiring edge "${edge.id}"`);
   if (producer.kind !== "source" && producer.kind !== "transformer") {
     throw new InvalidShowGraphError(
@@ -454,6 +460,16 @@ function assertValidWiringEdge(edge: WiringEdge, nodes: Map<string, GraphNode>):
   // per audience instance of its own Flow, so it can't feed anything
   // outside that Flow. Show-level producers stay unrestricted. This is a
   // placement rule, not a connection rule — hence here and not in #24.
+  const sourceType = producer.type ?? null;
+  const targetType =
+    consumer.kind === "scene"
+      ? consumer.variables.find((variable) => variable.id === edge.targetPath[0])?.type ?? null
+      : null;
+  if (sourceType && targetType && !areTypesCompatible(sourceType, targetType, shapes)) {
+    throw new InvalidShowGraphError(
+      `wiring edge "${edge.id}" connects incompatible types; no supported coercion exists.`,
+    );
+  }
   if (producer.parentId !== null && producer.parentId !== consumer.parentId) {
     throw new InvalidShowGraphError(
       `wiring edge "${edge.id}" feeds a Flow-local ${producer.kind} into a node outside its Flow.`,
@@ -643,7 +659,7 @@ export function assertValidShowGraph(graph: ShowGraph): ShowGraph {
     assertValidPathSegments(edge);
     switch (edge.kind) {
       case "wiring":
-        assertValidWiringEdge(edge, nodes);
+        assertValidWiringEdge(edge, nodes, graph.shapes ?? []);
         break;
       case "navigate":
         assertNoPaths(edge);

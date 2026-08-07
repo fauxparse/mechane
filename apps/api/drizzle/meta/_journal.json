@@ -64,6 +64,13 @@
       "when": 1786079198519,
       "tag": "0008_stiff_roughhouse",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786079642955,
+      "tag": "0009_great_hellfire_club",
+      "breakpoints": true
     }
   ]
 }
