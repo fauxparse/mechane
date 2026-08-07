@@ -57,8 +57,8 @@ export const CreatingNodes: Story = {};
  *   - A Source's drag offers **Variable rows**, not Scene bodies — wiring lands
  *     on a Variable (#20). A Scene with no Variables offers nothing; add one in
  *     the inspector.
- *   - A Scene's drag offers only Scenes **in the same Flow** (Navigate edges
- *     don't cross Flows) plus itself (a retry transition is legal).
+ *   - A Scene's drag offers other Scenes **in the same Flow** for Navigate
+ *     edges, while dropping a Scene into or out of a Flow changes membership.
  *   - A Flow's drag offers only Devices.
  *   - Refused drops say why, at the foot of the canvas.
  */
@@ -98,6 +98,8 @@ export const Inspector: Story = {};
  *
  * Two things worth trying, because both are decisions rather than accidents:
  *
+ *   - Drag a top-level Scene into a Flow, or a Flow-local Scene out of one;
+ *     membership changes are part of the same undo entry.
  *   - Box-select several nodes (click-drag) and drag them together — that's
  *     still one entry, not one per node.
  *   - Click a node and release without moving it. Nothing lands on the stack,
