@@ -6,6 +6,7 @@ import {
   topologicallySortShapes,
   assertValueConformsToShape,
   coerceValue,
+  coerceShapeValue,
   conformsToShape,
   COERCIONS,
   CoercionError,
@@ -89,6 +90,57 @@ describe("Shape values", () => {
     expect(() =>
       assertValueConformsToShape({ name: "Ada", addresses: [{ street: "Main" }] }, person, [person, address]),
     ).not.toThrow();
+  });
+
+  it("reconciles a live value by stable field id", () => {
+    const oldShape: Shape = {
+      id: "old",
+      name: "Old",
+      fields: [
+        { id: "count", name: "Count", type: "number", required: true, defaultValue: 0 },
+        { id: "removed", name: "Removed", type: "text", required: false, defaultValue: null },
+        { id: "renamed", name: "Before", type: "text", required: true, defaultValue: "" },
+        { id: "when", name: "When", type: "datetime", required: true, defaultValue: "2025-01-01T00:00:00.000Z" },
+      ],
+    };
+    const newShape: Shape = {
+      id: "new",
+      name: "New",
+      fields: [
+        { id: "count", name: "Count", type: "text", required: true, defaultValue: "default" },
+        { id: "added", name: "Added", type: "boolean", required: false, defaultValue: true },
+        { id: "renamed", name: "After", type: "text", required: true, defaultValue: "" },
+        { id: "when", name: "When", type: "date", required: true, defaultValue: "2025-01-01" },
+      ],
+    };
+
+    const result = coerceShapeValue(
+      { count: 12, removed: "discard me", renamed: "Ada", when: "2025-04-03T12:30:00Z" },
+      oldShape,
+      newShape,
+    );
+
+    expect(result.value).toEqual({ count: "12", added: true, renamed: "Ada", when: "2025-04-03" });
+    expect(result.losses.map(({ fieldId }) => fieldId)).toEqual(["removed", "when"]);
+    expect(coerceShapeValue({}, oldShape, newShape, [oldShape, newShape], { added: false }).value).toMatchObject({ added: false });
+  });
+
+  it("uses the new default when a retype cannot be converted", () => {
+    const oldShape: Shape = {
+      id: "old",
+      name: "Old",
+      fields: [{ id: "value", name: "Value", type: "text", required: true, defaultValue: "" }],
+    };
+    const newShape: Shape = {
+      id: "new",
+      name: "New",
+      fields: [{ id: "value", name: "Value", type: "number", required: true, defaultValue: 7 }],
+    };
+
+    expect(coerceShapeValue({ value: "not a number" }, oldShape, newShape)).toEqual({
+      value: { value: 7 },
+      losses: [{ path: ["value"], fieldId: "value", fieldName: "Value", reason: "Value could not be converted from text to number; default used." }],
+    });
   });
 });
 

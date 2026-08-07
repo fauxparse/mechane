@@ -278,6 +278,8 @@ export interface Coercion {
   from: PrimitiveType;
   to: PrimitiveType;
   reason: string;
+  /** Whether the conversion discards information that should be reported at publish. */
+  lossy?: boolean;
   convert(value: unknown): unknown;
 }
 
@@ -317,6 +319,7 @@ const coercions: Coercion[] = [
     from: "datetime",
     to: "date",
     reason: "A datetime can be reduced to its calendar date (lossy).",
+    lossy: true,
     convert: (value) => parseDatetime(value).slice(0, 10),
   },
   { from: "text", to: "number", reason: "Numeric text can be parsed as a number.", convert: (value) => {
@@ -401,4 +404,148 @@ export function coerceValue(value: unknown, from: PrimitiveType, to: PrimitiveTy
   const coercion = findCoercion(from, to);
   if (!coercion) throw new CoercionError(`No coercion exists from ${from} to ${to}.`);
   return coercion.convert(value);
+}
+
+export interface ShapeValueLoss {
+  /** Stable field ids, from the outer Shape to the field that lost data. */
+  path: string[];
+  fieldId: string;
+  fieldName: string;
+  reason: string;
+}
+
+export interface ShapeValueCoercion {
+  value: unknown;
+  losses: ShapeValueLoss[];
+}
+
+function copyValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(copyValue);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, nested]) => [key, copyValue(nested)]));
+  }
+  return value;
+}
+
+function hasOwn(value: unknown, key: string): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function typeLabel(type: Type): string {
+  return typeof type === "string" ? type : type.kind === "array" ? `array of ${typeLabel(type.of)}` : `Shape ${type.shapeId}`;
+}
+
+interface TypeCoercion {
+  value: unknown;
+  lossy: boolean;
+}
+
+function coerceTypeValue(
+  value: unknown,
+  from: Type,
+  to: Type,
+  shapes: readonly Shape[],
+  path: string[],
+  losses: ShapeValueLoss[],
+  sourceOverrides: Readonly<Record<string, unknown>>,
+): TypeCoercion {
+  if (typeof from === "string" && typeof to === "string") {
+    if (from === to) return { value: copyValue(value), lossy: false };
+    const coercion = findCoercion(from, to);
+    if (!coercion) throw new CoercionError(`No coercion exists from ${from} to ${to}.`);
+    return { value: copyValue(coercion.convert(value)), lossy: coercion.lossy ?? false };
+  }
+
+  if (typeof to !== "string" && to.kind === "array") {
+    const values = Array.isArray(value) ? value : [value];
+    const sourceType = typeof from !== "string" && from.kind === "array" ? from.of : from;
+    let lossy = false;
+    const converted = values.map((item, index) => {
+      const result = coerceTypeValue(item, sourceType, to.of, shapes, [...path, String(index)], losses, sourceOverrides);
+      lossy ||= result.lossy;
+      return result.value;
+    });
+    return { value: converted, lossy };
+  }
+
+  if (typeof from !== "string" && from.kind === "array") {
+    throw new CoercionError(`Cannot convert ${typeLabel(from)} to ${typeLabel(to)}.`);
+  }
+
+  if (typeof from !== "string" && from.kind === "shape" && typeof to !== "string" && to.kind === "shape") {
+    const source = shapeMap(shapes).get(from.shapeId);
+    const target = shapeMap(shapes).get(to.shapeId);
+    if (!source || !target) throw new CoercionError("Cannot convert an unknown Shape.");
+    return { value: reconcileObject(value, source, target, shapes, path, losses, sourceOverrides), lossy: false };
+  }
+
+  throw new CoercionError(`Cannot convert ${typeLabel(from)} to ${typeLabel(to)}.`);
+}
+
+function reconcileObject(
+  value: unknown,
+  oldShape: Shape,
+  newShape: Shape,
+  shapes: readonly Shape[],
+  path: string[],
+  losses: ShapeValueLoss[],
+  sourceOverrides: Readonly<Record<string, unknown>>,
+): Record<string, unknown> {
+  const oldObject: Record<string, unknown> = value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+  const oldFields = new Map(oldShape.fields.map((field) => [field.id, field]));
+  const result: Record<string, unknown> = {};
+
+  for (const field of oldShape.fields) {
+    if (!newShape.fields.some((candidate) => candidate.id === field.id) && hasOwn(oldObject, field.id)) {
+      losses.push({ path: [...path, field.id], fieldId: field.id, fieldName: field.name, reason: "Field was removed." });
+    }
+  }
+
+  for (const field of newShape.fields) {
+    const previous = oldFields.get(field.id);
+    const fieldPath = [...path, field.id];
+    const key = previous && hasOwn(oldObject, previous.id)
+      ? previous.id
+      : previous && hasOwn(oldObject, previous.name)
+        ? previous.name
+        : undefined;
+    const current = key === undefined ? null : oldObject[key];
+
+    if (current === null || current === undefined) {
+      if (!previous && hasOwn(sourceOverrides, field.id)) result[field.id] = copyValue(sourceOverrides[field.id]);
+      else if (field.required || (field.defaultValue !== null && field.defaultValue !== undefined)) result[field.id] = copyValue(field.defaultValue);
+      continue;
+    }
+
+    if (!previous) {
+      result[field.id] = hasOwn(sourceOverrides, field.id) ? copyValue(sourceOverrides[field.id]) : copyValue(field.defaultValue);
+      continue;
+    }
+
+    try {
+      const converted = coerceTypeValue(current, previous.type, field.type, shapes, fieldPath, losses, sourceOverrides);
+      result[field.id] = converted.value;
+      if (converted.lossy) losses.push({ path: fieldPath, fieldId: field.id, fieldName: field.name, reason: `Value was converted from ${typeLabel(previous.type)} to ${typeLabel(field.type)}.` });
+    } catch {
+      result[field.id] = copyValue(field.defaultValue);
+      losses.push({ path: fieldPath, fieldId: field.id, fieldName: field.name, reason: `Value could not be converted from ${typeLabel(previous.type)} to ${typeLabel(field.type)}; default used.` });
+    }
+  }
+
+  return result;
+}
+
+/** Reconciles one live Shape value with a new Shape during publish. */
+export function coerceShapeValue(
+  value: unknown,
+  oldShape: Shape,
+  newShape: Shape,
+  shapes: readonly Shape[] = [oldShape, newShape],
+  sourceOverrides: Readonly<Record<string, unknown>> = {},
+): ShapeValueCoercion {
+  const losses: ShapeValueLoss[] = [];
+  const reconciled = reconcileObject(value, oldShape, newShape, shapes, [], losses, sourceOverrides);
+  return { value: reconciled, losses };
 }
