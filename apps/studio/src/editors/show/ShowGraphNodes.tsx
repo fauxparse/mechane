@@ -295,8 +295,8 @@ export function ShowNode({ id, data, selected }: NodeProps<ShowFlowNodeType>) {
         </ul>
       ) : null}
 
-      {/* The node-level input: what a Navigate or Device edge lands on. A
-          Scene's Variables are addressed separately, above. */}
+      {/* The node-level input: what a Navigate, Device, or Transformer wiring
+          edge lands on. A Scene's Variables are addressed separately, above. */}
       <Handle
         id={INPUT_HANDLE}
         type="target"

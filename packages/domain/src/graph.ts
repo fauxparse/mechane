@@ -158,10 +158,9 @@ interface BaseEdge {
 }
 
 /**
- * Source | Transformer output → a named Variable handle on a Scene, or one
- * field of one. `targetPath[0]` is that Variable's id — the port a wiring
- * edge lands on is still a Variable (#20), the path just says which part
- * of it, and which part of the producer feeds it.
+ * Source | Transformer output → a Transformer input or a named Variable
+ * handle on a Scene. `targetPath[0]` is the Variable id for Scene targets;
+ * Transformer inputs are currently unnamed and use an empty path.
  */
 export interface WiringEdge extends BaseEdge {
   kind: "wiring";
@@ -410,21 +409,29 @@ function assertValidWiringEdge(edge: WiringEdge, nodes: Map<string, GraphNode>):
     );
   }
   const consumer = requireNode(nodes, edge.targetId, `Wiring edge "${edge.id}"`);
-  if (consumer.kind !== "scene") {
+  if (consumer.kind !== "scene" && consumer.kind !== "transformer") {
     throw new InvalidShowGraphError(
-      `wiring edge "${edge.id}" targets a ${consumer.kind}; wiring always targets a Variable on a Scene.`,
+      `wiring edge "${edge.id}" targets a ${consumer.kind}; wiring targets a Transformer or a Variable on a Scene.`,
     );
   }
-  if (edge.targetPath.length === 0) {
-    throw new InvalidShowGraphError(
-      `wiring edge "${edge.id}" has an empty target path; it must at least name the Scene Variable it feeds.`,
-    );
-  }
-  const variableId = wiringTargetVariableId(edge);
-  if (!consumer.variables.some((variable) => variable.id === variableId)) {
-    throw new InvalidShowGraphError(
-      `wiring edge "${edge.id}" targets Variable "${variableId}", which Scene "${consumer.id}" doesn't have.`,
-    );
+  if (consumer.kind === "transformer") {
+    if (edge.targetPath.length > 0) {
+      throw new InvalidShowGraphError(
+        `wiring edge "${edge.id}" targets a Transformer with a value path; Transformer inputs are not named yet.`,
+      );
+    }
+  } else {
+    if (edge.targetPath.length === 0) {
+      throw new InvalidShowGraphError(
+        `wiring edge "${edge.id}" has an empty target path; it must at least name the Scene Variable it feeds.`,
+      );
+    }
+    const variableId = wiringTargetVariableId(edge);
+    if (!consumer.variables.some((variable) => variable.id === variableId)) {
+      throw new InvalidShowGraphError(
+        `wiring edge "${edge.id}" targets Variable "${variableId}", which Scene "${consumer.id}" doesn't have.`,
+      );
+    }
   }
   // Flow-local scoping (#29): a Flow-local producer's value only exists
   // per audience instance of its own Flow, so it can't feed anything
@@ -506,8 +513,11 @@ function isPathPrefix(prefix: string[], path: string[]): boolean {
 }
 
 /** A target path and one of its descendants cannot both have producers. */
-function assertNoWiringFanIn(edges: GraphEdge[]): void {
-  const wiring = edges.filter((edge): edge is WiringEdge => edge.kind === "wiring");
+function assertNoWiringFanIn(edges: GraphEdge[], nodes: Map<string, GraphNode>): void {
+  const wiring = edges.filter(
+    (edge): edge is WiringEdge =>
+      edge.kind === "wiring" && nodes.get(edge.targetId)?.kind !== "transformer",
+  );
   for (let i = 0; i < wiring.length; i += 1) {
     const left = wiring[i];
     if (!left) continue;
@@ -621,7 +631,7 @@ export function assertValidShowGraph(graph: ShowGraph): ShowGraph {
     }
   }
   assertNoDuplicateEdges(graph.edges);
-  assertNoWiringFanIn(graph.edges);
+  assertNoWiringFanIn(graph.edges, nodes);
   assertNoWiringCycles(graph.edges);
   assertOneDriverPerDevice(graph.edges);
 

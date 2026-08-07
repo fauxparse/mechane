@@ -186,7 +186,7 @@ export const schema = createSchema<GraphQLContext>({
 
     """
     An edge in the Show graph, always running producer → consumer. \`kind\` is
-    "wiring" (Source/Transformer → Scene Variable), "navigate" (Scene → Scene
+    "wiring" (Source/Transformer → Transformer input or Scene Variable), "navigate" (Scene → Scene
     within one Flow), or "device" (Flow/top-level Scene → Device).
     """
     type GraphEdge {
