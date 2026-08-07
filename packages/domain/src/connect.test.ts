@@ -48,6 +48,7 @@ const TALLY: SourceNode = {
   name: "Tally",
   position: at,
   parentId: null,
+  type: "number",
 };
 const LOCAL: SourceNode = { ...TALLY, id: "source_local", name: "Local", parentId: VOTE.id };
 const TRANSFORMER: TransformerNode = {

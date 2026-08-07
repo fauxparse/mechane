@@ -78,6 +78,7 @@ function hamletGraph(): ShowGraph {
         name: "Live tally",
         parentId: vote,
         position: { x: 300, y: 300 },
+        type: "number",
       },
       {
         id: winner,
@@ -85,6 +86,7 @@ function hamletGraph(): ShowGraph {
         name: "Leading option",
         parentId: vote,
         position: { x: 560, y: 300 },
+        type: "text",
       },
       // Show-level: a Scene that isn't in any Flow at all (#20/#25).
       {
@@ -277,6 +279,7 @@ function midsummerGraph(): ShowGraph {
         name: "Audience sign-ups",
         parentId: null,
         position: { x: 560, y: 700 },
+        type: "text",
       },
       {
         id: pairing,
@@ -284,6 +287,7 @@ function midsummerGraph(): ShowGraph {
         name: "Pair them off",
         parentId: null,
         position: { x: 820, y: 700 },
+        type: "text",
       },
       {
         id: houseScreen,

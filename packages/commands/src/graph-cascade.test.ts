@@ -53,6 +53,7 @@ const TALLY: SourceNode = {
   name: "Tally",
   position: at,
   parentId: null,
+  type: "number",
 };
 const PHONE: DeviceNode = {
   id: "device_phone",

@@ -200,7 +200,7 @@ export function createNode(
         pairingCode: null,
       };
     case "source":
-      return { ...base, kind: "source", parentId };
+      return { ...base, kind: "source", parentId, type: "text" };
     case "transformer":
       return { ...base, kind: "transformer", parentId };
   }

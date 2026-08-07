@@ -85,7 +85,7 @@ export interface FlowNode extends BaseNode {
 
 export interface SourceNode extends BaseNode {
   kind: "source";
-  type?: Type | null;
+  type: Type;
   fieldDefaults?: SourceFieldDefault[];
 }
 
@@ -644,6 +644,9 @@ export function assertValidShowGraph(graph: ShowGraph): ShowGraph {
   );
 
   for (const node of graph.nodes) {
+    if (node.kind === "source" && !node.type) {
+      throw new InvalidShowGraphError(`Source "${node.id}" must have a Type.`);
+    }
     assertFinitePosition(node);
     assertValidNesting(node, nodes);
     if (node.kind === "flow") assertValidDefaultScene(node, nodes);

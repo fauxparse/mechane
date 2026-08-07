@@ -63,6 +63,7 @@ const TALLY: SourceNode = {
   name: "Tally",
   position: { x: 200, y: 40 },
   parentId: null,
+  type: "number",
 };
 
 const PHONE: DeviceNode = {
