@@ -24,7 +24,6 @@ import {
   moveNodeIntoFlow,
   moveNodesIntoFlow,
   moveNodesOutOfFlow,
-  InvalidReparentError,
   reparentNode,
   setFlowDefaultScene,
   UnknownGraphTargetError,
@@ -261,6 +260,31 @@ describe("moveNodeIntoFlow / moveNodeOutOfFlow", () => {
     ).toBe(LOBBY.id);
   });
 
+  it("preserves wiring between promoted nodes", () => {
+    const empty: FlowNode = { ...VOTE_FLOW, id: "flow_empty", defaultSceneId: null };
+    const internal: WiringEdge = {
+      ...WIRE,
+      id: "edge_internal",
+      sourceId: TALLY.id,
+      targetId: LOBBY.id,
+      targetPath: [],
+    };
+    const graph = {
+      ...GRAPH,
+      edges: [internal, TO_PHONE, NAVIGATE],
+      nodes: [...GRAPH.nodes, empty],
+    };
+    const result = moveNodesIntoFlow(graph, [TALLY.id, LOBBY.id], empty.id, { x: 24, y: 60 }).apply(
+      graph,
+    );
+    expect(result.state.edges.map((edge) => edge.id)).toEqual([
+      internal.id,
+      TO_PHONE.id,
+      NAVIGATE.id,
+    ]);
+    expect(result.inverse.apply(result.state).state).toEqual(graph);
+  });
+
   it("moves multiple nodes into one Flow without overlap", () => {
     const empty: FlowNode = { ...VOTE_FLOW, id: "flow_empty", defaultSceneId: null };
     const graph = { ...GRAPH, nodes: [...GRAPH.nodes, empty] };
@@ -276,8 +300,11 @@ describe("moveNodeIntoFlow / moveNodeOutOfFlow", () => {
     expect(applied.inverse.apply(applied.state).state).toEqual(graph);
   });
 
-  it("refuses moving out while a Navigate edge is attached", () => {
-    expect(() => moveNodeOutOfFlow(GRAPH, VOTING.id, { x: 0, y: 0 })).toThrow(InvalidReparentError);
+  it("removes Navigate edges when extracting a Scene", () => {
+    const result = moveNodeOutOfFlow(GRAPH, VOTING.id, { x: 0, y: 0 }).apply(GRAPH);
+    expect(result.state.nodes.find((node) => node.id === VOTING.id)?.parentId).toBe(null);
+    expect(result.state.edges.map((edge) => edge.id)).not.toContain(NAVIGATE.id);
+    expect(result.inverse.apply(result.state).state).toEqual(GRAPH);
   });
 
   it("moves out and drops wiring, while restoring both on undo", () => {
@@ -285,6 +312,26 @@ describe("moveNodeIntoFlow / moveNodeOutOfFlow", () => {
     const graph = { ...GRAPH, edges: [WIRE, TO_PHONE] };
     const result = moveNodeOutOfFlow(graph, VOTING.id, { x: 500, y: 500 }).apply(graph);
     expect(result.state.edges.map((edge) => edge.id)).toEqual([TO_PHONE.id]);
+    expect(result.inverse.apply(result.state).state).toEqual(graph);
+  });
+
+  it("preserves wiring between extracted nodes", () => {
+    const internal: WiringEdge = {
+      ...WIRE,
+      id: "edge_internal",
+      sourceId: VOTING.id,
+      targetId: RESULTS.id,
+    };
+    const graph = { ...GRAPH, edges: [internal, TO_PHONE] };
+    const result = moveNodesOutOfFlow(
+      graph,
+      [VOTING.id, RESULTS.id],
+      [
+        { x: 500, y: 500 },
+        { x: 750, y: 500 },
+      ],
+    ).apply(graph);
+    expect(result.state.edges.map((edge) => edge.id)).toEqual([internal.id, TO_PHONE.id]);
     expect(result.inverse.apply(result.state).state).toEqual(graph);
   });
 
