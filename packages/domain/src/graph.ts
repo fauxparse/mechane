@@ -26,7 +26,7 @@
 
 import type { EntityName } from "./id";
 import { assertValidShapes, InvalidShapeError } from "./shapes";
-import type { Shape } from "./shapes";
+import type { Shape, Type } from "./shapes";
 
 /** The kinds of node that render on the Show canvas. Nothing else does. */
 export const NODE_KINDS = ["scene", "flow", "source", "transformer", "device"] as const;
@@ -54,6 +54,8 @@ export interface Position {
 export interface SceneVariable {
   id: string;
   name: string;
+  /** The value type for this Variable, when defined (#107). */
+  type?: Type | null;
 }
 
 interface BaseNode {
@@ -83,10 +85,13 @@ export interface FlowNode extends BaseNode {
 
 export interface SourceNode extends BaseNode {
   kind: "source";
+  type?: Type | null;
+  fieldDefaults?: SourceFieldDefault[];
 }
 
 export interface TransformerNode extends BaseNode {
   kind: "transformer";
+  type?: Type | null;
 }
 
 export interface DeviceNode extends BaseNode {
@@ -215,9 +220,17 @@ export function formatValuePath(path: ValuePath): string {
 }
 
 /** A whole Show graph in one state (draft or published). */
+export interface SourceFieldDefault {
+  nodeId: string;
+  fieldPath: string[];
+  value: unknown;
+}
+
 export interface ShowGraph {
   /** Show-scoped type definitions, independent of the canvas node graph. */
   shapes?: Shape[];
+  /** Sparse per-Source overrides; absence inherits the Shape default (#107). */
+  sourceFieldDefaults?: SourceFieldDefault[];
   nodes: GraphNode[];
   edges: GraphEdge[];
 }

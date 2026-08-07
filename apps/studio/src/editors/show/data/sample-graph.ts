@@ -70,7 +70,7 @@ export const SAMPLE_GRAPH: Graph = {
       name: "Waiting for the house",
       parentId: VOTE_FLOW,
       position: { x: 32, y: 64 },
-      variables: [{ id: PROMPT_VARIABLE, name: "prompt" }],
+      variables: [{ id: PROMPT_VARIABLE, name: "prompt", type: null }],
     }),
     node({
       id: VOTING,
@@ -85,7 +85,7 @@ export const SAMPLE_GRAPH: Graph = {
       name: "The house has spoken",
       parentId: VOTE_FLOW,
       position: { x: 560, y: 64 },
-      variables: [{ id: LEADER_VARIABLE, name: "leader" }],
+      variables: [{ id: LEADER_VARIABLE, name: "leader", type: null }],
     }),
     node({
       id: TALLY,
@@ -99,7 +99,7 @@ export const SAMPLE_GRAPH: Graph = {
       kind: "scene",
       name: "Foyer holding slide",
       position: { x: -360, y: 320 },
-      variables: [{ id: HOUSE_VARIABLE, name: "message" }],
+      variables: [{ id: HOUSE_VARIABLE, name: "message", type: null }],
     }),
     node({ id: WINNER, kind: "transformer", name: "Winning option", position: { x: 40, y: 480 } }),
     node({

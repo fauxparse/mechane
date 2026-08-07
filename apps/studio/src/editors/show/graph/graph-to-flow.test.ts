@@ -61,7 +61,7 @@ describe("graphToFlow", () => {
           id: "scene_1",
           kind: "scene",
           name: "Cast your vote",
-          variables: [{ id: "variable_1", name: "prompt" }],
+          variables: [{ id: "variable_1", name: "prompt", type: null }],
         }),
       ],
       edges: [],
@@ -69,7 +69,7 @@ describe("graphToFlow", () => {
     expect(nodes[0]?.data).toEqual({
       kind: "scene",
       name: "Cast your vote",
-      variables: [{ id: "variable_1", name: "prompt" }],
+      variables: [{ id: "variable_1", name: "prompt", type: null }],
       defaultSceneId: null,
       // Nothing feeds the Variable, so it's dangling (#35) — and nothing is
       // this Scene's Flow's entry point either.
@@ -93,8 +93,8 @@ describe("graphToFlow", () => {
           id: "scene_wired",
           kind: "scene",
           variables: [
-            { id: "variable_1", name: "prompt" },
-            { id: "variable_2", name: "leader" },
+            { id: "variable_1", name: "prompt", type: null },
+            { id: "variable_2", name: "leader", type: null },
           ],
         }),
       ],
@@ -114,8 +114,8 @@ describe("graphToFlow", () => {
           kind: "scene",
           parentId: "flow_1",
           variables: [
-            { id: "variable_fed", name: "prompt" },
-            { id: "variable_dangling", name: "leader" },
+            { id: "variable_fed", name: "prompt", type: null },
+            { id: "variable_dangling", name: "leader", type: null },
           ],
         }),
         node({ id: "source_1", kind: "source" }),
@@ -142,7 +142,11 @@ describe("graphToFlow", () => {
   it("lands a wiring edge on its Variable's handle and everything else on the node's", () => {
     const { edges } = graphToFlow({
       nodes: [
-        node({ id: "scene_1", kind: "scene", variables: [{ id: "variable_1", name: "prompt" }] }),
+        node({
+          id: "scene_1",
+          kind: "scene",
+          variables: [{ id: "variable_1", name: "prompt", type: null }],
+        }),
         node({ id: "scene_2", kind: "scene" }),
         node({ id: "source_1", kind: "source" }),
       ],

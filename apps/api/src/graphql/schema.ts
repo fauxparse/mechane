@@ -47,6 +47,15 @@ import type { GraphEditInput } from "./show-graph";
 // leaking to clients). @mechane/domain's validation errors are plain
 // Errors so they stay usable outside a GraphQL context, so translate them
 // here into a GraphQLError the client can actually read.
+function toShapeValue(value: unknown, type: unknown): unknown {
+  if (typeof type === "string") return { kind: type, value };
+  if (type && typeof type === "object" && "kind" in type) {
+    if (type.kind === "array") return { kind: "array", value };
+    if (type.kind === "shape") return { kind: "object", value };
+  }
+  return null;
+}
+
 function validShowName(name: string): string {
   try {
     return assertValidShowName(name);
@@ -179,6 +188,7 @@ export const schema = createSchema<GraphQLContext>({
     type SceneVariable {
       id: ID!
       name: String!
+      type: Type
     }
 
     scalar JSON
@@ -190,19 +200,53 @@ export const schema = createSchema<GraphQLContext>({
       shapeId: ID
     }
 
+    input TypeInput {
+      kind: String!
+      of: TypeInput
+      shapeId: ID
+    }
+
+    type TextValue { value: String! }
+    type NumberValue { value: Float! }
+    type BooleanValue { value: Boolean! }
+    type ImageValue { value: String! }
+    type ColourValue { value: String! }
+    type DateValue { value: String! }
+    type DateTimeValue { value: String! }
+    type ObjectValue { value: JSON! }
+    type ArrayValue { value: JSON! }
+    union ShapeValue = TextValue | NumberValue | BooleanValue | ImageValue | ColourValue | DateValue | DateTimeValue | ObjectValue | ArrayValue
+
+    input ShapeValueInput @oneOf {
+      text: String
+      number: Float
+      boolean: Boolean
+      image: String
+      colour: String
+      date: String
+      datetime: String
+      object: JSON
+      array: JSON
+    }
+
     type ShapeField {
       id: ID!
       name: String!
       type: Type!
       position: Int!
       required: Boolean!
-      default: JSON
+      default: ShapeValue
     }
 
     type Shape {
       id: ID!
       name: String!
       fields: [ShapeField!]!
+    }
+
+    type SourceFieldDefault {
+      fieldPath: [ID!]!
+      value: JSON
     }
 
     """
@@ -217,9 +261,12 @@ export const schema = createSchema<GraphQLContext>({
       parentId: ID
       "Flow nodes only: the Flow's design-time entry Scene, if one is set."
       defaultSceneId: ID
+      type: Type
       position: Position!
       "Scene nodes only: the Variables wiring edges can target."
       variables: [SceneVariable!]!
+      "Sparse default overrides for Source fields, keyed by stable field ids."
+      fieldDefaults: [SourceFieldDefault!]!
       """
       Device nodes only: whether this Device is one logical instance per
       connection (an Audience Device, each phone independent) rather than
@@ -289,6 +336,7 @@ export const schema = createSchema<GraphQLContext>({
     input SceneVariableInput {
       id: ID!
       name: String!
+      type: TypeInput
     }
 
     input GraphNodeInput {
@@ -297,6 +345,7 @@ export const schema = createSchema<GraphQLContext>({
       name: String!
       parentId: ID
       defaultSceneId: ID
+      type: TypeInput
       position: PositionInput!
       variables: [SceneVariableInput!]
       """
@@ -477,8 +526,15 @@ export const schema = createSchema<GraphQLContext>({
       shapeId: (type: { kind: "shape"; shapeId: string }) =>
         type.kind === "shape" ? type.shapeId : null,
     },
+    ShapeValue: {
+      __resolveType: (value: { kind: string }) => `${value.kind[0]?.toUpperCase()}${value.kind.slice(1)}Value`,
+    },
     ShapeField: {
       position: (field: { position?: number }) => field.position ?? 0,
+      default: (field: { defaultValue?: unknown; type: unknown }) =>
+        field.defaultValue === null || field.defaultValue === undefined
+          ? null
+          : toShapeValue(field.defaultValue, field.type),
     },
     Query: {
       me: (_parent, _args, context) => context.user,

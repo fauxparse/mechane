@@ -13,6 +13,7 @@ import type {
   GraphState,
   SceneVariable,
   Shape,
+  SourceFieldDefault,
   ShapeField,
   ShowGraph,
   Type,
@@ -31,6 +32,7 @@ import {
   shapeFields,
   shapeFieldRefs,
   shapes,
+  sourceFieldDefaults,
   showGraphs,
 } from "./schema";
 
@@ -102,6 +104,8 @@ type ShapeFieldRow = typeof shapeFields.$inferSelect;
 function toNode(
   row: NodeRow,
   variablesByScene: Map<string, SceneVariable[]>,
+  sourceDefaultsByNode: Map<string, SourceFieldDefault[]>,
+
   deviceIdentities: Map<string, StoredDevice>,
 ): GraphNode {
   const base = {
@@ -120,9 +124,15 @@ function toNode(
     case "flow":
       return { ...base, kind: "flow", parentId: null, defaultSceneId: row.defaultSceneId };
     case "source":
-      return { ...base, kind: "source", parentId: row.parentId };
+      return {
+        ...base,
+        kind: "source",
+        parentId: row.parentId,
+        type: row.type as Type | null,
+        fieldDefaults: sourceDefaultsByNode.get(row.id) ?? [],
+      };
     case "transformer":
-      return { ...base, kind: "transformer", parentId: row.parentId };
+      return { ...base, kind: "transformer", parentId: row.parentId, type: row.type as Type | null };
     case "device": {
       // A Device node carries its identity rather than owning it: the row
       // in `devices` is the Show-level thing that survives publish and
@@ -187,7 +197,7 @@ function groupVariables(rows: VariableRow[]): Map<string, SceneVariable[]> {
   const bySceneId = new Map<string, SceneVariable[]>();
   for (const row of rows) {
     const variables = bySceneId.get(row.sceneId) ?? [];
-    variables.push({ id: row.id, name: row.name });
+    variables.push({ id: row.id, name: row.name, type: row.type as Type | undefined });
     bySceneId.set(row.sceneId, variables);
   }
   return bySceneId;
@@ -243,6 +253,20 @@ export async function readShowGraph(
     .from(graphNodeVariables)
     .where(eq(graphNodeVariables.graphId, row.id))
     .orderBy(graphNodeVariables.id);
+  const sourceDefaultRows = await executor
+    .select()
+    .from(sourceFieldDefaults)
+    .where(eq(sourceFieldDefaults.graphId, row.id));
+  const sourceDefaultsByNode = new Map<string, SourceFieldDefault[]>();
+  for (const sourceDefault of sourceDefaultRows) {
+    const defaults = sourceDefaultsByNode.get(sourceDefault.nodeId) ?? [];
+    defaults.push({
+      nodeId: sourceDefault.nodeId,
+      fieldPath: sourceDefault.fieldPath,
+      value: sourceDefault.value,
+    });
+    sourceDefaultsByNode.set(sourceDefault.nodeId, defaults);
+  }
   const edgeRows = await executor
     .select()
     .from(graphEdges)
@@ -265,7 +289,9 @@ export async function readShowGraph(
     updatedAt: row.updatedAt,
     version: row.version,
     shapes: shapeRows.map((shape) => toShape(shape, shapeFieldRows)),
-    nodes: nodeRows.map((node) => toNode(node, variablesByScene, deviceIdentities)),
+    nodes: nodeRows.map((node) =>
+      toNode(node, variablesByScene, sourceDefaultsByNode, deviceIdentities),
+    ),
     edges: edgeRows.map(toEdge),
   };
 }
@@ -390,6 +416,7 @@ async function writeGraph(
         kind: node.kind,
         name: node.name,
         parentId: node.parentId,
+        type: node.kind === "source" || node.kind === "transformer" ? node.type ?? null : null,
         positionX: node.position.x,
         positionY: node.position.y,
       })),
@@ -413,12 +440,25 @@ async function writeGraph(
           graphId: row.id,
           sceneId: node.id,
           name: variable.name,
+          type: variable.type ?? null,
         }))
       : [],
   );
   if (variables.length > 0) {
     await tx.insert(graphNodeVariables).values(variables);
   }
+
+  const sourceDefaults = graph.nodes.flatMap((node) =>
+    node.kind === "source"
+      ? (node.fieldDefaults ?? []).map((fieldDefault) => ({
+          graphId: row.id,
+          nodeId: node.id,
+          fieldPath: fieldDefault.fieldPath,
+          value: fieldDefault.value,
+        }))
+      : [],
+  );
+  if (sourceDefaults.length > 0) await tx.insert(sourceFieldDefaults).values(sourceDefaults);
 
   if (graph.edges.length > 0) {
     await tx.insert(graphEdges).values(

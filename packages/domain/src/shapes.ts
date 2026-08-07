@@ -17,6 +17,53 @@ export type Type =
   | { kind: "array"; of: Type }
   | { kind: "shape"; shapeId: string };
 
+export interface TextValue {
+  kind: "text";
+  value: string;
+}
+export interface NumberValue {
+  kind: "number";
+  value: number;
+}
+export interface BooleanValue {
+  kind: "boolean";
+  value: boolean;
+}
+export interface ImageValue {
+  kind: "image";
+  value: string;
+}
+export interface ColourValue {
+  kind: "colour";
+  value: string;
+}
+export interface DateValue {
+  kind: "date";
+  value: string;
+}
+export interface DateTimeValue {
+  kind: "datetime";
+  value: string;
+}
+export interface ObjectValue {
+  kind: "object";
+  value: Record<string, ShapeValue | null>;
+}
+export interface ArrayValue {
+  kind: "array";
+  value: ShapeValue[];
+}
+export type ShapeValue =
+  | TextValue
+  | NumberValue
+  | BooleanValue
+  | ImageValue
+  | ColourValue
+  | DateValue
+  | DateTimeValue
+  | ObjectValue
+  | ArrayValue;
+
 export interface ShapeField {
   id: string;
   name: string;

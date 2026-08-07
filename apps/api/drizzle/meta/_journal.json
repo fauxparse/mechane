@@ -57,6 +57,13 @@
       "when": 1786078726242,
       "tag": "0007_natural_wild_pack",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786079198519,
+      "tag": "0008_stiff_roughhouse",
+      "breakpoints": true
     }
   ]
 }
