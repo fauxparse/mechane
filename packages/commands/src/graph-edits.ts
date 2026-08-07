@@ -38,6 +38,7 @@ import {
   addNode,
   addSceneVariable,
   GRAPH_COMMAND_TYPES,
+  setDevicePairingCode,
   moveNode,
   removeEdge,
   removeNode,
@@ -95,6 +96,18 @@ export type GraphEdit =
       readonly type: typeof GRAPH_COMMAND_TYPES.removeSceneVariable;
       readonly sceneId: string;
       readonly variableId: string;
+    }
+  /**
+   * The one edit that only ever travels *from* the server (#111): the pairing
+   * code it minted for a Device the client had just created (#45). A client
+   * that sent one would be guessing at something only the server can decide,
+   * which is why apps/api refuses it on the way in rather than merely
+   * ignoring it.
+   */
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setDevicePairingCode;
+      readonly nodeId: string;
+      readonly pairingCode: string | null;
     };
 
 /** An edit naming something the graph doesn't contain, or a type nothing knows. */
@@ -139,6 +152,8 @@ export function commandForEdit(edit: GraphEdit): ShowGraphCommand {
       return renameSceneVariable(edit.sceneId, edit.variableId, edit.name);
     case GRAPH_COMMAND_TYPES.removeSceneVariable:
       return removeSceneVariable(edit.sceneId, edit.variableId);
+    case GRAPH_COMMAND_TYPES.setDevicePairingCode:
+      return setDevicePairingCode(edit.nodeId, edit.pairingCode);
     default: {
       // Exhaustive over the union above; reachable only from an edit that
       // came off the wire with a type this build has never heard of, which
@@ -184,6 +199,8 @@ function supersedes(edit: GraphEdit): { key: string; ids: readonly string[] } | 
         key: `renameVariable:${edit.sceneId}:${edit.variableId}`,
         ids: [edit.sceneId, edit.variableId],
       };
+    case GRAPH_COMMAND_TYPES.setDevicePairingCode:
+      return { key: `pairingCode:${edit.nodeId}`, ids: [edit.nodeId] };
     default:
       return null;
   }

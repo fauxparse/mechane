@@ -177,6 +177,64 @@ input GraphEdgeInput {
 }
 
 """
+One edit on its way out (issue #111): the same shape as
+`GraphEditInput`, plus `pairingCode`, which only ever travels in this
+direction. What the server tells a client about a change it didn't make
+is the same vocabulary a realtime channel will use for a change someone
+else made (ADR-0003).
+"""
+type GraphEdit {
+  type: String!
+  nodeId: ID
+  node: GraphNode
+  edgeId: ID
+  edge: GraphEdge
+  position: Position
+  parentId: ID
+  name: String
+  flowId: ID
+  sceneId: ID
+  variableId: ID
+  variable: SceneVariable
+
+  """
+  Devices only: the code the server minted for a Device this batch created (#45).
+  """
+  pairingCode: String
+}
+
+"""
+The answer to an edit batch (issue #111) — deliberately not the graph.
+
+The client composed these edits against its own copy and applied them
+locally before sending, so the only things it is missing are the version
+to build the next batch on and whatever the server decided that it
+couldn't. Returning the whole graph here would be the wholesale
+replacement issue #103 removed, pointed the other way.
+"""
+type AppliedShowGraphEdits {
+  showId: ID!
+
+  """Either "draft" or "published"."""
+  state: String!
+
+  """
+  The draft's new timestamp — what the "unpublished changes" badge compares (ADR-0002).
+  """
+  updatedAt: String!
+
+  """The version the next batch must be composed against."""
+  version: Int!
+
+  """
+  Edits the server made that the client didn't ask for. Apply them to
+  your copy of the graph; they are not undoable, because they aren't the
+  director's edits. Empty for the overwhelming majority of batches.
+  """
+  amendments: [GraphEdit!]!
+}
+
+"""
 One edit to a Show's graph (issue #103) — the unit the editor produces
 and the server applies, in place of a whole-graph replacement.
 
@@ -272,8 +330,11 @@ type Mutation {
   nobody asked for. The edits are applied in order, and the graph is
   validated once at the end, since a batch legitimately passes through
   states no valid Show could be left in.
+  
+  Answers with the new version and any amendments — not the graph, which
+  the client already has (issue #111).
   """
-  applyShowGraphEdits(showId: ID!, baseVersion: Int!, edits: [GraphEditInput!]!): ShowGraph!
+  applyShowGraphEdits(showId: ID!, baseVersion: Int!, edits: [GraphEditInput!]!): AppliedShowGraphEdits!
 
   """
   Publishes a Show's draft graph, making it the published graph immediately (ADR-0002).

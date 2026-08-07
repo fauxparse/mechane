@@ -20,6 +20,7 @@ import type { GraphEdit } from "@mechane/commands";
 import { isNodeKind } from "@mechane/domain";
 import type { GraphEdge, GraphNode, ShowGraph } from "@mechane/domain";
 import type {
+  ApplyShowGraphEditsResult,
   ShowGraph as ApiShowGraph,
   ShowGraphEdge as ApiEdge,
   ShowGraphNode as ApiNode,
@@ -195,5 +196,39 @@ export function toEditInput(edit: GraphEdit) {
       };
     case "graph.removeSceneVariable":
       return { ...input, sceneId: edit.sceneId, variableId: edit.variableId };
+    case "graph.setDevicePairingCode":
+      // Server → client only (#45, #111). The editor applies one of these
+      // when a response brings it; sending one back would be telling the
+      // server something it told us, and `GraphEditInput` has no field for
+      // it anyway.
+      throw new Error("A pairing code is the server's to mint, not the editor's to send.");
+  }
+}
+
+/** An amendment as the mutation returns it (#111). */
+export type ApiGraphEdit = ApplyShowGraphEditsResult["amendments"][number];
+
+/**
+ * An amendment from the server, as an edit the command layer can apply.
+ *
+ * The inbound counterpart of `toEditInput`, and deliberately narrow: the
+ * server only ever sends amendments it has decided for itself, which today is
+ * a Device's minted pairing code (#45). Anything else arriving here is a
+ * server speaking a dialect this build doesn't know, and saying so beats
+ * applying half of it.
+ */
+export function toGraphEdit(edit: ApiGraphEdit): GraphEdit {
+  switch (edit.type) {
+    case "graph.setDevicePairingCode":
+      if (!edit.nodeId) {
+        throw new Error("A pairing-code amendment arrived without a Device.");
+      }
+      return {
+        type: "graph.setDevicePairingCode",
+        nodeId: edit.nodeId,
+        pairingCode: edit.pairingCode ?? null,
+      };
+    default:
+      throw new Error(`Unknown Show graph amendment "${edit.type}".`);
   }
 }

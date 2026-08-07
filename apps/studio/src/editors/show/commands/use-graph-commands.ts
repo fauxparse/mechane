@@ -21,7 +21,7 @@
 // them because a caller may want to show something about it, not because it
 // is sent. Debouncing and batching are the caller's business; this hook
 // reports every edit as it happens.
-import { CommandStack } from "@mechane/commands";
+import { CommandStack, commandForEdit } from "@mechane/commands";
 import type { GraphEdit, Gesture, ShowGraphCommand } from "@mechane/commands";
 import type { ShowGraph } from "@mechane/domain";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -34,6 +34,11 @@ export interface GraphCommands {
   graph: ShowGraph;
   /** Applies one command as one undo entry. */
   execute(command: ShowGraphCommand): void;
+  /**
+   * Applies edits that arrived from the server rather than from the user
+   * (#111) — no undo entry, and nothing sent back. See `CommandStack.amend`.
+   */
+  amend(edits: readonly GraphEdit[]): void;
   /**
    * Opens (or joins) a continuous gesture — a drag, a rename being typed.
    * Every update inside it lands as a single undo entry when it commits (#28).
@@ -111,6 +116,14 @@ export function useGraphCommands(
     [changed, stack],
   );
 
+  const amend = useCallback(
+    (edits: readonly GraphEdit[]) => {
+      for (const edit of edits) stack.amend(commandForEdit(edit));
+      changed();
+    },
+    [changed, stack],
+  );
+
   const beginGesture = useCallback(
     (options: { key: string; label: string }): Gesture<ShowGraph, GraphEdit> => {
       const gesture = stack.beginGesture(options);
@@ -153,6 +166,7 @@ export function useGraphCommands(
   return {
     graph,
     execute,
+    amend,
     beginGesture,
     hasOpenGesture: stack.openGesture !== null,
     undo,

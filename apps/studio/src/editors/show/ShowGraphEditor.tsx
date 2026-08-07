@@ -134,6 +134,13 @@ export interface ShowGraphEditorHandle {
   zoomToSelection(): boolean;
   /** Frames the whole graph. */
   fitToGraph(): void;
+  /**
+   * Applies edits the server made that the user didn't ask for (#111) — a
+   * new Device's minted pairing code. Imperative because the editor owns the
+   * graph after it opens (see `graph` above): the amendment has to reach the
+   * command stack, and a prop would have to be de-duplicated on the way in.
+   */
+  applyAmendments(edits: readonly GraphEdit[]): void;
 }
 
 export interface ShowGraphEditorProps {
@@ -315,8 +322,13 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
 
   useImperativeHandle(
     ref,
-    () => ({ fitToNodes, zoomToSelection, fitToGraph: () => fitView(FIT_VIEW_OPTIONS) }),
-    [fitToNodes, fitView, zoomToSelection],
+    () => ({
+      fitToNodes,
+      zoomToSelection,
+      fitToGraph: () => fitView(FIT_VIEW_OPTIONS),
+      applyAmendments: editing.amend,
+    }),
+    [editing.amend, fitToNodes, fitView, zoomToSelection],
   );
 
   // ---------------------------------------------------------------------------

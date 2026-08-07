@@ -29,6 +29,7 @@
 // the composite correct.
 
 import type {
+  DeviceNode,
   GraphEdge,
   GraphNode,
   Position,
@@ -64,6 +65,7 @@ export const GRAPH_COMMAND_TYPES = {
   removeSceneVariable: "graph.removeSceneVariable",
   moveNodeIntoFlow: "graph.moveNodeIntoFlow",
   moveNodeOutOfFlow: "graph.moveNodeOutOfFlow",
+  setDevicePairingCode: "graph.setDevicePairingCode",
 } as const;
 
 export class UnknownGraphTargetError extends Error {
@@ -549,6 +551,54 @@ function withFlowDefaultScene(graph: ShowGraph, flowId: string, sceneId: string 
   const node = graph.nodes[index] as GraphNode;
   if (node.kind !== "flow") throw new UnknownGraphTargetError("Flow", flowId);
   return replaceNode(graph, index, { ...node, defaultSceneId: sceneId });
+}
+
+/**
+ * Records the pairing code the server minted for a Device (#45, #111).
+ *
+ * The one command in this file the *user* never issues. Device ids are
+ * generated client-side (#47) so a Device exists on the canvas before any
+ * round trip, but its code can only be minted where uniqueness is
+ * enforceable — so the server answers a batch that created one with this, and
+ * the editor applies it to the graph it is already editing.
+ *
+ * It is a command rather than a field the editor fishes out of a response
+ * because that is what it is: a change to the graph, arriving from elsewhere.
+ * What it must *not* be is an undo entry — "undo the server telling me the
+ * code" is not an edit the director made, and `CommandStack.amend` is the
+ * door that keeps it off the stack.
+ */
+export function setDevicePairingCode(
+  nodeId: string,
+  pairingCode: string | null,
+  label = "Pairing code",
+): ShowGraphCommand {
+  return capturing<ShowGraph, string | null, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setDevicePairingCode,
+    label,
+    scope: "global",
+    coalesceKey: `${GRAPH_COMMAND_TYPES.setDevicePairingCode}:${nodeId}`,
+    edits: [{ type: GRAPH_COMMAND_TYPES.setDevicePairingCode, nodeId, pairingCode }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.setDevicePairingCode, nodeId, pairingCode: captured },
+    ],
+    capture: (graph) => deviceAt(graph, nodeId).device.pairingCode,
+    isEmpty: (_graph, captured) => captured === pairingCode,
+    apply: (graph) => withPairingCode(graph, nodeId, pairingCode),
+    restore: (graph, captured) => withPairingCode(graph, nodeId, captured),
+  });
+}
+
+function deviceAt(graph: ShowGraph, nodeId: string): { index: number; device: DeviceNode } {
+  const index = nodeIndex(graph, nodeId);
+  const device = graph.nodes[index] as GraphNode;
+  if (device.kind !== "device") throw new UnknownGraphTargetError("Device", nodeId);
+  return { index, device };
+}
+
+function withPairingCode(graph: ShowGraph, nodeId: string, pairingCode: string | null): ShowGraph {
+  const { index, device } = deviceAt(graph, nodeId);
+  return replaceNode(graph, index, { ...device, pairingCode });
 }
 
 // ---------------------------------------------------------------------------

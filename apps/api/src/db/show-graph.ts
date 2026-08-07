@@ -29,6 +29,25 @@ export interface StoredShowGraph extends ShowGraph {
   version: number;
 }
 
+/**
+ * The answer to an edit batch (#111): what the next batch needs to know, and
+ * anything the server decided along the way — *not* the graph.
+ *
+ * Answering a delta with the whole graph would be the same wholesale
+ * replacement #103 removed, pointed the other way: the client composed these
+ * edits against its own copy and applied them locally before sending, so all
+ * it is missing is the version to build on and whatever it couldn't decide
+ * for itself.
+ */
+export interface AppliedShowGraphEdits {
+  showId: string;
+  state: GraphState;
+  updatedAt: Date;
+  version: number;
+  /** Edits the client should apply to its copy — see `amendments` below. */
+  amendments: GraphEdit[];
+}
+
 /** The transaction type the graph functions run inside. */
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -379,15 +398,50 @@ export async function applyShowGraphEdits(
   showId: string,
   edits: readonly GraphEdit[],
   baseVersion: number,
-): Promise<StoredShowGraph> {
+): Promise<AppliedShowGraphEdits> {
   return db.transaction(async (tx) => {
     const current = await readShowGraph(showId, "draft", tx);
     if (current.version !== baseVersion) {
       throw new GraphVersionConflictError(baseVersion, current.version);
     }
     const next = applyGraphEdits({ nodes: current.nodes, edges: current.edges }, edits);
-    return writeGraph(tx, showId, "draft", next, baseVersion);
+    const written = await writeGraph(tx, showId, "draft", next, baseVersion);
+    return {
+      showId,
+      state: written.state,
+      updatedAt: written.updatedAt,
+      version: written.version,
+      amendments: amendments(next, written),
+    };
   });
+}
+
+/**
+ * What the server changed that the client didn't ask for, as edits the client
+ * can apply to its own copy (#111).
+ *
+ * Today that is exactly one thing: the pairing code minted for a Device the
+ * batch created (#45). The client sent a Device with no code — it can't
+ * invent a unique one — and this is how it finds out.
+ *
+ * Expressed as a diff between the graph the *client* meant to produce and the
+ * graph that was stored, so anything else the write decides for itself in
+ * future is caught here rather than being quietly dropped on the floor.
+ */
+function amendments(intended: ShowGraph, written: StoredShowGraph): GraphEdit[] {
+  const intendedById = new Map(intended.nodes.map((node) => [node.id, node]));
+  const edits: GraphEdit[] = [];
+  for (const node of written.nodes) {
+    if (node.kind !== "device") continue;
+    const before = intendedById.get(node.id);
+    if (before?.kind === "device" && before.pairingCode === node.pairingCode) continue;
+    edits.push({
+      type: "graph.setDevicePairingCode",
+      nodeId: node.id,
+      pairingCode: node.pairingCode,
+    });
+  }
+  return edits;
 }
 
 /**
