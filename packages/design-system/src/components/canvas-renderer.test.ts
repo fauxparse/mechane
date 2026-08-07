@@ -1,10 +1,12 @@
+import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { CanvasRenderer, type Canvas } from "./canvas-renderer";
+import { CanvasRenderer } from "./canvas-renderer";
+import type { Canvas } from "./canvas-model";
 
 function markup(canvas: Canvas): string {
-  return renderToStaticMarkup(CanvasRenderer({ canvas }));
+  return renderToStaticMarkup(createElement(CanvasRenderer, { canvas }));
 }
 
 describe("CanvasRenderer", () => {
