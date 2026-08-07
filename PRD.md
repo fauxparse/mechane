@@ -140,6 +140,8 @@ Built on React Flow, for the Scene/Flow state-machine graph (Flows, Navigate Act
 
 ## 10. Open items for whoever scopes the first implementation tickets
 
-- **Still open** — Observability/error tracking tooling was not specified in this PRD and should be chosen (e.g. Sentry) when the repo is scaffolded.
+**Nothing here is open any more** — all three items are resolved, settled, or deliberately deferred, as noted inline. The section is kept rather than deleted so that references to it elsewhere (including a comment in `apps/api/src/auth.ts`) still land somewhere that explains what happened.
+
+- ~~Observability/error tracking tooling should be chosen (e.g. Sentry) when the repo is scaffolded~~ — **deferred past the MVP build**. Not needed to get v1 working, so it is not a prerequisite for any ticket here. It is still genuinely unchosen — revisit before a real show runs on this, when an error nobody can see becomes a problem rather than a preference.
 - ~~Exact GraphQL schema for Shapes and how they map to Postgres storage for Source data~~ — **resolved**. Specified by the wayfinder map [Source data: the Shape type system](https://github.com/fauxparse/mechane/issues/90); its Decisions-so-far index _is_ the spec, covering the type system itself, Postgres storage, the GraphQL surface, wiring compatibility, and publish-time coercion. Read it before writing Source/Shape tickets.
 - ~~Standard Better Auth flows (email verification, password reset) are assumed default-configuration~~ — **settled**: shipped as default configuration in `apps/api/src/auth.ts`, which cites this section by name. No custom requirements emerged.
