@@ -118,6 +118,9 @@ importers:
       '@tanstack/react-router':
         specifier: ^1.150.0
         version: 1.170.19(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@tisoap/react-flow-smart-edge':
+        specifier: ^4.13.1
+        version: 4.13.1(@xyflow/react@12.11.2(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@xyflow/react':
         specifier: ^12.11.2
         version: 12.11.2(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -2611,6 +2614,13 @@ packages:
     engines: {node: '>=12', npm: '>=6'}
     peerDependencies:
       '@testing-library/dom': '>=7.21.4'
+
+  '@tisoap/react-flow-smart-edge@4.13.1':
+    resolution: {integrity: sha512-hWp2x1pPEixWuyzPvTB15HC3ebUKiJcu85tj+4Z7JQ6que01AsaPhjEpSZ/Y7B06xULZ/TJ4XCQR+NnG1Jq4MQ==}
+    peerDependencies:
+      '@xyflow/react': '>=12'
+      react: '>=18'
+      react-dom: '>=18'
 
   '@ts-morph/common@0.11.1':
     resolution: {integrity: sha512-7hWZS0NRpEsNV8vWJzg7FEz6V8MaLNeJOmwmghqUXTpzk16V1LLZhdo+4QvE/+zv4cVci0OviuJFnqhEfoV3+g==}
@@ -6507,6 +6517,12 @@ snapshots:
   '@testing-library/user-event@14.6.3(@testing-library/dom@10.4.1)':
     dependencies:
       '@testing-library/dom': 10.4.1
+
+  '@tisoap/react-flow-smart-edge@4.13.1(@xyflow/react@12.11.2(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+    dependencies:
+      '@xyflow/react': 12.11.2(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      react: 19.2.8
+      react-dom: 19.2.8(react@19.2.8)
 
   '@ts-morph/common@0.11.1':
     dependencies:

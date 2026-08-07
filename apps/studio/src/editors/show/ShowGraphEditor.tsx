@@ -98,6 +98,8 @@ import { useGraphEditing } from "./use-graph-editing";
 import { useUndoKeys } from "./use-undo-keys";
 import { useViewportKeys } from "./use-viewport-keys";
 import { useShowGraphEditorActions } from "./use-show-graph-editor-actions";
+import { ShowEdgeRoutingProvider } from "./show-edge-rendering";
+import { showEdgeTypes } from "./show-edge-types";
 import type { ApiGraph } from "./api-graph";
 import type { PaletteCommand } from "./palette-commands";
 
@@ -484,51 +486,59 @@ function ShowGraphContextMenu({
           });
         }}
       >
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          // The three halves of the drag gesture: open it, feed it each
-          // frame, and land the whole thing as one undo entry (#28).
-          onNodeDragStart={beginDrag}
-          onNodeDrag={(_event, _node, moved) => dragTo(moved)}
-          onNodeDragStop={endDrag}
-          onConnectStart={(_event, { nodeId }) => nodeId && editing.beginConnect(nodeId)}
-          onConnectEnd={editing.endConnect}
-          onConnect={onConnect}
-          isValidConnection={(connection) => isValidConnection(connection as Connection)}
-          // Deletion goes through a Command instead (see the header note).
-          deleteKeyCode={null}
-          // A box-select takes only what it fully encloses (#36).
-          selectionMode={SelectionMode.Full}
-          // Match Figma's canvas gestures (#57): an unmodified drag selects,
-          // while holding Space temporarily enables panning.
-          selectionKeyCode={null}
-          selectionOnDrag
-          panActivationKeyCode="Space"
-          panOnDrag={false}
-          // Plain wheel input scrolls the canvas; React Flow switches back
-          // to its zoom handler while the platform zoom activation key is
-          // held (Cmd on macOS, Ctrl on Windows/Linux).
-          panOnScroll
-          panOnScrollMode={PanOnScrollMode.Free}
-          zoomOnScroll
-          minZoom={MIN_ZOOM}
-          maxZoom={MAX_ZOOM}
-          fitView
-          fitViewOptions={FIT_VIEW_OPTIONS}
-          proOptions={{ hideAttribution: true }}
-          aria-label="Show graph"
-        >
-          <Background variant={BackgroundVariant.Dots} gap={24} size={1} />
+        <ShowEdgeRoutingProvider nodes={nodes}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            edgeTypes={showEdgeTypes}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            // The three halves of the drag gesture: open it, feed it each
+            // frame, and land the whole thing as one undo entry (#28).
+            onNodeDragStart={beginDrag}
+            onNodeDrag={(_event, _node, moved) => dragTo(moved)}
+            onNodeDragStop={endDrag}
+            onConnectStart={(_event, { nodeId }) => nodeId && editing.beginConnect(nodeId)}
+            onConnectEnd={editing.endConnect}
+            onConnect={onConnect}
+            isValidConnection={(connection) => isValidConnection(connection as Connection)}
+            // Deletion goes through a Command instead (see the header note).
+            deleteKeyCode={null}
+            // A box-select takes only what it fully encloses (#36).
+            selectionMode={SelectionMode.Full}
+            // Match Figma's canvas gestures (#57): an unmodified drag selects,
+            // while holding Space temporarily enables panning.
+            selectionKeyCode={null}
+            selectionOnDrag
+            panActivationKeyCode="Space"
+            panOnDrag={false}
+            // Plain wheel input scrolls the canvas; React Flow switches back
+            // to its zoom handler while the platform zoom activation key is
+            // held (Cmd on macOS, Ctrl on Windows/Linux).
+            panOnScroll
+            panOnScrollMode={PanOnScrollMode.Free}
+            zoomOnScroll
+            minZoom={MIN_ZOOM}
+            maxZoom={MAX_ZOOM}
+            fitView
+            fitViewOptions={FIT_VIEW_OPTIONS}
+            proOptions={{ hideAttribution: true }}
+            aria-label="Show graph"
+          >
+            <Background variant={BackgroundVariant.Dots} gap={24} size={1} />
 
-          {/* Both restyled in ./show-graph-editor.css — React Flow ships
+            {/* Both restyled in ./show-graph-editor.css — React Flow ships
                   them with hardcoded near-white chrome. */}
-          <Controls fitViewOptions={FIT_VIEW_OPTIONS} />
-          <MiniMap pannable zoomable onClick={jumpToMinimapPoint} ariaLabel="Show graph minimap" />
-        </ReactFlow>
+            <Controls fitViewOptions={FIT_VIEW_OPTIONS} />
+            <MiniMap
+              pannable
+              zoomable
+              onClick={jumpToMinimapPoint}
+              ariaLabel="Show graph minimap"
+            />
+          </ReactFlow>
+        </ShowEdgeRoutingProvider>
       </ContextMenuTrigger>
 
       <ContextMenuContent>
