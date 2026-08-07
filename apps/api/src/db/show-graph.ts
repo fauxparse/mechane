@@ -5,6 +5,7 @@
 // Kept out of the resolvers so the GraphQL layer stays a thin adapter: the
 // resolvers authenticate, check ownership, validate through the domain, and
 // call one of the three functions below.
+import { runChannel } from "@mechane/realtime";
 import type { GraphEdit } from "@mechane/commands";
 import { applyGraphEdits } from "@mechane/commands";
 import type {
@@ -22,6 +23,7 @@ import { assertValidShowGraph, emptyShowGraph, generateId, isEdgeKind } from "@m
 import { and, eq } from "drizzle-orm";
 
 import { db } from "./client";
+import { realtimeProvider } from "../realtime";
 import { reconcileActiveRunValues } from "./runs";
 import type { StoredDevice } from "./devices";
 import { retireUnreferencedDevices, syncDevices } from "./devices";
@@ -594,7 +596,7 @@ function amendments(intended: ShowGraph, written: StoredShowGraph): GraphEdit[] 
 export async function publishShowGraph(
   showId: string,
 ): Promise<StoredShowGraph & { losses: Awaited<ReturnType<typeof reconcileActiveRunValues>>["losses"] }> {
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     await tx.select({ id: shows.id }).from(shows).where(eq(shows.id, showId)).for("update");
     const draft = await readShowGraph(showId, "draft", tx);
     const publishedBefore = await readShowGraph(showId, "published", tx);
@@ -607,6 +609,16 @@ export async function publishShowGraph(
     // Publish is the only moment a Device may be retired (#45). Keeping this
     // in the same transaction preserves the all-or-nothing cutover.
     await retireUnreferencedDevices(tx, showId);
-    return { ...published, losses: reconciled.losses };
+    return { published, reconciled };
   });
+
+  if (result.reconciled.runId) {
+    await realtimeProvider.channel(runChannel(result.reconciled.runId)).publish("run.cutover", {
+      graph: result.published,
+      sourceValues: result.reconciled.sourceValues,
+      losses: result.reconciled.losses,
+    });
+  }
+
+  return { ...result.published, losses: result.reconciled.losses };
 }

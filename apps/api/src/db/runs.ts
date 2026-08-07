@@ -17,6 +17,7 @@ export interface RunValueLoss {
 }
 
 export interface ReconciledRunValues {
+  runId?: string;
   sourceValues: SourceValues;
   losses: RunValueLoss[];
 }
@@ -153,7 +154,7 @@ export async function reconcileActiveRunValues(
     .update(runs)
     .set({ sourceValues, updatedAt: new Date() })
     .where(eq(runs.id, run.id));
-  return { sourceValues, losses };
+  return { runId: run.id, sourceValues, losses };
 }
 
 /** Ends the active Run, if there is one, and returns the ended Run. */
