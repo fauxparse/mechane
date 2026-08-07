@@ -5,6 +5,7 @@ import { ShowEditorChrome } from "./ShowEditorChrome";
 const meta: Meta<typeof ShowEditorChrome> = {
   title: "studio/ShowEditorChrome",
   component: ShowEditorChrome,
+  parameters: { layout: "fullscreen" },
   args: {
     name: "The Tempest",
     publishState: "unpublished-changes",
