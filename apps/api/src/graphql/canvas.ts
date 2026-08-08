@@ -52,7 +52,20 @@ export function parseCanvasEdit(input: unknown): CanvasEdit {
       const properties = input.properties;
       if (!isRecord(properties))
         throw new CanvasEditError("canvas.updateElement requires properties.");
-      return { type, elementId: stringField(input, "elementId"), properties };
+      const unsetProperties = input.unsetProperties;
+      if (
+        unsetProperties !== undefined &&
+        (!Array.isArray(unsetProperties) ||
+          unsetProperties.some((property) => typeof property !== "string"))
+      ) {
+        throw new CanvasEditError("canvas.updateElement unsetProperties must be strings.");
+      }
+      return {
+        type,
+        elementId: stringField(input, "elementId"),
+        properties,
+        ...(unsetProperties ? { unsetProperties } : {}),
+      };
     }
     case CANVAS_COMMAND_TYPES.reparentElement:
       return {
@@ -61,6 +74,13 @@ export function parseCanvasEdit(input: unknown): CanvasEdit {
         parentId: stringField(input, "parentId"),
         rank: stringField(input, "rank"),
       };
+    case CANVAS_COMMAND_TYPES.moveArtboard: {
+      const position = input.position;
+      if (!isRecord(position) || typeof position.x !== "number" || typeof position.y !== "number") {
+        throw new CanvasEditError("canvas.moveArtboard requires a numeric position.");
+      }
+      return { type, position: { x: position.x, y: position.y } };
+    }
     default:
       throw new CanvasEditError(`Unknown Canvas edit type "${type}".`);
   }
@@ -70,6 +90,7 @@ export function serializeCanvas(canvas: StoredCanvas) {
   return {
     id: canvas.id,
     kind: canvas.kind,
+    position: canvas.position,
     root: canvas.root,
   };
 }

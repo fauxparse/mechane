@@ -164,6 +164,10 @@ export const ApplyShowEditsMutation = graphql(`
       canvas {
         id
         kind
+        position {
+          x
+          y
+        }
       }
       amendments {
         type

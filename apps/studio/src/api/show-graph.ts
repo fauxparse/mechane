@@ -6,8 +6,8 @@
 // "are there unpublished changes?" is derived by comparing their
 // timestamps (ADR-0002 — see @mechane/domain's `publishState`), not
 // stored on either.
-import { coalesceGraphEdits } from "@mechane/commands";
-import type { GraphEdit } from "@mechane/commands";
+import { coalesceCanvasWorkspaceEdits, coalesceGraphEdits } from "@mechane/commands";
+import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
 import type { GraphState, ShowId } from "@mechane/domain";
 import {
   ApplyShowEditsMutation,
@@ -93,7 +93,7 @@ export interface ShowGraphEdits {
    * Queues edits for the next flush. Called once per landed command — a
    * gesture included, since the stack coalesces one (#28).
    */
-  enqueue(edits: readonly GraphEdit[]): void;
+  enqueue(edits: readonly (GraphEdit | CanvasWorkspaceEdit)[]): void;
   /** True while a batch is in flight. */
   saving: boolean;
   /**
@@ -137,7 +137,7 @@ export function useShowGraphEdits(
   }, [onAmend]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const pending = useRef<GraphEdit[]>([]);
+  const pending = useRef<(GraphEdit | CanvasWorkspaceEdit)[]>([]);
   const timer = useRef<number | null>(null);
   const inFlight = useRef(false);
   // Not state: the version is a fact about the last response, and re-rendering
@@ -152,13 +152,23 @@ export function useShowGraphEdits(
   const flush = useCallback(() => {
     timer.current = null;
     if (inFlight.current || failed.current) return;
-    // Coalesced here, at the wire, rather than as they arrive: a batch is
-    // only knowable as a whole, and two drags of the same node inside one
-    // debounce window collapse for the same reason one drag's frames do.
-    const edits = coalesceGraphEdits(pending.current);
+    const firstCanvas = pending.current.find((edit) => "canvasId" in edit);
+    const canvasId = firstCanvas && "canvasId" in firstCanvas ? firstCanvas.canvasId : null;
+    const batch: (GraphEdit | CanvasWorkspaceEdit)[] = [];
+    while (pending.current.length > 0) {
+      const next = pending.current[0]!;
+      if ("canvasId" in next && canvasId !== null && next.canvasId !== canvasId) break;
+      batch.push(next);
+      pending.current.shift();
+    }
+    const graphEdits = batch.filter((edit): edit is GraphEdit => !("canvasId" in edit));
+    const canvasEdits = batch.filter((edit): edit is CanvasWorkspaceEdit => "canvasId" in edit);
+    const edits = [...coalesceGraphEdits(graphEdits), ...coalesceCanvasWorkspaceEdits(canvasEdits)];
     const base = version.current;
-    if (edits.length === 0 || !showId || base === null) return;
-    pending.current = [];
+    if (edits.length === 0 || !showId || base === null) {
+      if (batch.length > 0) pending.current.unshift(...batch);
+      return;
+    }
     inFlight.current = true;
     setSaving(true);
     graphqlRequest(GRAPHQL_ENDPOINT, ApplyShowEditsMutation, {
@@ -169,12 +179,6 @@ export function useShowGraphEdits(
       .then((data) => {
         const result = data.applyShowEdits;
         version.current = result.version;
-        // Only the metadata comes back now (#111), so the cached draft is
-        // *updated* rather than replaced: its timestamp is what the
-        // "unpublished changes" badge compares against the published graph's
-        // (ADR-0002), and its nodes and edges are nobody's source of truth —
-        // the editor's own copy is. See the route's note on why the graph it
-        // opens with is the graph it keeps editing.
         queryClient.setQueryData(
           showGraphQueryKey(result.showId as ShowId, "draft"),
           (previous: ShowGraph | undefined) =>
@@ -187,20 +191,12 @@ export function useShowGraphEdits(
         }
       })
       .catch((reason: unknown) => {
-        // No retry, and no putting the edits back in the queue to be sent
-        // after the ones that follow them. A refused batch means the server
-        // is on a graph these edits weren't composed against — sending more
-        // of them would build on a divergence rather than close it. Stopping
-        // and saying so is the recoverable state; reloading re-reads the
-        // draft, which is where recovery actually lives until #103's
-        // follow-up gives the editor something better to do about it.
         failed.current = true;
         setError(reason instanceof Error ? reason : new Error(String(reason)));
       })
       .finally(() => {
         inFlight.current = false;
         setSaving(false);
-        // Anything queued while that was in flight goes now, in order.
         if (pending.current.length > 0 && !failed.current) flush();
       });
   }, [queryClient, showId]);
@@ -218,7 +214,7 @@ export function useShowGraphEdits(
   );
 
   const enqueue = useCallback(
-    (edits: readonly GraphEdit[]) => {
+    (edits: readonly (GraphEdit | CanvasWorkspaceEdit)[]) => {
       if (edits.length === 0) return;
       pending.current.push(...edits);
       if (timer.current !== null) window.clearTimeout(timer.current);

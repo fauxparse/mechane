@@ -12,9 +12,13 @@ type ApiEdge = ApiGraph["edges"][number];
 function apiNode(overrides: { id: string; kind: string } & Partial<ApiNode>): ApiNode {
   const { kind, ...rest } = overrides;
   const typeName =
-    { scene: "SceneNode", flow: "FlowNode", source: "SourceNode", transformer: "TransformerNode", device: "DeviceNode" }[
-      kind
-    ] ?? kind;
+    {
+      scene: "SceneNode",
+      flow: "FlowNode",
+      source: "SourceNode",
+      transformer: "TransformerNode",
+      device: "DeviceNode",
+    }[kind] ?? kind;
   return {
     __typename: typeName,
     name: overrides.id,
@@ -35,7 +39,8 @@ function apiEdge(
   overrides: { id: string; kind: string; sourceId: string; targetId: string } & Partial<ApiEdge>,
 ): ApiEdge {
   const { kind, ...rest } = overrides;
-  const typeName = { wiring: "WiringEdge", navigate: "NavigateEdge", device: "DeviceEdge" }[kind] ?? kind;
+  const typeName =
+    { wiring: "WiringEdge", navigate: "NavigateEdge", device: "DeviceEdge" }[kind] ?? kind;
   return {
     __typename: typeName,
     sourcePath: [],
@@ -209,6 +214,25 @@ describe("toEditInput", () => {
     expect(
       toEditInput({ type: "graph.setFlowDefaultScene", flowId: "flow_vote", sceneId: null }),
     ).toMatchObject({ sceneId: null });
+  });
+  it("carries Canvas targets and edits to the mutation input", () => {
+    expect(
+      toEditInput({
+        canvasId: "scene_lobby",
+        edit: {
+          type: "canvas.updateElement",
+          elementId: "title",
+          properties: { content: "Updated" },
+          unsetProperties: ["opacity"],
+        },
+      }),
+    ).toEqual({
+      type: "canvas.updateElement",
+      canvasId: "scene_lobby",
+      elementId: "title",
+      properties: { content: "Updated" },
+      unsetProperties: ["opacity"],
+    });
   });
 
   it("doesn't send a pairing code, which is the server's to mint (#45)", () => {

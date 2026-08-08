@@ -7,7 +7,7 @@
 // call one of the three functions below.
 import { runChannel } from "@mechane/realtime";
 import type { CanvasEdit, GraphEdit } from "@mechane/commands";
-import { applyCanvasEdits, applyGraphEdits } from "@mechane/commands";
+import { CANVAS_COMMAND_TYPES, applyCanvasEdits, applyGraphEdits } from "@mechane/commands";
 import type {
   GraphEdge,
   GraphNode,
@@ -599,7 +599,12 @@ export async function applyShowEdits(
       shapes: current.shapes ?? [],
       ...applyGraphEdits({ nodes: current.nodes, edges: current.edges }, graphEdits),
     };
-    const nextCanvas = currentCanvas ? applyCanvasEdits(currentCanvas.canvas, canvasEdits) : null;
+    const treeEdits = canvasEdits.filter((edit) => edit.type !== CANVAS_COMMAND_TYPES.moveArtboard);
+    let nextPosition = currentCanvas?.canvas.position;
+    for (const edit of canvasEdits) {
+      if (edit.type === CANVAS_COMMAND_TYPES.moveArtboard) nextPosition = edit.position;
+    }
+    const nextCanvas = currentCanvas ? applyCanvasEdits(currentCanvas.canvas, treeEdits) : null;
     const written = await writeGraph(tx, showId, "draft", nextGraph, baseVersion);
     let storedCanvas: StoredCanvas | null = null;
     if (nextCanvas && currentCanvas) {
@@ -615,6 +620,7 @@ export async function applyShowEdits(
         currentCanvas.owner,
         nextCanvas,
         written.updatedAt,
+        nextPosition,
       );
       storedCanvas = (await readCanvasById(showId, "draft", canvasId!, tx))?.canvas ?? null;
     }
