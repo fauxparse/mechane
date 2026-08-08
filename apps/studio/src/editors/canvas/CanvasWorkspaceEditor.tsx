@@ -1,14 +1,29 @@
-import type { CanvasArtboardDocument } from "../../api/canvas";
-import { CanvasRenderer } from "@mechane/rendering";
-import { useMemo } from "react";
+import { Box, Layers3, PanelLeft, SlidersHorizontal } from "lucide-react";
+import { useMemo, useState } from "react";
 
-import "./canvas-workspace-editor.css";
+import {
+  Button,
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@mechane/design-system";
+import { CanvasRenderer } from "@mechane/rendering";
+
+import type { CanvasArtboardDocument } from "../../api/canvas";
 
 export interface CanvasWorkspaceEditorProps {
   artboards: readonly CanvasArtboardDocument[];
   focusedArtId: string | null;
   onFocusArtboard(artId: string): void;
-  onBack(): void;
 }
 
 function artboardLabel(artboard: CanvasArtboardDocument): string {
@@ -21,7 +36,6 @@ export function CanvasWorkspaceEditor({
   artboards,
   focusedArtId,
   onFocusArtboard,
-  onBack,
 }: CanvasWorkspaceEditorProps) {
   const ordered = useMemo(
     () =>
@@ -33,60 +47,147 @@ export function CanvasWorkspaceEditor({
       ),
     [artboards],
   );
+  const [layersOpen, setLayersOpen] = useState(true);
   const focused = ordered.find((artboard) => artboard.artId === focusedArtId) ?? ordered[0] ?? null;
 
   return (
-    <div className="canvas-workspace-editor" data-focused-art-id={focused?.artId ?? ""}>
-      <header className="canvas-workspace-editor__toolbar">
-        <button type="button" onClick={onBack}>
-          Back to Show
-        </button>
-        <strong>Canvas</strong>
-        <span>
-          {ordered.length} artboard{ordered.length === 1 ? "" : "s"}
-        </span>
-      </header>
+    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background text-foreground">
+      <div className="flex min-h-0 min-w-0 flex-1">
+        <SidebarProvider open={layersOpen} onOpenChange={setLayersOpen} className="h-full shrink-0">
+          <Sidebar aria-label="Canvas layers">
+            <SidebarHeader>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2 text-sm">
+                  <Layers3 aria-hidden="true" className="size-4 shrink-0" />
+                  <strong className="truncate group-data-[state=collapsed]/sidebar:hidden">
+                    Layers
+                  </strong>
+                </div>
+                <SidebarTrigger aria-label="Toggle layers">
+                  <PanelLeft aria-hidden="true" />
+                </SidebarTrigger>
+              </div>
+            </SidebarHeader>
+            <SidebarContent>
+              <SidebarGroup>
+                <SidebarGroupLabel>Artboards</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  {ordered.length === 0 ? (
+                    <p className="p-2 text-sm text-muted-foreground group-data-[state=collapsed]/sidebar:hidden">
+                      No artboards yet.
+                    </p>
+                  ) : (
+                    <SidebarMenu>
+                      {ordered.map((artboard) => (
+                        <SidebarMenuItem key={artboard.artId}>
+                          <SidebarMenuButton
+                            aria-label={artboardLabel(artboard)}
+                            isActive={artboard.artId === focused?.artId}
+                            data-artboard-id={artboard.artId}
+                            onClick={() => onFocusArtboard(artboard.artId)}
+                          >
+                            <Box aria-hidden="true" />
+                            <span className="truncate group-data-[state=collapsed]/sidebar:hidden">
+                              {artboardLabel(artboard)}
+                            </span>
+                            <small className="ml-auto text-xs text-muted-foreground group-data-[state=collapsed]/sidebar:hidden">
+                              {artboard.kind === "scene" ? "Scene" : "Block"}
+                            </small>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  )}
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </SidebarContent>
+          </Sidebar>
+        </SidebarProvider>
 
-      <aside className="canvas-workspace-editor__layers" aria-label="Canvas artboards">
-        <h2>Artboards</h2>
-        {ordered.length === 0 ? <p>No artboards yet.</p> : null}
-        {ordered.map((artboard) => (
-          <button
-            key={artboard.artId}
-            type="button"
-            data-artboard-id={artboard.artId}
-            data-selected={artboard.artId === focused?.artId ? "true" : "false"}
-            onClick={() => onFocusArtboard(artboard.artId)}
-          >
-            <span>{artboardLabel(artboard)}</span>
-            <small>{artboard.kind === "scene" ? "Scene" : "Block"}</small>
-          </button>
-        ))}
-      </aside>
+        <SidebarProvider defaultOpen className="h-full min-w-0 flex-1">
+          <SidebarInset>
+            <div className="flex min-h-14 shrink-0 items-center justify-between gap-4 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label={layersOpen ? "Collapse layers" : "Expand layers"}
+                aria-expanded={layersOpen}
+                onClick={() => setLayersOpen((open) => !open)}
+              >
+                <PanelLeft aria-hidden="true" />
+              </Button>
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <strong className="truncate text-sm">Canvas workspace</strong>
+                <span className="text-xs text-muted-foreground">
+                  {ordered.length} artboard{ordered.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              <SidebarTrigger aria-label="Toggle inspector">
+                <SlidersHorizontal aria-hidden="true" />
+              </SidebarTrigger>
+            </div>
 
-      <main className="canvas-workspace-editor__viewport" aria-label="Canvas workspace">
-        <div className="canvas-workspace-editor__world">
-          {ordered.map((artboard) => (
-            <section
-              key={artboard.artId}
-              className="canvas-workspace-editor__artboard"
-              data-artboard-id={artboard.artId}
-              data-focused={artboard.artId === focused?.artId ? "true" : "false"}
-              style={{ left: artboard.position.x, top: artboard.position.y }}
-              aria-label={artboardLabel(artboard)}
-              onClick={() => onFocusArtboard(artboard.artId)}
+            <main
+              className="relative min-h-0 flex-1 overflow-auto bg-muted/20"
+              aria-label="Canvas workspace"
             >
-              <div className="canvas-workspace-editor__artboard-header">
-                <span>{artboardLabel(artboard)}</span>
-                <small>{artboard.kind === "scene" ? "Scene" : "Block"}</small>
+              <div className="relative min-h-[1600px] min-w-[2400px]">
+                {ordered.map((artboard) => (
+                  <section
+                    key={artboard.artId}
+                    className="absolute w-[720px] min-h-[520px] cursor-pointer rounded-lg border border-border bg-background shadow-xl data-[focused=true]:border-primary data-[focused=true]:ring-2 data-[focused=true]:ring-primary/35"
+                    data-artboard-id={artboard.artId}
+                    data-focused={artboard.artId === focused?.artId ? "true" : "false"}
+                    style={{ left: artboard.position.x, top: artboard.position.y }}
+                    aria-label={artboardLabel(artboard)}
+                    onClick={() => onFocusArtboard(artboard.artId)}
+                  >
+                    <div className="flex items-baseline justify-between gap-2 border-b border-border px-3 py-2 text-xs">
+                      <span className="truncate">{artboardLabel(artboard)}</span>
+                      <small className="text-[0.6875rem] uppercase text-muted-foreground">
+                        {artboard.kind === "scene" ? "Scene" : "Block"}
+                      </small>
+                    </div>
+                    <div className="h-[480px] overflow-hidden p-4">
+                      <CanvasRenderer canvas={artboard.canvas} />
+                    </div>
+                  </section>
+                ))}
               </div>
-              <div className="canvas-workspace-editor__artboard-surface">
-                <CanvasRenderer canvas={artboard.canvas} />
+            </main>
+          </SidebarInset>
+
+          <Sidebar side="right" aria-label="Canvas inspector">
+            <SidebarHeader>
+              <div className="flex items-center gap-2 text-sm">
+                <SlidersHorizontal aria-hidden="true" className="size-4" />
+                <strong>Inspector</strong>
               </div>
-            </section>
-          ))}
-        </div>
-      </main>
+            </SidebarHeader>
+            <SidebarContent>
+              <SidebarGroup>
+                <SidebarGroupLabel>Selection</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  {focused ? (
+                    <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-muted p-3 text-xs">
+                      <strong>{artboardLabel(focused)}</strong>
+                      <span className="text-muted-foreground">
+                        {focused.kind === "scene" ? "Scene" : "Block"} artboard
+                      </span>
+                      <span className="text-muted-foreground">
+                        Position {focused.position.x}, {focused.position.y}
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="p-2 text-sm text-muted-foreground">Select an artboard.</p>
+                  )}
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </SidebarContent>
+          </Sidebar>
+        </SidebarProvider>
+      </div>
     </div>
   );
 }

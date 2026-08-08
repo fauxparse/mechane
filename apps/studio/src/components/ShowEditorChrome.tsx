@@ -25,6 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
+  cn,
 } from "@mechane/design-system";
 import type { PublishState } from "@mechane/domain";
 import { ChevronDown, LayoutGrid, Pencil, Play, Square, Trash2 } from "lucide-react";
@@ -32,6 +33,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 
 export interface ShowEditorChromeProps {
+  placement?: "overlay" | "flow";
   name: string;
   publishState: PublishState;
   onBack: () => void;
@@ -72,6 +74,7 @@ export function ShowEditorChrome({
   onRename,
   onDelete,
   onPublish,
+  placement = "overlay",
   runActive = false,
   onStartRun,
   onEndRun,
@@ -95,7 +98,14 @@ export function ShowEditorChrome({
     // `pointer-events-none` on the bar and `pointer-events-auto` on its
     // controls means the gaps between them stay part of the editor — the
     // chrome floats over it without stealing a full-width strip of clicks.
-    <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start gap-3 p-4">
+    <div
+      className={cn(
+        "pointer-events-none z-10 flex items-start gap-3 p-4",
+        placement === "flow"
+          ? "relative w-full shrink-0 border-b border-border bg-background"
+          : "absolute inset-x-0 top-0",
+      )}
+    >
       <Button
         type="button"
         variant="outline"

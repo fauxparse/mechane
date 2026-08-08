@@ -62,7 +62,6 @@ function CanvasWorkspaceRoute() {
           replace: true,
         })
       }
-      onBack={() => void navigate({ to: "/shows/$showId", params: { showId: params.showId } })}
     />
   );
 }
