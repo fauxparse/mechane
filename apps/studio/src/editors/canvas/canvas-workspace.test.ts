@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { CanvasArtboardDocument } from "../../api/canvas";
-import { artIdFromPath, resolveFocusedArtboard } from "./canvas-workspace";
+import { artIdFromPath, canvasArtboardSize, resolveFocusedArtboard } from "./canvas-workspace";
 
 const artboards = [
   {
@@ -34,5 +34,39 @@ describe("Canvas workspace URL state", () => {
     expect(resolveFocusedArtboard(artboards, "canvas-b")?.artId).toBe("block-b");
     expect(resolveFocusedArtboard(artboards, "missing")?.artId).toBe("scene-a");
     expect(resolveFocusedArtboard([], "missing")).toBeNull();
+  });
+});
+
+describe("Canvas workspace artboard sizing", () => {
+  it("uses the scene preview preset and preserves a Block root's authored size", () => {
+    const scene = {
+      ...artboards[0]!,
+      canvas: {
+        kind: "scene" as const,
+        root: {
+          id: "scene-root",
+          type: "frame" as const,
+          width: { mode: "fixed" as const, value: 320 },
+          height: { mode: "fixed" as const, value: 200 },
+        },
+      },
+    } as CanvasArtboardDocument;
+    const block = {
+      ...artboards[1]!,
+      canvas: {
+        kind: "block" as const,
+        root: {
+          id: "block-root",
+          type: "frame" as const,
+          layout: {
+            width: { mode: "fixed" as const, value: 480 },
+            height: { mode: "fixed" as const, value: 280 },
+          },
+        },
+      },
+    } as CanvasArtboardDocument;
+
+    expect(canvasArtboardSize(scene)).toEqual({ width: 720, height: 420 });
+    expect(canvasArtboardSize(block)).toEqual({ width: 480, height: 280 });
   });
 });
