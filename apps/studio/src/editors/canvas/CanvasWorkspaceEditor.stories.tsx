@@ -48,7 +48,6 @@ const meta: Meta<typeof CanvasWorkspaceEditor> = {
     artboards,
     focusedArtId: "scene-lobby",
     onFocusArtboard: () => {},
-    onBack: () => {},
   },
 };
 

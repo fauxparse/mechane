@@ -7,7 +7,13 @@
 import { isId, publishState } from "@mechane/domain";
 import type { ShowId } from "@mechane/domain";
 import { GraphQLRequestError } from "@mechane/graphql-schema";
-import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  useNavigate,
+  useRouterState,
+} from "@tanstack/react-router";
 
 import { usePublishShowGraph, useShowGraph } from "../../../api/show-graph";
 import { useActiveRun, useEndRun, useStartRun } from "../../../api/runs";
@@ -35,6 +41,16 @@ function ShowEditorLayout() {
   const publish = usePublishShowGraph();
   const startRun = useStartRun();
   const endRun = useEndRun();
+  // Canvas owns a real workspace shell, so the Show chrome must participate
+  // in normal layout flow instead of floating over its toolbar and sidebars.
+  const isCanvasRoute = useRouterState({
+    select: ({ matches }) =>
+      matches.some(
+        ({ routeId }) =>
+          routeId === "/_authenticated/shows/$showId/art" ||
+          routeId === "/_authenticated/shows/$showId/art/$artId",
+      ),
+  });
 
   if (showId !== null && show.isPending) {
     return <p className="p-6 text-muted-foreground">Loading…</p>;
@@ -56,10 +72,17 @@ function ShowEditorLayout() {
       : "empty";
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden">
+    <div
+      className={
+        isCanvasRoute
+          ? "flex h-screen w-screen flex-col overflow-hidden"
+          : "relative h-screen w-screen overflow-hidden"
+      }
+    >
       <ShowEditorChrome
         name={currentShow.name}
         publishState={state}
+        placement={isCanvasRoute ? "flow" : "overlay"}
         onBack={() => void navigate({ to: "/" })}
         onOpenCanvas={() =>
           void navigate({ to: "/shows/$showId/art", params: { showId: params.showId } })
