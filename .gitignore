@@ -11,3 +11,4 @@ storybook-static/
 coverage/
 .claude/worktrees/
 .claude/settings.local.json
+*.afdesign~lock~
