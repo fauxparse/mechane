@@ -84,7 +84,7 @@ Transformer expressions (JEXL subset) evaluate **server-side only**, never on-De
 
 ### 4.6 Canvas rendering
 
-Elements render as DOM + CSS (React components), shared between the Screen editor's live preview and `player`'s rendering — not a canvas/WebGL renderer. Chosen for flexible, responsive layout across a wide range of phone screen sizes over pixel-identical cross-device rendering; see the auto-layout requirements in §6.1.
+Elements render as DOM + CSS (React components), shared unchanged between the Scene editor's live preview and `player`'s rendering — not a canvas/WebGL renderer. The shared implementation lives in `@mechane/rendering`, separate from `@mechane/design-system`, which owns application chrome and theme tokens. See [ADR-0011](./docs/adr/0011-canvas-rendering-package.md). This keeps content rendering available to both authoring and playback without coupling it to the design-system UI surface.
 
 **Amended (issue #130).** Auto-layout is a per-Frame *mode*, and it is **off by default** — see §6.1. A Scene whose Frames are absolute is not responsive by construction, so how such a Scene meets a Device that isn't the size it was authored at (scale-to-fit, constraints/anchoring, or something else) is **deliberately open**, to be decided when `player` is built. Until then this section's preference for responsive layout over pixel-identical rendering describes what auto-layout is *for*, not what every Scene will do. If scale-to-fit becomes the answer, it reverses the trade-off recorded here and wants an ADR of its own.
 
@@ -138,7 +138,7 @@ Built on React Flow, for the Scene/Flow state-machine graph (Flows, Navigate Act
 - **Repo**: new GitHub repo, pnpm monorepo, GitHub Issues for ticket tracking (both need initial setup — not yet created).
 - **Ticket convention**: one issue = one vertical slice — independently implementable and independently mergeable, spanning whatever layers (schema → resolver → UI) it needs rather than being split by layer. Avoid tickets that can't be verified/tested in isolation.
 - **Review gate**: every PR must pass CI (lint + unit tests) before merge; domain-logic packages require unit test coverage as a review gate, not just a suggestion.
-- **Component convention**: any PR that adds or materially changes a visual/UI component must add or update its Storybook story in the same PR — not as separate follow-up work. This is how the design-system library (§7) stays a living, browsable reference rather than drifting out of date.
+- **Component convention**: any PR that adds or materially changes a visual/UI component must add or update its Storybook story in the same PR — not as separate follow-up work. This applies to both `@mechane/design-system` application-chrome components and `@mechane/rendering` content-rendering primitives.
 - **Sequencing note for whoever breaks this PRD into tickets**: the domain model is large (§1 says "everything" is in scope), so sequence foundational vertical slices first — Show/Scene/Device CRUD + basic Canvas rendering + Run/pairing — before layering in Transformers, Shapes, and Blocks/Slots, even though all of them ship in v1.
 - **ADRs**: recorded in `docs/adr/`, referenced above — agents implementing around these decisions should read the relevant ADR rather than re-deriving the reasoning (or worse, "fixing" a deliberate choice).
 

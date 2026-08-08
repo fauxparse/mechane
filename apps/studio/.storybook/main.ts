@@ -11,6 +11,7 @@ const config: StorybookConfig = {
   stories: [
     "../src/**/*.stories.@(ts|tsx)",
     "../../../packages/design-system/src/**/*.stories.@(ts|tsx)",
+    "../../../packages/rendering/src/**/*.stories.@(ts|tsx)",
   ],
   framework: {
     name: "@storybook/react-vite",

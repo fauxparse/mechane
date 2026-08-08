@@ -16,7 +16,8 @@ apps/
 packages/
   domain/            Domain model types and logic
   graphql-schema/     GraphQL schema and generated client
-  design-system/      Theme tokens and shared components (Storybook-documented)
+  design-system/      Theme tokens and application-chrome components (Storybook-documented)
+  rendering/          Shared Canvas/Element DOM + CSS renderer for Studio and Player
   realtime/           Internal pub/sub abstraction (Ably behind the scenes)
   commands/           Shared Command/undo-redo engine
 ```

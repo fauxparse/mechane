@@ -90,7 +90,7 @@ const canvas: Canvas = {
 };
 
 const meta: Meta<typeof CanvasRenderer> = {
-  title: "design-system/CanvasRenderer",
+  title: "rendering/CanvasRenderer",
   component: CanvasRenderer,
   parameters: { layout: "centered" },
 };
