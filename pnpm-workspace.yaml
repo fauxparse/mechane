@@ -1,6 +1,7 @@
 packages:
   - "apps/*"
   - "packages/*"
+  - "storybook"
 allowBuilds:
   esbuild: true
 minimumReleaseAgeExclude:

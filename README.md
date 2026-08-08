@@ -13,6 +13,7 @@ apps/
   studio/       Authoring + show-running app (directors/technicians)
   player/       Device client — renders Scenes, emits Events (audience phones, projectors, laptops)
   api/          GraphQL API (graphql-yoga) + Better Auth, deployed as Vercel serverless functions
+  storybook/      Repository-level Storybook host for Studio and shared packages
 packages/
   domain/            Domain model types and logic
   graphql-schema/     GraphQL schema and generated client
@@ -32,6 +33,7 @@ pnpm --filter @mechane/api db:migrate   # apply Better Auth's tables
 pnpm db:seed      # wipe + recreate a default dev account (test@example.com)
 pnpm dev:studio   # authoring app
 pnpm dev:player   # device client
+pnpm storybook    # component workbench
 pnpm dev:api      # GraphQL + auth API (http://localhost:4000)
 pnpm test         # unit tests
 pnpm lint

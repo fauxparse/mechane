@@ -5,8 +5,7 @@ import { createElement } from "react";
 import "@mechane/design-system/styles/globals.css";
 
 // Toolbar controls for verifying every story in both modes and both
-// built-in themes (PRD.md §9's "component convention" acceptance bar —
-// see issue #14). Values match @mechane/domain's ThemeMode/ThemePalette.
+// built-in themes. Values match @mechane/domain's ThemeMode/ThemePalette.
 const preview: Preview = {
   globalTypes: {
     mode: {
