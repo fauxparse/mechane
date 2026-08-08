@@ -572,6 +572,21 @@ input GraphEditInput {
   variable: SceneVariableInput
 }
 
+"""One serialisable mutation of a Canvas Element tree."""
+input CanvasEditInput {
+  type: String!
+  elementId: ID
+  parentId: ID
+  rank: String
+  element: JSON
+  properties: JSON
+}
+
+type AppliedCanvasEdits {
+  canvas: Canvas!
+  version: Int!
+}
+
 type Query {
   """The signed-in user, or null if the request has no valid session."""
   me: User
@@ -636,6 +651,9 @@ type Mutation {
   the client already has (issue #111).
   """
   applyShowGraphEdits(showId: ID!, baseVersion: Int!, edits: [GraphEditInput!]!): AppliedShowGraphEdits!
+
+  """Applies a versioned Canvas Element edit batch to a draft Canvas."""
+  applyCanvasEdits(showId: ID!, canvasId: ID!, baseVersion: Int!, edits: [CanvasEditInput!]!): AppliedCanvasEdits!
 
   """
   Publishes a Show's draft graph, making it the published graph immediately (ADR-0002).
