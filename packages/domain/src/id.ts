@@ -32,6 +32,7 @@ export const ID_PREFIXES = {
   show: "s",
   scene: "c",
   block: "b",
+  canvas: "a",
   // Show graph (issue #38). Nodes are identified by their kind rather than
   // by a single "node" prefix, so an id says what it points at without a
   // lookup — a Navigate edge's endpoints being `c…` ids is visible in a log
@@ -57,6 +58,7 @@ const ENTITY_BY_PREFIX = {
   s: "show",
   c: "scene",
   b: "block",
+  a: "canvas",
   g: "graph",
   f: "flow",
   r: "source",
@@ -87,6 +89,7 @@ export type Id<E extends EntityName> = string & { readonly __entity: E };
 export type ShowId = Id<"show">;
 export type SceneId = Id<"scene">;
 export type BlockId = Id<"block">;
+export type CanvasId = Id<"canvas">;
 export type GraphId = Id<"graph">;
 export type FlowId = Id<"flow">;
 export type SourceId = Id<"source">;
