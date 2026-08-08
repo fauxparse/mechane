@@ -279,6 +279,147 @@ type ShowGraph {
   losses: [PublishLoss!]!
 }
 
+"""
+A persisted Scene or Block Canvas. Element is an interface so clients can
+select the primitive-specific content without a nullable field bag.
+"""
+type Canvas {
+  id: ID!
+  kind: String!
+  root: Element!
+}
+
+interface Element {
+  id: ID!
+  name: String
+  parentId: ID
+  rank: String!
+  hidden: Boolean!
+  layout: JSON
+  sizing: JSON
+  width: JSON
+  height: JSON
+  minWidth: JSON
+  maxWidth: JSON
+  minHeight: JSON
+  maxHeight: JSON
+  rotation: Int
+  opacity: Float
+  blendMode: String
+  fill: JSON
+  children: [Element!]!
+}
+
+type RectElement implements Element {
+  id: ID!
+  name: String
+  parentId: ID
+  rank: String!
+  hidden: Boolean!
+  layout: JSON
+  sizing: JSON
+  width: JSON
+  height: JSON
+  minWidth: JSON
+  maxWidth: JSON
+  minHeight: JSON
+  maxHeight: JSON
+  rotation: Int
+  opacity: Float
+  blendMode: String
+  fill: JSON
+  children: [Element!]!
+  cornerRadius: Float
+}
+
+type TextElement implements Element {
+  id: ID!
+  name: String
+  parentId: ID
+  rank: String!
+  hidden: Boolean!
+  layout: JSON
+  sizing: JSON
+  width: JSON
+  height: JSON
+  minWidth: JSON
+  maxWidth: JSON
+  minHeight: JSON
+  maxHeight: JSON
+  rotation: Int
+  opacity: Float
+  blendMode: String
+  fill: JSON
+  children: [Element!]!
+  content: String
+  text: String
+  color: String
+  fontFamily: String
+  fontSize: Float
+  fontWeight: String
+  lineHeight: JSON
+  letterSpacing: Float
+  textAlign: String
+}
+
+type ImageElement implements Element {
+  id: ID!
+  name: String
+  parentId: ID
+  rank: String!
+  hidden: Boolean!
+  layout: JSON
+  sizing: JSON
+  width: JSON
+  height: JSON
+  minWidth: JSON
+  maxWidth: JSON
+  minHeight: JSON
+  maxHeight: JSON
+  rotation: Int
+  opacity: Float
+  blendMode: String
+  fill: JSON
+  children: [Element!]!
+  src: String
+  image: String
+  source: String
+  alt: String
+  objectFit: String
+}
+
+type FrameElement implements Element {
+  id: ID!
+  name: String
+  parentId: ID
+  rank: String!
+  hidden: Boolean!
+  layout: JSON
+  sizing: JSON
+  width: JSON
+  height: JSON
+  minWidth: JSON
+  maxWidth: JSON
+  minHeight: JSON
+  maxHeight: JSON
+  rotation: Int
+  opacity: Float
+  blendMode: String
+  fill: JSON
+  children: [Element!]!
+  layoutMode: String
+  mode: String
+  autoLayout: Boolean
+  direction: String
+  gap: Float
+  padding: JSON
+  alignPrimary: String
+  alignCounter: String
+  primaryAlign: String
+  counterAlign: String
+  clip: Boolean
+}
+
 input PositionInput {
   x: Float!
   y: Float!
@@ -457,6 +598,12 @@ type Query {
   no Flows at all is valid (issue #25).
   """
   showGraph(showId: ID!, state: String): ShowGraph!
+
+  """The Canvas owned by a Scene node, or null before it is created."""
+  sceneCanvas(showId: ID!, sceneNodeId: ID!, state: String): Canvas
+
+  """The Canvas owned by a Block definition, or null before it is created."""
+  blockCanvas(showId: ID!, blockId: ID!, state: String): Canvas
 }
 
 type Mutation {
