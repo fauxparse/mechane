@@ -79,6 +79,14 @@ export const OverlappingArtboards: Story = {
   },
 };
 
+export const ZoomedOutWorkspace: Story = {
+  args: { initialCamera: { x: 180, y: 120, zoom: 0.35 } },
+};
+
+export const ZoomedInWorkspace: Story = {
+  args: { initialCamera: { x: -220, y: -120, zoom: 1.75 } },
+};
+
 export const ManyArtboards: Story = {
   args: {
     artboards: Array.from({ length: 12 }, (_, index) => {

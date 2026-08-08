@@ -22,6 +22,8 @@ import { CanvasRenderer } from "@mechane/rendering";
 
 import type { CanvasArtboardDocument } from "../../api/canvas";
 import { canvasArtboardSize } from "./canvas-workspace";
+import type { CanvasCamera } from "./canvas-camera";
+import { useCanvasCamera } from "./use-canvas-camera";
 
 export interface CanvasWorkspaceEditorProps {
   artboards: readonly CanvasArtboardDocument[];
@@ -30,6 +32,7 @@ export interface CanvasWorkspaceEditorProps {
   onBeginMoveArtboard(canvasId: string): void;
   onMoveArtboard(canvasId: string, position: Position): void;
   onEndMoveArtboard(canvasId: string, cancel?: boolean): void;
+  initialCamera?: CanvasCamera;
 }
 
 
@@ -54,6 +57,7 @@ export function CanvasWorkspaceEditor({
   onBeginMoveArtboard,
   onMoveArtboard,
   onEndMoveArtboard,
+  initialCamera,
 }: CanvasWorkspaceEditorProps) {
   const ordered = useMemo(
     () =>
@@ -68,8 +72,17 @@ export function CanvasWorkspaceEditor({
   const [layersOpen, setLayersOpen] = useState(true);
   const [drag, setDrag] = useState<DragState | null>(null);
   const focused = ordered.find((artboard) => artboard.artId === focusedArtId) ?? ordered[0] ?? null;
+  const {
+    camera,
+    workspaceRef,
+    beginCameraDrag,
+    moveCameraDrag,
+    endCameraDrag,
+    handleWheel,
+  } = useCanvasCamera(initialCamera);
 
   const beginDrag = (event: PointerEvent<HTMLDivElement>, artboard: CanvasArtboardDocument) => {
+    event.stopPropagation();
     if (event.button !== 0) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     setDrag({
@@ -85,8 +98,8 @@ export function CanvasWorkspaceEditor({
   const moveDrag = (event: PointerEvent<HTMLDivElement>, artboard: CanvasArtboardDocument) => {
     if (!drag || drag.artId !== artboard.artId || drag.pointerId !== event.pointerId) return;
     onMoveArtboard(artboard.canvasId, {
-      x: drag.origin.x + event.clientX - drag.start.x,
-      y: drag.origin.y + event.clientY - drag.start.y,
+      x: drag.origin.x + (event.clientX - drag.start.x) / camera.zoom,
+      y: drag.origin.y + (event.clientY - drag.start.y) / camera.zoom,
     });
   };
 
@@ -178,10 +191,23 @@ export function CanvasWorkspaceEditor({
             </div>
 
             <main
-              className="relative min-h-0 flex-1 overflow-auto bg-muted/20"
+              ref={workspaceRef}
+              className="relative min-h-0 flex-1 overflow-hidden bg-muted/20 outline-none"
               aria-label="Canvas workspace"
+              tabIndex={0}
+              onPointerDown={beginCameraDrag}
+              onPointerMove={moveCameraDrag}
+              onPointerUp={endCameraDrag}
+              onPointerCancel={endCameraDrag}
+              onWheel={handleWheel}
             >
-              <div className="relative min-h-[1600px] min-w-[2400px]">
+              <div
+                className="relative h-[1600px] w-[2400px] shrink-0"
+                style={{
+                  transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`,
+                  transformOrigin: "0 0",
+                }}
+              >
                 {ordered.map((artboard) => {
                   const size = canvasArtboardSize(artboard);
                   return (
