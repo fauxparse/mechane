@@ -27,6 +27,8 @@ jobs:
       - run: pnpm typecheck
 
       - run: pnpm test
+      - name: Build Storybook
+        run: pnpm build-storybook
 
       - name: Check generated GraphQL schema/types are up to date
         run: |
