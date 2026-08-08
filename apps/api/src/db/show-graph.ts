@@ -6,8 +6,8 @@
 // resolvers authenticate, check ownership, validate through the domain, and
 // call one of the three functions below.
 import { runChannel } from "@mechane/realtime";
-import type { GraphEdit } from "@mechane/commands";
-import { applyGraphEdits } from "@mechane/commands";
+import type { CanvasEdit, GraphEdit } from "@mechane/commands";
+import { applyCanvasEdits, applyGraphEdits } from "@mechane/commands";
 import type {
   GraphEdge,
   GraphNode,
@@ -23,6 +23,8 @@ import { assertValidShowGraph, emptyShowGraph, generateId, isEdgeKind } from "@m
 import { and, eq } from "drizzle-orm";
 
 import { db } from "./client";
+import type { StoredCanvas } from "./canvas";
+import { readCanvasById, writeCanvasRows } from "./canvas";
 import { realtimeProvider } from "../realtime";
 import { reconcileActiveRunValues } from "./runs";
 import type { StoredDevice } from "./devices";
@@ -146,7 +148,12 @@ function toNode(
         fieldDefaults: sourceDefaultsByNode.get(row.id) ?? [],
       };
     case "transformer":
-      return { ...base, kind: "transformer", parentId: row.parentId, type: row.type as Type | null };
+      return {
+        ...base,
+        kind: "transformer",
+        parentId: row.parentId,
+        type: row.type as Type | null,
+      };
     case "device": {
       // A Device node carries its identity rather than owning it: the row
       // in `devices` is the Show-level thing that survives publish and
@@ -373,9 +380,9 @@ async function writeGraph(
 
   const graphShapes = graph.shapes ?? [];
   if (graphShapes.length > 0) {
-    await tx.insert(shapes).values(
-      graphShapes.map((shape) => ({ id: shape.id, graphId: row.id, name: shape.name })),
-    );
+    await tx
+      .insert(shapes)
+      .values(graphShapes.map((shape) => ({ id: shape.id, graphId: row.id, name: shape.name })));
     await tx.insert(shapeFields).values(
       graphShapes.flatMap((shape) =>
         shape.fields.map((field, position) => ({
@@ -431,7 +438,7 @@ async function writeGraph(
         kind: node.kind,
         name: node.name,
         parentId: node.parentId,
-        type: node.kind === "source" || node.kind === "transformer" ? node.type ?? null : null,
+        type: node.kind === "source" || node.kind === "transformer" ? (node.type ?? null) : null,
         positionX: node.position.x,
         positionY: node.position.y,
       })),
@@ -485,7 +492,7 @@ async function writeGraph(
         targetNodeId: edge.targetId,
         sourcePath: edge.sourcePath,
         targetPath: edge.targetPath,
-        fieldMapping: edge.kind === "wiring" ? edge.fieldMapping ?? null : null,
+        fieldMapping: edge.kind === "wiring" ? (edge.fieldMapping ?? null) : null,
         // `target_variable_id` is a generated column — the database
         // derives it from `target_path`, so it isn't written here.
         cueId: edge.kind === "navigate" ? edge.cueId : null,
@@ -547,7 +554,10 @@ export async function applyShowGraphEdits(
     if (current.version !== baseVersion) {
       throw new GraphVersionConflictError(baseVersion, current.version);
     }
-    const next = applyGraphEdits({ nodes: current.nodes, edges: current.edges }, edits);
+    const next = {
+      shapes: current.shapes ?? [],
+      ...applyGraphEdits({ nodes: current.nodes, edges: current.edges }, edits),
+    };
     const written = await writeGraph(tx, showId, "draft", next, baseVersion);
     return {
       showId,
@@ -555,6 +565,66 @@ export async function applyShowGraphEdits(
       updatedAt: written.updatedAt,
       version: written.version,
       amendments: amendments(next, written),
+    };
+  });
+}
+
+export interface AppliedShowEdits {
+  showId: string;
+  state: GraphState;
+  updatedAt: Date;
+  version: number;
+  amendments: GraphEdit[];
+  canvas: StoredCanvas | null;
+}
+
+/** Applies graph and Canvas edits against one shared Show version transaction. */
+export async function applyShowEdits(
+  showId: string,
+  graphEdits: readonly GraphEdit[],
+  canvasEdits: readonly CanvasEdit[],
+  canvasId: string | undefined,
+  baseVersion: number,
+): Promise<AppliedShowEdits> {
+  return db.transaction(async (tx) => {
+    const current = await readShowGraph(showId, "draft", tx);
+    if (current.version !== baseVersion) {
+      throw new GraphVersionConflictError(baseVersion, current.version);
+    }
+    const currentCanvas = canvasId ? await readCanvasById(showId, "draft", canvasId, tx) : null;
+    if (canvasEdits.length > 0 && !currentCanvas) {
+      throw new Error(`Canvas "${canvasId ?? ""}" was not found.`);
+    }
+    const nextGraph = {
+      shapes: current.shapes ?? [],
+      ...applyGraphEdits({ nodes: current.nodes, edges: current.edges }, graphEdits),
+    };
+    const nextCanvas = currentCanvas ? applyCanvasEdits(currentCanvas.canvas, canvasEdits) : null;
+    const written = await writeGraph(tx, showId, "draft", nextGraph, baseVersion);
+    let storedCanvas: StoredCanvas | null = null;
+    if (nextCanvas && currentCanvas) {
+      const [graph] = await tx
+        .select({ id: showGraphs.id })
+        .from(showGraphs)
+        .where(and(eq(showGraphs.showId, showId), eq(showGraphs.state, "draft")));
+      if (!graph) throw new Error(`Draft graph for Show "${showId}" disappeared while editing.`);
+      await writeCanvasRows(
+        tx,
+        showId,
+        graph.id,
+        currentCanvas.owner,
+        nextCanvas,
+        written.updatedAt,
+      );
+      storedCanvas = (await readCanvasById(showId, "draft", canvasId!, tx))?.canvas ?? null;
+    }
+    return {
+      showId,
+      state: written.state,
+      updatedAt: written.updatedAt,
+      version: written.version,
+      amendments: amendments(nextGraph, written),
+      canvas: storedCanvas,
     };
   });
 }
@@ -595,7 +665,9 @@ function amendments(intended: ShowGraph, written: StoredShowGraph): GraphEdit[] 
  */
 export async function publishShowGraph(
   showId: string,
-): Promise<StoredShowGraph & { losses: Awaited<ReturnType<typeof reconcileActiveRunValues>>["losses"] }> {
+): Promise<
+  StoredShowGraph & { losses: Awaited<ReturnType<typeof reconcileActiveRunValues>>["losses"] }
+> {
   const result = await db.transaction(async (tx) => {
     await tx.select({ id: shows.id }).from(shows).where(eq(shows.id, showId)).for("update");
     const draft = await readShowGraph(showId, "draft", tx);

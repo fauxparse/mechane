@@ -21,23 +21,50 @@ export const GetShowGraphQuery = graphql(`
         id
         name
         parentId
-        position { x y }
+        position {
+          x
+          y
+        }
         ... on SceneNode {
           variables {
             id
             name
-            type { kind shapeId of { kind shapeId } }
+            type {
+              kind
+              shapeId
+              of {
+                kind
+                shapeId
+              }
+            }
           }
         }
         ... on FlowNode {
           defaultSceneId
         }
         ... on SourceNode {
-          sourceType: type { kind shapeId of { kind shapeId } }
-          fieldDefaults { fieldPath value }
+          sourceType: type {
+            kind
+            shapeId
+            of {
+              kind
+              shapeId
+            }
+          }
+          fieldDefaults {
+            fieldPath
+            value
+          }
         }
         ... on TransformerNode {
-          transformerType: type { kind shapeId of { kind shapeId } }
+          transformerType: type {
+            kind
+            shapeId
+            of {
+              kind
+              shapeId
+            }
+          }
         }
         ... on DeviceNode {
           perConnection
@@ -70,15 +97,33 @@ export const GetShowGraphQuery = graphql(`
           required
           default {
             __typename
-            ... on TextValue { textValue: value }
-            ... on NumberValue { numberValue: value }
-            ... on BooleanValue { booleanValue: value }
-            ... on ImageValue { imageValue: value }
-            ... on ColourValue { colourValue: value }
-            ... on DateValue { dateValue: value }
-            ... on DateTimeValue { datetimeValue: value }
-            ... on ObjectValue { objectValue: value }
-            ... on ArrayValue { arrayValue: value }
+            ... on TextValue {
+              textValue: value
+            }
+            ... on NumberValue {
+              numberValue: value
+            }
+            ... on BooleanValue {
+              booleanValue: value
+            }
+            ... on ImageValue {
+              imageValue: value
+            }
+            ... on ColourValue {
+              colourValue: value
+            }
+            ... on DateValue {
+              dateValue: value
+            }
+            ... on DateTimeValue {
+              datetimeValue: value
+            }
+            ... on ObjectValue {
+              objectValue: value
+            }
+            ... on ArrayValue {
+              arrayValue: value
+            }
           }
           type {
             kind
@@ -109,13 +154,17 @@ export const GetShowGraphQuery = graphql(`
  * selected here. A wider amendment vocabulary (ADR-0003's realtime push)
  * would widen this selection.
  */
-export const ApplyShowGraphEditsMutation = graphql(`
-  mutation ApplyShowGraphEdits($showId: ID!, $baseVersion: Int!, $edits: [GraphEditInput!]!) {
-    applyShowGraphEdits(showId: $showId, baseVersion: $baseVersion, edits: $edits) {
+export const ApplyShowEditsMutation = graphql(`
+  mutation ApplyShowEdits($showId: ID!, $baseVersion: Int!, $edits: [ShowEditInput!]!) {
+    applyShowEdits(showId: $showId, baseVersion: $baseVersion, edits: $edits) {
       showId
       state
       updatedAt
       version
+      canvas {
+        id
+        kind
+      }
       amendments {
         type
         nodeId
@@ -144,8 +193,6 @@ export const PublishShowGraphMutation = graphql(`
 `);
 
 export type ShowGraph = ResultOf<typeof GetShowGraphQuery>["showGraph"];
-export type ApplyShowGraphEditsResult = ResultOf<
-  typeof ApplyShowGraphEditsMutation
->["applyShowGraphEdits"];
+export type ApplyShowEditsResult = ResultOf<typeof ApplyShowEditsMutation>["applyShowEdits"];
 export type ShowGraphNode = ShowGraph["nodes"][number];
 export type ShowGraphEdge = ShowGraph["edges"][number];

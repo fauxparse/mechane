@@ -10,7 +10,7 @@ import { coalesceGraphEdits } from "@mechane/commands";
 import type { GraphEdit } from "@mechane/commands";
 import type { GraphState, ShowId } from "@mechane/domain";
 import {
-  ApplyShowGraphEditsMutation,
+  ApplyShowEditsMutation,
   GetShowGraphQuery,
   graphqlRequest,
   PublishShowGraphMutation,
@@ -161,13 +161,13 @@ export function useShowGraphEdits(
     pending.current = [];
     inFlight.current = true;
     setSaving(true);
-    graphqlRequest(GRAPHQL_ENDPOINT, ApplyShowGraphEditsMutation, {
+    graphqlRequest(GRAPHQL_ENDPOINT, ApplyShowEditsMutation, {
       showId,
       baseVersion: base,
       edits: edits.map(toEditInput),
     })
       .then((data) => {
-        const result = data.applyShowGraphEdits;
+        const result = data.applyShowEdits;
         version.current = result.version;
         // Only the metadata comes back now (#111), so the cached draft is
         // *updated* rather than replaced: its timestamp is what the
