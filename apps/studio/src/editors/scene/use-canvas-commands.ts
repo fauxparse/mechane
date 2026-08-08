@@ -41,6 +41,9 @@ export function useCanvasCommands(
         onChange: setCanvas,
         dispatch: (_command, next, edits) => edited.current?.(edits, next),
       }),
+    // The stack is intentionally created once; the effect below resets it
+    // when the source document changes without discarding local history.
+    // react-doctor-disable-next-line react-doctor/exhaustive-deps
     [],
   );
   const changed = useCallback(() => setRevision((revision) => revision + 1), []);

@@ -78,6 +78,9 @@ export function SceneCanvasEditor({
   );
 }
 
+// This editor intentionally keeps its command stack, keyboard handling, and
+// canvas/layer controls together as one interaction surface.
+// react-doctor-disable-next-line react-doctor/no-giant-component
 function LoadedCanvasEditor({
   source,
   onEdit,
@@ -102,16 +105,17 @@ function LoadedCanvasEditor({
     [editing.canvas.root, selectedIds],
   );
   const layers = useMemo(() => walkLayers(editing.canvas.root).reverse(), [editing.canvas.root]);
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   useEffect(() => {
     const root = surface.current;
     if (!root) return;
     for (const element of root.querySelectorAll<HTMLElement>("[data-element-id]")) {
-      element.dataset.selected = selectedIds.includes(element.dataset.elementId ?? "")
+      element.dataset.selected = selectedIdSet.has(element.dataset.elementId ?? "")
         ? "true"
         : "false";
     }
-  }, [editing.canvas.root, selectedIds]);
+  }, [editing.canvas.root, selectedIdSet]);
 
   const select = useCallback((id: string, additive: boolean) => {
     setSelectedIds((current) =>
@@ -124,17 +128,14 @@ function LoadedCanvasEditor({
   }, []);
 
   const deleteSelection = useCallback(() => {
-    const ids = selected
-      .filter((element) => element.id !== editing.canvas.root.id)
-      .map((element) => element.id);
-    const topLevel = ids.filter(
-      (id) =>
-        !ids.some((other) => {
-          if (other === id) return false;
-          const parent = locate(editing.canvas.root, other)?.element;
-          return parent ? contains(parent, id) : false;
-        }),
-    );
+    const topLevel: string[] = [];
+    for (const element of selected) {
+      if (element.id === editing.canvas.root.id) continue;
+      const hasSelectedAncestor = selected.some(
+        (other) => other.id !== element.id && contains(other, element.id),
+      );
+      if (!hasSelectedAncestor) topLevel.push(element.id);
+    }
     if (topLevel.length === 0) return;
     editing.execute(deleteElements(topLevel));
     setSelectedIds([]);
@@ -228,6 +229,8 @@ function LoadedCanvasEditor({
 
   return (
     <div
+      role="application"
+      aria-label="Scene canvas editor"
       className={cn("scene-canvas-editor flex h-full min-h-0 flex-col bg-background", className)}
       tabIndex={0}
       onKeyDown={(event) => {
@@ -301,13 +304,20 @@ function LoadedCanvasEditor({
               <div
                 key={element.id}
                 role="treeitem"
-                aria-selected={selectedIds.includes(element.id)}
+                aria-selected={selectedIdSet.has(element.id)}
+                tabIndex={0}
                 className={cn(
                   "flex items-center gap-2 rounded px-2 py-1 text-sm",
-                  selectedIds.includes(element.id) && "bg-accent text-accent-foreground",
+                  selectedIdSet.has(element.id) && "bg-accent text-accent-foreground",
                 )}
                 style={{ paddingLeft: `${8 + depth * 14}px` }}
                 onClick={() => select(element.id, false)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    select(element.id, event.shiftKey);
+                  }
+                }}
                 onDoubleClick={() => {
                   if (element.type === "frame") select(element.id, false);
                 }}
@@ -331,8 +341,10 @@ function LoadedCanvasEditor({
             ))}
           </div>
         </aside>
-        <main
+        <div
           ref={surface}
+          role="application"
+          tabIndex={0}
           className="relative min-w-0 flex-1 overflow-auto bg-muted/30 p-8"
           aria-label="Scene canvas"
           onClick={(event) => {
@@ -347,9 +359,12 @@ function LoadedCanvasEditor({
               setSelectedIds([]);
             }
           }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setSelectedIds([]);
+          }}
         >
           <CanvasRenderer canvas={editing.canvas} className="mx-auto min-h-96 max-w-5xl" />
-        </main>
+        </div>
         <aside
           className="w-64 shrink-0 overflow-auto border-l border-border p-4"
           aria-label="Canvas inspector"
