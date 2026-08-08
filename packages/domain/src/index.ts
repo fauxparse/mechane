@@ -2,6 +2,7 @@
 // Show, Scene, Canvas, Device, Flow, Variable, Source, Transformer, Element,
 // Property, Block, Slot, Event, Cue, Action, Shape, Run, Wiring.
 export * from "./connect";
+export * from "./canvas";
 export * from "./graph";
 export * from "./id";
 export * from "./ownership";

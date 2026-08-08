@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { CanvasRenderer } from "./canvas-renderer";
-import type { Canvas } from "./canvas-model";
+import type { Canvas } from "@mechane/domain";
 
 const canvas: Canvas = {
   kind: "scene",

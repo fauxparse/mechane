@@ -4,14 +4,14 @@ import type {
   AnchorPosition,
   AspectRatioLock,
   AxisSize,
-  CanvasRendererProps,
   Element,
   Fill,
   FrameElement,
   LayoutAlignment,
   Rotation,
   SizeValue,
-} from "./canvas-model";
+} from "@mechane/domain";
+import type { CanvasRendererProps } from "./canvas-render";
 
 interface RenderElementOptions {
   element: Element;
