@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { CanvasRenderer } from "./canvas-renderer";
-import type { Canvas } from "./canvas-model";
+import type { Canvas } from "@mechane/domain";
 
 function markup(canvas: Canvas): string {
   return renderToStaticMarkup(createElement(CanvasRenderer, { canvas }));

@@ -61,6 +61,8 @@ export { ThemeSwitcher } from "./components/theme-switcher";
 export type { ThemeSwitcherProps } from "./components/theme-switcher";
 export { CanvasRenderer, ElementRenderer } from "./components/canvas-renderer";
 export { renderCanvas } from "./components/canvas-render";
+export type { CanvasRendererProps } from "./components/canvas-render";
+export { ELEMENT_KINDS, SIZE_MODES } from "@mechane/domain";
 export type {
   Anchor,
   AnchorPosition,
@@ -81,14 +83,16 @@ export type {
   ImageElement,
   LayoutAlignment,
   LayoutDirection,
+  ObjectFit,
   Padding,
   RectElement,
   Rotation,
   SizeMode,
   SizeUnit,
   SizeValue,
+  TextAlign,
   TextElement,
-} from "./components/canvas-model";
+} from "@mechane/domain";
 
 export { ThemeProvider, useTheme } from "./theme/theme-provider";
 export type { ThemeContextValue, ThemeProviderProps } from "./theme/theme-provider";
