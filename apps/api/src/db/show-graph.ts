@@ -554,7 +554,10 @@ export async function applyShowGraphEdits(
     if (current.version !== baseVersion) {
       throw new GraphVersionConflictError(baseVersion, current.version);
     }
-    const next = applyGraphEdits({ nodes: current.nodes, edges: current.edges }, edits);
+    const next = {
+      shapes: current.shapes ?? [],
+      ...applyGraphEdits({ nodes: current.nodes, edges: current.edges }, edits),
+    };
     const written = await writeGraph(tx, showId, "draft", next, baseVersion);
     return {
       showId,
@@ -592,7 +595,10 @@ export async function applyShowEdits(
     if (canvasEdits.length > 0 && !currentCanvas) {
       throw new Error(`Canvas "${canvasId ?? ""}" was not found.`);
     }
-    const nextGraph = applyGraphEdits({ nodes: current.nodes, edges: current.edges }, graphEdits);
+    const nextGraph = {
+      shapes: current.shapes ?? [],
+      ...applyGraphEdits({ nodes: current.nodes, edges: current.edges }, graphEdits),
+    };
     const nextCanvas = currentCanvas ? applyCanvasEdits(currentCanvas.canvas, canvasEdits) : null;
     const written = await writeGraph(tx, showId, "draft", nextGraph, baseVersion);
     let storedCanvas: StoredCanvas | null = null;
