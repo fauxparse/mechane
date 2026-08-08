@@ -4,11 +4,13 @@
 // `assertOwnedBy`/`assertValidShowName` (@mechane/domain) the same way
 // every later owned resource (Scene, Device, ...) should.
 import {
+  applyCanvasEdits,
+  CanvasEditError,
   InvalidReparentError,
   UnknownGraphEditError,
   UnknownGraphTargetError,
 } from "@mechane/commands";
-import type { GraphEdit } from "@mechane/commands";
+import type { CanvasEdit, GraphEdit } from "@mechane/commands";
 import {
   assertOwnedBy,
   assertValidGraphState,
@@ -23,13 +25,13 @@ import {
   InvalidThemeModeError,
   InvalidThemePaletteError,
 } from "@mechane/domain";
-import type { GraphState } from "@mechane/domain";
+import type { Canvas, GraphState } from "@mechane/domain";
 import { and, eq } from "drizzle-orm";
 import { GraphQLError, GraphQLScalarType, Kind } from "graphql";
 import { createSchema } from "graphql-yoga";
 
 import { db } from "../db/client";
-import { readCanvas } from "../db/canvas";
+import { CanvasVersionConflictError, readCanvas, readCanvasById, writeCanvas } from "../db/canvas";
 import { withUniqueId } from "../db/ids";
 import { endRun, readActiveRun, startRun } from "../db/runs";
 import { shows, userSettings } from "../db/schema";
@@ -48,7 +50,7 @@ import {
   serializeAppliedEdits,
   serializeShowGraph,
 } from "./show-graph";
-import { resolveCanvasElementType, serializeCanvas } from "./canvas";
+import { parseCanvasEdit, resolveCanvasElementType, serializeCanvas } from "./canvas";
 import type { GraphEditInput } from "./show-graph";
 
 function serializeRun(run: Awaited<ReturnType<typeof startRun>>) {
@@ -704,6 +706,23 @@ export const schema = createSchema<GraphQLContext>({
       variable: SceneVariableInput
     }
 
+    """
+    One serialisable mutation of a Canvas Element tree.
+    """
+    input CanvasEditInput {
+      type: String!
+      elementId: ID
+      parentId: ID
+      rank: String
+      element: JSON
+      properties: JSON
+    }
+
+    type AppliedCanvasEdits {
+      canvas: Canvas!
+      version: Int!
+    }
+
     type Query {
       "The signed-in user, or null if the request has no valid session."
       me: User
@@ -755,6 +774,13 @@ export const schema = createSchema<GraphQLContext>({
         baseVersion: Int!
         edits: [GraphEditInput!]!
       ): AppliedShowGraphEdits!
+      "Applies a versioned Canvas Element edit batch to a draft Canvas."
+      applyCanvasEdits(
+        showId: ID!
+        canvasId: ID!
+        baseVersion: Int!
+        edits: [CanvasEditInput!]!
+      ): AppliedCanvasEdits!
       "Publishes a Show's draft graph, making it the published graph immediately (ADR-0002)."
       publishShowGraph(showId: ID!): ShowGraph!
       "Ends the active Run, if one exists."
@@ -886,6 +912,51 @@ export const schema = createSchema<GraphQLContext>({
       },
     },
     Mutation: {
+      applyCanvasEdits: async (
+        _parent,
+        {
+          showId,
+          canvasId,
+          baseVersion,
+          edits,
+        }: { showId: string; canvasId: string; baseVersion: number; edits: unknown[] },
+        context,
+      ) => {
+        const userId = requireUserId(context);
+        await findOwnShowOrThrow(showId, userId);
+        const current = await readCanvasById(showId, "draft", canvasId);
+        if (!current)
+          throw new GraphQLError(`Canvas "${canvasId}" was not found.`, {
+            extensions: { code: "NOT_FOUND" },
+          });
+        let parsed: CanvasEdit[];
+        try {
+          parsed = edits.map(parseCanvasEdit);
+        } catch (error) {
+          if (error instanceof CanvasEditError) {
+            throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
+          }
+          throw error;
+        }
+        let next: Canvas;
+        try {
+          next = applyCanvasEdits(current.canvas, parsed);
+        } catch (error) {
+          if (error instanceof CanvasEditError) {
+            throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
+          }
+          throw error;
+        }
+        try {
+          const stored = await writeCanvas(showId, "draft", current.owner, next, baseVersion);
+          return { canvas: serializeCanvas(stored), version: stored.version };
+        } catch (error) {
+          if (error instanceof CanvasVersionConflictError) {
+            throw new GraphQLError(error.message, { extensions: { code: "CONFLICT" } });
+          }
+          throw error;
+        }
+      },
       createShow: async (_parent, { name }: { name: string }, context) => {
         const userId = requireUserId(context);
         const validName = validShowName(name);

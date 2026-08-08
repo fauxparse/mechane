@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveCanvasElementType } from "./canvas";
+import { CANVAS_COMMAND_TYPES } from "@mechane/commands";
 
-describe("Canvas Element interface resolution", () => {
+import { parseCanvasEdit, resolveCanvasElementType } from "./canvas";
+describe("Canvas GraphQL adapter", () => {
   it.each([
     ["rect", "RectElement"],
     ["text", "TextElement"],
@@ -10,5 +11,19 @@ describe("Canvas Element interface resolution", () => {
     ["frame", "FrameElement"],
   ] as const)("maps %s to %s", (type, graphqlType) => {
     expect(resolveCanvasElementType({ type })).toBe(graphqlType);
+  });
+
+  it("parses an edit", () => {
+    expect(
+      parseCanvasEdit({
+        type: CANVAS_COMMAND_TYPES.updateElement,
+        elementId: "title",
+        properties: { content: "Updated" },
+      }),
+    ).toEqual({
+      type: CANVAS_COMMAND_TYPES.updateElement,
+      elementId: "title",
+      properties: { content: "Updated" },
+    });
   });
 });
