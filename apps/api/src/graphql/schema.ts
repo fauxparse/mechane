@@ -3,12 +3,8 @@
 // owned-resource vertical slice, using `requireUserId` (./context.ts) and
 // `assertOwnedBy`/`assertValidShowName` (@mechane/domain) the same way
 // every later owned resource (Scene, Device, ...) should.
-import {
-  InvalidReparentError,
-  UnknownGraphEditError,
-  UnknownGraphTargetError,
-} from "@mechane/commands";
-import type { GraphEdit } from "@mechane/commands";
+import { CanvasEditError } from "@mechane/commands";
+import type { CanvasEdit, GraphEdit } from "@mechane/commands";
 import {
   assertOwnedBy,
   assertValidGraphState,
@@ -17,7 +13,6 @@ import {
   assertValidThemePalette,
   defaultThemeSettings,
   InvalidGraphStateError,
-  InvalidShowGraphError,
   InvalidShowNameError,
   isId,
   InvalidThemeModeError,
@@ -29,11 +24,12 @@ import { GraphQLError, GraphQLScalarType, Kind } from "graphql";
 import { createSchema } from "graphql-yoga";
 
 import { db } from "../db/client";
+import { readCanvas } from "../db/canvas";
 import { withUniqueId } from "../db/ids";
 import { endRun, readActiveRun, startRun } from "../db/runs";
 import { shows, userSettings } from "../db/schema";
 import {
-  applyShowGraphEdits,
+  applyShowEdits as applyShowEditsToDb,
   GraphVersionConflictError,
   publishShowGraph,
   readShowGraph,
@@ -44,9 +40,9 @@ import {
   parseGraphEdit,
   resolveGraphEdgeType,
   resolveGraphNodeType,
-  serializeAppliedEdits,
   serializeShowGraph,
 } from "./show-graph";
+import { parseCanvasEdit, resolveCanvasElementType, serializeCanvas } from "./canvas";
 import type { GraphEditInput } from "./show-graph";
 
 function serializeRun(run: Awaited<ReturnType<typeof startRun>>) {
@@ -117,33 +113,6 @@ function validGraphState(value: string): GraphState {
     return assertValidGraphState(value);
   } catch (error) {
     if (error instanceof InvalidGraphStateError) {
-      throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
-    }
-    throw error;
-  }
-}
-
-// The three ways an edit batch can be refused, each translated from a plain
-// Error into something the client can actually read and act on. CONFLICT is
-// the one that's new (#103): it means "re-read the draft and try again",
-// which is a different instruction from "this batch was nonsense".
-async function applyEdits(showId: string, baseVersion: number, edits: GraphEdit[]) {
-  try {
-    return await applyShowGraphEdits(showId, edits, baseVersion);
-  } catch (error) {
-    if (error instanceof GraphVersionConflictError) {
-      throw new GraphQLError(error.message, { extensions: { code: "CONFLICT" } });
-    }
-    // An edit naming a node that isn't there, an illegal structural move, or
-    // a type this server doesn't know: all of them mean the batch was built
-    // against a graph this server doesn't have, and none of them is a bug in
-    // the server.
-    if (
-      error instanceof InvalidShowGraphError ||
-      error instanceof UnknownGraphTargetError ||
-      error instanceof UnknownGraphEditError ||
-      error instanceof InvalidReparentError
-    ) {
       throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
     }
     throw error;
@@ -433,6 +402,146 @@ export const schema = createSchema<GraphQLContext>({
       "Fields that lost data while this graph was published."
       losses: [PublishLoss!]!
     }
+    """
+    A persisted Scene or Block Canvas. Element is an interface so clients can
+    select the primitive-specific content without a nullable field bag.
+    """
+    type Canvas {
+      id: ID!
+      kind: String!
+      root: Element!
+    }
+
+    interface Element {
+      id: ID!
+      name: String
+      parentId: ID
+      rank: String!
+      hidden: Boolean!
+      layout: JSON
+      sizing: JSON
+      width: JSON
+      height: JSON
+      minWidth: JSON
+      maxWidth: JSON
+      minHeight: JSON
+      maxHeight: JSON
+      rotation: Int
+      opacity: Float
+      blendMode: String
+      fill: JSON
+      children: [Element!]!
+    }
+
+    type RectElement implements Element {
+      id: ID!
+      name: String
+      parentId: ID
+      rank: String!
+      hidden: Boolean!
+      layout: JSON
+      sizing: JSON
+      width: JSON
+      height: JSON
+      minWidth: JSON
+      maxWidth: JSON
+      minHeight: JSON
+      maxHeight: JSON
+      rotation: Int
+      opacity: Float
+      blendMode: String
+      fill: JSON
+      children: [Element!]!
+      cornerRadius: Float
+    }
+
+    type TextElement implements Element {
+      id: ID!
+      name: String
+      parentId: ID
+      rank: String!
+      hidden: Boolean!
+      layout: JSON
+      sizing: JSON
+      width: JSON
+      height: JSON
+      minWidth: JSON
+      maxWidth: JSON
+      minHeight: JSON
+      maxHeight: JSON
+      rotation: Int
+      opacity: Float
+      blendMode: String
+      fill: JSON
+      children: [Element!]!
+      content: String
+      text: String
+      color: String
+      fontFamily: String
+      fontSize: Float
+      fontWeight: String
+      lineHeight: JSON
+      letterSpacing: Float
+      textAlign: String
+    }
+
+    type ImageElement implements Element {
+      id: ID!
+      name: String
+      parentId: ID
+      rank: String!
+      hidden: Boolean!
+      layout: JSON
+      sizing: JSON
+      width: JSON
+      height: JSON
+      minWidth: JSON
+      maxWidth: JSON
+      minHeight: JSON
+      maxHeight: JSON
+      rotation: Int
+      opacity: Float
+      blendMode: String
+      fill: JSON
+      children: [Element!]!
+      src: String
+      image: String
+      source: String
+      alt: String
+      objectFit: String
+    }
+
+    type FrameElement implements Element {
+      id: ID!
+      name: String
+      parentId: ID
+      rank: String!
+      hidden: Boolean!
+      layout: JSON
+      sizing: JSON
+      width: JSON
+      height: JSON
+      minWidth: JSON
+      maxWidth: JSON
+      minHeight: JSON
+      maxHeight: JSON
+      rotation: Int
+      opacity: Float
+      blendMode: String
+      fill: JSON
+      children: [Element!]!
+      layoutMode: String
+      mode: String
+      autoLayout: Boolean
+      direction: String
+      gap: Float
+      padding: JSON
+      alignPrimary: String
+      alignCounter: String
+      primaryAlign: String
+      counterAlign: String
+      clip: Boolean
+    }
 
     input PositionInput {
       x: Float!
@@ -502,31 +611,6 @@ export const schema = createSchema<GraphQLContext>({
     }
 
     """
-    The answer to an edit batch (issue #111) — deliberately not the graph.
-
-    The client composed these edits against its own copy and applied them
-    locally before sending, so the only things it is missing are the version
-    to build the next batch on and whatever the server decided that it
-    couldn't. Returning the whole graph here would be the wholesale
-    replacement issue #103 removed, pointed the other way.
-    """
-    type AppliedShowGraphEdits {
-      showId: ID!
-      "Either \\"draft\\" or \\"published\\"."
-      state: String!
-      "The draft's new timestamp — what the \\"unpublished changes\\" badge compares (ADR-0002)."
-      updatedAt: String!
-      "The version the next batch must be composed against."
-      version: Int!
-      """
-      Edits the server made that the client didn't ask for. Apply them to
-      your copy of the graph; they are not undoable, because they aren't the
-      director's edits. Empty for the overwhelming majority of batches.
-      """
-      amendments: [GraphEdit!]!
-    }
-
-    """
     One edit to a Show's graph (issue #103) — the unit the editor produces
     and the server applies, in place of a whole-graph replacement.
 
@@ -562,6 +646,39 @@ export const schema = createSchema<GraphQLContext>({
       variable: SceneVariableInput
     }
 
+    """
+    One serialisable Show edit. \`type\` selects a graph or Canvas command;
+    Canvas commands additionally name the Canvas they target.
+    """
+    input ShowEditInput {
+      type: String!
+      canvasId: ID
+      nodeId: ID
+      node: GraphNodeInput
+      edgeId: ID
+      edge: GraphEdgeInput
+      position: PositionInput
+      parentId: ID
+      name: String
+      flowId: ID
+      sceneId: ID
+      variableId: ID
+      variable: SceneVariableInput
+      elementId: ID
+      rank: String
+      element: JSON
+      properties: JSON
+    }
+
+    type AppliedShowEdits {
+      showId: ID!
+      state: String!
+      updatedAt: String!
+      version: Int!
+      canvas: Canvas
+      amendments: [GraphEdit!]!
+    }
+
     type Query {
       "The signed-in user, or null if the request has no valid session."
       me: User
@@ -579,6 +696,10 @@ export const schema = createSchema<GraphQLContext>({
       no Flows at all is valid (issue #25).
       """
       showGraph(showId: ID!, state: String): ShowGraph!
+      "The Canvas owned by a Scene node, or null before it is created."
+      sceneCanvas(showId: ID!, sceneNodeId: ID!, state: String): Canvas
+      "The Canvas owned by a Block definition, or null before it is created."
+      blockCanvas(showId: ID!, blockId: ID!, state: String): Canvas
     }
 
     type Mutation {
@@ -590,25 +711,8 @@ export const schema = createSchema<GraphQLContext>({
       deleteShow(id: ID!): Boolean!
       "Updates the signed-in user's theme settings. Omitted fields are left unchanged."
       updateUserSettings(themeMode: String, themePalette: String): UserSettings!
-      """
-      Applies edits to the draft graph of a Show owned by the signed-in user
-      (issue #103).
-
-      \`baseVersion\` is the version the edits were composed against. If the
-      stored graph has moved on, the whole batch is refused with a CONFLICT
-      error rather than applied over the top — half a cascade is a graph
-      nobody asked for. The edits are applied in order, and the graph is
-      validated once at the end, since a batch legitimately passes through
-      states no valid Show could be left in.
-
-      Answers with the new version and any amendments — not the graph, which
-      the client already has (issue #111).
-      """
-      applyShowGraphEdits(
-        showId: ID!
-        baseVersion: Int!
-        edits: [GraphEditInput!]!
-      ): AppliedShowGraphEdits!
+      "Applies graph and Canvas edits against one shared draft Show version."
+      applyShowEdits(showId: ID!, baseVersion: Int!, edits: [ShowEditInput!]!): AppliedShowEdits!
       "Publishes a Show's draft graph, making it the published graph immediately (ADR-0002)."
       publishShowGraph(showId: ID!): ShowGraph!
       "Ends the active Run, if one exists."
@@ -636,6 +740,9 @@ export const schema = createSchema<GraphQLContext>({
     }),
     GraphNode: {
       __resolveType: resolveGraphNodeType,
+    },
+    Element: {
+      __resolveType: resolveCanvasElementType,
     },
     GraphEdge: {
       __resolveType: resolveGraphEdgeType,
@@ -709,8 +816,85 @@ export const schema = createSchema<GraphQLContext>({
         const graphState = validGraphState(state ?? "draft");
         return serializeShowGraph(await readShowGraph(showId, graphState));
       },
+      sceneCanvas: async (
+        _parent,
+        {
+          showId,
+          sceneNodeId,
+          state,
+        }: { showId: string; sceneNodeId: string; state?: string | null },
+        context,
+      ) => {
+        const userId = requireUserId(context);
+        await findOwnShowOrThrow(showId, userId);
+        const graphState = validGraphState(state ?? "draft");
+        const canvas = await readCanvas(showId, graphState, { sceneNodeId });
+        return canvas ? serializeCanvas(canvas) : null;
+      },
+      blockCanvas: async (
+        _parent,
+        { showId, blockId, state }: { showId: string; blockId: string; state?: string | null },
+        context,
+      ) => {
+        const userId = requireUserId(context);
+        await findOwnShowOrThrow(showId, userId);
+        const graphState = validGraphState(state ?? "draft");
+        const canvas = await readCanvas(showId, graphState, { blockId });
+        return canvas ? serializeCanvas(canvas) : null;
+      },
     },
     Mutation: {
+      applyShowEdits: async (
+        _parent,
+        { showId, baseVersion, edits }: { showId: string; baseVersion: number; edits: unknown[] },
+        context,
+      ) => {
+        const userId = requireUserId(context);
+        await findOwnShowOrThrow(showId, userId);
+        const graphEdits: GraphEdit[] = [];
+        const canvasEdits: CanvasEdit[] = [];
+        let canvasId: string | undefined;
+        try {
+          for (const input of edits) {
+            if (input === null || typeof input !== "object" || Array.isArray(input)) {
+              throw new CanvasEditError("Show edit must be an object.");
+            }
+            const record = input as Record<string, unknown>;
+            const type = record.type;
+            if (typeof type !== "string") throw new CanvasEditError("Show edit type is required.");
+            if (type.startsWith("canvas.")) {
+              const target = record.canvasId;
+              if (typeof target !== "string" || target.length === 0) {
+                throw new CanvasEditError("Canvas edits require canvasId.");
+              }
+              if (canvasId && canvasId !== target) {
+                throw new CanvasEditError("One Show edit batch may target only one Canvas.");
+              }
+              canvasId = target;
+              canvasEdits.push(parseCanvasEdit(record));
+            } else {
+              graphEdits.push(parseGraphEdit(record as unknown as GraphEditInput));
+            }
+          }
+          const applied = await applyShowEditsToDb(
+            showId,
+            graphEdits,
+            canvasEdits,
+            canvasId,
+            baseVersion,
+          );
+          await db.update(shows).set({ updatedAt: new Date() }).where(eq(shows.id, showId));
+          return applied;
+        } catch (error) {
+          if (error instanceof GraphVersionConflictError) {
+            throw new GraphQLError(error.message, { extensions: { code: "CONFLICT" } });
+          }
+          if (error instanceof CanvasEditError) {
+            throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
+          }
+          throw error;
+        }
+      },
       createShow: async (_parent, { name }: { name: string }, context) => {
         const userId = requireUserId(context);
         const validName = validShowName(name);
@@ -770,23 +954,6 @@ export const schema = createSchema<GraphQLContext>({
           })
           .returning();
         return updated;
-      },
-      applyShowGraphEdits: async (
-        _parent,
-        {
-          showId,
-          baseVersion,
-          edits,
-        }: { showId: string; baseVersion: number; edits: GraphEditInput[] },
-        context,
-      ) => {
-        const userId = requireUserId(context);
-        await findOwnShowOrThrow(showId, userId);
-        const applied = await applyEdits(showId, baseVersion, edits.map(parseGraphEdit));
-        // The Show's own timestamp tracks "last edited", which the
-        // dashboard orders by — a graph edit is an edit to the Show.
-        await db.update(shows).set({ updatedAt: new Date() }).where(eq(shows.id, showId));
-        return serializeAppliedEdits(applied);
       },
       startRun: async (_parent, { showId }: { showId: string }, context) => {
         const userId = requireUserId(context);

@@ -524,3 +524,94 @@ export const devices = pgTable(
     ),
   ],
 );
+// Blocks are Show-scoped definitions, but their structure belongs to each
+// draft/published graph just like Scene Canvases (#136). Block ids are
+// client-generated and therefore part of the composite graph key.
+export const blocks = pgTable(
+  "blocks",
+  {
+    id: text("id").notNull(),
+    graphId: text("graph_id")
+      .notNull()
+      .references(() => showGraphs.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.graphId, table.id] }),
+    unique("blocks_graph_name_unique").on(table.graphId, table.name),
+  ],
+);
+
+// A Canvas belongs to exactly one Scene node or Block definition. Its id is
+// separate from its owner because Elements reference the Canvas uniformly.
+export const canvases = pgTable(
+  "canvases",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateId("canvas")),
+    graphId: text("graph_id")
+      .notNull()
+      .references(() => showGraphs.id, { onDelete: "cascade" }),
+    sceneNodeId: text("scene_node_id"),
+    blockId: text("block_id"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("canvases_graph_idx").on(table.graphId),
+    uniqueIndex("canvases_scene_owner_unique").on(table.graphId, table.sceneNodeId),
+    uniqueIndex("canvases_block_owner_unique").on(table.graphId, table.blockId),
+    foreignKey({
+      name: "canvases_scene_owner_fk",
+      columns: [table.graphId, table.sceneNodeId],
+      foreignColumns: [graphNodes.graphId, graphNodes.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "canvases_block_owner_fk",
+      columns: [table.graphId, table.blockId],
+      foreignColumns: [blocks.graphId, blocks.id],
+    }).onDelete("cascade"),
+    check(
+      "canvases_exactly_one_owner",
+      sql`(${table.sceneNodeId} is not null) <> (${table.blockId} is not null)`,
+    ),
+  ],
+);
+
+// One row per Element. Property structure stays JSONB so adding an authoring
+// property does not turn a visual edit into a schema migration; hierarchy,
+// identity, and sibling order remain relational constraints.
+export const canvasElements = pgTable(
+  "canvas_elements",
+  {
+    id: text("id").notNull(),
+    canvasId: text("canvas_id")
+      .notNull()
+      .references(() => canvases.id, { onDelete: "cascade" }),
+    parentId: text("parent_id"),
+    type: text("type").notNull(),
+    rank: text("rank").notNull(),
+    name: text("name"),
+    hidden: boolean("hidden").notNull().default(false),
+    properties: jsonb("properties")
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.canvasId, table.id] }),
+    index("canvas_elements_parent_idx").on(table.canvasId, table.parentId),
+    uniqueIndex("canvas_elements_root_unique")
+      .on(table.canvasId)
+      .where(sql`${table.parentId} is null`),
+    foreignKey({
+      name: "canvas_elements_parent_fk",
+      columns: [table.canvasId, table.parentId],
+      foreignColumns: [table.canvasId, table.id],
+    }).onDelete("cascade"),
+  ],
+);

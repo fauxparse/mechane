@@ -14,4 +14,5 @@ export * from "./command";
 export * from "./graph-cascade";
 export * from "./graph-commands";
 export * from "./graph-edits";
+export * from "./canvas-edits";
 export * from "./stack";
