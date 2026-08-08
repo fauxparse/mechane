@@ -6,11 +6,11 @@
 // "are there unpublished changes?" is derived by comparing their
 // timestamps (ADR-0002 — see @mechane/domain's `publishState`), not
 // stored on either.
-import { coalesceGraphEdits } from "@mechane/commands";
-import type { GraphEdit } from "@mechane/commands";
+import { coalesceShowEdits } from "@mechane/commands";
+import type { GraphEdit, ShowEdit } from "@mechane/commands";
 import type { GraphState, ShowId } from "@mechane/domain";
 import {
-  ApplyShowGraphEditsMutation,
+  ApplyShowEditsMutation,
   GetShowGraphQuery,
   graphqlRequest,
   PublishShowGraphMutation,
@@ -93,7 +93,7 @@ export interface ShowGraphEdits {
    * Queues edits for the next flush. Called once per landed command — a
    * gesture included, since the stack coalesces one (#28).
    */
-  enqueue(edits: readonly GraphEdit[]): void;
+  enqueue(edits: readonly ShowEdit[]): void;
   /** True while a batch is in flight. */
   saving: boolean;
   /**
@@ -137,7 +137,7 @@ export function useShowGraphEdits(
   }, [onAmend]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const pending = useRef<GraphEdit[]>([]);
+  const pending = useRef<ShowEdit[]>([]);
   const timer = useRef<number | null>(null);
   const inFlight = useRef(false);
   // Not state: the version is a fact about the last response, and re-rendering
@@ -155,19 +155,19 @@ export function useShowGraphEdits(
     // Coalesced here, at the wire, rather than as they arrive: a batch is
     // only knowable as a whole, and two drags of the same node inside one
     // debounce window collapse for the same reason one drag's frames do.
-    const edits = coalesceGraphEdits(pending.current);
+    const edits = coalesceShowEdits(pending.current);
     const base = version.current;
     if (edits.length === 0 || !showId || base === null) return;
     pending.current = [];
     inFlight.current = true;
     setSaving(true);
-    graphqlRequest(GRAPHQL_ENDPOINT, ApplyShowGraphEditsMutation, {
+    graphqlRequest(GRAPHQL_ENDPOINT, ApplyShowEditsMutation, {
       showId,
       baseVersion: base,
       edits: edits.map(toEditInput),
     })
       .then((data) => {
-        const result = data.applyShowGraphEdits;
+        const result = data.applyShowEdits;
         version.current = result.version;
         // Only the metadata comes back now (#111), so the cached draft is
         // *updated* rather than replaced: its timestamp is what the
@@ -218,7 +218,7 @@ export function useShowGraphEdits(
   );
 
   const enqueue = useCallback(
-    (edits: readonly GraphEdit[]) => {
+    (edits: readonly ShowEdit[]) => {
       if (edits.length === 0) return;
       pending.current.push(...edits);
       if (timer.current !== null) window.clearTimeout(timer.current);

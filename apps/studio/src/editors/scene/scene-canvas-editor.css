@@ -1,0 +1,4 @@
+.scene-canvas-editor [data-element-id][data-selected="true"] {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}

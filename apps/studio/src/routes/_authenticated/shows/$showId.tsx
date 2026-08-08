@@ -24,10 +24,12 @@ import { GraphQLRequestError } from "@mechane/graphql-schema";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
+import { useSceneCanvas } from "../../../api/canvas";
 import { usePublishShowGraph, useShowGraph, useShowGraphEdits } from "../../../api/show-graph";
 import { useActiveRun, useEndRun, useStartRun } from "../../../api/runs";
 import { useDeleteShow, useRenameShow, useShow } from "../../../api/shows";
 import { ShowEditorChrome } from "../../../components/ShowEditorChrome";
+import { SceneCanvasEditor } from "../../../editors/scene/SceneCanvasEditor";
 import { ShowGraphEditor } from "../../../editors/show/ShowGraphEditor";
 import type { ShowGraphEditorHandle } from "../../../editors/show/ShowGraphEditor";
 
@@ -48,6 +50,8 @@ function ShowEditorRoute() {
   const draft = useShowGraph(showId, "draft");
   const published = useShowGraph(showId, "published");
   const activeRun = useActiveRun(showId);
+  const [sceneNodeId, setSceneNodeId] = useState<string | null>(null);
+  const sceneCanvas = useSceneCanvas(showId, sceneNodeId, "draft");
   // Seeded with the version the draft was read at: every edit batch says
   // which graph it was composed against (#103), and the first one has to get
   // that from the read that opened the editor.
@@ -125,18 +129,37 @@ function ShowEditorRoute() {
         publishing={publish.isPending}
       />
 
-      {/* The draft graph is what the editor shows and edits; the published
-          one is only ever read for the badge above (ADR-0002). Every edit —
-          including an undo, which is an ordinary forward command (ADR-0005) —
-          arrives here and is written after a pause in the editing (#42). */}
-      <ShowGraphEditor
-        ref={editor}
-        graph={openedWith}
-        onEdit={(edits) => {
-          setEdited(true);
-          saveGraph.enqueue(edits);
-        }}
-      />
+      {sceneNodeId ? (
+        sceneCanvas.isPending ? (
+          <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
+            Loading Scene Canvas…
+          </p>
+        ) : sceneCanvas.isError ? (
+          <p role="alert" className="flex h-full items-center justify-center text-sm text-destructive">
+            Unable to load Scene Canvas: {sceneCanvas.error.message}
+          </p>
+        ) : sceneCanvas.data ? (
+          <SceneCanvasEditor
+            canvas={sceneCanvas.data}
+            onBack={() => setSceneNodeId(null)}
+            onEdit={(edits) => {
+              const canvasId = sceneCanvas.data.id;
+              setEdited(true);
+              saveGraph.enqueue(edits.map((edit) => ({ ...edit, canvasId })));
+            }}
+          />
+        ) : null
+      ) : (
+        <ShowGraphEditor
+          ref={editor}
+          graph={openedWith}
+          onOpenScene={setSceneNodeId}
+          onEdit={(edits) => {
+            setEdited(true);
+            saveGraph.enqueue(edits);
+          }}
+        />
+      )}
 
       {saveGraph.error ? (
         // A refused batch is the one failure the director has to know about:

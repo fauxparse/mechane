@@ -11,6 +11,7 @@ describe("generateId", () => {
     expect(generateId("show").startsWith(ID_PREFIXES.show)).toBe(true);
     expect(generateId("scene").startsWith(ID_PREFIXES.scene)).toBe(true);
     expect(generateId("block").startsWith(ID_PREFIXES.block)).toBe(true);
+    expect(generateId("canvas").startsWith(ID_PREFIXES.canvas)).toBe(true);
   });
 
   it("never uses an ambiguous character", () => {

@@ -153,6 +153,8 @@ export interface ShowGraphEditorProps {
    * mutation.
    */
   onEdit?: (edits: readonly GraphEdit[], graph: ShowGraph) => void;
+  /** Opens the selected Scene's Canvas on a deliberate second gesture. */
+  onOpenScene?: (sceneNodeId: string) => void;
   className?: string;
   ref?: Ref<ShowGraphEditorHandle>;
 }
@@ -176,8 +178,13 @@ function moveIntoFlowDisabledReason(selectedNodes: GraphNode[]): string | undefi
   if (nodes.some((node) => node.kind === "device")) return "Devices cannot be moved into a Flow";
   return undefined;
 }
-
-function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditorProps) {
+function ShowGraphEditorInner({
+  graph,
+  onEdit,
+  onOpenScene,
+  className,
+  ref,
+}: ShowGraphEditorProps) {
   const editing = useGraphEditing(graph, onEdit);
   const { commands } = editing;
   // Collapse is deliberately local view state (#44): it never enters the
@@ -424,6 +431,7 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
           endDrag={endDrag}
           editing={editing}
           onConnect={onConnect}
+          onOpenScene={onOpenScene}
           isValidConnection={(connection) => isValidConnection(connection as Connection)}
           jumpToMinimapPoint={jumpToMinimapPoint}
         />
@@ -460,6 +468,7 @@ interface ShowGraphContextMenuProps {
   dragTo(moved: ShowFlowNode[]): void;
   endDrag: OnNodeDrag<ShowFlowNode>;
   editing: ReturnType<typeof useGraphEditing>;
+  onOpenScene?: (sceneNodeId: string) => void;
   onConnect(connection: Connection): void;
   isValidConnection(connection: Connection | ShowFlowEdge): boolean;
   jumpToMinimapPoint(event: ReactMouseEvent, position: XYPosition): void;
@@ -482,6 +491,7 @@ function ShowGraphContextMenu({
   endDrag,
   editing,
   onConnect,
+  onOpenScene,
   isValidConnection,
   jumpToMinimapPoint,
 }: ShowGraphContextMenuProps) {
@@ -506,6 +516,10 @@ function ShowGraphContextMenu({
             nodeTypes={nodeTypes}
             edgeTypes={showEdgeTypes}
             onNodesChange={onNodesChange}
+            onNodeDoubleClick={(_event, node) => {
+              const graphNode = editing.graph.nodes.find((candidate) => candidate.id === node.id);
+              if (graphNode?.kind === "scene") onOpenScene?.(graphNode.id);
+            }}
             onEdgesChange={onEdgesChange}
             // The three halves of the drag gesture: open it, feed it each
             // frame, and land the whole thing as one undo entry (#28).
