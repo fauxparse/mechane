@@ -2,3 +2,11 @@
   outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
 }
+
+.scene-canvas-draw-preview {
+  position: absolute;
+  z-index: 10;
+  border: 1px dashed hsl(var(--ring));
+  background: hsl(var(--accent) / 0.2);
+  pointer-events: none;
+}

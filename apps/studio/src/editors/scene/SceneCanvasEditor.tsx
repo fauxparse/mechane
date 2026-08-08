@@ -5,6 +5,7 @@ import type { CanvasEdit } from "@mechane/commands";
 import { addElement, composite, deleteElements, updateElementProperties } from "@mechane/commands";
 import { ArrowLeft, Frame, Image, Minus, Redo2, Square, Type, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 
 import { useCanvasCommands } from "./use-canvas-commands";
 import "./scene-canvas-editor.css";
@@ -17,6 +18,14 @@ export interface SceneCanvasEditorProps {
 }
 
 type Layer = { element: Element; depth: number };
+
+type DrawState = {
+  type: Element["type"];
+  start: { x: number; y: number };
+  current: { x: number; y: number };
+};
+
+const DRAW_MIN_SIZE = 8;
 
 function walkLayers(element: Element, depth = 0): Layer[] {
   const children = element.children?.flatMap((child) => walkLayers(child, depth + 1)) ?? [];
@@ -106,6 +115,90 @@ function LoadedCanvasEditor({
   );
   const layers = useMemo(() => walkLayers(editing.canvas.root).reverse(), [editing.canvas.root]);
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const [drawType, setDrawType] = useState<Element["type"] | null>(null);
+  const [drawState, setDrawState] = useState<DrawState | null>(null);
+  const suppressSurfaceClick = useRef(false);
+  const surfacePoint = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const root = Array.from(
+        surface.current?.querySelectorAll<HTMLElement>("[data-element-id]") ?? [],
+      ).find((element) => element.dataset.elementId === editing.canvas.root.id);
+      const bounds = root?.getBoundingClientRect();
+      if (!bounds) return null;
+      if (
+        event.clientX < bounds.left ||
+        event.clientX > bounds.right ||
+        event.clientY < bounds.top ||
+        event.clientY > bounds.bottom
+      ) {
+        return null;
+      }
+      return { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+    },
+    [editing.canvas.root.id],
+  );
+
+  const beginDraw = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!drawType || event.button !== 0) return;
+      const point = surfacePoint(event);
+      if (!point) return;
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // Pointer capture can be unavailable for synthetic or embedded surfaces.
+      }
+      event.preventDefault();
+      setDrawState({ type: drawType, start: point, current: point });
+    },
+    [drawType, surfacePoint],
+  );
+  const updateDraw = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!drawState) return;
+      const point = surfacePoint(event);
+      if (point) setDrawState((current) => (current ? { ...current, current: point } : null));
+    },
+    [drawState, surfacePoint],
+  );
+
+  const finishDraw = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!drawState) return;
+      const point = surfacePoint(event) ?? drawState.current;
+      const left = Math.min(drawState.start.x, point.x);
+      const top = Math.min(drawState.start.y, point.y);
+      const width = Math.max(DRAW_MIN_SIZE, Math.abs(point.x - drawState.start.x));
+      const height = Math.max(DRAW_MIN_SIZE, Math.abs(point.y - drawState.start.y));
+      const element = makeElement(drawState.type);
+      const drawn = {
+        ...element,
+        width: { mode: "fixed" as const, value: width },
+        height: { mode: "fixed" as const, value: height },
+        anchor: {
+          horizontal: "left" as const,
+          vertical: "top" as const,
+          offsetX: left,
+          offsetY: top,
+        },
+      };
+      editing.execute(
+        addElement(
+          drawn as Extract<CanvasEdit, { type: "canvas.addElement" }>["element"],
+          editing.canvas.root.id,
+          nextRank(editing.canvas.root),
+          `Draw ${drawState.type}`,
+        ),
+      );
+      setSelectedIds([element.id]);
+      setDrawState(null);
+      suppressSurfaceClick.current = true;
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    },
+    [drawState, editing, surfacePoint],
+  );
 
   useEffect(() => {
     const root = surface.current;
@@ -277,16 +370,48 @@ function LoadedCanvasEditor({
           >
             <Redo2 />
           </Button>
-          <Button variant="outline" size="sm" onClick={() => add("rect")}>
+          <Button
+            variant={drawType === "rect" ? "default" : "outline"}
+            size="sm"
+            aria-pressed={drawType === "rect"}
+            onClick={() => {
+              setDrawType("rect");
+              add("rect");
+            }}
+          >
             <Square /> Rect
           </Button>
-          <Button variant="outline" size="sm" onClick={() => add("text")}>
+          <Button
+            variant={drawType === "text" ? "default" : "outline"}
+            size="sm"
+            aria-pressed={drawType === "text"}
+            onClick={() => {
+              setDrawType("text");
+              add("text");
+            }}
+          >
             <Type /> Text
           </Button>
-          <Button variant="outline" size="sm" onClick={() => add("frame")}>
+          <Button
+            variant={drawType === "frame" ? "default" : "outline"}
+            size="sm"
+            aria-pressed={drawType === "frame"}
+            onClick={() => {
+              setDrawType("frame");
+              add("frame");
+            }}
+          >
             <Frame /> Frame
           </Button>
-          <Button variant="outline" size="sm" onClick={() => add("image")}>
+          <Button
+            variant={drawType === "image" ? "default" : "outline"}
+            size="sm"
+            aria-pressed={drawType === "image"}
+            onClick={() => {
+              setDrawType("image");
+              add("image");
+            }}
+          >
             <Image /> Image
           </Button>
         </div>
@@ -347,7 +472,15 @@ function LoadedCanvasEditor({
           tabIndex={0}
           className="relative min-w-0 flex-1 overflow-auto bg-muted/30 p-8"
           aria-label="Scene canvas"
+          onPointerDown={beginDraw}
+          onPointerMove={updateDraw}
+          onPointerUp={finishDraw}
+          onPointerCancel={() => setDrawState(null)}
           onClick={(event) => {
+            if (suppressSurfaceClick.current) {
+              suppressSurfaceClick.current = false;
+              return;
+            }
             const target =
               event.target instanceof globalThis.Element
                 ? event.target.closest<HTMLElement>("[data-element-id]")
@@ -363,6 +496,18 @@ function LoadedCanvasEditor({
             if (event.key === "Escape") setSelectedIds([]);
           }}
         >
+          {drawState ? (
+            <div
+              aria-hidden="true"
+              className="scene-canvas-draw-preview"
+              style={{
+                left: Math.min(drawState.start.x, drawState.current.x),
+                top: Math.min(drawState.start.y, drawState.current.y),
+                width: Math.max(DRAW_MIN_SIZE, Math.abs(drawState.current.x - drawState.start.x)),
+                height: Math.max(DRAW_MIN_SIZE, Math.abs(drawState.current.y - drawState.start.y)),
+              }}
+            />
+          ) : null}
           <CanvasRenderer canvas={editing.canvas} className="mx-auto min-h-96 max-w-5xl" />
         </div>
         <aside
