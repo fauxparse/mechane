@@ -17,10 +17,7 @@
 // graph.
 import type { GraphEdit } from "@mechane/commands";
 import type { GraphEdge, GraphNode, Shape, Type, ShowGraph } from "@mechane/domain";
-import type {
-  ApplyShowGraphEditsResult,
-  ShowGraph as ApiShowGraph,
-} from "@mechane/graphql-schema";
+import type { ApplyShowEditsResult, ShowGraph as ApiShowGraph } from "@mechane/graphql-schema";
 
 type ApiType = ApiShowGraph["shapes"][number]["fields"][number]["type"];
 type ApiGraphNode = {
@@ -38,7 +35,10 @@ type ApiGraphNode = {
   perConnection?: boolean;
   pairingCode?: string | null;
 };
-type ApiSceneNode = ApiGraphNode & { __typename: "SceneNode"; variables: NonNullable<ApiGraphNode["variables"]> };
+type ApiSceneNode = ApiGraphNode & {
+  __typename: "SceneNode";
+  variables: NonNullable<ApiGraphNode["variables"]>;
+};
 type ApiSourceNode = ApiGraphNode & {
   __typename: "SourceNode";
   sourceType: ApiType;
@@ -96,7 +96,7 @@ function toShape(shape: ApiShowGraph["shapes"][number]): Shape {
         type: toType(field.type),
         required: field.required,
         defaultValue: field.default
-          ? Object.entries(field.default).find(([key]) => key !== "__typename")?.[1] ?? null
+          ? (Object.entries(field.default).find(([key]) => key !== "__typename")?.[1] ?? null)
           : null,
       })),
   };
@@ -159,7 +159,9 @@ function toNode(node: ApiGraphNode): GraphNode {
       };
     }
     default:
-      throw new Error(`Unknown Show graph node typename "${node.__typename}" on node "${node.id}".`);
+      throw new Error(
+        `Unknown Show graph node typename "${node.__typename}" on node "${node.id}".`,
+      );
   }
 }
 
@@ -323,7 +325,7 @@ export function toEditInput(edit: GraphEdit) {
 }
 
 /** An amendment as the mutation returns it (#111). */
-export type ApiGraphEdit = ApplyShowGraphEditsResult["amendments"][number];
+export type ApiGraphEdit = ApplyShowEditsResult["amendments"][number];
 
 /**
  * An amendment from the server, as an edit the command layer can apply.

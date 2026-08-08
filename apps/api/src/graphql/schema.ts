@@ -3,12 +3,7 @@
 // owned-resource vertical slice, using `requireUserId` (./context.ts) and
 // `assertOwnedBy`/`assertValidShowName` (@mechane/domain) the same way
 // every later owned resource (Scene, Device, ...) should.
-import {
-  CanvasEditError,
-  InvalidReparentError,
-  UnknownGraphEditError,
-  UnknownGraphTargetError,
-} from "@mechane/commands";
+import { CanvasEditError } from "@mechane/commands";
 import type { CanvasEdit, GraphEdit } from "@mechane/commands";
 import {
   assertOwnedBy,
@@ -18,7 +13,6 @@ import {
   assertValidThemePalette,
   defaultThemeSettings,
   InvalidGraphStateError,
-  InvalidShowGraphError,
   InvalidShowNameError,
   isId,
   InvalidThemeModeError,
@@ -36,7 +30,6 @@ import { endRun, readActiveRun, startRun } from "../db/runs";
 import { shows, userSettings } from "../db/schema";
 import {
   applyShowEdits as applyShowEditsToDb,
-  applyShowGraphEdits,
   GraphVersionConflictError,
   publishShowGraph,
   readShowGraph,
@@ -47,7 +40,6 @@ import {
   parseGraphEdit,
   resolveGraphEdgeType,
   resolveGraphNodeType,
-  serializeAppliedEdits,
   serializeShowGraph,
 } from "./show-graph";
 import { parseCanvasEdit, resolveCanvasElementType, serializeCanvas } from "./canvas";
@@ -121,33 +113,6 @@ function validGraphState(value: string): GraphState {
     return assertValidGraphState(value);
   } catch (error) {
     if (error instanceof InvalidGraphStateError) {
-      throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
-    }
-    throw error;
-  }
-}
-
-// The three ways an edit batch can be refused, each translated from a plain
-// Error into something the client can actually read and act on. CONFLICT is
-// the one that's new (#103): it means "re-read the draft and try again",
-// which is a different instruction from "this batch was nonsense".
-async function applyEdits(showId: string, baseVersion: number, edits: GraphEdit[]) {
-  try {
-    return await applyShowGraphEdits(showId, edits, baseVersion);
-  } catch (error) {
-    if (error instanceof GraphVersionConflictError) {
-      throw new GraphQLError(error.message, { extensions: { code: "CONFLICT" } });
-    }
-    // An edit naming a node that isn't there, an illegal structural move, or
-    // a type this server doesn't know: all of them mean the batch was built
-    // against a graph this server doesn't have, and none of them is a bug in
-    // the server.
-    if (
-      error instanceof InvalidShowGraphError ||
-      error instanceof UnknownGraphTargetError ||
-      error instanceof UnknownGraphEditError ||
-      error instanceof InvalidReparentError
-    ) {
       throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
     }
     throw error;
@@ -646,31 +611,6 @@ export const schema = createSchema<GraphQLContext>({
     }
 
     """
-    The answer to an edit batch (issue #111) — deliberately not the graph.
-
-    The client composed these edits against its own copy and applied them
-    locally before sending, so the only things it is missing are the version
-    to build the next batch on and whatever the server decided that it
-    couldn't. Returning the whole graph here would be the wholesale
-    replacement issue #103 removed, pointed the other way.
-    """
-    type AppliedShowGraphEdits {
-      showId: ID!
-      "Either \\"draft\\" or \\"published\\"."
-      state: String!
-      "The draft's new timestamp — what the \\"unpublished changes\\" badge compares (ADR-0002)."
-      updatedAt: String!
-      "The version the next batch must be composed against."
-      version: Int!
-      """
-      Edits the server made that the client didn't ask for. Apply them to
-      your copy of the graph; they are not undoable, because they aren't the
-      director's edits. Empty for the overwhelming majority of batches.
-      """
-      amendments: [GraphEdit!]!
-    }
-
-    """
     One edit to a Show's graph (issue #103) — the unit the editor produces
     and the server applies, in place of a whole-graph replacement.
 
@@ -771,25 +711,6 @@ export const schema = createSchema<GraphQLContext>({
       deleteShow(id: ID!): Boolean!
       "Updates the signed-in user's theme settings. Omitted fields are left unchanged."
       updateUserSettings(themeMode: String, themePalette: String): UserSettings!
-      """
-      Applies edits to the draft graph of a Show owned by the signed-in user
-      (issue #103).
-
-      \`baseVersion\` is the version the edits were composed against. If the
-      stored graph has moved on, the whole batch is refused with a CONFLICT
-      error rather than applied over the top — half a cascade is a graph
-      nobody asked for. The edits are applied in order, and the graph is
-      validated once at the end, since a batch legitimately passes through
-      states no valid Show could be left in.
-
-      Answers with the new version and any amendments — not the graph, which
-      the client already has (issue #111).
-      """
-      applyShowGraphEdits(
-        showId: ID!
-        baseVersion: Int!
-        edits: [GraphEditInput!]!
-      ): AppliedShowGraphEdits!
       "Applies graph and Canvas edits against one shared draft Show version."
       applyShowEdits(showId: ID!, baseVersion: Int!, edits: [ShowEditInput!]!): AppliedShowEdits!
       "Publishes a Show's draft graph, making it the published graph immediately (ADR-0002)."
@@ -1033,23 +954,6 @@ export const schema = createSchema<GraphQLContext>({
           })
           .returning();
         return updated;
-      },
-      applyShowGraphEdits: async (
-        _parent,
-        {
-          showId,
-          baseVersion,
-          edits,
-        }: { showId: string; baseVersion: number; edits: GraphEditInput[] },
-        context,
-      ) => {
-        const userId = requireUserId(context);
-        await findOwnShowOrThrow(showId, userId);
-        const applied = await applyEdits(showId, baseVersion, edits.map(parseGraphEdit));
-        // The Show's own timestamp tracks "last edited", which the
-        // dashboard orders by — a graph edit is an edit to the Show.
-        await db.update(shows).set({ updatedAt: new Date() }).where(eq(shows.id, showId));
-        return serializeAppliedEdits(applied);
       },
       startRun: async (_parent, { showId }: { showId: string }, context) => {
         const userId = requireUserId(context);
