@@ -118,6 +118,9 @@ importers:
       '@mechane/graphql-schema':
         specifier: workspace:*
         version: link:../../packages/graphql-schema
+      '@mechane/rendering':
+        specifier: workspace:*
+        version: link:../../packages/rendering
       '@tanstack/react-query':
         specifier: ^5.90.0
         version: 5.101.4(react@19.2.8)

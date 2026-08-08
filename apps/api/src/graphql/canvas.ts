@@ -91,6 +91,8 @@ export function serializeCanvas(canvas: StoredCanvas) {
     id: canvas.id,
     kind: canvas.kind,
     position: canvas.position,
+    ownerId: canvas.ownerId,
+    ownerName: canvas.ownerName,
     root: canvas.root,
   };
 }

@@ -35,6 +35,7 @@ export interface ShowEditorChromeProps {
   name: string;
   publishState: PublishState;
   onBack: () => void;
+  onOpenCanvas?: () => void;
   onRename: (name: string) => void;
   onDelete: () => void;
   onPublish: () => void;
@@ -67,6 +68,7 @@ export function ShowEditorChrome({
   name,
   publishState,
   onBack,
+  onOpenCanvas,
   onRename,
   onDelete,
   onPublish,
@@ -153,6 +155,17 @@ export function ShowEditorChrome({
         </p>
       ) : null}
 
+      {onOpenCanvas ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          className="pointer-events-auto shadow-md"
+          onClick={onOpenCanvas}
+        >
+          Canvas
+        </Button>
+      ) : null}
       <div className="pointer-events-auto ml-auto flex items-center gap-3">
         <Badge variant={PUBLISH_STATE_VARIANTS[publishState]}>
           {PUBLISH_STATE_LABELS[publishState]}

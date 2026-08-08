@@ -1,82 +1,40 @@
-// The Show editor — "/shows/$showId" (issue #39). Opening a Show *is*
-// opening the editor (#22): no landing page, no separate /editor route.
+// The shared Show editor layout for "/shows/$showId" (issue #39).
 //
-// This replaces the old Show detail screen. Rename and delete used to be
-// this route's entire content; they're now items on the Show-name dropdown
-// in the chrome, which is where #22 puts them — two rarely-used actions
-// don't earn a screen of their own, and the screen they had is needed for
-// the canvas. No behaviour was dropped in the move.
-//
-// The layout deliberately opts out of the `max-w-2xl` centering the
-// dashboard and settings use: the editor is full-bleed, and the chrome
-// floats over it.
-//
-// `useShow` scopes to the signed-in user server-side (see apps/api's `show`
-// resolver), so an id belonging to someone else resolves to null here
-// rather than leaking its existence.
-//
-// Leaving with unpublished changes prompts nothing, on purpose (#22): the
-// draft lives server-side (ADR-0002), so leaving and coming back resumes
-// exactly the same in-progress state.
+// The index child owns the graph editor, while art.tsx owns the Canvas
+// workspace. Keeping those editors in sibling routes lets TanStack Router
+// select the correct surface instead of making the layout inspect pathname
+// strings or render one editor beside the other.
 import { isId, publishState } from "@mechane/domain";
 import type { ShowId } from "@mechane/domain";
 import { GraphQLRequestError } from "@mechane/graphql-schema";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
 
-import { usePublishShowGraph, useShowGraph, useShowGraphEdits } from "../../../api/show-graph";
+import { usePublishShowGraph, useShowGraph } from "../../../api/show-graph";
 import { useActiveRun, useEndRun, useStartRun } from "../../../api/runs";
 import { useDeleteShow, useRenameShow, useShow } from "../../../api/shows";
 import { ShowEditorChrome } from "../../../components/ShowEditorChrome";
-import { ShowGraphEditor } from "../../../editors/show/ShowGraphEditor";
-import type { ShowGraphEditorHandle } from "../../../editors/show/ShowGraphEditor";
 
 export const Route = createFileRoute("/_authenticated/shows/$showId")({
-  component: ShowEditorRoute,
+  component: ShowEditorLayout,
 });
 
-function ShowEditorRoute() {
+function ShowEditorLayout() {
   const params = Route.useParams();
   // The one place a Show id arrives from outside the system, so the one
-  // place it gets validated (issue #47). An id that isn't well-formed
-  // can't match any Show, and says so without a round trip.
+  // place it gets validated (issue #47).
   const showId: ShowId | null = isId("show", params.showId) ? params.showId : null;
   const navigate = useNavigate();
   const show = useShow(showId);
-  // Both states of the graph: the badge is the comparison between them
-  // (ADR-0002 stores no "dirty" flag).
+  // Both graph states feed the publish badge. The index child owns the draft
+  // snapshot used by the graph command stack.
   const draft = useShowGraph(showId, "draft");
   const published = useShowGraph(showId, "published");
   const activeRun = useActiveRun(showId);
-  // Seeded with the version the draft was read at: every edit batch says
-  // which graph it was composed against (#103), and the first one has to get
-  // that from the read that opened the editor.
-  //
-  // `onAmend` is the way back in (#111): what the server decided for itself —
-  // a new Device's pairing code — has to reach the graph the editor is
-  // holding, and the editor is the only thing that has it.
-  const editor = useRef<ShowGraphEditorHandle>(null);
-  const saveGraph = useShowGraphEdits(showId, draft.data?.version, {
-    onAmend: (edits) => editor.current?.applyAmendments(edits),
-  });
   const renameShow = useRenameShow();
   const deleteShow = useDeleteShow();
   const publish = usePublishShowGraph();
   const startRun = useStartRun();
   const endRun = useEndRun();
-
-  // The graph the editor *opens* with, captured once. After that the editor
-  // owns it: it holds the draft in a command stack (#41), and handing it a new
-  // object — which every save does, since the response refreshes the cache for
-  // the badge — would reset that stack and throw the undo history away. A
-  // refetch is not a different document.
-  const [openedWith, setOpenedWith] = useState<typeof draft.data | null>(null);
-  useEffect(() => {
-    if (draft.data && !openedWith) setOpenedWith(draft.data);
-  }, [draft.data, openedWith]);
-  // Which is also why "is the Show still empty?" is tracked here rather than
-  // read back off `openedWith`: that snapshot never changes again.
-  const [edited, setEdited] = useState(false);
 
   if (showId !== null && show.isPending) {
     return <p className="p-6 text-muted-foreground">Loading…</p>;
@@ -92,9 +50,6 @@ function ShowEditorRoute() {
   }
 
   const currentShow = show.data;
-  // Until both graphs have loaded there's nothing to compare, so the badge
-  // shows the quietest of the three states rather than flickering through
-  // "Unpublished changes" on the way in.
   const state =
     draft.data && published.data
       ? publishState(draft.data.updatedAt, published.data.updatedAt)
@@ -105,11 +60,14 @@ function ShowEditorRoute() {
       <ShowEditorChrome
         name={currentShow.name}
         publishState={state}
-        onBack={() => navigate({ to: "/" })}
+        onBack={() => void navigate({ to: "/" })}
+        onOpenCanvas={() =>
+          void navigate({ to: "/shows/$showId/art", params: { showId: params.showId } })
+        }
         onRename={(name) => renameShow.mutate({ id: currentShow.id, name })}
         onDelete={() => {
           deleteShow.mutate(currentShow.id, {
-            onSuccess: () => navigate({ to: "/" }),
+            onSuccess: () => void navigate({ to: "/" }),
           });
         }}
         onPublish={() => publish.mutate(currentShow.id)}
@@ -124,40 +82,7 @@ function ShowEditorRoute() {
         deleting={deleteShow.isPending}
         publishing={publish.isPending}
       />
-
-      {/* The draft graph is what the editor shows and edits; the published
-          one is only ever read for the badge above (ADR-0002). Every edit —
-          including an undo, which is an ordinary forward command (ADR-0005) —
-          arrives here and is written after a pause in the editing (#42). */}
-      <ShowGraphEditor
-        ref={editor}
-        graph={openedWith}
-        onEdit={(edits) => {
-          setEdited(true);
-          saveGraph.enqueue(edits);
-        }}
-      />
-
-      {saveGraph.error ? (
-        // A refused batch is the one failure the director has to know about:
-        // the editor still works, but nothing more is being written, and the
-        // way back is to reload and pick up the stored draft.
-        <p
-          role="alert"
-          className="absolute inset-x-0 bottom-0 bg-destructive px-4 py-2 text-center text-sm text-destructive-foreground"
-        >
-          Your changes couldn't be saved: {saveGraph.error.message} Reload to pick up the stored
-          draft.
-        </p>
-      ) : null}
-
-      {openedWith && openedWith.nodes.length === 0 && !edited ? (
-        // An empty Show is valid and unremarkable (#25), but an empty
-        // grid with no explanation reads as a failure to load.
-        <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
-          Nothing here yet. Right-click the canvas, or press ⌘K, to create something.
-        </p>
-      ) : null}
+      <Outlet />
     </div>
   );
 }

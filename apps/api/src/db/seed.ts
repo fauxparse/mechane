@@ -11,6 +11,7 @@ import { sql } from "drizzle-orm";
 
 import { auth } from "../auth";
 import { db } from "./client";
+import { readCanvasWorkspace } from "./canvas";
 import { SEED_GRAPHS } from "./seed-graphs";
 import { shows, user } from "./schema";
 // `TRUNCATE ... CASCADE` on `shows` takes the graph tables with it, so they
@@ -49,6 +50,24 @@ async function seedDefaultUser(): Promise<string> {
     .where(sql`${user.email} = ${DEFAULT_USER.email}`);
   return createdUser.id;
 }
+async function assertSeedCanvases(
+  showId: string,
+  state: "draft" | "published",
+  graph: ReturnType<NonNullable<(typeof SEED_GRAPHS)[string]>>,
+): Promise<void> {
+  const expectedSceneIds = new Set(
+    graph.nodes.filter((node) => node.kind === "scene").map((node) => node.id),
+  );
+  const actualSceneIds = new Set(
+    (await readCanvasWorkspace(showId, state)).canvases
+      .filter((canvas) => canvas.kind === "scene")
+      .map((canvas) => canvas.ownerId),
+  );
+  const missing = [...expectedSceneIds].filter((sceneId) => !actualSceneIds.has(sceneId));
+  if (missing.length > 0) {
+    throw new Error(`Seeded ${state} graph is missing Canvases for Scenes: ${missing.join(", ")}`);
+  }
+}
 
 async function seedDefaultShows(userId: string): Promise<void> {
   const created = await db
@@ -59,12 +78,15 @@ async function seedDefaultShows(userId: string): Promise<void> {
   for (const show of created) {
     const buildGraph = SEED_GRAPHS[show.name];
     if (!buildGraph) continue;
-    await writeShowGraph(show.id, "draft", buildGraph());
+    const graph = buildGraph();
+    await writeShowGraph(show.id, "draft", graph);
+    await assertSeedCanvases(show.id, "draft", graph);
     // Publish one of them, so the two draft-state badges the editor can
     // show (#39) are both reachable without editing anything first:
     // Hamlet reads as published, the Dream as having unpublished changes.
     if (show.name === "Hamlet") {
       await publishShowGraph(show.id);
+      await assertSeedCanvases(show.id, "published", graph);
     }
   }
 }

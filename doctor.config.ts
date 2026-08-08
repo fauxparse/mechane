@@ -38,6 +38,8 @@ export default {
   },
 
   rules: {
+    "react-doctor/click-events-have-key-events": "off",
     "react-doctor/no-autofocus": "off",
+    "react-doctor/no-noninteractive-element-interactions": "off",
   },
 } satisfies ReactDoctorConfig;

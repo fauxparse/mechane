@@ -24,7 +24,7 @@ import { GraphQLError, GraphQLScalarType, Kind } from "graphql";
 import { createSchema } from "graphql-yoga";
 
 import { db } from "../db/client";
-import { readCanvas } from "../db/canvas";
+import { readCanvas, readCanvasWorkspace } from "../db/canvas";
 import { withUniqueId } from "../db/ids";
 import { endRun, readActiveRun, startRun } from "../db/runs";
 import { shows, userSettings } from "../db/schema";
@@ -410,6 +410,8 @@ export const schema = createSchema<GraphQLContext>({
       id: ID!
       kind: String!
       position: Position!
+      ownerId: ID!
+      ownerName: String!
       root: Element!
     }
 
@@ -698,6 +700,8 @@ export const schema = createSchema<GraphQLContext>({
       no Flows at all is valid (issue #25).
       """
       showGraph(showId: ID!, state: String): ShowGraph!
+      "All persisted Scene and Block Canvases in one Show workspace."
+      showCanvases(showId: ID!, state: String): [Canvas!]!
       "The Canvas owned by a Scene node, or null before it is created."
       sceneCanvas(showId: ID!, sceneNodeId: ID!, state: String): Canvas
       "The Canvas owned by a Block definition, or null before it is created."
@@ -813,10 +817,19 @@ export const schema = createSchema<GraphQLContext>({
       ) => {
         const userId = requireUserId(context);
         // Ownership first: the graph is part of the Show, so it's readable
-        // exactly when the Show is.
+        // only to its owner.
         await findOwnShowOrThrow(showId, userId);
         const graphState = validGraphState(state ?? "draft");
         return serializeShowGraph(await readShowGraph(showId, graphState));
+      },
+      showCanvases: async (
+        _parent,
+        { showId, state }: { showId: string; state?: string | null },
+        context,
+      ) => {
+        const userId = requireUserId(context);
+        await findOwnShowOrThrow(showId, userId);
+        return (await readCanvasWorkspace(showId, validGraphState(state ?? "draft"))).canvases;
       },
       sceneCanvas: async (
         _parent,

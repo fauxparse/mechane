@@ -20,7 +20,7 @@ import type {
   Type,
 } from "@mechane/domain";
 import { assertValidShowGraph, emptyShowGraph, generateId, isEdgeKind } from "@mechane/domain";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import { db } from "./client";
 import type { StoredCanvas } from "./canvas";
@@ -30,6 +30,9 @@ import { reconcileActiveRunValues } from "./runs";
 import type { StoredDevice } from "./devices";
 import { retireUnreferencedDevices, syncDevices } from "./devices";
 import {
+  blocks,
+  canvasElements,
+  canvases,
   devices,
   graphEdges,
   graphNodeVariables,
@@ -373,11 +376,32 @@ async function writeGraph(
     throw new Error(`Failed to upsert the ${state} graph row for Show "${showId}".`);
   }
 
-  // Cascades take the graph's child rows with them. Shapes are independent
-  // of nodes, so clear them explicitly before writing the new definition set.
+  // Rewriting graph nodes cascades their Scene Canvases. Snapshot them first
+  // so every surviving Scene keeps its Canvas id and Element tree across
+  // ordinary graph edits.
+  const previousCanvases = await tx.select().from(canvases).where(eq(canvases.graphId, row.id));
+  const previousSceneCanvases = previousCanvases.filter((canvas) => canvas.sceneNodeId !== null);
+  const previousSceneCanvasIds = previousSceneCanvases.map((canvas) => canvas.id);
+  const previousElements =
+    previousSceneCanvasIds.length > 0
+      ? await tx
+          .select()
+          .from(canvasElements)
+          .where(inArray(canvasElements.canvasId, previousSceneCanvasIds))
+      : [];
+  const previousElementsByCanvas = new Map<string, typeof previousElements>();
+  for (const element of previousElements) {
+    const elements = previousElementsByCanvas.get(element.canvasId) ?? [];
+    elements.push(element);
+    previousElementsByCanvas.set(element.canvasId, elements);
+  }
+
+  const previousSceneByOwner = new Map(
+    previousSceneCanvases.map((canvas) => [canvas.sceneNodeId!, canvas]),
+  );
+
   await tx.delete(shapes).where(eq(shapes.graphId, row.id));
   await tx.delete(graphNodes).where(eq(graphNodes.graphId, row.id));
-
   const graphShapes = graph.shapes ?? [];
   if (graphShapes.length > 0) {
     await tx
@@ -443,6 +467,66 @@ async function writeGraph(
         positionY: node.position.y,
       })),
     );
+  }
+
+  // Scene and Block definitions always have an artboard. Existing Scene
+  // canvases retain their ids and element trees; new owners receive a valid
+  // empty Frame so the database invariant is true before the transaction
+  // commits. This path is also what seeds create.
+  for (const node of graph.nodes.filter((node) => node.kind === "scene")) {
+    const previous = previousSceneByOwner.get(node.id);
+    const canvasId = previous?.id ?? generateId("canvas");
+    await tx.insert(canvases).values({
+      id: canvasId,
+      graphId: row.id,
+      sceneNodeId: node.id,
+      blockId: null,
+      positionX: previous?.positionX ?? node.position.x,
+      positionY: previous?.positionY ?? node.position.y,
+      ...(previous ? { createdAt: previous.createdAt, updatedAt: previous.updatedAt } : {}),
+    });
+    const elements = previousElementsByCanvas.get(canvasId);
+    if (elements && elements.length > 0) {
+      await tx.insert(canvasElements).values(elements);
+    } else {
+      await tx.insert(canvasElements).values({
+        id: `${canvasId}-root`,
+        canvasId,
+        parentId: null,
+        type: "frame",
+        rank: "a",
+        name: null,
+        hidden: false,
+        properties: {},
+      });
+    }
+  }
+
+  const graphBlocks = await tx.select().from(blocks).where(eq(blocks.graphId, row.id));
+  const existingBlockIds = new Set(
+    previousCanvases.flatMap((canvas) => (canvas.blockId ? [canvas.blockId] : [])),
+  );
+  for (const block of graphBlocks) {
+    if (existingBlockIds.has(block.id)) continue;
+    const canvasId = generateId("canvas");
+    await tx.insert(canvases).values({
+      id: canvasId,
+      graphId: row.id,
+      sceneNodeId: null,
+      blockId: block.id,
+      positionX: 0,
+      positionY: 0,
+    });
+    await tx.insert(canvasElements).values({
+      id: `${canvasId}-root`,
+      canvasId,
+      parentId: null,
+      type: "frame",
+      rank: "a",
+      name: null,
+      hidden: false,
+      properties: {},
+    });
   }
 
   // A Flow's default Scene is one of its own children, so it can only be
