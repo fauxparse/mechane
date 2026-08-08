@@ -9,6 +9,7 @@
   },
   "include": [
     ".storybook",
+    "../apps/studio/src/vite-env.d.ts",
     "../apps/studio/src/**/*.stories.tsx",
     "../packages/design-system/src/**/*.stories.tsx",
     "../packages/rendering/src/**/*.stories.tsx"

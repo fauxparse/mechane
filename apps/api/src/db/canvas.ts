@@ -15,7 +15,7 @@ import {
 import { and, asc, eq, isNull } from "drizzle-orm";
 
 import { db } from "./client";
-import { canvases, canvasElements, showGraphs, shows } from "./schema";
+import { blocks, canvases, canvasElements, graphNodes, showGraphs, shows } from "./schema";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type Executor = Tx | typeof db;
@@ -30,6 +30,8 @@ export interface StoredCanvas extends Canvas {
   updatedAt: Date;
   version: number;
   position: Position;
+  ownerId: string;
+  ownerName: string;
   root: FrameElement & CanvasElementValue;
 }
 
@@ -112,6 +114,18 @@ export async function readCanvas(
   const [canvas] = await executor.select().from(canvases).where(ownerWhere(owner, graph.id));
   if (!canvas) return null;
 
+  const ownerId = "sceneNodeId" in owner ? owner.sceneNodeId : owner.blockId;
+  const [ownerRow] =
+    "sceneNodeId" in owner
+      ? await executor
+          .select({ id: graphNodes.id, name: graphNodes.name })
+          .from(graphNodes)
+          .where(and(eq(graphNodes.graphId, graph.id), eq(graphNodes.id, owner.sceneNodeId)))
+      : await executor
+          .select({ id: blocks.id, name: blocks.name })
+          .from(blocks)
+          .where(and(eq(blocks.graphId, graph.id), eq(blocks.id, owner.blockId)));
+  if (!ownerRow) throw new CanvasError(`Canvas "${canvas.id}" has no persisted owner.`);
   const rows = await executor
     .select()
     .from(canvasElements)
@@ -134,10 +148,50 @@ export async function readCanvas(
     updatedAt: graph.updatedAt,
     position: { x: canvas.positionX, y: canvas.positionY },
     kind: canvas.sceneNodeId ? "scene" : "block",
+    ownerId,
+    ownerName: ownerRow.name,
     root: root as FrameElement & CanvasElementValue,
   } satisfies StoredCanvas;
   assertValidCanvas(result);
   return result;
+}
+
+export interface CanvasWorkspaceRead {
+  readonly canvases: readonly StoredCanvas[];
+}
+
+/** Reads every persisted Scene and Block Canvas for one Show state. */
+export async function readCanvasWorkspace(
+  showId: string,
+  state: GraphState,
+  executor: Executor = db,
+): Promise<CanvasWorkspaceRead> {
+  const [graph] = await executor
+    .select({ id: showGraphs.id })
+    .from(showGraphs)
+    .where(and(eq(showGraphs.showId, showId), eq(showGraphs.state, state)));
+  if (!graph) return { canvases: [] };
+  const rows = await executor
+    .select({
+      id: canvases.id,
+      sceneNodeId: canvases.sceneNodeId,
+      blockId: canvases.blockId,
+    })
+    .from(canvases)
+    .where(eq(canvases.graphId, graph.id))
+    .orderBy(asc(canvases.id));
+  const loaded: StoredCanvas[] = [];
+  for (const row of rows) {
+    const owner = row.sceneNodeId
+      ? { sceneNodeId: row.sceneNodeId }
+      : row.blockId
+        ? { blockId: row.blockId }
+        : null;
+    if (!owner) throw new CanvasError(`Canvas "${row.id}" has no owner.`);
+    const canvas = await readCanvas(showId, state, owner, executor);
+    if (canvas) loaded.push(canvas);
+  }
+  return { canvases: loaded };
 }
 
 export interface CanvasWithOwner {

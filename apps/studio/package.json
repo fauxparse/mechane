@@ -13,6 +13,7 @@
     "@mechane/design-system": "workspace:*",
     "@mechane/domain": "workspace:*",
     "@mechane/graphql-schema": "workspace:*",
+    "@mechane/rendering": "workspace:*",
     "@tanstack/react-query": "^5.90.0",
     "@tanstack/react-router": "^1.150.0",
     "@tisoap/react-flow-smart-edge": "^4.13.1",

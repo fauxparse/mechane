@@ -287,6 +287,8 @@ type Canvas {
   id: ID!
   kind: String!
   position: Position!
+  ownerId: ID!
+  ownerName: String!
   root: Element!
 }
 
@@ -602,6 +604,9 @@ type Query {
   no Flows at all is valid (issue #25).
   """
   showGraph(showId: ID!, state: String): ShowGraph!
+
+  """All persisted Scene and Block Canvases in one Show workspace."""
+  showCanvases(showId: ID!, state: String): [Canvas!]!
 
   """The Canvas owned by a Scene node, or null before it is created."""
   sceneCanvas(showId: ID!, sceneNodeId: ID!, state: String): Canvas

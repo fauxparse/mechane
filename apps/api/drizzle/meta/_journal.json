@@ -92,6 +92,13 @@
       "when": 1786223105396,
       "tag": "0012_sudden_warlock",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786228168141,
+      "tag": "0013_canvas-presence",
+      "breakpoints": true
     }
   ]
 }
