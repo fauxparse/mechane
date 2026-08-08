@@ -572,19 +572,37 @@ input GraphEditInput {
   variable: SceneVariableInput
 }
 
-"""One serialisable mutation of a Canvas Element tree."""
-input CanvasEditInput {
+"""
+One serialisable Show edit. `type` selects a graph or Canvas command;
+Canvas commands additionally name the Canvas they target.
+"""
+input ShowEditInput {
   type: String!
-  elementId: ID
+  canvasId: ID
+  nodeId: ID
+  node: GraphNodeInput
+  edgeId: ID
+  edge: GraphEdgeInput
+  position: PositionInput
   parentId: ID
+  name: String
+  flowId: ID
+  sceneId: ID
+  variableId: ID
+  variable: SceneVariableInput
+  elementId: ID
   rank: String
   element: JSON
   properties: JSON
 }
 
-type AppliedCanvasEdits {
-  canvas: Canvas!
+type AppliedShowEdits {
+  showId: ID!
+  state: String!
+  updatedAt: String!
   version: Int!
+  canvas: Canvas
+  amendments: [GraphEdit!]!
 }
 
 type Query {
@@ -652,8 +670,8 @@ type Mutation {
   """
   applyShowGraphEdits(showId: ID!, baseVersion: Int!, edits: [GraphEditInput!]!): AppliedShowGraphEdits!
 
-  """Applies a versioned Canvas Element edit batch to a draft Canvas."""
-  applyCanvasEdits(showId: ID!, canvasId: ID!, baseVersion: Int!, edits: [CanvasEditInput!]!): AppliedCanvasEdits!
+  """Applies graph and Canvas edits against one shared draft Show version."""
+  applyShowEdits(showId: ID!, baseVersion: Int!, edits: [ShowEditInput!]!): AppliedShowEdits!
 
   """
   Publishes a Show's draft graph, making it the published graph immediately (ADR-0002).

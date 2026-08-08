@@ -226,6 +226,34 @@ function elementRows(
   ];
 }
 
+export async function writeCanvasRows(
+  tx: Tx,
+  showId: string,
+  graphId: string,
+  owner: CanvasOwner,
+  canvas: Canvas,
+  now: Date,
+): Promise<string> {
+  const [existing] = await tx.select().from(canvases).where(ownerWhere(owner, graphId));
+  const canvasId = existing?.id ?? generateId("canvas");
+  if (existing) {
+    await tx.delete(canvasElements).where(eq(canvasElements.canvasId, existing.id));
+  } else {
+    await tx
+      .insert(canvases)
+      .values(
+        "sceneNodeId" in owner
+          ? { id: canvasId, graphId, sceneNodeId: owner.sceneNodeId, blockId: null }
+          : { id: canvasId, graphId, sceneNodeId: null, blockId: owner.blockId },
+      );
+  }
+  await tx
+    .insert(canvasElements)
+    .values(elementRows(canvasId, canvas.root, null, canvas.root.rank ?? ""));
+  await tx.update(shows).set({ updatedAt: now }).where(eq(shows.id, showId));
+  return canvasId;
+}
+
 async function writeCanvasInTransaction(
   tx: Tx,
   showId: string,
@@ -256,23 +284,7 @@ async function writeCanvasInTransaction(
     .returning({ id: showGraphs.id });
   if (!graph) throw new Error(`Failed to upsert the ${state} graph row for Show "${showId}".`);
 
-  const [existing] = await tx.select().from(canvases).where(ownerWhere(owner, graph.id));
-  const canvasId = existing?.id ?? generateId("canvas");
-  if (existing) {
-    await tx.delete(canvasElements).where(eq(canvasElements.canvasId, existing.id));
-  } else {
-    await tx
-      .insert(canvases)
-      .values(
-        "sceneNodeId" in owner
-          ? { id: canvasId, graphId: graph.id, sceneNodeId: owner.sceneNodeId, blockId: null }
-          : { id: canvasId, graphId: graph.id, sceneNodeId: null, blockId: owner.blockId },
-      );
-  }
-  await tx
-    .insert(canvasElements)
-    .values(elementRows(canvasId, canvas.root, null, canvas.root.rank ?? ""));
-  await tx.update(shows).set({ updatedAt: now }).where(eq(shows.id, showId));
+  const canvasId = await writeCanvasRows(tx, showId, graph.id, owner, canvas, now);
   const stored = await readCanvas(showId, state, owner, tx);
   if (!stored) throw new Error(`Canvas "${canvasId}" disappeared while it was being written.`);
   return stored;

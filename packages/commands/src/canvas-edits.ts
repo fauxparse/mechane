@@ -1,5 +1,6 @@
 import type { Canvas, Element, FrameElement } from "@mechane/domain";
 import { ELEMENT_KINDS } from "@mechane/domain";
+import type { GraphEdit } from "./graph-edits";
 
 export const CANVAS_COMMAND_TYPES = {
   addElement: "canvas.addElement",
@@ -193,3 +194,5 @@ export function applyCanvasEdits(canvas: Canvas, edits: readonly CanvasEdit[]): 
   }
   return { ...canvas, root: root as FrameElement };
 }
+
+export type ShowEdit = GraphEdit | CanvasEdit;

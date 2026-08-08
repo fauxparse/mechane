@@ -4,7 +4,6 @@
 // `assertOwnedBy`/`assertValidShowName` (@mechane/domain) the same way
 // every later owned resource (Scene, Device, ...) should.
 import {
-  applyCanvasEdits,
   CanvasEditError,
   InvalidReparentError,
   UnknownGraphEditError,
@@ -25,17 +24,18 @@ import {
   InvalidThemeModeError,
   InvalidThemePaletteError,
 } from "@mechane/domain";
-import type { Canvas, GraphState } from "@mechane/domain";
+import type { GraphState } from "@mechane/domain";
 import { and, eq } from "drizzle-orm";
 import { GraphQLError, GraphQLScalarType, Kind } from "graphql";
 import { createSchema } from "graphql-yoga";
 
 import { db } from "../db/client";
-import { CanvasVersionConflictError, readCanvas, readCanvasById, writeCanvas } from "../db/canvas";
+import { readCanvas } from "../db/canvas";
 import { withUniqueId } from "../db/ids";
 import { endRun, readActiveRun, startRun } from "../db/runs";
 import { shows, userSettings } from "../db/schema";
 import {
+  applyShowEdits as applyShowEditsToDb,
   applyShowGraphEdits,
   GraphVersionConflictError,
   publishShowGraph,
@@ -707,20 +707,36 @@ export const schema = createSchema<GraphQLContext>({
     }
 
     """
-    One serialisable mutation of a Canvas Element tree.
+    One serialisable Show edit. \`type\` selects a graph or Canvas command;
+    Canvas commands additionally name the Canvas they target.
     """
-    input CanvasEditInput {
+    input ShowEditInput {
       type: String!
-      elementId: ID
+      canvasId: ID
+      nodeId: ID
+      node: GraphNodeInput
+      edgeId: ID
+      edge: GraphEdgeInput
+      position: PositionInput
       parentId: ID
+      name: String
+      flowId: ID
+      sceneId: ID
+      variableId: ID
+      variable: SceneVariableInput
+      elementId: ID
       rank: String
       element: JSON
       properties: JSON
     }
 
-    type AppliedCanvasEdits {
-      canvas: Canvas!
+    type AppliedShowEdits {
+      showId: ID!
+      state: String!
+      updatedAt: String!
       version: Int!
+      canvas: Canvas
+      amendments: [GraphEdit!]!
     }
 
     type Query {
@@ -774,13 +790,8 @@ export const schema = createSchema<GraphQLContext>({
         baseVersion: Int!
         edits: [GraphEditInput!]!
       ): AppliedShowGraphEdits!
-      "Applies a versioned Canvas Element edit batch to a draft Canvas."
-      applyCanvasEdits(
-        showId: ID!
-        canvasId: ID!
-        baseVersion: Int!
-        edits: [CanvasEditInput!]!
-      ): AppliedCanvasEdits!
+      "Applies graph and Canvas edits against one shared draft Show version."
+      applyShowEdits(showId: ID!, baseVersion: Int!, edits: [ShowEditInput!]!): AppliedShowEdits!
       "Publishes a Show's draft graph, making it the published graph immediately (ADR-0002)."
       publishShowGraph(showId: ID!): ShowGraph!
       "Ends the active Run, if one exists."
@@ -912,47 +923,53 @@ export const schema = createSchema<GraphQLContext>({
       },
     },
     Mutation: {
-      applyCanvasEdits: async (
+      applyShowEdits: async (
         _parent,
-        {
-          showId,
-          canvasId,
-          baseVersion,
-          edits,
-        }: { showId: string; canvasId: string; baseVersion: number; edits: unknown[] },
+        { showId, baseVersion, edits }: { showId: string; baseVersion: number; edits: unknown[] },
         context,
       ) => {
         const userId = requireUserId(context);
         await findOwnShowOrThrow(showId, userId);
-        const current = await readCanvasById(showId, "draft", canvasId);
-        if (!current)
-          throw new GraphQLError(`Canvas "${canvasId}" was not found.`, {
-            extensions: { code: "NOT_FOUND" },
-          });
-        let parsed: CanvasEdit[];
+        const graphEdits: GraphEdit[] = [];
+        const canvasEdits: CanvasEdit[] = [];
+        let canvasId: string | undefined;
         try {
-          parsed = edits.map(parseCanvasEdit);
-        } catch (error) {
-          if (error instanceof CanvasEditError) {
-            throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
+          for (const input of edits) {
+            if (input === null || typeof input !== "object" || Array.isArray(input)) {
+              throw new CanvasEditError("Show edit must be an object.");
+            }
+            const record = input as Record<string, unknown>;
+            const type = record.type;
+            if (typeof type !== "string") throw new CanvasEditError("Show edit type is required.");
+            if (type.startsWith("canvas.")) {
+              const target = record.canvasId;
+              if (typeof target !== "string" || target.length === 0) {
+                throw new CanvasEditError("Canvas edits require canvasId.");
+              }
+              if (canvasId && canvasId !== target) {
+                throw new CanvasEditError("One Show edit batch may target only one Canvas.");
+              }
+              canvasId = target;
+              canvasEdits.push(parseCanvasEdit(record));
+            } else {
+              graphEdits.push(parseGraphEdit(record as unknown as GraphEditInput));
+            }
           }
-          throw error;
-        }
-        let next: Canvas;
-        try {
-          next = applyCanvasEdits(current.canvas, parsed);
+          const applied = await applyShowEditsToDb(
+            showId,
+            graphEdits,
+            canvasEdits,
+            canvasId,
+            baseVersion,
+          );
+          await db.update(shows).set({ updatedAt: new Date() }).where(eq(shows.id, showId));
+          return applied;
         } catch (error) {
-          if (error instanceof CanvasEditError) {
-            throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
-          }
-          throw error;
-        }
-        try {
-          const stored = await writeCanvas(showId, "draft", current.owner, next, baseVersion);
-          return { canvas: serializeCanvas(stored), version: stored.version };
-        } catch (error) {
-          if (error instanceof CanvasVersionConflictError) {
+          if (error instanceof GraphVersionConflictError) {
             throw new GraphQLError(error.message, { extensions: { code: "CONFLICT" } });
+          }
+          if (error instanceof CanvasEditError) {
+            throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
           }
           throw error;
         }
