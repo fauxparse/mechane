@@ -29,6 +29,7 @@ import { GraphQLError, GraphQLScalarType, Kind } from "graphql";
 import { createSchema } from "graphql-yoga";
 
 import { db } from "../db/client";
+import { readCanvas } from "../db/canvas";
 import { withUniqueId } from "../db/ids";
 import { endRun, readActiveRun, startRun } from "../db/runs";
 import { shows, userSettings } from "../db/schema";
@@ -47,6 +48,7 @@ import {
   serializeAppliedEdits,
   serializeShowGraph,
 } from "./show-graph";
+import { resolveCanvasElementType, serializeCanvas } from "./canvas";
 import type { GraphEditInput } from "./show-graph";
 
 function serializeRun(run: Awaited<ReturnType<typeof startRun>>) {
@@ -433,6 +435,146 @@ export const schema = createSchema<GraphQLContext>({
       "Fields that lost data while this graph was published."
       losses: [PublishLoss!]!
     }
+    """
+    A persisted Scene or Block Canvas. Element is an interface so clients can
+    select the primitive-specific content without a nullable field bag.
+    """
+    type Canvas {
+      id: ID!
+      kind: String!
+      root: Element!
+    }
+
+    interface Element {
+      id: ID!
+      name: String
+      parentId: ID
+      rank: String!
+      hidden: Boolean!
+      layout: JSON
+      sizing: JSON
+      width: JSON
+      height: JSON
+      minWidth: JSON
+      maxWidth: JSON
+      minHeight: JSON
+      maxHeight: JSON
+      rotation: Int
+      opacity: Float
+      blendMode: String
+      fill: JSON
+      children: [Element!]!
+    }
+
+    type RectElement implements Element {
+      id: ID!
+      name: String
+      parentId: ID
+      rank: String!
+      hidden: Boolean!
+      layout: JSON
+      sizing: JSON
+      width: JSON
+      height: JSON
+      minWidth: JSON
+      maxWidth: JSON
+      minHeight: JSON
+      maxHeight: JSON
+      rotation: Int
+      opacity: Float
+      blendMode: String
+      fill: JSON
+      children: [Element!]!
+      cornerRadius: Float
+    }
+
+    type TextElement implements Element {
+      id: ID!
+      name: String
+      parentId: ID
+      rank: String!
+      hidden: Boolean!
+      layout: JSON
+      sizing: JSON
+      width: JSON
+      height: JSON
+      minWidth: JSON
+      maxWidth: JSON
+      minHeight: JSON
+      maxHeight: JSON
+      rotation: Int
+      opacity: Float
+      blendMode: String
+      fill: JSON
+      children: [Element!]!
+      content: String
+      text: String
+      color: String
+      fontFamily: String
+      fontSize: Float
+      fontWeight: String
+      lineHeight: JSON
+      letterSpacing: Float
+      textAlign: String
+    }
+
+    type ImageElement implements Element {
+      id: ID!
+      name: String
+      parentId: ID
+      rank: String!
+      hidden: Boolean!
+      layout: JSON
+      sizing: JSON
+      width: JSON
+      height: JSON
+      minWidth: JSON
+      maxWidth: JSON
+      minHeight: JSON
+      maxHeight: JSON
+      rotation: Int
+      opacity: Float
+      blendMode: String
+      fill: JSON
+      children: [Element!]!
+      src: String
+      image: String
+      source: String
+      alt: String
+      objectFit: String
+    }
+
+    type FrameElement implements Element {
+      id: ID!
+      name: String
+      parentId: ID
+      rank: String!
+      hidden: Boolean!
+      layout: JSON
+      sizing: JSON
+      width: JSON
+      height: JSON
+      minWidth: JSON
+      maxWidth: JSON
+      minHeight: JSON
+      maxHeight: JSON
+      rotation: Int
+      opacity: Float
+      blendMode: String
+      fill: JSON
+      children: [Element!]!
+      layoutMode: String
+      mode: String
+      autoLayout: Boolean
+      direction: String
+      gap: Float
+      padding: JSON
+      alignPrimary: String
+      alignCounter: String
+      primaryAlign: String
+      counterAlign: String
+      clip: Boolean
+    }
 
     input PositionInput {
       x: Float!
@@ -579,6 +721,10 @@ export const schema = createSchema<GraphQLContext>({
       no Flows at all is valid (issue #25).
       """
       showGraph(showId: ID!, state: String): ShowGraph!
+      "The Canvas owned by a Scene node, or null before it is created."
+      sceneCanvas(showId: ID!, sceneNodeId: ID!, state: String): Canvas
+      "The Canvas owned by a Block definition, or null before it is created."
+      blockCanvas(showId: ID!, blockId: ID!, state: String): Canvas
     }
 
     type Mutation {
@@ -636,6 +782,9 @@ export const schema = createSchema<GraphQLContext>({
     }),
     GraphNode: {
       __resolveType: resolveGraphNodeType,
+    },
+    Element: {
+      __resolveType: resolveCanvasElementType,
     },
     GraphEdge: {
       __resolveType: resolveGraphEdgeType,
@@ -708,6 +857,32 @@ export const schema = createSchema<GraphQLContext>({
         await findOwnShowOrThrow(showId, userId);
         const graphState = validGraphState(state ?? "draft");
         return serializeShowGraph(await readShowGraph(showId, graphState));
+      },
+      sceneCanvas: async (
+        _parent,
+        {
+          showId,
+          sceneNodeId,
+          state,
+        }: { showId: string; sceneNodeId: string; state?: string | null },
+        context,
+      ) => {
+        const userId = requireUserId(context);
+        await findOwnShowOrThrow(showId, userId);
+        const graphState = validGraphState(state ?? "draft");
+        const canvas = await readCanvas(showId, graphState, { sceneNodeId });
+        return canvas ? serializeCanvas(canvas) : null;
+      },
+      blockCanvas: async (
+        _parent,
+        { showId, blockId, state }: { showId: string; blockId: string; state?: string | null },
+        context,
+      ) => {
+        const userId = requireUserId(context);
+        await findOwnShowOrThrow(showId, userId);
+        const graphState = validGraphState(state ?? "draft");
+        const canvas = await readCanvas(showId, graphState, { blockId });
+        return canvas ? serializeCanvas(canvas) : null;
       },
     },
     Mutation: {
