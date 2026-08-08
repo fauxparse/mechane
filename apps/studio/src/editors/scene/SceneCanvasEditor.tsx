@@ -3,7 +3,17 @@ import type { AnchorPosition, Canvas, Element, FrameElement } from "@mechane/dom
 import { CanvasRenderer } from "@mechane/rendering";
 import type { CanvasEdit } from "@mechane/commands";
 import { addElement, composite, deleteElements, updateElementProperties } from "@mechane/commands";
-import { ArrowLeft, Frame, Image, Minus, Redo2, Square, Type, Undo2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Frame,
+  Image,
+  Minus,
+  MousePointer2,
+  Redo2,
+  Square,
+  Type,
+  Undo2,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 
@@ -38,7 +48,7 @@ type MoveState = {
   origins: Record<string, { x: number; y: number }>;
 };
 
-type ResizeHandle = "nw" | "ne" | "sw" | "se";
+type ResizeHandle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 
 type ResizeState = {
   id: string;
@@ -125,6 +135,8 @@ function LoadedCanvasEditor({
   onEdit?: (edits: readonly CanvasEdit[]) => void;
   onBack(): void;
   className?: string;
+  // These states model independent editor concerns; a reducer would couple unrelated pointer lifecycles.
+  // react-doctor-disable-next-line react-doctor/prefer-useReducer
 }) {
   const editing = useCanvasCommands(source, (edits) => onEdit?.(edits));
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -352,6 +364,7 @@ function LoadedCanvasEditor({
       );
       setSelectedIds([element.id]);
       setDrawState(null);
+      setDrawType(null);
       suppressSurfaceClick.current = true;
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
@@ -482,6 +495,59 @@ function LoadedCanvasEditor({
     }
   }, [editing.canvas.root, selectedIdSet]);
 
+  useEffect(() => {
+    const touched = new Map<HTMLElement, { transform: string; width: string; height: string }>();
+    const remember = (element: HTMLElement) => {
+      if (!touched.has(element)) {
+        touched.set(element, {
+          transform: element.style.transform,
+          width: element.style.width,
+          height: element.style.height,
+        });
+      }
+      return element;
+    };
+    const findElement = (id: string) =>
+      Array.from(canvasRoot()?.querySelectorAll<HTMLElement>("[data-element-id]") ?? []).find(
+        (element) => element.dataset.elementId === id,
+      );
+
+    if (moveState) {
+      const dx = moveState.current.x - moveState.start.x;
+      const dy = moveState.current.y - moveState.start.y;
+      for (const id of moveState.ids) {
+        const element = findElement(id);
+        if (element) remember(element).style.transform = `translate(${dx}px, ${dy}px)`;
+      }
+    }
+
+    if (resizeState) {
+      const element = findElement(resizeState.id);
+      if (element) {
+        const dx = resizeState.current.x - resizeState.start.x;
+        const dy = resizeState.current.y - resizeState.start.y;
+        const west = resizeState.handle.includes("w");
+        const north = resizeState.handle.includes("n");
+        const width = Math.max(DRAW_MIN_SIZE, resizeState.width + (west ? -dx : dx));
+        const height = Math.max(DRAW_MIN_SIZE, resizeState.height + (north ? -dy : dy));
+        const node = remember(element);
+        node.style.width = `${width}px`;
+        node.style.height = `${height}px`;
+        node.style.transform = `translate(${west ? resizeState.width - width : 0}px, ${
+          north ? resizeState.height - height : 0
+        }px)`;
+      }
+    }
+
+    return () => {
+      for (const [element, styles] of touched) {
+        element.style.transform = styles.transform;
+        element.style.width = styles.width;
+        element.style.height = styles.height;
+      }
+    };
+  }, [canvasRoot, moveState, resizeState]);
+
   const beginPointer = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       if (drawType) {
@@ -493,7 +559,16 @@ function LoadedCanvasEditor({
           ? event.target.closest<HTMLElement>("[data-resize-handle]")
           : null;
       const handle = target?.dataset.resizeHandle;
-      if (handle === "nw" || handle === "ne" || handle === "sw" || handle === "se") {
+      if (
+        handle === "nw" ||
+        handle === "n" ||
+        handle === "ne" ||
+        handle === "e" ||
+        handle === "se" ||
+        handle === "s" ||
+        handle === "sw" ||
+        handle === "w"
+      ) {
         beginResize(event, handle);
         return;
       }
@@ -589,30 +664,6 @@ function LoadedCanvasEditor({
     [editing, selected],
   );
 
-  const add = useCallback(
-    (type: Element["type"]) => {
-      const selectedElement = selected[0];
-      const parent =
-        selectedElement?.type === "frame"
-          ? selectedElement
-          : selectedElement
-            ? locate(editing.canvas.root, selectedElement.id)?.parent
-            : editing.canvas.root;
-      if (!parent) return;
-      const element = makeElement(type);
-      editing.execute(
-        addElement(
-          element as unknown as Extract<CanvasEdit, { type: "canvas.addElement" }>["element"],
-          parent.id,
-          nextRank(parent),
-          `Add ${type}`,
-        ),
-      );
-      setSelectedIds([element.id]);
-    },
-    [editing, selected],
-  );
-
   const nudge = useCallback(
     (dx: number, dy: number) => {
       const element = selected[0];
@@ -642,6 +693,9 @@ function LoadedCanvasEditor({
     },
     [editing, selected],
   );
+  const activateTool = useCallback((type: Element["type"]) => {
+    setDrawType((current) => (current === type ? null : type));
+  }, []);
 
   const canvasOffset = useMemo(() => {
     const rootBounds = canvasRoot()?.getBoundingClientRect();
@@ -674,8 +728,24 @@ function LoadedCanvasEditor({
       className={cn("scene-canvas-editor flex h-full min-h-0 flex-col bg-background", className)}
       tabIndex={0}
       onKeyDown={(event) => {
-        if (event.target instanceof HTMLInputElement) return;
-        if (event.key === "Escape") {
+        if (event.key.toLowerCase() === "v") {
+          event.preventDefault();
+          setDrawType(null);
+          return;
+        }
+        const tool = { r: "rect", t: "text", f: "frame", i: "image" }[event.key.toLowerCase()] as
+          | Element["type"]
+          | undefined;
+        if (tool) {
+          event.preventDefault();
+          activateTool(tool);
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          setDrawType(null);
+          setDrawState(null);
+          setSelectionState(null);
+          setMoveState(null);
+          setResizeState(null);
           setSelectedIds((current) => current.slice(0, -1));
           setRenaming(null);
         } else if (event.key === "Delete" || event.key === "Backspace") {
@@ -718,13 +788,18 @@ function LoadedCanvasEditor({
             <Redo2 />
           </Button>
           <Button
+            variant={drawType === null ? "default" : "outline"}
+            size="sm"
+            aria-pressed={drawType === null}
+            onClick={() => setDrawType(null)}
+          >
+            <MousePointer2 /> Select
+          </Button>
+          <Button
             variant={drawType === "rect" ? "default" : "outline"}
             size="sm"
             aria-pressed={drawType === "rect"}
-            onClick={() => {
-              setDrawType("rect");
-              add("rect");
-            }}
+            onClick={() => activateTool("rect")}
           >
             <Square /> Rect
           </Button>
@@ -732,10 +807,7 @@ function LoadedCanvasEditor({
             variant={drawType === "text" ? "default" : "outline"}
             size="sm"
             aria-pressed={drawType === "text"}
-            onClick={() => {
-              setDrawType("text");
-              add("text");
-            }}
+            onClick={() => activateTool("text")}
           >
             <Type /> Text
           </Button>
@@ -743,10 +815,7 @@ function LoadedCanvasEditor({
             variant={drawType === "frame" ? "default" : "outline"}
             size="sm"
             aria-pressed={drawType === "frame"}
-            onClick={() => {
-              setDrawType("frame");
-              add("frame");
-            }}
+            onClick={() => activateTool("frame")}
           >
             <Frame /> Frame
           </Button>
@@ -754,10 +823,7 @@ function LoadedCanvasEditor({
             variant={drawType === "image" ? "default" : "outline"}
             size="sm"
             aria-pressed={drawType === "image"}
-            onClick={() => {
-              setDrawType("image");
-              add("image");
-            }}
+            onClick={() => activateTool("image")}
           >
             <Image /> Image
           </Button>
@@ -881,7 +947,7 @@ function LoadedCanvasEditor({
                 height: selectedOverlay.height,
               }}
             >
-              {(["nw", "ne", "sw", "se"] as const).map((handle) => (
+              {(["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const).map((handle) => (
                 <button
                   key={handle}
                   type="button"

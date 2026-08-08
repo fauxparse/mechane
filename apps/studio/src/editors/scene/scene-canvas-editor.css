@@ -64,3 +64,30 @@
   cursor: nwse-resize;
   transform: translate(50%, 50%);
 }
+
+.scene-canvas-resize-handle-n {
+  top: 0;
+  left: 50%;
+  cursor: ns-resize;
+}
+
+.scene-canvas-resize-handle-e {
+  top: 50%;
+  right: 0;
+  cursor: ew-resize;
+  transform: translate(50%, -50%);
+}
+
+.scene-canvas-resize-handle-s {
+  bottom: 0;
+  left: 50%;
+  cursor: ns-resize;
+  transform: translate(-50%, 50%);
+}
+
+.scene-canvas-resize-handle-w {
+  top: 50%;
+  left: 0;
+  cursor: ew-resize;
+  transform: translate(-50%, -50%);
+}
