@@ -18,3 +18,49 @@
   background: hsl(var(--ring) / 0.12);
   pointer-events: none;
 }
+
+.scene-canvas-resize-box {
+  position: absolute;
+  z-index: 11;
+  border: 1px solid hsl(var(--ring));
+  pointer-events: none;
+}
+
+.scene-canvas-resize-handle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 1px solid hsl(var(--background));
+  border-radius: 2px;
+  background: hsl(var(--ring));
+  pointer-events: auto;
+  transform: translate(-50%, -50%);
+}
+
+.scene-canvas-resize-handle-nw {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+
+.scene-canvas-resize-handle-ne {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+  transform: translate(50%, -50%);
+}
+
+.scene-canvas-resize-handle-sw {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+  transform: translate(-50%, 50%);
+}
+
+.scene-canvas-resize-handle-se {
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
+  transform: translate(50%, 50%);
+}

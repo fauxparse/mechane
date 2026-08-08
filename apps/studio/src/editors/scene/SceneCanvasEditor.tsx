@@ -1,5 +1,5 @@
 import { Button, Input, Label, cn } from "@mechane/design-system";
-import type { Canvas, Element, FrameElement } from "@mechane/domain";
+import type { AnchorPosition, Canvas, Element, FrameElement } from "@mechane/domain";
 import { CanvasRenderer } from "@mechane/rendering";
 import type { CanvasEdit } from "@mechane/commands";
 import { addElement, composite, deleteElements, updateElementProperties } from "@mechane/commands";
@@ -29,6 +29,25 @@ type SelectionState = {
   start: { x: number; y: number };
   current: { x: number; y: number };
   additive: boolean;
+};
+
+type MoveState = {
+  ids: string[];
+  start: { x: number; y: number };
+  current: { x: number; y: number };
+  origins: Record<string, { x: number; y: number }>;
+};
+
+type ResizeHandle = "nw" | "ne" | "sw" | "se";
+
+type ResizeState = {
+  id: string;
+  handle: ResizeHandle;
+  start: { x: number; y: number };
+  current: { x: number; y: number };
+  width: number;
+  height: number;
+  anchor: AnchorPosition;
 };
 
 const DRAW_MIN_SIZE = 8;
@@ -124,6 +143,8 @@ function LoadedCanvasEditor({
   const [drawType, setDrawType] = useState<Element["type"] | null>(null);
   const [drawState, setDrawState] = useState<DrawState | null>(null);
   const [selectionState, setSelectionState] = useState<SelectionState | null>(null);
+  const [moveState, setMoveState] = useState<MoveState | null>(null);
+  const [resizeState, setResizeState] = useState<ResizeState | null>(null);
   const suppressSurfaceClick = useRef(false);
   const canvasRoot = useCallback(
     () =>
@@ -186,6 +207,84 @@ function LoadedCanvasEditor({
     [drawType, editing.canvas.root.id, surfacePoint],
   );
 
+  const beginMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (drawType || event.button !== 0) return;
+      const target =
+        event.target instanceof globalThis.Element
+          ? event.target.closest<HTMLElement>("[data-element-id]")
+          : null;
+      const id = target?.dataset.elementId;
+      if (!id || id === editing.canvas.root.id) return;
+      const point = surfacePoint(event);
+      const clicked = locate(editing.canvas.root, id);
+      if (!point || !clicked?.parent || clicked.parent.layoutMode === "auto") return;
+      const candidateIds = selectedIds.includes(id)
+        ? selectedIds
+        : event.shiftKey
+          ? [...selectedIds, id]
+          : [id];
+      const candidateElements: Element[] = [];
+      for (const candidateId of candidateIds) {
+        const element = locate(editing.canvas.root, candidateId)?.element;
+        if (element) candidateElements.push(element);
+      }
+      const ids: string[] = [];
+      for (const element of candidateElements) {
+        const hasSelectedAncestor = candidateElements.some(
+          (other) => other.id !== element.id && contains(other, element.id),
+        );
+        if (!hasSelectedAncestor) ids.push(element.id);
+      }
+      const idSet = new Set(ids);
+      const origins: Record<string, { x: number; y: number }> = {};
+      for (const element of candidateElements) {
+        if (idSet.has(element.id)) {
+          origins[element.id] = {
+            x: element.anchor?.offsetX ?? 0,
+            y: element.anchor?.offsetY ?? 0,
+          };
+        }
+      }
+      setSelectedIds(candidateIds);
+      setMoveState({ ids, start: point, current: point, origins });
+      event.preventDefault();
+    },
+    [drawType, editing.canvas.root, selectedIds, surfacePoint],
+  );
+
+  const beginResize = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>, handle: ResizeHandle) => {
+      if (drawType || selected.length !== 1 || event.button !== 0) return;
+      const element = selected[0];
+      if (!element) return;
+      const found = locate(editing.canvas.root, element.id);
+      if (!found?.parent || found.parent.layoutMode === "auto") return;
+      const point = surfacePoint(event);
+      if (!point) return;
+      const domElement = event.currentTarget.querySelector<HTMLElement>(
+        `[data-element-id="${element.id}"]`,
+      );
+      const bounds = domElement?.getBoundingClientRect();
+      const width =
+        typeof element.width?.value === "number" ? element.width.value : (bounds?.width ?? 8);
+      const height =
+        typeof element.height?.value === "number" ? element.height.value : (bounds?.height ?? 8);
+      setResizeState({
+        id: element.id,
+        handle,
+        start: point,
+        current: point,
+        width,
+        height,
+        anchor: { ...element.anchor },
+      });
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    [drawType, editing.canvas.root, selected, surfacePoint],
+  );
+
   const updateDraw = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       if (!drawState) return;
@@ -204,6 +303,23 @@ function LoadedCanvasEditor({
       }
     },
     [selectionState, surfacePoint],
+  );
+  const updateMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!moveState) return;
+      const point = surfacePoint(event);
+      if (point) setMoveState((current) => (current ? { ...current, current: point } : null));
+    },
+    [moveState, surfacePoint],
+  );
+
+  const updateResize = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!resizeState) return;
+      const point = surfacePoint(event);
+      if (point) setResizeState((current) => (current ? { ...current, current: point } : null));
+    },
+    [resizeState, surfacePoint],
   );
 
   const finishDraw = useCallback(
@@ -244,6 +360,80 @@ function LoadedCanvasEditor({
     [drawState, editing, surfacePoint],
   );
 
+  const finishMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!moveState) return;
+      const point = surfacePoint(event) ?? moveState.current;
+      const dx = point.x - moveState.start.x;
+      const dy = point.y - moveState.start.y;
+      const commands = moveState.ids.flatMap((id) => {
+        const element = locate(editing.canvas.root, id)?.element;
+        const origin = moveState.origins[id];
+        return element && origin
+          ? [
+              updateElementProperties(
+                id,
+                {
+                  anchor: {
+                    ...element.anchor,
+                    offsetX: origin.x + dx,
+                    offsetY: origin.y + dy,
+                  },
+                },
+                "Move element",
+              ),
+            ]
+          : [];
+      });
+      if (commands.length > 0)
+        editing.execute(composite({ label: "Move elements", scope: "selection", commands }));
+      setMoveState(null);
+      suppressSurfaceClick.current = true;
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    },
+    [editing, moveState, surfacePoint],
+  );
+
+  const finishResize = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!resizeState) return;
+      const point = surfacePoint(event) ?? resizeState.current;
+      const dx = point.x - resizeState.start.x;
+      const dy = point.y - resizeState.start.y;
+      const west = resizeState.handle.includes("w");
+      const north = resizeState.handle.includes("n");
+      const width = Math.max(DRAW_MIN_SIZE, resizeState.width + (west ? -dx : dx));
+      const height = Math.max(DRAW_MIN_SIZE, resizeState.height + (north ? -dy : dy));
+      const anchor: AnchorPosition = {
+        ...resizeState.anchor,
+        horizontal:
+          resizeState.anchor.horizontal === "centre" ? "center" : resizeState.anchor.horizontal,
+        vertical: resizeState.anchor.vertical === "centre" ? "center" : resizeState.anchor.vertical,
+        offsetX: (resizeState.anchor.offsetX ?? 0) + (west ? resizeState.width - width : 0),
+        offsetY: (resizeState.anchor.offsetY ?? 0) + (north ? resizeState.height - height : 0),
+      };
+      editing.execute(
+        updateElementProperties(
+          resizeState.id,
+          {
+            width: { mode: "fixed", value: width },
+            height: { mode: "fixed", value: height },
+            anchor,
+          },
+          "Resize element",
+        ),
+      );
+      setResizeState(null);
+      suppressSurfaceClick.current = true;
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    },
+    [editing, resizeState, surfacePoint],
+  );
+
   const finishSelection = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       if (!selectionState) return;
@@ -282,28 +472,6 @@ function LoadedCanvasEditor({
     [canvasRoot, editing.canvas.root.id, selectionState, surfacePoint],
   );
 
-  const beginPointer = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (drawType) beginDraw(event);
-      else beginSelection(event);
-    },
-    [beginDraw, beginSelection, drawType],
-  );
-  const updatePointer = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      updateDraw(event);
-      updateSelection(event);
-    },
-    [updateDraw, updateSelection],
-  );
-  const finishPointer = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (drawState) finishDraw(event);
-      else if (selectionState) finishSelection(event);
-    },
-    [drawState, finishDraw, finishSelection, selectionState],
-  );
-
   useEffect(() => {
     const root = surface.current;
     if (!root) return;
@@ -314,6 +482,57 @@ function LoadedCanvasEditor({
     }
   }, [editing.canvas.root, selectedIdSet]);
 
+  const beginPointer = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (drawType) {
+        beginDraw(event);
+        return;
+      }
+      const target =
+        event.target instanceof globalThis.Element
+          ? event.target.closest<HTMLElement>("[data-resize-handle]")
+          : null;
+      const handle = target?.dataset.resizeHandle;
+      if (handle === "nw" || handle === "ne" || handle === "sw" || handle === "se") {
+        beginResize(event, handle);
+        return;
+      }
+      const elementTarget =
+        event.target instanceof globalThis.Element
+          ? event.target.closest<HTMLElement>("[data-element-id]")
+          : null;
+      if (elementTarget?.dataset.elementId) beginMove(event);
+      else beginSelection(event);
+    },
+    [beginDraw, beginMove, beginResize, beginSelection, drawType],
+  );
+  const updatePointer = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      updateDraw(event);
+      updateSelection(event);
+      updateMove(event);
+      updateResize(event);
+    },
+    [updateDraw, updateMove, updateResize, updateSelection],
+  );
+  const finishPointer = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (resizeState) finishResize(event);
+      else if (moveState) finishMove(event);
+      else if (drawState) finishDraw(event);
+      else if (selectionState) finishSelection(event);
+    },
+    [
+      drawState,
+      finishDraw,
+      finishMove,
+      finishResize,
+      finishSelection,
+      moveState,
+      resizeState,
+      selectionState,
+    ],
+  );
   const select = useCallback((id: string, additive: boolean) => {
     setSelectedIds((current) =>
       additive
@@ -431,6 +650,22 @@ function LoadedCanvasEditor({
       ? { x: rootBounds.left - surfaceBounds.left, y: rootBounds.top - surfaceBounds.top }
       : { x: 0, y: 0 };
   }, [canvasRoot, drawState, selectionState]);
+  const selectedOverlay = useMemo(() => {
+    if (drawType || selected.length !== 1 || selected[0]?.id === editing.canvas.root.id)
+      return null;
+    const element = canvasRoot()?.querySelector<HTMLElement>(
+      `[data-element-id="${selected[0]?.id}"]`,
+    );
+    const surfaceBounds = surface.current?.getBoundingClientRect();
+    const bounds = element?.getBoundingClientRect();
+    if (!surfaceBounds || !bounds) return null;
+    return {
+      left: bounds.left - surfaceBounds.left,
+      top: bounds.top - surfaceBounds.top,
+      width: bounds.width,
+      height: bounds.height,
+    };
+  }, [canvasRoot, drawType, editing.canvas.root.id, selected, moveState, resizeState]);
 
   return (
     <div
@@ -590,6 +825,8 @@ function LoadedCanvasEditor({
           onPointerCancel={() => {
             setDrawState(null);
             setSelectionState(null);
+            setMoveState(null);
+            setResizeState(null);
           }}
           onClick={(event) => {
             if (suppressSurfaceClick.current) {
@@ -633,6 +870,27 @@ function LoadedCanvasEditor({
                 height: Math.abs(selectionState.current.y - selectionState.start.y),
               }}
             />
+          ) : null}
+          {selectedOverlay ? (
+            <div
+              className="scene-canvas-resize-box"
+              style={{
+                left: selectedOverlay.left,
+                top: selectedOverlay.top,
+                width: selectedOverlay.width,
+                height: selectedOverlay.height,
+              }}
+            >
+              {(["nw", "ne", "sw", "se"] as const).map((handle) => (
+                <button
+                  key={handle}
+                  type="button"
+                  aria-label={`Resize ${handle}`}
+                  className={`scene-canvas-resize-handle scene-canvas-resize-handle-${handle}`}
+                  data-resize-handle={handle}
+                />
+              ))}
+            </div>
           ) : null}
           <CanvasRenderer canvas={editing.canvas} className="mx-auto min-h-96 max-w-5xl" />
         </div>
