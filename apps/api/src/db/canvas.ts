@@ -1,4 +1,11 @@
-import type { Canvas, Element, ElementKind, FrameElement, GraphState } from "@mechane/domain";
+import type {
+  Canvas,
+  Element,
+  ElementKind,
+  FrameElement,
+  GraphState,
+  Position,
+} from "@mechane/domain";
 import {
   assertValidCanvas,
   ELEMENT_KINDS,
@@ -22,6 +29,7 @@ export interface StoredCanvas extends Canvas {
   state: GraphState;
   updatedAt: Date;
   version: number;
+  position: Position;
   root: FrameElement & CanvasElementValue;
 }
 
@@ -124,6 +132,7 @@ export async function readCanvas(
     state,
     version: graph.version,
     updatedAt: graph.updatedAt,
+    position: { x: canvas.positionX, y: canvas.positionY },
     kind: canvas.sceneNodeId ? "scene" : "block",
     root: root as FrameElement & CanvasElementValue,
   } satisfies StoredCanvas;
@@ -233,19 +242,44 @@ export async function writeCanvasRows(
   owner: CanvasOwner,
   canvas: Canvas,
   now: Date,
+  position?: Position,
 ): Promise<string> {
   const [existing] = await tx.select().from(canvases).where(ownerWhere(owner, graphId));
   const canvasId = existing?.id ?? generateId("canvas");
+  const nextPosition = position ?? {
+    x: existing?.positionX ?? 0,
+    y: existing?.positionY ?? 0,
+  };
   if (existing) {
     await tx.delete(canvasElements).where(eq(canvasElements.canvasId, existing.id));
-  } else {
     await tx
-      .insert(canvases)
-      .values(
-        "sceneNodeId" in owner
-          ? { id: canvasId, graphId, sceneNodeId: owner.sceneNodeId, blockId: null }
-          : { id: canvasId, graphId, sceneNodeId: null, blockId: owner.blockId },
-      );
+      .update(canvases)
+      .set({
+        positionX: nextPosition.x,
+        positionY: nextPosition.y,
+        updatedAt: now,
+      })
+      .where(eq(canvases.id, existing.id));
+  } else {
+    await tx.insert(canvases).values(
+      "sceneNodeId" in owner
+        ? {
+            id: canvasId,
+            graphId,
+            sceneNodeId: owner.sceneNodeId,
+            blockId: null,
+            positionX: nextPosition.x,
+            positionY: nextPosition.y,
+          }
+        : {
+            id: canvasId,
+            graphId,
+            sceneNodeId: null,
+            blockId: owner.blockId,
+            positionX: nextPosition.x,
+            positionY: nextPosition.y,
+          },
+    );
   }
   await tx
     .insert(canvasElements)

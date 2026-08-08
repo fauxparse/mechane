@@ -409,6 +409,7 @@ export const schema = createSchema<GraphQLContext>({
     type Canvas {
       id: ID!
       kind: String!
+      position: Position!
       root: Element!
     }
 
@@ -668,6 +669,7 @@ export const schema = createSchema<GraphQLContext>({
       rank: String
       element: JSON
       properties: JSON
+      unsetProperties: [String!]
     }
 
     type AppliedShowEdits {

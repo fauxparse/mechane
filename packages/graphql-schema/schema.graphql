@@ -286,6 +286,7 @@ select the primitive-specific content without a nullable field bag.
 type Canvas {
   id: ID!
   kind: String!
+  position: Position!
   root: Element!
 }
 
@@ -563,6 +564,7 @@ input ShowEditInput {
   rank: String
   element: JSON
   properties: JSON
+  unsetProperties: [String!]
 }
 
 type AppliedShowEdits {

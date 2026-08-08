@@ -26,4 +26,15 @@ describe("Canvas GraphQL adapter", () => {
       properties: { content: "Updated" },
     });
   });
+  it("parses artboard position edits", () => {
+    expect(
+      parseCanvasEdit({
+        type: CANVAS_COMMAND_TYPES.moveArtboard,
+        position: { x: 120.5, y: -40 },
+      }),
+    ).toEqual({
+      type: CANVAS_COMMAND_TYPES.moveArtboard,
+      position: { x: 120.5, y: -40 },
+    });
+  });
 });

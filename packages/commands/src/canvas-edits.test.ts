@@ -42,6 +42,25 @@ describe("applyCanvasEdits", () => {
 
     expect(next.root.children).toEqual([{ id: "first", type: "rect", rank: "a", opacity: 0.5 }]);
   });
+  it("can remove optional properties while applying an update", () => {
+    const withOpacity = applyCanvasEdits(canvas, [
+      {
+        type: CANVAS_COMMAND_TYPES.updateElement,
+        elementId: "first",
+        properties: { opacity: 0.5 },
+      },
+    ]);
+    const restored = applyCanvasEdits(withOpacity, [
+      {
+        type: CANVAS_COMMAND_TYPES.updateElement,
+        elementId: "first",
+        properties: {},
+        unsetProperties: ["opacity"],
+      },
+    ]);
+
+    expect(restored.root.children?.[0]).toEqual({ id: "first", type: "rect", rank: "a" });
+  });
 
   it("rejects cycles and unknown parents", () => {
     expect(() =>

@@ -15,7 +15,7 @@
 // list of edits, so `toEditInput` is the outbound half — the same widening
 // from a discriminated union to one flat wire shape, per edit instead of per
 // graph.
-import type { GraphEdit } from "@mechane/commands";
+import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
 import type { GraphEdge, GraphNode, Shape, Type, ShowGraph } from "@mechane/domain";
 import type { ApplyShowEditsResult, ShowGraph as ApiShowGraph } from "@mechane/graphql-schema";
 
@@ -221,7 +221,31 @@ function toTypeInput(type: Type | null | undefined): TypeInput | null {
       : { kind: "shape", shapeId: type.shapeId };
 }
 
-function toNodeInput(node: GraphNode) {
+interface ApiNodeInput {
+  id: string;
+  kind: string;
+  name: string;
+  parentId: string | null;
+  defaultSceneId: string | null;
+  type: TypeInput | null;
+  position: { x: number; y: number };
+  variables: { id: string; name: string; type: TypeInput | null }[];
+  perConnection: boolean;
+}
+
+interface ApiEdgeInput {
+  id: string;
+  kind: string;
+  sourceId: string;
+  targetId: string;
+  sourcePath: string[];
+  targetPath: string[];
+  fieldMapping?: Record<string, string> | null;
+  cueId: string | null;
+  actionId: string | null;
+}
+
+function toNodeInput(node: GraphNode): ApiNodeInput {
   return {
     id: node.id,
     kind: node.kind,
@@ -238,7 +262,7 @@ function toNodeInput(node: GraphNode) {
   };
 }
 
-function toEdgeInput(edge: GraphEdge) {
+function toEdgeInput(edge: GraphEdge): ApiEdgeInput {
   return {
     id: edge.id,
     kind: edge.kind,
@@ -247,37 +271,77 @@ function toEdgeInput(edge: GraphEdge) {
     sourcePath: [...edge.sourcePath],
     targetPath: [...edge.targetPath],
     ...(edge.kind === "wiring" ? { fieldMapping: edge.fieldMapping ?? null } : {}),
-    // `targetVariableId` is derived by the server from `targetPath`, so it
-    // isn't sent — see `serializeShowGraph` in apps/api.
     cueId: edge.kind === "navigate" ? edge.cueId : null,
     actionId: edge.kind === "navigate" ? edge.actionId : null,
   };
 }
 
 /**
- * One edit as the `applyShowGraphEdits` mutation wants it (#103).
+ * One Studio edit as the mutation input wants it (#103, #164).
  *
- * The command layer's `GraphEdit` is already a plain, serialisable value —
- * this only widens it to the flat input shape GraphQL needs, since GraphQL
- * has no input unions and every edit type therefore shares one field set.
- * Nothing is decided here: an edit that carries a node carries the node it
- * always carried.
+ * Graph edits already carry their whole target. Canvas workspace edits carry
+ * the Canvas id outside the tree edit because one Canvas edit vocabulary is
+ * shared by every artboard.
  */
-export function toEditInput(edit: GraphEdit) {
-  const input: {
-    type: string;
-    nodeId?: string;
-    node?: ReturnType<typeof toNodeInput>;
-    edgeId?: string;
-    edge?: ReturnType<typeof toEdgeInput>;
-    position?: { x: number; y: number };
-    parentId?: string | null;
-    name?: string;
-    flowId?: string;
-    sceneId?: string | null;
-    variableId?: string;
-    variable?: { id: string; name: string; type?: TypeInput | null };
-  } = { type: edit.type };
+export type StudioEdit = GraphEdit | CanvasWorkspaceEdit;
+
+export interface StudioEditInput {
+  type: string;
+  canvasId?: string;
+  nodeId?: string;
+  node?: ApiNodeInput;
+  edgeId?: string;
+  edge?: ApiEdgeInput;
+  position?: { x: number; y: number };
+  parentId?: string | null;
+  name?: string;
+  flowId?: string;
+  sceneId?: string | null;
+  variableId?: string;
+  variable?: { id: string; name: string; type?: TypeInput | null };
+  elementId?: string;
+  rank?: string;
+  element?: Record<string, unknown>;
+  properties?: Record<string, unknown>;
+  unsetProperties?: string[];
+}
+
+export function toEditInput(edit: StudioEdit): StudioEditInput {
+  if ("canvasId" in edit) {
+    const canvasEdit = edit.edit;
+    const input: StudioEditInput = { type: canvasEdit.type, canvasId: edit.canvasId };
+    switch (canvasEdit.type) {
+      case "canvas.addElement":
+        return {
+          ...input,
+          parentId: canvasEdit.parentId,
+          rank: canvasEdit.rank,
+          element: canvasEdit.element,
+        };
+      case "canvas.removeElement":
+        return { ...input, elementId: canvasEdit.elementId };
+      case "canvas.updateElement":
+        return {
+          ...input,
+          elementId: canvasEdit.elementId,
+          properties: canvasEdit.properties,
+          ...(canvasEdit.unsetProperties
+            ? { unsetProperties: [...canvasEdit.unsetProperties] }
+            : {}),
+        };
+      case "canvas.reparentElement":
+        return {
+          ...input,
+          elementId: canvasEdit.elementId,
+          parentId: canvasEdit.parentId,
+          rank: canvasEdit.rank,
+        };
+      case "canvas.moveArtboard":
+        return { ...input, position: canvasEdit.position };
+    }
+  }
+
+  const input: StudioEditInput = { type: edit.type };
   switch (edit.type) {
     case "graph.addNode":
       return { ...input, node: toNodeInput(edit.node) };
@@ -316,10 +380,6 @@ export function toEditInput(edit: GraphEdit) {
     case "graph.removeSceneVariable":
       return { ...input, sceneId: edit.sceneId, variableId: edit.variableId };
     case "graph.setDevicePairingCode":
-      // Server → client only (#45, #111). The editor applies one of these
-      // when a response brings it; sending one back would be telling the
-      // server something it told us, and `GraphEditInput` has no field for
-      // it anyway.
       throw new Error("A pairing code is the server's to mint, not the editor's to send.");
   }
 }

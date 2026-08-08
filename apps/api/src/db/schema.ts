@@ -557,6 +557,8 @@ export const canvases = pgTable(
       .references(() => showGraphs.id, { onDelete: "cascade" }),
     sceneNodeId: text("scene_node_id"),
     blockId: text("block_id"),
+    positionX: doublePrecision("position_x").notNull().default(0),
+    positionY: doublePrecision("position_y").notNull().default(0),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

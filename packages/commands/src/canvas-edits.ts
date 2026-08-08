@@ -1,4 +1,4 @@
-import type { Canvas, Element, FrameElement } from "@mechane/domain";
+import type { Canvas, Element, FrameElement, Position } from "@mechane/domain";
 import { ELEMENT_KINDS } from "@mechane/domain";
 import type { GraphEdit } from "./graph-edits";
 
@@ -7,10 +7,11 @@ export const CANVAS_COMMAND_TYPES = {
   removeElement: "canvas.removeElement",
   updateElement: "canvas.updateElement",
   reparentElement: "canvas.reparentElement",
+  moveArtboard: "canvas.moveArtboard",
 } as const;
 
-type ElementProperties = Record<string, unknown>;
-type NewElement = {
+export type ElementProperties = Record<string, unknown>;
+export type NewElement = {
   readonly id: string;
   readonly type: Element["type"];
   readonly [property: string]: unknown;
@@ -31,12 +32,17 @@ export type CanvasEdit =
       readonly type: typeof CANVAS_COMMAND_TYPES.updateElement;
       readonly elementId: string;
       readonly properties: ElementProperties;
+      readonly unsetProperties?: readonly string[];
     }
   | {
       readonly type: typeof CANVAS_COMMAND_TYPES.reparentElement;
       readonly elementId: string;
       readonly parentId: string;
       readonly rank: string;
+    }
+  | {
+      readonly type: typeof CANVAS_COMMAND_TYPES.moveArtboard;
+      readonly position: Position;
     };
 
 export class CanvasEditError extends Error {
@@ -45,6 +51,7 @@ export class CanvasEditError extends Error {
     this.name = "CanvasEditError";
   }
 }
+
 
 function cloneElement(element: Element): Element {
   return {
@@ -123,16 +130,24 @@ function sortChildren(root: Element): Element {
   } as Element;
 }
 
-function updateElement(root: Element, id: string, properties: ElementProperties): Element {
-  if (root.id === id) return { ...root, ...properties } as Element;
+function updateElement(
+  root: Element,
+  id: string,
+  properties: ElementProperties,
+  unsetProperties: readonly string[],
+): Element {
+  if (root.id === id) {
+    const next: Record<string, unknown> = { ...root, ...properties };
+    for (const property of unsetProperties) delete next[property];
+    return next as unknown as Element;
+  }
   return {
     ...root,
     ...(root.children
-      ? { children: root.children.map((child) => updateElement(child, id, properties)) }
+      ? { children: root.children.map((child) => updateElement(child, id, properties, unsetProperties)) }
       : {}),
   } as Element;
 }
-
 function assertNewElement(element: NewElement): void {
   if (!element.id || typeof element.id !== "string")
     throw new CanvasEditError("Added Element needs an id.");
@@ -142,14 +157,39 @@ function assertNewElement(element: NewElement): void {
     throw new CanvasEditError("canvas.addElement cannot include children.");
 }
 
-function assertMutableProperties(properties: ElementProperties): void {
+
+export function findCanvasElement(root: Element, id: string): Element | null {
+  return findElement(root, id);
+}
+
+export function canvasElementParent(
+  root: Element,
+  childId: string,
+): { parentId: string; rank: string } | null {
+  for (const child of root.children ?? []) {
+    if (child.id === childId) return { parentId: root.id, rank: child.rank ?? "" };
+    const nested = canvasElementParent(child, childId);
+    if (nested) return nested;
+  }
+  return null;
+}
+
+function assertMutableProperties(
+  properties: ElementProperties,
+  unsetProperties: readonly string[],
+): void {
   for (const key of ["id", "type", "children", "parentId", "rank"]) {
     if (key in properties)
       throw new CanvasEditError(`canvas.updateElement cannot update "${key}".`);
   }
+  for (const property of unsetProperties) {
+    if (["id", "type", "children", "parentId", "rank"].includes(property)) {
+      throw new CanvasEditError(`canvas.updateElement cannot unset "${property}".`);
+    }
+  }
 }
 
-/** Applies serialisable Canvas edits without mutating the input tree. */
+/** Applies serialisable tree edits without mutating the input Canvas. */
 export function applyCanvasEdits(canvas: Canvas, edits: readonly CanvasEdit[]): Canvas {
   let root = cloneElement(canvas.root);
   for (const edit of edits) {
@@ -170,10 +210,10 @@ export function applyCanvasEdits(canvas: Canvas, edits: readonly CanvasEdit[]): 
         root = replaceElement(root, edit.elementId, () => null);
         break;
       case CANVAS_COMMAND_TYPES.updateElement:
-        assertMutableProperties(edit.properties);
+        assertMutableProperties(edit.properties, edit.unsetProperties ?? []);
         if (!findElement(root, edit.elementId))
           throw new CanvasEditError(`Unknown Element "${edit.elementId}".`);
-        root = updateElement(root, edit.elementId, edit.properties);
+        root = updateElement(root, edit.elementId, edit.properties, edit.unsetProperties ?? []);
         break;
       case CANVAS_COMMAND_TYPES.reparentElement: {
         const element = findElement(root, edit.elementId);
@@ -190,6 +230,8 @@ export function applyCanvasEdits(canvas: Canvas, edits: readonly CanvasEdit[]): 
         root = sortChildren(root);
         break;
       }
+      case CANVAS_COMMAND_TYPES.moveArtboard:
+        throw new CanvasEditError("canvas.moveArtboard requires a Canvas workspace.");
     }
   }
   return { ...canvas, root: root as FrameElement };
