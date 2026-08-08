@@ -25,6 +25,12 @@ type DrawState = {
   current: { x: number; y: number };
 };
 
+type SelectionState = {
+  start: { x: number; y: number };
+  current: { x: number; y: number };
+  additive: boolean;
+};
+
 const DRAW_MIN_SIZE = 8;
 
 function walkLayers(element: Element, depth = 0): Layer[] {
@@ -117,13 +123,18 @@ function LoadedCanvasEditor({
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const [drawType, setDrawType] = useState<Element["type"] | null>(null);
   const [drawState, setDrawState] = useState<DrawState | null>(null);
+  const [selectionState, setSelectionState] = useState<SelectionState | null>(null);
   const suppressSurfaceClick = useRef(false);
+  const canvasRoot = useCallback(
+    () =>
+      Array.from(surface.current?.querySelectorAll<HTMLElement>("[data-element-id]") ?? []).find(
+        (element) => element.dataset.elementId === editing.canvas.root.id,
+      ) ?? null,
+    [editing.canvas.root.id],
+  );
   const surfacePoint = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
-      const root = Array.from(
-        surface.current?.querySelectorAll<HTMLElement>("[data-element-id]") ?? [],
-      ).find((element) => element.dataset.elementId === editing.canvas.root.id);
-      const bounds = root?.getBoundingClientRect();
+      const bounds = canvasRoot()?.getBoundingClientRect();
       if (!bounds) return null;
       if (
         event.clientX < bounds.left ||
@@ -135,7 +146,7 @@ function LoadedCanvasEditor({
       }
       return { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
     },
-    [editing.canvas.root.id],
+    [canvasRoot],
   );
 
   const beginDraw = useCallback(
@@ -153,6 +164,28 @@ function LoadedCanvasEditor({
     },
     [drawType, surfacePoint],
   );
+
+  const beginSelection = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (drawType || event.button !== 0) return;
+      const target =
+        event.target instanceof globalThis.Element
+          ? event.target.closest<HTMLElement>("[data-element-id]")
+          : null;
+      if (target?.dataset.elementId && target.dataset.elementId !== editing.canvas.root.id) return;
+      const point = surfacePoint(event);
+      if (!point) return;
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // Pointer capture can be unavailable for synthetic or embedded surfaces.
+      }
+      event.preventDefault();
+      setSelectionState({ start: point, current: point, additive: event.shiftKey });
+    },
+    [drawType, editing.canvas.root.id, surfacePoint],
+  );
+
   const updateDraw = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       if (!drawState) return;
@@ -160,6 +193,17 @@ function LoadedCanvasEditor({
       if (point) setDrawState((current) => (current ? { ...current, current: point } : null));
     },
     [drawState, surfacePoint],
+  );
+
+  const updateSelection = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!selectionState) return;
+      const point = surfacePoint(event);
+      if (point) {
+        setSelectionState((current) => (current ? { ...current, current: point } : null));
+      }
+    },
+    [selectionState, surfacePoint],
   );
 
   const finishDraw = useCallback(
@@ -198,6 +242,66 @@ function LoadedCanvasEditor({
       }
     },
     [drawState, editing, surfacePoint],
+  );
+
+  const finishSelection = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!selectionState) return;
+      const point = surfacePoint(event) ?? selectionState.current;
+      const left = Math.min(selectionState.start.x, point.x);
+      const top = Math.min(selectionState.start.y, point.y);
+      const right = Math.max(selectionState.start.x, point.x);
+      const bottom = Math.max(selectionState.start.y, point.y);
+      const root = canvasRoot();
+      const rootBounds = root?.getBoundingClientRect();
+      const ids: string[] = [];
+      if (root && rootBounds) {
+        for (const element of root.querySelectorAll<HTMLElement>("[data-element-id]")) {
+          const id = element.dataset.elementId;
+          if (!id || id === editing.canvas.root.id) continue;
+          const bounds = element.getBoundingClientRect();
+          if (
+            bounds.left < rootBounds.left + right &&
+            bounds.right > rootBounds.left + left &&
+            bounds.top < rootBounds.top + bottom &&
+            bounds.bottom > rootBounds.top + top
+          ) {
+            ids.push(id);
+          }
+        }
+      }
+      setSelectedIds((current) =>
+        selectionState.additive ? Array.from(new Set([...current, ...ids])) : ids,
+      );
+      setSelectionState(null);
+      suppressSurfaceClick.current = true;
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    },
+    [canvasRoot, editing.canvas.root.id, selectionState, surfacePoint],
+  );
+
+  const beginPointer = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (drawType) beginDraw(event);
+      else beginSelection(event);
+    },
+    [beginDraw, beginSelection, drawType],
+  );
+  const updatePointer = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      updateDraw(event);
+      updateSelection(event);
+    },
+    [updateDraw, updateSelection],
+  );
+  const finishPointer = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (drawState) finishDraw(event);
+      else if (selectionState) finishSelection(event);
+    },
+    [drawState, finishDraw, finishSelection, selectionState],
   );
 
   useEffect(() => {
@@ -319,6 +423,14 @@ function LoadedCanvasEditor({
     },
     [editing, selected],
   );
+
+  const canvasOffset = useMemo(() => {
+    const rootBounds = canvasRoot()?.getBoundingClientRect();
+    const surfaceBounds = surface.current?.getBoundingClientRect();
+    return rootBounds && surfaceBounds
+      ? { x: rootBounds.left - surfaceBounds.left, y: rootBounds.top - surfaceBounds.top }
+      : { x: 0, y: 0 };
+  }, [canvasRoot, drawState, selectionState]);
 
   return (
     <div
@@ -472,10 +584,13 @@ function LoadedCanvasEditor({
           tabIndex={0}
           className="relative min-w-0 flex-1 overflow-auto bg-muted/30 p-8"
           aria-label="Scene canvas"
-          onPointerDown={beginDraw}
-          onPointerMove={updateDraw}
-          onPointerUp={finishDraw}
-          onPointerCancel={() => setDrawState(null)}
+          onPointerDown={beginPointer}
+          onPointerMove={updatePointer}
+          onPointerUp={finishPointer}
+          onPointerCancel={() => {
+            setDrawState(null);
+            setSelectionState(null);
+          }}
           onClick={(event) => {
             if (suppressSurfaceClick.current) {
               suppressSurfaceClick.current = false;
@@ -501,10 +616,21 @@ function LoadedCanvasEditor({
               aria-hidden="true"
               className="scene-canvas-draw-preview"
               style={{
-                left: Math.min(drawState.start.x, drawState.current.x),
-                top: Math.min(drawState.start.y, drawState.current.y),
+                left: canvasOffset.x + Math.min(drawState.start.x, drawState.current.x),
+                top: canvasOffset.y + Math.min(drawState.start.y, drawState.current.y),
                 width: Math.max(DRAW_MIN_SIZE, Math.abs(drawState.current.x - drawState.start.x)),
                 height: Math.max(DRAW_MIN_SIZE, Math.abs(drawState.current.y - drawState.start.y)),
+              }}
+            />
+          ) : selectionState ? (
+            <div
+              aria-hidden="true"
+              className="scene-canvas-selection-preview"
+              style={{
+                left: canvasOffset.x + Math.min(selectionState.start.x, selectionState.current.x),
+                top: canvasOffset.y + Math.min(selectionState.start.y, selectionState.current.y),
+                width: Math.abs(selectionState.current.x - selectionState.start.x),
+                height: Math.abs(selectionState.current.y - selectionState.start.y),
               }}
             />
           ) : null}
