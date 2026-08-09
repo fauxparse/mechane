@@ -1,3 +1,4 @@
+import type { ChangeEvent } from "react";
 import type { FrameElement } from "@mechane/domain";
 import { SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel } from "@mechane/design-system";
 
@@ -18,6 +19,11 @@ type Props = {
 
 function fieldClass(): string {
   return "h-8 rounded-md border border-border bg-background px-2";
+}
+
+function parseNumber(value: string): number | null {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 export function CanvasInspector({ focused, selection, onUpdateElement }: Props) {
@@ -41,6 +47,11 @@ export function CanvasInspector({ focused, selection, onUpdateElement }: Props) 
       onUpdateElement?.(focused.canvasId, element.id, properties, unset);
     }
   };
+  const updateNumber = (makeProperties: (value: number) => Record<string, unknown>) =>
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const value = parseNumber(event.target.value);
+      if (value !== null) update(makeProperties(value));
+    };
   const text = (property: string, fallback = "") => {
     const value = common(property);
     return value === undefined ? fallback : String(value ?? "");
@@ -64,7 +75,7 @@ export function CanvasInspector({ focused, selection, onUpdateElement }: Props) 
         </label>
         <label className="flex flex-col gap-1 text-xs">
           px
-          <input type="number" disabled={mode !== "fixed"} value={value ?? ""} onChange={(event) => update({ [axis]: { mode: "fixed", value: Number(event.target.value) } })} className={fieldClass()} />
+          <input type="number" disabled={mode !== "fixed"} value={value ?? ""} onChange={updateNumber((next) => ({ [axis]: { mode: "fixed", value: next } }))} className={fieldClass()} />
         </label>
       </div>
     );
@@ -81,19 +92,19 @@ export function CanvasInspector({ focused, selection, onUpdateElement }: Props) 
         <SidebarGroupContent className="flex flex-col gap-3 p-3">
           <label className="flex flex-col gap-1 text-xs">Name<input value={text("name")} onChange={(event) => update({ name: event.target.value })} className={fieldClass()} /></label>
           <label className="flex items-center justify-between gap-2 text-xs">Visible<input type="checkbox" checked={common("hidden") !== true} onChange={(event) => update({ hidden: !event.target.checked })} /></label>
-          <label className="flex flex-col gap-1 text-xs">Opacity<input type="number" min="0" max="1" step="0.05" value={text("opacity", "1")} onChange={(event) => update({ opacity: Number(event.target.value) })} className={fieldClass()} /></label>
+          <label className="flex flex-col gap-1 text-xs">Opacity<input type="number" min="0" max="1" step="0.05" value={text("opacity", "1")} onChange={updateNumber((value) => ({ opacity: value }))} className={fieldClass()} /></label>
           {sizeField("width")}{sizeField("height")}
-          {absolute && target.anchor ? <div className="grid grid-cols-2 gap-2"><label className="flex flex-col gap-1 text-xs">X<input type="number" value={target.anchor.offsetX ?? 0} onChange={(event) => update({ anchor: { ...target.anchor, offsetX: Number(event.target.value) } })} className={fieldClass()} /></label><label className="flex flex-col gap-1 text-xs">Y<input type="number" value={target.anchor.offsetY ?? 0} onChange={(event) => update({ anchor: { ...target.anchor, offsetY: Number(event.target.value) } })} className={fieldClass()} /></label></div> : null}
+          {absolute && target.anchor ? <div className="grid grid-cols-2 gap-2"><label className="flex flex-col gap-1 text-xs">X<input type="number" value={target.anchor.offsetX ?? 0} onChange={updateNumber((value) => ({ anchor: { ...target.anchor, offsetX: value } }))} className={fieldClass()} /></label><label className="flex flex-col gap-1 text-xs">Y<input type="number" value={target.anchor.offsetY ?? 0} onChange={updateNumber((value) => ({ anchor: { ...target.anchor, offsetY: value } }))} className={fieldClass()} /></label></div> : null}
         </SidebarGroupContent>
       </SidebarGroup>
       {frame ? <SidebarGroup><SidebarGroupLabel>Frame layout</SidebarGroupLabel><SidebarGroupContent className="flex flex-col gap-3 p-3">
         <label className="flex flex-col gap-1 text-xs">Mode<select value={frame.layoutMode ?? frame.mode ?? "absolute"} onChange={(event) => update({ layoutMode: event.target.value })} className={fieldClass()}><option value="absolute">Absolute</option><option value="auto">Auto layout</option></select></label>
         <label className="flex flex-col gap-1 text-xs">Direction<select value={frame.direction ?? "vertical"} onChange={(event) => update({ direction: event.target.value })} className={fieldClass()}><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option></select></label>
-        <label className="flex flex-col gap-1 text-xs">Gap<input type="number" value={frame.gap ?? 0} onChange={(event) => update({ gap: Number(event.target.value) })} className={fieldClass()} /></label>
+        <label className="flex flex-col gap-1 text-xs">Gap<input type="number" value={frame.gap ?? 0} onChange={updateNumber((value) => ({ gap: value }))} className={fieldClass()} /></label>
         <label className="flex items-center justify-between gap-2 text-xs">Clip content<input type="checkbox" checked={frame.clip === true} onChange={(event) => update({ clip: event.target.checked })} /></label>
       </SidebarGroupContent></SidebarGroup> : null}
-      {target.type === "text" ? <SidebarGroup><SidebarGroupLabel>Text</SidebarGroupLabel><SidebarGroupContent className="flex flex-col gap-3 p-3"><label className="flex flex-col gap-1 text-xs">Content<textarea value={text("content", target.text ?? "")} onChange={(event) => update({ content: event.target.value })} className="min-h-20 rounded-md border border-border bg-background p-2" /></label><label className="flex flex-col gap-1 text-xs">Font size<input type="number" value={text("fontSize", "16")} onChange={(event) => update({ fontSize: Number(event.target.value) })} className={fieldClass()} /></label></SidebarGroupContent></SidebarGroup> : null}
-      {target.type === "rect" ? <SidebarGroup><SidebarGroupLabel>Rectangle</SidebarGroupLabel><SidebarGroupContent className="p-3"><label className="flex flex-col gap-1 text-xs">Corner radius<input type="number" value={target.cornerRadius ?? 0} onChange={(event) => update({ cornerRadius: Number(event.target.value) })} className={fieldClass()} /></label></SidebarGroupContent></SidebarGroup> : null}
+      {target.type === "text" ? <SidebarGroup><SidebarGroupLabel>Text</SidebarGroupLabel><SidebarGroupContent className="flex flex-col gap-3 p-3"><label className="flex flex-col gap-1 text-xs">Content<textarea value={text("content", target.text ?? "")} onChange={(event) => update({ content: event.target.value })} className="min-h-20 rounded-md border border-border bg-background p-2" /></label><label className="flex flex-col gap-1 text-xs">Font size<input type="number" value={text("fontSize", "16")} onChange={updateNumber((value) => ({ fontSize: value }))} className={fieldClass()} /></label></SidebarGroupContent></SidebarGroup> : null}
+      {target.type === "rect" ? <SidebarGroup><SidebarGroupLabel>Rectangle</SidebarGroupLabel><SidebarGroupContent className="p-3"><label className="flex flex-col gap-1 text-xs">Corner radius<input type="number" value={target.cornerRadius ?? 0} onChange={updateNumber((value) => ({ cornerRadius: value }))} className={fieldClass()} /></label></SidebarGroupContent></SidebarGroup> : null}
       {target.type === "image" ? <SidebarGroup><SidebarGroupLabel>Image</SidebarGroupLabel><SidebarGroupContent className="p-3"><label className="flex flex-col gap-1 text-xs">Object fit<select value={target.objectFit ?? "fill"} onChange={(event) => update({ objectFit: event.target.value })} className={fieldClass()}><option value="fill">Fill</option><option value="contain">Contain</option><option value="cover">Cover</option><option value="none">None</option><option value="scale-down">Scale down</option></select></label></SidebarGroupContent></SidebarGroup> : null}
     </SidebarContent>
   );
