@@ -38,7 +38,19 @@ function CanvasWorkspaceRoute() {
   const focused = resolveFocusedArtboard(artboards, requestedArtId);
 
   useEffect(() => {
-    if (!workspace.data || !requestedArtId) return;
+    if (!workspace.data) return;
+    // An artboard is always active, so the URL should name it — landing on the bare /art route
+    // leaves the address bar disagreeing with the editor, and un-shareable.
+    if (!requestedArtId) {
+      if (focused) {
+        void navigate({
+          to: "/shows/$showId/art/$artId",
+          params: { showId: params.showId, artId: focused.artId },
+          replace: true,
+        });
+      }
+      return;
+    }
     if (!focused || (focused.artId !== requestedArtId && focused.canvasId !== requestedArtId)) {
       void navigate({
         to: "/shows/$showId/art",

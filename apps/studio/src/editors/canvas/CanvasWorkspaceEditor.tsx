@@ -29,7 +29,6 @@ import { useCanvasGeometry } from "./canvas-geometry";
 import {
   containedSelection,
   normalizeSelection,
-  rectContainsPoint,
   rectsOverlap,
   selectionRect,
   toggleSelection,
@@ -47,6 +46,15 @@ import { focusContext } from "../show/keyboard/focus-context";
 import { flattenCanvasLayers, layerChildren, layerMatches } from "./canvas-layers";
 import { layerDropPlacement, layerDropZone } from "./canvas-layer-drop";
 import type { LayerDropZone } from "./canvas-layer-drop";
+import {
+  handleCursor,
+  handlePosition,
+  isCornerHandle,
+  lockedAspectRatio,
+  resizeBox,
+  RESIZE_HANDLES,
+} from "./canvas-resize";
+import type { ResizeBox, ResizeHandle } from "./canvas-resize";
 import { CanvasInspector } from "./CanvasInspector";
 export interface CanvasWorkspaceEditorProps {
   artboards: readonly CanvasArtboardDocument[];
@@ -107,6 +115,12 @@ type RubberbandState = {
   pointerId: number;
   start: { x: number; y: number };
   current: { x: number; y: number };
+  /**
+   * The artboard the band started on, when it started on one. Artboards overlap, so the artboard
+   * under a point is ambiguous — only the element that received the pointerdown knows which one
+   * the director actually hit. Null means the band started on empty workspace.
+   */
+  artId: string | null;
 };
 type CreationDraft = {
   tool: Exclude<CanvasCreationTool, "select">;
@@ -125,6 +139,24 @@ type ElementDragState = {
   originParentId: string | null;
   originRank: string | null;
 };
+/** Big enough to grab at any zoom, small enough not to swamp a small Element. */
+const HANDLE_SIZE = 8;
+
+type ResizeGesture = {
+  artId: string;
+  canvasId: string;
+  elementId: string;
+  handle: ResizeHandle;
+  pointerId: number;
+  pointerStart: { x: number; y: number };
+  /** Screen-space box the Element occupied when the handle was grabbed. */
+  start: ResizeBox;
+  /** Screen-space box of the parent, so an absolute anchor can be expressed relative to it. */
+  parent: ResizeBox | null;
+  ratio: number | null;
+  autoParent: boolean;
+};
+
 function zoneFor(event: React.DragEvent<HTMLElement>, isFrame: boolean): LayerDropZone {
   const rect = event.currentTarget.getBoundingClientRect();
   return layerDropZone(event.clientY - rect.top, rect.height, isFrame);
@@ -376,12 +408,26 @@ export function CanvasWorkspaceEditor({
     active: boolean;
   } | null>(null);
   const clearOffsetAfterRemeasure = useRef(false);
+  const clearResizeAfterRemeasure = useRef(false);
+  // Resize runs on the same principle as the drag: one piece of state feeds both the Element's
+  // preview styles and the overlay, so the handles never drift off the shape they are sizing.
+  const resizeGesture = useRef<ResizeGesture | null>(null);
+  const [resizeDraft, setResizeDraft] = useState<{
+    elementId: string;
+    start: ResizeBox;
+    box: ResizeBox;
+    active: boolean;
+  } | null>(null);
   const [localSelection, setLocalSelection] = useState<CanvasSelection>({
     artId: null,
     elementIds: [],
   });
   const [rubberband, setRubberband] = useState<RubberbandState | null>(null);
   const focused = ordered.find((artboard) => artboard.artId === focusedArtId) ?? ordered[0] ?? null;
+  const selection =
+    selectedArtId === undefined
+      ? localSelection
+      : normalizeSelection({ artId: selectedArtId, elementIds: selectedElementIds ?? [] });
   const {
     camera,
     workspaceRef,
@@ -391,7 +437,7 @@ export function CanvasWorkspaceEditor({
     zoomIn,
     zoomOut,
     resetCamera,
-  } = useCanvasCamera(initialCamera);
+  } = useCanvasCamera(initialCamera, selection.artId !== null && selection.elementIds.length > 0);
   const geometryKey = useMemo(
     () =>
       `${camera.x}:${camera.y}:${camera.zoom}|${JSON.stringify(
@@ -400,10 +446,6 @@ export function CanvasWorkspaceEditor({
     [camera, ordered],
   );
   const geometry = useCanvasGeometry(workspaceRef, geometryKey);
-  const selection =
-    selectedArtId === undefined
-      ? localSelection
-      : normalizeSelection({ artId: selectedArtId, elementIds: selectedElementIds ?? [] });
   const setSelection = (next: CanvasSelection) => {
     const normalized = normalizeSelection(next);
     setLocalSelection(normalized);
@@ -647,6 +689,125 @@ export function CanvasWorkspaceEditor({
     }
   };
 
+  const beginResize = (event: PointerEvent<SVGElement>, handle: ResizeHandle) => {
+    if (event.button !== 0) return;
+    const artboard = ordered.find((candidate) => candidate.artId === selection.artId);
+    const elementId = selection.elementIds[0];
+    if (!artboard || !elementId || selection.elementIds.length !== 1) return;
+    const measured = geometry.get(artboard.artId);
+    const box = measured?.elements.get(elementId);
+    if (!box) return;
+    const element = findCanvasElement(artboard.canvas.root, elementId);
+    const parentInfo = canvasElementParent(artboard.canvas.root, elementId);
+    const parentElement = parentInfo
+      ? findCanvasElement(artboard.canvas.root, parentInfo.parentId)
+      : null;
+    const parentBox = parentInfo ? measured?.elements.get(parentInfo.parentId) : undefined;
+    event.stopPropagation();
+    // Capture on the workspace, not the handle: the move and release handlers live there, and a
+    // capture held by the handle would never be released by them.
+    workspaceRef.current?.setPointerCapture(event.pointerId);
+    const start = { x: box.x, y: box.y, width: box.width, height: box.height };
+    resizeGesture.current = {
+      artId: artboard.artId,
+      canvasId: artboard.canvasId,
+      elementId,
+      handle,
+      pointerId: event.pointerId,
+      pointerStart: { x: event.clientX, y: event.clientY },
+      start,
+      parent: parentBox
+        ? { x: parentBox.x, y: parentBox.y, width: parentBox.width, height: parentBox.height }
+        : null,
+      ratio: lockedAspectRatio(element),
+      autoParent:
+        parentElement?.type === "frame" &&
+        (parentElement.layoutMode ?? parentElement.mode) === "auto",
+    };
+    setResizeDraft({ elementId, start, box: start, active: true });
+  };
+
+  const updateResize = (event: PointerEvent<HTMLElement>) => {
+    const gesture = resizeGesture.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    // A locked ratio constrains a corner drag on its own; Shift asks for the same thing ad hoc.
+    const constrain = isCornerHandle(gesture.handle) && (event.shiftKey || gesture.ratio !== null);
+    const box = resizeBox(
+      gesture.start,
+      gesture.handle,
+      event.clientX - gesture.pointerStart.x,
+      event.clientY - gesture.pointerStart.y,
+      { constrain, ratio: gesture.ratio ?? undefined, min: camera.zoom },
+    );
+    setResizeDraft({ elementId: gesture.elementId, start: gesture.start, box, active: true });
+  };
+
+  const finishResize = (event: PointerEvent<HTMLElement>, cancel = false) => {
+    const gesture = resizeGesture.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    const box = resizeDraft?.box ?? gesture.start;
+    resizeGesture.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    if (cancel) {
+      setResizeDraft(null);
+      return;
+    }
+    const properties: Record<string, unknown> = {
+      width: { mode: "fixed", value: box.width / camera.zoom },
+      height: { mode: "fixed", value: box.height / camera.zoom },
+    };
+    // Only an absolutely positioned Element carries its own origin; in an auto-layout Frame the
+    // parent decides where it sits, so resizing must not invent an anchor for it.
+    if (!gesture.autoParent && gesture.parent) {
+      properties.anchor = {
+        horizontal: "left" as const,
+        vertical: "top" as const,
+        offsetX: (box.x - gesture.parent.x) / camera.zoom,
+        offsetY: (box.y - gesture.parent.y) / camera.zoom,
+      };
+    }
+    // An edge drag deliberately changes one axis, which is exactly what an aspect lock forbids.
+    const unset = isCornerHandle(gesture.handle) ? [] : ["aspectRatio"];
+    onUpdateElement?.(gesture.canvasId, gesture.elementId, properties, unset);
+    clearResizeAfterRemeasure.current = true;
+    setResizeDraft((current) => (current ? { ...current, active: false } : null));
+  };
+
+  useLayoutEffect(() => {
+    if (!clearResizeAfterRemeasure.current) return;
+    clearResizeAfterRemeasure.current = false;
+    setResizeDraft(null);
+  }, [geometry]);
+
+  // The Element's size comes from the model, so a live preview is a style override, cleared by the
+  // cleanup once the commit has landed and geometry has caught up.
+  useLayoutEffect(() => {
+    if (!resizeDraft?.active) return;
+    const node = workspaceRef.current?.querySelector<HTMLElement>(
+      `[data-element-id="${CSS.escape(resizeDraft.elementId)}"]`,
+    );
+    if (!node) return;
+    const { box, start } = resizeDraft;
+    // Restore rather than remove: width and height come from the renderer's React-managed style,
+    // and React will not re-apply a property deleted behind its back — its virtual style still
+    // says the value is there, so the Element would be left sizing itself to nothing.
+    const previous = {
+      width: node.style.width,
+      height: node.style.height,
+      translate: node.style.translate,
+    };
+    node.style.width = `${box.width / camera.zoom}px`;
+    node.style.height = `${box.height / camera.zoom}px`;
+    node.style.translate = `${(box.x - start.x) / camera.zoom}px ${(box.y - start.y) / camera.zoom}px`;
+    return () => {
+      node.style.width = previous.width;
+      node.style.height = previous.height;
+      node.style.translate = previous.translate;
+    };
+  }, [resizeDraft, camera.zoom, workspaceRef]);
+
   useLayoutEffect(() => {
     if (!clearOffsetAfterRemeasure.current) return;
     clearOffsetAfterRemeasure.current = false;
@@ -663,10 +824,12 @@ export function CanvasWorkspaceEditor({
     );
     if (!node) return;
     // The Element lives inside the camera's scale(), so pointer pixels have to be divided by the
-    // zoom or the preview outruns the cursor.
-    node.style.setProperty("translate", `${dragOffset.x / camera.zoom}px ${dragOffset.y / camera.zoom}px`);
+    // zoom or the preview outruns the cursor. Restore rather than remove, so a translate the
+    // renderer set would survive the preview.
+    const previous = node.style.translate;
+    node.style.translate = `${dragOffset.x / camera.zoom}px ${dragOffset.y / camera.zoom}px`;
     return () => {
-      node.style.removeProperty("translate");
+      node.style.translate = previous;
     };
   }, [dragOffset, camera.zoom, workspaceRef]);
   const handleCanvasKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
@@ -727,13 +890,14 @@ export function CanvasWorkspaceEditor({
   };
   // A band can start on empty workspace or on an artboard's backdrop, so these three are shared
   // by the workspace and the artboards rather than living on the workspace alone.
-  const beginRubberband = (event: PointerEvent<HTMLElement>) => {
+  const beginRubberband = (event: PointerEvent<HTMLElement>, artId: string | null = null) => {
     if (event.button !== 0) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     setRubberband({
       pointerId: event.pointerId,
       start: { x: event.clientX, y: event.clientY },
       current: { x: event.clientX, y: event.clientY },
+      artId,
     });
   };
 
@@ -757,17 +921,19 @@ export function CanvasWorkspaceEditor({
       right: Math.max(start.x, current.x),
       bottom: Math.max(start.y, current.y),
     };
-    // Prefer the artboard the gesture started over; otherwise the first one the band reaches into,
-    // so a band drawn from empty workspace onto an artboard still selects.
+    // The artboard the pointer actually went down on wins. Falling back to a geometric search
+    // would pick whichever overlapping artboard sorts first, which is how selection and focus
+    // came to disagree; the search is only for a band drawn from empty workspace onto one.
     const target =
-      ordered.find((artboard) => {
-        const measured = geometry.get(artboard.artId);
-        return measured ? rectContainsPoint(measured.rect, start.x, start.y) : false;
-      }) ??
-      ordered.find((artboard) => {
-        const measured = geometry.get(artboard.artId);
-        return measured ? rectsOverlap(measured.rect, band) : false;
-      });
+      (rubberband.artId
+        ? ordered.find((artboard) => artboard.artId === rubberband.artId)
+        : undefined) ??
+      (rubberband.artId
+        ? undefined
+        : ordered.find((artboard) => {
+            const measured = geometry.get(artboard.artId);
+            return measured ? rectsOverlap(measured.rect, band) : false;
+          }));
     if (target) {
       const measured = geometry.get(target.artId);
       const ids = measured
@@ -797,11 +963,19 @@ export function CanvasWorkspaceEditor({
 
   const moveWorkspaceInteraction = (event: PointerEvent<HTMLElement>) => {
     moveCameraDrag(event);
+    updateResize(event);
     updateRubberband(event);
   };
 
   const endWorkspaceInteraction = (event: PointerEvent<HTMLElement>) => {
     endCameraDrag(event);
+    finishResize(event);
+    endRubberband(event);
+  };
+
+  const cancelWorkspaceInteraction = (event: PointerEvent<HTMLElement>) => {
+    endCameraDrag(event);
+    finishResize(event, true);
     endRubberband(event);
   };
   const beginCreation = (event: PointerEvent<HTMLElement>, artboard: CanvasArtboardDocument) => {
@@ -977,15 +1151,33 @@ export function CanvasWorkspaceEditor({
     selection.elementIds[0] === dragOffset.elementId
       ? dragOffset
       : null;
-  const overlayRect =
-    selectedRect && workspaceBounds
-      ? {
-          x: selectedRect.x - workspaceBounds.x + (liveOffset?.x ?? 0),
-          y: selectedRect.y - workspaceBounds.y + (liveOffset?.y ?? 0),
-          width: selectedRect.width,
-          height: selectedRect.height,
-        }
+  // A resize in flight is the truth about where the box is; geometry has not caught up yet.
+  const liveResize =
+    resizeDraft &&
+    selection.elementIds.length === 1 &&
+    selection.elementIds[0] === resizeDraft.elementId
+      ? resizeDraft.box
       : null;
+  const overlayRect = workspaceBounds
+    ? liveResize
+      ? {
+          x: liveResize.x - workspaceBounds.x,
+          y: liveResize.y - workspaceBounds.y,
+          width: liveResize.width,
+          height: liveResize.height,
+        }
+      : selectedRect
+        ? {
+            x: selectedRect.x - workspaceBounds.x + (liveOffset?.x ?? 0),
+            y: selectedRect.y - workspaceBounds.y + (liveOffset?.y ?? 0),
+            width: selectedRect.width,
+            height: selectedRect.height,
+          }
+        : null
+    : null;
+  // Resizing a composite box would have to distribute the change across Elements, which is a
+  // different feature; a multi-selection keeps the outline and loses only the handles.
+  const resizable = selection.elementIds.length === 1;
   const creationOverlayRect =
     creationDraft && workspaceBounds
       ? {
@@ -1087,7 +1279,7 @@ export function CanvasWorkspaceEditor({
               onPointerDown={beginWorkspaceInteraction}
               onPointerMove={moveWorkspaceInteraction}
               onPointerUp={endWorkspaceInteraction}
-              onPointerCancel={endWorkspaceInteraction}
+              onPointerCancel={cancelWorkspaceInteraction}
               style={{ touchAction: "none" }}
             >
               <div
@@ -1141,7 +1333,7 @@ export function CanvasWorkspaceEditor({
                         if (beginElementDrag(event, artboard)) return;
                         // Pressing the artboard's backdrop clears the selection and starts a band.
                         selectAtPoint(event, artboard);
-                        beginRubberband(event);
+                        beginRubberband(event, artboard.artId);
                       }}
                       onPointerMove={(event) => {
                         updateElementDrag(event);
@@ -1213,24 +1405,29 @@ export function CanvasWorkspaceEditor({
                       data-selection-rect
                       vectorEffect="non-scaling-stroke"
                     />
-                    {selection.elementIds.length > 0 &&
-                      [
-                        [overlayRect.x, overlayRect.y],
-                        [overlayRect.x + overlayRect.width, overlayRect.y],
-                        [overlayRect.x, overlayRect.y + overlayRect.height],
-                        [overlayRect.x + overlayRect.width, overlayRect.y + overlayRect.height],
-                      ].map(([x, y]) => (
-                        <circle
-                          key={`${x}:${y}`}
-                          cx={x}
-                          cy={y}
-                          r="4"
-                          fill="white"
-                          stroke="currentColor"
-                          strokeWidth="1"
-                          vectorEffect="non-scaling-stroke"
-                        />
-                      ))}
+                    {resizable &&
+                      RESIZE_HANDLES.map((handle) => {
+                        const at = handlePosition(handle);
+                        const x = overlayRect.x + overlayRect.width * at.x;
+                        const y = overlayRect.y + overlayRect.height * at.y;
+                        return (
+                          <rect
+                            key={handle}
+                            x={x - HANDLE_SIZE / 2}
+                            y={y - HANDLE_SIZE / 2}
+                            width={HANDLE_SIZE}
+                            height={HANDLE_SIZE}
+                            rx={isCornerHandle(handle) ? 1 : HANDLE_SIZE / 2}
+                            fill="white"
+                            stroke="currentColor"
+                            strokeWidth="1"
+                            vectorEffect="non-scaling-stroke"
+                            style={{ pointerEvents: "auto", cursor: handleCursor(handle) }}
+                            data-resize-handle={handle}
+                            onPointerDown={(event) => beginResize(event, handle)}
+                          />
+                        );
+                      })}
                   </>
                 ) : null}
                 {creationOverlayRect ? (

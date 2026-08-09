@@ -14,11 +14,22 @@ interface CameraDrag {
   origin: Position;
 }
 
-export function useCanvasCamera(initialCamera: CanvasCamera = { x: 96, y: 64, zoom: 1 }) {
+export function useCanvasCamera(
+  initialCamera: CanvasCamera = { x: 96, y: 64, zoom: 1 },
+  /**
+   * While an Element is selected the arrow keys belong to nudging it, so panning must stand down —
+   * otherwise one press both moves the Element and flies the camera. Zoom keys are unaffected.
+   */
+  arrowKeysReserved = false,
+) {
   const [camera, setCamera] = useState(initialCamera);
   const workspaceRef = useRef<HTMLElement | null>(null);
   const spaceHeld = useRef(false);
   const cameraDrag = useRef<CameraDrag | null>(null);
+  const arrowsReserved = useRef(arrowKeysReserved);
+  useEffect(() => {
+    arrowsReserved.current = arrowKeysReserved;
+  }, [arrowKeysReserved]);
 
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
@@ -30,6 +41,12 @@ export function useCanvasCamera(initialCamera: CanvasCamera = { x: 96, y: 64, zo
       }
       const intent = viewportIntentFor(event, focus);
       if (!intent) return;
+      if (intent.type === "pan" && arrowsReserved.current) {
+        // Still swallow the key: the nudge owns it, and letting it through would scroll whatever
+        // is behind the workspace on top of the nudge.
+        event.preventDefault();
+        return;
+      }
       event.preventDefault();
       if (intent.type === "pan") {
         setCamera((current) => panCanvasCamera(current, -intent.dx, -intent.dy));
