@@ -44,6 +44,7 @@ import { canvasKeyboardIntent, nudgeAnchor } from "./canvas-keyboard";
 import { focusContext } from "../show/keyboard/focus-context";
 
 import { flattenCanvasLayers, layerChildren, layerMatches } from "./canvas-layers";
+import { CanvasInspector } from "./CanvasInspector";
 export interface CanvasWorkspaceEditorProps {
   artboards: readonly CanvasArtboardDocument[];
   focusedArtId: string | null;
@@ -1155,26 +1156,11 @@ export function CanvasWorkspaceEditor({
                 <strong>Inspector</strong>
               </div>
             </SidebarHeader>
-            <SidebarContent>
-              <SidebarGroup>
-                <SidebarGroupLabel>Selection</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  {focused ? (
-                    <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-muted p-3 text-xs">
-                      <strong>{artboardLabel(focused)}</strong>
-                      <span className="text-muted-foreground">
-                        {focused.kind === "scene" ? "Scene" : "Block"} artboard
-                      </span>
-                      <span className="text-muted-foreground">
-                        Position {focused.position.x}, {focused.position.y}
-                      </span>
-                    </div>
-                  ) : (
-                    <p className="p-2 text-sm text-muted-foreground">Select an artboard.</p>
-                  )}
-                </SidebarGroupContent>
-              </SidebarGroup>
-            </SidebarContent>
+            <CanvasInspector
+              focused={focused}
+              selection={selection}
+              onUpdateElement={onUpdateElement}
+            />
           </Sidebar>
         </SidebarProvider>
       </div>
