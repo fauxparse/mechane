@@ -366,11 +366,14 @@ export function CanvasWorkspaceEditor({
   const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
   // A drag moves the Element with a CSS translate, which changes no layout, so neither the
   // ResizeObserver nor the geometry key fires. The overlay has to be offset by the live delta
-  // or it sits at the pre-drag position until the drop commits.
+  // or it sits at the pre-drag position until the drop commits. `active` stays true only while
+  // the pointer is down: after the drop the model carries the position, so the translate comes
+  // off while the offset lives on until geometry catches up.
   const [dragOffset, setDragOffset] = useState<{
     elementId: string;
     x: number;
     y: number;
+    active: boolean;
   } | null>(null);
   const clearOffsetAfterRemeasure = useRef(false);
   const [localSelection, setLocalSelection] = useState<CanvasSelection>({
@@ -487,11 +490,9 @@ export function CanvasWorkspaceEditor({
       ...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-id]"),
     ].find((candidate) => candidate.dataset.elementId === activeDrag.elementId);
     if (!element) return;
-    // The Element lives inside the camera's scale(), so pointer pixels have to be divided
-    // by the zoom or the preview outruns the cursor.
-    element.style.setProperty("translate", `${dx / camera.zoom}px ${dy / camera.zoom}px`);
-    // The overlay is drawn in screen space, so it takes the raw pointer delta, not the scaled one.
-    setDragOffset({ elementId: activeDrag.elementId, x: dx, y: dy });
+    // Both the Element's translate and the overlay's offset come from this one piece of state, so
+    // they are written in the same commit and the outline cannot trail the shape it is wrapping.
+    setDragOffset({ elementId: activeDrag.elementId, x: dx, y: dy, active: true });
     const draggedNode = element;
     const foreignArtboard = document
       .elementsFromPoint(event.clientX, event.clientY)
@@ -588,10 +589,9 @@ export function CanvasWorkspaceEditor({
     ].find((candidate) => candidate.dataset.elementId === activeDrag.elementId);
     let committed = false;
     if (element) {
-      // The dropped position has to be read before the preview translate is cleared, otherwise
-      // every measurement snaps back to where the drag started and the move is a no-op.
+      // Read while the drag translate is still applied — it comes off in the commit that follows,
+      // and measuring after would snap back to the origin and make every move a no-op.
       const dropped = measuredRect(element);
-      element.style.removeProperty("translate");
       if (!cancel && preview?.parentId) {
         const parent = [
           ...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-id]"),
@@ -637,10 +637,14 @@ export function CanvasWorkspaceEditor({
     dragPreviewRef.current = null;
     setDragPreview(null);
     // An edit lands a commit before geometry re-measures, so dropping the offset now would flash
-    // the overlay back to the pre-drag position for a frame. Hold it until the re-measure lands.
-    // A cancelled or rejected drop changes nothing, so there is nothing to wait for.
-    if (committed) clearOffsetAfterRemeasure.current = true;
-    else setDragOffset(null);
+    // the overlay back to the pre-drag position for a frame. Keep it, minus the translate, until
+    // the re-measure lands. A cancelled or rejected drop changes nothing, so it clears at once.
+    if (committed) {
+      clearOffsetAfterRemeasure.current = true;
+      setDragOffset((current) => (current ? { ...current, active: false } : null));
+    } else {
+      setDragOffset(null);
+    }
   };
 
   useLayoutEffect(() => {
@@ -648,6 +652,23 @@ export function CanvasWorkspaceEditor({
     clearOffsetAfterRemeasure.current = false;
     setDragOffset(null);
   }, [geometry]);
+
+  // The Element is rendered by CanvasRenderer, so the drag preview is a style write rather than a
+  // prop. Doing it here rather than in the pointer handler keeps it in step with the overlay; the
+  // cleanup takes the translate off again when the drag ends, is cancelled, or the zoom changes.
+  useLayoutEffect(() => {
+    if (!dragOffset?.active) return;
+    const node = workspaceRef.current?.querySelector<HTMLElement>(
+      `[data-element-id="${CSS.escape(dragOffset.elementId)}"]`,
+    );
+    if (!node) return;
+    // The Element lives inside the camera's scale(), so pointer pixels have to be divided by the
+    // zoom or the preview outruns the cursor.
+    node.style.setProperty("translate", `${dragOffset.x / camera.zoom}px ${dragOffset.y / camera.zoom}px`);
+    return () => {
+      node.style.removeProperty("translate");
+    };
+  }, [dragOffset, camera.zoom, workspaceRef]);
   const handleCanvasKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
     if (focusContext().inKeyConsumingWidget) return;
     if (!selection.artId || selection.elementIds.length === 0) return;
