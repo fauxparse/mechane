@@ -1,4 +1,5 @@
 import { Box, Layers3, PanelLeft, SlidersHorizontal } from "lucide-react";
+import type { PointerEvent } from "react";
 import { useMemo, useState } from "react";
 
 import {
@@ -16,15 +17,21 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@mechane/design-system";
+import type { Position } from "@mechane/domain";
 import { CanvasRenderer } from "@mechane/rendering";
 
 import type { CanvasArtboardDocument } from "../../api/canvas";
+import { canvasArtboardSize } from "./canvas-workspace";
 
 export interface CanvasWorkspaceEditorProps {
   artboards: readonly CanvasArtboardDocument[];
   focusedArtId: string | null;
   onFocusArtboard(artId: string): void;
+  onBeginMoveArtboard(canvasId: string): void;
+  onMoveArtboard(canvasId: string, position: Position): void;
+  onEndMoveArtboard(canvasId: string, cancel?: boolean): void;
 }
+
 
 function artboardLabel(artboard: CanvasArtboardDocument): string {
   return (
@@ -32,10 +39,21 @@ function artboardLabel(artboard: CanvasArtboardDocument): string {
   );
 }
 
+type DragState = {
+  artId: string;
+  canvasId: string;
+  pointerId: number;
+  origin: Position;
+  start: Position;
+};
+
 export function CanvasWorkspaceEditor({
   artboards,
   focusedArtId,
   onFocusArtboard,
+  onBeginMoveArtboard,
+  onMoveArtboard,
+  onEndMoveArtboard,
 }: CanvasWorkspaceEditorProps) {
   const ordered = useMemo(
     () =>
@@ -48,7 +66,38 @@ export function CanvasWorkspaceEditor({
     [artboards],
   );
   const [layersOpen, setLayersOpen] = useState(true);
+  const [drag, setDrag] = useState<DragState | null>(null);
   const focused = ordered.find((artboard) => artboard.artId === focusedArtId) ?? ordered[0] ?? null;
+
+  const beginDrag = (event: PointerEvent<HTMLDivElement>, artboard: CanvasArtboardDocument) => {
+    if (event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDrag({
+      artId: artboard.artId,
+      canvasId: artboard.canvasId,
+      pointerId: event.pointerId,
+      origin: { ...artboard.position },
+      start: { x: event.clientX, y: event.clientY },
+    });
+    onBeginMoveArtboard(artboard.canvasId);
+  };
+
+  const moveDrag = (event: PointerEvent<HTMLDivElement>, artboard: CanvasArtboardDocument) => {
+    if (!drag || drag.artId !== artboard.artId || drag.pointerId !== event.pointerId) return;
+    onMoveArtboard(artboard.canvasId, {
+      x: drag.origin.x + event.clientX - drag.start.x,
+      y: drag.origin.y + event.clientY - drag.start.y,
+    });
+  };
+
+  const endDrag = (event: PointerEvent<HTMLDivElement>, cancel = false) => {
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    onEndMoveArtboard(drag.canvasId, cancel);
+    setDrag(null);
+  };
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background text-foreground">
@@ -133,27 +182,46 @@ export function CanvasWorkspaceEditor({
               aria-label="Canvas workspace"
             >
               <div className="relative min-h-[1600px] min-w-[2400px]">
-                {ordered.map((artboard) => (
-                  <section
-                    key={artboard.artId}
-                    className="absolute w-[720px] min-h-[520px] cursor-pointer rounded-lg border border-border bg-background shadow-xl data-[focused=true]:border-primary data-[focused=true]:ring-2 data-[focused=true]:ring-primary/35"
-                    data-artboard-id={artboard.artId}
-                    data-focused={artboard.artId === focused?.artId ? "true" : "false"}
-                    style={{ left: artboard.position.x, top: artboard.position.y }}
-                    aria-label={artboardLabel(artboard)}
-                    onClick={() => onFocusArtboard(artboard.artId)}
-                  >
-                    <div className="flex items-baseline justify-between gap-2 border-b border-border px-3 py-2 text-xs">
-                      <span className="truncate">{artboardLabel(artboard)}</span>
-                      <small className="text-[0.6875rem] uppercase text-muted-foreground">
-                        {artboard.kind === "scene" ? "Scene" : "Block"}
-                      </small>
-                    </div>
-                    <div className="h-[480px] overflow-hidden p-4">
-                      <CanvasRenderer canvas={artboard.canvas} />
-                    </div>
-                  </section>
-                ))}
+                {ordered.map((artboard) => {
+                  const size = canvasArtboardSize(artboard);
+                  return (
+                    <section
+                      key={artboard.artId}
+                      className="absolute cursor-pointer rounded-lg border border-border bg-background shadow-xl data-[focused=true]:border-primary data-[focused=true]:ring-2 data-[focused=true]:ring-primary/35"
+                      data-artboard-id={artboard.artId}
+                      data-owner-kind={artboard.kind}
+                      data-focused={artboard.artId === focused?.artId ? "true" : "false"}
+                      style={{
+                        left: artboard.position.x,
+                        top: artboard.position.y,
+                        width: size.width,
+                      }}
+                      aria-label={artboardLabel(artboard)}
+                      onClick={() => onFocusArtboard(artboard.artId)}
+                    >
+                      <div
+                        className={`flex h-10 items-center justify-between gap-2 border-b border-border px-3 text-xs ${
+                          drag?.artId === artboard.artId ? "cursor-grabbing" : "cursor-grab"
+                        }`}
+                        onPointerDown={(event) => beginDrag(event, artboard)}
+                        onPointerMove={(event) => moveDrag(event, artboard)}
+                        onPointerUp={endDrag}
+                        onPointerCancel={(event) => endDrag(event, true)}
+                      >
+                        <span className="truncate">{artboardLabel(artboard)}</span>
+                        <small className="shrink-0 text-[0.6875rem] uppercase text-muted-foreground">
+                          {artboard.kind}
+                        </small>
+                      </div>
+                      <div
+                        className="overflow-hidden"
+                        style={{ width: size.width, height: size.height }}
+                      >
+                        <CanvasRenderer canvas={artboard.canvas} />
+                      </div>
+                    </section>
+                  );
+                })}
               </div>
             </main>
           </SidebarInset>

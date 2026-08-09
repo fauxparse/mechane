@@ -1,13 +1,15 @@
 import { isId } from "@mechane/domain";
 import type { ShowId } from "@mechane/domain";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 import { useCanvasWorkspace } from "../../../../api/canvas";
 import { useShow } from "../../../../api/shows";
+import { useShowGraph, useShowGraphEdits } from "../../../../api/show-graph";
 import { CanvasWorkspaceEditor } from "../../../../editors/canvas/CanvasWorkspaceEditor";
 import { artIdFromPath, resolveFocusedArtboard } from "../../../../editors/canvas/canvas-workspace";
-
+import { useCanvasCommands } from "../../../../editors/canvas/use-canvas-commands";
+import { useUndoKeys } from "../../../../editors/show/keyboard/use-undo-keys";
 export const Route = createFileRoute("/_authenticated/shows/$showId/art")({
   component: CanvasWorkspaceRoute,
 });
@@ -18,9 +20,22 @@ function CanvasWorkspaceRoute() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const show = useShow(showId);
+  const draft = useShowGraph(showId, "draft");
   const workspace = useCanvasWorkspace(showId);
+  const save = useShowGraphEdits(showId, draft.data?.version);
+  const commands = useCanvasCommands(workspace.data, (edits) => save.enqueue(edits));
+  useUndoKeys(commands);
+  const artboards = useMemo(() => {
+    const current = new Map(commands.workspace.artboards.map((artboard) => [artboard.canvasId, artboard]));
+    return (workspace.data ?? []).map((artboard) => {
+      const edited = current.get(artboard.canvasId);
+      return edited
+        ? { ...artboard, canvas: edited.canvas, position: edited.position }
+        : artboard;
+    });
+  }, [commands.workspace.artboards, workspace.data]);
   const requestedArtId = showId ? artIdFromPath(pathname, showId) : null;
-  const focused = resolveFocusedArtboard(workspace.data ?? [], requestedArtId);
+  const focused = resolveFocusedArtboard(artboards, requestedArtId);
 
   useEffect(() => {
     if (!workspace.data || !requestedArtId) return;
@@ -40,10 +55,10 @@ function CanvasWorkspaceRoute() {
       </p>
     );
   }
-  if (show.isPending || workspace.isPending) {
+  if (show.isPending || workspace.isPending || draft.isPending) {
     return <p className="p-6 text-muted-foreground">Loading Canvas workspace…</p>;
   }
-  if (workspace.isError) {
+  if (workspace.isError || draft.isError) {
     return (
       <p className="p-6" role="alert">
         Canvas workspace couldn't be loaded.
@@ -53,7 +68,7 @@ function CanvasWorkspaceRoute() {
 
   return (
     <CanvasWorkspaceEditor
-      artboards={workspace.data ?? []}
+      artboards={artboards}
       focusedArtId={focused?.artId ?? null}
       onFocusArtboard={(artId) =>
         void navigate({
@@ -62,6 +77,9 @@ function CanvasWorkspaceRoute() {
           replace: true,
         })
       }
+      onBeginMoveArtboard={commands.beginArtboardMove}
+      onMoveArtboard={commands.updateArtboardMove}
+      onEndMoveArtboard={commands.endArtboardMove}
     />
   );
 }

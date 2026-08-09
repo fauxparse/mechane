@@ -46,9 +46,10 @@ export function toCanvasArtboard(canvas: ShowCanvas): CanvasArtboardDocument {
     kind: canvas.kind === "scene" ? "scene" : "block",
     name: canvas.ownerName,
     canvas: {
+      kind: canvas.kind === "scene" ? "scene" : "block",
       root: toElement(canvas.root as unknown as ApiElement) as Extract<Element, { type: "frame" }>,
     },
-    position: canvas.position,
+    position: { ...canvas.position },
   };
 }
 
