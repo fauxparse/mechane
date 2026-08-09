@@ -202,6 +202,13 @@ export const KeyboardNudgeAndReorder: Story = {
     onMoveElement: noOp,
   },
 };
+export const LayersSearchAndNestedTree: Story = {
+  args: {
+    selectedArtId: "scene-lobby",
+    selectedElementIds: ["Lobby-title"],
+    onUpdateElement: noOp,
+  },
+};
 
 export const FocusedBlockDeepLink: Story = {
   args: { focusedArtId: "block-card" },
