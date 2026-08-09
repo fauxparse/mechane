@@ -25,6 +25,46 @@ const root = (id: string, fill: string, width = 680, height = 440) => ({
     },
   ],
 });
+const nestedAutoRoot = (id: string) => ({
+  id: `${id}-root`,
+  type: "frame" as const,
+  layoutMode: "auto" as const,
+  direction: "vertical" as const,
+  gap: 16,
+  padding: 20,
+  fill: "#e2e8f0",
+  width: { mode: "fixed" as const, value: 620 },
+  height: { mode: "fixed" as const, value: 380 },
+  children: [
+    {
+      id: `${id}-header`,
+      type: "frame" as const,
+      layoutMode: "auto" as const,
+      direction: "horizontal" as const,
+      gap: 8,
+      padding: 12,
+      width: { mode: "fill" as const },
+      height: { mode: "hug" as const },
+      fill: "#cbd5e1",
+      children: [
+        { id: `${id}-label`, type: "text" as const, content: "Nested", width: { mode: "hug" as const }, height: { mode: "hug" as const } },
+        { id: `${id}-status`, type: "rect" as const, width: { mode: "fixed" as const, value: 72 }, height: { mode: "fixed" as const, value: 24 }, fill: "#94a3b8" },
+      ],
+    },
+    {
+      id: `${id}-body`,
+      type: "frame" as const,
+      layoutMode: "absolute" as const,
+      width: { mode: "fill" as const },
+      height: { mode: "fill" as const },
+      fill: "#f8fafc",
+      children: [
+        { id: `${id}-copy`, type: "text" as const, content: "Absolute child inside auto layout", width: { mode: "hug" as const }, height: { mode: "hug" as const }, anchor: { horizontal: "center" as const, vertical: "center" as const } },
+      ],
+    },
+  ],
+});
+
 
 const artboards: CanvasArtboardDocument[] = [
   {
@@ -175,6 +215,17 @@ function StatefulReparentReview() {
     />
   );
 }
+const reviewArtboards: CanvasArtboardDocument[] = [
+  ...artboards,
+  {
+    canvasId: "canvas-scene-nested",
+    artId: "scene-nested",
+    kind: "scene",
+    name: "Nested Auto",
+    canvas: { kind: "scene", root: nestedAutoRoot("Nested") },
+    position: { x: 80, y: 680 },
+  },
+];
 
 const noOp = () => {};
 const meta: Meta<typeof CanvasWorkspaceEditor> = {
@@ -314,6 +365,41 @@ export const ManyArtboards: Story = {
   args: {
     artboards: Array.from({ length: 12 }, (_, index) => {
       const template = artboards[index % artboards.length]!;
+      return {
+        ...template,
+        artId: `${template.artId}-${index}`,
+        canvasId: `${template.canvasId}-${index}`,
+        name: `${template.name} ${index + 1}`,
+        position: { x: (index % 4) * 760 + 32, y: Math.floor(index / 4) * 520 + 32 },
+      };
+    }),
+    focusedArtId: "scene-lobby-0",
+  },
+};
+
+export const CrossCuttingReviewMatrix: Story = {
+  args: {
+    artboards: reviewArtboards,
+    focusedArtId: "scene-nested",
+    selectedArtId: "scene-nested",
+    selectedElementIds: ["Nested-copy"],
+    onCreateElement: noOp,
+    onMoveElement: noOp,
+    onUpdateElement: noOp,
+  },
+};
+
+export const NestedAutoLayoutAndAbsoluteChildren: Story = {
+  args: {
+    artboards: [reviewArtboards[2]!],
+    focusedArtId: "scene-nested",
+  },
+};
+
+export const ManyReviewArtboards: Story = {
+  args: {
+    artboards: Array.from({ length: 16 }, (_, index) => {
+      const template = reviewArtboards[index % reviewArtboards.length]!;
       return {
         ...template,
         artId: `${template.artId}-${index}`,
