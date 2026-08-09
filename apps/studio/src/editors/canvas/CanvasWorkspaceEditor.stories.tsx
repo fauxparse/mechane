@@ -86,6 +86,18 @@ export const SelectionReviewAtZoom: Story = {
     selectedElementIds: ["Lobby-title"],
   },
 };
+export const StatefulCreationTools: Story = {
+  args: {
+    onCreateElement: (canvasId, element, parentId, rank) =>
+      console.info("create canvas element", { canvasId, element, parentId, rank }),
+  },
+};
+
+export const CreationToolCancellation: Story = {
+  args: {
+    onCreateElement: noOp,
+  },
+};
 
 export const FocusedBlockDeepLink: Story = {
   args: { focusedArtId: "block-card" },
