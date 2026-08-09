@@ -39,10 +39,11 @@ import { containingFrame, rankForInsertion } from "./canvas-creation";
 import type { CanvasCreationTool } from "./canvas-creation";
 import { canvasElementParent, findCanvasElement } from "@mechane/commands";
 import type { CanvasClientRect } from "./canvas-geometry";
-import type { FrameElement } from "@mechane/domain";
+import type { Element as CanvasElement, FrameElement } from "@mechane/domain";
 import { canvasKeyboardIntent, nudgeAnchor } from "./canvas-keyboard";
 import { focusContext } from "../show/keyboard/focus-context";
 
+import { flattenCanvasLayers, layerChildren, layerMatches } from "./canvas-layers";
 export interface CanvasWorkspaceEditorProps {
   artboards: readonly CanvasArtboardDocument[];
   focusedArtId: string | null;
@@ -118,6 +119,144 @@ type ElementDragState = {
   start: { x: number; y: number };
   origin: { x: number; y: number };
 };
+function CanvasLayers({
+  ordered,
+  focused,
+  selection,
+  onFocusArtboard,
+  onSelect,
+  onUpdateElement,
+}: {
+  ordered: readonly CanvasArtboardDocument[];
+  focused: CanvasArtboardDocument | null;
+  selection: CanvasSelection;
+  onFocusArtboard(artId: string): void;
+  onSelect(selection: CanvasSelection): void;
+  onUpdateElement?(
+    canvasId: string,
+    elementId: string,
+    properties: Record<string, unknown>,
+  ): void;
+}) {
+  const [query, setQuery] = useState("");
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const renderTree = (element: CanvasElement, depth: number): React.ReactNode => {
+    const active = selection.artId === focused?.artId && selection.elementIds.includes(element.id);
+    return (
+      <div key={element.id}>
+        <SidebarMenuButton
+          className="h-8"
+          style={{ paddingInlineStart: `${0.5 + depth * 0.75}rem` }}
+          isActive={active}
+          aria-label={`${element.name ?? element.type} layer`}
+          onClick={() =>
+            onSelect({
+              artId: focused?.artId ?? null,
+              elementIds: element.id === focused?.canvas.root.id ? [] : [element.id],
+            })
+          }
+        >
+          <span aria-hidden="true" className="w-4 text-[0.65rem] uppercase text-muted-foreground">
+            {element.type.slice(0, 1)}
+          </span>
+          <span
+            role="textbox"
+            aria-label={`Rename ${element.name ?? element.id}`}
+            className="truncate"
+            contentEditable={renamingId === element.id}
+            suppressContentEditableWarning
+            onDoubleClick={() => setRenamingId(element.id)}
+            onBlur={(event) => {
+              if (renamingId !== element.id || !focused) return;
+              onUpdateElement?.(focused.canvasId, element.id, {
+                name: event.currentTarget.textContent ?? "",
+              });
+              setRenamingId(null);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                event.currentTarget.blur();
+              }
+            }}
+          >
+            {element.name?.trim() || element.id}
+          </span>
+        </SidebarMenuButton>
+        {element.type === "frame"
+          ? layerChildren(element).map((child) => renderTree(child, depth + 1))
+          : null}
+      </div>
+    );
+  };
+  const groups = (["scene", "block"] as const).map((kind) => ({
+    kind,
+    artboards: ordered.filter((artboard) => artboard.kind === kind),
+  }));
+  return (
+    <SidebarContent>
+      <div className="p-2">
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search layers"
+          aria-label="Search layers"
+          className="h-8 w-full rounded-md border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+        />
+      </div>
+      {groups.map(({ kind, artboards }) => {
+        const matchingArtboards: CanvasArtboardDocument[] = [];
+        for (const artboard of artboards) {
+          if (!query.trim()) {
+            matchingArtboards.push(artboard);
+            continue;
+          }
+          const text = `${artboardLabel(artboard)} ${artboard.artId}`.toLowerCase();
+          if (
+            text.includes(query.toLowerCase()) ||
+            flattenCanvasLayers(artboard.canvas.root).some((entry) => layerMatches(entry, query))
+          ) {
+            matchingArtboards.push(artboard);
+          }
+        }
+        return (
+          <SidebarGroup key={kind}>
+            <SidebarGroupLabel>{kind === "scene" ? "Scenes" : "Blocks"}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              {matchingArtboards.length === 0 ? (
+                <p className="p-2 text-sm text-muted-foreground">
+                  No {kind === "scene" ? "Scenes" : "Blocks"} match.
+                </p>
+              ) : (
+                <SidebarMenu>
+                  {matchingArtboards.map((artboard) => (
+                    <SidebarMenuItem key={artboard.artId}>
+                      <SidebarMenuButton
+                        aria-label={artboardLabel(artboard)}
+                        isActive={artboard.artId === focused?.artId && selection.elementIds.length === 0}
+                        onClick={() => {
+                          onFocusArtboard(artboard.artId);
+                          onSelect({ artId: artboard.artId, elementIds: [] });
+                        }}
+                      >
+                        <Box aria-hidden="true" />
+                        <span className="truncate">{artboardLabel(artboard)}</span>
+                      </SidebarMenuButton>
+                      {artboard.artId === focused?.artId
+                        ? renderTree(artboard.canvas.root, 0)
+                        : null}
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              )}
+            </SidebarGroupContent>
+          </SidebarGroup>
+        );
+      })}
+    </SidebarContent>
+  );
+}
 
 type DragPreview = {
   parentId: string;
@@ -729,39 +868,14 @@ export function CanvasWorkspaceEditor({
                 </SidebarTrigger>
               </div>
             </SidebarHeader>
-            <SidebarContent>
-              <SidebarGroup>
-                <SidebarGroupLabel>Artboards</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  {ordered.length === 0 ? (
-                    <p className="p-2 text-sm text-muted-foreground group-data-[state=collapsed]/sidebar:hidden">
-                      No artboards yet.
-                    </p>
-                  ) : (
-                    <SidebarMenu>
-                      {ordered.map((artboard) => (
-                        <SidebarMenuItem key={artboard.artId}>
-                          <SidebarMenuButton
-                            aria-label={artboardLabel(artboard)}
-                            isActive={artboard.artId === focused?.artId}
-                            data-artboard-id={artboard.artId}
-                            onClick={() => onFocusArtboard(artboard.artId)}
-                          >
-                            <Box aria-hidden="true" />
-                            <span className="truncate group-data-[state=collapsed]/sidebar:hidden">
-                              {artboardLabel(artboard)}
-                            </span>
-                            <small className="ml-auto text-xs text-muted-foreground group-data-[state=collapsed]/sidebar:hidden">
-                              {artboard.kind === "scene" ? "Scene" : "Block"}
-                            </small>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      ))}
-                    </SidebarMenu>
-                  )}
-                </SidebarGroupContent>
-              </SidebarGroup>
-            </SidebarContent>
+            <CanvasLayers
+              ordered={ordered}
+              focused={focused}
+              selection={selection}
+              onFocusArtboard={onFocusArtboard}
+              onSelect={setSelection}
+              onUpdateElement={onUpdateElement}
+            />
           </Sidebar>
         </SidebarProvider>
 
