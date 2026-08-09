@@ -80,6 +80,7 @@ function CanvasWorkspaceRoute() {
       onBeginMoveArtboard={commands.beginArtboardMove}
       onMoveArtboard={commands.updateArtboardMove}
       onEndMoveArtboard={commands.endArtboardMove}
+      onCreateElement={commands.createElement}
     />
   );
 }

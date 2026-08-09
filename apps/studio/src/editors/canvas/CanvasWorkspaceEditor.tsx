@@ -19,6 +19,7 @@ import {
 } from "@mechane/design-system";
 import type { Position } from "@mechane/domain";
 import { CanvasRenderer } from "@mechane/rendering";
+import type { NewElement } from "@mechane/commands";
 
 import type { CanvasArtboardDocument } from "../../api/canvas";
 import { canvasArtboardSize } from "./canvas-workspace";
@@ -34,6 +35,8 @@ import {
   topmostPaintedElementAtPoint,
 } from "./canvas-selection";
 import type { CanvasSelection } from "./canvas-selection";
+import { containingFrame, rankForInsertion } from "./canvas-creation";
+import type { CanvasCreationTool } from "./canvas-creation";
 
 export interface CanvasWorkspaceEditorProps {
   artboards: readonly CanvasArtboardDocument[];
@@ -46,6 +49,12 @@ export interface CanvasWorkspaceEditorProps {
   selectedElementIds?: readonly string[];
   onSelectionChange?(selection: CanvasSelection): void;
   initialCamera?: CanvasCamera;
+  onCreateElement?(
+    canvasId: string,
+    element: NewElement,
+    parentId: string,
+    rank: string,
+  ): void;
   initialLayersOpen?: boolean;
   initialInspectorOpen?: boolean;
 }
@@ -69,6 +78,13 @@ type RubberbandState = {
   start: { x: number; y: number };
   current: { x: number; y: number };
 };
+type CreationDraft = {
+  tool: Exclude<CanvasCreationTool, "select">;
+  artId: string;
+  pointerId: number;
+  start: { x: number; y: number };
+  current: { x: number; y: number };
+};
 
 // The editor owns camera, selection, overlays, and the two sidebars as one interaction surface.
 // react-doctor-disable-next-line react-doctor/no-giant-component
@@ -82,6 +98,7 @@ export function CanvasWorkspaceEditor({
   selectedArtId,
   selectedElementIds,
   onSelectionChange,
+  onCreateElement,
   initialCamera,
   initialLayersOpen,
   initialInspectorOpen,
@@ -99,6 +116,8 @@ export function CanvasWorkspaceEditor({
   const [layersOpen, setLayersOpen] = useState(initialLayersOpen ?? true);
   const [inspectorOpen, setInspectorOpen] = useState(initialInspectorOpen ?? true);
   const [drag, setDrag] = useState<DragState | null>(null);
+  const [tool, setTool] = useState<CanvasCreationTool>("select");
+  const [creationDraft, setCreationDraft] = useState<CreationDraft | null>(null);
   const [localSelection, setLocalSelection] = useState<CanvasSelection>({
     artId: null,
     elementIds: [],
@@ -224,6 +243,133 @@ export function CanvasWorkspaceEditor({
     }
     setRubberband(null);
   };
+  const beginCreation = (
+    event: PointerEvent<HTMLElement>,
+    artboard: CanvasArtboardDocument,
+  ) => {
+    if (tool === "select" || event.button !== 0) return;
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setCreationDraft({
+      tool,
+      artId: artboard.artId,
+      pointerId: event.pointerId,
+      start: { x: event.clientX, y: event.clientY },
+      current: { x: event.clientX, y: event.clientY },
+    });
+  };
+
+  const moveCreation = (event: PointerEvent<HTMLElement>) => {
+    if (!creationDraft || creationDraft.pointerId !== event.pointerId) return;
+    setCreationDraft((current) =>
+      current && current.pointerId === event.pointerId
+        ? { ...current, current: { x: event.clientX, y: event.clientY } }
+        : current,
+    );
+  };
+
+  const finishCreation = (event: PointerEvent<HTMLElement>, cancel = false) => {
+    if (!creationDraft || creationDraft.pointerId !== event.pointerId) return;
+    const draft = creationDraft;
+    setCreationDraft(null);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    const artboard = ordered.find((candidate) => candidate.artId === draft.artId);
+    if (!artboard) return;
+    if (cancel) {
+      setTool("select");
+      return;
+    }
+    const rect = {
+      x: Math.min(draft.start.x, event.clientX),
+      y: Math.min(draft.start.y, event.clientY),
+      width: Math.abs(event.clientX - draft.start.x),
+      height: Math.abs(event.clientY - draft.start.y),
+      right: Math.max(draft.start.x, event.clientX),
+      bottom: Math.max(draft.start.y, event.clientY),
+    };
+    if (rect.width < 4 || rect.height < 4) return;
+    const root = event.currentTarget.querySelector<HTMLElement>("[data-canvas-root]");
+    if (!root) return;
+    const frames = [...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-type='frame']")]
+      .flatMap((frame) => {
+        const id = frame.dataset.elementId;
+        if (!id) return [];
+        const measured = frame.getBoundingClientRect();
+        return [
+          {
+            id,
+            rect: {
+              x: measured.x,
+              y: measured.y,
+              width: measured.width,
+              height: measured.height,
+              right: measured.right,
+              bottom: measured.bottom,
+            },
+          },
+        ];
+      });
+    const parentId = containingFrame(frames, rect) ?? root.dataset.elementId;
+    if (!parentId) return;
+    const parent = frames.find((frame) => frame.id === parentId);
+    if (!parent) return;
+    const parentNode = [...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-id]")].find(
+      (element) => element.dataset.elementId === parentId,
+    );
+    const parentRect = parent.rect;
+    const parentIsAuto = parentNode
+      ? getComputedStyle(parentNode).display === "flex"
+      : false;
+    const children = [...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-parent-id]")]
+      .filter((element) => element.dataset.elementParentId === parentId)
+      .sort((left, right) => {
+        const axis = parentIsAuto && getComputedStyle(parentNode!).flexDirection === "row" ? "x" : "y";
+        return left.getBoundingClientRect()[axis] - right.getBoundingClientRect()[axis];
+      });
+    const axis =
+      parentIsAuto && parentNode && getComputedStyle(parentNode).flexDirection === "row" ? "x" : "y";
+    const center = axis === "x" ? (rect.x + rect.right) / 2 : (rect.y + rect.bottom) / 2;
+    const insertionIndex = children.findIndex((child) => {
+      const measured = child.getBoundingClientRect();
+      return (axis === "x" ? measured.x + measured.width / 2 : measured.y + measured.height / 2) > center;
+    });
+    const rank = rankForInsertion(
+      children.map((child) => child.dataset.elementRank ?? ""),
+      insertionIndex < 0 ? children.length : insertionIndex,
+    );
+    const width = Math.max(1, rect.width / camera.zoom);
+    const height = Math.max(1, rect.height / camera.zoom);
+    const id = `element-${globalThis.crypto.randomUUID()}`;
+    const element: NewElement = {
+      id,
+      type: draft.tool,
+      rank,
+      width: { mode: "fixed", value: width },
+      height: { mode: "fixed", value: height },
+      ...(draft.tool === "rect" ? { fill: "#cbd5e1" } : {}),
+      ...(draft.tool === "frame" ? { layoutMode: "absolute", fill: "#f8fafc" } : {}),
+      ...(draft.tool === "text" ? { content: "Text", color: "#0f172a" } : {}),
+      ...(draft.tool === "image"
+        ? { src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" }
+        : {}),
+      ...(!parentIsAuto
+        ? {
+            anchor: {
+              horizontal: "left" as const,
+              vertical: "top" as const,
+              offsetX: (rect.x - parentRect.x) / camera.zoom,
+              offsetY: (rect.y - parentRect.y) / camera.zoom,
+            },
+          }
+        : {}),
+    };
+    onCreateElement?.(artboard.canvasId, element, parentId, rank);
+    setSelection({ artId: artboard.artId, elementIds: [id] });
+    onFocusArtboard(artboard.artId);
+    setTool("select");
+  };
 
   const selectAtPoint = (event: PointerEvent<HTMLElement>, artboard: CanvasArtboardDocument) => {
     if (event.button !== 0) return;
@@ -267,6 +413,15 @@ export function CanvasWorkspaceEditor({
           y: selectedRect.y - workspaceBounds.y,
           width: selectedRect.width,
           height: selectedRect.height,
+        }
+      : null;
+  const creationOverlayRect =
+    creationDraft && workspaceBounds
+      ? {
+          x: Math.min(creationDraft.start.x, creationDraft.current.x) - workspaceBounds.x,
+          y: Math.min(creationDraft.start.y, creationDraft.current.y) - workspaceBounds.y,
+          width: Math.abs(creationDraft.current.x - creationDraft.start.x),
+          height: Math.abs(creationDraft.current.y - creationDraft.start.y),
         }
       : null;
   const rubberbandRect =
@@ -364,12 +519,38 @@ export function CanvasWorkspaceEditor({
             <main
               ref={workspaceRef}
               className="relative min-h-0 flex-1 overscroll-none overflow-hidden bg-muted/20 outline-none"
+              aria-label="Canvas workspace"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  setCreationDraft(null);
+                  setTool("select");
+                }
+              }}
               onPointerDown={beginWorkspaceInteraction}
               onPointerMove={moveWorkspaceInteraction}
               onPointerUp={endWorkspaceInteraction}
               onPointerCancel={endWorkspaceInteraction}
               onWheel={handleWheel}
             >
+              <div
+                className="pointer-events-auto absolute top-3 left-3 z-20 flex items-center gap-1 rounded-lg border border-border bg-background/95 p-1 shadow-lg backdrop-blur"
+                role="toolbar"
+                aria-label="Canvas creation tools"
+              >
+                {(["select", "rect", "text", "image", "frame"] as const).map((candidate) => (
+                  <Button
+                    key={candidate}
+                    type="button"
+                    size="sm"
+                    variant={tool === candidate ? "secondary" : "ghost"}
+                    aria-pressed={tool === candidate}
+                    onClick={() => setTool(candidate)}
+                  >
+                    {candidate[0]!.toUpperCase() + candidate.slice(1)}
+                  </Button>
+                ))}
+              </div>
               <div
                 className="pointer-events-none absolute top-0 left-0 h-0 w-0"
                 style={{
@@ -395,7 +576,14 @@ export function CanvasWorkspaceEditor({
                         width: size.width,
                       }}
                       aria-label={artboardLabel(artboard)}
-                      onPointerDown={(event) => selectAtPoint(event, artboard)}
+                      onPointerDown={(event) =>
+                        tool === "select"
+                          ? selectAtPoint(event, artboard)
+                          : beginCreation(event, artboard)
+                      }
+                      onPointerMove={moveCreation}
+                      onPointerUp={finishCreation}
+                      onPointerCancel={(event) => finishCreation(event, true)}
                       onClick={() => onFocusArtboard(artboard.artId)}
                     >
                       <div
@@ -403,9 +591,18 @@ export function CanvasWorkspaceEditor({
                           drag?.artId === artboard.artId ? "cursor-grabbing" : "cursor-grab"
                         }`}
                         onPointerDown={(event) => beginDrag(event, artboard)}
-                        onPointerMove={(event) => moveDrag(event, artboard)}
-                        onPointerUp={endDrag}
-                        onPointerCancel={(event) => endDrag(event, true)}
+                        onPointerMove={(event) => {
+                          moveDrag(event, artboard);
+                          moveCreation(event);
+                        }}
+                        onPointerUp={(event) => {
+                          endDrag(event);
+                          finishCreation(event);
+                        }}
+                        onPointerCancel={(event) => {
+                          endDrag(event, true);
+                          finishCreation(event, true);
+                        }}
                       >
                         <span className="truncate">{artboardLabel(artboard)}</span>
                         <small className="shrink-0 text-[0.6875rem] uppercase text-muted-foreground">
@@ -461,6 +658,22 @@ export function CanvasWorkspaceEditor({
                         />
                       ))}
                   </>
+                ) : null}
+                {creationOverlayRect ? (
+                  <rect
+                    x={creationOverlayRect.x}
+                    y={creationOverlayRect.y}
+                    width={creationOverlayRect.width}
+                    height={creationOverlayRect.height}
+                    style={{ color: "var(--primary)" }}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeDasharray="8 4"
+                    strokeLinecap="round"
+                    strokeWidth="2"
+                    vectorEffect="non-scaling-stroke"
+                    data-creation-preview
+                  />
                 ) : null}
                 {rubberbandRect ? (
                   <rect

@@ -1,7 +1,12 @@
-import type { CanvasWorkspace, CanvasWorkspaceEdit, Gesture } from "@mechane/commands";
-import { CommandStack, moveCanvasArtboard } from "@mechane/commands";
-import type { Position } from "@mechane/domain";
+import type {
+  CanvasWorkspace,
+  CanvasWorkspaceEdit,
+  Gesture,
+  NewElement,
+} from "@mechane/commands";
+import { addCanvasElement, CommandStack, moveCanvasArtboard } from "@mechane/commands";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Position } from "@mechane/domain";
 
 import type { CanvasArtboardDocument } from "../../api/canvas";
 
@@ -20,6 +25,7 @@ export interface CanvasCommands {
   beginArtboardMove(canvasId: string): void;
   updateArtboardMove(canvasId: string, position: Position): void;
   endArtboardMove(canvasId: string, cancel?: boolean): void;
+  createElement(canvasId: string, element: NewElement, parentId: string, rank: string): void;
   undo(): void;
   redo(): void;
 }
@@ -70,6 +76,13 @@ export function useCanvasCommands(
     },
     [changed, stack],
   );
+  const createElement = useCallback(
+    (canvasId: string, element: NewElement, parentId: string, rank: string) => {
+      stack.execute(addCanvasElement(canvasId, element, parentId, rank));
+      changed();
+    },
+    [changed, stack],
+  );
 
   const updateArtboardMove = useCallback(
     (canvasId: string, position: Position) => {
@@ -103,5 +116,13 @@ export function useCanvasCommands(
     changed();
   }, [changed, stack]);
 
-  return { workspace, beginArtboardMove, updateArtboardMove, endArtboardMove, undo, redo };
+  return {
+    workspace,
+    beginArtboardMove,
+    updateArtboardMove,
+    endArtboardMove,
+    createElement,
+    undo,
+    redo,
+  };
 }
