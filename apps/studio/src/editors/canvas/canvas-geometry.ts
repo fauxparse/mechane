@@ -1,3 +1,4 @@
+import type { RefObject } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 
 export interface CanvasClientRect {
@@ -45,13 +46,14 @@ export function measureCanvasGeometry(workspace: HTMLElement): CanvasGeometry {
 
 /** Re-measures after native layout, resize, camera changes, and model edits. */
 export function useCanvasGeometry(
-  workspace: HTMLElement | null,
+  workspaceRef: RefObject<HTMLElement | null>,
   invalidationKey: unknown,
 ): CanvasGeometry {
   const [geometry, setGeometry] = useState<CanvasGeometry>(new Map());
   const frame = useRef<number | null>(null);
 
   useLayoutEffect(() => {
+    const workspace = workspaceRef.current;
     if (!workspace) {
       setGeometry(new Map());
       return;
@@ -74,7 +76,7 @@ export function useCanvasGeometry(
       observer.disconnect();
       if (frame.current !== null) window.cancelAnimationFrame(frame.current);
     };
-  }, [invalidationKey, workspace]);
+  }, [invalidationKey, workspaceRef]);
 
   return geometry;
 }

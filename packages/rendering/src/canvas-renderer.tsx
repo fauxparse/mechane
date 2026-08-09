@@ -254,6 +254,8 @@ function renderElement({
       "data-element-id": element.id,
       "data-element-type": element.type,
       "data-element-parent-id": parent?.id,
+      "data-element-painted": "true",
+      "data-element-root": root ? "true" : undefined,
       src: element.src ?? element.image ?? element.source,
       alt: element.alt ?? "",
       style,
@@ -267,6 +269,9 @@ function renderElement({
       "data-element-type": element.type,
       "data-element-name": element.name ?? undefined,
       "data-element-parent-id": parent?.id,
+      "data-element-painted":
+        element.type === "text" || element.fill !== undefined ? "true" : "false",
+      "data-element-root": root ? "true" : undefined,
       style,
       hidden: element.hidden,
     },

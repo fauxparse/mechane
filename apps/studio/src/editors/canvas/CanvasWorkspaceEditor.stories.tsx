@@ -72,6 +72,20 @@ export const EmptyWorkspace: Story = {
 };
 
 export const MixedSceneAndBlockWorkspace: Story = {};
+export const SelectedElementAndConstantChrome: Story = {
+  args: {
+    selectedArtId: "scene-lobby",
+    selectedElementIds: ["Lobby-title"],
+  },
+};
+
+export const SelectionReviewAtZoom: Story = {
+  args: {
+    initialCamera: { x: -140, y: -60, zoom: 2 },
+    selectedArtId: "scene-lobby",
+    selectedElementIds: ["Lobby-title"],
+  },
+};
 
 export const FocusedBlockDeepLink: Story = {
   args: { focusedArtId: "block-card" },
