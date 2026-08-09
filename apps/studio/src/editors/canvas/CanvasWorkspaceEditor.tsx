@@ -226,6 +226,8 @@ export function CanvasWorkspaceEditor({
                       key={artboard.artId}
                       className="pointer-events-auto absolute cursor-pointer rounded-lg border border-border bg-background shadow-xl data-[focused=true]:border-primary data-[focused=true]:ring-2 data-[focused=true]:ring-primary/35"
                       data-artboard-id={artboard.artId}
+                      data-canvas-id={artboard.canvasId}
+                      data-artboard-kind={artboard.kind}
                       data-owner-kind={artboard.kind}
                       data-focused={artboard.artId === focused?.artId ? "true" : "false"}
                       style={{
