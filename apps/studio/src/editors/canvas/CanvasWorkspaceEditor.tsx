@@ -1,6 +1,6 @@
 import { Box, Layers3, Minus, PanelLeft, Plus, RotateCcw, SlidersHorizontal } from "lucide-react";
 import type { PointerEvent } from "react";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   Button,
@@ -225,10 +225,7 @@ export function CanvasWorkspaceEditor({
     setRubberband(null);
   };
 
-  const selectAtPoint = (
-    event: PointerEvent<HTMLElement>,
-    artboard: CanvasArtboardDocument,
-  ) => {
+  const selectAtPoint = (event: PointerEvent<HTMLElement>, artboard: CanvasArtboardDocument) => {
     if (event.button !== 0) return;
     event.stopPropagation();
     const element = topmostPaintedElementAtPoint(
@@ -262,23 +259,25 @@ export function CanvasWorkspaceEditor({
             return rect ? [rect] : [];
           }),
         )
-      : selectedGeometry?.rect ?? null;
-  const overlayRect = selectedRect && workspaceBounds
-    ? {
-        x: selectedRect.x - workspaceBounds.x,
-        y: selectedRect.y - workspaceBounds.y,
-        width: selectedRect.width,
-        height: selectedRect.height,
-      }
-    : null;
-  const rubberbandRect = rubberband && workspaceBounds
-    ? {
-        x: Math.min(rubberband.start.x, rubberband.current.x) - workspaceBounds.x,
-        y: Math.min(rubberband.start.y, rubberband.current.y) - workspaceBounds.y,
-        width: Math.abs(rubberband.current.x - rubberband.start.x),
-        height: Math.abs(rubberband.current.y - rubberband.start.y),
-      }
-    : null;
+      : (selectedGeometry?.rect ?? null);
+  const overlayRect =
+    selectedRect && workspaceBounds
+      ? {
+          x: selectedRect.x - workspaceBounds.x,
+          y: selectedRect.y - workspaceBounds.y,
+          width: selectedRect.width,
+          height: selectedRect.height,
+        }
+      : null;
+  const rubberbandRect =
+    rubberband && workspaceBounds
+      ? {
+          x: Math.min(rubberband.start.x, rubberband.current.x) - workspaceBounds.x,
+          y: Math.min(rubberband.start.y, rubberband.current.y) - workspaceBounds.y,
+          width: Math.abs(rubberband.current.x - rubberband.start.x),
+          height: Math.abs(rubberband.current.y - rubberband.start.y),
+        }
+      : null;
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background text-foreground">
