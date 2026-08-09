@@ -1,4 +1,4 @@
-import { Box, Layers3, PanelLeft, SlidersHorizontal } from "lucide-react";
+import { Box, Layers3, Minus, PanelLeft, Plus, RotateCcw, SlidersHorizontal } from "lucide-react";
 import type { PointerEvent } from "react";
 import { useMemo, useState } from "react";
 
@@ -33,8 +33,9 @@ export interface CanvasWorkspaceEditorProps {
   onMoveArtboard(canvasId: string, position: Position): void;
   onEndMoveArtboard(canvasId: string, cancel?: boolean): void;
   initialCamera?: CanvasCamera;
+  initialLayersOpen?: boolean;
+  initialInspectorOpen?: boolean;
 }
-
 
 function artboardLabel(artboard: CanvasArtboardDocument): string {
   return (
@@ -58,6 +59,8 @@ export function CanvasWorkspaceEditor({
   onMoveArtboard,
   onEndMoveArtboard,
   initialCamera,
+  initialLayersOpen,
+  initialInspectorOpen,
 }: CanvasWorkspaceEditorProps) {
   const ordered = useMemo(
     () =>
@@ -69,7 +72,8 @@ export function CanvasWorkspaceEditor({
       ),
     [artboards],
   );
-  const [layersOpen, setLayersOpen] = useState(true);
+  const [layersOpen, setLayersOpen] = useState(initialLayersOpen ?? true);
+  const [inspectorOpen, setInspectorOpen] = useState(initialInspectorOpen ?? true);
   const [drag, setDrag] = useState<DragState | null>(null);
   const focused = ordered.find((artboard) => artboard.artId === focusedArtId) ?? ordered[0] ?? null;
   const {
@@ -79,6 +83,9 @@ export function CanvasWorkspaceEditor({
     moveCameraDrag,
     endCameraDrag,
     handleWheel,
+    zoomIn,
+    zoomOut,
+    resetCamera,
   } = useCanvasCamera(initialCamera);
 
   const beginDrag = (event: PointerEvent<HTMLDivElement>, artboard: CanvasArtboardDocument) => {
@@ -166,7 +173,11 @@ export function CanvasWorkspaceEditor({
           </Sidebar>
         </SidebarProvider>
 
-        <SidebarProvider defaultOpen className="h-full min-w-0 flex-1">
+        <SidebarProvider
+          open={inspectorOpen}
+          onOpenChange={setInspectorOpen}
+          className="h-full min-w-0 flex-1"
+        >
           <SidebarInset>
             <div className="flex min-h-14 shrink-0 items-center justify-between gap-4 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
               <Button
@@ -202,7 +213,7 @@ export function CanvasWorkspaceEditor({
               onWheel={handleWheel}
             >
               <div
-                className="relative h-[1600px] w-[2400px] shrink-0"
+                className="pointer-events-none absolute top-0 left-0 h-0 w-0"
                 style={{
                   transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`,
                   transformOrigin: "0 0",
@@ -213,7 +224,7 @@ export function CanvasWorkspaceEditor({
                   return (
                     <section
                       key={artboard.artId}
-                      className="absolute cursor-pointer rounded-lg border border-border bg-background shadow-xl data-[focused=true]:border-primary data-[focused=true]:ring-2 data-[focused=true]:ring-primary/35"
+                      className="pointer-events-auto absolute cursor-pointer rounded-lg border border-border bg-background shadow-xl data-[focused=true]:border-primary data-[focused=true]:ring-2 data-[focused=true]:ring-primary/35"
                       data-artboard-id={artboard.artId}
                       data-owner-kind={artboard.kind}
                       data-focused={artboard.artId === focused?.artId ? "true" : "false"}
@@ -250,6 +261,44 @@ export function CanvasWorkspaceEditor({
                 })}
               </div>
             </main>
+            <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center">
+              <div
+                className="pointer-events-auto flex items-center gap-1 rounded-lg border border-border bg-background/95 p-1 shadow-lg backdrop-blur"
+                role="toolbar"
+                aria-label="Canvas view controls"
+              >
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Zoom out"
+                  onClick={zoomOut}
+                >
+                  <Minus aria-hidden="true" />
+                </Button>
+                <span className="min-w-12 px-1 text-center text-xs tabular-nums" aria-live="polite">
+                  {Math.round(camera.zoom * 100)}%
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Zoom in"
+                  onClick={zoomIn}
+                >
+                  <Plus aria-hidden="true" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Reset view"
+                  onClick={resetCamera}
+                >
+                  <RotateCcw aria-hidden="true" />
+                </Button>
+              </div>
+            </div>
           </SidebarInset>
 
           <Sidebar side="right" aria-label="Canvas inspector">

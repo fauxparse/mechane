@@ -219,6 +219,7 @@ export function SidebarGroupContent({ className, ...props }: ComponentProps<"div
 export function SidebarTrigger({
   className,
   "aria-label": ariaLabel,
+  onClick,
   ...props
 }: ComponentProps<typeof Button>) {
   const { toggleSidebar, open } = useSidebar();
@@ -231,7 +232,10 @@ export function SidebarTrigger({
       aria-label={ariaLabel ?? (open ? "Collapse sidebar" : "Expand sidebar")}
       aria-expanded={open}
       className={className}
-      onClick={toggleSidebar}
+      onClick={(event) => {
+        toggleSidebar();
+        onClick?.(event);
+      }}
       {...props}
     />
   );

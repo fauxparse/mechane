@@ -97,6 +97,22 @@ export function useCanvasCamera(initialCamera: CanvasCamera = { x: 96, y: 64, zo
     setCamera((current) => panCanvasCamera(current, -event.deltaX, -event.deltaY));
   };
 
+  const zoomAtCenter = (factor: number) => {
+    const bounds = workspaceRef.current?.getBoundingClientRect();
+    if (!bounds) return;
+    setCamera((current) =>
+      zoomCanvasCamera(
+        current,
+        { x: bounds.width / 2, y: bounds.height / 2 },
+        current.zoom * factor,
+      ),
+    );
+  };
+
+  const zoomIn = () => zoomAtCenter(1.2);
+  const zoomOut = () => zoomAtCenter(1 / 1.2);
+  const resetCamera = () => setCamera(initialCamera);
+
   return {
     camera,
     workspaceRef,
@@ -104,5 +120,8 @@ export function useCanvasCamera(initialCamera: CanvasCamera = { x: 96, y: 64, zo
     moveCameraDrag,
     endCameraDrag,
     handleWheel,
+    zoomIn,
+    zoomOut,
+    resetCamera,
   };
 }
