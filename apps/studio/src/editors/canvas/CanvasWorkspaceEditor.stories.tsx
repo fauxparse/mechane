@@ -1,5 +1,5 @@
 import { applyCanvasEdits, CANVAS_COMMAND_TYPES } from "@mechane/commands";
-import type { ElementProperties } from "@mechane/domain";
+import type { ElementProperties } from "@mechane/commands";
 import type { CanvasArtboardDocument } from "../../api/canvas";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
