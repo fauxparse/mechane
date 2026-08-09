@@ -4,10 +4,17 @@ import { buildSchema, validate } from "graphql";
 import { describe, expect, it } from "vitest";
 
 import { GetActiveRunQuery, StartRunMutation, EndRunMutation } from "./runs";
+import { GetShowCanvasesQuery } from "./canvas";
 import { GetShowGraphQuery } from "./show-graph";
 
 describe("Show graph operations", () => {
-  it.each([GetShowGraphQuery, GetActiveRunQuery, StartRunMutation, EndRunMutation])(
+  it.each([
+    GetShowGraphQuery,
+    GetShowCanvasesQuery,
+    GetActiveRunQuery,
+    StartRunMutation,
+    EndRunMutation,
+  ])(
     "validates %s against the generated schema",
     (operation) => {
       const schema = buildSchema(

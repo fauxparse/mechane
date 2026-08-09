@@ -26,6 +26,7 @@ export const CanvasElementFields = graphql(`
     opacity
     blendMode
     fill
+    anchor
     ... on RectElement {
       cornerRadius
     }

@@ -1,5 +1,8 @@
+import { applyCanvasEdits, CANVAS_COMMAND_TYPES } from "@mechane/commands";
+import type { ElementProperties } from "@mechane/domain";
 import type { CanvasArtboardDocument } from "../../api/canvas";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useState } from "react";
 
 import { CanvasWorkspaceEditor } from "./CanvasWorkspaceEditor";
 
@@ -41,6 +44,89 @@ const artboards: CanvasArtboardDocument[] = [
     position: { x: 860, y: 220 },
   },
 ];
+const reparentReviewArtboard: CanvasArtboardDocument = {
+  canvasId: "canvas-reparent-review",
+  artId: "reparent-review",
+  kind: "scene",
+  name: "Reparent review",
+  canvas: {
+    kind: "scene",
+    root: {
+      id: "reparent-root",
+      type: "frame",
+      layoutMode: "absolute",
+      width: { mode: "fixed", value: 680 },
+      height: { mode: "fixed", value: 440 },
+      fill: "#e2e8f0",
+      children: [
+        {
+          id: "reparent-source",
+          type: "rect",
+          rank: "a",
+          width: { mode: "fixed", value: 120 },
+          height: { mode: "fixed", value: 72 },
+          fill: "#2563eb",
+          anchor: { horizontal: "left", vertical: "top", offsetX: 32, offsetY: 32 },
+        },
+        {
+          id: "reparent-target",
+          type: "frame",
+          rank: "b",
+          layoutMode: "auto",
+          width: { mode: "fixed", value: 360 },
+          height: { mode: "fixed", value: 280 },
+          fill: "#fef3c7",
+          anchor: { horizontal: "left", vertical: "top", offsetX: 250, offsetY: 100 },
+          children: [],
+        },
+      ],
+    },
+  },
+  position: { x: 64, y: 96 },
+};
+
+function StatefulReparentReview() {
+  const [artboard, setArtboard] = useState(reparentReviewArtboard);
+  const updateCanvas = (
+    canvasId: string,
+    elementId: string,
+    parentId: string,
+    rank: string,
+    properties: Record<string, unknown> = {},
+    unsetProperties: readonly string[] = [],
+  ) => {
+    if (canvasId !== artboard.canvasId) return;
+    const edits = [
+      { type: CANVAS_COMMAND_TYPES.reparentElement, elementId, parentId, rank },
+      ...(Object.keys(properties).length > 0 || unsetProperties.length > 0
+        ? [
+            {
+              type: CANVAS_COMMAND_TYPES.updateElement,
+              elementId,
+              properties: properties as ElementProperties,
+              unsetProperties,
+            },
+          ]
+        : []),
+    ];
+    setArtboard((current) => ({
+      ...current,
+      canvas: applyCanvasEdits(current.canvas, edits),
+    }));
+  };
+
+  return (
+    <CanvasWorkspaceEditor
+      artboards={[artboard]}
+      focusedArtId={artboard.artId}
+      onFocusArtboard={noOp}
+      onBeginMoveArtboard={noOp}
+      onMoveArtboard={noOp}
+      onEndMoveArtboard={noOp}
+      onMoveElement={updateCanvas}
+    />
+  );
+}
 
 const noOp = () => {};
 const meta: Meta<typeof CanvasWorkspaceEditor> = {
@@ -132,6 +218,9 @@ export const ZoomedInWorkspace: Story = {
 
 export const LayersCollapsed: Story = {
   args: { initialLayersOpen: false },
+};
+export const StatefulReparentReviewStory: Story = {
+  render: () => <StatefulReparentReview />,
 };
 
 export const InspectorCollapsed: Story = {
