@@ -86,6 +86,11 @@ export function useCanvasGeometry(
     return () => {
       observer.disconnect();
       if (frame.current !== null) window.cancelAnimationFrame(frame.current);
+      // Clearing the handle matters: this effect re-runs on every camera change and model edit,
+      // often while a frame is still pending. Cancelling without clearing would leave a stale
+      // non-null handle, and since only measure() resets it, every later schedule() would return
+      // early — freezing geometry, and with it the selection overlay, for good.
+      frame.current = null;
     };
   }, [invalidationKey, workspaceRef]);
 
