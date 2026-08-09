@@ -253,6 +253,7 @@ function renderElement({
     return createElement("img", {
       "data-element-id": element.id,
       "data-element-type": element.type,
+      "data-element-parent-id": parent?.id,
       src: element.src ?? element.image ?? element.source,
       alt: element.alt ?? "",
       style,
@@ -265,6 +266,7 @@ function renderElement({
       "data-element-id": element.id,
       "data-element-type": element.type,
       "data-element-name": element.name ?? undefined,
+      "data-element-parent-id": parent?.id,
       style,
       hidden: element.hidden,
     },
@@ -291,6 +293,7 @@ export function CanvasRenderer({ canvas, className, style }: CanvasRendererProps
       className,
       style: { position: "relative", width: "100%", height: "100%", ...style },
       "data-canvas-root": root.id,
+      "data-canvas-kind": "root" in canvas ? canvas.kind : undefined,
     },
     renderElement({ element: root, root: true, sceneRoot }),
   );
