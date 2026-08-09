@@ -1,15 +1,18 @@
 import { isId } from "@mechane/domain";
 import type { ShowId } from "@mechane/domain";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 
-import { useCanvasWorkspace } from "../../../../api/canvas";
+import { canvasWorkspaceQueryKey, useCanvasWorkspace } from "../../../../api/canvas";
+import type { CanvasArtboardDocument } from "../../../../api/canvas";
 import { useShow } from "../../../../api/shows";
 import { useShowGraph, useShowGraphEdits } from "../../../../api/show-graph";
 import { CanvasWorkspaceEditor } from "../../../../editors/canvas/CanvasWorkspaceEditor";
 import { artIdFromPath, resolveFocusedArtboard } from "../../../../editors/canvas/canvas-workspace";
 import { useCanvasCommands } from "../../../../editors/canvas/use-canvas-commands";
 import { useUndoKeys } from "../../../../editors/show/keyboard/use-undo-keys";
+import { GRAPH_COMMAND_TYPES } from "@mechane/commands";
 export const Route = createFileRoute("/_authenticated/shows/$showId/art")({
   component: CanvasWorkspaceRoute,
 });
@@ -22,6 +25,7 @@ function CanvasWorkspaceRoute() {
   const show = useShow(showId);
   const draft = useShowGraph(showId, "draft");
   const workspace = useCanvasWorkspace(showId);
+  const queryClient = useQueryClient();
   const save = useShowGraphEdits(showId, draft.data?.version);
   const commands = useCanvasCommands(workspace.data, (edits) => save.enqueue(edits));
   useUndoKeys(commands);
@@ -34,6 +38,21 @@ function CanvasWorkspaceRoute() {
         : artboard;
     });
   }, [commands.workspace.artboards, workspace.data]);
+
+  // An artboard's name belongs to the Scene or Block that owns the Canvas, so a rename is a
+  // Show-graph edit. It rides the same save path as every Canvas edit, and the workspace cache
+  // is corrected alongside it so the new name shows at once: routing it through a second command
+  // stack instead would lose it, because every save rewrites the draft graph's cache entry and
+  // that resets the stack.
+  const renameArtboard = (artId: string, name: string) => {
+    if (!showId) return;
+    save.enqueue([{ type: GRAPH_COMMAND_TYPES.renameNode, nodeId: artId, name }]);
+    queryClient.setQueryData(
+      canvasWorkspaceQueryKey(showId, "draft"),
+      (previous: CanvasArtboardDocument[] | undefined) =>
+        previous?.map((artboard) => (artboard.artId === artId ? { ...artboard, name } : artboard)),
+    );
+  };
   const requestedArtId = showId ? artIdFromPath(pathname, showId) : null;
   const focused = resolveFocusedArtboard(artboards, requestedArtId);
 
@@ -96,6 +115,7 @@ function CanvasWorkspaceRoute() {
       onMoveElement={commands.moveElement}
       onUpdateElement={commands.updateElement}
       onDeleteElements={commands.removeElements}
+      onRenameArtboard={renameArtboard}
     />
   );
 }
