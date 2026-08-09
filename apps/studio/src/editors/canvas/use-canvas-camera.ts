@@ -86,7 +86,6 @@ export function useCanvasCamera(initialCamera: CanvasCamera = { x: 96, y: 64, zo
   };
 
   const handleWheel = (event: WheelEvent<HTMLElement>) => {
-    event.preventDefault();
     const bounds = event.currentTarget.getBoundingClientRect();
     if (event.metaKey || event.ctrlKey) {
       const point = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
