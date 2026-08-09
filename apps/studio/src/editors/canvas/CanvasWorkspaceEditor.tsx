@@ -424,6 +424,7 @@ export function CanvasWorkspaceEditor({
               </div>
               <svg
                 className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
+                style={{ color: "var(--muted-foreground)" }}
                 aria-hidden="true"
                 data-selection-overlay
               >
@@ -435,10 +436,11 @@ export function CanvasWorkspaceEditor({
                       width={overlayRect.width}
                       height={overlayRect.height}
                       fill="none"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth="1.5"
-                      vectorEffect="non-scaling-stroke"
+                      stroke="currentColor"
+                      strokeDasharray="6 4"
+                      strokeWidth="1"
                       data-selection-rect
+                      vectorEffect="non-scaling-stroke"
                     />
                     {selection.elementIds.length > 0 &&
                       [
@@ -453,8 +455,8 @@ export function CanvasWorkspaceEditor({
                           cy={y}
                           r="4"
                           fill="white"
-                          stroke="hsl(var(--primary))"
-                          strokeWidth="1.5"
+                          stroke="currentColor"
+                          strokeWidth="1"
                           vectorEffect="non-scaling-stroke"
                         />
                       ))}
@@ -466,8 +468,9 @@ export function CanvasWorkspaceEditor({
                     y={rubberbandRect.y}
                     width={rubberbandRect.width}
                     height={rubberbandRect.height}
-                    fill="hsl(var(--primary) / 0.12)"
-                    stroke="hsl(var(--primary))"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeDasharray="6 4"
                     strokeWidth="1"
                     vectorEffect="non-scaling-stroke"
                     data-rubberband
