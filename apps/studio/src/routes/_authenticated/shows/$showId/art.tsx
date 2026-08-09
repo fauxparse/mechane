@@ -95,6 +95,7 @@ function CanvasWorkspaceRoute() {
       onCreateElement={commands.createElement}
       onMoveElement={commands.moveElement}
       onUpdateElement={commands.updateElement}
+      onDeleteElements={commands.removeElements}
     />
   );
 }

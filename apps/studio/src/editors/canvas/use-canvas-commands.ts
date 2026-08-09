@@ -9,6 +9,7 @@ import {
   CommandStack,
   moveCanvasArtboard,
   moveCanvasElement,
+  removeCanvasElement,
   updateCanvasElement,
 } from "@mechane/commands";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -46,6 +47,7 @@ export interface CanvasCommands {
     unsetProperties?: readonly string[],
   ): void;
   createElement(canvasId: string, element: NewElement, parentId: string, rank: string): void;
+  removeElements(canvasId: string, elementIds: readonly string[]): void;
   undo(): void;
   redo(): void;
 }
@@ -99,6 +101,23 @@ export function useCanvasCommands(
   const createElement = useCallback(
     (canvasId: string, element: NewElement, parentId: string, rank: string) => {
       stack.execute(addCanvasElement(canvasId, element, parentId, rank));
+      changed();
+    },
+    [changed, stack],
+  );
+
+  const removeElements = useCallback(
+    (canvasId: string, elementIds: readonly string[]) => {
+      // Deleting a Frame takes its descendants with it, so a selection holding both a Frame and
+      // something inside it would ask twice for the same Element. Whichever goes first wins and
+      // the second throws, so each removal stands on its own.
+      for (const elementId of elementIds) {
+        try {
+          stack.execute(removeCanvasElement(canvasId, elementId));
+        } catch {
+          // Already gone with an ancestor, or the Canvas root, which cannot be removed.
+        }
+      }
       changed();
     },
     [changed, stack],
@@ -173,6 +192,7 @@ export function useCanvasCommands(
     moveElement,
     updateElement,
     createElement,
+    removeElements,
     undo,
     redo,
   };
