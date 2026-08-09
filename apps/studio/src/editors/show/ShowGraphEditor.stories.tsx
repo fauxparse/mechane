@@ -1,6 +1,6 @@
 import { Button } from "@mechane/design-system";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useRef } from "react";
+import { ComponentProps, useRef } from "react";
 
 import { ShowGraphEditor } from "./ShowGraphEditor";
 import type { ShowGraphEditorHandle } from "./ShowGraphEditor";
@@ -12,8 +12,8 @@ const meta: Meta<typeof ShowGraphEditor> = {
   parameters: { layout: "fullscreen" },
   args: { graph: SAMPLE_GRAPH },
   // React Flow measures its container, so it needs one with a real height.
-  render: (args) => (
-    <div className="h-[36rem] w-full">
+  render: (args: ComponentProps<typeof ShowGraphEditor>) => (
+    <div className="h-144 w-full">
       <ShowGraphEditor {...args} />
     </div>
   ),
@@ -132,7 +132,7 @@ export const FramingNodes: Story = {
 function FramingDemo() {
   const editor = useRef<ShowGraphEditorHandle>(null);
   return (
-    <div className="flex h-[36rem] w-full flex-col gap-2 p-2">
+    <div className="flex h-144 w-full flex-col gap-2 p-2">
       <div className="flex gap-2">
         <Button size="sm" onClick={() => editor.current?.fitToNodes(VOTE_FLOW_NODE_IDS)}>
           Frame the vote Flow

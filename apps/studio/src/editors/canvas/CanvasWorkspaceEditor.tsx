@@ -24,6 +24,16 @@ import type { CanvasArtboardDocument } from "../../api/canvas";
 import { canvasArtboardSize } from "./canvas-workspace";
 import type { CanvasCamera } from "./canvas-camera";
 import { useCanvasCamera } from "./use-canvas-camera";
+import { useCanvasGeometry } from "./canvas-geometry";
+import {
+  containedSelection,
+  normalizeSelection,
+  rectContainsPoint,
+  selectionRect,
+  toggleSelection,
+  topmostPaintedElementAtPoint,
+} from "./canvas-selection";
+import type { CanvasSelection } from "./canvas-selection";
 
 export interface CanvasWorkspaceEditorProps {
   artboards: readonly CanvasArtboardDocument[];
@@ -32,6 +42,9 @@ export interface CanvasWorkspaceEditorProps {
   onBeginMoveArtboard(canvasId: string): void;
   onMoveArtboard(canvasId: string, position: Position): void;
   onEndMoveArtboard(canvasId: string, cancel?: boolean): void;
+  selectedArtId?: string | null;
+  selectedElementIds?: readonly string[];
+  onSelectionChange?(selection: CanvasSelection): void;
   initialCamera?: CanvasCamera;
   initialLayersOpen?: boolean;
   initialInspectorOpen?: boolean;
@@ -51,6 +64,14 @@ type DragState = {
   start: Position;
 };
 
+type RubberbandState = {
+  pointerId: number;
+  start: { x: number; y: number };
+  current: { x: number; y: number };
+};
+
+// The editor owns camera, selection, overlays, and the two sidebars as one interaction surface.
+// react-doctor-disable-next-line react-doctor/no-giant-component
 export function CanvasWorkspaceEditor({
   artboards,
   focusedArtId,
@@ -58,6 +79,9 @@ export function CanvasWorkspaceEditor({
   onBeginMoveArtboard,
   onMoveArtboard,
   onEndMoveArtboard,
+  selectedArtId,
+  selectedElementIds,
+  onSelectionChange,
   initialCamera,
   initialLayersOpen,
   initialInspectorOpen,
@@ -75,6 +99,11 @@ export function CanvasWorkspaceEditor({
   const [layersOpen, setLayersOpen] = useState(initialLayersOpen ?? true);
   const [inspectorOpen, setInspectorOpen] = useState(initialInspectorOpen ?? true);
   const [drag, setDrag] = useState<DragState | null>(null);
+  const [localSelection, setLocalSelection] = useState<CanvasSelection>({
+    artId: null,
+    elementIds: [],
+  });
+  const [rubberband, setRubberband] = useState<RubberbandState | null>(null);
   const focused = ordered.find((artboard) => artboard.artId === focusedArtId) ?? ordered[0] ?? null;
   const {
     camera,
@@ -87,7 +116,23 @@ export function CanvasWorkspaceEditor({
     zoomOut,
     resetCamera,
   } = useCanvasCamera(initialCamera);
-
+  const geometryKey = useMemo(
+    () =>
+      `${camera.x}:${camera.y}:${camera.zoom}|${JSON.stringify(
+        ordered.map(({ artId, position, canvas }) => [artId, position, canvas.root]),
+      )}`,
+    [camera, ordered],
+  );
+  const geometry = useCanvasGeometry(workspaceRef, geometryKey);
+  const selection =
+    selectedArtId === undefined
+      ? localSelection
+      : normalizeSelection({ artId: selectedArtId, elementIds: selectedElementIds ?? [] });
+  const setSelection = (next: CanvasSelection) => {
+    const normalized = normalizeSelection(next);
+    setLocalSelection(normalized);
+    onSelectionChange?.(normalized);
+  };
   const beginDrag = (event: PointerEvent<HTMLDivElement>, artboard: CanvasArtboardDocument) => {
     event.stopPropagation();
     if (event.button !== 0) return;
@@ -118,6 +163,121 @@ export function CanvasWorkspaceEditor({
     onEndMoveArtboard(drag.canvasId, cancel);
     setDrag(null);
   };
+  const beginWorkspaceInteraction = (event: PointerEvent<HTMLElement>) => {
+    beginCameraDrag(event);
+    if (event.button !== 0 || event.target !== event.currentTarget) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setRubberband({
+      pointerId: event.pointerId,
+      start: { x: event.clientX, y: event.clientY },
+      current: { x: event.clientX, y: event.clientY },
+    });
+  };
+
+  const moveWorkspaceInteraction = (event: PointerEvent<HTMLElement>) => {
+    moveCameraDrag(event);
+    if (!rubberband || rubberband.pointerId !== event.pointerId) return;
+    setRubberband((current) =>
+      current && current.pointerId === event.pointerId
+        ? { ...current, current: { x: event.clientX, y: event.clientY } }
+        : current,
+    );
+  };
+
+  const endWorkspaceInteraction = (event: PointerEvent<HTMLElement>) => {
+    endCameraDrag(event);
+    if (!rubberband || rubberband.pointerId !== event.pointerId) return;
+    const start = rubberband.start;
+    const current = { x: event.clientX, y: event.clientY };
+    const band = {
+      x: Math.min(start.x, current.x),
+      y: Math.min(start.y, current.y),
+      width: Math.abs(current.x - start.x),
+      height: Math.abs(current.y - start.y),
+      right: Math.max(start.x, current.x),
+      bottom: Math.max(start.y, current.y),
+    };
+    const target = ordered.find((artboard) => {
+      const measured = geometry.get(artboard.artId);
+      return measured ? rectContainsPoint(measured.rect, start.x, start.y) : false;
+    });
+    if (target) {
+      const measured = geometry.get(target.artId);
+      const ids = measured
+        ? containedSelection(
+            [...measured.elements].flatMap(([id, rect]) => {
+              const element = [...document.querySelectorAll<HTMLElement>("[data-element-id]")].find(
+                (candidate) => candidate.dataset.elementId === id,
+              );
+              return element?.dataset.elementRoot === "true" ? [] : [{ id, rect }];
+            }),
+            band,
+          )
+        : [];
+      setSelection({ artId: target.artId, elementIds: ids });
+      onFocusArtboard(target.artId);
+    } else if (band.width < 2 && band.height < 2) {
+      setSelection({ artId: null, elementIds: [] });
+    }
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setRubberband(null);
+  };
+
+  const selectAtPoint = (event: PointerEvent<HTMLElement>, artboard: CanvasArtboardDocument) => {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    const element = topmostPaintedElementAtPoint(
+      event.currentTarget,
+      event.clientX,
+      event.clientY,
+      event.altKey,
+    );
+    onFocusArtboard(artboard.artId);
+    if (!element?.dataset.elementId) {
+      setSelection({ artId: artboard.artId, elementIds: [] });
+      return;
+    }
+    setSelection({
+      artId: artboard.artId,
+      elementIds: toggleSelection(
+        selection.artId === artboard.artId ? selection.elementIds : [],
+        element.dataset.elementId,
+        event.shiftKey,
+      ),
+    });
+  };
+
+  const workspaceBounds = workspaceRef.current?.getBoundingClientRect();
+  const selectedGeometry = selection.artId ? geometry.get(selection.artId) : undefined;
+  const selectedRect =
+    selectedGeometry && selection.elementIds.length > 0
+      ? selectionRect(
+          selection.elementIds.flatMap((id) => {
+            const rect = selectedGeometry.elements.get(id);
+            return rect ? [rect] : [];
+          }),
+        )
+      : (selectedGeometry?.rect ?? null);
+  const overlayRect =
+    selectedRect && workspaceBounds
+      ? {
+          x: selectedRect.x - workspaceBounds.x,
+          y: selectedRect.y - workspaceBounds.y,
+          width: selectedRect.width,
+          height: selectedRect.height,
+        }
+      : null;
+  const rubberbandRect =
+    rubberband && workspaceBounds
+      ? {
+          x: Math.min(rubberband.start.x, rubberband.current.x) - workspaceBounds.x,
+          y: Math.min(rubberband.start.y, rubberband.current.y) - workspaceBounds.y,
+          width: Math.abs(rubberband.current.x - rubberband.start.x),
+          height: Math.abs(rubberband.current.y - rubberband.start.y),
+        }
+      : null;
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background text-foreground">
@@ -204,12 +364,10 @@ export function CanvasWorkspaceEditor({
             <main
               ref={workspaceRef}
               className="relative min-h-0 flex-1 overscroll-none overflow-hidden bg-muted/20 outline-none"
-              aria-label="Canvas workspace"
-              tabIndex={0}
-              onPointerDown={beginCameraDrag}
-              onPointerMove={moveCameraDrag}
-              onPointerUp={endCameraDrag}
-              onPointerCancel={endCameraDrag}
+              onPointerDown={beginWorkspaceInteraction}
+              onPointerMove={moveWorkspaceInteraction}
+              onPointerUp={endWorkspaceInteraction}
+              onPointerCancel={endWorkspaceInteraction}
               onWheel={handleWheel}
             >
               <div
@@ -222,9 +380,10 @@ export function CanvasWorkspaceEditor({
                 {ordered.map((artboard) => {
                   const size = canvasArtboardSize(artboard);
                   return (
-                    <section
+                    <button
+                      type="button"
                       key={artboard.artId}
-                      className="pointer-events-auto absolute cursor-pointer rounded-lg border border-border bg-background shadow-xl data-[focused=true]:border-primary data-[focused=true]:ring-2 data-[focused=true]:ring-primary/35"
+                      className="pointer-events-auto absolute cursor-pointer rounded-lg border border-border bg-background text-left shadow-xl data-[focused=true]:border-primary data-[focused=true]:ring-2 data-[focused=true]:ring-primary/35"
                       data-artboard-id={artboard.artId}
                       data-canvas-id={artboard.canvasId}
                       data-artboard-kind={artboard.kind}
@@ -236,6 +395,7 @@ export function CanvasWorkspaceEditor({
                         width: size.width,
                       }}
                       aria-label={artboardLabel(artboard)}
+                      onPointerDown={(event) => selectAtPoint(event, artboard)}
                       onClick={() => onFocusArtboard(artboard.artId)}
                     >
                       <div
@@ -258,10 +418,65 @@ export function CanvasWorkspaceEditor({
                       >
                         <CanvasRenderer canvas={artboard.canvas} />
                       </div>
-                    </section>
+                    </button>
                   );
                 })}
               </div>
+              <svg
+                className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
+                style={{ color: "var(--muted-foreground)" }}
+                aria-hidden="true"
+                data-selection-overlay
+              >
+                {overlayRect ? (
+                  <>
+                    <rect
+                      x={overlayRect.x}
+                      y={overlayRect.y}
+                      width={overlayRect.width}
+                      height={overlayRect.height}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeDasharray="6 4"
+                      strokeWidth="1"
+                      data-selection-rect
+                      vectorEffect="non-scaling-stroke"
+                    />
+                    {selection.elementIds.length > 0 &&
+                      [
+                        [overlayRect.x, overlayRect.y],
+                        [overlayRect.x + overlayRect.width, overlayRect.y],
+                        [overlayRect.x, overlayRect.y + overlayRect.height],
+                        [overlayRect.x + overlayRect.width, overlayRect.y + overlayRect.height],
+                      ].map(([x, y]) => (
+                        <circle
+                          key={`${x}:${y}`}
+                          cx={x}
+                          cy={y}
+                          r="4"
+                          fill="white"
+                          stroke="currentColor"
+                          strokeWidth="1"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      ))}
+                  </>
+                ) : null}
+                {rubberbandRect ? (
+                  <rect
+                    x={rubberbandRect.x}
+                    y={rubberbandRect.y}
+                    width={rubberbandRect.width}
+                    height={rubberbandRect.height}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeDasharray="6 4"
+                    strokeWidth="1"
+                    vectorEffect="non-scaling-stroke"
+                    data-rubberband
+                  />
+                ) : null}
+              </svg>
             </main>
             <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center">
               <div
