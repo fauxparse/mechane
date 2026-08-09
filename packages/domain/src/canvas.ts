@@ -109,6 +109,7 @@ export interface ElementBase {
   aspectRatio?: AspectRatioLock;
   opacity?: number;
   blendMode?: BlendMode;
+  alignSelf?: LayoutAlignment;
   fill?: Fill;
   anchor?: AnchorPosition;
   children?: readonly Element[];
