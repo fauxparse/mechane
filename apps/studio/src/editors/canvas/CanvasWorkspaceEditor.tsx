@@ -479,7 +479,12 @@ export function CanvasWorkspaceEditor({
   const beginDrag = (event: PointerEvent<HTMLElement>, artboard: CanvasArtboardDocument) => {
     event.stopPropagation();
     if (event.button !== 0) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
+    // Best effort, as elsewhere: a capture that cannot be taken must not stop the drag.
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // No capture; the handlers still see the drag while it stays inside.
+    }
     setDrag({
       artId: artboard.artId,
       canvasId: artboard.canvasId,
@@ -991,7 +996,13 @@ export function CanvasWorkspaceEditor({
   // by the workspace and the artboards rather than living on the workspace alone.
   const beginRubberband = (event: PointerEvent<HTMLElement>, artId: string | null = null) => {
     if (event.button !== 0) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
+    // Best effort, as for a resize: capture throws for a pointer that is no longer active, and
+    // losing it only costs tracking outside the element — the band itself must still start.
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // No capture; the handlers still see the drag while it stays inside.
+    }
     setRubberband({
       pointerId: event.pointerId,
       start: { x: event.clientX, y: event.clientY },
@@ -1433,6 +1444,16 @@ export function CanvasWorkspaceEditor({
                           beginCreation(event, artboard);
                           return;
                         }
+                        // The body being a drag handle costs the band its usual start, so Cmd
+                        // (Ctrl elsewhere) asks for a band instead — over Elements too, which is
+                        // the point of banding inside an artboard.
+                        if (event.metaKey || event.ctrlKey) {
+                          event.stopPropagation();
+                          onFocusArtboard(artboard.artId);
+                          setSelection({ artId: artboard.artId, elementIds: [] });
+                          beginRubberband(event, artboard.artId);
+                          return;
+                        }
                         if (beginElementDrag(event, artboard)) return;
                         // Empty Canvas is the Canvas itself: pressing it selects the artboard and
                         // grabs it, so the body is a drag handle wherever no Element is in the way.
@@ -1441,16 +1462,19 @@ export function CanvasWorkspaceEditor({
                       }}
                       onPointerMove={(event) => {
                         updateElementDrag(event);
+                        updateRubberband(event);
                         moveDrag(event, artboard);
                         moveCreation(event);
                       }}
                       onPointerUp={(event) => {
                         finishElementDrag(event);
+                        endRubberband(event);
                         endDrag(event);
                         finishCreation(event);
                       }}
                       onPointerCancel={(event) => {
                         finishElementDrag(event, true);
+                        endRubberband(event);
                         endDrag(event, true);
                         finishCreation(event, true);
                       }}
