@@ -409,6 +409,7 @@ export function CanvasWorkspaceEditor({
   } | null>(null);
   const clearOffsetAfterRemeasure = useRef(false);
   const clearResizeAfterRemeasure = useRef(false);
+  const resizeCommitted = useRef(false);
   // Resize runs on the same principle as the drag: one piece of state feeds both the Element's
   // preview styles and the overlay, so the handles never drift off the shape they are sizing.
   const resizeGesture = useRef<ResizeGesture | null>(null);
@@ -705,8 +706,14 @@ export function CanvasWorkspaceEditor({
     const parentBox = parentInfo ? measured?.elements.get(parentInfo.parentId) : undefined;
     event.stopPropagation();
     // Capture on the workspace, not the handle: the move and release handlers live there, and a
-    // capture held by the handle would never be released by them.
-    workspaceRef.current?.setPointerCapture(event.pointerId);
+    // capture held by the handle would never be released by them. Capture is best effort — it
+    // throws for a pointer that is no longer active, and losing it only costs tracking outside
+    // the workspace, so it must not take the gesture down with it.
+    try {
+      workspaceRef.current?.setPointerCapture(event.pointerId);
+    } catch {
+      // No capture; the workspace's own handlers still see the drag while it stays inside.
+    }
     const start = { x: box.x, y: box.y, width: box.width, height: box.height };
     resizeGesture.current = {
       artId: artboard.artId,
@@ -771,6 +778,9 @@ export function CanvasWorkspaceEditor({
     // An edge drag deliberately changes one axis, which is exactly what an aspect lock forbids.
     const unset = isCornerHandle(gesture.handle) ? [] : ["aspectRatio"];
     onUpdateElement?.(gesture.canvasId, gesture.elementId, properties, unset);
+    // The commit re-renders the Element at the size just previewed, so the override must be
+    // abandoned rather than unwound.
+    resizeCommitted.current = true;
     clearResizeAfterRemeasure.current = true;
     setResizeDraft((current) => (current ? { ...current, active: false } : null));
   };
@@ -790,9 +800,10 @@ export function CanvasWorkspaceEditor({
     );
     if (!node) return;
     const { box, start } = resizeDraft;
-    // Restore rather than remove: width and height come from the renderer's React-managed style,
-    // and React will not re-apply a property deleted behind its back — its virtual style still
-    // says the value is there, so the Element would be left sizing itself to nothing.
+    // Width and height belong to the renderer's React-managed style, which makes both obvious
+    // cleanups wrong: removing them leaves React believing a value it no longer has, and
+    // restoring the pre-drag value clobbers the size React just wrote from the commit. So the
+    // override is only unwound when the resize was abandoned and React has nothing new to say.
     const previous = {
       width: node.style.width,
       height: node.style.height,
@@ -802,9 +813,13 @@ export function CanvasWorkspaceEditor({
     node.style.height = `${box.height / camera.zoom}px`;
     node.style.translate = `${(box.x - start.x) / camera.zoom}px ${(box.y - start.y) / camera.zoom}px`;
     return () => {
-      node.style.width = previous.width;
-      node.style.height = previous.height;
+      // Position comes back from the model's anchor, so the preview translate always goes.
       node.style.translate = previous.translate;
+      if (!resizeCommitted.current) {
+        node.style.width = previous.width;
+        node.style.height = previous.height;
+      }
+      resizeCommitted.current = false;
     };
   }, [resizeDraft, camera.zoom, workspaceRef]);
 
