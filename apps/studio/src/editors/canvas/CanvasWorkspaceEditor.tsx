@@ -39,7 +39,7 @@ import { containingFrame, rankForInsertion } from "./canvas-creation";
 import type { CanvasCreationTool } from "./canvas-creation";
 import { canvasElementParent, findCanvasElement } from "@mechane/commands";
 import type { CanvasClientRect } from "./canvas-geometry";
-import type { FrameElement } from "@mechane/domain";
+import type { Element as CanvasElement, FrameElement } from "@mechane/domain";
 import { canvasKeyboardIntent, nudgeAnchor } from "./canvas-keyboard";
 import { focusContext } from "../show/keyboard/focus-context";
 
@@ -140,7 +140,7 @@ function CanvasLayers({
 }) {
   const [query, setQuery] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
-  const renderTree = (element: Element, depth: number): React.ReactNode => {
+  const renderTree = (element: CanvasElement, depth: number): React.ReactNode => {
     const active = selection.artId === focused?.artId && selection.elementIds.includes(element.id);
     return (
       <div key={element.id}>
