@@ -310,6 +310,7 @@ interface Element {
   opacity: Float
   blendMode: String
   fill: JSON
+  anchor: JSON
   children: [Element!]!
 }
 
@@ -331,6 +332,7 @@ type RectElement implements Element {
   opacity: Float
   blendMode: String
   fill: JSON
+  anchor: JSON
   children: [Element!]!
   cornerRadius: Float
 }
@@ -353,6 +355,7 @@ type TextElement implements Element {
   opacity: Float
   blendMode: String
   fill: JSON
+  anchor: JSON
   children: [Element!]!
   content: String
   text: String
@@ -383,6 +386,7 @@ type ImageElement implements Element {
   opacity: Float
   blendMode: String
   fill: JSON
+  anchor: JSON
   children: [Element!]!
   src: String
   image: String
@@ -409,6 +413,7 @@ type FrameElement implements Element {
   opacity: Float
   blendMode: String
   fill: JSON
+  anchor: JSON
   children: [Element!]!
   layoutMode: String
   mode: String

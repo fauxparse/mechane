@@ -433,6 +433,7 @@ export const schema = createSchema<GraphQLContext>({
       opacity: Float
       blendMode: String
       fill: JSON
+      anchor: JSON
       children: [Element!]!
     }
 
@@ -454,6 +455,7 @@ export const schema = createSchema<GraphQLContext>({
       opacity: Float
       blendMode: String
       fill: JSON
+      anchor: JSON
       children: [Element!]!
       cornerRadius: Float
     }
@@ -476,6 +478,7 @@ export const schema = createSchema<GraphQLContext>({
       opacity: Float
       blendMode: String
       fill: JSON
+      anchor: JSON
       children: [Element!]!
       content: String
       text: String
@@ -506,6 +509,7 @@ export const schema = createSchema<GraphQLContext>({
       opacity: Float
       blendMode: String
       fill: JSON
+      anchor: JSON
       children: [Element!]!
       src: String
       image: String
@@ -532,6 +536,7 @@ export const schema = createSchema<GraphQLContext>({
       opacity: Float
       blendMode: String
       fill: JSON
+      anchor: JSON
       children: [Element!]!
       layoutMode: String
       mode: String
