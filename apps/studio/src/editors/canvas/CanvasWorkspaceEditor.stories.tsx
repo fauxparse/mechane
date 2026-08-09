@@ -98,6 +98,16 @@ export const CreationToolCancellation: Story = {
     onCreateElement: noOp,
   },
 };
+export const DragAcrossLayoutParents: Story = {
+  args: {
+    onMoveElement: (canvasId, elementId, parentId, rank) =>
+      console.info("move canvas element", { canvasId, elementId, parentId, rank }),
+  },
+};
+
+export const InvalidDragTargets: Story = {
+  args: { onMoveElement: noOp },
+};
 
 export const FocusedBlockDeepLink: Story = {
   args: { focusedArtId: "block-card" },

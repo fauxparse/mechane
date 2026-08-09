@@ -6,6 +6,7 @@ import {
   applyCanvasWorkspaceEdits,
   coalesceCanvasWorkspaceEdits,
   moveCanvasArtboard,
+  moveCanvasElement,
   reparentCanvasElement,
   removeCanvasElement,
   updateCanvasElement,
@@ -93,6 +94,21 @@ describe("Canvas workspace commands", () => {
       "nested",
       "container",
     ]);
+    stack.undo();
+    expect(stored(stack.state)).toEqual(stored(workspace));
+  });
+  it("moves and updates an Element as one undoable command", () => {
+    const stack = new CommandStack<CanvasWorkspace>({ state: workspace });
+    stack.execute(
+      moveCanvasElement("scene_a", "nested", "root", "aa", {
+        anchor: { horizontal: "left", vertical: "top", offsetX: 12, offsetY: 18 },
+      }),
+    );
+    expect(stack.depth).toBe(1);
+    expect(stack.state.artboards[0]?.canvas.root.children?.[1]).toMatchObject({
+      id: "nested",
+      anchor: { offsetX: 12, offsetY: 18 },
+    });
     stack.undo();
     expect(stored(stack.state)).toEqual(stored(workspace));
   });

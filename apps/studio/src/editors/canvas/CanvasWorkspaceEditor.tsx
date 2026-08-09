@@ -1,6 +1,6 @@
 import { Box, Layers3, Minus, PanelLeft, Plus, RotateCcw, SlidersHorizontal } from "lucide-react";
 import type { PointerEvent } from "react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import {
   Button,
@@ -37,6 +37,7 @@ import {
 import type { CanvasSelection } from "./canvas-selection";
 import { containingFrame, rankForInsertion } from "./canvas-creation";
 import type { CanvasCreationTool } from "./canvas-creation";
+import type { CanvasClientRect } from "./canvas-geometry";
 
 export interface CanvasWorkspaceEditorProps {
   artboards: readonly CanvasArtboardDocument[];
@@ -49,14 +50,28 @@ export interface CanvasWorkspaceEditorProps {
   selectedElementIds?: readonly string[];
   onSelectionChange?(selection: CanvasSelection): void;
   initialCamera?: CanvasCamera;
-  onCreateElement?(
+  onCreateElement?(canvasId: string, element: NewElement, parentId: string, rank: string): void;
+  onMoveElement?(
     canvasId: string,
-    element: NewElement,
+    elementId: string,
     parentId: string,
     rank: string,
+    properties?: Record<string, unknown>,
+    unsetProperties?: readonly string[],
   ): void;
   initialLayersOpen?: boolean;
   initialInspectorOpen?: boolean;
+}
+function measuredRect(element: HTMLElement): CanvasClientRect {
+  const rect = element.getBoundingClientRect();
+  return {
+    x: rect.x,
+    y: rect.y,
+    width: rect.width,
+    height: rect.height,
+    right: rect.right,
+    bottom: rect.bottom,
+  };
 }
 
 function artboardLabel(artboard: CanvasArtboardDocument): string {
@@ -85,6 +100,21 @@ type CreationDraft = {
   start: { x: number; y: number };
   current: { x: number; y: number };
 };
+type ElementDragState = {
+  artId: string;
+  canvasId: string;
+  elementId: string;
+  pointerId: number;
+  start: { x: number; y: number };
+  origin: { x: number; y: number };
+};
+
+type DragPreview = {
+  parentId: string;
+  rank: string;
+  line: { x: number; y: number; width: number; height: number };
+  auto: boolean;
+};
 
 // The editor owns camera, selection, overlays, and the two sidebars as one interaction surface.
 // react-doctor-disable-next-line react-doctor/no-giant-component
@@ -99,6 +129,7 @@ export function CanvasWorkspaceEditor({
   selectedElementIds,
   onSelectionChange,
   onCreateElement,
+  onMoveElement,
   initialCamera,
   initialLayersOpen,
   initialInspectorOpen,
@@ -118,6 +149,9 @@ export function CanvasWorkspaceEditor({
   const [drag, setDrag] = useState<DragState | null>(null);
   const [tool, setTool] = useState<CanvasCreationTool>("select");
   const [creationDraft, setCreationDraft] = useState<CreationDraft | null>(null);
+  const elementDrag = useRef<ElementDragState | null>(null);
+  const dragPreviewRef = useRef<DragPreview | null>(null);
+  const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
   const [localSelection, setLocalSelection] = useState<CanvasSelection>({
     artId: null,
     elementIds: [],
@@ -182,6 +216,170 @@ export function CanvasWorkspaceEditor({
     onEndMoveArtboard(drag.canvasId, cancel);
     setDrag(null);
   };
+  const beginElementDrag = (
+    event: PointerEvent<HTMLElement>,
+    artboard: CanvasArtboardDocument,
+  ): boolean => {
+    if (tool !== "select" || event.button !== 0) return false;
+    const element = topmostPaintedElementAtPoint(event.currentTarget, event.clientX, event.clientY);
+    const elementId = element?.dataset.elementId;
+    if (!elementId) return false;
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const rect = measuredRect(element);
+    elementDrag.current = {
+      artId: artboard.artId,
+      canvasId: artboard.canvasId,
+      elementId,
+      pointerId: event.pointerId,
+      start: { x: event.clientX, y: event.clientY },
+      origin: { x: rect.x, y: rect.y },
+    };
+    dragPreviewRef.current = null;
+    setDragPreview(null);
+    onFocusArtboard(artboard.artId);
+    return true;
+  };
+
+  const updateElementDrag = (event: PointerEvent<HTMLElement>) => {
+    const activeDrag = elementDrag.current;
+    if (!activeDrag || activeDrag.pointerId !== event.pointerId) return;
+    const dx = event.clientX - activeDrag.start.x;
+    const dy = event.clientY - activeDrag.start.y;
+    const element = [
+      ...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-id]"),
+    ].find((candidate) => candidate.dataset.elementId === activeDrag.elementId);
+    if (!element) return;
+    element.style.setProperty("translate", `${dx}px ${dy}px`);
+    const draggedNode = element;
+    const foreignArtboard = document
+      .elementsFromPoint(event.clientX, event.clientY)
+      .find((candidate) => candidate instanceof HTMLElement && candidate.dataset.artboardId) as
+      | HTMLElement
+      | undefined;
+    if (foreignArtboard && foreignArtboard !== event.currentTarget) {
+      dragPreviewRef.current = null;
+      setDragPreview(null);
+      return;
+    }
+    const frames: { node: HTMLElement; rect: CanvasClientRect }[] = [];
+    for (const frame of event.currentTarget.querySelectorAll<HTMLElement>(
+      "[data-element-type='frame']",
+    )) {
+      if (draggedNode.contains(frame)) continue;
+      const rect = measuredRect(frame);
+      if (
+        event.clientX >= rect.x &&
+        event.clientX <= rect.right &&
+        event.clientY >= rect.y &&
+        event.clientY <= rect.bottom
+      ) {
+        frames.push({ node: frame, rect });
+      }
+    }
+    frames.sort(
+      (left, right) => left.rect.width * left.rect.height - right.rect.width * right.rect.height,
+    );
+    const parent = frames[0];
+    if (!parent) {
+      dragPreviewRef.current = null;
+      setDragPreview(null);
+      return;
+    }
+    const auto = getComputedStyle(parent.node).display === "flex";
+    const children: HTMLElement[] = [];
+    for (const child of event.currentTarget.querySelectorAll<HTMLElement>(
+      "[data-element-parent-id]",
+    )) {
+      if (
+        child.dataset.elementParentId === parent.node.dataset.elementId &&
+        child !== draggedNode
+      ) {
+        children.push(child);
+      }
+    }
+    const flexDirection = getComputedStyle(parent.node).flexDirection;
+    children.sort((left, right) => {
+      const axis = flexDirection === "row" ? "x" : "y";
+      return measuredRect(left)[axis] - measuredRect(right)[axis];
+    });
+    const axis = getComputedStyle(parent.node).flexDirection === "row" ? "x" : "y";
+    const pointerOnAxis = axis === "x" ? event.clientX : event.clientY;
+    const insertionIndex = children.findIndex((child) => {
+      const rect = measuredRect(child);
+      return (axis === "x" ? rect.x + rect.width / 2 : rect.y + rect.height / 2) > pointerOnAxis;
+    });
+    const rank = rankForInsertion(
+      children.map((child) => child.dataset.elementRank ?? ""),
+      insertionIndex < 0 ? children.length : insertionIndex,
+    );
+    const line = auto
+      ? axis === "x"
+        ? {
+            x: insertionIndex < 0 ? parent.rect.right : measuredRect(children[insertionIndex]!).x,
+            y: parent.rect.y,
+            width: 2,
+            height: parent.rect.height,
+          }
+        : {
+            x: parent.rect.x,
+            y: insertionIndex < 0 ? parent.rect.bottom : measuredRect(children[insertionIndex]!).y,
+            width: parent.rect.width,
+            height: 2,
+          }
+      : {
+          x: parent.rect.x,
+          y: parent.rect.y,
+          width: parent.rect.width,
+          height: parent.rect.height,
+        };
+    const nextPreview = { parentId: parent.node.dataset.elementId ?? "", rank, line, auto };
+    dragPreviewRef.current = nextPreview;
+    setDragPreview(nextPreview);
+  };
+
+  const finishElementDrag = (event: PointerEvent<HTMLElement>, cancel = false) => {
+    const activeDrag = elementDrag.current;
+    const preview = dragPreviewRef.current;
+    if (!activeDrag || activeDrag.pointerId !== event.pointerId) return;
+    const element = [
+      ...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-id]"),
+    ].find((candidate) => candidate.dataset.elementId === activeDrag.elementId);
+    if (element) {
+      element.style.removeProperty("translate");
+      if (!cancel && preview?.parentId) {
+        const parent = [
+          ...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-id]"),
+        ].find((candidate) => candidate.dataset.elementId === preview.parentId);
+        const properties = preview.auto
+          ? {}
+          : {
+              anchor: {
+                horizontal: "left" as const,
+                vertical: "top" as const,
+                offsetX:
+                  (measuredRect(element).x - (parent ? measuredRect(parent).x : 0)) / camera.zoom,
+                offsetY:
+                  (measuredRect(element).y - (parent ? measuredRect(parent).y : 0)) / camera.zoom,
+              },
+            };
+        onMoveElement?.(
+          activeDrag.canvasId,
+          activeDrag.elementId,
+          preview.parentId,
+          preview.rank,
+          properties,
+          preview.auto ? ["anchor"] : [],
+        );
+      }
+    }
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    elementDrag.current = null;
+    dragPreviewRef.current = null;
+    setDragPreview(null);
+  };
   const beginWorkspaceInteraction = (event: PointerEvent<HTMLElement>) => {
     beginCameraDrag(event);
     if (event.button !== 0 || event.target !== event.currentTarget) return;
@@ -243,10 +441,7 @@ export function CanvasWorkspaceEditor({
     }
     setRubberband(null);
   };
-  const beginCreation = (
-    event: PointerEvent<HTMLElement>,
-    artboard: CanvasArtboardDocument,
-  ) => {
+  const beginCreation = (event: PointerEvent<HTMLElement>, artboard: CanvasArtboardDocument) => {
     if (tool === "select" || event.button !== 0) return;
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -292,48 +487,54 @@ export function CanvasWorkspaceEditor({
     if (rect.width < 4 || rect.height < 4) return;
     const root = event.currentTarget.querySelector<HTMLElement>("[data-canvas-root]");
     if (!root) return;
-    const frames = [...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-type='frame']")]
-      .flatMap((frame) => {
-        const id = frame.dataset.elementId;
-        if (!id) return [];
-        const measured = frame.getBoundingClientRect();
-        return [
-          {
-            id,
-            rect: {
-              x: measured.x,
-              y: measured.y,
-              width: measured.width,
-              height: measured.height,
-              right: measured.right,
-              bottom: measured.bottom,
-            },
+    const frames = [
+      ...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-type='frame']"),
+    ].flatMap((frame) => {
+      const id = frame.dataset.elementId;
+      if (!id) return [];
+      const measured = frame.getBoundingClientRect();
+      return [
+        {
+          id,
+          rect: {
+            x: measured.x,
+            y: measured.y,
+            width: measured.width,
+            height: measured.height,
+            right: measured.right,
+            bottom: measured.bottom,
           },
-        ];
-      });
+        },
+      ];
+    });
     const parentId = containingFrame(frames, rect) ?? root.dataset.elementId;
     if (!parentId) return;
     const parent = frames.find((frame) => frame.id === parentId);
     if (!parent) return;
-    const parentNode = [...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-id]")].find(
-      (element) => element.dataset.elementId === parentId,
-    );
+    const parentNode = [
+      ...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-id]"),
+    ].find((element) => element.dataset.elementId === parentId);
     const parentRect = parent.rect;
-    const parentIsAuto = parentNode
-      ? getComputedStyle(parentNode).display === "flex"
-      : false;
-    const children = [...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-parent-id]")]
+    const parentIsAuto = parentNode ? getComputedStyle(parentNode).display === "flex" : false;
+    const children = [
+      ...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-parent-id]"),
+    ]
       .filter((element) => element.dataset.elementParentId === parentId)
       .sort((left, right) => {
-        const axis = parentIsAuto && getComputedStyle(parentNode!).flexDirection === "row" ? "x" : "y";
+        const axis =
+          parentIsAuto && getComputedStyle(parentNode!).flexDirection === "row" ? "x" : "y";
         return left.getBoundingClientRect()[axis] - right.getBoundingClientRect()[axis];
       });
     const axis =
-      parentIsAuto && parentNode && getComputedStyle(parentNode).flexDirection === "row" ? "x" : "y";
+      parentIsAuto && parentNode && getComputedStyle(parentNode).flexDirection === "row"
+        ? "x"
+        : "y";
     const center = axis === "x" ? (rect.x + rect.right) / 2 : (rect.y + rect.bottom) / 2;
     const insertionIndex = children.findIndex((child) => {
       const measured = child.getBoundingClientRect();
-      return (axis === "x" ? measured.x + measured.width / 2 : measured.y + measured.height / 2) > center;
+      return (
+        (axis === "x" ? measured.x + measured.width / 2 : measured.y + measured.height / 2) > center
+      );
     });
     const rank = rankForInsertion(
       children.map((child) => child.dataset.elementRank ?? ""),
@@ -422,6 +623,15 @@ export function CanvasWorkspaceEditor({
           y: Math.min(creationDraft.start.y, creationDraft.current.y) - workspaceBounds.y,
           width: Math.abs(creationDraft.current.x - creationDraft.start.x),
           height: Math.abs(creationDraft.current.y - creationDraft.start.y),
+        }
+      : null;
+  const dragLine =
+    dragPreview && workspaceBounds
+      ? {
+          x: dragPreview.line.x - workspaceBounds.x,
+          y: dragPreview.line.y - workspaceBounds.y,
+          width: dragPreview.line.width,
+          height: dragPreview.line.height,
         }
       : null;
   const rubberbandRect =
@@ -576,14 +786,25 @@ export function CanvasWorkspaceEditor({
                         width: size.width,
                       }}
                       aria-label={artboardLabel(artboard)}
-                      onPointerDown={(event) =>
-                        tool === "select"
-                          ? selectAtPoint(event, artboard)
-                          : beginCreation(event, artboard)
-                      }
-                      onPointerMove={moveCreation}
-                      onPointerUp={finishCreation}
-                      onPointerCancel={(event) => finishCreation(event, true)}
+                      onPointerDown={(event) => {
+                        if (tool !== "select") {
+                          beginCreation(event, artboard);
+                          return;
+                        }
+                        if (!beginElementDrag(event, artboard)) selectAtPoint(event, artboard);
+                      }}
+                      onPointerMove={(event) => {
+                        updateElementDrag(event);
+                        moveCreation(event);
+                      }}
+                      onPointerUp={(event) => {
+                        finishElementDrag(event);
+                        finishCreation(event);
+                      }}
+                      onPointerCancel={(event) => {
+                        finishElementDrag(event, true);
+                        finishCreation(event, true);
+                      }}
                       onClick={() => onFocusArtboard(artboard.artId)}
                     >
                       <div
@@ -673,6 +894,20 @@ export function CanvasWorkspaceEditor({
                     strokeWidth="2"
                     vectorEffect="non-scaling-stroke"
                     data-creation-preview
+                  />
+                ) : null}
+                {dragLine ? (
+                  <rect
+                    x={dragLine.x}
+                    y={dragLine.y}
+                    width={dragLine.width}
+                    height={dragLine.height}
+                    fill="none"
+                    stroke="hsl(var(--primary))"
+                    strokeDasharray="4 3"
+                    strokeWidth="2"
+                    vectorEffect="non-scaling-stroke"
+                    data-drag-insertion
                   />
                 ) : null}
                 {rubberbandRect ? (

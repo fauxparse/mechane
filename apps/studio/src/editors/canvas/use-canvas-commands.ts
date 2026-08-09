@@ -4,7 +4,7 @@ import type {
   Gesture,
   NewElement,
 } from "@mechane/commands";
-import { addCanvasElement, CommandStack, moveCanvasArtboard } from "@mechane/commands";
+import { addCanvasElement, CommandStack, moveCanvasArtboard, moveCanvasElement } from "@mechane/commands";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Position } from "@mechane/domain";
 
@@ -25,6 +25,14 @@ export interface CanvasCommands {
   beginArtboardMove(canvasId: string): void;
   updateArtboardMove(canvasId: string, position: Position): void;
   endArtboardMove(canvasId: string, cancel?: boolean): void;
+  moveElement(
+    canvasId: string,
+    elementId: string,
+    parentId: string,
+    rank: string,
+    properties?: Record<string, unknown>,
+    unsetProperties?: readonly string[],
+  ): void;
   createElement(canvasId: string, element: NewElement, parentId: string, rank: string): void;
   undo(): void;
   redo(): void;
@@ -84,6 +92,23 @@ export function useCanvasCommands(
     [changed, stack],
   );
 
+  const moveElement = useCallback(
+    (
+      canvasId: string,
+      elementId: string,
+      parentId: string,
+      rank: string,
+      properties: Record<string, unknown> = {},
+      unsetProperties: readonly string[] = [],
+    ) => {
+      stack.execute(
+        moveCanvasElement(canvasId, elementId, parentId, rank, properties, unsetProperties),
+      );
+      changed();
+    },
+    [changed, stack],
+  );
+
   const updateArtboardMove = useCallback(
     (canvasId: string, position: Position) => {
       const gesture = gestures.current.get(canvasId);
@@ -121,6 +146,7 @@ export function useCanvasCommands(
     beginArtboardMove,
     updateArtboardMove,
     endArtboardMove,
+    moveElement,
     createElement,
     undo,
     redo,

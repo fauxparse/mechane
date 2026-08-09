@@ -6,7 +6,7 @@ import {
   applyCanvasEdits,
 } from "./canvas-edits";
 import type { CanvasEdit, ElementProperties, NewElement } from "./canvas-edits";
-import { capturing } from "./command";
+import { capturing, composite } from "./command";
 import type { Command } from "./command";
 
 /** One editable Canvas and its persisted position in the Show Canvas workspace. */
@@ -246,6 +246,27 @@ export function reparentCanvasElement(
       applyWorkspaceEdit(workspace, targetEdit(canvasId, captured.edit)),
     edits: [targetEdit(canvasId, edit)],
     restoreEdits: (captured) => [targetEdit(canvasId, captured.edit)],
+  });
+}
+export function moveCanvasElement(
+  canvasId: string,
+  elementId: string,
+  parentId: string,
+  rank: string,
+  properties: ElementProperties = {},
+  unsetProperties: readonly string[] = [],
+): CanvasWorkspaceCommand {
+  const commands: Command<CanvasWorkspace, CanvasWorkspaceEdit>[] = [
+    reparentCanvasElement(canvasId, elementId, parentId, rank),
+  ];
+  if (Object.keys(properties).length > 0 || unsetProperties.length > 0) {
+    commands.push(updateCanvasElement(canvasId, elementId, properties, unsetProperties));
+  }
+  return composite<CanvasWorkspace, CanvasWorkspaceEdit>({
+    type: "canvas.moveElement",
+    label: "Move Element",
+    scope: "selection",
+    commands,
   });
 }
 
