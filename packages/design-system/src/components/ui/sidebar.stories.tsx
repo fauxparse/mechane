@@ -78,3 +78,8 @@ export const IndependentPanels: Story = {
     </div>
   ),
 };
+
+export const BothPanelsCollapsed: Story = {
+  args: { defaultOpen: false },
+  render: IndependentPanels.render,
+};

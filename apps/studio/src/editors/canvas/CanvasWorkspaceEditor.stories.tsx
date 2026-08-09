@@ -47,6 +47,13 @@ const meta: Meta<typeof CanvasWorkspaceEditor> = {
   title: "studio/CanvasWorkspaceEditor",
   component: CanvasWorkspaceEditor,
   parameters: { layout: "fullscreen" },
+  decorators: [
+    (Story) => (
+      <div className="h-screen w-screen">
+        <Story />
+      </div>
+    ),
+  ],
   args: {
     artboards,
     focusedArtId: "scene-lobby",
@@ -85,6 +92,23 @@ export const ZoomedOutWorkspace: Story = {
 
 export const ZoomedInWorkspace: Story = {
   args: { initialCamera: { x: -220, y: -120, zoom: 1.75 } },
+};
+
+export const LayersCollapsed: Story = {
+  args: { initialLayersOpen: false },
+};
+
+export const InspectorCollapsed: Story = {
+  args: { initialInspectorOpen: false },
+};
+
+export const BothSidebarsCollapsed: Story = {
+  args: { initialLayersOpen: false, initialInspectorOpen: false },
+};
+
+export const NarrowMainPanel: Story = {
+  parameters: { viewport: { defaultViewport: "mobile1" } },
+  args: { initialLayersOpen: true, initialInspectorOpen: true },
 };
 
 export const ManyArtboards: Story = {
