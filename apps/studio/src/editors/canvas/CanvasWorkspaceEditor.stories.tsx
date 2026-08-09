@@ -209,6 +209,13 @@ export const LayersSearchAndNestedTree: Story = {
     onUpdateElement: noOp,
   },
 };
+export const InspectorControls: Story = {
+  args: {
+    selectedArtId: "scene-lobby",
+    selectedElementIds: ["Lobby-title"],
+    onUpdateElement: noOp,
+  },
+};
 
 export const FocusedBlockDeepLink: Story = {
   args: { focusedArtId: "block-card" },
