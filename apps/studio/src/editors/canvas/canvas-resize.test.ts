@@ -8,6 +8,7 @@ import {
   isCornerHandle,
   lockedAspectRatio,
   resizeBox,
+  scaleWithin,
 } from "./canvas-resize";
 
 const start = { x: 100, y: 200, width: 80, height: 40 };
@@ -86,6 +87,53 @@ describe("Canvas resize geometry", () => {
       width: 120,
       height: 40,
     });
+  });
+});
+
+describe("Canvas multi-selection scaling", () => {
+  const from = { x: 0, y: 0, width: 100, height: 100 };
+
+  it("keeps an Element's relative place and proportion in the selection", () => {
+    const to = { x: 0, y: 0, width: 200, height: 50 };
+    expect(scaleWithin({ x: 50, y: 50, width: 10, height: 10 }, from, to)).toEqual({
+      x: 100,
+      y: 25,
+      width: 20,
+      height: 5,
+    });
+  });
+
+  it("carries Elements along when the selection box moves", () => {
+    const to = { x: 30, y: 40, width: 100, height: 100 };
+    expect(scaleWithin({ x: 10, y: 10, width: 20, height: 20 }, from, to)).toEqual({
+      x: 40,
+      y: 50,
+      width: 20,
+      height: 20,
+    });
+  });
+
+  it("leaves an Element whole when the selection is unchanged", () => {
+    const box = { x: 10, y: 20, width: 30, height: 40 };
+    expect(scaleWithin(box, from, from)).toEqual(box);
+  });
+
+  it("never scales an Element below the minimum", () => {
+    const to = { x: 0, y: 0, width: 1, height: 1 };
+    const scaled = scaleWithin({ x: 0, y: 0, width: 10, height: 10 }, from, to);
+    expect(scaled.width).toBe(1);
+    expect(scaled.height).toBe(1);
+  });
+
+  it("survives a selection box with no extent", () => {
+    const flat = { x: 5, y: 5, width: 0, height: 0 };
+    const scaled = scaleWithin({ x: 5, y: 5, width: 4, height: 4 }, flat, {
+      x: 9,
+      y: 9,
+      width: 0,
+      height: 0,
+    });
+    expect(scaled).toEqual({ x: 9, y: 9, width: 4, height: 4 });
   });
 });
 

@@ -42,6 +42,22 @@ export function lockedAspectRatio(element: Element | null | undefined): number |
 }
 
 /**
+ * Where a box inside `from` lands once `from` has been resized into `to`. Resizing a
+ * multi-selection is this applied to each Element: the selection box is what the handle drags,
+ * and everything inside keeps its relative place and proportion within it.
+ */
+export function scaleWithin(box: ResizeBox, from: ResizeBox, to: ResizeBox): ResizeBox {
+  const scaleX = from.width > 0 ? to.width / from.width : 1;
+  const scaleY = from.height > 0 ? to.height / from.height : 1;
+  return {
+    x: to.x + (box.x - from.x) * scaleX,
+    y: to.y + (box.y - from.y) * scaleY,
+    width: Math.max(MIN_ELEMENT_SIZE, box.width * scaleX),
+    height: Math.max(MIN_ELEMENT_SIZE, box.height * scaleY),
+  };
+}
+
+/**
  * The box a resize drag asks for. The edge opposite the handle is what stays put, which is what
  * makes dragging the west edge grow the Element leftwards rather than move it.
  */

@@ -1,6 +1,6 @@
 import { Box, Layers3, Minus, PanelLeft, Plus, RotateCcw, SlidersHorizontal } from "lucide-react";
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent } from "react";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import {
   Button,
@@ -53,6 +53,7 @@ import {
   lockedAspectRatio,
   resizeBox,
   RESIZE_HANDLES,
+  scaleWithin,
 } from "./canvas-resize";
 import type { ResizeBox, ResizeHandle } from "./canvas-resize";
 import { CanvasInspector } from "./CanvasInspector";
@@ -82,6 +83,7 @@ export interface CanvasWorkspaceEditorProps {
     properties: Record<string, unknown>,
     unsetProperties?: readonly string[],
   ): void;
+  onDeleteElements?(canvasId: string, elementIds: readonly string[]): void;
   initialLayersOpen?: boolean;
   initialInspectorOpen?: boolean;
 }
@@ -142,19 +144,27 @@ type ElementDragState = {
 /** Big enough to grab at any zoom, small enough not to swamp a small Element. */
 const HANDLE_SIZE = 8;
 
-type ResizeGesture = {
-  artId: string;
-  canvasId: string;
+/** One Element caught up in a resize, with everything needed to place it again afterwards. */
+type ResizeSubject = {
   elementId: string;
-  handle: ResizeHandle;
-  pointerId: number;
-  pointerStart: { x: number; y: number };
   /** Screen-space box the Element occupied when the handle was grabbed. */
   start: ResizeBox;
   /** Screen-space box of the parent, so an absolute anchor can be expressed relative to it. */
   parent: ResizeBox | null;
-  ratio: number | null;
   autoParent: boolean;
+};
+
+type ResizeGesture = {
+  artId: string;
+  canvasId: string;
+  handle: ResizeHandle;
+  pointerId: number;
+  pointerStart: { x: number; y: number };
+  /** The selection box the handle drags — one Element's box, or the union of several. */
+  start: ResizeBox;
+  subjects: readonly ResizeSubject[];
+  /** Only a lone Element brings its own aspect lock; a union has no ratio of its own. */
+  ratio: number | null;
 };
 
 function zoneFor(event: React.DragEvent<HTMLElement>, isFrame: boolean): LayerDropZone {
@@ -374,6 +384,7 @@ export function CanvasWorkspaceEditor({
   onCreateElement,
   onMoveElement,
   onUpdateElement,
+  onDeleteElements,
   initialCamera,
   initialLayersOpen,
   initialInspectorOpen,
@@ -414,9 +425,9 @@ export function CanvasWorkspaceEditor({
   // preview styles and the overlay, so the handles never drift off the shape they are sizing.
   const resizeGesture = useRef<ResizeGesture | null>(null);
   const [resizeDraft, setResizeDraft] = useState<{
-    elementId: string;
     start: ResizeBox;
     box: ResizeBox;
+    subjects: readonly ResizeSubject[];
     active: boolean;
   } | null>(null);
   const [localSelection, setLocalSelection] = useState<CanvasSelection>({
@@ -693,17 +704,41 @@ export function CanvasWorkspaceEditor({
   const beginResize = (event: PointerEvent<SVGElement>, handle: ResizeHandle) => {
     if (event.button !== 0) return;
     const artboard = ordered.find((candidate) => candidate.artId === selection.artId);
-    const elementId = selection.elementIds[0];
-    if (!artboard || !elementId || selection.elementIds.length !== 1) return;
-    const measured = geometry.get(artboard.artId);
-    const box = measured?.elements.get(elementId);
-    if (!box) return;
-    const element = findCanvasElement(artboard.canvas.root, elementId);
-    const parentInfo = canvasElementParent(artboard.canvas.root, elementId);
-    const parentElement = parentInfo
-      ? findCanvasElement(artboard.canvas.root, parentInfo.parentId)
-      : null;
-    const parentBox = parentInfo ? measured?.elements.get(parentInfo.parentId) : undefined;
+    const measured = artboard ? geometry.get(artboard.artId) : undefined;
+    if (!artboard || !measured || selection.elementIds.length === 0) return;
+    const subjects = selection.elementIds.flatMap<ResizeSubject>((elementId) => {
+      const box = measured.elements.get(elementId);
+      if (!box) return [];
+      const parentInfo = canvasElementParent(artboard.canvas.root, elementId);
+      const parentElement = parentInfo
+        ? findCanvasElement(artboard.canvas.root, parentInfo.parentId)
+        : null;
+      const parentBox = parentInfo ? measured.elements.get(parentInfo.parentId) : undefined;
+      return [
+        {
+          elementId,
+          start: { x: box.x, y: box.y, width: box.width, height: box.height },
+          parent: parentBox
+            ? { x: parentBox.x, y: parentBox.y, width: parentBox.width, height: parentBox.height }
+            : null,
+          autoParent:
+            parentElement?.type === "frame" &&
+            (parentElement.layoutMode ?? parentElement.mode) === "auto",
+        },
+      ];
+    });
+    if (subjects.length === 0) return;
+    // What the handle drags is the selection box: one Element's box, or the union of several.
+    const union = selectionRect(
+      subjects.map(({ start: box }) => ({
+        ...box,
+        right: box.x + box.width,
+        bottom: box.y + box.height,
+      })),
+    );
+    if (!union) return;
+    const soleElement =
+      subjects.length === 1 ? findCanvasElement(artboard.canvas.root, subjects[0]!.elementId) : null;
     event.stopPropagation();
     // Capture on the workspace, not the handle: the move and release handlers live there, and a
     // capture held by the handle would never be released by them. Capture is best effort — it
@@ -714,24 +749,18 @@ export function CanvasWorkspaceEditor({
     } catch {
       // No capture; the workspace's own handlers still see the drag while it stays inside.
     }
-    const start = { x: box.x, y: box.y, width: box.width, height: box.height };
+    const start = { x: union.x, y: union.y, width: union.width, height: union.height };
     resizeGesture.current = {
       artId: artboard.artId,
       canvasId: artboard.canvasId,
-      elementId,
       handle,
       pointerId: event.pointerId,
       pointerStart: { x: event.clientX, y: event.clientY },
       start,
-      parent: parentBox
-        ? { x: parentBox.x, y: parentBox.y, width: parentBox.width, height: parentBox.height }
-        : null,
-      ratio: lockedAspectRatio(element),
-      autoParent:
-        parentElement?.type === "frame" &&
-        (parentElement.layoutMode ?? parentElement.mode) === "auto",
+      subjects,
+      ratio: lockedAspectRatio(soleElement),
     };
-    setResizeDraft({ elementId, start, box: start, active: true });
+    setResizeDraft({ start, box: start, subjects, active: true });
   };
 
   const updateResize = (event: PointerEvent<HTMLElement>) => {
@@ -746,7 +775,7 @@ export function CanvasWorkspaceEditor({
       event.clientY - gesture.pointerStart.y,
       { constrain, ratio: gesture.ratio ?? undefined, min: camera.zoom },
     );
-    setResizeDraft({ elementId: gesture.elementId, start: gesture.start, box, active: true });
+    setResizeDraft({ start: gesture.start, box, subjects: gesture.subjects, active: true });
   };
 
   const finishResize = (event: PointerEvent<HTMLElement>, cancel = false) => {
@@ -761,23 +790,26 @@ export function CanvasWorkspaceEditor({
       setResizeDraft(null);
       return;
     }
-    const properties: Record<string, unknown> = {
-      width: { mode: "fixed", value: box.width / camera.zoom },
-      height: { mode: "fixed", value: box.height / camera.zoom },
-    };
-    // Only an absolutely positioned Element carries its own origin; in an auto-layout Frame the
-    // parent decides where it sits, so resizing must not invent an anchor for it.
-    if (!gesture.autoParent && gesture.parent) {
-      properties.anchor = {
-        horizontal: "left" as const,
-        vertical: "top" as const,
-        offsetX: (box.x - gesture.parent.x) / camera.zoom,
-        offsetY: (box.y - gesture.parent.y) / camera.zoom,
-      };
-    }
     // An edge drag deliberately changes one axis, which is exactly what an aspect lock forbids.
     const unset = isCornerHandle(gesture.handle) ? [] : ["aspectRatio"];
-    onUpdateElement?.(gesture.canvasId, gesture.elementId, properties, unset);
+    for (const subject of gesture.subjects) {
+      const next = scaleWithin(subject.start, gesture.start, box);
+      const properties: Record<string, unknown> = {
+        width: { mode: "fixed", value: next.width / camera.zoom },
+        height: { mode: "fixed", value: next.height / camera.zoom },
+      };
+      // Only an absolutely positioned Element carries its own origin; in an auto-layout Frame the
+      // parent decides where it sits, so resizing must not invent an anchor for it.
+      if (!subject.autoParent && subject.parent) {
+        properties.anchor = {
+          horizontal: "left" as const,
+          vertical: "top" as const,
+          offsetX: (next.x - subject.parent.x) / camera.zoom,
+          offsetY: (next.y - subject.parent.y) / camera.zoom,
+        };
+      }
+      onUpdateElement?.(gesture.canvasId, subject.elementId, properties, unset);
+    }
     // The commit re-renders the Element at the size just previewed, so the override must be
     // abandoned rather than unwound.
     resizeCommitted.current = true;
@@ -795,29 +827,37 @@ export function CanvasWorkspaceEditor({
   // cleanup once the commit has landed and geometry has caught up.
   useLayoutEffect(() => {
     if (!resizeDraft?.active) return;
-    const node = workspaceRef.current?.querySelector<HTMLElement>(
-      `[data-element-id="${CSS.escape(resizeDraft.elementId)}"]`,
-    );
-    if (!node) return;
-    const { box, start } = resizeDraft;
+    const { box, start, subjects } = resizeDraft;
     // Width and height belong to the renderer's React-managed style, which makes both obvious
     // cleanups wrong: removing them leaves React believing a value it no longer has, and
     // restoring the pre-drag value clobbers the size React just wrote from the commit. So the
     // override is only unwound when the resize was abandoned and React has nothing new to say.
-    const previous = {
-      width: node.style.width,
-      height: node.style.height,
-      translate: node.style.translate,
-    };
-    node.style.width = `${box.width / camera.zoom}px`;
-    node.style.height = `${box.height / camera.zoom}px`;
-    node.style.translate = `${(box.x - start.x) / camera.zoom}px ${(box.y - start.y) / camera.zoom}px`;
+    const restore = subjects.flatMap((subject) => {
+      const node = workspaceRef.current?.querySelector<HTMLElement>(
+        `[data-element-id="${CSS.escape(subject.elementId)}"]`,
+      );
+      if (!node) return [];
+      const previous = {
+        width: node.style.width,
+        height: node.style.height,
+        translate: node.style.translate,
+      };
+      const next = scaleWithin(subject.start, start, box);
+      node.style.width = `${next.width / camera.zoom}px`;
+      node.style.height = `${next.height / camera.zoom}px`;
+      node.style.translate = `${(next.x - subject.start.x) / camera.zoom}px ${
+        (next.y - subject.start.y) / camera.zoom
+      }px`;
+      return [{ node, previous }];
+    });
     return () => {
-      // Position comes back from the model's anchor, so the preview translate always goes.
-      node.style.translate = previous.translate;
-      if (!resizeCommitted.current) {
-        node.style.width = previous.width;
-        node.style.height = previous.height;
+      for (const { node, previous } of restore) {
+        // Position comes back from the model's anchor, so the preview translate always goes.
+        node.style.translate = previous.translate;
+        if (!resizeCommitted.current) {
+          node.style.width = previous.width;
+          node.style.height = previous.height;
+        }
       }
       resizeCommitted.current = false;
     };
@@ -847,13 +887,44 @@ export function CanvasWorkspaceEditor({
       node.style.translate = previous;
     };
   }, [dragOffset, camera.zoom, workspaceRef]);
+  /** Returns whether it consumed the key, so the caller knows to swallow it. */
+  const deleteSelection = (): boolean => {
+    if (focusContext().inKeyConsumingWidget) return false;
+    if (!selection.artId || selection.elementIds.length === 0) return false;
+    const artboard = ordered.find((candidate) => candidate.artId === selection.artId);
+    if (!artboard) return false;
+    // The root is the artboard's backdrop rather than a layer, and removing it would leave
+    // nothing to render into.
+    const removable = selection.elementIds.filter((id) => id !== artboard.canvas.root.id);
+    if (removable.length === 0) return false;
+    onDeleteElements?.(artboard.canvasId, removable);
+    setSelection({ artId: artboard.artId, elementIds: [] });
+    return true;
+  };
+  // The window listener below is bound once, so it reaches the current selection through a ref.
+  const deleteSelectionRef = useRef(deleteSelection);
+  useEffect(() => {
+    deleteSelectionRef.current = deleteSelection;
+  });
+
+  // Deleting belongs to the selection, not to whichever pane happens to hold focus: the layers
+  // navigator selects Elements too, and a Delete there must not quietly do nothing.
+  useEffect(() => {
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Backspace" && event.key !== "Delete") return;
+      if (deleteSelectionRef.current()) event.preventDefault();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const handleCanvasKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
     if (focusContext().inKeyConsumingWidget) return;
     if (!selection.artId || selection.elementIds.length === 0) return;
     const artboard = ordered.find((candidate) => candidate.artId === selection.artId);
     if (!artboard) return;
-    let handled = false;
     const root = artboard.canvas.root;
+    let handled = false;
     for (const elementId of selection.elementIds) {
       const element = findCanvasElement(root, elementId);
       const parentInfo = element && canvasElementParent(root, elementId);
@@ -1167,12 +1238,7 @@ export function CanvasWorkspaceEditor({
       ? dragOffset
       : null;
   // A resize in flight is the truth about where the box is; geometry has not caught up yet.
-  const liveResize =
-    resizeDraft &&
-    selection.elementIds.length === 1 &&
-    selection.elementIds[0] === resizeDraft.elementId
-      ? resizeDraft.box
-      : null;
+  const liveResize = resizeDraft?.box ?? null;
   const overlayRect = workspaceBounds
     ? liveResize
       ? {
@@ -1190,9 +1256,8 @@ export function CanvasWorkspaceEditor({
           }
         : null
     : null;
-  // Resizing a composite box would have to distribute the change across Elements, which is a
-  // different feature; a multi-selection keeps the outline and loses only the handles.
-  const resizable = selection.elementIds.length === 1;
+  // Any Element selection can be resized; a multi-selection scales each Element within the box.
+  const resizable = selection.elementIds.length > 0;
   const creationOverlayRect =
     creationDraft && workspaceBounds
       ? {
