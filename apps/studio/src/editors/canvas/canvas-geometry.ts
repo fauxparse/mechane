@@ -13,6 +13,8 @@ export interface CanvasClientRect {
 export interface CanvasArtboardGeometry {
   readonly rect: CanvasClientRect;
   readonly elements: ReadonlyMap<string, CanvasClientRect>;
+  /** The backdrop Frame, which selection treats as the artboard rather than as a target. */
+  readonly rootElementId: string | null;
 }
 
 export type CanvasGeometry = ReadonlyMap<string, CanvasArtboardGeometry>;
@@ -35,11 +37,18 @@ export function measureCanvasGeometry(workspace: HTMLElement): CanvasGeometry {
     const artId = artboard.dataset.artboardId;
     if (!artId) continue;
     const elements = new Map<string, CanvasClientRect>();
+    let rootElementId: string | null = null;
     for (const element of artboard.querySelectorAll<HTMLElement>("[data-element-id]")) {
       const elementId = element.dataset.elementId;
-      if (elementId) elements.set(elementId, clientRect(element.getBoundingClientRect()));
+      if (!elementId) continue;
+      elements.set(elementId, clientRect(element.getBoundingClientRect()));
+      if (element.dataset.elementRoot === "true") rootElementId = elementId;
     }
-    geometry.set(artId, { rect: clientRect(artboard.getBoundingClientRect()), elements });
+    geometry.set(artId, {
+      rect: clientRect(artboard.getBoundingClientRect()),
+      elements,
+      rootElementId,
+    });
   }
   return geometry;
 }
@@ -68,13 +77,20 @@ export function useCanvasGeometry(
     };
     const observer = new ResizeObserver(schedule);
     observer.observe(workspace);
-    for (const element of workspace.querySelectorAll<HTMLElement>("[data-artboard-id], [data-element-id]")) {
+    for (const element of workspace.querySelectorAll<HTMLElement>(
+      "[data-artboard-id], [data-element-id]",
+    )) {
       observer.observe(element);
     }
     schedule();
     return () => {
       observer.disconnect();
       if (frame.current !== null) window.cancelAnimationFrame(frame.current);
+      // Clearing the handle matters: this effect re-runs on every camera change and model edit,
+      // often while a frame is still pending. Cancelling without clearing would leave a stale
+      // non-null handle, and since only measure() resets it, every later schedule() would return
+      // early — freezing geometry, and with it the selection overlay, for good.
+      frame.current = null;
     };
   }, [invalidationKey, workspaceRef]);
 

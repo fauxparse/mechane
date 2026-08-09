@@ -1,6 +1,6 @@
 import { Box, Layers3, Minus, PanelLeft, Plus, RotateCcw, SlidersHorizontal } from "lucide-react";
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent } from "react";
-import { useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import {
   Button,
@@ -30,6 +30,7 @@ import {
   containedSelection,
   normalizeSelection,
   rectContainsPoint,
+  rectsOverlap,
   selectionRect,
   toggleSelection,
   topmostPaintedElementAtPoint,
@@ -44,6 +45,8 @@ import { canvasKeyboardIntent, nudgeAnchor } from "./canvas-keyboard";
 import { focusContext } from "../show/keyboard/focus-context";
 
 import { flattenCanvasLayers, layerChildren, layerMatches } from "./canvas-layers";
+import { layerDropPlacement, layerDropZone } from "./canvas-layer-drop";
+import type { LayerDropZone } from "./canvas-layer-drop";
 import { CanvasInspector } from "./CanvasInspector";
 export interface CanvasWorkspaceEditorProps {
   artboards: readonly CanvasArtboardDocument[];
@@ -119,7 +122,14 @@ type ElementDragState = {
   pointerId: number;
   start: { x: number; y: number };
   origin: { x: number; y: number };
+  originParentId: string | null;
+  originRank: string | null;
 };
+function zoneFor(event: React.DragEvent<HTMLElement>, isFrame: boolean): LayerDropZone {
+  const rect = event.currentTarget.getBoundingClientRect();
+  return layerDropZone(event.clientY - rect.top, rect.height, isFrame);
+}
+
 function CanvasLayers({
   ordered,
   focused,
@@ -127,29 +137,78 @@ function CanvasLayers({
   onFocusArtboard,
   onSelect,
   onUpdateElement,
+  onMoveElement,
 }: {
   ordered: readonly CanvasArtboardDocument[];
   focused: CanvasArtboardDocument | null;
   selection: CanvasSelection;
   onFocusArtboard(artId: string): void;
   onSelect(selection: CanvasSelection): void;
-  onUpdateElement?(
-    canvasId: string,
-    elementId: string,
-    properties: Record<string, unknown>,
-  ): void;
+  onUpdateElement?(canvasId: string, elementId: string, properties: Record<string, unknown>): void;
+  onMoveElement?(canvasId: string, elementId: string, parentId: string, rank: string): void;
 }) {
   const [query, setQuery] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [dropHint, setDropHint] = useState<{ id: string; zone: LayerDropZone } | null>(null);
+
+  const applyDrop = (targetId: string, zone: LayerDropZone) => {
+    setDropHint(null);
+    const draggedId = dragging;
+    setDragging(null);
+    if (!draggedId || !focused) return;
+    const placement = layerDropPlacement(focused.canvas.root, draggedId, targetId, zone);
+    if (!placement) return;
+    onMoveElement?.(focused.canvasId, draggedId, placement.parentId, placement.rank);
+  };
+
   const renderTree = (element: CanvasElement, depth: number): React.ReactNode => {
     const active = selection.artId === focused?.artId && selection.elementIds.includes(element.id);
+    const isRoot = element.id === focused?.canvas.root.id;
+    const hint = dropHint?.id === element.id ? dropHint.zone : null;
     return (
       <div key={element.id}>
         <SidebarMenuButton
-          className="h-8"
+          className={`h-8 ${
+            hint === "inside"
+              ? "ring-2 ring-inset ring-primary"
+              : hint === "before"
+                ? "shadow-[inset_0_2px_0_0_var(--primary)]"
+                : hint === "after"
+                  ? "shadow-[inset_0_-2px_0_0_var(--primary)]"
+                  : ""
+          } ${dragging === element.id ? "opacity-50" : ""}`}
           style={{ paddingInlineStart: `${0.5 + depth * 0.75}rem` }}
           isActive={active}
           aria-label={`${element.name ?? element.type} layer`}
+          draggable={!isRoot && renamingId !== element.id}
+          onDragStart={(event) => {
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setData("text/plain", element.id);
+            setDragging(element.id);
+          }}
+          onDragEnd={() => {
+            setDragging(null);
+            setDropHint(null);
+          }}
+          onDragOver={(event) => {
+            if (!dragging || dragging === element.id) return;
+            const zone = zoneFor(event, element.type === "frame");
+            if (!focused || !layerDropPlacement(focused.canvas.root, dragging, element.id, zone)) {
+              return;
+            }
+            // Only a droppable row calls preventDefault, so the cursor reports invalid targets.
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "move";
+            setDropHint({ id: element.id, zone });
+          }}
+          onDragLeave={() =>
+            setDropHint((current) => (current?.id === element.id ? null : current))
+          }
+          onDrop={(event) => {
+            event.preventDefault();
+            applyDrop(element.id, zoneFor(event, element.type === "frame"));
+          }}
           onClick={() =>
             onSelect({
               artId: focused?.artId ?? null,
@@ -235,7 +294,9 @@ function CanvasLayers({
                     <SidebarMenuItem key={artboard.artId}>
                       <SidebarMenuButton
                         aria-label={artboardLabel(artboard)}
-                        isActive={artboard.artId === focused?.artId && selection.elementIds.length === 0}
+                        isActive={
+                          artboard.artId === focused?.artId && selection.elementIds.length === 0
+                        }
                         onClick={() => {
                           onFocusArtboard(artboard.artId);
                           onSelect({ artId: artboard.artId, elementIds: [] });
@@ -303,6 +364,18 @@ export function CanvasWorkspaceEditor({
   const elementDrag = useRef<ElementDragState | null>(null);
   const dragPreviewRef = useRef<DragPreview | null>(null);
   const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
+  // A drag moves the Element with a CSS translate, which changes no layout, so neither the
+  // ResizeObserver nor the geometry key fires. The overlay has to be offset by the live delta
+  // or it sits at the pre-drag position until the drop commits. `active` stays true only while
+  // the pointer is down: after the drop the model carries the position, so the translate comes
+  // off while the offset lives on until geometry catches up.
+  const [dragOffset, setDragOffset] = useState<{
+    elementId: string;
+    x: number;
+    y: number;
+    active: boolean;
+  } | null>(null);
+  const clearOffsetAfterRemeasure = useRef(false);
   const [localSelection, setLocalSelection] = useState<CanvasSelection>({
     artId: null,
     elementIds: [],
@@ -315,7 +388,6 @@ export function CanvasWorkspaceEditor({
     beginCameraDrag,
     moveCameraDrag,
     endCameraDrag,
-    handleWheel,
     zoomIn,
     zoomOut,
     resetCamera,
@@ -372,7 +444,12 @@ export function CanvasWorkspaceEditor({
     artboard: CanvasArtboardDocument,
   ): boolean => {
     if (tool !== "select" || event.button !== 0) return false;
-    const element = topmostPaintedElementAtPoint(event.currentTarget, event.clientX, event.clientY);
+    const element = topmostPaintedElementAtPoint(
+      event.currentTarget,
+      event.clientX,
+      event.clientY,
+      event.altKey,
+    );
     const elementId = element?.dataset.elementId;
     if (!elementId) return false;
     event.stopPropagation();
@@ -385,9 +462,21 @@ export function CanvasWorkspaceEditor({
       pointerId: event.pointerId,
       start: { x: event.clientX, y: event.clientY },
       origin: { x: rect.x, y: rect.y },
+      originParentId: element.dataset.elementParentId ?? null,
+      originRank: element.dataset.elementRank ?? null,
     };
     dragPreviewRef.current = null;
     setDragPreview(null);
+    setDragOffset(null);
+    // Pressing an Element selects it, whether or not the press turns into a drag.
+    setSelection({
+      artId: artboard.artId,
+      elementIds: toggleSelection(
+        selection.artId === artboard.artId ? selection.elementIds : [],
+        elementId,
+        event.shiftKey,
+      ),
+    });
     onFocusArtboard(artboard.artId);
     return true;
   };
@@ -401,7 +490,9 @@ export function CanvasWorkspaceEditor({
       ...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-id]"),
     ].find((candidate) => candidate.dataset.elementId === activeDrag.elementId);
     if (!element) return;
-    element.style.setProperty("translate", `${dx}px ${dy}px`);
+    // Both the Element's translate and the overlay's offset come from this one piece of state, so
+    // they are written in the same commit and the outline cannot trail the shape it is wrapping.
+    setDragOffset({ elementId: activeDrag.elementId, x: dx, y: dy, active: true });
     const draggedNode = element;
     const foreignArtboard = document
       .elementsFromPoint(event.clientX, event.clientY)
@@ -496,32 +587,47 @@ export function CanvasWorkspaceEditor({
     const element = [
       ...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-id]"),
     ].find((candidate) => candidate.dataset.elementId === activeDrag.elementId);
+    let committed = false;
     if (element) {
-      element.style.removeProperty("translate");
+      // Read while the drag translate is still applied — it comes off in the commit that follows,
+      // and measuring after would snap back to the origin and make every move a no-op.
+      const dropped = measuredRect(element);
       if (!cancel && preview?.parentId) {
         const parent = [
           ...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-id]"),
         ].find((candidate) => candidate.dataset.elementId === preview.parentId);
-        const properties = preview.auto
-          ? {}
-          : {
-              anchor: {
-                horizontal: "left" as const,
-                vertical: "top" as const,
-                offsetX:
-                  (measuredRect(element).x - (parent ? measuredRect(parent).x : 0)) / camera.zoom,
-                offsetY:
-                  (measuredRect(element).y - (parent ? measuredRect(parent).y : 0)) / camera.zoom,
-              },
-            };
-        onMoveElement?.(
-          activeDrag.canvasId,
-          activeDrag.elementId,
-          preview.parentId,
-          preview.rank,
-          properties,
-          preview.auto ? ["anchor"] : [],
-        );
+        const parentRect = parent ? measuredRect(parent) : null;
+        const properties =
+          preview.auto || !parentRect
+            ? {}
+            : {
+                anchor: {
+                  horizontal: "left" as const,
+                  vertical: "top" as const,
+                  offsetX: (dropped.x - parentRect.x) / camera.zoom,
+                  offsetY: (dropped.y - parentRect.y) / camera.zoom,
+                },
+              };
+        // In an absolute parent rank is only z-order, which a reposition must not disturb.
+        const sameParent = preview.parentId === activeDrag.originParentId;
+        const rank =
+          !preview.auto && sameParent ? (activeDrag.originRank ?? preview.rank) : preview.rank;
+        const reparented = !sameParent || rank !== activeDrag.originRank;
+        if (reparented) {
+          onMoveElement?.(
+            activeDrag.canvasId,
+            activeDrag.elementId,
+            preview.parentId,
+            rank,
+            properties,
+            preview.auto ? ["anchor"] : [],
+          );
+          committed = true;
+        } else if (Object.keys(properties).length > 0) {
+          // Same parent, same rank — this is a reposition, not a reparent.
+          onUpdateElement?.(activeDrag.canvasId, activeDrag.elementId, properties);
+          committed = true;
+        }
       }
     }
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
@@ -530,7 +636,39 @@ export function CanvasWorkspaceEditor({
     elementDrag.current = null;
     dragPreviewRef.current = null;
     setDragPreview(null);
+    // An edit lands a commit before geometry re-measures, so dropping the offset now would flash
+    // the overlay back to the pre-drag position for a frame. Keep it, minus the translate, until
+    // the re-measure lands. A cancelled or rejected drop changes nothing, so it clears at once.
+    if (committed) {
+      clearOffsetAfterRemeasure.current = true;
+      setDragOffset((current) => (current ? { ...current, active: false } : null));
+    } else {
+      setDragOffset(null);
+    }
   };
+
+  useLayoutEffect(() => {
+    if (!clearOffsetAfterRemeasure.current) return;
+    clearOffsetAfterRemeasure.current = false;
+    setDragOffset(null);
+  }, [geometry]);
+
+  // The Element is rendered by CanvasRenderer, so the drag preview is a style write rather than a
+  // prop. Doing it here rather than in the pointer handler keeps it in step with the overlay; the
+  // cleanup takes the translate off again when the drag ends, is cancelled, or the zoom changes.
+  useLayoutEffect(() => {
+    if (!dragOffset?.active) return;
+    const node = workspaceRef.current?.querySelector<HTMLElement>(
+      `[data-element-id="${CSS.escape(dragOffset.elementId)}"]`,
+    );
+    if (!node) return;
+    // The Element lives inside the camera's scale(), so pointer pixels have to be divided by the
+    // zoom or the preview outruns the cursor.
+    node.style.setProperty("translate", `${dragOffset.x / camera.zoom}px ${dragOffset.y / camera.zoom}px`);
+    return () => {
+      node.style.removeProperty("translate");
+    };
+  }, [dragOffset, camera.zoom, workspaceRef]);
   const handleCanvasKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
     if (focusContext().inKeyConsumingWidget) return;
     if (!selection.artId || selection.elementIds.length === 0) return;
@@ -587,9 +725,10 @@ export function CanvasWorkspaceEditor({
     }
     if (handled) event.preventDefault();
   };
-  const beginWorkspaceInteraction = (event: PointerEvent<HTMLElement>) => {
-    beginCameraDrag(event);
-    if (event.button !== 0 || event.target !== event.currentTarget) return;
+  // A band can start on empty workspace or on an artboard's backdrop, so these three are shared
+  // by the workspace and the artboards rather than living on the workspace alone.
+  const beginRubberband = (event: PointerEvent<HTMLElement>) => {
+    if (event.button !== 0) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     setRubberband({
       pointerId: event.pointerId,
@@ -598,9 +737,7 @@ export function CanvasWorkspaceEditor({
     });
   };
 
-  const moveWorkspaceInteraction = (event: PointerEvent<HTMLElement>) => {
-    moveCameraDrag(event);
-    if (!rubberband || rubberband.pointerId !== event.pointerId) return;
+  const updateRubberband = (event: PointerEvent<HTMLElement>) => {
     setRubberband((current) =>
       current && current.pointerId === event.pointerId
         ? { ...current, current: { x: event.clientX, y: event.clientY } }
@@ -608,8 +745,7 @@ export function CanvasWorkspaceEditor({
     );
   };
 
-  const endWorkspaceInteraction = (event: PointerEvent<HTMLElement>) => {
-    endCameraDrag(event);
+  const endRubberband = (event: PointerEvent<HTMLElement>) => {
     if (!rubberband || rubberband.pointerId !== event.pointerId) return;
     const start = rubberband.start;
     const current = { x: event.clientX, y: event.clientY };
@@ -621,20 +757,24 @@ export function CanvasWorkspaceEditor({
       right: Math.max(start.x, current.x),
       bottom: Math.max(start.y, current.y),
     };
-    const target = ordered.find((artboard) => {
-      const measured = geometry.get(artboard.artId);
-      return measured ? rectContainsPoint(measured.rect, start.x, start.y) : false;
-    });
+    // Prefer the artboard the gesture started over; otherwise the first one the band reaches into,
+    // so a band drawn from empty workspace onto an artboard still selects.
+    const target =
+      ordered.find((artboard) => {
+        const measured = geometry.get(artboard.artId);
+        return measured ? rectContainsPoint(measured.rect, start.x, start.y) : false;
+      }) ??
+      ordered.find((artboard) => {
+        const measured = geometry.get(artboard.artId);
+        return measured ? rectsOverlap(measured.rect, band) : false;
+      });
     if (target) {
       const measured = geometry.get(target.artId);
       const ids = measured
         ? containedSelection(
-            [...measured.elements].flatMap(([id, rect]) => {
-              const element = [...document.querySelectorAll<HTMLElement>("[data-element-id]")].find(
-                (candidate) => candidate.dataset.elementId === id,
-              );
-              return element?.dataset.elementRoot === "true" ? [] : [{ id, rect }];
-            }),
+            [...measured.elements].flatMap(([id, rect]) =>
+              id === measured.rootElementId ? [] : [{ id, rect }],
+            ),
             band,
           )
         : [];
@@ -647,6 +787,22 @@ export function CanvasWorkspaceEditor({
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
     setRubberband(null);
+  };
+
+  const beginWorkspaceInteraction = (event: PointerEvent<HTMLElement>) => {
+    beginCameraDrag(event);
+    if (event.target !== event.currentTarget) return;
+    beginRubberband(event);
+  };
+
+  const moveWorkspaceInteraction = (event: PointerEvent<HTMLElement>) => {
+    moveCameraDrag(event);
+    updateRubberband(event);
+  };
+
+  const endWorkspaceInteraction = (event: PointerEvent<HTMLElement>) => {
+    endCameraDrag(event);
+    endRubberband(event);
   };
   const beginCreation = (event: PointerEvent<HTMLElement>, artboard: CanvasArtboardDocument) => {
     if (tool === "select" || event.button !== 0) return;
@@ -814,11 +970,18 @@ export function CanvasWorkspaceEditor({
           }),
         )
       : (selectedGeometry?.rect ?? null);
+  // Only the dragged Element moves, so the offset applies when it is the whole selection.
+  const liveOffset =
+    dragOffset &&
+    selection.elementIds.length === 1 &&
+    selection.elementIds[0] === dragOffset.elementId
+      ? dragOffset
+      : null;
   const overlayRect =
     selectedRect && workspaceBounds
       ? {
-          x: selectedRect.x - workspaceBounds.x,
-          y: selectedRect.y - workspaceBounds.y,
+          x: selectedRect.x - workspaceBounds.x + (liveOffset?.x ?? 0),
+          y: selectedRect.y - workspaceBounds.y + (liveOffset?.y ?? 0),
           width: selectedRect.width,
           height: selectedRect.height,
         }
@@ -876,6 +1039,7 @@ export function CanvasWorkspaceEditor({
               onFocusArtboard={onFocusArtboard}
               onSelect={setSelection}
               onUpdateElement={onUpdateElement}
+              onMoveElement={onMoveElement}
             />
           </Sidebar>
         </SidebarProvider>
@@ -924,7 +1088,7 @@ export function CanvasWorkspaceEditor({
               onPointerMove={moveWorkspaceInteraction}
               onPointerUp={endWorkspaceInteraction}
               onPointerCancel={endWorkspaceInteraction}
-              onWheel={handleWheel}
+              style={{ touchAction: "none" }}
             >
               <div
                 className="pointer-events-auto absolute top-3 left-3 z-20 flex items-center gap-1 rounded-lg border border-border bg-background/95 p-1 shadow-lg backdrop-blur"
@@ -974,18 +1138,24 @@ export function CanvasWorkspaceEditor({
                           beginCreation(event, artboard);
                           return;
                         }
-                        if (!beginElementDrag(event, artboard)) selectAtPoint(event, artboard);
+                        if (beginElementDrag(event, artboard)) return;
+                        // Pressing the artboard's backdrop clears the selection and starts a band.
+                        selectAtPoint(event, artboard);
+                        beginRubberband(event);
                       }}
                       onPointerMove={(event) => {
                         updateElementDrag(event);
+                        updateRubberband(event);
                         moveCreation(event);
                       }}
                       onPointerUp={(event) => {
                         finishElementDrag(event);
+                        endRubberband(event);
                         finishCreation(event);
                       }}
                       onPointerCancel={(event) => {
                         finishElementDrag(event, true);
+                        endRubberband(event);
                         finishCreation(event, true);
                       }}
                       onClick={() => onFocusArtboard(artboard.artId)}
@@ -1086,7 +1256,7 @@ export function CanvasWorkspaceEditor({
                     width={dragLine.width}
                     height={dragLine.height}
                     fill="none"
-                    stroke="hsl(var(--primary))"
+                    stroke="var(--primary)"
                     strokeDasharray="4 3"
                     strokeWidth="2"
                     vectorEffect="non-scaling-stroke"

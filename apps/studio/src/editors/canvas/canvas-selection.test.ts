@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { containedSelection, normalizeSelection, rectContainsRect, toggleSelection } from "./canvas-selection";
+import {
+  containedSelection,
+  normalizeSelection,
+  rectContainsRect,
+  rectsOverlap,
+  toggleSelection,
+} from "./canvas-selection";
 
 const rect = (x: number, y: number, width: number, height: number) => ({
   x,
@@ -23,6 +29,11 @@ describe("Canvas selection", () => {
       ),
     ).toEqual(["inside"]);
     expect(rectContainsRect(rect(0, 0, 40, 40), rect(25, 25, 30, 30))).toBe(false);
+  });
+
+  it("finds the artboard a band reaches into, even when it started outside", () => {
+    expect(rectsOverlap(rect(0, 0, 40, 40), rect(30, 30, 40, 40))).toBe(true);
+    expect(rectsOverlap(rect(0, 0, 40, 40), rect(60, 60, 10, 10))).toBe(false);
   });
 
   it("keeps additive selection in one artboard and toggles an existing target", () => {

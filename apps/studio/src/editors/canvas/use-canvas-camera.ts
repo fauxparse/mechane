@@ -1,4 +1,4 @@
-import type { PointerEvent, WheelEvent } from "react";
+import type { PointerEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import type { Position } from "@mechane/domain";
@@ -85,17 +85,35 @@ export function useCanvasCamera(initialCamera: CanvasCamera = { x: 96, y: 64, zo
     cameraDrag.current = null;
   };
 
-  const handleWheel = (event: WheelEvent<HTMLElement>) => {
-    const bounds = event.currentTarget.getBoundingClientRect();
-    if (event.metaKey || event.ctrlKey) {
-      const point = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
-      setCamera((current) =>
-        zoomCanvasCamera(current, point, current.zoom * Math.exp(-event.deltaY * 0.002)),
-      );
-      return;
-    }
-    setCamera((current) => panCanvasCamera(current, -event.deltaX, -event.deltaY));
-  };
+  // React routes onWheel through a passive root listener, so preventDefault there is a no-op and
+  // a trackpad pinch (a ctrlKey wheel event) falls through to the browser's own page zoom.
+  // The workspace needs its own non-passive listener to keep the gesture on the camera.
+  useEffect(() => {
+    const workspace = workspaceRef.current;
+    if (!workspace) return;
+    const onWheel = (event: globalThis.WheelEvent) => {
+      event.preventDefault();
+      const bounds = workspace.getBoundingClientRect();
+      if (event.metaKey || event.ctrlKey) {
+        const point = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+        setCamera((current) =>
+          zoomCanvasCamera(current, point, current.zoom * Math.exp(-event.deltaY * 0.002)),
+        );
+        return;
+      }
+      setCamera((current) => panCanvasCamera(current, -event.deltaX, -event.deltaY));
+    };
+    // Safari reports trackpad pinches as gesture events rather than ctrlKey wheel events.
+    const onGesture = (event: Event) => event.preventDefault();
+    workspace.addEventListener("wheel", onWheel, { passive: false });
+    workspace.addEventListener("gesturestart", onGesture);
+    workspace.addEventListener("gesturechange", onGesture);
+    return () => {
+      workspace.removeEventListener("wheel", onWheel);
+      workspace.removeEventListener("gesturestart", onGesture);
+      workspace.removeEventListener("gesturechange", onGesture);
+    };
+  }, []);
 
   const zoomAtCenter = (factor: number) => {
     const bounds = workspaceRef.current?.getBoundingClientRect();
@@ -119,7 +137,6 @@ export function useCanvasCamera(initialCamera: CanvasCamera = { x: 96, y: 64, zo
     beginCameraDrag,
     moveCameraDrag,
     endCameraDrag,
-    handleWheel,
     zoomIn,
     zoomOut,
     resetCamera,
