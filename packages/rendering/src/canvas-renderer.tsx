@@ -270,6 +270,8 @@ function renderElement({
       "data-element-name": element.name ?? undefined,
       "data-element-parent-id": parent?.id,
       "data-element-rank": element.rank,
+      // Editors hit-test against this: the root frame is the artboard backdrop, never a target.
+      "data-element-root": root ? "true" : undefined,
       "data-element-painted":
         element.type === "text" || element.fill !== undefined ? "true" : "false",
       style,

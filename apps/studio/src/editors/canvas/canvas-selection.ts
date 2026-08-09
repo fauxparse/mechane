@@ -23,6 +23,15 @@ export function rectContainsRect(outer: CanvasClientRect, inner: CanvasClientRec
   );
 }
 
+export function rectsOverlap(left: CanvasClientRect, right: CanvasClientRect): boolean {
+  return (
+    left.x <= right.right &&
+    right.x <= left.right &&
+    left.y <= right.bottom &&
+    right.y <= left.bottom
+  );
+}
+
 /** Full containment is intentional: a rubberband never selects a clipped partial Element. */
 export function containedSelection(
   candidates: readonly SelectionCandidate[],

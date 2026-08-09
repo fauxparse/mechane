@@ -85,6 +85,54 @@ const reparentReviewArtboard: CanvasArtboardDocument = {
   position: { x: 64, y: 96 },
 };
 
+/** Uncontrolled selection, so clicking, banding, and layer drags can all be exercised for real. */
+function StatefulSelectionReview() {
+  const [artboard, setArtboard] = useState(reparentReviewArtboard);
+  return (
+    <CanvasWorkspaceEditor
+      artboards={[artboard]}
+      focusedArtId={artboard.artId}
+      onFocusArtboard={noOp}
+      onBeginMoveArtboard={noOp}
+      onMoveArtboard={noOp}
+      onEndMoveArtboard={noOp}
+      onMoveElement={(canvasId, elementId, parentId, rank, properties, unsetProperties) => {
+        if (canvasId !== artboard.canvasId) return;
+        setArtboard((current) => ({
+          ...current,
+          canvas: applyCanvasEdits(current.canvas, [
+            { type: CANVAS_COMMAND_TYPES.reparentElement, elementId, parentId, rank },
+            ...(Object.keys(properties ?? {}).length > 0 || (unsetProperties ?? []).length > 0
+              ? [
+                  {
+                    type: CANVAS_COMMAND_TYPES.updateElement,
+                    elementId,
+                    properties: (properties ?? {}) as ElementProperties,
+                    unsetProperties: unsetProperties ?? [],
+                  },
+                ]
+              : []),
+          ]),
+        }));
+      }}
+      onUpdateElement={(canvasId, elementId, properties, unsetProperties) => {
+        if (canvasId !== artboard.canvasId) return;
+        setArtboard((current) => ({
+          ...current,
+          canvas: applyCanvasEdits(current.canvas, [
+            {
+              type: CANVAS_COMMAND_TYPES.updateElement,
+              elementId,
+              properties: properties as ElementProperties,
+              unsetProperties: unsetProperties ?? [],
+            },
+          ]),
+        }));
+      }}
+    />
+  );
+}
+
 function StatefulReparentReview() {
   const [artboard, setArtboard] = useState(reparentReviewArtboard);
   const updateCanvas = (
@@ -243,6 +291,10 @@ export const LayersCollapsed: Story = {
 };
 export const StatefulReparentReviewStory: Story = {
   render: () => <StatefulReparentReview />,
+};
+
+export const SelectionAndLayerDragReview: Story = {
+  render: () => <StatefulSelectionReview />,
 };
 
 export const InspectorCollapsed: Story = {
