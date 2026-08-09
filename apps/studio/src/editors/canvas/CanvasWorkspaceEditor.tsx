@@ -1,6 +1,6 @@
 import { Box, Layers3, Minus, PanelLeft, Plus, RotateCcw, SlidersHorizontal } from "lucide-react";
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent } from "react";
-import { useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import {
   Button,
@@ -364,6 +364,15 @@ export function CanvasWorkspaceEditor({
   const elementDrag = useRef<ElementDragState | null>(null);
   const dragPreviewRef = useRef<DragPreview | null>(null);
   const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
+  // A drag moves the Element with a CSS translate, which changes no layout, so neither the
+  // ResizeObserver nor the geometry key fires. The overlay has to be offset by the live delta
+  // or it sits at the pre-drag position until the drop commits.
+  const [dragOffset, setDragOffset] = useState<{
+    elementId: string;
+    x: number;
+    y: number;
+  } | null>(null);
+  const clearOffsetAfterRemeasure = useRef(false);
   const [localSelection, setLocalSelection] = useState<CanvasSelection>({
     artId: null,
     elementIds: [],
@@ -455,6 +464,7 @@ export function CanvasWorkspaceEditor({
     };
     dragPreviewRef.current = null;
     setDragPreview(null);
+    setDragOffset(null);
     // Pressing an Element selects it, whether or not the press turns into a drag.
     setSelection({
       artId: artboard.artId,
@@ -480,6 +490,8 @@ export function CanvasWorkspaceEditor({
     // The Element lives inside the camera's scale(), so pointer pixels have to be divided
     // by the zoom or the preview outruns the cursor.
     element.style.setProperty("translate", `${dx / camera.zoom}px ${dy / camera.zoom}px`);
+    // The overlay is drawn in screen space, so it takes the raw pointer delta, not the scaled one.
+    setDragOffset({ elementId: activeDrag.elementId, x: dx, y: dy });
     const draggedNode = element;
     const foreignArtboard = document
       .elementsFromPoint(event.clientX, event.clientY)
@@ -574,6 +586,7 @@ export function CanvasWorkspaceEditor({
     const element = [
       ...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-id]"),
     ].find((candidate) => candidate.dataset.elementId === activeDrag.elementId);
+    let committed = false;
     if (element) {
       // The dropped position has to be read before the preview translate is cleared, otherwise
       // every measurement snaps back to where the drag started and the move is a no-op.
@@ -609,9 +622,11 @@ export function CanvasWorkspaceEditor({
             properties,
             preview.auto ? ["anchor"] : [],
           );
+          committed = true;
         } else if (Object.keys(properties).length > 0) {
           // Same parent, same rank — this is a reposition, not a reparent.
           onUpdateElement?.(activeDrag.canvasId, activeDrag.elementId, properties);
+          committed = true;
         }
       }
     }
@@ -621,7 +636,18 @@ export function CanvasWorkspaceEditor({
     elementDrag.current = null;
     dragPreviewRef.current = null;
     setDragPreview(null);
+    // An edit lands a commit before geometry re-measures, so dropping the offset now would flash
+    // the overlay back to the pre-drag position for a frame. Hold it until the re-measure lands.
+    // A cancelled or rejected drop changes nothing, so there is nothing to wait for.
+    if (committed) clearOffsetAfterRemeasure.current = true;
+    else setDragOffset(null);
   };
+
+  useLayoutEffect(() => {
+    if (!clearOffsetAfterRemeasure.current) return;
+    clearOffsetAfterRemeasure.current = false;
+    setDragOffset(null);
+  }, [geometry]);
   const handleCanvasKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
     if (focusContext().inKeyConsumingWidget) return;
     if (!selection.artId || selection.elementIds.length === 0) return;
@@ -923,11 +949,18 @@ export function CanvasWorkspaceEditor({
           }),
         )
       : (selectedGeometry?.rect ?? null);
+  // Only the dragged Element moves, so the offset applies when it is the whole selection.
+  const liveOffset =
+    dragOffset &&
+    selection.elementIds.length === 1 &&
+    selection.elementIds[0] === dragOffset.elementId
+      ? dragOffset
+      : null;
   const overlayRect =
     selectedRect && workspaceBounds
       ? {
-          x: selectedRect.x - workspaceBounds.x,
-          y: selectedRect.y - workspaceBounds.y,
+          x: selectedRect.x - workspaceBounds.x + (liveOffset?.x ?? 0),
+          y: selectedRect.y - workspaceBounds.y + (liveOffset?.y ?? 0),
           width: selectedRect.width,
           height: selectedRect.height,
         }
