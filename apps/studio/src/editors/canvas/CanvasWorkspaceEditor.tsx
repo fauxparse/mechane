@@ -1,4 +1,14 @@
-import { Box, Layers3, Minus, PanelLeft, Plus, RotateCcw, SlidersHorizontal } from "lucide-react";
+import {
+  Box,
+  Layers3,
+  Minus,
+  PanelLeft,
+  Plus,
+  Puzzle,
+  RotateCcw,
+  SlidersHorizontal,
+  TvMinimal,
+} from "lucide-react";
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent } from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
@@ -84,6 +94,7 @@ export interface CanvasWorkspaceEditorProps {
     unsetProperties?: readonly string[],
   ): void;
   onDeleteElements?(canvasId: string, elementIds: readonly string[]): void;
+  onRenameArtboard?(artId: string, name: string): void;
   initialLayersOpen?: boolean;
   initialInspectorOpen?: boolean;
 }
@@ -385,6 +396,7 @@ export function CanvasWorkspaceEditor({
   onMoveElement,
   onUpdateElement,
   onDeleteElements,
+  onRenameArtboard,
   initialCamera,
   initialLayersOpen,
   initialInspectorOpen,
@@ -435,6 +447,7 @@ export function CanvasWorkspaceEditor({
     elementIds: [],
   });
   const [rubberband, setRubberband] = useState<RubberbandState | null>(null);
+  const [renamingArtId, setRenamingArtId] = useState<string | null>(null);
   const focused = ordered.find((artboard) => artboard.artId === focusedArtId) ?? ordered[0] ?? null;
   const selection =
     selectedArtId === undefined
@@ -463,7 +476,7 @@ export function CanvasWorkspaceEditor({
     setLocalSelection(normalized);
     onSelectionChange?.(normalized);
   };
-  const beginDrag = (event: PointerEvent<HTMLDivElement>, artboard: CanvasArtboardDocument) => {
+  const beginDrag = (event: PointerEvent<HTMLElement>, artboard: CanvasArtboardDocument) => {
     event.stopPropagation();
     if (event.button !== 0) return;
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -477,7 +490,7 @@ export function CanvasWorkspaceEditor({
     onBeginMoveArtboard(artboard.canvasId);
   };
 
-  const moveDrag = (event: PointerEvent<HTMLDivElement>, artboard: CanvasArtboardDocument) => {
+  const moveDrag = (event: PointerEvent<HTMLElement>, artboard: CanvasArtboardDocument) => {
     if (!drag || drag.artId !== artboard.artId || drag.pointerId !== event.pointerId) return;
     onMoveArtboard(artboard.canvasId, {
       x: drag.origin.x + (event.clientX - drag.start.x) / camera.zoom,
@@ -485,7 +498,7 @@ export function CanvasWorkspaceEditor({
     });
   };
 
-  const endDrag = (event: PointerEvent<HTMLDivElement>, cancel = false) => {
+  const endDrag = (event: PointerEvent<HTMLElement>, cancel = false) => {
     if (!drag || drag.pointerId !== event.pointerId) return;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
@@ -1221,6 +1234,9 @@ export function CanvasWorkspaceEditor({
 
   const workspaceBounds = workspaceRef.current?.getBoundingClientRect();
   const selectedGeometry = selection.artId ? geometry.get(selection.artId) : undefined;
+  // Only Elements get an outline. An artboard with nothing selected in it used to get one too,
+  // which put a dashed box around the whole Canvas — chrome the artboard's own outline and its
+  // name already carry (#217).
   const selectedRect =
     selectedGeometry && selection.elementIds.length > 0
       ? selectionRect(
@@ -1229,7 +1245,7 @@ export function CanvasWorkspaceEditor({
             return rect ? [rect] : [];
           }),
         )
-      : (selectedGeometry?.rect ?? null);
+      : null;
   // Only the dragged Element moves, so the offset applies when it is the whole selection.
   const liveOffset =
     dragOffset &&
@@ -1390,10 +1406,12 @@ export function CanvasWorkspaceEditor({
                 {ordered.map((artboard) => {
                   const size = canvasArtboardSize(artboard);
                   return (
-                    <button
-                      type="button"
+                    <div
                       key={artboard.artId}
-                      className="pointer-events-auto absolute cursor-pointer rounded-lg border border-border bg-background text-left shadow-xl data-[focused=true]:border-primary data-[focused=true]:ring-2 data-[focused=true]:ring-primary/35"
+                      role="group"
+                      className={`pointer-events-auto absolute overflow-hidden bg-background shadow-2xl ${
+                        drag?.artId === artboard.artId ? "cursor-grabbing" : "cursor-default"
+                      }`}
                       data-artboard-id={artboard.artId}
                       data-canvas-id={artboard.canvasId}
                       data-artboard-kind={artboard.kind}
@@ -1403,6 +1421,11 @@ export function CanvasWorkspaceEditor({
                         left: artboard.position.x,
                         top: artboard.position.y,
                         width: size.width,
+                        height: size.height,
+                        // An outline sits outside the box, so the border never eats into the
+                        // Canvas, and it stays 1px on screen however far the camera is zoomed.
+                        outline: "1px solid var(--border)",
+                        outlineOffset: 0,
                       }}
                       aria-label={artboardLabel(artboard)}
                       onPointerDown={(event) => {
@@ -1411,57 +1434,96 @@ export function CanvasWorkspaceEditor({
                           return;
                         }
                         if (beginElementDrag(event, artboard)) return;
-                        // Pressing the artboard's backdrop clears the selection and starts a band.
+                        // Empty Canvas is the Canvas itself: pressing it selects the artboard and
+                        // grabs it, so the body is a drag handle wherever no Element is in the way.
                         selectAtPoint(event, artboard);
-                        beginRubberband(event, artboard.artId);
+                        beginDrag(event, artboard);
                       }}
                       onPointerMove={(event) => {
                         updateElementDrag(event);
-                        updateRubberband(event);
+                        moveDrag(event, artboard);
                         moveCreation(event);
                       }}
                       onPointerUp={(event) => {
                         finishElementDrag(event);
-                        endRubberband(event);
+                        endDrag(event);
                         finishCreation(event);
                       }}
                       onPointerCancel={(event) => {
                         finishElementDrag(event, true);
-                        endRubberband(event);
+                        endDrag(event, true);
                         finishCreation(event, true);
                       }}
-                      onClick={() => onFocusArtboard(artboard.artId)}
                     >
-                      <div
-                        className={`flex h-10 items-center justify-between gap-2 border-b border-border px-3 text-xs ${
-                          drag?.artId === artboard.artId ? "cursor-grabbing" : "cursor-grab"
+                      <CanvasRenderer canvas={artboard.canvas} />
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Names live outside the camera's scale so they stay legible at any zoom, the way
+                  every design tool does it. Their positions are the camera transform done by hand. */}
+              <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                {ordered.map((artboard) => {
+                  const active = artboard.artId === focused?.artId;
+                  const Icon = artboard.kind === "scene" ? TvMinimal : Puzzle;
+                  return (
+                    <div
+                      key={artboard.artId}
+                      className="pointer-events-auto absolute flex -translate-y-full items-center gap-1.5 pb-1 text-xs whitespace-nowrap"
+                      style={{
+                        left: camera.x + artboard.position.x * camera.zoom,
+                        top: camera.y + artboard.position.y * camera.zoom,
+                      }}
+                      data-artboard-label={artboard.artId}
+                    >
+                      <Icon
+                        aria-hidden="true"
+                        className={`size-3.5 shrink-0 ${
+                          active ? "text-foreground" : "text-muted-foreground"
                         }`}
-                        onPointerDown={(event) => beginDrag(event, artboard)}
-                        onPointerMove={(event) => {
-                          moveDrag(event, artboard);
-                          moveCreation(event);
-                        }}
-                        onPointerUp={(event) => {
-                          endDrag(event);
-                          finishCreation(event);
-                        }}
-                        onPointerCancel={(event) => {
-                          endDrag(event, true);
-                          finishCreation(event, true);
-                        }}
-                      >
-                        <span className="truncate">{artboardLabel(artboard)}</span>
-                        <small className="shrink-0 text-[0.6875rem] uppercase text-muted-foreground">
-                          {artboard.kind}
-                        </small>
-                      </div>
-                      <div
-                        className="overflow-hidden"
-                        style={{ width: size.width, height: size.height }}
-                      >
-                        <CanvasRenderer canvas={artboard.canvas} />
-                      </div>
-                    </button>
+                      />
+                      {renamingArtId === artboard.artId ? (
+                        <input
+                          autoFocus
+                          defaultValue={artboard.name}
+                          aria-label={`Rename ${artboardLabel(artboard)}`}
+                          className="w-40 rounded-sm border border-border bg-background px-1 text-xs outline-none focus:ring-2 focus:ring-ring"
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") event.currentTarget.blur();
+                            if (event.key === "Escape") {
+                              // Reset first, so the blur below has nothing to commit.
+                              event.currentTarget.value = artboard.name;
+                              event.currentTarget.blur();
+                            }
+                          }}
+                          onBlur={(event) => {
+                            const name = event.currentTarget.value.trim();
+                            if (name && name !== artboard.name) {
+                              onRenameArtboard?.(artboard.artId, name);
+                            }
+                            setRenamingArtId(null);
+                          }}
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          className={`cursor-grab truncate active:cursor-grabbing ${
+                            active ? "font-semibold text-foreground" : "text-muted-foreground"
+                          }`}
+                          onPointerDown={(event) => beginDrag(event, artboard)}
+                          onPointerMove={(event) => moveDrag(event, artboard)}
+                          onPointerUp={(event) => endDrag(event)}
+                          onPointerCancel={(event) => endDrag(event, true)}
+                          onClick={() => {
+                            onFocusArtboard(artboard.artId);
+                            setSelection({ artId: artboard.artId, elementIds: [] });
+                          }}
+                          onDoubleClick={() => setRenamingArtId(artboard.artId)}
+                        >
+                          {artboardLabel(artboard)}
+                        </button>
+                      )}
+                    </div>
                   );
                 })}
               </div>
