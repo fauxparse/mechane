@@ -203,7 +203,7 @@ export function CanvasWorkspaceEditor({
 
             <main
               ref={workspaceRef}
-              className="relative min-h-0 flex-1 overflow-hidden bg-muted/20 outline-none"
+              className="relative min-h-0 flex-1 overscroll-none overflow-hidden bg-muted/20 outline-none"
               aria-label="Canvas workspace"
               tabIndex={0}
               onPointerDown={beginCameraDrag}
