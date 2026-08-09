@@ -28,7 +28,10 @@ export function containedSelection(
   candidates: readonly SelectionCandidate[],
   rubberband: CanvasClientRect,
 ): string[] {
-  return candidates.filter(({ rect }) => rectContainsRect(rubberband, rect)).map(({ id }) => id);
+  return candidates.reduce<string[]>((selectedIds, { id, rect }) => {
+    if (rectContainsRect(rubberband, rect)) selectedIds.push(id);
+    return selectedIds;
+  }, []);
 }
 
 export function toggleSelection(
@@ -45,9 +48,7 @@ export function normalizeSelection(selection: CanvasSelection): CanvasSelection 
   return { artId: selection.artId, elementIds: [...new Set(selection.elementIds)] };
 }
 
-export function selectionRect(
-  rects: readonly CanvasClientRect[],
-): CanvasClientRect | null {
+export function selectionRect(rects: readonly CanvasClientRect[]): CanvasClientRect | null {
   if (rects.length === 0) return null;
   const x = Math.min(...rects.map((rect) => rect.x));
   const y = Math.min(...rects.map((rect) => rect.y));
@@ -82,6 +83,6 @@ export function topmostPaintedElementAtPoint(
   if (!painted || !penetrate) return painted ?? null;
   const parentId = painted.dataset.elementParentId;
   return parentId
-    ? elements.find((element) => element.dataset.elementId === parentId) ?? painted
+    ? (elements.find((element) => element.dataset.elementId === parentId) ?? painted)
     : painted;
 }
