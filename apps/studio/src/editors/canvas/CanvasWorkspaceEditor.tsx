@@ -272,6 +272,9 @@ export function CanvasWorkspaceEditor({
     if (!creationDraft || creationDraft.pointerId !== event.pointerId) return;
     const draft = creationDraft;
     setCreationDraft(null);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
     const artboard = ordered.find((candidate) => candidate.artId === draft.artId);
     if (!artboard) return;
     if (cancel) {
@@ -578,6 +581,9 @@ export function CanvasWorkspaceEditor({
                           ? selectAtPoint(event, artboard)
                           : beginCreation(event, artboard)
                       }
+                      onPointerMove={moveCreation}
+                      onPointerUp={finishCreation}
+                      onPointerCancel={(event) => finishCreation(event, true)}
                       onClick={() => onFocusArtboard(artboard.artId)}
                     >
                       <div
@@ -659,10 +665,12 @@ export function CanvasWorkspaceEditor({
                     y={creationOverlayRect.y}
                     width={creationOverlayRect.width}
                     height={creationOverlayRect.height}
-                    fill="hsl(var(--primary) / 0.08)"
-                    stroke="hsl(var(--primary))"
-                    strokeDasharray="5 3"
-                    strokeWidth="1.5"
+                    style={{ color: "var(--primary)" }}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeDasharray="8 4"
+                    strokeLinecap="round"
+                    strokeWidth="2"
                     vectorEffect="non-scaling-stroke"
                     data-creation-preview
                   />
