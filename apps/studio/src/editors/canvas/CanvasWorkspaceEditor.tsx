@@ -1,5 +1,5 @@
 import { Box, Layers3, Minus, PanelLeft, Plus, RotateCcw, SlidersHorizontal } from "lucide-react";
-import type { PointerEvent } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent } from "react";
 import { useMemo, useRef, useState } from "react";
 
 import {
@@ -37,7 +37,11 @@ import {
 import type { CanvasSelection } from "./canvas-selection";
 import { containingFrame, rankForInsertion } from "./canvas-creation";
 import type { CanvasCreationTool } from "./canvas-creation";
+import { canvasElementParent, findCanvasElement } from "@mechane/commands";
 import type { CanvasClientRect } from "./canvas-geometry";
+import type { FrameElement } from "@mechane/domain";
+import { canvasKeyboardIntent, nudgeAnchor } from "./canvas-keyboard";
+import { focusContext } from "../show/keyboard/focus-context";
 
 export interface CanvasWorkspaceEditorProps {
   artboards: readonly CanvasArtboardDocument[];
@@ -57,6 +61,12 @@ export interface CanvasWorkspaceEditorProps {
     parentId: string,
     rank: string,
     properties?: Record<string, unknown>,
+    unsetProperties?: readonly string[],
+  ): void;
+  onUpdateElement?(
+    canvasId: string,
+    elementId: string,
+    properties: Record<string, unknown>,
     unsetProperties?: readonly string[],
   ): void;
   initialLayersOpen?: boolean;
@@ -130,6 +140,7 @@ export function CanvasWorkspaceEditor({
   onSelectionChange,
   onCreateElement,
   onMoveElement,
+  onUpdateElement,
   initialCamera,
   initialLayersOpen,
   initialInspectorOpen,
@@ -379,6 +390,62 @@ export function CanvasWorkspaceEditor({
     elementDrag.current = null;
     dragPreviewRef.current = null;
     setDragPreview(null);
+  };
+  const handleCanvasKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
+    if (focusContext().inKeyConsumingWidget) return;
+    if (!selection.artId || selection.elementIds.length === 0) return;
+    const artboard = ordered.find((candidate) => candidate.artId === selection.artId);
+    if (!artboard) return;
+    let handled = false;
+    const root = artboard.canvas.root;
+    for (const elementId of selection.elementIds) {
+      const element = findCanvasElement(root, elementId);
+      const parentInfo = element && canvasElementParent(root, elementId);
+      const parent = parentInfo ? findCanvasElement(root, parentInfo.parentId) : null;
+      if (!element || !parent || parent.type !== "frame") continue;
+      const frame = parent as FrameElement;
+      const autoLayout =
+        frame.layoutMode === "auto" || frame.mode === "auto" || frame.autoLayout === true;
+      const intent = canvasKeyboardIntent(
+        frame.direction ?? "vertical",
+        event.key,
+        event.shiftKey,
+        autoLayout,
+        element.alignSelf,
+      );
+      if (!intent) continue;
+      handled = true;
+      if (intent.type === "nudge") {
+        onUpdateElement?.(artboard.canvasId, elementId, {
+          anchor: nudgeAnchor(element.anchor, intent.dx, intent.dy),
+        });
+      } else if (intent.type === "cross-align") {
+        onUpdateElement?.(artboard.canvasId, elementId, { alignSelf: intent.value });
+      } else {
+        const siblings = [...(frame.children ?? [])]
+          .filter((child) => child.id !== elementId)
+          .sort((left, right) => (left.rank ?? "").localeCompare(right.rank ?? ""));
+        const originalIndex = [...(frame.children ?? [])]
+          .sort((left, right) => (left.rank ?? "").localeCompare(right.rank ?? ""))
+          .findIndex((child) => child.id === elementId);
+        const targetIndex =
+          intent.delta === "start"
+            ? 0
+            : intent.delta === "end"
+              ? siblings.length
+              : Math.max(0, Math.min(siblings.length, originalIndex + intent.delta));
+        onMoveElement?.(
+          artboard.canvasId,
+          elementId,
+          frame.id,
+          rankForInsertion(
+            siblings.map((child) => child.rank ?? ""),
+            targetIndex,
+          ),
+        );
+      }
+    }
+    if (handled) event.preventDefault();
   };
   const beginWorkspaceInteraction = (event: PointerEvent<HTMLElement>) => {
     beginCameraDrag(event);
@@ -736,6 +803,7 @@ export function CanvasWorkspaceEditor({
                   setCreationDraft(null);
                   setTool("select");
                 }
+                handleCanvasKeyDown(event);
               }}
               onPointerDown={beginWorkspaceInteraction}
               onPointerMove={moveWorkspaceInteraction}

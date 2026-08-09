@@ -4,7 +4,13 @@ import type {
   Gesture,
   NewElement,
 } from "@mechane/commands";
-import { addCanvasElement, CommandStack, moveCanvasArtboard, moveCanvasElement } from "@mechane/commands";
+import {
+  addCanvasElement,
+  CommandStack,
+  moveCanvasArtboard,
+  moveCanvasElement,
+  updateCanvasElement,
+} from "@mechane/commands";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Position } from "@mechane/domain";
 
@@ -31,6 +37,12 @@ export interface CanvasCommands {
     parentId: string,
     rank: string,
     properties?: Record<string, unknown>,
+    unsetProperties?: readonly string[],
+  ): void;
+  updateElement(
+    canvasId: string,
+    elementId: string,
+    properties: Record<string, unknown>,
     unsetProperties?: readonly string[],
   ): void;
   createElement(canvasId: string, element: NewElement, parentId: string, rank: string): void;
@@ -108,6 +120,18 @@ export function useCanvasCommands(
     },
     [changed, stack],
   );
+  const updateElement = useCallback(
+    (
+      canvasId: string,
+      elementId: string,
+      properties: Record<string, unknown>,
+      unsetProperties: readonly string[] = [],
+    ) => {
+      stack.execute(updateCanvasElement(canvasId, elementId, properties, unsetProperties));
+      changed();
+    },
+    [changed, stack],
+  );
 
   const updateArtboardMove = useCallback(
     (canvasId: string, position: Position) => {
@@ -147,6 +171,7 @@ export function useCanvasCommands(
     updateArtboardMove,
     endArtboardMove,
     moveElement,
+    updateElement,
     createElement,
     undo,
     redo,

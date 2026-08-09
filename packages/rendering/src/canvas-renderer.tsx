@@ -144,7 +144,6 @@ function anchorStyles(anchor: AnchorPosition | undefined): CSSProperties {
       : {}),
   };
 }
-
 function elementStyle(element: Element, root: boolean, sceneRoot: boolean): CSSProperties {
   const rotation = root ? 0 : rotationFor(element);
   const ratio = ratioFor(element);
@@ -164,6 +163,7 @@ function elementStyle(element: Element, root: boolean, sceneRoot: boolean): CSSP
     background: cssFill(element.fill),
     writingMode: writingModeFor(rotation),
     display: element.type === "image" ? "block" : undefined,
+    alignSelf: element.alignSelf ? align(element.alignSelf) : undefined,
     visibility: element.hidden ? "hidden" : undefined,
   };
   if (sizeFor(element, "width")?.mode === "fill") style.flexGrow = 1;

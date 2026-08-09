@@ -194,6 +194,14 @@ export const DragAcrossLayoutParents: Story = {
 export const InvalidDragTargets: Story = {
   args: { onMoveElement: noOp },
 };
+export const KeyboardNudgeAndReorder: Story = {
+  args: {
+    selectedArtId: "scene-lobby",
+    selectedElementIds: ["Lobby-title"],
+    onUpdateElement: noOp,
+    onMoveElement: noOp,
+  },
+};
 
 export const FocusedBlockDeepLink: Story = {
   args: { focusedArtId: "block-card" },
