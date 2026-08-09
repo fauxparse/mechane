@@ -7,13 +7,8 @@
 import { isId, publishState } from "@mechane/domain";
 import type { ShowId } from "@mechane/domain";
 import { GraphQLRequestError } from "@mechane/graphql-schema";
-import {
-  createFileRoute,
-  Link,
-  Outlet,
-  useNavigate,
-  useRouterState,
-} from "@tanstack/react-router";
+import { useEffect } from "react";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 
 import { usePublishShowGraph, useShowGraph } from "../../../api/show-graph";
 import { useActiveRun, useEndRun, useStartRun } from "../../../api/runs";
@@ -51,6 +46,15 @@ function ShowEditorLayout() {
           routeId === "/_authenticated/shows/$showId/art/$artId",
       ),
   });
+
+  // Show editors occupy the viewport; prevent scroll chaining to the document.
+  useEffect(() => {
+    const previousOverscrollBehavior = document.body.style.overscrollBehavior;
+    document.body.style.overscrollBehavior = "none";
+    return () => {
+      document.body.style.overscrollBehavior = previousOverscrollBehavior;
+    };
+  }, []);
 
   if (showId !== null && show.isPending) {
     return <p className="p-6 text-muted-foreground">Loading…</p>;
