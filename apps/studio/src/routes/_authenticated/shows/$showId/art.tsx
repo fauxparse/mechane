@@ -9,6 +9,7 @@ import { useShowGraph, useShowGraphEdits } from "../../../../api/show-graph";
 import { CanvasWorkspaceEditor } from "../../../../editors/canvas/CanvasWorkspaceEditor";
 import {
   artIdFromPath,
+  isCanvasPath,
   resolveFocusedArtboard,
 } from "../../../../editors/canvas/data/canvas-workspace";
 import { useCanvasCommands } from "../../../../editors/canvas/commands/use-canvas-commands";
@@ -91,8 +92,14 @@ function CanvasWorkspaceRoute() {
   const requestedArtId = showId ? artIdFromPath(pathname, showId) : null;
   const focused = resolveFocusedArtboard(artboards, requestedArtId);
 
+  // This route stays mounted for a moment while the router transitions away
+  // from it, and during that moment `pathname` is already the destination's. Bail
+  // out then, or the redirect below reads "no Artboard id" as "bare /art" and
+  // sends the user back here, cancelling the navigation they asked for.
+  const onCanvasRoute = showId ? isCanvasPath(pathname, showId) : false;
+
   useEffect(() => {
-    if (!workspace.data) return;
+    if (!onCanvasRoute || !workspace.data) return;
     // An artboard is always active, so the URL should name it — landing on the bare /art route
     // leaves the address bar disagreeing with the editor, and un-shareable.
     if (!requestedArtId) {
@@ -112,7 +119,7 @@ function CanvasWorkspaceRoute() {
         replace: true,
       });
     }
-  }, [focused, navigate, params.showId, requestedArtId, workspace.data]);
+  }, [focused, navigate, onCanvasRoute, params.showId, requestedArtId, workspace.data]);
 
   if (showId === null || show.isError || !show.data) {
     return (

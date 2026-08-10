@@ -49,6 +49,8 @@ import {
 import { useState } from "react";
 import type { FormEvent, MouseEvent } from "react";
 
+import { navigationIntentFor } from "./header-navigation";
+
 /** Which editor the Chrome is currently wrapped around. */
 export type EditorKind = "show" | "canvas";
 
@@ -102,13 +104,26 @@ function initialsFor({ name, email }: HeaderUser): string {
   return letters.join("").toUpperCase() || "?";
 }
 
-/** Intercepts a link activation so navigation stays client-side. */
+/**
+ * Intercepts a link activation so navigation stays client-side.
+ *
+ * Base UI's `Tabs.Tab` and `DropdownMenu.Item` both call `preventDefault()` when
+ * they activate, so this cannot defer to the browser for anything — not the
+ * plain click, and not a modified one. See ./header-navigation for why.
+ */
 function activate(destination: HeaderDestination) {
   return (event: MouseEvent<HTMLAnchorElement>) => {
-    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey) return;
-    if (event.button !== 0) return;
-    event.preventDefault();
-    destination.onSelect();
+    switch (navigationIntentFor(event)) {
+      case "navigate":
+        event.preventDefault();
+        destination.onSelect();
+        return;
+      case "new-tab":
+        window.open(destination.href, "_blank", "noopener");
+        return;
+      case "ignore":
+        return;
+    }
   };
 }
 
