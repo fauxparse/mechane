@@ -10,6 +10,17 @@ export function rankForInsertion(ranks: readonly string[], index: number): strin
   return `${sorted[index - 1]}~`;
 }
 
+/** Whether a canvas drag would change the Element's parent or its position in auto layout. */
+export function dropChangesParentOrPosition(
+  sourceParentId: string | null,
+  sourceRank: string | null,
+  targetParentId: string,
+  targetIsAuto: boolean,
+  targetRank: string,
+): boolean {
+  return targetParentId !== sourceParentId || (targetIsAuto && targetRank !== sourceRank);
+}
+
 export function containingFrame(
   frames: readonly { id: string; rect: CanvasClientRect }[],
   draft: CanvasClientRect,
@@ -23,7 +34,8 @@ export function containingFrame(
           draft.right <= rect.right &&
           draft.bottom <= rect.bottom,
       )
-      .sort((left, right) => left.rect.width * left.rect.height - right.rect.width * right.rect.height)[0]
-      ?.id ?? null
+      .sort(
+        (left, right) => left.rect.width * left.rect.height - right.rect.width * right.rect.height,
+      )[0]?.id ?? null
   );
 }

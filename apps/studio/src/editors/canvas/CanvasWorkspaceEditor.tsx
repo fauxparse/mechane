@@ -45,7 +45,7 @@ import {
   topmostPaintedElementAtPoint,
 } from "./canvas-selection";
 import type { CanvasSelection } from "./canvas-selection";
-import { containingFrame, rankForInsertion } from "./canvas-creation";
+import { containingFrame, dropChangesParentOrPosition, rankForInsertion } from "./canvas-creation";
 import type { CanvasCreationTool } from "./canvas-creation";
 import { canvasElementParent, findCanvasElement } from "@mechane/commands";
 import type { CanvasClientRect } from "./canvas-geometry";
@@ -627,6 +627,21 @@ export function CanvasWorkspaceEditor({
       children.map((child) => child.dataset.elementRank ?? ""),
       insertionIndex < 0 ? children.length : insertionIndex,
     );
+    const targetParentId = parent.node.dataset.elementId;
+    if (
+      !targetParentId ||
+      !dropChangesParentOrPosition(
+        activeDrag.originParentId,
+        activeDrag.originRank,
+        targetParentId,
+        auto,
+        rank,
+      )
+    ) {
+      dragPreviewRef.current = null;
+      setDragPreview(null);
+      return;
+    }
     const line = auto
       ? axis === "x"
         ? {
@@ -756,7 +771,9 @@ export function CanvasWorkspaceEditor({
     );
     if (!union) return;
     const soleElement =
-      subjects.length === 1 ? findCanvasElement(artboard.canvas.root, subjects[0]!.elementId) : null;
+      subjects.length === 1
+        ? findCanvasElement(artboard.canvas.root, subjects[0]!.elementId)
+        : null;
     event.stopPropagation();
     // Capture on the workspace, not the handle: the move and release handlers live there, and a
     // capture held by the handle would never be released by them. Capture is best effort — it

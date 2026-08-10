@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { containingFrame, rankForInsertion } from "./canvas-creation";
+import { containingFrame, dropChangesParentOrPosition, rankForInsertion } from "./canvas-creation";
 
 const rect = (x: number, y: number, width: number, height: number) => ({
   x,
@@ -22,6 +22,13 @@ describe("Canvas creation tools", () => {
         rect(40, 40, 20, 20),
       ),
     ).toBe("nested");
+  });
+
+  it("only highlights drops that change parent or auto-layout position", () => {
+    expect(dropChangesParentOrPosition("frame-a", "b", "frame-a", false, "a~")).toBe(false);
+    expect(dropChangesParentOrPosition("frame-a", "b", "frame-a", true, "b")).toBe(false);
+    expect(dropChangesParentOrPosition("frame-a", "b", "frame-a", true, "a~")).toBe(true);
+    expect(dropChangesParentOrPosition("frame-a", "b", "frame-b", false, "b")).toBe(true);
   });
 
   it("allocates deterministic ranks before, between, and after siblings", () => {
