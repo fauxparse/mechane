@@ -5,6 +5,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 
 import { CanvasWorkspaceEditor } from "./CanvasWorkspaceEditor";
+import { MockEditorChrome } from "../../components/EditorLayout/MockEditorChrome";
 
 const root = (id: string, fill: string, width = 680, height = 440) => ({
   id: `${id}-root`,
@@ -47,8 +48,20 @@ const nestedAutoRoot = (id: string) => ({
       height: { mode: "hug" as const },
       fill: "#cbd5e1",
       children: [
-        { id: `${id}-label`, type: "text" as const, content: "Nested", width: { mode: "hug" as const }, height: { mode: "hug" as const } },
-        { id: `${id}-status`, type: "rect" as const, width: { mode: "fixed" as const, value: 72 }, height: { mode: "fixed" as const, value: 24 }, fill: "#94a3b8" },
+        {
+          id: `${id}-label`,
+          type: "text" as const,
+          content: "Nested",
+          width: { mode: "hug" as const },
+          height: { mode: "hug" as const },
+        },
+        {
+          id: `${id}-status`,
+          type: "rect" as const,
+          width: { mode: "fixed" as const, value: 72 },
+          height: { mode: "fixed" as const, value: 24 },
+          fill: "#94a3b8",
+        },
       ],
     },
     {
@@ -59,12 +72,18 @@ const nestedAutoRoot = (id: string) => ({
       height: { mode: "fill" as const },
       fill: "#f8fafc",
       children: [
-        { id: `${id}-copy`, type: "text" as const, content: "Absolute child inside auto layout", width: { mode: "hug" as const }, height: { mode: "hug" as const }, anchor: { horizontal: "center" as const, vertical: "center" as const } },
+        {
+          id: `${id}-copy`,
+          type: "text" as const,
+          content: "Absolute child inside auto layout",
+          width: { mode: "hug" as const },
+          height: { mode: "hug" as const },
+          anchor: { horizontal: "center" as const, vertical: "center" as const },
+        },
       ],
     },
   ],
 });
-
 
 const artboards: CanvasArtboardDocument[] = [
   {
@@ -232,11 +251,17 @@ const meta: Meta<typeof CanvasWorkspaceEditor> = {
   title: "studio/CanvasWorkspaceEditor",
   component: CanvasWorkspaceEditor,
   parameters: { layout: "fullscreen" },
+  // The editor contributes its Layers panel, Properties panel and toolbar to the
+  // Editor Chrome's slots, so it needs Chrome around it to render them at all.
+  // `sidebarsOpen` on a story's parameters sets the starting state.
   decorators: [
-    (Story) => (
-      <div className="h-screen w-screen">
+    (Story, context) => (
+      <MockEditorChrome
+        activeEditor="canvas"
+        sidebarsOpen={(context.parameters.sidebarsOpen as boolean | undefined) ?? true}
+      >
         <Story />
-      </div>
+      </MockEditorChrome>
     ),
   ],
   args: {
@@ -349,8 +374,8 @@ export const ZoomedInWorkspace: Story = {
   args: { initialCamera: { x: -220, y: -120, zoom: 1.75 } },
 };
 
-export const LayersCollapsed: Story = {
-  args: { initialLayersOpen: false },
+export const SidebarsCollapsed: Story = {
+  parameters: { sidebarsOpen: false },
 };
 export const StatefulReparentReviewStory: Story = {
   render: () => <StatefulReparentReview />,
@@ -360,17 +385,10 @@ export const SelectionAndLayerDragReview: Story = {
   render: () => <StatefulSelectionReview />,
 };
 
-export const InspectorCollapsed: Story = {
-  args: { initialInspectorOpen: false },
-};
-
-export const BothSidebarsCollapsed: Story = {
-  args: { initialLayersOpen: false, initialInspectorOpen: false },
-};
-
 export const NarrowMainPanel: Story = {
+  // Below the `md` breakpoint the sidebars are not rendered at all, so the
+  // Editable Area is the whole viewport.
   parameters: { viewport: { defaultViewport: "mobile1" } },
-  args: { initialLayersOpen: true, initialInspectorOpen: true },
 };
 
 export const ManyArtboards: Story = {
