@@ -64,6 +64,31 @@ _Avoid_: Z-index, depth, paint order
 The navigator panel listing every Canvas and the Elements inside it. A UI surface only — never a synonym for Element or Canvas, which is why the panel is called Layers but the things in it are Canvases and Elements.
 _Avoid_: using "layer" for an individual Element
 
+### Artboard
+
+The positioned, sized rectangle on the Canvas Editor's infinite plane that presents one Canvas. An Artboard is framing, not content: it has a place and a size, while the Canvas it presents has an element tree. Zoom-to-fit frames Artboards; it never frames Canvases.
+_Avoid_: Frame (a kind of Element), page, board, using "Artboard" and "Canvas" interchangeably
+
+### Show Editor
+
+The surface for editing a Show's graph — its Scenes, Devices, Flows, Sources, Transformers, and the wiring between them. Reached by the "Show" tab.
+_Avoid_: Graph editor, node editor
+
+### Canvas Editor
+
+The surface for editing the Canvas of a Scene or Block, presented as Artboards on an infinite plane. Reached by the "Scenes" tab.
+_Avoid_: Art editor, workspace, stage
+
+### Editor Chrome
+
+The application furniture wrapped around whichever editor is open: the Show name and its menu, the Show/Scenes tabs, the user menu, the live-run control, the sidebars, and the toolbar. Chrome is never content — it belongs to no Show and is not part of what a Device displays.
+_Avoid_: Shell, frame, header (the header is one part of the Chrome, not all of it)
+
+### Editable Area
+
+The region of the screen bounded by the Editor Chrome — the part of the editor a user can actually see and work in, as opposed to the part running underneath the sidebars and toolbar. Both editors paint edge to edge, but every zoom-to-fit frames its target within the Editable Area, so fitted content lands where it can be worked on rather than beneath the Chrome.
+_Avoid_: Safe area, inset (reserved for the measurements that define the Editable Area), viewport (reserved for the editor's camera)
+
 ### Property
 
 An application-defined attribute of an Element (as opposed to a Variable, which is user-defined). Both Properties and Variables can take literal values, be connected to variables, or take an expression combining the two.
@@ -139,6 +164,9 @@ _Avoid_: Binding (acceptable as a synonym), linking
 - A **Shape** may be reused by any number of **Sources**, **Variables** and **Transformers** within its **Show**
 - Audience members connect their phones to a **Device** by scanning a QR code or entering an alphanumeric code; their individual sessions are not tracked — interactions are aggregated
 - A **Show** has zero or more **Runs**; starting a **Run** resets live data to defaults, and **Devices** connect to the active **Run**
+- An **Artboard** presents exactly one **Canvas**; the **Canvas Editor** shows one or more **Artboards** on its infinite plane
+- The **Editor Chrome** wraps exactly one editor at a time — either the **Show Editor** or the **Canvas Editor** — and the tabs in it switch between the two
+- The **Editor Chrome** bounds the **Editable Area**; collapsing a sidebar grows the **Editable Area** without moving what either editor is already showing
 
 ## Example dialogue
 
