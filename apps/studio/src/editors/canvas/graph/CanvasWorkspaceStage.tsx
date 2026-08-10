@@ -1,0 +1,369 @@
+import { Puzzle, TvMinimal } from "lucide-react";
+
+import { Button } from "@mechane/design-system";
+import { CanvasRenderer } from "@mechane/rendering";
+
+import { canvasArtboardSize, artboardLabel } from "../data/canvas-workspace";
+import {
+  handleCursor,
+  handlePosition,
+  isCornerHandle,
+  RESIZE_HANDLES,
+} from "../commands/canvas-resize";
+import type { CanvasWorkspaceSurfaceProps } from "../canvas-workspace-types";
+
+const HANDLE_SIZE = 8;
+
+type CanvasWorkspaceStageProps = Pick<
+  CanvasWorkspaceSurfaceProps,
+  | "workspaceRef"
+  | "onCancelCreation"
+  | "onHandleCanvasKeyDown"
+  | "onBeginWorkspaceInteraction"
+  | "onMoveWorkspaceInteraction"
+  | "onEndWorkspaceInteraction"
+  | "onCancelWorkspaceInteraction"
+  | "tool"
+  | "setTool"
+  | "camera"
+  | "ordered"
+  | "drag"
+  | "focused"
+  | "onBeginCreation"
+  | "onFocusArtboard"
+  | "onSelect"
+  | "onBeginRubberband"
+  | "onBeginElementDrag"
+  | "onSelectAtPoint"
+  | "onBeginDrag"
+  | "onUpdateElementDrag"
+  | "onUpdateRubberband"
+  | "onMoveDrag"
+  | "onMoveCreation"
+  | "onFinishElementDrag"
+  | "onEndRubberband"
+  | "onEndDrag"
+  | "onFinishCreation"
+  | "renamingArtId"
+  | "setRenamingArtId"
+  | "onRenameArtboard"
+  | "overlayRect"
+  | "resizable"
+  | "onBeginResize"
+  | "creationOverlayRect"
+  | "dragLine"
+  | "rubberbandRect"
+>;
+
+export function CanvasWorkspaceStage({
+  workspaceRef,
+  onCancelCreation,
+  onHandleCanvasKeyDown,
+  onBeginWorkspaceInteraction,
+  onMoveWorkspaceInteraction,
+  onEndWorkspaceInteraction,
+  onCancelWorkspaceInteraction,
+  tool,
+  setTool,
+  camera,
+  ordered,
+  drag,
+  focused,
+  onBeginCreation,
+  onFocusArtboard,
+  onSelect,
+  onBeginRubberband,
+  onBeginElementDrag,
+  onSelectAtPoint,
+  onBeginDrag,
+  onUpdateElementDrag,
+  onUpdateRubberband,
+  onMoveDrag,
+  onMoveCreation,
+  onFinishElementDrag,
+  onEndRubberband,
+  onEndDrag,
+  onFinishCreation,
+  renamingArtId,
+  setRenamingArtId,
+  onRenameArtboard,
+  overlayRect,
+  resizable,
+  onBeginResize,
+  creationOverlayRect,
+  dragLine,
+  rubberbandRect,
+}: CanvasWorkspaceStageProps) {
+  return (
+    <main
+      ref={workspaceRef}
+      className="relative min-h-0 flex-1 overscroll-none overflow-hidden bg-muted/20 outline-none"
+      aria-label="Canvas workspace"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          onCancelCreation();
+        }
+        onHandleCanvasKeyDown(event);
+      }}
+      onPointerDown={onBeginWorkspaceInteraction}
+      onPointerMove={onMoveWorkspaceInteraction}
+      onPointerUp={onEndWorkspaceInteraction}
+      onPointerCancel={onCancelWorkspaceInteraction}
+      style={{ touchAction: "none" }}
+    >
+      <div
+        className="pointer-events-auto absolute top-3 left-3 z-20 flex items-center gap-1 rounded-lg border border-border bg-background/95 p-1 shadow-lg backdrop-blur"
+        role="toolbar"
+        aria-label="Canvas creation tools"
+      >
+        {(["select", "rect", "text", "image", "frame"] as const).map((candidate) => (
+          <Button
+            key={candidate}
+            type="button"
+            size="sm"
+            variant={tool === candidate ? "secondary" : "ghost"}
+            aria-pressed={tool === candidate}
+            onClick={() => setTool(candidate)}
+          >
+            {candidate[0]!.toUpperCase() + candidate.slice(1)}
+          </Button>
+        ))}
+      </div>
+      <div
+        className="pointer-events-none absolute top-0 left-0 h-0 w-0"
+        style={{
+          transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`,
+          transformOrigin: "0 0",
+        }}
+      >
+        {ordered.map((artboard) => {
+          const size = canvasArtboardSize(artboard);
+          return (
+            <div
+              key={artboard.artId}
+              role="group"
+              className={`pointer-events-auto absolute overflow-hidden bg-background shadow-2xl ${
+                drag?.artId === artboard.artId ? "cursor-grabbing" : "cursor-default"
+              }`}
+              data-artboard-id={artboard.artId}
+              data-canvas-id={artboard.canvasId}
+              data-artboard-kind={artboard.kind}
+              data-owner-kind={artboard.kind}
+              data-focused={artboard.artId === focused?.artId ? "true" : "false"}
+              style={{
+                left: artboard.position.x,
+                top: artboard.position.y,
+                width: size.width,
+                height: size.height,
+                // An outline sits outside the box, so the border never eats into the
+                // Canvas, and it stays 1px on screen however far the camera is zoomed.
+                outline: "1px solid var(--border)",
+                outlineOffset: 0,
+              }}
+              aria-label={artboardLabel(artboard)}
+              onPointerDown={(event) => {
+                if (tool !== "select") {
+                  onBeginCreation(event, artboard);
+                  return;
+                }
+                // The body being a drag handle costs the band its usual start, so Cmd
+                // (Ctrl elsewhere) asks for a band instead — over Elements too, which is
+                // the point of banding inside an artboard.
+                if (event.metaKey || event.ctrlKey) {
+                  event.stopPropagation();
+                  onFocusArtboard(artboard.artId);
+                  onSelect({ artId: artboard.artId, elementIds: [] });
+                  onBeginRubberband(event, artboard.artId);
+                  return;
+                }
+                if (onBeginElementDrag(event, artboard)) return;
+                // Empty Canvas is the Canvas itself: pressing it selects the artboard and
+                // grabs it, so the body is a drag handle wherever no Element is in the way.
+                onSelectAtPoint(event, artboard);
+                onBeginDrag(event, artboard);
+              }}
+              onPointerMove={(event) => {
+                onUpdateElementDrag(event);
+                onUpdateRubberband(event);
+                onMoveDrag(event, artboard);
+                onMoveCreation(event);
+              }}
+              onPointerUp={(event) => {
+                onFinishElementDrag(event);
+                onEndRubberband(event);
+                onEndDrag(event);
+                onFinishCreation(event);
+              }}
+              onPointerCancel={(event) => {
+                onFinishElementDrag(event, true);
+                onEndRubberband(event);
+                onEndDrag(event, true);
+                onFinishCreation(event, true);
+              }}
+            >
+              <CanvasRenderer canvas={artboard.canvas} />
+            </div>
+          );
+        })}
+      </div>
+      {/* Names live outside the camera's scale so they stay legible at any zoom, the way
+                  every design tool does it. Their positions are the camera transform done by hand. */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        {ordered.map((artboard) => {
+          const active = artboard.artId === focused?.artId;
+          const Icon = artboard.kind === "scene" ? TvMinimal : Puzzle;
+          return (
+            <div
+              key={artboard.artId}
+              className="pointer-events-auto absolute flex -translate-y-full items-center gap-1.5 pb-1 text-xs whitespace-nowrap"
+              style={{
+                left: camera.x + artboard.position.x * camera.zoom,
+                top: camera.y + artboard.position.y * camera.zoom,
+              }}
+              data-artboard-label={artboard.artId}
+            >
+              <Icon
+                aria-hidden="true"
+                className={`size-3.5 shrink-0 ${
+                  active ? "text-foreground" : "text-muted-foreground"
+                }`}
+              />
+              {renamingArtId === artboard.artId ? (
+                <input
+                  autoFocus
+                  defaultValue={artboard.name}
+                  aria-label={`Rename ${artboardLabel(artboard)}`}
+                  className="w-40 rounded-sm border border-border bg-background px-1 text-xs outline-none focus:ring-2 focus:ring-ring"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") event.currentTarget.blur();
+                    if (event.key === "Escape") {
+                      // Reset first, so the blur below has nothing to commit.
+                      event.currentTarget.value = artboard.name;
+                      event.currentTarget.blur();
+                    }
+                  }}
+                  onBlur={(event) => {
+                    const name = event.currentTarget.value.trim();
+                    if (name && name !== artboard.name) {
+                      onRenameArtboard?.(artboard.artId, name);
+                    }
+                    setRenamingArtId(null);
+                  }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className={`cursor-grab truncate active:cursor-grabbing ${
+                    active ? "font-semibold text-foreground" : "text-muted-foreground"
+                  }`}
+                  onPointerDown={(event) => onBeginDrag(event, artboard)}
+                  onPointerMove={(event) => onMoveDrag(event, artboard)}
+                  onPointerUp={(event) => onEndDrag(event)}
+                  onPointerCancel={(event) => onEndDrag(event, true)}
+                  onClick={() => {
+                    onFocusArtboard(artboard.artId);
+                    onSelect({ artId: artboard.artId, elementIds: [] });
+                  }}
+                  onDoubleClick={() => setRenamingArtId(artboard.artId)}
+                >
+                  {artboardLabel(artboard)}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <svg
+        className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
+        style={{ color: "var(--muted-foreground)" }}
+        aria-hidden="true"
+        data-selection-overlay
+      >
+        {overlayRect ? (
+          <>
+            <rect
+              x={overlayRect.x}
+              y={overlayRect.y}
+              width={overlayRect.width}
+              height={overlayRect.height}
+              fill="none"
+              stroke="currentColor"
+              strokeDasharray="6 4"
+              strokeWidth="1"
+              data-selection-rect
+              vectorEffect="non-scaling-stroke"
+            />
+            {resizable &&
+              RESIZE_HANDLES.map((handle) => {
+                const at = handlePosition(handle);
+                const x = overlayRect.x + overlayRect.width * at.x;
+                const y = overlayRect.y + overlayRect.height * at.y;
+                return (
+                  <rect
+                    key={handle}
+                    x={x - HANDLE_SIZE / 2}
+                    y={y - HANDLE_SIZE / 2}
+                    width={HANDLE_SIZE}
+                    height={HANDLE_SIZE}
+                    rx={isCornerHandle(handle) ? 1 : HANDLE_SIZE / 2}
+                    fill="white"
+                    stroke="currentColor"
+                    strokeWidth="1"
+                    vectorEffect="non-scaling-stroke"
+                    style={{ pointerEvents: "auto", cursor: handleCursor(handle) }}
+                    data-resize-handle={handle}
+                    onPointerDown={(event) => onBeginResize(event, handle)}
+                  />
+                );
+              })}
+          </>
+        ) : null}
+        {creationOverlayRect ? (
+          <rect
+            x={creationOverlayRect.x}
+            y={creationOverlayRect.y}
+            width={creationOverlayRect.width}
+            height={creationOverlayRect.height}
+            style={{ color: "var(--primary)" }}
+            fill="none"
+            stroke="currentColor"
+            strokeDasharray="8 4"
+            strokeLinecap="round"
+            strokeWidth="2"
+            vectorEffect="non-scaling-stroke"
+            data-creation-preview
+          />
+        ) : null}
+        {dragLine ? (
+          <rect
+            x={dragLine.x}
+            y={dragLine.y}
+            width={dragLine.width}
+            height={dragLine.height}
+            fill="none"
+            stroke="var(--primary)"
+            strokeDasharray="4 3"
+            strokeWidth="2"
+            vectorEffect="non-scaling-stroke"
+            data-drag-insertion
+          />
+        ) : null}
+        {rubberbandRect ? (
+          <rect
+            x={rubberbandRect.x}
+            y={rubberbandRect.y}
+            width={rubberbandRect.width}
+            height={rubberbandRect.height}
+            fill="none"
+            stroke="currentColor"
+            strokeDasharray="6 4"
+            strokeWidth="1"
+            vectorEffect="non-scaling-stroke"
+            data-rubberband
+          />
+        ) : null}
+      </svg>
+    </main>
+  );
+}

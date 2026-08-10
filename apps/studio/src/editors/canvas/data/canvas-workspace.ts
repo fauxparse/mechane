@@ -30,6 +30,12 @@ export function canvasArtboardSize(artboard: CanvasArtboardDocument): {
   };
 }
 
+export function artboardLabel(artboard: CanvasArtboardDocument): string {
+  return (
+    artboard.name.trim() || `${artboard.kind === "scene" ? "Scene" : "Block"} ${artboard.artId}`
+  );
+}
+
 export function artIdFromPath(pathname: string, showId: string): string | null {
   const prefix = `/shows/${showId}/art/`;
   if (!pathname.startsWith(prefix)) return null;
