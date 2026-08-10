@@ -54,6 +54,16 @@ _Avoid_: Operation, expression converter, computed node
 A visual building block inside a Scene — a rectangle, text, image, frame, or other primitive. Elements can be nested and their properties can be connected to Variables.
 _Avoid_: Layer, object, shape (shape is used for a different concept — see below)
 
+### Stacking order
+
+The order of sibling Elements within their parent. It determines which Element paints on top of which and, inside an auto-layout Frame, where an Element sits in the layout — one order, both meanings. "Bring forward" and "send to back" move an Element through it.
+_Avoid_: Z-index, depth, paint order
+
+### Layers
+
+The navigator panel listing every Canvas and the Elements inside it. A UI surface only — never a synonym for Element or Canvas, which is why the panel is called Layers but the things in it are Canvases and Elements.
+_Avoid_: using "layer" for an individual Element
+
 ### Property
 
 An application-defined attribute of an Element (as opposed to a Variable, which is user-defined). Both Properties and Variables can take literal values, be connected to variables, or take an expression combining the two.
