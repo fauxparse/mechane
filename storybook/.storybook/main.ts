@@ -15,6 +15,27 @@ const config: StorybookConfig = {
     options: {},
   },
   async viteFinal(viteConfig) {
+    const rollupOptions = viteConfig.build?.rollupOptions;
+    const existingOnWarn = rollupOptions?.onwarn;
+
+    viteConfig.build = {
+      ...viteConfig.build,
+      rollupOptions: {
+        ...rollupOptions,
+        onwarn(warning, defaultHandler) {
+          // Rollup drops module-level directives during Vite bundling; suppress its noise.
+          if (warning.code === "MODULE_LEVEL_DIRECTIVE") {
+            return;
+          }
+
+          if (existingOnWarn) {
+            existingOnWarn(warning, defaultHandler);
+          } else {
+            defaultHandler(warning);
+          }
+        },
+      },
+    };
     viteConfig.plugins = [...(viteConfig.plugins ?? []), tailwindcss()];
     return viteConfig;
   },
