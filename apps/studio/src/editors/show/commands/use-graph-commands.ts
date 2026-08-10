@@ -28,6 +28,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { toShowGraph } from "../data/api-graph";
 import type { ApiGraph } from "../data/api-graph";
+function sameGraphContent(
+  left: ApiGraph | null | undefined,
+  right: ApiGraph | null | undefined,
+): boolean {
+  return (
+    left?.nodes === right?.nodes && left?.edges === right?.edges && left?.shapes === right?.shapes
+  );
+}
 
 export interface GraphCommands {
   /** The graph as edited — what the editor draws. */
@@ -59,7 +67,10 @@ export interface GraphCommands {
  * Holds `source` as an editable graph with an undo/redo history.
  *
  * `source` is the graph as the API returned it, or null while it's loading.
- * A new `source` object replaces the graph and clears the history.
+ * A new graph content snapshot replaces the graph and clears the history.
+ * Cache metadata updates are intentionally ignored: the save path updates
+ * `version` and `updatedAt` with a shallow copy, while the graph content keeps
+ * the same node, edge, and shape arrays.
  */
 export function useGraphCommands(
   source: ApiGraph | null | undefined,
@@ -97,12 +108,12 @@ export function useGraphCommands(
 
   const changed = useCallback(() => setRevision((revision) => revision + 1), []);
 
-  // A different graph arriving is a new document, not an edit: state
-  // replaced, history dropped. The first render already built the stack from
-  // this `source`, so the initial pass has nothing to do.
+  // A different graph content snapshot is a new document: state replaced,
+  // history dropped. Metadata-only cache writes keep the content arrays
+  // identical, so they do not interrupt local edits or history.
   const applied = useRef(source);
   useEffect(() => {
-    if (applied.current === source) return;
+    if (sameGraphContent(applied.current, source)) return;
     applied.current = source;
     stack.reset(toShowGraph(source));
     changed();

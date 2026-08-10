@@ -1,18 +1,17 @@
 import { isId } from "@mechane/domain";
 import type { ShowId } from "@mechane/domain";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
-import { canvasWorkspaceQueryKey, useCanvasWorkspace } from "../../../../api/canvas";
-import type { CanvasArtboardDocument } from "../../../../api/canvas";
+import { useCanvasWorkspace } from "../../../../api/canvas";
 import { useShow } from "../../../../api/shows";
 import { useShowGraph, useShowGraphEdits } from "../../../../api/show-graph";
 import { CanvasWorkspaceEditor } from "../../../../editors/canvas/CanvasWorkspaceEditor";
 import { artIdFromPath, resolveFocusedArtboard } from "../../../../editors/canvas/canvas-workspace";
 import { useCanvasCommands } from "../../../../editors/canvas/use-canvas-commands";
+import { useGraphEditing } from "../../../../editors/show/commands/use-graph-editing";
 import { useUndoKeys } from "../../../../editors/show/keyboard/use-undo-keys";
-import { GRAPH_COMMAND_TYPES } from "@mechane/commands";
+
 export const Route = createFileRoute("/_authenticated/shows/$showId/art")({
   component: CanvasWorkspaceRoute,
 });
@@ -25,34 +24,67 @@ function CanvasWorkspaceRoute() {
   const show = useShow(showId);
   const draft = useShowGraph(showId, "draft");
   const workspace = useCanvasWorkspace(showId);
-  const queryClient = useQueryClient();
   const save = useShowGraphEdits(showId, draft.data?.version);
-  const commands = useCanvasCommands(workspace.data, (edits) => save.enqueue(edits));
-  useUndoKeys(commands);
+  const lastUndoTarget = useRef<"canvas" | "graph" | null>(null);
+  const canvasCommands = useCanvasCommands(workspace.data, (edits) => {
+    lastUndoTarget.current = "canvas";
+    save.enqueue(edits);
+  });
+  const graphEditing = useGraphEditing(draft.data, (edits) => {
+    lastUndoTarget.current = "graph";
+    save.enqueue(edits);
+  });
+  const undo = useCallback(() => {
+    if (lastUndoTarget.current === "graph" && graphEditing.commands.canUndo) {
+      graphEditing.commands.undo();
+    } else if (lastUndoTarget.current === "canvas" && canvasCommands.canUndo) {
+      canvasCommands.undo();
+    } else if (graphEditing.commands.canUndo) {
+      graphEditing.commands.undo();
+    } else {
+      canvasCommands.undo();
+    }
+  }, [canvasCommands, graphEditing.commands]);
+  const redo = useCallback(() => {
+    if (lastUndoTarget.current === "graph" && graphEditing.commands.canRedo) {
+      graphEditing.commands.redo();
+    } else if (lastUndoTarget.current === "canvas" && canvasCommands.canRedo) {
+      canvasCommands.redo();
+    } else if (graphEditing.commands.canRedo) {
+      graphEditing.commands.redo();
+    } else {
+      canvasCommands.redo();
+    }
+  }, [canvasCommands, graphEditing.commands]);
+  useUndoKeys({ undo, redo });
   const artboards = useMemo(() => {
-    const current = new Map(commands.workspace.artboards.map((artboard) => [artboard.canvasId, artboard]));
+    const current = new Map(
+      canvasCommands.workspace.artboards.map((artboard) => [artboard.canvasId, artboard]),
+    );
+    const names = new Map(graphEditing.graph.nodes.map((node) => [node.id, node.name]));
     return (workspace.data ?? []).map((artboard) => {
       const edited = current.get(artboard.canvasId);
+      const name = names.get(artboard.artId) ?? artboard.name;
       return edited
-        ? { ...artboard, canvas: edited.canvas, position: edited.position }
-        : artboard;
+        ? { ...artboard, name, canvas: edited.canvas, position: edited.position }
+        : name === artboard.name
+          ? artboard
+          : { ...artboard, name };
     });
-  }, [commands.workspace.artboards, workspace.data]);
+  }, [canvasCommands.workspace.artboards, graphEditing.graph, workspace.data]);
 
   // An artboard's name belongs to the Scene or Block that owns the Canvas, so a rename is a
-  // Show-graph edit. It rides the same save path as every Canvas edit, and the workspace cache
-  // is corrected alongside it so the new name shows at once: routing it through a second command
-  // stack instead would lose it, because every save rewrites the draft graph's cache entry and
-  // that resets the stack.
-  const renameArtboard = (artId: string, name: string) => {
-    if (!showId) return;
-    save.enqueue([{ type: GRAPH_COMMAND_TYPES.renameNode, nodeId: artId, name }]);
-    queryClient.setQueryData(
-      canvasWorkspaceQueryKey(showId, "draft"),
-      (previous: CanvasArtboardDocument[] | undefined) =>
-        previous?.map((artboard) => (artboard.artId === artId ? { ...artboard, name } : artboard)),
-    );
-  };
+  // Show-graph gesture. The graph stack owns the live name and the same save path as every
+  // Canvas edit; the undo coordinator above keeps both editor histories in order.
+  const renameArtboard = useCallback(
+    (artId: string, name: string) => {
+      if (!showId) return;
+      graphEditing.beginRename(artId);
+      graphEditing.renameTo(name);
+      graphEditing.commitRename();
+    },
+    [graphEditing.beginRename, graphEditing.commitRename, graphEditing.renameTo, showId],
+  );
   const requestedArtId = showId ? artIdFromPath(pathname, showId) : null;
   const focused = resolveFocusedArtboard(artboards, requestedArtId);
 
@@ -108,13 +140,13 @@ function CanvasWorkspaceRoute() {
           replace: true,
         })
       }
-      onBeginMoveArtboard={commands.beginArtboardMove}
-      onMoveArtboard={commands.updateArtboardMove}
-      onEndMoveArtboard={commands.endArtboardMove}
-      onCreateElement={commands.createElement}
-      onMoveElement={commands.moveElement}
-      onUpdateElement={commands.updateElement}
-      onDeleteElements={commands.removeElements}
+      onBeginMoveArtboard={canvasCommands.beginArtboardMove}
+      onMoveArtboard={canvasCommands.updateArtboardMove}
+      onEndMoveArtboard={canvasCommands.endArtboardMove}
+      onCreateElement={canvasCommands.createElement}
+      onMoveElement={canvasCommands.moveElement}
+      onUpdateElement={canvasCommands.updateElement}
+      onDeleteElements={canvasCommands.removeElements}
       onRenameArtboard={renameArtboard}
     />
   );
