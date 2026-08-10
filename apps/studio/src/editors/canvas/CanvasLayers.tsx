@@ -228,9 +228,9 @@ export function CanvasLayers({
   /**
    * Expansion is derived rather than stored and then patched: `toggled` records only what you
    * opened or closed by hand, and the rest falls out of focus and selection. The path down to the
-   * current selection always wins, so selecting an Element out on the canvas can never leave it
-   * hidden in here — which also means you cannot collapse a Canvas while something inside it is
-   * selected. Select the Canvas row first, which clears the Element selection.
+   * current selection is held open, so selecting an Element out on the canvas can never leave it
+   * hidden in here — and collapsing a node that holds the selection drops the selection instead of
+   * refusing, because reaching for a disclosure is a clear enough instruction to close it.
    */
   const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(() => new Map());
   const focusedArtId = focused?.artId ?? null;
@@ -251,8 +251,13 @@ export function CanvasLayers({
     return open;
   }, [forced, toggled, focusedArtId]);
 
-  const toggle = (id: string) =>
-    setToggled((current) => new Map(current).set(id, !expanded.has(id)));
+  const toggle = (id: string) => {
+    const closing = expanded.has(id);
+    // `forced` is exactly the nodes standing between the Canvas and the selection, so this is
+    // "you are closing something the selection is inside". Let the selection go with it.
+    if (closing && forced.has(id)) onSelect({ artId: selection.artId, elementIds: [] });
+    setToggled((current) => new Map(current).set(id, !closing));
+  };
 
   // The zone within a row decides between reordering and reparenting, and that rule lives in
   // canvas-layer-drop. Native drag-and-drop reports it directly on the row being hovered.
