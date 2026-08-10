@@ -15,7 +15,7 @@ import {
   Type,
 } from "lucide-react";
 import type { ElementKind } from "@mechane/domain";
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import type { CanvasArtboardDocument } from "../../api/canvas";
 import { layerDropPlacement, layerRowDropZone } from "./canvas-layer-drop";
@@ -192,39 +192,38 @@ export function CanvasLayers({
 }: CanvasLayersProps) {
   const [query, setQuery] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<ReadonlySet<string>>(
-    () => new Set(focused ? [focused.artId] : []),
-  );
   const [dragging, setDragging] = useState<{ rowId: string; artId: string } | null>(null);
   const [hint, setHint] = useState<DropHint | null>(null);
   const hintRef = useRef<DropHint | null>(null);
 
-  // Activating a Canvas opens it — you asked to work in it.
+  /**
+   * Expansion is derived rather than stored and then patched: `toggled` records only what you
+   * opened or closed by hand, and the rest falls out of focus and selection. The path down to the
+   * current selection always wins, so selecting an Element out on the canvas can never leave it
+   * hidden in here — which also means you cannot collapse a Canvas while something inside it is
+   * selected. Select the Canvas row first, which clears the Element selection.
+   */
+  const [toggled, setToggled] = useState<ReadonlyMap<string, boolean>>(() => new Map());
   const focusedArtId = focused?.artId ?? null;
-  useEffect(() => {
-    if (!focusedArtId) return;
-    setExpanded((current) => (current.has(focusedArtId) ? current : new Set([...current, focusedArtId])));
-  }, [focusedArtId]);
-
-  // A selection made out on the canvas has to be reachable in here, so open the way down to it.
   const selectedKey = selection.elementIds.join(" ");
-  useEffect(() => {
+  const forced = useMemo(() => {
     const artboard = ordered.find((candidate) => candidate.artId === selection.artId);
-    if (!artboard || selection.elementIds.length === 0) return;
-    const needed = expansionForSelection(artboard, selection.elementIds);
-    setExpanded((current) =>
-      needed.every((id) => current.has(id)) ? current : new Set([...current, ...needed]),
-    );
-    // selectedKey stands in for the id list, which is a new array every render.
-    // react-doctor-disable-next-line react-doctor/exhaustive-deps
-  }, [selectedKey, selection.artId, ordered]);
+    if (!artboard || selectedKey === "") return new Set<string>();
+    return new Set(expansionForSelection(artboard, selectedKey.split(" ")));
+  }, [ordered, selection.artId, selectedKey]);
+  const expanded = useMemo(() => {
+    const open = new Set(forced);
+    // The Canvas you are working in starts open, but you may still close it.
+    if (focusedArtId) open.add(focusedArtId);
+    for (const [id, isOpen] of toggled) {
+      if (isOpen) open.add(id);
+      else if (!forced.has(id)) open.delete(id);
+    }
+    return open;
+  }, [forced, toggled, focusedArtId]);
 
   const toggle = (id: string) =>
-    setExpanded((current) => {
-      const next = new Set(current);
-      if (!next.delete(id)) next.add(id);
-      return next;
-    });
+    setToggled((current) => new Map(current).set(id, !expanded.has(id)));
 
   // The zone within a row decides between reordering and reparenting, and that rule lives in
   // canvas-layer-drop. Native drag-and-drop reports it directly on the row being hovered.
@@ -237,7 +236,11 @@ export function CanvasLayers({
       setHint(null);
       return false;
     }
-    const zone = layerRowDropZone(row, offsetY, height || ROW_HEIGHT);
+    const zone = layerRowDropZone(
+      { ...row, expanded: expanded.has(row.id) },
+      offsetY,
+      height || ROW_HEIGHT,
+    );
     const targetId = row.kind === "canvas" ? artboard.canvas.root.id : row.id;
     if (!layerDropPlacement(artboard.canvas.root, dragging.rowId, targetId, zone)) {
       hintRef.current = null;
@@ -273,6 +276,8 @@ export function CanvasLayers({
     onMoveElement?.(artboard.canvasId, source.rowId, placement.parentId, placement.rank);
   };
 
+  // A Set, because the row loop below asks about every row and a selection can be large.
+  const selectedElementIds = new Set(selection.elementIds);
   const groups = (["scene", "block"] as const).map((kind) => ({
     kind,
     artboards: ordered.filter((artboard) => artboard.kind === kind),
@@ -316,7 +321,7 @@ export function CanvasLayers({
                       const active =
                         row.kind === "canvas"
                           ? selection.artId === row.artId && selection.elementIds.length === 0
-                          : selection.artId === row.artId && selection.elementIds.includes(row.id);
+                          : selection.artId === row.artId && selectedElementIds.has(row.id);
                       return (
                         <LayerRowView
                           key={`${row.artId}:${row.id}`}

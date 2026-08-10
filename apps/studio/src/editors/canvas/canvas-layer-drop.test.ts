@@ -38,6 +38,34 @@ describe("Canvas row drop zones", () => {
     expect(layerRowDropZone({ kind: "canvas" }, 31, 32)).toBe("inside");
   });
 
+  it("sends a drop below an expanded parent in as its first child, not past it", () => {
+    // The row under the indicator is the parent's own first child, so that is where it must land.
+    expect(
+      layerRowDropZone(
+        { kind: "element", elementKind: "frame", hasChildren: true, expanded: true },
+        31,
+        32,
+      ),
+    ).toBe("inside");
+  });
+
+  it("leaves 'after' alone when the parent is collapsed or childless", () => {
+    expect(
+      layerRowDropZone(
+        { kind: "element", elementKind: "frame", hasChildren: true, expanded: false },
+        31,
+        32,
+      ),
+    ).toBe("after");
+    expect(
+      layerRowDropZone(
+        { kind: "element", elementKind: "frame", hasChildren: false, expanded: true },
+        31,
+        32,
+      ),
+    ).toBe("after");
+  });
+
   it("still gives an Element row its three bands", () => {
     expect(layerRowDropZone({ kind: "element", elementKind: "frame" }, 16, 32)).toBe("inside");
     expect(layerRowDropZone({ kind: "element", elementKind: "frame" }, 1, 32)).toBe("before");

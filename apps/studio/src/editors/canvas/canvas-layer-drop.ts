@@ -30,12 +30,17 @@ export function layerDropZone(offsetY: number, height: number, isFrame: boolean)
  * Canvas" rather than before or after it.
  */
 export function layerRowDropZone(
-  row: { kind: "canvas" | "element"; elementKind?: string },
+  row: { kind: "canvas" | "element"; elementKind?: string; hasChildren?: boolean; expanded?: boolean },
   offsetY: number,
   height: number,
 ): LayerDropZone {
   if (row.kind === "canvas") return "inside";
-  return layerDropZone(offsetY, height, row.elementKind === "frame");
+  const zone = layerDropZone(offsetY, height, row.elementKind === "frame");
+  // Below an *expanded* parent, the next row on screen is its own first child — so that is where
+  // the indicator points, and "after" has to mean "in, at the top" rather than "next sibling".
+  // Collapsed, there is no child row in the way and "after" means what it says.
+  if (zone === "after" && row.expanded && row.hasChildren) return "inside";
+  return zone;
 }
 
 function findParent(
