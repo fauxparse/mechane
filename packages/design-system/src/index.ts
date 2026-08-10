@@ -4,7 +4,6 @@
 // see PRD.md §9 "Component convention".
 export { cn } from "./lib/utils";
 
-export { Alert, AlertAction, AlertDescription, AlertTitle } from "./components/ui/alert";
 export {
   AlertDialog,
   AlertDialogClose,
@@ -81,9 +80,6 @@ export {
   SidebarSeparator,
   SidebarTrigger,
   useSidebar,
-  InsideSidebar,
-  SIDEBAR_BREAKPOINT,
-  SIDEBAR_TRANSITION_MS,
 } from "./components/ui/sidebar";
 export { Separator } from "./components/ui/separator";
 export { Tabs, TabsContent, TabsList, TabsTrigger, tabsListVariants } from "./components/ui/tabs";

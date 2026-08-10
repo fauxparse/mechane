@@ -1,27 +1,19 @@
 // The shared Show editor layout for "/shows/$showId" (issue #39).
 //
-// The index child owns the Show Editor, while art.tsx owns the Canvas editor.
-// Keeping those editors in sibling routes lets TanStack Router select the
-// correct surface instead of making the layout inspect pathname strings or
-// render one editor beside the other.
-//
-// This route is the only place in the editor that touches hooks: it reads the
-// Show, the graphs, the run, and the signed-in user, and hands EditorLayout
-// plain data and callbacks. That is what lets the whole Chrome be reviewed in
-// Storybook with no router and no query client.
+// The index child owns the graph editor, while art.tsx owns the Canvas
+// workspace. Keeping those editors in sibling routes lets TanStack Router
+// select the correct surface instead of making the layout inspect pathname
+// strings or render one editor beside the other.
 import { isId, publishState } from "@mechane/domain";
 import type { ShowId } from "@mechane/domain";
 import { GraphQLRequestError } from "@mechane/graphql-schema";
+import { useEffect } from "react";
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 
 import { usePublishShowGraph, useShowGraph } from "../../../api/show-graph";
 import { useActiveRun, useEndRun, useStartRun } from "../../../api/runs";
-import { useRenameShow, useShow } from "../../../api/shows";
-import { useSignOut } from "../../../api/auth";
-import { useMe } from "../../../api/me";
-import { EditorLayout, useStoredSidebarState } from "../../../components/EditorLayout";
-import type { EditorKind } from "../../../components/EditorLayout";
+import { useDeleteShow, useRenameShow, useShow } from "../../../api/shows";
+import { ShowEditorChrome } from "../../../components/ShowEditorChrome";
 
 export const Route = createFileRoute("/_authenticated/shows/$showId")({
   component: ShowEditorLayout,
@@ -34,41 +26,35 @@ function ShowEditorLayout() {
   const showId: ShowId | null = isId("show", params.showId) ? params.showId : null;
   const navigate = useNavigate();
   const show = useShow(showId);
-  const me = useMe();
   // Both graph states feed the publish badge. The index child owns the draft
   // snapshot used by the graph command stack.
   const draft = useShowGraph(showId, "draft");
   const published = useShowGraph(showId, "published");
   const activeRun = useActiveRun(showId);
   const renameShow = useRenameShow();
+  const deleteShow = useDeleteShow();
   const publish = usePublishShowGraph();
   const startRun = useStartRun();
   const endRun = useEndRun();
-  const signOut = useSignOut();
-  const [sidebarsOpen, setSidebarsOpen] = useStoredSidebarState();
-
-  // Which editor the tabs should show as current. Derived from the matched
-  // route rather than the pathname, so the Canvas editor's nested `$artId`
-  // match still reads as "Scenes".
-  const activeEditor = useRouterState({
-    select: ({ matches }): EditorKind =>
-      matches.some(({ routeId }) => routeId.startsWith("/_authenticated/shows/$showId/art"))
-        ? "canvas"
-        : "show",
+  // Canvas owns a real workspace shell, so the Show chrome must participate
+  // in normal layout flow instead of floating over its toolbar and sidebars.
+  const isCanvasRoute = useRouterState({
+    select: ({ matches }) =>
+      matches.some(
+        ({ routeId }) =>
+          routeId === "/_authenticated/shows/$showId/art" ||
+          routeId === "/_authenticated/shows/$showId/art/$artId",
+      ),
   });
 
-  // Returning to Scenes should land back on the Artboard you left, not on
-  // whichever one the bare /art route happens to redirect to. Session-scoped:
-  // it is a convenience, not something worth persisting.
-  const lastArtId = useRouterState({
-    select: ({ matches }) =>
-      matches.find(({ routeId }) => routeId === "/_authenticated/shows/$showId/art/$artId")
-        ?.params as { artId?: string } | undefined,
-  })?.artId;
-  const [rememberedArtId, setRememberedArtId] = useState<string | null>(null);
+  // Show editors occupy the viewport; prevent scroll chaining to the document.
   useEffect(() => {
-    if (lastArtId) setRememberedArtId(lastArtId);
-  }, [lastArtId]);
+    const previousOverscrollBehavior = document.body.style.overscrollBehavior;
+    document.body.style.overscrollBehavior = "none";
+    return () => {
+      document.body.style.overscrollBehavior = previousOverscrollBehavior;
+    };
+  }, []);
 
   if (showId !== null && show.isPending) {
     return <p className="p-6 text-muted-foreground">Loading…</p>;
@@ -89,56 +75,41 @@ function ShowEditorLayout() {
       ? publishState(draft.data.updatedAt, published.data.updatedAt)
       : "empty";
 
-  const canvasPath = rememberedArtId
-    ? `/shows/${params.showId}/art/${rememberedArtId}`
-    : `/shows/${params.showId}/art`;
-
   return (
-    <EditorLayout
-      sidebarsOpen={sidebarsOpen}
-      onSidebarsOpenChange={setSidebarsOpen}
-      header={{
-        name: currentShow.name,
-        activeEditor,
-        navigation: {
-          home: { href: "/", onSelect: () => void navigate({ to: "/" }) },
-          settings: { href: "/settings", onSelect: () => void navigate({ to: "/settings" }) },
-          showEditor: {
-            href: `/shows/${params.showId}`,
-            onSelect: () =>
-              void navigate({ to: "/shows/$showId", params: { showId: params.showId } }),
-          },
-          canvasEditor: {
-            href: canvasPath,
-            onSelect: () =>
-              void (rememberedArtId
-                ? navigate({
-                    to: "/shows/$showId/art/$artId",
-                    params: { showId: params.showId, artId: rememberedArtId },
-                  })
-                : navigate({ to: "/shows/$showId/art", params: { showId: params.showId } })),
-          },
-        },
-        user: {
-          name: me.data?.name,
-          email: me.data?.email ?? "",
-          avatarUrl: null,
-        },
-        onLogOut: () => signOut.mutate(),
-        publishState: state,
-        onPublish: () => publish.mutate(currentShow.id),
-        publishing: publish.isPending,
-        runActive: activeRun.data !== null && activeRun.data !== undefined,
-        onStartRun: () => startRun.mutate(currentShow.id),
-        onEndRun: () => endRun.mutate(currentShow.id),
-        runPending: startRun.isPending || endRun.isPending,
-        onRename: (name) => renameShow.mutate({ id: currentShow.id, name }),
-        renaming: renameShow.isPending,
-        renameError:
-          renameShow.error instanceof GraphQLRequestError ? renameShow.error.message : undefined,
-      }}
+    <div
+      className={
+        isCanvasRoute
+          ? "flex h-screen w-screen flex-col overflow-hidden"
+          : "relative h-screen w-screen overflow-hidden"
+      }
     >
+      <ShowEditorChrome
+        name={currentShow.name}
+        publishState={state}
+        placement={isCanvasRoute ? "flow" : "overlay"}
+        onBack={() => void navigate({ to: "/" })}
+        onOpenCanvas={() =>
+          void navigate({ to: "/shows/$showId/art", params: { showId: params.showId } })
+        }
+        onRename={(name) => renameShow.mutate({ id: currentShow.id, name })}
+        onDelete={() => {
+          deleteShow.mutate(currentShow.id, {
+            onSuccess: () => void navigate({ to: "/" }),
+          });
+        }}
+        onPublish={() => publish.mutate(currentShow.id)}
+        runActive={activeRun.data !== null && activeRun.data !== undefined}
+        onStartRun={() => startRun.mutate(currentShow.id)}
+        onEndRun={() => endRun.mutate(currentShow.id)}
+        runPending={startRun.isPending || endRun.isPending}
+        renaming={renameShow.isPending}
+        renameError={
+          renameShow.error instanceof GraphQLRequestError ? renameShow.error.message : undefined
+        }
+        deleting={deleteShow.isPending}
+        publishing={publish.isPending}
+      />
       <Outlet />
-    </EditorLayout>
+    </div>
   );
 }
