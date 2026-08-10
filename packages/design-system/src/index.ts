@@ -81,13 +81,25 @@ export {
   SidebarTrigger,
   useSidebar,
 } from "./components/ui/sidebar";
+export { Separator } from "./components/ui/separator";
 export { Tabs, TabsContent, TabsList, TabsTrigger, tabsListVariants } from "./components/ui/tabs";
+export { Toggle, toggleVariants } from "./components/ui/toggle";
+export { ToggleGroup, ToggleGroupItem } from "./components/ui/toggle-group";
 export type {
   SidebarMenuButtonProps,
   SidebarProps,
   SidebarProviderProps,
 } from "./components/ui/sidebar";
 export { Input } from "./components/ui/input";
+export {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  InputGroupText,
+  InputGroupTextarea,
+} from "./components/ui/input-group";
+export { Textarea } from "./components/ui/textarea";
 export { Label } from "./components/ui/label";
 export { QrCode } from "./components/ui/qr-code";
 export { ThemeSwitcher } from "./components/theme-switcher";

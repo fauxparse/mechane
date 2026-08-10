@@ -244,9 +244,9 @@
   --muted: var(--palette-neutral-700);
   --muted-foreground: var(--palette-neutral-400);
   --accent: var(--palette-purple-500);
-  --accent-foreground: var(--palette-neutral-50);
+  --accent-foreground: var(--palette-purple-50);
   --primary: var(--palette-purple-500);
-  --primary-foreground: var(--palette-neutral-50);
+  --primary-foreground: var(--palette-purple-50);
   --destructive: var(--palette-red-500);
   --destructive-foreground: var(--palette-neutral-50);
   --success: var(--palette-green-500);
@@ -416,9 +416,9 @@
   --muted: var(--palette-neutral-200);
   --muted-foreground: var(--palette-neutral-600);
   --accent: var(--palette-purple-500);
-  --accent-foreground: var(--palette-neutral-950);
+  --accent-foreground: var(--palette-purple-50);
   --primary: var(--palette-purple-500);
-  --primary-foreground: var(--palette-neutral-950);
+  --primary-foreground: var(--palette-purple-50);
   --destructive: var(--palette-red-500);
   --destructive-foreground: var(--palette-neutral-950);
   --success: var(--palette-green-500);
@@ -588,9 +588,9 @@
   --muted: var(--palette-neutral-700);
   --muted-foreground: var(--palette-neutral-400);
   --accent: var(--palette-orange-500);
-  --accent-foreground: var(--palette-neutral-50);
+  --accent-foreground: var(--palette-orange-50);
   --primary: var(--palette-orange-500);
-  --primary-foreground: var(--palette-neutral-50);
+  --primary-foreground: var(--palette-orange-50);
   --destructive: var(--palette-red-500);
   --destructive-foreground: var(--palette-neutral-50);
   --success: var(--palette-green-500);
@@ -760,9 +760,9 @@
   --muted: var(--palette-neutral-200);
   --muted-foreground: var(--palette-neutral-600);
   --accent: var(--palette-orange-500);
-  --accent-foreground: var(--palette-neutral-950);
+  --accent-foreground: var(--palette-orange-50);
   --primary: var(--palette-orange-500);
-  --primary-foreground: var(--palette-neutral-950);
+  --primary-foreground: var(--palette-orange-50);
   --destructive: var(--palette-red-500);
   --destructive-foreground: var(--palette-neutral-950);
   --success: var(--palette-green-500);
