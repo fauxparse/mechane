@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { FrameElement } from "@mechane/domain";
 
-import { layerDropPlacement, layerDropZone } from "./canvas-layer-drop";
+import { layerDropPlacement, layerDropZone, layerRowDropZone } from "./canvas-layer-drop";
 
 const root: FrameElement = {
   id: "root",
@@ -29,6 +29,19 @@ describe("Canvas layer drop zones", () => {
   it("reorders around rows that cannot take children", () => {
     expect(layerDropZone(4, 32, false)).toBe("before");
     expect(layerDropZone(28, 32, false)).toBe("after");
+  });
+});
+
+describe("Canvas row drop zones", () => {
+  it("treats the whole Canvas row as 'into this Canvas'", () => {
+    expect(layerRowDropZone({ kind: "canvas" }, 1, 32)).toBe("inside");
+    expect(layerRowDropZone({ kind: "canvas" }, 31, 32)).toBe("inside");
+  });
+
+  it("still gives an Element row its three bands", () => {
+    expect(layerRowDropZone({ kind: "element", elementKind: "frame" }, 16, 32)).toBe("inside");
+    expect(layerRowDropZone({ kind: "element", elementKind: "frame" }, 1, 32)).toBe("before");
+    expect(layerRowDropZone({ kind: "element", elementKind: "rect" }, 16, 32)).toBe("after");
   });
 });
 

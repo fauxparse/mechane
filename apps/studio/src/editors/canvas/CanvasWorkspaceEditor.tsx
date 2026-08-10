@@ -1,5 +1,4 @@
 import {
-  Box,
   Layers3,
   Minus,
   PanelLeft,
@@ -15,15 +14,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
 } from "@mechane/design-system";
@@ -49,13 +41,13 @@ import { containingFrame, rankForInsertion } from "./canvas-creation";
 import type { CanvasCreationTool } from "./canvas-creation";
 import { canvasElementParent, findCanvasElement } from "@mechane/commands";
 import type { CanvasClientRect } from "./canvas-geometry";
-import type { Element as CanvasElement, FrameElement } from "@mechane/domain";
+import type { FrameElement } from "@mechane/domain";
 import { canvasKeyboardIntent, nudgeAnchor } from "./canvas-keyboard";
 import { focusContext } from "../show/keyboard/focus-context";
 
-import { flattenCanvasLayers, layerChildren, layerMatches } from "./canvas-layers";
-import { layerDropPlacement, layerDropZone } from "./canvas-layer-drop";
-import type { LayerDropZone } from "./canvas-layer-drop";
+import { CanvasLayers } from "./CanvasLayers";
+import { arrangeIntentFor, arrangeWithinParent } from "./canvas-arrange";
+import type { ArrangeIntent } from "./canvas-arrange";
 import {
   handleCursor,
   handlePosition,
@@ -177,201 +169,6 @@ type ResizeGesture = {
   /** Only a lone Element brings its own aspect lock; a union has no ratio of its own. */
   ratio: number | null;
 };
-
-function zoneFor(event: React.DragEvent<HTMLElement>, isFrame: boolean): LayerDropZone {
-  const rect = event.currentTarget.getBoundingClientRect();
-  return layerDropZone(event.clientY - rect.top, rect.height, isFrame);
-}
-
-function CanvasLayers({
-  ordered,
-  focused,
-  selection,
-  onFocusArtboard,
-  onSelect,
-  onUpdateElement,
-  onMoveElement,
-}: {
-  ordered: readonly CanvasArtboardDocument[];
-  focused: CanvasArtboardDocument | null;
-  selection: CanvasSelection;
-  onFocusArtboard(artId: string): void;
-  onSelect(selection: CanvasSelection): void;
-  onUpdateElement?(canvasId: string, elementId: string, properties: Record<string, unknown>): void;
-  onMoveElement?(canvasId: string, elementId: string, parentId: string, rank: string): void;
-}) {
-  const [query, setQuery] = useState("");
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [dragging, setDragging] = useState<string | null>(null);
-  const [dropHint, setDropHint] = useState<{ id: string; zone: LayerDropZone } | null>(null);
-
-  const applyDrop = (targetId: string, zone: LayerDropZone) => {
-    setDropHint(null);
-    const draggedId = dragging;
-    setDragging(null);
-    if (!draggedId || !focused) return;
-    const placement = layerDropPlacement(focused.canvas.root, draggedId, targetId, zone);
-    if (!placement) return;
-    onMoveElement?.(focused.canvasId, draggedId, placement.parentId, placement.rank);
-  };
-
-  const renderTree = (element: CanvasElement, depth: number): React.ReactNode => {
-    const active = selection.artId === focused?.artId && selection.elementIds.includes(element.id);
-    const isRoot = element.id === focused?.canvas.root.id;
-    const hint = dropHint?.id === element.id ? dropHint.zone : null;
-    return (
-      <div key={element.id}>
-        <SidebarMenuButton
-          className={`h-8 ${
-            hint === "inside"
-              ? "ring-2 ring-inset ring-primary"
-              : hint === "before"
-                ? "shadow-[inset_0_2px_0_0_var(--primary)]"
-                : hint === "after"
-                  ? "shadow-[inset_0_-2px_0_0_var(--primary)]"
-                  : ""
-          } ${dragging === element.id ? "opacity-50" : ""}`}
-          style={{ paddingInlineStart: `${0.5 + depth * 0.75}rem` }}
-          isActive={active}
-          aria-label={`${element.name ?? element.type} layer`}
-          draggable={!isRoot && renamingId !== element.id}
-          onDragStart={(event) => {
-            event.dataTransfer.effectAllowed = "move";
-            event.dataTransfer.setData("text/plain", element.id);
-            setDragging(element.id);
-          }}
-          onDragEnd={() => {
-            setDragging(null);
-            setDropHint(null);
-          }}
-          onDragOver={(event) => {
-            if (!dragging || dragging === element.id) return;
-            const zone = zoneFor(event, element.type === "frame");
-            if (!focused || !layerDropPlacement(focused.canvas.root, dragging, element.id, zone)) {
-              return;
-            }
-            // Only a droppable row calls preventDefault, so the cursor reports invalid targets.
-            event.preventDefault();
-            event.dataTransfer.dropEffect = "move";
-            setDropHint({ id: element.id, zone });
-          }}
-          onDragLeave={() =>
-            setDropHint((current) => (current?.id === element.id ? null : current))
-          }
-          onDrop={(event) => {
-            event.preventDefault();
-            applyDrop(element.id, zoneFor(event, element.type === "frame"));
-          }}
-          onClick={() =>
-            onSelect({
-              artId: focused?.artId ?? null,
-              elementIds: element.id === focused?.canvas.root.id ? [] : [element.id],
-            })
-          }
-        >
-          <span aria-hidden="true" className="w-4 text-[0.65rem] uppercase text-muted-foreground">
-            {element.type.slice(0, 1)}
-          </span>
-          <span
-            role="textbox"
-            aria-label={`Rename ${element.name ?? element.id}`}
-            className="truncate"
-            contentEditable={renamingId === element.id}
-            suppressContentEditableWarning
-            onDoubleClick={() => setRenamingId(element.id)}
-            onBlur={(event) => {
-              if (renamingId !== element.id || !focused) return;
-              onUpdateElement?.(focused.canvasId, element.id, {
-                name: event.currentTarget.textContent ?? "",
-              });
-              setRenamingId(null);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                event.currentTarget.blur();
-              }
-            }}
-          >
-            {element.name?.trim() || element.id}
-          </span>
-        </SidebarMenuButton>
-        {element.type === "frame"
-          ? layerChildren(element).map((child) => renderTree(child, depth + 1))
-          : null}
-      </div>
-    );
-  };
-  const groups = (["scene", "block"] as const).map((kind) => ({
-    kind,
-    artboards: ordered.filter((artboard) => artboard.kind === kind),
-  }));
-  return (
-    <SidebarContent>
-      <div className="p-2">
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search layers"
-          aria-label="Search layers"
-          className="h-8 w-full rounded-md border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
-      {groups.map(({ kind, artboards }) => {
-        const matchingArtboards: CanvasArtboardDocument[] = [];
-        for (const artboard of artboards) {
-          if (!query.trim()) {
-            matchingArtboards.push(artboard);
-            continue;
-          }
-          const text = `${artboardLabel(artboard)} ${artboard.artId}`.toLowerCase();
-          if (
-            text.includes(query.toLowerCase()) ||
-            flattenCanvasLayers(artboard.canvas.root).some((entry) => layerMatches(entry, query))
-          ) {
-            matchingArtboards.push(artboard);
-          }
-        }
-        return (
-          <SidebarGroup key={kind}>
-            <SidebarGroupLabel>{kind === "scene" ? "Scenes" : "Blocks"}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              {matchingArtboards.length === 0 ? (
-                <p className="p-2 text-sm text-muted-foreground">
-                  No {kind === "scene" ? "Scenes" : "Blocks"} match.
-                </p>
-              ) : (
-                <SidebarMenu>
-                  {matchingArtboards.map((artboard) => (
-                    <SidebarMenuItem key={artboard.artId}>
-                      <SidebarMenuButton
-                        aria-label={artboardLabel(artboard)}
-                        isActive={
-                          artboard.artId === focused?.artId && selection.elementIds.length === 0
-                        }
-                        onClick={() => {
-                          onFocusArtboard(artboard.artId);
-                          onSelect({ artId: artboard.artId, elementIds: [] });
-                        }}
-                      >
-                        <Box aria-hidden="true" />
-                        <span className="truncate">{artboardLabel(artboard)}</span>
-                      </SidebarMenuButton>
-                      {artboard.artId === focused?.artId
-                        ? renderTree(artboard.canvas.root, 0)
-                        : null}
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              )}
-            </SidebarGroupContent>
-          </SidebarGroup>
-        );
-      })}
-    </SidebarContent>
-  );
-}
 
 type DragPreview = {
   parentId: string;
@@ -919,7 +716,47 @@ export function CanvasWorkspaceEditor({
     setSelection({ artId: artboard.artId, elementIds: [] });
     return true;
   };
+  /** Moves the selection through its parent's stacking order. Returns whether it consumed the key. */
+  const arrangeSelection = (intent: ArrangeIntent): boolean => {
+    if (focusContext().inKeyConsumingWidget) return false;
+    if (!selection.artId || selection.elementIds.length === 0) return false;
+    const artboard = ordered.find((candidate) => candidate.artId === selection.artId);
+    if (!artboard) return false;
+    const root = artboard.canvas.root;
+    // A selection spanning parents arranges within each one; nothing crosses a parent boundary.
+    const byParent = new Map<string, string[]>();
+    for (const elementId of selection.elementIds) {
+      const parentInfo = canvasElementParent(root, elementId);
+      if (!parentInfo) continue;
+      byParent.set(parentInfo.parentId, [...(byParent.get(parentInfo.parentId) ?? []), elementId]);
+    }
+    let moved = false;
+    for (const [parentId, elementIds] of byParent) {
+      const parent = findCanvasElement(root, parentId);
+      if (!parent || parent.type !== "frame") continue;
+      for (const move of arrangeWithinParent(parent as FrameElement, elementIds, intent)) {
+        onMoveElement?.(artboard.canvasId, move.elementId, move.parentId, move.rank);
+        moved = true;
+      }
+    }
+    return moved;
+  };
+
   // The window listener below is bound once, so it reaches the current selection through a ref.
+  const arrangeSelectionRef = useRef(arrangeSelection);
+  useEffect(() => {
+    arrangeSelectionRef.current = arrangeSelection;
+  });
+  useEffect(() => {
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      const intent = arrangeIntentFor(event);
+      if (!intent) return;
+      if (arrangeSelectionRef.current(intent)) event.preventDefault();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const deleteSelectionRef = useRef(deleteSelection);
   useEffect(() => {
     deleteSelectionRef.current = deleteSelection;
@@ -1339,6 +1176,7 @@ export function CanvasWorkspaceEditor({
               onSelect={setSelection}
               onUpdateElement={onUpdateElement}
               onMoveElement={onMoveElement}
+              onRenameArtboard={onRenameArtboard}
             />
           </Sidebar>
         </SidebarProvider>

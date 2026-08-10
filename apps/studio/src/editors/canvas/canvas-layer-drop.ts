@@ -24,6 +24,20 @@ export function layerDropZone(offsetY: number, height: number, isFrame: boolean)
   return "inside";
 }
 
+/**
+ * The zone for a whole navigator row. A Canvas row is the exception: Canvases have no ordering to
+ * insert into (#222 keeps them out of the drag entirely), so anywhere on the row means "into this
+ * Canvas" rather than before or after it.
+ */
+export function layerRowDropZone(
+  row: { kind: "canvas" | "element"; elementKind?: string },
+  offsetY: number,
+  height: number,
+): LayerDropZone {
+  if (row.kind === "canvas") return "inside";
+  return layerDropZone(offsetY, height, row.elementKind === "frame");
+}
+
 function findParent(
   root: FrameElement,
   elementId: string,

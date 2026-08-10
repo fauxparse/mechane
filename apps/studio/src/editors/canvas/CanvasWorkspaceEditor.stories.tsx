@@ -301,6 +301,18 @@ export const KeyboardNudgeAndReorder: Story = {
     onMoveElement: noOp,
   },
 };
+/** The Layers navigator as a tree: nested Frames, disclosure, icons, and drag targets (#222). */
+export const LayersNestedTree: Story = {
+  args: {
+    artboards: [reparentReviewArtboard, ...artboards],
+    focusedArtId: "reparent-review",
+    selectedArtId: "reparent-review",
+    selectedElementIds: ["reparent-source"],
+    onUpdateElement: noOp,
+    onMoveElement: noOp,
+  },
+};
+
 export const LayersSearchAndNestedTree: Story = {
   args: {
     selectedArtId: "scene-lobby",
