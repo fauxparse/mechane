@@ -1,9 +1,4 @@
-import type {
-  CanvasWorkspace,
-  CanvasWorkspaceEdit,
-  Gesture,
-  NewElement,
-} from "@mechane/commands";
+import type { CanvasWorkspace, CanvasWorkspaceEdit, Gesture, NewElement } from "@mechane/commands";
 import {
   addCanvasElement,
   CommandStack,
@@ -50,6 +45,8 @@ export interface CanvasCommands {
   removeElements(canvasId: string, elementIds: readonly string[]): void;
   undo(): void;
   redo(): void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 /** Keeps the Canvas workspace in the shared command stack and save path. */
@@ -195,5 +192,7 @@ export function useCanvasCommands(
     removeElements,
     undo,
     redo,
+    canUndo: stack.canUndo,
+    canRedo: stack.canRedo,
   };
 }

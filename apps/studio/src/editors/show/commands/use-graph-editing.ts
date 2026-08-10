@@ -102,10 +102,9 @@ export function useGraphEditing(
 ): GraphEditing {
   const commands = useGraphCommands(source, save);
   const { graph, execute, beginGesture } = commands;
-
   const [renaming, setRenaming] = useState<string | null>(null);
+  const renamingNode = useRef<string | null>(null);
   const rename = useRef<Gesture<ShowGraph, GraphEdit> | null>(null);
-
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   // Computed once when the drag starts, not per hover: the answer is about the
   // whole graph (#35's affordance dims every non-target), and recomputing it on
@@ -144,21 +143,24 @@ export function useGraphEditing(
   // better of.
   const beginRename = useCallback((nodeId: string) => {
     rename.current = null;
+    renamingNode.current = nodeId;
     setRenaming(nodeId);
   }, []);
 
   const renameTo = useCallback(
     (name: string) => {
-      if (!renaming) return;
-      rename.current ??= beginGesture({ key: `rename:${renaming}`, label: "Rename" });
-      rename.current.update(renameNode(renaming, name));
+      const nodeId = renamingNode.current;
+      if (!nodeId) return;
+      rename.current ??= beginGesture({ key: `rename:${nodeId}`, label: "Rename" });
+      rename.current.update(renameNode(nodeId, name));
     },
-    [beginGesture, renaming],
+    [beginGesture],
   );
 
   const commitRename = useCallback(() => {
     rename.current?.commit();
     rename.current = null;
+    renamingNode.current = null;
     setRenaming(null);
   }, []);
 
@@ -168,6 +170,7 @@ export function useGraphEditing(
   const cancelRename = useCallback(() => {
     rename.current?.abort();
     rename.current = null;
+    renamingNode.current = null;
     setRenaming(null);
   }, []);
 
