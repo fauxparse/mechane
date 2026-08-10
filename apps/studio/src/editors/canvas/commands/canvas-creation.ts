@@ -1,4 +1,4 @@
-import type { CanvasClientRect } from "./canvas-geometry";
+import type { CanvasClientRect } from "../graph/canvas-geometry";
 
 export type CanvasCreationTool = "select" | "rect" | "text" | "image" | "frame";
 

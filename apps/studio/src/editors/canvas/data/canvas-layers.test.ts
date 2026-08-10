@@ -15,7 +15,13 @@ const root: FrameElement = {
 describe("Canvas layer tree", () => {
   it("renders siblings in reverse paint rank and flattens parent context", () => {
     expect(layerChildren(root).map((element) => element.id)).toEqual(["front", "back"]);
-    expect(flattenCanvasLayers(root).map(({ element, depth, parentId }) => [element.id, depth, parentId])).toEqual([
+    expect(
+      flattenCanvasLayers(root).map(({ element, depth, parentId }) => [
+        element.id,
+        depth,
+        parentId,
+      ]),
+    ).toEqual([
       ["root", 0, null],
       ["front", 1, "root"],
       ["back", 1, "root"],

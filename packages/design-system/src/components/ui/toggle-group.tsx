@@ -1,7 +1,7 @@
 import { Toggle as TogglePrimitive } from "@base-ui/react/toggle";
 import { ToggleGroup as ToggleGroupPrimitive } from "@base-ui/react/toggle-group";
 import { type VariantProps } from "class-variance-authority";
-import { createContext, useContext, type CSSProperties, type ReactNode } from "react";
+import { createContext, useContext, useMemo, type CSSProperties, type ReactNode } from "react";
 
 import { cn } from "../../lib/utils";
 import { toggleVariants } from "./toggle";
@@ -32,6 +32,15 @@ function ToggleGroup({
     orientation?: "horizontal" | "vertical";
     children?: ReactNode;
   }) {
+  const contextValue = useMemo(
+    () => ({
+      variant,
+      size,
+      spacing,
+      orientation,
+    }),
+    [variant, size, spacing, orientation],
+  );
   return (
     <ToggleGroupPrimitive
       data-slot="toggle-group"
@@ -46,9 +55,7 @@ function ToggleGroup({
       )}
       {...props}
     >
-      <ToggleGroupContext.Provider value={{ variant, size, spacing, orientation }}>
-        {children}
-      </ToggleGroupContext.Provider>
+      <ToggleGroupContext.Provider value={contextValue}>{children}</ToggleGroupContext.Provider>
     </ToggleGroupPrimitive>
   );
 }

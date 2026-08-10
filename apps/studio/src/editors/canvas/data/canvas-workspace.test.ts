@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { CanvasArtboardDocument } from "../../api/canvas";
+import type { CanvasArtboardDocument } from "../../../api/canvas";
 import { artIdFromPath, canvasArtboardSize, resolveFocusedArtboard } from "./canvas-workspace";
 
 const artboards = [

@@ -7,7 +7,7 @@ import {
   SidebarGroupLabel,
 } from "@mechane/design-system";
 
-import type { CanvasArtboardDocument } from "../../api/canvas";
+import type { CanvasArtboardDocument } from "../../../api/canvas";
 import { canvasElementParent, findCanvasElement } from "@mechane/commands";
 import type { CanvasSelection } from "./canvas-selection";
 

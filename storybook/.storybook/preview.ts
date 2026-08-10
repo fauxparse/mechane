@@ -1,6 +1,7 @@
 import { ThemeProvider } from "@mechane/design-system";
 import { DEFAULT_THEME_PALETTE, THEME_PALETTE_METADATA } from "@mechane/domain";
 import { createElement } from "react";
+import { Preview } from "@storybook/react-vite";
 
 import "@mechane/design-system/styles/globals.css";
 

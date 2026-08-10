@@ -19,9 +19,14 @@ export function canvasKeyboardIntent(
   const positive = key === "ArrowRight" || key === "ArrowDown";
   if (!autoLayout) {
     const amount = shiftKey ? 10 : 1;
-    return { type: "nudge", dx: horizontal ? (positive ? amount : -amount) : 0, dy: horizontal ? 0 : positive ? amount : -amount };
+    return {
+      type: "nudge",
+      dx: horizontal ? (positive ? amount : -amount) : 0,
+      dy: horizontal ? 0 : positive ? amount : -amount,
+    };
   }
-  const primary = (direction === "horizontal" && horizontal) || (direction === "vertical" && !horizontal);
+  const primary =
+    (direction === "horizontal" && horizontal) || (direction === "vertical" && !horizontal);
   if (primary) {
     if (shiftKey) return { type: "primary-reorder", delta: positive ? "end" : "start" };
     return { type: "primary-reorder", delta: positive ? 1 : -1 };
@@ -35,7 +40,9 @@ export function canvasKeyboardIntent(
 }
 
 export function nudgeAnchor(
-  anchor: { horizontal?: string; vertical?: string; offsetX?: number; offsetY?: number } | undefined,
+  anchor:
+    | { horizontal?: string; vertical?: string; offsetX?: number; offsetY?: number }
+    | undefined,
   dx: number,
   dy: number,
 ) {

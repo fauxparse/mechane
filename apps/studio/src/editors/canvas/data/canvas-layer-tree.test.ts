@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { CanvasArtboardDocument } from "../../api/canvas";
+import type { CanvasArtboardDocument } from "../../../api/canvas";
 import { ancestorIdsOf, canvasLayerRows, expansionForSelection } from "./canvas-layer-tree";
 
 const artboard: CanvasArtboardDocument = {
@@ -23,7 +23,12 @@ const artboard: CanvasArtboardDocument = {
           name: "Group",
           children: [
             { id: "nested", type: "text", rank: "a", name: "Caption" },
-            { id: "deep", type: "frame", rank: "b", children: [{ id: "leaf", type: "rect", rank: "a" }] },
+            {
+              id: "deep",
+              type: "frame",
+              rank: "b",
+              children: [{ id: "leaf", type: "rect", rank: "a" }],
+            },
           ],
         },
       ],

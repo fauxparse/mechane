@@ -24,11 +24,11 @@ import { CanvasRenderer } from "@mechane/rendering";
 import type { NewElement } from "@mechane/commands";
 
 import type { CanvasArtboardDocument } from "../../api/canvas";
-import { canvasArtboardSize } from "./canvas-workspace";
-import type { CanvasCamera } from "./canvas-camera";
-import { useCanvasCamera } from "./use-canvas-camera";
-import { roundToLogicalPixel } from "./canvas-pixels";
-import { useCanvasGeometry } from "./canvas-geometry";
+import { canvasArtboardSize } from "./data/canvas-workspace";
+import type { CanvasCamera } from "./graph/canvas-camera";
+import { useCanvasCamera } from "./graph/use-canvas-camera";
+import { roundToLogicalPixel } from "./graph/canvas-pixels";
+import { useCanvasGeometry } from "./graph/canvas-geometry";
 import {
   containedSelection,
   normalizeSelection,
@@ -36,19 +36,23 @@ import {
   selectionRect,
   toggleSelection,
   topmostPaintedElementAtPoint,
-} from "./canvas-selection";
-import type { CanvasSelection } from "./canvas-selection";
-import { containingFrame, dropChangesParentOrPosition, rankForInsertion } from "./canvas-creation";
-import type { CanvasCreationTool } from "./canvas-creation";
+} from "./graph/canvas-selection";
+import type { CanvasSelection } from "./graph/canvas-selection";
+import {
+  containingFrame,
+  dropChangesParentOrPosition,
+  rankForInsertion,
+} from "./commands/canvas-creation";
+import type { CanvasCreationTool } from "./commands/canvas-creation";
 import { canvasElementParent, findCanvasElement } from "@mechane/commands";
-import type { CanvasClientRect } from "./canvas-geometry";
+import type { CanvasClientRect } from "./graph/canvas-geometry";
 import type { FrameElement } from "@mechane/domain";
-import { canvasKeyboardIntent, nudgeAnchor } from "./canvas-keyboard";
+import { canvasKeyboardIntent, nudgeAnchor } from "./keyboard/canvas-keyboard";
 import { focusContext } from "../show/keyboard/focus-context";
 
-import { CanvasLayers } from "./CanvasLayers";
-import { arrangeIntentFor, arrangeWithinParent } from "./canvas-arrange";
-import type { ArrangeIntent } from "./canvas-arrange";
+import { CanvasLayers } from "./graph/CanvasLayers";
+import { arrangeIntentFor, arrangeWithinParent } from "./commands/canvas-arrange";
+import type { ArrangeIntent } from "./commands/canvas-arrange";
 import {
   handleCursor,
   handlePosition,
@@ -57,9 +61,9 @@ import {
   resizeBox,
   RESIZE_HANDLES,
   scaleWithin,
-} from "./canvas-resize";
-import type { ResizeBox, ResizeHandle } from "./canvas-resize";
-import { CanvasInspector } from "./CanvasInspector";
+} from "./commands/canvas-resize";
+import type { ResizeBox, ResizeHandle } from "./commands/canvas-resize";
+import { CanvasInspector } from "./graph/CanvasInspector";
 export interface CanvasWorkspaceEditorProps {
   artboards: readonly CanvasArtboardDocument[];
   focusedArtId: string | null;

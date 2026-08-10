@@ -11,7 +11,11 @@ const frame = (...ids: string[]): FrameElement => ({
 });
 
 /** The order the Elements end up in, which is what a caller actually cares about. */
-const orderAfter = (parent: FrameElement, selected: string[], intent: Parameters<typeof arrangeWithinParent>[2]) => {
+const orderAfter = (
+  parent: FrameElement,
+  selected: string[],
+  intent: Parameters<typeof arrangeWithinParent>[2],
+) => {
   const moves = arrangeWithinParent(parent, selected, intent);
   const ranks = new Map(moves.map((move) => [move.elementId, move.rank]));
   return inStackingOrder(

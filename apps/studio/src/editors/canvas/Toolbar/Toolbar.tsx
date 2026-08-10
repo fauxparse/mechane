@@ -1,5 +1,4 @@
 import {
-  Button,
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
@@ -11,7 +10,6 @@ import {
 import {
   FrameIcon,
   ImageIcon,
-  Minus,
   MinusIcon,
   MousePointerIcon,
   PlusIcon,

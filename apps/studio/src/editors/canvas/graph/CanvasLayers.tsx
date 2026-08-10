@@ -17,11 +17,11 @@ import {
 import type { ElementKind } from "@mechane/domain";
 import { useMemo, useRef, useState } from "react";
 
-import type { CanvasArtboardDocument } from "../../api/canvas";
-import { layerDropPlacement, layerRowDropZone } from "./canvas-layer-drop";
-import type { LayerDropZone } from "./canvas-layer-drop";
-import { canvasLayerRows, expansionForSelection } from "./canvas-layer-tree";
-import type { LayerRow } from "./canvas-layer-tree";
+import type { CanvasArtboardDocument } from "../../../api/canvas";
+import { layerDropPlacement, layerRowDropZone } from "../data/canvas-layer-drop";
+import type { LayerDropZone } from "../data/canvas-layer-drop";
+import { canvasLayerRows, expansionForSelection } from "../data/canvas-layer-tree";
+import type { LayerRow } from "../data/canvas-layer-tree";
 import type { CanvasSelection } from "./canvas-selection";
 
 const ELEMENT_ICONS: Record<ElementKind, typeof Square> = {
