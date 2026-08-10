@@ -35,6 +35,7 @@ import type { CanvasArtboardDocument } from "../../api/canvas";
 import { canvasArtboardSize } from "./canvas-workspace";
 import type { CanvasCamera } from "./canvas-camera";
 import { useCanvasCamera } from "./use-canvas-camera";
+import { roundToLogicalPixel } from "./canvas-pixels";
 import { useCanvasGeometry } from "./canvas-geometry";
 import {
   containedSelection,
@@ -691,8 +692,8 @@ export function CanvasWorkspaceEditor({
                 anchor: {
                   horizontal: "left" as const,
                   vertical: "top" as const,
-                  offsetX: (dropped.x - parentRect.x) / camera.zoom,
-                  offsetY: (dropped.y - parentRect.y) / camera.zoom,
+                  offsetX: roundToLogicalPixel(dropped.x - parentRect.x, camera.zoom),
+                  offsetY: roundToLogicalPixel(dropped.y - parentRect.y, camera.zoom),
                 },
               };
         // In an absolute parent rank is only z-order, which a reposition must not disturb.
@@ -830,8 +831,11 @@ export function CanvasWorkspaceEditor({
     for (const subject of gesture.subjects) {
       const next = scaleWithin(subject.start, gesture.start, box);
       const properties: Record<string, unknown> = {
-        width: { mode: "fixed", value: next.width / camera.zoom },
-        height: { mode: "fixed", value: next.height / camera.zoom },
+        width: { mode: "fixed", value: Math.max(1, roundToLogicalPixel(next.width, camera.zoom)) },
+        height: {
+          mode: "fixed",
+          value: Math.max(1, roundToLogicalPixel(next.height, camera.zoom)),
+        },
       };
       // Only an absolutely positioned Element carries its own origin; in an auto-layout Frame the
       // parent decides where it sits, so resizing must not invent an anchor for it.
@@ -839,8 +843,8 @@ export function CanvasWorkspaceEditor({
         properties.anchor = {
           horizontal: "left" as const,
           vertical: "top" as const,
-          offsetX: (next.x - subject.parent.x) / camera.zoom,
-          offsetY: (next.y - subject.parent.y) / camera.zoom,
+          offsetX: roundToLogicalPixel(next.x - subject.parent.x, camera.zoom),
+          offsetY: roundToLogicalPixel(next.y - subject.parent.y, camera.zoom),
         };
       }
       onUpdateElement?.(gesture.canvasId, subject.elementId, properties, unset);
@@ -1204,8 +1208,8 @@ export function CanvasWorkspaceEditor({
       children.map((child) => child.dataset.elementRank ?? ""),
       insertionIndex < 0 ? children.length : insertionIndex,
     );
-    const width = Math.max(1, rect.width / camera.zoom);
-    const height = Math.max(1, rect.height / camera.zoom);
+    const width = Math.max(1, roundToLogicalPixel(rect.width, camera.zoom));
+    const height = Math.max(1, roundToLogicalPixel(rect.height, camera.zoom));
     const id = `element-${globalThis.crypto.randomUUID()}`;
     const element: NewElement = {
       id,
@@ -1224,8 +1228,8 @@ export function CanvasWorkspaceEditor({
             anchor: {
               horizontal: "left" as const,
               vertical: "top" as const,
-              offsetX: (rect.x - parentRect.x) / camera.zoom,
-              offsetY: (rect.y - parentRect.y) / camera.zoom,
+              offsetX: roundToLogicalPixel(rect.x - parentRect.x, camera.zoom),
+              offsetY: roundToLogicalPixel(rect.y - parentRect.y, camera.zoom),
             },
           }
         : {}),
