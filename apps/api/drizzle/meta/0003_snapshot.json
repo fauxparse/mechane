@@ -927,7 +927,7 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": "'slate'"
+          "default": "'catppuccin'"
         },
         "created_at": {
           "name": "created_at",

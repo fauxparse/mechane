@@ -24,7 +24,7 @@ const ThemeContext = createContext<ThemeContextValue>({
 export interface ThemeProviderProps {
   /** Defaults to PRD.md §7's default ("dark") when omitted/pending. */
   mode?: ThemeMode;
-  /** Defaults to PRD.md §7's default ("slate") when omitted/pending. */
+  /** Defaults to the generated Catppuccin palette when omitted/pending. */
   palette?: ThemePalette;
   children: ReactNode;
 }
