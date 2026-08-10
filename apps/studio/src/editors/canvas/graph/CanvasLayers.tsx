@@ -17,11 +17,12 @@ import {
 import type { ElementKind } from "@mechane/domain";
 import { useMemo, useRef, useState } from "react";
 
-import type { CanvasArtboardDocument } from "../../api/canvas";
-import { layerDropPlacement, layerRowDropZone } from "./canvas-layer-drop";
-import type { LayerDropZone } from "./canvas-layer-drop";
-import { canvasLayerRows, expansionForSelection } from "./canvas-layer-tree";
-import type { LayerRow } from "./canvas-layer-tree";
+import type { CanvasArtboardDocument } from "../../../api/canvas";
+import { layerDropPlacement, layerRowDropZone } from "../data/canvas-layer-drop";
+import type { LayerDropZone } from "../data/canvas-layer-drop";
+import { artboardLabel } from "../data/canvas-workspace";
+import { canvasLayerRows, expansionForSelection } from "../data/canvas-layer-tree";
+import type { LayerRow } from "../data/canvas-layer-tree";
 import type { CanvasSelection } from "./canvas-selection";
 
 const ELEMENT_ICONS: Record<ElementKind, typeof Square> = {
@@ -46,12 +47,6 @@ export interface CanvasLayersProps {
 }
 
 type DropHint = { rowId: string; artId: string; zone: LayerDropZone };
-
-function artboardLabel(artboard: CanvasArtboardDocument): string {
-  return (
-    artboard.name.trim() || `${artboard.kind === "scene" ? "Scene" : "Block"} ${artboard.artId}`
-  );
-}
 
 /**
  * Only "inside" belongs on the row itself — a ring that follows the row's rounded corners is

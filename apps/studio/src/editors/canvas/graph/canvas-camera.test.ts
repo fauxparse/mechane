@@ -15,7 +15,10 @@ describe("Canvas camera math", () => {
     const camera = { x: 40, y: -20, zoom: 2 };
     const point = { x: 300, y: 180 };
     const next = zoomCanvasCamera(camera, point, 3);
-    const worldBefore = { x: (point.x - camera.x) / camera.zoom, y: (point.y - camera.y) / camera.zoom };
+    const worldBefore = {
+      x: (point.x - camera.x) / camera.zoom,
+      y: (point.y - camera.y) / camera.zoom,
+    };
     const worldAfter = { x: (point.x - next.x) / next.zoom, y: (point.y - next.y) / next.zoom };
     expect(worldAfter.x).toBeCloseTo(worldBefore.x);
     expect(worldAfter.y).toBeCloseTo(worldBefore.y);

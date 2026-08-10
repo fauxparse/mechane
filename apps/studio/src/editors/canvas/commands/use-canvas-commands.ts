@@ -10,7 +10,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Position } from "@mechane/domain";
 
-import type { CanvasArtboardDocument } from "../../api/canvas";
+import type { CanvasArtboardDocument } from "../../../api/canvas";
 
 function toWorkspace(source: readonly CanvasArtboardDocument[] | undefined): CanvasWorkspace {
   return {

@@ -1,6 +1,6 @@
 import type { Element, FrameElement } from "@mechane/domain";
 
-import { rankForInsertion } from "./canvas-creation";
+import { rankForInsertion } from "../commands/canvas-creation";
 import { layerChildren } from "./canvas-layers";
 
 /** Where a layer row drop lands relative to the row under the pointer. */
@@ -30,7 +30,12 @@ export function layerDropZone(offsetY: number, height: number, isFrame: boolean)
  * Canvas" rather than before or after it.
  */
 export function layerRowDropZone(
-  row: { kind: "canvas" | "element"; elementKind?: string; hasChildren?: boolean; expanded?: boolean },
+  row: {
+    kind: "canvas" | "element";
+    elementKind?: string;
+    hasChildren?: boolean;
+    expanded?: boolean;
+  },
   offsetY: number,
   height: number,
 ): LayerDropZone {

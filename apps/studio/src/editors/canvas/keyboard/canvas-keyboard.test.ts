@@ -14,7 +14,9 @@ describe("Canvas keyboard editing", () => {
       dx: 0,
       dy: 10,
     });
-    expect(nudgeAnchor({ horizontal: "right", vertical: "bottom", offsetX: 20, offsetY: 30 }, 4, 6)).toEqual({
+    expect(
+      nudgeAnchor({ horizontal: "right", vertical: "bottom", offsetX: 20, offsetY: 30 }, 4, 6),
+    ).toEqual({
       horizontal: "right",
       vertical: "bottom",
       offsetX: 16,

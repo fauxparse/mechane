@@ -13,6 +13,14 @@ export {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "./components/ui/alert-dialog";
+export {
+  Avatar,
+  AvatarBadge,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarGroupCount,
+  AvatarImage,
+} from "./components/ui/avatar";
 export { Badge, badgeVariants } from "./components/ui/badge";
 export { Button, buttonVariants } from "./components/ui/button";
 export {
@@ -50,6 +58,7 @@ export {
   DropdownMenuContent,
   DropdownMenuItem,
   dropdownMenuItemVariants,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -72,12 +81,25 @@ export {
   SidebarTrigger,
   useSidebar,
 } from "./components/ui/sidebar";
+export { Separator } from "./components/ui/separator";
+export { Tabs, TabsContent, TabsList, TabsTrigger, tabsListVariants } from "./components/ui/tabs";
+export { Toggle, toggleVariants } from "./components/ui/toggle";
+export { ToggleGroup, ToggleGroupItem } from "./components/ui/toggle-group";
 export type {
   SidebarMenuButtonProps,
   SidebarProps,
   SidebarProviderProps,
 } from "./components/ui/sidebar";
 export { Input } from "./components/ui/input";
+export {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  InputGroupText,
+  InputGroupTextarea,
+} from "./components/ui/input-group";
+export { Textarea } from "./components/ui/textarea";
 export { Label } from "./components/ui/label";
 export { QrCode } from "./components/ui/qr-code";
 export { ThemeSwitcher } from "./components/theme-switcher";

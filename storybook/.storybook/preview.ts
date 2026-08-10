@@ -1,6 +1,7 @@
 import { ThemeProvider } from "@mechane/design-system";
 import { DEFAULT_THEME_PALETTE, THEME_PALETTE_METADATA } from "@mechane/domain";
 import { createElement } from "react";
+import { Preview } from "@storybook/react-vite";
 
 import "@mechane/design-system/styles/globals.css";
 
@@ -42,11 +43,13 @@ const preview: Preview = {
       createElement(
         ThemeProvider,
         { mode: context.globals.mode, palette: context.globals.palette },
-        createElement(
-          "div",
-          { className: "bg-background p-6 text-foreground" },
-          createElement(Story),
-        ),
+        context.parameters.layout === "fullscreen"
+          ? createElement(Story)
+          : createElement(
+              "div",
+              { className: "bg-background p-6 text-foreground" },
+              createElement(Story),
+            ),
       ),
   ],
   parameters: {

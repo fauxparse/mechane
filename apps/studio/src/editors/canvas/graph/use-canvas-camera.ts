@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from "react";
 
 import type { Position } from "@mechane/domain";
 
-import { focusContext } from "../show/keyboard/focus-context";
-import { viewportIntentFor } from "../show/keyboard/viewport-keys";
+import { focusContext } from "../../show/keyboard/focus-context";
+import { viewportIntentFor } from "../../show/keyboard/viewport-keys";
 import { panCanvasCamera, zoomCanvasCamera } from "./canvas-camera";
 import type { CanvasCamera } from "./canvas-camera";
 

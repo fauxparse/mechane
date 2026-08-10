@@ -1,6 +1,6 @@
 import type { Element, ElementKind, FrameElement } from "@mechane/domain";
 
-import type { CanvasArtboardDocument } from "../../api/canvas";
+import type { CanvasArtboardDocument } from "../../../api/canvas";
 import { layerChildren, layerMatches } from "./canvas-layers";
 
 /**
@@ -90,10 +90,7 @@ export function canvasLayerRows(
 }
 
 /** The Frames standing between the Canvas and `elementId`, plus the Canvas itself. */
-export function ancestorIdsOf(
-  artboard: CanvasArtboardDocument,
-  elementId: string,
-): string[] {
+export function ancestorIdsOf(artboard: CanvasArtboardDocument, elementId: string): string[] {
   const trail: string[] = [];
   const walk = (element: Element): boolean => {
     if (element.id === elementId) return true;

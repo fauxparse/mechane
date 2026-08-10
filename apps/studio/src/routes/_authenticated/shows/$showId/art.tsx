@@ -7,8 +7,11 @@ import { useCanvasWorkspace } from "../../../../api/canvas";
 import { useShow } from "../../../../api/shows";
 import { useShowGraph, useShowGraphEdits } from "../../../../api/show-graph";
 import { CanvasWorkspaceEditor } from "../../../../editors/canvas/CanvasWorkspaceEditor";
-import { artIdFromPath, resolveFocusedArtboard } from "../../../../editors/canvas/canvas-workspace";
-import { useCanvasCommands } from "../../../../editors/canvas/use-canvas-commands";
+import {
+  artIdFromPath,
+  resolveFocusedArtboard,
+} from "../../../../editors/canvas/data/canvas-workspace";
+import { useCanvasCommands } from "../../../../editors/canvas/commands/use-canvas-commands";
 import { useGraphEditing } from "../../../../editors/show/commands/use-graph-editing";
 import { useUndoKeys } from "../../../../editors/show/keyboard/use-undo-keys";
 

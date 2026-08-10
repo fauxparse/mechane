@@ -28,6 +28,7 @@ export function flattenCanvasLayers(root: FrameElement): CanvasLayerEntry[] {
 
 export function layerMatches(entry: CanvasLayerEntry, query: string): boolean {
   if (!query.trim()) return true;
-  const text = `${entry.element.name ?? ""} ${entry.element.id} ${entry.element.type}`.toLowerCase();
+  const text =
+    `${entry.element.name ?? ""} ${entry.element.id} ${entry.element.type}`.toLowerCase();
   return text.includes(query.trim().toLowerCase());
 }

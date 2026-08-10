@@ -26,7 +26,7 @@ export interface ThemeProviderProps {
   mode?: ThemeMode;
   /** Defaults to the generated Catppuccin palette when omitted/pending. */
   palette?: ThemePalette;
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 /**
