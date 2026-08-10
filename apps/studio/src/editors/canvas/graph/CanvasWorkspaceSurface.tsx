@@ -6,7 +6,8 @@
 // The stage fills its container, and the container is the whole viewport — the
 // plane runs underneath the sidebars to the edges of the screen. Anything that
 // frames content should consult `useEditableArea()` rather than the stage size.
-import { EditorPanel, EditorSlot } from "../../../components/EditorLayout";
+import { EditorPanel } from "../../../components/EditorLayout/EditorLayout";
+import { EditorSlot } from "../../../components/EditorLayout/editor-slots";
 import type { CanvasWorkspaceSurfaceProps } from "../canvas-workspace-types";
 import { Toolbar } from "../Toolbar/Toolbar";
 import { CanvasWorkspaceStage } from "./CanvasWorkspaceStage";

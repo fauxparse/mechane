@@ -1,8 +1,4 @@
-// The Editable Area: the region of the screen the Editor Chrome leaves visible.
-//
-// Both editors paint edge to edge, flowing underneath the floating sidebars and
-// the toolbar, but every zoom-to-fit frames its target *here* so fitted content
-// lands where it can be worked on. See docs/adr/0012.
+// Publishes the Editable Area's insets to the editor underneath the Chrome.
 //
 // Sidebar insets are computed from width and open state rather than measured,
 // because measuring reports a value that changes on every frame of the slide
@@ -11,30 +7,10 @@
 // measured: they depend on their content and they do not animate.
 import { SIDEBAR_BREAKPOINT } from "@mechane/design-system";
 import type { PropsWithChildren, RefObject } from "react";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-/** Distance in px from each edge of the viewport to the Editable Area. */
-export interface EditableAreaInset {
-  top: number;
-  right: number;
-  bottom: number;
-  left: number;
-}
-
-export const NO_INSET: EditableAreaInset = { top: 0, right: 0, bottom: 0, left: 0 };
-
-const EditableAreaContext = createContext<EditableAreaInset>(NO_INSET);
-
-/**
- * The inset an editor should keep clear when framing content.
- *
- * Defaults to zero on every side, so an editor rendered with no layout around
- * it — in Storybook, or in isolation — frames the whole viewport and behaves
- * exactly as it did before the Editable Area existed.
- */
-export function useEditableArea(): EditableAreaInset {
-  return useContext(EditableAreaContext);
-}
+import { EditableAreaContext } from "./editable-area";
+import type { EditableAreaInset } from "./editable-area";
 
 /** Reads the root font size so `rem` sidebar widths can be resolved to px. */
 function rootFontSize(): number {

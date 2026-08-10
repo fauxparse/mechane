@@ -5,7 +5,7 @@
 // floating sidebars and toolbar. The Chrome sits above it on the z axis, not
 // beside it in the layout. What the editor should frame when it zooms to fit is
 // therefore not the viewport it paints into but the Editable Area — see
-// docs/adr/0012 and ./editable-area.tsx.
+// docs/adr/0012 and ./editable-area.ts.
 //
 // Presentational: every callback and every piece of data arrives as a prop, so
 // EditorLayout.stories.tsx can render the whole Chrome with no router, no query
@@ -16,7 +16,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Header } from "../Header/Header";
 import type { HeaderProps } from "../Header/Header";
-import { EditableAreaProvider } from "./editable-area";
+import { EditableAreaProvider } from "./EditableAreaProvider";
 import { EditorSlotsProvider, useEditorSlotRef, useFilledEditorSlots } from "./editor-slots";
 
 /** Wide enough for a layer tree or a properties panel without crowding the editor. */

@@ -5,7 +5,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 
 import { CanvasWorkspaceEditor } from "./CanvasWorkspaceEditor";
-import { MockEditorChrome } from "../../components/EditorLayout/editor-layout-fixtures";
+import { MockEditorChrome } from "../../components/EditorLayout/MockEditorChrome";
 
 const root = (id: string, fill: string, width = 680, height = 440) => ({
   id: `${id}-root`,

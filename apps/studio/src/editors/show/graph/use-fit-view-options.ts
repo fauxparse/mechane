@@ -13,7 +13,7 @@ import { useStore } from "@xyflow/react";
 import type { FitViewOptions } from "@xyflow/react";
 import { useEffect, useMemo, useRef } from "react";
 
-import { useEditableArea } from "../../../components/EditorLayout";
+import { useEditableArea } from "../../../components/EditorLayout/editable-area";
 
 /**
  * Breathing room around fitted content, as a fraction — React Flow's own
@@ -92,17 +92,18 @@ export function useInitialFrame(
   const inset = useEditableArea();
   const mountedAt = useRef<number | null>(null);
   const corrected = useRef(false);
-  // Read through a ref so a new options object cannot re-trigger the effect.
-  const latestOptions = useRef(options);
-  latestOptions.current = options;
 
   const insetTotal = inset.top + inset.right + inset.bottom + inset.left;
 
+  // `options` is in the dependency list even though a new object identity on its
+  // own should not re-frame anything: the `corrected` guard already limits this
+  // to one call, so depending on it honestly is cheaper than mutating a ref
+  // during render to hide it.
   useEffect(() => {
     mountedAt.current ??= performance.now();
     if (corrected.current || insetTotal === 0) return;
     if (performance.now() - mountedAt.current > INITIAL_FRAME_GRACE_MS) return;
     corrected.current = true;
-    fitView(latestOptions.current);
-  }, [fitView, insetTotal]);
+    fitView(options);
+  }, [fitView, insetTotal, options]);
 }

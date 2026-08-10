@@ -20,8 +20,9 @@ import { useActiveRun, useEndRun, useStartRun } from "../../../api/runs";
 import { useRenameShow, useShow } from "../../../api/shows";
 import { useSignOut } from "../../../api/auth";
 import { useMe } from "../../../api/me";
-import { EditorLayout, useStoredSidebarState } from "../../../components/EditorLayout";
-import type { EditorKind } from "../../../components/EditorLayout";
+import { EditorLayout } from "../../../components/EditorLayout/EditorLayout";
+import { useStoredSidebarState } from "../../../components/EditorLayout/use-stored-sidebar-state";
+import type { EditorKind } from "../../../components/Header/Header";
 
 export const Route = createFileRoute("/_authenticated/shows/$showId")({
   component: ShowEditorLayout,

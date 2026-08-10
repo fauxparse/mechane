@@ -77,7 +77,8 @@ import type { Connection, FitViewOptions, OnNodeDrag, XYPosition } from "@xyflow
 import "@xyflow/react/dist/style.css";
 import "./graph/show-graph-editor.css";
 
-import { EditorPanel, EditorSlot } from "../../components/EditorLayout";
+import { EditorPanel } from "../../components/EditorLayout/EditorLayout";
+import { EditorSlot } from "../../components/EditorLayout/editor-slots";
 import { CommandPalette } from "./commands/CommandPalette";
 import { GraphInspector } from "./graph/GraphInspector";
 import {
