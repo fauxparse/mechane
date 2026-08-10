@@ -53,11 +53,35 @@ function artboardLabel(artboard: CanvasArtboardDocument): string {
   );
 }
 
+/**
+ * Only "inside" belongs on the row itself — a ring that follows the row's rounded corners is
+ * exactly right for "into this container". A position *between* two rows is not a property of
+ * either of them, so it gets its own element in the gap; see DropIndicator.
+ */
 function hintClass(zone: LayerDropZone | null): string {
-  if (zone === "inside") return "ring-2 ring-inset ring-primary";
-  if (zone === "before") return "shadow-[inset_0_2px_0_0_var(--primary)]";
-  if (zone === "after") return "shadow-[inset_0_-2px_0_0_var(--primary)]";
-  return "";
+  return zone === "inside" ? "ring-2 ring-inset ring-primary" : "";
+}
+
+/** Half the 4px gap SidebarMenu leaves between rows, less half the 2px line. */
+const INDICATOR_OFFSET = "-3px";
+
+/**
+ * The line marking an insertion point between two rows. It lives in the gap rather than inside a
+ * row, so it reads as a position rather than as a border on one item, and it starts at the indent
+ * of the row it would become a sibling of, so the depth it lands at is visible before the drop.
+ */
+function DropIndicator({ zone, depth }: { zone: "before" | "after"; depth: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      data-drop-indicator={zone}
+      className="pointer-events-none absolute right-1 z-10 h-0.5 bg-primary"
+      style={{
+        left: `${0.25 + depth * 0.75}rem`,
+        [zone === "before" ? "top" : "bottom"]: INDICATOR_OFFSET,
+      }}
+    />
+  );
 }
 
 function LayerRowView({
@@ -103,80 +127,85 @@ function LayerRowView({
   const name = row.kind === "canvas" ? artboardLabel(artboard) : row.name;
 
   return (
-    <div
-      // Canvases are never drag sources, which is what keeps a Canvas out of another Canvas.
-      draggable={row.kind === "element" && !renaming}
-      onDragStart={(event) => {
-        event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.setData("text/plain", row.id);
-        onDragStartRow();
-      }}
-      onDragEnd={onDragEndRow}
-      onDragOver={(event) => {
-        const rect = event.currentTarget.getBoundingClientRect();
-        if (!onDragOverRow(event.clientY - rect.top, rect.height)) return;
-        // Only a row that can take the drop calls preventDefault, so the cursor reports the rest.
-        event.preventDefault();
-        event.dataTransfer.dropEffect = "move";
-      }}
-      onDrop={(event) => {
-        event.preventDefault();
-        onDropRow();
-      }}
-      data-layer-row={row.id}
-      data-layer-art={row.artId}
-      data-layer-kind={row.kind}
-      data-layer-element-kind={row.elementKind}
-      className={`flex h-8 w-full min-w-0 items-center gap-1 rounded-md pr-2 text-sm transition-colors hover:bg-muted ${
-        active ? "bg-accent text-accent-foreground" : ""
-      } ${hintClass(hint)} ${dragging ? "opacity-50" : ""}`}
-      style={{ paddingInlineStart: `${0.25 + row.depth * 0.75}rem` }}
-    >
-      {row.hasChildren ? (
-        <button
-          type="button"
-          aria-label={expanded ? `Collapse ${name}` : `Expand ${name}`}
-          aria-expanded={expanded}
-          className="grid size-4 shrink-0 place-items-center rounded-sm hover:bg-background/60"
-          onClick={onToggle}
-        >
-          <ChevronRight
-            aria-hidden="true"
-            className={`size-3 transition-transform ${expanded ? "rotate-90" : ""}`}
+    <li className="relative">
+      {hint === "before" || hint === "after" ? (
+        <DropIndicator zone={hint} depth={row.depth} />
+      ) : null}
+      <div
+        // Canvases are never drag sources, which is what keeps a Canvas out of another Canvas.
+        draggable={row.kind === "element" && !renaming}
+        onDragStart={(event) => {
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", row.id);
+          onDragStartRow();
+        }}
+        onDragEnd={onDragEndRow}
+        onDragOver={(event) => {
+          const rect = event.currentTarget.getBoundingClientRect();
+          if (!onDragOverRow(event.clientY - rect.top, rect.height)) return;
+          // Only a row that can take the drop calls preventDefault, so the cursor reports the rest.
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          onDropRow();
+        }}
+        data-layer-row={row.id}
+        data-layer-art={row.artId}
+        data-layer-kind={row.kind}
+        data-layer-element-kind={row.elementKind}
+        className={`flex h-8 w-full min-w-0 items-center gap-1 rounded-md pr-2 text-sm transition-colors hover:bg-muted ${
+          active ? "bg-accent text-accent-foreground" : ""
+        } ${hintClass(hint)} ${dragging ? "opacity-50" : ""}`}
+        style={{ paddingInlineStart: `${0.25 + row.depth * 0.75}rem` }}
+      >
+        {row.hasChildren ? (
+          <button
+            type="button"
+            aria-label={expanded ? `Collapse ${name}` : `Expand ${name}`}
+            aria-expanded={expanded}
+            className="grid size-4 shrink-0 place-items-center rounded-sm hover:bg-background/60"
+            onClick={onToggle}
+          >
+            <ChevronRight
+              aria-hidden="true"
+              className={`size-3 transition-transform ${expanded ? "rotate-90" : ""}`}
+            />
+          </button>
+        ) : (
+          <span aria-hidden="true" className="size-4 shrink-0" />
+        )}
+        <Icon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+        {renaming ? (
+          <input
+            autoFocus
+            defaultValue={row.kind === "canvas" ? artboard.name : (row.name ?? "")}
+            aria-label={`Rename ${name}`}
+            className="h-6 min-w-0 flex-1 rounded-sm border border-border bg-background px-1 text-sm outline-none focus:ring-2 focus:ring-ring"
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.currentTarget.blur();
+              if (event.key === "Escape") {
+                event.currentTarget.value = row.kind === "canvas" ? artboard.name : row.name;
+                event.currentTarget.blur();
+              }
+            }}
+            onBlur={(event) => onCommitRename(event.currentTarget.value)}
           />
-        </button>
-      ) : (
-        <span aria-hidden="true" className="size-4 shrink-0" />
-      )}
-      <Icon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
-      {renaming ? (
-        <input
-          autoFocus
-          defaultValue={row.kind === "canvas" ? artboard.name : (row.name ?? "")}
-          aria-label={`Rename ${name}`}
-          className="h-6 min-w-0 flex-1 rounded-sm border border-border bg-background px-1 text-sm outline-none focus:ring-2 focus:ring-ring"
-          onKeyDown={(event) => {
-            if (event.key === "Enter") event.currentTarget.blur();
-            if (event.key === "Escape") {
-              event.currentTarget.value = row.kind === "canvas" ? artboard.name : row.name;
-              event.currentTarget.blur();
-            }
-          }}
-          onBlur={(event) => onCommitRename(event.currentTarget.value)}
-        />
-      ) : (
-        <button
-          type="button"
-          className="min-w-0 flex-1 truncate text-left"
-          aria-label={`${name} ${row.kind === "canvas" ? "canvas" : "layer"}`}
-          aria-current={active ? "true" : undefined}
-          onClick={onSelectRow}
-          onDoubleClick={onBeginRename}
-        >
-          {name}
-        </button>
-      )}
-    </div>
+        ) : (
+          <button
+            type="button"
+            className="min-w-0 flex-1 truncate text-left"
+            aria-label={`${name} ${row.kind === "canvas" ? "canvas" : "layer"}`}
+            aria-current={active ? "true" : undefined}
+            onClick={onSelectRow}
+            onDoubleClick={onBeginRename}
+          >
+            {name}
+          </button>
+        )}
+      </div>
+    </li>
   );
 }
 
@@ -269,8 +298,7 @@ export function CanvasLayers({
     if (!source || !target) return;
     const artboard = ordered.find((candidate) => candidate.artId === target.artId);
     if (!artboard) return;
-    const targetId =
-      target.rowId === target.artId ? artboard.canvas.root.id : target.rowId;
+    const targetId = target.rowId === target.artId ? artboard.canvas.root.id : target.rowId;
     const placement = layerDropPlacement(artboard.canvas.root, source.rowId, targetId, target.zone);
     if (!placement) return;
     onMoveElement?.(artboard.canvasId, source.rowId, placement.parentId, placement.rank);
@@ -295,84 +323,84 @@ export function CanvasLayers({
           className="h-8 w-full rounded-md border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
-        {groups.map(({ kind, artboards }) => {
-          const rows = artboards.flatMap((artboard) =>
-            canvasLayerRows(artboard, { expanded, query }).map((row) => ({ row, artboard })),
-          );
-          // A Canvas with no match keeps only its own row, which is noise while searching.
-          const visible = query.trim()
-            ? rows.filter(
-                ({ row, artboard }) =>
-                  row.kind === "element" ||
-                  rows.some((other) => other.artboard === artboard && other.row.kind === "element"),
-              )
-            : rows;
-          return (
-            <SidebarGroup key={kind}>
-              <SidebarGroupLabel>{kind === "scene" ? "Scenes" : "Blocks"}</SidebarGroupLabel>
-              <SidebarGroupContent>
-                {visible.length === 0 ? (
-                  <p className="p-2 text-sm text-muted-foreground">
-                    No {kind === "scene" ? "Scenes" : "Blocks"} match.
-                  </p>
-                ) : (
-                  <SidebarMenu>
-                    {visible.map(({ row, artboard }) => {
-                      const active =
-                        row.kind === "canvas"
-                          ? selection.artId === row.artId && selection.elementIds.length === 0
-                          : selection.artId === row.artId && selectedElementIds.has(row.id);
-                      return (
-                        <LayerRowView
-                          key={`${row.artId}:${row.id}`}
-                          row={row}
-                          artboard={artboard}
-                          active={active}
-                          expanded={expanded.has(row.id)}
-                          renaming={renamingId === `${row.artId}:${row.id}`}
-                          hint={
-                            hint && hint.rowId === row.id && hint.artId === row.artId
-                              ? hint.zone
-                              : null
-                          }
-                          dragging={dragging?.rowId === row.id && dragging.artId === row.artId}
-                          onToggle={() => toggle(row.id)}
-                          onSelectRow={() => {
-                            onFocusArtboard(row.artId);
-                            onSelect({
-                              artId: row.artId,
-                              elementIds: row.kind === "canvas" ? [] : [row.id],
-                            });
-                          }}
-                          onDragStartRow={() => setDragging({ rowId: row.id, artId: row.artId })}
-                          onDragEndRow={() => {
-                            hintRef.current = null;
-                            setHint(null);
-                            setDragging(null);
-                          }}
-                          onDragOverRow={(offsetY, height) => hoverRow(row, offsetY, height)}
-                          onDropRow={finishDrag}
-                          onBeginRename={() => setRenamingId(`${row.artId}:${row.id}`)}
-                          onCommitRename={(name) => {
-                            const trimmed = name.trim();
-                            if (row.kind === "canvas") {
-                              if (trimmed && trimmed !== artboard.name) {
-                                onRenameArtboard?.(row.artId, trimmed);
-                              }
-                            } else if (trimmed !== row.name) {
-                              onUpdateElement?.(artboard.canvasId, row.id, { name: trimmed });
+      {groups.map(({ kind, artboards }) => {
+        const rows = artboards.flatMap((artboard) =>
+          canvasLayerRows(artboard, { expanded, query }).map((row) => ({ row, artboard })),
+        );
+        // A Canvas with no match keeps only its own row, which is noise while searching.
+        const visible = query.trim()
+          ? rows.filter(
+              ({ row, artboard }) =>
+                row.kind === "element" ||
+                rows.some((other) => other.artboard === artboard && other.row.kind === "element"),
+            )
+          : rows;
+        return (
+          <SidebarGroup key={kind}>
+            <SidebarGroupLabel>{kind === "scene" ? "Scenes" : "Blocks"}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              {visible.length === 0 ? (
+                <p className="p-2 text-sm text-muted-foreground">
+                  No {kind === "scene" ? "Scenes" : "Blocks"} match.
+                </p>
+              ) : (
+                <SidebarMenu>
+                  {visible.map(({ row, artboard }) => {
+                    const active =
+                      row.kind === "canvas"
+                        ? selection.artId === row.artId && selection.elementIds.length === 0
+                        : selection.artId === row.artId && selectedElementIds.has(row.id);
+                    return (
+                      <LayerRowView
+                        key={`${row.artId}:${row.id}`}
+                        row={row}
+                        artboard={artboard}
+                        active={active}
+                        expanded={expanded.has(row.id)}
+                        renaming={renamingId === `${row.artId}:${row.id}`}
+                        hint={
+                          hint && hint.rowId === row.id && hint.artId === row.artId
+                            ? hint.zone
+                            : null
+                        }
+                        dragging={dragging?.rowId === row.id && dragging.artId === row.artId}
+                        onToggle={() => toggle(row.id)}
+                        onSelectRow={() => {
+                          onFocusArtboard(row.artId);
+                          onSelect({
+                            artId: row.artId,
+                            elementIds: row.kind === "canvas" ? [] : [row.id],
+                          });
+                        }}
+                        onDragStartRow={() => setDragging({ rowId: row.id, artId: row.artId })}
+                        onDragEndRow={() => {
+                          hintRef.current = null;
+                          setHint(null);
+                          setDragging(null);
+                        }}
+                        onDragOverRow={(offsetY, height) => hoverRow(row, offsetY, height)}
+                        onDropRow={finishDrag}
+                        onBeginRename={() => setRenamingId(`${row.artId}:${row.id}`)}
+                        onCommitRename={(name) => {
+                          const trimmed = name.trim();
+                          if (row.kind === "canvas") {
+                            if (trimmed && trimmed !== artboard.name) {
+                              onRenameArtboard?.(row.artId, trimmed);
                             }
-                            setRenamingId(null);
-                          }}
-                        />
-                      );
-                    })}
-                  </SidebarMenu>
-                )}
-              </SidebarGroupContent>
-            </SidebarGroup>
-          );
-        })}
+                          } else if (trimmed !== row.name) {
+                            onUpdateElement?.(artboard.canvasId, row.id, { name: trimmed });
+                          }
+                          setRenamingId(null);
+                        }}
+                      />
+                    );
+                  })}
+                </SidebarMenu>
+              )}
+            </SidebarGroupContent>
+          </SidebarGroup>
+        );
+      })}
     </SidebarContent>
   );
 }
