@@ -427,22 +427,16 @@ function semanticValues(
   const foreground = dark ? neutral(50) : neutral(950);
   const primaryValue = hue(primary, 500);
   const primaryForeground = hue(primary, 100);
-  // Floating surfaces (card/popover/sidebar) sit above the page background
-  // so `bg-popover` reads as a distinct panel. Catppuccin's base16 mantle
-  // is darker than base, so neutral-800 collapses onto background after
-  // luminance clamping — use 700 instead. Keep muted one step lighter so
-  // `data-highlighted:bg-muted` still shows on popover menus.
-  const surface = neutral(dark ? 700 : 100);
   return {
     background: neutral(dark ? 900 : 50),
     foreground: neutral(dark ? 100 : 900),
-    card: surface,
+    card: neutral(dark ? 800 : 100),
     "card-foreground": foreground,
-    popover: surface,
+    popover: neutral(dark ? 800 : 100),
     "popover-foreground": foreground,
     secondary: neutral(dark ? 600 : 300),
     "secondary-foreground": foreground,
-    muted: neutral(dark ? 600 : 200),
+    muted: neutral(dark ? 700 : 200),
     "muted-foreground": neutral(dark ? 400 : 600),
     accent: primaryValue,
     "accent-foreground": primaryForeground,
@@ -455,14 +449,6 @@ function semanticValues(
     border: neutral(dark ? 600 : 300),
     input: neutral(dark ? 500 : 400),
     ring: primaryValue,
-    sidebar: surface,
-    "sidebar-foreground": foreground,
-    "sidebar-primary": primaryValue,
-    "sidebar-primary-foreground": primaryForeground,
-    "sidebar-accent": neutral(dark ? 600 : 200),
-    "sidebar-accent-foreground": foreground,
-    "sidebar-border": neutral(dark ? 600 : 300),
-    "sidebar-ring": primaryValue,
     ...Object.fromEntries(
       COLOUR_KEYS.flatMap((key) => [
         [`palette-${key}-fill`, hue(key, dark ? 700 : 200)],
@@ -551,19 +537,16 @@ function cssThemeBlock(theme: GeneratedTheme, defaultPalette: string): string {
   const neutral = (step: Step) => `var(--palette-neutral-${step})`;
   const hue = (key: ColourKey, step: Step) => `var(--palette-${key}-${step})`;
   const foreground = dark ? neutral(50) : neutral(950);
-  // See semanticValues(): elevated surface for card/popover/sidebar;
-  // muted stays one step lighter for hover contrast on those surfaces.
-  const surface = neutral(dark ? 700 : 100);
   const appValues: Record<string, string> = {
     background: neutral(dark ? 900 : 50),
     foreground: neutral(dark ? 100 : 900),
-    card: surface,
+    card: neutral(dark ? 800 : 100),
     "card-foreground": foreground,
-    popover: surface,
+    popover: neutral(dark ? 800 : 100),
     "popover-foreground": foreground,
     secondary: neutral(dark ? 600 : 300),
     "secondary-foreground": foreground,
-    muted: neutral(dark ? 600 : 200),
+    muted: neutral(dark ? 700 : 200),
     "muted-foreground": neutral(dark ? 400 : 600),
     accent: hue(primary, 500),
     "accent-foreground": hue(primary, 50),
@@ -576,14 +559,6 @@ function cssThemeBlock(theme: GeneratedTheme, defaultPalette: string): string {
     border: neutral(dark ? 600 : 300),
     input: neutral(dark ? 500 : 400),
     ring: hue(primary, 500),
-    sidebar: surface,
-    "sidebar-foreground": foreground,
-    "sidebar-primary": hue(primary, 500),
-    "sidebar-primary-foreground": hue(primary, 50),
-    "sidebar-accent": neutral(dark ? 600 : 200),
-    "sidebar-accent-foreground": foreground,
-    "sidebar-border": neutral(dark ? 600 : 300),
-    "sidebar-ring": hue(primary, 500),
   };
   for (const [key, value] of Object.entries(appValues)) lines.push(`  --${key}: ${value};`);
   lines.push("}");
@@ -612,14 +587,6 @@ function themeAliases(): string {
     border: "border",
     input: "input",
     ring: "ring",
-    sidebar: "sidebar",
-    "sidebar-foreground": "sidebar-foreground",
-    "sidebar-primary": "sidebar-primary",
-    "sidebar-primary-foreground": "sidebar-primary-foreground",
-    "sidebar-accent": "sidebar-accent",
-    "sidebar-accent-foreground": "sidebar-accent-foreground",
-    "sidebar-border": "sidebar-border",
-    "sidebar-ring": "sidebar-ring",
   };
   for (const [name, variable] of Object.entries(aliases))
     lines.push(`  --color-${name}: var(--${variable});`);
@@ -670,9 +637,6 @@ function buildReport(themes: GeneratedTheme[]): {
       ["muted-foreground", "muted"],
       ["accent-foreground", "accent"],
       ["destructive-foreground", "destructive"],
-      ["sidebar-foreground", "sidebar"],
-      ["sidebar-primary-foreground", "sidebar-primary"],
-      ["sidebar-accent-foreground", "sidebar-accent"],
     ];
     for (const [foreground, background] of semanticPairs) {
       const fg = theme.semantic[foreground];

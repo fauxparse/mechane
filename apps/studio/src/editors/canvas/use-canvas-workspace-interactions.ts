@@ -132,6 +132,8 @@ export function useCanvasWorkspaceInteractions({
   onMoveElement,
   onUpdateElement,
   onDeleteElements,
+  initialLayersOpen,
+  initialInspectorOpen,
 }: CanvasWorkspaceEditorProps) {
   const ordered = useMemo(
     () =>
@@ -143,6 +145,8 @@ export function useCanvasWorkspaceInteractions({
       ),
     [artboards],
   );
+  const [layersOpen, setLayersOpen] = useState(initialLayersOpen ?? true);
+  const [inspectorOpen, setInspectorOpen] = useState(initialInspectorOpen ?? true);
   const [drag, setDrag] = useState<DragState | null>(null);
   const [tool, setTool] = useState<CanvasCreationTool>("select");
   const [creationDraft, setCreationDraft] = useState<CreationDraft | null>(null);
@@ -1105,6 +1109,10 @@ export function useCanvasWorkspaceInteractions({
   return {
     ordered,
     focused,
+    layersOpen,
+    setLayersOpen,
+    inspectorOpen,
+    setInspectorOpen,
     camera,
     workspaceRef,
     selection,

@@ -77,7 +77,6 @@ import type { Connection, FitViewOptions, OnNodeDrag, XYPosition } from "@xyflow
 import "@xyflow/react/dist/style.css";
 import "./graph/show-graph-editor.css";
 
-import { EditorPanel, EditorSlot } from "../../components/EditorLayout";
 import { CommandPalette } from "./commands/CommandPalette";
 import { GraphInspector } from "./graph/GraphInspector";
 import {
@@ -99,7 +98,6 @@ import { useGraphEditing } from "./commands/use-graph-editing";
 import { useUndoKeys } from "./keyboard/use-undo-keys";
 import { useViewportKeys } from "./keyboard/use-viewport-keys";
 import { useShowGraphEditorActions } from "./commands/use-show-graph-editor-actions";
-import { useFitViewOptions, useInitialFrame } from "./graph/use-fit-view-options";
 import { ShowEdgeRoutingProvider } from "./graph/show-edge-rendering";
 import { showEdgeTypes } from "./graph/show-edge-types";
 import type { ApiGraph } from "./data/api-graph";
@@ -108,6 +106,10 @@ import type { PaletteCommand } from "./commands/palette-commands";
 /** Widened from React Flow's 0.5 default so a whole Show fits on screen (#21). */
 export const MIN_ZOOM = 0.1;
 export const MAX_ZOOM = 2;
+
+// Framing never zooms past 1:1 — a two-node selection filling the screen at
+// 2× is disorienting rather than helpful.
+const FIT_VIEW_OPTIONS: FitViewOptions = { padding: 0.2, maxZoom: 1, duration: 200 };
 
 const nodeTypes = {
   [PLACEHOLDER_NODE_TYPE]: ShowNode,
@@ -196,9 +198,6 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
   const [nodes, setNodes, onNodesChange] = useNodesState(drawn.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(drawn.edges);
   const { fitView, getNodes, getZoom, setCenter, screenToFlowPosition } = useReactFlow();
-  // Framing targets the Editable Area, not the viewport the graph paints into.
-  const fitViewOptions = useFitViewOptions();
-  useInitialFrame(fitView, fitViewOptions);
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<DeletionScope | null>(null);
@@ -313,7 +312,6 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
     getZoom,
     setCenter,
     fitView,
-    fitViewOptions,
     screenToFlowPosition,
     say,
     setPendingDelete,
@@ -327,10 +325,10 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
     () => ({
       fitToNodes,
       zoomToSelection,
-      fitToGraph: () => fitView(fitViewOptions),
+      fitToGraph: () => fitView(FIT_VIEW_OPTIONS),
       applyAmendments: editing.amend,
     }),
-    [editing.amend, fitToNodes, fitView, fitViewOptions, zoomToSelection],
+    [editing.amend, fitToNodes, fitView, zoomToSelection],
   );
 
   // ---------------------------------------------------------------------------
@@ -364,21 +362,13 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
         "delete-selection": requestDelete,
         rename: renameSelected,
         "select-all": selectAll,
-        "fit-graph": () => fitView(fitViewOptions),
+        "fit-graph": () => fitView(FIT_VIEW_OPTIONS),
         "zoom-to-selection": () => {
-          if (!zoomToSelection()) fitView(fitViewOptions);
+          if (!zoomToSelection()) fitView(FIT_VIEW_OPTIONS);
         },
         deselect,
       }),
-      [
-        deselect,
-        fitView,
-        fitViewOptions,
-        renameSelected,
-        requestDelete,
-        selectAll,
-        zoomToSelection,
-      ],
+      [deselect, fitView, renameSelected, requestDelete, selectAll, zoomToSelection],
     ),
   );
 
@@ -390,7 +380,6 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
     centreOfView,
     selectAll,
     fitView,
-    fitViewOptions,
     zoomToSelection,
     renameSelected,
     editing,
@@ -423,7 +412,6 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
           screenToFlowPosition={screenToFlowPosition}
           create={create}
           fitView={fitView}
-          fitViewOptions={fitViewOptions}
           selectedNodeIds={selectedNodeIds}
           selectedEdgeIds={selectedEdgeIds}
           requestDelete={requestDelete}
@@ -461,7 +449,6 @@ interface ShowGraphContextMenuProps {
   screenToFlowPosition: ReturnType<typeof useReactFlow>["screenToFlowPosition"];
   create(creatable: CreatableNode, at: Position): unknown;
   fitView(options: FitViewOptions): void;
-  fitViewOptions: FitViewOptions;
   selectedNodeIds: string[];
   selectedEdgeIds: string[];
   requestDelete(): void;
@@ -483,7 +470,6 @@ function ShowGraphContextMenu({
   screenToFlowPosition,
   create,
   fitView,
-  fitViewOptions,
   selectedNodeIds,
   selectedEdgeIds,
   requestDelete,
@@ -549,7 +535,7 @@ function ShowGraphContextMenu({
             minZoom={MIN_ZOOM}
             maxZoom={MAX_ZOOM}
             fitView
-            fitViewOptions={fitViewOptions}
+            fitViewOptions={FIT_VIEW_OPTIONS}
             proOptions={{ hideAttribution: true }}
             aria-label="Show graph"
           >
@@ -557,7 +543,7 @@ function ShowGraphContextMenu({
 
             {/* Both restyled in ./show-graph-editor.css — React Flow ships
                   them with hardcoded near-white chrome. */}
-            <Controls fitViewOptions={fitViewOptions} />
+            <Controls fitViewOptions={FIT_VIEW_OPTIONS} />
             <MiniMap
               pannable
               zoomable
@@ -591,7 +577,7 @@ function ShowGraphContextMenu({
           </ContextMenuSubmenuContent>
         </ContextMenuSubmenu>
         <ContextMenuSeparator />
-        <ContextMenuItem onClick={() => fitView(fitViewOptions)}>
+        <ContextMenuItem onClick={() => fitView(FIT_VIEW_OPTIONS)}>
           <Maximize2 /> Fit whole Show
         </ContextMenuItem>
         <ContextMenuItem
@@ -631,16 +617,11 @@ function ShowGraphEditorOverlays({
 }: ShowGraphEditorOverlaysProps) {
   return (
     <>
-      {/* The inspector is the Show Editor's right-hand panel, contributed to
-          the Editor Chrome's slot so it shares the sidebar the Canvas editor's
-          Properties panel uses — one trigger collapses whichever is showing.
-          The Show Editor contributes no left panel, which is why it has no left
-          sidebar at all. */}
-      <EditorSlot name="right">
-        <EditorPanel title="Properties">
-          <GraphInspector selected={selectedNodes} editing={editing} />
-        </EditorPanel>
-      </EditorSlot>
+      {/* Floats over the canvas rather than taking layout from it, so the
+    graph doesn't reflow when a selection appears. */}
+      <div className="pointer-events-none absolute inset-y-4 right-4 flex max-h-full flex-col items-end">
+        <GraphInspector selected={selectedNodes} editing={editing} className="max-h-full" />
+      </div>
 
       {message ? (
         <p
@@ -692,7 +673,6 @@ type PaletteOptions = {
   centreOfView(): Position;
   selectAll(): void;
   fitView(options: FitViewOptions): void;
-  fitViewOptions: FitViewOptions;
   zoomToSelection(): void;
   renameSelected(): void;
   editing: ReturnType<typeof useGraphEditing>;
@@ -709,7 +689,6 @@ function useShowGraphEditorPalette({
   centreOfView,
   selectAll,
   fitView,
-  fitViewOptions,
   zoomToSelection,
   renameSelected,
   editing,
@@ -761,7 +740,7 @@ function useShowGraphEditorPalette({
         scope: "canvas",
         icon: Maximize2,
         shortcut: "⇧1",
-        run: () => fitView(fitViewOptions),
+        run: () => fitView(FIT_VIEW_OPTIONS),
       },
       {
         id: "zoom-to-selection",
@@ -835,7 +814,6 @@ function useShowGraphEditorPalette({
     create,
     editing,
     fitView,
-    fitViewOptions,
     renameSelected,
     requestDelete,
     say,

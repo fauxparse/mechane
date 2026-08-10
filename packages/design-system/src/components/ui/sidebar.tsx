@@ -1,23 +1,8 @@
-import type { ComponentProps, CSSProperties, PropsWithChildren } from "react";
+import type { ComponentProps } from "react";
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 
 import { cn } from "../../lib/utils";
 import { Button } from "./button";
-
-const SIDEBAR_WIDTH = "16rem";
-const SIDEBAR_WIDTH_ICON = "3rem";
-
-/**
- * How long a sidebar takes to slide, in milliseconds. Anything that wants to
- * animate in step with a sidebar — notably an editor's zoom-to-fit, so the two
- * motions read as one — should share this rather than guess. Kept in sync by
- * hand with the `duration-200` utilities on the gap and container below;
- * Tailwind needs the literal class name, so this cannot derive from it.
- */
-export const SIDEBAR_TRANSITION_MS = 200;
-
-/** The breakpoint below which sidebars are not rendered at all (`md`). */
-export const SIDEBAR_BREAKPOINT = "(min-width: 48rem)";
 
 interface SidebarContextValue {
   open: boolean;
@@ -38,7 +23,6 @@ export function SidebarProvider({
   open: openProp,
   onOpenChange,
   className,
-  style,
   children,
   ...props
 }: SidebarProviderProps) {
@@ -61,13 +45,6 @@ export function SidebarProvider({
     <SidebarContext.Provider value={contextValue}>
       <div
         data-slot="sidebar-provider"
-        style={
-          {
-            "--sidebar-width": SIDEBAR_WIDTH,
-            "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
-            ...style,
-          } as CSSProperties
-        }
         className={cn("flex min-h-0 min-w-0", className)}
         {...props}
       >
@@ -83,22 +60,14 @@ export function useSidebar(): SidebarContextValue {
   return context;
 }
 
-export function InsideSidebar({ children }: PropsWithChildren) {
-  const context = useContext(SidebarContext);
-  if (!context) return null;
-  return <>{children}</>;
-}
-
 export interface SidebarProps extends ComponentProps<"aside"> {
   side?: "left" | "right";
   collapsible?: "offcanvas" | "icon" | "none";
-  variant?: "sidebar" | "floating" | "inset";
 }
 
 export function Sidebar({
   side = "left",
   collapsible = "icon",
-  variant = "sidebar",
   className,
   children,
   ...props
@@ -106,65 +75,31 @@ export function Sidebar({
   const { open } = useSidebar();
   const state = collapsible === "none" || open ? "expanded" : "collapsed";
 
-  if (collapsible === "none") {
-    return (
-      <aside
-        data-slot="sidebar"
+  return (
+    <aside
+      data-slot="sidebar"
+      data-side={side}
+      data-state={state}
+      className={cn(
+        "group/sidebar relative flex h-full shrink-0 flex-col border-border bg-background text-foreground transition-[width] duration-200 ease-linear",
+        collapsible === "offcanvas" &&
+          "w-64 data-[state=collapsed]:w-0 data-[state=collapsed]:overflow-hidden",
+        collapsible === "icon" && "w-64 data-[state=collapsed]:w-16",
+        collapsible === "none" && "w-64",
+        side === "left" ? "border-r" : "border-l",
+        className,
+      )}
+      {...props}
+    >
+      <div
         className={cn(
-          "flex h-full w-(--sidebar-width) flex-col bg-sidebar text-sidebar-foreground",
-          className,
+          "flex min-h-0 w-64 flex-1 flex-col",
+          collapsible === "icon" && "group-data-[state=collapsed]/sidebar:w-16",
         )}
-        {...props}
       >
         {children}
-      </aside>
-    );
-  }
-
-  return (
-    <div
-      className="group peer hidden text-sidebar-foreground md:block"
-      data-state={state}
-      data-collapsible={state === "collapsed" ? collapsible : ""}
-      data-variant={variant}
-      data-side={side}
-      data-slot="sidebar"
-    >
-      {/* This is what handles the sidebar gap on desktop */}
-      <div
-        data-slot="sidebar-gap"
-        className={cn(
-          "relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear",
-          "group-data-[collapsible=offcanvas]:w-0",
-          "group-data-[side=right]:rotate-180",
-          variant === "floating" || variant === "inset"
-            ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]"
-            : "group-data-[collapsible=icon]:w-(--sidebar-width-icon)",
-        )}
-      />
-
-      <aside
-        data-slot="sidebar-container"
-        data-side={side}
-        className={cn(
-          "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] md:flex",
-          // Adjust the padding for floating and inset variants.
-          variant === "floating" || variant === "inset"
-            ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
-            : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l",
-          className,
-        )}
-        {...props}
-      >
-        <div
-          data-sidebar="sidebar"
-          data-slot="sidebar-inner"
-          className="flex size-full flex-col bg-sidebar/50 backdrop-blur-sm group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-lg group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-border"
-        >
-          {children}
-        </div>
-      </aside>
-    </div>
+      </div>
+    </aside>
   );
 }
 
@@ -172,7 +107,7 @@ export function SidebarInset({ className, ...props }: ComponentProps<"main">) {
   return (
     <main
       data-slot="sidebar-inset"
-      className={cn("relative flex min-h-0 min-w-0 flex-1 flex-col", className)}
+      className={cn("relative flex min-h-0 min-w-0 flex-1 flex-col bg-background", className)}
       {...props}
     />
   );

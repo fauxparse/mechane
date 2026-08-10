@@ -20,10 +20,16 @@ export function CanvasWorkspaceEditor({
   onDeleteElements,
   onRenameArtboard,
   initialCamera,
+  initialLayersOpen,
+  initialInspectorOpen,
 }: CanvasWorkspaceEditorProps) {
   const {
     ordered,
     focused,
+    layersOpen,
+    setLayersOpen,
+    inspectorOpen,
+    setInspectorOpen,
     camera,
     workspaceRef,
     selection,
@@ -76,12 +82,18 @@ export function CanvasWorkspaceEditor({
     onMoveElement,
     onUpdateElement,
     onDeleteElements,
+    initialLayersOpen,
+    initialInspectorOpen,
   });
 
   return (
     <CanvasWorkspaceSurface
       ordered={ordered}
       focused={focused}
+      layersOpen={layersOpen}
+      setLayersOpen={setLayersOpen}
+      inspectorOpen={inspectorOpen}
+      setInspectorOpen={setInspectorOpen}
       camera={camera}
       workspaceRef={workspaceRef}
       selection={selection}

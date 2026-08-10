@@ -1176,10 +1176,10 @@
       "mode": "dark",
       "kind": "semantic",
       "foreground": "#b4befe",
-      "background": "#313244",
+      "background": "#181825",
       "metric": {
-        "apcaLc": -62.280415228964436,
-        "wcagRatio": 7.026974202155179
+        "apcaLc": -68.46663982683752,
+        "wcagRatio": 9.812017542296154
       },
       "status": "pass"
     },
@@ -1215,10 +1215,10 @@
       "mode": "dark",
       "kind": "semantic",
       "foreground": "#9096b0",
-      "background": "#45475a",
+      "background": "#313244",
       "metric": {
-        "apcaLc": -33.006674538384836,
-        "wcagRatio": 3.11702667526326
+        "apcaLc": -39.77377573381291,
+        "wcagRatio": 4.295809938256689
       },
       "status": "violation"
     },
@@ -1228,10 +1228,10 @@
       "mode": "dark",
       "kind": "semantic",
       "foreground": "#b4befe",
-      "background": "#313244",
+      "background": "#181825",
       "metric": {
-        "apcaLc": -62.280415228964436,
-        "wcagRatio": 7.026974202155179
+        "apcaLc": -68.46663982683752,
+        "wcagRatio": 9.812017542296154
       },
       "status": "pass"
     },
@@ -1258,45 +1258,6 @@
       "metric": {
         "apcaLc": -55.51331403353637,
         "wcagRatio": 5.098751189954452
-      },
-      "status": "violation"
-    },
-    {
-      "id": "catppuccin.dark.semantic.sidebar-accent-foreground-on-sidebar-accent",
-      "palette": "catppuccin",
-      "mode": "dark",
-      "kind": "semantic",
-      "foreground": "#b4befe",
-      "background": "#45475a",
-      "metric": {
-        "apcaLc": -55.51331403353637,
-        "wcagRatio": 5.098751189954452
-      },
-      "status": "violation"
-    },
-    {
-      "id": "catppuccin.dark.semantic.sidebar-foreground-on-sidebar",
-      "palette": "catppuccin",
-      "mode": "dark",
-      "kind": "semantic",
-      "foreground": "#b4befe",
-      "background": "#313244",
-      "metric": {
-        "apcaLc": -62.280415228964436,
-        "wcagRatio": 7.026974202155179
-      },
-      "status": "pass"
-    },
-    {
-      "id": "catppuccin.dark.semantic.sidebar-primary-foreground-on-sidebar-primary",
-      "palette": "catppuccin",
-      "mode": "dark",
-      "kind": "semantic",
-      "foreground": "#e5dbf2",
-      "background": "#9e38fa",
-      "metric": {
-        "apcaLc": -55.641612600965864,
-        "wcagRatio": 3.5787897732492633
       },
       "status": "violation"
     },
@@ -2707,45 +2668,6 @@
       "status": "violation"
     },
     {
-      "id": "catppuccin.light.semantic.sidebar-accent-foreground-on-sidebar-accent",
-      "palette": "catppuccin",
-      "mode": "light",
-      "kind": "semantic",
-      "foreground": "#3740af",
-      "background": "#ccd0da",
-      "metric": {
-        "apcaLc": 59.12997993069868,
-        "wcagRatio": 5.408795857494103
-      },
-      "status": "violation"
-    },
-    {
-      "id": "catppuccin.light.semantic.sidebar-foreground-on-sidebar",
-      "palette": "catppuccin",
-      "mode": "light",
-      "kind": "semantic",
-      "foreground": "#3740af",
-      "background": "#e6e9ef",
-      "metric": {
-        "apcaLc": 72.65446746096083,
-        "wcagRatio": 6.865890245084101
-      },
-      "status": "pass"
-    },
-    {
-      "id": "catppuccin.light.semantic.sidebar-primary-foreground-on-sidebar-primary",
-      "palette": "catppuccin",
-      "mode": "light",
-      "kind": "semantic",
-      "foreground": "#ececec",
-      "background": "#9d5afa",
-      "metric": {
-        "apcaLc": -57.70294501107679,
-        "wcagRatio": 3.3688890932319318
-      },
-      "status": "violation"
-    },
-    {
       "id": "catppuccin.light.yellow.on-fill",
       "palette": "catppuccin",
       "mode": "light",
@@ -4066,10 +3988,10 @@
       "mode": "dark",
       "kind": "semantic",
       "foreground": "#fbf1c7",
-      "background": "#504945",
+      "background": "#3c3836",
       "metric": {
-        "apcaLc": -82.22195590211977,
-        "wcagRatio": 7.776600274404273
+        "apcaLc": -88.07975269622938,
+        "wcagRatio": 10.219745507342939
       },
       "status": "pass"
     },
@@ -4105,10 +4027,10 @@
       "mode": "dark",
       "kind": "semantic",
       "foreground": "#c9b99a",
-      "background": "#665c54",
+      "background": "#504945",
       "metric": {
-        "apcaLc": -43.62482228074116,
-        "wcagRatio": 3.3778747770491235
+        "apcaLc": -50.915782517482434,
+        "wcagRatio": 4.575417222350214
       },
       "status": "violation"
     },
@@ -4118,10 +4040,10 @@
       "mode": "dark",
       "kind": "semantic",
       "foreground": "#fbf1c7",
-      "background": "#504945",
+      "background": "#3c3836",
       "metric": {
-        "apcaLc": -82.22195590211977,
-        "wcagRatio": 7.776600274404273
+        "apcaLc": -88.07975269622938,
+        "wcagRatio": 10.219745507342939
       },
       "status": "pass"
     },
@@ -4150,45 +4072,6 @@
         "wcagRatio": 5.741199248406562
       },
       "status": "pass"
-    },
-    {
-      "id": "gruvbox.dark.semantic.sidebar-accent-foreground-on-sidebar-accent",
-      "palette": "gruvbox",
-      "mode": "dark",
-      "kind": "semantic",
-      "foreground": "#fbf1c7",
-      "background": "#665c54",
-      "metric": {
-        "apcaLc": -74.93099566537849,
-        "wcagRatio": 5.741199248406562
-      },
-      "status": "pass"
-    },
-    {
-      "id": "gruvbox.dark.semantic.sidebar-foreground-on-sidebar",
-      "palette": "gruvbox",
-      "mode": "dark",
-      "kind": "semantic",
-      "foreground": "#fbf1c7",
-      "background": "#504945",
-      "metric": {
-        "apcaLc": -82.22195590211977,
-        "wcagRatio": 7.776600274404273
-      },
-      "status": "pass"
-    },
-    {
-      "id": "gruvbox.dark.semantic.sidebar-primary-foreground-on-sidebar-primary",
-      "palette": "gruvbox",
-      "mode": "dark",
-      "kind": "semantic",
-      "foreground": "#fae6cf",
-      "background": "#fb6400",
-      "metric": {
-        "apcaLc": -45.963959694502634,
-        "wcagRatio": 2.4960629387165865
-      },
-      "status": "violation"
     },
     {
       "id": "gruvbox.dark.yellow.on-fill",
@@ -5593,45 +5476,6 @@
       "metric": {
         "apcaLc": 55.85189665534116,
         "wcagRatio": 6.767505540445132
-      },
-      "status": "violation"
-    },
-    {
-      "id": "gruvbox.light.semantic.sidebar-accent-foreground-on-sidebar-accent",
-      "palette": "gruvbox",
-      "mode": "light",
-      "kind": "semantic",
-      "foreground": "#282828",
-      "background": "#d5c4a1",
-      "metric": {
-        "apcaLc": 67.16266244197226,
-        "wcagRatio": 8.593098684641854
-      },
-      "status": "pass"
-    },
-    {
-      "id": "gruvbox.light.semantic.sidebar-foreground-on-sidebar",
-      "palette": "gruvbox",
-      "mode": "light",
-      "kind": "semantic",
-      "foreground": "#282828",
-      "background": "#ebdbb2",
-      "metric": {
-        "apcaLc": 79.10981811830018,
-        "wcagRatio": 10.74706817440964
-      },
-      "status": "pass"
-    },
-    {
-      "id": "gruvbox.light.semantic.sidebar-primary-foreground-on-sidebar-primary",
-      "palette": "gruvbox",
-      "mode": "light",
-      "kind": "semantic",
-      "foreground": "#e4e2df",
-      "background": "#e76900",
-      "metric": {
-        "apcaLc": -44.85020914720656,
-        "wcagRatio": 2.5306686031414487
       },
       "status": "violation"
     },
