@@ -82,6 +82,8 @@ export {
   SidebarTrigger,
   useSidebar,
   InsideSidebar,
+  SIDEBAR_BREAKPOINT,
+  SIDEBAR_TRANSITION_MS,
 } from "./components/ui/sidebar";
 export { Separator } from "./components/ui/separator";
 export { Tabs, TabsContent, TabsList, TabsTrigger, tabsListVariants } from "./components/ui/tabs";

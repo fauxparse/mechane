@@ -25,8 +25,6 @@ function moveComposite(moved: { id: string; position: Position }[]) {
   });
 }
 
-const FIT_VIEW_OPTIONS: FitViewOptions = { padding: 0.2, maxZoom: 1, duration: 200 };
-
 type Editing = ReturnType<typeof import("./use-graph-editing").useGraphEditing>;
 
 interface Options {
@@ -39,6 +37,8 @@ interface Options {
   getZoom: ReturnType<typeof import("@xyflow/react").useReactFlow>["getZoom"];
   setCenter: ReturnType<typeof import("@xyflow/react").useReactFlow>["setCenter"];
   fitView: ReturnType<typeof import("@xyflow/react").useReactFlow>["fitView"];
+  /** Inset-aware framing options, decided once in ../graph/use-fit-view-options. */
+  fitViewOptions: FitViewOptions;
   screenToFlowPosition: ReturnType<
     typeof import("@xyflow/react").useReactFlow
   >["screenToFlowPosition"];
@@ -59,6 +59,7 @@ export function useShowGraphEditorActions({
   getZoom,
   setCenter,
   fitView,
+  fitViewOptions,
   screenToFlowPosition,
   say,
   setPendingDelete,
@@ -293,17 +294,17 @@ export function useShowGraphEditorActions({
       // for a specific set wants, so an empty match moves nothing.
       const targets = (getNodes() as ShowFlowNode[]).filter((node) => wanted.has(node.id));
       if (targets.length === 0) return;
-      fitView({ ...FIT_VIEW_OPTIONS, nodes: targets });
+      fitView({ ...fitViewOptions, nodes: targets });
     },
-    [fitView, getNodes],
+    [fitView, fitViewOptions, getNodes],
   );
 
   const zoomToSelection = useCallback(() => {
     const selected = (getNodes() as ShowFlowNode[]).filter((node) => node.selected);
     if (selected.length === 0) return false;
-    fitView({ ...FIT_VIEW_OPTIONS, nodes: selected });
+    fitView({ ...fitViewOptions, nodes: selected });
     return true;
-  }, [fitView, getNodes]);
+  }, [fitView, fitViewOptions, getNodes]);
 
   // Click-to-jump (#21). `pannable` only buys *dragging* the minimap; a
   // click does nothing until it's wired, and clicking where you want to be

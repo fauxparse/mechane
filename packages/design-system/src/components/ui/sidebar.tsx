@@ -7,6 +7,18 @@ import { Button } from "./button";
 const SIDEBAR_WIDTH = "16rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
 
+/**
+ * How long a sidebar takes to slide, in milliseconds. Anything that wants to
+ * animate in step with a sidebar — notably an editor's zoom-to-fit, so the two
+ * motions read as one — should share this rather than guess. Kept in sync by
+ * hand with the `duration-200` utilities on the gap and container below;
+ * Tailwind needs the literal class name, so this cannot derive from it.
+ */
+export const SIDEBAR_TRANSITION_MS = 200;
+
+/** The breakpoint below which sidebars are not rendered at all (`md`). */
+export const SIDEBAR_BREAKPOINT = "(min-width: 48rem)";
+
 interface SidebarContextValue {
   open: boolean;
   setOpen(open: boolean): void;

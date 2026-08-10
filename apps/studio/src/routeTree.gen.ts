@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as GuestRouteRouteImport } from './routes/_guest/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as AuthenticatedCanvasRouteImport } from './routes/_authenticated/canvas'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as GuestSignInRouteImport } from './routes/_guest/sign-in'
 import { Route as AuthenticatedShowsShowIdRouteImport } from './routes/_authenticated/shows/$showId'
@@ -31,11 +30,6 @@ const GuestRouteRoute = GuestRouteRouteImport.update({
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedCanvasRoute = AuthenticatedCanvasRouteImport.update({
-  id: '/canvas',
-  path: '/canvas',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
@@ -75,7 +69,6 @@ const AuthenticatedShowsShowIdArtArtIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
-  '/canvas': typeof AuthenticatedCanvasRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/sign-in': typeof GuestSignInRoute
   '/shows/$showId': typeof AuthenticatedShowsShowIdRouteWithChildren
@@ -85,7 +78,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
-  '/canvas': typeof AuthenticatedCanvasRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/sign-in': typeof GuestSignInRoute
   '/shows/$showId/art': typeof AuthenticatedShowsShowIdArtRouteWithChildren
@@ -96,7 +88,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/_guest': typeof GuestRouteRouteWithChildren
-  '/_authenticated/canvas': typeof AuthenticatedCanvasRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_guest/sign-in': typeof GuestSignInRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
@@ -109,7 +100,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/canvas'
     | '/settings'
     | '/sign-in'
     | '/shows/$showId'
@@ -119,7 +109,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/canvas'
     | '/settings'
     | '/sign-in'
     | '/shows/$showId/art'
@@ -129,7 +118,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/_guest'
-    | '/_authenticated/canvas'
     | '/_authenticated/settings'
     | '/_guest/sign-in'
     | '/_authenticated/'
@@ -165,13 +153,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/canvas': {
-      id: '/_authenticated/canvas'
-      path: '/canvas'
-      fullPath: '/canvas'
-      preLoaderRoute: typeof AuthenticatedCanvasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/settings': {
@@ -252,14 +233,12 @@ const AuthenticatedShowsShowIdRouteWithChildren =
   )
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedCanvasRoute: typeof AuthenticatedCanvasRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedShowsShowIdRoute: typeof AuthenticatedShowsShowIdRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedCanvasRoute: AuthenticatedCanvasRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedShowsShowIdRoute: AuthenticatedShowsShowIdRouteWithChildren,

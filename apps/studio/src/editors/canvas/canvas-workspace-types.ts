@@ -7,6 +7,7 @@ import type { CanvasArtboardDocument } from "../../api/canvas";
 import type { CanvasCamera } from "./graph/canvas-camera";
 import type { CanvasSelection } from "./graph/canvas-selection";
 import type { ResizeHandle } from "./commands/canvas-resize";
+import type { CanvasTool } from "./Toolbar/Toolbar";
 
 export interface CanvasWorkspaceEditorProps {
   artboards: readonly CanvasArtboardDocument[];
@@ -36,22 +37,16 @@ export interface CanvasWorkspaceEditorProps {
   ): void;
   onDeleteElements?(canvasId: string, elementIds: readonly string[]): void;
   onRenameArtboard?(artId: string, name: string): void;
-  initialLayersOpen?: boolean;
-  initialInspectorOpen?: boolean;
 }
 
 export interface CanvasWorkspaceSurfaceProps {
   ordered: readonly CanvasArtboardDocument[];
   focused: CanvasArtboardDocument | null;
-  layersOpen: boolean;
-  setLayersOpen(open: boolean | ((open: boolean) => boolean)): void;
-  inspectorOpen: boolean;
-  setInspectorOpen(open: boolean | ((open: boolean) => boolean)): void;
   camera: CanvasCamera;
   workspaceRef: RefObject<HTMLElement | null>;
   selection: CanvasSelection;
-  tool: "select" | "rect" | "text" | "image" | "frame";
-  setTool(tool: "select" | "rect" | "text" | "image" | "frame"): void;
+  tool: CanvasTool;
+  setTool(tool: CanvasTool): void;
   renamingArtId: string | null;
   setRenamingArtId(artId: string | null): void;
   drag: {
