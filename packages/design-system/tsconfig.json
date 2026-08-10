@@ -2,8 +2,9 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": ".",
+    "types": ["node", "react", "react-dom"],
+    "noUncheckedIndexedAccess": false
   },
-  "include": ["src"],
   "exclude": ["src/**/*.stories.tsx"]
 }

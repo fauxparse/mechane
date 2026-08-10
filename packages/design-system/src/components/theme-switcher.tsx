@@ -4,17 +4,16 @@
 // consumer (apps/studio's SettingsRoute) supplies the current
 // mode/palette and the change callbacks, wiring them to the
 // userSettings GraphQL mutation.
-import { THEME_PALETTES } from "@mechane/domain";
+import { THEME_PALETTE_METADATA, THEME_PALETTES } from "@mechane/domain";
 import type { ThemeMode, ThemePalette } from "@mechane/domain";
 import { Moon, Sun } from "lucide-react";
 
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
 
-const PALETTE_LABELS: Record<ThemePalette, string> = {
-  slate: "Slate",
-  gruvbox: "Gruvbox",
-};
+const PALETTE_LABELS: Record<ThemePalette, string> = Object.fromEntries(
+  THEME_PALETTE_METADATA.map(({ key, label }) => [key, label]),
+) as Record<ThemePalette, string>;
 
 export interface ThemeSwitcherProps {
   mode: ThemeMode;

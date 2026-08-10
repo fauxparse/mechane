@@ -41,6 +41,64 @@ pnpm typecheck
 pnpm codegen      # regenerate packages/graphql-schema's schema.graphql + gql.tada types
 ```
 
+## Adding a built-in colour theme
+
+Built-in themes are generated from checked-in Base16/Base24 scheme files. Do not
+add palette names directly to components, Storybook, or domain validation.
+The generator publishes the manifest metadata that those consumers use.
+
+1. **Choose a declared dark/light pair.** Both files must be genuine variants
+   from the same theme family; do not infer a light scheme by inverting the
+   dark scheme. Copy the source files into
+   `packages/design-system/vendor/tinted-theming-schemes/`, preserving the
+   upstream YAML and the vendored `LICENSE`.
+2. **Update the manifest.** Add an entry to
+   `packages/design-system/src/themes/manifest.json`:
+
+   ```json
+   {
+     "key": "my-theme",
+     "label": "My Theme",
+     "primary": "blue",
+     "dark": "base16/my-theme-dark.yaml",
+     "light": "base16/my-theme-light.yaml"
+   }
+   ```
+
+   `key` becomes the `data-theme-palette` value and persisted palette value.
+   `primary` must be one of the fixed hue slots: `red`, `orange`, `yellow`,
+   `green`, `aqua`, `blue`, or `purple`. The first manifest entry is the
+   default palette.
+3. **Keep the source pin current.** The manifest's `sourceCommit` must match
+   the commit used for the vendored Tinted Schemes files. If the upstream
+   corpus is updated, update the pin and review the vendored licence and
+   source files together.
+4. **Generate the outputs:**
+
+   ```sh
+   pnpm --filter @mechane/design-system generate:themes
+   ```
+
+   The command parses and validates both schemes, generates the eleven-step
+   hue and neutral scales, emits `src/styles/generated-theme.css`, updates
+   palette metadata, and writes the contrast report and acknowledgement file.
+   `src/styles/globals.css` is static and imports the generated stylesheet; do
+   not edit generated token blocks by hand.
+5. **Review and verify.** Inspect the generated CSS and
+   `src/styles/contrast-report.json`. Contrast findings are reported rather
+   than used to fail generation; resolve or explicitly acknowledge any
+   intentional violations. Then run:
+
+   ```sh
+   pnpm vitest run packages/domain/src/theme-settings.test.ts packages/design-system/scripts/theme-generator.test.ts
+   pnpm typecheck
+   pnpm lint
+   pnpm build-storybook
+   ```
+
+   The generated domain and design-system metadata automatically update
+   palette validation, labels, Storybook's palette toolbar, and API defaults.
+
 ## Typed GraphQL documents (gql.tada)
 
 `apps/api`'s schema is defined in code (`apps/api/src/graphql/schema.ts`, via

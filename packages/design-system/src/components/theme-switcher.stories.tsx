@@ -1,3 +1,5 @@
+import { DEFAULT_THEME_PALETTE } from "@mechane/domain";
+import type { ThemePalette } from "@mechane/domain";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 
@@ -18,7 +20,7 @@ export const Interactive: Story = {
   render: () => {
     function Wrapper() {
       const [mode, setMode] = useState<"dark" | "light">("dark");
-      const [palette, setPalette] = useState<"slate" | "gruvbox">("slate");
+      const [palette, setPalette] = useState<ThemePalette>(DEFAULT_THEME_PALETTE);
       return (
         <ThemeSwitcher
           mode={mode}

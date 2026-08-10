@@ -1,7 +1,7 @@
 CREATE TABLE "user_settings" (
 	"user_id" text PRIMARY KEY NOT NULL,
 	"theme_mode" text DEFAULT 'dark' NOT NULL,
-	"theme_palette" text DEFAULT 'slate' NOT NULL,
+	"theme_palette" text DEFAULT 'catppuccin' NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );

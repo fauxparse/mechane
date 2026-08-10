@@ -1,7 +1,7 @@
-// Theme tokens (light/dark, slate-pink default, gruvbox alt — see
-// styles/globals.css) and shared component primitives (Tailwind + Base UI
-// + shadcn/ui). Every new visual component added here needs a Storybook
-// story in the same change — see PRD.md §9 "Component convention".
+// Generated theme tokens (light/dark palette modes — see styles/globals.css)
+// and shared component primitives (Tailwind + Base UI + shadcn/ui). Every new
+// visual component added here needs a Storybook story in the same change —
+// see PRD.md §9 "Component convention".
 export { cn } from "./lib/utils";
 
 export {
@@ -85,3 +85,6 @@ export type { ThemeSwitcherProps } from "./components/theme-switcher";
 
 export { ThemeProvider, useTheme } from "./theme/theme-provider";
 export type { ThemeContextValue, ThemeProviderProps } from "./theme/theme-provider";
+
+export { THEME_COLOUR_METADATA } from "./themes/generated";
+export type { ThemeColourKey } from "./themes/generated";

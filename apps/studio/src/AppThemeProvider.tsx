@@ -1,8 +1,8 @@
 // Bridges the persisted UserSettings (apps/api's `userSettings` query) to
 // @mechane/design-system's network-free ThemeProvider. Signed-out
-// visitors get the PRD.md §7 defaults (dark + slate) rather than an
-// unauthenticated GraphQL error — `useUserSettings` is skipped entirely
-// until `useMe` confirms a session exists.
+// visitors get the generated default palette rather than an unauthenticated
+// GraphQL error — `useUserSettings` is skipped entirely until `useMe`
+// confirms a session exists.
 import { ThemeProvider } from "@mechane/design-system";
 import type { ThemeMode, ThemePalette } from "@mechane/domain";
 import { DEFAULT_THEME_MODE, DEFAULT_THEME_PALETTE } from "@mechane/domain";

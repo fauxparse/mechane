@@ -170,7 +170,7 @@ export const schema = createSchema<GraphQLContext>({
     type UserSettings {
       "Display mode: \\"light\\" or \\"dark\\"."
       themeMode: String!
-      "Which built-in theme is active: \\"slate\\" or \\"gruvbox\\"."
+      "Which built-in theme is active."
       themePalette: String!
     }
 

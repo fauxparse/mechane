@@ -24,21 +24,22 @@ describe("assertValidThemeMode", () => {
 
 describe("assertValidThemePalette", () => {
   it("accepts every known palette", () => {
-    expect(assertValidThemePalette("slate")).toBe("slate");
+    expect(assertValidThemePalette("catppuccin")).toBe("catppuccin");
     expect(assertValidThemePalette("gruvbox")).toBe("gruvbox");
   });
 
-  it("rejects anything else", () => {
+  it("rejects retired and unknown palettes", () => {
+    expect(() => assertValidThemePalette("slate")).toThrow(InvalidThemePaletteError);
     expect(() => assertValidThemePalette("solarized")).toThrow(InvalidThemePaletteError);
   });
 });
 
 describe("defaultThemeSettings", () => {
-  it("matches the PRD default (dark, slate)", () => {
+  it("matches the generated default (dark, Catppuccin)", () => {
     expect(defaultThemeSettings()).toEqual({
       mode: DEFAULT_THEME_MODE,
       palette: DEFAULT_THEME_PALETTE,
     });
-    expect(defaultThemeSettings()).toEqual({ mode: "dark", palette: "slate" });
+    expect(defaultThemeSettings()).toEqual({ mode: "dark", palette: "catppuccin" });
   });
 });

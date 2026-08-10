@@ -1,0 +1,19 @@
+{
+  "sourceCommit": "fdca32a0d14ec80ad83a78a9ccb85592ca6cb9e1",
+  "themes": [
+    {
+      "key": "catppuccin",
+      "label": "Catppuccin",
+      "primary": "purple",
+      "dark": "base16/catppuccin-mocha.yaml",
+      "light": "base16/catppuccin-latte.yaml"
+    },
+    {
+      "key": "gruvbox",
+      "label": "Gruvbox",
+      "primary": "orange",
+      "dark": "base16/gruvbox-dark-medium.yaml",
+      "light": "base16/gruvbox-light-medium.yaml"
+    }
+  ]
+}

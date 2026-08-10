@@ -8,7 +8,7 @@
 // table is expected to carry a `userId` column referencing `user.id`, per the
 // single-user ownership model (PRD.md §1, §9) — see @mechane/domain's
 // `ownership` module for the shared invariant this schema exists to support.
-import { generateId } from "@mechane/domain";
+import { DEFAULT_THEME_PALETTE, generateId } from "@mechane/domain";
 import { sql } from "drizzle-orm";
 import {
   boolean,
@@ -134,7 +134,7 @@ export const userSettings = pgTable("user_settings", {
     .primaryKey()
     .references(() => user.id, { onDelete: "cascade" }),
   themeMode: text("theme_mode").notNull().default("dark"),
-  themePalette: text("theme_palette").notNull().default("slate"),
+  themePalette: text("theme_palette").notNull().default(DEFAULT_THEME_PALETTE),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

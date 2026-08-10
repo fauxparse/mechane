@@ -1,5 +1,5 @@
 import { ThemeProvider } from "@mechane/design-system";
-import type { Preview } from "@storybook/react-vite";
+import { DEFAULT_THEME_PALETTE, THEME_PALETTE_METADATA } from "@mechane/domain";
 import { createElement } from "react";
 
 import "@mechane/design-system/styles/globals.css";
@@ -25,17 +25,17 @@ const preview: Preview = {
       toolbar: {
         title: "Palette",
         icon: "paintbrush",
-        items: [
-          { value: "slate", title: "Slate (default)" },
-          { value: "gruvbox", title: "Gruvbox" },
-        ],
+        items: THEME_PALETTE_METADATA.map(({ key, label }) => ({
+          value: key,
+          title: key === DEFAULT_THEME_PALETTE ? `${label} (default)` : label,
+        })),
         dynamicTitle: true,
       },
     },
   },
   initialGlobals: {
     mode: "dark",
-    palette: "slate",
+    palette: DEFAULT_THEME_PALETTE,
   },
   decorators: [
     (Story, context) =>

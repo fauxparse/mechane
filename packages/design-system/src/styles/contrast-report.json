@@ -1,0 +1,5639 @@
+{
+  "version": 1,
+  "thresholds": {
+    "apcaReadable": 60,
+    "apcaBody": 75,
+    "apcaHighContrast": 90,
+    "wcagNormal": 4.5,
+    "wcagLarge": 3,
+    "wcagNonText": 3,
+    "deltaEokPass": 0.04,
+    "deltaEokViolation": 0.02
+  },
+  "records": [
+    {
+      "id": "catppuccin.dark.aqua.on-fill",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "on-fill",
+      "foreground": "#f7f7f7",
+      "background": "#3c7173",
+      "metric": {
+        "apcaLc": -74.5190312510541,
+        "wcagRatio": 5.156112359633104
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.aqua.text-on-neutral-100",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#94e2d5",
+      "background": "#d2beba",
+      "metric": {
+        "apcaLc": -8.544429967582179,
+        "wcagRatio": 1.1933006504816877
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.aqua.text-on-neutral-200",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#94e2d5",
+      "background": "#b4cab8",
+      "metric": {
+        "apcaLc": -7.326271253037081,
+        "wcagRatio": 1.1670002590573936
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.aqua.text-on-neutral-300",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#94e2d5",
+      "background": "#b9c2df",
+      "metric": {
+        "apcaLc": -8.404958350173626,
+        "wcagRatio": 1.1902410365357052
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.aqua.text-on-neutral-400",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#94e2d5",
+      "background": "#9096b0",
+      "metric": {
+        "apcaLc": -31.88040396716846,
+        "wcagRatio": 1.964867339648628
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.aqua.text-on-neutral-50",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#94e2d5",
+      "background": "#b4befe",
+      "metric": {
+        "apcaLc": -8.901188767073489,
+        "wcagRatio": 1.2011850907933874
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.aqua.text-on-neutral-500",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#94e2d5",
+      "background": "#585b70",
+      "metric": {
+        "apcaLc": -58.276734796270844,
+        "wcagRatio": 4.482350008571349
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.aqua.text-on-neutral-600",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#94e2d5",
+      "background": "#45475a",
+      "metric": {
+        "apcaLc": -65.68133403934768,
+        "wcagRatio": 6.12454391103833
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.aqua.text-on-neutral-700",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#94e2d5",
+      "background": "#313244",
+      "metric": {
+        "apcaLc": -72.44843523477574,
+        "wcagRatio": 8.440696645018559
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.aqua.text-on-neutral-800",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#94e2d5",
+      "background": "#181825",
+      "metric": {
+        "apcaLc": -78.63465983264882,
+        "wcagRatio": 11.786049182409315
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.aqua.text-on-neutral-900",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#94e2d5",
+      "background": "#181827",
+      "metric": {
+        "apcaLc": -78.59973166831729,
+        "wcagRatio": 11.760660289941855
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.aqua.text-on-neutral-950",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#94e2d5",
+      "background": "#181827",
+      "metric": {
+        "apcaLc": -78.59973166831729,
+        "wcagRatio": 11.760660289941855
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.blue.on-fill",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "on-fill",
+      "foreground": "#e0e7f5",
+      "background": "#3429da",
+      "metric": {
+        "apcaLc": -75.3120982482734,
+        "wcagRatio": 6.834092988425042
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.blue.text-on-neutral-100",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#89b4fa",
+      "background": "#d2beba",
+      "metric": {
+        "apcaLc": 5.9029376828079725,
+        "wcagRatio": 1.1847203175838543
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.blue.text-on-neutral-200",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#89b4fa",
+      "background": "#b4cab8",
+      "metric": {
+        "apcaLc": 7.010921147762389,
+        "wcagRatio": 1.2114200615118778
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.blue.text-on-neutral-300",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#89b4fa",
+      "background": "#b9c2df",
+      "metric": {
+        "apcaLc": 6.0299181509713655,
+        "wcagRatio": 1.1877657400609
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.blue.text-on-neutral-400",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#89b4fa",
+      "background": "#9096b0",
+      "metric": {
+        "apcaLc": -13.546194386762114,
+        "wcagRatio": 1.3898486830398797
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.blue.text-on-neutral-50",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#89b4fa",
+      "background": "#b4befe",
+      "metric": {
+        "apcaLc": 5.577984237510625,
+        "wcagRatio": 1.1769439501433643
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.blue.text-on-neutral-500",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#89b4fa",
+      "background": "#585b70",
+      "metric": {
+        "apcaLc": -39.9425252158645,
+        "wcagRatio": 3.170589754650174
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.blue.text-on-neutral-600",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#89b4fa",
+      "background": "#45475a",
+      "metric": {
+        "apcaLc": -47.34712445894132,
+        "wcagRatio": 4.332195419614817
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.blue.text-on-neutral-700",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#89b4fa",
+      "background": "#313244",
+      "metric": {
+        "apcaLc": -54.1142256543694,
+        "wcagRatio": 5.9705257852756874
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.blue.text-on-neutral-800",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#89b4fa",
+      "background": "#181825",
+      "metric": {
+        "apcaLc": -60.30045025224248,
+        "wcagRatio": 8.336860511582515
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.blue.text-on-neutral-900",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#89b4fa",
+      "background": "#181827",
+      "metric": {
+        "apcaLc": -60.26552208791095,
+        "wcagRatio": 8.3189016814632
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.blue.text-on-neutral-950",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#89b4fa",
+      "background": "#181827",
+      "metric": {
+        "apcaLc": -60.26552208791095,
+        "wcagRatio": 8.3189016814632
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.distinguishability.aqua-blue",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.24917446046255412
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.distinguishability.aqua-purple",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.26642977174641613
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.distinguishability.blue-purple",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.11941498288512488
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.distinguishability.green-aqua",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.09851061349614426
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.distinguishability.green-blue",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.34518409685529206
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.distinguishability.green-purple",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.3569822346154414
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.distinguishability.orange-aqua",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.22686634420533086
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.distinguishability.orange-blue",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.36306942717876384
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.distinguishability.orange-green",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.2389577662807651
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.distinguishability.orange-purple",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.2944186149494416
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.distinguishability.orange-yellow",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.15272204877418938
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.distinguishability.red-aqua",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.21149765872919205
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.distinguishability.red-blue",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.32378998890079785
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.distinguishability.red-green",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.24364521473976317
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.distinguishability.red-orange",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.05205231525851748
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.distinguishability.red-purple",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.25324685172771855
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.distinguishability.red-yellow",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.13789628692680553
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.distinguishability.yellow-aqua",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.0944010376631976
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.distinguishability.yellow-blue",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.295824287317723
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.distinguishability.yellow-green",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.12437501428363285
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.distinguishability.yellow-purple",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.27835561013216337
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.green.on-fill",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "on-fill",
+      "foreground": "#f5f5f5",
+      "background": "#447632",
+      "metric": {
+        "apcaLc": -72.68113648753032,
+        "wcagRatio": 4.96030960875871
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.green.text-on-neutral-100",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a6e3a1",
+      "background": "#d2beba",
+      "metric": {
+        "apcaLc": -8.648706734046879,
+        "wcagRatio": 1.1954278500177729
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.green.text-on-neutral-200",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a6e3a1",
+      "background": "#b4cab8",
+      "metric": {
+        "apcaLc": -7.430548019501783,
+        "wcagRatio": 1.1690805750353293
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.green.text-on-neutral-300",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a6e3a1",
+      "background": "#b9c2df",
+      "metric": {
+        "apcaLc": -8.509235116638328,
+        "wcagRatio": 1.1923627819480842
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.green.text-on-neutral-400",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a6e3a1",
+      "background": "#9096b0",
+      "metric": {
+        "apcaLc": -31.98468073363316,
+        "wcagRatio": 1.96836994805807
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.green.text-on-neutral-50",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a6e3a1",
+      "background": "#b4befe",
+      "metric": {
+        "apcaLc": -9.00546553353819,
+        "wcagRatio": 1.2033263452767875
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.green.text-on-neutral-500",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a6e3a1",
+      "background": "#585b70",
+      "metric": {
+        "apcaLc": -58.38101156273554,
+        "wcagRatio": 4.490340327570133
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.green.text-on-neutral-600",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a6e3a1",
+      "background": "#45475a",
+      "metric": {
+        "apcaLc": -65.78561080581238,
+        "wcagRatio": 6.135461634883562
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.green.text-on-neutral-700",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a6e3a1",
+      "background": "#313244",
+      "metric": {
+        "apcaLc": -72.55271200124045,
+        "wcagRatio": 8.455743185033661
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.green.text-on-neutral-800",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a6e3a1",
+      "background": "#181825",
+      "metric": {
+        "apcaLc": -78.73893659911353,
+        "wcagRatio": 11.807059208962956
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.green.text-on-neutral-900",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a6e3a1",
+      "background": "#181827",
+      "metric": {
+        "apcaLc": -78.704008434782,
+        "wcagRatio": 11.781625057792038
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.green.text-on-neutral-950",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a6e3a1",
+      "background": "#181827",
+      "metric": {
+        "apcaLc": -78.704008434782,
+        "wcagRatio": 11.781625057792038
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.orange.on-fill",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "on-fill",
+      "foreground": "#f4f4f4",
+      "background": "#bd3939",
+      "metric": {
+        "apcaLc": -72.61349408469025,
+        "wcagRatio": 5.0138504920637
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.orange.text-on-neutral-100",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#fab387",
+      "background": "#d2beba",
+      "metric": {
+        "apcaLc": 1.0630590146979615,
+        "wcagRatio": 1.0040583592930439
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.orange.text-on-neutral-200",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#fab387",
+      "background": "#b4cab8",
+      "metric": {
+        "apcaLc": -1.2995377332224525,
+        "wcagRatio": 1.018403700452306
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.orange.text-on-neutral-300",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#fab387",
+      "background": "#b9c2df",
+      "metric": {
+        "apcaLc": 1.2025306321065137,
+        "wcagRatio": 1.001483961166777
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.orange.text-on-neutral-400",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#fab387",
+      "background": "#9096b0",
+      "metric": {
+        "apcaLc": -22.27291498488832,
+        "wcagRatio": 1.6532643944170586
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.orange.text-on-neutral-50",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#fab387",
+      "background": "#b4befe",
+      "metric": {
+        "apcaLc": 0.7063002152066518,
+        "wcagRatio": 1.0106924277485614
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.orange.text-on-neutral-500",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#fab387",
+      "background": "#585b70",
+      "metric": {
+        "apcaLc": -48.6692458139907,
+        "wcagRatio": 3.771506362262203
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.orange.text-on-neutral-600",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#fab387",
+      "background": "#45475a",
+      "metric": {
+        "apcaLc": -56.07384505706753,
+        "wcagRatio": 5.153269218660931
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.orange.text-on-neutral-700",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#fab387",
+      "background": "#313244",
+      "metric": {
+        "apcaLc": -62.8409462524956,
+        "wcagRatio": 7.1021096161027275
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.orange.text-on-neutral-800",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#fab387",
+      "background": "#181825",
+      "metric": {
+        "apcaLc": -69.02717085036869,
+        "wcagRatio": 9.916931830934772
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.orange.text-on-neutral-900",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#fab387",
+      "background": "#181827",
+      "metric": {
+        "apcaLc": -68.99224268603716,
+        "wcagRatio": 9.895569293585233
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.orange.text-on-neutral-950",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#fab387",
+      "background": "#181827",
+      "metric": {
+        "apcaLc": -68.99224268603716,
+        "wcagRatio": 9.895569293585233
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.purple.on-fill",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "on-fill",
+      "foreground": "#ece8f2",
+      "background": "#7100c5",
+      "metric": {
+        "apcaLc": -76.82364230807185,
+        "wcagRatio": 6.933295813524067
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.purple.text-on-neutral-100",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cba6f7",
+      "background": "#d2beba",
+      "metric": {
+        "apcaLc": 4.246698748512638,
+        "wcagRatio": 1.1429712032834307
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.purple.text-on-neutral-200",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cba6f7",
+      "background": "#b4cab8",
+      "metric": {
+        "apcaLc": 5.354682213467053,
+        "wcagRatio": 1.1687300579192736
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.purple.text-on-neutral-300",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cba6f7",
+      "background": "#b9c2df",
+      "metric": {
+        "apcaLc": 4.373679216676029,
+        "wcagRatio": 1.1459093061769425
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.purple.text-on-neutral-400",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cba6f7",
+      "background": "#9096b0",
+      "metric": {
+        "apcaLc": -15.278673553004746,
+        "wcagRatio": 1.4406154489582477
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.purple.text-on-neutral-50",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cba6f7",
+      "background": "#b4befe",
+      "metric": {
+        "apcaLc": 3.9217453032152907,
+        "wcagRatio": 1.1354688722110997
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.purple.text-on-neutral-500",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cba6f7",
+      "background": "#585b70",
+      "metric": {
+        "apcaLc": -41.67500438210713,
+        "wcagRatio": 3.2864013461289296
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.purple.text-on-neutral-600",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cba6f7",
+      "background": "#45475a",
+      "metric": {
+        "apcaLc": -49.07960362518396,
+        "wcagRatio": 4.490436783199216
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.purple.text-on-neutral-700",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cba6f7",
+      "background": "#313244",
+      "metric": {
+        "apcaLc": -55.846704820612025,
+        "wcagRatio": 6.1886101628409635
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.purple.text-on-neutral-800",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cba6f7",
+      "background": "#181825",
+      "metric": {
+        "apcaLc": -62.03292941848512,
+        "wcagRatio": 8.64137959430733
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.purple.text-on-neutral-900",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cba6f7",
+      "background": "#181827",
+      "metric": {
+        "apcaLc": -61.99800125415358,
+        "wcagRatio": 8.622764785061682
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.purple.text-on-neutral-950",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cba6f7",
+      "background": "#181827",
+      "metric": {
+        "apcaLc": -61.99800125415358,
+        "wcagRatio": 8.622764785061682
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.red.on-fill",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "on-fill",
+      "foreground": "#ffffff",
+      "background": "#b94562",
+      "metric": {
+        "apcaLc": -77.43494948251882,
+        "wcagRatio": 5.133878492826996
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.red.text-on-neutral-100",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#efc3cf",
+      "background": "#d2beba",
+      "metric": {
+        "apcaLc": -5.518205340512628,
+        "wcagRatio": 1.1322450974899128
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.red.text-on-neutral-200",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#efc3cf",
+      "background": "#b4cab8",
+      "metric": {
+        "apcaLc": -4.300046625967529,
+        "wcagRatio": 1.1072903727604806
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.red.text-on-neutral-300",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#efc3cf",
+      "background": "#b9c2df",
+      "metric": {
+        "apcaLc": -5.378733723104075,
+        "wcagRatio": 1.1293420295253123
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.red.text-on-neutral-400",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#efc3cf",
+      "background": "#9096b0",
+      "metric": {
+        "apcaLc": -28.854179340098906,
+        "wcagRatio": 1.8643343667307812
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.red.text-on-neutral-50",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#efc3cf",
+      "background": "#b4befe",
+      "metric": {
+        "apcaLc": -5.874964140003937,
+        "wcagRatio": 1.13972612826432
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.red.text-on-neutral-500",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#efc3cf",
+      "background": "#585b70",
+      "metric": {
+        "apcaLc": -55.25051016920129,
+        "wcagRatio": 4.253009348809251
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.red.text-on-neutral-600",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#efc3cf",
+      "background": "#45475a",
+      "metric": {
+        "apcaLc": -62.65510941227812,
+        "wcagRatio": 5.811179952709883
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.red.text-on-neutral-700",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#efc3cf",
+      "background": "#313244",
+      "metric": {
+        "apcaLc": -69.42221060770619,
+        "wcagRatio": 8.00882610083558
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.red.text-on-neutral-800",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#efc3cf",
+      "background": "#181825",
+      "metric": {
+        "apcaLc": -75.60843520557927,
+        "wcagRatio": 11.183012763942784
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.red.text-on-neutral-900",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#efc3cf",
+      "background": "#181827",
+      "metric": {
+        "apcaLc": -75.57350704124775,
+        "wcagRatio": 11.15892290107765
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.red.text-on-neutral-950",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#efc3cf",
+      "background": "#181827",
+      "metric": {
+        "apcaLc": -75.57350704124775,
+        "wcagRatio": 11.15892290107765
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.semantic.accent-foreground-on-accent",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "semantic",
+      "foreground": "#b4befe",
+      "background": "#9e38fa",
+      "metric": {
+        "apcaLc": -38.788749936432886,
+        "wcagRatio": 2.6675954803210593
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.semantic.card-foreground-on-card",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "semantic",
+      "foreground": "#b4befe",
+      "background": "#181825",
+      "metric": {
+        "apcaLc": -68.46663982683752,
+        "wcagRatio": 9.812017542296154
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.semantic.destructive-foreground-on-destructive",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "semantic",
+      "foreground": "#b4befe",
+      "background": "#f0648a",
+      "metric": {
+        "apcaLc": -23.292545550313033,
+        "wcagRatio": 1.7022964962005567
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.semantic.foreground-on-background",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "semantic",
+      "foreground": "#d2beba",
+      "background": "#181827",
+      "metric": {
+        "apcaLc": -68.7783768931558,
+        "wcagRatio": 9.855571842011942
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.semantic.muted-foreground-on-muted",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "semantic",
+      "foreground": "#9096b0",
+      "background": "#313244",
+      "metric": {
+        "apcaLc": -39.77377573381291,
+        "wcagRatio": 4.295809938256689
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.semantic.popover-foreground-on-popover",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "semantic",
+      "foreground": "#b4befe",
+      "background": "#181825",
+      "metric": {
+        "apcaLc": -68.46663982683752,
+        "wcagRatio": 9.812017542296154
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.semantic.primary-foreground-on-primary",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "semantic",
+      "foreground": "#b4befe",
+      "background": "#9e38fa",
+      "metric": {
+        "apcaLc": -38.788749936432886,
+        "wcagRatio": 2.6675954803210593
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.semantic.secondary-foreground-on-secondary",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "semantic",
+      "foreground": "#b4befe",
+      "background": "#45475a",
+      "metric": {
+        "apcaLc": -55.51331403353637,
+        "wcagRatio": 5.098751189954452
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.yellow.on-fill",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "on-fill",
+      "foreground": "#ffffff",
+      "background": "#82746a",
+      "metric": {
+        "apcaLc": -73.53005226184547,
+        "wcagRatio": 4.510848673234296
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.yellow.text-on-neutral-100",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#f9e2af",
+      "background": "#d2beba",
+      "metric": {
+        "apcaLc": -18.2905277074399,
+        "wcagRatio": 1.39872002182401
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.yellow.text-on-neutral-200",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#f9e2af",
+      "background": "#b4cab8",
+      "metric": {
+        "apcaLc": -17.072368992894802,
+        "wcagRatio": 1.3678921796937644
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.yellow.text-on-neutral-300",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#f9e2af",
+      "background": "#b9c2df",
+      "metric": {
+        "apcaLc": -18.151056090031346,
+        "wcagRatio": 1.3951337141457478
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.yellow.text-on-neutral-400",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#f9e2af",
+      "background": "#9096b0",
+      "metric": {
+        "apcaLc": -41.62650170702618,
+        "wcagRatio": 2.3031071734396815
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.yellow.text-on-neutral-50",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#f9e2af",
+      "background": "#b4befe",
+      "metric": {
+        "apcaLc": -18.64728650693121,
+        "wcagRatio": 1.4079617200669456
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.dark.yellow.text-on-neutral-500",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#f9e2af",
+      "background": "#585b70",
+      "metric": {
+        "apcaLc": -68.02283253612856,
+        "wcagRatio": 5.253959007967524
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.yellow.text-on-neutral-600",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#f9e2af",
+      "background": "#45475a",
+      "metric": {
+        "apcaLc": -75.4274317792054,
+        "wcagRatio": 7.178846495601656
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.yellow.text-on-neutral-700",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#f9e2af",
+      "background": "#313244",
+      "metric": {
+        "apcaLc": -82.19453297463346,
+        "wcagRatio": 9.893710684532458
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.yellow.text-on-neutral-800",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#f9e2af",
+      "background": "#181825",
+      "metric": {
+        "apcaLc": -88.38075757250655,
+        "wcagRatio": 13.814945096178336
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.yellow.text-on-neutral-900",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#f9e2af",
+      "background": "#181827",
+      "metric": {
+        "apcaLc": -88.345829408175,
+        "wcagRatio": 13.785185661947041
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.dark.yellow.text-on-neutral-950",
+      "palette": "catppuccin",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#f9e2af",
+      "background": "#181827",
+      "metric": {
+        "apcaLc": -88.345829408175,
+        "wcagRatio": 13.785185661947041
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.aqua.on-fill",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "on-fill",
+      "foreground": "#1b3134",
+      "background": "#bcede5",
+      "metric": {
+        "apcaLc": 81.24026922597955,
+        "wcagRatio": 10.669635983843389
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.aqua.text-on-neutral-100",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#21747a",
+      "background": "#e6e9ef",
+      "metric": {
+        "apcaLc": 61.3427112890682,
+        "wcagRatio": 4.4919957286380265
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.aqua.text-on-neutral-200",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#21747a",
+      "background": "#ccd0da",
+      "metric": {
+        "apcaLc": 47.81822375880607,
+        "wcagRatio": 3.5386944768501696
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.aqua.text-on-neutral-300",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#21747a",
+      "background": "#bcc0cc",
+      "metric": {
+        "apcaLc": 39.479093285692066,
+        "wcagRatio": 3.0048131461951337
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.aqua.text-on-neutral-400",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#21747a",
+      "background": "#b4b8c5",
+      "metric": {
+        "apcaLc": 35.391296585751476,
+        "wcagRatio": 2.7584572103461857
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.aqua.text-on-neutral-50",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#21747a",
+      "background": "#eff1f5",
+      "metric": {
+        "apcaLc": 65.82450765722443,
+        "wcagRatio": 4.8312946219408275
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.aqua.text-on-neutral-500",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#21747a",
+      "background": "#acb0be",
+      "metric": {
+        "apcaLc": 31.35993296661307,
+        "wcagRatio": 2.525541540716108
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.aqua.text-on-neutral-600",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#21747a",
+      "background": "#7a7e93",
+      "metric": {
+        "apcaLc": 7.580483550045288,
+        "wcagRatio": 1.3614402157623238
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.aqua.text-on-neutral-700",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#21747a",
+      "background": "#4c4f69",
+      "metric": {
+        "apcaLc": -8.975477610009632,
+        "wcagRatio": 1.4617199135898475
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.aqua.text-on-neutral-800",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#21747a",
+      "background": "#2b5d40",
+      "metric": {
+        "apcaLc": -7.982030240078998,
+        "wcagRatio": 1.4015908473244996
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.aqua.text-on-neutral-900",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#21747a",
+      "background": "#813829",
+      "metric": {
+        "apcaLc": -9.863304930373246,
+        "wcagRatio": 1.5186401935736826
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.aqua.text-on-neutral-950",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#21747a",
+      "background": "#3740af",
+      "metric": {
+        "apcaLc": -10.011864381590483,
+        "wcagRatio": 1.5284721223824136
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.blue.on-fill",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "on-fill",
+      "foreground": "#1c2a50",
+      "background": "#cbdef7",
+      "metric": {
+        "apcaLc": 78.0234171794545,
+        "wcagRatio": 10.245194149053681
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.blue.text-on-neutral-100",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#1852e0",
+      "background": "#e6e9ef",
+      "metric": {
+        "apcaLc": 65.43422013274365,
+        "wcagRatio": 5.197454724474999
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.blue.text-on-neutral-200",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#1852e0",
+      "background": "#ccd0da",
+      "metric": {
+        "apcaLc": 51.909732602481505,
+        "wcagRatio": 4.094439406948193
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.blue.text-on-neutral-300",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#1852e0",
+      "background": "#bcc0cc",
+      "metric": {
+        "apcaLc": 43.57060212936751,
+        "wcagRatio": 3.476713075057103
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.blue.text-on-neutral-400",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#1852e0",
+      "background": "#b4b8c5",
+      "metric": {
+        "apcaLc": 39.48280542942692,
+        "wcagRatio": 3.191667429417364
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.blue.text-on-neutral-50",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#1852e0",
+      "background": "#eff1f5",
+      "metric": {
+        "apcaLc": 69.91601650089989,
+        "wcagRatio": 5.590039834198706
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.blue.text-on-neutral-500",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#1852e0",
+      "background": "#acb0be",
+      "metric": {
+        "apcaLc": 35.451441810288514,
+        "wcagRatio": 2.9221728170771715
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.blue.text-on-neutral-600",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#1852e0",
+      "background": "#7a7e93",
+      "metric": {
+        "apcaLc": 11.671992393720732,
+        "wcagRatio": 1.575251694117172
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.blue.text-on-neutral-700",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#1852e0",
+      "background": "#4c4f69",
+      "metric": {
+        "apcaLc": -4.958607114030304,
+        "wcagRatio": 1.2633182887367977
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.blue.text-on-neutral-800",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#1852e0",
+      "background": "#2b5d40",
+      "metric": {
+        "apcaLc": -3.9651597440996724,
+        "wcagRatio": 1.211350638579303
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.blue.text-on-neutral-900",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#1852e0",
+      "background": "#813829",
+      "metric": {
+        "apcaLc": -5.846434434393921,
+        "wcagRatio": 1.3125126864015306
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.blue.text-on-neutral-950",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#1852e0",
+      "background": "#3740af",
+      "metric": {
+        "apcaLc": -5.994993885611155,
+        "wcagRatio": 1.3210101114979182
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.distinguishability.aqua-blue",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.05621027956160988
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.distinguishability.aqua-purple",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.06762821993048901
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.distinguishability.blue-purple",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.029137563515181226
+      },
+      "status": "advisory"
+    },
+    {
+      "id": "catppuccin.light.distinguishability.green-aqua",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.043700897747819184
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.distinguishability.green-blue",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.09409405581207547
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.distinguishability.green-purple",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.09490262431024418
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.distinguishability.orange-aqua",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.10465656162235484
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.distinguishability.orange-blue",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.10711474376216773
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.distinguishability.orange-green",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.09531580226273445
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.distinguishability.orange-purple",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.08462524082394271
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.distinguishability.orange-yellow",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.0988786304887981
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.distinguishability.red-aqua",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.09886459513368374
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.distinguishability.red-blue",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.07166534587646209
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.distinguishability.red-green",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.11546157975503202
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.distinguishability.red-orange",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.06309320222363016
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.distinguishability.red-purple",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.05269283643811469
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.distinguishability.red-yellow",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.12773120794209566
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.distinguishability.yellow-aqua",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.09169406527794367
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.distinguishability.yellow-blue",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.11026411260744991
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.distinguishability.yellow-green",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.07735033720011904
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.distinguishability.yellow-purple",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.09736252497172102
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.green.on-fill",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "on-fill",
+      "foreground": "#152b15",
+      "background": "#c9f3cc",
+      "metric": {
+        "apcaLc": 86.39446601276684,
+        "wcagRatio": 12.372033949557553
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.green.text-on-neutral-100",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#357d2b",
+      "background": "#e6e9ef",
+      "metric": {
+        "apcaLc": 59.31061146519803,
+        "wcagRatio": 4.191211817558647
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.green.text-on-neutral-200",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#357d2b",
+      "background": "#ccd0da",
+      "metric": {
+        "apcaLc": 45.78612393493589,
+        "wcagRatio": 3.3017435915062254
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.green.text-on-neutral-300",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#357d2b",
+      "background": "#bcc0cc",
+      "metric": {
+        "apcaLc": 37.44699346182189,
+        "wcagRatio": 2.8036109401437623
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.green.text-on-neutral-400",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#357d2b",
+      "background": "#b4b8c5",
+      "metric": {
+        "apcaLc": 33.35919676188129,
+        "wcagRatio": 2.5737509910184557
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.green.text-on-neutral-50",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#357d2b",
+      "background": "#eff1f5",
+      "metric": {
+        "apcaLc": 63.79240783335425,
+        "wcagRatio": 4.507791266249805
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.green.text-on-neutral-500",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#357d2b",
+      "background": "#acb0be",
+      "metric": {
+        "apcaLc": 29.327833142742886,
+        "wcagRatio": 2.356431348253757
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.green.text-on-neutral-600",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#357d2b",
+      "background": "#7a7e93",
+      "metric": {
+        "apcaLc": 5.548383726175107,
+        "wcagRatio": 1.270278216166677
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.green.text-on-neutral-700",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#357d2b",
+      "background": "#4c4f69",
+      "metric": {
+        "apcaLc": -10.985126168284278,
+        "wcagRatio": 1.5666207994554224
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.green.text-on-neutral-800",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#357d2b",
+      "background": "#2b5d40",
+      "metric": {
+        "apcaLc": -9.991678798353648,
+        "wcagRatio": 1.5021765478670435
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.green.text-on-neutral-900",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#357d2b",
+      "background": "#813829",
+      "metric": {
+        "apcaLc": -11.872953488647894,
+        "wcagRatio": 1.6276259849936716
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.green.text-on-neutral-950",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#357d2b",
+      "background": "#3740af",
+      "metric": {
+        "apcaLc": -12.021512939865131,
+        "wcagRatio": 1.638163505914964
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.orange.on-fill",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "on-fill",
+      "foreground": "#3e120b",
+      "background": "#fad2ac",
+      "metric": {
+        "apcaLc": 79.51170143282519,
+        "wcagRatio": 11.479216129810528
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.orange.text-on-neutral-100",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#c33213",
+      "background": "#e6e9ef",
+      "metric": {
+        "apcaLc": 61.778976582486735,
+        "wcagRatio": 4.560556799058423
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.orange.text-on-neutral-200",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#c33213",
+      "background": "#ccd0da",
+      "metric": {
+        "apcaLc": 48.2544890522246,
+        "wcagRatio": 3.592705365524179
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.orange.text-on-neutral-300",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#c33213",
+      "background": "#bcc0cc",
+      "metric": {
+        "apcaLc": 39.9153585791106,
+        "wcagRatio": 3.050675435066651
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.orange.text-on-neutral-400",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#c33213",
+      "background": "#b4b8c5",
+      "metric": {
+        "apcaLc": 35.82756187917001,
+        "wcagRatio": 2.8005593828492614
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.orange.text-on-neutral-50",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#c33213",
+      "background": "#eff1f5",
+      "metric": {
+        "apcaLc": 66.26077295064297,
+        "wcagRatio": 4.905034391701695
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.orange.text-on-neutral-500",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#c33213",
+      "background": "#acb0be",
+      "metric": {
+        "apcaLc": 31.79619826003161,
+        "wcagRatio": 2.5640887348549533
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.orange.text-on-neutral-600",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#c33213",
+      "background": "#7a7e93",
+      "metric": {
+        "apcaLc": 8.016748843463828,
+        "wcagRatio": 1.3822197988574176
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.orange.text-on-neutral-700",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#c33213",
+      "background": "#4c4f69",
+      "metric": {
+        "apcaLc": -8.545259285886425,
+        "wcagRatio": 1.4397451665696546
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.orange.text-on-neutral-800",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#c33213",
+      "background": "#2b5d40",
+      "metric": {
+        "apcaLc": -7.551811915955792,
+        "wcagRatio": 1.3805200498280539
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.orange.text-on-neutral-900",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#c33213",
+      "background": "#813829",
+      "metric": {
+        "apcaLc": -9.43308660625004,
+        "wcagRatio": 1.4958097362759362
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.orange.text-on-neutral-950",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#c33213",
+      "background": "#3740af",
+      "metric": {
+        "apcaLc": -9.581646057467275,
+        "wcagRatio": 1.5054938569127434
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.purple.on-fill",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "on-fill",
+      "foreground": "#33185a",
+      "background": "#e0daec",
+      "metric": {
+        "apcaLc": 79.56786573891773,
+        "wcagRatio": 10.85883025159425
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.purple.text-on-neutral-100",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#732dcf",
+      "background": "#e6e9ef",
+      "metric": {
+        "apcaLc": 68.11386903308174,
+        "wcagRatio": 5.745331149079571
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.purple.text-on-neutral-200",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#732dcf",
+      "background": "#ccd0da",
+      "metric": {
+        "apcaLc": 54.58938150281962,
+        "wcagRatio": 4.526044287020608
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.purple.text-on-neutral-300",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#732dcf",
+      "background": "#bcc0cc",
+      "metric": {
+        "apcaLc": 46.250251029705616,
+        "wcagRatio": 3.843201910441938
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.purple.text-on-neutral-400",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#732dcf",
+      "background": "#b4b8c5",
+      "metric": {
+        "apcaLc": 42.162454329765026,
+        "wcagRatio": 3.5281089055733075
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.purple.text-on-neutral-50",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#732dcf",
+      "background": "#eff1f5",
+      "metric": {
+        "apcaLc": 72.595665401238,
+        "wcagRatio": 6.179299616171559
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.purple.text-on-neutral-500",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#732dcf",
+      "background": "#acb0be",
+      "metric": {
+        "apcaLc": 38.13109071062662,
+        "wcagRatio": 3.230206206489453
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.purple.text-on-neutral-600",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#732dcf",
+      "background": "#7a7e93",
+      "metric": {
+        "apcaLc": 14.35164129405884,
+        "wcagRatio": 1.7413028310248413
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.purple.text-on-neutral-700",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#732dcf",
+      "background": "#4c4f69",
+      "metric": {
+        "apcaLc": -2.350844241971082,
+        "wcagRatio": 1.1428478947401755
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.purple.text-on-neutral-800",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#732dcf",
+      "background": "#2b5d40",
+      "metric": {
+        "apcaLc": -1.3573968720404495,
+        "wcagRatio": 1.0958358945921582
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.purple.text-on-neutral-900",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#732dcf",
+      "background": "#813829",
+      "metric": {
+        "apcaLc": -3.238671562334698,
+        "wcagRatio": 1.1873511005477693
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.purple.text-on-neutral-950",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#732dcf",
+      "background": "#3740af",
+      "metric": {
+        "apcaLc": -3.387231013551932,
+        "wcagRatio": 1.1950382087521707
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.red.on-fill",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "on-fill",
+      "foreground": "#350e11",
+      "background": "#e5c8cb",
+      "metric": {
+        "apcaLc": 75.24273575497786,
+        "wcagRatio": 11.00861082810326
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.red.text-on-neutral-100",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#ad112e",
+      "background": "#e6e9ef",
+      "metric": {
+        "apcaLc": 69.0759799174004,
+        "wcagRatio": 5.961226694030234
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.red.text-on-neutral-200",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#ad112e",
+      "background": "#ccd0da",
+      "metric": {
+        "apcaLc": 55.55149238713828,
+        "wcagRatio": 4.696122002727856
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.red.text-on-neutral-300",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#ad112e",
+      "background": "#bcc0cc",
+      "metric": {
+        "apcaLc": 47.21236191402428,
+        "wcagRatio": 3.987620073517398
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.red.text-on-neutral-400",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#ad112e",
+      "background": "#b4b8c5",
+      "metric": {
+        "apcaLc": 43.12456521408369,
+        "wcagRatio": 3.660686641312015
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.red.text-on-neutral-50",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#ad112e",
+      "background": "#eff1f5",
+      "metric": {
+        "apcaLc": 73.55777628555666,
+        "wcagRatio": 6.4115026386658345
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.red.text-on-neutral-500",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#ad112e",
+      "background": "#acb0be",
+      "metric": {
+        "apcaLc": 39.093201594945285,
+        "wcagRatio": 3.351589484695232
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.red.text-on-neutral-600",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#ad112e",
+      "background": "#7a7e93",
+      "metric": {
+        "apcaLc": 15.313752178377504,
+        "wcagRatio": 1.806736748387197
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.red.text-on-neutral-700",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#ad112e",
+      "background": "#4c4f69",
+      "metric": {
+        "apcaLc": -1.4193136803087054,
+        "wcagRatio": 1.1014577947331186
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.red.text-on-neutral-800",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#ad112e",
+      "background": "#2b5d40",
+      "metric": {
+        "apcaLc": -0.4258663103780733,
+        "wcagRatio": 1.0561484108270474
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.red.text-on-neutral-900",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#ad112e",
+      "background": "#813829",
+      "metric": {
+        "apcaLc": -2.307141000672321,
+        "wcagRatio": 1.144349244376582
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.red.text-on-neutral-950",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#ad112e",
+      "background": "#3740af",
+      "metric": {
+        "apcaLc": -2.4557004518895553,
+        "wcagRatio": 1.1517579514229557
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.semantic.accent-foreground-on-accent",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "semantic",
+      "foreground": "#3740af",
+      "background": "#9d5afa",
+      "metric": {
+        "apcaLc": 19.165559330550117,
+        "wcagRatio": 2.098156110984343
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.semantic.card-foreground-on-card",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "semantic",
+      "foreground": "#3740af",
+      "background": "#e6e9ef",
+      "metric": {
+        "apcaLc": 72.65446746096083,
+        "wcagRatio": 6.865890245084101
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.semantic.destructive-foreground-on-destructive",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "semantic",
+      "foreground": "#3740af",
+      "background": "#e53752",
+      "metric": {
+        "apcaLc": 17.399473142275056,
+        "wcagRatio": 1.9881711699274787
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.semantic.foreground-on-background",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "semantic",
+      "foreground": "#813829",
+      "background": "#eff1f5",
+      "metric": {
+        "apcaLc": 76.97618676867263,
+        "wcagRatio": 7.33699819987571
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.semantic.muted-foreground-on-muted",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "semantic",
+      "foreground": "#7a7e93",
+      "background": "#ccd0da",
+      "metric": {
+        "apcaLc": 38.27395343324683,
+        "wcagRatio": 2.5992286961118714
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.semantic.popover-foreground-on-popover",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "semantic",
+      "foreground": "#3740af",
+      "background": "#e6e9ef",
+      "metric": {
+        "apcaLc": 72.65446746096083,
+        "wcagRatio": 6.865890245084101
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.semantic.primary-foreground-on-primary",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "semantic",
+      "foreground": "#3740af",
+      "background": "#9d5afa",
+      "metric": {
+        "apcaLc": 19.165559330550117,
+        "wcagRatio": 2.098156110984343
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.semantic.secondary-foreground-on-secondary",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "semantic",
+      "foreground": "#3740af",
+      "background": "#bcc0cc",
+      "metric": {
+        "apcaLc": 50.790849457584685,
+        "wcagRatio": 4.592773126927454
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.yellow.on-fill",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "on-fill",
+      "foreground": "#49291a",
+      "background": "#fff8e0",
+      "metric": {
+        "apcaLc": 91.59865468799241,
+        "wcagRatio": 12.229483555788317
+      },
+      "status": "pass"
+    },
+    {
+      "id": "catppuccin.light.yellow.text-on-neutral-100",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#b16825",
+      "background": "#e6e9ef",
+      "metric": {
+        "apcaLc": 54.10208809333766,
+        "wcagRatio": 3.5409421521591367
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.yellow.text-on-neutral-200",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#b16825",
+      "background": "#ccd0da",
+      "metric": {
+        "apcaLc": 40.577600563075535,
+        "wcagRatio": 2.7894755902830477
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.yellow.text-on-neutral-300",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#b16825",
+      "background": "#bcc0cc",
+      "metric": {
+        "apcaLc": 32.23847008996154,
+        "wcagRatio": 2.3686285943887735
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.yellow.text-on-neutral-400",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#b16825",
+      "background": "#b4b8c5",
+      "metric": {
+        "apcaLc": 28.15067339002094,
+        "wcagRatio": 2.174431589231192
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.yellow.text-on-neutral-50",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#b16825",
+      "background": "#eff1f5",
+      "metric": {
+        "apcaLc": 58.583884461493895,
+        "wcagRatio": 3.808404061309506
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.yellow.text-on-neutral-500",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#b16825",
+      "background": "#acb0be",
+      "metric": {
+        "apcaLc": 24.119309770882538,
+        "wcagRatio": 1.9908292524717188
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.yellow.text-on-neutral-600",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#b16825",
+      "background": "#7a7e93",
+      "metric": {
+        "apcaLc": 0.3398603543147555,
+        "wcagRatio": 1.0731935956446474
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.yellow.text-on-neutral-700",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#b16825",
+      "background": "#4c4f69",
+      "metric": {
+        "apcaLc": -16.176638292374243,
+        "wcagRatio": 1.8543199312948422
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.yellow.text-on-neutral-800",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#b16825",
+      "background": "#2b5d40",
+      "metric": {
+        "apcaLc": -15.183190922443613,
+        "wcagRatio": 1.7780409362634664
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.yellow.text-on-neutral-900",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#b16825",
+      "background": "#813829",
+      "metric": {
+        "apcaLc": -17.06446561273786,
+        "wcagRatio": 1.9265282994559432
+      },
+      "status": "violation"
+    },
+    {
+      "id": "catppuccin.light.yellow.text-on-neutral-950",
+      "palette": "catppuccin",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#b16825",
+      "background": "#3740af",
+      "metric": {
+        "apcaLc": -17.213025063955094,
+        "wcagRatio": 1.9390009635987793
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.aqua.on-fill",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "on-fill",
+      "foreground": "#eeeeee",
+      "background": "#47694d",
+      "metric": {
+        "apcaLc": -72.04878054425913,
+        "wcagRatio": 5.330206530024744
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.aqua.text-on-neutral-100",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#b3d49e",
+      "background": "#ebdbb2",
+      "metric": {
+        "apcaLc": 7.300707349921544,
+        "wcagRatio": 1.1933332942611812
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.aqua.text-on-neutral-200",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#b3d49e",
+      "background": "#e0cfa9",
+      "metric": {
+        "apcaLc": 1.0710358591626956,
+        "wcagRatio": 1.0654547054510015
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.aqua.text-on-neutral-300",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#b3d49e",
+      "background": "#d5c4a1",
+      "metric": {
+        "apcaLc": -1.2285672139816894,
+        "wcagRatio": 1.0480414198139514
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.aqua.text-on-neutral-400",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#b3d49e",
+      "background": "#c9b99a",
+      "metric": {
+        "apcaLc": -7.484824609233163,
+        "wcagRatio": 1.1779803953012782
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.aqua.text-on-neutral-50",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#b3d49e",
+      "background": "#fbf1c7",
+      "metric": {
+        "apcaLc": 18.612212988979444,
+        "wcagRatio": 1.4428494260819797
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.aqua.text-on-neutral-500",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#b3d49e",
+      "background": "#bdae93",
+      "metric": {
+        "apcaLc": -13.550737487882017,
+        "wcagRatio": 1.3307596561584911
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.aqua.text-on-neutral-600",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#b3d49e",
+      "background": "#665c54",
+      "metric": {
+        "apcaLc": -52.26957503307794,
+        "wcagRatio": 3.979070265146544
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.aqua.text-on-neutral-700",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#b3d49e",
+      "background": "#504945",
+      "metric": {
+        "apcaLc": -59.560535269819226,
+        "wcagRatio": 5.389751788252382
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.aqua.text-on-neutral-800",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#b3d49e",
+      "background": "#3c3836",
+      "metric": {
+        "apcaLc": -65.41833206392884,
+        "wcagRatio": 7.083029817667387
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.aqua.text-on-neutral-900",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#b3d49e",
+      "background": "#282828",
+      "metric": {
+        "apcaLc": -70.28440597692939,
+        "wcagRatio": 9.005923346053446
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.aqua.text-on-neutral-950",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#b3d49e",
+      "background": "#181818",
+      "metric": {
+        "apcaLc": -73.44262523559024,
+        "wcagRatio": 10.846421881134729
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.blue.on-fill",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "on-fill",
+      "foreground": "#def7ed",
+      "background": "#3f6558",
+      "metric": {
+        "apcaLc": -75.47367636342958,
+        "wcagRatio": 5.797950734098801
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.blue.text-on-neutral-100",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a5c4b8",
+      "background": "#ebdbb2",
+      "metric": {
+        "apcaLc": 14.1923014692896,
+        "wcagRatio": 1.3682466985808934
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.blue.text-on-neutral-200",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a5c4b8",
+      "background": "#e0cfa9",
+      "metric": {
+        "apcaLc": 7.962629978530751,
+        "wcagRatio": 1.221624243814776
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.blue.text-on-neutral-300",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a5c4b8",
+      "background": "#d5c4a1",
+      "metric": {
+        "apcaLc": 2.2451457929616727,
+        "wcagRatio": 1.0940173371038378
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.blue.text-on-neutral-400",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a5c4b8",
+      "background": "#c9b99a",
+      "metric": {
+        "apcaLc": -0.20981020503081543,
+        "wcagRatio": 1.0273901827484317
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.blue.text-on-neutral-50",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a5c4b8",
+      "background": "#fbf1c7",
+      "metric": {
+        "apcaLc": 25.503807108347498,
+        "wcagRatio": 1.6543357780093284
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.blue.text-on-neutral-500",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a5c4b8",
+      "background": "#bdae93",
+      "metric": {
+        "apcaLc": -6.275723083679669,
+        "wcagRatio": 1.1606385061996192
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.blue.text-on-neutral-600",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a5c4b8",
+      "background": "#665c54",
+      "metric": {
+        "apcaLc": -44.9945606288756,
+        "wcagRatio": 3.4703953844938176
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.blue.text-on-neutral-700",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a5c4b8",
+      "background": "#504945",
+      "metric": {
+        "apcaLc": -52.285520865616874,
+        "wcagRatio": 4.700738736220709
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.blue.text-on-neutral-800",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a5c4b8",
+      "background": "#3c3836",
+      "metric": {
+        "apcaLc": -58.14331765972649,
+        "wcagRatio": 6.177552128891522
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.blue.text-on-neutral-900",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a5c4b8",
+      "background": "#282828",
+      "metric": {
+        "apcaLc": -63.00939157272705,
+        "wcagRatio": 7.854627521159884
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.blue.text-on-neutral-950",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#a5c4b8",
+      "background": "#181818",
+      "metric": {
+        "apcaLc": -66.16761083138789,
+        "wcagRatio": 9.459841100136098
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.distinguishability.aqua-blue",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.02581944569312715
+      },
+      "status": "advisory"
+    },
+    {
+      "id": "gruvbox.dark.distinguishability.aqua-purple",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.21322628296584373
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.distinguishability.blue-purple",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.20787231921328134
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.distinguishability.green-aqua",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.07004566715345084
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.distinguishability.green-blue",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.0935484281571834
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.distinguishability.green-purple",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.2175850732719516
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.distinguishability.orange-aqua",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.2283665422953247
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.distinguishability.orange-blue",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.23680614151114823
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.distinguishability.orange-green",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.19509057789128426
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.distinguishability.orange-purple",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.12110378165172704
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.distinguishability.orange-yellow",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.11101823829572582
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.distinguishability.red-aqua",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.23095920211692367
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.distinguishability.red-blue",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.23859085575440284
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.distinguishability.red-green",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.1991615019743327
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.distinguishability.red-orange",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.008955309121432274
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.distinguishability.red-purple",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.11567714693732162
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.distinguishability.red-yellow",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.11567379707192037
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.distinguishability.yellow-aqua",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.12338225565713416
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.distinguishability.yellow-blue",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.1366442651125243
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.distinguishability.yellow-green",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.092411495150071
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.distinguishability.yellow-purple",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.14593566315332013
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.green.on-fill",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "on-fill",
+      "foreground": "#f0f0f0",
+      "background": "#68670f",
+      "metric": {
+        "apcaLc": -72.19423559905177,
+        "wcagRatio": 5.211929841974959
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.green.text-on-neutral-100",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cbd387",
+      "background": "#ebdbb2",
+      "metric": {
+        "apcaLc": 5.767754963780197,
+        "wcagRatio": 1.159087676151218
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.green.text-on-neutral-200",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cbd387",
+      "background": "#e0cfa9",
+      "metric": {
+        "apcaLc": -0.46191652697865176,
+        "wcagRatio": 1.0348788762741843
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.green.text-on-neutral-300",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cbd387",
+      "background": "#d5c4a1",
+      "metric": {
+        "apcaLc": -2.8540516870090533,
+        "wcagRatio": 1.0790061405722193
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.green.text-on-neutral-400",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cbd387",
+      "background": "#c9b99a",
+      "metric": {
+        "apcaLc": -9.110309082260528,
+        "wcagRatio": 1.2127842048737028
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.green.text-on-neutral-50",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cbd387",
+      "background": "#fbf1c7",
+      "metric": {
+        "apcaLc": 17.079260602838097,
+        "wcagRatio": 1.401443332182308
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.green.text-on-neutral-500",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cbd387",
+      "background": "#bdae93",
+      "metric": {
+        "apcaLc": -15.17622196090938,
+        "wcagRatio": 1.3700773781208837
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.green.text-on-neutral-600",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cbd387",
+      "background": "#665c54",
+      "metric": {
+        "apcaLc": -53.89505950610531,
+        "wcagRatio": 4.096633175646457
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.green.text-on-neutral-700",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cbd387",
+      "background": "#504945",
+      "metric": {
+        "apcaLc": -61.18601974284659,
+        "wcagRatio": 5.54899373797345
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.green.text-on-neutral-800",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cbd387",
+      "background": "#3c3836",
+      "metric": {
+        "apcaLc": -67.0438165369562,
+        "wcagRatio": 7.292300211260695
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.green.text-on-neutral-900",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cbd387",
+      "background": "#282828",
+      "metric": {
+        "apcaLc": -71.90989044995675,
+        "wcagRatio": 9.272006247271621
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.green.text-on-neutral-950",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#cbd387",
+      "background": "#181818",
+      "metric": {
+        "apcaLc": -75.0681097086176,
+        "wcagRatio": 11.166882903405513
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.orange.on-fill",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "on-fill",
+      "foreground": "#f9f1e8",
+      "background": "#c32d00",
+      "metric": {
+        "apcaLc": -72.27564362019805,
+        "wcagRatio": 5.080208073519346
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.orange.text-on-neutral-100",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#feb068",
+      "background": "#ebdbb2",
+      "metric": {
+        "apcaLc": 12.315219800934052,
+        "wcagRatio": 1.3169007592937925
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.orange.text-on-neutral-200",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#feb068",
+      "background": "#e0cfa9",
+      "metric": {
+        "apcaLc": 6.085548310175202,
+        "wcagRatio": 1.1757805781076918
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.orange.text-on-neutral-300",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#feb068",
+      "background": "#d5c4a1",
+      "metric": {
+        "apcaLc": 0.3680641246061246,
+        "wcagRatio": 1.0529623520428606
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.orange.text-on-neutral-400",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#feb068",
+      "background": "#c9b99a",
+      "metric": {
+        "apcaLc": -2.1859150984078752,
+        "wcagRatio": 1.067448109342577
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.orange.text-on-neutral-50",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#feb068",
+      "background": "#fbf1c7",
+      "metric": {
+        "apcaLc": 23.62672543999195,
+        "wcagRatio": 1.5922538270671136
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.orange.text-on-neutral-500",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#feb068",
+      "background": "#bdae93",
+      "metric": {
+        "apcaLc": -8.251827977056728,
+        "wcagRatio": 1.205891782768125
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.orange.text-on-neutral-600",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#feb068",
+      "background": "#665c54",
+      "metric": {
+        "apcaLc": -46.97066552225266,
+        "wcagRatio": 3.6057060443570657
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.orange.text-on-neutral-700",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#feb068",
+      "background": "#504945",
+      "metric": {
+        "apcaLc": -54.26162575899394,
+        "wcagRatio": 4.884020463451201
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.orange.text-on-neutral-800",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#feb068",
+      "background": "#3c3836",
+      "metric": {
+        "apcaLc": -60.119422553103554,
+        "wcagRatio": 6.418414786395847
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.orange.text-on-neutral-900",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#feb068",
+      "background": "#282828",
+      "metric": {
+        "apcaLc": -64.9854964661041,
+        "wcagRatio": 8.160879321060543
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.orange.text-on-neutral-950",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#feb068",
+      "background": "#181818",
+      "metric": {
+        "apcaLc": -68.14371572476496,
+        "wcagRatio": 9.828680151496117
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.purple.on-fill",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "on-fill",
+      "foreground": "#f4f4f4",
+      "background": "#a12b5e",
+      "metric": {
+        "apcaLc": -78.72524675080683,
+        "wcagRatio": 6.316832367838782
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.purple.text-on-neutral-100",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ccc0c3",
+      "background": "#ebdbb2",
+      "metric": {
+        "apcaLc": 11.165082937933377,
+        "wcagRatio": 1.2868814381938498
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.purple.text-on-neutral-200",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ccc0c3",
+      "background": "#e0cfa9",
+      "metric": {
+        "apcaLc": 4.935411447174527,
+        "wcagRatio": 1.1489781524365128
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.purple.text-on-neutral-300",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ccc0c3",
+      "background": "#d5c4a1",
+      "metric": {
+        "apcaLc": -0.7820727383945504,
+        "wcagRatio": 1.0289596208354792
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.purple.text-on-neutral-400",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ccc0c3",
+      "background": "#c9b99a",
+      "metric": {
+        "apcaLc": -3.398756395809545,
+        "wcagRatio": 1.0923486686333035
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.purple.text-on-neutral-50",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ccc0c3",
+      "background": "#fbf1c7",
+      "metric": {
+        "apcaLc": 22.476588576991276,
+        "wcagRatio": 1.55595771396215
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.purple.text-on-neutral-500",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ccc0c3",
+      "background": "#bdae93",
+      "metric": {
+        "apcaLc": -9.464669274458396,
+        "wcagRatio": 1.234021843210605
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.purple.text-on-neutral-600",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ccc0c3",
+      "background": "#665c54",
+      "metric": {
+        "apcaLc": -48.18350681965433,
+        "wcagRatio": 3.689817015519627
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.purple.text-on-neutral-700",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ccc0c3",
+      "background": "#504945",
+      "metric": {
+        "apcaLc": -55.4744670563956,
+        "wcagRatio": 4.997950911276144
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.purple.text-on-neutral-800",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ccc0c3",
+      "background": "#3c3836",
+      "metric": {
+        "apcaLc": -61.33226385050522,
+        "wcagRatio": 6.568138334118984
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.purple.text-on-neutral-900",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ccc0c3",
+      "background": "#282828",
+      "metric": {
+        "apcaLc": -66.19833776350576,
+        "wcagRatio": 8.351249660958082
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.purple.text-on-neutral-950",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ccc0c3",
+      "background": "#181818",
+      "metric": {
+        "apcaLc": -69.35655702216663,
+        "wcagRatio": 10.057955589543075
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.red.on-fill",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "on-fill",
+      "foreground": "#fdfdfd",
+      "background": "#c22706",
+      "metric": {
+        "apcaLc": -79.87499333979,
+        "wcagRatio": 5.755983805006387
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.red.text-on-neutral-100",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffb0a9",
+      "background": "#ebdbb2",
+      "metric": {
+        "apcaLc": 10.57737266387936,
+        "wcagRatio": 1.271944323496892
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.red.text-on-neutral-200",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffb0a9",
+      "background": "#e0cfa9",
+      "metric": {
+        "apcaLc": 4.347701173120515,
+        "wcagRatio": 1.1356417113799608
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.red.text-on-neutral-300",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffb0a9",
+      "background": "#d5c4a1",
+      "metric": {
+        "apcaLc": -1.369783012448564,
+        "wcagRatio": 1.0170162611608464
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.red.text-on-neutral-400",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffb0a9",
+      "background": "#c9b99a",
+      "metric": {
+        "apcaLc": -4.019095533303522,
+        "wcagRatio": 1.105176696598857
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.red.text-on-neutral-50",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffb0a9",
+      "background": "#fbf1c7",
+      "metric": {
+        "apcaLc": 21.88887830293726,
+        "wcagRatio": 1.5378973720011309
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.red.text-on-neutral-500",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffb0a9",
+      "background": "#bdae93",
+      "metric": {
+        "apcaLc": -10.085008411952376,
+        "wcagRatio": 1.248513614171076
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.red.text-on-neutral-600",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffb0a9",
+      "background": "#665c54",
+      "metric": {
+        "apcaLc": -48.803845957148305,
+        "wcagRatio": 3.7331484876237506
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.red.text-on-neutral-700",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffb0a9",
+      "background": "#504945",
+      "metric": {
+        "apcaLc": -56.09480619388959,
+        "wcagRatio": 5.056644491358527
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.red.text-on-neutral-800",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffb0a9",
+      "background": "#3c3836",
+      "metric": {
+        "apcaLc": -61.95260298799919,
+        "wcagRatio": 6.645271455301911
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.red.text-on-neutral-900",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffb0a9",
+      "background": "#282828",
+      "metric": {
+        "apcaLc": -66.81867690099975,
+        "wcagRatio": 8.449322801223932
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.red.text-on-neutral-950",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffb0a9",
+      "background": "#181818",
+      "metric": {
+        "apcaLc": -69.9768961596606,
+        "wcagRatio": 10.176071479902864
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.semantic.accent-foreground-on-accent",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "semantic",
+      "foreground": "#fbf1c7",
+      "background": "#fb6400",
+      "metric": {
+        "apcaLc": -50.5768930819983,
+        "wcagRatio": 2.6728421693300843
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.semantic.card-foreground-on-card",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "semantic",
+      "foreground": "#fbf1c7",
+      "background": "#3c3836",
+      "metric": {
+        "apcaLc": -88.07975269622938,
+        "wcagRatio": 10.219745507342939
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.semantic.destructive-foreground-on-destructive",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "semantic",
+      "foreground": "#fbf1c7",
+      "background": "#fb4934",
+      "metric": {
+        "apcaLc": -55.34957773452154,
+        "wcagRatio": 3.0319961410920824
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.semantic.foreground-on-background",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "semantic",
+      "foreground": "#ebdbb2",
+      "background": "#282828",
+      "metric": {
+        "apcaLc": -80.59547379640456,
+        "wcagRatio": 10.74706817440964
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.semantic.muted-foreground-on-muted",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "semantic",
+      "foreground": "#c9b99a",
+      "background": "#504945",
+      "metric": {
+        "apcaLc": -50.915782517482434,
+        "wcagRatio": 4.575417222350214
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.semantic.popover-foreground-on-popover",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "semantic",
+      "foreground": "#fbf1c7",
+      "background": "#3c3836",
+      "metric": {
+        "apcaLc": -88.07975269622938,
+        "wcagRatio": 10.219745507342939
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.semantic.primary-foreground-on-primary",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "semantic",
+      "foreground": "#fbf1c7",
+      "background": "#fb6400",
+      "metric": {
+        "apcaLc": -50.5768930819983,
+        "wcagRatio": 2.6728421693300843
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.semantic.secondary-foreground-on-secondary",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "semantic",
+      "foreground": "#fbf1c7",
+      "background": "#665c54",
+      "metric": {
+        "apcaLc": -74.93099566537849,
+        "wcagRatio": 5.741199248406562
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.yellow.on-fill",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "on-fill",
+      "foreground": "#f4f4f4",
+      "background": "#965e30",
+      "metric": {
+        "apcaLc": -71.64565756680135,
+        "wcagRatio": 4.845297820412567
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.yellow.text-on-neutral-100",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffd45e",
+      "background": "#ebdbb2",
+      "metric": {
+        "apcaLc": -0.5815723400226763,
+        "wcagRatio": 1.0321547177306245
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.yellow.text-on-neutral-200",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffd45e",
+      "background": "#e0cfa9",
+      "metric": {
+        "apcaLc": -3.277910650908311,
+        "wcagRatio": 1.0851304838566467
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.yellow.text-on-neutral-300",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffd45e",
+      "background": "#d5c4a1",
+      "metric": {
+        "apcaLc": -9.613267414600596,
+        "wcagRatio": 1.211700822119529
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.yellow.text-on-neutral-400",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffd45e",
+      "background": "#c9b99a",
+      "metric": {
+        "apcaLc": -15.869524809852068,
+        "wcagRatio": 1.361930727585778
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.yellow.text-on-neutral-50",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffd45e",
+      "background": "#fbf1c7",
+      "metric": {
+        "apcaLc": 10.729933299035224,
+        "wcagRatio": 1.247969740949416
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.yellow.text-on-neutral-500",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffd45e",
+      "background": "#bdae93",
+      "metric": {
+        "apcaLc": -21.935437688500922,
+        "wcagRatio": 1.538567597544946
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.dark.yellow.text-on-neutral-600",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffd45e",
+      "background": "#665c54",
+      "metric": {
+        "apcaLc": -60.65427523369685,
+        "wcagRatio": 4.60043145280016
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.yellow.text-on-neutral-700",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffd45e",
+      "background": "#504945",
+      "metric": {
+        "apcaLc": -67.94523547043813,
+        "wcagRatio": 6.231401306643926
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.yellow.text-on-neutral-800",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffd45e",
+      "background": "#3c3836",
+      "metric": {
+        "apcaLc": -73.80303226454774,
+        "wcagRatio": 8.18909719683434
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.yellow.text-on-neutral-900",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffd45e",
+      "background": "#282828",
+      "metric": {
+        "apcaLc": -78.6691061775483,
+        "wcagRatio": 10.412264740734777
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.dark.yellow.text-on-neutral-950",
+      "palette": "gruvbox",
+      "mode": "dark",
+      "kind": "hue-text",
+      "foreground": "#ffd45e",
+      "background": "#181818",
+      "metric": {
+        "apcaLc": -81.82732543620914,
+        "wcagRatio": 12.540170705046448
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.aqua.on-fill",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "on-fill",
+      "foreground": "#22372d",
+      "background": "#d6f2cc",
+      "metric": {
+        "apcaLc": 83.21834338322516,
+        "wcagRatio": 10.549610965407672
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.aqua.text-on-neutral-100",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#427b58",
+      "background": "#ebdbb2",
+      "metric": {
+        "apcaLc": 51.65300297738852,
+        "wcagRatio": 3.639757922343188
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.aqua.text-on-neutral-200",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#427b58",
+      "background": "#d5c4a1",
+      "metric": {
+        "apcaLc": 39.70584730106059,
+        "wcagRatio": 2.910263386006679
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.aqua.text-on-neutral-300",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#427b58",
+      "background": "#bdae93",
+      "metric": {
+        "apcaLc": 28.395081514429478,
+        "wcagRatio": 2.29198154376551
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.aqua.text-on-neutral-400",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#427b58",
+      "background": "#918373",
+      "metric": {
+        "apcaLc": 7.801378673032964,
+        "wcagRatio": 1.3548188797666798
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.aqua.text-on-neutral-50",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#427b58",
+      "background": "#fbf1c7",
+      "metric": {
+        "apcaLc": 62.964508616446416,
+        "wcagRatio": 4.400801230122053
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.aqua.text-on-neutral-500",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#427b58",
+      "background": "#665c54",
+      "metric": {
+        "apcaLc": -6.5955618637519215,
+        "wcagRatio": 1.3045804498303446
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.aqua.text-on-neutral-600",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#427b58",
+      "background": "#5b524d",
+      "metric": {
+        "apcaLc": -10.46184790480011,
+        "wcagRatio": 1.5244238729838717
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.aqua.text-on-neutral-700",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#427b58",
+      "background": "#504945",
+      "metric": {
+        "apcaLc": -13.886522100493199,
+        "wcagRatio": 1.7670873706305963
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.aqua.text-on-neutral-800",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#427b58",
+      "background": "#46403d",
+      "metric": {
+        "apcaLc": -17.034772994066593,
+        "wcagRatio": 2.040476185235034
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.aqua.text-on-neutral-900",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#427b58",
+      "background": "#3c3836",
+      "metric": {
+        "apcaLc": -19.744318894602817,
+        "wcagRatio": 2.3222465576023077
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.aqua.text-on-neutral-950",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#427b58",
+      "background": "#282828",
+      "metric": {
+        "apcaLc": -24.61039280760337,
+        "wcagRatio": 2.952687624755807
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.blue.on-fill",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "on-fill",
+      "foreground": "#252525",
+      "background": "#d2d2d2",
+      "metric": {
+        "apcaLc": 74.5893925229113,
+        "wcagRatio": 10.138356937671485
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.blue.text-on-neutral-100",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#076678",
+      "background": "#ebdbb2",
+      "metric": {
+        "apcaLc": 59.5690735986953,
+        "wcagRatio": 4.812604124251825
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.blue.text-on-neutral-200",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#076678",
+      "background": "#d5c4a1",
+      "metric": {
+        "apcaLc": 47.62191792236739,
+        "wcagRatio": 3.848043159182998
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.blue.text-on-neutral-300",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#076678",
+      "background": "#bdae93",
+      "metric": {
+        "apcaLc": 36.31115213573627,
+        "wcagRatio": 3.03053116871406
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.blue.text-on-neutral-400",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#076678",
+      "background": "#918373",
+      "metric": {
+        "apcaLc": 15.717449294339762,
+        "wcagRatio": 1.7913847754418266
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.blue.text-on-neutral-50",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#076678",
+      "background": "#fbf1c7",
+      "metric": {
+        "apcaLc": 70.88057923775321,
+        "wcagRatio": 5.818879882116767
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.blue.text-on-neutral-500",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#076678",
+      "background": "#665c54",
+      "metric": {
+        "apcaLc": -1.6150239769043555,
+        "wcagRatio": 1.0135303845676085
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.blue.text-on-neutral-600",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#076678",
+      "background": "#5b524d",
+      "metric": {
+        "apcaLc": -2.6770332967810275,
+        "wcagRatio": 1.152917157831825
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.blue.text-on-neutral-700",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#076678",
+      "background": "#504945",
+      "metric": {
+        "apcaLc": -6.1017074924741195,
+        "wcagRatio": 1.3364428261020116
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.blue.text-on-neutral-800",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#076678",
+      "background": "#46403d",
+      "metric": {
+        "apcaLc": -9.249958386047512,
+        "wcagRatio": 1.5432059585238396
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.blue.text-on-neutral-900",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#076678",
+      "background": "#3c3836",
+      "metric": {
+        "apcaLc": -11.959504286583735,
+        "wcagRatio": 1.7563080376949185
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.blue.text-on-neutral-950",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#076678",
+      "background": "#282828",
+      "metric": {
+        "apcaLc": -16.82557819958429,
+        "wcagRatio": 2.2331087072490914
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.distinguishability.aqua-blue",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.0889498208855707
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.distinguishability.aqua-purple",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.06883059339514278
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.distinguishability.blue-purple",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.030710548618691734
+      },
+      "status": "advisory"
+    },
+    {
+      "id": "gruvbox.light.distinguishability.green-aqua",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.029558537860026077
+      },
+      "status": "advisory"
+    },
+    {
+      "id": "gruvbox.light.distinguishability.green-blue",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.09046427401224151
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.distinguishability.green-purple",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.0649164238355538
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.distinguishability.orange-aqua",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.09070825728483416
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.distinguishability.orange-blue",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.042962445943182055
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.distinguishability.orange-green",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.08913793024212699
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.distinguishability.orange-purple",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.055082470907610745
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.distinguishability.orange-yellow",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.0636165392132872
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.distinguishability.red-aqua",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.11712535681320069
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.distinguishability.red-blue",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.06591898021496136
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.distinguishability.red-green",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.1020466776708415
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.distinguishability.red-orange",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.05431211915083231
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.distinguishability.red-purple",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.06598636272530456
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.distinguishability.red-yellow",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.10248720226032727
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.distinguishability.yellow-aqua",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.07989757315058553
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.distinguishability.yellow-blue",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.09720912006893999
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.distinguishability.yellow-green",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.08298385426559968
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.distinguishability.yellow-purple",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "distinguishability",
+      "metric": {
+        "deltaEok": 0.09611846059920903
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.green.on-fill",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "on-fill",
+      "foreground": "#2b2b1e",
+      "background": "#ecf0d0",
+      "metric": {
+        "apcaLc": 87.79017786814303,
+        "wcagRatio": 12.229870388474872
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.green.text-on-neutral-100",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#79740e",
+      "background": "#ebdbb2",
+      "metric": {
+        "apcaLc": 50.86117990076081,
+        "wcagRatio": 3.54556024777139
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.green.text-on-neutral-200",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#79740e",
+      "background": "#d5c4a1",
+      "metric": {
+        "apcaLc": 38.914024224432886,
+        "wcagRatio": 2.834945178257085
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.green.text-on-neutral-300",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#79740e",
+      "background": "#bdae93",
+      "metric": {
+        "apcaLc": 27.603258437801774,
+        "wcagRatio": 2.232664595718262
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.green.text-on-neutral-400",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#79740e",
+      "background": "#918373",
+      "metric": {
+        "apcaLc": 7.0095555964052645,
+        "wcagRatio": 1.3197558918804333
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.green.text-on-neutral-50",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#79740e",
+      "background": "#fbf1c7",
+      "metric": {
+        "apcaLc": 62.172685539818715,
+        "wcagRatio": 4.28690760011291
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.green.text-on-neutral-500",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#79740e",
+      "background": "#665c54",
+      "metric": {
+        "apcaLc": -7.382178676704543,
+        "wcagRatio": 1.3392402598682904
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.green.text-on-neutral-600",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#79740e",
+      "background": "#5b524d",
+      "metric": {
+        "apcaLc": -11.248464717752729,
+        "wcagRatio": 1.56492443533846
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.green.text-on-neutral-700",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#79740e",
+      "background": "#504945",
+      "metric": {
+        "apcaLc": -14.673138913445822,
+        "wcagRatio": 1.8140349640844724
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.green.text-on-neutral-800",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#79740e",
+      "background": "#46403d",
+      "metric": {
+        "apcaLc": -17.821389807019212,
+        "wcagRatio": 2.094687113335632
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.green.text-on-neutral-900",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#79740e",
+      "background": "#3c3836",
+      "metric": {
+        "apcaLc": -20.530935707555436,
+        "wcagRatio": 2.3839434997558073
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.green.text-on-neutral-950",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#79740e",
+      "background": "#282828",
+      "metric": {
+        "apcaLc": -25.397009620555988,
+        "wcagRatio": 3.0311339882504758
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.orange.on-fill",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "on-fill",
+      "foreground": "#2e130c",
+      "background": "#e3cdb3",
+      "metric": {
+        "apcaLc": 76.13000797937153,
+        "wcagRatio": 11.237730077484644
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.orange.text-on-neutral-100",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#af3a03",
+      "background": "#ebdbb2",
+      "metric": {
+        "apcaLc": 57.52379077430453,
+        "wcagRatio": 4.463820738940493
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.orange.text-on-neutral-200",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#af3a03",
+      "background": "#d5c4a1",
+      "metric": {
+        "apcaLc": 45.576635097976606,
+        "wcagRatio": 3.569164305815309
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.orange.text-on-neutral-300",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#af3a03",
+      "background": "#bdae93",
+      "metric": {
+        "apcaLc": 34.2658693113455,
+        "wcagRatio": 2.8108997814181182
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.orange.text-on-neutral-400",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#af3a03",
+      "background": "#918373",
+      "metric": {
+        "apcaLc": 13.672166469948987,
+        "wcagRatio": 1.6615579228184738
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.orange.text-on-neutral-50",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#af3a03",
+      "background": "#fbf1c7",
+      "metric": {
+        "apcaLc": 68.83529641336243,
+        "wcagRatio": 5.3971687727867
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.orange.text-on-neutral-500",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#af3a03",
+      "background": "#665c54",
+      "metric": {
+        "apcaLc": -0.8075436351464623,
+        "wcagRatio": 1.0637427677552929
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.orange.text-on-neutral-600",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#af3a03",
+      "background": "#5b524d",
+      "metric": {
+        "apcaLc": -4.67382967619465,
+        "wcagRatio": 1.243001050714035
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.orange.text-on-neutral-700",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#af3a03",
+      "background": "#504945",
+      "metric": {
+        "apcaLc": -8.098503871887742,
+        "wcagRatio": 1.4408666102151573
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.orange.text-on-neutral-800",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#af3a03",
+      "background": "#46403d",
+      "metric": {
+        "apcaLc": -11.246754765461134,
+        "wcagRatio": 1.6637853074549347
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.orange.text-on-neutral-900",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#af3a03",
+      "background": "#3c3836",
+      "metric": {
+        "apcaLc": -13.956300665997357,
+        "wcagRatio": 1.8935382489560755
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.orange.text-on-neutral-950",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#af3a03",
+      "background": "#282828",
+      "metric": {
+        "apcaLc": -18.82237457899791,
+        "wcagRatio": 2.407594032765864
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.purple.on-fill",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "on-fill",
+      "foreground": "#2d282b",
+      "background": "#dcdcdc",
+      "metric": {
+        "apcaLc": 78.71512975533952,
+        "wcagRatio": 10.561449750640524
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.purple.text-on-neutral-100",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#8f3f71",
+      "background": "#ebdbb2",
+      "metric": {
+        "apcaLc": 60.10674899611478,
+        "wcagRatio": 4.910502934000693
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.purple.text-on-neutral-200",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#8f3f71",
+      "background": "#d5c4a1",
+      "metric": {
+        "apcaLc": 48.15959331978685,
+        "wcagRatio": 3.926320706103576
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.purple.text-on-neutral-300",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#8f3f71",
+      "background": "#bdae93",
+      "metric": {
+        "apcaLc": 36.84882753315574,
+        "wcagRatio": 3.0921787480004768
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.purple.text-on-neutral-400",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#8f3f71",
+      "background": "#918373",
+      "metric": {
+        "apcaLc": 16.25512469175923,
+        "wcagRatio": 1.8278254285248936
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.purple.text-on-neutral-50",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#8f3f71",
+      "background": "#fbf1c7",
+      "metric": {
+        "apcaLc": 71.41825463517267,
+        "wcagRatio": 5.937248524087589
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.purple.text-on-neutral-500",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#8f3f71",
+      "background": "#665c54",
+      "metric": {
+        "apcaLc": -1.0773485794848867,
+        "wcagRatio": 1.0341477916369894
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.purple.text-on-neutral-600",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#8f3f71",
+      "background": "#5b524d",
+      "metric": {
+        "apcaLc": -2.153918758807829,
+        "wcagRatio": 1.1299318915550718
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.purple.text-on-neutral-700",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#8f3f71",
+      "background": "#504945",
+      "metric": {
+        "apcaLc": -5.5785929545009205,
+        "wcagRatio": 1.3097986791111036
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.purple.text-on-neutral-800",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#8f3f71",
+      "background": "#46403d",
+      "metric": {
+        "apcaLc": -8.726843848074314,
+        "wcagRatio": 1.5124396544268053
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.purple.text-on-neutral-900",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#8f3f71",
+      "background": "#3c3836",
+      "metric": {
+        "apcaLc": -11.436389748610537,
+        "wcagRatio": 1.7212931993466563
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.purple.text-on-neutral-950",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#8f3f71",
+      "background": "#282828",
+      "metric": {
+        "apcaLc": -16.30246366161109,
+        "wcagRatio": 2.188588077200021
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.red.on-fill",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "on-fill",
+      "foreground": "#450505",
+      "background": "#ffc7c6",
+      "metric": {
+        "apcaLc": 77.38448104774322,
+        "wcagRatio": 11.149150514812089
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.red.text-on-neutral-100",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#bb0003",
+      "background": "#ebdbb2",
+      "metric": {
+        "apcaLc": 60.13327405871169,
+        "wcagRatio": 4.915402859488754
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.red.text-on-neutral-200",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#bb0003",
+      "background": "#d5c4a1",
+      "metric": {
+        "apcaLc": 48.18611838238377,
+        "wcagRatio": 3.930238569336877
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.red.text-on-neutral-300",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#bb0003",
+      "background": "#bdae93",
+      "metric": {
+        "apcaLc": 36.87535259575266,
+        "wcagRatio": 3.0952642660552687
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.red.text-on-neutral-400",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#bb0003",
+      "background": "#918373",
+      "metric": {
+        "apcaLc": 16.281649754356145,
+        "wcagRatio": 1.8296493167345802
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.red.text-on-neutral-50",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#bb0003",
+      "background": "#fbf1c7",
+      "metric": {
+        "apcaLc": 71.44477969776959,
+        "wcagRatio": 5.9431729835091875
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.red.text-on-neutral-500",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#bb0003",
+      "background": "#665c54",
+      "metric": {
+        "apcaLc": -1.0508235168879734,
+        "wcagRatio": 1.0351797118273995
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.red.text-on-neutral-600",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#bb0003",
+      "background": "#5b524d",
+      "metric": {
+        "apcaLc": -2.1281320590606145,
+        "wcagRatio": 1.1288055175357956
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.red.text-on-neutral-700",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#bb0003",
+      "background": "#504945",
+      "metric": {
+        "apcaLc": -5.5528062547537065,
+        "wcagRatio": 1.308493004659697
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.red.text-on-neutral-800",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#bb0003",
+      "background": "#46403d",
+      "metric": {
+        "apcaLc": -8.701057148327099,
+        "wcagRatio": 1.510931977065717
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.red.text-on-neutral-900",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#bb0003",
+      "background": "#3c3836",
+      "metric": {
+        "apcaLc": -11.410603048863324,
+        "wcagRatio": 1.7195773260681062
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.red.text-on-neutral-950",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#bb0003",
+      "background": "#282828",
+      "metric": {
+        "apcaLc": -16.276676961863874,
+        "wcagRatio": 2.186406380438048
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.semantic.accent-foreground-on-accent",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "semantic",
+      "foreground": "#282828",
+      "background": "#e76900",
+      "metric": {
+        "apcaLc": 39.47084095635838,
+        "wcagRatio": 4.5061107453062315
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.semantic.card-foreground-on-card",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "semantic",
+      "foreground": "#282828",
+      "background": "#ebdbb2",
+      "metric": {
+        "apcaLc": 79.10981811830018,
+        "wcagRatio": 10.74706817440964
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.semantic.destructive-foreground-on-destructive",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "semantic",
+      "foreground": "#282828",
+      "background": "#f9272d",
+      "metric": {
+        "apcaLc": 33.15912604105343,
+        "wcagRatio": 3.7602651990603513
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.semantic.foreground-on-background",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "semantic",
+      "foreground": "#3c3836",
+      "background": "#fbf1c7",
+      "metric": {
+        "apcaLc": 84.77218398810683,
+        "wcagRatio": 10.219745507342939
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.semantic.muted-foreground-on-muted",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "semantic",
+      "foreground": "#5b524d",
+      "background": "#d5c4a1",
+      "metric": {
+        "apcaLc": 51.33977315126857,
+        "wcagRatio": 4.436474982299458
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.semantic.popover-foreground-on-popover",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "semantic",
+      "foreground": "#282828",
+      "background": "#ebdbb2",
+      "metric": {
+        "apcaLc": 79.10981811830018,
+        "wcagRatio": 10.74706817440964
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.semantic.primary-foreground-on-primary",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "semantic",
+      "foreground": "#282828",
+      "background": "#e76900",
+      "metric": {
+        "apcaLc": 39.47084095635838,
+        "wcagRatio": 4.5061107453062315
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.semantic.secondary-foreground-on-secondary",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "semantic",
+      "foreground": "#282828",
+      "background": "#bdae93",
+      "metric": {
+        "apcaLc": 55.85189665534116,
+        "wcagRatio": 6.767505540445132
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.yellow.on-fill",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "on-fill",
+      "foreground": "#27170e",
+      "background": "#ead98f",
+      "metric": {
+        "apcaLc": 80.60291566854288,
+        "wcagRatio": 12.196072331792847
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.yellow.text-on-neutral-100",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#895119",
+      "background": "#ebdbb2",
+      "metric": {
+        "apcaLc": 58.95101685716055,
+        "wcagRatio": 4.703350358441573
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.yellow.text-on-neutral-200",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#895119",
+      "background": "#d5c4a1",
+      "metric": {
+        "apcaLc": 47.00386118083263,
+        "wcagRatio": 3.7606864609616415
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.yellow.text-on-neutral-300",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#895119",
+      "background": "#bdae93",
+      "metric": {
+        "apcaLc": 35.69309539420152,
+        "wcagRatio": 2.9617332925457536
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.yellow.text-on-neutral-400",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#895119",
+      "background": "#918373",
+      "metric": {
+        "apcaLc": 15.099392552805007,
+        "wcagRatio": 1.750717492681976
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.yellow.text-on-neutral-50",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#895119",
+      "background": "#fbf1c7",
+      "metric": {
+        "apcaLc": 70.26252249621847,
+        "wcagRatio": 5.686782056593334
+      },
+      "status": "pass"
+    },
+    {
+      "id": "gruvbox.light.yellow.text-on-neutral-500",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#895119",
+      "background": "#665c54",
+      "metric": {
+        "apcaLc": 0.5869880755513371,
+        "wcagRatio": 1.0095690658217042
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.yellow.text-on-neutral-600",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#895119",
+      "background": "#5b524d",
+      "metric": {
+        "apcaLc": -3.279297965496851,
+        "wcagRatio": 1.179698182327333
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.yellow.text-on-neutral-700",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#895119",
+      "background": "#504945",
+      "metric": {
+        "apcaLc": -6.703972161189942,
+        "wcagRatio": 1.3674869543115293
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.yellow.text-on-neutral-800",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#895119",
+      "background": "#46403d",
+      "metric": {
+        "apcaLc": -9.852223054763334,
+        "wcagRatio": 1.5790529717251727
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.yellow.text-on-neutral-900",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#895119",
+      "background": "#3c3836",
+      "metric": {
+        "apcaLc": -12.561768955299558,
+        "wcagRatio": 1.797105182797365
+      },
+      "status": "violation"
+    },
+    {
+      "id": "gruvbox.light.yellow.text-on-neutral-950",
+      "palette": "gruvbox",
+      "mode": "light",
+      "kind": "hue-text",
+      "foreground": "#895119",
+      "background": "#282828",
+      "metric": {
+        "apcaLc": -17.42784286830011,
+        "wcagRatio": 2.284981418643585
+      },
+      "status": "violation"
+    }
+  ]
+}

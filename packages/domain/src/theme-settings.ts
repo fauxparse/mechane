@@ -1,20 +1,23 @@
 // Per-account theme preference (PRD.md §7): a display mode (light/dark,
-// default dark) and a palette (which of the built-in themes is active).
+// default dark) and a curated palette (which built-in theme is active).
 // Kept as domain logic — not just "whatever the UI happens to send" — so
 // the same validation applies whether the value came from the GraphQL
 // mutation, a future CLI/import path, or a test, per PRD.md §8.
 
+import { THEME_PALETTE_METADATA } from "./theme-catalog.generated";
+
 export const THEME_MODES = ["light", "dark"] as const;
 export type ThemeMode = (typeof THEME_MODES)[number];
 
-export const THEME_PALETTES = ["slate", "gruvbox"] as const;
-export type ThemePalette = (typeof THEME_PALETTES)[number];
+export { THEME_PALETTE_METADATA };
+export type ThemePalette = (typeof THEME_PALETTE_METADATA)[number]["key"];
+export const THEME_PALETTES: readonly ThemePalette[] = THEME_PALETTE_METADATA.map(({ key }) => key);
 
 /** Default mode for a user with no stored preference — PRD.md §7. */
 export const DEFAULT_THEME_MODE: ThemeMode = "dark";
 
-/** Default palette for a user with no stored preference — PRD.md §7. */
-export const DEFAULT_THEME_PALETTE: ThemePalette = "slate";
+/** Default palette for a user with no stored preference — generated manifest default. */
+export const DEFAULT_THEME_PALETTE: ThemePalette = THEME_PALETTE_METADATA[0].key;
 
 export class InvalidThemeModeError extends Error {
   constructor(value: string) {
