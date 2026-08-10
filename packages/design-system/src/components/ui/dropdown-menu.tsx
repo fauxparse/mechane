@@ -80,6 +80,10 @@ function DropdownMenuItem({
   );
 }
 
+function DropdownMenuGroup({ ...props }: Menu.Group.Props) {
+  return <Menu.Group data-slot="dropdown-menu-group" {...props} />;
+}
+
 function DropdownMenuLabel({ className, ...props }: Menu.GroupLabel.Props) {
   return (
     <Menu.GroupLabel
@@ -105,6 +109,7 @@ export {
   DropdownMenuContent,
   DropdownMenuItem,
   dropdownMenuItemVariants,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,

@@ -13,6 +13,14 @@ export {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "./components/ui/alert-dialog";
+export {
+  Avatar,
+  AvatarBadge,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarGroupCount,
+  AvatarImage,
+} from "./components/ui/avatar";
 export { Badge, badgeVariants } from "./components/ui/badge";
 export { Button, buttonVariants } from "./components/ui/button";
 export {
@@ -50,6 +58,7 @@ export {
   DropdownMenuContent,
   DropdownMenuItem,
   dropdownMenuItemVariants,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -72,6 +81,7 @@ export {
   SidebarTrigger,
   useSidebar,
 } from "./components/ui/sidebar";
+export { Tabs, TabsContent, TabsList, TabsTrigger, tabsListVariants } from "./components/ui/tabs";
 export type {
   SidebarMenuButtonProps,
   SidebarProps,
