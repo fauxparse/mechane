@@ -19,6 +19,14 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
   --color-palette-red-fill: var(--palette-red-fill);
   --color-palette-red-border: var(--palette-red-border);
   --color-palette-red-text: var(--palette-red-text);
@@ -235,13 +243,13 @@
   --success-950: var(--palette-green-950);
   --background: var(--palette-neutral-900);
   --foreground: var(--palette-neutral-100);
-  --card: var(--palette-neutral-800);
+  --card: var(--palette-neutral-700);
   --card-foreground: var(--palette-neutral-50);
-  --popover: var(--palette-neutral-800);
+  --popover: var(--palette-neutral-700);
   --popover-foreground: var(--palette-neutral-50);
   --secondary: var(--palette-neutral-600);
   --secondary-foreground: var(--palette-neutral-50);
-  --muted: var(--palette-neutral-700);
+  --muted: var(--palette-neutral-600);
   --muted-foreground: var(--palette-neutral-400);
   --accent: var(--palette-purple-500);
   --accent-foreground: var(--palette-purple-50);
@@ -254,6 +262,14 @@
   --border: var(--palette-neutral-600);
   --input: var(--palette-neutral-500);
   --ring: var(--palette-purple-500);
+  --sidebar: var(--palette-neutral-700);
+  --sidebar-foreground: var(--palette-neutral-50);
+  --sidebar-primary: var(--palette-purple-500);
+  --sidebar-primary-foreground: var(--palette-purple-50);
+  --sidebar-accent: var(--palette-neutral-600);
+  --sidebar-accent-foreground: var(--palette-neutral-50);
+  --sidebar-border: var(--palette-neutral-600);
+  --sidebar-ring: var(--palette-purple-500);
 }
 [data-theme-palette="catppuccin"][data-theme-mode="light"] {
   --palette-neutral-50: #eff1f5;
@@ -426,6 +442,14 @@
   --border: var(--palette-neutral-300);
   --input: var(--palette-neutral-400);
   --ring: var(--palette-purple-500);
+  --sidebar: var(--palette-neutral-100);
+  --sidebar-foreground: var(--palette-neutral-950);
+  --sidebar-primary: var(--palette-purple-500);
+  --sidebar-primary-foreground: var(--palette-purple-50);
+  --sidebar-accent: var(--palette-neutral-200);
+  --sidebar-accent-foreground: var(--palette-neutral-950);
+  --sidebar-border: var(--palette-neutral-300);
+  --sidebar-ring: var(--palette-purple-500);
 }
 [data-theme-palette="gruvbox"][data-theme-mode="dark"] {
   --palette-neutral-50: #fbf1c7;
@@ -579,13 +603,13 @@
   --success-950: var(--palette-green-950);
   --background: var(--palette-neutral-900);
   --foreground: var(--palette-neutral-100);
-  --card: var(--palette-neutral-800);
+  --card: var(--palette-neutral-700);
   --card-foreground: var(--palette-neutral-50);
-  --popover: var(--palette-neutral-800);
+  --popover: var(--palette-neutral-700);
   --popover-foreground: var(--palette-neutral-50);
   --secondary: var(--palette-neutral-600);
   --secondary-foreground: var(--palette-neutral-50);
-  --muted: var(--palette-neutral-700);
+  --muted: var(--palette-neutral-600);
   --muted-foreground: var(--palette-neutral-400);
   --accent: var(--palette-orange-500);
   --accent-foreground: var(--palette-orange-50);
@@ -598,6 +622,14 @@
   --border: var(--palette-neutral-600);
   --input: var(--palette-neutral-500);
   --ring: var(--palette-orange-500);
+  --sidebar: var(--palette-neutral-700);
+  --sidebar-foreground: var(--palette-neutral-50);
+  --sidebar-primary: var(--palette-orange-500);
+  --sidebar-primary-foreground: var(--palette-orange-50);
+  --sidebar-accent: var(--palette-neutral-600);
+  --sidebar-accent-foreground: var(--palette-neutral-50);
+  --sidebar-border: var(--palette-neutral-600);
+  --sidebar-ring: var(--palette-orange-500);
 }
 [data-theme-palette="gruvbox"][data-theme-mode="light"] {
   --palette-neutral-50: #fbf1c7;
@@ -770,4 +802,12 @@
   --border: var(--palette-neutral-300);
   --input: var(--palette-neutral-400);
   --ring: var(--palette-orange-500);
+  --sidebar: var(--palette-neutral-100);
+  --sidebar-foreground: var(--palette-neutral-950);
+  --sidebar-primary: var(--palette-orange-500);
+  --sidebar-primary-foreground: var(--palette-orange-50);
+  --sidebar-accent: var(--palette-neutral-200);
+  --sidebar-accent-foreground: var(--palette-neutral-950);
+  --sidebar-border: var(--palette-neutral-300);
+  --sidebar-ring: var(--palette-orange-500);
 }

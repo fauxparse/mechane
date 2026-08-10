@@ -1,5 +1,7 @@
 import { Logo } from "./Logo";
 import {
+  Alert,
+  AlertTitle,
   Avatar,
   AvatarFallback,
   AvatarImage,
@@ -11,16 +13,24 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  InsideSidebar,
+  SidebarTrigger,
   Tabs,
   TabsList,
   TabsTrigger,
 } from "@mechane/design-system";
+import { Link } from "@tanstack/react-router";
 import {
+  AlertTriangleIcon,
+  CheckIcon,
   ChevronDownIcon,
+  HouseIcon,
   LogOutIcon,
+  PencilIcon,
   PlayIcon,
   SettingsIcon,
   SidebarIcon,
+  SquareIcon,
   TvMinimalIcon,
   WorkflowIcon,
 } from "lucide-react";
@@ -35,24 +45,35 @@ export const Header = ({ className, title }: HeaderProps) => {
     <header
       className={cn("w-full grid grid-cols-[1fr_auto_1fr] items-center justify-between", className)}
     >
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 pointer-events-auto bg-muted w-fit rounded-full pl-1">
         <Logo className="size-6" />
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <Button variant="ghost">
+              <Button variant="ghost" className="rounded-full">
                 {title} <ChevronDownIcon className="text-muted-foreground" />
               </Button>
             }
           />
           <DropdownMenuContent>
-            <DropdownMenuItem>First action</DropdownMenuItem>
-            <DropdownMenuItem>Second action</DropdownMenuItem>
+            <DropdownMenuItem>
+              <PencilIcon />
+              Rename
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              render={
+                <Link to="/">
+                  <HouseIcon />
+                  <span>Home</span>
+                </Link>
+              }
+            />
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
       <Tabs defaultValue="graph">
-        <TabsList className="bg-muted/50 rounded-[100vw]">
+        <TabsList className="bg-muted/50 rounded-[100vw] pointer-events-auto">
           <TabsTrigger value="graph" className="rounded-[100vw] px-3 border-0">
             <WorkflowIcon />
             Show
@@ -63,7 +84,7 @@ export const Header = ({ className, title }: HeaderProps) => {
           </TabsTrigger>
         </TabsList>
       </Tabs>
-      <div className="flex items-center gap-2 justify-end">
+      <div className="flex items-center gap-2 justify-end pointer-events-auto">
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
@@ -76,10 +97,14 @@ export const Header = ({ className, title }: HeaderProps) => {
             }
           />
           <DropdownMenuContent>
-            <DropdownMenuItem>
-              <SettingsIcon />
-              Settings
-            </DropdownMenuItem>
+            <DropdownMenuItem
+              render={
+                <Link to="/settings">
+                  <SettingsIcon />
+                  Settings
+                </Link>
+              }
+            />
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem variant="destructive">
@@ -100,13 +125,28 @@ export const Header = ({ className, title }: HeaderProps) => {
             }
           />
           <DropdownMenuContent>
-            <DropdownMenuItem>First action</DropdownMenuItem>
-            <DropdownMenuItem>Second action</DropdownMenuItem>
+            <Alert className="rounded-sm border-0 ring-1 ring-destructive bg-destructive/25 text-destructive-foreground mb-1 p-2">
+              <AlertTriangleIcon />
+              <AlertTitle>This show has unpublished changes.</AlertTitle>
+            </Alert>
+            <DropdownMenuItem>
+              <CheckIcon /> Publish changes
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive">
+              <SquareIcon /> End run
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button variant="ghost" size="icon">
-          <SidebarIcon />
-        </Button>
+        <InsideSidebar>
+          <SidebarTrigger
+            render={
+              <Button variant="ghost" size="icon">
+                <SidebarIcon />
+              </Button>
+            }
+          />
+        </InsideSidebar>
       </div>
     </header>
   );
