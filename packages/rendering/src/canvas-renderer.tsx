@@ -161,8 +161,6 @@ function elementStyle(element: Element, root: boolean, sceneRoot: boolean): CSSP
     alignSelf: element.alignSelf ? align(element.alignSelf) : undefined,
     visibility: element.hidden ? "hidden" : undefined,
   };
-  if (sizeFor(element, "width")?.mode === "fill") style.flexGrow = 1;
-  if (sizeFor(element, "height")?.mode === "fill") style.flexGrow = 1;
   if (rotation === 180) style.transform = "rotate(180deg)";
   if (rotation === 90 || rotation === 270) style.textOrientation = "sideways";
   return style;
@@ -231,6 +229,10 @@ function renderElement({
     ...(element.type === "frame" ? frameStyle(element) : {}),
     ...typeStyle(element),
     ...(parent && !parentIsAuto ? { gridArea: "1 / 1", ...anchorStyles(element.anchor) } : {}),
+    ...(parentIsAuto &&
+    sizeFor(element, parent.direction === "horizontal" ? "width" : "height")?.mode === "fill"
+      ? { flexGrow: 1 }
+      : {}),
     ...(root ? { isolation: "isolate", ...(sceneRoot ? { overflow: "hidden" } : {}) } : {}),
   };
   const children =

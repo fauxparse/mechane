@@ -53,6 +53,43 @@ describe("CanvasRenderer", () => {
     expect(html).toContain("width:100%");
   });
 
+  it("grows only on the primary axis when an auto-layout child fills", () => {
+    const verticalWidthFill = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        layoutMode: "auto",
+        direction: "vertical",
+        children: [{ id: "child", type: "rect", width: { mode: "fill" } }],
+      },
+    });
+    const horizontalHeightFill = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        layoutMode: "auto",
+        direction: "horizontal",
+        children: [{ id: "child", type: "rect", height: { mode: "fill" } }],
+      },
+    });
+    const verticalHeightFill = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        layoutMode: "auto",
+        direction: "vertical",
+        children: [{ id: "child", type: "rect", height: { mode: "fill" } }],
+      },
+    });
+
+    expect(verticalWidthFill).not.toContain("flex-grow:1");
+    expect(horizontalHeightFill).not.toContain("flex-grow:1");
+    expect(verticalHeightFill).toContain("flex-grow:1");
+  });
+
   it("uses positional offsets for anchored absolute Elements", () => {
     const html = markup({
       kind: "block",
