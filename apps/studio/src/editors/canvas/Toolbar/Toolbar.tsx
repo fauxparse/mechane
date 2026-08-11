@@ -17,7 +17,7 @@ import {
   MousePointer2Icon,
   PlusIcon,
   RotateCcwIcon,
-  ShapesIcon,
+  CircleIcon,
   SquareIcon,
   TypeIcon,
 } from "lucide-react";
@@ -27,7 +27,7 @@ export type CanvasTool = "select" | "rect" | "ellipse" | "text" | "image" | "fra
 const TOOLS: { value: CanvasTool; label: string; Icon: LucideIcon }[] = [
   { value: "select", label: "Select", Icon: MousePointer2Icon },
   { value: "rect", label: "Rectangle", Icon: SquareIcon },
-  { value: "ellipse", label: "Ellipse", Icon: ShapesIcon },
+  { value: "ellipse", label: "Ellipse", Icon: CircleIcon },
   { value: "text", label: "Text", Icon: TypeIcon },
   { value: "image", label: "Image", Icon: ImageIcon },
   { value: "frame", label: "Frame", Icon: FrameIcon },
