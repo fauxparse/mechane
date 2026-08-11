@@ -22,14 +22,6 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm lint
-
-      - run: pnpm typecheck
-
-      - run: pnpm test
-      - name: Build Storybook
-        run: pnpm build-storybook
-
       - name: Check generated GraphQL schema/types are up to date
         run: |
           pnpm codegen
@@ -39,3 +31,11 @@ jobs:
         run: |
           pnpm --filter @mechane/studio build
           git diff --exit-code -- apps/studio/src/routeTree.gen.ts
+
+      - run: pnpm lint
+
+      - run: pnpm typecheck
+
+      - run: pnpm test
+      - name: Build Storybook
+        run: pnpm build-storybook
