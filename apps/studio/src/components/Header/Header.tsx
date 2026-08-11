@@ -170,7 +170,7 @@ export const Header = ({
     >
       <div className="flex items-start gap-2">
         {draftName === null ? (
-          <div className="pointer-events-auto flex w-fit items-center gap-1 rounded-full bg-muted/50 backdrop-blur-sm pl-1">
+          <div className="pointer-events-auto flex w-fit items-center gap-1 rounded-full bg-muted/50 backdrop-blur-[2px] pl-1">
             <Logo className="size-6" />
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -232,6 +232,7 @@ export const Header = ({
           <TabsTrigger
             value="show"
             className="rounded-[100vw] border-0 px-3"
+            nativeButton={false}
             render={
               <a href={navigation.showEditor.href} onClick={activate(navigation.showEditor)}>
                 <WorkflowIcon />
@@ -242,6 +243,7 @@ export const Header = ({
           <TabsTrigger
             value="canvas"
             className="rounded-[100vw] border-0 px-3"
+            nativeButton={false}
             render={
               <a href={navigation.canvasEditor.href} onClick={activate(navigation.canvasEditor)}>
                 <TvMinimalIcon />

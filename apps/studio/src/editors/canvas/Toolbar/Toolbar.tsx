@@ -12,8 +12,9 @@ import {
 import {
   FrameIcon,
   ImageIcon,
+  LucideIcon,
   MinusIcon,
-  MousePointerIcon,
+  MousePointer2Icon,
   PlusIcon,
   RotateCcwIcon,
   SquareIcon,
@@ -23,8 +24,8 @@ import {
 /** The tools the Canvas editor can be in. Exactly one is active at a time. */
 export type CanvasTool = "select" | "rect" | "text" | "image" | "frame";
 
-const TOOLS: { value: CanvasTool; label: string; Icon: typeof MousePointerIcon }[] = [
-  { value: "select", label: "Select", Icon: MousePointerIcon },
+const TOOLS: { value: CanvasTool; label: string; Icon: LucideIcon }[] = [
+  { value: "select", label: "Select", Icon: MousePointer2Icon },
   { value: "rect", label: "Rectangle", Icon: SquareIcon },
   { value: "text", label: "Text", Icon: TypeIcon },
   { value: "image", label: "Image", Icon: ImageIcon },
