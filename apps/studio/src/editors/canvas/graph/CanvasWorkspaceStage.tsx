@@ -47,6 +47,7 @@ type CanvasWorkspaceStageProps = Pick<
   | "setRenamingArtId"
   | "onRenameArtboard"
   | "overlayRect"
+  | "resizePreview"
   | "resizable"
   | "onBeginResize"
   | "creationOverlayRect"
@@ -86,6 +87,7 @@ export function CanvasWorkspaceStage({
   setRenamingArtId,
   onRenameArtboard,
   overlayRect,
+  resizePreview,
   resizable,
   onBeginResize,
   creationOverlayRect,
@@ -119,6 +121,7 @@ export function CanvasWorkspaceStage({
       >
         {ordered.map((artboard) => {
           const size = canvasArtboardSize(artboard);
+          const preview = resizePreview?.artId === artboard.artId ? resizePreview : null;
           return (
             <div
               key={artboard.artId}
@@ -132,10 +135,10 @@ export function CanvasWorkspaceStage({
               data-owner-kind={artboard.kind}
               data-focused={artboard.artId === focused?.artId ? "true" : "false"}
               style={{
-                left: artboard.position.x,
-                top: artboard.position.y,
-                width: size.width,
-                height: size.height,
+                left: preview?.x ?? artboard.position.x,
+                top: preview?.y ?? artboard.position.y,
+                width: preview?.width ?? size.width,
+                height: preview?.height ?? size.height,
                 // An outline sits outside the box, so the border never eats into the
                 // Canvas, and it stays 1px on screen however far the camera is zoomed.
                 outline: "1px solid var(--border)",

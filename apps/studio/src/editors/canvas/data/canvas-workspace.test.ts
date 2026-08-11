@@ -43,16 +43,24 @@ describe("Canvas workspace URL state", () => {
 });
 
 describe("Canvas workspace artboard sizing", () => {
-  it("uses the scene preview preset and preserves a Block root's authored size", () => {
+  it("uses preview defaults until a Canvas root has authored dimensions", () => {
     const scene = {
       ...artboards[0]!,
       canvas: {
         kind: "scene" as const,
+        root: { id: "scene-root", type: "frame" as const },
+      },
+    } as CanvasArtboardDocument;
+    const resizedScene = {
+      ...scene,
+      canvas: {
+        ...scene.canvas,
         root: {
-          id: "scene-root",
-          type: "frame" as const,
-          width: { mode: "fixed" as const, value: 320 },
-          height: { mode: "fixed" as const, value: 200 },
+          ...scene.canvas.root,
+          layout: {
+            width: { mode: "fixed" as const, value: 960 },
+            height: { mode: "fixed" as const, value: 540 },
+          },
         },
       },
     } as CanvasArtboardDocument;
@@ -72,6 +80,7 @@ describe("Canvas workspace artboard sizing", () => {
     } as CanvasArtboardDocument;
 
     expect(canvasArtboardSize(scene)).toEqual({ width: 720, height: 420 });
+    expect(canvasArtboardSize(resizedScene)).toEqual({ width: 960, height: 540 });
     expect(canvasArtboardSize(block)).toEqual({ width: 480, height: 280 });
   });
 });

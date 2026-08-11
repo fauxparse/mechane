@@ -112,3 +112,32 @@ export function layerDropPlacement(
   if (parent.id === dragged.parent.id && rank === (dragged.element.rank ?? "")) return null;
   return { parentId: parent.id, rank };
 }
+
+/** Resolves a drop into a Canvas that is different from the dragged Element's source Canvas. */
+export function layerDropPlacementInCanvas(
+  root: FrameElement,
+  targetId: string,
+  zone: LayerDropZone,
+): LayerDropPlacement | null {
+  const target =
+    targetId === root.id ? { parent: root, element: root as Element } : findParent(root, targetId);
+  if (!target) return null;
+  const dropIntoTarget = zone === "inside" || targetId === root.id;
+  const parent = dropIntoTarget ? target.element : target.parent;
+  if (parent.type !== "frame") return null;
+  const ordered = [...layerChildren(parent)].reverse();
+  const index = dropIntoTarget
+    ? ordered.length
+    : (() => {
+        const at = ordered.findIndex((child) => child.id === targetId);
+        if (at < 0) return ordered.length;
+        return zone === "before" ? at + 1 : at;
+      })();
+  return {
+    parentId: parent.id,
+    rank: rankForInsertion(
+      ordered.map((child) => child.rank ?? ""),
+      index,
+    ),
+  };
+}

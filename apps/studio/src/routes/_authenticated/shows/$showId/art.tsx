@@ -155,6 +155,7 @@ function CanvasWorkspaceRoute() {
       onEndMoveArtboard={canvasCommands.endArtboardMove}
       onCreateElement={canvasCommands.createElement}
       onMoveElement={canvasCommands.moveElement}
+      onMoveElementBetweenCanvases={canvasCommands.moveElementBetweenCanvases}
       onUpdateElement={canvasCommands.updateElement}
       onDeleteElements={canvasCommands.removeElements}
       onRenameArtboard={renameArtboard}

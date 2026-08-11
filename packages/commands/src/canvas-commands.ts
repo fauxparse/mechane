@@ -270,6 +270,77 @@ export function moveCanvasElement(
   });
 }
 
+/**
+ * Moves a complete Element subtree between Canvases as one command. The wire edits are still the
+ * ordinary remove/add vocabulary, but they stay in one batch so the server applies both sides
+ * transactionally and the generated inverse puts the same subtree back.
+ */
+export function moveCanvasElementBetweenCanvases(
+  sourceCanvasId: string,
+  targetCanvasId: string,
+  elementId: string,
+  parentId: string,
+  rank: string,
+  properties: ElementProperties = {},
+  unsetProperties: readonly string[] = [],
+): CanvasWorkspaceCommand {
+  return {
+    type: "canvas.moveElementBetweenCanvases",
+    label: "Move Element",
+    scope: "selection",
+    isEmpty: false,
+    apply(workspace) {
+      const source = artboardFor(workspace, sourceCanvasId);
+      const target = artboardFor(workspace, targetCanvasId);
+      if (sourceCanvasId === targetCanvasId)
+        throw new Error("Cross-Canvas move requires different Canvases.");
+      const element = findCanvasElement(source.canvas.root, elementId);
+      if (!element) throw new Error(`Canvas "${sourceCanvasId}" has no Element "${elementId}".`);
+      const originalParent = canvasElementParent(source.canvas.root, elementId);
+      if (!originalParent) throw new Error("Cannot move the Canvas root Element.");
+      if (!findCanvasElement(target.canvas.root, parentId))
+        throw new Error(`Canvas "${targetCanvasId}" has no parent Element "${parentId}".`);
+      const inverseProperties = elementProperties(element);
+      const updatedCanvas =
+        Object.keys(properties).length > 0 || unsetProperties.length > 0
+          ? applyCanvasEdits(source.canvas, [
+              {
+                type: CANVAS_COMMAND_TYPES.updateElement,
+                elementId,
+                properties,
+                unsetProperties,
+              },
+            ])
+          : source.canvas;
+      const moved = findCanvasElement(updatedCanvas.root, elementId);
+      if (!moved) throw new Error(`Canvas "${sourceCanvasId}" lost Element "${elementId}".`);
+      const inverseUnsetProperties = Object.keys(elementProperties(moved)).filter(
+        (key) => !(key in inverseProperties),
+      );
+      const removals = [
+        targetEdit(sourceCanvasId, {
+          type: CANVAS_COMMAND_TYPES.removeElement,
+          elementId,
+        }),
+      ];
+      const additions = subtreeEdits(targetCanvasId, moved, parentId, rank);
+      const state = [...removals, ...additions].reduce(applyWorkspaceEdit, workspace);
+      return {
+        state,
+        inverse: moveCanvasElementBetweenCanvases(
+          targetCanvasId,
+          sourceCanvasId,
+          elementId,
+          originalParent.parentId,
+          originalParent.rank,
+          inverseProperties,
+          inverseUnsetProperties,
+        ),
+        edits: [...removals, ...additions],
+      };
+    },
+  };
+}
 export function moveCanvasArtboard(canvasId: string, position: Position): CanvasWorkspaceCommand {
   const edit: CanvasEdit = { type: CANVAS_COMMAND_TYPES.moveArtboard, position };
   return capturing<CanvasWorkspace, InverseCapture, CanvasWorkspaceEdit>({

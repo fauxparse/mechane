@@ -57,6 +57,36 @@ export function scaleWithin(box: ResizeBox, from: ResizeBox, to: ResizeBox): Res
   };
 }
 
+/** Writes resized dimensions into the same sizing vocabulary the Element already uses. */
+export function fixedResizeProperties(
+  element: Element,
+  width: number,
+  height: number,
+): Record<string, unknown> {
+  const properties: Record<string, unknown> = {};
+  const layout = element.layout ? { ...element.layout } : undefined;
+  const sizing = element.sizing ? { ...element.sizing } : undefined;
+  let layoutChanged = false;
+  let sizingChanged = false;
+  for (const [axis, value] of [
+    ["width", width],
+    ["height", height],
+  ] as const) {
+    if (layout?.[axis]) {
+      layout[axis] = { mode: "fixed", value };
+      layoutChanged = true;
+    } else if (sizing?.[axis]) {
+      sizing[axis] = { mode: "fixed", value };
+      sizingChanged = true;
+    } else {
+      properties[axis] = { mode: "fixed", value };
+    }
+  }
+  if (layoutChanged) properties.layout = layout;
+  if (sizingChanged) properties.sizing = sizing;
+  return properties;
+}
+
 /**
  * The box a resize drag asks for. The edge opposite the handle is what stays put, which is what
  * makes dragging the west edge grow the Element leftwards rather than move it.

@@ -18,15 +18,12 @@ export function canvasArtboardSize(artboard: CanvasArtboardDocument): {
   width: number;
   height: number;
 } {
-  if (artboard.kind === "scene") return SCENE_PREVIEW_SIZE;
   const root = artboard.canvas.root;
+  const fallback = artboard.kind === "scene" ? SCENE_PREVIEW_SIZE : DEFAULT_BLOCK_SIZE;
   return {
-    width:
-      authoredPixels(root.layout?.width ?? root.sizing?.width ?? root.width) ??
-      DEFAULT_BLOCK_SIZE.width,
+    width: authoredPixels(root.layout?.width ?? root.sizing?.width ?? root.width) ?? fallback.width,
     height:
-      authoredPixels(root.layout?.height ?? root.sizing?.height ?? root.height) ??
-      DEFAULT_BLOCK_SIZE.height,
+      authoredPixels(root.layout?.height ?? root.sizing?.height ?? root.height) ?? fallback.height,
   };
 }
 

@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import type { FrameElement } from "@mechane/domain";
 
-import { layerDropPlacement, layerDropZone, layerRowDropZone } from "./canvas-layer-drop";
+import {
+  layerDropPlacement,
+  layerDropPlacementInCanvas,
+  layerDropZone,
+  layerRowDropZone,
+} from "./canvas-layer-drop";
 
 const root: FrameElement = {
   id: "root",
@@ -103,5 +108,10 @@ describe("Canvas layer drop placement", () => {
   it("refuses to move the root and refuses no-op drops", () => {
     expect(layerDropPlacement(root, "root", "back", "before")).toBeNull();
     expect(layerDropPlacement(root, "nested", "group", "inside")).toBeNull();
+  });
+
+  it("resolves a foreign-Canvas drop without requiring the source Element", () => {
+    const placement = layerDropPlacementInCanvas(root, "group", "inside");
+    expect(placement).toEqual({ parentId: "group", rank: "a~" });
   });
 });

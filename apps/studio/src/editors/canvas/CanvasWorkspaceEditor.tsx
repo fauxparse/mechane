@@ -16,6 +16,7 @@ export function CanvasWorkspaceEditor({
   onSelectionChange,
   onCreateElement,
   onMoveElement,
+  onMoveElementBetweenCanvases,
   onUpdateElement,
   onDeleteElements,
   onRenameArtboard,
@@ -36,6 +37,7 @@ export function CanvasWorkspaceEditor({
     rubberbandRect,
     creationOverlayRect,
     overlayRect,
+    resizePreview,
     resizable,
     cancelCreation,
     zoomIn,
@@ -74,6 +76,7 @@ export function CanvasWorkspaceEditor({
     initialCamera,
     onCreateElement,
     onMoveElement,
+    onMoveElementBetweenCanvases,
     onUpdateElement,
     onDeleteElements,
   });
@@ -97,11 +100,13 @@ export function CanvasWorkspaceEditor({
       rubberbandRect={rubberbandRect}
       drag={drag}
       creationOverlayRect={creationOverlayRect}
+      resizePreview={resizePreview}
       overlayRect={overlayRect}
       resizable={resizable}
       onFocusArtboard={onFocusArtboard}
       onUpdateElement={onUpdateElement}
       onMoveElement={onMoveElement}
+      onMoveElementBetweenCanvases={onMoveElementBetweenCanvases}
       onRenameArtboard={onRenameArtboard}
       onSelect={setSelection}
       onBeginDrag={beginDrag}

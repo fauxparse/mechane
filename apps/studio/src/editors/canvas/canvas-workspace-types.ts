@@ -29,6 +29,15 @@ export interface CanvasWorkspaceEditorProps {
     properties?: Record<string, unknown>,
     unsetProperties?: readonly string[],
   ): void;
+  onMoveElementBetweenCanvases?(
+    sourceCanvasId: string,
+    targetCanvasId: string,
+    elementId: string,
+    parentId: string,
+    rank: string,
+    properties?: Record<string, unknown>,
+    unsetProperties?: readonly string[],
+  ): void;
   onUpdateElement?(
     canvasId: string,
     elementId: string,
@@ -60,6 +69,13 @@ export interface CanvasWorkspaceSurfaceProps {
   rubberbandRect: { x: number; y: number; width: number; height: number } | null;
   creationOverlayRect: { x: number; y: number; width: number; height: number } | null;
   overlayRect: { x: number; y: number; width: number; height: number } | null;
+  resizePreview: {
+    artId: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null;
   resizable: boolean;
   onCancelCreation(): void;
   zoomIn(): void;
@@ -74,6 +90,15 @@ export interface CanvasWorkspaceSurfaceProps {
   ): void;
   onMoveElement?(
     canvasId: string,
+    elementId: string,
+    parentId: string,
+    rank: string,
+    properties?: Record<string, unknown>,
+    unsetProperties?: readonly string[],
+  ): void;
+  onMoveElementBetweenCanvases?(
+    sourceCanvasId: string,
+    targetCanvasId: string,
     elementId: string,
     parentId: string,
     rank: string,

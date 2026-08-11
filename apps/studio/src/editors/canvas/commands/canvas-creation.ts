@@ -1,4 +1,38 @@
+import type { Element } from "@mechane/domain";
+
 import type { CanvasClientRect } from "../graph/canvas-geometry";
+
+/** Replaces fill axes with the rendered dimensions an absolute parent can honor. */
+export function fixedFillSizing(
+  element: Element,
+  width: number,
+  height: number,
+): Record<string, unknown> {
+  const properties: Record<string, unknown> = {};
+  const layout = element.layout ? { ...element.layout } : undefined;
+  const sizing = element.sizing ? { ...element.sizing } : undefined;
+  let layoutChanged = false;
+  let sizingChanged = false;
+  for (const [axis, value] of [
+    ["width", width],
+    ["height", height],
+  ] as const) {
+    const authored = element.layout?.[axis] ?? element.sizing?.[axis] ?? element[axis];
+    if (authored?.mode !== "fill") continue;
+    if (layout?.[axis]?.mode === "fill") {
+      layout[axis] = { mode: "fixed", value };
+      layoutChanged = true;
+    } else if (sizing?.[axis]?.mode === "fill") {
+      sizing[axis] = { mode: "fixed", value };
+      sizingChanged = true;
+    } else {
+      properties[axis] = { mode: "fixed", value };
+    }
+  }
+  if (layoutChanged) properties.layout = layout;
+  if (sizingChanged) properties.sizing = sizing;
+  return properties;
+}
 
 export type CanvasCreationTool = "select" | "rect" | "text" | "image" | "frame";
 
@@ -19,6 +53,32 @@ export function dropChangesParentOrPosition(
   targetRank: string,
 ): boolean {
   return targetParentId !== sourceParentId || (targetIsAuto && targetRank !== sourceRank);
+}
+
+/** Hides the insertion highlight when an absolute Element is still inside its current parent. */
+export function showsReparentPreview(
+  sourceParentId: string | null,
+  sourceRank: string | null,
+  sourceParentIsAuto: boolean,
+  targetParentId: string,
+  targetIsAuto: boolean,
+  targetRank: string,
+): boolean {
+  if (
+    !sourceParentIsAuto &&
+    !targetIsAuto &&
+    sourceParentId !== null &&
+    sourceParentId === targetParentId
+  ) {
+    return false;
+  }
+  return dropChangesParentOrPosition(
+    sourceParentId,
+    sourceRank,
+    targetParentId,
+    targetIsAuto,
+    targetRank,
+  );
 }
 
 export function containingFrame(

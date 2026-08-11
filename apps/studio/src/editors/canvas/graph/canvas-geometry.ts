@@ -53,6 +53,20 @@ export function measureCanvasGeometry(workspace: HTMLElement): CanvasGeometry {
   return geometry;
 }
 
+/** A directly selected Canvas uses its artboard bounds, not the renderer's inner root box. */
+export function selectedCanvasRects(
+  geometry: CanvasArtboardGeometry,
+  elementIds: readonly string[],
+): CanvasClientRect[] {
+  if (elementIds.length === 1 && elementIds[0] === geometry.rootElementId) {
+    return [geometry.rect];
+  }
+  return elementIds.flatMap((elementId) => {
+    const rect = geometry.elements.get(elementId);
+    return rect ? [rect] : [];
+  });
+}
+
 /** Re-measures after native layout, resize, camera changes, and model edits. */
 export function useCanvasGeometry(
   workspaceRef: RefObject<HTMLElement | null>,

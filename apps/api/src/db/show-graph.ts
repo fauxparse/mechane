@@ -6,9 +6,10 @@
 // resolvers authenticate, check ownership, validate through the domain, and
 // call one of the three functions below.
 import { runChannel } from "@mechane/realtime";
-import type { CanvasEdit, GraphEdit } from "@mechane/commands";
+import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
 import { CANVAS_COMMAND_TYPES, applyCanvasEdits, applyGraphEdits } from "@mechane/commands";
 import type {
+  Canvas,
   GraphEdge,
   GraphNode,
   GraphState,
@@ -21,10 +22,9 @@ import type {
 } from "@mechane/domain";
 import { assertValidShowGraph, emptyShowGraph, generateId, isEdgeKind } from "@mechane/domain";
 import { and, eq, inArray } from "drizzle-orm";
-
 import { db } from "./client";
-import type { StoredCanvas } from "./canvas";
 import { readCanvasById, writeCanvasRows } from "./canvas";
+import type { CanvasWithOwner, StoredCanvas } from "./canvas";
 import { realtimeProvider } from "../realtime";
 import { reconcileActiveRunValues } from "./runs";
 import type { StoredDevice } from "./devices";
@@ -661,13 +661,17 @@ export interface AppliedShowEdits {
   amendments: GraphEdit[];
   canvas: StoredCanvas | null;
 }
+type EditableCanvas = {
+  canvas: Canvas;
+  owner: CanvasWithOwner["owner"];
+  position: StoredCanvas["position"];
+};
 
 /** Applies graph and Canvas edits against one shared Show version transaction. */
 export async function applyShowEdits(
   showId: string,
   graphEdits: readonly GraphEdit[],
-  canvasEdits: readonly CanvasEdit[],
-  canvasId: string | undefined,
+  canvasEdits: readonly CanvasWorkspaceEdit[],
   baseVersion: number,
 ): Promise<AppliedShowEdits> {
   return db.transaction(async (tx) => {
@@ -675,38 +679,59 @@ export async function applyShowEdits(
     if (current.version !== baseVersion) {
       throw new GraphVersionConflictError(baseVersion, current.version);
     }
-    const currentCanvas = canvasId ? await readCanvasById(showId, "draft", canvasId, tx) : null;
-    if (canvasEdits.length > 0 && !currentCanvas) {
-      throw new Error(`Canvas "${canvasId ?? ""}" was not found.`);
+    const canvasIds = [...new Set(canvasEdits.map((edit) => edit.canvasId))];
+    const currentCanvases = new Map<string, CanvasWithOwner>();
+    for (const canvasId of canvasIds) {
+      const canvas = await readCanvasById(showId, "draft", canvasId, tx);
+      if (!canvas) throw new Error(`Canvas "${canvasId}" was not found.`);
+      currentCanvases.set(canvasId, canvas);
     }
     const nextGraph = {
       shapes: current.shapes ?? [],
       ...applyGraphEdits({ nodes: current.nodes, edges: current.edges }, graphEdits),
     };
-    const treeEdits = canvasEdits.filter((edit) => edit.type !== CANVAS_COMMAND_TYPES.moveArtboard);
-    let nextPosition = currentCanvas?.canvas.position;
+    const nextCanvases = new Map<string, EditableCanvas>(
+      [...currentCanvases].map(([canvasId, currentCanvas]) => [
+        canvasId,
+        {
+          canvas: currentCanvas.canvas,
+          owner: currentCanvas.owner,
+          position: { ...currentCanvas.canvas.position },
+        },
+      ]),
+    );
     for (const edit of canvasEdits) {
-      if (edit.type === CANVAS_COMMAND_TYPES.moveArtboard) nextPosition = edit.position;
+      const currentCanvas = nextCanvases.get(edit.canvasId);
+      if (!currentCanvas) throw new Error(`Canvas "${edit.canvasId}" was not found.`);
+      const entry = nextCanvases.get(edit.canvasId)!;
+      if (edit.edit.type === CANVAS_COMMAND_TYPES.moveArtboard) {
+        entry.position = edit.edit.position;
+      } else {
+        entry.canvas = applyCanvasEdits(entry.canvas, [edit.edit]);
+      }
     }
-    const nextCanvas = currentCanvas ? applyCanvasEdits(currentCanvas.canvas, treeEdits) : null;
     const written = await writeGraph(tx, showId, "draft", nextGraph, baseVersion);
     let storedCanvas: StoredCanvas | null = null;
-    if (nextCanvas && currentCanvas) {
+    if (nextCanvases.size > 0) {
       const [graph] = await tx
         .select({ id: showGraphs.id })
         .from(showGraphs)
         .where(and(eq(showGraphs.showId, showId), eq(showGraphs.state, "draft")));
       if (!graph) throw new Error(`Draft graph for Show "${showId}" disappeared while editing.`);
-      await writeCanvasRows(
-        tx,
-        showId,
-        graph.id,
-        currentCanvas.owner,
-        nextCanvas,
-        written.updatedAt,
-        nextPosition,
-      );
-      storedCanvas = (await readCanvasById(showId, "draft", canvasId!, tx))?.canvas ?? null;
+      for (const [canvasId, nextCanvas] of nextCanvases) {
+        await writeCanvasRows(
+          tx,
+          showId,
+          graph.id,
+          nextCanvas.owner,
+          nextCanvas.canvas,
+          written.updatedAt,
+          nextCanvas.position,
+        );
+        if (canvasId === canvasIds.at(-1)) {
+          storedCanvas = (await readCanvasById(showId, "draft", canvasId, tx))?.canvas ?? null;
+        }
+      }
     }
     return {
       showId,
