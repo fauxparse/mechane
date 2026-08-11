@@ -126,6 +126,7 @@ describe("CanvasRenderer", () => {
             content: "hello",
             rotation: 90,
             width: { mode: "fixed", value: 80 },
+
             height: { mode: "fixed", value: 40 },
             minWidth: { value: 100, unit: "%" },
             aspectRatio: { ratio: 2, driver: "width" },
@@ -162,5 +163,18 @@ describe("CanvasRenderer", () => {
     expect(html).toContain("text-orientation:sideways");
     expect(html).toContain("width:40px");
     expect(html).toContain("height:80px");
+  });
+  it("renders ellipse primitives as circular shapes", () => {
+    const html = markup({
+      kind: "block",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [{ id: "ellipse", type: "ellipse", fill: "red" }],
+      },
+    });
+
+    expect(html).toContain('data-element-id="ellipse"');
+    expect(html).toContain("border-radius:50%");
   });
 });

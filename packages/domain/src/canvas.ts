@@ -4,7 +4,7 @@
  * Canvas is deliberately independent of React and storage. The API assembles
  * this tree from relational rows; studio and player consume the same value.
  */
-export const ELEMENT_KINDS = ["rect", "text", "image", "frame"] as const;
+export const ELEMENT_KINDS = ["rect", "ellipse", "text", "image", "frame"] as const;
 export type ElementKind = (typeof ELEMENT_KINDS)[number];
 
 export const SIZE_MODES = ["hug", "fill", "fixed"] as const;
@@ -120,6 +120,10 @@ export interface RectElement extends ElementBase {
   cornerRadius?: number;
 }
 
+export interface EllipseElement extends ElementBase {
+  type: "ellipse";
+}
+
 export interface TextElement extends ElementBase {
   type: "text";
   content?: string;
@@ -172,7 +176,7 @@ export interface AnchorPosition {
   offsetY?: number;
 }
 
-export type Element = RectElement | TextElement | ImageElement | FrameElement;
+export type Element = RectElement | EllipseElement | TextElement | ImageElement | FrameElement;
 
 export interface Canvas {
   root: FrameElement;

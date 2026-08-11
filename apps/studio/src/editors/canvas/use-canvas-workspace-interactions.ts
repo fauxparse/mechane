@@ -1081,8 +1081,7 @@ export function useCanvasWorkspaceInteractions({
       rank,
       width: { mode: "fixed", value: width },
       height: { mode: "fixed", value: height },
-      ...(draft.tool === "rect" ? { fill: "#cbd5e1" } : {}),
-      ...(draft.tool === "frame" ? { layoutMode: "absolute", fill: "#f8fafc" } : {}),
+      ...(draft.tool === "rect" || draft.tool === "ellipse" ? { fill: "#cbd5e1" } : {}),
       ...(draft.tool === "text" ? { content: "Text", color: "#0f172a" } : {}),
       ...(draft.tool === "image"
         ? { src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" }

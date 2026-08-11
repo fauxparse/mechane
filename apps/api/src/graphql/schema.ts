@@ -460,6 +460,28 @@ export const schema = createSchema<GraphQLContext>({
       cornerRadius: Float
     }
 
+    type EllipseElement implements Element {
+      id: ID!
+      name: String
+      parentId: ID
+      rank: String!
+      hidden: Boolean!
+      layout: JSON
+      sizing: JSON
+      width: JSON
+      height: JSON
+      minWidth: JSON
+      maxWidth: JSON
+      minHeight: JSON
+      maxHeight: JSON
+      rotation: Int
+      opacity: Float
+      blendMode: String
+      fill: JSON
+      anchor: JSON
+      children: [Element!]!
+    }
+
     type TextElement implements Element {
       id: ID!
       name: String
