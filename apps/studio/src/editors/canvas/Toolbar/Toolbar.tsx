@@ -17,16 +17,17 @@ import {
   MousePointer2Icon,
   PlusIcon,
   RotateCcwIcon,
+  CircleIcon,
   SquareIcon,
   TypeIcon,
 } from "lucide-react";
-
 /** The tools the Canvas editor can be in. Exactly one is active at a time. */
-export type CanvasTool = "select" | "rect" | "text" | "image" | "frame";
+export type CanvasTool = "select" | "rect" | "ellipse" | "text" | "image" | "frame";
 
 const TOOLS: { value: CanvasTool; label: string; Icon: LucideIcon }[] = [
   { value: "select", label: "Select", Icon: MousePointer2Icon },
   { value: "rect", label: "Rectangle", Icon: SquareIcon },
+  { value: "ellipse", label: "Ellipse", Icon: CircleIcon },
   { value: "text", label: "Text", Icon: TypeIcon },
   { value: "image", label: "Image", Icon: ImageIcon },
   { value: "frame", label: "Frame", Icon: FrameIcon },

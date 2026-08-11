@@ -14,6 +14,7 @@ import {
   Image as ImageIcon,
   Puzzle,
   SearchIcon,
+  Shapes,
   Square,
   TvMinimal,
   Type,
@@ -38,6 +39,7 @@ import type { CanvasSelection } from "./canvas-selection";
 const ELEMENT_ICONS: Record<ElementKind, typeof Square> = {
   frame: FrameIcon,
   rect: Square,
+  ellipse: Shapes,
   text: Type,
   image: ImageIcon,
 };

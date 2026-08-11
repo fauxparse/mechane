@@ -34,7 +34,7 @@ export function fixedFillSizing(
   return properties;
 }
 
-export type CanvasCreationTool = "select" | "rect" | "text" | "image" | "frame";
+export type CanvasCreationTool = "select" | "rect" | "ellipse" | "text" | "image" | "frame";
 
 /** Returns the dragged creation box, optionally constraining it to a square. */
 export function creationRect(

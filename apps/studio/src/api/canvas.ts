@@ -23,7 +23,8 @@ type ApiElement = {
 
 function elementType(typename: string): Element["type"] {
   const type = typename.replace(/Element$/, "").toLowerCase();
-  if (type === "rect" || type === "text" || type === "image" || type === "frame") return type;
+  if (type === "rect" || type === "ellipse" || type === "text" || type === "image" || type === "frame")
+    return type;
   throw new Error(`Unknown Canvas Element type "${typename}".`);
 }
 

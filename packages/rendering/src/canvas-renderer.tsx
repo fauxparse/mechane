@@ -199,6 +199,7 @@ function typeStyle(element: Element): CSSProperties {
       borderRadius: element.cornerRadius === undefined ? undefined : `${element.cornerRadius}px`,
     };
   }
+  if (element.type === "ellipse") return { borderRadius: "50%" };
   if (element.type === "text") {
     return {
       color: element.color,

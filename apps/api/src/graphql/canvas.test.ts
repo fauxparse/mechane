@@ -6,6 +6,7 @@ import { parseCanvasEdit, resolveCanvasElementType } from "./canvas";
 describe("Canvas GraphQL adapter", () => {
   it.each([
     ["rect", "RectElement"],
+    ["ellipse", "EllipseElement"],
     ["text", "TextElement"],
     ["image", "ImageElement"],
     ["frame", "FrameElement"],

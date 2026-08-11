@@ -4,6 +4,7 @@ import type { StoredCanvas } from "../db/canvas";
 
 const ELEMENT_TYPE_NAMES = {
   rect: "RectElement",
+  ellipse: "EllipseElement",
   text: "TextElement",
   image: "ImageElement",
   frame: "FrameElement",
