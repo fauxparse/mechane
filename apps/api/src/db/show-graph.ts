@@ -25,6 +25,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "./client";
 import { readCanvasById, writeCanvasRows } from "./canvas";
 import type { CanvasWithOwner, StoredCanvas } from "./canvas";
+import { placeCanvasPosition } from "./canvas-placement";
 import { realtimeProvider } from "../realtime";
 import { reconcileActiveRunValues } from "./runs";
 import type { StoredDevice } from "./devices";
@@ -399,6 +400,10 @@ async function writeGraph(
   const previousSceneByOwner = new Map(
     previousSceneCanvases.map((canvas) => [canvas.sceneNodeId!, canvas]),
   );
+  const occupiedCanvasPositions = previousCanvases.map((canvas) => ({
+    x: canvas.positionX,
+    y: canvas.positionY,
+  }));
 
   await tx.delete(shapes).where(eq(shapes.graphId, row.id));
   await tx.delete(graphNodes).where(eq(graphNodes.graphId, row.id));
@@ -476,13 +481,17 @@ async function writeGraph(
   for (const node of graph.nodes.filter((node) => node.kind === "scene")) {
     const previous = previousSceneByOwner.get(node.id);
     const canvasId = previous?.id ?? generateId("canvas");
+    const position = previous
+      ? { x: previous.positionX, y: previous.positionY }
+      : placeCanvasPosition(node.position, occupiedCanvasPositions);
+    if (!previous) occupiedCanvasPositions.push(position);
     await tx.insert(canvases).values({
       id: canvasId,
       graphId: row.id,
       sceneNodeId: node.id,
       blockId: null,
-      positionX: previous?.positionX ?? node.position.x,
-      positionY: previous?.positionY ?? node.position.y,
+      positionX: position.x,
+      positionY: position.y,
       ...(previous ? { createdAt: previous.createdAt, updatedAt: previous.updatedAt } : {}),
     });
     const elements = previousElementsByCanvas.get(canvasId);
@@ -506,16 +515,23 @@ async function writeGraph(
   const existingBlockIds = new Set(
     previousCanvases.flatMap((canvas) => (canvas.blockId ? [canvas.blockId] : [])),
   );
+  let newBlockIndex = 0;
   for (const block of graphBlocks) {
     if (existingBlockIds.has(block.id)) continue;
     const canvasId = generateId("canvas");
+    const position = placeCanvasPosition(
+      { x: 0, y: 460 + newBlockIndex * 460 },
+      occupiedCanvasPositions,
+    );
+    newBlockIndex += 1;
+    occupiedCanvasPositions.push(position);
     await tx.insert(canvases).values({
       id: canvasId,
       graphId: row.id,
       sceneNodeId: null,
       blockId: block.id,
-      positionX: 0,
-      positionY: 0,
+      positionX: position.x,
+      positionY: position.y,
     });
     await tx.insert(canvasElements).values({
       id: `${canvasId}-root`,
