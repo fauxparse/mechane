@@ -4,7 +4,7 @@
 // `assertOwnedBy`/`assertValidShowName` (@mechane/domain) the same way
 // every later owned resource (Scene, Device, ...) should.
 import { CanvasEditError } from "@mechane/commands";
-import type { CanvasEdit, GraphEdit } from "@mechane/commands";
+import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
 import {
   assertOwnedBy,
   assertValidGraphState,
@@ -872,8 +872,7 @@ export const schema = createSchema<GraphQLContext>({
         const userId = requireUserId(context);
         await findOwnShowOrThrow(showId, userId);
         const graphEdits: GraphEdit[] = [];
-        const canvasEdits: CanvasEdit[] = [];
-        let canvasId: string | undefined;
+        const canvasEdits: CanvasWorkspaceEdit[] = [];
         try {
           for (const input of edits) {
             if (input === null || typeof input !== "object" || Array.isArray(input)) {
@@ -883,26 +882,16 @@ export const schema = createSchema<GraphQLContext>({
             const type = record.type;
             if (typeof type !== "string") throw new CanvasEditError("Show edit type is required.");
             if (type.startsWith("canvas.")) {
-              const target = record.canvasId;
-              if (typeof target !== "string" || target.length === 0) {
+              const canvasId = record.canvasId;
+              if (typeof canvasId !== "string" || canvasId.length === 0) {
                 throw new CanvasEditError("Canvas edits require canvasId.");
               }
-              if (canvasId && canvasId !== target) {
-                throw new CanvasEditError("One Show edit batch may target only one Canvas.");
-              }
-              canvasId = target;
-              canvasEdits.push(parseCanvasEdit(record));
+              canvasEdits.push({ canvasId, edit: parseCanvasEdit(record) });
             } else {
               graphEdits.push(parseGraphEdit(record as unknown as GraphEditInput));
             }
           }
-          const applied = await applyShowEditsToDb(
-            showId,
-            graphEdits,
-            canvasEdits,
-            canvasId,
-            baseVersion,
-          );
+          const applied = await applyShowEditsToDb(showId, graphEdits, canvasEdits, baseVersion);
           await db.update(shows).set({ updatedAt: new Date() }).where(eq(shows.id, showId));
           return applied;
         } catch (error) {

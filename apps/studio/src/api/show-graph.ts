@@ -152,15 +152,7 @@ export function useShowGraphEdits(
   const flush = useCallback(() => {
     timer.current = null;
     if (inFlight.current || failed.current) return;
-    const firstCanvas = pending.current.find((edit) => "canvasId" in edit);
-    const canvasId = firstCanvas && "canvasId" in firstCanvas ? firstCanvas.canvasId : null;
-    const batch: (GraphEdit | CanvasWorkspaceEdit)[] = [];
-    while (pending.current.length > 0) {
-      const next = pending.current[0]!;
-      if ("canvasId" in next && canvasId !== null && next.canvasId !== canvasId) break;
-      batch.push(next);
-      pending.current.shift();
-    }
+    const batch = pending.current.splice(0);
     const graphEdits = batch.filter((edit): edit is GraphEdit => !("canvasId" in edit));
     const canvasEdits = batch.filter((edit): edit is CanvasWorkspaceEdit => "canvasId" in edit);
     const edits = [...coalesceGraphEdits(graphEdits), ...coalesceCanvasWorkspaceEdits(canvasEdits)];

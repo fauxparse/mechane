@@ -130,18 +130,13 @@ function anchorStyles(anchor: AnchorPosition | undefined): CSSProperties {
   const horizontalCenter = horizontal === "center" || horizontal === "centre";
   const verticalCenter = vertical === "center" || vertical === "centre";
   return {
+    position: "relative",
     justifySelf: horizontalCenter ? "center" : horizontal === "right" ? "end" : "start",
     alignSelf: verticalCenter ? "center" : vertical === "bottom" ? "end" : "start",
-    marginInlineStart: horizontal === "left" ? `${anchor.offsetX ?? 0}px` : undefined,
-    marginInlineEnd: horizontal === "right" ? `${anchor.offsetX ?? 0}px` : undefined,
-    marginBlockStart: vertical === "top" ? `${anchor.offsetY ?? 0}px` : undefined,
-    marginBlockEnd: vertical === "bottom" ? `${anchor.offsetY ?? 0}px` : undefined,
-    ...(horizontalCenter && (anchor.offsetX ?? 0) !== 0
-      ? { marginInlineStart: `${anchor.offsetX ?? 0}px` }
-      : {}),
-    ...(verticalCenter && (anchor.offsetY ?? 0) !== 0
-      ? { marginBlockStart: `${anchor.offsetY ?? 0}px` }
-      : {}),
+    left: horizontal === "left" || horizontalCenter ? `${anchor.offsetX ?? 0}px` : undefined,
+    right: horizontal === "right" ? `${anchor.offsetX ?? 0}px` : undefined,
+    top: vertical === "top" || verticalCenter ? `${anchor.offsetY ?? 0}px` : undefined,
+    bottom: vertical === "bottom" ? `${anchor.offsetY ?? 0}px` : undefined,
   };
 }
 function elementStyle(element: Element, root: boolean, sceneRoot: boolean): CSSProperties {

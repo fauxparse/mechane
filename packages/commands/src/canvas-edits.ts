@@ -52,7 +52,6 @@ export class CanvasEditError extends Error {
   }
 }
 
-
 function cloneElement(element: Element): Element {
   return {
     ...element,
@@ -92,16 +91,15 @@ function replaceElement(
     if (!next) throw new CanvasEditError(`Cannot remove Canvas root Element "${id}".`);
     return next;
   }
-  return {
-    ...root,
-    ...(root.children
-      ? {
-          children: root.children
-            .map((child) => (child.id === id ? replace(child) : replaceElement(child, id, replace)))
-            .filter((child): child is Element => child !== null),
-        }
-      : {}),
-  } as Element;
+  const children = root.children
+    ?.map((child) => (child.id === id ? replace(child) : replaceElement(child, id, replace)))
+    .filter((child): child is Element => child !== null);
+  if (!children) return root;
+  if (children.length === 0) {
+    const { children: _children, ...withoutChildren } = root;
+    return withoutChildren as Element;
+  }
+  return { ...root, children } as Element;
 }
 
 function appendChild(root: Element, parentId: string, child: Element): Element {
@@ -144,7 +142,11 @@ function updateElement(
   return {
     ...root,
     ...(root.children
-      ? { children: root.children.map((child) => updateElement(child, id, properties, unsetProperties)) }
+      ? {
+          children: root.children.map((child) =>
+            updateElement(child, id, properties, unsetProperties),
+          ),
+        }
       : {}),
   } as Element;
 }
@@ -156,7 +158,6 @@ function assertNewElement(element: NewElement): void {
   if ("children" in element)
     throw new CanvasEditError("canvas.addElement cannot include children.");
 }
-
 
 export function findCanvasElement(root: Element, id: string): Element | null {
   return findElement(root, id);

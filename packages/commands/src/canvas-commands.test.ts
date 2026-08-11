@@ -7,8 +7,9 @@ import {
   coalesceCanvasWorkspaceEdits,
   moveCanvasArtboard,
   moveCanvasElement,
-  reparentCanvasElement,
+  moveCanvasElementBetweenCanvases,
   removeCanvasElement,
+  reparentCanvasElement,
   updateCanvasElement,
 } from "./canvas-commands";
 import type { CanvasWorkspace, CanvasWorkspaceEdit } from "./canvas-commands";
@@ -111,6 +112,31 @@ describe("Canvas workspace commands", () => {
     });
     stack.undo();
     expect(stored(stack.state)).toEqual(stored(workspace));
+  });
+
+  it("moves a subtree between Canvases as one undoable batch", () => {
+    const batches: CanvasWorkspaceEdit[][] = [];
+    const stack = new CommandStack<CanvasWorkspace, CanvasWorkspaceEdit>({
+      state: workspace,
+      dispatch: (_command, _state, edits) => batches.push([...edits]),
+    });
+    stack.execute(
+      moveCanvasElementBetweenCanvases("scene_a", "block_b", "container", "block-root", "a"),
+    );
+
+    expect(stack.depth).toBe(1);
+    expect(stack.state.artboards[0]?.canvas.root.children?.map((child) => child.id)).toEqual([
+      "first",
+    ]);
+    expect(stack.state.artboards[1]?.canvas.root.children?.map((child) => child.id)).toEqual([
+      "container",
+    ]);
+    expect(batches[0]?.map((edit) => edit.canvasId)).toEqual(["scene_a", "block_b", "block_b"]);
+
+    stack.undo();
+    expect(stored(stack.state)).toEqual(stored(workspace));
+    stack.redo();
+    expect(stack.state.artboards[1]?.canvas.root.children?.[0]?.id).toBe("container");
   });
 
   it("coalesces an artboard drag and preserves undo behavior", () => {

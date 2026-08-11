@@ -19,14 +19,20 @@ import {
   Type,
 } from "lucide-react";
 import type { ElementKind } from "@mechane/domain";
+import { findCanvasElement } from "@mechane/commands";
 import { useMemo, useRef, useState } from "react";
 
 import type { CanvasArtboardDocument } from "../../../api/canvas";
-import { layerDropPlacement, layerRowDropZone } from "../data/canvas-layer-drop";
+import { fixedFillSizing } from "../commands/canvas-creation";
+import {
+  layerDropPlacement,
+  layerDropPlacementInCanvas,
+  layerRowDropZone,
+} from "../data/canvas-layer-drop";
 import type { LayerDropZone } from "../data/canvas-layer-drop";
-import { artboardLabel } from "../data/canvas-workspace";
 import { canvasLayerRows, expansionForSelection } from "../data/canvas-layer-tree";
 import type { LayerRow } from "../data/canvas-layer-tree";
+import { artboardLabel } from "../data/canvas-workspace";
 import type { CanvasSelection } from "./canvas-selection";
 
 const ELEMENT_ICONS: Record<ElementKind, typeof Square> = {
@@ -46,7 +52,23 @@ export interface CanvasLayersProps {
   onFocusArtboard(artId: string): void;
   onSelect(selection: CanvasSelection): void;
   onUpdateElement?(canvasId: string, elementId: string, properties: Record<string, unknown>): void;
-  onMoveElement?(canvasId: string, elementId: string, parentId: string, rank: string): void;
+  onMoveElement?(
+    canvasId: string,
+    elementId: string,
+    parentId: string,
+    rank: string,
+    properties?: Record<string, unknown>,
+    unsetProperties?: readonly string[],
+  ): void;
+  onMoveElementBetweenCanvases?(
+    sourceCanvasId: string,
+    targetCanvasId: string,
+    elementId: string,
+    parentId: string,
+    rank: string,
+    properties?: Record<string, unknown>,
+    unsetProperties?: readonly string[],
+  ): void;
   onRenameArtboard?(artId: string, name: string): void;
 }
 
@@ -196,7 +218,6 @@ function LayerRowView({
             type="button"
             className="min-w-0 flex-1 truncate text-left"
             aria-label={`${name} ${row.kind === "canvas" ? "canvas" : "layer"}`}
-            aria-current={active ? "true" : undefined}
             onClick={onSelectRow}
             onDoubleClick={onBeginRename}
           >
@@ -216,6 +237,7 @@ export function CanvasLayers({
   onSelect,
   onUpdateElement,
   onMoveElement,
+  onMoveElementBetweenCanvases,
   onRenameArtboard,
 }: CanvasLayersProps) {
   const [query, setQuery] = useState("");
@@ -263,19 +285,22 @@ export function CanvasLayers({
   const hoverRow = (row: LayerRow, offsetY: number, height: number): boolean => {
     if (!dragging) return false;
     const artboard = ordered.find((candidate) => candidate.artId === row.artId);
-    // An Element cannot leave its Canvas (#223), so a foreign row is simply not a target.
-    if (!artboard || row.artId !== dragging.artId) {
+    if (!artboard) {
       hintRef.current = null;
       setHint(null);
       return false;
     }
+    const foreign = row.artId !== dragging.artId;
     const zone = layerRowDropZone(
       { ...row, expanded: expanded.has(row.id) },
       offsetY,
       height || ROW_HEIGHT,
     );
     const targetId = row.kind === "canvas" ? artboard.canvas.root.id : row.id;
-    if (!layerDropPlacement(artboard.canvas.root, dragging.rowId, targetId, zone)) {
+    const placement = foreign
+      ? layerDropPlacementInCanvas(artboard.canvas.root, targetId, zone)
+      : layerDropPlacement(artboard.canvas.root, dragging.rowId, targetId, zone);
+    if (!placement) {
       hintRef.current = null;
       setHint(null);
       return false;
@@ -292,7 +317,6 @@ export function CanvasLayers({
     }
     return true;
   };
-
   const finishDrag = () => {
     const source = dragging;
     const target = hintRef.current;
@@ -300,12 +324,56 @@ export function CanvasLayers({
     setHint(null);
     setDragging(null);
     if (!source || !target) return;
-    const artboard = ordered.find((candidate) => candidate.artId === target.artId);
-    if (!artboard) return;
-    const targetId = target.rowId === target.artId ? artboard.canvas.root.id : target.rowId;
-    const placement = layerDropPlacement(artboard.canvas.root, source.rowId, targetId, target.zone);
+    const sourceArtboard = ordered.find((candidate) => candidate.artId === source.artId);
+    const targetArtboard = ordered.find((candidate) => candidate.artId === target.artId);
+    if (!sourceArtboard || !targetArtboard) return;
+    const targetId = target.rowId === target.artId ? targetArtboard.canvas.root.id : target.rowId;
+    const placement =
+      source.artId === target.artId
+        ? layerDropPlacement(targetArtboard.canvas.root, source.rowId, targetId, target.zone)
+        : layerDropPlacementInCanvas(targetArtboard.canvas.root, targetId, target.zone);
     if (!placement) return;
-    onMoveElement?.(artboard.canvasId, source.rowId, placement.parentId, placement.rank);
+    if (source.artId === target.artId) {
+      onMoveElement?.(targetArtboard.canvasId, source.rowId, placement.parentId, placement.rank);
+      return;
+    }
+    const sourceNode = document.querySelector<HTMLElement>(
+      `[data-artboard-id="${CSS.escape(source.artId)}"] [data-element-id="${CSS.escape(source.rowId)}"]`,
+    );
+    const sourceParentNode = sourceNode?.dataset.elementParentId
+      ? document.querySelector<HTMLElement>(
+          `[data-artboard-id="${CSS.escape(source.artId)}"] [data-element-id="${CSS.escape(sourceNode.dataset.elementParentId)}"]`,
+        )
+      : null;
+    const targetParentNode = document.querySelector<HTMLElement>(
+      `[data-artboard-id="${CSS.escape(target.artId)}"] [data-element-id="${CSS.escape(placement.parentId)}"]`,
+    );
+    const sourceElement = findCanvasElement(sourceArtboard.canvas.root, source.rowId);
+    const sourceAuto = sourceParentNode
+      ? getComputedStyle(sourceParentNode).display === "flex"
+      : false;
+    const targetAuto = targetParentNode
+      ? getComputedStyle(targetParentNode).display === "flex"
+      : false;
+    const sourceSize = sourceNode ? getComputedStyle(sourceNode) : null;
+    const sourceWidth = sourceNode
+      ? Number.parseFloat(sourceSize?.width ?? "") || sourceNode.getBoundingClientRect().width
+      : 0;
+    const sourceHeight = sourceNode
+      ? Number.parseFloat(sourceSize?.height ?? "") || sourceNode.getBoundingClientRect().height
+      : 0;
+    const properties =
+      sourceElement && sourceNode && sourceAuto && !targetAuto
+        ? fixedFillSizing(sourceElement, sourceWidth, sourceHeight)
+        : {};
+    onMoveElementBetweenCanvases?.(
+      sourceArtboard.canvasId,
+      targetArtboard.canvasId,
+      source.rowId,
+      placement.parentId,
+      placement.rank,
+      properties,
+    );
   };
 
   // A Set, because the row loop below asks about every row and a selection can be large.

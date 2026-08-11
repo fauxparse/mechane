@@ -53,6 +53,29 @@ describe("CanvasRenderer", () => {
     expect(html).toContain("width:100%");
   });
 
+  it("uses positional offsets for anchored absolute Elements", () => {
+    const html = markup({
+      kind: "block",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "child",
+            type: "rect",
+            anchor: { horizontal: "left", vertical: "top", offsetX: 12, offsetY: 18 },
+          },
+        ],
+      },
+    });
+
+    expect(html).toContain("position:relative");
+    expect(html).toContain("left:12px");
+    expect(html).toContain("top:18px");
+    expect(html).not.toContain("margin-inline-start:12px");
+    expect(html).not.toContain("margin-block-start:18px");
+  });
+
   it("serializes gradients, min sizing, aspect ratio, and right-angle rotation as CSS", () => {
     const html = markup({
       kind: "block",

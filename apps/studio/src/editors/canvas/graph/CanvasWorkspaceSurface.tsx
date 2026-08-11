@@ -33,10 +33,12 @@ export function CanvasWorkspaceSurface({
   rubberbandRect,
   creationOverlayRect,
   overlayRect,
+  resizePreview,
   resizable,
   onFocusArtboard,
   onUpdateElement,
   onMoveElement,
+  onMoveElementBetweenCanvases,
   onRenameArtboard,
   onSelect,
   onBeginDrag,
@@ -94,6 +96,7 @@ export function CanvasWorkspaceSurface({
         setRenamingArtId={setRenamingArtId}
         onRenameArtboard={onRenameArtboard}
         overlayRect={overlayRect}
+        resizePreview={resizePreview}
         resizable={resizable}
         onBeginResize={onBeginResize}
         creationOverlayRect={creationOverlayRect}
@@ -105,15 +108,15 @@ export function CanvasWorkspaceSurface({
         <CanvasLayers
           ordered={ordered}
           focused={focused}
-          selection={selection}
           onFocusArtboard={onFocusArtboard}
+          selection={selection}
           onSelect={onSelect}
           onUpdateElement={onUpdateElement}
           onMoveElement={onMoveElement}
+          onMoveElementBetweenCanvases={onMoveElementBetweenCanvases}
           onRenameArtboard={onRenameArtboard}
         />
       </EditorSlot>
-
       <EditorSlot name="right">
         <EditorPanel title="Properties">
           <CanvasInspector

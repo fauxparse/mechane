@@ -4,6 +4,7 @@ import {
   CommandStack,
   moveCanvasArtboard,
   moveCanvasElement,
+  moveCanvasElementBetweenCanvases,
   removeCanvasElement,
   updateCanvasElement,
 } from "@mechane/commands";
@@ -29,6 +30,15 @@ export interface CanvasCommands {
   endArtboardMove(canvasId: string, cancel?: boolean): void;
   moveElement(
     canvasId: string,
+    elementId: string,
+    parentId: string,
+    rank: string,
+    properties?: Record<string, unknown>,
+    unsetProperties?: readonly string[],
+  ): void;
+  moveElementBetweenCanvases(
+    sourceCanvasId: string,
+    targetCanvasId: string,
     elementId: string,
     parentId: string,
     rank: string,
@@ -136,6 +146,31 @@ export function useCanvasCommands(
     },
     [changed, stack],
   );
+  const moveElementBetweenCanvases = useCallback(
+    (
+      sourceCanvasId: string,
+      targetCanvasId: string,
+      elementId: string,
+      parentId: string,
+      rank: string,
+      properties: Record<string, unknown> = {},
+      unsetProperties: readonly string[] = [],
+    ) => {
+      stack.execute(
+        moveCanvasElementBetweenCanvases(
+          sourceCanvasId,
+          targetCanvasId,
+          elementId,
+          parentId,
+          rank,
+          properties,
+          unsetProperties,
+        ),
+      );
+      changed();
+    },
+    [changed, stack],
+  );
   const updateElement = useCallback(
     (
       canvasId: string,
@@ -170,7 +205,6 @@ export function useCanvasCommands(
     },
     [changed],
   );
-
   const undo = useCallback(() => {
     stack.undo();
     changed();
@@ -187,6 +221,7 @@ export function useCanvasCommands(
     updateArtboardMove,
     endArtboardMove,
     moveElement,
+    moveElementBetweenCanvases,
     updateElement,
     createElement,
     removeElements,

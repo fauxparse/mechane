@@ -1,40 +1,51 @@
 import { describe, expect, it } from "vitest";
 
-import { containingFrame, dropChangesParentOrPosition, rankForInsertion } from "./canvas-creation";
+import { fixedFillSizing, showsReparentPreview } from "./canvas-creation";
 
-const rect = (x: number, y: number, width: number, height: number) => ({
-  x,
-  y,
-  width,
-  height,
-  right: x + width,
-  bottom: y + height,
+describe("fixedFillSizing", () => {
+  it("converts both fill axes to measured fixed dimensions", () => {
+    expect(
+      fixedFillSizing(
+        {
+          id: "child",
+          type: "rect",
+          layout: { width: { mode: "fill" }, height: { mode: "fill" } },
+          fill: "red",
+        },
+        240,
+        80,
+      ),
+    ).toEqual({
+      layout: {
+        width: { mode: "fixed", value: 240 },
+        height: { mode: "fixed", value: 80 },
+      },
+    });
+  });
+
+  it("updates top-level fill sizing without changing fixed axes", () => {
+    expect(
+      fixedFillSizing(
+        {
+          id: "child",
+          type: "rect",
+          width: { mode: "fill" },
+          height: { mode: "fixed", value: 40 },
+        },
+        240,
+        80,
+      ),
+    ).toEqual({ width: { mode: "fixed", value: 240 } });
+  });
 });
 
-describe("Canvas creation tools", () => {
-  it("chooses the smallest containing Frame at commit time", () => {
-    expect(
-      containingFrame(
-        [
-          { id: "root", rect: rect(0, 0, 500, 500) },
-          { id: "nested", rect: rect(20, 20, 200, 200) },
-        ],
-        rect(40, 40, 20, 20),
-      ),
-    ).toBe("nested");
+describe("showsReparentPreview", () => {
+  it("does not highlight an absolute Element's existing parent", () => {
+    expect(showsReparentPreview("parent", "a", false, "parent", false, "a")).toBe(false);
   });
 
-  it("only highlights drops that change parent or auto-layout position", () => {
-    expect(dropChangesParentOrPosition("frame-a", "b", "frame-a", false, "a~")).toBe(false);
-    expect(dropChangesParentOrPosition("frame-a", "b", "frame-a", true, "b")).toBe(false);
-    expect(dropChangesParentOrPosition("frame-a", "b", "frame-a", true, "a~")).toBe(true);
-    expect(dropChangesParentOrPosition("frame-a", "b", "frame-b", false, "b")).toBe(true);
-  });
-
-  it("allocates deterministic ranks before, between, and after siblings", () => {
-    expect(rankForInsertion([], 0)).toBe("a");
-    expect(rankForInsertion(["a", "c"], 0)).toBe("!a");
-    expect(rankForInsertion(["a", "c"], 1)).toBe("a~");
-    expect(rankForInsertion(["a", "c"], 2)).toBe("c~");
+  it("still highlights a new parent or an auto-layout reorder", () => {
+    expect(showsReparentPreview("source", "a", false, "target", false, "a")).toBe(true);
+    expect(showsReparentPreview("parent", "a", true, "parent", true, "b")).toBe(true);
   });
 });

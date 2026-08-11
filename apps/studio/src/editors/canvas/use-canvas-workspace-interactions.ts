@@ -6,11 +6,12 @@ import type { NewElement } from "@mechane/commands";
 import type { Position, FrameElement } from "@mechane/domain";
 
 import type { CanvasArtboardDocument } from "../../api/canvas";
+import { selectedCanvasRects, useCanvasGeometry } from "./graph/canvas-geometry";
 import type { CanvasClientRect } from "./graph/canvas-geometry";
 import type { CanvasSelection } from "./graph/canvas-selection";
 import { useCanvasCamera } from "./graph/use-canvas-camera";
 import { roundToLogicalPixel } from "./graph/canvas-pixels";
-import { useCanvasGeometry } from "./graph/canvas-geometry";
+
 import {
   containedSelection,
   normalizeSelection,
@@ -21,8 +22,9 @@ import {
 } from "./graph/canvas-selection";
 import {
   containingFrame,
-  dropChangesParentOrPosition,
+  fixedFillSizing,
   rankForInsertion,
+  showsReparentPreview,
 } from "./commands/canvas-creation";
 import type { CanvasCreationTool } from "./commands/canvas-creation";
 import { canvasKeyboardIntent, nudgeAnchor } from "./keyboard/canvas-keyboard";
@@ -30,6 +32,7 @@ import { focusContext } from "../show/keyboard/focus-context";
 import { arrangeIntentFor, arrangeWithinParent } from "./commands/canvas-arrange";
 import type { ArrangeIntent } from "./commands/canvas-arrange";
 import {
+  fixedResizeProperties,
   isCornerHandle,
   lockedAspectRatio,
   resizeBox,
@@ -86,6 +89,7 @@ type ElementDragState = {
   origin: { x: number; y: number };
   originParentId: string | null;
   originRank: string | null;
+  originAutoParent: boolean;
 };
 
 /** One Element caught up in a resize, with everything needed to place it again afterwards. */
@@ -112,6 +116,8 @@ type ResizeGesture = {
 };
 
 type DragPreview = {
+  artId: string;
+  canvasId: string;
   parentId: string;
   rank: string;
   line: { x: number; y: number; width: number; height: number };
@@ -130,6 +136,7 @@ export function useCanvasWorkspaceInteractions({
   initialCamera,
   onCreateElement,
   onMoveElement,
+  onMoveElementBetweenCanvases,
   onUpdateElement,
   onDeleteElements,
 }: CanvasWorkspaceEditorProps) {
@@ -167,6 +174,7 @@ export function useCanvasWorkspaceInteractions({
   // preview styles and the overlay, so the handles never drift off the shape they are sizing.
   const resizeGesture = useRef<ResizeGesture | null>(null);
   const [resizeDraft, setResizeDraft] = useState<{
+    artId: string;
     start: ResizeBox;
     box: ResizeBox;
     subjects: readonly ResizeSubject[];
@@ -257,6 +265,11 @@ export function useCanvasWorkspaceInteractions({
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     const rect = measuredRect(element);
+    const parentNode = element.dataset.elementParentId
+      ? [...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-id]")].find(
+          (candidate) => candidate.dataset.elementId === element.dataset.elementParentId,
+        )
+      : undefined;
     elementDrag.current = {
       artId: artboard.artId,
       canvasId: artboard.canvasId,
@@ -266,6 +279,7 @@ export function useCanvasWorkspaceInteractions({
       origin: { x: rect.x, y: rect.y },
       originParentId: element.dataset.elementParentId ?? null,
       originRank: element.dataset.elementRank ?? null,
+      originAutoParent: parentNode ? getComputedStyle(parentNode).display === "flex" : false,
     };
     dragPreviewRef.current = null;
     setDragPreview(null);
@@ -295,19 +309,27 @@ export function useCanvasWorkspaceInteractions({
     // Both the Element's translate and the overlay's offset come from this one piece of state, so
     // they are written in the same commit and the outline cannot trail the shape it is wrapping.
     setDragOffset({ elementId: activeDrag.elementId, x: dx, y: dy, active: true });
-    const draggedNode = element;
-    const foreignArtboard = document
+    const artboardsAtPoint = document
       .elementsFromPoint(event.clientX, event.clientY)
-      .find((candidate) => candidate instanceof HTMLElement && candidate.dataset.artboardId) as
-      | HTMLElement
-      | undefined;
-    if (foreignArtboard && foreignArtboard !== event.currentTarget) {
+      .filter(
+        (candidate): candidate is HTMLElement =>
+          candidate instanceof HTMLElement && Boolean(candidate.dataset.artboardId),
+      );
+    const foreignArtboard = artboardsAtPoint.find(
+      (candidate) => candidate.dataset.artboardId !== activeDrag.artId,
+    );
+    const targetArtboard = foreignArtboard ?? event.currentTarget;
+    const targetDocument = ordered.find(
+      (candidate) => candidate.artId === targetArtboard.dataset.artboardId,
+    );
+    if (!targetDocument) {
       dragPreviewRef.current = null;
       setDragPreview(null);
       return;
     }
+    const draggedNode = element;
     const frames: { node: HTMLElement; rect: CanvasClientRect }[] = [];
-    for (const frame of event.currentTarget.querySelectorAll<HTMLElement>(
+    for (const frame of targetArtboard.querySelectorAll<HTMLElement>(
       "[data-element-type='frame']",
     )) {
       if (draggedNode.contains(frame)) continue;
@@ -332,7 +354,7 @@ export function useCanvasWorkspaceInteractions({
     }
     const auto = getComputedStyle(parent.node).display === "flex";
     const children: HTMLElement[] = [];
-    for (const child of event.currentTarget.querySelectorAll<HTMLElement>(
+    for (const child of targetArtboard.querySelectorAll<HTMLElement>(
       "[data-element-parent-id]",
     )) {
       if (
@@ -358,16 +380,19 @@ export function useCanvasWorkspaceInteractions({
       insertionIndex < 0 ? children.length : insertionIndex,
     );
     const targetParentId = parent.node.dataset.elementId;
-    if (
-      !targetParentId ||
-      !dropChangesParentOrPosition(
+    const sameAbsoluteParent =
+      !auto && targetParentId === activeDrag.originParentId && !activeDrag.originAutoParent;
+    const showPreview =
+      targetParentId !== undefined &&
+      showsReparentPreview(
         activeDrag.originParentId,
         activeDrag.originRank,
+        activeDrag.originAutoParent,
         targetParentId,
         auto,
         rank,
-      )
-    ) {
+      );
+    if (!targetParentId || (!sameAbsoluteParent && !showPreview)) {
       dragPreviewRef.current = null;
       setDragPreview(null);
       return;
@@ -392,9 +417,16 @@ export function useCanvasWorkspaceInteractions({
           width: parent.rect.width,
           height: parent.rect.height,
         };
-    const nextPreview = { parentId: parent.node.dataset.elementId ?? "", rank, line, auto };
+    const nextPreview = {
+      artId: targetDocument.artId,
+      canvasId: targetDocument.canvasId,
+      parentId: parent.node.dataset.elementId ?? "",
+      rank,
+      line,
+      auto,
+    };
     dragPreviewRef.current = nextPreview;
-    setDragPreview(nextPreview);
+    setDragPreview(showPreview ? nextPreview : null);
   };
 
   const finishElementDrag = (event: PointerEvent<HTMLElement>, cancel = false) => {
@@ -410,11 +442,20 @@ export function useCanvasWorkspaceInteractions({
       // and measuring after would snap back to the origin and make every move a no-op.
       const dropped = measuredRect(element);
       if (!cancel && preview?.parentId) {
-        const parent = [
-          ...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-id]"),
-        ].find((candidate) => candidate.dataset.elementId === preview.parentId);
+        const targetSurface = workspaceRef.current?.querySelector<HTMLElement>(
+          `[data-artboard-id="${CSS.escape(preview.artId)}"]`,
+        );
+        const parent = targetSurface
+          ? [...targetSurface.querySelectorAll<HTMLElement>("[data-element-id]")].find(
+              (candidate) => candidate.dataset.elementId === preview.parentId,
+            )
+          : undefined;
         const parentRect = parent ? measuredRect(parent) : null;
-        const properties =
+        const modelArtboard = ordered.find((candidate) => candidate.artId === activeDrag.artId);
+        const modelElement = modelArtboard
+          ? findCanvasElement(modelArtboard.canvas.root, activeDrag.elementId)
+          : null;
+        const properties: Record<string, unknown> =
           preview.auto || !parentRect
             ? {}
             : {
@@ -424,21 +465,41 @@ export function useCanvasWorkspaceInteractions({
                   offsetX: roundToLogicalPixel(dropped.x - parentRect.x, camera.zoom),
                   offsetY: roundToLogicalPixel(dropped.y - parentRect.y, camera.zoom),
                 },
+                ...(activeDrag.originAutoParent && modelElement
+                  ? fixedFillSizing(
+                      modelElement,
+                      roundToLogicalPixel(dropped.width, camera.zoom),
+                      roundToLogicalPixel(dropped.height, camera.zoom),
+                    )
+                  : {}),
               };
         // In an absolute parent rank is only z-order, which a reposition must not disturb.
-        const sameParent = preview.parentId === activeDrag.originParentId;
+        const sameArtboard = preview.artId === activeDrag.artId;
+        const sameParent = sameArtboard && preview.parentId === activeDrag.originParentId;
         const rank =
           !preview.auto && sameParent ? (activeDrag.originRank ?? preview.rank) : preview.rank;
-        const reparented = !sameParent || rank !== activeDrag.originRank;
+        const reparented = !sameArtboard || !sameParent || rank !== activeDrag.originRank;
         if (reparented) {
-          onMoveElement?.(
-            activeDrag.canvasId,
-            activeDrag.elementId,
-            preview.parentId,
-            rank,
-            properties,
-            preview.auto ? ["anchor"] : [],
-          );
+          if (sameArtboard) {
+            onMoveElement?.(
+              activeDrag.canvasId,
+              activeDrag.elementId,
+              preview.parentId,
+              rank,
+              properties,
+              preview.auto ? ["anchor"] : [],
+            );
+          } else {
+            onMoveElementBetweenCanvases?.(
+              activeDrag.canvasId,
+              preview.canvasId,
+              activeDrag.elementId,
+              preview.parentId,
+              rank,
+              properties,
+              preview.auto ? ["anchor"] : [],
+            );
+          }
           committed = true;
         } else if (Object.keys(properties).length > 0) {
           // Same parent, same rank — this is a reposition, not a reparent.
@@ -453,6 +514,10 @@ export function useCanvasWorkspaceInteractions({
     elementDrag.current = null;
     dragPreviewRef.current = null;
     setDragPreview(null);
+    if (committed && preview && preview.artId !== activeDrag.artId) {
+      setSelection({ artId: preview.artId, elementIds: [activeDrag.elementId] });
+      onFocusArtboard(preview.artId);
+    }
     // An edit lands a commit before geometry re-measures, so dropping the offset now would flash
     // the overlay back to the pre-drag position for a frame. Keep it, minus the translate, until
     // the re-measure lands. A cancelled or rejected drop changes nothing, so it clears at once.
@@ -468,9 +533,16 @@ export function useCanvasWorkspaceInteractions({
     if (event.button !== 0) return;
     const artboard = ordered.find((candidate) => candidate.artId === selection.artId);
     const measured = artboard ? geometry.get(artboard.artId) : undefined;
-    if (!artboard || !measured || selection.elementIds.length === 0) return;
-    const subjects = selection.elementIds.flatMap<ResizeSubject>((elementId) => {
-      const box = measured.elements.get(elementId);
+    if (!artboard || !measured) return;
+    const rootSelected =
+      selection.elementIds.length === 0 && measured.rootElementId === artboard.canvas.root.id;
+    const subjectIds =
+      selection.elementIds.length > 0 ? selection.elementIds : [artboard.canvas.root.id];
+    const subjects = subjectIds.flatMap<ResizeSubject>((elementId) => {
+      const box =
+        rootSelected && elementId === artboard.canvas.root.id
+          ? measured.rect
+          : measured.elements.get(elementId);
       if (!box) return [];
       const parentInfo = canvasElementParent(artboard.canvas.root, elementId);
       const parentElement = parentInfo
@@ -525,7 +597,7 @@ export function useCanvasWorkspaceInteractions({
       subjects,
       ratio: lockedAspectRatio(soleElement),
     };
-    setResizeDraft({ start, box: start, subjects, active: true });
+    setResizeDraft({ artId: artboard.artId, start, box: start, subjects, active: true });
   };
 
   const updateResize = (event: PointerEvent<HTMLElement>) => {
@@ -540,7 +612,13 @@ export function useCanvasWorkspaceInteractions({
       event.clientY - gesture.pointerStart.y,
       { constrain, ratio: gesture.ratio ?? undefined, min: camera.zoom },
     );
-    setResizeDraft({ start: gesture.start, box, subjects: gesture.subjects, active: true });
+    setResizeDraft({
+      artId: gesture.artId,
+      start: gesture.start,
+      box,
+      subjects: gesture.subjects,
+      active: true,
+    });
   };
 
   const finishResize = (event: PointerEvent<HTMLElement>, cancel = false) => {
@@ -557,15 +635,28 @@ export function useCanvasWorkspaceInteractions({
     }
     // An edge drag deliberately changes one axis, which is exactly what an aspect lock forbids.
     const unset = isCornerHandle(gesture.handle) ? [] : ["aspectRatio"];
+    const artboard = ordered.find((candidate) => candidate.artId === gesture.canvasId);
     for (const subject of gesture.subjects) {
       const next = scaleWithin(subject.start, gesture.start, box);
-      const properties: Record<string, unknown> = {
-        width: { mode: "fixed", value: Math.max(1, roundToLogicalPixel(next.width, camera.zoom)) },
-        height: {
-          mode: "fixed",
-          value: Math.max(1, roundToLogicalPixel(next.height, camera.zoom)),
-        },
-      };
+      const modelElement = artboard
+        ? findCanvasElement(artboard.canvas.root, subject.elementId)
+        : null;
+      const properties: Record<string, unknown> = modelElement
+        ? fixedResizeProperties(
+            modelElement,
+            Math.max(1, roundToLogicalPixel(next.width, camera.zoom)),
+            Math.max(1, roundToLogicalPixel(next.height, camera.zoom)),
+          )
+        : {
+            width: {
+              mode: "fixed",
+              value: Math.max(1, roundToLogicalPixel(next.width, camera.zoom)),
+            },
+            height: {
+              mode: "fixed",
+              value: Math.max(1, roundToLogicalPixel(next.height, camera.zoom)),
+            },
+          };
       // Only an absolutely positioned Element carries its own origin; in an auto-layout Frame the
       // parent decides where it sits, so resizing must not invent an anchor for it.
       if (!subject.autoParent && subject.parent) {
@@ -1035,17 +1126,17 @@ export function useCanvasWorkspaceInteractions({
 
   const workspaceBounds = workspaceRef.current?.getBoundingClientRect();
   const selectedGeometry = selection.artId ? geometry.get(selection.artId) : undefined;
-  // Only Elements get an outline. An artboard with nothing selected in it used to get one too,
-  // which put a dashed box around the whole Canvas — chrome the artboard's own outline and its
-  // name already carry (#217).
+  // Directly selecting a Canvas selects its root Frame, so Scenes and Blocks expose the same
+  // resize handles as nested Elements without making the backdrop a hit-test target.
+  const selectedIds =
+    selection.elementIds.length > 0
+      ? selection.elementIds
+      : selectedGeometry?.rootElementId
+        ? [selectedGeometry.rootElementId]
+        : [];
   const selectedRect =
-    selectedGeometry && selection.elementIds.length > 0
-      ? selectionRect(
-          selection.elementIds.flatMap((id) => {
-            const rect = selectedGeometry.elements.get(id);
-            return rect ? [rect] : [];
-          }),
-        )
+    selectedGeometry && selectedIds.length > 0
+      ? selectionRect(selectedCanvasRects(selectedGeometry, selectedIds))
       : null;
   // Only the dragged Element moves, so the offset applies when it is the whole selection.
   const liveOffset =
@@ -1056,6 +1147,19 @@ export function useCanvasWorkspaceInteractions({
       : null;
   // A resize in flight is the truth about where the box is; geometry has not caught up yet.
   const liveResize = resizeDraft?.box ?? null;
+  const resizePreview =
+    resizeDraft &&
+    workspaceBounds &&
+    resizeDraft.subjects.length === 1 &&
+    selectedGeometry?.rootElementId === resizeDraft.subjects[0]?.elementId
+      ? {
+          artId: resizeDraft.artId,
+          x: (resizeDraft.box.x - workspaceBounds.x - camera.x) / camera.zoom,
+          y: (resizeDraft.box.y - workspaceBounds.y - camera.y) / camera.zoom,
+          width: resizeDraft.box.width / camera.zoom,
+          height: resizeDraft.box.height / camera.zoom,
+        }
+      : null;
   const overlayRect = workspaceBounds
     ? liveResize
       ? {
@@ -1073,8 +1177,8 @@ export function useCanvasWorkspaceInteractions({
           }
         : null
     : null;
-  // Any Element selection can be resized; a multi-selection scales each Element within the box.
-  const resizable = selection.elementIds.length > 0;
+  // Any Element selection, including a directly selected Canvas root, can be resized.
+  const resizable = selectedIds.length > 0;
   const creationOverlayRect =
     creationDraft && workspaceBounds
       ? {
@@ -1117,6 +1221,7 @@ export function useCanvasWorkspaceInteractions({
     rubberbandRect,
     creationOverlayRect,
     overlayRect,
+    resizePreview,
     resizable,
     cancelCreation: () => {
       setCreationDraft(null);
