@@ -156,6 +156,15 @@ const TAILWIND: Record<string, Oklch[]> = {
 
 const NEUTRAL_REFERENCE = TAILWIND.blue.map((point) => ({ ...point, c: point.c * 0.08 }));
 
+// Base16 nominally reserves base06/base07 for lighter foreground shades, but
+// plenty of schemes (Catppuccin's rosewater/lavender being the worst offender)
+// put accent hues there. Only base00-base05 can be trusted to be neutral, so
+// the extreme steps are extrapolated from the reference curve instead.
+const NEUTRAL_ANCHOR_KEYS = ["base00", "base01", "base02", "base03", "base04", "base05"] as const;
+const NEUTRAL_MAX_CHROMA = 0.035;
+const NEUTRAL_LIGHTNESS_FLOOR = 0.09;
+const NEUTRAL_LIGHTNESS_CEILING = 0.985;
+
 function clamp(value: number, min = 0, max = 1): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -295,40 +304,98 @@ export function generateScale(seedHex: string, key: ColourKey): Record<Step, str
 }
 
 function interpolate(a: Oklch, b: Oklch, fraction: number): Oklch {
+  // Mix through Oklab so near-grey anchors whose hue angles straddle 0/360 do
+  // not swing through the entire colour wheel on the way past each other.
+  const [al, aa, ab] = oklchToOklab(a);
+  const [bl, ba, bb] = oklchToOklab(b);
+  const mixed: [number, number, number] = [
+    al + (bl - al) * fraction,
+    aa + (ba - aa) * fraction,
+    ab + (bb - ab) * fraction,
+  ];
   return {
-    l: a.l + (b.l - a.l) * fraction,
-    c: a.c + (b.c - a.c) * fraction,
-    h: a.h + (b.h - a.h) * fraction,
+    l: mixed[0],
+    c: Math.hypot(mixed[1], mixed[2]),
+    h: ((Math.atan2(mixed[2], mixed[1]) * 180) / Math.PI + 360) % 360,
   };
+}
+
+// A neutral may carry the scheme's tint, but chroma has to fall away as the
+// step approaches white or black — otherwise Gruvbox's cream base00 reads as
+// sickly yellow rather than a warm off-white.
+function neutralChromaCeiling(lightness: number): number {
+  return NEUTRAL_MAX_CHROMA * Math.sqrt(Math.max(0, 4 * lightness * (1 - lightness)));
+}
+
+function desaturateNeutral(color: Oklch): Oklch {
+  return { ...color, c: Math.min(color.c, neutralChromaCeiling(color.l)) };
+}
+
+// Continue the reference curve's lightness rolloff past the outermost trusted
+// anchor, compressed so the run lands exactly on `limit` when it would
+// otherwise overshoot into clipping.
+function extrapolateNeutral(
+  anchor: Oklch,
+  anchorIndex: number,
+  targetIndices: number[],
+  limit: number,
+): Map<number, Oklch> {
+  const furthest = targetIndices[targetIndices.length - 1];
+  const needed = NEUTRAL_REFERENCE[furthest].l - NEUTRAL_REFERENCE[anchorIndex].l;
+  const available = limit - anchor.l;
+  const factor = needed === 0 ? 0 : Math.min(1, available / needed);
+  return new Map(
+    targetIndices.map((index) => [
+      STEPS[index],
+      {
+        ...anchor,
+        l: clamp(
+          anchor.l + (NEUTRAL_REFERENCE[index].l - NEUTRAL_REFERENCE[anchorIndex].l) * factor,
+        ),
+      },
+    ]),
+  );
 }
 
 export function generateNeutralScale(scheme: Scheme): Record<Step, string> {
   const source = Object.fromEntries(
     Object.entries(scheme.palette).map(([key, value]) => [key, rgbToOklch(parseHex(value))]),
   );
-  const anchorSteps =
-    scheme.variant === "dark"
-      ? [900, 800, 700, 600, 500, 300, 100, 50]
-      : [50, 100, 200, 300, 500, 700, 900, 950];
-  const anchors = [
-    "base00",
-    "base01",
-    "base02",
-    "base03",
-    "base04",
-    "base05",
-    "base06",
-    "base07",
-  ].map((key, index) => ({ step: anchorSteps[index], color: source[key] }));
-  const result = new Map<number, Oklch>(anchors.map(({ step, color }) => [step, color]));
-  if (scheme.variant === "dark") {
-    const base00 = result.get(900)!;
-    const base01 = result.get(800)!;
-    result.set(950, {
-      l: clamp(base00.l - Math.abs(base01.l - base00.l)),
-      c: base00.c,
-      h: base00.h,
-    });
+  const dark = scheme.variant === "dark";
+  // base00 is the background either way, but base01 sits on either side of it
+  // depending on the scheme: Gruvbox's bg1 is lighter, Catppuccin's mantle is
+  // darker. Anchor a darker base01 at the bottom of the scale rather than
+  // letting the monotonic pass flatten 800-950 into one colour.
+  const mantle = dark && source.base01.l < source.base00.l;
+  const anchorSteps = dark
+    ? [900, mantle ? 950 : 800, 700, 600, 500, 300]
+    : [50, 100, 200, 300, 500, 700];
+  const result = new Map<number, Oklch>(
+    NEUTRAL_ANCHOR_KEYS.map((key, index) => [anchorSteps[index], source[key]]),
+  );
+  if (dark) {
+    if (!mantle) {
+      const base00 = result.get(900)!;
+      const base01 = result.get(800)!;
+      result.set(950, { ...base00, l: clamp(base00.l - Math.abs(base01.l - base00.l)) });
+    }
+    // base05 anchors step 300; 100 and 50 continue upward toward white.
+    for (const [step, color] of extrapolateNeutral(
+      result.get(300)!,
+      STEPS.indexOf(300),
+      [1, 0],
+      NEUTRAL_LIGHTNESS_CEILING,
+    ))
+      result.set(step, color);
+  } else {
+    // base05 anchors step 700; 800, 900 and 950 continue downward toward black.
+    for (const [step, color] of extrapolateNeutral(
+      result.get(700)!,
+      STEPS.indexOf(700),
+      [8, 9, 10],
+      NEUTRAL_LIGHTNESS_FLOOR,
+    ))
+      result.set(step, color);
   }
   for (let index = 0; index < STEPS.length; index += 1) {
     const step = STEPS[index];
@@ -350,10 +417,9 @@ export function generateNeutralScale(scheme: Scheme): Record<Step, string> {
     const previous = result.get(ordered[index - 1])!;
     if (current.l > previous.l) current.l = previous.l;
   }
-  return Object.fromEntries(STEPS.map((step) => [step, toHex(result.get(step)!)])) as Record<
-    Step,
-    string
-  >;
+  return Object.fromEntries(
+    STEPS.map((step) => [step, toHex(desaturateNeutral(result.get(step)!))]),
+  ) as Record<Step, string>;
 }
 
 export function parseScheme(source: string, sourcePath = "inline"): Scheme {
@@ -427,14 +493,15 @@ function semanticValues(
   const foreground = dark ? neutral(50) : neutral(950);
   const primaryValue = hue(primary, 500);
   const primaryForeground = hue(primary, 100);
-  // Floating surfaces (card/popover/sidebar) sit above the page background
-  // so `bg-popover` reads as a distinct panel. Catppuccin's base16 mantle
-  // is darker than base, so neutral-800 collapses onto background after
-  // luminance clamping — use 700 instead. Keep muted one step lighter so
+  // Floating surfaces (card/popover/sidebar) sit above the page background so
+  // `bg-popover` reads as a distinct panel. Keep muted one step lighter so
   // `data-highlighted:bg-muted` still shows on popover menus.
   const surface = neutral(dark ? 700 : 100);
+  // Dark backgrounds sit at 800, not 900: the darkest steps hold a scheme's
+  // below-background shades (Catppuccin's mantle) and read as too dark for a
+  // full-page surface.
   return {
-    background: neutral(dark ? 900 : 50),
+    background: neutral(dark ? 800 : 50),
     foreground: neutral(dark ? 100 : 900),
     card: surface,
     "card-foreground": foreground,
@@ -555,7 +622,7 @@ function cssThemeBlock(theme: GeneratedTheme, defaultPalette: string): string {
   // muted stays one step lighter for hover contrast on those surfaces.
   const surface = neutral(dark ? 700 : 100);
   const appValues: Record<string, string> = {
-    background: neutral(dark ? 900 : 50),
+    background: neutral(dark ? 800 : 50),
     foreground: neutral(dark ? 100 : 900),
     card: surface,
     "card-foreground": foreground,

@@ -30,10 +30,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#94e2d5",
-      "background": "#d2beba",
+      "background": "#eef1fb",
       "metric": {
-        "apcaLc": -8.544429967582179,
-        "wcagRatio": 1.1933006504816877
+        "apcaLc": 13.895730400897968,
+        "wcagRatio": 1.320033991560169
       },
       "status": "violation"
     },
@@ -43,10 +43,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#94e2d5",
-      "background": "#b4cab8",
+      "background": "#e0e4f2",
       "metric": {
-        "apcaLc": -7.326271253037081,
-        "wcagRatio": 1.1670002590573936
+        "apcaLc": 6.7461932146088435,
+        "wcagRatio": 1.173807975529224
       },
       "status": "violation"
     },
@@ -56,10 +56,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#94e2d5",
-      "background": "#b9c2df",
+      "background": "#d2d6e7",
       "metric": {
-        "apcaLc": -8.404958350173626,
-        "wcagRatio": 1.1902410365357052
+        "apcaLc": -0.7378518722617109,
+        "wcagRatio": 1.0293872363759995
       },
       "status": "violation"
     },
@@ -69,10 +69,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#94e2d5",
-      "background": "#9096b0",
+      "background": "#9196ac",
       "metric": {
-        "apcaLc": -31.88040396716846,
-        "wcagRatio": 1.964867339648628
+        "apcaLc": -31.953752305614795,
+        "wcagRatio": 1.9684656414294588
       },
       "status": "violation"
     },
@@ -82,10 +82,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#94e2d5",
-      "background": "#b4befe",
+      "background": "#f8faff",
       "metric": {
-        "apcaLc": -8.901188767073489,
-        "wcagRatio": 1.2011850907933874
+        "apcaLc": 18.864902441566446,
+        "wcagRatio": 1.4263556464717464
       },
       "status": "violation"
     },
@@ -134,10 +134,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#94e2d5",
-      "background": "#181825",
+      "background": "#272839",
       "metric": {
-        "apcaLc": -78.63465983264882,
-        "wcagRatio": 11.786049182409315
+        "apcaLc": -75.32589917951385,
+        "wcagRatio": 9.730747431029185
       },
       "status": "pass"
     },
@@ -147,10 +147,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#94e2d5",
-      "background": "#181827",
+      "background": "#1e1e2e",
       "metric": {
-        "apcaLc": -78.59973166831729,
-        "wcagRatio": 11.760660289941855
+        "apcaLc": -77.52071465710432,
+        "wcagRatio": 11.011349915201148
       },
       "status": "pass"
     },
@@ -160,10 +160,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#94e2d5",
-      "background": "#181827",
+      "background": "#181825",
       "metric": {
-        "apcaLc": -78.59973166831729,
-        "wcagRatio": 11.760660289941855
+        "apcaLc": -78.63465983264882,
+        "wcagRatio": 11.786049182409315
       },
       "status": "pass"
     },
@@ -186,10 +186,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#89b4fa",
-      "background": "#d2beba",
+      "background": "#eef1fb",
       "metric": {
-        "apcaLc": 5.9029376828079725,
-        "wcagRatio": 1.1847203175838543
+        "apcaLc": 31.269311575256552,
+        "wcagRatio": 1.8661683886116736
       },
       "status": "violation"
     },
@@ -199,10 +199,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#89b4fa",
-      "background": "#b4cab8",
+      "background": "#e0e4f2",
       "metric": {
-        "apcaLc": 7.010921147762389,
-        "wcagRatio": 1.2114200615118778
+        "apcaLc": 24.11977438896743,
+        "wcagRatio": 1.6594446447881908
       },
       "status": "violation"
     },
@@ -212,10 +212,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#89b4fa",
-      "background": "#b9c2df",
+      "background": "#d2d6e7",
       "metric": {
-        "apcaLc": 6.0299181509713655,
-        "wcagRatio": 1.1877657400609
+        "apcaLc": 16.635729302096873,
+        "wcagRatio": 1.4552730705780923
       },
       "status": "violation"
     },
@@ -225,10 +225,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#89b4fa",
-      "background": "#9096b0",
+      "background": "#9196ac",
       "metric": {
-        "apcaLc": -13.546194386762114,
-        "wcagRatio": 1.3898486830398797
+        "apcaLc": -13.619542725208452,
+        "wcagRatio": 1.3923939413839683
       },
       "status": "violation"
     },
@@ -238,10 +238,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#89b4fa",
-      "background": "#b4befe",
+      "background": "#f8faff",
       "metric": {
-        "apcaLc": 5.577984237510625,
-        "wcagRatio": 1.1769439501433643
+        "apcaLc": 36.238483615925034,
+        "wcagRatio": 2.016478238728757
       },
       "status": "violation"
     },
@@ -290,12 +290,12 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#89b4fa",
-      "background": "#181825",
+      "background": "#272839",
       "metric": {
-        "apcaLc": -60.30045025224248,
-        "wcagRatio": 8.336860511582515
+        "apcaLc": -56.99168959910751,
+        "wcagRatio": 6.883043057974648
       },
-      "status": "pass"
+      "status": "violation"
     },
     {
       "id": "catppuccin.dark.blue.text-on-neutral-900",
@@ -303,12 +303,12 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#89b4fa",
-      "background": "#181827",
+      "background": "#1e1e2e",
       "metric": {
-        "apcaLc": -60.26552208791095,
-        "wcagRatio": 8.3189016814632
+        "apcaLc": -59.18650507669797,
+        "wcagRatio": 7.788877075472382
       },
-      "status": "pass"
+      "status": "violation"
     },
     {
       "id": "catppuccin.dark.blue.text-on-neutral-950",
@@ -316,10 +316,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#89b4fa",
-      "background": "#181827",
+      "background": "#181825",
       "metric": {
-        "apcaLc": -60.26552208791095,
-        "wcagRatio": 8.3189016814632
+        "apcaLc": -60.30045025224248,
+        "wcagRatio": 8.336860511582515
       },
       "status": "pass"
     },
@@ -552,10 +552,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#a6e3a1",
-      "background": "#d2beba",
+      "background": "#eef1fb",
       "metric": {
-        "apcaLc": -8.648706734046879,
-        "wcagRatio": 1.1954278500177729
+        "apcaLc": 13.797817423274376,
+        "wcagRatio": 1.3176850620999578
       },
       "status": "violation"
     },
@@ -565,10 +565,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#a6e3a1",
-      "background": "#b4cab8",
+      "background": "#e0e4f2",
       "metric": {
-        "apcaLc": -7.430548019501783,
-        "wcagRatio": 1.1690805750353293
+        "apcaLc": 6.648280236985249,
+        "wcagRatio": 1.1717192473964788
       },
       "status": "violation"
     },
@@ -578,10 +578,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#a6e3a1",
-      "background": "#b9c2df",
+      "background": "#d2d6e7",
       "metric": {
-        "apcaLc": -8.509235116638328,
-        "wcagRatio": 1.1923627819480842
+        "apcaLc": -0.8357648498853062,
+        "wcagRatio": 1.0275554971776544
       },
       "status": "violation"
     },
@@ -591,10 +591,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#a6e3a1",
-      "background": "#9096b0",
+      "background": "#9196ac",
       "metric": {
-        "apcaLc": -31.98468073363316,
-        "wcagRatio": 1.96836994805807
+        "apcaLc": -32.0580290720795,
+        "wcagRatio": 1.971974664237381
       },
       "status": "violation"
     },
@@ -604,10 +604,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#a6e3a1",
-      "background": "#b4befe",
+      "background": "#f8faff",
       "metric": {
-        "apcaLc": -9.00546553353819,
-        "wcagRatio": 1.2033263452767875
+        "apcaLc": 18.766989463942853,
+        "wcagRatio": 1.4238175233475259
       },
       "status": "violation"
     },
@@ -656,10 +656,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#a6e3a1",
-      "background": "#181825",
+      "background": "#272839",
       "metric": {
-        "apcaLc": -78.73893659911353,
-        "wcagRatio": 11.807059208962956
+        "apcaLc": -75.43017594597855,
+        "wcagRatio": 9.74809363913918
       },
       "status": "pass"
     },
@@ -669,10 +669,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#a6e3a1",
-      "background": "#181827",
+      "background": "#1e1e2e",
       "metric": {
-        "apcaLc": -78.704008434782,
-        "wcagRatio": 11.781625057792038
+        "apcaLc": -77.62499142356903,
+        "wcagRatio": 11.030978948690597
       },
       "status": "pass"
     },
@@ -682,10 +682,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#a6e3a1",
-      "background": "#181827",
+      "background": "#181825",
       "metric": {
-        "apcaLc": -78.704008434782,
-        "wcagRatio": 11.781625057792038
+        "apcaLc": -78.73893659911353,
+        "wcagRatio": 11.807059208962956
       },
       "status": "pass"
     },
@@ -708,10 +708,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#fab387",
-      "background": "#d2beba",
+      "background": "#eef1fb",
       "metric": {
-        "apcaLc": 1.0630590146979615,
-        "wcagRatio": 1.0040583592930439
+        "apcaLc": 22.958852694271712,
+        "wcagRatio": 1.5688305427742095
       },
       "status": "violation"
     },
@@ -721,10 +721,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#fab387",
-      "background": "#b4cab8",
+      "background": "#e0e4f2",
       "metric": {
-        "apcaLc": -1.2995377332224525,
-        "wcagRatio": 1.018403700452306
+        "apcaLc": 15.809315507982587,
+        "wcagRatio": 1.3950442300244885
       },
       "status": "violation"
     },
@@ -734,10 +734,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#fab387",
-      "background": "#b9c2df",
+      "background": "#d2d6e7",
       "metric": {
-        "apcaLc": 1.2025306321065137,
-        "wcagRatio": 1.001483961166777
+        "apcaLc": 8.325270421112034,
+        "wcagRatio": 1.223403448012643
       },
       "status": "violation"
     },
@@ -747,10 +747,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#fab387",
-      "background": "#9096b0",
+      "background": "#9196ac",
       "metric": {
-        "apcaLc": -22.27291498488832,
-        "wcagRatio": 1.6532643944170586
+        "apcaLc": -22.34626332333466,
+        "wcagRatio": 1.6562920513456323
       },
       "status": "violation"
     },
@@ -760,10 +760,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#fab387",
-      "background": "#b4befe",
+      "background": "#f8faff",
       "metric": {
-        "apcaLc": 0.7063002152066518,
-        "wcagRatio": 1.0106924277485614
+        "apcaLc": 27.928024734940188,
+        "wcagRatio": 1.6951914248803117
       },
       "status": "violation"
     },
@@ -812,10 +812,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#fab387",
-      "background": "#181825",
+      "background": "#272839",
       "metric": {
-        "apcaLc": -69.02717085036869,
-        "wcagRatio": 9.916931830934772
+        "apcaLc": -65.71841019723371,
+        "wcagRatio": 8.187574771161241
       },
       "status": "pass"
     },
@@ -825,10 +825,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#fab387",
-      "background": "#181827",
+      "background": "#1e1e2e",
       "metric": {
-        "apcaLc": -68.99224268603716,
-        "wcagRatio": 9.895569293585233
+        "apcaLc": -67.91322567482418,
+        "wcagRatio": 9.265090004765842
       },
       "status": "pass"
     },
@@ -838,10 +838,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#fab387",
-      "background": "#181827",
+      "background": "#181825",
       "metric": {
-        "apcaLc": -68.99224268603716,
-        "wcagRatio": 9.895569293585233
+        "apcaLc": -69.02717085036869,
+        "wcagRatio": 9.916931830934772
       },
       "status": "pass"
     },
@@ -864,10 +864,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#cba6f7",
-      "background": "#d2beba",
+      "background": "#eef1fb",
       "metric": {
-        "apcaLc": 4.246698748512638,
-        "wcagRatio": 1.1429712032834307
+        "apcaLc": 29.613072640961217,
+        "wcagRatio": 1.8004052914455175
       },
       "status": "violation"
     },
@@ -877,10 +877,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#cba6f7",
-      "background": "#b4cab8",
+      "background": "#e0e4f2",
       "metric": {
-        "apcaLc": 5.354682213467053,
-        "wcagRatio": 1.1687300579192736
+        "apcaLc": 22.463535454672094,
+        "wcagRatio": 1.6009664173768636
       },
       "status": "violation"
     },
@@ -890,10 +890,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#cba6f7",
-      "background": "#b9c2df",
+      "background": "#d2d6e7",
       "metric": {
-        "apcaLc": 4.373679216676029,
-        "wcagRatio": 1.1459093061769425
+        "apcaLc": 14.97949036780154,
+        "wcagRatio": 1.4039897753900759
       },
       "status": "violation"
     },
@@ -903,10 +903,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#cba6f7",
-      "background": "#9096b0",
+      "background": "#9196ac",
       "metric": {
-        "apcaLc": -15.278673553004746,
-        "wcagRatio": 1.4406154489582477
+        "apcaLc": -15.352021891451088,
+        "wcagRatio": 1.4432536775199816
       },
       "status": "violation"
     },
@@ -916,10 +916,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#cba6f7",
-      "background": "#b4befe",
+      "background": "#f8faff",
       "metric": {
-        "apcaLc": 3.9217453032152907,
-        "wcagRatio": 1.1354688722110997
+        "apcaLc": 34.582244681629696,
+        "wcagRatio": 1.9454182769609913
       },
       "status": "violation"
     },
@@ -968,12 +968,12 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#cba6f7",
-      "background": "#181825",
+      "background": "#272839",
       "metric": {
-        "apcaLc": -62.03292941848512,
-        "wcagRatio": 8.64137959430733
+        "apcaLc": -58.724168765350136,
+        "wcagRatio": 7.134458798403292
       },
-      "status": "pass"
+      "status": "violation"
     },
     {
       "id": "catppuccin.dark.purple.text-on-neutral-900",
@@ -981,10 +981,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#cba6f7",
-      "background": "#181827",
+      "background": "#1e1e2e",
       "metric": {
-        "apcaLc": -61.99800125415358,
-        "wcagRatio": 8.622764785061682
+        "apcaLc": -60.918984242940596,
+        "wcagRatio": 8.07338006064095
       },
       "status": "pass"
     },
@@ -994,10 +994,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#cba6f7",
-      "background": "#181827",
+      "background": "#181825",
       "metric": {
-        "apcaLc": -61.99800125415358,
-        "wcagRatio": 8.622764785061682
+        "apcaLc": -62.03292941848512,
+        "wcagRatio": 8.64137959430733
       },
       "status": "pass"
     },
@@ -1020,10 +1020,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#efc3cf",
-      "background": "#d2beba",
+      "background": "#eef1fb",
       "metric": {
-        "apcaLc": -5.518205340512628,
-        "wcagRatio": 1.1322450974899128
+        "apcaLc": 16.74141164063887,
+        "wcagRatio": 1.3912159339693868
       },
       "status": "violation"
     },
@@ -1033,10 +1033,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#efc3cf",
-      "background": "#b4cab8",
+      "background": "#e0e4f2",
       "metric": {
-        "apcaLc": -4.300046625967529,
-        "wcagRatio": 1.1072903727604806
+        "apcaLc": 9.591874454349744,
+        "wcagRatio": 1.2371047786780942
       },
       "status": "violation"
     },
@@ -1046,10 +1046,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#efc3cf",
-      "background": "#b9c2df",
+      "background": "#d2d6e7",
       "metric": {
-        "apcaLc": -5.378733723104075,
-        "wcagRatio": 1.1293420295253123
+        "apcaLc": 2.1078293674791904,
+        "wcagRatio": 1.0848962486021898
       },
       "status": "violation"
     },
@@ -1059,10 +1059,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#efc3cf",
-      "background": "#9096b0",
+      "background": "#9196ac",
       "metric": {
-        "apcaLc": -28.854179340098906,
-        "wcagRatio": 1.8643343667307812
+        "apcaLc": -28.927527678545246,
+        "wcagRatio": 1.8677485604203516
       },
       "status": "violation"
     },
@@ -1072,10 +1072,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#efc3cf",
-      "background": "#b4befe",
+      "background": "#f8faff",
       "metric": {
-        "apcaLc": -5.874964140003937,
-        "wcagRatio": 1.13972612826432
+        "apcaLc": 21.710583681307348,
+        "wcagRatio": 1.5032709123901742
       },
       "status": "violation"
     },
@@ -1124,10 +1124,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#efc3cf",
-      "background": "#181825",
+      "background": "#272839",
       "metric": {
-        "apcaLc": -75.60843520557927,
-        "wcagRatio": 11.183012763942784
+        "apcaLc": -72.2996745524443,
+        "wcagRatio": 9.232871086802808
       },
       "status": "pass"
     },
@@ -1137,10 +1137,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#efc3cf",
-      "background": "#181827",
+      "background": "#1e1e2e",
       "metric": {
-        "apcaLc": -75.57350704124775,
-        "wcagRatio": 11.15892290107765
+        "apcaLc": -74.49449003003477,
+        "wcagRatio": 10.447951195869889
       },
       "status": "pass"
     },
@@ -1150,10 +1150,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#efc3cf",
-      "background": "#181827",
+      "background": "#181825",
       "metric": {
-        "apcaLc": -75.57350704124775,
-        "wcagRatio": 11.15892290107765
+        "apcaLc": -75.60843520557927,
+        "wcagRatio": 11.183012763942784
       },
       "status": "pass"
     },
@@ -1175,11 +1175,11 @@
       "palette": "catppuccin",
       "mode": "dark",
       "kind": "semantic",
-      "foreground": "#b4befe",
+      "foreground": "#f8faff",
       "background": "#313244",
       "metric": {
-        "apcaLc": -62.280415228964436,
-        "wcagRatio": 7.026974202155179
+        "apcaLc": -95.58547773478624,
+        "wcagRatio": 12.039435319777347
       },
       "status": "pass"
     },
@@ -1188,11 +1188,11 @@
       "palette": "catppuccin",
       "mode": "dark",
       "kind": "semantic",
-      "foreground": "#b4befe",
+      "foreground": "#f8faff",
       "background": "#f0648a",
       "metric": {
-        "apcaLc": -23.292545550313033,
-        "wcagRatio": 1.7022964962005567
+        "apcaLc": -56.59760805613484,
+        "wcagRatio": 2.916573758703208
       },
       "status": "violation"
     },
@@ -1201,11 +1201,11 @@
       "palette": "catppuccin",
       "mode": "dark",
       "kind": "semantic",
-      "foreground": "#d2beba",
-      "background": "#181827",
+      "foreground": "#eef1fb",
+      "background": "#272839",
       "metric": {
-        "apcaLc": -68.7783768931558,
-        "wcagRatio": 9.855571842011942
+        "apcaLc": -92.98969353139684,
+        "wcagRatio": 12.844917372245314
       },
       "status": "pass"
     },
@@ -1214,11 +1214,11 @@
       "palette": "catppuccin",
       "mode": "dark",
       "kind": "semantic",
-      "foreground": "#9096b0",
+      "foreground": "#9196ac",
       "background": "#45475a",
       "metric": {
-        "apcaLc": -33.006674538384836,
-        "wcagRatio": 3.11702667526326
+        "apcaLc": -32.93419864323005,
+        "wcagRatio": 3.11132883507726
       },
       "status": "violation"
     },
@@ -1227,11 +1227,11 @@
       "palette": "catppuccin",
       "mode": "dark",
       "kind": "semantic",
-      "foreground": "#b4befe",
+      "foreground": "#f8faff",
       "background": "#313244",
       "metric": {
-        "apcaLc": -62.280415228964436,
-        "wcagRatio": 7.026974202155179
+        "apcaLc": -95.58547773478624,
+        "wcagRatio": 12.039435319777347
       },
       "status": "pass"
     },
@@ -1253,37 +1253,37 @@
       "palette": "catppuccin",
       "mode": "dark",
       "kind": "semantic",
-      "foreground": "#b4befe",
+      "foreground": "#f8faff",
       "background": "#45475a",
       "metric": {
-        "apcaLc": -55.51331403353637,
-        "wcagRatio": 5.098751189954452
+        "apcaLc": -88.81837653935816,
+        "wcagRatio": 8.735777789573675
       },
-      "status": "violation"
+      "status": "pass"
     },
     {
       "id": "catppuccin.dark.semantic.sidebar-accent-foreground-on-sidebar-accent",
       "palette": "catppuccin",
       "mode": "dark",
       "kind": "semantic",
-      "foreground": "#b4befe",
+      "foreground": "#f8faff",
       "background": "#45475a",
       "metric": {
-        "apcaLc": -55.51331403353637,
-        "wcagRatio": 5.098751189954452
+        "apcaLc": -88.81837653935816,
+        "wcagRatio": 8.735777789573675
       },
-      "status": "violation"
+      "status": "pass"
     },
     {
       "id": "catppuccin.dark.semantic.sidebar-foreground-on-sidebar",
       "palette": "catppuccin",
       "mode": "dark",
       "kind": "semantic",
-      "foreground": "#b4befe",
+      "foreground": "#f8faff",
       "background": "#313244",
       "metric": {
-        "apcaLc": -62.280415228964436,
-        "wcagRatio": 7.026974202155179
+        "apcaLc": -95.58547773478624,
+        "wcagRatio": 12.039435319777347
       },
       "status": "pass"
     },
@@ -1319,10 +1319,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#f9e2af",
-      "background": "#d2beba",
+      "background": "#eef1fb",
       "metric": {
-        "apcaLc": -18.2905277074399,
-        "wcagRatio": 1.39872002182401
+        "apcaLc": 4.783439066597314,
+        "wcagRatio": 1.1261706390193384
       },
       "status": "violation"
     },
@@ -1332,10 +1332,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#f9e2af",
-      "background": "#b4cab8",
+      "background": "#e0e4f2",
       "metric": {
-        "apcaLc": -17.072368992894802,
-        "wcagRatio": 1.3678921796937644
+        "apcaLc": -2.366098119691812,
+        "wcagRatio": 1.001419725809756
       },
       "status": "violation"
     },
@@ -1345,10 +1345,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#f9e2af",
-      "background": "#b9c2df",
+      "background": "#d2d6e7",
       "metric": {
-        "apcaLc": -18.151056090031346,
-        "wcagRatio": 1.3951337141457478
+        "apcaLc": -6.38201799700269,
+        "wcagRatio": 1.1386811602361155
       },
       "status": "violation"
     },
@@ -1358,10 +1358,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#f9e2af",
-      "background": "#9096b0",
+      "background": "#9196ac",
       "metric": {
-        "apcaLc": -41.62650170702618,
-        "wcagRatio": 2.3031071734396815
+        "apcaLc": -41.699850045472516,
+        "wcagRatio": 2.307324900752058
       },
       "status": "violation"
     },
@@ -1371,10 +1371,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#f9e2af",
-      "background": "#b4befe",
+      "background": "#f8faff",
       "metric": {
-        "apcaLc": -18.64728650693121,
-        "wcagRatio": 1.4079617200669456
+        "apcaLc": 9.752611107265793,
+        "wcagRatio": 1.2168776411260391
       },
       "status": "violation"
     },
@@ -1423,10 +1423,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#f9e2af",
-      "background": "#181825",
+      "background": "#272839",
       "metric": {
-        "apcaLc": -88.38075757250655,
-        "wcagRatio": 13.814945096178336
+        "apcaLc": -85.07199691937157,
+        "wcagRatio": 11.405835782959658
       },
       "status": "pass"
     },
@@ -1436,10 +1436,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#f9e2af",
-      "background": "#181827",
+      "background": "#1e1e2e",
       "metric": {
-        "apcaLc": -88.345829408175,
-        "wcagRatio": 13.785185661947041
+        "apcaLc": -87.26681239696204,
+        "wcagRatio": 12.906886112468698
       },
       "status": "pass"
     },
@@ -1449,10 +1449,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#f9e2af",
-      "background": "#181827",
+      "background": "#181825",
       "metric": {
-        "apcaLc": -88.345829408175,
-        "wcagRatio": 13.785185661947041
+        "apcaLc": -88.38075757250655,
+        "wcagRatio": 13.814945096178336
       },
       "status": "pass"
     },
@@ -1566,10 +1566,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#21747a",
-      "background": "#4c4f69",
+      "background": "#4d5065",
       "metric": {
-        "apcaLc": -8.975477610009632,
-        "wcagRatio": 1.4617199135898475
+        "apcaLc": -8.786461145606946,
+        "wcagRatio": 1.449996934597548
       },
       "status": "violation"
     },
@@ -1579,10 +1579,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#21747a",
-      "background": "#2b5d40",
+      "background": "#3c3e52",
       "metric": {
-        "apcaLc": -7.982030240078998,
-        "wcagRatio": 1.4015908473244996
+        "apcaLc": -15.020195650050983,
+        "wcagRatio": 1.9190271418854778
       },
       "status": "violation"
     },
@@ -1592,10 +1592,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#21747a",
-      "background": "#813829",
+      "background": "#313345",
       "metric": {
-        "apcaLc": -9.863304930373246,
-        "wcagRatio": 1.5186401935736826
+        "apcaLc": -18.536992873907103,
+        "wcagRatio": 2.2743896168093234
       },
       "status": "violation"
     },
@@ -1605,10 +1605,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#21747a",
-      "background": "#3740af",
+      "background": "#1a1b2a",
       "metric": {
-        "apcaLc": -10.011864381590483,
-        "wcagRatio": 1.5284721223824136
+        "apcaLc": -24.45458655959427,
+        "wcagRatio": 3.114626629345654
       },
       "status": "violation"
     },
@@ -1722,10 +1722,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#1852e0",
-      "background": "#4c4f69",
+      "background": "#4d5065",
       "metric": {
-        "apcaLc": -4.958607114030304,
-        "wcagRatio": 1.2633182887367977
+        "apcaLc": -4.76959064962762,
+        "wcagRatio": 1.2531864887785706
       },
       "status": "violation"
     },
@@ -1735,10 +1735,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#1852e0",
-      "background": "#2b5d40",
+      "background": "#3c3e52",
       "metric": {
-        "apcaLc": -3.9651597440996724,
-        "wcagRatio": 1.211350638579303
+        "apcaLc": -11.003325154071659,
+        "wcagRatio": 1.658554462032519
       },
       "status": "violation"
     },
@@ -1748,10 +1748,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#1852e0",
-      "background": "#813829",
+      "background": "#313345",
       "metric": {
-        "apcaLc": -5.846434434393921,
-        "wcagRatio": 1.3125126864015306
+        "apcaLc": -14.520122377927777,
+        "wcagRatio": 1.9656830093884357
       },
       "status": "violation"
     },
@@ -1761,10 +1761,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#1852e0",
-      "background": "#3740af",
+      "background": "#1a1b2a",
       "metric": {
-        "apcaLc": -5.994993885611155,
-        "wcagRatio": 1.3210101114979182
+        "apcaLc": -20.437716063614943,
+        "wcagRatio": 2.691873283559227
       },
       "status": "violation"
     },
@@ -2088,10 +2088,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#357d2b",
-      "background": "#4c4f69",
+      "background": "#4d5065",
       "metric": {
-        "apcaLc": -10.985126168284278,
-        "wcagRatio": 1.5666207994554224
+        "apcaLc": -10.796109703881596,
+        "wcagRatio": 1.5540565164144862
       },
       "status": "violation"
     },
@@ -2101,10 +2101,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#357d2b",
-      "background": "#2b5d40",
+      "background": "#3c3e52",
       "metric": {
-        "apcaLc": -9.991678798353648,
-        "wcagRatio": 1.5021765478670435
+        "apcaLc": -17.029844208325635,
+        "wcagRatio": 2.0567468550208594
       },
       "status": "violation"
     },
@@ -2114,10 +2114,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#357d2b",
-      "background": "#813829",
+      "background": "#313345",
       "metric": {
-        "apcaLc": -11.872953488647894,
-        "wcagRatio": 1.6276259849936716
+        "apcaLc": -20.54664143218175,
+        "wcagRatio": 2.437612053193062
       },
       "status": "violation"
     },
@@ -2127,10 +2127,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#357d2b",
-      "background": "#3740af",
+      "background": "#1a1b2a",
       "metric": {
-        "apcaLc": -12.021512939865131,
-        "wcagRatio": 1.638163505914964
+        "apcaLc": -26.464235117868917,
+        "wcagRatio": 3.338148994691596
       },
       "status": "violation"
     },
@@ -2244,10 +2244,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#c33213",
-      "background": "#4c4f69",
+      "background": "#4d5065",
       "metric": {
-        "apcaLc": -8.545259285886425,
-        "wcagRatio": 1.4397451665696546
+        "apcaLc": -8.35624282148374,
+        "wcagRatio": 1.428198424827244
       },
       "status": "violation"
     },
@@ -2257,10 +2257,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#c33213",
-      "background": "#2b5d40",
+      "background": "#3c3e52",
       "metric": {
-        "apcaLc": -7.551811915955792,
-        "wcagRatio": 1.3805200498280539
+        "apcaLc": -14.589977325927778,
+        "wcagRatio": 1.8901774726870528
       },
       "status": "violation"
     },
@@ -2270,10 +2270,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#c33213",
-      "background": "#813829",
+      "background": "#313345",
       "metric": {
-        "apcaLc": -9.43308660625004,
-        "wcagRatio": 1.4958097362759362
+        "apcaLc": -18.106774549783896,
+        "wcagRatio": 2.240197610536388
       },
       "status": "violation"
     },
@@ -2283,10 +2283,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#c33213",
-      "background": "#3740af",
+      "background": "#1a1b2a",
       "metric": {
-        "apcaLc": -9.581646057467275,
-        "wcagRatio": 1.5054938569127434
+        "apcaLc": -24.02436823547106,
+        "wcagRatio": 3.067802931039364
       },
       "status": "violation"
     },
@@ -2400,10 +2400,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#732dcf",
-      "background": "#4c4f69",
+      "background": "#4d5065",
       "metric": {
-        "apcaLc": -2.350844241971082,
-        "wcagRatio": 1.1428478947401755
+        "apcaLc": -2.1618277775683965,
+        "wcagRatio": 1.1336822661290622
       },
       "status": "violation"
     },
@@ -2413,10 +2413,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#732dcf",
-      "background": "#2b5d40",
+      "background": "#3c3e52",
       "metric": {
-        "apcaLc": -1.3573968720404495,
-        "wcagRatio": 1.0958358945921582
+        "apcaLc": -8.395562282012435,
+        "wcagRatio": 1.5003942333021159
       },
       "status": "violation"
     },
@@ -2426,10 +2426,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#732dcf",
-      "background": "#813829",
+      "background": "#313345",
       "metric": {
-        "apcaLc": -3.238671562334698,
-        "wcagRatio": 1.1873511005477693
+        "apcaLc": -11.912359505868556,
+        "wcagRatio": 1.7782349143796345
       },
       "status": "violation"
     },
@@ -2439,10 +2439,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#732dcf",
-      "background": "#3740af",
+      "background": "#1a1b2a",
       "metric": {
-        "apcaLc": -3.387231013551932,
-        "wcagRatio": 1.1950382087521707
+        "apcaLc": -17.82995319155572,
+        "wcagRatio": 2.435175475927848
       },
       "status": "violation"
     },
@@ -2556,10 +2556,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#ad112e",
-      "background": "#4c4f69",
+      "background": "#4d5065",
       "metric": {
-        "apcaLc": -1.4193136803087054,
-        "wcagRatio": 1.1014577947331186
+        "apcaLc": -1.2302972159060201,
+        "wcagRatio": 1.0926241143074005
       },
       "status": "violation"
     },
@@ -2569,10 +2569,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#ad112e",
-      "background": "#2b5d40",
+      "background": "#3c3e52",
       "metric": {
-        "apcaLc": -0.4258663103780733,
-        "wcagRatio": 1.0561484108270474
+        "apcaLc": -7.464031720350059,
+        "wcagRatio": 1.4460550096379687
       },
       "status": "violation"
     },
@@ -2582,10 +2582,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#ad112e",
-      "background": "#813829",
+      "background": "#313345",
       "metric": {
-        "apcaLc": -2.307141000672321,
-        "wcagRatio": 1.144349244376582
+        "apcaLc": -10.980828944206177,
+        "wcagRatio": 1.7138332374102367
       },
       "status": "violation"
     },
@@ -2595,10 +2595,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#ad112e",
-      "background": "#3740af",
+      "background": "#1a1b2a",
       "metric": {
-        "apcaLc": -2.4557004518895553,
-        "wcagRatio": 1.1517579514229557
+        "apcaLc": -16.898422629893343,
+        "wcagRatio": 2.3469816253312197
       },
       "status": "violation"
     },
@@ -2620,11 +2620,11 @@
       "palette": "catppuccin",
       "mode": "light",
       "kind": "semantic",
-      "foreground": "#3740af",
+      "foreground": "#1a1b2a",
       "background": "#e6e9ef",
       "metric": {
-        "apcaLc": 72.65446746096083,
-        "wcagRatio": 6.865890245084101
+        "apcaLc": 89.14656897308694,
+        "wcagRatio": 13.990889515322932
       },
       "status": "pass"
     },
@@ -2633,11 +2633,11 @@
       "palette": "catppuccin",
       "mode": "light",
       "kind": "semantic",
-      "foreground": "#3740af",
+      "foreground": "#1a1b2a",
       "background": "#e53752",
       "metric": {
-        "apcaLc": 17.399473142275056,
-        "wcagRatio": 1.9881711699274787
+        "apcaLc": 33.89157465440118,
+        "wcagRatio": 4.051373118864205
       },
       "status": "violation"
     },
@@ -2646,11 +2646,11 @@
       "palette": "catppuccin",
       "mode": "light",
       "kind": "semantic",
-      "foreground": "#813829",
+      "foreground": "#313345",
       "background": "#eff1f5",
       "metric": {
-        "apcaLc": 76.97618676867263,
-        "wcagRatio": 7.33699819987571
+        "apcaLc": 86.59617590751765,
+        "wcagRatio": 10.988246323888943
       },
       "status": "pass"
     },
@@ -2672,11 +2672,11 @@
       "palette": "catppuccin",
       "mode": "light",
       "kind": "semantic",
-      "foreground": "#3740af",
+      "foreground": "#1a1b2a",
       "background": "#e6e9ef",
       "metric": {
-        "apcaLc": 72.65446746096083,
-        "wcagRatio": 6.865890245084101
+        "apcaLc": 89.14656897308694,
+        "wcagRatio": 13.990889515322932
       },
       "status": "pass"
     },
@@ -2698,37 +2698,37 @@
       "palette": "catppuccin",
       "mode": "light",
       "kind": "semantic",
-      "foreground": "#3740af",
+      "foreground": "#1a1b2a",
       "background": "#bcc0cc",
       "metric": {
-        "apcaLc": 50.790849457584685,
-        "wcagRatio": 4.592773126927454
+        "apcaLc": 67.28295096971083,
+        "wcagRatio": 9.35887104134726
       },
-      "status": "violation"
+      "status": "pass"
     },
     {
       "id": "catppuccin.light.semantic.sidebar-accent-foreground-on-sidebar-accent",
       "palette": "catppuccin",
       "mode": "light",
       "kind": "semantic",
-      "foreground": "#3740af",
+      "foreground": "#1a1b2a",
       "background": "#ccd0da",
       "metric": {
-        "apcaLc": 59.12997993069868,
-        "wcagRatio": 5.408795857494103
+        "apcaLc": 75.62208144282482,
+        "wcagRatio": 11.021712050715927
       },
-      "status": "violation"
+      "status": "pass"
     },
     {
       "id": "catppuccin.light.semantic.sidebar-foreground-on-sidebar",
       "palette": "catppuccin",
       "mode": "light",
       "kind": "semantic",
-      "foreground": "#3740af",
+      "foreground": "#1a1b2a",
       "background": "#e6e9ef",
       "metric": {
-        "apcaLc": 72.65446746096083,
-        "wcagRatio": 6.865890245084101
+        "apcaLc": 89.14656897308694,
+        "wcagRatio": 13.990889515322932
       },
       "status": "pass"
     },
@@ -2855,10 +2855,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#b16825",
-      "background": "#4c4f69",
+      "background": "#4d5065",
       "metric": {
-        "apcaLc": -16.176638292374243,
-        "wcagRatio": 1.8543199312948422
+        "apcaLc": -15.987621827971557,
+        "wcagRatio": 1.8394483041127339
       },
       "status": "violation"
     },
@@ -2868,10 +2868,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#b16825",
-      "background": "#2b5d40",
+      "background": "#3c3e52",
       "metric": {
-        "apcaLc": -15.183190922443613,
-        "wcagRatio": 1.7780409362634664
+        "apcaLc": -22.221356332415596,
+        "wcagRatio": 2.4344542650135326
       },
       "status": "violation"
     },
@@ -2881,10 +2881,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#b16825",
-      "background": "#813829",
+      "background": "#313345",
       "metric": {
-        "apcaLc": -17.06446561273786,
-        "wcagRatio": 1.9265282994559432
+        "apcaLc": -25.738153556271715,
+        "wcagRatio": 2.8852627365675776
       },
       "status": "violation"
     },
@@ -2894,10 +2894,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#b16825",
-      "background": "#3740af",
+      "background": "#1a1b2a",
       "metric": {
-        "apcaLc": -17.213025063955094,
-        "wcagRatio": 1.9390009635987793
+        "apcaLc": -31.65574724195888,
+        "wcagRatio": 3.9511770918911515
       },
       "status": "violation"
     },
@@ -2920,10 +2920,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#b3d49e",
-      "background": "#ebdbb2",
+      "background": "#f2ede2",
       "metric": {
-        "apcaLc": 7.300707349921544,
-        "wcagRatio": 1.1933332942611812
+        "apcaLc": 16.836024399086625,
+        "wcagRatio": 1.4022075885924874
       },
       "status": "violation"
     },
@@ -2933,10 +2933,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#b3d49e",
-      "background": "#e0cfa9",
+      "background": "#e0d9c9",
       "metric": {
-        "apcaLc": 1.0710358591626956,
-        "wcagRatio": 1.0654547054510015
+        "apcaLc": 5.924630094473842,
+        "wcagRatio": 1.16449749324414
       },
       "status": "violation"
     },
@@ -2946,10 +2946,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#b3d49e",
-      "background": "#d5c4a1",
+      "background": "#cec5b3",
       "metric": {
-        "apcaLc": -1.2285672139816894,
-        "wcagRatio": 1.0480414198139514
+        "apcaLc": -1.129065303469372,
+        "wcagRatio": 1.0461646050352713
       },
       "status": "violation"
     },
@@ -2959,10 +2959,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#b3d49e",
-      "background": "#c9b99a",
+      "background": "#c4baa7",
       "metric": {
-        "apcaLc": -7.484824609233163,
-        "wcagRatio": 1.1779803953012782
+        "apcaLc": -7.300002490056058,
+        "wcagRatio": 1.1737751861288792
       },
       "status": "violation"
     },
@@ -2972,10 +2972,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#b3d49e",
-      "background": "#fbf1c7",
+      "background": "#fdfaf4",
       "metric": {
-        "apcaLc": 18.612212988979444,
-        "wcagRatio": 1.4428494260819797
+        "apcaLc": 24.080594882908464,
+        "wcagRatio": 1.5713536433789534
       },
       "status": "violation"
     },
@@ -2985,10 +2985,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#b3d49e",
-      "background": "#bdae93",
+      "background": "#b9af9b",
       "metric": {
-        "apcaLc": -13.550737487882017,
-        "wcagRatio": 1.3307596561584911
+        "apcaLc": -13.408387589903475,
+        "wcagRatio": 1.3268151997594688
       },
       "status": "violation"
     },
@@ -3076,10 +3076,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#a5c4b8",
-      "background": "#ebdbb2",
+      "background": "#f2ede2",
       "metric": {
-        "apcaLc": 14.1923014692896,
-        "wcagRatio": 1.3682466985808934
+        "apcaLc": 23.727618518454676,
+        "wcagRatio": 1.6077368435484514
       },
       "status": "violation"
     },
@@ -3089,10 +3089,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#a5c4b8",
-      "background": "#e0cfa9",
+      "background": "#e0d9c9",
       "metric": {
-        "apcaLc": 7.962629978530751,
-        "wcagRatio": 1.221624243814776
+        "apcaLc": 12.816224213841899,
+        "wcagRatio": 1.3351842760940316
       },
       "status": "violation"
     },
@@ -3102,10 +3102,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#a5c4b8",
-      "background": "#d5c4a1",
+      "background": "#cec5b3",
       "metric": {
-        "apcaLc": 2.2451457929616727,
-        "wcagRatio": 1.0940173371038378
+        "apcaLc": 2.335425934021426,
+        "wcagRatio": 1.095979999476973
       },
       "status": "violation"
     },
@@ -3115,10 +3115,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#a5c4b8",
-      "background": "#c9b99a",
+      "background": "#c4baa7",
       "metric": {
-        "apcaLc": -0.20981020503081543,
-        "wcagRatio": 1.0273901827484317
+        "apcaLc": -0.02498808585371,
+        "wcagRatio": 1.023722557516841
       },
       "status": "violation"
     },
@@ -3128,10 +3128,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#a5c4b8",
-      "background": "#fbf1c7",
+      "background": "#fdfaf4",
       "metric": {
-        "apcaLc": 25.503807108347498,
-        "wcagRatio": 1.6543357780093284
+        "apcaLc": 30.97218900227652,
+        "wcagRatio": 1.801675563060045
       },
       "status": "violation"
     },
@@ -3141,10 +3141,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#a5c4b8",
-      "background": "#bdae93",
+      "background": "#b9af9b",
       "metric": {
-        "apcaLc": -6.275723083679669,
-        "wcagRatio": 1.1606385061996192
+        "apcaLc": -6.133373185701127,
+        "wcagRatio": 1.1571982997269146
       },
       "status": "violation"
     },
@@ -3442,10 +3442,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#cbd387",
-      "background": "#ebdbb2",
+      "background": "#f2ede2",
       "metric": {
-        "apcaLc": 5.767754963780197,
-        "wcagRatio": 1.159087676151218
+        "apcaLc": 15.303072012945277,
+        "wcagRatio": 1.3619678116410194
       },
       "status": "violation"
     },
@@ -3455,10 +3455,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#cbd387",
-      "background": "#e0cfa9",
+      "background": "#e0d9c9",
       "metric": {
-        "apcaLc": -0.46191652697865176,
-        "wcagRatio": 1.0348788762741843
+        "apcaLc": 4.3916777083324945,
+        "wcagRatio": 1.1310793889848954
       },
       "status": "violation"
     },
@@ -3468,10 +3468,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#cbd387",
-      "background": "#d5c4a1",
+      "background": "#cec5b3",
       "metric": {
-        "apcaLc": -2.8540516870090533,
-        "wcagRatio": 1.0790061405722193
+        "apcaLc": -2.7545497764967357,
+        "wcagRatio": 1.0770738746973916
       },
       "status": "violation"
     },
@@ -3481,10 +3481,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#cbd387",
-      "background": "#c9b99a",
+      "background": "#c4baa7",
       "metric": {
-        "apcaLc": -9.110309082260528,
-        "wcagRatio": 1.2127842048737028
+        "apcaLc": -8.925486963083422,
+        "wcagRatio": 1.2084547514440716
       },
       "status": "violation"
     },
@@ -3494,10 +3494,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#cbd387",
-      "background": "#fbf1c7",
+      "background": "#fdfaf4",
       "metric": {
-        "apcaLc": 17.079260602838097,
-        "wcagRatio": 1.401443332182308
+        "apcaLc": 22.547642496767114,
+        "wcagRatio": 1.526259806606243
       },
       "status": "violation"
     },
@@ -3507,10 +3507,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#cbd387",
-      "background": "#bdae93",
+      "background": "#b9af9b",
       "metric": {
-        "apcaLc": -15.17622196090938,
-        "wcagRatio": 1.3700773781208837
+        "apcaLc": -15.03387206293084,
+        "wcagRatio": 1.3660163814891668
       },
       "status": "violation"
     },
@@ -3598,10 +3598,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#feb068",
-      "background": "#ebdbb2",
+      "background": "#f2ede2",
       "metric": {
-        "apcaLc": 12.315219800934052,
-        "wcagRatio": 1.3169007592937925
+        "apcaLc": 21.850536850099132,
+        "wcagRatio": 1.5474036021497375
       },
       "status": "violation"
     },
@@ -3611,10 +3611,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#feb068",
-      "background": "#e0cfa9",
+      "background": "#e0d9c9",
       "metric": {
-        "apcaLc": 6.085548310175202,
-        "wcagRatio": 1.1757805781076918
+        "apcaLc": 10.93914254548635,
+        "wcagRatio": 1.2850790641841319
       },
       "status": "violation"
     },
@@ -3624,10 +3624,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#feb068",
-      "background": "#d5c4a1",
+      "background": "#cec5b3",
       "metric": {
-        "apcaLc": 0.3680641246061246,
-        "wcagRatio": 1.0529623520428606
+        "apcaLc": 0.45834426566587727,
+        "wcagRatio": 1.0548513619502844
       },
       "status": "violation"
     },
@@ -3637,10 +3637,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#feb068",
-      "background": "#c9b99a",
+      "background": "#c4baa7",
       "metric": {
-        "apcaLc": -2.1859150984078752,
-        "wcagRatio": 1.067448109342577
+        "apcaLc": -2.0010929792307692,
+        "wcagRatio": 1.0636374834625772
       },
       "status": "violation"
     },
@@ -3650,10 +3650,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#feb068",
-      "background": "#fbf1c7",
+      "background": "#fdfaf4",
       "metric": {
-        "apcaLc": 23.62672543999195,
-        "wcagRatio": 1.5922538270671136
+        "apcaLc": 29.095107333920968,
+        "wcagRatio": 1.734064419417687
       },
       "status": "violation"
     },
@@ -3663,10 +3663,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#feb068",
-      "background": "#bdae93",
+      "background": "#b9af9b",
       "metric": {
-        "apcaLc": -8.251827977056728,
-        "wcagRatio": 1.205891782768125
+        "apcaLc": -8.109478079078187,
+        "wcagRatio": 1.2023174427007393
       },
       "status": "violation"
     },
@@ -3754,10 +3754,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#ccc0c3",
-      "background": "#ebdbb2",
+      "background": "#f2ede2",
       "metric": {
-        "apcaLc": 11.165082937933377,
-        "wcagRatio": 1.2868814381938498
+        "apcaLc": 20.700399987098457,
+        "wcagRatio": 1.5121298692763119
       },
       "status": "violation"
     },
@@ -3767,10 +3767,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#ccc0c3",
-      "background": "#e0cfa9",
+      "background": "#e0d9c9",
       "metric": {
-        "apcaLc": 4.935411447174527,
-        "wcagRatio": 1.1489781524365128
+        "apcaLc": 9.789005682485675,
+        "wcagRatio": 1.2557851323564635
       },
       "status": "violation"
     },
@@ -3780,10 +3780,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#ccc0c3",
-      "background": "#d5c4a1",
+      "background": "#cec5b3",
       "metric": {
-        "apcaLc": -0.7820727383945504,
-        "wcagRatio": 1.0289596208354792
+        "apcaLc": -0.691792597334798,
+        "wcagRatio": 1.0308055699468852
       },
       "status": "violation"
     },
@@ -3793,10 +3793,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#ccc0c3",
-      "background": "#c9b99a",
+      "background": "#c4baa7",
       "metric": {
-        "apcaLc": -3.398756395809545,
-        "wcagRatio": 1.0923486686333035
+        "apcaLc": -3.2139342766324392,
+        "wcagRatio": 1.08844915157927
       },
       "status": "violation"
     },
@@ -3806,10 +3806,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#ccc0c3",
-      "background": "#fbf1c7",
+      "background": "#fdfaf4",
       "metric": {
-        "apcaLc": 22.476588576991276,
-        "wcagRatio": 1.55595771396215
+        "apcaLc": 27.944970470920293,
+        "wcagRatio": 1.6945356726635274
       },
       "status": "violation"
     },
@@ -3819,10 +3819,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#ccc0c3",
-      "background": "#bdae93",
+      "background": "#b9af9b",
       "metric": {
-        "apcaLc": -9.464669274458396,
-        "wcagRatio": 1.234021843210605
+        "apcaLc": -9.322319376479857,
+        "wcagRatio": 1.2303641238519971
       },
       "status": "violation"
     },
@@ -3910,10 +3910,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#ffb0a9",
-      "background": "#ebdbb2",
+      "background": "#f2ede2",
       "metric": {
-        "apcaLc": 10.57737266387936,
-        "wcagRatio": 1.271944323496892
+        "apcaLc": 20.112689713044443,
+        "wcagRatio": 1.4945782467074316
       },
       "status": "violation"
     },
@@ -3923,10 +3923,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#ffb0a9",
-      "background": "#e0cfa9",
+      "background": "#e0d9c9",
       "metric": {
-        "apcaLc": 4.347701173120515,
-        "wcagRatio": 1.1356417113799608
+        "apcaLc": 9.20129540843166,
+        "wcagRatio": 1.2412089592918572
       },
       "status": "violation"
     },
@@ -3936,10 +3936,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#ffb0a9",
-      "background": "#d5c4a1",
+      "background": "#cec5b3",
       "metric": {
-        "apcaLc": -1.369783012448564,
-        "wcagRatio": 1.0170162611608464
+        "apcaLc": -1.2795028713888112,
+        "wcagRatio": 1.0188407839366291
       },
       "status": "violation"
     },
@@ -3949,10 +3949,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#ffb0a9",
-      "background": "#c9b99a",
+      "background": "#c4baa7",
       "metric": {
-        "apcaLc": -4.019095533303522,
-        "wcagRatio": 1.105176696598857
+        "apcaLc": -3.834273414126417,
+        "wcagRatio": 1.1012313854542937
       },
       "status": "violation"
     },
@@ -3962,10 +3962,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#ffb0a9",
-      "background": "#fbf1c7",
+      "background": "#fdfaf4",
       "metric": {
-        "apcaLc": 21.88887830293726,
-        "wcagRatio": 1.5378973720011309
+        "apcaLc": 27.357260196866278,
+        "wcagRatio": 1.6748668259854784
       },
       "status": "violation"
     },
@@ -3975,10 +3975,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#ffb0a9",
-      "background": "#bdae93",
+      "background": "#b9af9b",
       "metric": {
-        "apcaLc": -10.085008411952376,
-        "wcagRatio": 1.248513614171076
+        "apcaLc": -9.942658513973834,
+        "wcagRatio": 1.24481294028012
       },
       "status": "violation"
     },
@@ -4065,11 +4065,11 @@
       "palette": "gruvbox",
       "mode": "dark",
       "kind": "semantic",
-      "foreground": "#fbf1c7",
+      "foreground": "#fdfaf4",
       "background": "#504945",
       "metric": {
-        "apcaLc": -82.22195590211977,
-        "wcagRatio": 7.776600274404273
+        "apcaLc": -88.24448018976211,
+        "wcagRatio": 8.469206109378609
       },
       "status": "pass"
     },
@@ -4078,24 +4078,24 @@
       "palette": "gruvbox",
       "mode": "dark",
       "kind": "semantic",
-      "foreground": "#fbf1c7",
+      "foreground": "#fdfaf4",
       "background": "#fb4934",
       "metric": {
-        "apcaLc": -55.34957773452154,
-        "wcagRatio": 3.0319961410920824
+        "apcaLc": -61.3721020221639,
+        "wcagRatio": 3.3020342226239143
       },
-      "status": "violation"
+      "status": "pass"
     },
     {
       "id": "gruvbox.dark.semantic.foreground-on-background",
       "palette": "gruvbox",
       "mode": "dark",
       "kind": "semantic",
-      "foreground": "#ebdbb2",
-      "background": "#282828",
+      "foreground": "#f2ede2",
+      "background": "#3c3836",
       "metric": {
-        "apcaLc": -80.59547379640456,
-        "wcagRatio": 10.74706817440964
+        "apcaLc": -86.13065570894652,
+        "wcagRatio": 9.931878160560073
       },
       "status": "pass"
     },
@@ -4104,11 +4104,11 @@
       "palette": "gruvbox",
       "mode": "dark",
       "kind": "semantic",
-      "foreground": "#c9b99a",
+      "foreground": "#c4baa7",
       "background": "#665c54",
       "metric": {
-        "apcaLc": -43.62482228074116,
-        "wcagRatio": 3.3778747770491235
+        "apcaLc": -43.80486767634174,
+        "wcagRatio": 3.389976472640857
       },
       "status": "violation"
     },
@@ -4117,11 +4117,11 @@
       "palette": "gruvbox",
       "mode": "dark",
       "kind": "semantic",
-      "foreground": "#fbf1c7",
+      "foreground": "#fdfaf4",
       "background": "#504945",
       "metric": {
-        "apcaLc": -82.22195590211977,
-        "wcagRatio": 7.776600274404273
+        "apcaLc": -88.24448018976211,
+        "wcagRatio": 8.469206109378609
       },
       "status": "pass"
     },
@@ -4143,11 +4143,11 @@
       "palette": "gruvbox",
       "mode": "dark",
       "kind": "semantic",
-      "foreground": "#fbf1c7",
+      "foreground": "#fdfaf4",
       "background": "#665c54",
       "metric": {
-        "apcaLc": -74.93099566537849,
-        "wcagRatio": 5.741199248406562
+        "apcaLc": -80.95351995302083,
+        "wcagRatio": 6.25252655839888
       },
       "status": "pass"
     },
@@ -4156,11 +4156,11 @@
       "palette": "gruvbox",
       "mode": "dark",
       "kind": "semantic",
-      "foreground": "#fbf1c7",
+      "foreground": "#fdfaf4",
       "background": "#665c54",
       "metric": {
-        "apcaLc": -74.93099566537849,
-        "wcagRatio": 5.741199248406562
+        "apcaLc": -80.95351995302083,
+        "wcagRatio": 6.25252655839888
       },
       "status": "pass"
     },
@@ -4169,11 +4169,11 @@
       "palette": "gruvbox",
       "mode": "dark",
       "kind": "semantic",
-      "foreground": "#fbf1c7",
+      "foreground": "#fdfaf4",
       "background": "#504945",
       "metric": {
-        "apcaLc": -82.22195590211977,
-        "wcagRatio": 7.776600274404273
+        "apcaLc": -88.24448018976211,
+        "wcagRatio": 8.469206109378609
       },
       "status": "pass"
     },
@@ -4209,10 +4209,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#ffd45e",
-      "background": "#ebdbb2",
+      "background": "#f2ede2",
       "metric": {
-        "apcaLc": -0.5815723400226763,
-        "wcagRatio": 1.0321547177306245
+        "apcaLc": 8.953744709142402,
+        "wcagRatio": 1.2128172278135179
       },
       "status": "violation"
     },
@@ -4222,10 +4222,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#ffd45e",
-      "background": "#e0cfa9",
+      "background": "#e0d9c9",
       "metric": {
-        "apcaLc": -3.277910650908311,
-        "wcagRatio": 1.0851304838566467
+        "apcaLc": -1.9576495954703783,
+        "wcagRatio": 1.0072136487079024
       },
       "status": "violation"
     },
@@ -4235,10 +4235,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#ffd45e",
-      "background": "#d5c4a1",
+      "background": "#cec5b3",
       "metric": {
-        "apcaLc": -9.613267414600596,
-        "wcagRatio": 1.211700822119529
+        "apcaLc": -9.513765504088278,
+        "wcagRatio": 1.2095309288621647
       },
       "status": "violation"
     },
@@ -4248,10 +4248,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#ffd45e",
-      "background": "#c9b99a",
+      "background": "#c4baa7",
       "metric": {
-        "apcaLc": -15.869524809852068,
-        "wcagRatio": 1.361930727585778
+        "apcaLc": -15.684702690674962,
+        "wcagRatio": 1.3570688439664407
       },
       "status": "violation"
     },
@@ -4261,10 +4261,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#ffd45e",
-      "background": "#fbf1c7",
+      "background": "#fdfaf4",
       "metric": {
-        "apcaLc": 10.729933299035224,
-        "wcagRatio": 1.247969740949416
+        "apcaLc": 16.198315192964245,
+        "wcagRatio": 1.3591174268215938
       },
       "status": "violation"
     },
@@ -4274,10 +4274,10 @@
       "mode": "dark",
       "kind": "hue-text",
       "foreground": "#ffd45e",
-      "background": "#bdae93",
+      "background": "#b9af9b",
       "metric": {
-        "apcaLc": -21.935437688500922,
-        "wcagRatio": 1.538567597544946
+        "apcaLc": -21.79308779052238,
+        "wcagRatio": 1.5340071851689177
       },
       "status": "violation"
     },
@@ -4365,10 +4365,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#427b58",
-      "background": "#ebdbb2",
+      "background": "#e2dccc",
       "metric": {
-        "apcaLc": 51.65300297738852,
-        "wcagRatio": 3.639757922343188
+        "apcaLc": 51.78256002939261,
+        "wcagRatio": 3.64809068285019
       },
       "status": "violation"
     },
@@ -4378,10 +4378,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#427b58",
-      "background": "#d5c4a1",
+      "background": "#cec5b3",
       "metric": {
-        "apcaLc": 39.70584730106059,
-        "wcagRatio": 2.910263386006679
+        "apcaLc": 39.79612744212034,
+        "wcagRatio": 2.9154843859395956
       },
       "status": "violation"
     },
@@ -4391,10 +4391,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#427b58",
-      "background": "#bdae93",
+      "background": "#b9af9b",
       "metric": {
-        "apcaLc": 28.395081514429478,
-        "wcagRatio": 2.29198154376551
+        "apcaLc": 28.52732546428317,
+        "wcagRatio": 2.2987953195410555
       },
       "status": "violation"
     },
@@ -4404,10 +4404,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#427b58",
-      "background": "#918373",
+      "background": "#908473",
       "metric": {
-        "apcaLc": 7.801378673032964,
-        "wcagRatio": 1.3548188797666798
+        "apcaLc": 8.017744363630333,
+        "wcagRatio": 1.363353805762308
       },
       "status": "violation"
     },
@@ -4417,10 +4417,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#427b58",
-      "background": "#fbf1c7",
+      "background": "#f3f0e6",
       "metric": {
-        "apcaLc": 62.964508616446416,
-        "wcagRatio": 4.400801230122053
+        "apcaLc": 62.65596219474664,
+        "wcagRatio": 4.379149405941345
       },
       "status": "pass"
     },
@@ -4443,10 +4443,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#427b58",
-      "background": "#5b524d",
+      "background": "#5b524c",
       "metric": {
-        "apcaLc": -10.46184790480011,
-        "wcagRatio": 1.5244238729838717
+        "apcaLc": -10.486180468086229,
+        "wcagRatio": 1.525974698444001
       },
       "status": "violation"
     },
@@ -4469,10 +4469,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#427b58",
-      "background": "#46403d",
+      "background": "#3f3834",
       "metric": {
-        "apcaLc": -17.034772994066593,
-        "wcagRatio": 2.040476185235034
+        "apcaLc": -19.56814060913904,
+        "wcagRatio": 2.3024912888449633
       },
       "status": "violation"
     },
@@ -4482,10 +4482,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#427b58",
-      "background": "#3c3836",
+      "background": "#332d29",
       "metric": {
-        "apcaLc": -19.744318894602817,
-        "wcagRatio": 2.3222465576023077
+        "apcaLc": -22.935887703380278,
+        "wcagRatio": 2.7166557341859843
       },
       "status": "violation"
     },
@@ -4495,10 +4495,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#427b58",
-      "background": "#282828",
+      "background": "#1c1612",
       "metric": {
-        "apcaLc": -24.61039280760337,
-        "wcagRatio": 2.952687624755807
+        "apcaLc": -27.903064452901877,
+        "wcagRatio": 3.5858510660378893
       },
       "status": "violation"
     },
@@ -4521,10 +4521,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#076678",
-      "background": "#ebdbb2",
+      "background": "#e2dccc",
       "metric": {
-        "apcaLc": 59.5690735986953,
-        "wcagRatio": 4.812604124251825
+        "apcaLc": 59.698630650699414,
+        "wcagRatio": 4.823621966217695
       },
       "status": "violation"
     },
@@ -4534,10 +4534,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#076678",
-      "background": "#d5c4a1",
+      "background": "#cec5b3",
       "metric": {
-        "apcaLc": 47.62191792236739,
-        "wcagRatio": 3.848043159182998
+        "apcaLc": 47.71219806342714,
+        "wcagRatio": 3.8549465319748064
       },
       "status": "violation"
     },
@@ -4547,10 +4547,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#076678",
-      "background": "#bdae93",
+      "background": "#b9af9b",
       "metric": {
-        "apcaLc": 36.31115213573627,
-        "wcagRatio": 3.03053116871406
+        "apcaLc": 36.44339608558997,
+        "wcagRatio": 3.039540560574386
       },
       "status": "violation"
     },
@@ -4560,10 +4560,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#076678",
-      "background": "#918373",
+      "background": "#908473",
       "metric": {
-        "apcaLc": 15.717449294339762,
-        "wcagRatio": 1.7913847754418266
+        "apcaLc": 15.93381498493713,
+        "wcagRatio": 1.8026699270708948
       },
       "status": "violation"
     },
@@ -4573,10 +4573,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#076678",
-      "background": "#fbf1c7",
+      "background": "#f3f0e6",
       "metric": {
-        "apcaLc": 70.88057923775321,
-        "wcagRatio": 5.818879882116767
+        "apcaLc": 70.57203281605344,
+        "wcagRatio": 5.790251148950203
       },
       "status": "pass"
     },
@@ -4599,10 +4599,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#076678",
-      "background": "#5b524d",
+      "background": "#5b524c",
       "metric": {
-        "apcaLc": -2.6770332967810275,
-        "wcagRatio": 1.152917157831825
+        "apcaLc": -2.701365860067149,
+        "wcagRatio": 1.1540900424300473
       },
       "status": "violation"
     },
@@ -4625,10 +4625,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#076678",
-      "background": "#46403d",
+      "background": "#3f3834",
       "metric": {
-        "apcaLc": -9.249958386047512,
-        "wcagRatio": 1.5432059585238396
+        "apcaLc": -11.78332600111996,
+        "wcagRatio": 1.7413671877701928
       },
       "status": "violation"
     },
@@ -4638,10 +4638,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#076678",
-      "background": "#3c3836",
+      "background": "#332d29",
       "metric": {
-        "apcaLc": -11.959504286583735,
-        "wcagRatio": 1.7563080376949185
+        "apcaLc": -15.151073095361198,
+        "wcagRatio": 2.054598503324785
       },
       "status": "violation"
     },
@@ -4651,10 +4651,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#076678",
-      "background": "#282828",
+      "background": "#1c1612",
       "metric": {
-        "apcaLc": -16.82557819958429,
-        "wcagRatio": 2.2331087072490914
+        "apcaLc": -20.118249844882797,
+        "wcagRatio": 2.7119683001109505
       },
       "status": "violation"
     },
@@ -4887,10 +4887,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#79740e",
-      "background": "#ebdbb2",
+      "background": "#e2dccc",
       "metric": {
-        "apcaLc": 50.86117990076081,
-        "wcagRatio": 3.54556024777139
+        "apcaLc": 50.99073695276491,
+        "wcagRatio": 3.5536773547433853
       },
       "status": "violation"
     },
@@ -4900,10 +4900,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#79740e",
-      "background": "#d5c4a1",
+      "background": "#cec5b3",
       "metric": {
-        "apcaLc": 38.914024224432886,
-        "wcagRatio": 2.834945178257085
+        "apcaLc": 39.00430436549264,
+        "wcagRatio": 2.8400310576509127
       },
       "status": "violation"
     },
@@ -4913,10 +4913,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#79740e",
-      "background": "#bdae93",
+      "background": "#b9af9b",
       "metric": {
-        "apcaLc": 27.603258437801774,
-        "wcagRatio": 2.232664595718262
+        "apcaLc": 27.73550238765547,
+        "wcagRatio": 2.2393020295922845
       },
       "status": "violation"
     },
@@ -4926,10 +4926,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#79740e",
-      "background": "#918373",
+      "background": "#908473",
       "metric": {
-        "apcaLc": 7.0095555964052645,
-        "wcagRatio": 1.3197558918804333
+        "apcaLc": 7.225921287002633,
+        "wcagRatio": 1.3280699322571319
       },
       "status": "violation"
     },
@@ -4939,10 +4939,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#79740e",
-      "background": "#fbf1c7",
+      "background": "#f3f0e6",
       "metric": {
-        "apcaLc": 62.172685539818715,
-        "wcagRatio": 4.28690760011291
+        "apcaLc": 61.864139118118935,
+        "wcagRatio": 4.265816129541308
       },
       "status": "pass"
     },
@@ -4965,10 +4965,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#79740e",
-      "background": "#5b524d",
+      "background": "#5b524c",
       "metric": {
-        "apcaLc": -11.248464717752729,
-        "wcagRatio": 1.56492443533846
+        "apcaLc": -11.272797281038851,
+        "wcagRatio": 1.5665164627925765
       },
       "status": "violation"
     },
@@ -4991,10 +4991,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#79740e",
-      "background": "#46403d",
+      "background": "#3f3834",
       "metric": {
-        "apcaLc": -17.821389807019212,
-        "wcagRatio": 2.094687113335632
+        "apcaLc": -20.35475742209166,
+        "wcagRatio": 2.3636633773089364
       },
       "status": "violation"
     },
@@ -5004,10 +5004,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#79740e",
-      "background": "#3c3836",
+      "background": "#332d29",
       "metric": {
-        "apcaLc": -20.530935707555436,
-        "wcagRatio": 2.3839434997558073
+        "apcaLc": -23.7225045163329,
+        "wcagRatio": 2.788831253677808
       },
       "status": "violation"
     },
@@ -5017,10 +5017,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#79740e",
-      "background": "#282828",
+      "background": "#1c1612",
       "metric": {
-        "apcaLc": -25.397009620555988,
-        "wcagRatio": 3.0311339882504758
+        "apcaLc": -28.689681265854496,
+        "wcagRatio": 3.681119178318279
       },
       "status": "violation"
     },
@@ -5043,10 +5043,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#af3a03",
-      "background": "#ebdbb2",
+      "background": "#e2dccc",
       "metric": {
-        "apcaLc": 57.52379077430453,
-        "wcagRatio": 4.463820738940493
+        "apcaLc": 57.65334782630865,
+        "wcagRatio": 4.474040085929326
       },
       "status": "violation"
     },
@@ -5056,10 +5056,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#af3a03",
-      "background": "#d5c4a1",
+      "background": "#cec5b3",
       "metric": {
-        "apcaLc": 45.576635097976606,
-        "wcagRatio": 3.569164305815309
+        "apcaLc": 45.666915239036356,
+        "wcagRatio": 3.575567371149818
       },
       "status": "violation"
     },
@@ -5069,10 +5069,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#af3a03",
-      "background": "#bdae93",
+      "background": "#b9af9b",
       "metric": {
-        "apcaLc": 34.2658693113455,
-        "wcagRatio": 2.8108997814181182
+        "apcaLc": 34.39811326119919,
+        "wcagRatio": 2.8192562365083482
       },
       "status": "violation"
     },
@@ -5082,10 +5082,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#af3a03",
-      "background": "#918373",
+      "background": "#908473",
       "metric": {
-        "apcaLc": 13.672166469948987,
-        "wcagRatio": 1.6615579228184738
+        "apcaLc": 13.888532160546355,
+        "wcagRatio": 1.672025206763578
       },
       "status": "violation"
     },
@@ -5095,10 +5095,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#af3a03",
-      "background": "#fbf1c7",
+      "background": "#f3f0e6",
       "metric": {
-        "apcaLc": 68.83529641336243,
-        "wcagRatio": 5.3971687727867
+        "apcaLc": 68.52674999166265,
+        "wcagRatio": 5.370614846982888
       },
       "status": "pass"
     },
@@ -5121,10 +5121,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#af3a03",
-      "background": "#5b524d",
+      "background": "#5b524c",
       "metric": {
-        "apcaLc": -4.67382967619465,
-        "wcagRatio": 1.243001050714035
+        "apcaLc": -4.698162239480773,
+        "wcagRatio": 1.244265579373404
       },
       "status": "violation"
     },
@@ -5147,10 +5147,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#af3a03",
-      "background": "#46403d",
+      "background": "#3f3834",
       "metric": {
-        "apcaLc": -11.246754765461134,
-        "wcagRatio": 1.6637853074549347
+        "apcaLc": -13.780122380533582,
+        "wcagRatio": 1.8774299865116857
       },
       "status": "violation"
     },
@@ -5160,10 +5160,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#af3a03",
-      "background": "#3c3836",
+      "background": "#332d29",
       "metric": {
-        "apcaLc": -13.956300665997357,
-        "wcagRatio": 1.8935382489560755
+        "apcaLc": -17.147869474774822,
+        "wcagRatio": 2.215135824009241
       },
       "status": "violation"
     },
@@ -5173,10 +5173,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#af3a03",
-      "background": "#282828",
+      "background": "#1c1612",
       "metric": {
-        "apcaLc": -18.82237457899791,
-        "wcagRatio": 2.407594032765864
+        "apcaLc": -22.11504622429642,
+        "wcagRatio": 2.923869615125278
       },
       "status": "violation"
     },
@@ -5199,10 +5199,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#8f3f71",
-      "background": "#ebdbb2",
+      "background": "#e2dccc",
       "metric": {
-        "apcaLc": 60.10674899611478,
-        "wcagRatio": 4.910502934000693
+        "apcaLc": 60.236306048118884,
+        "wcagRatio": 4.921744902777457
       },
       "status": "pass"
     },
@@ -5212,10 +5212,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#8f3f71",
-      "background": "#d5c4a1",
+      "background": "#cec5b3",
       "metric": {
-        "apcaLc": 48.15959331978685,
-        "wcagRatio": 3.926320706103576
+        "apcaLc": 48.2498734608466,
+        "wcagRatio": 3.933364508476152
       },
       "status": "violation"
     },
@@ -5225,10 +5225,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#8f3f71",
-      "background": "#bdae93",
+      "background": "#b9af9b",
       "metric": {
-        "apcaLc": 36.84882753315574,
-        "wcagRatio": 3.0921787480004768
+        "apcaLc": 36.98107148300944,
+        "wcagRatio": 3.1013714104388344
       },
       "status": "violation"
     },
@@ -5238,10 +5238,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#8f3f71",
-      "background": "#918373",
+      "background": "#908473",
       "metric": {
-        "apcaLc": 16.25512469175923,
-        "wcagRatio": 1.8278254285248936
+        "apcaLc": 16.4714903823566,
+        "wcagRatio": 1.8393401446233835
       },
       "status": "violation"
     },
@@ -5251,10 +5251,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#8f3f71",
-      "background": "#fbf1c7",
+      "background": "#f3f0e6",
       "metric": {
-        "apcaLc": 71.41825463517267,
-        "wcagRatio": 5.937248524087589
+        "apcaLc": 71.1097082134729,
+        "wcagRatio": 5.908037420372925
       },
       "status": "pass"
     },
@@ -5277,10 +5277,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#8f3f71",
-      "background": "#5b524d",
+      "background": "#5b524c",
       "metric": {
-        "apcaLc": -2.153918758807829,
-        "wcagRatio": 1.1299318915550718
+        "apcaLc": -2.178251322093951,
+        "wcagRatio": 1.1310813928038324
       },
       "status": "violation"
     },
@@ -5303,10 +5303,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#8f3f71",
-      "background": "#46403d",
+      "background": "#3f3834",
       "metric": {
-        "apcaLc": -8.726843848074314,
-        "wcagRatio": 1.5124396544268053
+        "apcaLc": -11.26021146314676,
+        "wcagRatio": 1.706650219404685
       },
       "status": "violation"
     },
@@ -5316,10 +5316,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#8f3f71",
-      "background": "#3c3836",
+      "background": "#332d29",
       "metric": {
-        "apcaLc": -11.436389748610537,
-        "wcagRatio": 1.7212931993466563
+        "apcaLc": -14.627958557387998,
+        "wcagRatio": 2.0136367626047917
       },
       "status": "violation"
     },
@@ -5329,10 +5329,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#8f3f71",
-      "background": "#282828",
+      "background": "#1c1612",
       "metric": {
-        "apcaLc": -16.30246366161109,
-        "wcagRatio": 2.188588077200021
+        "apcaLc": -19.595135306909597,
+        "wcagRatio": 2.65790083039839
       },
       "status": "violation"
     },
@@ -5355,10 +5355,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#bb0003",
-      "background": "#ebdbb2",
+      "background": "#e2dccc",
       "metric": {
-        "apcaLc": 60.13327405871169,
-        "wcagRatio": 4.915402859488754
+        "apcaLc": 60.262831110715794,
+        "wcagRatio": 4.926656046018584
       },
       "status": "pass"
     },
@@ -5368,10 +5368,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#bb0003",
-      "background": "#d5c4a1",
+      "background": "#cec5b3",
       "metric": {
-        "apcaLc": 48.18611838238377,
-        "wcagRatio": 3.930238569336877
+        "apcaLc": 48.27639852344352,
+        "wcagRatio": 3.9372894003391563
       },
       "status": "violation"
     },
@@ -5381,10 +5381,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#bb0003",
-      "background": "#bdae93",
+      "background": "#b9af9b",
       "metric": {
-        "apcaLc": 36.87535259575266,
-        "wcagRatio": 3.0952642660552687
+        "apcaLc": 37.007596545606354,
+        "wcagRatio": 3.104466101354653
       },
       "status": "violation"
     },
@@ -5394,10 +5394,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#bb0003",
-      "background": "#918373",
+      "background": "#908473",
       "metric": {
-        "apcaLc": 16.281649754356145,
-        "wcagRatio": 1.8296493167345802
+        "apcaLc": 16.498015444953513,
+        "wcagRatio": 1.841175522745948
       },
       "status": "violation"
     },
@@ -5407,10 +5407,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#bb0003",
-      "background": "#fbf1c7",
+      "background": "#f3f0e6",
       "metric": {
-        "apcaLc": 71.44477969776959,
-        "wcagRatio": 5.9431729835091875
+        "apcaLc": 71.13623327606982,
+        "wcagRatio": 5.913932731612851
       },
       "status": "pass"
     },
@@ -5433,10 +5433,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#bb0003",
-      "background": "#5b524d",
+      "background": "#5b524c",
       "metric": {
-        "apcaLc": -2.1281320590606145,
-        "wcagRatio": 1.1288055175357956
+        "apcaLc": -2.152464622346736,
+        "wcagRatio": 1.129953872902799
       },
       "status": "violation"
     },
@@ -5459,10 +5459,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#bb0003",
-      "background": "#46403d",
+      "background": "#3f3834",
       "metric": {
-        "apcaLc": -8.701057148327099,
-        "wcagRatio": 1.510931977065717
+        "apcaLc": -11.234424763399545,
+        "wcagRatio": 1.704948942999004
       },
       "status": "violation"
     },
@@ -5472,10 +5472,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#bb0003",
-      "background": "#3c3836",
+      "background": "#332d29",
       "metric": {
-        "apcaLc": -11.410603048863324,
-        "wcagRatio": 1.7195773260681062
+        "apcaLc": -14.602171857640785,
+        "wcagRatio": 2.0116294662795804
       },
       "status": "violation"
     },
@@ -5485,10 +5485,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#bb0003",
-      "background": "#282828",
+      "background": "#1c1612",
       "metric": {
-        "apcaLc": -16.276676961863874,
-        "wcagRatio": 2.186406380438048
+        "apcaLc": -19.569348607162386,
+        "wcagRatio": 2.655251298631433
       },
       "status": "violation"
     },
@@ -5510,11 +5510,11 @@
       "palette": "gruvbox",
       "mode": "light",
       "kind": "semantic",
-      "foreground": "#282828",
-      "background": "#ebdbb2",
+      "foreground": "#1c1612",
+      "background": "#e2dccc",
       "metric": {
-        "apcaLc": 79.10981811830018,
-        "wcagRatio": 10.74706817440964
+        "apcaLc": 83.2679468563687,
+        "wcagRatio": 13.081509864101246
       },
       "status": "pass"
     },
@@ -5523,11 +5523,11 @@
       "palette": "gruvbox",
       "mode": "light",
       "kind": "semantic",
-      "foreground": "#282828",
+      "foreground": "#1c1612",
       "background": "#f9272d",
       "metric": {
-        "apcaLc": 33.15912604105343,
-        "wcagRatio": 3.7602651990603513
+        "apcaLc": 37.18769772711785,
+        "wcagRatio": 4.566602596084261
       },
       "status": "violation"
     },
@@ -5536,11 +5536,11 @@
       "palette": "gruvbox",
       "mode": "light",
       "kind": "semantic",
-      "foreground": "#3c3836",
-      "background": "#fbf1c7",
+      "foreground": "#332d29",
+      "background": "#f3f0e6",
       "metric": {
-        "apcaLc": 84.77218398810683,
-        "wcagRatio": 10.219745507342939
+        "apcaLc": 88.135271612464,
+        "wcagRatio": 11.896641344507703
       },
       "status": "pass"
     },
@@ -5549,11 +5549,11 @@
       "palette": "gruvbox",
       "mode": "light",
       "kind": "semantic",
-      "foreground": "#5b524d",
-      "background": "#d5c4a1",
+      "foreground": "#5b524c",
+      "background": "#cec5b3",
       "metric": {
-        "apcaLc": 51.33977315126857,
-        "wcagRatio": 4.436474982299458
+        "apcaLc": 51.45597358854816,
+        "wcagRatio": 4.4489554066523676
       },
       "status": "violation"
     },
@@ -5562,11 +5562,11 @@
       "palette": "gruvbox",
       "mode": "light",
       "kind": "semantic",
-      "foreground": "#282828",
-      "background": "#ebdbb2",
+      "foreground": "#1c1612",
+      "background": "#e2dccc",
       "metric": {
-        "apcaLc": 79.10981811830018,
-        "wcagRatio": 10.74706817440964
+        "apcaLc": 83.2679468563687,
+        "wcagRatio": 13.081509864101246
       },
       "status": "pass"
     },
@@ -5588,24 +5588,24 @@
       "palette": "gruvbox",
       "mode": "light",
       "kind": "semantic",
-      "foreground": "#282828",
-      "background": "#bdae93",
+      "foreground": "#1c1612",
+      "background": "#b9af9b",
       "metric": {
-        "apcaLc": 55.85189665534116,
-        "wcagRatio": 6.767505540445132
+        "apcaLc": 60.01271229125928,
+        "wcagRatio": 8.243137647179203
       },
-      "status": "violation"
+      "status": "pass"
     },
     {
       "id": "gruvbox.light.semantic.sidebar-accent-foreground-on-sidebar-accent",
       "palette": "gruvbox",
       "mode": "light",
       "kind": "semantic",
-      "foreground": "#282828",
-      "background": "#d5c4a1",
+      "foreground": "#1c1612",
+      "background": "#cec5b3",
       "metric": {
-        "apcaLc": 67.16266244197226,
-        "wcagRatio": 8.593098684641854
+        "apcaLc": 71.28151426909643,
+        "wcagRatio": 10.45449279333832
       },
       "status": "pass"
     },
@@ -5614,11 +5614,11 @@
       "palette": "gruvbox",
       "mode": "light",
       "kind": "semantic",
-      "foreground": "#282828",
-      "background": "#ebdbb2",
+      "foreground": "#1c1612",
+      "background": "#e2dccc",
       "metric": {
-        "apcaLc": 79.10981811830018,
-        "wcagRatio": 10.74706817440964
+        "apcaLc": 83.2679468563687,
+        "wcagRatio": 13.081509864101246
       },
       "status": "pass"
     },
@@ -5654,10 +5654,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#895119",
-      "background": "#ebdbb2",
+      "background": "#e2dccc",
       "metric": {
-        "apcaLc": 58.95101685716055,
-        "wcagRatio": 4.703350358441573
+        "apcaLc": 59.080573909164656,
+        "wcagRatio": 4.714118077876107
       },
       "status": "violation"
     },
@@ -5667,10 +5667,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#895119",
-      "background": "#d5c4a1",
+      "background": "#cec5b3",
       "metric": {
-        "apcaLc": 47.00386118083263,
-        "wcagRatio": 3.7606864609616415
+        "apcaLc": 47.09414132189239,
+        "wcagRatio": 3.767433116214499
       },
       "status": "violation"
     },
@@ -5680,10 +5680,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#895119",
-      "background": "#bdae93",
+      "background": "#b9af9b",
       "metric": {
-        "apcaLc": 35.69309539420152,
-        "wcagRatio": 2.9617332925457536
+        "apcaLc": 35.825339344055216,
+        "wcagRatio": 2.970538156885638
       },
       "status": "violation"
     },
@@ -5693,10 +5693,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#895119",
-      "background": "#918373",
+      "background": "#908473",
       "metric": {
-        "apcaLc": 15.099392552805007,
-        "wcagRatio": 1.750717492681976
+        "apcaLc": 15.315758243402378,
+        "wcagRatio": 1.7617464534253233
       },
       "status": "violation"
     },
@@ -5706,10 +5706,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#895119",
-      "background": "#fbf1c7",
+      "background": "#f3f0e6",
       "metric": {
-        "apcaLc": 70.26252249621847,
-        "wcagRatio": 5.686782056593334
+        "apcaLc": 69.95397607451868,
+        "wcagRatio": 5.658803241190224
       },
       "status": "pass"
     },
@@ -5732,10 +5732,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#895119",
-      "background": "#5b524d",
+      "background": "#5b524c",
       "metric": {
-        "apcaLc": -3.279297965496851,
-        "wcagRatio": 1.179698182327333
+        "apcaLc": -3.303630528782972,
+        "wcagRatio": 1.1808983117721967
       },
       "status": "violation"
     },
@@ -5758,10 +5758,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#895119",
-      "background": "#46403d",
+      "background": "#3f3834",
       "metric": {
-        "apcaLc": -9.852223054763334,
-        "wcagRatio": 1.5790529717251727
+        "apcaLc": -12.385590669835784,
+        "wcagRatio": 1.7818172730122672
       },
       "status": "violation"
     },
@@ -5771,10 +5771,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#895119",
-      "background": "#3c3836",
+      "background": "#332d29",
       "metric": {
-        "apcaLc": -12.561768955299558,
-        "wcagRatio": 1.797105182797365
+        "apcaLc": -15.753337764077022,
+        "wcagRatio": 2.1023246148430257
       },
       "status": "violation"
     },
@@ -5784,10 +5784,10 @@
       "mode": "light",
       "kind": "hue-text",
       "foreground": "#895119",
-      "background": "#282828",
+      "background": "#1c1612",
       "metric": {
-        "apcaLc": -17.42784286830011,
-        "wcagRatio": 2.284981418643585
+        "apcaLc": -20.72051451359862,
+        "wcagRatio": 2.7749644043695594
       },
       "status": "violation"
     }
