@@ -164,13 +164,13 @@ export const Header = ({
     // Chrome floats over a full-bleed editor without stealing a strip of clicks.
     <header
       className={cn(
-        "pointer-events-none grid w-full grid-cols-[1fr_auto_1fr] items-start justify-between",
+        "pointer-events-none grid w-full grid-cols-[1fr_auto_1fr] items-start justify-between gap-2",
         className,
       )}
     >
       <div className="flex items-start gap-2">
         {draftName === null ? (
-          <div className="pointer-events-auto flex w-fit items-center gap-1 rounded-full bg-muted pl-1">
+          <div className="pointer-events-auto flex w-fit items-center gap-1 rounded-full bg-muted/50 backdrop-blur-sm pl-1">
             <Logo className="size-6" />
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -228,7 +228,7 @@ export const Header = ({
       </div>
 
       <Tabs value={activeEditor}>
-        <TabsList className="pointer-events-auto rounded-[100vw] bg-muted/50">
+        <TabsList className="pointer-events-auto rounded-[100vw] bg-muted/50 backdrop-blur-sm">
           <TabsTrigger
             value="show"
             className="rounded-[100vw] border-0 px-3"
@@ -256,7 +256,11 @@ export const Header = ({
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <Button variant="ghost" className="h-auto rounded-full p-0" aria-label="Account">
+              <Button
+                variant="ghost"
+                className="h-auto rounded-full p-0 border-0"
+                aria-label="Account"
+              >
                 <Avatar>
                   {user.avatarUrl ? (
                     <AvatarImage src={user.avatarUrl} alt={user.name ?? user.email} />
@@ -292,18 +296,20 @@ export const Header = ({
         */}
         <div className="flex items-center">
           {runActive ? (
-            <div
-              className="flex h-9 items-center gap-2 rounded-l-md bg-primary px-3 text-sm font-medium text-primary-foreground"
-              aria-live="polite"
-            >
+            <Button className="rounded-r-none border-0" size="sm" aria-live="polite">
               <span
                 aria-hidden="true"
                 className="size-2 animate-pulse rounded-full bg-primary-foreground"
               />
               Live
-            </div>
+            </Button>
           ) : (
-            <Button className="rounded-r-none" disabled={runPending} onClick={onStartRun}>
+            <Button
+              className="rounded-r-none border-0"
+              size="sm"
+              disabled={runPending}
+              onClick={onStartRun}
+            >
               <PlayIcon />
               {runPending ? "Starting…" : "Go live"}
             </Button>
@@ -312,7 +318,8 @@ export const Header = ({
             <DropdownMenuTrigger
               render={
                 <Button
-                  className="rounded-l-none border-l border-l-primary-foreground/20 px-2"
+                  className="rounded-l-none border-0 border-l border-primary-foreground/20 px-2"
+                  size="sm"
                   aria-label="Run and publish options"
                 >
                   <ChevronDownIcon className="text-accent-200" />

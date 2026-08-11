@@ -37,7 +37,7 @@ function EditableAreaProbe({ label }: { label: string }) {
 
 function ToolbarStandIn() {
   return (
-    <div className="pointer-events-auto rounded-xl border border-border bg-muted/50 px-4 py-2 text-sm shadow-lg">
+    <div className="pointer-events-auto rounded-xl border border-border bg-muted/50 backdrop-blur-sm px-4 py-2 text-sm shadow-lg">
       Editor toolbar
     </div>
   );

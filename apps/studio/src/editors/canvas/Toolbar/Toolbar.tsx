@@ -51,7 +51,7 @@ export const Toolbar = ({
 }: ToolbarProps) => {
   return (
     <div
-      className="pointer-events-auto flex items-center gap-2 rounded-xl border border-border bg-muted/50 p-1 shadow-lg"
+      className="pointer-events-auto flex items-center gap-2 rounded-xl border border-border bg-muted/50 backdrop-blur-sm p-1 shadow-lg"
       role="toolbar"
       aria-label="Canvas tools"
     >

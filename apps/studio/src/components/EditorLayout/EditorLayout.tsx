@@ -72,7 +72,7 @@ function EditorChrome({
   const toolbarRef = useEditorSlotRef("toolbar");
 
   const headerRef = useRef<HTMLDivElement | null>(null);
-  const footerRef = useRef<HTMLElement | null>(null);
+  const footerRef = useRef<HTMLDivElement | null>(null);
 
   // The editors own the viewport; stop scroll chaining to the document.
   useEffect(() => {
@@ -99,8 +99,17 @@ function EditorChrome({
         footerRef={footerRef}
         gutter={CHROME_GUTTER}
       >
-        {/* The editor: full-bleed, beneath the Chrome. */}
-        <div className="absolute inset-0 z-0">{children}</div>
+        {/* The editor: full-bleed, beneath the Chrome. The toolbar lives in this
+            layer so its backdrop filter samples the editor pixels. */}
+        <div className="absolute inset-0">
+          {children}
+          <div
+            ref={footerRef}
+            className="pointer-events-none absolute inset-x-0 bottom-2 z-20 flex justify-center"
+          >
+            <div ref={toolbarRef} className="contents" />
+          </div>
+        </div>
 
         {hasLeft ? (
           <Sidebar variant="floating" collapsible="offcanvas" aria-label="Layers">
@@ -108,7 +117,7 @@ function EditorChrome({
           </Sidebar>
         ) : null}
 
-        <SidebarInset className="pointer-events-none z-20 grid h-screen grid-rows-[auto_1fr_auto] py-2">
+        <SidebarInset className="pointer-events-none grid h-screen grid-rows-[auto_1fr_auto] py-2">
           <div ref={headerRef}>
             <Header {...header} className="px-2" />
           </div>
@@ -120,9 +129,7 @@ function EditorChrome({
           */}
           <div aria-hidden="true" />
 
-          <footer ref={footerRef} className="flex justify-center">
-            <div ref={toolbarRef} className="contents" />
-          </footer>
+          <footer />
         </SidebarInset>
 
         {hasRight ? (
