@@ -46,6 +46,40 @@ export const Default: Story = {
   ),
 };
 
+export const Stacked: Story = {
+  render: () => (
+    <ToastProvider>
+      <StackedToasts />
+    </ToastProvider>
+  ),
+};
+
+function StackedToasts() {
+  const toastManager = useToastManager();
+
+  return (
+    <>
+      <Button
+        onClick={() => {
+          for (const title of ["First event", "Second event", "Third event"]) {
+            const toastId = toastManager.add({
+              title,
+              description: "This toast demonstrates the stack transition.",
+              actionProps: {
+                children: "Dismiss",
+                onClick: () => toastManager.close(toastId),
+              },
+            });
+          }
+        }}
+      >
+        Show stacked toasts
+      </Button>
+      <ToastViewport />
+    </>
+  );
+}
+
 export const Error: Story = {
   render: () => (
     <ToastProvider>
