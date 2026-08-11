@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { fixedFillSizing, showsReparentPreview } from "./canvas-creation";
+import { creationRect, fixedFillSizing, showsReparentPreview } from "./canvas-creation";
 
 describe("fixedFillSizing", () => {
   it("converts both fill axes to measured fixed dimensions", () => {
@@ -36,6 +36,38 @@ describe("fixedFillSizing", () => {
         80,
       ),
     ).toEqual({ width: { mode: "fixed", value: 240 } });
+  });
+});
+
+describe("creationRect", () => {
+  it("constrains the box to a square in every drag direction", () => {
+    expect(creationRect({ x: 10, y: 20 }, { x: 70, y: 50 }, true)).toEqual({
+      x: 10,
+      y: 20,
+      width: 60,
+      height: 60,
+      right: 70,
+      bottom: 80,
+    });
+    expect(creationRect({ x: 70, y: 50 }, { x: 10, y: 20 }, true)).toEqual({
+      x: 10,
+      y: -10,
+      width: 60,
+      height: 60,
+      right: 70,
+      bottom: 50,
+    });
+  });
+
+  it("keeps independent dimensions when square mode is disabled", () => {
+    expect(creationRect({ x: 10, y: 20 }, { x: 70, y: 50 })).toEqual({
+      x: 10,
+      y: 20,
+      width: 60,
+      height: 30,
+      right: 70,
+      bottom: 50,
+    });
   });
 });
 
