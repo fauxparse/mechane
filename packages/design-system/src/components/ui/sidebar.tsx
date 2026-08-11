@@ -223,7 +223,7 @@ export function SidebarGroupLabel({ className, ...props }: ComponentProps<"div">
     <div
       data-slot="sidebar-group-label"
       className={cn(
-        "flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-muted-foreground outline-none",
+        "flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground outline-none",
         "group-data-[state=collapsed]/sidebar:hidden",
         className,
       )}

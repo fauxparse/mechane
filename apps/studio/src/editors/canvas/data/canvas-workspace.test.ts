@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import type { CanvasArtboardDocument } from "../../../api/canvas";
-import { artIdFromPath, canvasArtboardSize, resolveFocusedArtboard } from "./canvas-workspace";
+import {
+  artIdFromPath,
+  canvasArtboardSize,
+  isCanvasPath,
+  resolveFocusedArtboard,
+} from "./canvas-workspace";
 
 const artboards = [
   {
@@ -68,5 +73,33 @@ describe("Canvas workspace artboard sizing", () => {
 
     expect(canvasArtboardSize(scene)).toEqual({ width: 720, height: 420 });
     expect(canvasArtboardSize(block)).toEqual({ width: 480, height: 280 });
+  });
+});
+
+describe("isCanvasPath", () => {
+  const showId = "ses8v4b3";
+
+  it("recognises the bare Canvas path", () => {
+    expect(isCanvasPath(`/shows/${showId}/art`, showId)).toBe(true);
+  });
+
+  it("recognises an Artboard path", () => {
+    expect(isCanvasPath(`/shows/${showId}/art/c6dy7ybf`, showId)).toBe(true);
+  });
+
+  // The regression: while the router transitions away from the Canvas editor the
+  // route is still mounted, and its redirect must not fire for the destination's
+  // pathname — that bounced the user straight back and silently cancelled every
+  // navigation out of the Canvas editor.
+  it("rejects the Show editor's path, so leaving the Canvas editor is not undone", () => {
+    expect(isCanvasPath(`/shows/${showId}`, showId)).toBe(false);
+  });
+
+  it.each(["/settings", "/", `/shows/${showId}/artwork`])("rejects %s", (pathname) => {
+    expect(isCanvasPath(pathname, showId)).toBe(false);
+  });
+
+  it("rejects another Show's Canvas path", () => {
+    expect(isCanvasPath("/shows/other/art/c6dy7ybf", showId)).toBe(false);
   });
 });

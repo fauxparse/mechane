@@ -1,4 +1,7 @@
 import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
@@ -10,6 +13,7 @@ import {
   Frame as FrameIcon,
   Image as ImageIcon,
   Puzzle,
+  SearchIcon,
   Square,
   TvMinimal,
   Type,
@@ -312,17 +316,19 @@ export function CanvasLayers({
   }));
 
   return (
-    <SidebarContent>
-      <div className="p-2">
-        <input
+    <SidebarContent className="p-0">
+      <InputGroup className="h-10 bg-transparent dark:bg-transparent rounded-b-none border-0 border-b border-sidebar-border has-[[data-slot=input-group-control]:focus-visible]:border-sidebar-border has-[[data-slot=input-group-control]:focus-visible]:ring-0">
+        <InputGroupAddon align="inline-start">
+          <SearchIcon />
+        </InputGroupAddon>
+        <InputGroupInput
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search layers"
           aria-label="Search layers"
-          className="h-8 w-full rounded-md border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-ring"
         />
-      </div>
+      </InputGroup>
       {groups.map(({ kind, artboards }) => {
         const rows = artboards.flatMap((artboard) =>
           canvasLayerRows(artboard, { expanded, query }).map((row) => ({ row, artboard })),

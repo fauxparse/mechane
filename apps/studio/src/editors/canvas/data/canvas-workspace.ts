@@ -43,6 +43,22 @@ export function artIdFromPath(pathname: string, showId: string): string | null {
   return value ? decodeURIComponent(value) : null;
 }
 
+/**
+ * Whether a pathname is the Canvas editor's.
+ *
+ * The Canvas route keeps the URL naming an Artboard, redirecting the bare
+ * `/art` path to `/art/<artId>`. That redirect has to know whether the Canvas
+ * editor is still the route in question, because a route stays mounted for a
+ * moment while the router transitions away from it: without this check, the
+ * first render at the *new* pathname finds no Artboard id, reads that as "bare
+ * /art", and redirects straight back — silently cancelling any navigation out
+ * of the Canvas editor.
+ */
+export function isCanvasPath(pathname: string, showId: string): boolean {
+  const base = `/shows/${showId}/art`;
+  return pathname === base || pathname.startsWith(`${base}/`);
+}
+
 export function resolveFocusedArtboard(
   artboards: readonly CanvasArtboardDocument[],
   requestedArtId: string | null,

@@ -1,6 +1,5 @@
 import { Puzzle, TvMinimal } from "lucide-react";
 
-import { Button } from "@mechane/design-system";
 import { CanvasRenderer } from "@mechane/rendering";
 
 import { canvasArtboardSize, artboardLabel } from "../data/canvas-workspace";
@@ -64,7 +63,6 @@ export function CanvasWorkspaceStage({
   onEndWorkspaceInteraction,
   onCancelWorkspaceInteraction,
   tool,
-  setTool,
   camera,
   ordered,
   drag,
@@ -112,24 +110,6 @@ export function CanvasWorkspaceStage({
       onPointerCancel={onCancelWorkspaceInteraction}
       style={{ touchAction: "none" }}
     >
-      <div
-        className="pointer-events-auto absolute top-3 left-3 z-20 flex items-center gap-1 rounded-lg border border-border bg-background/95 p-1 shadow-lg backdrop-blur"
-        role="toolbar"
-        aria-label="Canvas creation tools"
-      >
-        {(["select", "rect", "text", "image", "frame"] as const).map((candidate) => (
-          <Button
-            key={candidate}
-            type="button"
-            size="sm"
-            variant={tool === candidate ? "secondary" : "ghost"}
-            aria-pressed={tool === candidate}
-            onClick={() => setTool(candidate)}
-          >
-            {candidate[0]!.toUpperCase() + candidate.slice(1)}
-          </Button>
-        ))}
-      </div>
       <div
         className="pointer-events-none absolute top-0 left-0 h-0 w-0"
         style={{

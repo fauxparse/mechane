@@ -102,18 +102,16 @@ export function CanvasWorkspaceSurface({
       />
 
       <EditorSlot name="left">
-        <EditorPanel title="Layers">
-          <CanvasLayers
-            ordered={ordered}
-            focused={focused}
-            selection={selection}
-            onFocusArtboard={onFocusArtboard}
-            onSelect={onSelect}
-            onUpdateElement={onUpdateElement}
-            onMoveElement={onMoveElement}
-            onRenameArtboard={onRenameArtboard}
-          />
-        </EditorPanel>
+        <CanvasLayers
+          ordered={ordered}
+          focused={focused}
+          selection={selection}
+          onFocusArtboard={onFocusArtboard}
+          onSelect={onSelect}
+          onUpdateElement={onUpdateElement}
+          onMoveElement={onMoveElement}
+          onRenameArtboard={onRenameArtboard}
+        />
       </EditorSlot>
 
       <EditorSlot name="right">
