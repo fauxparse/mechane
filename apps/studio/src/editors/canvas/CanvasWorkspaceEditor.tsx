@@ -1,3 +1,9 @@
+import { useCallback, useMemo, useState } from "react";
+
+import { CommandPalette } from "../show/commands/CommandPalette";
+import type { PaletteCommand } from "../show/commands/palette-commands";
+import { useEditorKeys } from "../show/keyboard/use-editor-keys";
+
 import type { CanvasWorkspaceEditorProps } from "./canvas-workspace-types";
 export type { CanvasWorkspaceEditorProps } from "./canvas-workspace-types";
 import { CanvasWorkspaceSurface } from "./graph/CanvasWorkspaceSurface";
@@ -80,8 +86,59 @@ export function CanvasWorkspaceEditor({
     onUpdateElement,
     onDeleteElements,
   });
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const deleteSelection = useCallback(() => {
+    const artboard = ordered.find((candidate) => candidate.artId === selection.artId);
+    if (artboard && selection.elementIds.length > 0) {
+      onDeleteElements?.(artboard.canvasId, selection.elementIds);
+    }
+  }, [onDeleteElements, ordered, selection.artId, selection.elementIds]);
+  const selectAll = useCallback(() => {
+    if (!focused) return;
+    const ids = (focused.canvas.root.children ?? []).flatMap((element) => [
+      element.id,
+      ...(element.children ?? []).map((child) => child.id),
+    ]);
+    setSelection({ artId: focused.artId, elementIds: ids });
+  }, [focused, setSelection]);
+  const paletteCommands = useMemo<PaletteCommand[]>(
+    () => [
+      { id: "create-rectangle", label: "Create Rectangle", scope: "canvas", run: () => setTool("rect") },
+      { id: "create-ellipse", label: "Create Ellipse", scope: "canvas", run: () => setTool("ellipse") },
+      { id: "create-text", label: "Create Text", scope: "canvas", run: () => setTool("text") },
+      { id: "create-image", label: "Create Image", scope: "canvas", run: () => setTool("image") },
+      { id: "create-frame", label: "Create Frame", scope: "canvas", run: () => setTool("frame") },
+      { id: "zoom-in", label: "Zoom In", scope: "canvas", run: zoomIn },
+      { id: "zoom-out", label: "Zoom Out", scope: "canvas", run: zoomOut },
+      { id: "reset-view", label: "Reset View", scope: "canvas", run: resetCamera },
+      {
+        id: "delete-selection",
+        label: "Delete Selection",
+        scope: "selection",
+        disabledReason: selection.elementIds.length === 0 ? "select an Element first" : undefined,
+        run: deleteSelection,
+      },
+    ],
+    [deleteSelection, resetCamera, selection.elementIds.length, setTool, zoomIn, zoomOut],
+  );
+  useEditorKeys(
+    useMemo(
+      () => ({
+        "open-palette": () => setPaletteOpen(true),
+        "delete-selection": deleteSelection,
+        "rename": () => setRenamingArtId(selection.artId),
+        "select-all": selectAll,
+        "fit-graph": resetCamera,
+        "zoom-to-selection": resetCamera,
+        "deselect": () => setSelection({ artId: null, elementIds: [] }),
+      }),
+      [deleteSelection, focused, resetCamera, selection.artId, selectAll, setRenamingArtId, setSelection],
+    ),
+  );
+
 
   return (
+    <>
     <CanvasWorkspaceSurface
       ordered={ordered}
       focused={focused}
@@ -129,5 +186,7 @@ export function CanvasWorkspaceEditor({
       onBeginResize={beginResize}
       onHandleCanvasKeyDown={handleCanvasKeyDown}
     />
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} commands={paletteCommands} />
+    </>
   );
 }
