@@ -22,6 +22,7 @@ import {
 } from "./graph/canvas-selection";
 import {
   containingFrame,
+  creationRect,
   fixedFillSizing,
   rankForInsertion,
   showsReparentPreview,
@@ -79,6 +80,7 @@ type CreationDraft = {
   pointerId: number;
   start: { x: number; y: number };
   current: { x: number; y: number };
+  square: boolean;
 };
 type ElementDragState = {
   artId: string;
@@ -979,6 +981,7 @@ export function useCanvasWorkspaceInteractions({
       pointerId: event.pointerId,
       start: { x: event.clientX, y: event.clientY },
       current: { x: event.clientX, y: event.clientY },
+      square: event.shiftKey,
     });
   };
 
@@ -986,7 +989,11 @@ export function useCanvasWorkspaceInteractions({
     if (!creationDraft || creationDraft.pointerId !== event.pointerId) return;
     setCreationDraft((current) =>
       current && current.pointerId === event.pointerId
-        ? { ...current, current: { x: event.clientX, y: event.clientY } }
+        ? {
+            ...current,
+            current: { x: event.clientX, y: event.clientY },
+            square: event.shiftKey,
+          }
         : current,
     );
   };
@@ -1004,14 +1011,11 @@ export function useCanvasWorkspaceInteractions({
       setTool("select");
       return;
     }
-    const rect = {
-      x: Math.min(draft.start.x, event.clientX),
-      y: Math.min(draft.start.y, event.clientY),
-      width: Math.abs(event.clientX - draft.start.x),
-      height: Math.abs(event.clientY - draft.start.y),
-      right: Math.max(draft.start.x, event.clientX),
-      bottom: Math.max(draft.start.y, event.clientY),
-    };
+    const rect = creationRect(
+      draft.start,
+      { x: event.clientX, y: event.clientY },
+      draft.square || event.shiftKey,
+    );
     if (rect.width < 4 || rect.height < 4) return;
     const root = event.currentTarget.querySelector<HTMLElement>("[data-canvas-root]");
     if (!root) return;
@@ -1179,13 +1183,16 @@ export function useCanvasWorkspaceInteractions({
     : null;
   // Any Element selection, including a directly selected Canvas root, can be resized.
   const resizable = selectedIds.length > 0;
+  const creationBox = creationDraft
+    ? creationRect(creationDraft.start, creationDraft.current, creationDraft.square)
+    : null;
   const creationOverlayRect =
-    creationDraft && workspaceBounds
+    creationBox && workspaceBounds
       ? {
-          x: Math.min(creationDraft.start.x, creationDraft.current.x) - workspaceBounds.x,
-          y: Math.min(creationDraft.start.y, creationDraft.current.y) - workspaceBounds.y,
-          width: Math.abs(creationDraft.current.x - creationDraft.start.x),
-          height: Math.abs(creationDraft.current.y - creationDraft.start.y),
+          x: creationBox.x - workspaceBounds.x,
+          y: creationBox.y - workspaceBounds.y,
+          width: creationBox.width,
+          height: creationBox.height,
         }
       : null;
   const dragLine =

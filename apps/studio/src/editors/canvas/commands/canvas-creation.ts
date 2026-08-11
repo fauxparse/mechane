@@ -36,6 +36,26 @@ export function fixedFillSizing(
 
 export type CanvasCreationTool = "select" | "rect" | "text" | "image" | "frame";
 
+/** Returns the dragged creation box, optionally constraining it to a square. */
+export function creationRect(
+  start: { x: number; y: number },
+  current: { x: number; y: number },
+  square = false,
+): CanvasClientRect {
+  const dx = current.x - start.x;
+  const dy = current.y - start.y;
+  const width = square ? Math.max(Math.abs(dx), Math.abs(dy)) : Math.abs(dx);
+  const height = square ? width : Math.abs(dy);
+  return {
+    x: dx < 0 ? start.x - width : start.x,
+    y: dy < 0 ? start.y - height : start.y,
+    width,
+    height,
+    right: dx < 0 ? start.x : start.x + width,
+    bottom: dy < 0 ? start.y : start.y + height,
+  };
+}
+
 export function rankForInsertion(ranks: readonly string[], index: number): string {
   const sorted = [...ranks].sort((left, right) => left.localeCompare(right));
   if (sorted.length === 0) return "a";
