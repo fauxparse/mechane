@@ -167,6 +167,7 @@ export {
 } from "./components/ui/property-input/property-input";
 export { ThemeProvider, useTheme } from "./theme/theme-provider";
 export type { ThemeContextValue, ThemeProviderProps } from "./theme/theme-provider";
+export { Switch } from "./components/ui/switch";
 
-export { THEME_COLOUR_METADATA } from "./themes/generated";
-export type { ThemeColourKey } from "./themes/generated";
+export { THEME_COLOR_METADATA } from "./themes/generated";
+export type { ThemeColorKey } from "./themes/generated";

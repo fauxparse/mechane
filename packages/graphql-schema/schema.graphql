@@ -80,7 +80,7 @@ type ImageValue {
   value: String!
 }
 
-type ColourValue {
+type ColorValue {
   value: String!
 }
 
@@ -100,14 +100,14 @@ type ArrayValue {
   value: JSON!
 }
 
-union ShapeValue = TextValue | NumberValue | BooleanValue | ImageValue | ColourValue | DateValue | DateTimeValue | ObjectValue | ArrayValue
+union ShapeValue = TextValue | NumberValue | BooleanValue | ImageValue | ColorValue | DateValue | DateTimeValue | ObjectValue | ArrayValue
 
 input ShapeValueInput @oneOf {
   text: String
   number: Float
   boolean: Boolean
   image: String
-  colour: String
+  color: String
   date: String
   datetime: String
   object: JSON
@@ -307,7 +307,7 @@ interface Element {
   minHeight: JSON
   maxHeight: JSON
   rotation: Int
-  opacity: Float
+  opacity: JSON
   blendMode: String
   fill: JSON
   anchor: JSON
@@ -329,12 +329,12 @@ type RectElement implements Element {
   minHeight: JSON
   maxHeight: JSON
   rotation: Int
-  opacity: Float
+  opacity: JSON
   blendMode: String
   fill: JSON
   anchor: JSON
   children: [Element!]!
-  cornerRadius: Float
+  cornerRadius: JSON
 }
 
 type EllipseElement implements Element {
@@ -352,7 +352,7 @@ type EllipseElement implements Element {
   minHeight: JSON
   maxHeight: JSON
   rotation: Int
-  opacity: Float
+  opacity: JSON
   blendMode: String
   fill: JSON
   anchor: JSON
@@ -374,20 +374,20 @@ type TextElement implements Element {
   minHeight: JSON
   maxHeight: JSON
   rotation: Int
-  opacity: Float
+  opacity: JSON
   blendMode: String
   fill: JSON
   anchor: JSON
   children: [Element!]!
-  content: String
-  text: String
-  color: String
-  fontFamily: String
-  fontSize: Float
-  fontWeight: String
+  content: JSON
+  text: JSON
+  color: JSON
+  fontFamily: JSON
+  fontSize: JSON
+  fontWeight: JSON
   lineHeight: JSON
-  letterSpacing: Float
-  textAlign: String
+  letterSpacing: JSON
+  textAlign: JSON
 }
 
 type ImageElement implements Element {
@@ -405,16 +405,16 @@ type ImageElement implements Element {
   minHeight: JSON
   maxHeight: JSON
   rotation: Int
-  opacity: Float
+  opacity: JSON
   blendMode: String
   fill: JSON
   anchor: JSON
   children: [Element!]!
-  src: String
-  image: String
-  source: String
-  alt: String
-  objectFit: String
+  src: JSON
+  image: JSON
+  source: JSON
+  alt: JSON
+  objectFit: JSON
 }
 
 type FrameElement implements Element {
@@ -432,7 +432,7 @@ type FrameElement implements Element {
   minHeight: JSON
   maxHeight: JSON
   rotation: Int
-  opacity: Float
+  opacity: JSON
   blendMode: String
   fill: JSON
   anchor: JSON

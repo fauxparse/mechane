@@ -40,7 +40,7 @@ export function Menu<T extends ShapeValue>({
   onColorChange: (value: string | null) => void;
 }) {
   return (
-    <ComboboxContent className={cn("p-0.5", inputType === "color" && "overflow-y-auto")}>
+    <ComboboxContent className={cn("p-0.5 min-w-fit", inputType === "color" && "overflow-y-auto")}>
       {inputType === "color" && (
         <>
           <InlineColorPicker value={colorText} onChange={onColorChange} />
@@ -54,17 +54,23 @@ export function Menu<T extends ShapeValue>({
               <ComboboxItem value="fixed">
                 <RulerDimensionLineIcon className={cn(dimension === "height" && "rotate-90")} />
                 Fixed {dimension}
-                <CheckIcon className={cn("ml-auto", sizing === "fixed" ? "opacity-100" : "opacity-0")} />
+                <CheckIcon
+                  className={cn("ml-auto", sizing === "fixed" ? "opacity-100" : "opacity-0")}
+                />
               </ComboboxItem>
               <ComboboxItem value="fill">
                 {dimension === "width" ? <ChevronsLeftRightIcon /> : <ChevronsUpDownIcon />}Fill
                 container
-                <CheckIcon className={cn("ml-auto", sizing === "fill" ? "opacity-100" : "opacity-0")} />
+                <CheckIcon
+                  className={cn("ml-auto", sizing === "fill" ? "opacity-100" : "opacity-0")}
+                />
               </ComboboxItem>
               <ComboboxItem value="hug">
                 {dimension === "width" ? <ChevronsRightLeftIcon /> : <ChevronsDownUpIcon />}Hug
                 contents
-                <CheckIcon className={cn("ml-auto", sizing === "hug" ? "opacity-100" : "opacity-0")} />
+                <CheckIcon
+                  className={cn("ml-auto", sizing === "hug" ? "opacity-100" : "opacity-0")}
+                />
               </ComboboxItem>
             </ComboboxGroup>
             <ComboboxSeparator />

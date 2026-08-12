@@ -6,12 +6,11 @@
 // The stage fills its container, and the container is the whole viewport — the
 // plane runs underneath the sidebars to the edges of the screen. Anything that
 // frames content should consult `useEditableArea()` rather than the stage size.
-import { EditorPanel } from "../../../components/EditorLayout/EditorLayout";
 import { EditorSlot } from "../../../components/EditorLayout/editor-slots";
 import type { CanvasWorkspaceSurfaceProps } from "../canvas-workspace-types";
 import { Toolbar } from "../Toolbar/Toolbar";
 import { CanvasWorkspaceStage } from "./CanvasWorkspaceStage";
-import { CanvasInspector } from "./CanvasInspector";
+import { CanvasInspector } from "./CanvasInspector/CanvasInspector";
 import { CanvasLayers } from "./CanvasLayers";
 
 export function CanvasWorkspaceSurface({
@@ -34,6 +33,7 @@ export function CanvasWorkspaceSurface({
   creationOverlayRect,
   overlayRect,
   resizePreview,
+  inspectorPreview,
   resizable,
   onFocusArtboard,
   onUpdateElement,
@@ -120,15 +120,14 @@ export function CanvasWorkspaceSurface({
         />
       </EditorSlot>
       <EditorSlot name="right">
-        <EditorPanel title="Properties">
-          <CanvasInspector
-            focused={focused}
-            selection={selection}
-            variables={variables}
-            onUpdateElement={onUpdateElement}
-            onUpdateElements={onUpdateElements}
-          />
-        </EditorPanel>
+        <CanvasInspector
+          focused={focused}
+          selection={selection}
+          variables={variables}
+          inspectorPreview={inspectorPreview}
+          onUpdateElement={onUpdateElement}
+          onUpdateElements={onUpdateElements}
+        />
       </EditorSlot>
 
       <EditorSlot name="toolbar">

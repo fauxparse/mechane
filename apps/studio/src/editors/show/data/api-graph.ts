@@ -77,7 +77,7 @@ function toType(type: ApiType): Type {
     if (!type.shapeId) throw new Error("Shape references must include a Shape id.");
     return { kind: "shape", shapeId: type.shapeId };
   }
-  if (["text", "number", "boolean", "image", "colour", "date", "datetime"].includes(type.kind)) {
+  if (["text", "number", "boolean", "image", "color", "date", "datetime"].includes(type.kind)) {
     return type.kind as Type;
   }
   throw new Error(`Unknown Shape type "${type.kind}".`);

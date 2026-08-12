@@ -51,8 +51,8 @@ export function defaultPropertyValue(type: Type): ShapeValue | null {
       return typeof value === "string" ? { kind: "text", value } : null;
     case "image":
       return typeof value === "string" ? { kind: "image", value } : null;
-    case "colour":
-      return typeof value === "string" ? { kind: "colour", value } : null;
+    case "color":
+      return typeof value === "string" ? { kind: "color", value } : null;
     case "date":
       return typeof value === "string" ? { kind: "date", value } : null;
     case "datetime":

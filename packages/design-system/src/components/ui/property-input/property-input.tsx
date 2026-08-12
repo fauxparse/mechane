@@ -2,7 +2,6 @@ import type { ShapeValue } from "@mechane/domain";
 import type { FocusEvent } from "react";
 
 import { Combobox, ComboboxInput } from "../combobox";
-import { InputGroup } from "../input-group";
 import { Popover, PopoverContent } from "../popover";
 import { Addons } from "./addons";
 import { Connector } from "./connector";
@@ -82,7 +81,8 @@ export const PropertyInput = <T extends ShapeValue>({
             ref={input.inputElementRef}
             inputMode={input.inputType === "number" ? "decimal" : undefined}
             aria-label={placeholder ?? input.inputType}
-            className="w-full min-w-0 bg-muted dark:bg-muted border-0 *:data-[slot=combobox-input]:px-0"
+            placeholder={placeholder}
+            className="w-full min-w-0 bg-muted/50 dark:bg-muted/50 border-0 *:data-[slot=combobox-input]:px-0 rounded-sm h-7 data-[slot=combobox-input]:h-7"
             showTrigger={false}
             onFocus={handleInputFocus}
             onBlur={input.commitDraftInput}
@@ -118,19 +118,22 @@ export const PropertyInput = <T extends ShapeValue>({
           />
         </Combobox>
       </div>
-      <PopoverContent align="end" sideOffset={10} alignOffset={-4} className="p-0 gap-0">
-        <InputGroup className="relative bg-transparent dark:bg-transparent rounded-b-none border-0 border-b border-sidebar-border has-[[data-slot=input-group-control]:focus-visible]:border-sidebar-border has-[[data-slot=input-group-control]:focus-visible]:ring-0">
-          <VariablePicker
-            query={input.variableQuery}
-            variables={input.filteredVariables}
-            totalVariables={variables?.length ?? 0}
-            linkedVariable={input.linkedVariable}
-            onQueryChange={input.setVariableQuery}
-            onClose={() => input.setVariablesOpen(false)}
-            onSelect={input.selectVariable}
-            onDisconnect={input.disconnectVariable}
-          />
-        </InputGroup>
+      <PopoverContent
+        align="end"
+        sideOffset={10}
+        alignOffset={-4}
+        className="gap-0 overflow-hidden p-0"
+      >
+        <VariablePicker
+          query={input.variableQuery}
+          variables={input.filteredVariables}
+          totalVariables={variables?.length ?? 0}
+          linkedVariable={input.linkedVariable}
+          onQueryChange={input.setVariableQuery}
+          onClose={() => input.setVariablesOpen(false)}
+          onSelect={input.selectVariable}
+          onDisconnect={input.disconnectVariable}
+        />
       </PopoverContent>
     </Popover>
   );

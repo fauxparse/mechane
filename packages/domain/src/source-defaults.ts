@@ -13,7 +13,7 @@ function primitiveDefault(type: Type): unknown {
       return false;
     case "text":
     case "image":
-    case "colour":
+    case "color":
     case "date":
     case "datetime":
       return "";

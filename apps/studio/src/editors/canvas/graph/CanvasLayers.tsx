@@ -8,18 +8,7 @@ import {
   SidebarGroupLabel,
   SidebarMenu,
 } from "@mechane/design-system";
-import {
-  ChevronRight,
-  Frame as FrameIcon,
-  Image as ImageIcon,
-  Puzzle,
-  SearchIcon,
-  Shapes,
-  Square,
-  TvMinimal,
-  Type,
-} from "lucide-react";
-import type { ElementKind } from "@mechane/domain";
+import { ChevronRight, PuzzleIcon, SearchIcon, TvMinimalIcon } from "lucide-react";
 import { findCanvasElement } from "@mechane/commands";
 import { useMemo, useRef, useState } from "react";
 
@@ -35,14 +24,7 @@ import { canvasLayerRows, expansionForSelection } from "../data/canvas-layer-tre
 import type { LayerRow } from "../data/canvas-layer-tree";
 import { artboardLabel } from "../data/canvas-workspace";
 import type { CanvasSelection } from "./canvas-selection";
-
-const ELEMENT_ICONS: Record<ElementKind, typeof Square> = {
-  frame: FrameIcon,
-  rect: Square,
-  ellipse: Shapes,
-  text: Type,
-  image: ImageIcon,
-};
+import { elementIconFor } from "./utils";
 
 /** Rows are 32px tall; the zone thresholds in canvas-layer-drop are expressed as fractions. */
 const ROW_HEIGHT = 32;
@@ -144,9 +126,9 @@ function LayerRowView({
   const Icon =
     row.kind === "canvas"
       ? artboard.kind === "scene"
-        ? TvMinimal
-        : Puzzle
-      : ELEMENT_ICONS[row.elementKind ?? "rect"];
+        ? TvMinimalIcon
+        : PuzzleIcon
+      : elementIconFor(row.elementKind);
   const name = row.kind === "canvas" ? artboardLabel(artboard) : row.name;
 
   return (

@@ -20,7 +20,7 @@ type Story = StoryObj<typeof PropertyInput>;
 const variables: VariableReference<ShapeValue>[] = [
   { id: "spacing-small", name: "Spacing / Small", current: { kind: "number", value: 8 } },
   { id: "spacing-large", name: "Spacing / Large", current: { kind: "number", value: 24 } },
-  { id: "brand-color", name: "Color / Brand", current: { kind: "colour", value: "#c94f9d" } },
+  { id: "brand-color", name: "Color / Brand", current: { kind: "color", value: "#c94f9d" } },
 ];
 
 const isNumberValue = (
@@ -172,7 +172,7 @@ export const Number: Story = {
 export const Color: Story = {
   args: {
     type: "color",
-    value: { kind: "colour", value: "#c94f9d" },
+    value: { kind: "color", value: "#c94f9d" },
     icon: PaintBucketIcon,
   },
   render: (args) => {

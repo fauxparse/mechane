@@ -32,9 +32,9 @@ const ALL_ELEMENTS: readonly ElementKind[] = ["rect", "ellipse", "text", "image"
 
 export const CANVAS_PROPERTY_DESCRIPTORS: readonly CanvasPropertyDescriptor[] = [
   { name: "opacity", targetType: "number", elementKinds: ALL_ELEMENTS },
-  { name: "fill", targetType: "colour", elementKinds: ALL_ELEMENTS },
+  { name: "fill", targetType: "color", elementKinds: ALL_ELEMENTS },
   { name: "content", targetType: "text", elementKinds: ["text"] },
-  { name: "color", targetType: "colour", elementKinds: ["text"] },
+  { name: "color", targetType: "color", elementKinds: ["text"] },
   { name: "fontFamily", targetType: "text", elementKinds: ["text"] },
   { name: "fontSize", targetType: "number", elementKinds: ["text"] },
   { name: "cornerRadius", targetType: "number", elementKinds: ["rect"] },
@@ -118,9 +118,9 @@ function resolveElement(element: Element, context: CanvasPropertyContext): Eleme
   return next;
 }
 
-export function resolveCanvasProperties(
-  canvas: Canvas,
-  context: CanvasPropertyContext,
-): Canvas {
-  return { ...canvas, root: resolveElement(canvas.root, context) as Extract<Canvas["root"], { type: "frame" }> };
+export function resolveCanvasProperties(canvas: Canvas, context: CanvasPropertyContext): Canvas {
+  return {
+    ...canvas,
+    root: resolveElement(canvas.root, context) as Extract<Canvas["root"], { type: "frame" }>,
+  };
 }

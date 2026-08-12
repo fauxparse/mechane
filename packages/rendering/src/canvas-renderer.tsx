@@ -25,9 +25,7 @@ interface RenderElementOptions {
   parent?: FrameElement;
 }
 
-function sizeValue(
-  value: SizeValue | PropertyConnection | undefined,
-): string | undefined {
+function sizeValue(value: SizeValue | PropertyConnection | undefined): string | undefined {
   if (value === undefined || isPropertyConnection(value)) return undefined;
   if (typeof value === "number") return `${value}px`;
   return `${value.value}${value.unit}`;
@@ -97,8 +95,7 @@ function cssFill(fill: Fill | undefined): string | undefined {
   if (typeof fill === "string") return fill;
   const stops = fill.stops
     .map(
-      (stop) =>
-        `${stop.color ?? stop.colour ?? "transparent"} ${Math.max(0, Math.min(1, stop.position)) * 100}%`,
+      (stop) => `${stop.color ?? "transparent"} ${Math.max(0, Math.min(1, stop.position)) * 100}%`,
     )
     .join(", ");
   const kind = fill.kind ?? fill.type ?? "linear";

@@ -127,7 +127,7 @@ _Avoid_: Step, command
 
 ### Type
 
-What kind of value something holds. Every Source, Variable and Transformer output has a Type — there is one type system across the whole Show, not a separate one per concept. A Type is either simple (text, number, boolean, image, colour, date, datetime), a list of some other Type, or a Shape.
+What kind of value something holds. Every Source, Variable and Transformer output has a Type — there is one type system across the whole Show, not a separate one per concept. A Type is either simple (text, number, boolean, image, color, date, datetime), a list of some other Type, or a Shape.
 _Avoid_: Kind (used for the varieties of graph node), data type
 
 ### Shape

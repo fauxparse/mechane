@@ -84,6 +84,13 @@ export interface CanvasWorkspaceSurfaceProps {
     width: number;
     height: number;
   } | null;
+  inspectorPreview: {
+    elementId: string;
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+  } | null;
   resizable: boolean;
   onCancelCreation(): void;
   zoomIn(): void;

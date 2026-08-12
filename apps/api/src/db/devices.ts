@@ -57,7 +57,7 @@ const CODE_ATTEMPTS = 8;
  * because this one string is both how a Device is named publicly and the
  * entire trust boundary for joining it (PRD.md §4.3: no login, possession
  * of the code is the credential). `Math.random` is predictable output —
- * fine for picking a colour, not for something an attacker profits from
+ * fine for picking a color, not for something an attacker profits from
  * guessing. `randomInt` also draws uniformly, where the usual
  * `floor(random() * n)` skews very slightly toward low values.
  */

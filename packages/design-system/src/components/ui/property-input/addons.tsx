@@ -15,7 +15,7 @@ import type {
 function renderIcon(icon: LucideIcon | string) {
   if (isFunction(icon) || isObject(icon)) {
     const Icon = icon as LucideIcon;
-    return <Icon aria-hidden="true" />;
+    return <Icon aria-hidden="true" className="size-4" />;
   }
   return <span aria-hidden="true">{icon}</span>;
 }

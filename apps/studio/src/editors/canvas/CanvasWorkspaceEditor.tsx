@@ -46,6 +46,7 @@ export function CanvasWorkspaceEditor({
     creationOverlayRect,
     overlayRect,
     resizePreview,
+    inspectorPreview,
     resizable,
     cancelCreation,
     zoomIn,
@@ -106,8 +107,18 @@ export function CanvasWorkspaceEditor({
   }, [focused, setSelection]);
   const paletteCommands = useMemo<PaletteCommand[]>(
     () => [
-      { id: "create-rectangle", label: "Create Rectangle", scope: "canvas", run: () => setTool("rect") },
-      { id: "create-ellipse", label: "Create Ellipse", scope: "canvas", run: () => setTool("ellipse") },
+      {
+        id: "create-rectangle",
+        label: "Create Rectangle",
+        scope: "canvas",
+        run: () => setTool("rect"),
+      },
+      {
+        id: "create-ellipse",
+        label: "Create Ellipse",
+        scope: "canvas",
+        run: () => setTool("ellipse"),
+      },
       { id: "create-text", label: "Create Text", scope: "canvas", run: () => setTool("text") },
       { id: "create-image", label: "Create Image", scope: "canvas", run: () => setTool("image") },
       { id: "create-frame", label: "Create Frame", scope: "canvas", run: () => setTool("frame") },
@@ -129,68 +140,76 @@ export function CanvasWorkspaceEditor({
       () => ({
         "open-palette": () => setPaletteOpen(true),
         "delete-selection": deleteSelection,
-        "rename": () => setRenamingArtId(selection.artId),
+        rename: () => setRenamingArtId(selection.artId),
         "select-all": selectAll,
         "fit-graph": resetCamera,
         "zoom-to-selection": resetCamera,
-        "deselect": () => setSelection({ artId: null, elementIds: [] }),
+        deselect: () => setSelection({ artId: null, elementIds: [] }),
       }),
-      [deleteSelection, focused, resetCamera, selection.artId, selectAll, setRenamingArtId, setSelection],
+      [
+        deleteSelection,
+        focused,
+        resetCamera,
+        selection.artId,
+        selectAll,
+        setRenamingArtId,
+        setSelection,
+      ],
     ),
   );
 
-
   return (
     <>
-    <CanvasWorkspaceSurface
-      ordered={ordered}
-      focused={focused}
-      camera={camera}
-      workspaceRef={workspaceRef}
-      selection={selection}
-      tool={tool}
-      setTool={setTool}
-      onCancelCreation={cancelCreation}
-      zoomIn={zoomIn}
-      zoomOut={zoomOut}
-      resetCamera={resetCamera}
-      renamingArtId={renamingArtId}
-      setRenamingArtId={setRenamingArtId}
-      dragLine={dragLine}
-      rubberbandRect={rubberbandRect}
-      drag={drag}
-      creationOverlayRect={creationOverlayRect}
-      resizePreview={resizePreview}
-      overlayRect={overlayRect}
-      resizable={resizable}
-      onFocusArtboard={onFocusArtboard}
-      onUpdateElement={onUpdateElement}
-      onUpdateElements={onUpdateElements}
-      variables={variables}
-      onMoveElement={onMoveElement}
-      onMoveElementBetweenCanvases={onMoveElementBetweenCanvases}
-      onRenameArtboard={onRenameArtboard}
-      onSelect={setSelection}
-      onBeginDrag={beginDrag}
-      onMoveDrag={moveDrag}
-      onEndDrag={endDrag}
-      onBeginElementDrag={beginElementDrag}
-      onUpdateElementDrag={updateElementDrag}
-      onFinishElementDrag={finishElementDrag}
-      onBeginRubberband={beginRubberband}
-      onUpdateRubberband={updateRubberband}
-      onEndRubberband={endRubberband}
-      onBeginWorkspaceInteraction={beginWorkspaceInteraction}
-      onMoveWorkspaceInteraction={moveWorkspaceInteraction}
-      onEndWorkspaceInteraction={endWorkspaceInteraction}
-      onCancelWorkspaceInteraction={cancelWorkspaceInteraction}
-      onBeginCreation={beginCreation}
-      onMoveCreation={moveCreation}
-      onFinishCreation={finishCreation}
-      onSelectAtPoint={selectAtPoint}
-      onBeginResize={beginResize}
-      onHandleCanvasKeyDown={handleCanvasKeyDown}
-    />
+      <CanvasWorkspaceSurface
+        ordered={ordered}
+        focused={focused}
+        camera={camera}
+        workspaceRef={workspaceRef}
+        selection={selection}
+        tool={tool}
+        setTool={setTool}
+        onCancelCreation={cancelCreation}
+        zoomIn={zoomIn}
+        zoomOut={zoomOut}
+        resetCamera={resetCamera}
+        renamingArtId={renamingArtId}
+        setRenamingArtId={setRenamingArtId}
+        dragLine={dragLine}
+        rubberbandRect={rubberbandRect}
+        drag={drag}
+        creationOverlayRect={creationOverlayRect}
+        resizePreview={resizePreview}
+        inspectorPreview={inspectorPreview}
+        overlayRect={overlayRect}
+        resizable={resizable}
+        onFocusArtboard={onFocusArtboard}
+        onUpdateElement={onUpdateElement}
+        onUpdateElements={onUpdateElements}
+        variables={variables}
+        onMoveElement={onMoveElement}
+        onMoveElementBetweenCanvases={onMoveElementBetweenCanvases}
+        onRenameArtboard={onRenameArtboard}
+        onSelect={setSelection}
+        onBeginDrag={beginDrag}
+        onMoveDrag={moveDrag}
+        onEndDrag={endDrag}
+        onBeginElementDrag={beginElementDrag}
+        onUpdateElementDrag={updateElementDrag}
+        onFinishElementDrag={finishElementDrag}
+        onBeginRubberband={beginRubberband}
+        onUpdateRubberband={updateRubberband}
+        onEndRubberband={endRubberband}
+        onBeginWorkspaceInteraction={beginWorkspaceInteraction}
+        onMoveWorkspaceInteraction={moveWorkspaceInteraction}
+        onEndWorkspaceInteraction={endWorkspaceInteraction}
+        onCancelWorkspaceInteraction={cancelWorkspaceInteraction}
+        onBeginCreation={beginCreation}
+        onMoveCreation={moveCreation}
+        onFinishCreation={finishCreation}
+        onSelectAtPoint={selectAtPoint}
+        onBeginResize={beginResize}
+        onHandleCanvasKeyDown={handleCanvasKeyDown}
+      />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} commands={paletteCommands} />
     </>
   );

@@ -55,7 +55,6 @@ export type ObjectFit = "fill" | "contain" | "cover" | "none" | "scale-down";
 
 export interface GradientStop {
   color?: string;
-  colour?: string;
   position: number;
 }
 
@@ -280,7 +279,7 @@ function assertLayout(element: Element): void {
     let previous = -Infinity;
     for (const stop of element.fill.stops) {
       if (
-        (!stop.color && !stop.colour) ||
+        !stop.color ||
         !Number.isFinite(stop.position) ||
         stop.position < 0 ||
         stop.position > 1 ||

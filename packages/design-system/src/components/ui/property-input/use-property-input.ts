@@ -11,10 +11,7 @@ import type {
 } from "./property-input-types";
 
 const isVariableReference = (value: unknown): value is VariableReference =>
-  typeof value === "object" &&
-  value !== null &&
-  "id" in value &&
-  "name" in value;
+  typeof value === "object" && value !== null && "id" in value && "name" in value;
 
 const getInputType = (
   value: PropertyInputValue<ShapeValue> | null | undefined,
@@ -24,7 +21,7 @@ const getInputType = (
   const variableType = isVariableReference(value) ? value.type : undefined;
 
   if (kind === "number" || variableType === "number") return "number";
-  if (kind === "colour" || variableType === "colour") return "color";
+  if (kind === "color" || variableType === "color") return "color";
   if (kind === "text" || variableType === "text") return "text";
   return fallback;
 };
@@ -38,11 +35,11 @@ export const getValueText = (value: ShapeValue | null | undefined): string =>
 
 export const formatValueText = (
   value: ShapeValue | null | undefined,
-  dimension?: "width" | "height",
+  _dimension?: "width" | "height",
   unit?: "px" | "%",
 ): string => {
   const text = getValueText(value);
-  return dimension && unit === "%" && value?.kind === "number" && text !== "" ? `${text}%` : text;
+  return unit === "%" && value?.kind === "number" && text !== "" ? `${text}%` : text;
 };
 
 export const getColorInputValue = (value: string): string => {
@@ -59,7 +56,7 @@ export const getColorInputValue = (value: string): string => {
 
 const createValue = <T extends ShapeValue>(type: PropertyInputType, value: string | number): T =>
   ({
-    kind: type === "color" ? "colour" : type,
+    kind: type === "color" ? "color" : type,
     value,
   }) as T;
 
@@ -160,8 +157,15 @@ export function usePropertyInput<T extends ShapeValue>({
       setEditingVariable(null);
     }
   };
-
   const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      (
+        event as KeyboardEvent<HTMLInputElement> & { preventBaseUIHandler?: () => void }
+      ).preventBaseUIHandler?.();
+      commitDraftInput();
+      return;
+    }
     if (event.key === "Backspace" && linkedVariable && connectedVariable) {
       event.preventDefault();
       setEditingVariable(connectedVariable);

@@ -6,8 +6,8 @@ import { parse as parseYaml } from "yaml";
 
 export const STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] as const;
 export type Step = (typeof STEPS)[number];
-export const COLOUR_KEYS = ["red", "orange", "yellow", "green", "aqua", "blue", "purple"] as const;
-export type ColourKey = (typeof COLOUR_KEYS)[number];
+export const COLOR_KEYS = ["red", "orange", "yellow", "green", "aqua", "blue", "purple"] as const;
+export type ColorKey = (typeof COLOR_KEYS)[number];
 export type Mode = "dark" | "light";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -41,7 +41,7 @@ interface Scheme {
 export interface ThemeManifestEntry {
   key: string;
   label: string;
-  primary: ColourKey;
+  primary: ColorKey;
   dark: string;
   light: string;
 }
@@ -54,7 +54,7 @@ interface Manifest {
 export interface GeneratedTheme {
   key: string;
   label: string;
-  primary: ColourKey;
+  primary: ColorKey;
   mode: Mode;
   scales: Record<string, Record<Step, string>>;
   semantic: Record<string, string>;
@@ -247,7 +247,7 @@ function gamutMap(color: Oklch): Oklch {
 
 function parseHex(value: string): Rgb {
   const normalized = value.trim().replace(/^#/, "");
-  if (!/^[\da-f]{6}$/i.test(normalized)) throw new Error(`Invalid colour value: ${value}`);
+  if (!/^[\da-f]{6}$/i.test(normalized)) throw new Error(`Invalid color value: ${value}`);
   return {
     r: parseInt(normalized.slice(0, 2), 16) / 255,
     g: parseInt(normalized.slice(2, 4), 16) / 255,
@@ -274,7 +274,7 @@ function nearestReferenceIndex(seed: Oklch, curve: Oklch[]): number {
   );
 }
 
-export function generateScale(seedHex: string, key: ColourKey): Record<Step, string> {
+export function generateScale(seedHex: string, key: ColorKey): Record<Step, string> {
   const seed = rgbToOklch(parseHex(seedHex));
   const curve = seed.c < NEUTRAL_THRESHOLD ? NEUTRAL_REFERENCE : TAILWIND[key];
   const anchor = nearestReferenceIndex(seed, curve);
@@ -305,7 +305,7 @@ export function generateScale(seedHex: string, key: ColourKey): Record<Step, str
 
 function interpolate(a: Oklch, b: Oklch, fraction: number): Oklch {
   // Mix through Oklab so near-grey anchors whose hue angles straddle 0/360 do
-  // not swing through the entire colour wheel on the way past each other.
+  // not swing through the entire color wheel on the way past each other.
   const [al, aa, ab] = oklchToOklab(a);
   const [bl, ba, bb] = oklchToOklab(b);
   const mixed: [number, number, number] = [
@@ -365,7 +365,7 @@ export function generateNeutralScale(scheme: Scheme): Record<Step, string> {
   // base00 is the background either way, but base01 sits on either side of it
   // depending on the scheme: Gruvbox's bg1 is lighter, Catppuccin's mantle is
   // darker. Anchor a darker base01 at the bottom of the scale rather than
-  // letting the monotonic pass flatten 800-950 into one colour.
+  // letting the monotonic pass flatten 800-950 into one color.
   const mantle = dark && source.base01.l < source.base00.l;
   const anchorSteps = dark
     ? [900, mantle ? 950 : 800, 700, 600, 500, 300]
@@ -484,12 +484,12 @@ function deltaEok(first: string, second: string): number {
 
 function semanticValues(
   scales: Record<string, Record<Step, string>>,
-  primary: ColourKey,
+  primary: ColorKey,
   mode: Mode,
 ): Record<string, string> {
   const dark = mode === "dark";
   const neutral = (step: Step) => scales.neutral[step];
-  const hue = (key: ColourKey, step: Step) => scales[key][step];
+  const hue = (key: ColorKey, step: Step) => scales[key][step];
   const foreground = dark ? neutral(50) : neutral(950);
   const primaryValue = hue(primary, 500);
   const primaryForeground = hue(primary, 100);
@@ -531,7 +531,7 @@ function semanticValues(
     "sidebar-border": neutral(dark ? 600 : 300),
     "sidebar-ring": primaryValue,
     ...Object.fromEntries(
-      COLOUR_KEYS.flatMap((key) => [
+      COLOR_KEYS.flatMap((key) => [
         [`palette-${key}-fill`, hue(key, dark ? 700 : 200)],
         [`palette-${key}-border`, hue(key, 500)],
         [`palette-${key}-text`, hue(key, dark ? 300 : 700)],
@@ -568,7 +568,7 @@ async function loadThemes(manifest: Manifest): Promise<GeneratedTheme[]> {
       const scales: Record<string, Record<Step, string>> = {
         neutral: generateNeutralScale(scheme),
       };
-      for (const key of COLOUR_KEYS)
+      for (const key of COLOR_KEYS)
         scales[key] = generateScale(
           scheme.palette[
             `base${key === "red" ? "08" : key === "orange" ? "09" : key === "yellow" ? "0a" : key === "green" ? "0b" : key === "aqua" ? "0c" : key === "blue" ? "0d" : "0e"}`
@@ -592,12 +592,12 @@ function cssThemeBlock(theme: GeneratedTheme, defaultPalette: string): string {
   const selector = theme.mode === "dark" && theme.key === defaultPalette ? ":root,\n" : "";
   const blockSelector = `${selector}[data-theme-palette="${theme.key}"][data-theme-mode="${theme.mode}"]`;
   const lines = [`${blockSelector} {`];
-  for (const scale of ["neutral", ...COLOUR_KEYS]) {
+  for (const scale of ["neutral", ...COLOR_KEYS]) {
     for (const step of STEPS)
       lines.push(`  --palette-${scale}-${step}: ${theme.scales[scale][step]};`);
   }
   const primary = theme.primary;
-  for (const key of COLOUR_KEYS) {
+  for (const key of COLOR_KEYS) {
     lines.push(
       `  --palette-${key}-fill: var(--palette-${key}-${theme.mode === "dark" ? 700 : 200});`,
     );
@@ -616,7 +616,7 @@ function cssThemeBlock(theme: GeneratedTheme, defaultPalette: string): string {
   }
   const dark = theme.mode === "dark";
   const neutral = (step: Step) => `var(--palette-neutral-${step})`;
-  const hue = (key: ColourKey, step: Step) => `var(--palette-${key}-${step})`;
+  const hue = (key: ColorKey, step: Step) => `var(--palette-${key}-${step})`;
   const foreground = dark ? neutral(50) : neutral(950);
   // See semanticValues(): elevated surface for card/popover/sidebar;
   // muted stays one step lighter for hover contrast on those surfaces.
@@ -690,7 +690,7 @@ function themeAliases(): string {
   };
   for (const [name, variable] of Object.entries(aliases))
     lines.push(`  --color-${name}: var(--${variable});`);
-  for (const key of COLOUR_KEYS)
+  for (const key of COLOR_KEYS)
     for (const role of ["fill", "border", "text", "on-fill"])
       lines.push(`  --color-palette-${key}-${role}: var(--palette-${key}-${role});`);
   for (const family of ["accent", "destructive", "success"])
@@ -757,7 +757,7 @@ function buildReport(themes: GeneratedTheme[]): {
         status: Math.abs(lc) >= 60 && ratio >= 3 ? "pass" : "violation",
       });
     }
-    for (const key of COLOUR_KEYS)
+    for (const key of COLOR_KEYS)
       for (const step of surfaceSteps) {
         const fg = theme.scales[key][theme.mode === "dark" ? 300 : 700];
         const bg = theme.scales.neutral[step];
@@ -774,7 +774,7 @@ function buildReport(themes: GeneratedTheme[]): {
           status: Math.abs(lc) >= 60 ? "pass" : "violation",
         });
       }
-    for (const key of COLOUR_KEYS) {
+    for (const key of COLOR_KEYS) {
       const fg = theme.scales[key][theme.mode === "dark" ? 50 : 950];
       const bg = theme.scales[key][theme.mode === "dark" ? 700 : 200];
       const lc = apcaLc(fg, bg);
@@ -790,13 +790,13 @@ function buildReport(themes: GeneratedTheme[]): {
         status: Math.abs(lc) >= 60 ? "pass" : "violation",
       });
     }
-    for (let left = 0; left < COLOUR_KEYS.length; left += 1)
-      for (let right = left + 1; right < COLOUR_KEYS.length; right += 1) {
-        const first = theme.scales[COLOUR_KEYS[left]][theme.mode === "dark" ? 700 : 200];
-        const second = theme.scales[COLOUR_KEYS[right]][theme.mode === "dark" ? 700 : 200];
+    for (let left = 0; left < COLOR_KEYS.length; left += 1)
+      for (let right = left + 1; right < COLOR_KEYS.length; right += 1) {
+        const first = theme.scales[COLOR_KEYS[left]][theme.mode === "dark" ? 700 : 200];
+        const second = theme.scales[COLOR_KEYS[right]][theme.mode === "dark" ? 700 : 200];
         const delta = deltaEok(first, second);
         records.push({
-          id: `${theme.key}.${theme.mode}.distinguishability.${COLOUR_KEYS[left]}-${COLOUR_KEYS[right]}`,
+          id: `${theme.key}.${theme.mode}.distinguishability.${COLOR_KEYS[left]}-${COLOR_KEYS[right]}`,
           palette: theme.key,
           mode: theme.mode,
           kind: "distinguishability",
@@ -822,8 +822,8 @@ function buildReport(themes: GeneratedTheme[]): {
 }
 
 function generatedMetadata(): string {
-  return `// Generated by scripts/theme-generator.ts.\nexport const THEME_COLOUR_METADATA = ${JSON.stringify(
-    COLOUR_KEYS.map((key, order) => ({
+  return `// Generated by scripts/theme-generator.ts.\nexport const THEME_COLOR_METADATA = ${JSON.stringify(
+    COLOR_KEYS.map((key, order) => ({
       key,
       label: key[0].toUpperCase() + key.slice(1),
       order,
@@ -831,7 +831,7 @@ function generatedMetadata(): string {
     })),
     null,
     2,
-  )} as const;\nexport type ThemeColourKey = (typeof THEME_COLOUR_METADATA)[number]["key"];\n`;
+  )} as const;\nexport type ThemeColorKey = (typeof THEME_COLOR_METADATA)[number]["key"];\n`;
 }
 function generatedPaletteCatalog(manifest: Manifest): string {
   const metadata = manifest.themes.map(({ key, label, primary }) => ({ key, label, primary }));
@@ -863,7 +863,7 @@ export async function generate(): Promise<void> {
     "utf8",
   );
   console.log(
-    `Generated ${themes.length} palette modes and ${themes.length * (COLOUR_KEYS.length * 11 + 8 + 7 * 6 + 21)} contrast records.`,
+    `Generated ${themes.length} palette modes and ${themes.length * (COLOR_KEYS.length * 11 + 8 + 7 * 6 + 21)} contrast records.`,
   );
 }
 

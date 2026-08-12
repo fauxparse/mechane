@@ -10,9 +10,9 @@
  * Plain CSS rather than Tailwind classes on the components, for two reasons
  * that both come down to *what* needs overriding:
  *
- *   - The minimap's mask and node colours are SVG `fill` **presentation
+ *   - The minimap's mask and node colors are SVG `fill` **presentation
  *     attributes**, which can't take a `var()`. So React Flow's own
- *     `maskColor`/`nodeColor` props can only be handed a literal colour —
+ *     `maskColor`/`nodeColor` props can only be handed a literal color —
  *     the one thing a themed app must never hardcode (PRD §7). A CSS rule
  *     outranks a presentation attribute, so `fill` is settable here and
  *     nowhere else.

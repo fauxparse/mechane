@@ -109,8 +109,8 @@ export const GetShowGraphQuery = graphql(`
             ... on ImageValue {
               imageValue: value
             }
-            ... on ColourValue {
-              colourValue: value
+            ... on ColorValue {
+              colorValue: value
             }
             ... on DateValue {
               dateValue: value

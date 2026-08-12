@@ -87,6 +87,7 @@ function ComboboxInput({
       <ComboboxPrimitive.Input
         data-slot="combobox-input"
         render={<InputGroupInput disabled={disabled} />}
+        className="max-h-full"
         {...props}
       />
       <InputGroupAddon align="inline-end">

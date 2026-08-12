@@ -4,7 +4,7 @@ export const PRIMITIVE_TYPES = [
   "number",
   "boolean",
   "image",
-  "colour",
+  "color",
   "date",
   "datetime",
 ] as const;
@@ -12,10 +12,7 @@ export const PRIMITIVE_TYPES = [
 export type PrimitiveType = (typeof PRIMITIVE_TYPES)[number];
 
 /** A recursive Type: primitive, array-of-Type, or a named Shape reference. */
-export type Type =
-  | PrimitiveType
-  | { kind: "array"; of: Type }
-  | { kind: "shape"; shapeId: string };
+export type Type = PrimitiveType | { kind: "array"; of: Type } | { kind: "shape"; shapeId: string };
 
 export interface TextValue {
   kind: "text";
@@ -33,8 +30,8 @@ export interface ImageValue {
   kind: "image";
   value: string;
 }
-export interface ColourValue {
-  kind: "colour";
+export interface ColorValue {
+  kind: "color";
   value: string;
 }
 export interface DateValue {
@@ -58,7 +55,7 @@ export type ShapeValue =
   | NumberValue
   | BooleanValue
   | ImageValue
-  | ColourValue
+  | ColorValue
   | DateValue
   | DateTimeValue
   | ObjectValue
@@ -161,9 +158,16 @@ export function assertValidShapes(shapes: readonly Shape[]): void {
     for (const field of shape.fields) {
       if (field.defaultValue !== null && field.defaultValue !== undefined) {
         try {
-          assertValueConformsToType(field.defaultValue, field.type, shapes, `default ${shape.name}.${field.name}`);
+          assertValueConformsToType(
+            field.defaultValue,
+            field.type,
+            shapes,
+            `default ${shape.name}.${field.name}`,
+          );
         } catch (error) {
-          throw new InvalidShapeError(error instanceof Error ? error.message : "Invalid Field default.");
+          throw new InvalidShapeError(
+            error instanceof Error ? error.message : "Invalid Field default.",
+          );
         }
       }
     }
@@ -220,7 +224,11 @@ export function assertValueConformsToType(
   if (value === null || value === undefined) throw new InvalidShapeValueError(`${path} is absent.`);
   if (typeof type === "string") {
     const valid =
-      (type === "text" || type === "image" || type === "colour" || type === "date" || type === "datetime")
+      type === "text" ||
+      type === "image" ||
+      type === "color" ||
+      type === "date" ||
+      type === "datetime"
         ? typeof value === "string"
         : type === "number"
           ? typeof value === "number" && Number.isFinite(value)
@@ -230,7 +238,9 @@ export function assertValueConformsToType(
   }
   if (type.kind === "array") {
     if (!Array.isArray(value)) throw new InvalidShapeValueError(`${path} is not an array.`);
-    value.forEach((item, index) => assertValueConformsToType(item, type.of, shapes, `${path}[${index}]`));
+    value.forEach((item, index) =>
+      assertValueConformsToType(item, type.of, shapes, `${path}[${index}]`),
+    );
     return;
   }
   const shape = shapeMap(shapes).get(type.shapeId);
@@ -238,7 +248,11 @@ export function assertValueConformsToType(
   assertValueConformsToShape(value, shape, shapes, path);
 }
 
-export function conformsToShape(value: unknown, shape: Shape, shapes: readonly Shape[] = [shape]): boolean {
+export function conformsToShape(
+  value: unknown,
+  shape: Shape,
+  shapes: readonly Shape[] = [shape],
+): boolean {
   try {
     assertValueConformsToShape(value, shape, shapes);
     return true;
@@ -313,8 +327,18 @@ function parseDatetime(value: unknown): string {
 }
 
 const coercions: Coercion[] = [
-  { from: "number", to: "text", reason: "Numbers can be represented as text.", convert: (value) => String(value) },
-  { from: "boolean", to: "text", reason: "Booleans can be represented as text.", convert: (value) => String(value) },
+  {
+    from: "number",
+    to: "text",
+    reason: "Numbers can be represented as text.",
+    convert: (value) => String(value),
+  },
+  {
+    from: "boolean",
+    to: "text",
+    reason: "Booleans can be represented as text.",
+    convert: (value) => String(value),
+  },
   {
     from: "datetime",
     to: "date",
@@ -322,21 +346,41 @@ const coercions: Coercion[] = [
     lossy: true,
     convert: (value) => parseDatetime(value).slice(0, 10),
   },
-  { from: "text", to: "number", reason: "Numeric text can be parsed as a number.", convert: (value) => {
-    const text = parseText(value, "number");
-    if (text === "") throw new CoercionError("Invalid number.");
-    const number = Number(text);
-    if (!Number.isFinite(number)) throw new CoercionError("Invalid number.");
-    return number;
-  } },
-  { from: "text", to: "date", reason: "Text can be parsed as a calendar date.", convert: parseDate },
-  { from: "text", to: "datetime", reason: "Text can be parsed as a datetime.", convert: parseDatetime },
-  { from: "text", to: "boolean", reason: "Text can be parsed as a boolean.", convert: (value) => {
-    const text = parseText(value, "boolean").toLowerCase();
-    if (text === "true") return true;
-    if (text === "false") return false;
-    throw new CoercionError("Invalid boolean.");
-  } },
+  {
+    from: "text",
+    to: "number",
+    reason: "Numeric text can be parsed as a number.",
+    convert: (value) => {
+      const text = parseText(value, "number");
+      if (text === "") throw new CoercionError("Invalid number.");
+      const number = Number(text);
+      if (!Number.isFinite(number)) throw new CoercionError("Invalid number.");
+      return number;
+    },
+  },
+  {
+    from: "text",
+    to: "date",
+    reason: "Text can be parsed as a calendar date.",
+    convert: parseDate,
+  },
+  {
+    from: "text",
+    to: "datetime",
+    reason: "Text can be parsed as a datetime.",
+    convert: parseDatetime,
+  },
+  {
+    from: "text",
+    to: "boolean",
+    reason: "Text can be parsed as a boolean.",
+    convert: (value) => {
+      const text = parseText(value, "boolean").toLowerCase();
+      if (text === "true") return true;
+      if (text === "false") return false;
+      throw new CoercionError("Invalid boolean.");
+    },
+  },
 ];
 
 /** The complete coercion table. Add a row here to add a supported coercion. */
@@ -348,11 +392,7 @@ export function findCoercion(from: PrimitiveType, to: PrimitiveType): Coercion |
 }
 
 /** Whether an assignment is supported by the coercion and Shape rules. */
-export function areTypesCompatible(
-  from: Type,
-  to: Type,
-  shapes: readonly Shape[] = [],
-): boolean {
+export function areTypesCompatible(from: Type, to: Type, shapes: readonly Shape[] = []): boolean {
   if (from === to) return true;
   if (typeof from === "string" && typeof to === "string") return !!findCoercion(from, to);
   if (typeof to !== "string" && to.kind === "array") {
@@ -361,7 +401,12 @@ export function areTypesCompatible(
       : areTypesCompatible(from, to.of, shapes);
   }
   if (typeof from !== "string" && from.kind === "array") return false;
-  if (typeof from !== "string" && from.kind === "shape" && typeof to !== "string" && to.kind === "shape") {
+  if (
+    typeof from !== "string" &&
+    from.kind === "shape" &&
+    typeof to !== "string" &&
+    to.kind === "shape"
+  ) {
     const source = shapes.find((shape) => shape.id === from.shapeId);
     const target = shapes.find((shape) => shape.id === to.shapeId);
     if (!source || !target) return false;
@@ -382,7 +427,12 @@ export function resolveShapeFieldMapping(
   to: Type,
   shapes: readonly Shape[],
 ): Record<string, string> {
-  if (typeof from === "string" || typeof to === "string" || from.kind !== "shape" || to.kind !== "shape") {
+  if (
+    typeof from === "string" ||
+    typeof to === "string" ||
+    from.kind !== "shape" ||
+    to.kind !== "shape"
+  ) {
     return {};
   }
   const source = shapes.find((shape) => shape.id === from.shapeId);
@@ -422,17 +472,25 @@ export interface ShapeValueCoercion {
 function copyValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(copyValue);
   if (value !== null && typeof value === "object") {
-    return Object.fromEntries(Object.entries(value).map(([key, nested]) => [key, copyValue(nested)]));
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nested]) => [key, copyValue(nested)]),
+    );
   }
   return value;
 }
 
 function hasOwn(value: unknown, key: string): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && Object.prototype.hasOwnProperty.call(value, key);
+  return (
+    value !== null && typeof value === "object" && Object.prototype.hasOwnProperty.call(value, key)
+  );
 }
 
 function typeLabel(type: Type): string {
-  return typeof type === "string" ? type : type.kind === "array" ? `array of ${typeLabel(type.of)}` : `Shape ${type.shapeId}`;
+  return typeof type === "string"
+    ? type
+    : type.kind === "array"
+      ? `array of ${typeLabel(type.of)}`
+      : `Shape ${type.shapeId}`;
 }
 
 interface TypeCoercion {
@@ -461,7 +519,15 @@ function coerceTypeValue(
     const sourceType = typeof from !== "string" && from.kind === "array" ? from.of : from;
     let lossy = false;
     const converted = values.map((item, index) => {
-      const result = coerceTypeValue(item, sourceType, to.of, shapes, [...path, String(index)], losses, sourceOverrides);
+      const result = coerceTypeValue(
+        item,
+        sourceType,
+        to.of,
+        shapes,
+        [...path, String(index)],
+        losses,
+        sourceOverrides,
+      );
       lossy ||= result.lossy;
       return result.value;
     });
@@ -472,11 +538,19 @@ function coerceTypeValue(
     throw new CoercionError(`Cannot convert ${typeLabel(from)} to ${typeLabel(to)}.`);
   }
 
-  if (typeof from !== "string" && from.kind === "shape" && typeof to !== "string" && to.kind === "shape") {
+  if (
+    typeof from !== "string" &&
+    from.kind === "shape" &&
+    typeof to !== "string" &&
+    to.kind === "shape"
+  ) {
     const source = shapeMap(shapes).get(from.shapeId);
     const target = shapeMap(shapes).get(to.shapeId);
     if (!source || !target) throw new CoercionError("Cannot convert an unknown Shape.");
-    return { value: reconcileObject(value, source, target, shapes, path, losses, sourceOverrides), lossy: false };
+    return {
+      value: reconcileObject(value, source, target, shapes, path, losses, sourceOverrides),
+      lossy: false,
+    };
   }
 
   throw new CoercionError(`Cannot convert ${typeLabel(from)} to ${typeLabel(to)}.`);
@@ -491,46 +565,79 @@ function reconcileObject(
   losses: ShapeValueLoss[],
   sourceOverrides: Readonly<Record<string, unknown>>,
 ): Record<string, unknown> {
-  const oldObject: Record<string, unknown> = value !== null && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : {};
+  const oldObject: Record<string, unknown> =
+    value !== null && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
   const oldFields = new Map(oldShape.fields.map((field) => [field.id, field]));
   const result: Record<string, unknown> = {};
 
   for (const field of oldShape.fields) {
-    if (!newShape.fields.some((candidate) => candidate.id === field.id) && hasOwn(oldObject, field.id)) {
-      losses.push({ path: [...path, field.id], fieldId: field.id, fieldName: field.name, reason: "Field was removed." });
+    if (
+      !newShape.fields.some((candidate) => candidate.id === field.id) &&
+      hasOwn(oldObject, field.id)
+    ) {
+      losses.push({
+        path: [...path, field.id],
+        fieldId: field.id,
+        fieldName: field.name,
+        reason: "Field was removed.",
+      });
     }
   }
 
   for (const field of newShape.fields) {
     const previous = oldFields.get(field.id);
     const fieldPath = [...path, field.id];
-    const key = previous && hasOwn(oldObject, previous.id)
-      ? previous.id
-      : previous && hasOwn(oldObject, previous.name)
-        ? previous.name
-        : undefined;
+    const key =
+      previous && hasOwn(oldObject, previous.id)
+        ? previous.id
+        : previous && hasOwn(oldObject, previous.name)
+          ? previous.name
+          : undefined;
     const current = key === undefined ? null : oldObject[key];
 
     if (current === null || current === undefined) {
-      if (!previous && hasOwn(sourceOverrides, field.id)) result[field.id] = copyValue(sourceOverrides[field.id]);
-      else if (field.required || (field.defaultValue !== null && field.defaultValue !== undefined)) result[field.id] = copyValue(field.defaultValue);
+      if (!previous && hasOwn(sourceOverrides, field.id))
+        result[field.id] = copyValue(sourceOverrides[field.id]);
+      else if (field.required || (field.defaultValue !== null && field.defaultValue !== undefined))
+        result[field.id] = copyValue(field.defaultValue);
       continue;
     }
 
     if (!previous) {
-      result[field.id] = hasOwn(sourceOverrides, field.id) ? copyValue(sourceOverrides[field.id]) : copyValue(field.defaultValue);
+      result[field.id] = hasOwn(sourceOverrides, field.id)
+        ? copyValue(sourceOverrides[field.id])
+        : copyValue(field.defaultValue);
       continue;
     }
 
     try {
-      const converted = coerceTypeValue(current, previous.type, field.type, shapes, fieldPath, losses, sourceOverrides);
+      const converted = coerceTypeValue(
+        current,
+        previous.type,
+        field.type,
+        shapes,
+        fieldPath,
+        losses,
+        sourceOverrides,
+      );
       result[field.id] = converted.value;
-      if (converted.lossy) losses.push({ path: fieldPath, fieldId: field.id, fieldName: field.name, reason: `Value was converted from ${typeLabel(previous.type)} to ${typeLabel(field.type)}.` });
+      if (converted.lossy)
+        losses.push({
+          path: fieldPath,
+          fieldId: field.id,
+          fieldName: field.name,
+          reason: `Value was converted from ${typeLabel(previous.type)} to ${typeLabel(field.type)}.`,
+        });
     } catch {
       result[field.id] = copyValue(field.defaultValue);
-      losses.push({ path: fieldPath, fieldId: field.id, fieldName: field.name, reason: `Value could not be converted from ${typeLabel(previous.type)} to ${typeLabel(field.type)}; default used.` });
+      losses.push({
+        path: fieldPath,
+        fieldId: field.id,
+        fieldName: field.name,
+        reason: `Value could not be converted from ${typeLabel(previous.type)} to ${typeLabel(field.type)}; default used.`,
+      });
     }
   }
 
@@ -546,6 +653,14 @@ export function coerceShapeValue(
   sourceOverrides: Readonly<Record<string, unknown>> = {},
 ): ShapeValueCoercion {
   const losses: ShapeValueLoss[] = [];
-  const reconciled = reconcileObject(value, oldShape, newShape, shapes, [], losses, sourceOverrides);
+  const reconciled = reconcileObject(
+    value,
+    oldShape,
+    newShape,
+    shapes,
+    [],
+    losses,
+    sourceOverrides,
+  );
   return { value: reconciled, losses };
 }

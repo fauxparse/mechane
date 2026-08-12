@@ -42,7 +42,11 @@ export function Connector<T extends ShapeValue>({
   return (
     <InputGroupAddon
       align="inline-end"
-      className="opacity-0 group-hover/property-input:opacity-100 group-focus-within/property-input:opacity-100 group-data-linked/property-input:opacity-100"
+      className={cn(
+        dimension && sizing !== "fixed"
+          ? "opacity-100"
+          : "opacity-0 group-hover/property-input:opacity-100 group-focus-within/property-input:opacity-100 group-data-linked/property-input:opacity-100",
+      )}
     >
       <Tooltip>
         <TooltipTrigger
@@ -52,7 +56,8 @@ export function Connector<T extends ShapeValue>({
                 render={
                   <InputGroupButton
                     aria-label="Change sizing"
-                    className="bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground"
+                    variant="secondary"
+                    className="bg-accent p-0 h-5 rounded-xs aspect-square text-accent-foreground hover:bg-accent hover:text-accent-foreground"
                   >
                     <SizingIcon sizing={sizing} dimension={dimension} />
                   </InputGroupButton>
@@ -63,7 +68,7 @@ export function Connector<T extends ShapeValue>({
                 render={
                   <InputGroupButton
                     aria-label={label}
-                    className="p-0 aspect-square group-data-linked/property-input:bg-accent group-data-linked/property-input:text-accent-foreground"
+                    className="p-0 h-5 rounded-xs aspect-square group-data-linked/property-input:bg-accent group-data-linked/property-input:text-accent-foreground"
                   >
                     <PlugIcon />
                   </InputGroupButton>

@@ -356,9 +356,7 @@ export function useCanvasWorkspaceInteractions({
     }
     const auto = getComputedStyle(parent.node).display === "flex";
     const children: HTMLElement[] = [];
-    for (const child of targetArtboard.querySelectorAll<HTMLElement>(
-      "[data-element-parent-id]",
-    )) {
+    for (const child of targetArtboard.querySelectorAll<HTMLElement>("[data-element-parent-id]")) {
       if (
         child.dataset.elementParentId === parent.node.dataset.elementId &&
         child !== draggedNode
@@ -1163,6 +1161,55 @@ export function useCanvasWorkspaceInteractions({
           height: resizeDraft.box.height / camera.zoom,
         }
       : null;
+  const selectedArtboard = ordered.find((artboard) => artboard.artId === selection.artId);
+  const previewElementId =
+    selection.elementIds.length === 1 ? selection.elementIds[0] : selectedGeometry?.rootElementId;
+  const previewParentId =
+    selectedArtboard && previewElementId
+      ? canvasElementParent(selectedArtboard.canvas.root, previewElementId)?.parentId
+      : null;
+  const previewParent = previewParentId
+    ? (selectedGeometry?.elements.get(previewParentId) ?? null)
+    : null;
+  const inspectorPreview =
+    liveOffset?.active && previewElementId === liveOffset.elementId
+      ? (() => {
+          const current = selectedGeometry?.elements.get(liveOffset.elementId);
+          if (!current) return null;
+          const x = current.x + liveOffset.x;
+          const y = current.y + liveOffset.y;
+          return {
+            elementId: liveOffset.elementId,
+            ...(previewParent
+              ? {
+                  x: Math.round((x - previewParent.x) / camera.zoom),
+                  y: Math.round((y - previewParent.y) / camera.zoom),
+                }
+              : {}),
+            width: Math.round(current.width / camera.zoom),
+            height: Math.round(current.height / camera.zoom),
+          };
+        })()
+      : resizeDraft?.active &&
+          resizeDraft.subjects.length === 1 &&
+          previewElementId === resizeDraft.subjects[0]?.elementId
+        ? (() => {
+            const subject = resizeDraft.subjects[0];
+            if (!subject) return null;
+            const current = scaleWithin(subject.start, resizeDraft.start, resizeDraft.box);
+            return {
+              elementId: subject.elementId,
+              ...(previewParent
+                ? {
+                    x: Math.round((current.x - previewParent.x) / camera.zoom),
+                    y: Math.round((current.y - previewParent.y) / camera.zoom),
+                  }
+                : {}),
+              width: Math.round(current.width / camera.zoom),
+              height: Math.round(current.height / camera.zoom),
+            };
+          })()
+        : null;
   const overlayRect = workspaceBounds
     ? liveResize
       ? {
@@ -1228,6 +1275,7 @@ export function useCanvasWorkspaceInteractions({
     creationOverlayRect,
     overlayRect,
     resizePreview,
+    inspectorPreview,
     resizable,
     cancelCreation: () => {
       setCreationDraft(null);

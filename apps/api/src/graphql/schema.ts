@@ -214,7 +214,7 @@ export const schema = createSchema<GraphQLContext>({
     type ImageValue {
       value: String!
     }
-    type ColourValue {
+    type ColorValue {
       value: String!
     }
     type DateValue {
@@ -234,7 +234,7 @@ export const schema = createSchema<GraphQLContext>({
       | NumberValue
       | BooleanValue
       | ImageValue
-      | ColourValue
+      | ColorValue
       | DateValue
       | DateTimeValue
       | ObjectValue
@@ -245,7 +245,7 @@ export const schema = createSchema<GraphQLContext>({
       number: Float
       boolean: Boolean
       image: String
-      colour: String
+      color: String
       date: String
       datetime: String
       object: JSON
