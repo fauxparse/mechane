@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Check, Plus } from "lucide-react";
+import { Check, Plus } from "@mechane/design-system";
 
 import {
   Avatar,

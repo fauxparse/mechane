@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Box, SlidersHorizontal } from "lucide-react";
+import { Box, SlidersHorizontal } from "@mechane/design-system";
 
 import {
   Sidebar,

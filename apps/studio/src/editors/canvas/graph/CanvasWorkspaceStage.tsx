@@ -1,4 +1,4 @@
-import { Puzzle, TvMinimal } from "lucide-react";
+import { Puzzle, TvMinimal } from "@mechane/design-system";
 
 import { CanvasRenderer } from "@mechane/rendering";
 

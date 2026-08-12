@@ -48,9 +48,14 @@ import {
   ContextMenuSubmenuContent,
   ContextMenuSubmenuTrigger,
   ContextMenuTrigger,
+  Maximize2,
+  Pencil,
+  Plus,
+  Redo2,
+  Trash2,
+  Undo2,
 } from "@mechane/design-system";
 import type { GraphNode, Position, ShowGraph } from "@mechane/domain";
-import { Maximize2, Pencil, Plus, Redo2, Trash2, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type {
   Dispatch,

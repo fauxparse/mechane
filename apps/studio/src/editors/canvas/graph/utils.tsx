@@ -7,7 +7,7 @@ import {
   SquareDashedIcon,
   SquareIcon,
   TypeIcon,
-} from "lucide-react";
+} from "@mechane/design-system";
 import isArray from "es-toolkit/compat";
 
 const ELEMENT_ICONS: Record<ElementKind, LucideIcon> = {

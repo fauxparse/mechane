@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Bold, Bookmark, Italic, Underline } from "lucide-react";
+import { Bold, Bookmark, Italic, Underline } from "@mechane/design-system";
 
 import { Toggle } from "./toggle";
 

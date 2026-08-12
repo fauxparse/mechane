@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Copy, Eye, Search as SearchIcon } from "lucide-react";
+import { Copy, Eye, Search as SearchIcon } from "@mechane/design-system";
 
 import {
   InputGroup,

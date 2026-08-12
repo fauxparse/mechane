@@ -171,3 +171,6 @@ export { Switch } from "./components/ui/switch";
 
 export { THEME_COLOR_METADATA } from "./themes/generated";
 export type { ThemeColorKey } from "./themes/generated";
+
+export { MechaneIcon } from "./icons/MechaneIcon";
+export * from "lucide-react";

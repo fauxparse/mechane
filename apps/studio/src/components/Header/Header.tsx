@@ -13,10 +13,13 @@ import { Logo } from "./Logo";
 import {
   Alert,
   AlertTitle,
+  AlertTriangleIcon,
   Avatar,
   AvatarFallback,
   AvatarImage,
   Button,
+  CheckIcon,
+  ChevronDownIcon,
   cn,
   DropdownMenu,
   DropdownMenuContent,
@@ -24,28 +27,23 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  HouseIcon,
   Input,
   InsideSidebar,
-  SidebarTrigger,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from "@mechane/design-system";
-import type { PublishState } from "@mechane/domain";
-import {
-  AlertTriangleIcon,
-  CheckIcon,
-  ChevronDownIcon,
-  HouseIcon,
   LogOutIcon,
   PencilIcon,
   PlayIcon,
   SettingsIcon,
   SidebarIcon,
+  SidebarTrigger,
   SquareIcon,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   TvMinimalIcon,
   WorkflowIcon,
-} from "lucide-react";
+} from "@mechane/design-system";
+import type { PublishState } from "@mechane/domain";
 import { useState } from "react";
 import type { FormEvent, MouseEvent } from "react";
 

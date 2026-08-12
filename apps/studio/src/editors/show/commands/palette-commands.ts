@@ -16,7 +16,7 @@
 //     can't find out that moving nodes out of a Flow exists.
 
 import type { CommandScope } from "@mechane/commands";
-import type { LucideIcon } from "lucide-react";
+import type { LucideIcon } from "@mechane/design-system";
 
 /** One row in the palette. */
 export interface PaletteCommand {

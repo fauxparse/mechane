@@ -18,16 +18,22 @@ import {
   propertyCoercion,
 } from "@mechane/domain";
 import {
+  EyeClosedIcon,
+  EyeIcon,
+  Link2Icon,
+  LucideIcon,
   PropertyInput,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
+  SquareRoundCornerIcon,
   Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  Unlink2Icon,
 } from "@mechane/design-system";
 import type { PropertyInputValue } from "@mechane/design-system";
 
@@ -35,14 +41,6 @@ import type { CanvasArtboardDocument } from "../../../../api/canvas";
 import { canvasElementParent, findCanvasElement } from "@mechane/commands";
 import { lockedAspectRatio } from "../../commands/canvas-resize";
 import type { CanvasSelection } from "../canvas-selection";
-import {
-  EyeClosedIcon,
-  EyeIcon,
-  Link2Icon,
-  LucideIcon,
-  SquareRoundCornerIcon,
-  Unlink2Icon,
-} from "lucide-react";
 import { Section, SectionRow } from "./Section";
 import { elementIconFor } from "../utils";
 import { upperFirst } from "es-toolkit/compat";
