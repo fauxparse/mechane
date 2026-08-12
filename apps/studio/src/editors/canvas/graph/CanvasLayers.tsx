@@ -188,13 +188,14 @@ function LayerRowView({
         {renaming ? (
           <input
             autoFocus
-            defaultValue={row.kind === "canvas" ? artboard.name : (row.name ?? "")}
+            defaultValue={row.kind === "canvas" ? artboard.name : (row.rawName ?? "")}
             aria-label={`Rename ${name}`}
             className="h-6 min-w-0 flex-1 rounded-sm border border-border bg-background px-1 text-sm outline-none focus:ring-2 focus:ring-ring"
             onKeyDown={(event) => {
               if (event.key === "Enter") event.currentTarget.blur();
               if (event.key === "Escape") {
-                event.currentTarget.value = row.kind === "canvas" ? artboard.name : row.name;
+                event.currentTarget.value =
+                  row.kind === "canvas" ? artboard.name : (row.rawName ?? "");
                 event.currentTarget.blur();
               }
             }}

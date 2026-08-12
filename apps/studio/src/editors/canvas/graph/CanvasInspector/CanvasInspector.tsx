@@ -40,10 +40,10 @@ import type { PropertyInputValue } from "@mechane/design-system";
 import type { CanvasArtboardDocument } from "../../../../api/canvas";
 import { canvasElementParent, findCanvasElement } from "@mechane/commands";
 import { lockedAspectRatio } from "../../commands/canvas-resize";
+import { canvasDisplayName, canvasElementDisplayName } from "../../data/canvas-names";
 import type { CanvasSelection } from "../canvas-selection";
 import { Section, SectionRow } from "./Section";
 import { elementIconFor } from "../utils";
-import { upperFirst } from "es-toolkit/compat";
 
 type CanvasInspectorPreview = {
   elementId: string;
@@ -426,11 +426,15 @@ export function CanvasInspector({
     >
       <>
         <SidebarHeader className="border-0">
-          <div className="flex gap-2 items-center">
+          <div className="flex items-center gap-2">
             <Icon className="size-6" />
             {elements.length > 1
               ? `${elements.length} Elements`
-              : (elements[0]?.name ?? upperFirst(elements[0]?.type) ?? "Selection")}
+              : elements[0]
+                ? canvasElementDisplayName(elements[0])
+                : focused
+                  ? canvasDisplayName(focused)
+                  : "Selection"}
           </div>
         </SidebarHeader>
         <SidebarContent className="p-0 gap-0">
