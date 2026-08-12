@@ -36,6 +36,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "../popover";
 import { Button } from "../button";
 import { cn } from "../../../lib/utils";
+import { InlineColorPicker, parseHexColor, rgbaToHex } from "./color-picker";
 
 export type PropertyInputType = "text" | "number" | "color";
 export type PropertyInputSizing = "fixed" | "fill" | "hug";
@@ -104,8 +105,8 @@ const formatValueText = (
 };
 
 const getColorInputValue = (value: string): string => {
-  if (/^#[0-9a-f]{6}$/i.test(value)) return value;
-  if (/^#[0-9a-f]{3}$/i.test(value)) {
+  if (/^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/i.test(value)) return value;
+  if (/^#[0-9a-f]{3,4}$/i.test(value)) {
     return `#${value
       .slice(1)
       .split("")
@@ -123,7 +124,12 @@ const createValue = <T extends ShapeValue>(type: PropertyInputType, value: strin
 
 const renderIcon = (Icon: LucideIcon | string) =>
   isIcon(Icon) ? <Icon aria-hidden="true" /> : <span aria-hidden="true">{Icon}</span>;
+const handleInputFocus = (event: FocusEvent<HTMLInputElement>) => {
+  event.currentTarget.select();
+};
 
+// The property input intentionally owns draft, sizing, variable, and constraint behavior as one control.
+// react-doctor-disable-next-line react-doctor/no-giant-component
 export const PropertyInput = <T extends ShapeValue>({
   icon: Icon,
   value,
@@ -132,7 +138,7 @@ export const PropertyInput = <T extends ShapeValue>({
   dimension,
   unit = "px",
   sizing,
-  variables = [],
+  variables,
   min,
   max,
   step,
@@ -150,6 +156,7 @@ export const PropertyInput = <T extends ShapeValue>({
   const [editingVariable, setEditingVariable] = useState<VariableReference<T> | null>(null);
   const [draftInputValue, setDraftInputValue] = useState<string | null>(null);
   const draftInputRef = useRef<string | null>(null);
+  const inputElementRef = useRef<HTMLInputElement | null>(null);
   const scrubOrigin = useRef<{ x: number; value: number } | null>(null);
 
   const displayedValue = value === undefined ? uncontrolledValue : value;
@@ -163,9 +170,10 @@ export const PropertyInput = <T extends ShapeValue>({
   const colorText = draftInputValue ?? displayText;
   const filteredVariables = useMemo(() => {
     const query = variableQuery.trim().toLocaleLowerCase();
+    const availableVariables = variables ?? [];
     return query.length === 0
-      ? variables
-      : variables.filter((variable) => variable.name.toLocaleLowerCase().includes(query));
+      ? availableVariables
+      : availableVariables.filter((variable) => variable.name.toLocaleLowerCase().includes(query));
   }, [variableQuery, variables]);
 
   const commit = (nextValue: PropertyInputValue<T> | null) => {
@@ -174,13 +182,17 @@ export const PropertyInput = <T extends ShapeValue>({
   };
 
   const updateDraftInput = (nextValue: string | null) => {
+    if (inputType === "color" && nextValue !== null && !/^#?[0-9a-f]{0,8}$/i.test(nextValue)) {
+      return;
+    }
     draftInputRef.current = nextValue;
     setDraftInputValue(nextValue);
   };
 
   const parseInputValue = (rawValue: string): PropertyInputValue<T> | null | undefined => {
     if (inputType === "color") {
-      return rawValue.trim() === "" ? undefined : createValue<T>(inputType, rawValue);
+      const parsed = parseHexColor(rawValue);
+      return parsed ? createValue<T>(inputType, rgbaToHex(parsed)) : undefined;
     }
     if (inputType !== "number") return createValue<T>(inputType, rawValue);
 
@@ -201,10 +213,6 @@ export const PropertyInput = <T extends ShapeValue>({
     const nextValue = parseInputValue(rawValue);
     if (nextValue !== undefined) commit(nextValue);
     updateDraftInput(null);
-  };
-
-  const handleInputFocus = (event: FocusEvent<HTMLInputElement>) => {
-    event.currentTarget.select();
   };
 
   const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -343,23 +351,14 @@ export const PropertyInput = <T extends ShapeValue>({
   );
 
   const fieldMenu = (
-    <ComboboxContent className="p-0.5">
+    <ComboboxContent className={cn("p-0.5", inputType === "color" && "overflow-y-auto")}>
+      {inputType === "color" && (
+        <>
+          <InlineColorPicker value={colorText} onChange={updateDraftInput} />
+          <ComboboxSeparator />
+        </>
+      )}
       <ComboboxList>
-        {inputType === "color" && (
-          <>
-            <div className="flex items-center justify-between gap-3 px-2 py-2 text-sm">
-              <span>Color</span>
-              <input
-                aria-label="Choose color"
-                className="size-7 cursor-pointer rounded border-0 bg-transparent p-0"
-                type="color"
-                value={getColorInputValue(colorText)}
-                onChange={(event) => updateDraftInput(event.target.value)}
-              />
-            </div>
-            <ComboboxSeparator />
-          </>
-        )}
         {dimension && (
           <>
             <ComboboxGroup>
@@ -413,7 +412,6 @@ export const PropertyInput = <T extends ShapeValue>({
           {inputType === "number" ? (
             <span
               role="presentation"
-              aria-label="Scrub value"
               className="touch-none select-none"
               onPointerDown={handleScrubPointerDown}
               onPointerMove={handleScrubPointerMove}
@@ -464,13 +462,18 @@ export const PropertyInput = <T extends ShapeValue>({
             if (!open) commitDraftInput();
           }}
           onInputValueChange={(nextValue, eventDetails) => {
-            if (eventDetails.reason === "input-change") {
+            if (
+              eventDetails.reason === "input-change" &&
+              eventDetails.event.target instanceof HTMLInputElement &&
+              eventDetails.event.target.dataset.slot === "combobox-input"
+            ) {
               updateDraftInput(nextValue);
             }
           }}
         >
           <ComboboxInput
             type="text"
+            ref={inputElementRef}
             inputMode={inputType === "number" ? "decimal" : undefined}
             aria-label={placeholder ?? inputType}
             className="w-full min-w-0 bg-muted dark:bg-muted border-0 *:data-[slot=combobox-input]:px-0"
@@ -525,7 +528,7 @@ export const PropertyInput = <T extends ShapeValue>({
             ))
           ) : (
             <div className="flex w-full justify-center py-4 text-center text-sm text-muted-foreground">
-              {variables.length === 0 ? "No variables to connect" : "No matching variables"}
+              {(variables?.length ?? 0) === 0 ? "No variables to connect" : "No matching variables"}
             </div>
           )}
         </div>
