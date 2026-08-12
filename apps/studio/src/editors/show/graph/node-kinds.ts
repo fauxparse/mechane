@@ -137,7 +137,7 @@ export const SOURCE_TYPE_ICONS = {
   object: Box,
   array: List,
   image: Box,
-  colour: Circle,
+  color: Circle,
   date: Calendar,
   datetime: CalendarClock,
 } as const satisfies Record<string, LucideIcon>;

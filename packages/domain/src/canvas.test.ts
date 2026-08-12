@@ -29,20 +29,44 @@ describe("Canvas model", () => {
 
   it.each([
     ["a non-Frame root", { root: { id: "root", type: "text" } }],
-    ["duplicate ids", { root: { id: "root", type: "frame", children: [{ id: "root", type: "rect" }] } }],
-    ["children on a rect", { root: { id: "root", type: "frame", children: [{ id: "rect", type: "rect", children: [{ id: "nested", type: "text" }] }] } }],
-    ["duplicate sibling ranks", { root: { id: "root", type: "frame", children: [{ id: "a", type: "rect", rank: "x" }, { id: "b", type: "rect", rank: "x" }] } }],
+    [
+      "duplicate ids",
+      { root: { id: "root", type: "frame", children: [{ id: "root", type: "rect" }] } },
+    ],
+    [
+      "children on a rect",
+      {
+        root: {
+          id: "root",
+          type: "frame",
+          children: [{ id: "rect", type: "rect", children: [{ id: "nested", type: "text" }] }],
+        },
+      },
+    ],
+    [
+      "duplicate sibling ranks",
+      {
+        root: {
+          id: "root",
+          type: "frame",
+          children: [
+            { id: "a", type: "rect", rank: "x" },
+            { id: "b", type: "rect", rank: "x" },
+          ],
+        },
+      },
+    ],
   ])("rejects %s", (_reason, canvas) => {
     expect(() => assertValidCanvas(canvas as Canvas)).toThrow(InvalidCanvasError);
   });
 
-  it("requires ordered gradients with at least two coloured stops", () => {
+  it("requires ordered gradients with at least two colored stops", () => {
     expect(() =>
       assertValidCanvas({
         root: {
           id: "root",
           type: "frame",
-          fill: { kind: "linear", stops: [{ colour: "red", position: 0 }] },
+          fill: { kind: "linear", stops: [{ color: "red", position: 0 }] },
         },
       }),
     ).toThrow(/at least two stops/);
@@ -55,8 +79,8 @@ describe("Canvas model", () => {
           fill: {
             kind: "linear",
             stops: [
-              { colour: "red", position: 0.8 },
-              { colour: "blue", position: 0.2 },
+              { color: "red", position: 0.8 },
+              { color: "blue", position: 0.2 },
             ],
           },
         },

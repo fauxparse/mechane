@@ -203,7 +203,7 @@ const autoLayoutCanvas: Canvas = {
           kind: "linear",
           angle: 135,
           stops: [
-            { colour: "#26233a", position: 0 },
+            { color: "#26233a", position: 0 },
             { color: "#44415a", position: 0.5 },
             { color: "#31748f", position: 1 },
           ],

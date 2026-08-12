@@ -11,7 +11,10 @@ export interface CanvasArtboardDocument {
   readonly artId: string;
   readonly kind: "scene" | "block";
   readonly name: string;
+  /** Persisted values, including PropertyConnection objects, used by the Inspector. */
   readonly canvas: Canvas;
+  /** Materialised values used only for painting the Canvas. */
+  readonly renderCanvas?: Canvas;
   readonly position: { x: number; y: number };
 }
 

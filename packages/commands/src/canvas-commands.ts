@@ -209,6 +209,24 @@ export function updateCanvasElement(
     restoreEdits: (captured) => [targetEdit(canvasId, captured.edit)],
   });
 }
+export function updateCanvasElements(
+  canvasId: string,
+  updates: readonly {
+    readonly elementId: string;
+    readonly properties: ElementProperties;
+    readonly unsetProperties?: readonly string[];
+  }[],
+): CanvasWorkspaceCommand {
+  return composite<CanvasWorkspace, CanvasWorkspaceEdit>({
+    type: "canvas.updateElements",
+    label: "Update Elements",
+    scope: "selection",
+    commands: updates.map((update) =>
+      updateCanvasElement(canvasId, update.elementId, update.properties, update.unsetProperties),
+    ),
+  });
+}
+
 
 export function reparentCanvasElement(
   canvasId: string,

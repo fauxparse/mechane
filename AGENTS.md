@@ -33,3 +33,11 @@ Two things run this for you automatically:
 - **CI** (`.github/workflows/react-doctor.yml`) scans every pull request and posts a summary comment covering only the issues that PR introduced. It is advisory for now — it will not fail your build. Read the comment anyway.
 
 There is also an optional pre-commit hook (`pnpm react-doctor install` writes it to `.git/hooks/pre-commit`) that blocks a commit on new error-severity findings in staged files. It lives outside version control, so it is per-clone and you may not have it.
+
+## Storybook
+
+Add Storybook stories for each new UI component. When testing using Storybook, use the server that is already running on port :6007. Do not start new Storybook instances except in the case where there is no server running on :6007.
+
+## Orthography
+
+Use `color` spelling in code and comments.

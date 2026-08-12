@@ -120,7 +120,7 @@ export function resolveGraphEdgeType(edge: Pick<GraphEdge, "kind">): string {
 
 function parseType(input: TypeInput | null | undefined): Type | undefined {
   if (!input) return undefined;
-  if (["text", "number", "boolean", "image", "colour", "date", "datetime"].includes(input.kind)) {
+  if (["text", "number", "boolean", "image", "color", "date", "datetime"].includes(input.kind)) {
     return input.kind as Type;
   }
   if (input.kind === "array" && input.of) return { kind: "array", of: parseType(input.of)! };
@@ -420,8 +420,8 @@ function serializeNode(node: GraphNode) {
       node.kind === "scene"
         ? node.variables.map((variable) => ({ ...variable, type: variable.type ?? null }))
         : [],
-    type: node.kind === "source" || node.kind === "transformer" ? node.type ?? null : null,
-    fieldDefaults: node.kind === "source" ? node.fieldDefaults ?? [] : [],
+    type: node.kind === "source" || node.kind === "transformer" ? (node.type ?? null) : null,
+    fieldDefaults: node.kind === "source" ? (node.fieldDefaults ?? []) : [],
     perConnection: node.kind === "device" && node.perConnection,
     pairingCode: node.kind === "device" ? node.pairingCode : null,
   };
@@ -435,7 +435,7 @@ function serializeEdge(edge: GraphEdge) {
     targetId: edge.targetId,
     sourcePath: edge.sourcePath,
     targetPath: edge.targetPath,
-    fieldMapping: edge.kind === "wiring" ? edge.fieldMapping ?? null : null,
+    fieldMapping: edge.kind === "wiring" ? (edge.fieldMapping ?? null) : null,
     // Derived, not stored input: the head of a wiring edge's target path
     // is the Variable it lands on, and a client that only cares which
     // Variable is fed shouldn't have to know that.

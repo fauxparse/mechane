@@ -4,6 +4,8 @@
  * Canvas is deliberately independent of React and storage. The API assembles
  * this tree from relational rows; studio and player consume the same value.
  */
+import { isPropertyConnection } from "./property-values";
+import type { PropertyConnection, PropertyValue } from "./property-values";
 export const ELEMENT_KINDS = ["rect", "ellipse", "text", "image", "frame"] as const;
 export type ElementKind = (typeof ELEMENT_KINDS)[number];
 
@@ -14,7 +16,7 @@ export type SizeValue = number | { value: number; unit: SizeUnit };
 
 export interface AxisSize {
   mode: SizeMode;
-  value?: SizeValue;
+  value?: SizeValue | PropertyConnection;
 }
 
 export type Rotation = 0 | 90 | 180 | 270;
@@ -53,7 +55,6 @@ export type ObjectFit = "fill" | "contain" | "cover" | "none" | "scale-down";
 
 export interface GradientStop {
   color?: string;
-  colour?: string;
   position: number;
 }
 
@@ -107,17 +108,17 @@ export interface ElementBase {
   maxHeight?: SizeValue;
   rotation?: Rotation;
   aspectRatio?: AspectRatioLock;
-  opacity?: number;
+  opacity?: PropertyValue<number>;
   blendMode?: BlendMode;
   alignSelf?: LayoutAlignment;
-  fill?: Fill;
+  fill?: PropertyValue<Fill>;
   anchor?: AnchorPosition;
   children?: readonly Element[];
 }
 
 export interface RectElement extends ElementBase {
   type: "rect";
-  cornerRadius?: number;
+  cornerRadius?: PropertyValue<number>;
 }
 
 export interface EllipseElement extends ElementBase {
@@ -126,25 +127,25 @@ export interface EllipseElement extends ElementBase {
 
 export interface TextElement extends ElementBase {
   type: "text";
-  content?: string;
-  text?: string;
-  value?: string;
-  color?: string;
-  fontFamily?: string;
-  fontSize?: number;
-  fontWeight?: string | number;
-  lineHeight?: string | number;
-  letterSpacing?: number;
-  textAlign?: TextAlign;
+  content?: PropertyValue<string>;
+  text?: PropertyValue<string>;
+  value?: PropertyValue<string>;
+  color?: PropertyValue<string>;
+  fontFamily?: PropertyValue<string>;
+  fontSize?: PropertyValue<number>;
+  fontWeight?: PropertyValue<string | number>;
+  lineHeight?: PropertyValue<string | number>;
+  letterSpacing?: PropertyValue<number>;
+  textAlign?: PropertyValue<TextAlign>;
 }
 
 export interface ImageElement extends ElementBase {
   type: "image";
-  src?: string;
-  image?: string;
-  source?: string;
-  alt?: string;
-  objectFit?: ObjectFit;
+  src?: PropertyValue<string>;
+  image?: PropertyValue<string>;
+  source?: PropertyValue<string>;
+  alt?: PropertyValue<string>;
+  objectFit?: PropertyValue<ObjectFit>;
 }
 
 export interface FrameElement extends ElementBase {
@@ -216,7 +217,9 @@ function assertAxisSize(size: AxisSize | undefined, context: string): void {
   if (size.mode === "fixed" && size.value === undefined) {
     throw new InvalidCanvasError(`${context} fixed sizing requires a value.`);
   }
-  if (size.value !== undefined) assertSizeValue(size.value, `${context} value`);
+  if (size.value !== undefined && !isPropertyConnection(size.value)) {
+    assertSizeValue(size.value, `${context} value`);
+  }
 }
 
 function assertLayout(element: Element): void {
@@ -261,7 +264,11 @@ function assertLayout(element: Element): void {
   ) {
     throw new InvalidCanvasError(`${element.id} opacity must be between 0 and 1.`);
   }
-  if (typeof element.fill !== "string" && element.fill !== undefined) {
+  if (
+    typeof element.fill !== "string" &&
+    element.fill !== undefined &&
+    !isPropertyConnection(element.fill)
+  ) {
     const kind = element.fill.kind ?? element.fill.type;
     if (kind !== "linear" && kind !== "radial") {
       throw new InvalidCanvasError(`${element.id} has an unknown gradient kind.`);
@@ -272,7 +279,7 @@ function assertLayout(element: Element): void {
     let previous = -Infinity;
     for (const stop of element.fill.stops) {
       if (
-        (!stop.color && !stop.colour) ||
+        !stop.color ||
         !Number.isFinite(stop.position) ||
         stop.position < 0 ||
         stop.position > 1 ||

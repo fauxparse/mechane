@@ -1,8 +1,7 @@
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent, RefObject } from "react";
 
 import type { NewElement } from "@mechane/commands";
-import type { Position } from "@mechane/domain";
-
+import type { SceneVariable, Position } from "@mechane/domain";
 import type { CanvasArtboardDocument } from "../../api/canvas";
 import type { CanvasCamera } from "./graph/canvas-camera";
 import type { CanvasSelection } from "./graph/canvas-selection";
@@ -44,6 +43,15 @@ export interface CanvasWorkspaceEditorProps {
     properties: Record<string, unknown>,
     unsetProperties?: readonly string[],
   ): void;
+  onUpdateElements?(
+    canvasId: string,
+    updates: readonly {
+      readonly elementId: string;
+      readonly properties: Record<string, unknown>;
+      readonly unsetProperties?: readonly string[];
+    }[],
+  ): void;
+  variables?: readonly SceneVariable[];
   onDeleteElements?(canvasId: string, elementIds: readonly string[]): void;
   onRenameArtboard?(artId: string, name: string): void;
 }
@@ -76,6 +84,13 @@ export interface CanvasWorkspaceSurfaceProps {
     width: number;
     height: number;
   } | null;
+  inspectorPreview: {
+    elementId: string;
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+  } | null;
   resizable: boolean;
   onCancelCreation(): void;
   zoomIn(): void;
@@ -88,6 +103,15 @@ export interface CanvasWorkspaceSurfaceProps {
     properties: Record<string, unknown>,
     unsetProperties?: readonly string[],
   ): void;
+  onUpdateElements?(
+    canvasId: string,
+    updates: readonly {
+      readonly elementId: string;
+      readonly properties: Record<string, unknown>;
+      readonly unsetProperties?: readonly string[];
+    }[],
+  ): void;
+  variables?: readonly SceneVariable[];
   onMoveElement?(
     canvasId: string,
     elementId: string,

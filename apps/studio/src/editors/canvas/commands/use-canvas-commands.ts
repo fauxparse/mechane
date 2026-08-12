@@ -7,6 +7,7 @@ import {
   moveCanvasElementBetweenCanvases,
   removeCanvasElement,
   updateCanvasElement,
+  updateCanvasElements,
 } from "@mechane/commands";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Position } from "@mechane/domain";
@@ -50,6 +51,14 @@ export interface CanvasCommands {
     elementId: string,
     properties: Record<string, unknown>,
     unsetProperties?: readonly string[],
+  ): void;
+  updateElements(
+    canvasId: string,
+    updates: readonly {
+      readonly elementId: string;
+      readonly properties: Record<string, unknown>;
+      readonly unsetProperties?: readonly string[];
+    }[],
   ): void;
   createElement(canvasId: string, element: NewElement, parentId: string, rank: string): void;
   removeElements(canvasId: string, elementIds: readonly string[]): void;
@@ -183,6 +192,20 @@ export function useCanvasCommands(
     },
     [changed, stack],
   );
+  const updateElements = useCallback(
+    (
+      canvasId: string,
+      updates: readonly {
+        readonly elementId: string;
+        readonly properties: Record<string, unknown>;
+        readonly unsetProperties?: readonly string[];
+      }[],
+    ) => {
+      stack.execute(updateCanvasElements(canvasId, updates));
+      changed();
+    },
+    [changed, stack],
+  );
 
   const updateArtboardMove = useCallback(
     (canvasId: string, position: Position) => {
@@ -223,6 +246,7 @@ export function useCanvasCommands(
     moveElement,
     moveElementBetweenCanvases,
     updateElement,
+    updateElements,
     createElement,
     removeElements,
     undo,

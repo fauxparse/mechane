@@ -1,17 +1,23 @@
+import { isPropertyConnection } from "@mechane/domain";
 import type { CanvasArtboardDocument } from "../../../api/canvas";
 
 const SCENE_PREVIEW_SIZE = { width: 720, height: 420 };
 const DEFAULT_BLOCK_SIZE = { width: 720, height: 420 };
-
-type AuthoredSize = {
-  mode: string;
-  value?: number | { value: number; unit: string };
-};
-
-function authoredPixels(size: AuthoredSize | undefined): number | undefined {
+function authoredPixels(size: { mode: string; value?: unknown } | undefined): number | undefined {
   if (!size || size.mode !== "fixed" || size.value === undefined) return undefined;
+  if (isPropertyConnection(size.value)) return undefined;
   if (typeof size.value === "number") return size.value;
-  return size.value.unit === "px" ? size.value.value : undefined;
+  if (
+    typeof size.value === "object" &&
+    size.value !== null &&
+    "value" in size.value &&
+    "unit" in size.value &&
+    typeof size.value.value === "number" &&
+    size.value.unit === "px"
+  ) {
+    return size.value.value;
+  }
+  return undefined;
 }
 
 export function canvasArtboardSize(artboard: CanvasArtboardDocument): {

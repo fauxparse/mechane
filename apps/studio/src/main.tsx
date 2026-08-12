@@ -7,6 +7,7 @@ import "@mechane/design-system/styles/globals.css";
 
 import { AppThemeProvider } from "./AppThemeProvider";
 import { queryClient, router } from "./router";
+import { TooltipProvider } from "@mechane/design-system";
 
 // Authoring + show-running app: Show/Flow editor, Scene/Canvas editor,
 // Device/Run management, going live. See /PRD.md.
@@ -15,7 +16,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AppThemeProvider>
-        <RouterProvider router={router} />
+        <TooltipProvider>
+          <RouterProvider router={router} />
+        </TooltipProvider>
       </AppThemeProvider>
     </QueryClientProvider>
   );

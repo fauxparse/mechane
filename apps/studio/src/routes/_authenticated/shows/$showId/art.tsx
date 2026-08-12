@@ -1,4 +1,4 @@
-import { isId } from "@mechane/domain";
+import { isId, resolveCanvasProperties } from "@mechane/domain";
 import type { ShowId } from "@mechane/domain";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -65,15 +65,24 @@ function CanvasWorkspaceRoute() {
     const current = new Map(
       canvasCommands.workspace.artboards.map((artboard) => [artboard.canvasId, artboard]),
     );
-    const names = new Map(graphEditing.graph.nodes.map((node) => [node.id, node.name]));
+    const nodes = new Map(graphEditing.graph.nodes.map((node) => [node.id, node]));
     return (workspace.data ?? []).map((artboard) => {
       const edited = current.get(artboard.canvasId);
-      const name = names.get(artboard.artId) ?? artboard.name;
-      return edited
-        ? { ...artboard, name, canvas: edited.canvas, position: edited.position }
-        : name === artboard.name
-          ? artboard
-          : { ...artboard, name };
+      const name = nodes.get(artboard.artId)?.name ?? artboard.name;
+      const canvas = edited?.canvas ?? artboard.canvas;
+      const owner = nodes.get(artboard.artId);
+      const variables = owner?.kind === "scene" ? owner.variables : [];
+      const renderCanvas = resolveCanvasProperties(canvas, {
+        variables,
+        shapes: graphEditing.graph.shapes,
+      });
+      return {
+        ...artboard,
+        name,
+        canvas,
+        renderCanvas,
+        position: edited?.position ?? artboard.position,
+      };
     });
   }, [canvasCommands.workspace.artboards, graphEditing.graph, workspace.data]);
 
@@ -131,18 +140,13 @@ function CanvasWorkspaceRoute() {
   if (show.isPending || workspace.isPending || draft.isPending) {
     return <p className="p-6 text-muted-foreground">Loading Canvas workspace…</p>;
   }
-  if (workspace.isError || draft.isError) {
-    return (
-      <p className="p-6" role="alert">
-        Canvas workspace couldn't be loaded.
-      </p>
-    );
-  }
-
+  const focusedNode = graphEditing.graph.nodes.find((node) => node.id === focused?.artId);
+  const focusedVariables = focusedNode?.kind === "scene" ? focusedNode.variables : [];
   return (
     <CanvasWorkspaceEditor
       artboards={artboards}
       focusedArtId={focused?.artId ?? null}
+      variables={focusedVariables}
       onFocusArtboard={(artId) =>
         void navigate({
           to: "/shows/$showId/art/$artId",
@@ -157,6 +161,7 @@ function CanvasWorkspaceRoute() {
       onMoveElement={canvasCommands.moveElement}
       onMoveElementBetweenCanvases={canvasCommands.moveElementBetweenCanvases}
       onUpdateElement={canvasCommands.updateElement}
+      onUpdateElements={canvasCommands.updateElements}
       onDeleteElements={canvasCommands.removeElements}
       onRenameArtboard={renameArtboard}
     />

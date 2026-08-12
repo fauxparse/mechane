@@ -13,14 +13,14 @@ function primitiveDefault(type: Type): unknown {
       return false;
     case "text":
     case "image":
-    case "colour":
+    case "color":
     case "date":
     case "datetime":
       return "";
   }
 }
 
-function defaultForType(type: Type, shapes: readonly Shape[]): unknown {
+export function defaultValueForType(type: Type, shapes: readonly Shape[] = []): unknown {
   if (typeof type === "string") return primitiveDefault(type);
   if (type.kind === "array") return [];
   const shape = shapes.find((candidate) => candidate.id === type.shapeId);
@@ -32,7 +32,7 @@ function defaultForType(type: Type, shapes: readonly Shape[]): unknown {
 
 function defaultForField(field: ShapeField, shapes: readonly Shape[]): unknown {
   if (field.defaultValue !== null && field.defaultValue !== undefined) return field.defaultValue;
-  return field.required ? defaultForType(field.type, shapes) : null;
+  return field.required ? defaultValueForType(field.type, shapes) : null;
 }
 
 function setPath(root: Record<string, unknown>, path: readonly string[], value: unknown): void {
@@ -48,7 +48,7 @@ function setPath(root: Record<string, unknown>, path: readonly string[], value: 
 }
 
 function sourceValue(source: SourceNode, graph: ShowGraph): unknown {
-  const value = defaultForType(source.type, graph.shapes ?? []);
+  const value = defaultValueForType(source.type, graph.shapes ?? []);
   const root =
     value && typeof value === "object" && !Array.isArray(value)
       ? { ...(value as Record<string, unknown>) }

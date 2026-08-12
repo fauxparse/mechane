@@ -24,15 +24,22 @@ export {
 } from "./components/ui/avatar";
 export {
   Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
   ComboboxClear,
+  ComboboxCollection,
   ComboboxContent,
   ComboboxEmpty,
-  ComboboxInput,
+  ComboboxGroup,
   ComboboxInputGroup,
   ComboboxItem,
   ComboboxLabel,
+  ComboboxList,
+  ComboboxSeparator,
   ComboboxTrigger,
   ComboboxValue,
+  useComboboxAnchor,
 } from "./components/ui/combobox";
 export { Badge, badgeVariants } from "./components/ui/badge";
 export { Button, buttonVariants } from "./components/ui/button";
@@ -139,9 +146,28 @@ export { Label } from "./components/ui/label";
 export { QrCode } from "./components/ui/qr-code";
 export { ThemeSwitcher } from "./components/theme-switcher";
 export type { ThemeSwitcherProps } from "./components/theme-switcher";
-
+export {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+  createPopoverHandle,
+} from "./components/ui/popover";
+export {
+  PropertyInput,
+  type PropertyInputConstraint,
+  type PropertyInputProps,
+  type PropertyInputSizing,
+  type PropertyInputType,
+  type PropertyInputUnit,
+  type PropertyInputValue,
+  type VariableReference,
+} from "./components/ui/property-input/property-input";
 export { ThemeProvider, useTheme } from "./theme/theme-provider";
 export type { ThemeContextValue, ThemeProviderProps } from "./theme/theme-provider";
+export { Switch } from "./components/ui/switch";
 
-export { THEME_COLOUR_METADATA } from "./themes/generated";
-export type { ThemeColourKey } from "./themes/generated";
+export { THEME_COLOR_METADATA } from "./themes/generated";
+export type { ThemeColorKey } from "./themes/generated";

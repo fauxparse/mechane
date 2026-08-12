@@ -146,8 +146,8 @@ describe("CanvasRenderer", () => {
             fill: {
               kind: "radial",
               stops: [
-                { colour: "white", position: 0 },
-                { colour: "black", position: 1 },
+                { color: "white", position: 0 },
+                { color: "black", position: 1 },
               ],
             },
           },

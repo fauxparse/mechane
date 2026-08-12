@@ -11,6 +11,7 @@ import {
   removeCanvasElement,
   reparentCanvasElement,
   updateCanvasElement,
+  updateCanvasElements,
 } from "./canvas-commands";
 import type { CanvasWorkspace, CanvasWorkspaceEdit } from "./canvas-commands";
 import { CommandStack } from "./stack";
@@ -189,5 +190,31 @@ describe("Canvas workspace commands", () => {
     expect(stored(applyCanvasWorkspaceEdits(workspace, batches.flat()))).toEqual(
       stored(stack.state),
     );
+  });
+  it("updates a multi-selection as one undoable composite", () => {
+    const batches: CanvasWorkspaceEdit[][] = [];
+    const stack = new CommandStack<CanvasWorkspace, CanvasWorkspaceEdit>({
+      state: workspace,
+      dispatch: (_command, _state, edits) => batches.push([...edits]),
+    });
+
+    stack.execute(
+      updateCanvasElements("scene_a", [
+        { elementId: "first", properties: { opacity: 0.5 } },
+        { elementId: "nested", properties: { opacity: 0.5 } },
+      ]),
+    );
+    expect(stack.state.artboards[0]?.canvas.root.children?.[0]).toMatchObject({ opacity: 0.5 });
+    expect(stack.state.artboards[0]?.canvas.root.children?.[1]?.children?.[0]).toMatchObject({
+      opacity: 0.5,
+    });
+    expect(batches[0]).toHaveLength(2);
+
+    stack.undo();
+    expect(stack.state.artboards[0]?.canvas.root.children?.[0]).not.toHaveProperty("opacity");
+    expect(stack.state.artboards[0]?.canvas.root.children?.[1]?.children?.[0]).not.toHaveProperty(
+      "opacity",
+    );
+    expect(batches).toHaveLength(2);
   });
 });

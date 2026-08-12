@@ -85,7 +85,7 @@ describe("neutral scale generation", () => {
     const scale = generateNeutralScale(await loadScheme(path));
 
     // base06/base07 are rosewater and lavender in Catppuccin; nothing in a
-    // neutral scale may be as colourful as a real accent.
+    // neutral scale may be as colorful as a real accent.
     for (const step of STEPS) expect(chroma(scale[step])).toBeLessThan(0.04);
   });
 

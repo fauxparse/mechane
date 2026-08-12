@@ -41,7 +41,7 @@ pnpm typecheck
 pnpm codegen      # regenerate packages/graphql-schema's schema.graphql + gql.tada types
 ```
 
-## Adding a built-in colour theme
+## Adding a built-in color theme
 
 Built-in themes are generated from checked-in Base16/Base24 scheme files. Do not
 add palette names directly to components, Storybook, or domain validation.
