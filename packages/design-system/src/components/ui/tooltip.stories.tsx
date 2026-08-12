@@ -2,18 +2,11 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Info, Settings } from "lucide-react";
 
 import { Button } from "./button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
 
 const meta: Meta<typeof Tooltip> = {
   title: "design-system/Tooltip",
   component: Tooltip,
-  decorators: [
-    (Story) => (
-      <TooltipProvider>
-        <Story />
-      </TooltipProvider>
-    ),
-  ],
 };
 
 export default meta;

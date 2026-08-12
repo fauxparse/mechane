@@ -1,18 +1,23 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useMemo, useState } from "react";
 
 import {
   Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
   ComboboxContent,
   ComboboxEmpty,
+  ComboboxGroup,
   ComboboxInput,
-  ComboboxInputGroup,
   ComboboxItem,
   ComboboxLabel,
-  ComboboxTrigger,
+  ComboboxList,
+  ComboboxSeparator,
+  ComboboxValue,
+  useComboboxAnchor,
 } from "./combobox";
 
-const options = ["Apple", "Banana", "Blueberry", "Grape", "Orange", "Strawberry"];
+const frameworks = ["Next.js", "SvelteKit", "Nuxt.js", "Remix", "Astro"] as const;
 
 const meta: Meta<typeof Combobox> = {
   title: "design-system/Combobox",
@@ -22,65 +27,137 @@ const meta: Meta<typeof Combobox> = {
 export default meta;
 type Story = StoryObj<typeof Combobox>;
 
-function FruitCombobox({ disabled = false }: { disabled?: boolean }) {
-  const [inputValue, setInputValue] = useState("");
-  const [value, setValue] = useState<string | null>(null);
-  const filteredOptions = useMemo(
-    () => options.filter((option) => option.toLowerCase().includes(inputValue.toLowerCase())),
-    [inputValue],
-  );
-
-  return (
-    <div className="flex w-64 flex-col gap-2">
-      <Combobox
-        value={value}
-        onValueChange={(nextValue) => setValue(nextValue as string | null)}
-        onInputValueChange={setInputValue}
-        disabled={disabled}
-      >
-        <ComboboxLabel>Fruit</ComboboxLabel>
-        <ComboboxInputGroup>
-          <ComboboxInput placeholder="Choose a fruit" />
-          <ComboboxTrigger aria-label="Open fruit options" />
-        </ComboboxInputGroup>
-        <ComboboxContent>
-          {filteredOptions.length === 0 ? <ComboboxEmpty>No fruits found.</ComboboxEmpty> : null}
-          {filteredOptions.map((option) => (
-            <ComboboxItem key={option} value={option}>
-              {option}
-            </ComboboxItem>
-          ))}
-        </ComboboxContent>
-      </Combobox>
-      <p className="text-xs text-muted-foreground">Selected: {value ?? "None"}</p>
-    </div>
-  );
-}
-
 export const Default: Story = {
-  render: () => <FruitCombobox />,
+  render: () => (
+    <Combobox items={frameworks}>
+      <ComboboxInput placeholder="Select a framework" />
+      <ComboboxContent>
+        <ComboboxEmpty>No items found.</ComboboxEmpty>
+        <ComboboxList>
+          {(item) => (
+            <ComboboxItem key={item} value={item}>
+              {item}
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  ),
 };
 
-export const Disabled: Story = {
-  render: () => <FruitCombobox disabled />,
-};
-
-export const NoResults: Story = {
+export const CustomItems: Story = {
   render: () => {
-    const [inputValue, setInputValue] = useState("kiwi");
+    const items = frameworks.map((framework) => ({
+      label: framework,
+      value: framework.toLowerCase().replace(".", ""),
+    }));
+
     return (
-      <Combobox onInputValueChange={setInputValue}>
-        <ComboboxInputGroup className="w-64">
-          <ComboboxInput
-            value={inputValue}
-            onChange={(event) => setInputValue(event.target.value)}
-          />
-          <ComboboxTrigger aria-label="Open fruit options" />
-        </ComboboxInputGroup>
+      <Combobox items={items} itemToStringValue={(item: (typeof items)[number]) => item.label}>
+        <ComboboxInput placeholder="Select a framework" />
         <ComboboxContent>
-          <ComboboxEmpty>No fruits found.</ComboboxEmpty>
+          <ComboboxEmpty>No items found.</ComboboxEmpty>
+          <ComboboxList>
+            {(item) => (
+              <ComboboxItem key={item.value} value={item}>
+                {item.label}
+              </ComboboxItem>
+            )}
+          </ComboboxList>
         </ComboboxContent>
       </Combobox>
     );
   },
+};
+
+export const Multiple: Story = {
+  render: () => {
+    const anchor = useComboboxAnchor();
+
+    return (
+      <Combobox multiple autoHighlight items={frameworks} defaultValue={[frameworks[0]]}>
+        <ComboboxChips ref={anchor} className="w-full max-w-xs">
+          <ComboboxValue>
+            {(values) => (
+              <>
+                {(values as string[]).map((value) => (
+                  <ComboboxChip key={value}>{value}</ComboboxChip>
+                ))}
+                <ComboboxChipsInput placeholder="Add frameworks" />
+              </>
+            )}
+          </ComboboxValue>
+        </ComboboxChips>
+        <ComboboxContent anchor={anchor}>
+          <ComboboxEmpty>No items found.</ComboboxEmpty>
+          <ComboboxList>
+            {(item) => (
+              <ComboboxItem key={item} value={item}>
+                {item}
+              </ComboboxItem>
+            )}
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+    );
+  },
+};
+
+export const Groups: Story = {
+  render: () => (
+    <Combobox
+      items={[
+        { group: "Popular", items: ["Next.js", "SvelteKit"] },
+        { group: "Other", items: ["Nuxt.js", "Remix", "Astro"] },
+      ].flatMap(({ items }) => items)}
+    >
+      <ComboboxInput placeholder="Select a framework" />
+      <ComboboxContent>
+        <ComboboxEmpty>No items found.</ComboboxEmpty>
+        <ComboboxList>
+          <ComboboxGroup>
+            <ComboboxLabel>Popular</ComboboxLabel>
+            <ComboboxItem value="Next.js">Next.js</ComboboxItem>
+            <ComboboxItem value="SvelteKit">SvelteKit</ComboboxItem>
+          </ComboboxGroup>
+          <ComboboxSeparator />
+          <ComboboxGroup>
+            <ComboboxLabel>Other</ComboboxLabel>
+            <ComboboxItem value="Nuxt.js">Nuxt.js</ComboboxItem>
+            <ComboboxItem value="Remix">Remix</ComboboxItem>
+            <ComboboxItem value="Astro">Astro</ComboboxItem>
+          </ComboboxGroup>
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  ),
+};
+
+export const Disabled: Story = {
+  render: () => (
+    <Combobox items={frameworks}>
+      <ComboboxInput placeholder="Select a framework" disabled />
+      <ComboboxContent>
+        <ComboboxList>
+          {(item) => (
+            <ComboboxItem key={item} value={item}>
+              {item}
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  ),
+};
+
+export const Empty: Story = {
+  render: () => (
+    <Combobox items={[]}>
+      <ComboboxInput placeholder="No frameworks available" />
+      <ComboboxContent>
+        <ComboboxEmpty>No items found.</ComboboxEmpty>
+        <ComboboxList />
+      </ComboboxContent>
+    </Combobox>
+  ),
 };
