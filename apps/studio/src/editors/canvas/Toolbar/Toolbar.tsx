@@ -1,26 +1,24 @@
 // The Canvas editor's toolbar. Lives in the Editor Chrome's footer slot, so it
 // floats over the bottom of the plane rather than sitting inside it.
 import {
+  FrameIcon,
+  ImageIcon,
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
-  Separator,
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@mechane/design-system";
-import {
-  FrameIcon,
-  ImageIcon,
   LucideIcon,
   MinusIcon,
   MousePointer2Icon,
   PlusIcon,
   RotateCcwIcon,
+  Separator,
   CircleIcon,
   SquareIcon,
+  ToggleGroup,
+  ToggleGroupItem,
   TypeIcon,
-} from "lucide-react";
+} from "@mechane/design-system";
 /** The tools the Canvas editor can be in. Exactly one is active at a time. */
 export type CanvasTool = "select" | "rect" | "ellipse" | "text" | "image" | "frame";
 

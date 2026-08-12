@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import type { NumberValue, ShapeValue } from "@mechane/domain";
-import { PaintBucketIcon, VariableIcon } from "lucide-react";
+import { PaintBucketIcon, VariableIcon } from "@mechane/design-system";
 
 import { PropertyInput, type PropertyInputValue, type VariableReference } from "./property-input";
 

@@ -7,7 +7,7 @@
 import { GraphQLRequestError } from "@mechane/graphql-schema";
 import { Button, buttonVariants } from "@mechane/design-system";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Settings } from "lucide-react";
+import { Settings } from "@mechane/design-system";
 
 import { useSignOut } from "../../api/auth";
 import { useCreateShow, useDeleteShow, useShows } from "../../api/shows";

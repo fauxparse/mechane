@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { CircleAlertIcon, InfoIcon, TriangleAlertIcon } from "lucide-react";
+import { CircleAlertIcon, InfoIcon, TriangleAlertIcon } from "@mechane/design-system";
 
 import { Button } from "./button";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "./alert";

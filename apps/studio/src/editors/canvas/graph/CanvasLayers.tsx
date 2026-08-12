@@ -1,14 +1,17 @@
 import {
+  ChevronRight,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  PuzzleIcon,
+  SearchIcon,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
+  TvMinimalIcon,
 } from "@mechane/design-system";
-import { ChevronRight, PuzzleIcon, SearchIcon, TvMinimalIcon } from "lucide-react";
 import { findCanvasElement } from "@mechane/commands";
 import { useMemo, useRef, useState } from "react";
 

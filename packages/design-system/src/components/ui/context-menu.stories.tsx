@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Bot, Hash, Plus, Projector, TvMinimal, Workflow } from "lucide-react";
+import { Bot, Hash, Plus, Projector, TvMinimal, Workflow } from "@mechane/design-system";
 
 import {
   ContextMenu,

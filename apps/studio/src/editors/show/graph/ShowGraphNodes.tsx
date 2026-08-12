@@ -23,8 +23,15 @@
 //
 // Inline rename lives in the node (double-click, or F2) because the name is
 // the node's own text (#27); everything fuller is the inspector's.
-import { cn } from "@mechane/design-system";
-import { Check, ChevronDown, ChevronRight, Copy, House, TriangleAlert } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  House,
+  TriangleAlert,
+  cn,
+} from "@mechane/design-system";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Handle, Position, useConnection } from "@xyflow/react";
 import type { NodeProps } from "@xyflow/react";
@@ -71,7 +78,11 @@ interface HeaderProps {
 
 function typeLabel(type: ShowNodeData["type"]): string | null {
   if (!type) return null;
-  return typeof type === "string" ? type : type.kind === "array" ? `array<${typeLabel(type.of) ?? "?"}>` : `Shape:${type.shapeId}`;
+  return typeof type === "string"
+    ? type
+    : type.kind === "array"
+      ? `array<${typeLabel(type.of) ?? "?"}>`
+      : `Shape:${type.shapeId}`;
 }
 
 function NodeHeader({ nodeId, data, variant = "node" }: HeaderProps) {

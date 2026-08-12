@@ -25,8 +25,8 @@ import {
   TvMinimal,
   Type,
   Workflow,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+} from "@mechane/design-system";
+import type { LucideIcon } from "@mechane/design-system";
 
 export interface NodeKindMeta {
   kind: NodeKind;

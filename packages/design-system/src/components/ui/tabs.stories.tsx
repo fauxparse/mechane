@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { AppWindow, Code2, Settings2 } from "lucide-react";
+import { AppWindow, Code2, Settings2 } from "@mechane/design-system";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
