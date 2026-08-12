@@ -36,8 +36,7 @@ _Avoid_: Sequence, section, route
 
 ### Variable
 
-A typed, named value on a Scene or Block. Scene Variables can receive a value from the Show graph via wiring, or hold a literal default. Block Variables define the values a Slot maps into a Block instance. Variables are the bridge between external data and visual content.
-_Avoid_: Input (code term), parameter, field. Note: an older unrelated concept called "Variable" has been removed from the codebase.
+A typed, named value on a Scene or Block. Every Variable has a Type; an untyped Variable is invalid. Scene Variables can receive a value from the Show graph via wiring, or hold a literal default. Block Variables define the values a Slot maps into a Block instance. Variables are the bridge between external data and visual content.
 
 ### Source
 
@@ -91,7 +90,15 @@ _Avoid_: Safe area, inset (reserved for the measurements that define the Editabl
 
 ### Property
 
-An application-defined attribute of an Element (as opposed to a Variable, which is user-defined). Both Properties and Variables can take literal values, be connected to variables, or take an expression combining the two.
+An application-defined attribute of an Element, as opposed to a Variable, which is user-defined. A Property has one current value mode: a literal value or a connection to a Variable.
+
+### Property Connection
+
+The relationship that makes an Element Property take its value from a Variable owned by the Scene or Block containing the Element.
+
+### Property Coercion
+
+The unique typed conversion derived from a Variable's Type and a Property's Type that makes the Variable value usable by that Property, such as converting a number to text. Coercion rules are explicit and extensible rather than implicit renderer behavior; the selected rule is not stored on the Property Connection.
 
 ### Block
 

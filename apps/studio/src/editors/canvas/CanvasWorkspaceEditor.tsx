@@ -24,6 +24,8 @@ export function CanvasWorkspaceEditor({
   onMoveElement,
   onMoveElementBetweenCanvases,
   onUpdateElement,
+  onUpdateElements,
+  variables,
   onDeleteElements,
   onRenameArtboard,
   initialCamera,
@@ -85,6 +87,7 @@ export function CanvasWorkspaceEditor({
     onMoveElementBetweenCanvases,
     onUpdateElement,
     onDeleteElements,
+    onRenameArtboard,
   });
   const [paletteOpen, setPaletteOpen] = useState(false);
   const deleteSelection = useCallback(() => {
@@ -162,6 +165,8 @@ export function CanvasWorkspaceEditor({
       resizable={resizable}
       onFocusArtboard={onFocusArtboard}
       onUpdateElement={onUpdateElement}
+      onUpdateElements={onUpdateElements}
+      variables={variables}
       onMoveElement={onMoveElement}
       onMoveElementBetweenCanvases={onMoveElementBetweenCanvases}
       onRenameArtboard={onRenameArtboard}

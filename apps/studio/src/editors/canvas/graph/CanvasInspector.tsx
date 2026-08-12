@@ -1,11 +1,29 @@
 import type { ChangeEvent } from "react";
-import type { FrameElement } from "@mechane/domain";
+import type {
+  FrameElement,
+  PropertyConnection,
+  SceneVariable,
+  ShapeValue,
+  Type,
+  VariableReference,
+} from "@mechane/domain";
 import {
+  CANVAS_PROPERTY_DESCRIPTORS,
+  canvasPropertyDescriptor,
+  defaultPropertyValue,
+  isPropertyConnection,
+  opacityFromPercent,
+  opacityToPercent,
+  propertyCoercion,
+} from "@mechane/domain";
+import {
+  PropertyInput,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
 } from "@mechane/design-system";
+import type { PropertyInputValue } from "@mechane/design-system";
 
 import type { CanvasArtboardDocument } from "../../../api/canvas";
 import { canvasElementParent, findCanvasElement } from "@mechane/commands";
@@ -14,13 +32,23 @@ import type { CanvasSelection } from "./canvas-selection";
 type Props = {
   focused: CanvasArtboardDocument | null;
   selection: CanvasSelection;
+  variables?: readonly SceneVariable[];
   onUpdateElement?(
     canvasId: string,
     elementId: string,
     properties: Record<string, unknown>,
     unsetProperties?: readonly string[],
   ): void;
+  onUpdateElements?(
+    canvasId: string,
+    updates: readonly {
+      readonly elementId: string;
+      readonly properties: Record<string, unknown>;
+      readonly unsetProperties?: readonly string[];
+    }[],
+  ): void;
 };
+
 
 function fieldClass(): string {
   return "h-8 rounded-md border border-border bg-background px-2";
@@ -31,7 +59,105 @@ function parseNumber(value: string): number | null {
   return Number.isFinite(number) ? number : null;
 }
 
-export function CanvasInspector({ focused, selection, onUpdateElement }: Props) {
+function inputType(type: Type): "text" | "number" | "color" | null {
+  if (type === "number") return "number";
+  if (type === "colour") return "color";
+  if (type === "text" || type === "image") return "text";
+  return null;
+}
+
+function literalValue(type: Type, value: unknown): ShapeValue | null {
+  if (value === undefined || value === null || typeof type !== "string") return null;
+  if (value && typeof value === "object" && "kind" in value && "value" in value)
+    return value as ShapeValue;
+  const kind = type === "colour" ? "colour" : type;
+  if (
+    kind === "number" ||
+    kind === "text" ||
+    kind === "image" ||
+    kind === "colour" ||
+    kind === "boolean" ||
+    kind === "date" ||
+    kind === "datetime"
+  ) {
+    return { kind, value } as ShapeValue;
+  }
+  return null;
+}
+
+function variableInput(
+  value: unknown,
+  type: Type,
+  variables: readonly SceneVariable[],
+): PropertyInputValue | null {
+  if (isPropertyConnection(value)) {
+    const variable = variables.find((candidate) => candidate.id === value.variableId);
+    if (!variable) return null;
+    return {
+      ...variable,
+      current: variable.type ? defaultPropertyValue(variable.type) ?? undefined : undefined,
+    };
+  }
+  return literalValue(type, value);
+}
+
+function isVariableInput(value: PropertyInputValue | null): value is VariableReference {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    "id" in value &&
+    "name" in value
+  );
+}
+
+function sameValue(left: unknown, right: unknown): boolean {
+  if (isPropertyConnection(left) || isPropertyConnection(right)) {
+    return (
+      isPropertyConnection(left) &&
+      isPropertyConnection(right) &&
+      left.variableId === right.variableId
+    );
+  }
+  return Object.is(left, right);
+}
+
+function opacityInputValue(value: PropertyInputValue | null): PropertyInputValue | null {
+  if (isVariableInput(value)) {
+    const current = value.current;
+    return {
+      ...value,
+      current:
+        current?.kind === "number"
+          ? { ...current, value: opacityToPercent(current.value) }
+          : current,
+    };
+  }
+  return value?.kind === "number"
+    ? { ...value, value: opacityToPercent(value.value) }
+    : value;
+}
+
+function sizeInputValue(
+  size: unknown,
+  variables: readonly SceneVariable[],
+): PropertyInputValue | null {
+  if (!size || typeof size !== "object") return null;
+  const raw = (size as { value?: unknown }).value;
+  if (isPropertyConnection(raw)) return variableInput(raw, "number", variables);
+  if (typeof raw === "number") return literalValue("number", raw);
+  if (raw && typeof raw === "object" && "value" in raw) {
+    return literalValue("number", (raw as { value?: unknown }).value);
+  }
+  return null;
+}
+
+export function CanvasInspector({
+  focused,
+  selection,
+  variables = [],
+  onUpdateElement,
+  onUpdateElements,
+}: Props) {
   const elements =
     focused && selection.artId === focused.artId
       ? selection.elementIds.flatMap((id) => {
@@ -42,19 +168,27 @@ export function CanvasInspector({ focused, selection, onUpdateElement }: Props) 
   const target =
     elements[0] ?? (focused && selection.artId === focused.artId ? focused.canvas.root : null);
   const common = (property: string): unknown => {
-    if (elements.length === 0) return undefined;
-    const first = (elements[0] as unknown as Record<string, unknown>)[property];
-    return elements.every(
-      (element) => (element as unknown as Record<string, unknown>)[property] === first,
+    const selected = elements.length > 0 ? elements : target ? [target] : [];
+    if (selected.length === 0) return undefined;
+    const first = (selected[0] as unknown as Record<string, unknown>)[property];
+    return selected.every((element) =>
+      sameValue((element as unknown as Record<string, unknown>)[property], first),
     )
       ? first
       : undefined;
   };
   const update = (properties: Record<string, unknown>, unset: readonly string[] = []) => {
     if (!focused) return;
-    for (const element of elements.length > 0 ? elements : target ? [target] : []) {
-      onUpdateElement?.(focused.canvasId, element.id, properties, unset);
-    }
+    const selected = elements.length > 0 ? elements : target ? [target] : [];
+    const updates = selected.map((element) => ({
+      elementId: element.id,
+      properties,
+      ...(unset.length > 0 ? { unsetProperties: unset } : {}),
+    }));
+    if (onUpdateElements) onUpdateElements(focused.canvasId, updates);
+    else
+      for (const item of updates)
+        onUpdateElement?.(focused.canvasId, item.elementId, properties, unset);
   };
   const updateNumber =
     (makeProperties: (value: number) => Record<string, unknown>) =>
@@ -65,6 +199,48 @@ export function CanvasInspector({ focused, selection, onUpdateElement }: Props) 
   const text = (property: string, fallback = "") => {
     const value = common(property);
     return value === undefined ? fallback : String(value ?? "");
+  };
+  const propertyField = (name: (typeof CANVAS_PROPERTY_DESCRIPTORS)[number]["name"]) => {
+    if (!target) return null;
+    const descriptor = canvasPropertyDescriptor(name, target);
+    if (!descriptor) return null;
+    if (elements.length > 0 && !elements.every((element) => canvasPropertyDescriptor(name, element))) {
+      return null;
+    }
+    const type = inputType(descriptor.targetType);
+    if (!type) return null;
+    const value = opacityInputValue(variableInput(common(name), descriptor.targetType, variables));
+    const availableVariables = variables.filter(
+      (variable) => variable.type && propertyCoercion(variable.type, descriptor.targetType),
+    );
+    return (
+      <label className="flex flex-col gap-1 text-xs" key={name}>
+        {name}
+        <PropertyInput
+          type={type}
+          value={value}
+          variables={availableVariables}
+          min={name === "opacity" ? 0 : undefined}
+          max={name === "opacity" ? 100 : undefined}
+          step={name === "opacity" ? 1 : undefined}
+          onChange={(next) => {
+            if (isVariableInput(next)) {
+              update({
+                [name]: { kind: "variable", variableId: next.id } satisfies PropertyConnection,
+              });
+            } else if (next === null) {
+              update({}, [name]);
+            } else {
+              const nextValue =
+                name === "opacity" && next.kind === "number"
+                  ? opacityFromPercent(next.value)
+                  : next.value;
+              update({ [name]: nextValue });
+            }
+          }}
+        />
+      </label>
+    );
   };
   const parentInfo = target && focused ? canvasElementParent(focused.canvas.root, target.id) : null;
   const parent =
@@ -77,39 +253,56 @@ export function CanvasInspector({ focused, selection, onUpdateElement }: Props) 
     if (!target) return null;
     const size = target[axis];
     const mode = size?.mode ?? "hug";
-    const value = typeof size?.value === "number" ? size.value : size?.value?.value;
+    const unit =
+      size?.value &&
+      typeof size.value === "object" &&
+      "unit" in size.value &&
+      size.value.unit === "%"
+        ? "%"
+        : "px";
+    const sizeVariables = variables.filter((variable) => variable.type === "number");
     return (
-      <div className="grid grid-cols-[1fr_5rem] gap-2">
-        <label className="flex flex-col gap-1 text-xs">
-          {axis}
-          <select
-            value={mode}
-            onChange={(event) =>
+      <label className="flex flex-col gap-1 text-xs" key={axis}>
+        {axis}
+        <PropertyInput
+          icon={axis === "width" ? "W" : "H"}
+          type="number"
+          dimension={axis}
+          unit={unit}
+          value={sizeInputValue(size, sizeVariables)}
+          sizing={mode}
+          variables={sizeVariables}
+          min={0}
+          onSizingChange={(nextMode) =>
+            update({
+              [axis]: {
+                ...size,
+                mode: nextMode,
+                ...(nextMode === "fixed" && size?.value === undefined ? { value: 100 } : {}),
+              },
+            })
+          }
+          onChange={(next) => {
+            if (isVariableInput(next)) {
               update({
                 [axis]: {
-                  mode: event.target.value,
-                  ...(event.target.value === "fixed" ? { value: value ?? 100 } : {}),
+                  ...size,
+                  mode: "fixed",
+                  value: { kind: "variable", variableId: next.id } satisfies PropertyConnection,
                 },
-              })
+              });
+            } else if (next?.kind === "number") {
+              update({
+                [axis]: {
+                  ...size,
+                  mode: "fixed",
+                  value: unit === "%" ? { value: next.value, unit } : next.value,
+                },
+              });
             }
-            className={fieldClass()}
-          >
-            <option value="hug">Hug</option>
-            {absolute && mode !== "fill" ? null : <option value="fill">Fill</option>}
-            <option value="fixed">Fixed</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs">
-          px
-          <input
-            type="number"
-            disabled={mode !== "fixed"}
-            value={value ?? ""}
-            onChange={updateNumber((next) => ({ [axis]: { mode: "fixed", value: next } }))}
-            className={fieldClass()}
-          />
-        </label>
-      </div>
+          }}
+        />
+      </label>
     );
   };
   if (!target)
@@ -142,18 +335,8 @@ export function CanvasInspector({ focused, selection, onUpdateElement }: Props) 
               onChange={(event) => update({ hidden: !event.target.checked })}
             />
           </label>
-          <label className="flex flex-col gap-1 text-xs">
-            Opacity
-            <input
-              type="number"
-              min="0"
-              max="1"
-              step="0.05"
-              value={text("opacity", "1")}
-              onChange={updateNumber((value) => ({ opacity: value }))}
-              className={fieldClass()}
-            />
-          </label>
+          {propertyField("opacity")}
+          {propertyField("fill")}
           {sizeField("width")}
           {sizeField("height")}
           {absolute && target.anchor ? (
@@ -234,23 +417,12 @@ export function CanvasInspector({ focused, selection, onUpdateElement }: Props) 
         <SidebarGroup>
           <SidebarGroupLabel>Text</SidebarGroupLabel>
           <SidebarGroupContent className="flex flex-col gap-3 p-3">
-            <label className="flex flex-col gap-1 text-xs">
-              Content
-              <textarea
-                value={text("content", target.text ?? "")}
-                onChange={(event) => update({ content: event.target.value })}
-                className="min-h-20 rounded-md border border-border bg-background p-2"
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-xs">
-              Font size
-              <input
-                type="number"
-                value={text("fontSize", "16")}
-                onChange={updateNumber((value) => ({ fontSize: value }))}
-                className={fieldClass()}
-              />
-            </label>
+            {propertyField("content")}
+            {propertyField("color")}
+            {propertyField("fontFamily")}
+            {propertyField("fontSize")}
+            {propertyField("textAlign")}
+            {propertyField("letterSpacing")}
           </SidebarGroupContent>
         </SidebarGroup>
       ) : null}
@@ -258,15 +430,7 @@ export function CanvasInspector({ focused, selection, onUpdateElement }: Props) 
         <SidebarGroup>
           <SidebarGroupLabel>Rectangle</SidebarGroupLabel>
           <SidebarGroupContent className="p-3">
-            <label className="flex flex-col gap-1 text-xs">
-              Corner radius
-              <input
-                type="number"
-                value={target.cornerRadius ?? 0}
-                onChange={updateNumber((value) => ({ cornerRadius: value }))}
-                className={fieldClass()}
-              />
-            </label>
+            {propertyField("cornerRadius")}
           </SidebarGroupContent>
         </SidebarGroup>
       ) : null}
@@ -274,20 +438,9 @@ export function CanvasInspector({ focused, selection, onUpdateElement }: Props) 
         <SidebarGroup>
           <SidebarGroupLabel>Image</SidebarGroupLabel>
           <SidebarGroupContent className="p-3">
-            <label className="flex flex-col gap-1 text-xs">
-              Object fit
-              <select
-                value={target.objectFit ?? "fill"}
-                onChange={(event) => update({ objectFit: event.target.value })}
-                className={fieldClass()}
-              >
-                <option value="fill">Fill</option>
-                <option value="contain">Contain</option>
-                <option value="cover">Cover</option>
-                <option value="none">None</option>
-                <option value="scale-down">Scale down</option>
-              </select>
-            </label>
+            {propertyField("src")}
+            {propertyField("alt")}
+            {propertyField("objectFit")}
           </SidebarGroupContent>
         </SidebarGroup>
       ) : null}

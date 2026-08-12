@@ -37,6 +37,8 @@ export function CanvasWorkspaceSurface({
   resizable,
   onFocusArtboard,
   onUpdateElement,
+  onUpdateElements,
+  variables,
   onMoveElement,
   onMoveElementBetweenCanvases,
   onRenameArtboard,
@@ -122,7 +124,9 @@ export function CanvasWorkspaceSurface({
           <CanvasInspector
             focused={focused}
             selection={selection}
+            variables={variables}
             onUpdateElement={onUpdateElement}
+            onUpdateElements={onUpdateElements}
           />
         </EditorPanel>
       </EditorSlot>

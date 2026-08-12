@@ -112,6 +112,7 @@ export const PropertyInput = <T extends ShapeValue>({
             inputType={input.inputType}
             colorText={input.colorText}
             dimension={dimension}
+            sizing={input.currentSizing}
             linkedVariable={input.linkedVariable}
             onColorChange={input.updateDraftInput}
           />

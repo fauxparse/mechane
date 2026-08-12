@@ -1,18 +1,24 @@
 import type { LucideIcon } from "lucide-react";
-import type { SceneVariable, ShapeValue } from "@mechane/domain";
+import type {
+  PropertyConnection,
+  PropertyValue,
+  ShapeValue,
+  VariableReference as DomainVariableReference,
+} from "@mechane/domain";
+
+export type { PropertyConnection, PropertyValue };
+export type VariableReference<TSource extends ShapeValue = ShapeValue> =
+  DomainVariableReference<TSource>;
 
 export type PropertyInputType = "text" | "number" | "color";
 export type PropertyInputSizing = "fixed" | "fill" | "hug";
 export type PropertyInputConstraint = "min" | "max";
 export type PropertyInputUnit = "px" | "%";
 
-export type VariableReference<T extends ShapeValue> = SceneVariable & {
-  current?: T;
-};
+/** The value shape exchanged by the editor control. Variable current values may have another source Type. */
+export type PropertyInputValue<T extends ShapeValue = ShapeValue> = T | VariableReference;
 
-export type PropertyInputValue<T extends ShapeValue> = T | VariableReference<T>;
-
-export type PropertyInputProps<T extends ShapeValue> = {
+export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   icon?: LucideIcon | string;
   value?: PropertyInputValue<T> | null;
   type?: PropertyInputType;
@@ -20,7 +26,7 @@ export type PropertyInputProps<T extends ShapeValue> = {
   dimension?: "width" | "height";
   unit?: PropertyInputUnit;
   sizing?: PropertyInputSizing;
-  variables?: VariableReference<T>[];
+  variables?: VariableReference[];
   min?: number;
   max?: number;
   step?: number;

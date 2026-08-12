@@ -185,7 +185,7 @@ export function CanvasWorkspaceStage({
                 onFinishCreation(event, true);
               }}
             >
-              <CanvasRenderer canvas={artboard.canvas} />
+              <CanvasRenderer canvas={artboard.renderCanvas ?? artboard.canvas} />
             </div>
           );
         })}

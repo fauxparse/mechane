@@ -10,13 +10,14 @@ import type {
   VariableReference,
 } from "./property-input-types";
 
-const isVariableReference = <T extends ShapeValue>(
-  value: PropertyInputValue<T> | null | undefined,
-): value is VariableReference<T> =>
-  value !== null && value !== undefined && "id" in value && "name" in value;
+const isVariableReference = (value: unknown): value is VariableReference =>
+  typeof value === "object" &&
+  value !== null &&
+  "id" in value &&
+  "name" in value;
 
-const getInputType = <T extends ShapeValue>(
-  value: PropertyInputValue<T> | null | undefined,
+const getInputType = (
+  value: PropertyInputValue<ShapeValue> | null | undefined,
   fallback: PropertyInputType,
 ): PropertyInputType => {
   const kind = isVariableReference(value) ? value.current?.kind : value?.kind;
@@ -28,9 +29,9 @@ const getInputType = <T extends ShapeValue>(
   return fallback;
 };
 
-const getDisplayValue = <T extends ShapeValue>(
-  value: PropertyInputValue<T> | null | undefined,
-): T | null => (isVariableReference(value) ? (value.current ?? null) : (value ?? null));
+const getDisplayValue = (
+  value: PropertyInputValue<ShapeValue> | null | undefined,
+): ShapeValue | null => (isVariableReference(value) ? (value.current ?? null) : (value ?? null));
 
 export const getValueText = (value: ShapeValue | null | undefined): string =>
   value === null || value === undefined ? "" : String(value.value);
@@ -90,7 +91,7 @@ export function usePropertyInput<T extends ShapeValue>({
   const [uncontrolledSizing, setUncontrolledSizing] = useState<PropertyInputSizing>("fixed");
   const [variablesOpen, setVariablesOpen] = useState(false);
   const [variableQuery, setVariableQuery] = useState("");
-  const [editingVariable, setEditingVariable] = useState<VariableReference<T> | null>(null);
+  const [editingVariable, setEditingVariable] = useState<VariableReference | null>(null);
   const [draftInputValue, setDraftInputValue] = useState<string | null>(null);
   const draftInputRef = useRef<string | null>(null);
   const inputElementRef = useRef<HTMLInputElement | null>(null);
@@ -165,7 +166,7 @@ export function usePropertyInput<T extends ShapeValue>({
       event.preventDefault();
       setEditingVariable(connectedVariable);
       updateDraftInput(formatValueText(connectedVariable.current, dimension, unit));
-      commit(connectedVariable.current ?? null);
+      commit((connectedVariable.current ?? null) as PropertyInputValue<T> | null);
       return;
     }
     handleEscapeKey(event, cancelDraft);
@@ -216,7 +217,7 @@ export function usePropertyInput<T extends ShapeValue>({
     }
   };
 
-  const selectVariable = (variable: VariableReference<T>) => {
+  const selectVariable = (variable: VariableReference) => {
     setEditingVariable(null);
     updateDraftInput(null);
     commit(variable);
@@ -224,7 +225,7 @@ export function usePropertyInput<T extends ShapeValue>({
   };
 
   const disconnectVariable = () => {
-    if (linkedVariable) commit(linkedVariable.current ?? null);
+    if (linkedVariable) commit((linkedVariable.current ?? null) as PropertyInputValue<T> | null);
     setEditingVariable(null);
     updateDraftInput(null);
     setVariablesOpen(false);

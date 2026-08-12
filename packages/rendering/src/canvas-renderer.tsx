@@ -8,10 +8,15 @@ import type {
   Fill,
   FrameElement,
   LayoutAlignment,
+  PropertyConnection,
   Rotation,
   SizeValue,
 } from "@mechane/domain";
+import { isPropertyConnection } from "@mechane/domain";
 import type { CanvasRendererProps } from "./canvas-render";
+function literal<T>(value: T | PropertyConnection | undefined): T | undefined {
+  return isPropertyConnection(value) ? undefined : (value as T | undefined);
+}
 
 interface RenderElementOptions {
   element: Element;
@@ -20,8 +25,10 @@ interface RenderElementOptions {
   parent?: FrameElement;
 }
 
-function sizeValue(value: SizeValue | undefined): string | undefined {
-  if (value === undefined) return undefined;
+function sizeValue(
+  value: SizeValue | PropertyConnection | undefined,
+): string | undefined {
+  if (value === undefined || isPropertyConnection(value)) return undefined;
   if (typeof value === "number") return `${value}px`;
   return `${value.value}${value.unit}`;
 }
@@ -153,9 +160,9 @@ function elementStyle(element: Element, root: boolean, sceneRoot: boolean): CSSP
     minHeight: root ? undefined : constraintFor(element, "minHeight", rotation),
     maxHeight: root ? undefined : constraintFor(element, "maxHeight", rotation),
     aspectRatio: physicalRatio,
-    opacity: element.opacity,
-    mixBlendMode: element.blendMode,
-    background: cssFill(element.fill),
+    opacity: literal(element.opacity),
+    mixBlendMode: literal(element.blendMode),
+    background: cssFill(literal(element.fill)),
     writingMode: writingModeFor(rotation),
     display: element.type === "image" ? "block" : undefined,
     alignSelf: element.alignSelf ? align(element.alignSelf) : undefined,
@@ -184,36 +191,36 @@ function frameStyle(frame: FrameElement): CSSProperties {
     gridTemplateColumns: "minmax(0, 1fr)",
     gridTemplateRows: "minmax(0, 1fr)",
     padding: paddingValue(frame.padding),
-    overflow: frame.clip ? "hidden" : "visible",
   };
 }
 
 function contentFor(element: Element): ReactNode {
   if (element.type !== "text") return undefined;
-  return element.content ?? element.text ?? element.value ?? "";
+  return literal(element.content) ?? literal(element.text) ?? literal(element.value) ?? "";
 }
 
 function typeStyle(element: Element): CSSProperties {
   if (element.type === "rect") {
-    return {
-      borderRadius: element.cornerRadius === undefined ? undefined : `${element.cornerRadius}px`,
-    };
+    const radius = literal(element.cornerRadius);
+    return { borderRadius: radius === undefined ? undefined : `${radius}px` };
   }
   if (element.type === "ellipse") return { borderRadius: "50%" };
   if (element.type === "text") {
+    const fontSize = literal(element.fontSize);
+    const letterSpacing = literal(element.letterSpacing);
     return {
-      color: element.color,
-      fontFamily: element.fontFamily,
-      fontSize: element.fontSize === undefined ? undefined : `${element.fontSize}px`,
-      fontWeight: element.fontWeight,
-      lineHeight: element.lineHeight,
-      letterSpacing: element.letterSpacing === undefined ? undefined : `${element.letterSpacing}px`,
-      textAlign: element.textAlign,
+      color: literal(element.color),
+      fontFamily: literal(element.fontFamily),
+      fontSize: fontSize === undefined ? undefined : `${fontSize}px`,
+      fontWeight: literal(element.fontWeight),
+      lineHeight: literal(element.lineHeight),
+      letterSpacing: letterSpacing === undefined ? undefined : `${letterSpacing}px`,
+      textAlign: literal(element.textAlign),
       whiteSpace: "pre-wrap",
       overflowWrap: "anywhere",
     };
   }
-  if (element.type === "image") return { objectFit: element.objectFit ?? "fill" };
+  if (element.type === "image") return { objectFit: literal(element.objectFit) ?? "fill" };
   return {};
 }
 
@@ -254,8 +261,8 @@ function renderElement({
       "data-element-parent-id": parent?.id,
       "data-element-rank": element.rank,
       "data-element-painted": "true",
-      src: element.src ?? element.image ?? element.source,
-      alt: element.alt ?? "",
+      src: literal(element.src) ?? literal(element.image) ?? literal(element.source),
+      alt: literal(element.alt) ?? "",
       style,
       hidden: element.hidden,
     });

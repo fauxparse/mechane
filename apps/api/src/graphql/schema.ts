@@ -430,7 +430,7 @@ export const schema = createSchema<GraphQLContext>({
       minHeight: JSON
       maxHeight: JSON
       rotation: Int
-      opacity: Float
+      opacity: JSON
       blendMode: String
       fill: JSON
       anchor: JSON
@@ -452,12 +452,12 @@ export const schema = createSchema<GraphQLContext>({
       minHeight: JSON
       maxHeight: JSON
       rotation: Int
-      opacity: Float
+      opacity: JSON
       blendMode: String
       fill: JSON
       anchor: JSON
       children: [Element!]!
-      cornerRadius: Float
+      cornerRadius: JSON
     }
 
     type EllipseElement implements Element {
@@ -475,7 +475,7 @@ export const schema = createSchema<GraphQLContext>({
       minHeight: JSON
       maxHeight: JSON
       rotation: Int
-      opacity: Float
+      opacity: JSON
       blendMode: String
       fill: JSON
       anchor: JSON
@@ -497,20 +497,20 @@ export const schema = createSchema<GraphQLContext>({
       minHeight: JSON
       maxHeight: JSON
       rotation: Int
-      opacity: Float
+      opacity: JSON
       blendMode: String
       fill: JSON
       anchor: JSON
       children: [Element!]!
-      content: String
-      text: String
-      color: String
-      fontFamily: String
-      fontSize: Float
-      fontWeight: String
+      content: JSON
+      text: JSON
+      color: JSON
+      fontFamily: JSON
+      fontSize: JSON
+      fontWeight: JSON
       lineHeight: JSON
-      letterSpacing: Float
-      textAlign: String
+      letterSpacing: JSON
+      textAlign: JSON
     }
 
     type ImageElement implements Element {
@@ -528,16 +528,16 @@ export const schema = createSchema<GraphQLContext>({
       minHeight: JSON
       maxHeight: JSON
       rotation: Int
-      opacity: Float
+      opacity: JSON
       blendMode: String
       fill: JSON
       anchor: JSON
       children: [Element!]!
-      src: String
-      image: String
-      source: String
-      alt: String
-      objectFit: String
+      src: JSON
+      image: JSON
+      source: JSON
+      alt: JSON
+      objectFit: JSON
     }
 
     type FrameElement implements Element {
@@ -555,7 +555,7 @@ export const schema = createSchema<GraphQLContext>({
       minHeight: JSON
       maxHeight: JSON
       rotation: Int
-      opacity: Float
+      opacity: JSON
       blendMode: String
       fill: JSON
       anchor: JSON
