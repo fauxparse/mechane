@@ -191,7 +191,7 @@ const autoLayoutCanvas: Canvas = {
       {
         id: "auto-header",
         type: "frame",
-        mode: "auto",
+        layoutMode: "auto",
         direction: "horizontal",
         gap: 12,
         padding: 12,
@@ -520,7 +520,7 @@ const imageCanvas: Canvas = {
 const directFrame: FrameElement = {
   id: "direct-frame",
   type: "frame",
-  mode: "auto",
+  layoutMode: "auto",
   direction: "vertical",
   gap: 10,
   padding: 24,

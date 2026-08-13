@@ -151,7 +151,6 @@ export interface ImageElement extends ElementBase {
 export interface FrameElement extends ElementBase {
   type: "frame";
   layoutMode?: FrameLayoutMode;
-  mode?: FrameLayoutMode;
   autoLayout?: boolean;
   direction?: LayoutDirection;
   gap?: number;

@@ -445,7 +445,9 @@ export function CanvasInspector({
   // "Fill" means "fill the remaining space on the parent's layout axis", which only exists inside
   // an auto-layout Frame. Absolutely positioned Elements have no such axis to fill.
   const absolute =
-    !parent || parent.type !== "frame" || (parent.layoutMode ?? parent.mode) !== "auto";
+    !parent ||
+    parent.type !== "frame" ||
+    (parent.layoutMode !== "auto" && parent.autoLayout !== true);
   const contextValue = useMemo<CanvasInspectorContextValue | null>(
     () =>
       target
@@ -606,7 +608,7 @@ export function CanvasInspector({
                 <label className="flex flex-col gap-1 text-xs">
                   Mode
                   <select
-                    value={frame.layoutMode ?? frame.mode ?? "absolute"}
+                    value={frame.layoutMode ?? (frame.autoLayout ? "auto" : "absolute")}
                     onChange={(event) => update({ layoutMode: event.target.value })}
                     className={fieldClass()}
                   >

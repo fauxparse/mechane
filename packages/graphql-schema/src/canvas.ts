@@ -50,7 +50,6 @@ export const CanvasElementFields = graphql(`
     }
     ... on FrameElement {
       layoutMode
-      mode
       autoLayout
       direction
       gap
