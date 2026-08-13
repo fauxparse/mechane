@@ -21,13 +21,16 @@ const variables: SceneVariable[] = [
 
 const variable = (variableId: string) => ({ kind: "variable" as const, variableId });
 
-function artboard(root: FrameElement): ApiCanvasArtboardDocument {
+function artboard(
+  root: FrameElement,
+  kind: ApiCanvasArtboardDocument["kind"] = "scene",
+): ApiCanvasArtboardDocument {
   return {
     canvasId: CANVAS_ID,
     artId: ART_ID,
-    kind: "scene",
-    name: "Inspector review",
-    canvas: { kind: "scene", root },
+    kind,
+    name: kind === "scene" ? "Inspector review" : "Block review",
+    canvas: { kind, root },
     position: { x: 0, y: 0 },
   };
 }
@@ -213,6 +216,14 @@ export const CanvasRoot: Story = {
   render: () => (
     <InspectorStory
       initialArtboard={artboard(absoluteRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: [] }}
+    />
+  ),
+};
+export const CanvasBlockRoot: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(absoluteRoot, "block")}
       initialSelection={{ artId: ART_ID, elementIds: [] }}
     />
   ),

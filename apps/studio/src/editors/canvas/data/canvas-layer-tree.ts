@@ -1,6 +1,7 @@
 import type { Element, ElementKind, FrameElement } from "@mechane/domain";
 
 import type { CanvasArtboardDocument } from "../../../api/canvas";
+import { canvasElementDisplayName } from "./canvas-names";
 import { layerChildren, layerMatches } from "./canvas-layers";
 
 /**
@@ -14,6 +15,7 @@ export interface LayerRow {
   readonly artId: string;
   readonly depth: number;
   readonly name: string;
+  readonly rawName?: string | null;
   readonly elementKind?: ElementKind;
   readonly hasChildren: boolean;
 }
@@ -30,10 +32,6 @@ function isFrame(element: Element): element is FrameElement {
 
 function childrenOf(element: Element): readonly Element[] {
   return isFrame(element) ? layerChildren(element) : [];
-}
-
-function displayName(element: Element): string {
-  return element.name?.trim() || element.id;
 }
 
 /** Whether this Element, or anything under it, answers the query. */
@@ -73,7 +71,8 @@ export function canvasLayerRows(
       id: element.id,
       artId: artboard.artId,
       depth,
-      name: displayName(element),
+      name: canvasElementDisplayName(element),
+      rawName: element.name,
       elementKind: element.type,
       hasChildren: children.length > 0,
     });

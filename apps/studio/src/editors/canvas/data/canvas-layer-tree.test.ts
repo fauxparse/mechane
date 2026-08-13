@@ -82,10 +82,10 @@ describe("Canvas layer tree rows", () => {
     expect(opened.find((row) => row.id === "group")?.elementKind).toBe("frame");
   });
 
-  it("prefers a name over an id", () => {
+  it("prefers a name over the default type label", () => {
     const opened = canvasLayerRows(artboard, { expanded: new Set(["scene-1", "group"]) });
     expect(opened.find((row) => row.id === "nested")?.name).toBe("Caption");
-    expect(opened.find((row) => row.id === "back")?.name).toBe("back");
+    expect(opened.find((row) => row.id === "back")?.name).toBe("Rectangle");
   });
 });
 
