@@ -558,7 +558,7 @@ export function useCanvasWorkspaceInteractions({
             : null,
           autoParent:
             parentElement?.type === "frame" &&
-            (parentElement.layoutMode ?? parentElement.mode) === "auto",
+            (parentElement.layoutMode === "auto" || parentElement.autoLayout === true),
         },
       ];
     });
@@ -830,8 +830,7 @@ export function useCanvasWorkspaceInteractions({
       const parent = parentInfo ? findCanvasElement(root, parentInfo.parentId) : null;
       if (!element || !parent || parent.type !== "frame") continue;
       const frame = parent as FrameElement;
-      const autoLayout =
-        frame.layoutMode === "auto" || frame.mode === "auto" || frame.autoLayout === true;
+      const autoLayout = frame.layoutMode === "auto" || frame.autoLayout === true;
       const intent = canvasKeyboardIntent(
         frame.direction ?? "vertical",
         event.key,

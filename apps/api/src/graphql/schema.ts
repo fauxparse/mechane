@@ -561,7 +561,6 @@ export const schema = createSchema<GraphQLContext>({
       anchor: JSON
       children: [Element!]!
       layoutMode: String
-      mode: String
       autoLayout: Boolean
       direction: String
       gap: Float

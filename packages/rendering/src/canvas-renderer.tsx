@@ -171,7 +171,7 @@ function elementStyle(element: Element, root: boolean, sceneRoot: boolean): CSSP
 }
 
 function frameStyle(frame: FrameElement): CSSProperties {
-  const auto = frame.layoutMode === "auto" || frame.mode === "auto" || frame.autoLayout === true;
+  const auto = frame.layoutMode === "auto" || frame.autoLayout === true;
   if (auto) {
     return {
       display: "flex",
@@ -227,8 +227,7 @@ function renderElement({
   sceneRoot = false,
   parent,
 }: RenderElementOptions): ReactNode {
-  const parentIsAuto =
-    parent?.layoutMode === "auto" || parent?.mode === "auto" || parent?.autoLayout === true;
+  const parentIsAuto = parent?.layoutMode === "auto" || parent?.autoLayout === true;
   const style = {
     ...elementStyle(element, root, sceneRoot),
     ...(element.type === "frame" ? frameStyle(element) : {}),
