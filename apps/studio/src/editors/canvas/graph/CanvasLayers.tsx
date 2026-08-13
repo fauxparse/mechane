@@ -249,11 +249,10 @@ function LayerRowView({
         <span
           ref={after.ref}
           aria-hidden="true"
-          data-layer-drop-zone="after"
-          className={`pointer-events-none absolute inset-x-0 ${
+          className={`pointer-events-none absolute inset-x-0 -bottom-1 ${
             row.kind === "element" && row.elementKind === "frame"
-              ? "bottom-0 h-1/4"
-              : "bottom-0 h-1/2"
+              ? "h-1/4"
+              : "h-1/2"
           }`}
         />
         {row.hasChildren ? (

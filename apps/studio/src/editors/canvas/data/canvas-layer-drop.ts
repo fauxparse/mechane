@@ -99,14 +99,16 @@ export function layerDropPlacement(
   // opposite direction. Keep the inspector order for target indexing, but derive the insertion
   // rank from the corresponding rank-sorted position.
   const ordered = [...layerChildren(parent)].filter((child) => child.id !== draggedId);
-  const inspectorIndex = dropIntoTarget
-    ? ordered.length
-    : (() => {
-        const at = ordered.findIndex((child) => child.id === targetId);
-        if (at < 0) return ordered.length;
-        return zone === "before" ? at : at + 1;
-      })();
-  const rankIndex = dropIntoTarget ? ordered.length : ordered.length - inspectorIndex;
+  const inspectorIndex =
+    dropIntoTarget || targetId === undefined
+      ? ordered.length
+      : ordered.findIndex((child) => child.id === targetId);
+  const rankIndex =
+    inspectorIndex < 0
+      ? ordered.length
+      : dropIntoTarget
+        ? ordered.length
+        : ordered.length - (zone === "before" ? inspectorIndex : inspectorIndex + 1);
   const rank = rankForInsertion(
     ordered.map((child) => child.rank ?? ""),
     rankIndex,
