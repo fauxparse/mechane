@@ -114,4 +114,16 @@ describe("Canvas layer drop placement", () => {
     const placement = layerDropPlacementInCanvas(root, "group", "inside");
     expect(placement).toEqual({ parentId: "group", rank: "a~" });
   });
+  it("moves the third visual child into the first visual position", () => {
+    const threeChildren: FrameElement = {
+      ...root,
+      children: [
+        { id: "third", type: "rect", rank: "a" },
+        { id: "second", type: "rect", rank: "b" },
+        { id: "first", type: "rect", rank: "c" },
+      ],
+    };
+    const placement = layerDropPlacement(threeChildren, "third", "first", "before");
+    expect(placement).toEqual({ parentId: "root", rank: "c~" });
+  });
 });
