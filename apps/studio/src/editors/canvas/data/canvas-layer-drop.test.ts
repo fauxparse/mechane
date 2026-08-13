@@ -147,4 +147,32 @@ describe("Canvas layer drop placement", () => {
       "back",
     ]);
   });
+  it("places the last inspector row between the first and second rows", () => {
+    const fourChildren: FrameElement = {
+      ...root,
+      children: [
+        { id: "four", type: "rect", rank: "a" },
+        { id: "three", type: "rect", rank: "b" },
+        { id: "two", type: "rect", rank: "c" },
+        { id: "one", type: "rect", rank: "d" },
+      ],
+    };
+    const placement = layerDropPlacement(fourChildren, "four", "one", "after");
+    expect(placement).toEqual({ parentId: "root", rank: "c~" });
+    const moved = applyCanvasEdits({ root: fourChildren }, [
+      {
+        type: CANVAS_COMMAND_TYPES.reparentElement,
+        elementId: "four",
+        parentId: placement!.parentId,
+        rank: placement!.rank,
+      },
+    ]);
+    expect(layerChildren(moved.root).map((child) => child.id)).toEqual([
+      "one",
+      "four",
+      "two",
+      "three",
+    ]);
+    expect(layerDropPlacement(fourChildren, "four", "two", "before")).toEqual(placement);
+  });
 });
