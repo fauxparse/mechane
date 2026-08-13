@@ -61,7 +61,19 @@ export function rankForInsertion(ranks: readonly string[], index: number): strin
   if (sorted.length === 0) return "a";
   if (index <= 0) return `!${sorted[0]}`;
   if (index >= sorted.length) return `${sorted.at(-1)}~`;
-  return `${sorted[index - 1]}~`;
+
+  const left = sorted[index - 1]!;
+  const right = sorted[index]!;
+  // A simple "~" suffix is normally between its neighbors. Once ranks such as
+  // "a~" and "a~~" exist, however, it equals the right neighbor and ties are
+  // resolved by element ID instead of the requested layer position.
+  for (const suffix of ["~", "!", " ", "0"]) {
+    const candidate = `${left}${suffix}`;
+    if (left.localeCompare(candidate) < 0 && candidate.localeCompare(right) < 0) {
+      return candidate;
+    }
+  }
+  return `${left}~!`;
 }
 
 /** Whether a canvas drag would change the Element's parent or its position in auto layout. */

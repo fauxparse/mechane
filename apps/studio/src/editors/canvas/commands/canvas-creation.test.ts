@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { creationRect, fixedFillSizing, showsReparentPreview } from "./canvas-creation";
+import {
+  creationRect,
+  fixedFillSizing,
+  rankForInsertion,
+  showsReparentPreview,
+} from "./canvas-creation";
 
 describe("fixedFillSizing", () => {
   it("converts both fill axes to measured fixed dimensions", () => {
@@ -36,6 +41,15 @@ describe("fixedFillSizing", () => {
         80,
       ),
     ).toEqual({ width: { mode: "fixed", value: 240 } });
+  });
+});
+
+describe("rankForInsertion", () => {
+  it("finds a strict rank between recursively generated tilde ranks", () => {
+    const rank = rankForInsertion(["a", "a~", "a~~"], 2);
+    expect(rank).toBe("a~!");
+    expect("a~".localeCompare(rank)).toBeLessThan(0);
+    expect(rank.localeCompare("a~~")).toBeLessThan(0);
   });
 });
 

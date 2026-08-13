@@ -175,4 +175,31 @@ describe("Canvas layer drop placement", () => {
     ]);
     expect(layerDropPlacement(fourChildren, "four", "two", "before")).toEqual(placement);
   });
+  it("avoids a rank tie when generated ranks are already nested", () => {
+    const nestedRanks: FrameElement = {
+      ...root,
+      children: [
+        { id: "four", type: "rect", rank: "!a" },
+        { id: "three", type: "rect", rank: "a" },
+        { id: "two", type: "rect", rank: "a~" },
+        { id: "one", type: "rect", rank: "a~~" },
+      ],
+    };
+    const placement = layerDropPlacement(nestedRanks, "four", "one", "after");
+    expect(placement).toEqual({ parentId: "root", rank: "a~!" });
+    const moved = applyCanvasEdits({ root: nestedRanks }, [
+      {
+        type: CANVAS_COMMAND_TYPES.reparentElement,
+        elementId: "four",
+        parentId: placement!.parentId,
+        rank: placement!.rank,
+      },
+    ]);
+    expect(layerChildren(moved.root).map((child) => child.id)).toEqual([
+      "one",
+      "four",
+      "two",
+      "three",
+    ]);
+  });
 });
