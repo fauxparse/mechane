@@ -173,4 +173,7 @@ export { THEME_COLOR_METADATA } from "./themes/generated";
 export type { ThemeColorKey } from "./themes/generated";
 
 export { MechaneIcon } from "./icons/MechaneIcon";
+export { LayoutNoneIcon } from "./icons/LayoutNoneIcon";
+export { LayoutHorizontalIcon } from "./icons/LayoutHorizontalIcon";
+export { LayoutVerticalIcon } from "./icons/LayoutVerticalIcon";
 export * from "lucide-react";

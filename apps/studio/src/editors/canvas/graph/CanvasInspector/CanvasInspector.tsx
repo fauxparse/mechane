@@ -20,6 +20,9 @@ import {
 import {
   EyeClosedIcon,
   EyeIcon,
+  LayoutHorizontalIcon,
+  LayoutNoneIcon,
+  LayoutVerticalIcon,
   Link2Icon,
   LucideIcon,
   PropertyInput,
@@ -30,6 +33,8 @@ import {
   SidebarHeader,
   SquareRoundCornerIcon,
   Toggle,
+  ToggleGroup,
+  ToggleGroupItem,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -547,6 +552,37 @@ export function CanvasInspector({
             </Section>
           ) : null}
           <Section label="Layout">
+            {frame && (
+              <SectionRow>
+                <ToggleGroup
+                  className="bg-muted/50 w-full *:grow"
+                  spacing={0}
+                  value={[
+                    frame.layoutMode === "auto" ? (frame.direction ?? "horizontal") : "absolute",
+                  ]}
+                  onValueChange={([value]) => {
+                    switch (value) {
+                      case "horizontal":
+                      case "vertical":
+                        update({ layoutMode: "auto", direction: value });
+                        break;
+                      default:
+                        update({ layoutMode: "absolute", direction: null });
+                    }
+                  }}
+                >
+                  <ToggleGroupItem value="absolute" size="sm">
+                    <LayoutNoneIcon />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="horizontal" size="sm">
+                    <LayoutHorizontalIcon />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="vertical" size="sm">
+                    <LayoutVerticalIcon />
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </SectionRow>
+            )}
             <SectionRow>
               <SizeField axis="width" />
               <SizeField axis="height" />
@@ -605,28 +641,6 @@ export function CanvasInspector({
             <SidebarGroup>
               <SidebarGroupLabel>Frame layout</SidebarGroupLabel>
               <SidebarGroupContent className="flex flex-col gap-3 p-3">
-                <label className="flex flex-col gap-1 text-xs">
-                  Mode
-                  <select
-                    value={frame.layoutMode ?? (frame.autoLayout ? "auto" : "absolute")}
-                    onChange={(event) => update({ layoutMode: event.target.value })}
-                    className={fieldClass()}
-                  >
-                    <option value="absolute">Absolute</option>
-                    <option value="auto">Auto layout</option>
-                  </select>
-                </label>
-                <label className="flex flex-col gap-1 text-xs">
-                  Direction
-                  <select
-                    value={frame.direction ?? "vertical"}
-                    onChange={(event) => update({ direction: event.target.value })}
-                    className={fieldClass()}
-                  >
-                    <option value="vertical">Vertical</option>
-                    <option value="horizontal">Horizontal</option>
-                  </select>
-                </label>
                 <label className="flex flex-col gap-1 text-xs">
                   Gap
                   <input
