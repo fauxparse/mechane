@@ -16,7 +16,7 @@ const customIcons = Object.entries(modules)
     const Icon = exports[name];
     return [{ name, Icon }];
   })
-  .sort((a, b) => a.name.localeCompare(b.name));
+  .sort((a, b) => a.name.localeCompare(b.name)) as { name: string; Icon: LucideIcon }[];
 
 const meta = {
   title: "design-system/Icons",
