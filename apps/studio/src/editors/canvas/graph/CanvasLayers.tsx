@@ -6,7 +6,12 @@ import {
   useDroppable,
 } from "@dnd-kit/react";
 import { PointerActivationConstraints, defaultPreset } from "@dnd-kit/dom";
-import type { DragEndEvent, DragStartEvent } from "@dnd-kit/react";
+import type {
+  CollisionEvent,
+  DragEndEvent,
+  DragOverEvent,
+  DragStartEvent,
+} from "@dnd-kit/react";
 import { defaultCollisionDetection } from "@dnd-kit/collision";
 import type { CollisionDetector } from "@dnd-kit/collision";
 import {
@@ -46,6 +51,50 @@ type LayerDragState = {
 
 const LAYER_ROW_INDENT_REM = 0.75;
 const LAYER_ROW_CONTENT_INSET_REM = 0.25;
+
+const LAYER_DND_DEBUG = "[LAYER-DND]";
+
+function logLayerDnd(event: string, details: Record<string, unknown>) {
+  console.log(`${LAYER_DND_DEBUG} ${event}`, details);
+}
+
+function debugRect(element: Element | null) {
+  if (!element) return null;
+  const rect = element.getBoundingClientRect();
+  return {
+    x: Math.round(rect.x),
+    y: Math.round(rect.y),
+    width: Math.round(rect.width),
+    height: Math.round(rect.height),
+  };
+}
+
+function debugRows() {
+  return [...document.querySelectorAll<HTMLElement>("[data-layer-row]")].map((row) => ({
+    id: row.dataset.layerRow,
+    artId: row.dataset.layerArt,
+    kind: row.dataset.layerKind,
+    elementKind: row.dataset.layerElementKind,
+    rect: debugRect(row),
+  }));
+}
+
+function debugTarget(target: LayerDropData | undefined) {
+  if (!target) return null;
+  const selector = `[data-layer-row="${CSS.escape(target.rowId)}"][data-layer-art="${CSS.escape(target.artId)}"]`;
+  const row = document.querySelector<HTMLElement>(selector);
+  return {
+    ...target,
+    selector,
+    row: debugRect(row),
+    zones: row
+      ? [...row.querySelectorAll<HTMLElement>("[data-layer-drop-zone]")].map((zone) => ({
+          zone: zone.dataset.layerDropZone,
+          rect: debugRect(zone),
+        }))
+      : [],
+  };
+}
 
 function subtreeIds(element: CanvasElement): string[] {
   return [
@@ -324,6 +373,9 @@ function LayerDragPreview({ row, artboard }: { row: LayerRow; artboard: CanvasAr
     </div>
   );
 }
+// Temporary drag diagnostics are intentionally colocated with the lifecycle they observe so the
+// browser log can correlate collision, target, and final placement events; remove after diagnosis.
+// react-doctor-disable-next-line react-doctor/no-giant-component
 export function CanvasLayers({
   ordered,
   focused,
@@ -338,7 +390,40 @@ export function CanvasLayers({
   const [query, setQuery] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const dragStateRef = useRef<LayerDragState | null>(null);
+  const lastCollisionKeyRef = useRef("");
+  const lastOverKeyRef = useRef("");
   const collapsedRowsRef = useRef<HTMLElement[]>([]);
+
+  const logCollision = (event: CollisionEvent) => {
+    const collisions = event.collisions.map(({ id, priority, type, value }) => ({
+      id: String(id),
+      priority,
+      type,
+      value,
+    }));
+    const key = collisions.map(({ id, type }) => `${id}:${type}`).join("|");
+    if (key === lastCollisionKeyRef.current) return;
+    lastCollisionKeyRef.current = key;
+    logLayerDnd("collision", {
+      collisions,
+    });
+  };
+
+  const logDragOver = (event: DragOverEvent) => {
+    const target = event.operation.target?.data as LayerDropData | undefined;
+    const source = event.operation.source?.data as LayerDragData | undefined;
+    const key = target ? `${target.artId}:${target.rowId}:${target.zone}` : "none";
+    if (key === lastOverKeyRef.current) return;
+    lastOverKeyRef.current = key;
+    logLayerDnd("over", {
+      source,
+      target,
+      targetId: event.operation.target?.id,
+      position: event.operation.position,
+      transform: event.operation.transform,
+      targetDom: debugTarget(target),
+    });
+  };
 
   /**
    * Expansion is derived rather than stored and then patched: `toggled` records only what you
@@ -397,7 +482,15 @@ export function CanvasLayers({
   };
   const startDrag = (event: DragStartEvent) => {
     const source = event.operation.source?.data as LayerDragData | undefined;
-    if (!source) return;
+    lastCollisionKeyRef.current = "";
+    lastOverKeyRef.current = "";
+    if (!source) {
+      logLayerDnd("start-missing-source", {
+        position: event.operation.position,
+        rows: debugRows(),
+      });
+      return;
+    }
     const sourceArtboard = ordered.find((candidate) => candidate.artId === source.artId);
     const sourceElement =
       sourceArtboard && source.rowId !== source.artId
@@ -408,6 +501,15 @@ export function CanvasLayers({
       source,
       expandedIds: ids.filter((id) => expanded.has(id)),
     };
+    logLayerDnd("start", {
+      source,
+      position: event.operation.position,
+      sourceElement: sourceElement
+        ? { id: sourceElement.id, type: sourceElement.type, subtreeIds: ids }
+        : null,
+      expandedIds: snapshot.expandedIds,
+      rows: debugRows(),
+    });
     dragStateRef.current = snapshot;
     collapseDraggedRows(
       source,
@@ -418,20 +520,57 @@ export function CanvasLayers({
   const finishDrag = (event: DragEndEvent) => {
     const snapshot = dragStateRef.current;
     try {
-      if (event.canceled) return;
       const source = event.operation.source?.data as LayerDragData | undefined;
       const target = event.operation.target?.data as LayerDropData | undefined;
-      if (!source || !target) return;
+      if (event.canceled) {
+        logLayerDnd("end-canceled", {
+          source,
+          target,
+          targetId: event.operation.target?.id,
+          position: event.operation.position,
+        });
+        return;
+      }
+      if (!source || !target) {
+        logLayerDnd("end-missing-source-or-target", {
+          source,
+          target,
+          targetId: event.operation.target?.id,
+          position: event.operation.position,
+          rows: debugRows(),
+        });
+        return;
+      }
       const sourceArtboard = ordered.find((candidate) => candidate.artId === source.artId);
       const targetArtboard = ordered.find((candidate) => candidate.artId === target.artId);
-      if (!sourceArtboard || !targetArtboard) return;
+      if (!sourceArtboard || !targetArtboard) {
+        logLayerDnd("end-missing-artboard", { source, target, rows: debugRows() });
+        return;
+      }
       const targetId = target.rowId === target.artId ? targetArtboard.canvas.root.id : target.rowId;
       const placement =
         source.artId === target.artId
           ? layerDropPlacement(targetArtboard.canvas.root, source.rowId, targetId, target.zone)
           : layerDropPlacementInCanvas(targetArtboard.canvas.root, targetId, target.zone);
-      if (!placement) return;
+      if (!placement) {
+        logLayerDnd("end-no-placement", {
+          source,
+          target,
+          targetId,
+          targetDom: debugTarget(target),
+          rows: debugRows(),
+        });
+        return;
+      }
       if (source.artId === target.artId) {
+        logLayerDnd("drop-same-canvas", {
+          source,
+          target,
+          targetId,
+          placement,
+          targetDom: debugTarget(target),
+          rows: debugRows(),
+        });
         onMoveElement?.(targetArtboard.canvasId, source.rowId, placement.parentId, placement.rank);
         return;
       }
@@ -464,6 +603,22 @@ export function CanvasLayers({
         sourceElement && sourceNode && sourceAuto && !targetAuto
           ? fixedFillSizing(sourceElement, sourceWidth, sourceHeight)
           : {};
+      logLayerDnd("drop-cross-canvas", {
+        source,
+        target,
+        targetId,
+        placement,
+        sourceNode: debugRect(sourceNode),
+        sourceParentNode: debugRect(sourceParentNode),
+        targetParentNode: debugRect(targetParentNode),
+        sourceAuto,
+        targetAuto,
+        sourceWidth,
+        sourceHeight,
+        properties,
+        targetDom: debugTarget(target),
+        rows: debugRows(),
+      });
       onMoveElementBetweenCanvases?.(
         sourceArtboard.canvasId,
         targetArtboard.canvasId,
@@ -484,6 +639,8 @@ export function CanvasLayers({
           return next;
         });
       }
+      lastCollisionKeyRef.current = "";
+      lastOverKeyRef.current = "";
       dragStateRef.current = null;
     }
   };
@@ -509,7 +666,13 @@ export function CanvasLayers({
           aria-label="Search layers"
         />
       </InputGroup>
-      <DragDropProvider sensors={layerSensors} onDragStart={startDrag} onDragEnd={finishDrag}>
+      <DragDropProvider
+        sensors={layerSensors}
+        onCollision={logCollision}
+        onDragStart={startDrag}
+        onDragOver={logDragOver}
+        onDragEnd={finishDrag}
+      >
         {groups.map(({ kind, artboards }) => {
           const rows = artboards.flatMap((artboard) =>
             canvasLayerRows(artboard, { expanded, query }).map((row) => ({ row, artboard })),
