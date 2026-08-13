@@ -55,7 +55,13 @@ const LAYER_ROW_CONTENT_INSET_REM = 0.25;
 const LAYER_DND_DEBUG = "[LAYER-DND]";
 
 function logLayerDnd(event: string, details: Record<string, unknown>) {
-  console.log(`${LAYER_DND_DEBUG} ${event}`, details);
+  let serialized: string;
+  try {
+    serialized = JSON.stringify(details);
+  } catch {
+    serialized = "[unserializable details]";
+  }
+  console.log(`${LAYER_DND_DEBUG} ${event} ${serialized}`);
 }
 
 function debugRect(element: Element | null) {
@@ -77,6 +83,16 @@ function debugRows() {
     elementKind: row.dataset.layerElementKind,
     rect: debugRect(row),
   }));
+}
+
+function debugTree(element: CanvasElement): Record<string, unknown> {
+  return {
+    id: element.id,
+    type: element.type,
+    rank: element.rank ?? null,
+    children:
+      element.type === "frame" ? (element.children ?? []).map((child) => debugTree(child)) : [],
+  };
 }
 
 function debugTarget(target: LayerDropData | undefined) {
@@ -298,6 +314,7 @@ function LayerRowView({
         <span
           ref={after.ref}
           aria-hidden="true"
+          data-layer-drop-zone="after"
           className={`pointer-events-none absolute inset-x-0 -bottom-1 ${
             row.kind === "element" && row.elementKind === "frame"
               ? "h-1/4"
@@ -567,7 +584,7 @@ export function CanvasLayers({
           source,
           target,
           targetId,
-          placement,
+          targetTree: debugTree(targetArtboard.canvas.root),
           targetDom: debugTarget(target),
           rows: debugRows(),
         });
@@ -607,7 +624,7 @@ export function CanvasLayers({
         source,
         target,
         targetId,
-        placement,
+        targetTree: debugTree(targetArtboard.canvas.root),
         sourceNode: debugRect(sourceNode),
         sourceParentNode: debugRect(sourceParentNode),
         targetParentNode: debugRect(targetParentNode),
