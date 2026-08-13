@@ -95,19 +95,23 @@ export function layerDropPlacement(
   const parent = dropIntoTarget ? target.element : target.parent;
   if (parent.type !== "frame") return null;
 
-  // The navigator paints top-of-stack first, so a row's visual "before" is a higher rank.
-  const ordered = [...layerChildren(parent)].reverse().filter((child) => child.id !== draggedId);
-  const index = dropIntoTarget
-    ? ordered.length
-    : (() => {
-        const at = ordered.findIndex((child) => child.id === targetId);
-        if (at < 0) return ordered.length;
-        return zone === "before" ? at + 1 : at;
-      })();
-
+  // `layerChildren` is already in inspector order (frontmost first), while ranks sort in the
+  // opposite direction. Keep the inspector order for target indexing, but derive the insertion
+  // rank from the corresponding rank-sorted position.
+  const ordered = [...layerChildren(parent)].filter((child) => child.id !== draggedId);
+  const inspectorIndex =
+    dropIntoTarget || targetId === undefined
+      ? ordered.length
+      : ordered.findIndex((child) => child.id === targetId);
+  const rankIndex =
+    inspectorIndex < 0
+      ? ordered.length
+      : dropIntoTarget
+        ? ordered.length
+        : ordered.length - (zone === "before" ? inspectorIndex : inspectorIndex + 1);
   const rank = rankForInsertion(
     ordered.map((child) => child.rank ?? ""),
-    index,
+    rankIndex,
   );
   if (parent.id === dragged.parent.id && rank === (dragged.element.rank ?? "")) return null;
   return { parentId: parent.id, rank };
@@ -125,19 +129,21 @@ export function layerDropPlacementInCanvas(
   const dropIntoTarget = zone === "inside" || targetId === root.id;
   const parent = dropIntoTarget ? target.element : target.parent;
   if (parent.type !== "frame") return null;
-  const ordered = [...layerChildren(parent)].reverse();
-  const index = dropIntoTarget
+
+  const ordered = [...layerChildren(parent)];
+  const inspectorIndex = dropIntoTarget
     ? ordered.length
     : (() => {
         const at = ordered.findIndex((child) => child.id === targetId);
         if (at < 0) return ordered.length;
-        return zone === "before" ? at + 1 : at;
+        return zone === "before" ? at : at + 1;
       })();
+  const rankIndex = dropIntoTarget ? ordered.length : ordered.length - inspectorIndex;
   return {
     parentId: parent.id,
     rank: rankForInsertion(
       ordered.map((child) => child.rank ?? ""),
-      index,
+      rankIndex,
     ),
   };
 }

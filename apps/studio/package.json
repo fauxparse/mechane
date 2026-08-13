@@ -9,6 +9,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@dnd-kit/collision": "0.5.0",
+    "@dnd-kit/dom": "0.5.0",
+    "@dnd-kit/react": "0.5.0",
     "@mechane/commands": "workspace:*",
     "@mechane/design-system": "workspace:*",
     "@mechane/domain": "workspace:*",

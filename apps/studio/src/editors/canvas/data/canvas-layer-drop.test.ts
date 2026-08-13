@@ -1,3 +1,4 @@
+import { applyCanvasEdits, CANVAS_COMMAND_TYPES } from "@mechane/commands";
 import { describe, expect, it } from "vitest";
 
 import type { FrameElement } from "@mechane/domain";
@@ -8,6 +9,7 @@ import {
   layerDropZone,
   layerRowDropZone,
 } from "./canvas-layer-drop";
+import { layerChildren } from "./canvas-layers";
 
 const root: FrameElement = {
   id: "root",
@@ -113,5 +115,91 @@ describe("Canvas layer drop placement", () => {
   it("resolves a foreign-Canvas drop without requiring the source Element", () => {
     const placement = layerDropPlacementInCanvas(root, "group", "inside");
     expect(placement).toEqual({ parentId: "group", rank: "a~" });
+  });
+  it("maps inspector before/after drops to the matching rank order", () => {
+    const threeChildren: FrameElement = {
+      ...root,
+      children: [
+        { id: "back", type: "rect", rank: "a" },
+        { id: "middle", type: "rect", rank: "b" },
+        { id: "front", type: "rect", rank: "c" },
+      ],
+    };
+    expect(layerDropPlacement(threeChildren, "front", "back", "before")).toEqual({
+      parentId: "root",
+      rank: "a~",
+    });
+    expect(layerDropPlacement(threeChildren, "back", "front", "after")).toEqual({
+      parentId: "root",
+      rank: "b~",
+    });
+    const movedFront = applyCanvasEdits({ root: threeChildren }, [
+      {
+        type: CANVAS_COMMAND_TYPES.reparentElement,
+        elementId: "front",
+        parentId: "root",
+        rank: "a~",
+      },
+    ]);
+    expect(layerChildren(movedFront.root).map((child) => child.id)).toEqual([
+      "middle",
+      "front",
+      "back",
+    ]);
+  });
+  it("places the last inspector row between the first and second rows", () => {
+    const fourChildren: FrameElement = {
+      ...root,
+      children: [
+        { id: "four", type: "rect", rank: "a" },
+        { id: "three", type: "rect", rank: "b" },
+        { id: "two", type: "rect", rank: "c" },
+        { id: "one", type: "rect", rank: "d" },
+      ],
+    };
+    const placement = layerDropPlacement(fourChildren, "four", "one", "after");
+    expect(placement).toEqual({ parentId: "root", rank: "c~" });
+    const moved = applyCanvasEdits({ root: fourChildren }, [
+      {
+        type: CANVAS_COMMAND_TYPES.reparentElement,
+        elementId: "four",
+        parentId: placement!.parentId,
+        rank: placement!.rank,
+      },
+    ]);
+    expect(layerChildren(moved.root).map((child) => child.id)).toEqual([
+      "one",
+      "four",
+      "two",
+      "three",
+    ]);
+    expect(layerDropPlacement(fourChildren, "four", "two", "before")).toEqual(placement);
+  });
+  it("avoids a rank tie when generated ranks are already nested", () => {
+    const nestedRanks: FrameElement = {
+      ...root,
+      children: [
+        { id: "four", type: "rect", rank: "!a" },
+        { id: "three", type: "rect", rank: "a" },
+        { id: "two", type: "rect", rank: "a~" },
+        { id: "one", type: "rect", rank: "a~~" },
+      ],
+    };
+    const placement = layerDropPlacement(nestedRanks, "four", "one", "after");
+    expect(placement).toEqual({ parentId: "root", rank: "a~!" });
+    const moved = applyCanvasEdits({ root: nestedRanks }, [
+      {
+        type: CANVAS_COMMAND_TYPES.reparentElement,
+        elementId: "four",
+        parentId: placement!.parentId,
+        rank: placement!.rank,
+      },
+    ]);
+    expect(layerChildren(moved.root).map((child) => child.id)).toEqual([
+      "one",
+      "four",
+      "two",
+      "three",
+    ]);
   });
 });
