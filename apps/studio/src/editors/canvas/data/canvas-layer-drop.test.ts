@@ -1,3 +1,4 @@
+import { applyCanvasEdits, CANVAS_COMMAND_TYPES } from "@mechane/commands";
 import { describe, expect, it } from "vitest";
 
 import type { FrameElement } from "@mechane/domain";
@@ -8,6 +9,7 @@ import {
   layerDropZone,
   layerRowDropZone,
 } from "./canvas-layer-drop";
+import { layerChildren } from "./canvas-layers";
 
 const root: FrameElement = {
   id: "root",
@@ -114,16 +116,35 @@ describe("Canvas layer drop placement", () => {
     const placement = layerDropPlacementInCanvas(root, "group", "inside");
     expect(placement).toEqual({ parentId: "group", rank: "a~" });
   });
-  it("moves the third visual child into the first visual position", () => {
+  it("maps inspector before/after drops to the matching rank order", () => {
     const threeChildren: FrameElement = {
       ...root,
       children: [
-        { id: "third", type: "rect", rank: "a" },
-        { id: "second", type: "rect", rank: "b" },
-        { id: "first", type: "rect", rank: "c" },
+        { id: "back", type: "rect", rank: "a" },
+        { id: "middle", type: "rect", rank: "b" },
+        { id: "front", type: "rect", rank: "c" },
       ],
     };
-    const placement = layerDropPlacement(threeChildren, "third", "first", "before");
-    expect(placement).toEqual({ parentId: "root", rank: "c~" });
+    expect(layerDropPlacement(threeChildren, "front", "back", "before")).toEqual({
+      parentId: "root",
+      rank: "a~",
+    });
+    expect(layerDropPlacement(threeChildren, "back", "front", "after")).toEqual({
+      parentId: "root",
+      rank: "b~",
+    });
+    const movedFront = applyCanvasEdits({ root: threeChildren }, [
+      {
+        type: CANVAS_COMMAND_TYPES.reparentElement,
+        elementId: "front",
+        parentId: "root",
+        rank: "a~",
+      },
+    ]);
+    expect(layerChildren(movedFront.root).map((child) => child.id)).toEqual([
+      "middle",
+      "front",
+      "back",
+    ]);
   });
 });
