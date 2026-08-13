@@ -1,4 +1,4 @@
-import { createContext, useContext, type ChangeEvent } from "react";
+import { createContext, useCallback, useContext, useMemo, type ChangeEvent } from "react";
 import type {
   Element,
   FrameElement,
@@ -73,6 +73,7 @@ type Props = {
     }[],
   ): void;
 };
+const EMPTY_VARIABLES: readonly SceneVariable[] = [];
 
 function fieldClass(): string {
   return "h-8 rounded-md border border-border bg-background px-2";
@@ -139,6 +140,32 @@ function sameValue(left: unknown, right: unknown): boolean {
   }
   return Object.is(left, right);
 }
+function elementsForSelection(
+  focused: CanvasArtboardDocument | null,
+  artId: string | null,
+  elementIds: readonly string[],
+): Element[] {
+  if (!focused || artId !== focused.artId) return [];
+  return elementIds.flatMap((id) => {
+    const element = findCanvasElement(focused.canvas.root, id);
+    return element ? [element] : [];
+  });
+}
+
+function targetForSelection(
+  elements: readonly Element[],
+  focused: CanvasArtboardDocument | null,
+  artId: string | null,
+): Element | null {
+  return elements[0] ?? (focused && artId === focused.artId ? focused.canvas.root : null);
+}
+
+function selectedForTarget(
+  elements: readonly Element[],
+  target: Element | null,
+): readonly Element[] {
+  return elements.length > 0 ? elements : target ? [target] : [];
+}
 
 function opacityInputValue(value: PropertyInputValue | null): PropertyInputValue | null {
   if (isVariableInput(value)) {
@@ -190,6 +217,45 @@ type CanvasInspectorContextValue = {
   update: InspectorUpdate;
   text: (property: string, fallback?: string) => string;
 };
+function commonValue(selected: readonly Element[], property: string): unknown {
+  if (selected.length === 0) return undefined;
+  const first = (selected[0] as unknown as Record<string, unknown>)[property];
+  return selected.every((element) =>
+    sameValue((element as unknown as Record<string, unknown>)[property], first),
+  )
+    ? first
+    : undefined;
+}
+
+function applyInspectorUpdate(
+  focused: CanvasArtboardDocument | null,
+  elements: readonly Element[],
+  target: Element | null,
+  onUpdateElement: Props["onUpdateElement"],
+  onUpdateElements: Props["onUpdateElements"],
+  properties: Record<string, unknown>,
+  unset: readonly string[],
+): void {
+  if (!focused) return;
+  const selected = selectedForTarget(elements, target);
+  const updates = selected.map((element) => ({
+    elementId: element.id,
+    properties,
+    ...(unset.length > 0 ? { unsetProperties: unset } : {}),
+  }));
+  if (onUpdateElements) onUpdateElements(focused.canvasId, updates);
+  else
+    for (const item of updates)
+      onUpdateElement?.(focused.canvasId, item.elementId, properties, unset);
+}
+function textValue(
+  common: (property: string) => unknown,
+  property: string,
+  fallback: string,
+): string {
+  const value = common(property);
+  return value === undefined ? fallback : String(value ?? "");
+}
 
 const CanvasInspectorContext = createContext<CanvasInspectorContextValue | null>(null);
 
@@ -333,53 +399,46 @@ function SizeField({ axis }: SizeFieldProps) {
 export function CanvasInspector({
   focused,
   selection,
-  variables = [],
+  variables = EMPTY_VARIABLES,
   inspectorPreview = null,
   onUpdateElement,
   onUpdateElements,
 }: Props) {
-  const elements =
-    focused && selection.artId === focused.artId
-      ? selection.elementIds.flatMap((id) => {
-          const element = findCanvasElement(focused.canvas.root, id);
-          return element ? [element] : [];
-        })
-      : [];
-  const target =
-    elements[0] ?? (focused && selection.artId === focused.artId ? focused.canvas.root : null);
-  const selected = elements.length > 0 ? elements : target ? [target] : [];
-  const common = (property: string): unknown => {
-    if (selected.length === 0) return undefined;
-    const first = (selected[0] as unknown as Record<string, unknown>)[property];
-    return selected.every((element) =>
-      sameValue((element as unknown as Record<string, unknown>)[property], first),
-    )
-      ? first
-      : undefined;
-  };
-  const update = (properties: Record<string, unknown>, unset: readonly string[] = []) => {
-    if (!focused) return;
-    const selected = elements.length > 0 ? elements : target ? [target] : [];
-    const updates = selected.map((element) => ({
-      elementId: element.id,
-      properties,
-      ...(unset.length > 0 ? { unsetProperties: unset } : {}),
-    }));
-    if (onUpdateElements) onUpdateElements(focused.canvasId, updates);
-    else
-      for (const item of updates)
-        onUpdateElement?.(focused.canvasId, item.elementId, properties, unset);
-  };
+  const selectedArtId = selection.artId;
+  const selectedElementIds = selection.elementIds;
+  const elements = useMemo(
+    () => elementsForSelection(focused, selectedArtId, selectedElementIds),
+    [focused, selectedArtId, selectedElementIds],
+  );
+  const target = useMemo(
+    () => targetForSelection(elements, focused, selectedArtId),
+    [elements, focused, selectedArtId],
+  );
+  const selected = useMemo(() => selectedForTarget(elements, target), [elements, target]);
+  const common = useCallback((property: string) => commonValue(selected, property), [selected]);
+  const update = useCallback(
+    (properties: Record<string, unknown>, unset: readonly string[] = []) =>
+      applyInspectorUpdate(
+        focused,
+        elements,
+        target,
+        onUpdateElement,
+        onUpdateElements,
+        properties,
+        unset,
+      ),
+    [elements, focused, onUpdateElement, onUpdateElements, target],
+  );
   const updateNumber =
     (makeProperties: (value: number) => Record<string, unknown>) =>
     (event: ChangeEvent<HTMLInputElement>) => {
       const value = parseNumber(event.target.value);
       if (value !== null) update(makeProperties(value));
     };
-  const text = (property: string, fallback = "") => {
-    const value = common(property);
-    return value === undefined ? fallback : String(value ?? "");
-  };
+  const text = useCallback(
+    (property: string, fallback = "") => textValue(common, property, fallback),
+    [common],
+  );
   const parentInfo = target && focused ? canvasElementParent(focused.canvas.root, target.id) : null;
   const parent =
     parentInfo && focused ? findCanvasElement(focused.canvas.root, parentInfo.parentId) : null;
@@ -387,6 +446,13 @@ export function CanvasInspector({
   // an auto-layout Frame. Absolutely positioned Elements have no such axis to fill.
   const absolute =
     !parent || parent.type !== "frame" || (parent.layoutMode ?? parent.mode) !== "auto";
+  const contextValue = useMemo<CanvasInspectorContextValue | null>(
+    () =>
+      target
+        ? { target, elements, selected, variables, inspectorPreview, common, update, text }
+        : null,
+    [common, elements, inspectorPreview, selected, target, text, update, variables],
+  );
   if (!target)
     return (
       <SidebarContent>
@@ -421,9 +487,7 @@ export function CanvasInspector({
   };
 
   return (
-    <CanvasInspectorContext.Provider
-      value={{ target, elements, selected, variables, inspectorPreview, common, update, text }}
-    >
+    <CanvasInspectorContext.Provider value={contextValue}>
       <>
         <SidebarHeader className="border-0">
           <div className="flex items-center gap-2">
