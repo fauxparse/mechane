@@ -2,12 +2,17 @@
 
 ## GitHub issue workflow
 
-For implementation work tied to a GitHub issue:
+For implementation work tied to a GitHub issue, the deliverable is a pushed branch with a pull request—not only a local commit:
 
 1. Check out a dedicated branch before editing code, using `issue/<number>-<short-slug>` unless the user specifies another branch.
 2. Reference the issue number in every related commit message, for example `feat: add canvas gestures (#57)`.
 3. Issue-management-only work (such as creating or editing an issue without code changes) does not require a branch or commit.
-4. If asked to "fix" or "implement" an issue directly, assume you can commit/push/create a PR when you think the work is ready for review. We can always iterate on it later.
+4. If asked to "fix" or "implement" an issue directly, create a todo for the delivery gate: push the branch, create the PR, and verify the PR before reporting completion.
+5. Before the final response for issue implementation work:
+   - Push the current issue branch with `git push --set-upstream origin <branch>` (or `git push` when upstream is already configured).
+   - Create a PR with `gh pr create` if the branch has no PR.
+   - Verify it with `gh pr view --json number,url,state,headRefName`; a commit without a PR is incomplete.
+   - Include the verified PR URL in the final response.
 
 ## React code quality
 
