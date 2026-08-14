@@ -34,7 +34,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "tsx": "^4.23.8",
-    "typescript": "^5.9.0",
+    "typescript": "^7.0.2",
     "yaml": "^2.9.0"
   }
 }

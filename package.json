@@ -24,7 +24,7 @@
     "oxfmt": "^0.62.0",
     "oxlint": "^1.77.0",
     "react-doctor": "^0.9.5",
-    "typescript": "^5.9.0",
+    "typescript": "^7.0.2",
     "vitest": "^3.2.0"
   },
   "packageManager": "pnpm@11.5.2"
