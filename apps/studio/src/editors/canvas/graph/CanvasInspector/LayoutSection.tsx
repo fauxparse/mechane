@@ -14,6 +14,7 @@ import {
   PaddingTopIcon,
   PaddingVerticalIcon,
   PropertyInput,
+  Switch,
   Toggle,
   ToggleGroup,
   ToggleGroupItem,
@@ -25,15 +26,17 @@ import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { SizeField } from "./CanvasInspectorFields";
 import { isVariableInput } from "./canvas-inspector-values";
 import { AlignmentSelector } from "./AlignmentSelector";
-import { FrameElement, Padding } from "@mechane/domain";
+import { FrameElement, isContainerElement, Padding } from "@mechane/domain";
 import { useState } from "react";
 
-export function LayoutSection() {
-  const { focused, target, selected, update, isAspectRatioLocked, setAspectRatioLock } =
+export const LayoutSection = () => {
+  const { focused, target, selected, update, common, isAspectRatioLocked, setAspectRatioLock } =
     useCanvasInspectorContext();
-  const frame = target.type === "frame" ? target : null;
-  const hasAutoLayout = !!frame && frame?.layoutMode === "auto";
+  const isFrame = selected.every(isContainerElement);
+  const frame = isFrame ? (target as FrameElement) : null;
+  const hasAutoLayout = isFrame && common("layoutMode") === "auto";
   const selectionKey = `${focused?.artId ?? ""}:${selected.map((element) => element.id).join(",")}`;
+  const clipChildren = common("clip");
 
   return (
     <Section label="Layout">
@@ -52,7 +55,7 @@ export function LayoutSection() {
       {frame && (
         <>
           <ToggleGroup
-            className="bg-muted/50 w-full rounded-sm *:grow"
+            className="w-full rounded-sm *:grow"
             spacing={0}
             value={[frame.layoutMode === "auto" ? (frame.direction ?? "horizontal") : "absolute"]}
             onValueChange={([value]) => {
@@ -107,15 +110,26 @@ export function LayoutSection() {
             </>
           )}
           <FramePadding key={selectionKey} padding={frame.padding} update={update} />
+          <div className="col-span-2">
+            <label className="flex items-center gap-2 w-fit">
+              <Switch
+                aria-label="Clip children"
+                checked={clipChildren === true}
+                indeterminate={clipChildren === undefined}
+                onCheckedChange={() => update({ clip: !clipChildren })}
+              />
+              Clip children
+            </label>
+          </div>
         </>
       )}
     </Section>
   );
-}
+};
 
 type PaddingSide = keyof Padding;
 
-function paddingSides(padding: FrameElement["padding"]): Record<PaddingSide, number> {
+const paddingSides = (padding: FrameElement["padding"]): Record<PaddingSide, number> => {
   if (typeof padding === "number") {
     return { top: padding, right: padding, bottom: padding, left: padding };
   }
@@ -125,14 +139,14 @@ function paddingSides(padding: FrameElement["padding"]): Record<PaddingSide, num
     bottom: padding?.bottom ?? 0,
     left: padding?.left ?? 0,
   };
-}
+};
 
-function hasAsymmetricPadding(padding: FrameElement["padding"]): boolean {
+const hasAsymmetricPadding = (padding: FrameElement["padding"]): boolean => {
   const values = paddingSides(padding);
   return values.top !== values.bottom || values.left !== values.right;
-}
+};
 
-function PaddingInput({
+const PaddingInput = ({
   icon,
   value,
   onChange,
@@ -140,27 +154,25 @@ function PaddingInput({
   icon: LucideIcon;
   value: number;
   onChange: (value: number) => void;
-}) {
-  return (
-    <PropertyInput
-      icon={icon}
-      type="number"
-      value={{ kind: "number", value }}
-      min={0}
-      onChange={(next) => {
-        if (!isVariableInput(next) && next?.kind === "number") onChange(next.value);
-      }}
-    />
-  );
-}
+}) => (
+  <PropertyInput
+    icon={icon}
+    type="number"
+    value={{ kind: "number", value }}
+    min={0}
+    onChange={(next) => {
+      if (!isVariableInput(next) && next?.kind === "number") onChange(next.value);
+    }}
+  />
+);
 
-function FramePadding({
+const FramePadding = ({
   padding,
   update,
 }: {
   padding: FrameElement["padding"];
   update: (properties: Record<string, unknown>) => void;
-}) {
+}) => {
   const [expanded, setExpanded] = useState(() => hasAsymmetricPadding(padding));
   const values = paddingSides(padding);
   const updatePadding = (changes: Partial<Padding>) => {
@@ -233,4 +245,4 @@ function FramePadding({
       </Toggle>
     </div>
   );
-}
+};

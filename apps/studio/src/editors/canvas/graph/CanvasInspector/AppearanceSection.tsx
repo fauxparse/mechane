@@ -27,9 +27,9 @@ import { isVariableInput } from "./canvas-inspector-values";
 
 type RadiusSide = keyof CornerRadius;
 
-function cornerRadiusSides(
+const cornerRadiusSides = (
   radius: CornerRadiusElement["cornerRadius"],
-): Record<RadiusSide, number> {
+): Record<RadiusSide, number> => {
   if (typeof radius === "number") {
     return { topLeft: radius, topRight: radius, bottomRight: radius, bottomLeft: radius };
   }
@@ -42,18 +42,18 @@ function cornerRadiusSides(
     bottomRight: radius.bottomRight ?? 0,
     bottomLeft: radius.bottomLeft ?? 0,
   };
-}
+};
 
-function hasAsymmetricCornerRadius(radius: CornerRadiusElement["cornerRadius"]): boolean {
+const hasAsymmetricCornerRadius = (radius: CornerRadiusElement["cornerRadius"]): boolean => {
   const values = cornerRadiusSides(radius);
   return (
     values.topLeft !== values.topRight ||
     values.topLeft !== values.bottomRight ||
     values.topLeft !== values.bottomLeft
   );
-}
+};
 
-function RadiusInput({
+const RadiusInput = ({
   icon,
   value,
   onChange,
@@ -61,21 +61,19 @@ function RadiusInput({
   icon: LucideIcon;
   value: number;
   onChange: (value: number) => void;
-}) {
-  return (
-    <PropertyInput
-      icon={icon}
-      type="number"
-      value={{ kind: "number", value }}
-      min={0}
-      onChange={(next) => {
-        if (!isVariableInput(next) && next?.kind === "number") onChange(next.value);
-      }}
-    />
-  );
-}
+}) => (
+  <PropertyInput
+    icon={icon}
+    type="number"
+    value={{ kind: "number", value }}
+    min={0}
+    onChange={(next) => {
+      if (!isVariableInput(next) && next?.kind === "number") onChange(next.value);
+    }}
+  />
+);
 
-function CornerRadiusControl({
+const CornerRadiusControl = ({
   radius,
   update,
   expanded,
@@ -85,7 +83,7 @@ function CornerRadiusControl({
   update: (properties: Record<string, unknown>) => void;
   expanded: boolean;
   setExpanded: Dispatch<SetStateAction<boolean>>;
-}) {
+}) => {
   const values = cornerRadiusSides(radius);
   const updateRadius = (changes: Partial<CornerRadius>) => {
     update({ cornerRadius: { ...values, ...changes } });
@@ -146,9 +144,9 @@ function CornerRadiusControl({
       </Toggle>
     </div>
   );
-}
+};
 
-export function AppearanceSection() {
+export const AppearanceSection = () => {
   const { focused, target, selected, common, update } = useCanvasInspectorContext();
   const selectionKey = `${focused?.artId ?? ""}:${selected.map((element) => element.id).join(",")}`;
   const radius = hasCornerRadius(target) ? target.cornerRadius : undefined;
@@ -197,4 +195,4 @@ export function AppearanceSection() {
       </SectionRow>
     </Section>
   );
-}
+};

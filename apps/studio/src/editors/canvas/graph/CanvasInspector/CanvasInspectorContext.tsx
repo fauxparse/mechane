@@ -4,17 +4,15 @@ import type { CanvasInspectorModel } from "./canvas-inspector-types";
 
 const CanvasInspectorContext = createContext<CanvasInspectorModel | null>(null);
 
-export function CanvasInspectorProvider({
+export const CanvasInspectorProvider = ({
   value,
   children,
-}: PropsWithChildren<{ value: CanvasInspectorModel }>) {
-  return (
-    <CanvasInspectorContext.Provider value={value}>{children}</CanvasInspectorContext.Provider>
-  );
-}
+}: PropsWithChildren<{ value: CanvasInspectorModel }>) => (
+  <CanvasInspectorContext.Provider value={value}>{children}</CanvasInspectorContext.Provider>
+);
 
-export function useCanvasInspectorContext(): CanvasInspectorModel {
+export const useCanvasInspectorContext = (): CanvasInspectorModel => {
   const context = useContext(CanvasInspectorContext);
   if (!context) throw new Error("Canvas inspector fields must be rendered inside CanvasInspector.");
   return context;
-}
+};

@@ -310,6 +310,7 @@ interface Element {
   opacity: JSON
   blendMode: String
   fill: JSON
+  stroke: JSON
   anchor: JSON
   children: [Element!]!
 }
@@ -332,6 +333,7 @@ type RectElement implements Element {
   opacity: JSON
   blendMode: String
   fill: JSON
+  stroke: JSON
   anchor: JSON
   children: [Element!]!
   cornerRadius: JSON
@@ -355,6 +357,7 @@ type EllipseElement implements Element {
   opacity: JSON
   blendMode: String
   fill: JSON
+  stroke: JSON
   anchor: JSON
   children: [Element!]!
 }
@@ -377,6 +380,7 @@ type TextElement implements Element {
   opacity: JSON
   blendMode: String
   fill: JSON
+  stroke: JSON
   anchor: JSON
   children: [Element!]!
   content: JSON
@@ -408,6 +412,7 @@ type ImageElement implements Element {
   opacity: JSON
   blendMode: String
   fill: JSON
+  stroke: JSON
   anchor: JSON
   children: [Element!]!
   src: JSON
@@ -435,6 +440,7 @@ type FrameElement implements Element {
   opacity: JSON
   blendMode: String
   fill: JSON
+  stroke: JSON
   anchor: JSON
   children: [Element!]!
   cornerRadius: JSON

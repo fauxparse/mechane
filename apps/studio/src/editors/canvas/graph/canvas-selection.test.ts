@@ -5,6 +5,7 @@ import {
   normalizeSelection,
   rectContainsRect,
   rectsOverlap,
+  rangeSelection,
   toggleSelection,
 } from "./canvas-selection";
 
@@ -43,5 +44,14 @@ describe("Canvas selection", () => {
       artId: null,
       elementIds: [],
     });
+  });
+
+  it("selects the inclusive visible range in either direction", () => {
+    expect(rangeSelection(["a", "b", "c", "d"], "b", "d")).toEqual(["b", "c", "d"]);
+    expect(rangeSelection(["a", "b", "c", "d"], "d", "b")).toEqual(["b", "c", "d"]);
+  });
+
+  it("falls back to the target when the range anchor is not visible", () => {
+    expect(rangeSelection(["a", "b"], "missing", "b")).toEqual(["b"]);
   });
 });

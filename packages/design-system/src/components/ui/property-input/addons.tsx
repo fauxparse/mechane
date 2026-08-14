@@ -27,6 +27,7 @@ export function Addons<T extends ShapeValue>({
   linkedVariable,
   dimension,
   unit,
+  allowLink = true,
   onScrubPointerDown,
   onScrubPointerMove,
   onScrubPointerEnd,
@@ -38,6 +39,7 @@ export function Addons<T extends ShapeValue>({
   linkedVariable: VariableReference<T> | null;
   dimension?: "width" | "height";
   unit: PropertyInputUnit;
+  allowLink?: boolean;
   onScrubPointerDown: PointerEventHandler<HTMLSpanElement>;
   onScrubPointerMove: PointerEventHandler<HTMLSpanElement>;
   onScrubPointerEnd: PointerEventHandler<HTMLSpanElement>;
@@ -70,7 +72,7 @@ export function Addons<T extends ShapeValue>({
         </InputGroupAddon>
       )}
       {inputType === "color" && (
-        <InputGroupAddon align="inline-start" className="h-full p-0 pl-1">
+        <InputGroupAddon align="inline-start" className="h-full p-0 pl-1 mr-2">
           <span
             aria-label={`Color ${colorText || "unset"}`}
             className="size-4 rounded-sm border border-border/70"
@@ -89,7 +91,7 @@ export function Addons<T extends ShapeValue>({
           </span>
         </InputGroupAddon>
       )}
-      {connector}
+      {allowLink && connector}
     </>
   );
 }

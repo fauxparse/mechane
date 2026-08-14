@@ -106,4 +106,25 @@ describe("Canvas model", () => {
       }),
     ).toThrow(/invalid gradient stops/);
   });
+  it("accepts and validates element strokes", () => {
+    expect(
+      assertValidCanvas({
+        root: {
+          id: "root",
+          type: "frame",
+          stroke: { width: 2, style: "dotted", color: "#112233" },
+        },
+      }),
+    ).toMatchObject({ root: { stroke: { width: 2, style: "dotted" } } });
+
+    expect(() =>
+      assertValidCanvas({
+        root: {
+          id: "root",
+          type: "frame",
+          stroke: { width: -1, style: "solid", color: "#112233" },
+        },
+      }),
+    ).toThrow(/stroke width must be finite and non-negative/);
+  });
 });

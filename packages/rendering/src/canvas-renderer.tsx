@@ -115,6 +115,14 @@ function cssFill(fill: Fill | undefined): string | undefined {
     ? `radial-gradient(circle, ${stops})`
     : `linear-gradient(${fill.angle ?? 0}deg, ${stops})`;
 }
+function strokeStyles(stroke: Element["stroke"]): CSSProperties {
+  if (!stroke || isPropertyConnection(stroke)) return {};
+  return {
+    borderColor: stroke.color,
+    borderStyle: stroke.style,
+    borderWidth: `${Math.max(0, stroke.width)}px`,
+  };
+}
 
 function sortedChildren(children: readonly Element[] | undefined): readonly Element[] {
   if (!children || children.length < 2) return children ?? [];
@@ -172,6 +180,7 @@ function elementStyle(element: Element, root: boolean, sceneRoot: boolean): CSSP
     opacity: literal(element.opacity),
     mixBlendMode: literal(element.blendMode),
     background: cssFill(literal(element.fill)),
+    ...strokeStyles(element.stroke),
     writingMode: writingModeFor(rotation),
     display: element.type === "image" ? "block" : undefined,
     alignSelf: element.alignSelf ? align(element.alignSelf) : undefined,
@@ -288,7 +297,9 @@ function renderElement({
       // Editors hit-test against this: the root frame is the artboard backdrop, never a target.
       "data-element-root": root ? "true" : undefined,
       "data-element-painted":
-        element.type === "text" || element.fill !== undefined ? "true" : "false",
+        element.type === "frame" || element.type === "text" || element.fill !== undefined
+          ? "true"
+          : "false",
       style,
       hidden: element.hidden,
     },

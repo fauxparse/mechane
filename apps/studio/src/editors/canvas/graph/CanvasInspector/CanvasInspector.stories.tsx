@@ -1,6 +1,6 @@
 import { applyCanvasEdits, CANVAS_COMMAND_TYPES } from "@mechane/commands";
 import type { CanvasEdit } from "@mechane/commands";
-import { hasCornerRadius } from "@mechane/domain";
+import { FrameElement, hasCornerRadius, SceneVariable } from "@mechane/domain";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useCallback, useState } from "react";
 
@@ -21,19 +21,17 @@ const variables: SceneVariable[] = [
 
 const variable = (variableId: string) => ({ kind: "variable" as const, variableId });
 
-function artboard(
+const artboard = (
   root: FrameElement,
   kind: ApiCanvasArtboardDocument["kind"] = "scene",
-): ApiCanvasArtboardDocument {
-  return {
-    canvasId: CANVAS_ID,
-    artId: ART_ID,
-    kind,
-    name: kind === "scene" ? "Inspector review" : "Block review",
-    canvas: { kind, root },
-    position: { x: 0, y: 0 },
-  };
-}
+): ApiCanvasArtboardDocument => ({
+  canvasId: CANVAS_ID,
+  artId: ART_ID,
+  kind,
+  name: kind === "scene" ? "Inspector review" : "Block review",
+  canvas: { kind, root },
+  position: { x: 0, y: 0 },
+});
 
 const absoluteRoot: FrameElement = {
   id: "absolute-root",
@@ -69,6 +67,39 @@ const absoluteRoot: FrameElement = {
       anchor: { horizontal: "left", vertical: "top", offsetX: 32, offsetY: 120 },
     },
   ],
+};
+const gradientRoot: FrameElement = {
+  ...absoluteRoot,
+  id: "gradient-root",
+  name: "Gradient fill",
+  children: absoluteRoot.children?.map((child) =>
+    child.id === "card"
+      ? {
+          ...child,
+          fill: {
+            kind: "linear",
+            angle: 135,
+            stops: [
+              { color: "#38bdf8", position: 0 },
+              { color: "#c084fc", position: 1 },
+            ],
+          },
+        }
+      : child,
+  ),
+};
+const strokeRoot: FrameElement = {
+  ...absoluteRoot,
+  id: "stroke-root",
+  name: "Stroke",
+  children: absoluteRoot.children?.map((child) =>
+    child.id === "card"
+      ? {
+          ...child,
+          stroke: { width: 3, style: "dashed" as const, color: "#f43f5e" },
+        }
+      : child,
+  ),
 };
 const asymmetricRadiusRoot: FrameElement = {
   ...absoluteRoot,
@@ -162,8 +193,8 @@ const multiSelectionRoot: FrameElement = {
       type: "rect",
       name: "Second card",
       rank: "b",
-      opacity: 0.5,
-      fill: "#f8fafc",
+      opacity: 0.72,
+      fill: "#cbd5e1",
       width: { mode: "fixed", value: 120 },
       height: { mode: "fixed", value: 80 },
       anchor: { horizontal: "left", vertical: "top", offsetX: 180, offsetY: 24 },
@@ -273,6 +304,22 @@ export const AbsoluteRectangle: Story = {
   render: () => (
     <InspectorStory
       initialArtboard={artboard(absoluteRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: ["card"] }}
+    />
+  ),
+};
+export const GradientFill: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(gradientRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: ["card"] }}
+    />
+  ),
+};
+export const Stroke: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(strokeRoot)}
       initialSelection={{ artId: ART_ID, elementIds: ["card"] }}
     />
   ),

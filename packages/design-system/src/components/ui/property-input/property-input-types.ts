@@ -33,6 +33,7 @@ export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   step?: number;
   /** Enables the shared "Auto" popup option for values with non-numeric semantics. */
   allowAuto?: boolean;
+  allowLink?: boolean;
   auto?: boolean;
   /** Number of pixels required for one scrub step. Higher values scrub more slowly. */
   scrubScale?: number;

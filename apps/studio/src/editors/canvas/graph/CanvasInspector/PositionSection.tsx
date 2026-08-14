@@ -4,7 +4,7 @@ import { Section, SectionRow } from "./Section";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { isVariableInput } from "./canvas-inspector-values";
 
-export function PositionSection() {
+export const PositionSection = () => {
   const { target, absolute, inspectorPreview, update } = useCanvasInspectorContext();
   if (!absolute || !target.anchor) return null;
 
@@ -46,4 +46,4 @@ export function PositionSection() {
       </SectionRow>
     </Section>
   );
-}
+};

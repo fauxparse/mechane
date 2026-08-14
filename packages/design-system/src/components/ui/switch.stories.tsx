@@ -19,6 +19,9 @@ export const Default: Story = {
 export const Checked: Story = {
   args: { "aria-label": "Notifications", defaultChecked: true },
 };
+export const Indeterminate: Story = {
+  args: { "aria-label": "Indeterminate", indeterminate: true },
+};
 
 export const Sizes: Story = {
   render: () => (

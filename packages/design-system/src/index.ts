@@ -127,6 +127,7 @@ export { Separator } from "./components/ui/separator";
 export { Tabs, TabsContent, TabsList, TabsTrigger, tabsListVariants } from "./components/ui/tabs";
 export { Toggle, toggleVariants } from "./components/ui/toggle";
 export { ToggleGroup, ToggleGroupItem } from "./components/ui/toggle-group";
+export { Slider } from "./components/ui/slider";
 export type {
   SidebarMenuButtonProps,
   SidebarProps,
@@ -178,6 +179,8 @@ export { LayoutHorizontalIcon } from "./icons/LayoutHorizontalIcon";
 export { LayoutVerticalIcon } from "./icons/LayoutVerticalIcon";
 export { GapHorizontalIcon } from "./icons/GapHorizontalIcon";
 export { GapVerticalIcon } from "./icons/GapVerticalIcon";
+export { GradientLinearIcon } from "./icons/GradientLinearIcon";
+export { GradientRadialIcon } from "./icons/GradientRadialIcon";
 export { OpacityIcon } from "./icons/OpacityIcon";
 export { PaddingAllIcon } from "./icons/PaddingAllIcon";
 export { PaddingHorizontalIcon } from "./icons/PaddingHorizontalIcon";

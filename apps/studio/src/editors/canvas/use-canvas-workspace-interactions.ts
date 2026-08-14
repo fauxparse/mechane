@@ -1078,6 +1078,7 @@ export function useCanvasWorkspaceInteractions({
       rank,
       width: { mode: "fixed", value: width },
       height: { mode: "fixed", value: height },
+      ...(draft.tool === "frame" ? { clip: true } : {}),
       ...(draft.tool === "rect" || draft.tool === "ellipse" ? { fill: "#cbd5e1" } : {}),
       ...(draft.tool === "text" ? { content: "Text", color: "#0f172a" } : {}),
       ...(draft.tool === "image"

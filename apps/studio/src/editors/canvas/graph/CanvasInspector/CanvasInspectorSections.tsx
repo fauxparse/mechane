@@ -6,7 +6,7 @@ import { elementIconFor } from "../utils";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { PropertyField } from "./CanvasInspectorFields";
 
-export function InspectorHeader() {
+export const InspectorHeader = () => {
   const { focused, elements } = useCanvasInspectorContext();
   const Icon = elementIconFor(elements.map((element) => element.type));
   const label =
@@ -21,30 +21,10 @@ export function InspectorHeader() {
   return (
     <div className="flex items-center gap-2">
       <Icon className="size-4" />
-      {label}
+      <span className="truncate grow">{label}</span>
     </div>
   );
-}
-
-export function FrameSection() {
-  const { target, update } = useCanvasInspectorContext();
-  if (target.type !== "frame") return null;
-  return (
-    <SidebarGroup>
-      <SidebarGroupLabel>Frame layout</SidebarGroupLabel>
-      <SidebarGroupContent className="flex flex-col gap-3 p-3">
-        <label className="flex items-center justify-between gap-2 text-xs">
-          Clip content
-          <input
-            type="checkbox"
-            checked={target.clip === true}
-            onChange={(event) => update({ clip: event.target.checked })}
-          />
-        </label>
-      </SidebarGroupContent>
-    </SidebarGroup>
-  );
-}
+};
 
 export function TextSection() {
   const { target } = useCanvasInspectorContext();
@@ -65,7 +45,7 @@ export function TextSection() {
   );
 }
 
-export function ImageSection() {
+export const ImageSection = () => {
   const { target } = useCanvasInspectorContext();
   if (target.type !== "image") return null;
 
@@ -79,4 +59,4 @@ export function ImageSection() {
       </SidebarGroupContent>
     </SidebarGroup>
   );
-}
+};

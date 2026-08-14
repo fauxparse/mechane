@@ -32,6 +32,7 @@ export const PropertyInput = <T extends ShapeValue>({
   step,
   scrubScale = 2,
   allowAuto,
+  allowLink = true,
   auto,
   onChange,
   onSizingChange,
@@ -90,7 +91,10 @@ export const PropertyInput = <T extends ShapeValue>({
             inputMode={input.inputType === "number" ? "decimal" : undefined}
             aria-label={placeholder ?? input.inputType}
             placeholder={placeholder}
-            className="w-full min-w-0 bg-muted/50 dark:bg-muted/50 border-0 *:data-[slot=combobox-input]:px-0 rounded-sm h-7 data-[slot=combobox-input]:h-7"
+            className={cn(
+              "w-full min-w-0 bg-muted/50 dark:bg-muted/50 border-0 *:data-[slot=combobox-input]:px-0 rounded-sm h-7 data-[slot=combobox-input]:h-7",
+              !icon && "pl-2",
+            )}
             showTrigger={false}
             onFocus={handleInputFocus}
             onBlur={input.commitDraftInput}
@@ -101,6 +105,7 @@ export const PropertyInput = <T extends ShapeValue>({
               inputType={input.inputType}
               colorText={input.colorText}
               linkedVariable={input.linkedVariable}
+              allowLink={allowLink}
               dimension={dimension}
               unit={unit}
               onScrubPointerDown={input.handleScrubPointerDown}

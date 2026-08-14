@@ -54,6 +54,14 @@ export type Anchor = "left" | "center" | "centre" | "right" | "top" | "bottom";
 export type TextAlign = "left" | "center" | "right" | "justify" | "start" | "end";
 export type ObjectFit = "fill" | "contain" | "cover" | "none" | "scale-down";
 
+export type StrokeStyle = "solid" | "dotted" | "dashed";
+
+export interface Stroke {
+  width: number;
+  style: StrokeStyle;
+  color: string;
+}
+
 export interface GradientStop {
   color?: string;
   position: number;
@@ -113,6 +121,7 @@ export interface ElementBase {
   blendMode?: BlendMode;
   alignSelf?: LayoutAlignment;
   fill?: PropertyValue<Fill>;
+  stroke?: Stroke;
   anchor?: AnchorPosition;
   children?: readonly Element[];
 }
@@ -184,6 +193,10 @@ export interface Padding {
 
 export function hasCornerRadius(element: Element): element is CornerRadiusElement {
   return element.type === "rect" || element.type === "frame";
+}
+
+export function isContainerElement(element: Element): element is FrameElement {
+  return element.type === "frame";
 }
 
 export interface AnchorPosition {
@@ -304,6 +317,17 @@ function assertLayout(element: Element): void {
         throw new InvalidCanvasError(`${element.id} has invalid gradient stops.`);
       }
       previous = stop.position;
+    }
+  }
+  if (element.stroke) {
+    if (!Number.isFinite(element.stroke.width) || element.stroke.width < 0) {
+      throw new InvalidCanvasError(`${element.id} stroke width must be finite and non-negative.`);
+    }
+    if (!["solid", "dotted", "dashed"].includes(element.stroke.style)) {
+      throw new InvalidCanvasError(`${element.id} has an unknown stroke style.`);
+    }
+    if (!element.stroke.color) {
+      throw new InvalidCanvasError(`${element.id} stroke requires a color.`);
     }
   }
   if (element.type === "frame" && element.gap !== undefined) {

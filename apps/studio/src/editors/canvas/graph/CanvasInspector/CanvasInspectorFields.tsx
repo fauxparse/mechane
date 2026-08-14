@@ -21,9 +21,10 @@ type PropertyFieldProps = {
   name: (typeof CANVAS_PROPERTY_DESCRIPTORS)[number]["name"];
   icon?: LucideIcon | string;
   className?: string;
+  placeholder?: string;
 };
 
-export function PropertyField({ name, icon, className }: PropertyFieldProps) {
+export const PropertyField = ({ name, icon, className, placeholder }: PropertyFieldProps) => {
   const { target, elements, selected, variables, common, update } = useCanvasInspectorContext();
   const descriptor = canvasPropertyDescriptor(name, target);
   if (!descriptor) return null;
@@ -57,6 +58,7 @@ export function PropertyField({ name, icon, className }: PropertyFieldProps) {
       className={className}
       type={type}
       value={value}
+      placeholder={placeholder}
       variables={availableVariables}
       unit={name === "opacity" ? "%" : undefined}
       icon={icon}
@@ -80,13 +82,13 @@ export function PropertyField({ name, icon, className }: PropertyFieldProps) {
       }}
     />
   );
-}
+};
 
 type SizeFieldProps = {
   axis: "width" | "height";
 };
 
-export function SizeField({ axis }: SizeFieldProps) {
+export const SizeField = ({ axis }: SizeFieldProps) => {
   const { target, variables, inspectorPreview, update } = useCanvasInspectorContext();
   const size = target[axis];
   const previewValue =
@@ -146,4 +148,4 @@ export function SizeField({ axis }: SizeFieldProps) {
       }}
     />
   );
-}
+};

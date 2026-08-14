@@ -30,6 +30,18 @@ describe("CanvasRenderer", () => {
     expect(html).toContain("grid-area:1 / 1");
     expect(html).not.toContain('data-element-id="first"><div');
   });
+  it("marks empty frames as painted hit targets", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [{ id: "empty-frame", type: "frame", children: [] }],
+      },
+    });
+
+    expect(html).toMatch(/data-element-id="empty-frame"[^>]*data-element-painted="true"/);
+  });
 
   it("uses flex layout, authored padding/gap, and the scene clipping boundary", () => {
     const html = markup({
@@ -222,5 +234,25 @@ describe("CanvasRenderer", () => {
 
     expect(html).toContain('data-element-id="ellipse"');
     expect(html).toContain("border-radius:50%");
+  });
+  it("renders element strokes as CSS borders", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "stroked",
+            type: "rect",
+            stroke: { width: 3, style: "dashed", color: "#f43f5e" },
+          },
+        ],
+      },
+    });
+
+    expect(html).toContain("border-color:#f43f5e");
+    expect(html).toContain("border-style:dashed");
+    expect(html).toContain("border-width:3px");
   });
 });

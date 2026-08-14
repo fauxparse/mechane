@@ -52,6 +52,19 @@ export function toggleSelection(
   return current.includes(id) ? current.filter((candidate) => candidate !== id) : [...current, id];
 }
 
+export function rangeSelection(
+  orderedIds: readonly string[],
+  anchorId: string,
+  targetId: string,
+): string[] {
+  const anchorIndex = orderedIds.indexOf(anchorId);
+  const targetIndex = orderedIds.indexOf(targetId);
+  if (anchorIndex === -1 || targetIndex === -1) return [targetId];
+  const start = Math.min(anchorIndex, targetIndex);
+  const end = Math.max(anchorIndex, targetIndex);
+  return orderedIds.slice(start, end + 1);
+}
+
 export function normalizeSelection(selection: CanvasSelection): CanvasSelection {
   if (selection.artId === null) return { artId: null, elementIds: [] };
   return { artId: selection.artId, elementIds: [...new Set(selection.elementIds)] };
