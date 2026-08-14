@@ -1,16 +1,15 @@
 import { SidebarContent, SidebarHeader } from "@mechane/design-system";
 
+import { AppearanceSection } from "./AppearanceSection";
 import { CanvasInspectorProvider } from "./CanvasInspectorContext";
 import {
-  AppearanceSection,
   FrameSection,
   ImageSection,
   InspectorHeader,
-  LayoutSection,
-  PositionSection,
-  PropertiesSection,
   TextSection,
 } from "./CanvasInspectorSections";
+import { LayoutSection } from "./LayoutSection";
+import { PositionSection } from "./PositionSection";
 import type { CanvasInspectorProps } from "./canvas-inspector-types";
 import { useCanvasInspectorModel } from "./use-canvas-inspector-model";
 
@@ -32,7 +31,6 @@ function CanvasInspectorContent() {
         <PositionSection />
         <LayoutSection />
         <AppearanceSection />
-        <PropertiesSection />
         <FrameSection />
         <TextSection />
         <ImageSection />

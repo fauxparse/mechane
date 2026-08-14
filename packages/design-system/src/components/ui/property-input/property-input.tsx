@@ -9,6 +9,7 @@ import { Menu } from "./menu";
 import { VariablePicker } from "./variable-picker";
 import { usePropertyInput } from "./use-property-input";
 import type { PropertyInputProps } from "./property-input-types";
+import { cn } from "../../../lib/utils";
 
 export * from "./property-input-types";
 
@@ -17,6 +18,7 @@ const handleInputFocus = (event: FocusEvent<HTMLInputElement>) => {
 };
 
 export const PropertyInput = <T extends ShapeValue>({
+  className,
   icon,
   value,
   type = "text",
@@ -63,7 +65,7 @@ export const PropertyInput = <T extends ShapeValue>({
   return (
     <Popover open={input.variablesOpen} onOpenChange={input.setVariablesOpen}>
       <div
-        className="group/property-input w-full min-w-0"
+        className={cn("group/property-input w-full min-w-0", className)}
         data-linked={input.linkedVariable ? true : undefined}
       >
         <Combobox

@@ -35,7 +35,7 @@ export const AlignmentSelector = ({
   return (
     <ToggleGroup
       className={cn(
-        "group/alignment w-full min-w-20 h-15 grid grid-rows-3 grid-cols-3 bg-muted/50 rounded-sm p-0 gap-0",
+        "group/alignment w-full min-w-20 h-16 grid grid-rows-3 grid-cols-3 bg-muted/50 rounded-sm p-0 gap-0",
         "**:[i]:bg-foreground **:[i]:rounded-full [--w:2px] [--h:12px]",
         direction === "horizontal"
           ? "**:[i]:w-(--w) **:[i]:h-(--h)"

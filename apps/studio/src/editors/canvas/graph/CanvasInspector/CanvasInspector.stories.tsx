@@ -111,6 +111,18 @@ const autoGapRoot: FrameElement = {
   name: "Auto gap",
   gap: "auto",
 };
+const paddingRoot: FrameElement = {
+  ...connectedRoot,
+  id: "padding-root",
+  name: "Padding",
+  padding: 16,
+};
+const asymmetricPaddingRoot: FrameElement = {
+  ...connectedRoot,
+  id: "asymmetric-padding-root",
+  name: "Asymmetric padding",
+  padding: { top: 8, right: 16, bottom: 12, left: 24 },
+};
 
 const multiSelectionRoot: FrameElement = {
   id: "multi-root",
@@ -276,6 +288,23 @@ export const NumericGap: Story = {
   render: () => (
     <InspectorStory
       initialArtboard={artboard(connectedRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: [] }}
+    />
+  ),
+};
+export const Padding: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(paddingRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: [] }}
+    />
+  ),
+};
+
+export const AsymmetricPadding: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(asymmetricPaddingRoot)}
       initialSelection={{ artId: ART_ID, elementIds: [] }}
     />
   ),

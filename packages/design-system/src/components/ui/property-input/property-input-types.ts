@@ -19,6 +19,7 @@ export type PropertyInputUnit = "px" | "%";
 export type PropertyInputValue<T extends ShapeValue = ShapeValue> = T | VariableReference;
 
 export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
+  className?: string;
   icon?: LucideIcon | string;
   value?: PropertyInputValue<T> | null;
   type?: PropertyInputType;
