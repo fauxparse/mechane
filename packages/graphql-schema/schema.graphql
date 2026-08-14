@@ -440,7 +440,7 @@ type FrameElement implements Element {
   layoutMode: String
   autoLayout: Boolean
   direction: String
-  gap: Float
+  gap: JSON
   padding: JSON
   alignPrimary: String
   alignCounter: String

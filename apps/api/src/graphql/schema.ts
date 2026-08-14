@@ -563,7 +563,7 @@ export const schema = createSchema<GraphQLContext>({
       layoutMode: String
       autoLayout: Boolean
       direction: String
-      gap: Float
+      gap: JSON
       padding: JSON
       alignPrimary: String
       alignCounter: String

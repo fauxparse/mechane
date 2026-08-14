@@ -26,6 +26,20 @@ describe("Canvas model", () => {
 
     expect(assertValidCanvas(canvas)).toBe(canvas);
   });
+  it("accepts auto gap on a Frame", () => {
+    expect(
+      assertValidCanvas({
+        root: { id: "root", type: "frame", gap: "auto", children: [] },
+      }),
+    ).toMatchObject({ root: { gap: "auto" } });
+  });
+  it("rejects invalid Frame gap values", () => {
+    expect(() =>
+      assertValidCanvas({
+        root: { id: "root", type: "frame", gap: -1, children: [] },
+      }),
+    ).toThrow(/gap must be auto or a finite non-negative number/);
+  });
 
   it.each([
     ["a non-Frame root", { root: { id: "root", type: "text" } }],

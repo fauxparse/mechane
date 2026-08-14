@@ -30,9 +30,13 @@ export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   min?: number;
   max?: number;
   step?: number;
+  /** Enables the shared "Auto" popup option for values with non-numeric semantics. */
+  allowAuto?: boolean;
+  auto?: boolean;
   /** Number of pixels required for one scrub step. Higher values scrub more slowly. */
   scrubScale?: number;
   onChange?: (value: PropertyInputValue<T> | null) => void;
   onSizingChange?: (sizing: PropertyInputSizing) => void;
+  onAutoChange?: (auto: boolean) => void;
   onConstraintAdd?: (constraint: PropertyInputConstraint) => void;
 };

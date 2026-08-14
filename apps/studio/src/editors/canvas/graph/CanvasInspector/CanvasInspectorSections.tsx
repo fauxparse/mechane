@@ -1,6 +1,8 @@
 import {
   EyeClosedIcon,
   EyeIcon,
+  GapHorizontalIcon,
+  GapVerticalIcon,
   LayoutHorizontalIcon,
   LayoutNoneIcon,
   LayoutVerticalIcon,
@@ -29,11 +31,6 @@ import { AlignmentSelector } from "./AlignmentSelector";
 
 function fieldClass(): string {
   return "h-8 rounded-md border border-border bg-background px-2";
-}
-
-function parseNumber(value: string): number | null {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
 }
 
 export function InspectorHeader() {
@@ -147,13 +144,30 @@ export function LayoutSection() {
           {isAspectRatioLocked ? <Link2Icon /> : <Unlink2Icon />}
         </Toggle>
       </SectionRow>
-      {frame?.layoutMode === "auto" && (
+      {target.type === "frame" && frame?.layoutMode === "auto" && (
         <SectionRow>
           <AlignmentSelector
             direction={frame.direction ?? "horizontal"}
             alignPrimary={frame.alignPrimary ?? "start"}
             alignCounter={frame.alignCounter ?? "start"}
+            auto={target.gap === "auto"}
             onChange={(props) => update(props)}
+          />
+          <PropertyInput
+            type="number"
+            icon={frame.direction === "vertical" ? GapVerticalIcon : GapHorizontalIcon}
+            value={
+              target.gap === "auto"
+                ? null
+                : { kind: "number", value: typeof target.gap === "number" ? target.gap : 0 }
+            }
+            placeholder={target.gap === "auto" ? "Auto" : undefined}
+            allowAuto
+            auto={target.gap === "auto"}
+            onAutoChange={(auto) => update({ gap: auto ? "auto" : 0 })}
+            onChange={(next) => {
+              if (!isVariableInput(next) && next?.kind === "number") update({ gap: next.value });
+            }}
           />
         </SectionRow>
       )}
@@ -219,21 +233,24 @@ export function PropertiesSection() {
 export function FrameSection() {
   const { target, update } = useCanvasInspectorContext();
   if (target.type !== "frame") return null;
-
+  const gapIsAuto = target.gap === "auto";
+  const gapValue = typeof target.gap === "number" ? target.gap : 0;
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Frame layout</SidebarGroupLabel>
       <SidebarGroupContent className="flex flex-col gap-3 p-3">
         <label className="flex flex-col gap-1 text-xs">
           Gap
-          <input
+          <PropertyInput
             type="number"
-            value={target.gap ?? 0}
-            onChange={(event) => {
-              const value = parseNumber(event.target.value);
-              if (value !== null) update({ gap: value });
+            value={gapIsAuto ? null : { kind: "number", value: gapValue }}
+            placeholder={gapIsAuto ? "Auto" : undefined}
+            allowAuto
+            auto={gapIsAuto}
+            onAutoChange={(auto) => update({ gap: auto ? "auto" : 0 })}
+            onChange={(next) => {
+              if (!isVariableInput(next) && next?.kind === "number") update({ gap: next.value });
             }}
-            className={fieldClass()}
           />
         </label>
         <label className="flex items-center justify-between gap-2 text-xs">

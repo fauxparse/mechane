@@ -29,8 +29,11 @@ export const PropertyInput = <T extends ShapeValue>({
   max,
   step,
   scrubScale = 2,
+  allowAuto,
+  auto,
   onChange,
   onSizingChange,
+  onAutoChange,
   onConstraintAdd,
 }: PropertyInputProps<T>) => {
   const input = usePropertyInput({
@@ -44,8 +47,11 @@ export const PropertyInput = <T extends ShapeValue>({
     max,
     step,
     scrubScale,
+    allowAuto,
+    auto,
     onChange,
     onSizingChange,
+    onAutoChange,
     onConstraintAdd,
   });
   const connectorLabel = input.linkedVariable
@@ -113,6 +119,8 @@ export const PropertyInput = <T extends ShapeValue>({
             colorText={input.colorText}
             dimension={dimension}
             sizing={input.currentSizing}
+            auto={input.auto}
+            allowAuto={allowAuto}
             linkedVariable={input.linkedVariable}
             onColorChange={input.updateDraftInput}
           />

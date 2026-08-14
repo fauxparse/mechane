@@ -173,12 +173,15 @@ function elementStyle(element: Element, root: boolean, sceneRoot: boolean): CSSP
 function frameStyle(frame: FrameElement): CSSProperties {
   const auto = frame.layoutMode === "auto" || frame.autoLayout === true;
   if (auto) {
+    const automaticGap = frame.gap === "auto";
     return {
       display: "flex",
       flexDirection: (frame.direction ?? "vertical") === "horizontal" ? "row" : "column",
-      gap: `${frame.gap ?? 0}px`,
+      gap: automaticGap ? "0px" : `${frame.gap ?? 0}px`,
       padding: paddingValue(frame.padding),
-      justifyContent: justify(frame.alignPrimary ?? frame.primaryAlign),
+      justifyContent: automaticGap
+        ? "space-between"
+        : justify(frame.alignPrimary ?? frame.primaryAlign),
       alignItems: align(frame.alignCounter ?? frame.counterAlign),
       overflow: frame.clip ? "hidden" : "visible",
     };

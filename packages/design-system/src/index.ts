@@ -176,4 +176,6 @@ export { MechaneIcon } from "./icons/MechaneIcon";
 export { LayoutNoneIcon } from "./icons/LayoutNoneIcon";
 export { LayoutHorizontalIcon } from "./icons/LayoutHorizontalIcon";
 export { LayoutVerticalIcon } from "./icons/LayoutVerticalIcon";
+export { GapHorizontalIcon } from "./icons/GapHorizontalIcon";
+export { GapVerticalIcon } from "./icons/GapVerticalIcon";
 export * from "lucide-react";

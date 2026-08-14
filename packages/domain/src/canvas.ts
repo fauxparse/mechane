@@ -40,6 +40,7 @@ export type BlendMode =
   | "plus-lighter"
   | "plus-darker";
 export type FrameLayoutMode = "absolute" | "auto";
+export type FrameGap = number | "auto";
 export type LayoutDirection = "horizontal" | "vertical";
 export type LayoutAlignment =
   | "start"
@@ -153,7 +154,7 @@ export interface FrameElement extends ElementBase {
   layoutMode?: FrameLayoutMode;
   autoLayout?: boolean;
   direction?: LayoutDirection;
-  gap?: number;
+  gap?: FrameGap;
   padding?: number | Padding;
   alignPrimary?: LayoutAlignment;
   alignCounter?: LayoutAlignment;
@@ -287,6 +288,13 @@ function assertLayout(element: Element): void {
         throw new InvalidCanvasError(`${element.id} has invalid gradient stops.`);
       }
       previous = stop.position;
+    }
+  }
+  if (element.type === "frame" && element.gap !== undefined) {
+    if (element.gap !== "auto" && (!Number.isFinite(element.gap) || element.gap < 0)) {
+      throw new InvalidCanvasError(
+        `${element.id} gap must be auto or a finite non-negative number.`,
+      );
     }
   }
 }

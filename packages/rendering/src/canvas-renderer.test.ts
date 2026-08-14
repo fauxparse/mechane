@@ -52,6 +52,21 @@ describe("CanvasRenderer", () => {
     expect(html).toContain("overflow:hidden");
     expect(html).toContain("width:100%");
   });
+  it("uses auto gap to distribute flex children with space-between", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        layoutMode: "auto",
+        gap: "auto",
+        children: [{ id: "child", type: "rect" }],
+      },
+    });
+
+    expect(html).toContain("gap:0px");
+    expect(html).toContain("justify-content:space-between");
+  });
 
   it("grows only on the primary axis when an auto-layout child fills", () => {
     const verticalWidthFill = markup({

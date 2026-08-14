@@ -105,6 +105,12 @@ const connectedRoot: FrameElement = {
     },
   ],
 };
+const autoGapRoot: FrameElement = {
+  ...connectedRoot,
+  id: "auto-gap-root",
+  name: "Auto gap",
+  gap: "auto",
+};
 
 const multiSelectionRoot: FrameElement = {
   id: "multi-root",
@@ -257,6 +263,23 @@ export const ConnectedProperties: Story = {
   ),
 };
 
+export const AutoGap: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(autoGapRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: [] }}
+    />
+  ),
+};
+
+export const NumericGap: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(connectedRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: [] }}
+    />
+  ),
+};
 export const MultiSelection: Story = {
   render: () => (
     <InspectorStory
