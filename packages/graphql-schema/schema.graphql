@@ -437,6 +437,7 @@ type FrameElement implements Element {
   fill: JSON
   anchor: JSON
   children: [Element!]!
+  cornerRadius: JSON
   layoutMode: String
   autoLayout: Boolean
   direction: String

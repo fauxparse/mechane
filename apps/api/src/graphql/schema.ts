@@ -560,6 +560,7 @@ export const schema = createSchema<GraphQLContext>({
       fill: JSON
       anchor: JSON
       children: [Element!]!
+      cornerRadius: JSON
       layoutMode: String
       autoLayout: Boolean
       direction: String

@@ -20,9 +20,10 @@ import {
 type PropertyFieldProps = {
   name: (typeof CANVAS_PROPERTY_DESCRIPTORS)[number]["name"];
   icon?: LucideIcon | string;
+  className?: string;
 };
 
-export function PropertyField({ name, icon }: PropertyFieldProps) {
+export function PropertyField({ name, icon, className }: PropertyFieldProps) {
   const { target, elements, selected, variables, common, update } = useCanvasInspectorContext();
   const descriptor = canvasPropertyDescriptor(name, target);
   if (!descriptor) return null;
@@ -53,6 +54,7 @@ export function PropertyField({ name, icon }: PropertyFieldProps) {
 
   return (
     <PropertyInput
+      className={className}
       type={type}
       value={value}
       variables={availableVariables}

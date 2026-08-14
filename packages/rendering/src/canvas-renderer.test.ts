@@ -52,6 +52,37 @@ describe("CanvasRenderer", () => {
     expect(html).toContain("overflow:hidden");
     expect(html).toContain("width:100%");
   });
+  it("renders individual rectangle corner radii", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "rounded",
+            type: "rect",
+            cornerRadius: { topLeft: 8, topRight: 12, bottomRight: 16, bottomLeft: 20 },
+          },
+        ],
+      },
+    });
+
+    expect(html).toContain("border-radius:8px 12px 16px 20px");
+  });
+  it("renders corner radii on frames", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "rounded-frame",
+        type: "frame",
+        cornerRadius: 24,
+        children: [],
+      },
+    });
+
+    expect(html).toContain("border-radius:24px");
+  });
   it("uses auto gap to distribute flex children with space-between", () => {
     const html = markup({
       kind: "scene",

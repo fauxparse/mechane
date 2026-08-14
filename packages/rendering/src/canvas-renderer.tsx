@@ -4,6 +4,7 @@ import type {
   AnchorPosition,
   AspectRatioLock,
   AxisSize,
+  CornerRadiusElement,
   Element,
   Fill,
   FrameElement,
@@ -12,7 +13,7 @@ import type {
   Rotation,
   SizeValue,
 } from "@mechane/domain";
-import { isPropertyConnection } from "@mechane/domain";
+import { hasCornerRadius, isPropertyConnection } from "@mechane/domain";
 import type { CanvasRendererProps } from "./canvas-render";
 function literal<T>(value: T | PropertyConnection | undefined): T | undefined {
   return isPropertyConnection(value) ? undefined : (value as T | undefined);
@@ -87,7 +88,18 @@ function constraintFor(
 function paddingValue(padding: FrameElement["padding"]): string | undefined {
   if (padding === undefined) return undefined;
   if (typeof padding === "number") return `${padding}px`;
-  return `${padding.top ?? 0}px ${padding.right ?? 0}px ${padding.bottom ?? 0}px ${padding.left ?? 0}px`;
+  return `${padding.top ?? 0}px ${padding.right ?? 0}px ${padding.bottom ?? 0}px ${
+    padding.left ?? 0
+  }px`;
+}
+
+function cornerRadiusValue(radius: CornerRadiusElement["cornerRadius"]): string | undefined {
+  const value = literal(radius);
+  if (value === undefined) return undefined;
+  if (typeof value === "number") return `${value}px`;
+  return `${value.topLeft ?? 0}px ${value.topRight ?? 0}px ${value.bottomRight ?? 0}px ${
+    value.bottomLeft ?? 0
+  }px`;
 }
 
 function cssFill(fill: Fill | undefined): string | undefined {
@@ -200,9 +212,8 @@ function contentFor(element: Element): ReactNode {
 }
 
 function typeStyle(element: Element): CSSProperties {
-  if (element.type === "rect") {
-    const radius = literal(element.cornerRadius);
-    return { borderRadius: radius === undefined ? undefined : `${radius}px` };
+  if (hasCornerRadius(element)) {
+    return { borderRadius: cornerRadiusValue(element.cornerRadius) };
   }
   if (element.type === "ellipse") return { borderRadius: "50%" };
   if (element.type === "text") {

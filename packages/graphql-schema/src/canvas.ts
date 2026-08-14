@@ -49,6 +49,7 @@ export const CanvasElementFields = graphql(`
       objectFit
     }
     ... on FrameElement {
+      cornerRadius
       layoutMode
       autoLayout
       direction

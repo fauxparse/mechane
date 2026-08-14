@@ -1,6 +1,6 @@
 import { applyCanvasEdits, CANVAS_COMMAND_TYPES } from "@mechane/commands";
 import type { CanvasEdit } from "@mechane/commands";
-import type { FrameElement, SceneVariable } from "@mechane/domain";
+import { hasCornerRadius } from "@mechane/domain";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useCallback, useState } from "react";
 
@@ -42,7 +42,7 @@ const absoluteRoot: FrameElement = {
   layoutMode: "absolute",
   width: { mode: "fixed", value: 720 },
   height: { mode: "fixed", value: 480 },
-  fill: "#1e293b",
+  cornerRadius: 24,
   children: [
     {
       id: "headline",
@@ -69,6 +69,19 @@ const absoluteRoot: FrameElement = {
       anchor: { horizontal: "left", vertical: "top", offsetX: 32, offsetY: 120 },
     },
   ],
+};
+const asymmetricRadiusRoot: FrameElement = {
+  ...absoluteRoot,
+  id: "asymmetric-radius-root",
+  name: "Asymmetric corner radius",
+  children: absoluteRoot.children?.map((child) =>
+    child.id === "card" && hasCornerRadius(child)
+      ? {
+          ...child,
+          cornerRadius: { topLeft: 8, topRight: 12, bottomRight: 16, bottomLeft: 20 },
+        }
+      : child,
+  ),
 };
 
 const connectedRoot: FrameElement = {
@@ -260,6 +273,15 @@ export const AbsoluteRectangle: Story = {
   render: () => (
     <InspectorStory
       initialArtboard={artboard(absoluteRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: ["card"] }}
+    />
+  ),
+};
+
+export const AsymmetricCornerRadius: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(asymmetricRadiusRoot)}
       initialSelection={{ artId: ART_ID, elementIds: ["card"] }}
     />
   ),

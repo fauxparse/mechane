@@ -117,9 +117,21 @@ export interface ElementBase {
   children?: readonly Element[];
 }
 
-export interface RectElement extends ElementBase {
+export interface CornerRadius {
+  topLeft?: number;
+  topRight?: number;
+  bottomRight?: number;
+  bottomLeft?: number;
+}
+
+export type CornerRadiusValue = number | CornerRadius;
+
+export interface CornerRadiusElement extends ElementBase {
+  cornerRadius?: PropertyValue<CornerRadiusValue>;
+}
+
+export interface RectElement extends CornerRadiusElement {
   type: "rect";
-  cornerRadius?: PropertyValue<number>;
 }
 
 export interface EllipseElement extends ElementBase {
@@ -149,7 +161,7 @@ export interface ImageElement extends ElementBase {
   objectFit?: PropertyValue<ObjectFit>;
 }
 
-export interface FrameElement extends ElementBase {
+export interface FrameElement extends CornerRadiusElement {
   type: "frame";
   layoutMode?: FrameLayoutMode;
   autoLayout?: boolean;
@@ -168,6 +180,10 @@ export interface Padding {
   right?: number;
   bottom?: number;
   left?: number;
+}
+
+export function hasCornerRadius(element: Element): element is CornerRadiusElement {
+  return element.type === "rect" || element.type === "frame";
 }
 
 export interface AnchorPosition {
