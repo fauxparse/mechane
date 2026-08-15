@@ -10,6 +10,7 @@ import {
   RESIZE_HANDLES,
 } from "../commands/canvas-resize";
 import type { CanvasWorkspaceSurfaceProps } from "../canvas-workspace-types";
+import { useCanvasTextEditing } from "./use-canvas-text-editing";
 
 const HANDLE_SIZE = 8;
 
@@ -34,9 +35,10 @@ type CanvasWorkspaceStageProps = Pick<
   | "onBeginRubberband"
   | "onBeginElementDrag"
   | "onSelectAtPoint"
-  | "onBeginDrag"
   | "onUpdateElementDrag"
   | "onUpdateRubberband"
+  | "onBeginDrag"
+  | "onUpdateElement"
   | "onMoveDrag"
   | "onMoveCreation"
   | "onFinishElementDrag"
@@ -55,6 +57,8 @@ type CanvasWorkspaceStageProps = Pick<
   | "rubberbandRect"
 >;
 
+// The stage keeps pointer handlers and their overlay ordering in one event surface.
+// react-doctor-disable-next-line no-giant-component
 export function CanvasWorkspaceStage({
   workspaceRef,
   onCancelCreation,
@@ -74,8 +78,9 @@ export function CanvasWorkspaceStage({
   onBeginRubberband,
   onBeginElementDrag,
   onSelectAtPoint,
-  onBeginDrag,
   onUpdateElementDrag,
+  onBeginDrag,
+  onUpdateElement,
   onUpdateRubberband,
   onMoveDrag,
   onMoveCreation,
@@ -94,6 +99,8 @@ export function CanvasWorkspaceStage({
   dragLine,
   rubberbandRect,
 }: CanvasWorkspaceStageProps) {
+  const { textEdit, textEditRef, beginTextEdit, commitTextEdit, handleTextKeyDown } =
+    useCanvasTextEditing({ ordered, workspaceRef, onUpdateElement });
   return (
     <main
       ref={workspaceRef}
@@ -106,7 +113,10 @@ export function CanvasWorkspaceStage({
         }
         onHandleCanvasKeyDown(event);
       }}
-      onPointerDown={onBeginWorkspaceInteraction}
+      onPointerDown={(event) => {
+        commitTextEdit();
+        onBeginWorkspaceInteraction(event);
+      }}
       onPointerMove={onMoveWorkspaceInteraction}
       onPointerUp={onEndWorkspaceInteraction}
       onPointerCancel={onCancelWorkspaceInteraction}
@@ -146,6 +156,21 @@ export function CanvasWorkspaceStage({
               }}
               aria-label={artboardLabel(artboard)}
               onPointerDown={(event) => {
+                const textTarget =
+                  event.target instanceof HTMLElement
+                    ? event.target.closest<HTMLElement>("[data-element-type='text']")
+                    : null;
+                if (textEditRef.current) {
+                  if (textTarget?.dataset.elementId === textEditRef.current.elementId) {
+                    event.stopPropagation();
+                    return;
+                  }
+                  commitTextEdit();
+                }
+                if (event.detail > 1 && textTarget) {
+                  event.stopPropagation();
+                  return;
+                }
                 if (tool !== "select") {
                   onBeginCreation(event, artboard);
                   return;
@@ -166,6 +191,22 @@ export function CanvasWorkspaceStage({
                 onSelectAtPoint(event, artboard);
                 onBeginDrag(event, artboard);
               }}
+              onDoubleClick={(event) => {
+                const textElement =
+                  (event.target instanceof HTMLElement
+                    ? event.target.closest<HTMLElement>("[data-element-type='text']")
+                    : null) ??
+                  event.currentTarget.ownerDocument
+                    .elementFromPoint(event.clientX, event.clientY)
+                    ?.closest<HTMLElement>("[data-element-type='text']");
+                if (
+                  textElement?.closest<HTMLElement>("[data-artboard-id]") !== event.currentTarget
+                ) {
+                  return;
+                }
+                const elementId = textElement?.dataset.elementId;
+                if (elementId) beginTextEdit(elementId, event);
+              }}
               onPointerMove={(event) => {
                 onUpdateElementDrag(event);
                 onUpdateRubberband(event);
@@ -185,7 +226,12 @@ export function CanvasWorkspaceStage({
                 onFinishCreation(event, true);
               }}
             >
-              <CanvasRenderer canvas={artboard.renderCanvas ?? artboard.canvas} />
+              <CanvasRenderer
+                canvas={artboard.renderCanvas ?? artboard.canvas}
+                editingElementId={textEdit?.artId === artboard.artId ? textEdit.elementId : null}
+                onTextDoubleClick={beginTextEdit}
+                onTextKeyDown={handleTextKeyDown}
+              />
             </div>
           );
         })}

@@ -16,7 +16,7 @@
  * belong to the focused control rather than the canvas.
  */
 const KEY_CONSUMING_SELECTOR =
-  'button, input, textarea, select, [contenteditable="true"], [role="menu"], [role="listbox"], [role="dialog"], [role="combobox"], [role="button"], [role="checkbox"], [role="radio"], [role="slider"], [role="spinbutton"], [role="tab"]';
+  'button, input, textarea, select, [contenteditable], [role="menu"], [role="listbox"], [role="dialog"], [role="combobox"], [role="button"], [role="checkbox"], [role="radio"], [role="slider"], [role="spinbutton"], [role="tab"]';
 
 export interface DomFocusContext {
   nodeHasFocus: boolean;
