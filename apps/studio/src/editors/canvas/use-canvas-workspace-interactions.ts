@@ -704,11 +704,37 @@ export function useCanvasWorkspaceInteractions({
       const next = scaleWithin(subject.start, start, box);
       node.style.width = `${next.width / camera.zoom}px`;
       node.style.height = `${next.height / camera.zoom}px`;
-      node.style.translate = `${(next.x - subject.start.x) / camera.zoom}px ${
-        (next.y - subject.start.y) / camera.zoom
-      }px`;
+      // An auto-layout parent owns the child's position. Let the browser apply the relative size
+      // adjustment and measure the resulting position instead of pinning an edge to the pointer.
+      if (!subject.autoParent) {
+        node.style.translate = `${(next.x - subject.start.x) / camera.zoom}px ${
+          (next.y - subject.start.y) / camera.zoom
+        }px`;
+      }
       return [{ node, previous }];
     });
+    if (subjects.some((subject) => subject.autoParent)) {
+      const actual = selectionRect(
+        subjects.flatMap((subject) => {
+          const node = workspaceRef.current?.querySelector<HTMLElement>(
+            `[data-element-id="${CSS.escape(subject.elementId)}"]`,
+          );
+          return node ? [measuredRect(node)] : [];
+        }),
+      );
+      if (
+        actual &&
+        (Math.abs(actual.x - box.x) > 0.01 ||
+          Math.abs(actual.y - box.y) > 0.01 ||
+          Math.abs(actual.width - box.width) > 0.01 ||
+          Math.abs(actual.height - box.height) > 0.01)
+      ) {
+        setResizeDraft((current) =>
+          current && current === resizeDraft ? { ...current, box: actual } : current,
+        );
+      }
+    }
+
     return () => {
       for (const { node, previous } of restore) {
         // Position comes back from the model's anchor, so the preview translate always goes.
