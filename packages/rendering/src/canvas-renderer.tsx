@@ -115,6 +115,12 @@ function cssFill(fill: Fill | undefined): string | undefined {
     ? `radial-gradient(circle, ${stops})`
     : `linear-gradient(${fill.angle ?? 0}deg, ${stops})`;
 }
+function fillStyles(fill: Fill | undefined): CSSProperties {
+  if (fill === undefined || isPropertyConnection(fill)) return {};
+  return typeof fill === "string"
+    ? { backgroundColor: fill }
+    : { backgroundImage: cssFill(fill) };
+}
 function strokeStyles(stroke: Element["stroke"]): CSSProperties {
   if (!stroke || isPropertyConnection(stroke)) return {};
   return {
@@ -179,7 +185,10 @@ function elementStyle(element: Element, root: boolean, sceneRoot: boolean): CSSP
     aspectRatio: physicalRatio,
     opacity: literal(element.opacity),
     mixBlendMode: literal(element.blendMode),
-    background: cssFill(literal(element.fill)),
+    ...fillStyles(literal(element.fill)),
+    // Paint and position fills beneath the border so gradients cover the stroke area too.
+    backgroundClip: "border-box",
+    backgroundOrigin: "border-box",
     ...strokeStyles(element.stroke),
     writingMode: writingModeFor(rotation),
     display: element.type === "image" ? "block" : undefined,
