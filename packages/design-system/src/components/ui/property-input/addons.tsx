@@ -1,9 +1,10 @@
+import { Combobox as ComboboxPrimitive } from "@base-ui/react";
 import { isFunction, isObject } from "es-toolkit/compat";
 import type { LucideIcon } from "lucide-react";
 import type { ShapeValue } from "@mechane/domain";
 import type { PointerEventHandler, ReactNode } from "react";
 
-import { InputGroupAddon } from "../input-group";
+import { InputGroupAddon, InputGroupButton } from "../input-group";
 import { cn } from "../../../lib/utils";
 import { formatValueText, getColorInputValue } from "./use-property-input";
 import type {
@@ -73,10 +74,16 @@ export function Addons<T extends ShapeValue>({
       )}
       {inputType === "color" && (
         <InputGroupAddon align="inline-start" className="h-full p-0 pl-1 mr-2">
-          <span
-            aria-label={`Color ${colorText || "unset"}`}
-            className="size-4 rounded-sm border border-border/70"
-            style={{ backgroundColor: getColorInputValue(colorText) }}
+          <ComboboxPrimitive.Trigger
+            render={
+              <InputGroupButton
+                aria-label={`Color ${colorText || "unset"}`}
+                variant="ghost"
+                size="icon-xs"
+                className="size-4 cursor-pointer rounded-sm border border-border/70 p-0 hover:bg-transparent"
+                style={{ backgroundColor: getColorInputValue(colorText) }}
+              />
+            }
           />
         </InputGroupAddon>
       )}

@@ -1,4 +1,4 @@
-import type { Stroke, StrokeStyle } from "@mechane/domain";
+import type { Element as CanvasElement, Stroke, StrokeStyle } from "@mechane/domain";
 import {
   Button,
   PenIcon,
@@ -38,37 +38,44 @@ const isStroke = (value: unknown): value is Stroke => {
     typeof stroke.color === "string"
   );
 };
-const sameStroke = (left: unknown, right: unknown): boolean => {
-  if (!isStroke(left) || !isStroke(right)) return false;
-  return left.width === right.width && left.style === right.style && left.color === right.color;
+const commonStrokeField = <K extends keyof Stroke>(
+  elements: readonly CanvasElement[],
+  field: K,
+): Stroke[K] | undefined => {
+  const values = elements.map((element) => {
+    const value = Reflect.get(element, "stroke");
+    return isStroke(value) ? value[field] : undefined;
+  });
+  const first = values[0];
+  return values.every((value) => value === first) ? first : undefined;
 };
 
 export const StrokeSection = () => {
-  const { common, selected, update } = useCanvasInspectorContext();
-  const strokeValues = selected.map((shape) => Reflect.get(shape, "stroke"));
-  const anyStrokes = strokeValues.some((value) => value !== undefined);
-  const uniformStroke =
-    strokeValues.length > 0 &&
-    strokeValues.every((value) => sameStroke(value, strokeValues[0]));
-  const hasMixedStroke = selected.length > 1 && anyStrokes && !uniformStroke;
-  const rawStroke = uniformStroke ? strokeValues[0] : common("stroke");
-  const stroke = isStroke(rawStroke) ? rawStroke : DEFAULT_STROKE;
+  const { selected, update } = useCanvasInspectorContext();
+  const anyStrokes = selected.some((shape) => Reflect.get(shape, "stroke") !== undefined);
+  const width = commonStrokeField(selected, "width");
+  const style = commonStrokeField(selected, "style");
+  const color = commonStrokeField(selected, "color");
+  const stroke: Stroke = {
+    width: width ?? DEFAULT_STROKE.width,
+    style: style ?? DEFAULT_STROKE.style,
+    color: color ?? DEFAULT_STROKE.color,
+  };
   const updateStroke = (changes: Partial<Stroke>) => update({ stroke: { ...stroke, ...changes } });
+  const removeStroke = () => update({ stroke: undefined });
 
   return (
     <Section label="Stroke">
-      {hasMixedStroke ? (
-        <span className="col-span-full text-xs text-muted-foreground">Mixed</span>
-      ) : anyStrokes ? (
+      {anyStrokes ? (
         <>
           <SectionRow>
             <PropertyInput
               type="number"
               icon={PenLineIcon}
-              value={{ kind: "number", value: stroke.width }}
+              value={width === undefined ? undefined : { kind: "number", value: width }}
               min={0}
               unit="px"
-              placeholder="Stroke width"
+              placeholder={width === undefined ? "Mixed" : "Stroke width"}
               onChange={(next) => {
                 if (!next || isVariableInput(next) || next.kind !== "number") return;
                 updateStroke({ width: next.value });
@@ -76,7 +83,7 @@ export const StrokeSection = () => {
             />
             <Select
               items={STROKE_STYLES}
-              value={stroke.style}
+              value={style ?? null}
               onValueChange={(value) => {
                 updateStroke({ style: value as StrokeStyle });
               }}
@@ -85,7 +92,7 @@ export const StrokeSection = () => {
                 className="w-full rounded-sm border-0 bg-muted/50 dark:bg-muted/50 px-2"
                 size="sm"
               >
-                <SelectValue />
+                <SelectValue placeholder={style === undefined ? "Mixed" : undefined} />
               </SelectTrigger>
               <SelectContent>
                 {STROKE_STYLES.map((style) => (
@@ -99,7 +106,7 @@ export const StrokeSection = () => {
               size="icon-sm"
               variant="ghost"
               aria-label="Remove stroke"
-              onClick={() => updateStroke({ width: 0 })}
+              onClick={removeStroke}
             >
               <Trash2Icon />
             </Button>
@@ -109,8 +116,8 @@ export const StrokeSection = () => {
               type="color"
               icon={PenToolIcon}
               className="col-span-2"
-              value={{ kind: "color", value: stroke.color }}
-              placeholder="Stroke color"
+              value={color === undefined ? undefined : { kind: "color", value: color }}
+              placeholder={color === undefined ? "Mixed" : "Stroke color"}
               onChange={(next) => {
                 if (!next || isVariableInput(next) || next.kind !== "color") return;
                 if (typeof next.value === "string") updateStroke({ color: next.value });
