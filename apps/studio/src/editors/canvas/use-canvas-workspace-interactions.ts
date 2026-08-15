@@ -178,7 +178,10 @@ export function useCanvasWorkspaceInteractions({
   const [resizeDraft, setResizeDraft] = useState<{
     artId: string;
     start: ResizeBox;
+    /** Pointer-requested box used to size the live Element preview and commit the resize. */
     box: ResizeBox;
+    /** Browser-measured box used for overlays when auto layout repositions the child. */
+    actual: ResizeBox;
     subjects: readonly ResizeSubject[];
     active: boolean;
   } | null>(null);
@@ -608,7 +611,14 @@ export function useCanvasWorkspaceInteractions({
       subjects,
       ratio: lockedAspectRatio(soleElement),
     };
-    setResizeDraft({ artId: artboard.artId, start, box: start, subjects, active: true });
+    setResizeDraft({
+      artId: artboard.artId,
+      start,
+      box: start,
+      actual: start,
+      subjects,
+      active: true,
+    });
   };
 
   const updateResize = (event: PointerEvent<HTMLElement>) => {
@@ -627,6 +637,7 @@ export function useCanvasWorkspaceInteractions({
       artId: gesture.artId,
       start: gesture.start,
       box,
+      actual: box,
       subjects: gesture.subjects,
       active: true,
     });
@@ -725,7 +736,7 @@ export function useCanvasWorkspaceInteractions({
       return [{ node, previous }];
     });
     if (subjects.some((subject) => subject.autoParent)) {
-      const actual = selectionRect(
+      const measured = selectionRect(
         subjects.flatMap((subject) => {
           const node = workspaceRef.current?.querySelector<HTMLElement>(
             `[data-element-id="${CSS.escape(subject.elementId)}"]`,
@@ -734,14 +745,14 @@ export function useCanvasWorkspaceInteractions({
         }),
       );
       if (
-        actual &&
-        (Math.abs(actual.x - box.x) > 0.01 ||
-          Math.abs(actual.y - box.y) > 0.01 ||
-          Math.abs(actual.width - box.width) > 0.01 ||
-          Math.abs(actual.height - box.height) > 0.01)
+        measured &&
+        (Math.abs(measured.x - resizeDraft.actual.x) > 0.01 ||
+          Math.abs(measured.y - resizeDraft.actual.y) > 0.01 ||
+          Math.abs(measured.width - resizeDraft.actual.width) > 0.01 ||
+          Math.abs(measured.height - resizeDraft.actual.height) > 0.01)
       ) {
         setResizeDraft((current) =>
-          current && current === resizeDraft ? { ...current, box: actual } : current,
+          current && current === resizeDraft ? { ...current, actual: measured } : current,
         );
       }
     }
@@ -1183,8 +1194,9 @@ export function useCanvasWorkspaceInteractions({
     selection.elementIds[0] === dragOffset.elementId
       ? dragOffset
       : null;
-  // A resize in flight is the truth about where the box is; geometry has not caught up yet.
-  const liveResize = resizeDraft?.box ?? null;
+  // A resize in flight is the browser-measured box; the pointer-requested box remains separate so
+  // auto-layout measurement cannot feed back into the styles it is measuring.
+  const liveResize = resizeDraft?.actual ?? null;
   const resizePreview =
     resizeDraft &&
     workspaceBounds &&
@@ -1192,10 +1204,10 @@ export function useCanvasWorkspaceInteractions({
     selectedGeometry?.rootElementId === resizeDraft.subjects[0]?.elementId
       ? {
           artId: resizeDraft.artId,
-          x: (resizeDraft.box.x - workspaceBounds.x - camera.x) / camera.zoom,
-          y: (resizeDraft.box.y - workspaceBounds.y - camera.y) / camera.zoom,
-          width: resizeDraft.box.width / camera.zoom,
-          height: resizeDraft.box.height / camera.zoom,
+          x: (resizeDraft.actual.x - workspaceBounds.x - camera.x) / camera.zoom,
+          y: (resizeDraft.actual.y - workspaceBounds.y - camera.y) / camera.zoom,
+          width: resizeDraft.actual.width / camera.zoom,
+          height: resizeDraft.actual.height / camera.zoom,
         }
       : null;
   const selectedArtboard = ordered.find((artboard) => artboard.artId === selection.artId);
@@ -1233,7 +1245,7 @@ export function useCanvasWorkspaceInteractions({
         ? (() => {
             const subject = resizeDraft.subjects[0];
             if (!subject) return null;
-            const current = scaleWithin(subject.start, resizeDraft.start, resizeDraft.box);
+            const current = scaleWithin(subject.start, resizeDraft.start, resizeDraft.actual);
             return {
               elementId: subject.elementId,
               ...(previewParent

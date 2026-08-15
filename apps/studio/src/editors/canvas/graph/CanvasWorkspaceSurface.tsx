@@ -86,6 +86,7 @@ export function CanvasWorkspaceSurface({
         onBeginElementDrag={onBeginElementDrag}
         onSelectAtPoint={onSelectAtPoint}
         onBeginDrag={onBeginDrag}
+        onUpdateElement={onUpdateElement}
         onUpdateElementDrag={onUpdateElementDrag}
         onUpdateRubberband={onUpdateRubberband}
         onMoveDrag={onMoveDrag}

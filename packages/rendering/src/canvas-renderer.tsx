@@ -1,5 +1,10 @@
 import { memo } from "react";
-import type { CSSProperties, ReactNode } from "react";
+import type {
+  CSSProperties,
+  KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent as ReactMouseEvent,
+  ReactNode,
+} from "react";
 import { createElement } from "react";
 import type {
   AnchorPosition,
@@ -25,6 +30,9 @@ interface RenderElementOptions {
   root?: boolean;
   sceneRoot?: boolean;
   parent?: FrameElement;
+  editingElementId?: string | null;
+  onTextDoubleClick?: (elementId: string, event: ReactMouseEvent<HTMLDivElement>) => void;
+  onTextKeyDown?: (elementId: string, event: ReactKeyboardEvent<HTMLDivElement>) => void;
 }
 
 function sizeValue(value: SizeValue | PropertyConnection | undefined): string | undefined {
@@ -118,9 +126,7 @@ function cssFill(fill: Fill | undefined): string | undefined {
 }
 function fillStyles(fill: Fill | undefined): CSSProperties {
   if (fill === undefined || isPropertyConnection(fill)) return {};
-  return typeof fill === "string"
-    ? { backgroundColor: fill }
-    : { backgroundImage: cssFill(fill) };
+  return typeof fill === "string" ? { backgroundColor: fill } : { backgroundImage: cssFill(fill) };
 }
 function strokeStyles(stroke: Element["stroke"]): CSSProperties {
   if (!stroke || isPropertyConnection(stroke)) return {};
@@ -246,6 +252,7 @@ function typeStyle(element: Element): CSSProperties {
       lineHeight: literal(element.lineHeight),
       letterSpacing: letterSpacing === undefined ? undefined : `${letterSpacing}px`,
       textAlign: literal(element.textAlign),
+      userSelect: "none",
       whiteSpace: "pre-wrap",
       overflowWrap: "anywhere",
     };
@@ -259,12 +266,17 @@ function renderElement({
   root = false,
   sceneRoot = false,
   parent,
+  editingElementId,
+  onTextDoubleClick,
+  onTextKeyDown,
 }: RenderElementOptions): ReactNode {
   const parentIsAuto = parent?.layoutMode === "auto" || parent?.autoLayout === true;
+  const editing = element.type === "text" && element.id === editingElementId;
   const style = {
     ...elementStyle(element, root, sceneRoot),
     ...(element.type === "frame" ? frameStyle(element) : {}),
     ...typeStyle(element),
+    ...(editing ? { userSelect: "text" as const } : {}),
     ...(parent && !parentIsAuto ? { gridArea: "1 / 1", ...anchorStyles(element.anchor) } : {}),
     ...(parentIsAuto &&
     sizeFor(element, parent.direction === "horizontal" ? "width" : "height")?.mode === "fill"
@@ -279,6 +291,9 @@ function renderElement({
             key: child.id,
             element: child,
             parent: element,
+            editingElementId,
+            onTextDoubleClick,
+            onTextKeyDown,
           }),
         )
       : undefined;
@@ -312,6 +327,19 @@ function renderElement({
           : "false",
       style,
       hidden: element.hidden,
+      contentEditable: editing ? "plaintext-only" : undefined,
+      suppressContentEditableWarning: editing || undefined,
+      onDoubleClick:
+        element.type === "text" && onTextDoubleClick
+          ? (event: ReactMouseEvent<HTMLDivElement>) => {
+              event.preventDefault();
+              onTextDoubleClick(element.id, event);
+            }
+          : undefined,
+      onKeyDown:
+        editing && onTextKeyDown
+          ? (event: ReactKeyboardEvent<HTMLDivElement>) => onTextKeyDown(element.id, event)
+          : undefined,
     },
     element.type === "text" ? contentFor(element) : children,
   );
@@ -320,17 +348,22 @@ function renderElement({
 export function ElementRenderer({
   element,
   parent,
-}: {
-  element: Element;
-  parent?: FrameElement;
-}): ReactNode {
-  return <>{renderElement({ element, parent })}</>;
+  editingElementId,
+  onTextDoubleClick,
+  onTextKeyDown,
+}: RenderElementOptions): ReactNode {
+  return (
+    <>{renderElement({ element, parent, editingElementId, onTextDoubleClick, onTextKeyDown })}</>
+  );
 }
 
 export const CanvasRenderer = memo(function CanvasRenderer({
   canvas,
   className,
   style,
+  editingElementId,
+  onTextDoubleClick,
+  onTextKeyDown,
 }: CanvasRendererProps): ReactNode {
   const root = "root" in canvas ? canvas.root : canvas;
   const sceneRoot = "root" in canvas && canvas.kind === "scene";
@@ -342,6 +375,13 @@ export const CanvasRenderer = memo(function CanvasRenderer({
       "data-canvas-root": root.id,
       "data-canvas-kind": "root" in canvas ? canvas.kind : undefined,
     },
-    renderElement({ element: root, root: true, sceneRoot }),
+    renderElement({
+      element: root,
+      root: true,
+      sceneRoot,
+      editingElementId,
+      onTextDoubleClick,
+      onTextKeyDown,
+    }),
   );
 });

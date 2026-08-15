@@ -259,4 +259,27 @@ describe("CanvasRenderer", () => {
     expect(html).toContain("border-style:dashed");
     expect(html).toContain("border-width:3px");
   });
+  it("makes only the active text Element editable", () => {
+    const html = renderToStaticMarkup(
+      createElement(CanvasRenderer, {
+        canvas: {
+          kind: "scene",
+          root: {
+            id: "root",
+            type: "frame",
+            children: [
+              { id: "active", type: "text", content: "Edit me" },
+              { id: "inactive", type: "text", content: "Leave me" },
+            ],
+          },
+        },
+        editingElementId: "active",
+        onTextDoubleClick: () => {},
+        onTextKeyDown: () => {},
+      }),
+    );
+
+    expect(html).toMatch(/data-element-id="active"[^>]*user-select:text/);
+    expect(html).toMatch(/data-element-id="inactive"[^>]*user-select:none/);
+  });
 });
