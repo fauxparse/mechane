@@ -669,11 +669,11 @@ export function useCanvasWorkspaceInteractions({
       }
       onUpdateElement?.(gesture.canvasId, subject.elementId, properties, unset);
     }
-    // The commit re-renders the Element at the size just previewed, so the override must be
-    // abandoned rather than unwound.
+    // Keep the live preview mounted until the post-commit geometry arrives. Clearing `active` here
+    // runs the preview cleanup before React has rendered the model update, briefly exposing the
+    // pre-resize Element while the selection rect still shows the committed size.
     resizeCommitted.current = true;
     clearResizeAfterRemeasure.current = true;
-    setResizeDraft((current) => (current ? { ...current, active: false } : null));
   };
 
   useLayoutEffect(() => {
