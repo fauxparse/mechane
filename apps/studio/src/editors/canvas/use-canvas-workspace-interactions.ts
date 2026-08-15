@@ -6,7 +6,7 @@ import type { NewElement } from "@mechane/commands";
 import type { Position, FrameElement } from "@mechane/domain";
 
 import type { CanvasArtboardDocument } from "../../api/canvas";
-import { selectedCanvasRects, useCanvasGeometry } from "./graph/canvas-geometry";
+import { contentOrigin, selectedCanvasRects, useCanvasGeometry } from "./graph/canvas-geometry";
 import type { CanvasClientRect } from "./graph/canvas-geometry";
 import type { CanvasSelection } from "./graph/canvas-selection";
 import { useCanvasCamera } from "./graph/use-canvas-camera";
@@ -454,19 +454,27 @@ export function useCanvasWorkspaceInteractions({
             )
           : undefined;
         const parentRect = parent ? measuredRect(parent) : null;
+        const targetArtboard = ordered.find((candidate) => candidate.artId === preview.artId);
+        const parentElement = targetArtboard
+          ? findCanvasElement(targetArtboard.canvas.root, preview.parentId)
+          : null;
+        const parentStrokeWidth = Math.max(0, parentElement?.stroke?.width ?? 0);
+        const parentOrigin = parentRect
+          ? contentOrigin(parentRect, parentStrokeWidth, parentStrokeWidth, camera.zoom)
+          : null;
         const modelArtboard = ordered.find((candidate) => candidate.artId === activeDrag.artId);
         const modelElement = modelArtboard
           ? findCanvasElement(modelArtboard.canvas.root, activeDrag.elementId)
           : null;
         const properties: Record<string, unknown> =
-          preview.auto || !parentRect
+          preview.auto || !parentOrigin
             ? {}
             : {
                 anchor: {
                   horizontal: "left" as const,
                   vertical: "top" as const,
-                  offsetX: roundToLogicalPixel(dropped.x - parentRect.x, camera.zoom),
-                  offsetY: roundToLogicalPixel(dropped.y - parentRect.y, camera.zoom),
+                  offsetX: roundToLogicalPixel(dropped.x - parentOrigin.x, camera.zoom),
+                  offsetY: roundToLogicalPixel(dropped.y - parentOrigin.y, camera.zoom),
                 },
                 ...(activeDrag.originAutoParent && modelElement
                   ? fixedFillSizing(
