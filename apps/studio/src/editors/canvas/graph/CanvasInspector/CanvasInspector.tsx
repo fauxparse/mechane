@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { SidebarContent, SidebarHeader } from "@mechane/design-system";
 
 import { AppearanceSection } from "./AppearanceSection";
@@ -33,13 +34,12 @@ const CanvasInspectorContent = () => (
   </>
 );
 
-export const CanvasInspector = (props: CanvasInspectorProps) => {
+export const CanvasInspector = memo(function CanvasInspector(props: CanvasInspectorProps) {
   const model = useCanvasInspectorModel(props);
   if (!model) return <EmptySelection />;
-
   return (
     <CanvasInspectorProvider value={model}>
       <CanvasInspectorContent />
     </CanvasInspectorProvider>
   );
-};
+});

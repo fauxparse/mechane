@@ -108,17 +108,46 @@ export function useCanvasCamera(
   useEffect(() => {
     const workspace = workspaceRef.current;
     if (!workspace) return;
+    let frame: number | null = null;
+    let panX = 0;
+    let panY = 0;
+    let zoomDelta = 0;
+    let zoomPoint = { x: 0, y: 0 };
+    const flushWheel = () => {
+      frame = null;
+      const nextPanX = panX;
+      const nextPanY = panY;
+      const nextZoomDelta = zoomDelta;
+      const nextZoomPoint = zoomPoint;
+      panX = 0;
+      panY = 0;
+      zoomDelta = 0;
+      setCamera((current) => {
+        let next = current;
+        if (nextPanX !== 0 || nextPanY !== 0) {
+          next = panCanvasCamera(next, nextPanX, nextPanY);
+        }
+        if (nextZoomDelta !== 0) {
+          next = zoomCanvasCamera(
+            next,
+            nextZoomPoint,
+            next.zoom * Math.exp(nextZoomDelta),
+          );
+        }
+        return next;
+      });
+    };
     const onWheel = (event: globalThis.WheelEvent) => {
       event.preventDefault();
       const bounds = workspace.getBoundingClientRect();
       if (event.metaKey || event.ctrlKey) {
-        const point = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
-        setCamera((current) =>
-          zoomCanvasCamera(current, point, current.zoom * Math.exp(-event.deltaY * 0.002)),
-        );
-        return;
+        zoomPoint = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+        zoomDelta += -event.deltaY * 0.002;
+      } else {
+        panX -= event.deltaX;
+        panY -= event.deltaY;
       }
-      setCamera((current) => panCanvasCamera(current, -event.deltaX, -event.deltaY));
+      if (frame === null) frame = window.requestAnimationFrame(flushWheel);
     };
     // Safari reports trackpad pinches as gesture events rather than ctrlKey wheel events.
     const onGesture = (event: Event) => event.preventDefault();
@@ -129,6 +158,7 @@ export function useCanvasCamera(
       workspace.removeEventListener("wheel", onWheel);
       workspace.removeEventListener("gesturestart", onGesture);
       workspace.removeEventListener("gesturechange", onGesture);
+      if (frame !== null) window.cancelAnimationFrame(frame);
     };
   }, []);
 
