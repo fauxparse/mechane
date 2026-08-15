@@ -54,16 +54,6 @@ function measuredRect(element: HTMLElement): CanvasClientRect {
     bottom: rect.bottom,
   };
 }
-function contentOriginForElement(
-  element: HTMLElement,
-  rect: CanvasClientRect,
-  zoom: number,
-): Pick<Position, "x" | "y"> {
-  const styles = getComputedStyle(element);
-  const borderLeft = Number.parseFloat(styles.borderLeftWidth) || 0;
-  const borderTop = Number.parseFloat(styles.borderTopWidth) || 0;
-  return contentOrigin(rect, borderLeft, borderTop, zoom);
-}
 
 type DragState = {
   artId: string;
@@ -464,8 +454,14 @@ export function useCanvasWorkspaceInteractions({
             )
           : undefined;
         const parentRect = parent ? measuredRect(parent) : null;
-        const parentOrigin =
-          parent && parentRect ? contentOriginForElement(parent, parentRect, camera.zoom) : null;
+        const targetArtboard = ordered.find((candidate) => candidate.artId === preview.artId);
+        const parentElement = targetArtboard
+          ? findCanvasElement(targetArtboard.canvas.root, preview.parentId)
+          : null;
+        const parentStrokeWidth = Math.max(0, parentElement?.stroke?.width ?? 0);
+        const parentOrigin = parentRect
+          ? contentOrigin(parentRect, parentStrokeWidth, parentStrokeWidth, camera.zoom)
+          : null;
         const modelArtboard = ordered.find((candidate) => candidate.artId === activeDrag.artId);
         const modelElement = modelArtboard
           ? findCanvasElement(modelArtboard.canvas.root, activeDrag.elementId)
