@@ -77,9 +77,12 @@ export function usePropertyInput<T extends ShapeValue>({
   min,
   max,
   step,
+  allowAuto = false,
+  auto = false,
   scrubScale = 2,
   onChange,
   onSizingChange,
+  onAutoChange,
   onConstraintAdd,
 }: PropertyInputProps<T>) {
   const [uncontrolledValue, setUncontrolledValue] = useState<PropertyInputValue<T> | null>(
@@ -212,6 +215,9 @@ export function usePropertyInput<T extends ShapeValue>({
     if (menuValue === "fixed" || menuValue === "fill" || menuValue === "hug") {
       commitSizing(menuValue);
     }
+    if (menuValue === "auto" && allowAuto) {
+      onAutoChange?.(true);
+    }
     if (menuValue === "add-min" || menuValue === "add-max") {
       onConstraintAdd?.(menuValue === "add-min" ? "min" : "max");
     }
@@ -259,5 +265,6 @@ export function usePropertyInput<T extends ShapeValue>({
     handleMenuValueChange,
     selectVariable,
     disconnectVariable,
+    auto,
   };
 }

@@ -29,6 +29,8 @@ export function Menu<T extends ShapeValue>({
   colorText,
   dimension,
   sizing,
+  auto,
+  allowAuto,
   linkedVariable,
   onColorChange,
 }: {
@@ -36,6 +38,8 @@ export function Menu<T extends ShapeValue>({
   colorText: string;
   dimension?: "width" | "height";
   sizing: PropertyInputSizing;
+  auto: boolean;
+  allowAuto?: boolean;
   linkedVariable: VariableReference<T> | null;
   onColorChange: (value: string | null) => void;
 }) {
@@ -88,6 +92,12 @@ export function Menu<T extends ShapeValue>({
           </>
         )}
         <ComboboxGroup>
+          {allowAuto && (
+            <ComboboxItem value="auto">
+              Auto
+              <CheckIcon className={cn("ml-auto", auto ? "opacity-100" : "opacity-0")} />
+            </ComboboxItem>
+          )}
           <ComboboxItem value="connect">
             <PlugIcon />
             {linkedVariable ? "Change variable…" : "Connect variable…"}

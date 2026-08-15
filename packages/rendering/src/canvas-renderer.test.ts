@@ -30,6 +30,18 @@ describe("CanvasRenderer", () => {
     expect(html).toContain("grid-area:1 / 1");
     expect(html).not.toContain('data-element-id="first"><div');
   });
+  it("marks empty frames as painted hit targets", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [{ id: "empty-frame", type: "frame", children: [] }],
+      },
+    });
+
+    expect(html).toMatch(/data-element-id="empty-frame"[^>]*data-element-painted="true"/);
+  });
 
   it("uses flex layout, authored padding/gap, and the scene clipping boundary", () => {
     const html = markup({
@@ -51,6 +63,52 @@ describe("CanvasRenderer", () => {
     expect(html).toContain("padding:20px");
     expect(html).toContain("overflow:hidden");
     expect(html).toContain("width:100%");
+  });
+  it("renders individual rectangle corner radii", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "rounded",
+            type: "rect",
+            cornerRadius: { topLeft: 8, topRight: 12, bottomRight: 16, bottomLeft: 20 },
+          },
+        ],
+      },
+    });
+
+    expect(html).toContain("border-radius:8px 12px 16px 20px");
+  });
+  it("renders corner radii on frames", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "rounded-frame",
+        type: "frame",
+        cornerRadius: 24,
+        children: [],
+      },
+    });
+
+    expect(html).toContain("border-radius:24px");
+  });
+  it("uses auto gap to distribute flex children with space-between", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        layoutMode: "auto",
+        gap: "auto",
+        children: [{ id: "child", type: "rect" }],
+      },
+    });
+
+    expect(html).toContain("gap:0px");
+    expect(html).toContain("justify-content:space-between");
   });
 
   it("grows only on the primary axis when an auto-layout child fills", () => {
@@ -176,5 +234,25 @@ describe("CanvasRenderer", () => {
 
     expect(html).toContain('data-element-id="ellipse"');
     expect(html).toContain("border-radius:50%");
+  });
+  it("renders element strokes as CSS borders", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "stroked",
+            type: "rect",
+            stroke: { width: 3, style: "dashed", color: "#f43f5e" },
+          },
+        ],
+      },
+    });
+
+    expect(html).toContain("border-color:#f43f5e");
+    expect(html).toContain("border-style:dashed");
+    expect(html).toContain("border-width:3px");
   });
 });

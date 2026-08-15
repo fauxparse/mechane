@@ -1,6 +1,6 @@
 import { applyCanvasEdits, CANVAS_COMMAND_TYPES } from "@mechane/commands";
 import type { CanvasEdit } from "@mechane/commands";
-import type { FrameElement, SceneVariable } from "@mechane/domain";
+import { FrameElement, hasCornerRadius, SceneVariable } from "@mechane/domain";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useCallback, useState } from "react";
 
@@ -21,19 +21,17 @@ const variables: SceneVariable[] = [
 
 const variable = (variableId: string) => ({ kind: "variable" as const, variableId });
 
-function artboard(
+const artboard = (
   root: FrameElement,
   kind: ApiCanvasArtboardDocument["kind"] = "scene",
-): ApiCanvasArtboardDocument {
-  return {
-    canvasId: CANVAS_ID,
-    artId: ART_ID,
-    kind,
-    name: kind === "scene" ? "Inspector review" : "Block review",
-    canvas: { kind, root },
-    position: { x: 0, y: 0 },
-  };
-}
+): ApiCanvasArtboardDocument => ({
+  canvasId: CANVAS_ID,
+  artId: ART_ID,
+  kind,
+  name: kind === "scene" ? "Inspector review" : "Block review",
+  canvas: { kind, root },
+  position: { x: 0, y: 0 },
+});
 
 const absoluteRoot: FrameElement = {
   id: "absolute-root",
@@ -42,7 +40,7 @@ const absoluteRoot: FrameElement = {
   layoutMode: "absolute",
   width: { mode: "fixed", value: 720 },
   height: { mode: "fixed", value: 480 },
-  fill: "#1e293b",
+  cornerRadius: 24,
   children: [
     {
       id: "headline",
@@ -69,6 +67,52 @@ const absoluteRoot: FrameElement = {
       anchor: { horizontal: "left", vertical: "top", offsetX: 32, offsetY: 120 },
     },
   ],
+};
+const gradientRoot: FrameElement = {
+  ...absoluteRoot,
+  id: "gradient-root",
+  name: "Gradient fill",
+  children: absoluteRoot.children?.map((child) =>
+    child.id === "card"
+      ? {
+          ...child,
+          fill: {
+            kind: "linear",
+            angle: 135,
+            stops: [
+              { color: "#38bdf8", position: 0 },
+              { color: "#c084fc", position: 1 },
+            ],
+          },
+        }
+      : child,
+  ),
+};
+const strokeRoot: FrameElement = {
+  ...absoluteRoot,
+  id: "stroke-root",
+  name: "Stroke",
+  children: absoluteRoot.children?.map((child) =>
+    child.id === "card"
+      ? {
+          ...child,
+          stroke: { width: 3, style: "dashed" as const, color: "#f43f5e" },
+        }
+      : child,
+  ),
+};
+const asymmetricRadiusRoot: FrameElement = {
+  ...absoluteRoot,
+  id: "asymmetric-radius-root",
+  name: "Asymmetric corner radius",
+  children: absoluteRoot.children?.map((child) =>
+    child.id === "card" && hasCornerRadius(child)
+      ? {
+          ...child,
+          cornerRadius: { topLeft: 8, topRight: 12, bottomRight: 16, bottomLeft: 20 },
+        }
+      : child,
+  ),
 };
 
 const connectedRoot: FrameElement = {
@@ -105,6 +149,24 @@ const connectedRoot: FrameElement = {
     },
   ],
 };
+const autoGapRoot: FrameElement = {
+  ...connectedRoot,
+  id: "auto-gap-root",
+  name: "Auto gap",
+  gap: "auto",
+};
+const paddingRoot: FrameElement = {
+  ...connectedRoot,
+  id: "padding-root",
+  name: "Padding",
+  padding: 16,
+};
+const asymmetricPaddingRoot: FrameElement = {
+  ...connectedRoot,
+  id: "asymmetric-padding-root",
+  name: "Asymmetric padding",
+  padding: { top: 8, right: 16, bottom: 12, left: 24 },
+};
 
 const multiSelectionRoot: FrameElement = {
   id: "multi-root",
@@ -131,8 +193,8 @@ const multiSelectionRoot: FrameElement = {
       type: "rect",
       name: "Second card",
       rank: "b",
-      opacity: 0.5,
-      fill: "#f8fafc",
+      opacity: 0.72,
+      fill: "#cbd5e1",
       width: { mode: "fixed", value: 120 },
       height: { mode: "fixed", value: 80 },
       anchor: { horizontal: "left", vertical: "top", offsetX: 180, offsetY: 24 },
@@ -246,6 +308,31 @@ export const AbsoluteRectangle: Story = {
     />
   ),
 };
+export const GradientFill: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(gradientRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: ["card"] }}
+    />
+  ),
+};
+export const Stroke: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(strokeRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: ["card"] }}
+    />
+  ),
+};
+
+export const AsymmetricCornerRadius: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(asymmetricRadiusRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: ["card"] }}
+    />
+  ),
+};
 
 export const ConnectedProperties: Story = {
   render: () => (
@@ -257,6 +344,40 @@ export const ConnectedProperties: Story = {
   ),
 };
 
+export const AutoGap: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(autoGapRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: [] }}
+    />
+  ),
+};
+
+export const NumericGap: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(connectedRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: [] }}
+    />
+  ),
+};
+export const Padding: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(paddingRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: [] }}
+    />
+  ),
+};
+
+export const AsymmetricPadding: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(asymmetricPaddingRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: [] }}
+    />
+  ),
+};
 export const MultiSelection: Story = {
   render: () => (
     <InspectorStory

@@ -35,6 +35,7 @@ import { canvasLayerRows, expansionForSelection } from "../data/canvas-layer-tre
 import type { LayerRow } from "../data/canvas-layer-tree";
 import { artboardLabel } from "../data/canvas-workspace";
 import type { CanvasSelection } from "./canvas-selection";
+import { rangeSelection } from "./canvas-selection";
 import { elementIconFor } from "./utils";
 
 type LayerDragData = { rowId: string; artId: string };
@@ -153,7 +154,7 @@ function LayerRowView({
   expanded: boolean;
   renaming: boolean;
   onToggle(): void;
-  onSelectRow(): void;
+  onSelectRow(shiftKey: boolean): void;
   onBeginRename(): void;
   onCommitRename(name: string): void;
 }) {
@@ -297,7 +298,7 @@ function LayerRowView({
             type="button"
             className="relative z-10 min-w-0 flex-1 truncate text-left"
             aria-label={`${name} ${row.kind === "canvas" ? "canvas" : "layer"}`}
-            onClick={onSelectRow}
+            onClick={(event) => onSelectRow(event.shiftKey)}
             onDoubleClick={onBeginRename}
           >
             {name}
@@ -338,6 +339,7 @@ export function CanvasLayers({
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const dragStateRef = useRef<LayerDragState | null>(null);
   const collapsedRowsRef = useRef<HTMLElement[]>([]);
+  const selectionAnchorRef = useRef<{ artId: string; rowId: string } | null>(null);
 
   /**
    * Expansion is derived rather than stored and then patched: `toggled` records only what you
@@ -545,12 +547,30 @@ export function CanvasLayers({
                           expanded={expanded.has(row.id)}
                           renaming={renamingId === `${row.artId}:${row.id}`}
                           onToggle={() => toggle(row.id)}
-                          onSelectRow={() => {
+                          onSelectRow={(shiftKey) => {
                             onFocusArtboard(row.artId);
-                            onSelect({
-                              artId: row.artId,
-                              elementIds: row.kind === "canvas" ? [] : [row.id],
-                            });
+                            const anchor = selectionAnchorRef.current;
+                            const layerIds = visible.flatMap(
+                              ({ row: candidate, artboard: candidateArtboard }) =>
+                                candidateArtboard.artId === row.artId && candidate.kind === "element"
+                                  ? [candidate.id]
+                                  : [],
+                            );
+                            const canExtend =
+                              shiftKey &&
+                              row.kind === "element" &&
+                              anchor !== null &&
+                              anchor.artId === row.artId;
+                            const elementIds =
+                              canExtend && anchor
+                                ? rangeSelection(layerIds, anchor.rowId, row.id)
+                                : row.kind === "canvas"
+                                  ? []
+                                  : [row.id];
+                            if (!canExtend) {
+                              selectionAnchorRef.current = { artId: row.artId, rowId: row.id };
+                            }
+                            onSelect({ artId: row.artId, elementIds });
                           }}
                           onBeginRename={() => setRenamingId(`${row.artId}:${row.id}`)}
                           onCommitRename={(name) => {

@@ -49,6 +49,8 @@ jobs:
         # in package.json for the same reason.
         with:
           version: "0.9.5"
+          # Leave project selection to doctor.config.ts.
+          project: ""
         #   blocking: error          # Gate level: "none" (advisory, the default) | "warning" | "error"
         #   scope: full              # On PRs, scan the whole project instead of just changed files
         #   comment: false           # Disable the sticky PR summary comment

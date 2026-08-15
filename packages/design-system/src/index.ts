@@ -127,6 +127,7 @@ export { Separator } from "./components/ui/separator";
 export { Tabs, TabsContent, TabsList, TabsTrigger, tabsListVariants } from "./components/ui/tabs";
 export { Toggle, toggleVariants } from "./components/ui/toggle";
 export { ToggleGroup, ToggleGroupItem } from "./components/ui/toggle-group";
+export { Slider } from "./components/ui/slider";
 export type {
   SidebarMenuButtonProps,
   SidebarProps,
@@ -173,4 +174,24 @@ export { THEME_COLOR_METADATA } from "./themes/generated";
 export type { ThemeColorKey } from "./themes/generated";
 
 export { MechaneIcon } from "./icons/MechaneIcon";
+export { LayoutNoneIcon } from "./icons/LayoutNoneIcon";
+export { LayoutHorizontalIcon } from "./icons/LayoutHorizontalIcon";
+export { LayoutVerticalIcon } from "./icons/LayoutVerticalIcon";
+export { GapHorizontalIcon } from "./icons/GapHorizontalIcon";
+export { GapVerticalIcon } from "./icons/GapVerticalIcon";
+export { GradientLinearIcon } from "./icons/GradientLinearIcon";
+export { GradientRadialIcon } from "./icons/GradientRadialIcon";
+export { OpacityIcon } from "./icons/OpacityIcon";
+export { PaddingAllIcon } from "./icons/PaddingAllIcon";
+export { PaddingHorizontalIcon } from "./icons/PaddingHorizontalIcon";
+export { PaddingLeftIcon } from "./icons/PaddingLeftIcon";
+export { PaddingRightIcon } from "./icons/PaddingRightIcon";
+export { PaddingVerticalIcon } from "./icons/PaddingVerticalIcon";
+export { PaddingTopIcon } from "./icons/PaddingTopIcon";
+export { PaddingBottomIcon } from "./icons/PaddingBottomIcon";
+export { RadiusIcon } from "./icons/RadiusIcon";
+export { RadiusBottomLeftIcon } from "./icons/RadiusBottomLeftIcon";
+export { RadiusBottomRightIcon } from "./icons/RadiusBottomRightIcon";
+export { RadiusTopLeftIcon } from "./icons/RadiusTopLeftIcon";
+export { RadiusTopRightIcon } from "./icons/RadiusTopRightIcon";
 export * from "lucide-react";

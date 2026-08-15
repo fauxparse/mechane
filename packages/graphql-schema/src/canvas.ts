@@ -26,6 +26,7 @@ export const CanvasElementFields = graphql(`
     opacity
     blendMode
     fill
+    stroke
     anchor
     ... on RectElement {
       cornerRadius
@@ -49,6 +50,7 @@ export const CanvasElementFields = graphql(`
       objectFit
     }
     ... on FrameElement {
+      cornerRadius
       layoutMode
       autoLayout
       direction

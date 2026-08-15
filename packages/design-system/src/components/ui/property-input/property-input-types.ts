@@ -19,6 +19,7 @@ export type PropertyInputUnit = "px" | "%";
 export type PropertyInputValue<T extends ShapeValue = ShapeValue> = T | VariableReference;
 
 export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
+  className?: string;
   icon?: LucideIcon | string;
   value?: PropertyInputValue<T> | null;
   type?: PropertyInputType;
@@ -30,9 +31,14 @@ export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   min?: number;
   max?: number;
   step?: number;
+  /** Enables the shared "Auto" popup option for values with non-numeric semantics. */
+  allowAuto?: boolean;
+  allowLink?: boolean;
+  auto?: boolean;
   /** Number of pixels required for one scrub step. Higher values scrub more slowly. */
   scrubScale?: number;
   onChange?: (value: PropertyInputValue<T> | null) => void;
   onSizingChange?: (sizing: PropertyInputSizing) => void;
+  onAutoChange?: (auto: boolean) => void;
   onConstraintAdd?: (constraint: PropertyInputConstraint) => void;
 };

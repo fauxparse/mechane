@@ -5,6 +5,7 @@
 
 @source "../components";
 @source "../theme";
+@source "../icons";
 @source "../../../../apps/studio/src";
 
 @custom-variant dark (&:is([data-theme-mode="dark"] *));

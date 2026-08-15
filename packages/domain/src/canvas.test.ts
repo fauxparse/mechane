@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { assertValidCanvas, InvalidCanvasError, type Canvas } from "./canvas";
+import { assertValidCanvas, hasCornerRadius, InvalidCanvasError, type Canvas } from "./canvas";
 
 const ROOT: Canvas = {
   kind: "scene",
@@ -25,6 +25,25 @@ describe("Canvas model", () => {
     };
 
     expect(assertValidCanvas(canvas)).toBe(canvas);
+  });
+  it("accepts auto gap on a Frame", () => {
+    expect(
+      assertValidCanvas({
+        root: { id: "root", type: "frame", gap: "auto", children: [] },
+      }),
+    ).toMatchObject({ root: { gap: "auto" } });
+  });
+  it("recognizes elements that support corner radii", () => {
+    expect(hasCornerRadius({ id: "rect", type: "rect" })).toBe(true);
+    expect(hasCornerRadius({ id: "frame", type: "frame" })).toBe(true);
+    expect(hasCornerRadius({ id: "text", type: "text" })).toBe(false);
+  });
+  it("rejects invalid Frame gap values", () => {
+    expect(() =>
+      assertValidCanvas({
+        root: { id: "root", type: "frame", gap: -1, children: [] },
+      }),
+    ).toThrow(/gap must be auto or a finite non-negative number/);
   });
 
   it.each([
@@ -86,5 +105,26 @@ describe("Canvas model", () => {
         },
       }),
     ).toThrow(/invalid gradient stops/);
+  });
+  it("accepts and validates element strokes", () => {
+    expect(
+      assertValidCanvas({
+        root: {
+          id: "root",
+          type: "frame",
+          stroke: { width: 2, style: "dotted", color: "#112233" },
+        },
+      }),
+    ).toMatchObject({ root: { stroke: { width: 2, style: "dotted" } } });
+
+    expect(() =>
+      assertValidCanvas({
+        root: {
+          id: "root",
+          type: "frame",
+          stroke: { width: -1, style: "solid", color: "#112233" },
+        },
+      }),
+    ).toThrow(/stroke width must be finite and non-negative/);
   });
 });

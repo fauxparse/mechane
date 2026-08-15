@@ -4,6 +4,7 @@ import type {
   AnchorPosition,
   AspectRatioLock,
   AxisSize,
+  CornerRadiusElement,
   Element,
   Fill,
   FrameElement,
@@ -12,7 +13,7 @@ import type {
   Rotation,
   SizeValue,
 } from "@mechane/domain";
-import { isPropertyConnection } from "@mechane/domain";
+import { hasCornerRadius, isPropertyConnection } from "@mechane/domain";
 import type { CanvasRendererProps } from "./canvas-render";
 function literal<T>(value: T | PropertyConnection | undefined): T | undefined {
   return isPropertyConnection(value) ? undefined : (value as T | undefined);
@@ -87,7 +88,18 @@ function constraintFor(
 function paddingValue(padding: FrameElement["padding"]): string | undefined {
   if (padding === undefined) return undefined;
   if (typeof padding === "number") return `${padding}px`;
-  return `${padding.top ?? 0}px ${padding.right ?? 0}px ${padding.bottom ?? 0}px ${padding.left ?? 0}px`;
+  return `${padding.top ?? 0}px ${padding.right ?? 0}px ${padding.bottom ?? 0}px ${
+    padding.left ?? 0
+  }px`;
+}
+
+function cornerRadiusValue(radius: CornerRadiusElement["cornerRadius"]): string | undefined {
+  const value = literal(radius);
+  if (value === undefined) return undefined;
+  if (typeof value === "number") return `${value}px`;
+  return `${value.topLeft ?? 0}px ${value.topRight ?? 0}px ${value.bottomRight ?? 0}px ${
+    value.bottomLeft ?? 0
+  }px`;
 }
 
 function cssFill(fill: Fill | undefined): string | undefined {
@@ -102,6 +114,14 @@ function cssFill(fill: Fill | undefined): string | undefined {
   return kind === "radial"
     ? `radial-gradient(circle, ${stops})`
     : `linear-gradient(${fill.angle ?? 0}deg, ${stops})`;
+}
+function strokeStyles(stroke: Element["stroke"]): CSSProperties {
+  if (!stroke || isPropertyConnection(stroke)) return {};
+  return {
+    borderColor: stroke.color,
+    borderStyle: stroke.style,
+    borderWidth: `${Math.max(0, stroke.width)}px`,
+  };
 }
 
 function sortedChildren(children: readonly Element[] | undefined): readonly Element[] {
@@ -160,6 +180,7 @@ function elementStyle(element: Element, root: boolean, sceneRoot: boolean): CSSP
     opacity: literal(element.opacity),
     mixBlendMode: literal(element.blendMode),
     background: cssFill(literal(element.fill)),
+    ...strokeStyles(element.stroke),
     writingMode: writingModeFor(rotation),
     display: element.type === "image" ? "block" : undefined,
     alignSelf: element.alignSelf ? align(element.alignSelf) : undefined,
@@ -173,12 +194,15 @@ function elementStyle(element: Element, root: boolean, sceneRoot: boolean): CSSP
 function frameStyle(frame: FrameElement): CSSProperties {
   const auto = frame.layoutMode === "auto" || frame.autoLayout === true;
   if (auto) {
+    const automaticGap = frame.gap === "auto";
     return {
       display: "flex",
       flexDirection: (frame.direction ?? "vertical") === "horizontal" ? "row" : "column",
-      gap: `${frame.gap ?? 0}px`,
+      gap: automaticGap ? "0px" : `${frame.gap ?? 0}px`,
       padding: paddingValue(frame.padding),
-      justifyContent: justify(frame.alignPrimary ?? frame.primaryAlign),
+      justifyContent: automaticGap
+        ? "space-between"
+        : justify(frame.alignPrimary ?? frame.primaryAlign),
       alignItems: align(frame.alignCounter ?? frame.counterAlign),
       overflow: frame.clip ? "hidden" : "visible",
     };
@@ -197,9 +221,8 @@ function contentFor(element: Element): ReactNode {
 }
 
 function typeStyle(element: Element): CSSProperties {
-  if (element.type === "rect") {
-    const radius = literal(element.cornerRadius);
-    return { borderRadius: radius === undefined ? undefined : `${radius}px` };
+  if (hasCornerRadius(element)) {
+    return { borderRadius: cornerRadiusValue(element.cornerRadius) };
   }
   if (element.type === "ellipse") return { borderRadius: "50%" };
   if (element.type === "text") {
@@ -274,7 +297,9 @@ function renderElement({
       // Editors hit-test against this: the root frame is the artboard backdrop, never a target.
       "data-element-root": root ? "true" : undefined,
       "data-element-painted":
-        element.type === "text" || element.fill !== undefined ? "true" : "false",
+        element.type === "frame" || element.type === "text" || element.fill !== undefined
+          ? "true"
+          : "false",
       style,
       hidden: element.hidden,
     },

@@ -40,6 +40,7 @@ export type BlendMode =
   | "plus-lighter"
   | "plus-darker";
 export type FrameLayoutMode = "absolute" | "auto";
+export type FrameGap = number | "auto";
 export type LayoutDirection = "horizontal" | "vertical";
 export type LayoutAlignment =
   | "start"
@@ -52,6 +53,14 @@ export type LayoutAlignment =
 export type Anchor = "left" | "center" | "centre" | "right" | "top" | "bottom";
 export type TextAlign = "left" | "center" | "right" | "justify" | "start" | "end";
 export type ObjectFit = "fill" | "contain" | "cover" | "none" | "scale-down";
+
+export type StrokeStyle = "solid" | "dotted" | "dashed";
+
+export interface Stroke {
+  width: number;
+  style: StrokeStyle;
+  color: string;
+}
 
 export interface GradientStop {
   color?: string;
@@ -112,13 +121,26 @@ export interface ElementBase {
   blendMode?: BlendMode;
   alignSelf?: LayoutAlignment;
   fill?: PropertyValue<Fill>;
+  stroke?: Stroke;
   anchor?: AnchorPosition;
   children?: readonly Element[];
 }
 
-export interface RectElement extends ElementBase {
+export interface CornerRadius {
+  topLeft?: number;
+  topRight?: number;
+  bottomRight?: number;
+  bottomLeft?: number;
+}
+
+export type CornerRadiusValue = number | CornerRadius;
+
+export interface CornerRadiusElement extends ElementBase {
+  cornerRadius?: PropertyValue<CornerRadiusValue>;
+}
+
+export interface RectElement extends CornerRadiusElement {
   type: "rect";
-  cornerRadius?: PropertyValue<number>;
 }
 
 export interface EllipseElement extends ElementBase {
@@ -148,12 +170,12 @@ export interface ImageElement extends ElementBase {
   objectFit?: PropertyValue<ObjectFit>;
 }
 
-export interface FrameElement extends ElementBase {
+export interface FrameElement extends CornerRadiusElement {
   type: "frame";
   layoutMode?: FrameLayoutMode;
   autoLayout?: boolean;
   direction?: LayoutDirection;
-  gap?: number;
+  gap?: FrameGap;
   padding?: number | Padding;
   alignPrimary?: LayoutAlignment;
   alignCounter?: LayoutAlignment;
@@ -167,6 +189,14 @@ export interface Padding {
   right?: number;
   bottom?: number;
   left?: number;
+}
+
+export function hasCornerRadius(element: Element): element is CornerRadiusElement {
+  return element.type === "rect" || element.type === "frame";
+}
+
+export function isContainerElement(element: Element): element is FrameElement {
+  return element.type === "frame";
 }
 
 export interface AnchorPosition {
@@ -287,6 +317,24 @@ function assertLayout(element: Element): void {
         throw new InvalidCanvasError(`${element.id} has invalid gradient stops.`);
       }
       previous = stop.position;
+    }
+  }
+  if (element.stroke) {
+    if (!Number.isFinite(element.stroke.width) || element.stroke.width < 0) {
+      throw new InvalidCanvasError(`${element.id} stroke width must be finite and non-negative.`);
+    }
+    if (!["solid", "dotted", "dashed"].includes(element.stroke.style)) {
+      throw new InvalidCanvasError(`${element.id} has an unknown stroke style.`);
+    }
+    if (!element.stroke.color) {
+      throw new InvalidCanvasError(`${element.id} stroke requires a color.`);
+    }
+  }
+  if (element.type === "frame" && element.gap !== undefined) {
+    if (element.gap !== "auto" && (!Number.isFinite(element.gap) || element.gap < 0)) {
+      throw new InvalidCanvasError(
+        `${element.id} gap must be auto or a finite non-negative number.`,
+      );
     }
   }
 }

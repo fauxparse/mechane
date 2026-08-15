@@ -41,5 +41,6 @@ export default {
     "react-doctor/click-events-have-key-events": "off",
     "react-doctor/no-autofocus": "off",
     "react-doctor/no-noninteractive-element-interactions": "off",
+    "react-doctor/no-array-index-as-key": "off",
   },
 } satisfies ReactDoctorConfig;

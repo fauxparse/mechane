@@ -10,9 +10,13 @@
  * Roles whose owner is already using the keyboard. `.react-flow__node`
  * isn't here because a focused node is a *separate* fact — panning defers to
  * it, zooming and undo don't (see `FocusContext`).
+ *
+ * Include buttons and common interactive ARIA roles: inspector toggles and
+ * alignment controls are buttons, not text fields, but their arrow keys still
+ * belong to the focused control rather than the canvas.
  */
 const KEY_CONSUMING_SELECTOR =
-  'input, textarea, select, [contenteditable="true"], [role="menu"], [role="listbox"], [role="dialog"], [role="combobox"]';
+  'button, input, textarea, select, [contenteditable="true"], [role="menu"], [role="listbox"], [role="dialog"], [role="combobox"], [role="button"], [role="checkbox"], [role="radio"], [role="slider"], [role="spinbutton"], [role="tab"]';
 
 export interface DomFocusContext {
   nodeHasFocus: boolean;

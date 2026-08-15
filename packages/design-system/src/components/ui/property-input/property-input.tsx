@@ -9,6 +9,7 @@ import { Menu } from "./menu";
 import { VariablePicker } from "./variable-picker";
 import { usePropertyInput } from "./use-property-input";
 import type { PropertyInputProps } from "./property-input-types";
+import { cn } from "../../../lib/utils";
 
 export * from "./property-input-types";
 
@@ -17,6 +18,7 @@ const handleInputFocus = (event: FocusEvent<HTMLInputElement>) => {
 };
 
 export const PropertyInput = <T extends ShapeValue>({
+  className,
   icon,
   value,
   type = "text",
@@ -29,8 +31,12 @@ export const PropertyInput = <T extends ShapeValue>({
   max,
   step,
   scrubScale = 2,
+  allowAuto,
+  allowLink = true,
+  auto,
   onChange,
   onSizingChange,
+  onAutoChange,
   onConstraintAdd,
 }: PropertyInputProps<T>) => {
   const input = usePropertyInput({
@@ -44,8 +50,11 @@ export const PropertyInput = <T extends ShapeValue>({
     max,
     step,
     scrubScale,
+    allowAuto,
+    auto,
     onChange,
     onSizingChange,
+    onAutoChange,
     onConstraintAdd,
   });
   const connectorLabel = input.linkedVariable
@@ -57,7 +66,7 @@ export const PropertyInput = <T extends ShapeValue>({
   return (
     <Popover open={input.variablesOpen} onOpenChange={input.setVariablesOpen}>
       <div
-        className="group/property-input w-full min-w-0"
+        className={cn("group/property-input w-full min-w-0", className)}
         data-linked={input.linkedVariable ? true : undefined}
       >
         <Combobox
@@ -82,7 +91,10 @@ export const PropertyInput = <T extends ShapeValue>({
             inputMode={input.inputType === "number" ? "decimal" : undefined}
             aria-label={placeholder ?? input.inputType}
             placeholder={placeholder}
-            className="w-full min-w-0 bg-muted/50 dark:bg-muted/50 border-0 *:data-[slot=combobox-input]:px-0 rounded-sm h-7 data-[slot=combobox-input]:h-7"
+            className={cn(
+              "w-full min-w-0 bg-muted/50 dark:bg-muted/50 border-0 *:data-[slot=combobox-input]:px-0 rounded-sm h-7 data-[slot=combobox-input]:h-7",
+              !icon && "pl-2",
+            )}
             showTrigger={false}
             onFocus={handleInputFocus}
             onBlur={input.commitDraftInput}
@@ -93,6 +105,7 @@ export const PropertyInput = <T extends ShapeValue>({
               inputType={input.inputType}
               colorText={input.colorText}
               linkedVariable={input.linkedVariable}
+              allowLink={allowLink}
               dimension={dimension}
               unit={unit}
               onScrubPointerDown={input.handleScrubPointerDown}
@@ -113,6 +126,8 @@ export const PropertyInput = <T extends ShapeValue>({
             colorText={input.colorText}
             dimension={dimension}
             sizing={input.currentSizing}
+            auto={input.auto}
+            allowAuto={allowAuto}
             linkedVariable={input.linkedVariable}
             onColorChange={input.updateDraftInput}
           />
