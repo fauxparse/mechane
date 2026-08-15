@@ -201,6 +201,16 @@ const multiSelectionRoot: FrameElement = {
     },
   ],
 };
+const mixedStrokeRoot: FrameElement = {
+  ...multiSelectionRoot,
+  id: "mixed-stroke-root",
+  name: "Mixed stroke",
+  children: multiSelectionRoot.children?.map((child) =>
+    child.id === "multi-one"
+      ? { ...child, stroke: { width: 3, style: "dashed" as const, color: "#f43f5e" } }
+      : child,
+  ),
+};
 
 function applyUpdates(
   current: ApiCanvasArtboardDocument,
@@ -382,6 +392,14 @@ export const MultiSelection: Story = {
   render: () => (
     <InspectorStory
       initialArtboard={artboard(multiSelectionRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: ["multi-one", "multi-two"] }}
+    />
+  ),
+};
+export const MixedStroke: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(mixedStrokeRoot)}
       initialSelection={{ artId: ART_ID, elementIds: ["multi-one", "multi-two"] }}
     />
   ),

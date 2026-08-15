@@ -221,7 +221,7 @@ export const FillSection = () => {
         </SectionRow>
       ) : fillMode === "solid" ? (
         <SectionRow>
-          <PropertyField name="fill" icon={PaintBucketIcon} className="col-span-full" />
+          <PropertyField name="fill" icon={PaintBucketIcon} className="col-span-2" />
         </SectionRow>
       ) : null}
     </Section>
