@@ -189,10 +189,13 @@ export function useCanvasWorkspaceInteractions({
   const [rubberband, setRubberband] = useState<RubberbandState | null>(null);
   const [renamingArtId, setRenamingArtId] = useState<string | null>(null);
   const focused = ordered.find((artboard) => artboard.artId === focusedArtId) ?? ordered[0] ?? null;
-  const selection =
-    selectedArtId === undefined
-      ? localSelection
-      : normalizeSelection({ artId: selectedArtId, elementIds: selectedElementIds ?? [] });
+  const selection = useMemo(
+    () =>
+      selectedArtId === undefined
+        ? localSelection
+        : normalizeSelection({ artId: selectedArtId, elementIds: selectedElementIds ?? [] }),
+    [localSelection, selectedArtId, selectedElementIds],
+  );
   const {
     camera,
     workspaceRef,

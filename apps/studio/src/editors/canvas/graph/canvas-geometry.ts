@@ -74,7 +74,12 @@ export function useCanvasGeometry(
 ): CanvasGeometry {
   const [geometry, setGeometry] = useState<CanvasGeometry>(new Map());
   const frame = useRef<number | null>(null);
+  const observerRef = useRef<ResizeObserver | null>(null);
+  const scheduleRef = useRef<(() => void) | null>(null);
 
+  // Both observers are disconnected below; the rule cannot follow the observer reference through
+  // `schedule` while it is also used to subscribe newly mounted Elements.
+  // react-doctor-disable-next-line react-doctor/effect-needs-cleanup
   useLayoutEffect(() => {
     const workspace = workspaceRef.current;
     if (!workspace) {
@@ -85,26 +90,44 @@ export function useCanvasGeometry(
       frame.current = null;
       setGeometry(measureCanvasGeometry(workspace));
     };
+    const observeElements = () => {
+      const observer = observerRef.current;
+      if (!observer) return;
+      for (const element of workspace.querySelectorAll<HTMLElement>(
+        "[data-artboard-id], [data-element-id]",
+      )) {
+        observer.observe(element);
+      }
+    };
     const schedule = () => {
+      observeElements();
       if (frame.current !== null) return;
       frame.current = window.requestAnimationFrame(measure);
     };
     const observer = new ResizeObserver(schedule);
+    const mutations = new MutationObserver(schedule);
+    observerRef.current = observer;
+    scheduleRef.current = schedule;
     observer.observe(workspace);
-    for (const element of workspace.querySelectorAll<HTMLElement>(
-      "[data-artboard-id], [data-element-id]",
-    )) {
-      observer.observe(element);
-    }
+    mutations.observe(workspace, { childList: true, subtree: true });
     schedule();
     return () => {
+      mutations.disconnect();
       observer.disconnect();
+      observerRef.current = null;
+      scheduleRef.current = null;
       if (frame.current !== null) window.cancelAnimationFrame(frame.current);
-      // Clearing the handle matters: this effect re-runs on every camera change and model edit,
-      // often while a frame is still pending. Cancelling without clearing would leave a stale
-      // non-null handle, and since only measure() resets it, every later schedule() would return
-      // early — freezing geometry, and with it the selection overlay, for good.
       frame.current = null;
+    };
+  }, [workspaceRef]);
+
+  useLayoutEffect(() => {
+    scheduleRef.current?.();
+    return () => {
+      if (frame.current !== null) {
+        window.cancelAnimationFrame(frame.current);
+        frame.current = null;
+      }
     };
   }, [invalidationKey, workspaceRef]);
 

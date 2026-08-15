@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { createElement } from "react";
 import type {
@@ -326,7 +327,11 @@ export function ElementRenderer({
   return <>{renderElement({ element, parent })}</>;
 }
 
-export function CanvasRenderer({ canvas, className, style }: CanvasRendererProps): ReactNode {
+export const CanvasRenderer = memo(function CanvasRenderer({
+  canvas,
+  className,
+  style,
+}: CanvasRendererProps): ReactNode {
   const root = "root" in canvas ? canvas.root : canvas;
   const sceneRoot = "root" in canvas && canvas.kind === "scene";
   return createElement(
@@ -339,4 +344,4 @@ export function CanvasRenderer({ canvas, className, style }: CanvasRendererProps
     },
     renderElement({ element: root, root: true, sceneRoot }),
   );
-}
+});
