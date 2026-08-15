@@ -29,6 +29,17 @@ export function clientRect(rect: Pick<DOMRect, "x" | "y" | "width" | "height">):
     bottom: rect.y + rect.height,
   };
 }
+export function contentOrigin(
+  rect: Pick<CanvasClientRect, "x" | "y">,
+  borderLeft: number,
+  borderTop: number,
+  zoom: number,
+): { x: number; y: number } {
+  return {
+    x: rect.x + borderLeft * zoom,
+    y: rect.y + borderTop * zoom,
+  };
+}
 
 /** Reads post-layout browser rectangles without deriving geometry from the Canvas model. */
 export function measureCanvasGeometry(workspace: HTMLElement): CanvasGeometry {

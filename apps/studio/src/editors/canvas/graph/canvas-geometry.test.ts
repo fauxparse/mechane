@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { clientRect, selectedCanvasRects } from "./canvas-geometry";
+import { clientRect, contentOrigin, selectedCanvasRects } from "./canvas-geometry";
 
 describe("Canvas geometry", () => {
   it("normalizes browser rectangles for screen-space overlays", () => {
@@ -12,6 +12,11 @@ describe("Canvas geometry", () => {
       right: 92,
       bottom: 64,
     });
+  });
+
+  it("moves anchor coordinates from the bordered parent content edge", () => {
+    expect(contentOrigin({ x: 100, y: 200 }, 10, 10, 1)).toEqual({ x: 110, y: 210 });
+    expect(contentOrigin({ x: 100, y: 200 }, 10, 10, 2)).toEqual({ x: 120, y: 220 });
   });
 
   it("uses the artboard bounds when the Canvas root is selected", () => {
