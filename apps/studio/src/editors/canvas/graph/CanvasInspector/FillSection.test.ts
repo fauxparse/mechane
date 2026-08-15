@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { gradientForMode, insertedGradientStop } from "./FillSection";
+import { gradientForMode, insertedGradientStop } from "./gradient-utils";
 
 describe("gradientForMode", () => {
   it("preserves existing stops and gradient properties when changing kind", () => {

@@ -29,7 +29,7 @@ export const MultipleThumbs: Story = {
             {values.map((value, index) => (
               <Slider.Thumb
                 index={index}
-                key={index}
+                key={`value-${value}`}
                 aria-label={`Value ${index + 1}`}
                 className="size-4 border-2 border-white shadow-[0_0_0_1px_rgb(0_0_0/0.65)]"
               />
