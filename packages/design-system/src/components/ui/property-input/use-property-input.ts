@@ -125,6 +125,12 @@ export function usePropertyInput<T extends ShapeValue>({
     }
     draftInputRef.current = nextValue;
     setDraftInputValue(nextValue);
+    // The color picker emits draft values continuously while dragging; valid samples must reach
+    // controlled consumers immediately so renderers can paint the current color.
+    if (inputType === "color" && nextValue !== null) {
+      const parsed = parseHexColor(nextValue);
+      if (parsed) commit(createValue<T>(inputType, rgbaToHex(parsed)));
+    }
   };
 
   const parseInputValue = (rawValue: string): PropertyInputValue<T> | null | undefined => {
@@ -149,7 +155,15 @@ export function usePropertyInput<T extends ShapeValue>({
     const rawValue = draftInputRef.current;
     if (rawValue === null) return;
     const nextValue = parseInputValue(rawValue);
-    if (nextValue !== undefined) commit(nextValue);
+    const sameColor =
+      inputType === "color" &&
+      nextValue !== null &&
+      nextValue !== undefined &&
+      !isVariableReference(nextValue) &&
+      nextValue.kind === "color" &&
+      currentValue?.kind === "color" &&
+      nextValue.value === currentValue.value;
+    if (nextValue !== undefined && !sameColor) commit(nextValue);
     updateDraftInput(null);
   };
 

@@ -201,6 +201,7 @@ describe("CanvasRenderer", () => {
           {
             id: "radial",
             type: "rect",
+            stroke: { color: "black", style: "solid", width: 4 },
             fill: {
               kind: "radial",
               stops: [
@@ -215,6 +216,9 @@ describe("CanvasRenderer", () => {
 
     expect(html).toContain("linear-gradient(45deg, red 0%, green 50%, blue 100%)");
     expect(html).toContain("radial-gradient(circle, white 0%, black 100%)");
+    expect(html).toContain("background-clip:border-box");
+    expect(html).toContain("background-origin:border-box");
+    expect(html).toContain("border-width:4px");
     expect(html).toContain("min-height:100%");
     expect(html).toContain("aspect-ratio:0.5");
     expect(html).toContain("writing-mode:vertical-rl");
