@@ -18,6 +18,9 @@ import {
   ToggleGroup,
   ToggleGroupItem,
   TypeIcon,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
 } from "@mechane/design-system";
 /** The tools the Canvas editor can be in. Exactly one is active at a time. */
 export type CanvasTool = "select" | "rect" | "ellipse" | "text" | "image" | "frame";
@@ -67,18 +70,19 @@ export const Toolbar = ({
           // "no tool" state, so that deselection is ignored.
           if (next) onToolChange(next);
         }}
-        className="gap-1 *:aria-pressed:bg-primary *:aria-pressed:text-primary-foreground"
+        className="gap-1 p-0 bg-transparent *:aria-pressed:bg-primary *:aria-pressed:text-primary-foreground"
       >
         {TOOLS.map(({ value, label, Icon }) => (
-          <ToggleGroupItem
-            key={value}
-            value={value}
-            aria-label={label}
-            title={label}
-            className="p-0"
-          >
-            <Icon />
-          </ToggleGroupItem>
+          <Tooltip key={value}>
+            <TooltipTrigger
+              render={
+                <ToggleGroupItem value={value} aria-label={label} className="p-0">
+                  <Icon />
+                </ToggleGroupItem>
+              }
+            />
+            <TooltipContent>{label}</TooltipContent>
+          </Tooltip>
         ))}
       </ToggleGroup>
       <Separator

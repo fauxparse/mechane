@@ -65,7 +65,7 @@ function TooltipArrow({ className, ...props }: TooltipPrimitive.Arrow.Props) {
     <TooltipPrimitive.Arrow
       data-slot="tooltip-arrow"
       className={cn(
-        "relative block size-3 overflow-clip data-[side=bottom]:-top-1 data-[side=left]:-right-1 data-[side=left]:rotate-90 data-[side=right]:-left-1 data-[side=right]:-rotate-90 data-[side=top]:-bottom-1 data-[side=top]:rotate-180 before:absolute before:inset-0 before:rotate-45 before:rounded-[1px] before:bg-foreground",
+        "relative block size-3 overflow-clip data-[side=bottom]:-top-1 data-[side=left]:-right-1 data-[side=left]:rotate-90 data-[side=right]:-left-1 data-[side=right]:-rotate-90 data-[side=top]:-bottom-1 data-[side=top]:rotate-180 before:absolute before:inset-0 before:rotate-45 before:rounded-full before:bg-foreground",
         className,
       )}
       {...props}
