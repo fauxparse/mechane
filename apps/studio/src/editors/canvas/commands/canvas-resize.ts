@@ -1,4 +1,3 @@
-import { normalizeElementSizing } from "@mechane/domain";
 import type { Element } from "@mechane/domain";
 /** Corner handles resize two axes at once; edge handles resize one. */
 export const RESIZE_HANDLES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
@@ -63,15 +62,14 @@ export function fixedResizeProperties(
   width: number,
   height: number,
 ): Record<string, unknown> {
-  const canonical = normalizeElementSizing(element);
   const properties: Record<string, unknown> = {
     sizing: {
-      ...canonical.sizing,
+      ...element.sizing,
       width: { mode: "fixed", value: width },
       height: { mode: "fixed", value: height },
     },
   };
-  if (canonical.layout) properties.layout = canonical.layout;
+  if (element.layout) properties.layout = element.layout;
   return properties;
 }
 /**

@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  assertValidCanvas,
-  hasCornerRadius,
-  InvalidCanvasError,
-  normalizeElementSizing,
-  type Canvas,
-} from "./canvas";
+import { assertValidCanvas, hasCornerRadius, InvalidCanvasError, type Canvas } from "./canvas";
 
 const ROOT: Canvas = {
   kind: "scene",
@@ -31,35 +25,6 @@ describe("Canvas model", () => {
     };
 
     expect(assertValidCanvas(canvas)).toBe(canvas);
-  });
-  it("normalizes legacy sizing fields into one canonical representation", () => {
-    expect(
-      normalizeElementSizing({
-        id: "rect",
-        type: "rect",
-        width: { mode: "fixed", value: 100 },
-        minHeight: 20,
-        layout: {
-          width: { mode: "fixed", value: 320 },
-          minWidth: 40,
-          rotation: 90,
-        },
-        sizing: {
-          height: { mode: "fixed", value: 80 },
-          minHeight: 30,
-        },
-      }),
-    ).toEqual({
-      id: "rect",
-      type: "rect",
-      layout: { rotation: 90 },
-      sizing: {
-        width: { mode: "fixed", value: 320 },
-        height: { mode: "fixed", value: 80 },
-        minWidth: 40,
-        minHeight: 30,
-      },
-    });
   });
   it("accepts auto gap on a Frame", () => {
     expect(

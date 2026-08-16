@@ -160,16 +160,16 @@ describe("Canvas aspect ratio locks", () => {
 });
 
 describe("Canvas fixed resize properties", () => {
-  it("writes layout fill axes into canonical sizing while preserving layout fields", () => {
+  it("writes fixed dimensions into sizing while preserving layout fields", () => {
     expect(
       fixedResizeProperties(
         {
           id: "root",
           type: "frame",
-          layout: {
+          layout: { rotation: 90 },
+          sizing: {
             width: { mode: "fill", value: 1 },
             height: { mode: "fill", value: 1 },
-            layoutMode: "absolute",
           },
         } as Element,
         320,
@@ -180,18 +180,20 @@ describe("Canvas fixed resize properties", () => {
         width: { mode: "fixed", value: 320 },
         height: { mode: "fixed", value: 180 },
       },
-      layout: { layoutMode: "absolute" },
+      layout: { rotation: 90 },
     });
   });
 
-  it("converts top-level fill axes when no layout axes exist", () => {
+  it("writes fixed dimensions into sizing", () => {
     expect(
       fixedResizeProperties(
         {
           id: "root",
           type: "frame",
-          width: { mode: "fill", value: 1 },
-          height: { mode: "fill", value: 1 },
+          sizing: {
+            width: { mode: "fill", value: 1 },
+            height: { mode: "fill", value: 1 },
+          },
         } as Element,
         240,
         120,

@@ -19,7 +19,7 @@ import type {
   Rotation,
   SizeValue,
 } from "@mechane/domain";
-import { hasCornerRadius, isPropertyConnection, normalizeElementSizing } from "@mechane/domain";
+import { hasCornerRadius, isPropertyConnection } from "@mechane/domain";
 import type { CanvasRendererProps } from "./canvas-render";
 function literal<T>(value: T | PropertyConnection | undefined): T | undefined {
   return isPropertyConnection(value) ? undefined : (value as T | undefined);
@@ -383,7 +383,7 @@ export function ElementRenderer({
   return (
     <>
       {renderElement({
-        element: normalizeElementSizing(element),
+        element,
         parent,
         editingElementId,
         onTextDoubleClick,
@@ -402,18 +402,16 @@ export const CanvasRenderer = memo(function CanvasRenderer({
   onTextKeyDown,
 }: CanvasRendererProps): ReactNode {
   const root = "root" in canvas ? canvas.root : canvas;
-  const normalizedRoot = normalizeElementSizing(root);
   const sceneRoot = "root" in canvas && canvas.kind === "scene";
   return createElement(
     "div",
     {
       className,
       style: { position: "relative", width: "100%", height: "100%", ...style },
-      "data-canvas-root": normalizedRoot.id,
-      "data-canvas-kind": "root" in canvas ? canvas.kind : undefined,
+      "data-canvas-root": root.id,
     },
     renderElement({
-      element: normalizedRoot,
+      element: root,
       root: true,
       sceneRoot,
       editingElementId,

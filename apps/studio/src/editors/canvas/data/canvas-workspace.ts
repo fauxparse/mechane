@@ -1,4 +1,4 @@
-import { isPropertyConnection, normalizeElementSizing } from "@mechane/domain";
+import { isPropertyConnection } from "@mechane/domain";
 import type { CanvasArtboardDocument } from "../../../api/canvas";
 
 const SCENE_PREVIEW_SIZE = { width: 720, height: 420 };
@@ -24,7 +24,7 @@ export function canvasArtboardSize(artboard: CanvasArtboardDocument): {
   width: number;
   height: number;
 } {
-  const root = normalizeElementSizing(artboard.canvas.root);
+  const root = artboard.canvas.root;
   const fallback = artboard.kind === "scene" ? SCENE_PREVIEW_SIZE : DEFAULT_BLOCK_SIZE;
   return {
     width: authoredPixels(root.sizing?.width) ?? fallback.width,

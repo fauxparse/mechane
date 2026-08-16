@@ -40,8 +40,10 @@ const absoluteRoot: FrameElement = {
   type: "frame",
   name: "Absolute root",
   layoutMode: "absolute",
-  width: { mode: "fixed", value: 720 },
-  height: { mode: "fixed", value: 480 },
+  sizing: {
+    width: { mode: "fixed", value: 720 },
+    height: { mode: "fixed", value: 480 },
+  },
   cornerRadius: 24,
   children: [
     {
@@ -52,8 +54,10 @@ const absoluteRoot: FrameElement = {
       content: "Canvas Inspector",
       fontFamily: "Georgia, serif",
       fontSize: 32,
-      width: { mode: "hug" },
-      height: { mode: "hug" },
+      sizing: {
+        width: { mode: "hug" },
+        height: { mode: "hug" },
+      },
       anchor: { horizontal: "left", vertical: "top", offsetX: 32, offsetY: 28 },
     },
     {
@@ -64,8 +68,10 @@ const absoluteRoot: FrameElement = {
       opacity: 0.72,
       fill: "#38bdf8",
       cornerRadius: 12,
-      width: { mode: "fixed", value: 280 },
-      height: { mode: "fixed", value: 160 },
+      sizing: {
+        width: { mode: "fixed", value: 280 },
+        height: { mode: "fixed", value: 160 },
+      },
       anchor: { horizontal: "left", vertical: "top", offsetX: 32, offsetY: 120 },
     },
   ],
@@ -137,8 +143,10 @@ const connectedRoot: FrameElement = {
   layoutMode: "auto",
   direction: "vertical",
   gap: 16,
-  width: { mode: "fixed", value: 640 },
-  height: { mode: "fixed", value: 360 },
+  sizing: {
+    width: { mode: "fixed", value: 640 },
+    height: { mode: "fixed", value: 360 },
+  },
   fill: "#000000",
   children: [
     {
@@ -148,8 +156,10 @@ const connectedRoot: FrameElement = {
       rank: "a",
       opacity: variable("opacity-variable"),
       fill: variable("accent-variable"),
-      width: { mode: "fill" },
-      height: { mode: "fixed", value: 120 },
+      sizing: {
+        width: { mode: "fill" },
+        height: { mode: "fixed", value: 120 },
+      },
       cornerRadius: 16,
     },
     {
@@ -159,8 +169,10 @@ const connectedRoot: FrameElement = {
       rank: "b",
       content: variable("copy-variable"),
       color: "#e2e8f0",
-      width: { mode: "fill" },
-      height: { mode: "hug" },
+      sizing: {
+        width: { mode: "fill" },
+        height: { mode: "hug" },
+      },
     },
   ],
 };
@@ -188,8 +200,10 @@ const multiSelectionRoot: FrameElement = {
   type: "frame",
   name: "Multi-selection root",
   layoutMode: "absolute",
-  width: { mode: "fixed", value: 640 },
-  height: { mode: "fixed", value: 360 },
+  sizing: {
+    width: { mode: "fixed", value: 640 },
+    height: { mode: "fixed", value: 360 },
+  },
   fill: "#334155",
   children: [
     {
@@ -199,8 +213,10 @@ const multiSelectionRoot: FrameElement = {
       rank: "a",
       opacity: 0.5,
       fill: "#f8fafc",
-      width: { mode: "fixed", value: 120 },
-      height: { mode: "fixed", value: 80 },
+      sizing: {
+        width: { mode: "fixed", value: 120 },
+        height: { mode: "fixed", value: 80 },
+      },
       anchor: { horizontal: "left", vertical: "top", offsetX: 24, offsetY: 24 },
     },
     {
@@ -210,8 +226,10 @@ const multiSelectionRoot: FrameElement = {
       rank: "b",
       opacity: 0.72,
       fill: "#cbd5e1",
-      width: { mode: "fixed", value: 120 },
-      height: { mode: "fixed", value: 80 },
+      sizing: {
+        width: { mode: "fixed", value: 120 },
+        height: { mode: "fixed", value: 80 },
+      },
       anchor: { horizontal: "left", vertical: "top", offsetX: 180, offsetY: 24 },
     },
   ],

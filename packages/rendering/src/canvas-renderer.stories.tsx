@@ -33,8 +33,10 @@ const canvas: Canvas = {
         content: "A shared Canvas renderer",
         color: "#f6f1f4",
         fontSize: 28,
-        width: { mode: "fixed", value: { value: 360, unit: "px" } },
-        height: { mode: "hug" },
+        sizing: {
+          width: { mode: "fixed", value: { value: 360, unit: "px" } },
+          height: { mode: "hug" },
+        },
         anchor: { horizontal: "center", vertical: "top", offsetY: 32 },
       },
       {
@@ -47,8 +49,10 @@ const canvas: Canvas = {
         padding: 16,
         alignPrimary: "center",
         alignCounter: "center",
-        width: { mode: "fixed", value: { value: 540, unit: "px" } },
-        height: { mode: "fixed", value: { value: 180, unit: "px" } },
+        sizing: {
+          width: { mode: "fixed", value: { value: 540, unit: "px" } },
+          height: { mode: "fixed", value: { value: 180, unit: "px" } },
+        },
         anchor: { horizontal: "center", vertical: "center" },
         fill: {
           type: "linear",
@@ -64,8 +68,10 @@ const canvas: Canvas = {
             id: "card-one",
             type: "rect",
             rank: "a",
-            width: { mode: "fixed", value: 120 },
-            height: { mode: "fixed", value: 100 },
+            sizing: {
+              width: { mode: "fixed", value: 120 },
+              height: { mode: "fixed", value: 100 },
+            },
             cornerRadius: 12,
             fill: "#26233a",
           },
@@ -74,8 +80,10 @@ const canvas: Canvas = {
             type: "frame",
             rank: "b",
             layoutMode: "absolute",
-            width: { mode: "fixed", value: 120 },
-            height: { mode: "fixed", value: 100 },
+            sizing: {
+              width: { mode: "fixed", value: 120 },
+              height: { mode: "fixed", value: 100 },
+            },
             padding: 8,
             fill: {
               type: "radial",
@@ -92,8 +100,10 @@ const canvas: Canvas = {
                 color: "#f6f1f4",
                 fontSize: 24,
                 rotation: 90,
-                width: { mode: "hug" },
-                height: { mode: "hug" },
+                sizing: {
+                  width: { mode: "hug" },
+                  height: { mode: "hug" },
+                },
                 anchor: { horizontal: "center", vertical: "center" },
               },
             ],
@@ -109,7 +119,7 @@ const primitiveCanvas: Canvas = {
   root: {
     id: "primitive-root",
     type: "frame",
-    layout: {
+    sizing: {
       width: { mode: "fixed", value: 720 },
       height: { mode: "fixed", value: 420 },
     },
@@ -120,8 +130,10 @@ const primitiveCanvas: Canvas = {
         name: "Solid card",
         type: "rect",
         rank: "a",
-        width: { mode: "fixed", value: 190 },
-        height: { mode: "fixed", value: 130 },
+        sizing: {
+          width: { mode: "fixed", value: 190 },
+          height: { mode: "fixed", value: 130 },
+        },
         cornerRadius: 24,
         opacity: 0.92,
         blendMode: "screen",
@@ -145,9 +157,9 @@ const primitiveCanvas: Canvas = {
         sizing: {
           width: { mode: "fixed", value: { value: 260, unit: "px" } },
           height: { mode: "hug" },
+          minWidth: { value: 180, unit: "px" },
+          maxWidth: { value: 300, unit: "px" },
         },
-        minWidth: { value: 180, unit: "px" },
-        maxWidth: { value: 300, unit: "px" },
         anchor: { horizontal: "center", vertical: "top", offsetY: 42 },
       },
       {
@@ -159,8 +171,10 @@ const primitiveCanvas: Canvas = {
         alt: "A stylized mountain landscape",
         objectFit: "cover",
         aspectRatio: { ratio: 16 / 9, driver: "width" },
-        width: { mode: "fixed", value: 250 },
-        height: { mode: "fixed", value: 150 },
+        sizing: {
+          width: { mode: "fixed", value: 250 },
+          height: { mode: "fixed", value: 150 },
+        },
         anchor: { horizontal: "right", vertical: "bottom", offsetX: 24, offsetY: 24 },
       },
       {
@@ -168,8 +182,10 @@ const primitiveCanvas: Canvas = {
         type: "rect",
         rank: "d",
         hidden: true,
-        width: { mode: "fixed", value: 24 },
-        height: { mode: "fixed", value: 24 },
+        sizing: {
+          width: { mode: "fixed", value: 24 },
+          height: { mode: "fixed", value: 24 },
+        },
         fill: "#f6c177",
       },
     ],
@@ -198,8 +214,10 @@ const autoLayoutCanvas: Canvas = {
         padding: 12,
         alignPrimary: "space-between",
         alignCounter: "center",
-        width: { mode: "fill" },
-        height: { mode: "hug" },
+        sizing: {
+          width: { mode: "fill" },
+          height: { mode: "hug" },
+        },
         fill: {
           kind: "linear",
           angle: 135,
@@ -217,8 +235,10 @@ const autoLayoutCanvas: Canvas = {
             fontSize: 16,
             fontWeight: "bold",
             color: "#f6f1f4",
-            width: { mode: "hug" },
-            height: { mode: "hug" },
+            sizing: {
+              width: { mode: "hug" },
+              height: { mode: "hug" },
+            },
           },
           {
             id: "header-status",
@@ -226,8 +246,10 @@ const autoLayoutCanvas: Canvas = {
             value: "Live",
             fontSize: 14,
             color: "#9ccfd8",
-            width: { mode: "hug" },
-            height: { mode: "hug" },
+            sizing: {
+              width: { mode: "hug" },
+              height: { mode: "hug" },
+            },
           },
         ],
       },
@@ -240,8 +262,10 @@ const autoLayoutCanvas: Canvas = {
         padding: { top: 14, right: 14, bottom: 14, left: 14 },
         alignPrimary: "space-evenly",
         alignCounter: "end",
-        width: { mode: "fill" },
-        height: { mode: "fill" },
+        sizing: {
+          width: { mode: "fill" },
+          height: { mode: "fill" },
+        },
         fill: "#26233a",
         children: [
           {
@@ -253,8 +277,10 @@ const autoLayoutCanvas: Canvas = {
             padding: 18,
             alignPrimary: "center",
             alignCounter: "center",
-            width: { mode: "fill" },
-            height: { mode: "fill" },
+            sizing: {
+              width: { mode: "fill" },
+              height: { mode: "fill" },
+            },
             fill: "#393552",
             children: [
               {
@@ -264,8 +290,10 @@ const autoLayoutCanvas: Canvas = {
                 color: "#f6c177",
                 fontSize: 24,
                 textAlign: "center",
-                width: { mode: "fill" },
-                height: { mode: "hug" },
+                sizing: {
+                  width: { mode: "fill" },
+                  height: { mode: "hug" },
+                },
               },
               {
                 id: "fill-panel-copy",
@@ -273,8 +301,10 @@ const autoLayoutCanvas: Canvas = {
                 content: "This panel grows with its parent.",
                 color: "#e0def4",
                 fontSize: 14,
-                width: { mode: "fill" },
-                height: { mode: "hug" },
+                sizing: {
+                  width: { mode: "fill" },
+                  height: { mode: "hug" },
+                },
               },
             ],
           },
@@ -287,8 +317,10 @@ const autoLayoutCanvas: Canvas = {
             padding: { top: 20, right: 28, bottom: 20, left: 28 },
             alignPrimary: "center",
             alignCounter: "center",
-            width: { mode: "hug" },
-            height: { mode: "hug" },
+            sizing: {
+              width: { mode: "hug" },
+              height: { mode: "hug" },
+            },
             fill: "#eb6f92",
             children: [
               {
@@ -298,8 +330,10 @@ const autoLayoutCanvas: Canvas = {
                 color: "#191724",
                 fontSize: 24,
                 fontWeight: 800,
-                width: { mode: "hug" },
-                height: { mode: "hug" },
+                sizing: {
+                  width: { mode: "hug" },
+                  height: { mode: "hug" },
+                },
               },
               {
                 id: "hug-panel-copy",
@@ -307,8 +341,10 @@ const autoLayoutCanvas: Canvas = {
                 content: "Natural size",
                 color: "#191724",
                 fontSize: 13,
-                width: { mode: "hug" },
-                height: { mode: "hug" },
+                sizing: {
+                  width: { mode: "hug" },
+                  height: { mode: "hug" },
+                },
               },
             ],
           },
@@ -334,8 +370,10 @@ const constraintsCanvas: Canvas = {
         rotation: 0,
         color: "#f6c177",
         fontSize: 18,
-        width: { mode: "fixed", value: { value: 130, unit: "%" } },
-        height: { mode: "fixed", value: 72 },
+        sizing: {
+          width: { mode: "fixed", value: { value: 130, unit: "%" } },
+          height: { mode: "fixed", value: 72 },
+        },
         anchor: { horizontal: "left", vertical: "top", offsetX: 24, offsetY: 24 },
       },
       {
@@ -346,9 +384,11 @@ const constraintsCanvas: Canvas = {
         rotation: 90,
         color: "#9ccfd8",
         fontSize: 18,
-        width: { mode: "fixed", value: 72 },
-        height: { mode: "fixed", value: 130 },
-        maxWidth: 90,
+        sizing: {
+          width: { mode: "fixed", value: 72 },
+          height: { mode: "fixed", value: 130 },
+          maxWidth: 90,
+        },
         anchor: { horizontal: "right", vertical: "center", offsetX: 18 },
       },
       {
@@ -359,8 +399,10 @@ const constraintsCanvas: Canvas = {
         rotation: 180,
         color: "#c4a7e7",
         fontSize: 18,
-        width: { mode: "fixed", value: 160 },
-        height: { mode: "fixed", value: 64 },
+        sizing: {
+          width: { mode: "fixed", value: 160 },
+          height: { mode: "fixed", value: 64 },
+        },
         aspectRatio: { ratio: 2.5, driver: "width" },
         anchor: { horizontal: "center", vertical: "bottom", offsetY: 24 },
       },
@@ -372,9 +414,11 @@ const constraintsCanvas: Canvas = {
         rotation: 270,
         color: "#eb6f92",
         fontSize: 18,
-        width: { mode: "fixed", value: 72 },
-        height: { mode: "fixed", value: 130 },
-        minHeight: { value: 90, unit: "%" },
+        sizing: {
+          width: { mode: "fixed", value: 72 },
+          height: { mode: "fixed", value: 130 },
+          minHeight: { value: 90, unit: "%" },
+        },
         anchor: { horizontal: "left", vertical: "bottom", offsetX: 18, offsetY: 18 },
       },
       {
@@ -384,11 +428,11 @@ const constraintsCanvas: Canvas = {
         sizing: {
           width: { mode: "fixed", value: 96 },
           height: { mode: "fixed", value: 96 },
+          minWidth: 80,
+          maxWidth: 120,
+          minHeight: 80,
+          maxHeight: 120,
         },
-        minWidth: 80,
-        maxWidth: 120,
-        minHeight: 80,
-        maxHeight: 120,
         cornerRadius: 48,
         fill: "#f6c177",
         anchor: { horizontal: "center", vertical: "center" },
@@ -418,8 +462,10 @@ const gradientOverflowCanvas: Canvas = {
         id: "overflow-frame",
         type: "frame",
         layoutMode: "absolute",
-        width: { mode: "fixed", value: 220 },
-        height: { mode: "fixed", value: 160 },
+        sizing: {
+          width: { mode: "fixed", value: 220 },
+          height: { mode: "fixed", value: 160 },
+        },
         padding: { top: 18, right: 28, bottom: 18, left: 28 },
         fill: {
           kind: "radial",
@@ -438,8 +484,10 @@ const gradientOverflowCanvas: Canvas = {
             color: "#f6f1f4",
             fontSize: 24,
             fontWeight: 700,
-            width: { mode: "fixed", value: 420 },
-            height: { mode: "hug" },
+            sizing: {
+              width: { mode: "fixed", value: 420 },
+              height: { mode: "hug" },
+            },
             anchor: { horizontal: "left", vertical: "top", offsetX: -100, offsetY: 38 },
           },
           {
@@ -447,8 +495,10 @@ const gradientOverflowCanvas: Canvas = {
             type: "frame",
             layoutMode: "absolute",
             clip: true,
-            width: { mode: "fixed", value: 128 },
-            height: { mode: "fixed", value: 72 },
+            sizing: {
+              width: { mode: "fixed", value: 128 },
+              height: { mode: "fixed", value: 72 },
+            },
             fill: "#191724",
             anchor: { horizontal: "center", vertical: "bottom", offsetY: 12 },
             children: [
@@ -458,8 +508,10 @@ const gradientOverflowCanvas: Canvas = {
                 content: "Clipped",
                 color: "#f6c177",
                 fontSize: 20,
-                width: { mode: "fixed", value: 220 },
-                height: { mode: "hug" },
+                sizing: {
+                  width: { mode: "fixed", value: 220 },
+                  height: { mode: "hug" },
+                },
                 anchor: { horizontal: "left", vertical: "center", offsetX: -42 },
               },
             ],
@@ -489,8 +541,7 @@ const imageCanvas: Canvas = {
       direction: "vertical" as const,
       gap: 8,
       padding: 8,
-      width: { mode: "fixed" as const, value: 150 },
-      height: { mode: "hug" as const },
+      sizing: { width: { mode: "fixed" as const, value: 150 }, height: { mode: "hug" as const } },
       alignPrimary: "center" as const,
       alignCounter: "center" as const,
       fill: index % 2 === 0 ? "#393552" : "#44415a",
@@ -501,8 +552,10 @@ const imageCanvas: Canvas = {
           content: objectFit,
           color: "#e0def4",
           fontSize: 13,
-          width: { mode: "hug" as const },
-          height: { mode: "hug" as const },
+          sizing: {
+            width: { mode: "hug" as const },
+            height: { mode: "hug" as const },
+          },
         },
         {
           id: `image-${objectFit}-content`,
@@ -510,8 +563,10 @@ const imageCanvas: Canvas = {
           src: sampleImage,
           alt: `Sample image using ${objectFit}`,
           objectFit,
-          width: { mode: "fixed" as const, value: 130 },
-          height: { mode: "fixed" as const, value: 100 },
+          sizing: {
+            width: { mode: "fixed" as const, value: 130 },
+            height: { mode: "fixed" as const, value: 100 },
+          },
         },
       ],
     })),
@@ -535,8 +590,10 @@ const directFrame: FrameElement = {
       content: "A Frame can be rendered directly",
       color: "#f6f1f4",
       fontSize: 24,
-      width: { mode: "hug" },
-      height: { mode: "hug" },
+      sizing: {
+        width: { mode: "hug" },
+        height: { mode: "hug" },
+      },
     },
     {
       id: "direct-frame-body",
@@ -545,8 +602,10 @@ const directFrame: FrameElement = {
       color: "#e0def4",
       fontSize: 15,
       textAlign: "center",
-      width: { mode: "fixed", value: 300 },
-      height: { mode: "hug" },
+      sizing: {
+        width: { mode: "fixed", value: 300 },
+        height: { mode: "hug" },
+      },
     },
   ],
 };

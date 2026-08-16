@@ -1,4 +1,3 @@
-import { normalizeElementSizing } from "@mechane/domain";
 import type { Canvas, Element, ShowId } from "@mechane/domain";
 import { GetShowCanvasesQuery, graphqlRequest } from "@mechane/graphql-schema";
 import type { ShowCanvas } from "@mechane/graphql-schema";
@@ -42,11 +41,11 @@ function toElement(input: ApiElement): Element {
   const properties = Object.fromEntries(
     Object.entries(fields).filter(([, value]) => value !== null),
   );
-  return normalizeElementSizing({
+  return {
     ...properties,
     type: elementType(__typename),
     children: children?.map(toElement) ?? [],
-  } as unknown as Element);
+  } as unknown as Element;
 }
 
 export function toCanvasArtboard(canvas: ShowCanvas): CanvasArtboardDocument {

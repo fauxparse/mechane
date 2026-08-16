@@ -1,4 +1,3 @@
-import { normalizeElementSizing } from "@mechane/domain";
 import type { Element } from "@mechane/domain";
 import type { CanvasClientRect } from "../graph/canvas-geometry";
 
@@ -8,8 +7,7 @@ export function fixedFillSizing(
   width: number,
   height: number,
 ): Record<string, unknown> {
-  const canonical = normalizeElementSizing(element);
-  const sizing = { ...canonical.sizing };
+  const sizing = { ...element.sizing };
   let changed = false;
   for (const [axis, value] of [
     ["width", width],

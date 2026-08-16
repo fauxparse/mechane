@@ -16,12 +16,6 @@ export const CanvasElementFields = graphql(`
     hidden
     layout
     sizing
-    width
-    height
-    minWidth
-    maxWidth
-    minHeight
-    maxHeight
     rotation
     opacity
     blendMode

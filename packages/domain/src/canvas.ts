@@ -84,13 +84,6 @@ export interface AspectRatioLock {
 }
 
 export interface ElementLayout {
-  /** Accepted while normalizing incoming Canvas data into `sizing`. */
-  width?: AxisSize;
-  height?: AxisSize;
-  minWidth?: SizeValue;
-  maxWidth?: SizeValue;
-  minHeight?: SizeValue;
-  maxHeight?: SizeValue;
   rotation?: Rotation;
   aspectRatio?: AspectRatioLock;
 }
@@ -112,13 +105,6 @@ export interface ElementBase {
   hidden?: boolean;
   layout?: ElementLayout;
   sizing?: ElementSizing;
-  /** Accepted while normalizing incoming Canvas data into `sizing`. */
-  width?: AxisSize;
-  height?: AxisSize;
-  minWidth?: SizeValue;
-  maxWidth?: SizeValue;
-  minHeight?: SizeValue;
-  maxHeight?: SizeValue;
   rotation?: Rotation;
   aspectRatio?: AspectRatioLock;
   opacity?: PropertyValue<number>;
@@ -129,8 +115,6 @@ export interface ElementBase {
   anchor?: AnchorPosition;
   children?: readonly Element[];
 }
-
-type SizingField = keyof ElementSizing;
 
 export interface CornerRadius {
   topLeft?: number;
@@ -223,56 +207,6 @@ export interface Canvas {
   root: FrameElement;
   kind?: "scene" | "block";
 }
-const SIZING_FIELDS: readonly SizingField[] = [
-  "width",
-  "height",
-  "minWidth",
-  "maxWidth",
-  "minHeight",
-  "maxHeight",
-];
-
-type LayoutWithSizing = ElementLayout & Partial<ElementSizing>;
-
-function withoutSizingFields(value: LayoutWithSizing | undefined): ElementLayout | undefined {
-  if (!value) return undefined;
-  const clean = { ...value } as Record<string, unknown>;
-  for (const field of SIZING_FIELDS) delete clean[field];
-  return Object.keys(clean).length > 0 ? (clean as ElementLayout) : undefined;
-}
-
-/**
- * Converts every supported historical sizing shape to the canonical `sizing` object.
- *
- * Layout values win over nested sizing values, which win over top-level values, preserving the
- * renderer's historical precedence while removing the ambiguity from the returned tree.
- */
-export function normalizeElementSizing(element: Element): Element {
-  const layoutWithSizing = element.layout as LayoutWithSizing | undefined;
-  const sizing: ElementSizing = { ...element.sizing };
-  for (const field of SIZING_FIELDS) {
-    const value = layoutWithSizing?.[field] ?? element.sizing?.[field] ?? element[field];
-    if (value !== undefined)
-      (sizing as Record<SizingField, AxisSize | SizeValue | undefined>)[field] = value;
-  }
-
-  const normalized = { ...element } as Record<string, unknown>;
-  for (const field of SIZING_FIELDS) delete normalized[field];
-  const layout = withoutSizingFields(layoutWithSizing);
-  if (layout) normalized.layout = layout;
-  else delete normalized.layout;
-  if (Object.keys(sizing).length > 0) normalized.sizing = sizing;
-  else delete normalized.sizing;
-  if (element.children) normalized.children = element.children.map(normalizeElementSizing);
-  return normalized as unknown as Element;
-}
-
-export function normalizeCanvasSizing(canvas: Canvas): Canvas {
-  return {
-    ...canvas,
-    root: normalizeElementSizing(canvas.root) as FrameElement,
-  };
-}
 
 export class InvalidCanvasError extends Error {
   constructor(reason: string) {
@@ -313,33 +247,20 @@ function assertAxisSize(size: AxisSize | undefined, context: string): void {
 }
 
 function assertLayout(element: Element): void {
-  const layoutWithSizing = element.layout as LayoutWithSizing | undefined;
   const sizing = element.sizing;
   for (const [axis, size] of [
-    ["width", element.width],
-    ["height", element.height],
-    ["layout.width", layoutWithSizing?.width],
-    ["layout.height", layoutWithSizing?.height],
-    ["sizing.width", sizing?.width],
-    ["sizing.height", sizing?.height],
+    ["width", sizing?.width],
+    ["height", sizing?.height],
   ] as const) {
-    assertAxisSize(size, `${element.id} ${axis}`);
+    assertAxisSize(size, `${element.id} sizing.${axis}`);
   }
   for (const [name, value] of [
-    ["minWidth", element.minWidth],
-    ["maxWidth", element.maxWidth],
-    ["minHeight", element.minHeight],
-    ["maxHeight", element.maxHeight],
-    ["layout.minWidth", layoutWithSizing?.minWidth],
-    ["layout.maxWidth", layoutWithSizing?.maxWidth],
-    ["layout.minHeight", layoutWithSizing?.minHeight],
-    ["layout.maxHeight", layoutWithSizing?.maxHeight],
-    ["sizing.minWidth", sizing?.minWidth],
-    ["sizing.maxWidth", sizing?.maxWidth],
-    ["sizing.minHeight", sizing?.minHeight],
-    ["sizing.maxHeight", sizing?.maxHeight],
+    ["minWidth", sizing?.minWidth],
+    ["maxWidth", sizing?.maxWidth],
+    ["minHeight", sizing?.minHeight],
+    ["maxHeight", sizing?.maxHeight],
   ] as const) {
-    if (value !== undefined) assertSizeValue(value, `${element.id} ${name}`);
+    if (value !== undefined) assertSizeValue(value, `${element.id} sizing.${name}`);
   }
   const rotation = element.layout?.rotation ?? element.rotation;
   if (rotation !== undefined && ROTATIONS[rotation] !== true) {

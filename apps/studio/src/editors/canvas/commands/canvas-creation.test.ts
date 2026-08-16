@@ -14,7 +14,7 @@ describe("fixedFillSizing", () => {
         {
           id: "child",
           type: "rect",
-          layout: { width: { mode: "fill" }, height: { mode: "fill" } },
+          sizing: { width: { mode: "fill" }, height: { mode: "fill" } },
           fill: "red",
         },
         240,
@@ -28,14 +28,13 @@ describe("fixedFillSizing", () => {
     });
   });
 
-  it("updates top-level fill sizing without changing fixed axes", () => {
+  it("updates one fill axis without changing the fixed axis", () => {
     expect(
       fixedFillSizing(
         {
           id: "child",
           type: "rect",
-          width: { mode: "fill" },
-          height: { mode: "fixed", value: 40 },
+          sizing: { width: { mode: "fill" }, height: { mode: "fixed", value: 40 } },
         },
         240,
         80,

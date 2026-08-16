@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import type { Element } from "@mechane/domain";
-import { isPropertyConnection, normalizeElementSizing } from "@mechane/domain";
+import { isPropertyConnection } from "@mechane/domain";
 import { canvasElementParent, findCanvasElement } from "@mechane/commands";
 import type { CanvasArtboardDocument } from "../../../../api/canvas";
 import { lockedAspectRatio } from "../../commands/canvas-resize";
@@ -116,13 +116,13 @@ export function useCanvasInspectorModel({
     if (!focused || selection.artId !== focused.artId) return [];
     return selection.elementIds.flatMap((id) => {
       const element = findCanvasElement(focused.canvas.root, id);
-      return element ? [normalizeElementSizing(element)] : [];
+      return element ? [element] : [];
     });
   }, [focused, selection.artId, selection.elementIds]);
   const target = useMemo(() => {
     if (elements[0]) return elements[0];
     if (!focused || selection.artId !== focused.artId) return null;
-    return normalizeElementSizing(focused.canvas.root);
+    return focused.canvas.root;
   }, [elements, focused, selection.artId]);
   const selected = useMemo(
     () => (elements.length > 0 ? elements : target ? [target] : []),

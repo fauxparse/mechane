@@ -11,8 +11,6 @@ import {
   ELEMENT_KINDS,
   generateId,
   InvalidCanvasError as CanvasError,
-  normalizeElementSizing,
-  normalizeCanvasSizing,
 } from "@mechane/domain";
 import { and, asc, eq, isNull } from "drizzle-orm";
 
@@ -72,7 +70,7 @@ function toElement(
     row.properties !== null && typeof row.properties === "object" && !Array.isArray(row.properties)
       ? (row.properties as Record<string, unknown>)
       : {};
-  const element = normalizeElementSizing({
+  const element = {
     ...properties,
     id: row.id,
     type: elementKind(row.type),
@@ -81,7 +79,7 @@ function toElement(
     hidden: row.hidden,
     parentId: row.parentId,
     children: (children.get(row.id) ?? []).map((child) => toElement(child, children, visiting)),
-  } as CanvasElementValue);
+  } as CanvasElementValue;
   visiting.delete(row.id);
   return element as CanvasElementValue;
 }
@@ -300,7 +298,7 @@ export async function writeCanvasRows(
   now: Date,
   position?: Position,
 ): Promise<string> {
-  const canonical = normalizeCanvasSizing(canvas);
+  const canonical = canvas;
   const [existing] = await tx.select().from(canvases).where(ownerWhere(owner, graphId));
   const canvasId = existing?.id ?? generateId("canvas");
   const nextPosition = position ?? {
