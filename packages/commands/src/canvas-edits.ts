@@ -1,5 +1,5 @@
 import type { Canvas, Element, FrameElement, Position } from "@mechane/domain";
-import { ELEMENT_KINDS } from "@mechane/domain";
+import { ELEMENT_KINDS, normalizeCanvasSizing } from "@mechane/domain";
 import type { GraphEdit } from "./graph-edits";
 
 export const CANVAS_COMMAND_TYPES = {
@@ -235,7 +235,7 @@ export function applyCanvasEdits(canvas: Canvas, edits: readonly CanvasEdit[]): 
         throw new CanvasEditError("canvas.moveArtboard requires a Canvas workspace.");
     }
   }
-  return { ...canvas, root: root as FrameElement };
+  return normalizeCanvasSizing({ ...canvas, root: root as FrameElement });
 }
 
 export type ShowEdit = GraphEdit | CanvasEdit;

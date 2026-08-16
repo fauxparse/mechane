@@ -21,7 +21,7 @@ describe("fixedFillSizing", () => {
         80,
       ),
     ).toEqual({
-      layout: {
+      sizing: {
         width: { mode: "fixed", value: 240 },
         height: { mode: "fixed", value: 80 },
       },
@@ -40,7 +40,12 @@ describe("fixedFillSizing", () => {
         240,
         80,
       ),
-    ).toEqual({ width: { mode: "fixed", value: 240 } });
+    ).toEqual({
+      sizing: {
+        width: { mode: "fixed", value: 240 },
+        height: { mode: "fixed", value: 40 },
+      },
+    });
   });
 });
 

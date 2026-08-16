@@ -1,5 +1,5 @@
-import type { Canvas, Element } from "@mechane/domain";
-import type { ShowId } from "@mechane/domain";
+import { normalizeElementSizing } from "@mechane/domain";
+import type { Canvas, Element, ShowId } from "@mechane/domain";
 import { GetShowCanvasesQuery, graphqlRequest } from "@mechane/graphql-schema";
 import type { ShowCanvas } from "@mechane/graphql-schema";
 import { useQuery } from "@tanstack/react-query";
@@ -26,7 +26,13 @@ type ApiElement = {
 
 function elementType(typename: string): Element["type"] {
   const type = typename.replace(/Element$/, "").toLowerCase();
-  if (type === "rect" || type === "ellipse" || type === "text" || type === "image" || type === "frame")
+  if (
+    type === "rect" ||
+    type === "ellipse" ||
+    type === "text" ||
+    type === "image" ||
+    type === "frame"
+  )
     return type;
   throw new Error(`Unknown Canvas Element type "${typename}".`);
 }
@@ -36,11 +42,11 @@ function toElement(input: ApiElement): Element {
   const properties = Object.fromEntries(
     Object.entries(fields).filter(([, value]) => value !== null),
   );
-  return {
+  return normalizeElementSizing({
     ...properties,
     type: elementType(__typename),
     children: children?.map(toElement) ?? [],
-  } as unknown as Element;
+  } as unknown as Element);
 }
 
 export function toCanvasArtboard(canvas: ShowCanvas): CanvasArtboardDocument {

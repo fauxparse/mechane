@@ -116,21 +116,9 @@ type SizeFieldProps = {
 
 export const SizeField = ({ axis }: SizeFieldProps) => {
   const { target, variables, inspectorPreview, update } = useCanvasInspectorContext();
-  const size = target.layout?.[axis] ?? target.sizing?.[axis] ?? target[axis];
-  const sizeSource =
-    target.layout?.[axis] !== undefined
-      ? "layout"
-      : target.sizing?.[axis] !== undefined
-        ? "sizing"
-        : axis;
+  const size = target.sizing?.[axis];
   const updateSize = (next: AxisSize) => {
-    if (sizeSource === "layout") {
-      update({ layout: { ...target.layout, [axis]: next } });
-    } else if (sizeSource === "sizing") {
-      update({ sizing: { ...target.sizing, [axis]: next } });
-    } else {
-      update({ [axis]: next });
-    }
+    update({ sizing: { ...target.sizing, [axis]: next } });
   };
   const previewValue =
     inspectorPreview?.elementId === target.id ? inspectorPreview[axis] : undefined;
