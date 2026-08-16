@@ -53,6 +53,7 @@ export type LayoutAlignment =
 export type Anchor = "left" | "center" | "centre" | "right" | "top" | "bottom";
 export type TextAlign = "left" | "center" | "right" | "justify" | "start" | "end";
 export type TextVerticalAlign = "top" | "center" | "bottom";
+export type TextOverflow = "visible" | "clip" | "ellipsis";
 export type ObjectFit = "fill" | "contain" | "cover" | "none" | "scale-down";
 
 export type StrokeStyle = "solid" | "dotted" | "dashed";
@@ -163,6 +164,7 @@ export interface TextElement extends ElementBase {
   letterSpacing?: PropertyValue<number>;
   textAlign?: PropertyValue<TextAlign>;
   textVerticalAlign?: PropertyValue<TextVerticalAlign>;
+  textOverflow?: TextOverflow;
   padding?: number | Padding;
 }
 

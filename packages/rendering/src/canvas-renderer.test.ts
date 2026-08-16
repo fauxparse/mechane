@@ -83,6 +83,50 @@ describe("CanvasRenderer", () => {
 
     expect(html).toContain("padding:4px 8px 12px 16px");
   });
+  it("supports text hug sizing and clipping or ellipsis overflow", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "hugged",
+            type: "text",
+            content: "Hugged",
+            width: { mode: "hug" },
+            height: { mode: "hug" },
+          },
+          {
+            id: "clipped",
+            type: "text",
+            content: "Clipped",
+            width: { mode: "fixed", value: 80 },
+            height: { mode: "fixed", value: 20 },
+            textOverflow: "clip",
+          },
+          {
+            id: "truncated",
+            type: "text",
+            content: "Truncated",
+            width: { mode: "fixed", value: 80 },
+            height: { mode: "fixed", value: 20 },
+            textOverflow: "ellipsis",
+          },
+        ],
+      },
+    });
+
+    expect(html).toContain('data-element-id="hugged"');
+    expect(html).toContain("width:max-content");
+    expect(html).toContain("height:max-content");
+    expect(html).toContain('data-element-id="clipped"');
+    expect(html).toContain("overflow:hidden");
+    expect(html).toContain("text-overflow:clip");
+    expect(html).toContain('data-element-id="truncated"');
+    expect(html).toContain("text-overflow:ellipsis");
+    expect(html).toContain("white-space:nowrap");
+  });
   it("renders numeric line height as pixels", () => {
     const html = markup({
       kind: "scene",
