@@ -392,6 +392,7 @@ type TextElement implements Element {
   lineHeight: JSON
   letterSpacing: JSON
   textAlign: JSON
+  padding: JSON
 }
 
 type ImageElement implements Element {

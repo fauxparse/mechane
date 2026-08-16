@@ -68,6 +68,19 @@ const absoluteRoot: FrameElement = {
     },
   ],
 };
+const longTextRoot: FrameElement = {
+  ...absoluteRoot,
+  id: "long-text-root",
+  children: absoluteRoot.children?.map((child) =>
+    child.id === "headline"
+      ? {
+          ...child,
+          content:
+            "A longer piece of plain text that stays readable in the inspector preview.\nIt opens in the modal editor without losing its line break.",
+        }
+      : child,
+  ),
+};
 const gradientRoot: FrameElement = {
   ...absoluteRoot,
   id: "gradient-root",
@@ -292,6 +305,7 @@ export const CanvasRoot: Story = {
     />
   ),
 };
+
 export const CanvasBlockRoot: Story = {
   render: () => (
     <InspectorStory
@@ -304,7 +318,7 @@ export const CanvasBlockRoot: Story = {
 export const TextElement: Story = {
   render: () => (
     <InspectorStory
-      initialArtboard={artboard(absoluteRoot)}
+      initialArtboard={artboard(longTextRoot)}
       initialSelection={{ artId: ART_ID, elementIds: ["headline"] }}
     />
   ),

@@ -252,6 +252,7 @@ function typeStyle(element: Element): CSSProperties {
       lineHeight: literal(element.lineHeight),
       letterSpacing: letterSpacing === undefined ? undefined : `${letterSpacing}px`,
       textAlign: literal(element.textAlign),
+      padding: paddingValue(element.padding),
       userSelect: "none",
       whiteSpace: "pre-wrap",
       overflowWrap: "anywhere",

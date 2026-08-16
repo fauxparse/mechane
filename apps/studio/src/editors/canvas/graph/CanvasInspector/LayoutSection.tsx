@@ -26,14 +26,16 @@ import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { SizeField } from "./CanvasInspectorFields";
 import { isVariableInput } from "./canvas-inspector-values";
 import { AlignmentSelector } from "./AlignmentSelector";
-import { FrameElement, isContainerElement, Padding } from "@mechane/domain";
+import { FrameElement, isContainerElement, Padding, TextElement } from "@mechane/domain";
 import { useState } from "react";
 
 export const LayoutSection = () => {
   const { focused, target, selected, update, common, isAspectRatioLocked, setAspectRatioLock } =
     useCanvasInspectorContext();
-  const isFrame = selected.every(isContainerElement);
+  const isFrame = selected.length > 0 && selected.every(isContainerElement);
+  const isText = selected.length > 0 && selected.every((element) => element.type === "text");
   const frame = isFrame ? (target as FrameElement) : null;
+  const paddingTarget = isFrame || isText ? (target as FrameElement | TextElement) : null;
   const hasAutoLayout = isFrame && common("layoutMode") === "auto";
   const selectionKey = `${focused?.artId ?? ""}:${selected.map((element) => element.id).join(",")}`;
   const clipChildren = common("clip");
@@ -109,7 +111,7 @@ export const LayoutSection = () => {
               />
             </>
           )}
-          <FramePadding key={selectionKey} padding={frame.padding} update={update} />
+          <PaddingControl key={selectionKey} padding={frame.padding} update={update} />
           <div className="col-span-2">
             <label className="flex items-center gap-2 w-fit">
               <Switch
@@ -123,13 +125,17 @@ export const LayoutSection = () => {
           </div>
         </>
       )}
+      {paddingTarget && !frame && (
+        <PaddingControl key={selectionKey} padding={paddingTarget.padding} update={update} />
+      )}
     </Section>
   );
 };
 
 type PaddingSide = keyof Padding;
+type PaddingValue = FrameElement["padding"] | TextElement["padding"];
 
-const paddingSides = (padding: FrameElement["padding"]): Record<PaddingSide, number> => {
+const paddingSides = (padding: PaddingValue): Record<PaddingSide, number> => {
   if (typeof padding === "number") {
     return { top: padding, right: padding, bottom: padding, left: padding };
   }
@@ -141,7 +147,7 @@ const paddingSides = (padding: FrameElement["padding"]): Record<PaddingSide, num
   };
 };
 
-const hasAsymmetricPadding = (padding: FrameElement["padding"]): boolean => {
+const hasAsymmetricPadding = (padding: PaddingValue): boolean => {
   const values = paddingSides(padding);
   return values.top !== values.bottom || values.left !== values.right;
 };
@@ -166,11 +172,11 @@ const PaddingInput = ({
   />
 );
 
-const FramePadding = ({
+const PaddingControl = ({
   padding,
   update,
 }: {
-  padding: FrameElement["padding"];
+  padding: PaddingValue;
   update: (properties: Record<string, unknown>) => void;
 }) => {
   const [expanded, setExpanded] = useState(() => hasAsymmetricPadding(padding));

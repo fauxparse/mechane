@@ -64,6 +64,25 @@ describe("CanvasRenderer", () => {
     expect(html).toContain("overflow:hidden");
     expect(html).toContain("width:100%");
   });
+  it("applies authored padding to text elements", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "text",
+            type: "text",
+            padding: { top: 4, right: 8, bottom: 12, left: 16 },
+            content: "Padded text",
+          },
+        ],
+      },
+    });
+
+    expect(html).toContain("padding:4px 8px 12px 16px");
+  });
   it("renders individual rectangle corner radii", () => {
     const html = markup({
       kind: "scene",

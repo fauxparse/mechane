@@ -159,6 +159,7 @@ export interface TextElement extends ElementBase {
   lineHeight?: PropertyValue<string | number>;
   letterSpacing?: PropertyValue<number>;
   textAlign?: PropertyValue<TextAlign>;
+  padding?: number | Padding;
 }
 
 export interface ImageElement extends ElementBase {

@@ -515,6 +515,7 @@ export const schema = createSchema<GraphQLContext>({
       lineHeight: JSON
       letterSpacing: JSON
       textAlign: JSON
+      padding: JSON
     }
 
     type ImageElement implements Element {

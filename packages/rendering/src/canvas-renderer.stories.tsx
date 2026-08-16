@@ -141,6 +141,7 @@ const primitiveCanvas: Canvas = {
         lineHeight: 1.25,
         letterSpacing: 0.4,
         textAlign: "justify",
+        padding: { top: 12, right: 16, bottom: 12, left: 16 },
         sizing: {
           width: { mode: "fixed", value: { value: 260, unit: "px" } },
           height: { mode: "hug" },
