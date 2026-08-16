@@ -1,4 +1,4 @@
-import type { SceneVariable } from "@mechane/domain";
+import type { AxisSize, SceneVariable } from "@mechane/domain";
 import {
   CANVAS_PROPERTY_DESCRIPTORS,
   canvasPropertyDescriptor,
@@ -116,7 +116,22 @@ type SizeFieldProps = {
 
 export const SizeField = ({ axis }: SizeFieldProps) => {
   const { target, variables, inspectorPreview, update } = useCanvasInspectorContext();
-  const size = target[axis];
+  const size = target.layout?.[axis] ?? target.sizing?.[axis] ?? target[axis];
+  const sizeSource =
+    target.layout?.[axis] !== undefined
+      ? "layout"
+      : target.sizing?.[axis] !== undefined
+        ? "sizing"
+        : axis;
+  const updateSize = (next: AxisSize) => {
+    if (sizeSource === "layout") {
+      update({ layout: { ...target.layout, [axis]: next } });
+    } else if (sizeSource === "sizing") {
+      update({ sizing: { ...target.sizing, [axis]: next } });
+    } else {
+      update({ [axis]: next });
+    }
+  };
   const previewValue =
     inspectorPreview?.elementId === target.id ? inspectorPreview[axis] : undefined;
   const previewing = previewValue !== undefined;
@@ -144,31 +159,25 @@ export const SizeField = ({ axis }: SizeFieldProps) => {
       sizing={mode}
       variables={sizeVariables}
       min={0}
-      onSizingChange={(nextMode) =>
-        update({
-          [axis]: {
-            ...size,
-            mode: nextMode,
-            ...(nextMode === "fixed" && size?.value === undefined ? { value: 100 } : {}),
-          },
-        })
-      }
+      onSizingChange={(nextMode) => {
+        updateSize({
+          ...size,
+          mode: nextMode,
+          ...(nextMode === "fixed" && size?.value === undefined ? { value: 100 } : {}),
+        });
+      }}
       onChange={(next: PropertyInputValue | null) => {
         if (isVariableInput(next)) {
-          update({
-            [axis]: {
-              ...size,
-              mode: "fixed",
-              value: { kind: "variable", variableId: next.id },
-            },
+          updateSize({
+            ...size,
+            mode: "fixed",
+            value: { kind: "variable", variableId: next.id },
           });
         } else if (next?.kind === "number") {
-          update({
-            [axis]: {
-              ...size,
-              mode: "fixed",
-              value: unit === "%" ? { value: next.value, unit } : next.value,
-            },
+          updateSize({
+            ...size,
+            mode: "fixed",
+            value: unit === "%" ? { value: next.value, unit } : next.value,
           });
         }
       }}

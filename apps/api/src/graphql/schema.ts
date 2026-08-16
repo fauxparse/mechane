@@ -517,6 +517,7 @@ export const schema = createSchema<GraphQLContext>({
       lineHeight: JSON
       letterSpacing: JSON
       textVerticalAlign: JSON
+      textOverflow: String
       padding: JSON
     }
 

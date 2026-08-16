@@ -27,6 +27,11 @@ import {
   PaintBucketIcon,
   PencilIcon,
   PropertyInput,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   TextAlignCenterIcon,
   TextAlignEndIcon,
   TextAlignStartIcon,
@@ -42,7 +47,7 @@ import {
   TextAlignVerticalBottomIcon,
   LetterSpacingIcon,
 } from "@mechane/design-system";
-import type { ShapeValue } from "@mechane/domain";
+import type { ShapeValue, TextOverflow } from "@mechane/domain";
 import { Fragment, useEffect, useMemo, useState } from "react";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
@@ -191,6 +196,11 @@ const LINE_HEIGHT_PRESETS = [
   72,
   96,
 ] as const;
+const TEXT_OVERFLOW_OPTIONS = [
+  { label: "Visible", value: "visible" },
+  { label: "Clip", value: "clip" },
+  { label: "Truncate", value: "ellipsis" },
+] as const satisfies readonly { label: string; value: TextOverflow }[];
 
 export const TextSection = () => {
   const { target, common, update, variables } = useCanvasInspectorContext();
@@ -250,6 +260,7 @@ export const TextSection = () => {
   }, [bold, fontFamily, italic, selectedGoogleFont]);
   const textAlign = common("textAlign") as string | undefined;
   const textVerticalAlign = common("textVerticalAlign") as string | undefined;
+  const textOverflow = common("textOverflow") as TextOverflow | undefined;
   if (target.type !== "text") return null;
 
   return (
@@ -300,6 +311,37 @@ export const TextSection = () => {
         <SectionRow>
           <PropertyField name="lineHeight" icon={LineHeightIcon} presets={LINE_HEIGHT_PRESETS} />
           <PropertyField name="letterSpacing" icon={LetterSpacingIcon} />
+        </SectionRow>
+        <SectionRow>
+          <Select
+            items={TEXT_OVERFLOW_OPTIONS}
+            value={textOverflow ?? null}
+            onValueChange={(value) => {
+              const next = value as TextOverflow | null;
+              if (!next || next === "visible") update({}, ["textOverflow"]);
+              else update({ textOverflow: next });
+            }}
+          >
+            <SelectTrigger
+              className="w-full rounded-sm border-0 bg-muted/50 px-2"
+              size="sm"
+              aria-label="Text overflow"
+            >
+              <SelectValue
+                placeholder={
+                  TEXT_OVERFLOW_OPTIONS.find((option) => option.value === textOverflow)?.label ??
+                  "Visible"
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {TEXT_OVERFLOW_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </SectionRow>
         <SectionRow>
           <ToggleGroup

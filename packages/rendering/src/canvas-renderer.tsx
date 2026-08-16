@@ -245,6 +245,8 @@ function typeStyle(element: Element): CSSProperties {
     const fontSize = literal(element.fontSize);
     const lineHeight = literal(element.lineHeight);
     const textVerticalAlign = literal(element.textVerticalAlign) ?? "top";
+    const textOverflow = element.textOverflow ?? "visible";
+    const truncates = textOverflow === "ellipsis";
     const justifyContent =
       textVerticalAlign === "center"
         ? "center"
@@ -277,8 +279,10 @@ function typeStyle(element: Element): CSSProperties {
       textAlign: literal(element.textAlign),
       padding: paddingValue(element.padding),
       userSelect: "none",
-      whiteSpace: "pre-wrap",
-      overflowWrap: "anywhere",
+      overflow: textOverflow === "visible" ? "visible" : "hidden",
+      textOverflow: truncates ? "ellipsis" : "clip",
+      whiteSpace: truncates ? "nowrap" : "pre-wrap",
+      overflowWrap: truncates ? "normal" : "anywhere",
     };
   }
   if (element.type === "image") return { objectFit: literal(element.objectFit) ?? "fill" };
