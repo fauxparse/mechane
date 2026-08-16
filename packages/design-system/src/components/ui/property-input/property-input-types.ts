@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import type {
   PropertyConnection,
   PropertyValue,
@@ -11,6 +12,7 @@ export type VariableReference<TSource extends ShapeValue = ShapeValue> =
   DomainVariableReference<TSource>;
 
 export type PropertyInputType = "text" | "number" | "color";
+export type PropertyInputPreset = number | "auto";
 export type PropertyInputSizing = "fixed" | "fill" | "hug";
 export type PropertyInputConstraint = "min" | "max";
 export type PropertyInputUnit = "px" | "%";
@@ -23,6 +25,8 @@ export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   icon?: LucideIcon | string;
   value?: PropertyInputValue<T> | null;
   type?: PropertyInputType;
+  /** Render the current value in place of the input while it is inactive. */
+  renderInactiveValue?: (value: ShapeValue | null) => ReactNode;
   placeholder?: string;
   dimension?: "width" | "height";
   unit?: PropertyInputUnit;
@@ -31,6 +35,8 @@ export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   min?: number;
   max?: number;
   step?: number;
+  /** Values shown in the input menu as common presets. */
+  presets?: readonly PropertyInputPreset[];
   /** Enables the shared "Auto" popup option for values with non-numeric semantics. */
   allowAuto?: boolean;
   allowLink?: boolean;

@@ -64,6 +64,96 @@ describe("CanvasRenderer", () => {
     expect(html).toContain("overflow:hidden");
     expect(html).toContain("width:100%");
   });
+  it("applies authored padding to text elements", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "text",
+            type: "text",
+            padding: { top: 4, right: 8, bottom: 12, left: 16 },
+            content: "Padded text",
+          },
+        ],
+      },
+    });
+
+    expect(html).toContain("padding:4px 8px 12px 16px");
+  });
+  it("renders numeric line height as pixels", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [{ id: "text", type: "text", content: "Line height", lineHeight: 24 }],
+      },
+    });
+
+    expect(html).toContain("line-height:24px");
+  });
+  it("renders text weight, style, and decoration", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "text",
+            type: "text",
+            content: "Styled",
+            fontWeight: 700,
+            fontStyle: "italic",
+            textDecoration: "underline",
+          },
+        ],
+      },
+    });
+
+    expect(html).toContain("font-weight:700");
+    expect(html).toContain("font-style:italic");
+    expect(html).toContain("text-decoration:underline");
+  });
+  it("renders text vertical alignment", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          { id: "top", type: "text", content: "Top", textVerticalAlign: "top" },
+          { id: "center", type: "text", content: "Center", textVerticalAlign: "center" },
+          { id: "bottom", type: "text", content: "Bottom", textVerticalAlign: "bottom" },
+        ],
+      },
+    });
+
+    expect(html.match(/justify-content:flex-start/g)).toHaveLength(1);
+    expect(html.match(/justify-content:center/g)).toHaveLength(1);
+    expect(html.match(/justify-content:flex-end/g)).toHaveLength(1);
+  });
+  it("renders numeric-string line height as pixels and maps auto to a normal default", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          { id: "pixels", type: "text", content: "Pixels", lineHeight: "24" },
+          { id: "auto", type: "text", content: "Auto", lineHeight: "auto" },
+          { id: "missing", type: "text", content: "Missing" },
+        ],
+      },
+    });
+
+    expect(html).toContain("line-height:24px");
+    expect(html.match(/line-height:normal/g)).toHaveLength(2);
+    expect(html).not.toContain("line-height:auto");
+  });
   it("renders individual rectangle corner radii", () => {
     const html = markup({
       kind: "scene",

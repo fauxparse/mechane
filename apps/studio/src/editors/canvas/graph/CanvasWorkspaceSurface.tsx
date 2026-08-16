@@ -6,7 +6,15 @@
 // The stage fills its container, and the container is the whole viewport — the
 // plane runs underneath the sidebars to the edges of the screen. Anything that
 // frames content should consult `useEditableArea()` rather than the stage size.
+import { useEffect, useMemo } from "react";
 import { EditorSlot } from "../../../components/EditorLayout/editor-slots";
+
+import {
+  collectFontFamilies,
+  fontFamilyKey,
+  loadGoogleFont,
+  useGoogleFonts,
+} from "../google-fonts";
 import type { CanvasWorkspaceSurfaceProps } from "../canvas-workspace-types";
 import { Toolbar } from "../Toolbar/Toolbar";
 import { CanvasWorkspaceStage } from "./CanvasWorkspaceStage";
@@ -61,8 +69,21 @@ export function CanvasWorkspaceSurface({
   onFinishCreation,
   onSelectAtPoint,
   onBeginResize,
+
   onHandleCanvasKeyDown,
 }: CanvasWorkspaceSurfaceProps) {
+  const fontFamilies = useMemo(() => collectFontFamilies(ordered), [ordered]);
+  const googleFontsQuery = useGoogleFonts();
+  const googleFontKeys = useMemo(
+    () => new Set((googleFontsQuery.data ?? []).map((font) => fontFamilyKey(font.family))),
+    [googleFontsQuery.data],
+  );
+
+  useEffect(() => {
+    for (const fontFamily of fontFamilies) {
+      if (googleFontKeys.has(fontFamilyKey(fontFamily))) loadGoogleFont(fontFamily);
+    }
+  }, [fontFamilies, googleFontKeys]);
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background text-foreground">
       <CanvasWorkspaceStage
@@ -123,6 +144,7 @@ export function CanvasWorkspaceSurface({
       <EditorSlot name="right">
         <CanvasInspector
           focused={focused}
+          artboards={ordered}
           selection={selection}
           variables={variables}
           inspectorPreview={inspectorPreview}

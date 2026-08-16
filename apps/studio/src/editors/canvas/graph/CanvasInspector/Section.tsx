@@ -14,7 +14,9 @@ export const Section = ({
   className,
 }: PropsWithChildren<SectionProps>) => {
   return (
-    <SidebarGroup className={cn("px-0 py-1 border-t border-sidebar-border", className)}>
+    <SidebarGroup
+      className={cn("px-0 py-1 border-t border-sidebar-border first:border-t-0", className)}
+    >
       <SidebarGroupLabel className="justify-between gap-2 h-7 px-4">
         <span>{label}</span>
         {buttons && <div className="flex gap-1 items-center justify-end">{buttons}</div>}

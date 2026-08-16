@@ -1,6 +1,7 @@
 import { applyCanvasEdits, CANVAS_COMMAND_TYPES } from "@mechane/commands";
 import type { CanvasEdit } from "@mechane/commands";
 import { FrameElement, hasCornerRadius, SceneVariable } from "@mechane/domain";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useCallback, useState } from "react";
 
@@ -12,6 +13,7 @@ import { EditorSlot } from "../../../../components/EditorLayout/editor-slots";
 
 const CANVAS_ID = "canvas-inspector-story";
 const ART_ID = "scene-inspector-story";
+const storyQueryClient = new QueryClient();
 
 const variables: SceneVariable[] = [
   { id: "opacity-variable", name: "Opacity / Default", type: "number" },
@@ -48,7 +50,7 @@ const absoluteRoot: FrameElement = {
       name: "Headline",
       rank: "a",
       content: "Canvas Inspector",
-      color: "#f8fafc",
+      fontFamily: "Georgia, serif",
       fontSize: 32,
       width: { mode: "hug" },
       height: { mode: "hug" },
@@ -67,6 +69,19 @@ const absoluteRoot: FrameElement = {
       anchor: { horizontal: "left", vertical: "top", offsetX: 32, offsetY: 120 },
     },
   ],
+};
+const longTextRoot: FrameElement = {
+  ...absoluteRoot,
+  id: "long-text-root",
+  children: absoluteRoot.children?.map((child) =>
+    child.id === "headline"
+      ? {
+          ...child,
+          content:
+            "A longer piece of plain text that stays readable in the inspector preview.\nIt opens in the modal editor without losing its line break.",
+        }
+      : child,
+  ),
 };
 const gradientRoot: FrameElement = {
   ...absoluteRoot,
@@ -124,7 +139,7 @@ const connectedRoot: FrameElement = {
   gap: 16,
   width: { mode: "fixed", value: 640 },
   height: { mode: "fixed", value: 360 },
-  fill: "#0f172a",
+  fill: "#000000",
   children: [
     {
       id: "connected-card",
@@ -252,17 +267,20 @@ function InspectorStory({
   );
 
   return (
-    <MockEditorChrome activeEditor="canvas">
-      <div className="size-full bg-background" />
-      <EditorSlot name="right">
-        <CanvasInspector
-          focused={current}
-          selection={initialSelection}
-          variables={storyVariables}
-          onUpdateElements={onUpdateElements}
-        />
-      </EditorSlot>
-    </MockEditorChrome>
+    <QueryClientProvider client={storyQueryClient}>
+      <MockEditorChrome activeEditor="canvas">
+        <div className="size-full bg-background" />
+        <EditorSlot name="right">
+          <CanvasInspector
+            focused={current}
+            artboards={[current]}
+            selection={initialSelection}
+            variables={storyVariables}
+            onUpdateElements={onUpdateElements}
+          />
+        </EditorSlot>
+      </MockEditorChrome>
+    </QueryClientProvider>
   );
 }
 
@@ -292,6 +310,7 @@ export const CanvasRoot: Story = {
     />
   ),
 };
+
 export const CanvasBlockRoot: Story = {
   render: () => (
     <InspectorStory
@@ -304,7 +323,7 @@ export const CanvasBlockRoot: Story = {
 export const TextElement: Story = {
   render: () => (
     <InspectorStory
-      initialArtboard={artboard(absoluteRoot)}
+      initialArtboard={artboard(longTextRoot)}
       initialSelection={{ artId: ART_ID, elementIds: ["headline"] }}
     />
   ),

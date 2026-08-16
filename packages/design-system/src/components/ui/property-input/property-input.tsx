@@ -1,5 +1,5 @@
+import { useState, type FocusEvent, type KeyboardEvent } from "react";
 import type { ShapeValue } from "@mechane/domain";
-import type { FocusEvent } from "react";
 
 import { Combobox, ComboboxInput } from "../combobox";
 import { Popover, PopoverContent } from "../popover";
@@ -22,14 +22,15 @@ export const PropertyInput = <T extends ShapeValue>({
   icon,
   value,
   type = "text",
+  renderInactiveValue,
   placeholder,
   dimension,
   unit = "px",
   sizing,
   variables,
-  min,
   max,
   step,
+  presets,
   scrubScale = 2,
   allowAuto,
   allowLink = true,
@@ -39,6 +40,7 @@ export const PropertyInput = <T extends ShapeValue>({
   onAutoChange,
   onConstraintAdd,
 }: PropertyInputProps<T>) => {
+  const [inputActive, setInputActive] = useState(false);
   const input = usePropertyInput({
     value,
     type,
@@ -46,9 +48,9 @@ export const PropertyInput = <T extends ShapeValue>({
     unit,
     sizing,
     variables,
-    min,
     max,
     step,
+    presets,
     scrubScale,
     allowAuto,
     auto,
@@ -57,6 +59,17 @@ export const PropertyInput = <T extends ShapeValue>({
     onAutoChange,
     onConstraintAdd,
   });
+  const inactiveValue = renderInactiveValue?.(input.currentValue);
+  const hasInactiveValue =
+    !inputActive && !input.linkedVariable && inactiveValue !== null && inactiveValue !== undefined;
+  const activateInput = () => {
+    input.inputElementRef.current?.focus();
+  };
+  const handleInactiveKeyDown = (event: KeyboardEvent<HTMLSpanElement>) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    activateInput();
+  };
   const connectorLabel = input.linkedVariable
     ? "Disconnect variable"
     : input.currentSizing === "fixed"
@@ -92,14 +105,38 @@ export const PropertyInput = <T extends ShapeValue>({
             aria-label={placeholder ?? input.inputType}
             placeholder={placeholder}
             className={cn(
-              "w-full min-w-0 bg-muted/50 dark:bg-muted/50 border-0 *:data-[slot=combobox-input]:px-0 rounded-sm h-7 data-[slot=combobox-input]:h-7",
+              "w-full min-w-0 bg-muted/50 dark:bg-muted/50 border-0 *:data-[slot=combobox-input]:px-1 rounded-sm h-7 data-[slot=combobox-input]:h-7",
               !icon && "pl-2",
+              hasInactiveValue &&
+                "[&>input]:pointer-events-none [&>input]:w-0 [&>input]:flex-none *:data-[slot=combobox-input]:p-0 [&>input]:opacity-0",
             )}
             showTrigger={false}
-            onFocus={handleInputFocus}
-            onBlur={input.commitDraftInput}
+            onFocus={(event) => {
+              setInputActive(true);
+              handleInputFocus(event);
+            }}
+            onBlur={() => {
+              input.commitDraftInput();
+              setInputActive(false);
+            }}
             onKeyDown={input.handleInputKeyDown}
           >
+            {hasInactiveValue && (
+              <button
+                type="button"
+                aria-label={placeholder ?? `Edit ${input.inputType}`}
+                className={cn(
+                  "min-w-0 flex-1 truncate border-0 bg-transparent px-1 py-0 text-left text-sm",
+                )}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  activateInput();
+                }}
+                onKeyDown={handleInactiveKeyDown}
+              >
+                {inactiveValue}
+              </button>
+            )}
             <Addons
               icon={icon}
               inputType={input.inputType}
@@ -124,8 +161,8 @@ export const PropertyInput = <T extends ShapeValue>({
           <Menu
             inputType={input.inputType}
             colorText={input.colorText}
-            dimension={dimension}
             sizing={input.currentSizing}
+            presets={presets}
             auto={input.auto}
             allowAuto={allowAuto}
             linkedVariable={input.linkedVariable}

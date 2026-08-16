@@ -32,6 +32,7 @@ export {
   ComboboxContent,
   ComboboxEmpty,
   ComboboxGroup,
+  ComboboxInput,
   ComboboxInputGroup,
   ComboboxItem,
   ComboboxLabel,
@@ -159,6 +160,7 @@ export {
 export {
   PropertyInput,
   type PropertyInputConstraint,
+  type PropertyInputPreset,
   type PropertyInputProps,
   type PropertyInputSizing,
   type PropertyInputType,
@@ -180,25 +182,31 @@ export {
 export { THEME_COLOR_METADATA } from "./themes/generated";
 export type { ThemeColorKey } from "./themes/generated";
 
-export { MechaneIcon } from "./icons/MechaneIcon";
-export { LayoutNoneIcon } from "./icons/LayoutNoneIcon";
-export { LayoutHorizontalIcon } from "./icons/LayoutHorizontalIcon";
-export { LayoutVerticalIcon } from "./icons/LayoutVerticalIcon";
+export { FontSizeIcon } from "./icons/FontSizeIcon";
 export { GapHorizontalIcon } from "./icons/GapHorizontalIcon";
 export { GapVerticalIcon } from "./icons/GapVerticalIcon";
 export { GradientLinearIcon } from "./icons/GradientLinearIcon";
 export { GradientRadialIcon } from "./icons/GradientRadialIcon";
+export { LayoutHorizontalIcon } from "./icons/LayoutHorizontalIcon";
+export { LayoutNoneIcon } from "./icons/LayoutNoneIcon";
+export { LayoutVerticalIcon } from "./icons/LayoutVerticalIcon";
+export { LetterSpacingIcon } from "./icons/LetterSpacingIcon";
+export { LineHeightIcon } from "./icons/LineHeightIcon";
+export { MechaneIcon } from "./icons/MechaneIcon";
 export { OpacityIcon } from "./icons/OpacityIcon";
 export { PaddingAllIcon } from "./icons/PaddingAllIcon";
+export { PaddingBottomIcon } from "./icons/PaddingBottomIcon";
 export { PaddingHorizontalIcon } from "./icons/PaddingHorizontalIcon";
 export { PaddingLeftIcon } from "./icons/PaddingLeftIcon";
 export { PaddingRightIcon } from "./icons/PaddingRightIcon";
-export { PaddingVerticalIcon } from "./icons/PaddingVerticalIcon";
 export { PaddingTopIcon } from "./icons/PaddingTopIcon";
-export { PaddingBottomIcon } from "./icons/PaddingBottomIcon";
-export { RadiusIcon } from "./icons/RadiusIcon";
+export { PaddingVerticalIcon } from "./icons/PaddingVerticalIcon";
 export { RadiusBottomLeftIcon } from "./icons/RadiusBottomLeftIcon";
 export { RadiusBottomRightIcon } from "./icons/RadiusBottomRightIcon";
+export { RadiusIcon } from "./icons/RadiusIcon";
 export { RadiusTopLeftIcon } from "./icons/RadiusTopLeftIcon";
 export { RadiusTopRightIcon } from "./icons/RadiusTopRightIcon";
+export { TextAlignVerticalTopIcon } from "./icons/TextAlignVerticalTopIcon";
+export { TextAlignVerticalCenterIcon } from "./icons/TextAlignVerticalCenterIcon";
+export { TextAlignVerticalBottomIcon } from "./icons/TextAlignVerticalBottomIcon";
 export * from "lucide-react";

@@ -266,7 +266,7 @@ export function SidebarMenuButton({
       data-slot="sidebar-menu-button"
       data-active={isActive ? "true" : "false"}
       className={cn(
-        "flex h-8 w-full min-w-0 items-center gap-2 overflow-hidden rounded-md px-2 text-left text-sm outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 data-[active=true]:bg-accent data-[active=true]:text-accent-foreground",
+        "flex h-8 w-full min-w-0 items-center gap-2 overflow-hidden rounded-sm px-2 text-left text-sm outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 data-[active=true]:bg-accent data-[active=true]:text-accent-foreground",
         "group-data-[state=collapsed]/sidebar:justify-center group-data-[state=collapsed]/sidebar:px-0",
         className,
       )}

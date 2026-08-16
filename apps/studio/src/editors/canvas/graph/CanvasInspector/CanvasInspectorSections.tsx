@@ -26,25 +26,6 @@ export const InspectorHeader = () => {
   );
 };
 
-export function TextSection() {
-  const { target } = useCanvasInspectorContext();
-  if (target.type !== "text") return null;
-
-  return (
-    <SidebarGroup>
-      <SidebarGroupLabel>Text</SidebarGroupLabel>
-      <SidebarGroupContent className="flex flex-col gap-3 p-3">
-        <PropertyField name="content" />
-        <PropertyField name="color" />
-        <PropertyField name="fontFamily" />
-        <PropertyField name="fontSize" />
-        <PropertyField name="textAlign" />
-        <PropertyField name="letterSpacing" />
-      </SidebarGroupContent>
-    </SidebarGroup>
-  );
-}
-
 export const ImageSection = () => {
   const { target } = useCanvasInspectorContext();
   if (target.type !== "image") return null;

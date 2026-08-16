@@ -3,13 +3,14 @@ import { SidebarContent, SidebarHeader } from "@mechane/design-system";
 
 import { AppearanceSection } from "./AppearanceSection";
 import { CanvasInspectorProvider } from "./CanvasInspectorContext";
-import { ImageSection, InspectorHeader, TextSection } from "./CanvasInspectorSections";
+import { ImageSection, InspectorHeader } from "./CanvasInspectorSections";
 import { LayoutSection } from "./LayoutSection";
 import { PositionSection } from "./PositionSection";
 import type { CanvasInspectorProps } from "./canvas-inspector-types";
 import { useCanvasInspectorModel } from "./use-canvas-inspector-model";
 import { FillSection } from "./FillSection";
 import { StrokeSection } from "./StrokeSection";
+import { TextSection } from "./TextSection";
 
 const EmptySelection = () => (
   <SidebarContent>
@@ -19,7 +20,7 @@ const EmptySelection = () => (
 
 const CanvasInspectorContent = () => (
   <>
-    <SidebarHeader className="border-0">
+    <SidebarHeader className="">
       <InspectorHeader />
     </SidebarHeader>
     <SidebarContent className="p-0 gap-0">

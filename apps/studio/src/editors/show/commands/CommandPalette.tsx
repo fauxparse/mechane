@@ -119,7 +119,7 @@ function CommandPaletteDialog({ open, onOpenChange, commands }: CommandPalettePr
                     disabled={Boolean(command.disabledReason)}
                     title={command.disabledReason}
                     className={cn(
-                      "flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm",
+                      "flex w-full items-center gap-2 rounded-sm px-3 py-1.5 text-left text-sm",
                       active && "bg-muted",
                       command.disabledReason ? "cursor-default opacity-50" : "hover:bg-muted",
                     )}

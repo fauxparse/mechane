@@ -38,9 +38,12 @@ export const CanvasElementFields = graphql(`
       fontFamily
       fontSize
       fontWeight
+      fontStyle
+      textDecoration
       lineHeight
       letterSpacing
-      textAlign
+      textVerticalAlign
+      padding
     }
     ... on ImageElement {
       src

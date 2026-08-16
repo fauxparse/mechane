@@ -1,9 +1,9 @@
 import type { Element as CanvasElement, Stroke, StrokeStyle } from "@mechane/domain";
 import {
   Button,
-  PenIcon,
   PenLineIcon,
   PenToolIcon,
+  PlusIcon,
   PropertyInput,
   Select,
   SelectContent,
@@ -133,7 +133,7 @@ export const StrokeSection = () => {
           aria-label="Add stroke"
           onClick={() => updateStroke({ width: 1, style: "solid", color: "#000000" })}
         >
-          <PenIcon />
+          <PlusIcon />
           Add stroke
         </Button>
       )}

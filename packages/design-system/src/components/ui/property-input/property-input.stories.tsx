@@ -29,6 +29,41 @@ const isNumberValue = (
   value !== null && value !== undefined && "kind" in value && value.kind === "number";
 
 export const Default: Story = {};
+export const InactiveValue: Story = {
+  args: {
+    type: "text",
+    value: { kind: "text", value: "A long first line\nA second line" },
+  },
+  render: (args) => {
+    const [value, setValue] = useState(args.value);
+    return (
+      <div className="w-80">
+        <PropertyInput
+          {...args}
+          value={value}
+          onChange={setValue}
+          renderInactiveValue={(current) => {
+            const text = current?.kind === "text" ? current.value : "";
+            return (
+              <span className="block truncate">
+                {text
+                  ? text.split(/\r?\n/).map((line, index) => (
+                      <span key={index}>
+                        {index > 0 && (
+                          <span className="px-0.5 text-muted-foreground opacity-50">↵</span>
+                        )}
+                        {line}
+                      </span>
+                    ))
+                  : "Empty text"}
+              </span>
+            );
+          }}
+        />
+      </div>
+    );
+  },
+};
 
 export const Width: Story = {
   args: {

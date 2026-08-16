@@ -389,9 +389,12 @@ type TextElement implements Element {
   fontFamily: JSON
   fontSize: JSON
   fontWeight: JSON
+  fontStyle: JSON
+  textDecoration: JSON
   lineHeight: JSON
   letterSpacing: JSON
-  textAlign: JSON
+  textVerticalAlign: JSON
+  padding: JSON
 }
 
 type ImageElement implements Element {

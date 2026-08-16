@@ -52,6 +52,7 @@ export type LayoutAlignment =
   | "space-evenly";
 export type Anchor = "left" | "center" | "centre" | "right" | "top" | "bottom";
 export type TextAlign = "left" | "center" | "right" | "justify" | "start" | "end";
+export type TextVerticalAlign = "top" | "center" | "bottom";
 export type ObjectFit = "fill" | "contain" | "cover" | "none" | "scale-down";
 
 export type StrokeStyle = "solid" | "dotted" | "dashed";
@@ -156,9 +157,13 @@ export interface TextElement extends ElementBase {
   fontFamily?: PropertyValue<string>;
   fontSize?: PropertyValue<number>;
   fontWeight?: PropertyValue<string | number>;
+  fontStyle?: PropertyValue<"normal" | "italic">;
+  textDecoration?: PropertyValue<"none" | "underline">;
   lineHeight?: PropertyValue<string | number>;
   letterSpacing?: PropertyValue<number>;
   textAlign?: PropertyValue<TextAlign>;
+  textVerticalAlign?: PropertyValue<TextVerticalAlign>;
+  padding?: number | Padding;
 }
 
 export interface ImageElement extends ElementBase {

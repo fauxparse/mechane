@@ -243,15 +243,39 @@ function typeStyle(element: Element): CSSProperties {
   if (element.type === "ellipse") return { borderRadius: "50%" };
   if (element.type === "text") {
     const fontSize = literal(element.fontSize);
+    const lineHeight = literal(element.lineHeight);
+    const textVerticalAlign = literal(element.textVerticalAlign) ?? "top";
+    const justifyContent =
+      textVerticalAlign === "center"
+        ? "center"
+        : textVerticalAlign === "bottom"
+          ? "flex-end"
+          : "flex-start";
+    const numericLineHeight =
+      typeof lineHeight === "string" && lineHeight.trim() !== "" ? Number(lineHeight) : NaN;
+    const lineHeightStyle =
+      lineHeight === undefined || lineHeight === "auto"
+        ? "normal"
+        : typeof lineHeight === "number"
+          ? `${lineHeight}px`
+          : Number.isFinite(numericLineHeight)
+            ? `${numericLineHeight}px`
+            : lineHeight;
     const letterSpacing = literal(element.letterSpacing);
     return {
       color: literal(element.color),
       fontFamily: literal(element.fontFamily),
       fontSize: fontSize === undefined ? undefined : `${fontSize}px`,
       fontWeight: literal(element.fontWeight),
-      lineHeight: literal(element.lineHeight),
+      display: "flex",
+      flexDirection: "column",
+      justifyContent,
+      fontStyle: literal(element.fontStyle),
+      lineHeight: lineHeightStyle,
+      textDecoration: literal(element.textDecoration),
       letterSpacing: letterSpacing === undefined ? undefined : `${letterSpacing}px`,
       textAlign: literal(element.textAlign),
+      padding: paddingValue(element.padding),
       userSelect: "none",
       whiteSpace: "pre-wrap",
       overflowWrap: "anywhere",
