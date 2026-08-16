@@ -1,6 +1,7 @@
 import { applyCanvasEdits, CANVAS_COMMAND_TYPES } from "@mechane/commands";
 import type { CanvasEdit } from "@mechane/commands";
 import { FrameElement, hasCornerRadius, SceneVariable } from "@mechane/domain";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useCallback, useState } from "react";
 
@@ -12,6 +13,7 @@ import { EditorSlot } from "../../../../components/EditorLayout/editor-slots";
 
 const CANVAS_ID = "canvas-inspector-story";
 const ART_ID = "scene-inspector-story";
+const storyQueryClient = new QueryClient();
 
 const variables: SceneVariable[] = [
   { id: "opacity-variable", name: "Opacity / Default", type: "number" },
@@ -48,7 +50,7 @@ const absoluteRoot: FrameElement = {
       name: "Headline",
       rank: "a",
       content: "Canvas Inspector",
-      color: "#f8fafc",
+      fontFamily: "Georgia, serif",
       fontSize: 32,
       width: { mode: "hug" },
       height: { mode: "hug" },
@@ -265,17 +267,20 @@ function InspectorStory({
   );
 
   return (
-    <MockEditorChrome activeEditor="canvas">
-      <div className="size-full bg-background" />
-      <EditorSlot name="right">
-        <CanvasInspector
-          focused={current}
-          selection={initialSelection}
-          variables={storyVariables}
-          onUpdateElements={onUpdateElements}
-        />
-      </EditorSlot>
-    </MockEditorChrome>
+    <QueryClientProvider client={storyQueryClient}>
+      <MockEditorChrome activeEditor="canvas">
+        <div className="size-full bg-background" />
+        <EditorSlot name="right">
+          <CanvasInspector
+            focused={current}
+            artboards={[current]}
+            selection={initialSelection}
+            variables={storyVariables}
+            onUpdateElements={onUpdateElements}
+          />
+        </EditorSlot>
+      </MockEditorChrome>
+    </QueryClientProvider>
   );
 }
 

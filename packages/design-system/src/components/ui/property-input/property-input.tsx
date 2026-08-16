@@ -1,5 +1,5 @@
+import { useState, type FocusEvent, type KeyboardEvent } from "react";
 import type { ShapeValue } from "@mechane/domain";
-import type { FocusEvent } from "react";
 
 import { Combobox, ComboboxInput } from "../combobox";
 import { Popover, PopoverContent } from "../popover";
@@ -22,6 +22,7 @@ export const PropertyInput = <T extends ShapeValue>({
   icon,
   value,
   type = "text",
+  renderInactiveValue,
   placeholder,
   dimension,
   unit = "px",
@@ -39,6 +40,7 @@ export const PropertyInput = <T extends ShapeValue>({
   onAutoChange,
   onConstraintAdd,
 }: PropertyInputProps<T>) => {
+  const [inputActive, setInputActive] = useState(false);
   const input = usePropertyInput({
     value,
     type,
@@ -57,6 +59,17 @@ export const PropertyInput = <T extends ShapeValue>({
     onAutoChange,
     onConstraintAdd,
   });
+  const inactiveValue = renderInactiveValue?.(input.currentValue);
+  const hasInactiveValue =
+    !inputActive && !input.linkedVariable && inactiveValue !== null && inactiveValue !== undefined;
+  const activateInput = () => {
+    input.inputElementRef.current?.focus();
+  };
+  const handleInactiveKeyDown = (event: KeyboardEvent<HTMLSpanElement>) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    activateInput();
+  };
   const connectorLabel = input.linkedVariable
     ? "Disconnect variable"
     : input.currentSizing === "fixed"
@@ -94,12 +107,37 @@ export const PropertyInput = <T extends ShapeValue>({
             className={cn(
               "w-full min-w-0 bg-muted/50 dark:bg-muted/50 border-0 *:data-[slot=combobox-input]:px-0 rounded-sm h-7 data-[slot=combobox-input]:h-7",
               !icon && "pl-2",
+              hasInactiveValue &&
+                "[&>input]:pointer-events-none [&>input]:w-0 [&>input]:flex-none [&>input]:p-0 [&>input]:opacity-0",
             )}
             showTrigger={false}
-            onFocus={handleInputFocus}
-            onBlur={input.commitDraftInput}
+            onFocus={(event) => {
+              setInputActive(true);
+              handleInputFocus(event);
+            }}
+            onBlur={() => {
+              input.commitDraftInput();
+              setInputActive(false);
+            }}
             onKeyDown={input.handleInputKeyDown}
           >
+            {hasInactiveValue && (
+              <button
+                type="button"
+                aria-label={placeholder ?? `Edit ${input.inputType}`}
+                className={cn(
+                  "min-w-0 flex-1 truncate border-0 bg-transparent p-0 text-left text-sm",
+                  icon && "pl-2",
+                )}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  activateInput();
+                }}
+                onKeyDown={handleInactiveKeyDown}
+              >
+                {inactiveValue}
+              </button>
+            )}
             <Addons
               icon={icon}
               inputType={input.inputType}

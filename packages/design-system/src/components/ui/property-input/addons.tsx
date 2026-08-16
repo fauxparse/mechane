@@ -73,14 +73,14 @@ export function Addons<T extends ShapeValue>({
         </InputGroupAddon>
       )}
       {inputType === "color" && (
-        <InputGroupAddon align="inline-start" className="h-full p-0 pl-1 mr-2">
+        <InputGroupAddon align="inline-start" className="h-full p-0 has-[>button]:ml-1.5 mr-1">
           <ComboboxPrimitive.Trigger
             render={
               <InputGroupButton
                 aria-label={`Color ${colorText || "unset"}`}
                 variant="ghost"
                 size="icon-xs"
-                className="size-4 cursor-pointer rounded-sm border border-border/70 p-0 hover:bg-transparent"
+                className="size-5 cursor-pointer rounded-sm border border-border p-0 hover:bg-transparent"
                 style={{ backgroundColor: getColorInputValue(colorText) }}
               />
             }

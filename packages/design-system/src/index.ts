@@ -32,6 +32,7 @@ export {
   ComboboxContent,
   ComboboxEmpty,
   ComboboxGroup,
+  ComboboxInput,
   ComboboxInputGroup,
   ComboboxItem,
   ComboboxLabel,

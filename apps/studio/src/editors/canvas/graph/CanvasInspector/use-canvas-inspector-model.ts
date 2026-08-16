@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import type { Element } from "@mechane/domain";
 import { isPropertyConnection } from "@mechane/domain";
 import { canvasElementParent, findCanvasElement } from "@mechane/commands";
+import type { CanvasArtboardDocument } from "../../../../api/canvas";
 import { lockedAspectRatio } from "../../commands/canvas-resize";
 import { numericSizeValue } from "./canvas-inspector-values";
 import type {
@@ -10,6 +11,18 @@ import type {
   CanvasInspectorUpdate,
 } from "./canvas-inspector-types";
 
+function collectFontFamilies(artboards: readonly CanvasArtboardDocument[]): readonly string[] {
+  const families = new Set<string>();
+  const visit = (element: Element) => {
+    if (element.type === "text" && typeof element.fontFamily === "string") {
+      const family = element.fontFamily.trim();
+      if (family) families.add(family);
+    }
+    element.children?.forEach(visit);
+  };
+  artboards.forEach((artboard) => visit(artboard.canvas.root));
+  return [...families];
+}
 const EMPTY_VARIABLES = [] as const;
 
 function sameValue(left: unknown, right: unknown): boolean {
@@ -86,8 +99,6 @@ function useAspectRatioLock(
       const aspectRatio = { ratio: width / height, driver: "width" as const };
       if (target.layout) {
         update({ layout: { ...target.layout, aspectRatio } }, ["aspectRatio"]);
-      } else {
-        update({ aspectRatio });
       }
     },
     [target, update],
@@ -98,6 +109,7 @@ function useAspectRatioLock(
 
 export function useCanvasInspectorModel({
   focused,
+  artboards,
   selection,
   variables = EMPTY_VARIABLES,
   inspectorPreview = null,
@@ -120,6 +132,7 @@ export function useCanvasInspectorModel({
     () => (elements.length > 0 ? elements : target ? [target] : []),
     [elements, target],
   );
+  const fontFamilies = useMemo(() => collectFontFamilies(artboards), [artboards]);
   const common = useCallback((property: string) => commonValue(selected, property), [selected]);
   const update = useCallback<CanvasInspectorUpdate>(
     (properties, unset = []) =>
@@ -159,6 +172,7 @@ export function useCanvasInspectorModel({
             elements,
             selected,
             variables,
+            fontFamilies,
             inspectorPreview,
             absolute,
             common,
@@ -171,6 +185,7 @@ export function useCanvasInspectorModel({
       absolute,
       aspectRatioLock,
       common,
+      fontFamilies,
       elements,
       focused,
       inspectorPreview,

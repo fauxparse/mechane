@@ -1,10 +1,16 @@
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
-import { Check, ChevronDown, X } from "lucide-react";
+import { Check, ChevronDown, LucideIcon, X } from "lucide-react";
 import type { ComponentPropsWithRef, RefObject } from "react";
 import { createContext, useContext, useRef } from "react";
 
 import { cn } from "../../lib/utils";
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "./input-group";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  InputGroupText,
+} from "./input-group";
 
 const ComboboxAnchorContext = createContext<RefObject<HTMLDivElement | null> | null>(null);
 
@@ -73,10 +79,12 @@ function ComboboxInput({
   className,
   children,
   disabled = false,
+  icon: Icon,
   showTrigger = true,
   showClear = false,
   ...props
 }: ComboboxPrimitive.Input.Props & {
+  icon?: LucideIcon;
   showTrigger?: boolean;
   showClear?: boolean;
 }) {
@@ -84,6 +92,13 @@ function ComboboxInput({
 
   return (
     <InputGroup ref={anchorRef} className={cn("w-auto", className)}>
+      {Icon ? (
+        <InputGroupAddon className="aspect-square flex items-center justify-center px-1.5">
+          <InputGroupText>
+            <Icon className="size-4 shrink-0" />
+          </InputGroupText>
+        </InputGroupAddon>
+      ) : null}
       <ComboboxPrimitive.Input
         data-slot="combobox-input"
         render={<InputGroupInput disabled={disabled} />}

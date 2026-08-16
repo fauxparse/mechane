@@ -18,6 +18,7 @@ export type CanvasInspectorUpdate = (
 
 export type CanvasInspectorProps = {
   focused: CanvasArtboardDocument | null;
+  artboards: readonly CanvasArtboardDocument[];
   selection: CanvasSelection;
   variables?: readonly SceneVariable[];
   inspectorPreview?: CanvasInspectorPreview | null;
@@ -43,6 +44,7 @@ export type CanvasInspectorModel = {
   elements: readonly Element[];
   selected: readonly Element[];
   variables: readonly SceneVariable[];
+  fontFamilies: readonly string[];
   inspectorPreview: CanvasInspectorPreview | null;
   absolute: boolean;
   common(property: string): unknown;

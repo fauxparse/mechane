@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import type {
   PropertyConnection,
   PropertyValue,
@@ -23,6 +24,8 @@ export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   icon?: LucideIcon | string;
   value?: PropertyInputValue<T> | null;
   type?: PropertyInputType;
+  /** Render the current value in place of the input while it is inactive. */
+  renderInactiveValue?: (value: ShapeValue | null) => ReactNode;
   placeholder?: string;
   dimension?: "width" | "height";
   unit?: PropertyInputUnit;
