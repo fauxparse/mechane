@@ -28,9 +28,9 @@ export const PropertyInput = <T extends ShapeValue>({
   unit = "px",
   sizing,
   variables,
-  min,
   max,
   step,
+  presets,
   scrubScale = 2,
   allowAuto,
   allowLink = true,
@@ -48,9 +48,9 @@ export const PropertyInput = <T extends ShapeValue>({
     unit,
     sizing,
     variables,
-    min,
     max,
     step,
+    presets,
     scrubScale,
     allowAuto,
     auto,
@@ -105,10 +105,10 @@ export const PropertyInput = <T extends ShapeValue>({
             aria-label={placeholder ?? input.inputType}
             placeholder={placeholder}
             className={cn(
-              "w-full min-w-0 bg-muted/50 dark:bg-muted/50 border-0 *:data-[slot=combobox-input]:px-0 rounded-sm h-7 data-[slot=combobox-input]:h-7",
+              "w-full min-w-0 bg-muted/50 dark:bg-muted/50 border-0 *:data-[slot=combobox-input]:px-1 rounded-sm h-7 data-[slot=combobox-input]:h-7",
               !icon && "pl-2",
               hasInactiveValue &&
-                "[&>input]:pointer-events-none [&>input]:w-0 [&>input]:flex-none [&>input]:p-0 [&>input]:opacity-0",
+                "[&>input]:pointer-events-none [&>input]:w-0 [&>input]:flex-none *:data-[slot=combobox-input]:p-0 [&>input]:opacity-0",
             )}
             showTrigger={false}
             onFocus={(event) => {
@@ -126,8 +126,7 @@ export const PropertyInput = <T extends ShapeValue>({
                 type="button"
                 aria-label={placeholder ?? `Edit ${input.inputType}`}
                 className={cn(
-                  "min-w-0 flex-1 truncate border-0 bg-transparent p-0 text-left text-sm",
-                  icon && "pl-2",
+                  "min-w-0 flex-1 truncate border-0 bg-transparent px-1 py-0 text-left text-sm",
                 )}
                 onPointerDown={(event) => {
                   event.preventDefault();
@@ -162,8 +161,8 @@ export const PropertyInput = <T extends ShapeValue>({
           <Menu
             inputType={input.inputType}
             colorText={input.colorText}
-            dimension={dimension}
             sizing={input.currentSizing}
+            presets={presets}
             auto={input.auto}
             allowAuto={allowAuto}
             linkedVariable={input.linkedVariable}

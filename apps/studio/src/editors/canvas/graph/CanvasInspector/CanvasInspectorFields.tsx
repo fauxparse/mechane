@@ -5,7 +5,12 @@ import {
   opacityFromPercent,
   propertyCoercion,
 } from "@mechane/domain";
-import { PropertyInput, type LucideIcon, type PropertyInputValue } from "@mechane/design-system";
+import {
+  PropertyInput,
+  type LucideIcon,
+  type PropertyInputPreset,
+  type PropertyInputValue,
+} from "@mechane/design-system";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import {
@@ -22,9 +27,16 @@ type PropertyFieldProps = {
   icon?: LucideIcon | string;
   className?: string;
   placeholder?: string;
+  presets?: readonly PropertyInputPreset[];
 };
 
-export const PropertyField = ({ name, icon, className, placeholder }: PropertyFieldProps) => {
+export const PropertyField = ({
+  name,
+  icon,
+  className,
+  placeholder,
+  presets,
+}: PropertyFieldProps) => {
   const { target, elements, selected, variables, common, update } = useCanvasInspectorContext();
   const descriptor = canvasPropertyDescriptor(name, target);
   if (!descriptor) return null;
@@ -41,10 +53,16 @@ export const PropertyField = ({ name, icon, className, placeholder }: PropertyFi
       ? 1
       : name === "cornerRadius"
         ? 0
-        : undefined
+        : name === "fontSize"
+          ? 16
+          : name === "lineHeight"
+            ? "auto"
+            : undefined
     : rawValue;
-  const value =
-    name === "opacity"
+  const isAuto = name === "lineHeight" && defaultValue === "auto";
+  const value = isAuto
+    ? null
+    : name === "opacity"
       ? opacityInputValue(variableInput(defaultValue, descriptor.targetType, variables))
       : variableInput(defaultValue, descriptor.targetType, variables);
   const type = inputType(descriptor.targetType);
@@ -58,13 +76,19 @@ export const PropertyField = ({ name, icon, className, placeholder }: PropertyFi
       className={className}
       type={type}
       value={value}
-      placeholder={placeholder}
-      variables={availableVariables}
+      placeholder={isAuto ? "Auto" : placeholder}
       unit={name === "opacity" ? "%" : undefined}
+      step={name === "opacity" ? 1 : undefined}
+      presets={presets}
+      variables={availableVariables}
+      allowAuto={name === "lineHeight"}
+      auto={isAuto}
+      onAutoChange={
+        name === "lineHeight" ? (nextAuto) => update({ [name]: nextAuto ? "auto" : 0 }) : undefined
+      }
       icon={icon}
       min={name === "opacity" ? 0 : undefined}
       max={name === "opacity" ? 100 : undefined}
-      step={name === "opacity" ? 1 : undefined}
       onChange={(next) => {
         if (isVariableInput(next)) {
           update({

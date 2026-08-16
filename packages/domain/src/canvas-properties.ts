@@ -20,6 +20,7 @@ export type CanvasPropertyName =
   | "alt"
   | "objectFit"
   | "textAlign"
+  | "lineHeight"
   | "letterSpacing";
 
 export interface CanvasPropertyDescriptor {
@@ -37,6 +38,7 @@ export const CANVAS_PROPERTY_DESCRIPTORS: readonly CanvasPropertyDescriptor[] = 
   { name: "color", targetType: "color", elementKinds: ["text"] },
   { name: "fontFamily", targetType: "text", elementKinds: ["text"] },
   { name: "fontSize", targetType: "number", elementKinds: ["text"] },
+  { name: "lineHeight", targetType: "text", elementKinds: ["text"] },
   { name: "cornerRadius", targetType: "number", elementKinds: ["rect", "frame"] },
   { name: "src", targetType: "image", elementKinds: ["image"] },
   { name: "alt", targetType: "text", elementKinds: ["image"] },

@@ -222,7 +222,7 @@ function LayerRowView({
         data-layer-art={row.artId}
         data-layer-kind={row.kind}
         data-layer-element-kind={row.elementKind}
-        className={`relative flex h-8 min-w-0 items-center gap-1 rounded-md pr-2 text-sm ${
+        className={`relative flex h-8 min-w-0 items-center gap-1 rounded-sm pr-2 text-sm ${
           active ? "bg-accent text-accent-foreground" : "hover:bg-muted"
         } ${hintClass(hint)} ${isDragging ? "opacity-50" : ""}`}
         style={{
@@ -318,7 +318,7 @@ function LayerDragPreview({ row, artboard }: { row: LayerRow; artboard: CanvasAr
       : elementIconFor(row.elementKind);
   const name = row.kind === "canvas" ? artboardLabel(artboard) : row.name;
   return (
-    <div className="flex h-8 min-w-48 max-w-72 items-center gap-1 rounded-md bg-accent px-2 text-sm text-accent-foreground shadow-lg ring-1 ring-primary/40">
+    <div className="flex h-8 min-w-48 max-w-72 items-center gap-1 rounded-sm bg-accent px-2 text-sm text-accent-foreground shadow-lg ring-1 ring-primary/40">
       <Icon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
       <span className="min-w-0 flex-1 truncate">{name}</span>
     </div>
@@ -552,7 +552,8 @@ export function CanvasLayers({
                             const anchor = selectionAnchorRef.current;
                             const layerIds = visible.flatMap(
                               ({ row: candidate, artboard: candidateArtboard }) =>
-                                candidateArtboard.artId === row.artId && candidate.kind === "element"
+                                candidateArtboard.artId === row.artId &&
+                                candidate.kind === "element"
                                   ? [candidate.id]
                                   : [],
                             );

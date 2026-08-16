@@ -5,6 +5,12 @@ import type { CanvasArtboardDocument } from "../../api/canvas";
 
 export type GoogleFont = {
   family: string;
+  variants: readonly string[];
+};
+
+export type GoogleFontVariant = {
+  weight: number;
+  italic: boolean;
 };
 
 type GoogleFontsResponse = {
@@ -32,6 +38,31 @@ export function collectFontFamilies(
   artboards.forEach((artboard) => visit(artboard.canvas.root));
   return [...families];
 }
+const fontVariantName = (weight: number, italic: boolean): string =>
+  italic
+    ? weight === 400
+      ? "italic"
+      : `${weight}italic`
+    : weight === 400
+      ? "regular"
+      : `${weight}`;
+
+export function googleFontVariant(
+  font: GoogleFont | undefined,
+  bold: boolean,
+  italic: boolean,
+): GoogleFontVariant | null {
+  if (!font) return { weight: bold ? 700 : 400, italic };
+
+  const preferredWeights = bold
+    ? [700, 600, 800, 900, 500, 400, 300, 200, 100]
+    : [400, 300, 500, 200, 600, 700, 800, 900, 100];
+  const variants = new Set(font.variants);
+  const weight = preferredWeights.find((candidate) =>
+    variants.has(fontVariantName(candidate, italic)),
+  );
+  return weight === undefined ? null : { weight, italic };
+}
 async function fetchGoogleFonts(signal: AbortSignal): Promise<readonly GoogleFont[]> {
   if (!GOOGLE_FONTS_API_KEY) return [];
   if (googleFontsCache) return googleFontsCache;
@@ -55,15 +86,18 @@ export function useGoogleFonts() {
   });
 }
 
-export function loadGoogleFont(fontFamily: string): void {
+export function loadGoogleFont(fontFamily: string, variant?: GoogleFontVariant): void {
   if (typeof document === "undefined") return;
   const family = primaryFontFamily(fontFamily);
   if (!family) return;
-  const id = `google-font-${encodeURIComponent(family)}`;
+  const request = variant
+    ? `${family}:ital,wght@${variant.italic ? 1 : 0},${variant.weight}`
+    : family;
+  const id = `google-font-${encodeURIComponent(request)}`;
   if (document.getElementById(id)) return;
   const link = document.createElement("link");
   link.id = id;
   link.rel = "stylesheet";
-  link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family).replace(/%20/g, "+")}&display=swap`;
+  link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(request).replace(/%20/g, "+")}&display=swap`;
   document.head.append(link);
 }

@@ -77,6 +77,7 @@ export function usePropertyInput<T extends ShapeValue>({
   min,
   max,
   step,
+  presets,
   allowAuto = false,
   auto = false,
   scrubScale = 2,
@@ -226,6 +227,18 @@ export function usePropertyInput<T extends ShapeValue>({
   };
 
   const handleMenuValueChange = (menuValue: string | null) => {
+    const preset = presets?.find((value) => String(value) === menuValue);
+    if (preset === "auto" && allowAuto) {
+      onAutoChange?.(true);
+      updateDraftInput(null);
+      return;
+    }
+    if (preset !== undefined) {
+      const value = inputType === "number" ? preset : String(preset);
+      commit(createValue<T>(inputType, value));
+      updateDraftInput(null);
+      return;
+    }
     if (menuValue === "fixed" || menuValue === "fill" || menuValue === "hug") {
       commitSizing(menuValue);
     }

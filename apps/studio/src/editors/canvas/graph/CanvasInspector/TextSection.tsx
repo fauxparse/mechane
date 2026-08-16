@@ -1,6 +1,7 @@
 import {
   GOOGLE_FONTS_API_KEY,
   fontFamilyKey,
+  googleFontVariant,
   loadGoogleFont,
   useGoogleFonts,
 } from "../../google-fonts";
@@ -20,12 +21,22 @@ import {
   DialogDescription,
   DialogFooter,
   DialogTitle,
+  FontSizeIcon,
+  LineHeightIcon,
   NotebookPenIcon,
   PaintBucketIcon,
   PencilIcon,
   PropertyInput,
+  TextAlignCenterIcon,
+  TextAlignEndIcon,
+  TextAlignStartIcon,
   Textarea,
+  ToggleGroup,
+  ToggleGroupItem,
   TypeIcon,
+  BoldIcon,
+  UnderlineIcon,
+  ItalicIcon,
 } from "@mechane/design-system";
 import type { ShapeValue } from "@mechane/domain";
 import { Fragment, useEffect, useMemo, useState } from "react";
@@ -35,7 +46,7 @@ import { PropertyField } from "./CanvasInspectorFields";
 import { isVariableInput, variableInput } from "./canvas-inspector-values";
 import { Section, SectionRow } from "./Section";
 
-function FontFamilyField() {
+const FontFamilyField = () => {
   const { common, fontFamilies, update } = useCanvasInspectorContext();
   const current = typeof common("fontFamily") === "string" ? common("fontFamily") : "";
   const [open, setOpen] = useState(false);
@@ -137,9 +148,9 @@ function FontFamilyField() {
       )}
     </div>
   );
-}
+};
 
-function renderTextValue(value: ShapeValue | null) {
+const renderTextValue = (value: ShapeValue | null) => {
   const text = value?.kind === "text" ? value.value : "";
   return (
     <span className="block truncate">
@@ -155,13 +166,33 @@ function renderTextValue(value: ShapeValue | null) {
       )}
     </span>
   );
-}
+};
 
-export function TextSection() {
+const FONT_SIZE_PRESETS = [8, 10, 12, 14, 16, 18, 20, 24, 32, 40, 48, 64, 72, 96] as const;
+const LINE_HEIGHT_PRESETS = [
+  "auto",
+  12,
+  14,
+  16,
+  18,
+  20,
+  24,
+  28,
+  32,
+  36,
+  40,
+  48,
+  56,
+  64,
+  72,
+  96,
+] as const;
+
+export const TextSection = () => {
   const { target, common, update, variables } = useCanvasInspectorContext();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogDraft, setDialogDraft] = useState("");
-  if (target.type !== "text") return null;
+  const googleFontsQuery = useGoogleFonts();
 
   const contentInput = variableInput(common("content"), "text", variables);
   const content =
@@ -175,6 +206,46 @@ export function TextSection() {
     if (dialogDraft !== content) update({ content: dialogDraft });
     setDialogOpen(false);
   };
+
+  const fontFamilyValue = common("fontFamily");
+  const fontFamily = typeof fontFamilyValue === "string" ? fontFamilyValue : null;
+  const selectedGoogleFont = googleFontsQuery.data?.find(
+    (font) => fontFamily !== null && fontFamilyKey(font.family) === fontFamilyKey(fontFamily),
+  );
+  const fontWeight = common("fontWeight");
+  const fontStyle = common("fontStyle");
+  const textDecoration = common("textDecoration");
+  const bold = fontWeight === 700 || fontWeight === "bold";
+  const italic = fontStyle === "italic";
+  const underline = textDecoration === "underline";
+  const activeStyles = [
+    ...(bold ? ["bold"] : []),
+    ...(italic ? ["italic"] : []),
+    ...(underline ? ["underline"] : []),
+  ];
+  const updateTextStyles = (values: readonly string[]) => {
+    const nextBold = values.includes("bold");
+    const nextItalic = values.includes("italic");
+    const nextUnderline = values.includes("underline");
+    const properties: Record<string, unknown> = {};
+    const unset: string[] = [];
+    if (nextBold) properties.fontWeight = 700;
+    else unset.push("fontWeight");
+    if (nextItalic) properties.fontStyle = "italic";
+    else unset.push("fontStyle");
+    if (nextUnderline) properties.textDecoration = "underline";
+    else unset.push("textDecoration");
+    update(properties, unset);
+    const variant = googleFontVariant(selectedGoogleFont, nextBold, nextItalic);
+    if (fontFamily && selectedGoogleFont && variant) loadGoogleFont(fontFamily, variant);
+  };
+  useEffect(() => {
+    if (!fontFamily || !selectedGoogleFont || (!bold && !italic)) return;
+    const variant = googleFontVariant(selectedGoogleFont, bold, italic);
+    if (variant) loadGoogleFont(fontFamily, variant);
+  }, [bold, fontFamily, italic, selectedGoogleFont]);
+  const textAlign = common("textAlign") as string | undefined;
+  if (target.type !== "text") return null;
 
   return (
     <>
@@ -207,8 +278,42 @@ export function TextSection() {
         <SectionRow>
           <FontFamilyField />
         </SectionRow>
-        <PropertyField name="fontSize" />
-        <PropertyField name="textAlign" />
+        <SectionRow>
+          <PropertyField name="fontSize" icon={FontSizeIcon} presets={FONT_SIZE_PRESETS} />
+          <ToggleGroup multiple size="sm" value={activeStyles} onValueChange={updateTextStyles}>
+            <ToggleGroupItem value="bold" aria-label="Toggle bold">
+              <BoldIcon />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="italic" aria-label="Toggle italic">
+              <ItalicIcon />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="underline" aria-label="Toggle underline">
+              <UnderlineIcon />
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </SectionRow>
+        <SectionRow>
+          <PropertyField name="lineHeight" icon={LineHeightIcon} presets={LINE_HEIGHT_PRESETS} />
+          <ToggleGroup
+            size="sm"
+            value={textAlign ? [textAlign] : []}
+            onValueChange={([value]) => {
+              if (value) {
+                update({ textAlign: value });
+              }
+            }}
+          >
+            <ToggleGroupItem value="left">
+              <TextAlignStartIcon />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="center">
+              <TextAlignCenterIcon />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="right">
+              <TextAlignEndIcon />
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </SectionRow>
         <PropertyField name="letterSpacing" />
       </Section>
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -232,4 +337,4 @@ export function TextSection() {
       </Dialog>
     </>
   );
-}
+};

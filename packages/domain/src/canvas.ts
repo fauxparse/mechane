@@ -156,6 +156,8 @@ export interface TextElement extends ElementBase {
   fontFamily?: PropertyValue<string>;
   fontSize?: PropertyValue<number>;
   fontWeight?: PropertyValue<string | number>;
+  fontStyle?: PropertyValue<"normal" | "italic">;
+  textDecoration?: PropertyValue<"none" | "underline">;
   lineHeight?: PropertyValue<string | number>;
   letterSpacing?: PropertyValue<number>;
   textAlign?: PropertyValue<TextAlign>;

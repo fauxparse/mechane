@@ -19,16 +19,17 @@ import {
 import { InlineColorPicker } from "./color-picker";
 import { cn } from "../../../lib/utils";
 import type {
+  PropertyInputPreset,
   PropertyInputSizing,
   PropertyInputType,
   VariableReference,
 } from "./property-input-types";
-
 export function Menu<T extends ShapeValue>({
   inputType,
   colorText,
   dimension,
   sizing,
+  presets,
   auto,
   allowAuto,
   linkedVariable,
@@ -38,6 +39,7 @@ export function Menu<T extends ShapeValue>({
   colorText: string;
   dimension?: "width" | "height";
   sizing: PropertyInputSizing;
+  presets?: readonly PropertyInputPreset[];
   auto: boolean;
   allowAuto?: boolean;
   linkedVariable: VariableReference<T> | null;
@@ -91,8 +93,33 @@ export function Menu<T extends ShapeValue>({
             <ComboboxSeparator />
           </>
         )}
+        {presets?.includes("auto") ? (
+          <>
+            <ComboboxGroup>
+              <ComboboxItem value="auto">
+                Auto
+                <CheckIcon className={cn("ml-auto", auto ? "opacity-100" : "opacity-0")} />
+              </ComboboxItem>
+            </ComboboxGroup>
+            <ComboboxSeparator />
+          </>
+        ) : null}
+        {presets && presets.length > 0 ? (
+          <>
+            <ComboboxGroup>
+              {presets.map((preset) =>
+                preset === "auto" ? null : (
+                  <ComboboxItem key={String(preset)} value={String(preset)}>
+                    {preset}
+                  </ComboboxItem>
+                ),
+              )}
+            </ComboboxGroup>
+            <ComboboxSeparator />
+          </>
+        ) : null}
         <ComboboxGroup>
-          {allowAuto && (
+          {allowAuto && !presets?.includes("auto") && (
             <ComboboxItem value="auto">
               Auto
               <CheckIcon className={cn("ml-auto", auto ? "opacity-100" : "opacity-0")} />

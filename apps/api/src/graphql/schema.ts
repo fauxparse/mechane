@@ -512,9 +512,10 @@ export const schema = createSchema<GraphQLContext>({
       fontFamily: JSON
       fontSize: JSON
       fontWeight: JSON
+      fontStyle: JSON
+      textDecoration: JSON
       lineHeight: JSON
       letterSpacing: JSON
-      textAlign: JSON
       padding: JSON
     }
 

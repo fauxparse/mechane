@@ -12,6 +12,7 @@ export type VariableReference<TSource extends ShapeValue = ShapeValue> =
   DomainVariableReference<TSource>;
 
 export type PropertyInputType = "text" | "number" | "color";
+export type PropertyInputPreset = number | "auto";
 export type PropertyInputSizing = "fixed" | "fill" | "hug";
 export type PropertyInputConstraint = "min" | "max";
 export type PropertyInputUnit = "px" | "%";
@@ -34,6 +35,8 @@ export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   min?: number;
   max?: number;
   step?: number;
+  /** Values shown in the input menu as common presets. */
+  presets?: readonly PropertyInputPreset[];
   /** Enables the shared "Auto" popup option for values with non-numeric semantics. */
   allowAuto?: boolean;
   allowLink?: boolean;
