@@ -160,37 +160,49 @@ describe("Canvas aspect ratio locks", () => {
 });
 
 describe("Canvas fixed resize properties", () => {
-  it("converts layout fill axes while preserving other layout fields", () => {
+  it("writes fixed dimensions into sizing while preserving layout fields", () => {
     expect(
-      fixedResizeProperties({
-        id: "root",
-        type: "frame",
-        layout: {
-          width: { mode: "fill", value: 1 },
-          height: { mode: "fill", value: 1 },
-          layoutMode: "absolute",
-        },
-      } as Element, 320, 180),
+      fixedResizeProperties(
+        {
+          id: "root",
+          type: "frame",
+          layout: { rotation: 90 },
+          sizing: {
+            width: { mode: "fill", value: 1 },
+            height: { mode: "fill", value: 1 },
+          },
+        } as Element,
+        320,
+        180,
+      ),
     ).toEqual({
-      layout: {
+      sizing: {
         width: { mode: "fixed", value: 320 },
         height: { mode: "fixed", value: 180 },
-        layoutMode: "absolute",
       },
+      layout: { rotation: 90 },
     });
   });
 
-  it("converts top-level fill axes when no layout axes exist", () => {
+  it("writes fixed dimensions into sizing", () => {
     expect(
-      fixedResizeProperties({
-        id: "root",
-        type: "frame",
-        width: { mode: "fill", value: 1 },
-        height: { mode: "fill", value: 1 },
-      } as Element, 240, 120),
+      fixedResizeProperties(
+        {
+          id: "root",
+          type: "frame",
+          sizing: {
+            width: { mode: "fill", value: 1 },
+            height: { mode: "fill", value: 1 },
+          },
+        } as Element,
+        240,
+        120,
+      ),
     ).toEqual({
-      width: { mode: "fixed", value: 240 },
-      height: { mode: "fixed", value: 120 },
+      sizing: {
+        width: { mode: "fixed", value: 240 },
+        height: { mode: "fixed", value: 120 },
+      },
     });
   });
 });

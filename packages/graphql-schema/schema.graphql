@@ -300,12 +300,6 @@ interface Element {
   hidden: Boolean!
   layout: JSON
   sizing: JSON
-  width: JSON
-  height: JSON
-  minWidth: JSON
-  maxWidth: JSON
-  minHeight: JSON
-  maxHeight: JSON
   rotation: Int
   opacity: JSON
   blendMode: String
@@ -323,12 +317,6 @@ type RectElement implements Element {
   hidden: Boolean!
   layout: JSON
   sizing: JSON
-  width: JSON
-  height: JSON
-  minWidth: JSON
-  maxWidth: JSON
-  minHeight: JSON
-  maxHeight: JSON
   rotation: Int
   opacity: JSON
   blendMode: String
@@ -347,12 +335,6 @@ type EllipseElement implements Element {
   hidden: Boolean!
   layout: JSON
   sizing: JSON
-  width: JSON
-  height: JSON
-  minWidth: JSON
-  maxWidth: JSON
-  minHeight: JSON
-  maxHeight: JSON
   rotation: Int
   opacity: JSON
   blendMode: String
@@ -370,12 +352,6 @@ type TextElement implements Element {
   hidden: Boolean!
   layout: JSON
   sizing: JSON
-  width: JSON
-  height: JSON
-  minWidth: JSON
-  maxWidth: JSON
-  minHeight: JSON
-  maxHeight: JSON
   rotation: Int
   opacity: JSON
   blendMode: String
@@ -406,12 +382,6 @@ type ImageElement implements Element {
   hidden: Boolean!
   layout: JSON
   sizing: JSON
-  width: JSON
-  height: JSON
-  minWidth: JSON
-  maxWidth: JSON
-  minHeight: JSON
-  maxHeight: JSON
   rotation: Int
   opacity: JSON
   blendMode: String
@@ -434,12 +404,6 @@ type FrameElement implements Element {
   hidden: Boolean!
   layout: JSON
   sizing: JSON
-  width: JSON
-  height: JSON
-  minWidth: JSON
-  maxWidth: JSON
-  minHeight: JSON
-  maxHeight: JSON
   rotation: Int
   opacity: JSON
   blendMode: String

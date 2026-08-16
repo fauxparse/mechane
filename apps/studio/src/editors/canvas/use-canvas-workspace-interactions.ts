@@ -670,13 +670,15 @@ export function useCanvasWorkspaceInteractions({
             Math.max(1, roundToLogicalPixel(next.height, camera.zoom)),
           )
         : {
-            width: {
-              mode: "fixed",
-              value: Math.max(1, roundToLogicalPixel(next.width, camera.zoom)),
-            },
-            height: {
-              mode: "fixed",
-              value: Math.max(1, roundToLogicalPixel(next.height, camera.zoom)),
+            sizing: {
+              width: {
+                mode: "fixed",
+                value: Math.max(1, roundToLogicalPixel(next.width, camera.zoom)),
+              },
+              height: {
+                mode: "fixed",
+                value: Math.max(1, roundToLogicalPixel(next.height, camera.zoom)),
+              },
             },
           };
       // Only an absolutely positioned Element carries its own origin; in an auto-layout Frame the
@@ -1124,8 +1126,10 @@ export function useCanvasWorkspaceInteractions({
       id,
       type: draft.tool,
       rank,
-      width: { mode: "fixed", value: width },
-      height: { mode: "fixed", value: height },
+      sizing: {
+        width: { mode: "fixed", value: width },
+        height: { mode: "fixed", value: height },
+      },
       ...(draft.tool === "frame" ? { clip: true } : {}),
       ...(draft.tool === "rect" || draft.tool === "ellipse" ? { fill: "#cbd5e1" } : {}),
       ...(draft.tool === "text"

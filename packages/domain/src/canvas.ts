@@ -84,12 +84,6 @@ export interface AspectRatioLock {
 }
 
 export interface ElementLayout {
-  width?: AxisSize;
-  height?: AxisSize;
-  minWidth?: SizeValue;
-  maxWidth?: SizeValue;
-  minHeight?: SizeValue;
-  maxHeight?: SizeValue;
   rotation?: Rotation;
   aspectRatio?: AspectRatioLock;
 }
@@ -111,12 +105,6 @@ export interface ElementBase {
   hidden?: boolean;
   layout?: ElementLayout;
   sizing?: ElementSizing;
-  width?: AxisSize;
-  height?: AxisSize;
-  minWidth?: SizeValue;
-  maxWidth?: SizeValue;
-  minHeight?: SizeValue;
-  maxHeight?: SizeValue;
   rotation?: Rotation;
   aspectRatio?: AspectRatioLock;
   opacity?: PropertyValue<number>;
@@ -261,30 +249,18 @@ function assertAxisSize(size: AxisSize | undefined, context: string): void {
 function assertLayout(element: Element): void {
   const sizing = element.sizing;
   for (const [axis, size] of [
-    ["width", element.width],
-    ["height", element.height],
-    ["layout.width", element.layout?.width],
-    ["layout.height", element.layout?.height],
-    ["sizing.width", sizing?.width],
-    ["sizing.height", sizing?.height],
+    ["width", sizing?.width],
+    ["height", sizing?.height],
   ] as const) {
-    assertAxisSize(size, `${element.id} ${axis}`);
+    assertAxisSize(size, `${element.id} sizing.${axis}`);
   }
   for (const [name, value] of [
-    ["minWidth", element.minWidth],
-    ["maxWidth", element.maxWidth],
-    ["minHeight", element.minHeight],
-    ["maxHeight", element.maxHeight],
-    ["layout.minWidth", element.layout?.minWidth],
-    ["layout.maxWidth", element.layout?.maxWidth],
-    ["layout.minHeight", element.layout?.minHeight],
-    ["layout.maxHeight", element.layout?.maxHeight],
-    ["sizing.minWidth", sizing?.minWidth],
-    ["sizing.maxWidth", sizing?.maxWidth],
-    ["sizing.minHeight", sizing?.minHeight],
-    ["sizing.maxHeight", sizing?.maxHeight],
+    ["minWidth", sizing?.minWidth],
+    ["maxWidth", sizing?.maxWidth],
+    ["minHeight", sizing?.minHeight],
+    ["maxHeight", sizing?.maxHeight],
   ] as const) {
-    if (value !== undefined) assertSizeValue(value, `${element.id} ${name}`);
+    if (value !== undefined) assertSizeValue(value, `${element.id} sizing.${name}`);
   }
   const rotation = element.layout?.rotation ?? element.rotation;
   if (rotation !== undefined && ROTATIONS[rotation] !== true) {

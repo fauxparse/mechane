@@ -423,12 +423,6 @@ export const schema = createSchema<GraphQLContext>({
       hidden: Boolean!
       layout: JSON
       sizing: JSON
-      width: JSON
-      height: JSON
-      minWidth: JSON
-      maxWidth: JSON
-      minHeight: JSON
-      maxHeight: JSON
       rotation: Int
       opacity: JSON
       blendMode: String
@@ -446,12 +440,6 @@ export const schema = createSchema<GraphQLContext>({
       hidden: Boolean!
       layout: JSON
       sizing: JSON
-      width: JSON
-      height: JSON
-      minWidth: JSON
-      maxWidth: JSON
-      minHeight: JSON
-      maxHeight: JSON
       rotation: Int
       opacity: JSON
       blendMode: String
@@ -470,12 +458,6 @@ export const schema = createSchema<GraphQLContext>({
       hidden: Boolean!
       layout: JSON
       sizing: JSON
-      width: JSON
-      height: JSON
-      minWidth: JSON
-      maxWidth: JSON
-      minHeight: JSON
-      maxHeight: JSON
       rotation: Int
       opacity: JSON
       blendMode: String
@@ -493,12 +475,6 @@ export const schema = createSchema<GraphQLContext>({
       hidden: Boolean!
       layout: JSON
       sizing: JSON
-      width: JSON
-      height: JSON
-      minWidth: JSON
-      maxWidth: JSON
-      minHeight: JSON
-      maxHeight: JSON
       rotation: Int
       opacity: JSON
       blendMode: String
@@ -529,12 +505,6 @@ export const schema = createSchema<GraphQLContext>({
       hidden: Boolean!
       layout: JSON
       sizing: JSON
-      width: JSON
-      height: JSON
-      minWidth: JSON
-      maxWidth: JSON
-      minHeight: JSON
-      maxHeight: JSON
       rotation: Int
       opacity: JSON
       blendMode: String
@@ -557,12 +527,6 @@ export const schema = createSchema<GraphQLContext>({
       hidden: Boolean!
       layout: JSON
       sizing: JSON
-      width: JSON
-      height: JSON
-      minWidth: JSON
-      maxWidth: JSON
-      minHeight: JSON
-      maxHeight: JSON
       rotation: Int
       opacity: JSON
       blendMode: String

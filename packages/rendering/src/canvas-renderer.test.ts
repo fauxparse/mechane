@@ -53,7 +53,7 @@ describe("CanvasRenderer", () => {
         direction: "horizontal",
         gap: 12,
         padding: 20,
-        children: [{ id: "child", type: "rect", width: { mode: "fill" } }],
+        children: [{ id: "child", type: "rect", sizing: { width: { mode: "fill" } } }],
       },
     });
 
@@ -94,23 +94,29 @@ describe("CanvasRenderer", () => {
             id: "hugged",
             type: "text",
             content: "Hugged",
-            width: { mode: "hug" },
-            height: { mode: "hug" },
+            sizing: {
+              width: { mode: "hug" },
+              height: { mode: "hug" },
+            },
           },
           {
             id: "clipped",
             type: "text",
             content: "Clipped",
-            width: { mode: "fixed", value: 80 },
-            height: { mode: "fixed", value: 20 },
+            sizing: {
+              width: { mode: "fixed", value: 80 },
+              height: { mode: "fixed", value: 20 },
+            },
             textOverflow: "clip",
           },
           {
             id: "truncated",
             type: "text",
             content: "Truncated",
-            width: { mode: "fixed", value: 80 },
-            height: { mode: "fixed", value: 20 },
+            sizing: {
+              width: { mode: "fixed", value: 80 },
+              height: { mode: "fixed", value: 20 },
+            },
             textOverflow: "ellipsis",
           },
         ],
@@ -253,7 +259,7 @@ describe("CanvasRenderer", () => {
         type: "frame",
         layoutMode: "auto",
         direction: "vertical",
-        children: [{ id: "child", type: "rect", width: { mode: "fill" } }],
+        children: [{ id: "child", type: "rect", sizing: { width: { mode: "fill" } } }],
       },
     });
     const horizontalHeightFill = markup({
@@ -263,7 +269,7 @@ describe("CanvasRenderer", () => {
         type: "frame",
         layoutMode: "auto",
         direction: "horizontal",
-        children: [{ id: "child", type: "rect", height: { mode: "fill" } }],
+        children: [{ id: "child", type: "rect", sizing: { height: { mode: "fill" } } }],
       },
     });
     const verticalHeightFill = markup({
@@ -273,7 +279,7 @@ describe("CanvasRenderer", () => {
         type: "frame",
         layoutMode: "auto",
         direction: "vertical",
-        children: [{ id: "child", type: "rect", height: { mode: "fill" } }],
+        children: [{ id: "child", type: "rect", sizing: { height: { mode: "fill" } } }],
       },
     });
 
@@ -317,10 +323,11 @@ describe("CanvasRenderer", () => {
             type: "text",
             content: "hello",
             rotation: 90,
-            width: { mode: "fixed", value: 80 },
-
-            height: { mode: "fixed", value: 40 },
-            minWidth: { value: 100, unit: "%" },
+            sizing: {
+              width: { mode: "fixed", value: 80 },
+              height: { mode: "fixed", value: 40 },
+              minWidth: { value: 100, unit: "%" },
+            },
             aspectRatio: { ratio: 2, driver: "width" },
             fill: {
               type: "linear",

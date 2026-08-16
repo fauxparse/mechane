@@ -42,14 +42,14 @@ function sizeValue(value: SizeValue | PropertyConnection | undefined): string | 
 }
 
 function sizeFor(element: Element, axis: "width" | "height"): AxisSize | undefined {
-  return element.layout?.[axis] ?? element.sizing?.[axis] ?? element[axis];
+  return element.sizing?.[axis];
 }
 
 function valueFor(
   element: Element,
   axis: "minWidth" | "maxWidth" | "minHeight" | "maxHeight",
 ): SizeValue | undefined {
-  return element.layout?.[axis] ?? element.sizing?.[axis] ?? element[axis];
+  return element.sizing?.[axis];
 }
 
 function rotationFor(element: Element): Rotation {
@@ -381,7 +381,15 @@ export function ElementRenderer({
   onTextKeyDown,
 }: RenderElementOptions): ReactNode {
   return (
-    <>{renderElement({ element, parent, editingElementId, onTextDoubleClick, onTextKeyDown })}</>
+    <>
+      {renderElement({
+        element,
+        parent,
+        editingElementId,
+        onTextDoubleClick,
+        onTextKeyDown,
+      })}
+    </>
   );
 }
 
@@ -401,7 +409,6 @@ export const CanvasRenderer = memo(function CanvasRenderer({
       className,
       style: { position: "relative", width: "100%", height: "100%", ...style },
       "data-canvas-root": root.id,
-      "data-canvas-kind": "root" in canvas ? canvas.kind : undefined,
     },
     renderElement({
       element: root,

@@ -14,33 +14,37 @@ describe("fixedFillSizing", () => {
         {
           id: "child",
           type: "rect",
-          layout: { width: { mode: "fill" }, height: { mode: "fill" } },
+          sizing: { width: { mode: "fill" }, height: { mode: "fill" } },
           fill: "red",
         },
         240,
         80,
       ),
     ).toEqual({
-      layout: {
+      sizing: {
         width: { mode: "fixed", value: 240 },
         height: { mode: "fixed", value: 80 },
       },
     });
   });
 
-  it("updates top-level fill sizing without changing fixed axes", () => {
+  it("updates one fill axis without changing the fixed axis", () => {
     expect(
       fixedFillSizing(
         {
           id: "child",
           type: "rect",
-          width: { mode: "fill" },
-          height: { mode: "fixed", value: 40 },
+          sizing: { width: { mode: "fill" }, height: { mode: "fixed", value: 40 } },
         },
         240,
         80,
       ),
-    ).toEqual({ width: { mode: "fixed", value: 240 } });
+    ).toEqual({
+      sizing: {
+        width: { mode: "fixed", value: 240 },
+        height: { mode: "fixed", value: 40 },
+      },
+    });
   });
 });
 

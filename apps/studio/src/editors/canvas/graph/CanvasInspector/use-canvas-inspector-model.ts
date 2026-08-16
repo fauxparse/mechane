@@ -91,15 +91,11 @@ function useAspectRatioLock(
         return;
       }
 
-      const width = numericSizeValue(target.layout?.width ?? target.sizing?.width ?? target.width);
-      const height = numericSizeValue(
-        target.layout?.height ?? target.sizing?.height ?? target.height,
-      );
+      const width = numericSizeValue(target.sizing?.width);
+      const height = numericSizeValue(target.sizing?.height);
       if (width === null || height === null || width <= 0 || height <= 0) return;
       const aspectRatio = { ratio: width / height, driver: "width" as const };
-      if (target.layout) {
-        update({ layout: { ...target.layout, aspectRatio } }, ["aspectRatio"]);
-      }
+      update({ layout: { ...target.layout, aspectRatio } }, ["aspectRatio"]);
     },
     [target, update],
   );
@@ -123,11 +119,11 @@ export function useCanvasInspectorModel({
       return element ? [element] : [];
     });
   }, [focused, selection.artId, selection.elementIds]);
-  const target = useMemo(
-    () =>
-      elements[0] ?? (focused && selection.artId === focused.artId ? focused.canvas.root : null),
-    [elements, focused, selection.artId],
-  );
+  const target = useMemo(() => {
+    if (elements[0]) return elements[0];
+    if (!focused || selection.artId !== focused.artId) return null;
+    return focused.canvas.root;
+  }, [elements, focused, selection.artId]);
   const selected = useMemo(
     () => (elements.length > 0 ? elements : target ? [target] : []),
     [elements, target],

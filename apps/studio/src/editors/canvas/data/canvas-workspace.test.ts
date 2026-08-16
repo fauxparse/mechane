@@ -57,7 +57,7 @@ describe("Canvas workspace artboard sizing", () => {
         ...scene.canvas,
         root: {
           ...scene.canvas.root,
-          layout: {
+          sizing: {
             width: { mode: "fixed" as const, value: 960 },
             height: { mode: "fixed" as const, value: 540 },
           },
@@ -71,7 +71,7 @@ describe("Canvas workspace artboard sizing", () => {
         root: {
           id: "block-root",
           type: "frame" as const,
-          layout: {
+          sizing: {
             width: { mode: "fixed" as const, value: 480 },
             height: { mode: "fixed" as const, value: 280 },
           },

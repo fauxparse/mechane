@@ -81,7 +81,7 @@ function toElement(
     children: (children.get(row.id) ?? []).map((child) => toElement(child, children, visiting)),
   } as CanvasElementValue;
   visiting.delete(row.id);
-  return element;
+  return element as CanvasElementValue;
 }
 
 function ownerWhere(owner: CanvasOwner, graphId: string) {
@@ -298,6 +298,7 @@ export async function writeCanvasRows(
   now: Date,
   position?: Position,
 ): Promise<string> {
+  const canonical = canvas;
   const [existing] = await tx.select().from(canvases).where(ownerWhere(owner, graphId));
   const canvasId = existing?.id ?? generateId("canvas");
   const nextPosition = position ?? {
@@ -337,7 +338,7 @@ export async function writeCanvasRows(
   }
   await tx
     .insert(canvasElements)
-    .values(elementRows(canvasId, canvas.root, null, canvas.root.rank ?? ""));
+    .values(elementRows(canvasId, canonical.root, null, canonical.root.rank ?? ""));
   await tx.update(shows).set({ updatedAt: now }).where(eq(shows.id, showId));
   return canvasId;
 }

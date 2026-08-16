@@ -11,8 +11,10 @@ const root = (id: string, fill: string, width = 680, height = 440) => ({
   id: `${id}-root`,
   type: "frame" as const,
   layoutMode: "absolute" as const,
-  width: { mode: "fixed" as const, value: width },
-  height: { mode: "fixed" as const, value: height },
+  sizing: {
+    width: { mode: "fixed" as const, value: width },
+    height: { mode: "fixed" as const, value: height },
+  },
   fill,
   children: [
     {
@@ -20,8 +22,10 @@ const root = (id: string, fill: string, width = 680, height = 440) => ({
       type: "text" as const,
       content: id,
       rank: "a",
-      width: { mode: "hug" as const },
-      height: { mode: "hug" as const },
+      sizing: {
+        width: { mode: "hug" as const },
+        height: { mode: "hug" as const },
+      },
       anchor: { horizontal: "left" as const, vertical: "top" as const, offsetX: 24, offsetY: 24 },
     },
   ],
@@ -34,8 +38,10 @@ const nestedAutoRoot = (id: string) => ({
   gap: 16,
   padding: 20,
   fill: "#e2e8f0",
-  width: { mode: "fixed" as const, value: 620 },
-  height: { mode: "fixed" as const, value: 380 },
+  sizing: {
+    width: { mode: "fixed" as const, value: 620 },
+    height: { mode: "fixed" as const, value: 380 },
+  },
   children: [
     {
       id: `${id}-header`,
@@ -44,22 +50,28 @@ const nestedAutoRoot = (id: string) => ({
       direction: "horizontal" as const,
       gap: 8,
       padding: 12,
-      width: { mode: "fill" as const },
-      height: { mode: "hug" as const },
+      sizing: {
+        width: { mode: "fill" as const },
+        height: { mode: "hug" as const },
+      },
       fill: "#cbd5e1",
       children: [
         {
           id: `${id}-label`,
           type: "text" as const,
           content: "Nested",
-          width: { mode: "hug" as const },
-          height: { mode: "hug" as const },
+          sizing: {
+            width: { mode: "hug" as const },
+            height: { mode: "hug" as const },
+          },
         },
         {
           id: `${id}-status`,
           type: "rect" as const,
-          width: { mode: "fixed" as const, value: 72 },
-          height: { mode: "fixed" as const, value: 24 },
+          sizing: {
+            width: { mode: "fixed" as const, value: 72 },
+            height: { mode: "fixed" as const, value: 24 },
+          },
           fill: "#94a3b8",
         },
       ],
@@ -68,16 +80,20 @@ const nestedAutoRoot = (id: string) => ({
       id: `${id}-body`,
       type: "frame" as const,
       layoutMode: "absolute" as const,
-      width: { mode: "fill" as const },
-      height: { mode: "fill" as const },
+      sizing: {
+        width: { mode: "fill" as const },
+        height: { mode: "fill" as const },
+      },
       fill: "#f8fafc",
       children: [
         {
           id: `${id}-copy`,
           type: "text" as const,
           content: "Absolute child inside auto layout",
-          width: { mode: "hug" as const },
-          height: { mode: "hug" as const },
+          sizing: {
+            width: { mode: "hug" as const },
+            height: { mode: "hug" as const },
+          },
           anchor: { horizontal: "center" as const, vertical: "center" as const },
         },
       ],
@@ -114,16 +130,20 @@ const reparentReviewArtboard: CanvasArtboardDocument = {
       id: "reparent-root",
       type: "frame",
       layoutMode: "absolute",
-      width: { mode: "fixed", value: 680 },
-      height: { mode: "fixed", value: 440 },
+      sizing: {
+        width: { mode: "fixed", value: 680 },
+        height: { mode: "fixed", value: 440 },
+      },
       fill: "#e2e8f0",
       children: [
         {
           id: "reparent-source",
           type: "rect",
           rank: "a",
-          width: { mode: "fixed", value: 120 },
-          height: { mode: "fixed", value: 72 },
+          sizing: {
+            width: { mode: "fixed", value: 120 },
+            height: { mode: "fixed", value: 72 },
+          },
           fill: "#2563eb",
           anchor: { horizontal: "left", vertical: "top", offsetX: 32, offsetY: 32 },
         },
@@ -132,8 +152,10 @@ const reparentReviewArtboard: CanvasArtboardDocument = {
           type: "frame",
           rank: "b",
           layoutMode: "auto",
-          width: { mode: "fixed", value: 360 },
-          height: { mode: "fixed", value: 280 },
+          sizing: {
+            width: { mode: "fixed", value: 360 },
+            height: { mode: "fixed", value: 280 },
+          },
           fill: "#fef3c7",
           anchor: { horizontal: "left", vertical: "top", offsetX: 250, offsetY: 100 },
           children: [],
