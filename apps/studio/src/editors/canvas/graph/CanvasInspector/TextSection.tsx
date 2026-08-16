@@ -37,6 +37,10 @@ import {
   BoldIcon,
   UnderlineIcon,
   ItalicIcon,
+  TextAlignVerticalTopIcon,
+  TextAlignVerticalCenterIcon,
+  TextAlignVerticalBottomIcon,
+  LetterSpacingIcon,
 } from "@mechane/design-system";
 import type { ShapeValue } from "@mechane/domain";
 import { Fragment, useEffect, useMemo, useState } from "react";
@@ -245,6 +249,7 @@ export const TextSection = () => {
     if (variant) loadGoogleFont(fontFamily, variant);
   }, [bold, fontFamily, italic, selectedGoogleFont]);
   const textAlign = common("textAlign") as string | undefined;
+  const textVerticalAlign = common("textVerticalAlign") as string | undefined;
   if (target.type !== "text") return null;
 
   return (
@@ -294,8 +299,13 @@ export const TextSection = () => {
         </SectionRow>
         <SectionRow>
           <PropertyField name="lineHeight" icon={LineHeightIcon} presets={LINE_HEIGHT_PRESETS} />
+          <PropertyField name="letterSpacing" icon={LetterSpacingIcon} />
+        </SectionRow>
+        <SectionRow>
           <ToggleGroup
             size="sm"
+            spacing={0}
+            className="w-full"
             value={textAlign ? [textAlign] : []}
             onValueChange={([value]) => {
               if (value) {
@@ -313,8 +323,27 @@ export const TextSection = () => {
               <TextAlignEndIcon />
             </ToggleGroupItem>
           </ToggleGroup>
+          <ToggleGroup
+            aria-label="Vertical alignment"
+            spacing={0}
+            className="w-full"
+            size="sm"
+            value={[textVerticalAlign ?? "top"]}
+            onValueChange={([value]) => {
+              if (value) update({ textVerticalAlign: value });
+            }}
+          >
+            <ToggleGroupItem value="top" aria-label="Align top">
+              <TextAlignVerticalTopIcon />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="center" aria-label="Align center vertically">
+              <TextAlignVerticalCenterIcon />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="bottom" aria-label="Align bottom">
+              <TextAlignVerticalBottomIcon />
+            </ToggleGroupItem>
+          </ToggleGroup>
         </SectionRow>
-        <PropertyField name="letterSpacing" />
       </Section>
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent aria-label="Edit text">

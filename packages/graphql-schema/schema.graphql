@@ -393,6 +393,7 @@ type TextElement implements Element {
   textDecoration: JSON
   lineHeight: JSON
   letterSpacing: JSON
+  textVerticalAlign: JSON
   padding: JSON
 }
 

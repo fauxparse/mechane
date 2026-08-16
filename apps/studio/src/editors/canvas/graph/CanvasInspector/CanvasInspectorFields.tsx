@@ -57,7 +57,9 @@ export const PropertyField = ({
           ? 16
           : name === "lineHeight"
             ? "auto"
-            : undefined
+            : name === "letterSpacing"
+              ? 0
+              : undefined
     : rawValue;
   const isAuto = name === "lineHeight" && defaultValue === "auto";
   const value = isAuto

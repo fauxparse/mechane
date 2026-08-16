@@ -118,6 +118,24 @@ describe("CanvasRenderer", () => {
     expect(html).toContain("font-style:italic");
     expect(html).toContain("text-decoration:underline");
   });
+  it("renders text vertical alignment", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          { id: "top", type: "text", content: "Top", textVerticalAlign: "top" },
+          { id: "center", type: "text", content: "Center", textVerticalAlign: "center" },
+          { id: "bottom", type: "text", content: "Bottom", textVerticalAlign: "bottom" },
+        ],
+      },
+    });
+
+    expect(html.match(/justify-content:flex-start/g)).toHaveLength(1);
+    expect(html.match(/justify-content:center/g)).toHaveLength(1);
+    expect(html.match(/justify-content:flex-end/g)).toHaveLength(1);
+  });
   it("renders numeric-string line height as pixels and maps auto to a normal default", () => {
     const html = markup({
       kind: "scene",

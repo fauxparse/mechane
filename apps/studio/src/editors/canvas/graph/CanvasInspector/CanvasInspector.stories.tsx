@@ -139,7 +139,7 @@ const connectedRoot: FrameElement = {
   gap: 16,
   width: { mode: "fixed", value: 640 },
   height: { mode: "fixed", value: 360 },
-  fill: "#0f172a",
+  fill: "#000000",
   children: [
     {
       id: "connected-card",

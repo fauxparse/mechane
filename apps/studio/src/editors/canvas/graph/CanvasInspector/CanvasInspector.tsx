@@ -20,7 +20,7 @@ const EmptySelection = () => (
 
 const CanvasInspectorContent = () => (
   <>
-    <SidebarHeader className="border-0">
+    <SidebarHeader className="">
       <InspectorHeader />
     </SidebarHeader>
     <SidebarContent className="p-0 gap-0">

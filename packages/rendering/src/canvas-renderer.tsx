@@ -244,6 +244,13 @@ function typeStyle(element: Element): CSSProperties {
   if (element.type === "text") {
     const fontSize = literal(element.fontSize);
     const lineHeight = literal(element.lineHeight);
+    const textVerticalAlign = literal(element.textVerticalAlign) ?? "top";
+    const justifyContent =
+      textVerticalAlign === "center"
+        ? "center"
+        : textVerticalAlign === "bottom"
+          ? "flex-end"
+          : "flex-start";
     const numericLineHeight =
       typeof lineHeight === "string" && lineHeight.trim() !== "" ? Number(lineHeight) : NaN;
     const lineHeightStyle =
@@ -260,6 +267,9 @@ function typeStyle(element: Element): CSSProperties {
       fontFamily: literal(element.fontFamily),
       fontSize: fontSize === undefined ? undefined : `${fontSize}px`,
       fontWeight: literal(element.fontWeight),
+      display: "flex",
+      flexDirection: "column",
+      justifyContent,
       fontStyle: literal(element.fontStyle),
       lineHeight: lineHeightStyle,
       textDecoration: literal(element.textDecoration),
