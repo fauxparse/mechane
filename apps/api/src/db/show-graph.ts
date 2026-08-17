@@ -404,7 +404,9 @@ async function writeGraph(
   for (const canvas of [...previousCanvases].sort(
     (left, right) => left.createdAt.getTime() - right.createdAt.getTime(),
   )) {
-    const root = previousElementsByCanvas.get(canvas.id)?.find((element) => element.parentId === null);
+    const root = previousElementsByCanvas
+      .get(canvas.id)
+      ?.find((element) => element.parentId === null);
     const properties = root?.properties;
     if (!properties || typeof properties !== "object" || Array.isArray(properties)) continue;
     if (!("fill" in properties)) continue;

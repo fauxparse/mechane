@@ -38,7 +38,8 @@ export const PropertyInput = <T extends ShapeValue>({
   onChange,
   onSizingChange,
   onAutoChange,
-  onConstraintAdd,
+  constraints,
+  onConstraintToggle,
 }: PropertyInputProps<T>) => {
   const [inputActive, setInputActive] = useState(false);
   const input = usePropertyInput({
@@ -57,7 +58,8 @@ export const PropertyInput = <T extends ShapeValue>({
     onChange,
     onSizingChange,
     onAutoChange,
-    onConstraintAdd,
+    constraints,
+    onConstraintToggle,
   });
   const inactiveValue = renderInactiveValue?.(input.currentValue);
   const hasInactiveValue =
@@ -163,6 +165,7 @@ export const PropertyInput = <T extends ShapeValue>({
             colorText={input.colorText}
             dimension={dimension}
             sizing={input.currentSizing}
+            constraints={constraints}
             presets={presets}
             auto={input.auto}
             allowAuto={allowAuto}

@@ -36,9 +36,8 @@ type Story = StoryObj<typeof AlignmentSelector>;
 
 export const Default: Story = {
   render: () => {
-    const [args, updateArgs] = useArgs<
-      Omit<ComponentProps<typeof AlignmentSelector>, "onChange">
-    >();
+    const [args, updateArgs] =
+      useArgs<Omit<ComponentProps<typeof AlignmentSelector>, "onChange">>();
 
     return <AlignmentSelector {...args} onChange={updateArgs} />;
   },

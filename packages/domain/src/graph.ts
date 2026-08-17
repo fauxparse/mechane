@@ -463,7 +463,7 @@ function assertValidWiringEdge(
   const sourceType = producer.type ?? null;
   const targetType =
     consumer.kind === "scene"
-      ? consumer.variables.find((variable) => variable.id === edge.targetPath[0])?.type ?? null
+      ? (consumer.variables.find((variable) => variable.id === edge.targetPath[0])?.type ?? null)
       : null;
   if (sourceType && targetType && !areTypesCompatible(sourceType, targetType, shapes)) {
     throw new InvalidShowGraphError(

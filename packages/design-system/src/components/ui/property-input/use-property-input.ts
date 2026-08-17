@@ -84,7 +84,8 @@ export function usePropertyInput<T extends ShapeValue>({
   onChange,
   onSizingChange,
   onAutoChange,
-  onConstraintAdd,
+  constraints,
+  onConstraintToggle,
 }: PropertyInputProps<T>) {
   const [uncontrolledValue, setUncontrolledValue] = useState<PropertyInputValue<T> | null>(
     value ?? null,
@@ -246,7 +247,8 @@ export function usePropertyInput<T extends ShapeValue>({
       onAutoChange?.(true);
     }
     if (menuValue === "add-min" || menuValue === "add-max") {
-      onConstraintAdd?.(menuValue === "add-min" ? "min" : "max");
+      const constraint = menuValue === "add-min" ? "min" : "max";
+      onConstraintToggle?.(constraint, !constraints?.[constraint]);
     }
     if (menuValue === "connect") {
       setVariableQuery("");

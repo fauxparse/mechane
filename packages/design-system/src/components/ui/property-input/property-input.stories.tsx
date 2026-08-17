@@ -90,8 +90,9 @@ export const Width: Story = {
             if (isNumberValue(next)) setValue(next.value);
           }}
           onSizingChange={setSizing}
-          onConstraintAdd={(constraint) =>
-            setConstraints((current) => ({ ...current, [constraint]: true }))
+          constraints={constraints}
+          onConstraintToggle={(constraint, enabled) =>
+            setConstraints((current) => ({ ...current, [constraint]: enabled }))
           }
         />
         {constraints.min && (

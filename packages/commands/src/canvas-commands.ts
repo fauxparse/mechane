@@ -227,7 +227,6 @@ export function updateCanvasElements(
   });
 }
 
-
 export function reparentCanvasElement(
   canvasId: string,
   elementId: string,

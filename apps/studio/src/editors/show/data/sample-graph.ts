@@ -44,9 +44,13 @@ export const VOTE_FLOW_NODE_IDS = [VOTE_FLOW, WAITING, VOTING, RESULTS];
 function node(overrides: Partial<ShowGraphNodeShape> & Pick<ShowGraphNodeShape, "id" | "kind">) {
   const { kind, ...rest } = overrides;
   const typeName =
-    { scene: "SceneNode", flow: "FlowNode", source: "SourceNode", transformer: "TransformerNode", device: "DeviceNode" }[
-      kind
-    ] ?? kind;
+    {
+      scene: "SceneNode",
+      flow: "FlowNode",
+      source: "SourceNode",
+      transformer: "TransformerNode",
+      device: "DeviceNode",
+    }[kind] ?? kind;
   return {
     __typename: typeName,
     name: overrides.id,
@@ -64,7 +68,8 @@ function node(overrides: Partial<ShowGraphNodeShape> & Pick<ShowGraphNodeShape, 
 
 function edge(overrides: Partial<ShowGraphEdgeShape> & { id: string; kind: string }) {
   const { kind, ...rest } = overrides;
-  const typeName = { wiring: "WiringEdge", navigate: "NavigateEdge", device: "DeviceEdge" }[kind] ?? kind;
+  const typeName =
+    { wiring: "WiringEdge", navigate: "NavigateEdge", device: "DeviceEdge" }[kind] ?? kind;
   return {
     __typename: typeName,
     sourcePath: [],

@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  opacityFromPercent,
-  opacityToPercent,
-  resolveCanvasProperties,
-} from "./canvas-properties";
+import { opacityFromPercent, opacityToPercent, resolveCanvasProperties } from "./canvas-properties";
 import type { Canvas } from "./canvas";
 import type { SceneVariable } from "./graph";
 

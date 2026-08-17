@@ -14,12 +14,12 @@
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
-  "devDependencies": {
-    "typescript": "^7.0.2"
-  },
   "dependencies": {
     "@types/ws": "^8.18.1",
     "ably": "^2.26.0",
     "ws": "^8.21.2"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
   }
 }

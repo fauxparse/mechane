@@ -19,7 +19,10 @@ export function BatchSmartSmoothStepEdge(props: EdgeProps) {
       interactionWidth={props.interactionWidth}
       style={props.style}
       label={label}
-      labelStyle={{ fill: props.data?.invalidReason ? "var(--destructive)" : undefined, fontWeight: 700 }}
+      labelStyle={{
+        fill: props.data?.invalidReason ? "var(--destructive)" : undefined,
+        fontWeight: 700,
+      }}
     />
   );
 }

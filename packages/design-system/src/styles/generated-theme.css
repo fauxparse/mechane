@@ -89,7 +89,9 @@
   --color-success-900: var(--success-900);
   --color-success-950: var(--success-950);
 }
-:root { --radius: 0.5rem; }
+:root {
+  --radius: 0.5rem;
+}
 :root,
 [data-theme-palette="catppuccin"][data-theme-mode="dark"] {
   --palette-neutral-50: #f8faff;

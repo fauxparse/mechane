@@ -7,4 +7,4 @@ allowBuilds:
   esbuild: true
 minimumReleaseAgeExclude:
   - tsx@4.23.8
-  - '@dicebear/styles@10.5.0'
+  - "@dicebear/styles@10.5.0"

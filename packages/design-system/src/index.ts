@@ -160,6 +160,7 @@ export {
 export {
   PropertyInput,
   type PropertyInputConstraint,
+  type PropertyInputConstraints,
   type PropertyInputPreset,
   type PropertyInputProps,
   type PropertyInputSizing,

@@ -50,7 +50,11 @@ export const SettingsList: Story = {
         description="Minimize interface animations"
         defaultChecked
       />
-      <SettingRow label="Offline mode" description="Use cached content when disconnected" disabled />
+      <SettingRow
+        label="Offline mode"
+        description="Use cached content when disconnected"
+        disabled
+      />
     </div>
   ),
 };
@@ -60,14 +64,8 @@ export const Controlled: Story = {
     const [checked, setChecked] = useState(false);
     return (
       <div className="flex items-center gap-3">
-        <Switch
-          aria-label="Controlled switch"
-          checked={checked}
-          onCheckedChange={setChecked}
-        />
-        <span className="text-sm text-muted-foreground">
-          {checked ? "Enabled" : "Disabled"}
-        </span>
+        <Switch aria-label="Controlled switch" checked={checked} onCheckedChange={setChecked} />
+        <span className="text-sm text-muted-foreground">{checked ? "Enabled" : "Disabled"}</span>
       </div>
     );
   },
@@ -90,11 +88,7 @@ function SettingRow({
         <span className="text-sm font-medium">{label}</span>
         <span className="text-xs text-muted-foreground">{description}</span>
       </span>
-      <Switch
-        aria-label={label}
-        defaultChecked={defaultChecked}
-        disabled={disabled}
-      />
+      <Switch aria-label={label} defaultChecked={defaultChecked} disabled={disabled} />
     </label>
   );
 }

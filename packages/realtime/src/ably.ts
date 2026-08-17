@@ -30,7 +30,10 @@ class AblyChannel implements RealtimeChannel {
     return message;
   }
 
-  subscribe(handler: RealtimeMessageHandler, _options?: RealtimeSubscribeOptions): RealtimeSubscription {
+  subscribe(
+    handler: RealtimeMessageHandler,
+    _options?: RealtimeSubscribeOptions,
+  ): RealtimeSubscription {
     const listener = (message: Ably.Message) => handler(message.data as RealtimeMessage);
     this.channel.subscribe(listener);
     return { close: () => this.channel.unsubscribe(listener) };

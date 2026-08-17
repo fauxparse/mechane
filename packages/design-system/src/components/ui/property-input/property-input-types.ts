@@ -15,6 +15,8 @@ export type PropertyInputType = "text" | "number" | "color";
 export type PropertyInputPreset = number | "auto";
 export type PropertyInputSizing = "fixed" | "fill" | "hug";
 export type PropertyInputConstraint = "min" | "max";
+/** Which size constraints the user has revealed for a dimension input. */
+export type PropertyInputConstraints = Partial<Record<PropertyInputConstraint, boolean>>;
 export type PropertyInputUnit = "px" | "%";
 
 /** The value shape exchanged by the editor control. Variable current values may have another source Type. */
@@ -46,5 +48,7 @@ export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   onChange?: (value: PropertyInputValue<T> | null) => void;
   onSizingChange?: (sizing: PropertyInputSizing) => void;
   onAutoChange?: (auto: boolean) => void;
-  onConstraintAdd?: (constraint: PropertyInputConstraint) => void;
+  /** Marks the min/max menu items as active. */
+  constraints?: PropertyInputConstraints;
+  onConstraintToggle?: (constraint: PropertyInputConstraint, enabled: boolean) => void;
 };

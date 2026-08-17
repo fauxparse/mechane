@@ -19,6 +19,7 @@ import {
 import { InlineColorPicker } from "./color-picker";
 import { cn } from "../../../lib/utils";
 import type {
+  PropertyInputConstraints,
   PropertyInputPreset,
   PropertyInputSizing,
   PropertyInputType,
@@ -29,6 +30,7 @@ export function Menu<T extends ShapeValue>({
   colorText,
   dimension,
   sizing,
+  constraints,
   presets,
   auto,
   allowAuto,
@@ -39,6 +41,7 @@ export function Menu<T extends ShapeValue>({
   colorText: string;
   dimension?: "width" | "height";
   sizing: PropertyInputSizing;
+  constraints?: PropertyInputConstraints;
   presets?: readonly PropertyInputPreset[];
   auto: boolean;
   allowAuto?: boolean;
@@ -82,12 +85,16 @@ export function Menu<T extends ShapeValue>({
             <ComboboxSeparator />
             <ComboboxGroup>
               <ComboboxItem value="add-min">
-                <CheckIcon className="opacity-0" />
                 Add min {dimension}
+                <CheckIcon
+                  className={cn("ml-auto", constraints?.min ? "opacity-100" : "opacity-0")}
+                />
               </ComboboxItem>
               <ComboboxItem value="add-max">
-                <CheckIcon className="opacity-0" />
                 Add max {dimension}
+                <CheckIcon
+                  className={cn("ml-auto", constraints?.max ? "opacity-100" : "opacity-0")}
+                />
               </ComboboxItem>
             </ComboboxGroup>
             <ComboboxSeparator />
