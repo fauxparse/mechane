@@ -3,6 +3,8 @@ import type { ObjectFit, ObjectPosition } from "@mechane/domain";
 import { isPropertyConnection } from "@mechane/domain";
 import {
   Button,
+  ImageIcon,
+  RotateCcwIcon,
   Select,
   SelectContent,
   SelectItem,
@@ -17,6 +19,7 @@ import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { ImageAssetPicker } from "./ImageAssetPicker";
 import { ObjectPositionSelector } from "./ObjectPositionSelector";
 import { Section, SectionRow } from "./Section";
+
 export const InspectorHeader = () => {
   const { focused, elements } = useCanvasInspectorContext();
   const Icon = elementIconFor(elements.map((element) => element.type));
@@ -116,6 +119,7 @@ export const ImageSection = () => {
             onChange={(value) => update({ objectPosition: value })}
           />
           <Select
+            items={OBJECT_FIT_OPTIONS}
             value={objectFitValue}
             onValueChange={(value) => {
               if (value) update({ objectFit: value as ObjectFit });
@@ -161,10 +165,17 @@ export const ImageSection = () => {
               });
             }}
           >
-            Reset
+            <RotateCcwIcon />
+            Reset size
           </Button>
         </SectionRow>
-        <Button variant="outline" className="w-full" onClick={() => setPickerOpen(true)}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full col-span-2"
+          onClick={() => setPickerOpen(true)}
+        >
+          <ImageIcon />
           {hasImage ? "Change image" : "Choose image"}
         </Button>
       </Section>
