@@ -358,12 +358,10 @@ export function CanvasWorkspaceStage({
             cy={creationPreview.cy}
             rx={creationPreview.rx}
             ry={creationPreview.ry}
-            style={{ color: "var(--primary)" }}
             fill="none"
             stroke="currentColor"
-            strokeDasharray="8 4"
-            strokeLinecap="round"
-            strokeWidth="2"
+            strokeDasharray="6 4"
+            strokeWidth="1"
             vectorEffect="non-scaling-stroke"
             data-creation-preview
           />
@@ -373,12 +371,10 @@ export function CanvasWorkspaceStage({
             y={creationPreview.y}
             width={creationPreview.width}
             height={creationPreview.height}
-            style={{ color: "var(--primary)" }}
             fill="none"
             stroke="currentColor"
-            strokeDasharray="8 4"
-            strokeLinecap="round"
-            strokeWidth="2"
+            strokeDasharray="6 4"
+            strokeWidth="1"
             vectorEffect="non-scaling-stroke"
             data-creation-preview
           />
