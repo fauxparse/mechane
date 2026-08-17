@@ -109,6 +109,7 @@ export function CanvasWorkspaceStage({
     : null;
   return (
     <main
+      className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
       ref={workspaceRef}
       style={{
         cursor: resizeCursor ?? (tool !== "select" ? "crosshair" : undefined),

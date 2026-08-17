@@ -1017,28 +1017,42 @@ export function useCanvasWorkspaceInteractions({
   };
 
   const beginWorkspaceInteraction = (event: PointerEvent<HTMLElement>) => {
+    if (tool !== "select") return;
     beginCameraDrag(event);
     if (event.target !== event.currentTarget) return;
     beginRubberband(event);
   };
 
   const moveWorkspaceInteraction = (event: PointerEvent<HTMLElement>) => {
+    if (tool !== "select") {
+      if (event.target === event.currentTarget) moveCreation(event);
+      return;
+    }
     moveCameraDrag(event);
     updateResize(event);
     updateRubberband(event);
   };
 
   const endWorkspaceInteraction = (event: PointerEvent<HTMLElement>) => {
+    if (tool !== "select") {
+      if (event.target === event.currentTarget) finishCreation(event);
+      return;
+    }
     endCameraDrag(event);
     finishResize(event);
     endRubberband(event);
   };
 
   const cancelWorkspaceInteraction = (event: PointerEvent<HTMLElement>) => {
+    if (tool !== "select") {
+      if (event.target === event.currentTarget) finishCreation(event, true);
+      return;
+    }
     endCameraDrag(event);
     finishResize(event, true);
     endRubberband(event);
   };
+
   const beginCreation = (
     event: PointerEvent<HTMLElement>,
     _artboard: CanvasArtboardDocument | null,
@@ -1114,7 +1128,7 @@ export function useCanvasWorkspaceInteractions({
       const id = frame.dataset.elementId;
       return id ? [{ id, rect: measuredRect(frame) }] : [];
     });
-    const parentId = containingFrame(frames, rect) ?? root.dataset.elementId;
+    const parentId = containingFrame(frames, rect) ?? root.dataset.canvasRoot;
     if (!parentId) return;
     const parent = frames.find((frame) => frame.id === parentId);
     if (!parent) return;
