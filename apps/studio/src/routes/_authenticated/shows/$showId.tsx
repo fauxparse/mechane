@@ -121,6 +121,7 @@ function ShowEditorLayout() {
           },
         },
         user: {
+          id: me.data?.id ?? "unknown",
           name: me.data?.name,
           email: me.data?.email ?? "",
           avatarUrl: null,

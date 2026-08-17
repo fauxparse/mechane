@@ -54,5 +54,5 @@ export const RenameError: Story = {
 
 /** No display name on the account, so the avatar falls back to the email. */
 export const NoDisplayName: Story = {
-  args: { user: { name: null, email: "director@example.com" } },
+  args: { user: { id: "1", name: null, email: "director@example.com" } },
 };
