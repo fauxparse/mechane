@@ -1,0 +1,245 @@
+<!doctype html>
+<!-- THROWAWAY PROTOTYPE — Image authoring flow, ticket 298. Remove after the design decision. -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Image authoring prototype</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #14131a;
+        --panel: #1d1b25;
+        --panel-raised: #24212f;
+        --panel-soft: #2b2737;
+        --line: #3a3449;
+        --text: #f7f3ff;
+        --muted: #aaa2b9;
+        --faint: #746d82;
+        --accent: #d4b4ff;
+        --accent-strong: #a971ff;
+        --green: #8de3b1;
+        --amber: #f4ca83;
+        --red: #ff9caa;
+        --shadow: 0 18px 55px rgb(0 0 0 / 0.35);
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-width: 980px; background: var(--bg); color: var(--text); }
+      button, input { font: inherit; }
+      button { cursor: pointer; }
+      .app { min-height: 100vh; display: grid; grid-template-rows: 58px 1fr 34px; }
+      .chrome { display: flex; align-items: center; gap: 18px; padding: 0 22px; border-bottom: 1px solid var(--line); background: #17151e; }
+      .brand { font-weight: 750; letter-spacing: .01em; }
+      .crumb { color: var(--muted); font-size: 13px; }
+      .chrome-spacer { flex: 1; }
+      .chrome-pill, .tag { border: 1px solid var(--line); border-radius: 999px; color: var(--muted); padding: 5px 10px; font-size: 12px; }
+      .workspace { display: grid; grid-template-columns: 1fr 310px; min-height: 0; }
+      .canvas { position: relative; display: grid; place-items: center; overflow: hidden; background: radial-gradient(circle at 50% 45%, #302b3d 0 1px, transparent 1px), #17161f; background-size: 22px 22px; }
+      .canvas::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(135deg, rgb(255 255 255 / .025), transparent 45%); }
+      .artboard { position: relative; z-index: 1; width: 600px; height: 390px; border: 1px solid #655d78; background: #312d3e; box-shadow: var(--shadow); }
+      .artboard-label { position: absolute; top: -28px; left: 0; color: var(--muted); font-size: 12px; }
+      .art-image { position: absolute; left: 112px; top: 56px; width: 376px; height: 250px; border: 2px solid var(--accent-strong); background: #4c435d; overflow: hidden; }
+      .art-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .art-image.empty { display: grid; place-items: center; border-style: dashed; color: var(--muted); }
+      .selection-badge { position: absolute; left: -1px; bottom: -28px; color: var(--accent); font-size: 12px; }
+      .inspector { position: relative; z-index: 2; border-left: 1px solid var(--line); background: var(--panel); overflow: auto; }
+      .inspector-head { padding: 19px 18px 13px; border-bottom: 1px solid var(--line); }
+      .eyebrow { color: var(--accent); font-size: 11px; font-weight: 750; letter-spacing: .11em; text-transform: uppercase; }
+      h1, h2, h3, p { margin: 0; }
+      h1 { margin-top: 5px; font-size: 17px; }
+      h2 { font-size: 15px; }
+      .sub { margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+      .section { padding: 16px 18px; border-bottom: 1px solid var(--line); }
+      .section-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px; color: var(--muted); font-size: 11px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+      .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+      .row + .row { margin-top: 10px; }
+      .field-label { color: var(--muted); font-size: 12px; }
+      .value { font-size: 12px; }
+      .btn { border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; background: var(--panel-soft); color: var(--text); font-size: 12px; }
+      .btn:hover { border-color: var(--accent); }
+      .btn.primary { border-color: transparent; background: var(--accent-strong); color: #180f25; font-weight: 750; }
+      .btn.ghost { background: transparent; }
+      .btn.small { padding: 6px 9px; }
+      .btn:disabled { cursor: default; opacity: .45; }
+      .upload-box { border: 1px dashed #6b5a86; border-radius: 10px; padding: 16px; background: rgb(169 113 255 / .06); }
+      .upload-box strong { display: block; font-size: 13px; }
+      .upload-box span { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+      .upload-actions { display: flex; gap: 8px; margin-top: 13px; }
+      .progress { height: 5px; overflow: hidden; margin-top: 12px; border-radius: 99px; background: #3a3449; }
+      .progress > i { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--accent); transition: width .2s; }
+      .status { display: flex; align-items: center; gap: 8px; margin-top: 10px; color: var(--muted); font-size: 11px; }
+      .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+      .dot.green { background: var(--green); box-shadow: 0 0 12px rgb(141 227 177 / .5); }
+      .dot.amber { background: var(--amber); }
+      .dot.red { background: var(--red); }
+      .preview { position: relative; display: grid; place-items: center; height: 190px; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: repeating-conic-gradient(#302b3d 0% 25%, #272330 0% 50%) 50% / 18px 18px; }
+      .preview img { width: 100%; height: 100%; object-fit: cover; }
+      .preview .crop-box { position: absolute; width: 72%; height: 72%; border: 2px solid white; box-shadow: 0 0 0 999px rgb(0 0 0 / .38); }
+      .preview .blur { filter: blur(10px); transform: scale(1.1); opacity: .85; }
+      .slider { width: 100%; accent-color: var(--accent-strong); }
+      .dimension-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .input { width: 100%; border: 1px solid var(--line); border-radius: 7px; padding: 8px 9px; background: #17151e; color: var(--text); }
+      .gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+      .gallery-item { position: relative; aspect-ratio: 1; overflow: hidden; border: 1px solid var(--line); border-radius: 7px; background: #332d41; }
+      .gallery-item.selected { border: 2px solid var(--accent); }
+      .gallery-item img { width: 100%; height: 100%; object-fit: cover; }
+      .gallery-item span { position: absolute; right: 4px; bottom: 4px; left: 4px; overflow: hidden; border-radius: 4px; padding: 3px 4px; background: rgb(20 19 26 / .8); color: var(--text); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+      .footer { display: flex; align-items: center; padding: 0 18px; border-top: 1px solid var(--line); color: var(--faint); font-size: 11px; }
+      .footer strong { color: var(--muted); }
+      .modal-backdrop { position: fixed; inset: 58px 0 34px; z-index: 10; display: grid; place-items: center; background: rgb(0 0 0 / .58); }
+      .modal { width: 820px; max-height: calc(100vh - 130px); overflow: auto; border: 1px solid #5b506f; border-radius: 16px; background: var(--panel); box-shadow: 0 28px 100px rgb(0 0 0 / .55); }
+      .modal-head { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+      .steps { display: flex; gap: 7px; padding: 14px 22px 0; }
+      .step { flex: 1; border-top: 2px solid var(--line); padding-top: 7px; color: var(--faint); font-size: 10px; }
+      .step.active { border-color: var(--accent); color: var(--accent); }
+      .modal-body { display: grid; grid-template-columns: 1.3fr .7fr; gap: 18px; padding: 22px; }
+      .modal-main { display: flex; flex-direction: column; gap: 14px; }
+      .modal-side { display: flex; flex-direction: column; gap: 12px; }
+      .modal-foot { display: flex; justify-content: space-between; align-items: center; padding: 16px 22px; border-top: 1px solid var(--line); }
+      .callout { border: 1px solid #615279; border-radius: 9px; padding: 11px; background: rgb(212 180 255 / .06); color: var(--muted); font-size: 11px; line-height: 1.45; }
+      .callout strong { color: var(--text); }
+      .tray { position: fixed; right: 0; bottom: 34px; left: 0; z-index: 8; border-top: 1px solid #5b506f; background: rgb(29 27 37 / .97); box-shadow: 0 -15px 45px rgb(0 0 0 / .32); }
+      .tray-inner { display: grid; grid-template-columns: 220px 1fr auto; align-items: center; gap: 18px; padding: 14px 28px; }
+      .tray-title { font-size: 13px; font-weight: 750; }
+      .tray-title small { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; font-weight: 400; }
+      .tray-gallery { display: flex; gap: 8px; overflow: hidden; }
+      .tray-item { width: 64px; height: 48px; flex: 0 0 auto; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: #332d41; }
+      .tray-item.selected { border: 2px solid var(--accent); }
+      .tray-item img { width: 100%; height: 100%; object-fit: cover; }
+      .tray-actions { display: flex; gap: 8px; }
+      .switcher { position: fixed; right: 50%; bottom: 47px; z-index: 20; display: flex; align-items: center; gap: 10px; transform: translateX(50%); border: 1px solid #635675; border-radius: 999px; padding: 7px 10px; background: #111016; box-shadow: 0 8px 30px rgb(0 0 0 / .45); }
+      .switcher button { width: 24px; height: 24px; border: 0; border-radius: 50%; background: #2a2434; color: var(--text); }
+      .switcher button:hover { background: var(--accent-strong); color: #180f25; }
+      .switcher-label { min-width: 145px; text-align: center; color: var(--muted); font-size: 11px; }
+      .switcher-label strong { color: var(--text); }
+      .toast { position: fixed; top: 76px; right: 24px; z-index: 30; border: 1px solid #5b506f; border-radius: 9px; padding: 10px 13px; background: #24212f; color: var(--text); font-size: 12px; box-shadow: var(--shadow); }
+      .hidden { display: none !important; }
+      @media (max-width: 1100px) { body { min-width: 0; } .workspace { grid-template-columns: 1fr 280px; } .artboard { transform: scale(.82); } }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      // Three variants of the Canvas Editor image authoring flow, switchable via ?variant=A|B|C.
+      const images = {
+        mountain: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420"><defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="#5f7fd1"/><stop offset="1" stop-color="#d9a5bc"/></linearGradient></defs><rect width="640" height="420" fill="url(#sky)"/><circle cx="505" cy="90" r="48" fill="#ffe4ad" opacity=".85"/><path d="M0 340 170 145 278 270 395 125 640 365V420H0Z" fill="#3e536c"/><path d="m90 260 80-115 48 59-30 24-20-20-37 51Z" fill="#eef1f6" opacity=".9"/><path d="m270 275 125-150 105 133-60-46-47 46-35-31Z" fill="#ccd7e3" opacity=".9"/><path d="M0 355c120-55 210-4 315-35 130-38 195-21 325 15v85H0Z" fill="#283d48"/></svg>'),
+        poster: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><rect width="400" height="400" rx="16" fill="#d4b4ff"/><circle cx="200" cy="164" r="92" fill="#ff997e"/><path d="M83 310c38-73 196-84 241 0" fill="none" stroke="#181520" stroke-width="22"/><path d="M120 115c40-52 120-60 165 0" fill="none" stroke="#181520" stroke-width="18" stroke-linecap="round"/><text x="200" y="365" text-anchor="middle" fill="#181520" font-family="sans-serif" font-size="28" font-weight="700">SHOW POSTER</text></svg>'),
+        texture: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280"><defs><linearGradient id="g" x2="1" y2="1"><stop stop-color="#ff9caa"/><stop offset=".45" stop-color="#f4ca83"/><stop offset="1" stop-color="#8de3b1"/></linearGradient><filter id="n"><feTurbulence baseFrequency=".65" numOctaves="3"/></filter></defs><rect width="400" height="280" fill="url(#g)"/><rect width="400" height="280" filter="url(#n)" opacity=".14"/></svg>')
+      };
+      const gallery = [
+        { key: 'mountain', name: 'Mountain at dusk', size: '1600 × 1050', image: images.mountain },
+        { key: 'poster', name: 'Show poster', size: '1200 × 1200', image: images.poster },
+        { key: 'texture', name: 'Gradient texture', size: '1400 × 980', image: images.texture }
+      ];
+      const query = new URLSearchParams(location.search);
+      let variant = ['A', 'B', 'C'].includes(query.get('variant')) ? query.get('variant') : 'A';
+      const state = {
+        stage: 'idle',
+        progress: 0,
+        selected: null,
+        crop: 58,
+        width: 1200,
+        height: 800,
+        alt: 'Mountain at dusk',
+        error: false,
+        toast: ''
+      };
+      const variantNames = { A: 'Inspector flow', B: 'Focused dialog', C: 'Asset tray' };
+      const stageLabels = { idle: 'Choose an image', preparing: 'Preparing image…', uploading: 'Uploading 42%', processing: 'Processing image…', ready: 'Ready to place', error: 'Upload needs attention', cancelled: 'Cancelled' };
+      const app = document.querySelector('#app');
+
+      function setVariant(next) {
+        variant = next;
+        history.replaceState({}, '', '?variant=' + variant);
+        render();
+      }
+      function cycle(direction) {
+        const keys = ['A', 'B', 'C'];
+        const index = keys.indexOf(variant);
+        setVariant(keys[(index + direction + keys.length) % keys.length]);
+      }
+      function notify(message) {
+        state.toast = message;
+        render();
+        setTimeout(() => { if (state.toast === message) { state.toast = ''; render(); } }, 1800);
+      }
+      function selectGallery(key) {
+        const item = gallery.find((entry) => entry.key === key);
+        state.selected = item;
+        state.stage = 'ready';
+        state.progress = 100;
+        state.alt = item.name;
+        state.width = item.key === 'poster' ? 1200 : 1600;
+        state.height = item.key === 'poster' ? 1200 : item.key === 'texture' ? 980 : 1050;
+        notify('Selected from this Show’s gallery');
+      }
+      function beginUpload() {
+        state.stage = 'preparing'; state.progress = 0; state.selected = gallery[0]; state.error = false; render();
+        setTimeout(() => {
+          state.stage = 'uploading'; render();
+          let p = 0;
+          const timer = setInterval(() => {
+            p += 14;
+            state.progress = Math.min(p, 100);
+            if (p >= 100) {
+              clearInterval(timer);
+              state.stage = 'processing';
+              render();
+              setTimeout(() => { state.stage = 'ready'; state.progress = 100; render(); }, 1300);
+            } else render();
+          }, 240);
+        }, 500);
+      }
+      function failUpload() { state.stage = 'error'; state.error = true; state.progress = 37; render(); }
+      function retryUpload() { beginUpload(); notify('Retrying the same upload session'); }
+      function cancelUpload() { state.stage = 'cancelled'; state.progress = 0; state.selected = null; render(); notify('Upload cancelled; nothing added to the gallery'); }
+      function commit() { if (state.stage !== 'ready') return; notify(state.selected ? 'Image Value assigned to the Image Element' : 'Choose an image first'); }
+      function editImage() { notify('Crop dialog opened with 1200 × 800 cover defaults'); }
+      function updateValue(name, value) { state[name] = value; render(); }
+      function imagePreview(extra = '') {
+        if (!state.selected) return '<div class="preview"><div class="upload-box"><strong>No Image Value yet</strong><span>Choose a file or reuse an asset from this Show.</span></div></div>';
+        const blur = state.stage === 'processing' ? ' blur' : '';
+        return `<div class="preview"><img class="${blur}" src="${state.selected.image}" alt=""><div class="crop-box" style="width:${state.crop}%;height:${state.crop}%;"></div>${extra}</div>`;
+      }
+      function statusBlock() {
+        const tone = state.stage === 'error' ? 'red' : state.stage === 'ready' ? 'green' : state.stage === 'processing' ? 'amber' : '';
+        const action = state.stage === 'error' ? '<button class="btn small" onclick="retryUpload()">Retry</button><button class="btn small ghost" onclick="cancelUpload()">Remove</button>' : state.stage === 'cancelled' ? '<button class="btn small" onclick="beginUpload()">Choose again</button>' : '';
+        return `<div class="status"><i class="dot ${tone}"></i><span>${stageLabels[state.stage]}</span><span style="flex:1"></span>${action}</div>${state.stage === 'uploading' ? '<div class="progress"><i style="width:' + state.progress + '%"></i></div>' : ''}${state.stage === 'error' ? '<div class="callout" style="margin-top:10px"><strong>Source too large.</strong> The server limit is 25 MB. You can retry the upload or choose another file.</div>' : ''}`;
+      }
+      function galleryMarkup(compact = false) {
+        return `<div class="gallery">${gallery.map((item) => `<button class="gallery-item ${state.selected?.key === item.key ? 'selected' : ''}" onclick="selectGallery('${item.key}')"><img src="${item.image}" alt=""><span>${item.name}</span></button>`).join('')}</div>`;
+      }
+      function artboard() {
+        const hasImage = state.selected && state.stage === 'ready';
+        return `<div class="canvas"><div class="artboard"><div class="artboard-label">Scene / Lobby · Canvas</div><div class="art-image ${hasImage ? '' : 'empty'}">${hasImage ? `<img src="${state.selected.image}" alt="${state.alt}" style="object-fit:cover">` : '<span>Image Element</span>'}<div class="selection-badge">Image Element · selected</div></div></div></div>`;
+      }
+      function chrome() { return `<header class="chrome"><div class="brand">Mechanē</div><div class="crumb">Hamlet / Scenes / Lobby</div><div class="chrome-spacer"></div><span class="chrome-pill">Draft</span><span class="chrome-pill">Prototype only</span></header>`; }
+      function footer() { return `<footer class="footer"><strong>Question:</strong>&nbsp; where should upload, processing, and gallery reuse live in the Canvas Editor?</footer>`; }
+      function inspectorVariant() {
+        return `<div class="workspace">${artboard()}<aside class="inspector"><div class="inspector-head"><div class="eyebrow">Image Element</div><h1>Hero image</h1><p class="sub">Upload, reuse, and replace without leaving the inspector.</p></div><section class="section"><div class="section-title"><span>Image Value</span><span class="tag">${state.stage === 'ready' ? 'committed' : 'empty'}</span></div><div class="upload-box"><strong>${state.selected ? state.selected.name : 'Add an image'}</strong><span>Browser crop, server validation, and a Show-scoped gallery.</span><div class="upload-actions"><button class="btn primary" onclick="beginUpload()">Upload new</button><button class="btn" onclick="document.querySelector('#gallery').scrollIntoView({behavior:'smooth'})">Gallery</button></div>${statusBlock()}</div></section><section class="section"><div class="section-title"><span>Transform</span><span class="tag">cover default</span></div>${imagePreview()}<div style="margin-top:12px"><label class="field-label">Crop window</label><input class="slider" type="range" min="42" max="88" value="${state.crop}" oninput="updateValue('crop', Number(this.value))"></div><div class="dimension-grid" style="margin-top:12px"><label class="field-label">Width<input class="input" type="number" value="${state.width}" onchange="updateValue('width', Number(this.value))"></label><label class="field-label">Height<input class="input" type="number" value="${state.height}" onchange="updateValue('height', Number(this.value))"></label></div><button class="btn" style="width:100%;margin-top:11px" onclick="editImage()">Open crop dialog</button></section><section class="section"><div class="section-title"><span>Accessibility</span></div><label class="field-label">Element alt override<input class="input" style="margin-top:6px" value="${state.alt}" oninput="state.alt=this.value"></label><p class="sub" style="margin-top:8px">Empty falls back to the asset alt.</p></section><section class="section" id="gallery"><div class="section-title"><span>This Show’s gallery</span><span class="tag">3 assets</span></div>${galleryMarkup()}</section><section class="section"><button class="btn primary" style="width:100%" onclick="commit()" ${state.stage === 'ready' ? '' : 'disabled'}>Use Image Value</button></section></aside></div>`;
+      }
+      function dialogVariant() {
+        const hasImage = Boolean(state.selected);
+        return `<div class="workspace">${artboard()}<div class="modal-backdrop"><section class="modal"><div class="modal-head"><div><div class="eyebrow">Add Image Value</div><h2>${hasImage ? 'Edit image' : 'Choose an image'}</h2></div><button class="btn small ghost" onclick="cancelUpload()">Close</button></div><div class="steps"><div class="step active">1 · Choose</div><div class="step ${state.stage === 'processing' || state.stage === 'ready' ? 'active' : ''}">2 · Transform</div><div class="step ${state.stage === 'ready' ? 'active' : ''}">3 · Apply</div></div><div class="modal-body"><main class="modal-main">${hasImage ? imagePreview('<span class="tag" style="position:absolute;left:12px;top:12px">' + (state.stage === 'processing' ? 'Processing' : 'Cover crop') + '</span>') : '<div class="upload-box" style="height:250px;display:grid;place-items:center;text-align:center"><div><strong>Drop an image here</strong><span>or choose a file from your device</span><button class="btn primary" style="margin-top:14px" onclick="beginUpload()">Choose file</button></div></div>'}${statusBlock()}${hasImage ? '<div><label class="field-label">Crop window</label><input class="slider" type="range" min="42" max="88" value="' + state.crop + '" oninput="updateValue(\'crop\', Number(this.value))"></div>' : ''}</main><aside class="modal-side"><div class="callout"><strong>Suggested dimensions</strong><br>1200 × 800 · cover crop<br><span>From variable: Hero image</span></div><div class="dimension-grid"><label class="field-label">Width<input class="input" type="number" value="${state.width}" onchange="updateValue('width', Number(this.value))"></label><label class="field-label">Height<input class="input" type="number" value="${state.height}" onchange="updateValue('height', Number(this.value))"></label></div><div class="section" style="padding:14px"><div class="section-title"><span>Or reuse gallery</span></div>${galleryMarkup()}</div><label class="field-label">Alt text<input class="input" style="margin-top:6px" value="${state.alt}" oninput="state.alt=this.value"></label></aside></div><div class="modal-foot"><span class="sub">${state.stage === 'ready' ? 'Ready. Applying creates or reuses a Show Image Asset.' : 'The Image Element stays unchanged until you apply.'}</span><div class="upload-actions"><button class="btn" onclick="cancelUpload()">Cancel</button><button class="btn primary" onclick="commit()" ${state.stage === 'ready' ? '' : 'disabled'}>Apply Image Value</button></div></div></section></div></div>`;
+      }
+      function trayVariant() {
+        const hasImage = state.selected && state.stage === 'ready';
+        return `<div class="workspace" style="display:block;position:relative">${artboard()}<div class="tray"><div class="tray-inner"><div class="tray-title">Image Element <small>${hasImage ? 'Mountain at dusk · ready to apply' : 'No Image Value assigned'}</small></div><div class="tray-gallery"><button class="btn small" onclick="beginUpload()">+ Upload</button>${gallery.map((item) => `<button class="tray-item ${state.selected?.key === item.key ? 'selected' : ''}" onclick="selectGallery('${item.key}')"><img src="${item.image}" alt="${item.name}"></button>`).join('')}</div><div class="tray-actions"><button class="btn" onclick="editImage()">Crop / resize</button><button class="btn primary" onclick="commit()" ${hasImage ? '' : 'disabled'}>Apply</button></div></div>${state.stage !== 'idle' ? '<div style="padding:0 28px 12px">' + statusBlock() + '</div>' : ''}</div></div>`;
+      }
+      function switcher() {
+        return `<nav class="switcher" aria-label="Prototype variants"><button onclick="cycle(-1)" aria-label="Previous variant">←</button><div class="switcher-label"><strong>${variant}</strong> — ${variantNames[variant]}</div><button onclick="cycle(1)" aria-label="Next variant">→</button></nav>`;
+      }
+      function render() {
+        const body = variant === 'A' ? inspectorVariant() : variant === 'B' ? dialogVariant() : trayVariant();
+        app.innerHTML = `<div class="app">${chrome()}${body}${footer()}${switcher()}${state.toast ? '<div class="toast">' + state.toast + '</div>' : ''}</div>`;
+      }
+      document.addEventListener('keydown', (event) => {
+        if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+        if (['INPUT', 'TEXTAREA', 'BUTTON'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable) return;
+        event.preventDefault(); cycle(event.key === 'ArrowRight' ? 1 : -1);
+      });
+      render();
+    </script>
+  </body>
+</html>
