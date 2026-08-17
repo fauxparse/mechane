@@ -6,7 +6,6 @@ import type { CanvasArtboardDocument } from "../../../../api/canvas";
 import { lockedAspectRatio } from "../../commands/canvas-resize";
 import { numericSizeValue } from "./canvas-inspector-values";
 import type {
-  CanvasInspectorDimensions,
   CanvasInspectorModel,
   CanvasInspectorProps,
   CanvasInspectorUpdate,
