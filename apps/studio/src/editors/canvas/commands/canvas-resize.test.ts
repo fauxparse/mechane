@@ -10,6 +10,7 @@ import {
   lockedAspectRatio,
   resizeBox,
   scaleWithin,
+  unlockedAspectRatioProperties,
 } from "./canvas-resize";
 
 const start = { x: 100, y: 200, width: 80, height: 40 };
@@ -156,6 +157,35 @@ describe("Canvas aspect ratio locks", () => {
     expect(lockedAspectRatio(null)).toBeNull();
     expect(lockedAspectRatio({ id: "a", type: "rect" } as Element)).toBeNull();
     expect(lockedAspectRatio(withRatio({ ratio: 0, driver: "width" }))).toBeNull();
+  });
+});
+
+describe("Canvas edge resize aspect-ratio unlock", () => {
+  it("clears both legacy and layout aspect-ratio locks", () => {
+    expect(
+      unlockedAspectRatioProperties({
+        id: "image",
+        type: "image",
+        aspectRatio: { ratio: 16 / 9, driver: "width" },
+        layout: {
+          rotation: 90,
+          aspectRatio: { ratio: 16 / 9, driver: "width" },
+        },
+      } as Element),
+    ).toEqual({
+      properties: { layout: { rotation: 90 } },
+      unsetProperties: ["aspectRatio"],
+    });
+  });
+
+  it("allows a later corner resize to use both axes independently", () => {
+    const afterEdge = resizeBox(start, "e", 20, 0, { constrain: true });
+    expect(resizeBox(afterEdge, "se", 10, 10)).toEqual({
+      x: 100,
+      y: 200,
+      width: 110,
+      height: 50,
+    });
   });
 });
 

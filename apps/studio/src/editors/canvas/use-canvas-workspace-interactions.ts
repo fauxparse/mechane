@@ -42,6 +42,7 @@ import {
   lockedAspectRatio,
   resizeBox,
   scaleWithin,
+  unlockedAspectRatioProperties,
 } from "./commands/canvas-resize";
 import type { ResizeBox, ResizeHandle } from "./commands/canvas-resize";
 import type { CanvasWorkspaceEditorProps } from "./canvas-workspace-types";
@@ -677,9 +678,7 @@ export function useCanvasWorkspaceInteractions({
       setResizeDraft(null);
       return;
     }
-    // An edge drag deliberately changes one axis, which is exactly what an aspect lock forbids.
-    const unset = isCornerHandle(gesture.handle) ? [] : ["aspectRatio"];
-    const artboard = ordered.find((candidate) => candidate.artId === gesture.canvasId);
+    const artboard = ordered.find((candidate) => candidate.canvasId === gesture.canvasId);
     for (const subject of gesture.subjects) {
       const next = scaleWithin(subject.start, gesture.start, box);
       const modelElement = artboard
@@ -703,6 +702,12 @@ export function useCanvasWorkspaceInteractions({
               },
             },
           };
+      const unlock = !isCornerHandle(gesture.handle)
+        ? modelElement
+          ? unlockedAspectRatioProperties(modelElement)
+          : { properties: {}, unsetProperties: ["aspectRatio"] as const }
+        : { properties: {}, unsetProperties: [] as const };
+      Object.assign(properties, unlock.properties);
       // Only an absolutely positioned Element carries its own origin; in an auto-layout Frame the
       // parent decides where it sits, so resizing must not invent an anchor for it.
       if (!subject.autoParent && subject.parent) {
@@ -713,7 +718,7 @@ export function useCanvasWorkspaceInteractions({
           offsetY: roundToLogicalPixel(next.y - subject.parent.y, camera.zoom),
         };
       }
-      onUpdateElement?.(gesture.canvasId, subject.elementId, properties, unset);
+      onUpdateElement?.(gesture.canvasId, subject.elementId, properties, unlock.unsetProperties);
     }
     // Keep the live preview mounted until the post-commit geometry arrives. Clearing `active` here
     // runs the preview cleanup before React has rendered the model update, briefly exposing the
