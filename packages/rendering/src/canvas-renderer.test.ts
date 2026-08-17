@@ -105,6 +105,64 @@ describe("CanvasRenderer", () => {
     expect(html).toContain("object-fit:contain");
     expect(html).toContain("object-position:right bottom");
   });
+
+  it("leaves an image without a fill transparent", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "image",
+            type: "image",
+            image: {
+              assetId: "image-1",
+              revision: "revision-1",
+              url: "https://example.com/image.png",
+              width: 320,
+              height: 180,
+              alt: "",
+              mimeType: "image/png",
+              blurHash: null,
+            },
+          },
+        ],
+      },
+    });
+
+    expect(html).not.toContain("background-color:#e5e7eb");
+  });
+
+  it("does not replace an image fill with the blur placeholder", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "image",
+            type: "image",
+            fill: "#123456",
+            image: {
+              assetId: "image-1",
+              revision: "revision-1",
+              url: "https://example.com/image.png",
+              width: 320,
+              height: 180,
+              alt: "",
+              mimeType: "image/png",
+              blurHash: "blur-hash",
+            },
+          },
+        ],
+      },
+    });
+
+    expect(html).toContain("background-color:#123456");
+    expect(html).not.toContain("background-color:#d8dee9");
+  });
   it("marks empty frames as painted hit targets", () => {
     const html = markup({
       kind: "scene",

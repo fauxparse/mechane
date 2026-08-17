@@ -348,6 +348,7 @@ function renderElement({
             blurHash?: string | null;
           })
         : null;
+    const hasFill = element.fill !== undefined;
     return createElement("img", {
       "data-element-id": element.id,
       "data-element-type": element.type,
@@ -364,7 +365,7 @@ function renderElement({
       "data-image-preview": resolved?.blurHash ? "blur" : "placeholder",
       style: {
         ...style,
-        backgroundColor: resolved?.blurHash ? "#d8dee9" : "#e5e7eb",
+        ...(resolved?.blurHash && !hasFill ? { backgroundColor: "#d8dee9" } : {}),
       },
       hidden: element.hidden,
       onError: resolved?.url
