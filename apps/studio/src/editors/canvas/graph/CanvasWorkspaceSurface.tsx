@@ -9,12 +9,8 @@
 import { useEffect, useMemo } from "react";
 import { EditorSlot } from "../../../components/EditorLayout/editor-slots";
 
-import {
-  collectFontFamilies,
-  fontFamilyKey,
-  loadGoogleFont,
-  useGoogleFonts,
-} from "../google-fonts";
+import { collectFontFamilies, fontFamilyKey, loadGoogleFont } from "../google-fonts";
+import { useGoogleFonts } from "../google-fonts-provider";
 import type { CanvasWorkspaceSurfaceProps } from "../canvas-workspace-types";
 import { Toolbar } from "../Toolbar/Toolbar";
 import { CanvasWorkspaceStage } from "./CanvasWorkspaceStage";

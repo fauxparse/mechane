@@ -44,6 +44,8 @@ There is also an optional pre-commit hook (`pnpm react-doctor install` writes it
 
 Add Storybook stories for each new UI component. When testing using Storybook, use the server that is already running on port :6007. Do not start new Storybook instances except in the case where there is no server running on :6007.
 
+Storybook stories MUST NOT make live network or API requests. Put remote data access behind a provider interface, and wrap stories with deterministic static or mock providers as Storybook decorators. QueryClientProvider is acceptable when its data is fully static and no live requests can occur.
+
 ## Orthography
 
 Use `color` spelling in code and comments.
