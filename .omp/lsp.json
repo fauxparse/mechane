@@ -1,0 +1,26 @@
+{
+  "servers": {
+    "typescript-language-server": {
+      "disabled": true
+    },
+    "typescript-language-server-project": {
+      "command": "node",
+      "args": ["node_modules/typescript-language-server/lib/cli.mjs", "--stdio"],
+      "fileTypes": [".ts", ".tsx", ".js", ".jsx"],
+      "languageId": "typescriptreact",
+      "rootMarkers": ["tsconfig.base.json", "pnpm-workspace.yaml"],
+      "initOptions": {
+        "tsserver": {
+          "path": "node_modules/typescript-lsp/lib/"
+        }
+      }
+    },
+    "graphql": {
+      "command": "graphql-lsp",
+      "args": ["server", "-m", "stream"],
+      "fileTypes": [".graphql", ".gql"],
+      "languageId": "graphql",
+      "rootMarkers": [".graphqlrc.yml", "pnpm-workspace.yaml"]
+    }
+  }
+}
