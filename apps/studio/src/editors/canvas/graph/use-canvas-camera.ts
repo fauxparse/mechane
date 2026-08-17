@@ -1,12 +1,12 @@
 import type { PointerEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import type { Position } from "@mechane/domain";
 
 import { focusContext } from "../../show/keyboard/focus-context";
 import { viewportIntentFor } from "../../show/keyboard/viewport-keys";
-import { panCanvasCamera, zoomCanvasCamera } from "./canvas-camera";
-import type { CanvasCamera } from "./canvas-camera";
+import { fitCanvasCamera, panCanvasCamera, zoomCanvasCamera } from "./canvas-camera";
+import type { CanvasCamera, CanvasCameraRect, CanvasCameraViewport } from "./canvas-camera";
 
 interface CameraDrag {
   pointerId: number;
@@ -23,13 +23,50 @@ export function useCanvasCamera(
   arrowKeysReserved = false,
 ) {
   const [camera, setCamera] = useState(initialCamera);
+  const cameraRef = useRef(camera);
   const workspaceRef = useRef<HTMLElement | null>(null);
   const spaceHeld = useRef(false);
   const cameraDrag = useRef<CameraDrag | null>(null);
+  const cameraAnimation = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    cameraRef.current = camera;
+  }, [camera]);
+  const cancelCameraAnimation = () => {
+    if (cameraAnimation.current !== null) {
+      window.cancelAnimationFrame(cameraAnimation.current);
+      cameraAnimation.current = null;
+    }
+  };
+  const animateCameraTo = (destination: CanvasCamera) => {
+    cancelCameraAnimation();
+    const start = cameraRef.current;
+    const startedAt = performance.now();
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / 500);
+      const eased = 1 - (1 - progress) ** 3;
+      setCamera({
+        x: start.x + (destination.x - start.x) * eased,
+        y: start.y + (destination.y - start.y) * eased,
+        zoom: start.zoom + (destination.zoom - start.zoom) * eased,
+      });
+      if (progress < 1) {
+        cameraAnimation.current = window.requestAnimationFrame(tick);
+      } else {
+        cameraAnimation.current = null;
+      }
+    };
+    tick(startedAt);
+  };
   const arrowsReserved = useRef(arrowKeysReserved);
   useEffect(() => {
     arrowsReserved.current = arrowKeysReserved;
   }, [arrowKeysReserved]);
+  useEffect(
+    () => () => {
+      if (cameraAnimation.current !== null) window.cancelAnimationFrame(cameraAnimation.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
@@ -48,6 +85,7 @@ export function useCanvasCamera(
         return;
       }
       event.preventDefault();
+      cancelCameraAnimation();
       if (intent.type === "pan") {
         setCamera((current) => panCanvasCamera(current, -intent.dx, -intent.dy));
         return;
@@ -75,6 +113,7 @@ export function useCanvasCamera(
 
   const beginCameraDrag = (event: PointerEvent<HTMLElement>) => {
     if (event.button !== 0 || !spaceHeld.current) return;
+    cancelCameraAnimation();
     event.currentTarget.setPointerCapture(event.pointerId);
     cameraDrag.current = {
       pointerId: event.pointerId,
@@ -122,17 +161,14 @@ export function useCanvasCamera(
       panX = 0;
       panY = 0;
       zoomDelta = 0;
+      cancelCameraAnimation();
       setCamera((current) => {
         let next = current;
         if (nextPanX !== 0 || nextPanY !== 0) {
           next = panCanvasCamera(next, nextPanX, nextPanY);
         }
         if (nextZoomDelta !== 0) {
-          next = zoomCanvasCamera(
-            next,
-            nextZoomPoint,
-            next.zoom * Math.exp(nextZoomDelta),
-          );
+          next = zoomCanvasCamera(next, nextZoomPoint, next.zoom * Math.exp(nextZoomDelta));
         }
         return next;
       });
@@ -165,6 +201,7 @@ export function useCanvasCamera(
   const zoomAtCenter = (factor: number) => {
     const bounds = workspaceRef.current?.getBoundingClientRect();
     if (!bounds) return;
+    cancelCameraAnimation();
     setCamera((current) =>
       zoomCanvasCamera(
         current,
@@ -173,10 +210,24 @@ export function useCanvasCamera(
       ),
     );
   };
+  const frameRect = (target: CanvasCameraRect, inset?: CanvasCameraViewport["inset"]) => {
+    const bounds = workspaceRef.current?.getBoundingClientRect();
+    if (!bounds) return;
+    animateCameraTo(
+      fitCanvasCamera(target, {
+        width: bounds.width,
+        height: bounds.height,
+        inset,
+      }),
+    );
+  };
 
   const zoomIn = () => zoomAtCenter(1.2);
   const zoomOut = () => zoomAtCenter(1 / 1.2);
-  const resetCamera = () => setCamera(initialCamera);
+  const resetCamera = () => {
+    cancelCameraAnimation();
+    setCamera(initialCamera);
+  };
 
   return {
     camera,
@@ -184,6 +235,7 @@ export function useCanvasCamera(
     beginCameraDrag,
     moveCameraDrag,
     endCameraDrag,
+    frameRect,
     zoomIn,
     zoomOut,
     resetCamera,

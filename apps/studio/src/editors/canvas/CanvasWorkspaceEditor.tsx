@@ -47,11 +47,13 @@ export function CanvasWorkspaceEditor({
     overlayRect,
     resizePreview,
     inspectorPreview,
+    currentDimensions,
     resizable,
     cancelCreation,
     zoomIn,
     zoomOut,
     resetCamera,
+    frameArtboard,
     setSelection,
     beginDrag,
     moveDrag,
@@ -172,14 +174,16 @@ export function CanvasWorkspaceEditor({
         zoomIn={zoomIn}
         zoomOut={zoomOut}
         resetCamera={resetCamera}
+        frameArtboard={frameArtboard}
         renamingArtId={renamingArtId}
         setRenamingArtId={setRenamingArtId}
+        drag={drag}
         dragLine={dragLine}
         rubberbandRect={rubberbandRect}
-        drag={drag}
         creationOverlayRect={creationOverlayRect}
         resizePreview={resizePreview}
         inspectorPreview={inspectorPreview}
+        currentDimensions={currentDimensions}
         overlayRect={overlayRect}
         resizable={resizable}
         onFocusArtboard={onFocusArtboard}

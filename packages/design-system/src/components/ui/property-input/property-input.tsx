@@ -161,6 +161,7 @@ export const PropertyInput = <T extends ShapeValue>({
           <Menu
             inputType={input.inputType}
             colorText={input.colorText}
+            dimension={dimension}
             sizing={input.currentSizing}
             presets={presets}
             auto={input.auto}

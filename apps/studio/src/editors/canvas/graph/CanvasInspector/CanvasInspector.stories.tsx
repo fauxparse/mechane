@@ -266,10 +266,12 @@ function InspectorStory({
   initialArtboard,
   initialSelection,
   storyVariables = [],
+  currentDimensions,
 }: {
   initialArtboard: ApiCanvasArtboardDocument;
   initialSelection: CanvasSelection;
   storyVariables?: readonly SceneVariable[];
+  currentDimensions?: { elementId: string; width: number; height: number };
 }) {
   const [current, setCurrent] = useState(initialArtboard);
   const onUpdateElements = useCallback(
@@ -294,6 +296,7 @@ function InspectorStory({
             artboards={[current]}
             selection={initialSelection}
             variables={storyVariables}
+            currentDimensions={currentDimensions}
             onUpdateElements={onUpdateElements}
           />
         </EditorSlot>
@@ -343,10 +346,36 @@ export const TextElement: Story = {
     <InspectorStory
       initialArtboard={artboard(longTextRoot)}
       initialSelection={{ artId: ART_ID, elementIds: ["headline"] }}
+      currentDimensions={{ elementId: "headline", width: 248, height: 48 }}
     />
   ),
+  play: async ({ canvasElement }) => {
+    const sizingButton = canvasElement.querySelector<HTMLButtonElement>(
+      '[aria-label="Change sizing"]',
+    );
+    if (!sizingButton) throw new Error("Text sizing control is missing");
+    sizingButton.click();
+    await Promise.resolve();
+    const options = Array.from(canvasElement.ownerDocument.querySelectorAll('[role="option"]')).map(
+      (option) => option.textContent?.trim(),
+    );
+    for (const option of ["Fixed width", "Fill container", "Hug contents"]) {
+      if (!options.includes(option)) throw new Error(`Missing text sizing option: ${option}`);
+    }
+    const fixedOption = Array.from(
+      canvasElement.ownerDocument.querySelectorAll<HTMLElement>('[role="option"]'),
+    ).find((option) => option.textContent?.trim() === "Fixed width");
+    if (!fixedOption) throw new Error("Fixed width option is missing");
+    fixedOption.click();
+    await Promise.resolve();
+    const fixedWidth = Array.from(
+      canvasElement.ownerDocument.querySelectorAll<HTMLInputElement>(
+        '[data-slot="combobox-input"]',
+      ),
+    ).some((input) => input.value === "248");
+    if (!fixedWidth) throw new Error("Fixed width did not use the current dimension");
+  },
 };
-
 export const AbsoluteRectangle: Story = {
   render: () => (
     <InspectorStory

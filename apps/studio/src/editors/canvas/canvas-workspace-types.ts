@@ -91,11 +91,17 @@ export interface CanvasWorkspaceSurfaceProps {
     width?: number;
     height?: number;
   } | null;
+  currentDimensions: {
+    elementId: string;
+    width: number;
+    height: number;
+  } | null;
   resizable: boolean;
   onCancelCreation(): void;
   zoomIn(): void;
   zoomOut(): void;
   resetCamera(): void;
+  frameArtboard(artboard: CanvasArtboardDocument): void;
   onFocusArtboard(artId: string): void;
   onUpdateElement?(
     canvasId: string,

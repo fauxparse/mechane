@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { panCanvasCamera, zoomCanvasCamera } from "./canvas-camera";
+import { fitCanvasCamera, panCanvasCamera, zoomCanvasCamera } from "./canvas-camera";
 
 describe("Canvas camera math", () => {
   it("pans without imposing document bounds", () => {
@@ -27,5 +27,19 @@ describe("Canvas camera math", () => {
   it("clamps keyboard and wheel zoom to the camera range", () => {
     expect(zoomCanvasCamera({ x: 0, y: 0, zoom: 1 }, { x: 0, y: 0 }, 0).zoom).toBe(0.15);
     expect(zoomCanvasCamera({ x: 0, y: 0, zoom: 1 }, { x: 0, y: 0 }, 8).zoom).toBe(4);
+  });
+  it("fits a single artboard inside the editable area", () => {
+    const next = fitCanvasCamera(
+      { x: 100, y: 200, width: 400, height: 400 },
+      {
+        width: 1200,
+        height: 800,
+        inset: { top: 64, right: 320, bottom: 48, left: 240 },
+      },
+    );
+
+    expect(next.zoom).toBeCloseTo(4 / 3);
+    expect(next.x).toBeCloseTo(160);
+    expect(next.y).toBeCloseTo(-125.33333333333333);
   });
 });

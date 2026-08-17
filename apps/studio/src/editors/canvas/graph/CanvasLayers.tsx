@@ -84,6 +84,7 @@ export interface CanvasLayersProps {
   focused: CanvasArtboardDocument | null;
   selection: CanvasSelection;
   onFocusArtboard(artId: string): void;
+  onFrameArtboard(artboard: CanvasArtboardDocument): void;
   onSelect(selection: CanvasSelection): void;
   onUpdateElement?(canvasId: string, elementId: string, properties: Record<string, unknown>): void;
   onMoveElement?(
@@ -329,6 +330,7 @@ export function CanvasLayers({
   focused,
   selection,
   onFocusArtboard,
+  onFrameArtboard,
   onSelect,
   onUpdateElement,
   onMoveElement,
@@ -549,6 +551,7 @@ export function CanvasLayers({
                           onToggle={() => toggle(row.id)}
                           onSelectRow={(shiftKey) => {
                             onFocusArtboard(row.artId);
+                            if (row.kind === "canvas") onFrameArtboard(artboard);
                             const anchor = selectionAnchorRef.current;
                             const layerIds = visible.flatMap(
                               ({ row: candidate, artboard: candidateArtboard }) =>

@@ -26,6 +26,7 @@ export function CanvasWorkspaceSurface({
   zoomIn,
   zoomOut,
   resetCamera,
+  frameArtboard,
   ordered,
   focused,
   camera,
@@ -42,6 +43,7 @@ export function CanvasWorkspaceSurface({
   overlayRect,
   resizePreview,
   inspectorPreview,
+  currentDimensions,
   resizable,
   onFocusArtboard,
   onUpdateElement,
@@ -132,6 +134,7 @@ export function CanvasWorkspaceSurface({
         <CanvasLayers
           ordered={ordered}
           focused={focused}
+          onFrameArtboard={frameArtboard}
           onFocusArtboard={onFocusArtboard}
           selection={selection}
           onSelect={onSelect}
@@ -148,6 +151,7 @@ export function CanvasWorkspaceSurface({
           selection={selection}
           variables={variables}
           inspectorPreview={inspectorPreview}
+          currentDimensions={currentDimensions}
           onUpdateElement={onUpdateElement}
           onUpdateElements={onUpdateElements}
         />

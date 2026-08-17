@@ -6,6 +6,7 @@ import type { NewElement } from "@mechane/commands";
 import type { Position, FrameElement } from "@mechane/domain";
 
 import type { CanvasArtboardDocument } from "../../api/canvas";
+import { useEditableArea } from "../../components/EditorLayout/editable-area";
 import { contentOrigin, selectedCanvasRects, useCanvasGeometry } from "./graph/canvas-geometry";
 import type { CanvasClientRect } from "./graph/canvas-geometry";
 import type { CanvasSelection } from "./graph/canvas-selection";
@@ -41,7 +42,7 @@ import {
 } from "./commands/canvas-resize";
 import type { ResizeBox, ResizeHandle } from "./commands/canvas-resize";
 import type { CanvasWorkspaceEditorProps } from "./canvas-workspace-types";
-import { artboardLabel } from "./data/canvas-workspace";
+import { artboardLabel, canvasArtboardSize } from "./data/canvas-workspace";
 
 function measuredRect(element: HTMLElement): CanvasClientRect {
   const rect = element.getBoundingClientRect();
@@ -199,12 +200,14 @@ export function useCanvasWorkspaceInteractions({
         : normalizeSelection({ artId: selectedArtId, elementIds: selectedElementIds ?? [] }),
     [localSelection, selectedArtId, selectedElementIds],
   );
+  const editableArea = useEditableArea();
   const {
     camera,
     workspaceRef,
     beginCameraDrag,
     moveCameraDrag,
     endCameraDrag,
+    frameRect,
     zoomIn,
     zoomOut,
     resetCamera,
@@ -221,6 +224,18 @@ export function useCanvasWorkspaceInteractions({
     const normalized = normalizeSelection(next);
     setLocalSelection(normalized);
     onSelectionChange?.(normalized);
+  };
+  const frameArtboard = (artboard: CanvasArtboardDocument) => {
+    const size = canvasArtboardSize(artboard);
+    frameRect(
+      {
+        x: artboard.position.x,
+        y: artboard.position.y,
+        width: size.width,
+        height: size.height,
+      },
+      editableArea,
+    );
   };
   const beginDrag = (event: PointerEvent<HTMLElement>, artboard: CanvasArtboardDocument) => {
     event.stopPropagation();
@@ -1219,6 +1234,19 @@ export function useCanvasWorkspaceInteractions({
   const selectedArtboard = ordered.find((artboard) => artboard.artId === selection.artId);
   const previewElementId =
     selection.elementIds.length === 1 ? selection.elementIds[0] : selectedGeometry?.rootElementId;
+  const currentDimensions =
+    selectedGeometry && previewElementId
+      ? (() => {
+          const current = selectedGeometry.elements.get(previewElementId);
+          return current
+            ? {
+                elementId: previewElementId,
+                width: Math.round(current.width / camera.zoom),
+                height: Math.round(current.height / camera.zoom),
+              }
+            : null;
+        })()
+      : null;
   const previewParentId =
     selectedArtboard && previewElementId
       ? canvasElementParent(selectedArtboard.canvas.root, previewElementId)?.parentId
@@ -1318,6 +1346,7 @@ export function useCanvasWorkspaceInteractions({
     ordered,
     focused,
     camera,
+    currentDimensions,
     workspaceRef,
     selection,
     tool,
@@ -1339,6 +1368,7 @@ export function useCanvasWorkspaceInteractions({
     zoomIn,
     zoomOut,
     resetCamera,
+    frameArtboard,
     setSelection,
     beginDrag,
     moveDrag,

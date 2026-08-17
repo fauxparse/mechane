@@ -19,9 +19,9 @@ import {
   literalValue,
   opacityInputValue,
   sizeInputValue,
+  sizingForMode,
   variableInput,
 } from "./canvas-inspector-values";
-
 type PropertyFieldProps = {
   name: (typeof CANVAS_PROPERTY_DESCRIPTORS)[number]["name"];
   icon?: LucideIcon | string;
@@ -115,13 +115,17 @@ type SizeFieldProps = {
 };
 
 export const SizeField = ({ axis }: SizeFieldProps) => {
-  const { target, variables, inspectorPreview, update } = useCanvasInspectorContext();
+  const { target, variables, inspectorPreview, currentDimensions, update } =
+    useCanvasInspectorContext();
   const size = target.sizing?.[axis];
   const updateSize = (next: AxisSize) => {
     update({ sizing: { ...target.sizing, [axis]: next } });
   };
   const previewValue =
     inspectorPreview?.elementId === target.id ? inspectorPreview[axis] : undefined;
+  const currentValue =
+    previewValue ??
+    (currentDimensions?.elementId === target.id ? currentDimensions[axis] : undefined);
   const previewing = previewValue !== undefined;
   const mode = previewing ? "fixed" : (size?.mode ?? "hug");
   const unit = previewing
@@ -148,11 +152,7 @@ export const SizeField = ({ axis }: SizeFieldProps) => {
       variables={sizeVariables}
       min={0}
       onSizingChange={(nextMode) => {
-        updateSize({
-          ...size,
-          mode: nextMode,
-          ...(nextMode === "fixed" && size?.value === undefined ? { value: 100 } : {}),
-        });
+        updateSize(sizingForMode(size, nextMode, currentValue));
       }}
       onChange={(next: PropertyInputValue | null) => {
         if (isVariableInput(next)) {

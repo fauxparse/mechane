@@ -8,7 +8,6 @@ import {
   SquareIcon,
   TypeIcon,
 } from "@mechane/design-system";
-import isArray from "es-toolkit/compat";
 
 const ELEMENT_ICONS: Record<ElementKind, LucideIcon> = {
   frame: FrameIcon,
@@ -19,7 +18,9 @@ const ELEMENT_ICONS: Record<ElementKind, LucideIcon> = {
 };
 
 export const elementIconFor = (kind: ElementKind | ElementKind[] | undefined) => {
-  const kinds = (isArray(kind) ? Array.from(new Set(kind)) : [kind]) as (ElementKind | undefined)[];
+  const kinds =
+    typeof kind === "string" ? [kind] : (Array.from(new Set(kind)) as (ElementKind | undefined)[]);
+
   if (kinds.length !== 1 || !kinds[0]) return SquareDashedIcon;
   return ELEMENT_ICONS[kinds[0]];
 };
