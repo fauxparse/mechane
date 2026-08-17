@@ -45,6 +45,12 @@ type SceneVariable {
   id: ID!
   name: String!
   type: Type
+  suggestedDimensions: SuggestedImageDimensions
+}
+
+type SuggestedImageDimensions {
+  width: Int!
+  height: Int!
 }
 
 scalar JSON
@@ -77,7 +83,13 @@ type BooleanValue {
 }
 
 type ImageValue {
-  value: String!
+  assetId: ID!
+  url: String!
+  width: Int!
+  height: Int!
+  alt: String!
+  mimeType: String!
+  blurHash: String
 }
 
 type ColorValue {
@@ -102,11 +114,15 @@ type ArrayValue {
 
 union ShapeValue = TextValue | NumberValue | BooleanValue | ImageValue | ColorValue | DateValue | DateTimeValue | ObjectValue | ArrayValue
 
+input ImageValueInput {
+  assetId: ID!
+}
+
 input ShapeValueInput @oneOf {
   text: String
   number: Float
   boolean: Boolean
-  image: String
+  image: ImageValueInput
   color: String
   date: String
   datetime: String
@@ -389,9 +405,7 @@ type ImageElement implements Element {
   stroke: JSON
   anchor: JSON
   children: [Element!]!
-  src: JSON
   image: JSON
-  source: JSON
   alt: JSON
   objectFit: JSON
 }
@@ -429,10 +443,16 @@ input PositionInput {
   y: Float!
 }
 
+input SuggestedImageDimensionsInput {
+  width: Int!
+  height: Int!
+}
+
 input SceneVariableInput {
   id: ID!
   name: String!
   type: TypeInput
+  suggestedDimensions: SuggestedImageDimensionsInput
 }
 
 input GraphNodeInput {
@@ -579,6 +599,46 @@ type AppliedShowEdits {
   amendments: [GraphEdit!]!
 }
 
+type ImageUploadConstraints {
+  maxSourceBytes: Int!
+  maxPixels: Int!
+  maxAxis: Int!
+  maxNormalizedBytes: Int!
+  sessionTtlMs: Int!
+  candidateTtlMs: Int!
+}
+
+type ImageUploadPlan {
+  method: String!
+  url: String!
+  requiredHeaders: JSON!
+}
+
+type ImageUploadSession {
+  id: ID!
+  expiresAt: String!
+  constraints: ImageUploadConstraints!
+  plan: ImageUploadPlan!
+}
+
+type ImageUploadCandidate {
+  sessionId: ID!
+  digest: String!
+  byteLength: Int!
+  mimeType: String!
+}
+
+type ImageAsset {
+  id: ID!
+  revision: String!
+  url: String!
+  width: Int!
+  height: Int!
+  mimeType: String!
+  alt: String!
+  blurHash: String
+}
+
 type Query {
   """The signed-in user, or null if the request has no valid session."""
   me: User
@@ -598,50 +658,25 @@ type Query {
 
   """The active Run for a Show, or null when the Show is stopped."""
   activeRun(showId: ID!): Run
-
-  """
-  A Show's graph in the given state (default "draft"). A Show that has
-  never been edited or published reads as an empty graph — a Show with
-  no Flows at all is valid (issue #25).
-  """
   showGraph(showId: ID!, state: String): ShowGraph!
-
-  """All persisted Scene and Block Canvases in one Show workspace."""
   showCanvases(showId: ID!, state: String): [Canvas!]!
-
-  """The Canvas owned by a Scene node, or null before it is created."""
   sceneCanvas(showId: ID!, sceneNodeId: ID!, state: String): Canvas
-
-  """The Canvas owned by a Block definition, or null before it is created."""
   blockCanvas(showId: ID!, blockId: ID!, state: String): Canvas
+  imageAssets(showId: ID!): [ImageAsset!]!
 }
 
 type Mutation {
-  """Creates a new Show owned by the signed-in user."""
   createShow(name: String!): Show!
-
-  """Renames a Show owned by the signed-in user."""
   renameShow(id: ID!, name: String!): Show!
-
-  """Deletes a Show owned by the signed-in user. Returns true on success."""
   deleteShow(id: ID!): Boolean!
-
-  """
-  Updates the signed-in user's theme settings. Omitted fields are left unchanged.
-  """
   updateUserSettings(themeMode: String, themePalette: String): UserSettings!
-
-  """Applies graph and Canvas edits against one shared draft Show version."""
   applyShowEdits(showId: ID!, baseVersion: Int!, edits: [ShowEditInput!]!): AppliedShowEdits!
-
-  """
-  Publishes a Show's draft graph, making it the published graph immediately (ADR-0002).
-  """
   publishShowGraph(showId: ID!): ShowGraph!
-
-  """Ends the active Run, if one exists."""
   endRun(showId: ID!): Run
-
-  """Ends the previous Run and starts a new one with reset Source values."""
   startRun(showId: ID!): Run!
+  beginImageUpload(showId: ID!, mimeType: String!, byteLength: Int!): ImageUploadSession!
+  completeImageUpload(sessionId: ID!): ImageUploadCandidate!
+  finalizeImageUpload(sessionId: ID!, alt: String): ImageAsset!
+  abortImageUpload(sessionId: ID!): Boolean!
+  deleteImageAsset(showId: ID!, assetId: ID!): Boolean!
 }

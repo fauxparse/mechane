@@ -1,4 +1,5 @@
 import type { Element, SceneVariable } from "@mechane/domain";
+import type { ImageAsset } from "@mechane/graphql-schema";
 
 import type { CanvasArtboardDocument } from "../../../../api/canvas";
 import type { CanvasSelection } from "../canvas-selection";
@@ -27,6 +28,8 @@ export type CanvasInspectorProps = {
   artboards: readonly CanvasArtboardDocument[];
   selection: CanvasSelection;
   variables?: readonly SceneVariable[];
+  imageAssets?: readonly ImageAsset[];
+  onImageUpload?(file: File): void;
   inspectorPreview?: CanvasInspectorPreview | null;
   currentDimensions?: CanvasInspectorDimensions | null;
   onUpdateElement?(
@@ -51,6 +54,8 @@ export type CanvasInspectorModel = {
   elements: readonly Element[];
   selected: readonly Element[];
   variables: readonly SceneVariable[];
+  imageAssets: readonly ImageAsset[];
+  onImageUpload?(file: File): void;
   fontFamilies: readonly string[];
   inspectorPreview: CanvasInspectorPreview | null;
   currentDimensions: CanvasInspectorDimensions | null;

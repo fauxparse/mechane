@@ -46,6 +46,8 @@ export function CanvasWorkspaceSurface({
   onUpdateElement,
   onUpdateElements,
   variables,
+  imageAssets,
+  onImageUpload,
   onMoveElement,
   onMoveElementBetweenCanvases,
   onRenameArtboard,
@@ -148,6 +150,8 @@ export function CanvasWorkspaceSurface({
           artboards={ordered}
           selection={selection}
           variables={variables}
+          imageAssets={imageAssets}
+          onImageUpload={onImageUpload}
           inspectorPreview={inspectorPreview}
           currentDimensions={currentDimensions}
           onUpdateElement={onUpdateElement}

@@ -56,16 +56,19 @@ const hasAsymmetricCornerRadius = (radius: CornerRadiusElement["cornerRadius"]):
 const RadiusInput = ({
   icon,
   value,
+  mixed = false,
   onChange,
 }: {
   icon: LucideIcon;
   value: number;
+  mixed?: boolean;
   onChange: (value: number) => void;
 }) => (
   <PropertyInput
     icon={icon}
     type="number"
-    value={{ kind: "number", value }}
+    value={mixed ? undefined : { kind: "number", value }}
+    placeholder={mixed ? "Mixed" : undefined}
     min={0}
     onChange={(next) => {
       if (!isVariableInput(next) && next?.kind === "number") onChange(next.value);
@@ -75,11 +78,13 @@ const RadiusInput = ({
 
 const CornerRadiusControl = ({
   radius,
+  mixed = false,
   update,
   expanded,
   setExpanded,
 }: {
   radius: CornerRadiusElement["cornerRadius"];
+  mixed?: boolean;
   update: (properties: Record<string, unknown>) => void;
   expanded: boolean;
   setExpanded: Dispatch<SetStateAction<boolean>>;
@@ -95,11 +100,13 @@ const CornerRadiusControl = ({
         <RadiusInput
           icon={RadiusTopLeftIcon}
           value={values.topLeft}
+          mixed={mixed}
           onChange={(value) => updateRadius({ topLeft: value })}
         />
         <RadiusInput
           icon={RadiusTopRightIcon}
           value={values.topRight}
+          mixed={mixed}
           onChange={(value) => updateRadius({ topRight: value })}
         />
         <Toggle
@@ -116,11 +123,13 @@ const CornerRadiusControl = ({
         <RadiusInput
           icon={RadiusBottomLeftIcon}
           value={values.bottomLeft}
+          mixed={mixed}
           onChange={(value) => updateRadius({ bottomLeft: value })}
         />
         <RadiusInput
           icon={RadiusBottomRightIcon}
           value={values.bottomRight}
+          mixed={mixed}
           onChange={(value) => updateRadius({ bottomRight: value })}
         />
       </div>
@@ -132,6 +141,7 @@ const CornerRadiusControl = ({
       <RadiusInput
         icon={SquareRoundCornerIcon}
         value={values.topLeft}
+        mixed={mixed}
         onChange={(value) => update({ cornerRadius: value })}
       />
       <Toggle
@@ -147,9 +157,16 @@ const CornerRadiusControl = ({
 };
 
 export const AppearanceSection = () => {
-  const { focused, target, selected, common, update } = useCanvasInspectorContext();
+  const { focused, selected, common, update } = useCanvasInspectorContext();
   const selectionKey = `${focused?.artId ?? ""}:${selected.map((element) => element.id).join(",")}`;
-  const radius = hasCornerRadius(target) ? target.cornerRadius : undefined;
+  const allCornerRadiusElements =
+    selected.length > 0 && selected.every((element) => hasCornerRadius(element));
+  const rawRadius = common("cornerRadius") as CornerRadiusElement["cornerRadius"];
+  const radiusMixed =
+    allCornerRadiusElements &&
+    rawRadius === undefined &&
+    selected.some((element) => Reflect.get(element, "cornerRadius") !== undefined);
+  const radius = allCornerRadiusElements ? rawRadius : undefined;
   const [expanded, setExpanded] = useState(
     () => radius !== undefined && hasAsymmetricCornerRadius(radius),
   );
@@ -182,10 +199,11 @@ export const AppearanceSection = () => {
             icon={OpacityIcon}
             className={cn(expanded && "col-span-2")}
           />
-          {hasCornerRadius(target) && (
+          {allCornerRadiusElements && (
             <CornerRadiusControl
               key={selectionKey}
-              radius={target.cornerRadius}
+              radius={radius}
+              mixed={radiusMixed}
               update={update}
               expanded={expanded}
               setExpanded={setExpanded}

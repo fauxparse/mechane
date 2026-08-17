@@ -39,6 +39,46 @@ describe("resolveCanvasProperties", () => {
     });
   });
 
+  it("materialises an assigned image reference for the renderer", () => {
+    const imageCanvas: Canvas = {
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "image",
+            type: "image",
+            image: { assetId: "image-1", revision: "revision-1" },
+          },
+        ],
+      },
+    };
+
+    const resolved = resolveCanvasProperties(imageCanvas, {
+      variables: [],
+      imageAssets: [
+        {
+          assetId: "image-1",
+          revision: "revision-1",
+          url: "http://localhost:9000/mechane/blobs/revision-1",
+          width: 320,
+          height: 180,
+          mimeType: "image/png",
+          alt: "Stage lights",
+          blurHash: null,
+        },
+      ],
+    });
+
+    expect(resolved.root.children?.[0]).toMatchObject({
+      image: {
+        assetId: "image-1",
+        url: "http://localhost:9000/mechane/blobs/revision-1",
+      },
+    });
+  });
+
   it("uses supplied ShapeValue or raw values and defaults incompatible connections", () => {
     const resolved = resolveCanvasProperties(canvas, {
       variables,

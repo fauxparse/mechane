@@ -29,5 +29,7 @@ export const Section = ({
 };
 
 export const SectionRow = ({ className, children }: PropsWithChildren<{ className?: string }>) => (
-  <div className={cn("grid col-start-1 -col-end-1 grid-cols-subgrid", className)}>{children}</div>
+  <div className={cn("grid col-start-1 -col-end-1 grid-cols-subgrid gap-2", className)}>
+    {children}
+  </div>
 );

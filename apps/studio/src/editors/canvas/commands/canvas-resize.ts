@@ -72,6 +72,19 @@ export function fixedResizeProperties(
   if (element.layout) properties.layout = element.layout;
   return properties;
 }
+
+/** Removes both supported persisted locations for an Element's aspect-ratio lock. */
+export function unlockedAspectRatioProperties(element: Element): {
+  properties: Record<string, unknown>;
+  unsetProperties: readonly string[];
+} {
+  const properties: Record<string, unknown> = {};
+  if (element.layout && "aspectRatio" in element.layout) {
+    const { aspectRatio: _aspectRatio, ...layout } = element.layout;
+    properties.layout = layout;
+  }
+  return { properties, unsetProperties: ["aspectRatio"] };
+}
 /**
  * The box a resize drag asks for. The edge opposite the handle is what stays put, which is what
  * makes dragging the west edge grow the Element leftwards rather than move it.

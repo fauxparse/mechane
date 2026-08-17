@@ -4,6 +4,7 @@ import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-ro
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { useCanvasWorkspace } from "../../../../api/canvas";
+import { useImageAssets, useImageUpload } from "../../../../api/images";
 import { useShow } from "../../../../api/shows";
 import { useShowGraph, useShowGraphEdits } from "../../../../api/show-graph";
 import { CanvasWorkspaceEditor } from "../../../../editors/canvas/CanvasWorkspaceEditor";
@@ -26,6 +27,8 @@ function CanvasWorkspaceRoute() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const show = useShow(showId);
+  const imageAssets = useImageAssets(showId);
+  const imageUpload = useImageUpload(showId);
   const draft = useShowGraph(showId, "draft");
   const workspace = useCanvasWorkspace(showId);
   const save = useShowGraphEdits(showId, draft.data?.version);
@@ -75,6 +78,10 @@ function CanvasWorkspaceRoute() {
       const renderCanvas = resolveCanvasProperties(canvas, {
         variables,
         shapes: graphEditing.graph.shapes,
+        imageAssets: (imageAssets.data ?? []).map((asset) => ({
+          ...asset,
+          assetId: asset.id,
+        })),
       });
       return {
         ...artboard,
@@ -84,7 +91,7 @@ function CanvasWorkspaceRoute() {
         position: edited?.position ?? artboard.position,
       };
     });
-  }, [canvasCommands.workspace.artboards, graphEditing.graph, workspace.data]);
+  }, [canvasCommands.workspace.artboards, graphEditing.graph, imageAssets.data, workspace.data]);
 
   // An artboard's name belongs to the Scene or Block that owns the Canvas, so a rename is a
   // Show-graph gesture. The graph stack owns the live name and the same save path as every
@@ -147,6 +154,8 @@ function CanvasWorkspaceRoute() {
       artboards={artboards}
       focusedArtId={focused?.artId ?? null}
       variables={focusedVariables}
+      imageAssets={imageAssets.data ?? []}
+      onImageUpload={(file) => void imageUpload.mutateAsync(file)}
       onFocusArtboard={(artId) =>
         void navigate({
           to: "/shows/$showId/art/$artId",

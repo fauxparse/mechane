@@ -30,6 +30,139 @@ describe("CanvasRenderer", () => {
     expect(html).toContain("grid-area:1 / 1");
     expect(html).not.toContain('data-element-id="first"><div');
   });
+
+  it("disables native image dragging so the Canvas owns pointer drags", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "image",
+            type: "image",
+            image: {
+              assetId: "image-1",
+              revision: "revision-1",
+              url: "https://example.com/image.png",
+              width: 320,
+              height: 180,
+              alt: "Stage lights",
+              mimeType: "image/png",
+              blurHash: null,
+            },
+          },
+        ],
+      },
+    });
+
+    expect(html).toMatch(/<img[^>]*data-element-id="image"[^>]*draggable="false"/);
+  });
+
+  it("defaults image fitting to cover and center and serializes overrides", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "default-image",
+            type: "image",
+            image: {
+              assetId: "image-1",
+              revision: "revision-1",
+              url: "https://example.com/image.png",
+              width: 320,
+              height: 180,
+              alt: "",
+              mimeType: "image/png",
+              blurHash: null,
+            },
+          },
+          {
+            id: "positioned-image",
+            type: "image",
+            objectFit: "contain",
+            objectPosition: "right bottom",
+            image: {
+              assetId: "image-2",
+              revision: "revision-2",
+              url: "https://example.com/other.png",
+              width: 320,
+              height: 180,
+              alt: "",
+              mimeType: "image/png",
+              blurHash: null,
+            },
+          },
+        ],
+      },
+    });
+
+    expect(html).toContain("object-fit:cover");
+    expect(html).toContain("object-position:center");
+    expect(html).toContain("object-fit:contain");
+    expect(html).toContain("object-position:right bottom");
+  });
+
+  it("leaves an image without a fill transparent", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "image",
+            type: "image",
+            image: {
+              assetId: "image-1",
+              revision: "revision-1",
+              url: "https://example.com/image.png",
+              width: 320,
+              height: 180,
+              alt: "",
+              mimeType: "image/png",
+              blurHash: null,
+            },
+          },
+        ],
+      },
+    });
+
+    expect(html).not.toContain("background-color:#e5e7eb");
+  });
+
+  it("does not replace an image fill with the blur placeholder", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "image",
+            type: "image",
+            fill: "#123456",
+            image: {
+              assetId: "image-1",
+              revision: "revision-1",
+              url: "https://example.com/image.png",
+              width: 320,
+              height: 180,
+              alt: "",
+              mimeType: "image/png",
+              blurHash: "blur-hash",
+            },
+          },
+        ],
+      },
+    });
+
+    expect(html).toContain("background-color:#123456");
+    expect(html).not.toContain("background-color:#d8dee9");
+  });
   it("marks empty frames as painted hit targets", () => {
     const html = markup({
       kind: "scene",

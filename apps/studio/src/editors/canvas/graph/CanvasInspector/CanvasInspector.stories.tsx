@@ -1,5 +1,6 @@
 import { applyCanvasEdits, CANVAS_COMMAND_TYPES } from "@mechane/commands";
 import type { CanvasEdit } from "@mechane/commands";
+import type { ImageAsset } from "@mechane/graphql-schema";
 import { FrameElement, hasCornerRadius, SceneVariable } from "@mechane/domain";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useCallback, useState } from "react";
@@ -18,6 +19,19 @@ const variables: SceneVariable[] = [
   { id: "opacity-variable", name: "Opacity / Default", type: "number" },
   { id: "accent-variable", name: "Color / Accent", type: "color" },
   { id: "copy-variable", name: "Copy / Headline", type: "text" },
+];
+
+const imageAssets: readonly ImageAsset[] = [
+  {
+    id: "image-inspector-story",
+    revision: "revision-1",
+    url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 180'%3E%3Crect width='320' height='180' fill='%2331758f'/%3E%3Ccircle cx='240' cy='60' r='28' fill='%23f6c177'/%3E%3C/svg%3E",
+    width: 320,
+    height: 180,
+    mimeType: "image/svg+xml",
+    alt: "Stage lights",
+    blurHash: null,
+  },
 ];
 
 const variable = (variableId: string) => ({ kind: "variable" as const, variableId });
@@ -74,6 +88,47 @@ const absoluteRoot: FrameElement = {
       anchor: { horizontal: "left", vertical: "top", offsetX: 32, offsetY: 120 },
     },
   ],
+};
+
+const imageRoot: FrameElement = {
+  ...absoluteRoot,
+  id: "image-root",
+  name: "Image",
+  children: [
+    {
+      id: "image",
+      type: "image",
+      name: "Stage lights",
+      rank: "a",
+      image: { assetId: "image-inspector-story", revision: "revision-1" },
+      sizing: {
+        width: { mode: "fixed", value: 160 },
+        height: { mode: "fixed", value: 90 },
+      },
+      objectFit: "cover",
+      objectPosition: "center",
+    },
+  ],
+};
+
+const mixedImageRoot: FrameElement = {
+  ...imageRoot,
+  id: "mixed-image-root",
+  name: "Mixed images",
+  children: imageRoot.children?.flatMap((child) => [
+    {
+      ...child,
+      id: "image-1",
+      objectFit: "cover",
+      objectPosition: "left top",
+    },
+    {
+      ...child,
+      id: "image-2",
+      objectFit: "contain",
+      objectPosition: "right bottom",
+    },
+  ]),
 };
 const longTextRoot: FrameElement = {
   ...absoluteRoot,
@@ -265,11 +320,13 @@ function InspectorStory({
   initialArtboard,
   initialSelection,
   storyVariables = [],
+  storyImageAssets = [],
   currentDimensions,
 }: {
   initialArtboard: ApiCanvasArtboardDocument;
   initialSelection: CanvasSelection;
   storyVariables?: readonly SceneVariable[];
+  storyImageAssets?: readonly ImageAsset[];
   currentDimensions?: { elementId: string; width: number; height: number };
 }) {
   const [current, setCurrent] = useState(initialArtboard);
@@ -295,6 +352,7 @@ function InspectorStory({
             artboards={[current]}
             selection={initialSelection}
             variables={storyVariables}
+            imageAssets={storyImageAssets}
             onUpdateElements={onUpdateElements}
             currentDimensions={currentDimensions}
           />
@@ -383,6 +441,16 @@ export const AbsoluteRectangle: Story = {
     />
   ),
 };
+
+export const ImageElement: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(imageRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: ["image"] }}
+      storyImageAssets={imageAssets}
+    />
+  ),
+};
 export const GradientFill: Story = {
   render: () => (
     <InspectorStory
@@ -398,6 +466,30 @@ export const Stroke: Story = {
       initialSelection={{ artId: ART_ID, elementIds: ["card"] }}
     />
   ),
+};
+
+export const MixedImageSelection: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(mixedImageRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: ["image-1", "image-2"] }}
+      storyImageAssets={imageAssets}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const fit = canvasElement.querySelector<HTMLElement>('[aria-label="Object fit"]');
+    if (!fit?.textContent?.trim().startsWith("Mixed"))
+      throw new Error("Object fit should be mixed");
+    const position = canvasElement.querySelector<HTMLElement>(
+      '[aria-label="Mixed object position"]',
+    );
+    if (!position) throw new Error("Object position should be mixed");
+    const reset = Array.from(canvasElement.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Reset",
+    );
+    if (!(reset instanceof HTMLButtonElement) || !reset.disabled)
+      throw new Error("Reset should be disabled for mixed images");
+  },
 };
 
 export const AsymmetricCornerRadius: Story = {

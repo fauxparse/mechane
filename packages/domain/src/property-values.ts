@@ -50,7 +50,7 @@ export function defaultPropertyValue(type: Type): ShapeValue | null {
     case "text":
       return typeof value === "string" ? { kind: "text", value } : null;
     case "image":
-      return typeof value === "string" ? { kind: "image", value } : null;
+      return null;
     case "color":
       return typeof value === "string" ? { kind: "color", value } : null;
     case "date":

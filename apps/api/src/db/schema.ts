@@ -97,6 +97,77 @@ export const shows = pgTable("shows", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+/** Provider-neutral durable binary identity and lifecycle. */
+export const blobs = pgTable("blobs", {
+  digest: text("digest").primaryKey(),
+  byteLength: integer("byte_length").notNull(),
+  mimeType: text("mime_type").notNull(),
+  deliveryPath: text("delivery_path").notNull().unique(),
+  state: text("state").notNull().default("committed"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at"),
+});
+
+/** Show-owned Image Asset metadata; the Blob is immutable and reusable. */
+export const imageAssets = pgTable(
+  "image_assets",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateId("imageAsset")),
+    showId: text("show_id")
+      .notNull()
+      .references(() => shows.id, { onDelete: "cascade" }),
+    blobDigest: text("blob_digest")
+      .notNull()
+      .references(() => blobs.digest),
+    revision: text("revision").notNull(),
+    width: integer("width").notNull(),
+    height: integer("height").notNull(),
+    mimeType: text("mime_type").notNull(),
+    alt: text("alt").notNull().default(""),
+    blurHash: text("blur_hash"),
+    state: text("state").notNull().default("active"),
+    sourceAssetId: text("source_asset_id"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at"),
+  },
+  (table) => [
+    index("image_assets_show_idx").on(table.showId),
+    unique("image_assets_show_id_unique").on(table.showId, table.id),
+    uniqueIndex("image_assets_show_blob_active_idx")
+      .on(table.showId, table.blobDigest)
+      .where(sql`${table.state} = 'active'`),
+    foreignKey({
+      name: "image_assets_source_fk",
+      columns: [table.showId, table.sourceAssetId],
+      foreignColumns: [table.showId, table.id],
+    }),
+  ],
+);
+
+/** Opaque temporary upload/control-plane state; never exposed in domain values. */
+export const blobUploadSessions = pgTable(
+  "blob_upload_sessions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    showId: text("show_id")
+      .notNull()
+      .references(() => shows.id, { onDelete: "cascade" }),
+    state: text("state").notNull().default("active"),
+    expiresAt: timestamp("expires_at").notNull(),
+    candidateDigest: text("candidate_digest"),
+    byteLength: integer("byte_length"),
+    declaredMimeType: text("declared_mime_type"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [index("blob_upload_sessions_user_show_idx").on(table.userId, table.showId)],
+);
+
 // Per-account design-system preference (issue #14, PRD.md §7): at most one
 // row per user, created on first write (see the `userSettings` resolver in
 // apps/api/src/graphql/schema.ts). Values are validated against
@@ -345,6 +416,7 @@ export const graphNodeVariables = pgTable(
     sceneId: text("scene_id").notNull(),
     name: text("name").notNull(),
     type: jsonb("type"),
+    suggestedDimensions: jsonb("suggested_dimensions"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

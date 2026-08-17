@@ -28,6 +28,8 @@ export function CanvasWorkspaceEditor({
   onUpdateElement,
   onUpdateElements,
   variables,
+  imageAssets,
+  onImageUpload,
   onDeleteElements,
   onRenameArtboard,
   initialCamera,
@@ -204,6 +206,8 @@ export function CanvasWorkspaceEditor({
         onUpdateElement={onUpdateElement}
         onUpdateElements={onUpdateElements}
         variables={variables}
+        imageAssets={imageAssets}
+        onImageUpload={onImageUpload}
         onMoveElement={onMoveElement}
         onMoveElementBetweenCanvases={onMoveElementBetweenCanvases}
         onRenameArtboard={onRenameArtboard}

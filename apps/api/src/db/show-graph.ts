@@ -224,7 +224,14 @@ function groupVariables(rows: VariableRow[]): Map<string, SceneVariable[]> {
   const bySceneId = new Map<string, SceneVariable[]>();
   for (const row of rows) {
     const variables = bySceneId.get(row.sceneId) ?? [];
-    variables.push({ id: row.id, name: row.name, type: row.type as Type | undefined });
+    variables.push({
+      id: row.id,
+      name: row.name,
+      type: row.type as Type | undefined,
+      ...(row.suggestedDimensions
+        ? { suggestedDimensions: row.suggestedDimensions as { width: number; height: number } }
+        : {}),
+    });
     bySceneId.set(row.sceneId, variables);
   }
   return bySceneId;
@@ -586,6 +593,7 @@ async function writeGraph(
           sceneId: node.id,
           name: variable.name,
           type: variable.type ?? null,
+          suggestedDimensions: variable.suggestedDimensions ?? null,
         }))
       : [],
   );

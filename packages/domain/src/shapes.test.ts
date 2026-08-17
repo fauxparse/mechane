@@ -180,6 +180,60 @@ describe("Shape values", () => {
   });
 });
 
+describe("image values", () => {
+  it("accepts opaque asset references and rejects implicit string values", () => {
+    expect(
+      conformsToShape(
+        { image: { assetId: "i_demo", revision: "r1" } },
+        {
+          id: "image-shape",
+          name: "Image",
+          fields: [
+            { id: "image", name: "Image", type: "image", required: true, defaultValue: null },
+          ],
+        },
+      ),
+    ).toBe(true);
+    expect(
+      conformsToShape(
+        { image: "https://example.test/image" },
+        {
+          id: "image-shape",
+          name: "Image",
+          fields: [
+            { id: "image", name: "Image", type: "image", required: true, defaultValue: null },
+          ],
+        },
+      ),
+    ).toBe(false);
+  });
+
+  it("accepts resolved image metadata at an API boundary", () => {
+    expect(
+      conformsToShape(
+        {
+          image: {
+            assetId: "i_demo",
+            url: "/api/images/i_demo/r1",
+            width: 320,
+            height: 180,
+            alt: "",
+            mimeType: "image/webp",
+            blurHash: null,
+          },
+        },
+        {
+          id: "image-shape",
+          name: "Image",
+          fields: [
+            { id: "image", name: "Image", type: "image", required: true, defaultValue: null },
+          ],
+        },
+      ),
+    ).toBe(true);
+  });
+});
+
 describe("type compatibility", () => {
   it("allows table coercions and single-to-array wrapping", () => {
     expect(areTypesCompatible("number", "text")).toBe(true);

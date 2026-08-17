@@ -31,6 +31,8 @@ interface RenderElementOptions {
   sceneRoot?: boolean;
   parent?: FrameElement;
   editingElementId?: string | null;
+  imageLoading?: "eager" | "lazy";
+  onImageError?: (elementId: string, url: string, event: unknown) => void;
   onTextDoubleClick?: (elementId: string, event: ReactMouseEvent<HTMLDivElement>) => void;
   onTextKeyDown?: (elementId: string, event: ReactKeyboardEvent<HTMLDivElement>) => void;
 }
@@ -285,7 +287,12 @@ function typeStyle(element: Element): CSSProperties {
       overflowWrap: truncates ? "normal" : "anywhere",
     };
   }
-  if (element.type === "image") return { objectFit: literal(element.objectFit) ?? "fill" };
+  if (element.type === "image") {
+    return {
+      objectFit: literal(element.objectFit) ?? "cover",
+      objectPosition: literal(element.objectPosition) ?? "center",
+    };
+  }
   return {};
 }
 
@@ -295,6 +302,8 @@ function renderElement({
   sceneRoot = false,
   parent,
   editingElementId,
+  imageLoading,
+  onImageError,
   onTextDoubleClick,
   onTextKeyDown,
 }: RenderElementOptions): ReactNode {
@@ -320,23 +329,48 @@ function renderElement({
             element: child,
             parent: element,
             editingElementId,
+            imageLoading,
+            onImageError,
             onTextDoubleClick,
             onTextKeyDown,
           }),
         )
       : undefined;
-
   if (element.type === "image") {
+    const image = literal(element.image);
+    const resolved =
+      image && typeof image === "object" && "url" in image
+        ? (image as {
+            url: string;
+            width?: number;
+            height?: number;
+            alt?: string;
+            blurHash?: string | null;
+          })
+        : null;
+    const hasFill = element.fill !== undefined;
     return createElement("img", {
       "data-element-id": element.id,
       "data-element-type": element.type,
       "data-element-parent-id": parent?.id,
       "data-element-rank": element.rank,
       "data-element-painted": "true",
-      src: literal(element.src) ?? literal(element.image) ?? literal(element.source),
-      alt: literal(element.alt) ?? "",
-      style,
+      draggable: false,
+      src: resolved?.url,
+      width: resolved?.width,
+      height: resolved?.height,
+      alt: literal(element.alt) || resolved?.alt || "",
+      loading: imageLoading ?? "eager",
+      decoding: "async",
+      "data-image-preview": resolved?.blurHash ? "blur" : "placeholder",
+      style: {
+        ...style,
+        ...(resolved?.blurHash && !hasFill ? { backgroundColor: "#d8dee9" } : {}),
+      },
       hidden: element.hidden,
+      onError: resolved?.url
+        ? (event: unknown) => onImageError?.(element.id, resolved.url, event)
+        : undefined,
     });
   }
   const content =
@@ -365,7 +399,6 @@ function renderElement({
       "data-element-name": element.name ?? undefined,
       "data-element-parent-id": parent?.id,
       "data-element-rank": element.rank,
-      // Editors hit-test against this: the root frame is the artboard backdrop, never a target.
       "data-element-root": root ? "true" : undefined,
       "data-element-painted":
         element.type === "frame" || element.type === "text" || element.fill !== undefined
@@ -395,20 +428,20 @@ export function ElementRenderer({
   element,
   parent,
   editingElementId,
+  imageLoading,
+  onImageError,
   onTextDoubleClick,
   onTextKeyDown,
 }: RenderElementOptions): ReactNode {
-  return (
-    <>
-      {renderElement({
-        element,
-        parent,
-        editingElementId,
-        onTextDoubleClick,
-        onTextKeyDown,
-      })}
-    </>
-  );
+  return renderElement({
+    element,
+    parent,
+    editingElementId,
+    imageLoading,
+    onImageError,
+    onTextDoubleClick,
+    onTextKeyDown,
+  });
 }
 
 export const CanvasRenderer = memo(function CanvasRenderer({
@@ -416,6 +449,8 @@ export const CanvasRenderer = memo(function CanvasRenderer({
   className,
   style,
   editingElementId,
+  imageLoading,
+  onImageError,
   onTextDoubleClick,
   onTextKeyDown,
 }: CanvasRendererProps): ReactNode {
@@ -433,6 +468,8 @@ export const CanvasRenderer = memo(function CanvasRenderer({
       root: true,
       sceneRoot,
       editingElementId,
+      imageLoading,
+      onImageError,
       onTextDoubleClick,
       onTextKeyDown,
     }),

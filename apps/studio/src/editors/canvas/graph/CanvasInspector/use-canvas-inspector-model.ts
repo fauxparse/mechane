@@ -24,8 +24,10 @@ function collectFontFamilies(artboards: readonly CanvasArtboardDocument[]): read
   return [...families];
 }
 const EMPTY_VARIABLES = [] as const;
+const EMPTY_IMAGE_ASSETS = [] as const;
 
 function sameValue(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true;
   if (isPropertyConnection(left) || isPropertyConnection(right)) {
     return (
       isPropertyConnection(left) &&
@@ -33,11 +35,32 @@ function sameValue(left: unknown, right: unknown): boolean {
       left.variableId === right.variableId
     );
   }
-  return Object.is(left, right);
+  if (
+    !left ||
+    !right ||
+    typeof left !== "object" ||
+    typeof right !== "object" ||
+    Array.isArray(left) !== Array.isArray(right)
+  ) {
+    return false;
+  }
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  return (
+    leftKeys.length === rightKeys.length &&
+    leftKeys.every(
+      (key) =>
+        Object.prototype.hasOwnProperty.call(right, key) &&
+        sameValue(Reflect.get(left, key), Reflect.get(right, key)),
+    )
+  );
 }
 
 function propertyValue(element: Element, property: string): unknown {
-  return property in element ? Reflect.get(element, property) : undefined;
+  return property.split(".").reduce<unknown>((value, key) => {
+    if (!value || typeof value !== "object") return undefined;
+    return Reflect.get(value, key);
+  }, element);
 }
 
 function commonValue(selected: readonly Element[], property: string): unknown {
@@ -74,10 +97,12 @@ function applyInspectorUpdate(
 }
 
 function useAspectRatioLock(
-  target: Element | null,
+  selected: readonly Element[],
   update: CanvasInspectorUpdate,
 ): Pick<CanvasInspectorModel, "isAspectRatioLocked" | "setAspectRatioLock"> {
-  const isAspectRatioLocked = target ? lockedAspectRatio(target) !== null : false;
+  const target = selected[0];
+  const isAspectRatioLocked =
+    selected.length > 0 && selected.every((element) => lockedAspectRatio(element) !== null);
   const setAspectRatioLock = useCallback(
     (locked: boolean) => {
       if (!target) return;
@@ -107,6 +132,8 @@ export function useCanvasInspectorModel({
   artboards,
   selection,
   variables = EMPTY_VARIABLES,
+  imageAssets = EMPTY_IMAGE_ASSETS,
+  onImageUpload,
   inspectorPreview = null,
   currentDimensions = null,
   onUpdateElement,
@@ -157,7 +184,7 @@ export function useCanvasInspectorModel({
     !parent ||
     parent.type !== "frame" ||
     (parent.layoutMode !== "auto" && parent.autoLayout !== true);
-  const aspectRatioLock = useAspectRatioLock(target, update);
+  const aspectRatioLock = useAspectRatioLock(selected, update);
 
   return useMemo(
     () =>
@@ -168,6 +195,8 @@ export function useCanvasInspectorModel({
             elements,
             selected,
             variables,
+            imageAssets,
+            onImageUpload,
             fontFamilies,
             inspectorPreview,
             currentDimensions,
@@ -183,6 +212,8 @@ export function useCanvasInspectorModel({
       aspectRatioLock,
       common,
       fontFamilies,
+      imageAssets,
+      onImageUpload,
       currentDimensions,
       inspectorPreview,
       elements,

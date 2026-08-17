@@ -5,8 +5,21 @@ import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { isVariableInput } from "./canvas-inspector-values";
 
 export const PositionSection = () => {
-  const { target, absolute, inspectorPreview, update } = useCanvasInspectorContext();
-  if (!absolute || !target.anchor) return null;
+  const { selected, absolute, inspectorPreview, update } = useCanvasInspectorContext();
+  const allAnchored =
+    selected.length > 0 && selected.every((element) => element.anchor !== undefined);
+  if (!absolute || !allAnchored) return null;
+
+  const commonOffset = (axis: "offsetX" | "offsetY") => {
+    const values = selected.map((element) => element.anchor?.[axis] ?? 0);
+    const first = values[0];
+    return values.every((value) => value === first) ? first : undefined;
+  };
+  const offsetX = commonOffset("offsetX");
+  const offsetY = commonOffset("offsetY");
+  const target = selected[0]!;
+  const previewValue =
+    selected.length === 1 && inspectorPreview?.elementId === target.id ? inspectorPreview : null;
 
   return (
     <Section label="Position">
@@ -16,11 +29,9 @@ export const PositionSection = () => {
           type="number"
           value={{
             kind: "number",
-            value:
-              inspectorPreview?.elementId === target.id && inspectorPreview.x !== undefined
-                ? inspectorPreview.x
-                : (target.anchor.offsetX ?? 0),
+            value: previewValue?.x ?? offsetX ?? 0,
           }}
+          placeholder={offsetX === undefined ? "Mixed" : undefined}
           onChange={(next) => {
             if (!isVariableInput(next) && next?.kind === "number") {
               update({ anchor: { ...target.anchor, offsetX: next.value } });
@@ -32,11 +43,9 @@ export const PositionSection = () => {
           type="number"
           value={{
             kind: "number",
-            value:
-              inspectorPreview?.elementId === target.id && inspectorPreview.y !== undefined
-                ? inspectorPreview.y
-                : (target.anchor.offsetY ?? 0),
+            value: previewValue?.y ?? offsetY ?? 0,
           }}
+          placeholder={offsetY === undefined ? "Mixed" : undefined}
           onChange={(next) => {
             if (!isVariableInput(next) && next?.kind === "number") {
               update({ anchor: { ...target.anchor, offsetY: next.value } });

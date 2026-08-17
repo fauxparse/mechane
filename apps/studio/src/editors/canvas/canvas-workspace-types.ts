@@ -2,6 +2,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent, RefObject } fro
 
 import type { NewElement } from "@mechane/commands";
 import type { SceneVariable, Position } from "@mechane/domain";
+import type { ImageAsset } from "@mechane/graphql-schema";
 import type { CanvasArtboardDocument } from "../../api/canvas";
 import type { CanvasCamera } from "./graph/canvas-camera";
 import type { CanvasSelection } from "./graph/canvas-selection";
@@ -52,6 +53,8 @@ export interface CanvasWorkspaceEditorProps {
     }[],
   ): void;
   variables?: readonly SceneVariable[];
+  imageAssets?: readonly ImageAsset[];
+  onImageUpload?(file: File): void;
   onDeleteElements?(canvasId: string, elementIds: readonly string[]): void;
   onRenameArtboard?(artId: string, name: string): void;
 }
@@ -119,6 +122,8 @@ export interface CanvasWorkspaceSurfaceProps {
     }[],
   ): void;
   variables?: readonly SceneVariable[];
+  imageAssets?: readonly ImageAsset[];
+  onImageUpload?(file: File): void;
   onMoveElement?(
     canvasId: string,
     elementId: string,

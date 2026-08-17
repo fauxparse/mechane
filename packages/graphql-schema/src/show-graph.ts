@@ -37,6 +37,10 @@ export const GetShowGraphQuery = graphql(`
                 shapeId
               }
             }
+            suggestedDimensions {
+              width
+              height
+            }
           }
         }
         ... on FlowNode {
@@ -107,7 +111,13 @@ export const GetShowGraphQuery = graphql(`
               booleanValue: value
             }
             ... on ImageValue {
-              imageValue: value
+              assetId
+              url
+              width
+              height
+              alt
+              mimeType
+              blurHash
             }
             ... on ColorValue {
               colorValue: value

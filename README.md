@@ -28,8 +28,8 @@ packages/
 ```
 pnpm install
 cp apps/api/.env.example apps/api/.env
-overmind start -f Procfile.dev   # starts Postgres, API, Studio, Player, and Storybook
-# In another terminal, after Postgres reports ready:
+overmind start -f Procfile.dev   # starts Postgres, MinIO, API, Studio, Player, and Storybook
+# In another terminal, after Postgres and MinIO report ready:
 pnpm --filter @mechane/api db:migrate   # apply Better Auth's tables
 pnpm db:seed      # wipe + recreate a default dev account (test@example.com)
 # Storybook is included in Procfile.dev.
@@ -38,6 +38,13 @@ pnpm lint
 pnpm typecheck
 pnpm codegen      # regenerate packages/graphql-schema's schema.graphql + gql.tada types
 ```
+
+## Local image storage
+
+MinIO runs at `http://localhost:9000` with its console at `http://localhost:9001`.
+The development bucket is `mechane`, and image URLs point directly to its public
+`mechane/blobs/` objects. Default local credentials are `minioadmin` /
+`minioadmin`; change them before using a shared or deployed environment.
 
 ## Adding a built-in color theme
 
