@@ -129,6 +129,18 @@ _Avoid_: Step, command
 
 What kind of value something holds. Every Source, Variable and Transformer output has a Type — there is one type system across the whole Show, not a separate one per concept. A Type is either simple (text, number, boolean, image, color, date, datetime), a list of some other Type, or a Shape.
 _Avoid_: Kind (used for the varieties of graph node), data type
+### Image Asset
+
+A reusable, immutable image owned by a Show. An Image Asset has normalized image content and descriptive metadata, including its intrinsic dimensions and alt text; reusing it does not create another copy.
+
+_Avoid_: Image Value, image file, upload
+
+### Image Value
+
+A read-only reference to an Image Asset that can flow through Sources, Variables, Transformers, and Element properties. It exposes the asset's delivery information and descriptive metadata to consumers without exposing storage or processing internals.
+
+_Avoid_: Image Asset, image URL
+
 
 ### Shape
 
@@ -169,6 +181,9 @@ _Avoid_: Binding (acceptable as a synonym), linking
 - A **Source**, a **Variable** and a **Transformer**'s output each have a **Type**
 - A **Shape** is a **Type**, made of an ordered list of **Fields**, each of which has its own **Type**
 - A **Shape** may be reused by any number of **Sources**, **Variables** and **Transformers** within its **Show**
+- A **Show** owns zero or more **Image Assets**, which may be reused by its **Image Values**
+- An **Image Value** references one **Image Asset** and can flow through **Sources**, **Variables**, and **Transformers**
+- An **Image Variable** may carry authoring guidance for suggested dimensions without changing the identity of its **Image Asset**
 - Audience members connect their phones to a **Device** by scanning a QR code or entering an alphanumeric code; their individual sessions are not tracked — interactions are aggregated
 - A **Show** has zero or more **Runs**; starting a **Run** resets live data to defaults, and **Devices** connect to the active **Run**
 - An **Artboard** presents exactly one **Canvas**; the **Canvas Editor** shows one or more **Artboards** on its infinite plane
