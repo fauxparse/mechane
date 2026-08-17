@@ -130,6 +130,9 @@ describe("CanvasRenderer", () => {
     expect(html).toContain("overflow:hidden");
     expect(html).toContain("text-overflow:clip");
     expect(html).toContain('data-element-id="truncated"');
+    expect(html).toMatch(
+      /data-element-id="truncated"[^>]*>.*<span style="display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Truncated<\/span>/,
+    );
     expect(html).toContain("text-overflow:ellipsis");
     expect(html).toContain("white-space:nowrap");
   });
