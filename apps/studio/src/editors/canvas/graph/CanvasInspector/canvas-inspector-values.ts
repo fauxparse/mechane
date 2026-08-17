@@ -1,5 +1,6 @@
 import type {
   AxisSize,
+  ElementSizing,
   SceneVariable,
   ShapeValue,
   SizeMode,
@@ -7,7 +8,9 @@ import type {
   VariableReference,
 } from "@mechane/domain";
 import { defaultPropertyValue, isPropertyConnection, opacityToPercent } from "@mechane/domain";
-import type { PropertyInputValue } from "@mechane/design-system";
+import type { PropertyInputConstraint, PropertyInputValue } from "@mechane/design-system";
+
+export type SizeConstraint = PropertyInputConstraint;
 
 export const inputType = (type: Type): "text" | "number" | "color" | null => {
   if (type === "number") return "number";
@@ -101,6 +104,28 @@ export const sizingForMode = (
       ? { value: 100 }
       : {}),
 });
+
+export const SIZE_CONSTRAINT_KEYS = {
+  width: { min: "minWidth", max: "maxWidth" },
+  height: { min: "minHeight", max: "maxHeight" },
+} as const satisfies Record<"width" | "height", Record<SizeConstraint, keyof ElementSizing>>;
+
+export const sizeConstraintKey = (
+  axis: "width" | "height",
+  constraint: SizeConstraint,
+): keyof ElementSizing => SIZE_CONSTRAINT_KEYS[axis][constraint];
+
+/** Unwraps the `number | { value, unit }` shape used by min/max sizing constraints. */
+export const sizeValueNumber = (value: unknown): number | null => {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (value && typeof value === "object" && hasValue(value) && typeof value.value === "number") {
+    return Number.isFinite(value.value) ? value.value : null;
+  }
+  return null;
+};
+
+export const sizeValueUnit = (value: unknown): "px" | "%" =>
+  value && typeof value === "object" && "unit" in value && value.unit === "%" ? "%" : "px";
 
 export const numericSizeValue = (size: unknown): number | null => {
   if (!size || typeof size !== "object" || !("value" in size)) return null;

@@ -4,7 +4,6 @@ import {
   LayoutHorizontalIcon,
   LayoutNoneIcon,
   LayoutVerticalIcon,
-  Link2Icon,
   LucideIcon,
   PaddingAllIcon,
   PaddingBottomIcon,
@@ -18,20 +17,18 @@ import {
   Toggle,
   ToggleGroup,
   ToggleGroupItem,
-  Unlink2Icon,
 } from "@mechane/design-system";
 
-import { Section, SectionRow } from "./Section";
+import { Section } from "./Section";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
-import { SizeField } from "./CanvasInspectorFields";
+import { SizeFields } from "./CanvasInspectorFields";
 import { isVariableInput } from "./canvas-inspector-values";
 import { AlignmentSelector } from "./AlignmentSelector";
 import { FrameElement, isContainerElement, Padding, TextElement } from "@mechane/domain";
 import { useState } from "react";
 
 export const LayoutSection = () => {
-  const { focused, target, selected, update, common, isAspectRatioLocked, setAspectRatioLock } =
-    useCanvasInspectorContext();
+  const { focused, target, selected, update, common } = useCanvasInspectorContext();
   const isFrame = selected.length > 0 && selected.every(isContainerElement);
   const isText = selected.length > 0 && selected.every((element) => element.type === "text");
   const frame = isFrame ? (target as FrameElement) : null;
@@ -42,18 +39,7 @@ export const LayoutSection = () => {
 
   return (
     <Section label="Layout">
-      <SectionRow>
-        <SizeField axis="width" />
-        <SizeField axis="height" />
-        <Toggle
-          aria-label={`${isAspectRatioLocked ? "Unlock" : "Lock"} aspect ratio`}
-          pressed={isAspectRatioLocked}
-          onPressedChange={setAspectRatioLock}
-          size="sm"
-        >
-          {isAspectRatioLocked ? <Link2Icon /> : <Unlink2Icon />}
-        </Toggle>
-      </SectionRow>
+      <SizeFields key={selectionKey} />
       {frame && (
         <>
           <ToggleGroup
