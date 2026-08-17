@@ -168,6 +168,81 @@ const reparentReviewArtboard: CanvasArtboardDocument = {
   },
   position: { x: 64, y: 96 },
 };
+const resizeImageReviewArtboard: CanvasArtboardDocument = {
+  canvasId: "canvas-image-resize-review",
+  artId: "image-resize-review",
+  kind: "scene",
+  name: "Image resize review",
+  canvas: {
+    kind: "scene",
+    root: {
+      id: "image-resize-root",
+      type: "frame",
+      layoutMode: "auto",
+      direction: "horizontal",
+      gap: 16,
+      padding: 24,
+      sizing: {
+        width: { mode: "fixed", value: 680 },
+        height: { mode: "fixed", value: 440 },
+      },
+      fill: "#e2e8f0",
+      children: [
+        {
+          id: "resize-image",
+          type: "image",
+          rank: "a",
+          image: {
+            assetId: "image-resize-review",
+            revision: "revision-1",
+            url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 180'%3E%3Crect width='320' height='180' fill='%2331758f'/%3E%3Ccircle cx='240' cy='60' r='28' fill='%23f6c177'/%3E%3C/svg%3E",
+            width: 320,
+            height: 180,
+            alt: "Resize review image",
+          },
+          sizing: {
+            width: { mode: "fixed", value: 220 },
+            height: { mode: "fixed", value: 124 },
+          },
+          objectFit: "cover",
+          aspectRatio: { ratio: 16 / 9, driver: "width" },
+          anchor: { horizontal: "left", vertical: "top", offsetX: 120, offsetY: 120 },
+        },
+      ],
+    },
+  },
+  position: { x: 64, y: 96 },
+};
+
+function StatefulImageResizeReview() {
+  const [artboard, setArtboard] = useState(resizeImageReviewArtboard);
+  return (
+    <CanvasWorkspaceEditor
+      artboards={[artboard]}
+      focusedArtId={artboard.artId}
+      selectedArtId={artboard.artId}
+      selectedElementIds={["resize-image"]}
+      onFocusArtboard={noOp}
+      onBeginMoveArtboard={noOp}
+      onMoveArtboard={noOp}
+      onEndMoveArtboard={noOp}
+      onUpdateElement={(canvasId, elementId, properties, unsetProperties) => {
+        if (canvasId !== artboard.canvasId) return;
+        setArtboard((current) => ({
+          ...current,
+          canvas: applyCanvasEdits(current.canvas, [
+            {
+              type: CANVAS_COMMAND_TYPES.updateElement,
+              elementId,
+              properties: properties as ElementProperties,
+              unsetProperties: unsetProperties ?? [],
+            },
+          ]),
+        }));
+      }}
+    />
+  );
+}
 
 /** Uncontrolled selection, so clicking, banding, and layer drags can all be exercised for real. */
 function StatefulSelectionReview() {
@@ -388,6 +463,10 @@ export const InspectorControls: Story = {
 
 export const FocusedBlockDeepLink: Story = {
   args: { focusedArtId: "block-card" },
+};
+
+export const StatefulImageResizeReviewStory: Story = {
+  render: () => <StatefulImageResizeReview />,
 };
 
 export const OverlappingArtboards: Story = {

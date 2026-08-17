@@ -179,6 +179,7 @@ export function useCanvasWorkspaceInteractions({
   // Resize runs on the same principle as the drag: one piece of state feeds both the Element's
   // preview styles and the overlay, so the handles never drift off the shape they are sizing.
   const resizeGesture = useRef<ResizeGesture | null>(null);
+  const resizeStyles = useRef(new Map<string, { node: HTMLElement; cssText: string }>());
   const [resizeDraft, setResizeDraft] = useState<{
     artId: string;
     handle: ResizeHandle;
@@ -727,71 +728,77 @@ export function useCanvasWorkspaceInteractions({
     setResizeDraft(null);
   }, [geometry]);
 
-  // The Element's size comes from the model, so a live preview is a style override, cleared by the
-  // cleanup once the commit has landed and geometry has caught up.
+  // The Element's size comes from the model, so a live preview is an imperative style override.
+  // Keep the original styles in a ref and update the same override in place; restoring them from
+  // every effect cleanup briefly exposes the old width and height between pointer updates.
   useLayoutEffect(() => {
-    if (!resizeDraft?.active) return;
-    const { box, start, subjects } = resizeDraft;
-    // Width and height belong to the renderer's React-managed style, which makes both obvious
-    // cleanups wrong: removing them leaves React believing a value it no longer has, and
-    // restoring the pre-drag value clobbers the size React just wrote from the commit. So the
-    // override is only unwound when the resize was abandoned and React has nothing new to say.
-    const restore = subjects.flatMap((subject) => {
-      const node = workspaceRef.current?.querySelector<HTMLElement>(
-        `[data-element-id="${CSS.escape(subject.elementId)}"]`,
-      );
-      if (!node) return [];
-      const previous = {
-        width: node.style.width,
-        height: node.style.height,
-        translate: node.style.translate,
-      };
-      const next = scaleWithin(subject.start, start, box);
-      node.style.width = `${next.width / camera.zoom}px`;
-      node.style.height = `${next.height / camera.zoom}px`;
-      // An auto-layout parent owns the child's position. Let the browser apply the relative size
-      // adjustment and measure the resulting position instead of pinning an edge to the pointer.
-      if (!subject.autoParent) {
-        node.style.translate = `${(next.x - subject.start.x) / camera.zoom}px ${
-          (next.y - subject.start.y) / camera.zoom
-        }px`;
-      }
-      return [{ node, previous }];
-    });
-    if (subjects.some((subject) => subject.autoParent)) {
-      const measured = selectionRect(
-        subjects.flatMap((subject) => {
-          const node = workspaceRef.current?.querySelector<HTMLElement>(
-            `[data-element-id="${CSS.escape(subject.elementId)}"]`,
-          );
-          return node ? [measuredRect(node)] : [];
-        }),
-      );
-      if (
-        measured &&
-        (Math.abs(measured.x - resizeDraft.actual.x) > 0.01 ||
-          Math.abs(measured.y - resizeDraft.actual.y) > 0.01 ||
-          Math.abs(measured.width - resizeDraft.actual.width) > 0.01 ||
-          Math.abs(measured.height - resizeDraft.actual.height) > 0.01)
-      ) {
-        setResizeDraft((current) =>
-          current && current === resizeDraft ? { ...current, actual: measured } : current,
+    if (resizeDraft?.active) {
+      const { box, start, subjects } = resizeDraft;
+      for (const subject of subjects) {
+        const node = workspaceRef.current?.querySelector<HTMLElement>(
+          `[data-element-id="${CSS.escape(subject.elementId)}"]`,
         );
+        if (!node) continue;
+        const previous = resizeStyles.current.get(subject.elementId);
+        if (!previous || previous.node !== node) {
+          resizeStyles.current.set(subject.elementId, { node, cssText: node.style.cssText });
+        }
+        const original = resizeStyles.current.get(subject.elementId)?.cssText ?? "";
+        const next = scaleWithin(subject.start, start, box);
+        const translate = subject.autoParent
+          ? ""
+          : `translate: ${(next.x - subject.start.x) / camera.zoom}px ${
+              (next.y - subject.start.y) / camera.zoom
+            }px;`;
+        // Assign one declaration string so the browser never lays out an intermediate width/height
+        // pair while the live preview advances.
+        node.style.cssText = `${original}; width: ${next.width / camera.zoom}px; height: ${
+          next.height / camera.zoom
+        }px; ${translate}`;
       }
-    }
-
-    return () => {
-      for (const { node, previous } of restore) {
-        // Position comes back from the model's anchor, so the preview translate always goes.
-        node.style.translate = previous.translate;
-        if (!resizeCommitted.current) {
-          node.style.width = previous.width;
-          node.style.height = previous.height;
+      if (subjects.some((subject) => subject.autoParent)) {
+        const measured = selectionRect(
+          subjects.flatMap((subject) => {
+            const node = workspaceRef.current?.querySelector<HTMLElement>(
+              `[data-element-id="${CSS.escape(subject.elementId)}"]`,
+            );
+            return node ? [measuredRect(node)] : [];
+          }),
+        );
+        if (
+          measured &&
+          (Math.abs(measured.x - resizeDraft.actual.x) > 0.01 ||
+            Math.abs(measured.y - resizeDraft.actual.y) > 0.01 ||
+            Math.abs(measured.width - resizeDraft.actual.width) > 0.01 ||
+            Math.abs(measured.height - resizeDraft.actual.height) > 0.01)
+        ) {
+          setResizeDraft((current) =>
+            current && current === resizeDraft ? { ...current, actual: measured } : current,
+          );
         }
       }
-      resizeCommitted.current = false;
-    };
+      return;
+    }
+
+    const committed = resizeCommitted.current;
+    for (const { node, cssText } of resizeStyles.current.values()) {
+      if (committed) node.style.removeProperty("translate");
+      else node.style.cssText = cssText;
+    }
+    resizeStyles.current.clear();
+    resizeCommitted.current = false;
   }, [resizeDraft, camera.zoom, workspaceRef]);
+
+  useEffect(
+    () => () => {
+      for (const { node, cssText } of resizeStyles.current.values()) {
+        node.style.cssText = cssText;
+      }
+      resizeStyles.current.clear();
+      resizeCommitted.current = false;
+    },
+    [],
+  );
 
   useLayoutEffect(() => {
     if (!clearOffsetAfterRemeasure.current) return;
