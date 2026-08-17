@@ -35,11 +35,11 @@ describe("assertValidThemePalette", () => {
 });
 
 describe("defaultThemeSettings", () => {
-  it("matches the generated default (dark, Catppuccin)", () => {
+  it("matches the generated default (dark, Gruvbox)", () => {
     expect(defaultThemeSettings()).toEqual({
       mode: DEFAULT_THEME_MODE,
       palette: DEFAULT_THEME_PALETTE,
     });
-    expect(defaultThemeSettings()).toEqual({ mode: "dark", palette: "catppuccin" });
+    expect(defaultThemeSettings()).toEqual({ mode: "dark", palette: "gruvbox" });
   });
 });
