@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { ImageAsset } from "@mechane/graphql-schema";
 import {
@@ -30,6 +30,7 @@ export function ImageAssetPicker({
   onSelect,
   onUpload,
 }: ImageAssetPickerProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = assets.find((asset) => asset.id === selectedId) ?? null;
   return (
@@ -48,21 +49,24 @@ export function ImageAssetPicker({
             value="upload"
             className="flex min-h-52 items-center justify-center rounded-lg border border-dashed p-6"
           >
-            <label className="flex cursor-pointer flex-col items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
               <span>Choose an image to upload</span>
               <input
+                ref={inputRef}
                 className="sr-only"
                 type="file"
+                aria-label="Choose image file"
                 accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif,image/svg+xml"
                 onChange={(event) => {
                   const file = event.currentTarget.files?.[0];
                   if (file) onUpload?.(file);
+                  event.currentTarget.value = "";
                 }}
               />
-              <Button type="button" variant="outline" tabIndex={-1}>
+              <Button type="button" variant="outline" onClick={() => inputRef.current?.click()}>
                 Browse files
               </Button>
-            </label>
+            </div>
           </TabsContent>
           <TabsContent
             value="gallery"
