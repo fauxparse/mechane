@@ -9,6 +9,7 @@ import {
   isCornerHandle,
   RESIZE_HANDLES,
 } from "../commands/canvas-resize";
+import { creationPreviewShape } from "../commands/canvas-creation";
 import type { CanvasWorkspaceSurfaceProps } from "../canvas-workspace-types";
 import { useCanvasTextEditing } from "./use-canvas-text-editing";
 
@@ -101,6 +102,9 @@ export function CanvasWorkspaceStage({
 }: CanvasWorkspaceStageProps) {
   const { textEdit, textEditRef, beginTextEdit, commitTextEdit, handleTextKeyDown } =
     useCanvasTextEditing({ ordered, workspaceRef, onUpdateElement });
+  const creationPreview = creationOverlayRect
+    ? creationPreviewShape(tool, creationOverlayRect)
+    : null;
   return (
     <main
       ref={workspaceRef}
@@ -348,12 +352,27 @@ export function CanvasWorkspaceStage({
               })}
           </>
         ) : null}
-        {creationOverlayRect ? (
+        {creationPreview?.type === "ellipse" ? (
+          <ellipse
+            cx={creationPreview.cx}
+            cy={creationPreview.cy}
+            rx={creationPreview.rx}
+            ry={creationPreview.ry}
+            style={{ color: "var(--primary)" }}
+            fill="none"
+            stroke="currentColor"
+            strokeDasharray="8 4"
+            strokeLinecap="round"
+            strokeWidth="2"
+            vectorEffect="non-scaling-stroke"
+            data-creation-preview
+          />
+        ) : creationPreview ? (
           <rect
-            x={creationOverlayRect.x}
-            y={creationOverlayRect.y}
-            width={creationOverlayRect.width}
-            height={creationOverlayRect.height}
+            x={creationPreview.x}
+            y={creationPreview.y}
+            width={creationPreview.width}
+            height={creationPreview.height}
             style={{ color: "var(--primary)" }}
             fill="none"
             stroke="currentColor"

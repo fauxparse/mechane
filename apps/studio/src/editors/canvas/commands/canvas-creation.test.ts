@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  creationPreviewShape,
   creationRect,
   fixedFillSizing,
   rankForInsertion,
@@ -86,6 +87,30 @@ describe("creationRect", () => {
       right: 70,
       bottom: 50,
     });
+  });
+});
+
+describe("creationPreviewShape", () => {
+  it("uses an ellipse for ellipse-tool previews", () => {
+    expect(
+      creationPreviewShape("ellipse", {
+        x: 10,
+        y: 20,
+        width: 80,
+        height: 40,
+      }),
+    ).toEqual({ type: "ellipse", cx: 50, cy: 40, rx: 40, ry: 20 });
+  });
+
+  it("keeps other creation tools rectangular", () => {
+    expect(
+      creationPreviewShape("rect", {
+        x: 10,
+        y: 20,
+        width: 80,
+        height: 40,
+      }),
+    ).toEqual({ type: "rect", x: 10, y: 20, width: 80, height: 40 });
   });
 });
 

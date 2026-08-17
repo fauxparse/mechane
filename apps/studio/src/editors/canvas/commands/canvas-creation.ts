@@ -42,6 +42,26 @@ export function creationRect(
   };
 }
 
+export type CreationPreviewShape =
+  | { type: "rect"; x: number; y: number; width: number; height: number }
+  | { type: "ellipse"; cx: number; cy: number; rx: number; ry: number };
+
+export function creationPreviewShape(
+  tool: CanvasCreationTool,
+  rect: Pick<CanvasClientRect, "x" | "y" | "width" | "height">,
+): CreationPreviewShape {
+  if (tool === "ellipse") {
+    return {
+      type: "ellipse",
+      cx: rect.x + rect.width / 2,
+      cy: rect.y + rect.height / 2,
+      rx: rect.width / 2,
+      ry: rect.height / 2,
+    };
+  }
+  return { type: "rect", x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+}
+
 export function rankForInsertion(ranks: readonly string[], index: number): string {
   const sorted = [...ranks].sort((left, right) => left.localeCompare(right));
   if (sorted.length === 0) return "a";
