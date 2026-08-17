@@ -28,10 +28,12 @@ export function useCanvasCamera(
   const spaceHeld = useRef(false);
   const cameraDrag = useRef<CameraDrag | null>(null);
   const cameraAnimation = useRef<number | null>(null);
+  const cameraAnimationToken = useRef(0);
   useLayoutEffect(() => {
     cameraRef.current = camera;
   }, [camera]);
   const cancelCameraAnimation = () => {
+    cameraAnimationToken.current += 1;
     if (cameraAnimation.current !== null) {
       window.cancelAnimationFrame(cameraAnimation.current);
       cameraAnimation.current = null;
@@ -39,16 +41,20 @@ export function useCanvasCamera(
   };
   const animateCameraTo = (destination: CanvasCamera) => {
     cancelCameraAnimation();
+    const token = cameraAnimationToken.current;
     const start = cameraRef.current;
     const startedAt = performance.now();
     const tick = (now: number) => {
+      if (token !== cameraAnimationToken.current) return;
       const progress = Math.min(1, (now - startedAt) / 500);
       const eased = 1 - (1 - progress) ** 3;
-      setCamera({
+      const next = {
         x: start.x + (destination.x - start.x) * eased,
         y: start.y + (destination.y - start.y) * eased,
         zoom: start.zoom + (destination.zoom - start.zoom) * eased,
-      });
+      };
+      cameraRef.current = next;
+      setCamera(next);
       if (progress < 1) {
         cameraAnimation.current = window.requestAnimationFrame(tick);
       } else {
