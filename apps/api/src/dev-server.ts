@@ -28,6 +28,12 @@ async function handleBinaryRoute(req: IncomingMessage, res: ServerResponse): Pro
   const url = new URL(req.url ?? "/", "http://localhost");
   const parts = url.pathname.split("/").filter(Boolean);
   if (parts[0] !== "api") return false;
+  const isPreflight = applyCorsHeaders(res, req.headers.origin, req.method);
+  if (isPreflight) {
+    res.statusCode = 204;
+    res.end();
+    return true;
+  }
   if (parts[1] === "uploads" && parts[2] && req.method === "PUT") {
     const session = await auth.api.getSession({ headers: new Headers(req.headers as Record<string, string>) });
     if (!session) {
