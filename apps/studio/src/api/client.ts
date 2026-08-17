@@ -4,3 +4,7 @@
 export const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
 export const GRAPHQL_ENDPOINT = `${API_BASE_URL}/api/graphql`;
+
+export function resolveApiUrl(path: string): string {
+  return new URL(path, `${API_BASE_URL}/`).toString();
+}

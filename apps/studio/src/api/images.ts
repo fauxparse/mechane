@@ -8,7 +8,7 @@ import {
 } from "@mechane/graphql-schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { GRAPHQL_ENDPOINT } from "./client";
+import { GRAPHQL_ENDPOINT, resolveApiUrl } from "./client";
 
 export const imageAssetsQueryKey = (showId: ShowId) => ["image-assets", showId] as const;
 
@@ -39,8 +39,9 @@ export function useImageUpload(showId: ShowId | null) {
           byteLength: file.size,
         },
       );
-      const upload = await fetch(beginImageUpload.plan.url, {
+      const upload = await fetch(resolveApiUrl(beginImageUpload.plan.url), {
         method: beginImageUpload.plan.method,
+        credentials: "include",
         headers: Object.fromEntries(
           Object.entries(beginImageUpload.plan.requiredHeaders as Record<string, string>),
         ),
