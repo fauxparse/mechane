@@ -102,13 +102,13 @@ function useAspectRatioLock(
 
   return { isAspectRatioLocked, setAspectRatioLock };
 }
-
 export function useCanvasInspectorModel({
   focused,
   artboards,
   selection,
   variables = EMPTY_VARIABLES,
   inspectorPreview = null,
+  currentDimensions = null,
   onUpdateElement,
   onUpdateElements,
 }: CanvasInspectorProps): CanvasInspectorModel | null {
@@ -170,6 +170,7 @@ export function useCanvasInspectorModel({
             variables,
             fontFamilies,
             inspectorPreview,
+            currentDimensions,
             absolute,
             common,
             update,
@@ -182,10 +183,11 @@ export function useCanvasInspectorModel({
       aspectRatioLock,
       common,
       fontFamilies,
-      elements,
-      focused,
+      currentDimensions,
       inspectorPreview,
+      elements,
       selected,
+      focused,
       target,
       text,
       update,

@@ -1,5 +1,26 @@
 import type { LayoutDirection, LayoutAlignment } from "@mechane/domain";
 
+import type { DomFocusContext } from "../../show/keyboard/focus-context";
+import type { CanvasTool } from "../Toolbar/Toolbar";
+
+const TOOL_BY_KEY: Record<string, CanvasTool> = {
+  r: "rect",
+  o: "ellipse",
+  f: "frame",
+  i: "image",
+  v: "select",
+  t: "text",
+};
+
+export function canvasToolFor(
+  chord: Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey">,
+  focus: Pick<DomFocusContext, "inKeyConsumingWidget">,
+): CanvasTool | null {
+  if (focus.inKeyConsumingWidget) return null;
+  if (chord.metaKey || chord.ctrlKey || chord.altKey || chord.shiftKey) return null;
+  return TOOL_BY_KEY[chord.key.toLowerCase()] ?? null;
+}
+
 export type CanvasKeyboardIntent =
   | { type: "nudge"; dx: number; dy: number }
   | { type: "primary-reorder"; delta: -1 | 1 | "start" | "end" }

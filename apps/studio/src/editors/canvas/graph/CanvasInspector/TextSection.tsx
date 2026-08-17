@@ -3,8 +3,8 @@ import {
   fontFamilyKey,
   googleFontVariant,
   loadGoogleFont,
-  useGoogleFonts,
 } from "../../google-fonts";
+import { useGoogleFonts } from "../../google-fonts-provider";
 import {
   Button,
   Combobox,

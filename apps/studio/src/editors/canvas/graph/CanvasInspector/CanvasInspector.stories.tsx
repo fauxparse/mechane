@@ -1,19 +1,18 @@
 import { applyCanvasEdits, CANVAS_COMMAND_TYPES } from "@mechane/commands";
 import type { CanvasEdit } from "@mechane/commands";
 import { FrameElement, hasCornerRadius, SceneVariable } from "@mechane/domain";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useCallback, useState } from "react";
 
 import type { CanvasArtboardDocument as ApiCanvasArtboardDocument } from "../../../../api/canvas";
 import { MockEditorChrome } from "../../../../components/EditorLayout/MockEditorChrome";
+import { StaticGoogleFontsProvider } from "../../google-fonts-provider";
 import type { CanvasSelection } from "../canvas-selection";
 import { CanvasInspector } from "../CanvasInspector/CanvasInspector";
 import { EditorSlot } from "../../../../components/EditorLayout/editor-slots";
 
 const CANVAS_ID = "canvas-inspector-story";
 const ART_ID = "scene-inspector-story";
-const storyQueryClient = new QueryClient();
 
 const variables: SceneVariable[] = [
   { id: "opacity-variable", name: "Opacity / Default", type: "number" },
@@ -266,10 +265,12 @@ function InspectorStory({
   initialArtboard,
   initialSelection,
   storyVariables = [],
+  currentDimensions,
 }: {
   initialArtboard: ApiCanvasArtboardDocument;
   initialSelection: CanvasSelection;
   storyVariables?: readonly SceneVariable[];
+  currentDimensions?: { elementId: string; width: number; height: number };
 }) {
   const [current, setCurrent] = useState(initialArtboard);
   const onUpdateElements = useCallback(
@@ -285,7 +286,7 @@ function InspectorStory({
   );
 
   return (
-    <QueryClientProvider client={storyQueryClient}>
+    <StaticGoogleFontsProvider fonts={[]}>
       <MockEditorChrome activeEditor="canvas">
         <div className="size-full bg-background" />
         <EditorSlot name="right">
@@ -295,10 +296,11 @@ function InspectorStory({
             selection={initialSelection}
             variables={storyVariables}
             onUpdateElements={onUpdateElements}
+            currentDimensions={currentDimensions}
           />
         </EditorSlot>
       </MockEditorChrome>
-    </QueryClientProvider>
+    </StaticGoogleFontsProvider>
   );
 }
 
@@ -343,10 +345,36 @@ export const TextElement: Story = {
     <InspectorStory
       initialArtboard={artboard(longTextRoot)}
       initialSelection={{ artId: ART_ID, elementIds: ["headline"] }}
+      currentDimensions={{ elementId: "headline", width: 248, height: 48 }}
     />
   ),
+  play: async ({ canvasElement }) => {
+    const sizingButton = canvasElement.querySelector<HTMLButtonElement>(
+      '[aria-label="Change sizing"]',
+    );
+    if (!sizingButton) throw new Error("Text sizing control is missing");
+    sizingButton.click();
+    await Promise.resolve();
+    const options = Array.from(canvasElement.ownerDocument.querySelectorAll('[role="option"]')).map(
+      (option) => option.textContent?.trim(),
+    );
+    for (const option of ["Fixed width", "Fill container", "Hug contents"]) {
+      if (!options.includes(option)) throw new Error(`Missing text sizing option: ${option}`);
+    }
+    const fixedOption = Array.from(
+      canvasElement.ownerDocument.querySelectorAll<HTMLElement>('[role="option"]'),
+    ).find((option) => option.textContent?.trim() === "Fixed width");
+    if (!fixedOption) throw new Error("Fixed width option is missing");
+    fixedOption.click();
+    await Promise.resolve();
+    const fixedWidth = Array.from(
+      canvasElement.ownerDocument.querySelectorAll<HTMLInputElement>(
+        '[data-slot="combobox-input"]',
+      ),
+    ).some((input) => input.value === "248");
+    if (!fixedWidth) throw new Error("Fixed width did not use the current dimension");
+  },
 };
-
 export const AbsoluteRectangle: Story = {
   render: () => (
     <InspectorStory

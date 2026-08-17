@@ -339,6 +339,24 @@ function renderElement({
       hidden: element.hidden,
     });
   }
+  const content =
+    element.type === "text"
+      ? element.textOverflow === "ellipsis" && !editing
+        ? createElement(
+            "span",
+            {
+              style: {
+                display: "block",
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              },
+            },
+            contentFor(element),
+          )
+        : contentFor(element)
+      : children;
   return createElement(
     "div",
     {
@@ -369,7 +387,7 @@ function renderElement({
           ? (event: ReactKeyboardEvent<HTMLDivElement>) => onTextKeyDown(element.id, event)
           : undefined,
     },
-    element.type === "text" ? contentFor(element) : children,
+    content,
   );
 }
 

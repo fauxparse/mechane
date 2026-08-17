@@ -1,4 +1,11 @@
-import type { SceneVariable, ShapeValue, Type, VariableReference } from "@mechane/domain";
+import type {
+  AxisSize,
+  SceneVariable,
+  ShapeValue,
+  SizeMode,
+  Type,
+  VariableReference,
+} from "@mechane/domain";
 import { defaultPropertyValue, isPropertyConnection, opacityToPercent } from "@mechane/domain";
 import type { PropertyInputValue } from "@mechane/design-system";
 
@@ -80,6 +87,20 @@ export const sizeInputValue = (
   }
   return null;
 };
+
+export const sizingForMode = (
+  size: AxisSize | undefined,
+  mode: SizeMode,
+  currentValue?: number,
+): AxisSize => ({
+  ...size,
+  mode,
+  ...(mode === "fixed" && currentValue !== undefined
+    ? { value: currentValue }
+    : mode === "fixed" && size?.value === undefined
+      ? { value: 100 }
+      : {}),
+});
 
 export const numericSizeValue = (size: unknown): number | null => {
   if (!size || typeof size !== "object" || !("value" in size)) return null;

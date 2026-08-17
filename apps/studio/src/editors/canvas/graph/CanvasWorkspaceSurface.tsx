@@ -9,12 +9,8 @@
 import { useEffect, useMemo } from "react";
 import { EditorSlot } from "../../../components/EditorLayout/editor-slots";
 
-import {
-  collectFontFamilies,
-  fontFamilyKey,
-  loadGoogleFont,
-  useGoogleFonts,
-} from "../google-fonts";
+import { collectFontFamilies, fontFamilyKey, loadGoogleFont } from "../google-fonts";
+import { useGoogleFonts } from "../google-fonts-provider";
 import type { CanvasWorkspaceSurfaceProps } from "../canvas-workspace-types";
 import { Toolbar } from "../Toolbar/Toolbar";
 import { CanvasWorkspaceStage } from "./CanvasWorkspaceStage";
@@ -26,6 +22,7 @@ export function CanvasWorkspaceSurface({
   zoomIn,
   zoomOut,
   resetCamera,
+  frameArtboard,
   ordered,
   focused,
   camera,
@@ -41,7 +38,9 @@ export function CanvasWorkspaceSurface({
   creationOverlayRect,
   overlayRect,
   resizePreview,
+  resizeCursor,
   inspectorPreview,
+  currentDimensions,
   resizable,
   onFocusArtboard,
   onUpdateElement,
@@ -121,6 +120,7 @@ export function CanvasWorkspaceSurface({
         onRenameArtboard={onRenameArtboard}
         overlayRect={overlayRect}
         resizePreview={resizePreview}
+        resizeCursor={resizeCursor}
         resizable={resizable}
         onBeginResize={onBeginResize}
         creationOverlayRect={creationOverlayRect}
@@ -132,6 +132,7 @@ export function CanvasWorkspaceSurface({
         <CanvasLayers
           ordered={ordered}
           focused={focused}
+          onFrameArtboard={frameArtboard}
           onFocusArtboard={onFocusArtboard}
           selection={selection}
           onSelect={onSelect}
@@ -148,6 +149,7 @@ export function CanvasWorkspaceSurface({
           selection={selection}
           variables={variables}
           inspectorPreview={inspectorPreview}
+          currentDimensions={currentDimensions}
           onUpdateElement={onUpdateElement}
           onUpdateElements={onUpdateElements}
         />

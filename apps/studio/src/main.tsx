@@ -4,10 +4,11 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import "@mechane/design-system/styles/globals.css";
+import { ToastProvider, ToastViewport, TooltipProvider } from "@mechane/design-system";
 
 import { AppThemeProvider } from "./AppThemeProvider";
+import { GoogleFontsProvider } from "./editors/canvas/google-fonts-provider";
 import { queryClient, router } from "./router";
-import { TooltipProvider } from "@mechane/design-system";
 
 // Authoring + show-running app: Show/Flow editor, Scene/Canvas editor,
 // Device/Run management, going live. See /PRD.md.
@@ -15,11 +16,16 @@ import { TooltipProvider } from "@mechane/design-system";
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppThemeProvider>
-        <TooltipProvider>
-          <RouterProvider router={router} />
-        </TooltipProvider>
-      </AppThemeProvider>
+      <GoogleFontsProvider>
+        <AppThemeProvider>
+          <TooltipProvider>
+            <ToastProvider>
+              <RouterProvider router={router} />
+              <ToastViewport />
+            </ToastProvider>
+          </TooltipProvider>
+        </AppThemeProvider>
+      </GoogleFontsProvider>
     </QueryClientProvider>
   );
 }

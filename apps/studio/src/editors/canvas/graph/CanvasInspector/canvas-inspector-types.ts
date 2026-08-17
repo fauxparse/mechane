@@ -11,6 +11,12 @@ export type CanvasInspectorPreview = {
   height?: number;
 };
 
+export type CanvasInspectorDimensions = {
+  elementId: string;
+  width: number;
+  height: number;
+};
+
 export type CanvasInspectorUpdate = (
   properties: Record<string, unknown>,
   unset?: readonly string[],
@@ -22,6 +28,7 @@ export type CanvasInspectorProps = {
   selection: CanvasSelection;
   variables?: readonly SceneVariable[];
   inspectorPreview?: CanvasInspectorPreview | null;
+  currentDimensions?: CanvasInspectorDimensions | null;
   onUpdateElement?(
     canvasId: string,
     elementId: string,
@@ -46,6 +53,7 @@ export type CanvasInspectorModel = {
   variables: readonly SceneVariable[];
   fontFamilies: readonly string[];
   inspectorPreview: CanvasInspectorPreview | null;
+  currentDimensions: CanvasInspectorDimensions | null;
   absolute: boolean;
   common(property: string): unknown;
   update: CanvasInspectorUpdate;

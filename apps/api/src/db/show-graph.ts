@@ -26,6 +26,7 @@ import { db } from "./client";
 import { readCanvasById, writeCanvasRows } from "./canvas";
 import type { CanvasWithOwner, StoredCanvas } from "./canvas";
 import { placeCanvasPosition } from "./canvas-placement";
+import { DEFAULT_CANVAS_FILL, newCanvasRootProperties } from "./canvas-defaults";
 import { realtimeProvider } from "../realtime";
 import { reconcileActiveRunValues } from "./runs";
 import type { StoredDevice } from "./devices";
@@ -382,19 +383,35 @@ async function writeGraph(
   // ordinary graph edits.
   const previousCanvases = await tx.select().from(canvases).where(eq(canvases.graphId, row.id));
   const previousSceneCanvases = previousCanvases.filter((canvas) => canvas.sceneNodeId !== null);
-  const previousSceneCanvasIds = previousSceneCanvases.map((canvas) => canvas.id);
+  const previousCanvasIds = previousCanvases.map((canvas) => canvas.id);
   const previousElements =
-    previousSceneCanvasIds.length > 0
+    previousCanvasIds.length > 0
       ? await tx
           .select()
           .from(canvasElements)
-          .where(inArray(canvasElements.canvasId, previousSceneCanvasIds))
+          .where(inArray(canvasElements.canvasId, previousCanvasIds))
       : [];
   const previousElementsByCanvas = new Map<string, typeof previousElements>();
   for (const element of previousElements) {
     const elements = previousElementsByCanvas.get(element.canvasId) ?? [];
     elements.push(element);
     previousElementsByCanvas.set(element.canvasId, elements);
+  }
+  const latestCanvasFill: Record<"scene" | "block", string | undefined> = {
+    scene: undefined,
+    block: undefined,
+  };
+  for (const canvas of [...previousCanvases].sort(
+    (left, right) => left.createdAt.getTime() - right.createdAt.getTime(),
+  )) {
+    const root = previousElementsByCanvas.get(canvas.id)?.find((element) => element.parentId === null);
+    const properties = root?.properties;
+    if (!properties || typeof properties !== "object" || Array.isArray(properties)) continue;
+    if (!("fill" in properties)) continue;
+    const fill = properties.fill;
+    if (typeof fill === "string" && fill.length > 0) {
+      latestCanvasFill[canvas.sceneNodeId === null ? "block" : "scene"] = fill;
+    }
   }
 
   const previousSceneByOwner = new Map(
@@ -480,6 +497,7 @@ async function writeGraph(
   // commits. This path is also what seeds create.
   for (const node of graph.nodes.filter((node) => node.kind === "scene")) {
     const previous = previousSceneByOwner.get(node.id);
+    const inheritedFill = latestCanvasFill.scene;
     const canvasId = previous?.id ?? generateId("canvas");
     const position = previous
       ? { x: previous.positionX, y: previous.positionY }
@@ -506,9 +524,10 @@ async function writeGraph(
         rank: "a",
         name: null,
         hidden: false,
-        properties: {},
+        properties: newCanvasRootProperties(inheritedFill),
       });
     }
+    if (!previous) latestCanvasFill.scene = inheritedFill ?? DEFAULT_CANVAS_FILL;
   }
 
   const graphBlocks = await tx.select().from(blocks).where(eq(blocks.graphId, row.id));
@@ -519,6 +538,7 @@ async function writeGraph(
   for (const block of graphBlocks) {
     if (existingBlockIds.has(block.id)) continue;
     const canvasId = generateId("canvas");
+    const inheritedFill = latestCanvasFill.block;
     const position = placeCanvasPosition(
       { x: 0, y: 460 + newBlockIndex * 460 },
       occupiedCanvasPositions,
@@ -541,8 +561,9 @@ async function writeGraph(
       rank: "a",
       name: null,
       hidden: false,
-      properties: {},
+      properties: newCanvasRootProperties(inheritedFill),
     });
+    latestCanvasFill.block = inheritedFill ?? DEFAULT_CANVAS_FILL;
   }
 
   // A Flow's default Scene is one of its own children, so it can only be

@@ -1,13 +1,15 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CommandPalette } from "../show/commands/CommandPalette";
 import type { PaletteCommand } from "../show/commands/palette-commands";
 import { useEditorKeys } from "../show/keyboard/use-editor-keys";
+import { focusContext } from "../show/keyboard/focus-context";
 
 import type { CanvasWorkspaceEditorProps } from "./canvas-workspace-types";
 export type { CanvasWorkspaceEditorProps } from "./canvas-workspace-types";
 import { CanvasWorkspaceSurface } from "./graph/CanvasWorkspaceSurface";
 import { useCanvasWorkspaceInteractions } from "./use-canvas-workspace-interactions";
+import { canvasToolFor } from "./keyboard/canvas-keyboard";
 
 /** The public Canvas editor surface; interaction state lives in its dedicated hook. */
 export function CanvasWorkspaceEditor({
@@ -46,12 +48,15 @@ export function CanvasWorkspaceEditor({
     creationOverlayRect,
     overlayRect,
     resizePreview,
+    resizeCursor,
     inspectorPreview,
+    currentDimensions,
     resizable,
     cancelCreation,
     zoomIn,
     zoomOut,
     resetCamera,
+    frameArtboard,
     setSelection,
     beginDrag,
     moveDrag,
@@ -135,6 +140,16 @@ export function CanvasWorkspaceEditor({
     ],
     [deleteSelection, resetCamera, selection.elementIds.length, setTool, zoomIn, zoomOut],
   );
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const nextTool = canvasToolFor(event, focusContext());
+      if (!nextTool) return;
+      event.preventDefault();
+      setTool(nextTool);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [setTool]);
   useEditorKeys(
     useMemo(
       () => ({
@@ -172,14 +187,17 @@ export function CanvasWorkspaceEditor({
         zoomIn={zoomIn}
         zoomOut={zoomOut}
         resetCamera={resetCamera}
+        frameArtboard={frameArtboard}
         renamingArtId={renamingArtId}
         setRenamingArtId={setRenamingArtId}
+        drag={drag}
         dragLine={dragLine}
         rubberbandRect={rubberbandRect}
-        drag={drag}
         creationOverlayRect={creationOverlayRect}
         resizePreview={resizePreview}
+        resizeCursor={resizeCursor}
         inspectorPreview={inspectorPreview}
+        currentDimensions={currentDimensions}
         overlayRect={overlayRect}
         resizable={resizable}
         onFocusArtboard={onFocusArtboard}

@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import type { Element } from "@mechane/domain";
 
 import type { CanvasArtboardDocument } from "../../api/canvas";
@@ -63,7 +62,7 @@ export function googleFontVariant(
   );
   return weight === undefined ? null : { weight, italic };
 }
-async function fetchGoogleFonts(signal: AbortSignal): Promise<readonly GoogleFont[]> {
+export async function fetchGoogleFonts(signal: AbortSignal): Promise<readonly GoogleFont[]> {
   if (!GOOGLE_FONTS_API_KEY) return [];
   if (googleFontsCache) return googleFontsCache;
   const response = await fetch(
@@ -74,16 +73,6 @@ async function fetchGoogleFonts(signal: AbortSignal): Promise<readonly GoogleFon
   const data = (await response.json()) as GoogleFontsResponse;
   googleFontsCache = data.items ?? [];
   return googleFontsCache;
-}
-
-export function useGoogleFonts() {
-  return useQuery({
-    queryKey: ["google-fonts"],
-    queryFn: ({ signal }: { signal: AbortSignal }) => fetchGoogleFonts(signal),
-    enabled: Boolean(GOOGLE_FONTS_API_KEY),
-    staleTime: Infinity,
-    gcTime: Infinity,
-  });
 }
 
 export function loadGoogleFont(fontFamily: string, variant?: GoogleFontVariant): void {

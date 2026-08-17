@@ -27,14 +27,12 @@ packages/
 
 ```
 pnpm install
-docker compose up -d        # local Postgres for apps/api
 cp apps/api/.env.example apps/api/.env
+overmind start -f Procfile.dev   # starts Postgres, API, Studio, Player, and Storybook
+# In another terminal, after Postgres reports ready:
 pnpm --filter @mechane/api db:migrate   # apply Better Auth's tables
 pnpm db:seed      # wipe + recreate a default dev account (test@example.com)
-pnpm dev:studio   # authoring app
-pnpm dev:player   # device client
-pnpm storybook    # component workbench
-pnpm dev:api      # GraphQL + auth API (http://localhost:4000)
+# Storybook is included in Procfile.dev.
 pnpm test         # unit tests
 pnpm lint
 pnpm typecheck

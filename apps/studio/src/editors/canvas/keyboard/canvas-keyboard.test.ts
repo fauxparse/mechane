@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { canvasKeyboardIntent, nudgeAnchor } from "./canvas-keyboard";
+import { canvasKeyboardIntent, canvasToolFor, nudgeAnchor } from "./canvas-keyboard";
 
 describe("Canvas keyboard editing", () => {
   it("nudges absolute anchors with larger Shift steps", () => {
@@ -37,5 +37,32 @@ describe("Canvas keyboard editing", () => {
       type: "cross-align",
       value: "end",
     });
+  });
+});
+
+describe("Canvas tool shortcuts", () => {
+  const chord = (key: string, overrides: Partial<KeyboardEvent> = {}) => ({
+    key,
+    metaKey: false,
+    ctrlKey: false,
+    altKey: false,
+    shiftKey: false,
+    ...overrides,
+  });
+
+  it("selects each tool from its bare shortcut", () => {
+    expect(canvasToolFor(chord("r"), { inKeyConsumingWidget: false })).toBe("rect");
+    expect(canvasToolFor(chord("o"), { inKeyConsumingWidget: false })).toBe("ellipse");
+    expect(canvasToolFor(chord("f"), { inKeyConsumingWidget: false })).toBe("frame");
+    expect(canvasToolFor(chord("i"), { inKeyConsumingWidget: false })).toBe("image");
+    expect(canvasToolFor(chord("v"), { inKeyConsumingWidget: false })).toBe("select");
+    expect(canvasToolFor(chord("t"), { inKeyConsumingWidget: false })).toBe("text");
+  });
+
+  it("leaves modified keys and focused controls to their owners", () => {
+    expect(
+      canvasToolFor(chord("r", { shiftKey: true }), { inKeyConsumingWidget: false }),
+    ).toBeNull();
+    expect(canvasToolFor(chord("r"), { inKeyConsumingWidget: true })).toBeNull();
   });
 });
