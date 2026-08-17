@@ -10,6 +10,7 @@
     "./styles/globals.css": "./src/styles/globals.css"
   },
   "scripts": {
+    "generate:icons": "tsx scripts/icon-generator.ts",
     "generate:themes": "tsx scripts/theme-generator.ts",
     "typecheck": "tsc --noEmit"
   },
@@ -35,6 +36,7 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "sharp": "^0.35.3",
     "tsx": "^4.23.8",
     "typescript": "^7.0.2",
     "yaml": "^2.9.0"
