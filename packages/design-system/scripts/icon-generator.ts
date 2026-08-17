@@ -23,11 +23,11 @@ const REPO_ROOT = path.resolve(HERE, "../../..");
  */
 const COLORS = {
   /** `--palette-neutral-800`, the dark-mode background. */
-  dark: "#272839",
+  dark: "#3c3836",
   /** `--palette-neutral-50`, the light-mode foreground. */
-  light: "#f8faff",
-  /** `--palette-purple-500`, the brand accent. */
-  brand: "#9e38fa",
+  light: "#fdfaf4",
+  /** `--palette-orange-500`, the brand accent. */
+  brand: "#fb6400",
 };
 
 type App = {
