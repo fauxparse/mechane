@@ -1186,16 +1186,22 @@ export const schema = createSchema<GraphQLContext>({
         if (!session || !session.candidateDigest) {
           throw new GraphQLError("Upload candidate not found.", { extensions: { code: "NOT_FOUND" } });
         }
-        const [existing] = await db
-          .select()
-          .from(imageAssets)
-          .where(and(eq(imageAssets.showId, session.showId), eq(imageAssets.blobDigest, session.candidateDigest)));
-        if (existing) return toImageAsset(existing);
         try {
           const bytes = await blobStore.readUpload(sessionId);
           const processed = processImage(bytes, session.declaredMimeType ?? "application/octet-stream");
           await commitBlob(processed);
           await blobStore.commitUpload(sessionId, processed);
+          const [existing] = await db
+            .select()
+            .from(imageAssets)
+            .where(and(eq(imageAssets.showId, session.showId), eq(imageAssets.blobDigest, session.candidateDigest)));
+          if (existing) {
+            await db
+              .update(blobUploadSessions)
+              .set({ state: "finalized" })
+              .where(eq(blobUploadSessions.id, sessionId));
+            return toImageAsset(existing);
+          }
           const [asset] = await db
             .insert(imageAssets)
             .values({

@@ -4,8 +4,12 @@ import type { ImageAsset } from "@mechane/domain";
 import { db } from "./client";
 import { blobs, imageAssets } from "./schema";
 
-export const imageDeliveryUrl = (assetId: string, revision: string): string =>
-  `/api/images/${encodeURIComponent(assetId)}/${encodeURIComponent(revision)}`;
+export const imageDeliveryUrl = (assetId: string, revision: string): string => {
+  const publicBase = process.env.BLOB_PUBLIC_URL?.replace(/\/$/, "");
+  return publicBase
+    ? `${publicBase}/${encodeURIComponent(revision)}`
+    : `/api/images/${encodeURIComponent(assetId)}/${encodeURIComponent(revision)}`;
+};
 
 export type ImageAssetRow = typeof imageAssets.$inferSelect;
 
