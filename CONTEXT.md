@@ -129,9 +129,15 @@ _Avoid_: Step, command
 
 What kind of value something holds. Every Source, Variable and Transformer output has a Type — there is one type system across the whole Show, not a separate one per concept. A Type is either simple (text, number, boolean, image, color, date, datetime), a list of some other Type, or a Shape.
 _Avoid_: Kind (used for the varieties of graph node), data type
+### Blob
+
+Immutable normalized binary content identified by its verified content identity. A Blob can be referenced by one or more Show-owned assets, but it is not itself visible in a Show's gallery or value graph.
+
+_Avoid_: file, upload, object
+
 ### Image Asset
 
-A reusable, immutable image owned by a Show. An Image Asset has normalized image content and descriptive metadata, including its intrinsic dimensions and alt text; reusing it does not create another copy.
+A reusable, Show-owned image record that references a Blob and carries image metadata, including intrinsic dimensions and asset-wide alt text. Its bytes and delivery identity are immutable; its gallery state and alt metadata may change without changing the Blob.
 
 _Avoid_: Image Value, image file, upload
 
@@ -181,6 +187,10 @@ _Avoid_: Binding (acceptable as a synonym), linking
 - A **Source**, a **Variable** and a **Transformer**'s output each have a **Type**
 - A **Shape** is a **Type**, made of an ordered list of **Fields**, each of which has its own **Type**
 - A **Shape** may be reused by any number of **Sources**, **Variables** and **Transformers** within its **Show**
+- A **Blob** may be referenced by one or more **Image Assets** and is purgeable only when no retained reference remains
+- An **Image Asset** remains gallery-visible independently of graph references until it is soft-deleted
+- A soft-deleted **Image Asset** continues resolving for existing **Element**, **Variable**, and **Run** references during retention
+- Asset metadata used by a draft, published Show, or active **Run** follows that owner's snapshot boundary
 - A **Show** owns zero or more **Image Assets**, which may be reused by its **Image Values**
 - An **Image Value** references one **Image Asset** and can flow through **Sources**, **Variables**, and **Transformers**
 - An **Image Variable** may carry authoring guidance for suggested dimensions without changing the identity of its **Image Asset**
