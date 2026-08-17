@@ -335,7 +335,13 @@ function renderElement({
     const image = literal(element.image);
     const resolved =
       image && typeof image === "object" && "url" in image
-        ? (image as { url: string; width?: number; height?: number; alt?: string; blurHash?: string | null })
+        ? (image as {
+            url: string;
+            width?: number;
+            height?: number;
+            alt?: string;
+            blurHash?: string | null;
+          })
         : null;
     return createElement("img", {
       "data-element-id": element.id,
@@ -343,6 +349,7 @@ function renderElement({
       "data-element-parent-id": parent?.id,
       "data-element-rank": element.rank,
       "data-element-painted": "true",
+      draggable: false,
       src: resolved?.url,
       width: resolved?.width,
       height: resolved?.height,

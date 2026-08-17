@@ -30,6 +30,34 @@ describe("CanvasRenderer", () => {
     expect(html).toContain("grid-area:1 / 1");
     expect(html).not.toContain('data-element-id="first"><div');
   });
+
+  it("disables native image dragging so the Canvas owns pointer drags", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "image",
+            type: "image",
+            image: {
+              assetId: "image-1",
+              revision: "revision-1",
+              url: "https://example.com/image.png",
+              width: 320,
+              height: 180,
+              alt: "Stage lights",
+              mimeType: "image/png",
+              blurHash: null,
+            },
+          },
+        ],
+      },
+    });
+
+    expect(html).toMatch(/<img[^>]*data-element-id="image"[^>]*draggable="false"/);
+  });
   it("marks empty frames as painted hit targets", () => {
     const html = markup({
       kind: "scene",
