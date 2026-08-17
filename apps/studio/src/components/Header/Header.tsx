@@ -69,6 +69,7 @@ export interface HeaderNavigation {
 }
 
 export interface HeaderUser {
+  id: string;
   name?: string | null;
   email: string;
   avatarUrl?: string | null;
@@ -92,14 +93,6 @@ export interface HeaderProps {
   onRename(name: string): void;
   renaming?: boolean;
   renameError?: string;
-}
-
-/** Initials for the avatar fallback: from the name if there is one, else the email. */
-function initialsFor({ name, email }: HeaderUser): string {
-  const source = name?.trim() ? name.trim() : email;
-  const words = source.split(/[\s@._-]+/u).filter(Boolean);
-  const letters = words.slice(0, 2).map((word) => word[0] ?? "");
-  return letters.join("").toUpperCase() || "?";
 }
 
 /**
@@ -265,7 +258,7 @@ export const Header = ({
                   {user.avatarUrl ? (
                     <AvatarImage src={user.avatarUrl} alt={user.name ?? user.email} />
                   ) : null}
-                  <AvatarFallback>{initialsFor(user)}</AvatarFallback>
+                  <AvatarFallback id={user.id} />
                 </Avatar>
               </Button>
             }

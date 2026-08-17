@@ -23,7 +23,7 @@ export const Default: Story = {
   render: () => (
     <Avatar>
       <AvatarImage src="https://github.com/shadcn.png" alt="Shadcn" />
-      <AvatarFallback>CN</AvatarFallback>
+      <AvatarFallback id="CN" />
     </Avatar>
   ),
 };
@@ -32,13 +32,13 @@ export const SizesAndFallbacks: Story = {
   render: () => (
     <div className="flex items-center gap-4">
       <Avatar size="sm">
-        <AvatarFallback>SM</AvatarFallback>
+        <AvatarFallback id="SM" />
       </Avatar>
       <Avatar>
-        <AvatarFallback>MD</AvatarFallback>
+        <AvatarFallback id="MD" />
       </Avatar>
       <Avatar size="lg">
-        <AvatarFallback>LG</AvatarFallback>
+        <AvatarFallback id="LG" />
       </Avatar>
     </div>
   ),
@@ -48,17 +48,17 @@ export const WithBadge: Story = {
   render: () => (
     <div className="flex items-center gap-4">
       <Avatar>
-        <AvatarFallback>ER</AvatarFallback>
+        <AvatarFallback id="ER" />
         <AvatarBadge className="bg-green-600 dark:bg-green-800" />
       </Avatar>
       <Avatar size="lg">
-        <AvatarFallback>PP</AvatarFallback>
+        <AvatarFallback id="PP" />
         <AvatarBadge>
           <Check aria-hidden="true" />
         </AvatarBadge>
       </Avatar>
       <Avatar size="sm">
-        <AvatarFallback>+</AvatarFallback>
+        <AvatarFallback id="+" />
         <AvatarBadge>
           <Plus aria-hidden="true" />
         </AvatarBadge>
@@ -71,13 +71,13 @@ export const Group: Story = {
   render: () => (
     <AvatarGroup>
       <Avatar>
-        <AvatarFallback>CN</AvatarFallback>
+        <AvatarFallback id="CN" />
       </Avatar>
       <Avatar>
-        <AvatarFallback>LR</AvatarFallback>
+        <AvatarFallback id="LR" />
       </Avatar>
       <Avatar>
-        <AvatarFallback>ER</AvatarFallback>
+        <AvatarFallback id="ER" />
       </Avatar>
       <AvatarGroupCount>+3</AvatarGroupCount>
     </AvatarGroup>
