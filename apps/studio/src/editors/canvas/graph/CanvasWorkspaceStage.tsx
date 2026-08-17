@@ -51,6 +51,7 @@ type CanvasWorkspaceStageProps = Pick<
   | "onRenameArtboard"
   | "overlayRect"
   | "resizePreview"
+  | "resizeCursor"
   | "resizable"
   | "onBeginResize"
   | "creationOverlayRect"
@@ -94,6 +95,7 @@ export function CanvasWorkspaceStage({
   onRenameArtboard,
   overlayRect,
   resizePreview,
+  resizeCursor,
   resizable,
   onBeginResize,
   creationOverlayRect,
@@ -108,7 +110,10 @@ export function CanvasWorkspaceStage({
   return (
     <main
       ref={workspaceRef}
-      className="relative min-h-0 flex-1 overscroll-none overflow-hidden bg-muted/20 outline-none"
+      style={{
+        cursor: resizeCursor ?? (tool !== "select" ? "crosshair" : undefined),
+        touchAction: "none",
+      }}
       aria-label="Canvas workspace"
       tabIndex={0}
       onKeyDown={(event) => {
@@ -119,12 +124,12 @@ export function CanvasWorkspaceStage({
       }}
       onPointerDown={(event) => {
         commitTextEdit();
+        if (tool !== "select") onBeginCreation(event, null);
         onBeginWorkspaceInteraction(event);
       }}
       onPointerMove={onMoveWorkspaceInteraction}
       onPointerUp={onEndWorkspaceInteraction}
       onPointerCancel={onCancelWorkspaceInteraction}
-      style={{ touchAction: "none" }}
     >
       <div
         className="pointer-events-none absolute top-0 left-0 h-0 w-0"
@@ -153,12 +158,18 @@ export function CanvasWorkspaceStage({
                 top: preview?.y ?? artboard.position.y,
                 width: preview?.width ?? size.width,
                 height: preview?.height ?? size.height,
+                cursor:
+                  resizeCursor ??
+                  (tool !== "select"
+                    ? "crosshair"
+                    : drag?.artId === artboard.artId
+                      ? "grabbing"
+                      : "default"),
                 // An outline sits outside the box, so the border never eats into the
                 // Canvas, and it stays 1px on screen however far the camera is zoomed.
                 outline: "1px solid var(--border)",
                 outlineOffset: 0,
               }}
-              aria-label={artboardLabel(artboard)}
               onPointerDown={(event) => {
                 const textTarget =
                   event.target instanceof HTMLElement

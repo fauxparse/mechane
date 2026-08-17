@@ -296,6 +296,7 @@ function InspectorStory({
             selection={initialSelection}
             variables={storyVariables}
             onUpdateElements={onUpdateElements}
+            currentDimensions={currentDimensions}
           />
         </EditorSlot>
       </MockEditorChrome>

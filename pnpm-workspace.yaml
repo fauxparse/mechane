@@ -3,6 +3,7 @@ packages:
   - "packages/*"
   - "storybook"
 allowBuilds:
+  core-js: true
   esbuild: true
 minimumReleaseAgeExclude:
   - tsx@4.23.8

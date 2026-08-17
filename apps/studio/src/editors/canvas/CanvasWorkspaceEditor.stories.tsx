@@ -2,6 +2,7 @@ import { applyCanvasEdits, CANVAS_COMMAND_TYPES } from "@mechane/commands";
 import type { ElementProperties } from "@mechane/commands";
 import type { CanvasArtboardDocument } from "../../api/canvas";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { ToastProvider, ToastViewport } from "@mechane/design-system";
 import { useState } from "react";
 
 import { CanvasWorkspaceEditor } from "./CanvasWorkspaceEditor";
@@ -283,14 +284,17 @@ const meta: Meta<typeof CanvasWorkspaceEditor> = {
   // `sidebarsOpen` on a story's parameters sets the starting state.
   decorators: [
     (Story, context) => (
-      <StaticGoogleFontsProvider fonts={storyGoogleFonts}>
-        <MockEditorChrome
-          activeEditor="canvas"
-          sidebarsOpen={(context.parameters.sidebarsOpen as boolean | undefined) ?? true}
-        >
-          <Story />
-        </MockEditorChrome>
-      </StaticGoogleFontsProvider>
+      <ToastProvider>
+        <StaticGoogleFontsProvider fonts={storyGoogleFonts}>
+          <MockEditorChrome
+            activeEditor="canvas"
+            sidebarsOpen={(context.parameters.sidebarsOpen as boolean | undefined) ?? true}
+          >
+            <Story />
+          </MockEditorChrome>
+        </StaticGoogleFontsProvider>
+        <ToastViewport />
+      </ToastProvider>
     ),
   ],
   args: {

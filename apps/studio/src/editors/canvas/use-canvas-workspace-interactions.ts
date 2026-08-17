@@ -1,5 +1,6 @@
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent } from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useToastManager } from "@mechane/design-system";
 
 import { canvasElementParent, findCanvasElement } from "@mechane/commands";
 import type { NewElement } from "@mechane/commands";
@@ -22,6 +23,7 @@ import {
   topmostPaintedElementAtPoint,
 } from "./graph/canvas-selection";
 import {
+  canvasForCreation,
   containingFrame,
   creationRect,
   fixedFillSizing,
@@ -35,6 +37,7 @@ import { arrangeIntentFor, arrangeWithinParent } from "./commands/canvas-arrange
 import type { ArrangeIntent } from "./commands/canvas-arrange";
 import {
   fixedResizeProperties,
+  handleCursor,
   isCornerHandle,
   lockedAspectRatio,
   resizeBox,
@@ -77,7 +80,6 @@ type RubberbandState = {
 };
 type CreationDraft = {
   tool: Exclude<CanvasCreationTool, "select">;
-  artId: string;
   pointerId: number;
   start: { x: number; y: number };
   current: { x: number; y: number };
@@ -143,6 +145,7 @@ export function useCanvasWorkspaceInteractions({
   onUpdateElement,
   onDeleteElements,
 }: CanvasWorkspaceEditorProps) {
+  const toastManager = useToastManager();
   const ordered = useMemo(
     () =>
       [...artboards].sort(
@@ -178,6 +181,7 @@ export function useCanvasWorkspaceInteractions({
   const resizeGesture = useRef<ResizeGesture | null>(null);
   const [resizeDraft, setResizeDraft] = useState<{
     artId: string;
+    handle: ResizeHandle;
     start: ResizeBox;
     /** Pointer-requested box used to size the live Element preview and commit the resize. */
     box: ResizeBox;
@@ -628,6 +632,7 @@ export function useCanvasWorkspaceInteractions({
     };
     setResizeDraft({
       artId: artboard.artId,
+      handle,
       start,
       box: start,
       actual: start,
@@ -650,6 +655,7 @@ export function useCanvasWorkspaceInteractions({
     );
     setResizeDraft({
       artId: gesture.artId,
+      handle: gesture.handle,
       start: gesture.start,
       box,
       actual: box,
@@ -1033,13 +1039,15 @@ export function useCanvasWorkspaceInteractions({
     finishResize(event, true);
     endRubberband(event);
   };
-  const beginCreation = (event: PointerEvent<HTMLElement>, artboard: CanvasArtboardDocument) => {
+  const beginCreation = (
+    event: PointerEvent<HTMLElement>,
+    _artboard: CanvasArtboardDocument | null,
+  ) => {
     if (tool === "select" || event.button !== 0) return;
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     setCreationDraft({
       tool,
-      artId: artboard.artId,
       pointerId: event.pointerId,
       start: { x: event.clientX, y: event.clientY },
       current: { x: event.clientX, y: event.clientY },
@@ -1059,7 +1067,6 @@ export function useCanvasWorkspaceInteractions({
         : current,
     );
   };
-
   const finishCreation = (event: PointerEvent<HTMLElement>, cancel = false) => {
     if (!creationDraft || creationDraft.pointerId !== event.pointerId) return;
     const draft = creationDraft;
@@ -1067,8 +1074,6 @@ export function useCanvasWorkspaceInteractions({
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
-    const artboard = ordered.find((candidate) => candidate.artId === draft.artId);
-    if (!artboard) return;
     if (cancel) {
       setTool("select");
       return;
@@ -1079,40 +1084,46 @@ export function useCanvasWorkspaceInteractions({
       draft.square || event.shiftKey,
     );
     if (rect.width < 4 || rect.height < 4) return;
-    const root = event.currentTarget.querySelector<HTMLElement>("[data-canvas-root]");
+    const workspace = workspaceRef.current;
+    if (!workspace) return;
+    const canvasNodes = [...workspace.querySelectorAll<HTMLElement>("[data-artboard-id]")];
+    const canvasTargets = canvasNodes.flatMap((node) => {
+      const id = node.dataset.artboardId;
+      return id ? [{ id, rect: measuredRect(node) }] : [];
+    });
+    const artId = canvasForCreation(canvasTargets, rect, {
+      x: event.clientX,
+      y: event.clientY,
+    });
+    const artboard = ordered.find((candidate) => candidate.artId === artId);
+    const canvasNode = canvasNodes.find((node) => node.dataset.artboardId === artId);
+    if (!artboard || !canvasNode) {
+      toastManager.add({
+        title: "Can't create Element",
+        description: "The drawn shape does not intersect a Canvas.",
+        type: "error",
+      });
+      setTool("select");
+      return;
+    }
+    const root = canvasNode.querySelector<HTMLElement>("[data-canvas-root]");
     if (!root) return;
     const frames = [
-      ...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-type='frame']"),
+      ...canvasNode.querySelectorAll<HTMLElement>("[data-element-type='frame']"),
     ].flatMap((frame) => {
       const id = frame.dataset.elementId;
-      if (!id) return [];
-      const measured = frame.getBoundingClientRect();
-      return [
-        {
-          id,
-          rect: {
-            x: measured.x,
-            y: measured.y,
-            width: measured.width,
-            height: measured.height,
-            right: measured.right,
-            bottom: measured.bottom,
-          },
-        },
-      ];
+      return id ? [{ id, rect: measuredRect(frame) }] : [];
     });
     const parentId = containingFrame(frames, rect) ?? root.dataset.elementId;
     if (!parentId) return;
     const parent = frames.find((frame) => frame.id === parentId);
     if (!parent) return;
-    const parentNode = [
-      ...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-id]"),
-    ].find((element) => element.dataset.elementId === parentId);
+    const parentNode = [...canvasNode.querySelectorAll<HTMLElement>("[data-element-id]")].find(
+      (element) => element.dataset.elementId === parentId,
+    );
     const parentRect = parent.rect;
     const parentIsAuto = parentNode ? getComputedStyle(parentNode).display === "flex" : false;
-    const children = [
-      ...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-parent-id]"),
-    ]
+    const children = [...canvasNode.querySelectorAll<HTMLElement>("[data-element-parent-id]")]
       .filter((element) => element.dataset.elementParentId === parentId)
       .sort((left, right) => {
         const axis =
@@ -1231,6 +1242,7 @@ export function useCanvasWorkspaceInteractions({
           height: resizeDraft.actual.height / camera.zoom,
         }
       : null;
+  const resizeCursor = resizeDraft ? handleCursor(resizeDraft.handle) : null;
   const selectedArtboard = ordered.find((artboard) => artboard.artId === selection.artId);
   const previewElementId =
     selection.elementIds.length === 1 ? selection.elementIds[0] : selectedGeometry?.rootElementId;
@@ -1359,6 +1371,7 @@ export function useCanvasWorkspaceInteractions({
     creationOverlayRect,
     overlayRect,
     resizePreview,
+    resizeCursor,
     inspectorPreview,
     resizable,
     cancelCreation: () => {

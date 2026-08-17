@@ -84,6 +84,7 @@ export interface CanvasWorkspaceSurfaceProps {
     width: number;
     height: number;
   } | null;
+  resizeCursor: string | null;
   inspectorPreview: {
     elementId: string;
     x?: number;
@@ -150,7 +151,7 @@ export interface CanvasWorkspaceSurfaceProps {
   onMoveWorkspaceInteraction(event: PointerEvent<HTMLElement>): void;
   onEndWorkspaceInteraction(event: PointerEvent<HTMLElement>): void;
   onCancelWorkspaceInteraction(event: PointerEvent<HTMLElement>): void;
-  onBeginCreation(event: PointerEvent<HTMLElement>, artboard: CanvasArtboardDocument): void;
+  onBeginCreation(event: PointerEvent<HTMLElement>, artboard: CanvasArtboardDocument | null): void;
   onMoveCreation(event: PointerEvent<HTMLElement>): void;
   onFinishCreation(event: PointerEvent<HTMLElement>, cancel?: boolean): void;
   onSelectAtPoint(event: PointerEvent<HTMLElement>, artboard: CanvasArtboardDocument): void;

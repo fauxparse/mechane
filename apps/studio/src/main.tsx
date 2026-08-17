@@ -4,7 +4,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import "@mechane/design-system/styles/globals.css";
-import { TooltipProvider } from "@mechane/design-system";
+import { ToastProvider, ToastViewport, TooltipProvider } from "@mechane/design-system";
 
 import { AppThemeProvider } from "./AppThemeProvider";
 import { GoogleFontsProvider } from "./editors/canvas/google-fonts-provider";
@@ -19,7 +19,10 @@ function App() {
       <GoogleFontsProvider>
         <AppThemeProvider>
           <TooltipProvider>
-            <RouterProvider router={router} />
+            <ToastProvider>
+              <RouterProvider router={router} />
+              <ToastViewport />
+            </ToastProvider>
           </TooltipProvider>
         </AppThemeProvider>
       </GoogleFontsProvider>

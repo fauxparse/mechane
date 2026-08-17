@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canvasForCreation,
   creationPreviewShape,
   creationRect,
   fixedFillSizing,
@@ -111,6 +112,65 @@ describe("creationPreviewShape", () => {
         height: 40,
       }),
     ).toEqual({ type: "rect", x: 10, y: 20, width: 80, height: 40 });
+  });
+});
+
+describe("canvasForCreation", () => {
+  const targets = [
+    { id: "left", rect: { x: 0, y: 0, width: 100, height: 100, right: 100, bottom: 100 } },
+    { id: "right", rect: { x: 120, y: 0, width: 100, height: 100, right: 220, bottom: 100 } },
+  ];
+
+  it("returns the only Canvas intersected by the draft", () => {
+    expect(
+      canvasForCreation(targets, {
+        x: 80,
+        y: 20,
+        width: 30,
+        height: 30,
+        right: 110,
+        bottom: 50,
+      }, { x: 105, y: 35 }),
+    ).toBe("left");
+  });
+
+  it("uses the release point when a draft intersects multiple Canvases", () => {
+    expect(
+      canvasForCreation(targets, {
+        x: 80,
+        y: 20,
+        width: 70,
+        height: 30,
+        right: 150,
+        bottom: 50,
+      }, { x: 135, y: 35 }),
+    ).toBe("right");
+  });
+
+  it("falls back to the closest intersected Canvas", () => {
+    expect(
+      canvasForCreation(targets, {
+        x: 80,
+        y: 20,
+        width: 70,
+        height: 30,
+        right: 150,
+        bottom: 50,
+      }, { x: 110, y: 35 }),
+    ).toBe("left");
+  });
+
+  it("returns null when the draft misses every Canvas", () => {
+    expect(
+      canvasForCreation(targets, {
+        x: 300,
+        y: 20,
+        width: 30,
+        height: 30,
+        right: 330,
+        bottom: 50,
+      }, { x: 315, y: 35 }),
+    ).toBeNull();
   });
 });
 

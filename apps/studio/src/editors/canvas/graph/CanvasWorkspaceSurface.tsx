@@ -38,6 +38,7 @@ export function CanvasWorkspaceSurface({
   creationOverlayRect,
   overlayRect,
   resizePreview,
+  resizeCursor,
   inspectorPreview,
   currentDimensions,
   resizable,
@@ -119,6 +120,7 @@ export function CanvasWorkspaceSurface({
         onRenameArtboard={onRenameArtboard}
         overlayRect={overlayRect}
         resizePreview={resizePreview}
+        resizeCursor={resizeCursor}
         resizable={resizable}
         onBeginResize={onBeginResize}
         creationOverlayRect={creationOverlayRect}

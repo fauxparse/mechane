@@ -48,6 +48,7 @@ export function CanvasWorkspaceEditor({
     creationOverlayRect,
     overlayRect,
     resizePreview,
+    resizeCursor,
     inspectorPreview,
     currentDimensions,
     resizable,
@@ -194,6 +195,7 @@ export function CanvasWorkspaceEditor({
         rubberbandRect={rubberbandRect}
         creationOverlayRect={creationOverlayRect}
         resizePreview={resizePreview}
+        resizeCursor={resizeCursor}
         inspectorPreview={inspectorPreview}
         currentDimensions={currentDimensions}
         overlayRect={overlayRect}

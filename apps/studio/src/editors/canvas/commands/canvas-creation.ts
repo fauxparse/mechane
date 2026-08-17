@@ -62,6 +62,46 @@ export function creationPreviewShape(
   return { type: "rect", x: rect.x, y: rect.y, width: rect.width, height: rect.height };
 }
 
+export interface CanvasCreationTarget {
+  id: string;
+  rect: CanvasClientRect;
+}
+
+function rectsIntersect(left: CanvasClientRect, right: CanvasClientRect): boolean {
+  return left.x < right.right && left.right > right.x && left.y < right.bottom && left.bottom > right.y;
+}
+
+function distanceToRect(point: { x: number; y: number }, rect: CanvasClientRect): number {
+  const dx = point.x < rect.x ? rect.x - point.x : point.x > rect.right ? point.x - rect.right : 0;
+  const dy = point.y < rect.y ? rect.y - point.y : point.y > rect.bottom ? point.y - rect.bottom : 0;
+  return dx * dx + dy * dy;
+}
+
+/** Chooses the Canvas that should receive a shape dragged across artboards. */
+export function canvasForCreation(
+  targets: readonly CanvasCreationTarget[],
+  draft: CanvasClientRect,
+  release: { x: number; y: number },
+): string | null {
+  const intersecting = targets.filter((target) => rectsIntersect(target.rect, draft));
+  if (intersecting.length === 0) return null;
+  if (intersecting.length === 1) return intersecting[0]!.id;
+  return (
+    intersecting.find(
+      ({ rect }) =>
+        release.x >= rect.x &&
+        release.x <= rect.right &&
+        release.y >= rect.y &&
+        release.y <= rect.bottom,
+    )?.id ??
+    intersecting.reduce((closest, target) =>
+      distanceToRect(release, target.rect) < distanceToRect(release, closest.rect)
+        ? target
+        : closest,
+    ).id
+  );
+}
+
 export function rankForInsertion(ranks: readonly string[], index: number): string {
   const sorted = [...ranks].sort((left, right) => left.localeCompare(right));
   if (sorted.length === 0) return "a";
