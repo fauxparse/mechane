@@ -203,7 +203,7 @@ const TEXT_OVERFLOW_OPTIONS = [
 ] as const satisfies readonly { label: string; value: TextOverflow }[];
 
 export const TextSection = () => {
-  const { target, common, update, variables } = useCanvasInspectorContext();
+  const { selected, common, update, variables } = useCanvasInspectorContext();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogDraft, setDialogDraft] = useState("");
   const googleFontsQuery = useGoogleFonts();
@@ -261,7 +261,7 @@ export const TextSection = () => {
   const textAlign = common("textAlign") as string | undefined;
   const textVerticalAlign = common("textVerticalAlign") as string | undefined;
   const textOverflow = common("textOverflow") as TextOverflow | undefined;
-  if (target.type !== "text") return null;
+  if (selected.length === 0 || !selected.every((element) => element.type === "text")) return null;
 
   return (
     <>

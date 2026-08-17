@@ -110,6 +110,26 @@ const imageRoot: FrameElement = {
     },
   ],
 };
+
+const mixedImageRoot: FrameElement = {
+  ...imageRoot,
+  id: "mixed-image-root",
+  name: "Mixed images",
+  children: imageRoot.children?.flatMap((child) => [
+    {
+      ...child,
+      id: "image-1",
+      objectFit: "cover",
+      objectPosition: "left top",
+    },
+    {
+      ...child,
+      id: "image-2",
+      objectFit: "contain",
+      objectPosition: "right bottom",
+    },
+  ]),
+};
 const longTextRoot: FrameElement = {
   ...absoluteRoot,
   id: "long-text-root",
@@ -446,6 +466,30 @@ export const Stroke: Story = {
       initialSelection={{ artId: ART_ID, elementIds: ["card"] }}
     />
   ),
+};
+
+export const MixedImageSelection: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(mixedImageRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: ["image-1", "image-2"] }}
+      storyImageAssets={imageAssets}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const fit = canvasElement.querySelector<HTMLElement>('[aria-label="Object fit"]');
+    if (!fit?.textContent?.trim().startsWith("Mixed"))
+      throw new Error("Object fit should be mixed");
+    const position = canvasElement.querySelector<HTMLElement>(
+      '[aria-label="Mixed object position"]',
+    );
+    if (!position) throw new Error("Object position should be mixed");
+    const reset = Array.from(canvasElement.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Reset",
+    );
+    if (!(reset instanceof HTMLButtonElement) || !reset.disabled)
+      throw new Error("Reset should be disabled for mixed images");
+  },
 };
 
 export const AsymmetricCornerRadius: Story = {

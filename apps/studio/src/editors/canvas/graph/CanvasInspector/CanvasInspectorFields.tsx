@@ -131,19 +131,25 @@ type SizeFieldProps = {
 };
 
 export const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldProps) => {
-  const { target, variables, inspectorPreview, currentDimensions, update } =
+  const { target, selected, common, variables, inspectorPreview, currentDimensions, update } =
     useCanvasInspectorContext();
-  const size = target.sizing?.[axis];
+  const size = common(`sizing.${axis}`) as AxisSize | undefined;
+  const sizeMixed =
+    size === undefined && selected.some((element) => element.sizing?.[axis] !== undefined);
   const updateSize = (next: AxisSize) => {
     update({ sizing: { ...target.sizing, [axis]: next } });
   };
   const previewValue =
-    inspectorPreview?.elementId === target.id ? inspectorPreview[axis] : undefined;
+    selected.length === 1 && inspectorPreview?.elementId === target.id
+      ? inspectorPreview[axis]
+      : undefined;
   const currentValue =
     previewValue ??
-    (currentDimensions?.elementId === target.id ? currentDimensions[axis] : undefined);
+    (selected.length === 1 && currentDimensions?.elementId === target.id
+      ? currentDimensions[axis]
+      : undefined);
   const previewing = previewValue !== undefined;
-  const mode = previewing ? "fixed" : (size?.mode ?? "hug");
+  const mode = previewing ? "fixed" : sizeMixed ? undefined : (size?.mode ?? "hug");
   const unit = previewing
     ? "px"
     : size?.value &&
@@ -160,9 +166,15 @@ export const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldPr
       type="number"
       dimension={axis}
       unit={unit}
-      placeholder={mode === "fill" ? "Fill" : mode === "hug" ? "Hug" : undefined}
+      placeholder={
+        sizeMixed ? "Mixed" : mode === "fill" ? "Fill" : mode === "hug" ? "Hug" : undefined
+      }
       value={
-        previewing ? literalValue("number", previewValue) : sizeInputValue(size, sizeVariables)
+        previewing
+          ? literalValue("number", previewValue)
+          : sizeMixed
+            ? null
+            : sizeInputValue(size, sizeVariables)
       }
       sizing={mode}
       variables={sizeVariables}
@@ -170,18 +182,18 @@ export const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldPr
       constraints={constraints}
       onConstraintToggle={onConstraintToggle}
       onSizingChange={(nextMode) => {
-        updateSize(sizingForMode(size, nextMode, currentValue));
+        updateSize(sizingForMode(sizeMixed ? undefined : size, nextMode, currentValue));
       }}
       onChange={(next: PropertyInputValue | null) => {
         if (isVariableInput(next)) {
           updateSize({
-            ...size,
+            ...(sizeMixed ? {} : size),
             mode: "fixed",
             value: { kind: "variable", variableId: next.id },
           });
         } else if (next?.kind === "number") {
           updateSize({
-            ...size,
+            ...(sizeMixed ? {} : size),
             mode: "fixed",
             value: unit === "%" ? { value: next.value, unit } : next.value,
           });

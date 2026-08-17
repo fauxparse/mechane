@@ -32,10 +32,28 @@ export const LayoutSection = () => {
   const isFrame = selected.length > 0 && selected.every(isContainerElement);
   const isText = selected.length > 0 && selected.every((element) => element.type === "text");
   const frame = isFrame ? (target as FrameElement) : null;
-  const paddingTarget = isFrame || isText ? (target as FrameElement | TextElement) : null;
-  const hasAutoLayout = isFrame && common("layoutMode") === "auto";
+  const canEditPadding = isFrame || isText;
+  const layoutMode = common("layoutMode");
+  const layoutModeMixed =
+    isFrame &&
+    layoutMode === undefined &&
+    selected.some((element) => Reflect.get(element, "layoutMode") !== undefined);
+  const hasAutoLayout = isFrame && layoutMode === "auto";
+  const direction = common("direction") === "vertical" ? "vertical" : "horizontal";
+  const gap = common("gap");
+  const gapMixed =
+    isFrame &&
+    gap === undefined &&
+    selected.some((element) => Reflect.get(element, "gap") !== undefined);
   const selectionKey = `${focused?.artId ?? ""}:${selected.map((element) => element.id).join(",")}`;
+  const alignPrimary = common("alignPrimary") ?? common("primaryAlign");
+  const alignCounter = common("alignCounter") ?? common("counterAlign");
   const clipChildren = common("clip");
+  const padding = common("padding") as PaddingValue;
+  const paddingMixed =
+    canEditPadding &&
+    padding === undefined &&
+    selected.some((element) => Reflect.get(element, "padding") !== undefined);
 
   return (
     <Section label="Layout">
@@ -45,7 +63,15 @@ export const LayoutSection = () => {
           <ToggleGroup
             className="w-full rounded-sm *:grow"
             spacing={0}
-            value={[frame.layoutMode === "auto" ? (frame.direction ?? "horizontal") : "absolute"]}
+            value={[
+              layoutModeMixed
+                ? ""
+                : layoutMode === "auto"
+                  ? direction
+                  : layoutMode === undefined
+                    ? "absolute"
+                    : "",
+            ]}
             onValueChange={([value]) => {
               switch (value) {
                 case "horizontal":
@@ -71,24 +97,28 @@ export const LayoutSection = () => {
             <>
               <AlignmentSelector
                 className="row-span-2"
-                direction={frame.direction ?? "horizontal"}
-                alignPrimary={frame.alignPrimary ?? "start"}
-                alignCounter={frame.alignCounter ?? "start"}
-                auto={frame.gap === "auto"}
+                direction={direction}
+                alignPrimary={
+                  alignPrimary === "center" || alignPrimary === "end" ? alignPrimary : "start"
+                }
+                alignCounter={
+                  alignCounter === "center" || alignCounter === "end" ? alignCounter : "start"
+                }
+                auto={gap === "auto"}
                 onChange={(props) => update(props)}
               />
               <PropertyInput
                 className="col-start-1"
                 type="number"
-                icon={frame.direction === "vertical" ? GapVerticalIcon : GapHorizontalIcon}
+                icon={direction === "vertical" ? GapVerticalIcon : GapHorizontalIcon}
                 value={
-                  frame.gap === "auto"
+                  gapMixed || gap === "auto"
                     ? null
-                    : { kind: "number", value: typeof frame.gap === "number" ? frame.gap : 0 }
+                    : { kind: "number", value: typeof gap === "number" ? gap : 0 }
                 }
-                placeholder={frame.gap === "auto" ? "Auto" : undefined}
+                placeholder={gapMixed ? "Mixed" : gap === "auto" ? "Auto" : undefined}
                 allowAuto
-                auto={frame.gap === "auto"}
+                auto={gap === "auto"}
                 onAutoChange={(auto) => update({ gap: auto ? "auto" : 0 })}
                 onChange={(next) => {
                   if (!isVariableInput(next) && next?.kind === "number")
@@ -97,7 +127,12 @@ export const LayoutSection = () => {
               />
             </>
           )}
-          <PaddingControl key={selectionKey} padding={frame.padding} update={update} />
+          <PaddingControl
+            key={selectionKey}
+            padding={padding}
+            mixed={paddingMixed}
+            update={update}
+          />
           <div className="col-span-2">
             <label className="flex items-center gap-2 w-fit">
               <Switch
@@ -111,8 +146,8 @@ export const LayoutSection = () => {
           </div>
         </>
       )}
-      {paddingTarget && !frame && (
-        <PaddingControl key={selectionKey} padding={paddingTarget.padding} update={update} />
+      {canEditPadding && !frame && (
+        <PaddingControl key={selectionKey} padding={padding} mixed={paddingMixed} update={update} />
       )}
     </Section>
   );
@@ -141,16 +176,19 @@ const hasAsymmetricPadding = (padding: PaddingValue): boolean => {
 const PaddingInput = ({
   icon,
   value,
+  mixed = false,
   onChange,
 }: {
   icon: LucideIcon;
   value: number;
+  mixed?: boolean;
   onChange: (value: number) => void;
 }) => (
   <PropertyInput
     icon={icon}
     type="number"
-    value={{ kind: "number", value }}
+    value={mixed ? undefined : { kind: "number", value }}
+    placeholder={mixed ? "Mixed" : undefined}
     min={0}
     onChange={(next) => {
       if (!isVariableInput(next) && next?.kind === "number") onChange(next.value);
@@ -160,9 +198,11 @@ const PaddingInput = ({
 
 const PaddingControl = ({
   padding,
+  mixed = false,
   update,
 }: {
   padding: PaddingValue;
+  mixed?: boolean;
   update: (properties: Record<string, unknown>) => void;
 }) => {
   const [expanded, setExpanded] = useState(() => hasAsymmetricPadding(padding));
@@ -177,11 +217,13 @@ const PaddingControl = ({
         <PaddingInput
           icon={PaddingLeftIcon}
           value={values.left}
+          mixed={mixed}
           onChange={(value) => updatePadding({ left: value })}
         />
         <PaddingInput
           icon={PaddingTopIcon}
           value={values.top}
+          mixed={mixed}
           onChange={(value) => updatePadding({ top: value })}
         />
         <Toggle
@@ -203,11 +245,13 @@ const PaddingControl = ({
         <PaddingInput
           icon={PaddingRightIcon}
           value={values.right}
+          mixed={mixed}
           onChange={(value) => updatePadding({ right: value })}
         />
         <PaddingInput
           icon={PaddingBottomIcon}
           value={values.bottom}
+          mixed={mixed}
           onChange={(value) => updatePadding({ bottom: value })}
         />
       </div>
@@ -219,11 +263,13 @@ const PaddingControl = ({
       <PaddingInput
         icon={PaddingHorizontalIcon}
         value={values.left}
+        mixed={mixed}
         onChange={(value) => updatePadding({ left: value, right: value })}
       />
       <PaddingInput
         icon={PaddingVerticalIcon}
         value={values.top}
+        mixed={mixed}
         onChange={(value) => updatePadding({ top: value, bottom: value })}
       />
       <Toggle

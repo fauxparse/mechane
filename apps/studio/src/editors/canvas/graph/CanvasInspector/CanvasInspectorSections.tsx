@@ -8,11 +8,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  ToggleGroup,
-  ToggleGroupItem,
 } from "@mechane/design-system";
 
 import { canvasDisplayName, canvasElementDisplayName } from "../../data/canvas-names";
@@ -20,7 +15,8 @@ import { elementIconFor } from "../utils";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { ImageAssetPicker } from "./ImageAssetPicker";
-import { PropertyField } from "./CanvasInspectorFields";
+import { ObjectPositionSelector } from "./ObjectPositionSelector";
+import { Section, SectionRow } from "./Section";
 export const InspectorHeader = () => {
   const { focused, elements } = useCanvasInspectorContext();
   const Icon = elementIconFor(elements.map((element) => element.type));
@@ -42,11 +38,9 @@ export const InspectorHeader = () => {
 };
 
 const OBJECT_FIT_OPTIONS: readonly { value: ObjectFit; label: string }[] = [
-  { value: "cover", label: "Cover" },
-  { value: "contain", label: "Contain" },
-  { value: "fill", label: "Fill" },
-  { value: "none", label: "None" },
-  { value: "scale-down", label: "Scale down" },
+  { value: "cover", label: "Fill" },
+  { value: "contain", label: "Fit" },
+  { value: "none", label: "Crop" },
 ];
 
 const OBJECT_POSITION_OPTIONS: readonly {
@@ -68,41 +62,59 @@ const positionValue = (value: unknown): Exclude<ObjectPosition, "center"> => {
   if (value === "center") return "center center";
   return OBJECT_POSITION_OPTIONS.find((option) => option.value === value)?.value ?? "center center";
 };
+const imageReferenceFor = (value: unknown): { assetId: string; revision: string } | null => {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    isPropertyConnection(value) ||
+    !("assetId" in value) ||
+    !("revision" in value) ||
+    typeof value.assetId !== "string" ||
+    typeof value.revision !== "string"
+  ) {
+    return null;
+  }
+  return { assetId: value.assetId, revision: value.revision };
+};
 
 export const ImageSection = () => {
-  const { target, update, common, imageAssets, onImageUpload } = useCanvasInspectorContext();
+  const { selected, update, common, imageAssets, onImageUpload } = useCanvasInspectorContext();
   const [pickerOpen, setPickerOpen] = useState(false);
-  if (target.type !== "image") return null;
-  const hasImage = target.image !== undefined && target.image !== null;
-  const objectFitValue =
-    OBJECT_FIT_OPTIONS.find((option) => option.value === common("objectFit"))?.value ?? "cover";
-  const objectPositionValue = positionValue(common("objectPosition"));
-  const imageReference =
-    target.image &&
-    typeof target.image === "object" &&
-    !isPropertyConnection(target.image) &&
-    "assetId" in target.image &&
-    "revision" in target.image &&
-    typeof target.image.assetId === "string" &&
-    typeof target.image.revision === "string"
-      ? target.image
-      : null;
-  const intrinsicAsset = imageReference
+  const allImages = selected.length > 0 && selected.every((element) => element.type === "image");
+  if (!allImages) return null;
+
+  const rawObjectFit = common("objectFit");
+  const objectFitMixed =
+    rawObjectFit === undefined &&
+    selected.some((element) => Reflect.get(element, "objectFit") !== undefined);
+  const objectFitValue = objectFitMixed
+    ? null
+    : (OBJECT_FIT_OPTIONS.find((option) => option.value === rawObjectFit)?.value ?? "cover");
+  const rawObjectPosition = common("objectPosition");
+  const objectPositionMixed =
+    rawObjectPosition === undefined &&
+    selected.some((element) => Reflect.get(element, "objectPosition") !== undefined);
+  const objectPositionValue = objectPositionMixed ? undefined : positionValue(rawObjectPosition);
+  const hasImage = selected.some((element) => {
+    const image = Reflect.get(element, "image");
+    return image !== undefined && image !== null;
+  });
+  const sharedImage = selected.length === 1 ? imageReferenceFor(common("image")) : null;
+  const intrinsicAsset = sharedImage
     ? imageAssets.find(
-        (asset) =>
-          asset.id === imageReference.assetId && asset.revision === imageReference.revision,
+        (asset) => asset.id === sharedImage.assetId && asset.revision === sharedImage.revision,
       )
     : undefined;
 
   return (
     <>
-      <SidebarGroup>
-        <SidebarGroupLabel>Image</SidebarGroupLabel>
-        <SidebarGroupContent className="grid gap-2 p-3">
-          <Button variant="outline" className="w-full" onClick={() => setPickerOpen(true)}>
-            {hasImage ? "Change image" : "Choose image"}
-          </Button>
-          <PropertyField name="alt" />
+      <Section label="Image">
+        <SectionRow>
+          <ObjectPositionSelector
+            className="col-start-1 row-start-1 row-span-2"
+            value={objectPositionValue}
+            onChange={(value) => update({ objectPosition: value })}
+          />
           <Select
             value={objectFitValue}
             onValueChange={(value) => {
@@ -111,10 +123,16 @@ export const ImageSection = () => {
           >
             <SelectTrigger
               aria-label="Object fit"
-              className="w-full rounded-sm border-0 bg-muted/50 px-2"
+              className="w-full rounded-sm border-0 bg-muted/50 px-2 row-start-1 col-start-2"
               size="sm"
             >
-              <SelectValue />
+              <SelectValue
+                placeholder={
+                  objectFitMixed
+                    ? "Mixed"
+                    : OBJECT_FIT_OPTIONS.find((option) => option.value === objectFitValue)?.label
+                }
+              />
             </SelectTrigger>
             <SelectContent>
               {OBJECT_FIT_OPTIONS.map((option) => (
@@ -124,45 +142,32 @@ export const ImageSection = () => {
               ))}
             </SelectContent>
           </Select>
-          <ToggleGroup
-            aria-label="Object position"
-            className="grid h-20 w-full grid-cols-3 grid-rows-3 gap-0 rounded-sm bg-muted/50 p-0"
-            value={[objectPositionValue]}
-            onValueChange={([value]) => {
-              if (value) update({ objectPosition: value as ObjectPosition });
-            }}
-          >
-            {OBJECT_POSITION_OPTIONS.map((option) => (
-              <ToggleGroupItem
-                key={option.value}
-                value={option.value}
-                aria-label={`Object position: ${option.label}`}
-                title={option.label}
-                className="group/image-position h-auto min-w-0 rounded-none border-0 bg-transparent p-0 hover:bg-transparent aria-pressed:bg-transparent"
-              >
-                <span className="size-1.5 rounded-full bg-foreground opacity-25 group-aria-pressed/image-position:opacity-100" />
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
           <Button
+            size="sm"
             variant="outline"
-            className="w-full"
+            className="w-full col-start-2"
             disabled={!intrinsicAsset}
             onClick={() => {
-              if (!intrinsicAsset) return;
+              if (!intrinsicAsset || selected.length !== 1) return;
+              const current = selected[0]!;
               update({
                 sizing: {
-                  ...target.sizing,
+                  ...current.sizing,
                   width: { mode: "fixed", value: intrinsicAsset.width },
                   height: { mode: "fixed", value: intrinsicAsset.height },
                 },
+                objectFit: "cover",
+                objectPosition: "center center",
               });
             }}
           >
-            Reset to intrinsic size
+            Reset
           </Button>
-        </SidebarGroupContent>
-      </SidebarGroup>
+        </SectionRow>
+        <Button variant="outline" className="w-full" onClick={() => setPickerOpen(true)}>
+          {hasImage ? "Change image" : "Choose image"}
+        </Button>
+      </Section>
       <ImageAssetPicker
         open={pickerOpen}
         onOpenChange={setPickerOpen}
