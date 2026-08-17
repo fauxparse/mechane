@@ -6,6 +6,7 @@
 import { CanvasEditError } from "@mechane/commands";
 import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
 import {
+  DEFAULT_IMAGE_UPLOAD_POLICY,
   assertOwnedBy,
   assertValidGraphState,
   assertValidShowName,
@@ -27,13 +28,22 @@ import { db } from "../db/client";
 import { readCanvas, readCanvasWorkspace } from "../db/canvas";
 import { withUniqueId } from "../db/ids";
 import { endRun, readActiveRun, startRun } from "../db/runs";
-import { shows, userSettings } from "../db/schema";
 import {
   applyShowEdits as applyShowEditsToDb,
   GraphVersionConflictError,
   publishShowGraph,
   readShowGraph,
 } from "../db/show-graph";
+import {
+  commitBlob,
+  imageDeliveryUrl,
+  listImageAssets,
+  toImageAsset,
+} from "../db/images";
+import { blobUploadSessions, imageAssets, shows, userSettings } from "../db/schema";
+import { blobStore } from "../storage/blob-store";
+import { ImageProcessingError, processImage } from "../images";
+import { randomUUID } from "node:crypto";
 import { requireUserId } from "./context";
 import type { GraphQLContext } from "./context";
 import {
@@ -119,6 +129,29 @@ function validGraphState(value: string): GraphState {
   }
 }
 
+function imageUploadError(error: unknown): never {
+  if (error instanceof ImageProcessingError) {
+    throw new GraphQLError(error.message, { extensions: { code: error.code } });
+  }
+  throw error;
+}
+
+function imageUploadSession(session: typeof blobUploadSessions.$inferSelect) {
+  return {
+    id: session.id,
+    expiresAt: session.expiresAt.toISOString(),
+    constraints: DEFAULT_IMAGE_UPLOAD_POLICY,
+    plan: {
+      method: "PUT",
+      url: `/api/uploads/${encodeURIComponent(session.id)}`,
+      requiredHeaders: {
+        "content-type": session.declaredMimeType,
+        "content-length": String(session.byteLength),
+      },
+    },
+  };
+}
+
 async function findOwnShowOrThrow(id: string, userId: string) {
   // A malformed id can't match any row, so don't ask the database — but
   // report it the same way a missing row is reported, since telling the
@@ -185,6 +218,12 @@ export const schema = createSchema<GraphQLContext>({
       id: ID!
       name: String!
       type: Type
+      suggestedDimensions: SuggestedImageDimensions
+    }
+
+    type SuggestedImageDimensions {
+      width: Int!
+      height: Int!
     }
 
     scalar JSON
@@ -212,7 +251,13 @@ export const schema = createSchema<GraphQLContext>({
       value: Boolean!
     }
     type ImageValue {
-      value: String!
+      assetId: ID!
+      url: String!
+      width: Int!
+      height: Int!
+      alt: String!
+      mimeType: String!
+      blurHash: String
     }
     type ColorValue {
       value: String!
@@ -240,11 +285,15 @@ export const schema = createSchema<GraphQLContext>({
       | ObjectValue
       | ArrayValue
 
+    input ImageValueInput {
+      assetId: ID!
+    }
+
     input ShapeValueInput @oneOf {
       text: String
       number: Float
       boolean: Boolean
-      image: String
+      image: ImageValueInput
       color: String
       date: String
       datetime: String
@@ -512,9 +561,7 @@ export const schema = createSchema<GraphQLContext>({
       stroke: JSON
       anchor: JSON
       children: [Element!]!
-      src: JSON
       image: JSON
-      source: JSON
       alt: JSON
       objectFit: JSON
     }
@@ -552,10 +599,16 @@ export const schema = createSchema<GraphQLContext>({
       y: Float!
     }
 
+    input SuggestedImageDimensionsInput {
+      width: Int!
+      height: Int!
+    }
+
     input SceneVariableInput {
       id: ID!
       name: String!
       type: TypeInput
+      suggestedDimensions: SuggestedImageDimensionsInput
     }
 
     input GraphNodeInput {
@@ -684,6 +737,46 @@ export const schema = createSchema<GraphQLContext>({
       amendments: [GraphEdit!]!
     }
 
+    type ImageUploadConstraints {
+      maxSourceBytes: Int!
+      maxPixels: Int!
+      maxAxis: Int!
+      maxNormalizedBytes: Int!
+      sessionTtlMs: Int!
+      candidateTtlMs: Int!
+    }
+
+    type ImageUploadPlan {
+      method: String!
+      url: String!
+      requiredHeaders: JSON!
+    }
+
+    type ImageUploadSession {
+      id: ID!
+      expiresAt: String!
+      constraints: ImageUploadConstraints!
+      plan: ImageUploadPlan!
+    }
+
+    type ImageUploadCandidate {
+      sessionId: ID!
+      digest: String!
+      byteLength: Int!
+      mimeType: String!
+    }
+
+    type ImageAsset {
+      id: ID!
+      revision: String!
+      url: String!
+      width: Int!
+      height: Int!
+      mimeType: String!
+      alt: String!
+      blurHash: String
+    }
+
     type Query {
       "The signed-in user, or null if the request has no valid session."
       me: User
@@ -695,38 +788,29 @@ export const schema = createSchema<GraphQLContext>({
       userSettings: UserSettings!
       "The active Run for a Show, or null when the Show is stopped."
       activeRun(showId: ID!): Run
-      """
-      A Show's graph in the given state (default "draft"). A Show that has
-      never been edited or published reads as an empty graph — a Show with
-      no Flows at all is valid (issue #25).
-      """
       showGraph(showId: ID!, state: String): ShowGraph!
-      "All persisted Scene and Block Canvases in one Show workspace."
       showCanvases(showId: ID!, state: String): [Canvas!]!
-      "The Canvas owned by a Scene node, or null before it is created."
       sceneCanvas(showId: ID!, sceneNodeId: ID!, state: String): Canvas
-      "The Canvas owned by a Block definition, or null before it is created."
       blockCanvas(showId: ID!, blockId: ID!, state: String): Canvas
+      imageAssets(showId: ID!): [ImageAsset!]!
     }
 
     type Mutation {
-      "Creates a new Show owned by the signed-in user."
       createShow(name: String!): Show!
-      "Renames a Show owned by the signed-in user."
       renameShow(id: ID!, name: String!): Show!
-      "Deletes a Show owned by the signed-in user. Returns true on success."
       deleteShow(id: ID!): Boolean!
-      "Updates the signed-in user's theme settings. Omitted fields are left unchanged."
       updateUserSettings(themeMode: String, themePalette: String): UserSettings!
-      "Applies graph and Canvas edits against one shared draft Show version."
       applyShowEdits(showId: ID!, baseVersion: Int!, edits: [ShowEditInput!]!): AppliedShowEdits!
-      "Publishes a Show's draft graph, making it the published graph immediately (ADR-0002)."
       publishShowGraph(showId: ID!): ShowGraph!
-      "Ends the active Run, if one exists."
       endRun(showId: ID!): Run
-      "Ends the previous Run and starts a new one with reset Source values."
       startRun(showId: ID!): Run!
+      beginImageUpload(showId: ID!, mimeType: String!, byteLength: Int!): ImageUploadSession!
+      completeImageUpload(sessionId: ID!): ImageUploadCandidate!
+      finalizeImageUpload(sessionId: ID!, alt: String): ImageAsset!
+      abortImageUpload(sessionId: ID!): Boolean!
+      deleteImageAsset(showId: ID!, assetId: ID!): Boolean!
     }
+
   `,
   resolvers: {
     JSON: new GraphQLScalarType({
@@ -750,6 +834,59 @@ export const schema = createSchema<GraphQLContext>({
     },
     Element: {
       __resolveType: resolveCanvasElementType,
+    },
+    ImageValue: {
+      assetId: (value: { value: { assetId: string } }) => value.value.assetId,
+      url: async (value: { value: { assetId: string; revision: string } }) => {
+        const asset = await db
+          .select()
+          .from(imageAssets)
+          .where(
+            and(
+              eq(imageAssets.id, value.value.assetId),
+              eq(imageAssets.revision, value.value.revision),
+              eq(imageAssets.state, "active"),
+            ),
+          )
+          .then(([row]) => row);
+        if (!asset) throw new GraphQLError("Image asset not found.", { extensions: { code: "NOT_FOUND" } });
+        return imageDeliveryUrl(asset.id, asset.revision);
+      },
+      width: async (value: { value: { assetId: string; revision: string } }) => {
+        const [asset] = await db
+          .select({ width: imageAssets.width })
+          .from(imageAssets)
+          .where(and(eq(imageAssets.id, value.value.assetId), eq(imageAssets.revision, value.value.revision)));
+        return asset?.width ?? 0;
+      },
+      height: async (value: { value: { assetId: string; revision: string } }) => {
+        const [asset] = await db
+          .select({ height: imageAssets.height })
+          .from(imageAssets)
+          .where(and(eq(imageAssets.id, value.value.assetId), eq(imageAssets.revision, value.value.revision)));
+        return asset?.height ?? 0;
+      },
+      alt: async (value: { value: { assetId: string; revision: string } }) => {
+        const [asset] = await db
+          .select({ alt: imageAssets.alt })
+          .from(imageAssets)
+          .where(and(eq(imageAssets.id, value.value.assetId), eq(imageAssets.revision, value.value.revision)));
+        return asset?.alt ?? "";
+      },
+      mimeType: async (value: { value: { assetId: string; revision: string } }) => {
+        const [asset] = await db
+          .select({ mimeType: imageAssets.mimeType })
+          .from(imageAssets)
+          .where(and(eq(imageAssets.id, value.value.assetId), eq(imageAssets.revision, value.value.revision)));
+        return asset?.mimeType ?? "application/octet-stream";
+      },
+      blurHash: async (value: { value: { assetId: string; revision: string } }) => {
+        const [asset] = await db
+          .select({ blurHash: imageAssets.blurHash })
+          .from(imageAssets)
+          .where(and(eq(imageAssets.id, value.value.assetId), eq(imageAssets.revision, value.value.revision)));
+        return asset?.blurHash ?? null;
+      },
     },
     GraphEdge: {
       __resolveType: resolveGraphEdgeType,
@@ -857,6 +994,11 @@ export const schema = createSchema<GraphQLContext>({
         const graphState = validGraphState(state ?? "draft");
         const canvas = await readCanvas(showId, graphState, { blockId });
         return canvas ? serializeCanvas(canvas) : null;
+      },
+      imageAssets: async (_parent, { showId }: { showId: string }, context) => {
+        const userId = requireUserId(context);
+        await findOwnShowOrThrow(showId, userId);
+        return listImageAssets(showId);
       },
     },
     Mutation: {
@@ -975,6 +1117,129 @@ export const schema = createSchema<GraphQLContext>({
         const userId = requireUserId(context);
         await findOwnShowOrThrow(showId, userId);
         return serializeShowGraph(await publishShowGraph(showId));
+      },
+      beginImageUpload: async (
+        _parent,
+        { showId, mimeType, byteLength }: { showId: string; mimeType: string; byteLength: number },
+        context,
+      ) => {
+        const userId = requireUserId(context);
+        await findOwnShowOrThrow(showId, userId);
+        if (!Number.isInteger(byteLength) || byteLength < 1) {
+          throw new GraphQLError("byteLength must be a positive integer.", {
+            extensions: { code: "BAD_USER_INPUT" },
+          });
+        }
+        const id = randomUUID();
+        const expiresAt = new Date(Date.now() + DEFAULT_IMAGE_UPLOAD_POLICY.sessionTtlMs);
+        const [session] = await db
+          .insert(blobUploadSessions)
+          .values({ id, userId, showId, expiresAt, declaredMimeType: mimeType, byteLength })
+          .returning();
+        if (!session) throw new GraphQLError("Upload session could not be created.");
+        return imageUploadSession(session);
+      },
+      completeImageUpload: async (
+        _parent,
+        { sessionId }: { sessionId: string },
+        context,
+      ) => {
+        const userId = requireUserId(context);
+        const [session] = await db
+          .select()
+          .from(blobUploadSessions)
+          .where(and(eq(blobUploadSessions.id, sessionId), eq(blobUploadSessions.userId, userId)));
+        if (!session) throw new GraphQLError("Upload session not found.", { extensions: { code: "NOT_FOUND" } });
+        if (session.expiresAt <= new Date()) {
+          throw new GraphQLError("Upload session expired.", { extensions: { code: "SESSION_EXPIRED" } });
+        }
+        try {
+          const bytes = await blobStore.readUpload(sessionId);
+          if (bytes.byteLength !== session.byteLength) {
+            throw new ImageProcessingError("INTEGRITY_MISMATCH", "Uploaded byte count does not match the declared length.");
+          }
+          const processed = processImage(bytes, session.declaredMimeType ?? "application/octet-stream");
+          await db
+            .update(blobUploadSessions)
+            .set({ state: "candidate", candidateDigest: processed.digest })
+            .where(eq(blobUploadSessions.id, sessionId));
+          return {
+            sessionId,
+            digest: processed.digest,
+            byteLength: processed.byteLength,
+            mimeType: processed.mimeType,
+          };
+        } catch (error) {
+          return imageUploadError(error);
+        }
+      },
+      finalizeImageUpload: async (
+        _parent,
+        { sessionId, alt }: { sessionId: string; alt?: string | null },
+        context,
+      ) => {
+        const userId = requireUserId(context);
+        const [session] = await db
+          .select()
+          .from(blobUploadSessions)
+          .where(and(eq(blobUploadSessions.id, sessionId), eq(blobUploadSessions.userId, userId)));
+        if (!session || !session.candidateDigest) {
+          throw new GraphQLError("Upload candidate not found.", { extensions: { code: "NOT_FOUND" } });
+        }
+        const [existing] = await db
+          .select()
+          .from(imageAssets)
+          .where(and(eq(imageAssets.showId, session.showId), eq(imageAssets.blobDigest, session.candidateDigest)));
+        if (existing) return toImageAsset(existing);
+        try {
+          const bytes = await blobStore.readUpload(sessionId);
+          const processed = processImage(bytes, session.declaredMimeType ?? "application/octet-stream");
+          await commitBlob(processed);
+          await blobStore.commitUpload(sessionId, processed);
+          const [asset] = await db
+            .insert(imageAssets)
+            .values({
+              showId: session.showId,
+              blobDigest: processed.digest,
+              revision: processed.digest,
+              width: processed.width,
+              height: processed.height,
+              mimeType: processed.mimeType,
+              alt: alt ?? "",
+              blurHash: processed.blurHash,
+            })
+            .returning();
+          if (!asset) throw new GraphQLError("Image asset could not be created.");
+          await db
+            .update(blobUploadSessions)
+            .set({ state: "finalized" })
+            .where(eq(blobUploadSessions.id, sessionId));
+          return toImageAsset(asset);
+        } catch (error) {
+          return imageUploadError(error);
+        }
+      },
+      abortImageUpload: async (_parent, { sessionId }: { sessionId: string }, context) => {
+        const userId = requireUserId(context);
+        await db
+          .update(blobUploadSessions)
+          .set({ state: "aborted" })
+          .where(and(eq(blobUploadSessions.id, sessionId), eq(blobUploadSessions.userId, userId)));
+        await blobStore.deleteUpload(sessionId);
+        return true;
+      },
+      deleteImageAsset: async (
+        _parent,
+        { showId, assetId }: { showId: string; assetId: string },
+        context,
+      ) => {
+        const userId = requireUserId(context);
+        await findOwnShowOrThrow(showId, userId);
+        await db
+          .update(imageAssets)
+          .set({ state: "deleted", deletedAt: new Date(), updatedAt: new Date() })
+          .where(and(eq(imageAssets.showId, showId), eq(imageAssets.id, assetId)));
+        return true;
       },
     },
   },

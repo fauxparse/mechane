@@ -26,9 +26,27 @@ export interface BooleanValue {
   kind: "boolean";
   value: boolean;
 }
+
+/** The persisted, opaque reference carried through graphs and Runs. */
+export interface ImageAssetReference {
+  assetId: string;
+  revision: string;
+}
+
+/** A resolved image value exposed at application/render boundaries. */
+export interface ResolvedImageValue {
+  assetId: string;
+  url: string;
+  width: number;
+  height: number;
+  alt: string;
+  mimeType: string;
+  blurHash: string | null;
+}
+
 export interface ImageValue {
   kind: "image";
-  value: string;
+  value: ImageAssetReference;
 }
 export interface ColorValue {
   kind: "color";
@@ -204,6 +222,34 @@ export function assertValidShape(shape: Shape, shapes: readonly Shape[] = [shape
 function shapeMap(shapes: readonly Shape[]): Map<string, Shape> {
   return new Map(shapes.map((shape) => [shape.id, shape]));
 }
+export function isImageAssetReference(value: unknown): value is ImageAssetReference {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.assetId === "string" &&
+    record.assetId.length > 0 &&
+    typeof record.revision === "string" &&
+    record.revision.length > 0
+  );
+}
+export function isResolvedImageValue(value: unknown): value is ResolvedImageValue {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.assetId === "string" &&
+    typeof record.url === "string" &&
+    typeof record.width === "number" &&
+    Number.isFinite(record.width) &&
+    record.width > 0 &&
+    typeof record.height === "number" &&
+    Number.isFinite(record.height) &&
+    record.height > 0 &&
+    typeof record.alt === "string" &&
+    typeof record.mimeType === "string" &&
+    (record.blurHash === null || typeof record.blurHash === "string")
+  );
+}
+
 
 /** Checks whether a JSON-like value conforms to a Type and its Shape references. */
 export function conformsToType(value: unknown, type: Type, shapes: readonly Shape[] = []): boolean {
@@ -225,14 +271,15 @@ export function assertValueConformsToType(
   if (typeof type === "string") {
     const valid =
       type === "text" ||
-      type === "image" ||
       type === "color" ||
       type === "date" ||
       type === "datetime"
         ? typeof value === "string"
-        : type === "number"
-          ? typeof value === "number" && Number.isFinite(value)
-          : typeof value === "boolean";
+        : type === "image"
+          ? isImageAssetReference(value) || isResolvedImageValue(value)
+          : type === "number"
+            ? typeof value === "number" && Number.isFinite(value)
+            : typeof value === "boolean";
     if (!valid) throw new InvalidShapeValueError(`${path} does not conform to ${type}.`);
     return;
   }

@@ -31,19 +31,20 @@ export interface SceneVariableInput {
   id: string;
   name: string;
   type?: TypeInput | null;
+  suggestedDimensions?: { width: number; height: number } | null;
 }
-
 export interface GraphNodeInput {
   id: string;
   kind: string;
   name: string;
   parentId?: string | null;
   defaultSceneId?: string | null;
-  position: PositionInput;
   type?: TypeInput | null;
+  position: PositionInput;
   variables?: SceneVariableInput[] | null;
   perConnection?: boolean | null;
 }
+
 
 export interface GraphEdgeInput {
   id: string;
@@ -130,7 +131,7 @@ function parseType(input: TypeInput | null | undefined): Type | undefined {
 
 function parseNode(input: GraphNodeInput): GraphNode {
   if (!isNodeKind(input.kind)) {
-    throw badInput(`Unknown node kind "${input.kind}" on node "${input.id}".`);
+    throw badInput(`Unknown graph node kind "${input.kind}" on node "${input.id}".`);
   }
   const base = {
     id: input.id,
@@ -149,13 +150,13 @@ function parseNode(input: GraphNodeInput): GraphNode {
           id: variable.id,
           name: variable.name,
           type: parseType(variable.type),
+          ...(variable.suggestedDimensions
+            ? { suggestedDimensions: variable.suggestedDimensions }
+            : {}),
         })),
       };
     case "flow":
       if (parentId !== null) {
-        // Caught again by the domain, but saying it in the client's own
-        // vocabulary ("you sent a parentId") is more use than the generic
-        // structural message.
         throw badInput(`Flow "${input.id}" was given a parentId; Flows are never nested.`);
       }
       return {
@@ -178,10 +179,6 @@ function parseNode(input: GraphNodeInput): GraphNode {
         kind: "device",
         parentId: null,
         perConnection: input.perConnection ?? false,
-        // Never taken from the client (#45): the code is minted and owned
-        // server-side, and `writeShowGraph` answers with the real one. A
-        // client that sends one is not lying so much as guessing, and
-        // either way the stored row wins.
         pairingCode: null,
       };
   }
@@ -276,7 +273,14 @@ export function parseGraphEdit(edit: GraphEditInput): GraphEdit {
       return {
         type: edit.type,
         sceneId: required(edit, "sceneId", edit.sceneId),
-        variable: { id: variable.id, name: variable.name },
+        variable: {
+          id: variable.id,
+          name: variable.name,
+          ...(variable.type ? { type: parseType(variable.type) } : {}),
+          ...(variable.suggestedDimensions
+            ? { suggestedDimensions: variable.suggestedDimensions }
+            : {}),
+        },
       };
     }
     case GRAPH_COMMAND_TYPES.renameSceneVariable:

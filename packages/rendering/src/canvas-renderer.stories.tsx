@@ -164,11 +164,19 @@ const primitiveCanvas: Canvas = {
       },
       {
         id: "image-card",
-        name: "Image using image fallback",
+        name: "Image using a resolved image value",
         type: "image",
         rank: "c",
-        image: sampleImage,
-        alt: "A stylized mountain landscape",
+        image: {
+          assetId: "i-demo",
+          revision: "demo",
+          url: sampleImage,
+          width: 320,
+          height: 180,
+          alt: "A stylized mountain landscape",
+          mimeType: "image/svg+xml",
+          blurHash: null,
+        },
         objectFit: "cover",
         aspectRatio: { ratio: 16 / 9, driver: "width" },
         sizing: {
@@ -560,7 +568,16 @@ const imageCanvas: Canvas = {
         {
           id: `image-${objectFit}-content`,
           type: "image" as const,
-          src: sampleImage,
+          image: {
+            assetId: "i-demo",
+            revision: "demo",
+            url: sampleImage,
+            width: 320,
+            height: 180,
+            alt: `Sample image using ${objectFit}`,
+            mimeType: "image/svg+xml",
+            blurHash: null,
+          },
           alt: `Sample image using ${objectFit}`,
           objectFit,
           sizing: {

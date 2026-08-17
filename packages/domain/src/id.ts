@@ -33,6 +33,7 @@ export const ID_PREFIXES = {
   scene: "c",
   block: "b",
   canvas: "a",
+  imageAsset: "i",
   // Show graph (issue #38). Nodes are identified by their kind rather than
   // by a single "node" prefix, so an id says what it points at without a
   // lookup — a Navigate edge's endpoints being `c…` ids is visible in a log
@@ -53,12 +54,12 @@ export type IdPrefix = (typeof ID_PREFIXES)[EntityName];
 // The reverse mapping, which exists to be type-checked rather than called.
 // If two entities above were given the same prefix, this object could no
 // longer name every entity, and the `satisfies` below would fail: the
-// collision surfaces at the point of adding the prefix.
 const ENTITY_BY_PREFIX = {
   s: "show",
   c: "scene",
   b: "block",
   a: "canvas",
+  i: "imageAsset",
   g: "graph",
   f: "flow",
   r: "source",
@@ -85,11 +86,11 @@ void _assertPrefixesAreUnique;
  * passing a `SceneId` where a `ShowId` is expected doesn't type-check.
  */
 export type Id<E extends EntityName> = string & { readonly __entity: E };
-
 export type ShowId = Id<"show">;
 export type SceneId = Id<"scene">;
 export type BlockId = Id<"block">;
 export type CanvasId = Id<"canvas">;
+export type ImageAssetId = Id<"imageAsset">;
 export type GraphId = Id<"graph">;
 export type FlowId = Id<"flow">;
 export type SourceId = Id<"source">;

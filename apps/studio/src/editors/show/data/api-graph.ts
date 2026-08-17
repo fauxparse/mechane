@@ -31,7 +31,12 @@ type ApiGraphNode = {
   sourceType?: ApiType;
   transformerType?: ApiType | null;
   fieldDefaults?: { fieldPath: string[]; value: unknown }[];
-  variables?: { id: string; name: string; type?: ApiType | null }[];
+  variables?: {
+    id: string;
+    name: string;
+    type?: ApiType | null;
+    suggestedDimensions?: { width: number; height: number } | null;
+  }[];
   perConnection?: boolean;
   pairingCode?: string | null;
 };
@@ -95,9 +100,12 @@ function toShape(shape: ApiShowGraph["shapes"][number]): Shape {
         name: field.name,
         type: toType(field.type),
         required: field.required,
-        defaultValue: field.default
-          ? (Object.entries(field.default).find(([key]) => key !== "__typename")?.[1] ?? null)
-          : null,
+        defaultValue:
+          field.default?.__typename === "ImageValue"
+            ? field.default
+            : field.default
+              ? (Object.entries(field.default).find(([key]) => key !== "__typename")?.[1] ?? null)
+              : null,
       })),
   };
 }
@@ -119,6 +127,9 @@ function toNode(node: ApiGraphNode): GraphNode {
           id: variable.id,
           name: variable.name,
           type: variable.type ? toType(variable.type as ApiType) : null,
+          ...(variable.suggestedDimensions
+            ? { suggestedDimensions: variable.suggestedDimensions }
+            : {}),
         })),
       };
     }

@@ -41,9 +41,7 @@ export const CanvasElementFields = graphql(`
       padding
     }
     ... on ImageElement {
-      src
       image
-      source
       alt
       objectFit
     }

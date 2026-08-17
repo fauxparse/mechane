@@ -4,6 +4,7 @@
  * Canvas is deliberately independent of React and storage. The API assembles
  * this tree from relational rows; studio and player consume the same value.
  */
+import type { ImageAssetReference, ResolvedImageValue } from "./shapes";
 import { isPropertyConnection } from "./property-values";
 import type { PropertyConnection, PropertyValue } from "./property-values";
 export const ELEMENT_KINDS = ["rect", "ellipse", "text", "image", "frame"] as const;
@@ -158,13 +159,10 @@ export interface TextElement extends ElementBase {
 
 export interface ImageElement extends ElementBase {
   type: "image";
-  src?: PropertyValue<string>;
-  image?: PropertyValue<string>;
-  source?: PropertyValue<string>;
+  image?: PropertyValue<ImageAssetReference | ResolvedImageValue>;
   alt?: PropertyValue<string>;
   objectFit?: PropertyValue<ObjectFit>;
 }
-
 export interface FrameElement extends CornerRadiusElement {
   type: "frame";
   layoutMode?: FrameLayoutMode;

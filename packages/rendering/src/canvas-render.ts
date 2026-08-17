@@ -14,6 +14,8 @@ export interface CanvasRendererProps {
   className?: string;
   style?: CSSProperties;
   editingElementId?: string | null;
+  imageLoading?: "eager" | "lazy";
+  onImageError?(elementId: string, url: string, event: unknown): void;
   onTextDoubleClick?(elementId: string, event: ReactMouseEvent<HTMLDivElement>): void;
   onTextKeyDown?(elementId: string, event: ReactKeyboardEvent<HTMLDivElement>): void;
 }

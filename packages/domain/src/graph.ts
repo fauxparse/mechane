@@ -50,12 +50,20 @@ export interface Position {
   y: number;
 }
 
-/** A named port on a Scene node. A wiring edge targets one of these. */
+/** Optional authoring defaults for Image Variables (#296). */
+export interface SuggestedImageDimensions {
+  width: number;
+  height: number;
+}
+
+/** A named port on a Scene. A wiring edge targets one of these. */
 export interface SceneVariable {
   id: string;
   name: string;
   /** The value type for this Variable, when defined (#107). */
   type?: Type | null;
+  /** Cover-crop defaults for image authoring; never asset identity. */
+  suggestedDimensions?: SuggestedImageDimensions;
 }
 
 interface BaseNode {
@@ -326,6 +334,28 @@ export function topLevelNodes(graph: ShowGraph): GraphNode[] {
  */
 export function deviceInstanceCardinality(device: DeviceNode): "one" | "perConnection" {
   return device.perConnection ? "perConnection" : "one";
+}
+
+function assertImageVariableMetadata(variable: SceneVariable, sceneId: string): void {
+  if (variable.suggestedDimensions === undefined) return;
+  if (variable.type !== "image") {
+    throw new InvalidShowGraphError(
+      `Variable "${variable.id}" on Scene "${sceneId}" can only have suggested image dimensions when its Type is image.`,
+    );
+  }
+  const { width, height } = variable.suggestedDimensions;
+  if (
+    !Number.isInteger(width) ||
+    !Number.isInteger(height) ||
+    width < 1 ||
+    height < 1 ||
+    width > 8000 ||
+    height > 8000
+  ) {
+    throw new InvalidShowGraphError(
+      `Variable "${variable.id}" has invalid suggested image dimensions; both axes must be integer pixels from 1 through 8000.`,
+    );
+  }
 }
 
 /** Looks a node up by id, or null if the graph has no such node. */
@@ -655,6 +685,7 @@ export function assertValidShowGraph(graph: ShowGraph): ShowGraph {
         node.variables.map((variable) => variable.name),
         `Variable name on Scene "${node.id}"`,
       );
+      for (const variable of node.variables) assertImageVariableMetadata(variable, node.id);
     }
   }
 

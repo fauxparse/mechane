@@ -16,7 +16,7 @@ export type CanvasPropertyName =
   | "fontFamily"
   | "fontSize"
   | "cornerRadius"
-  | "src"
+  | "image"
   | "alt"
   | "objectFit"
   | "textAlign"
@@ -39,8 +39,7 @@ export const CANVAS_PROPERTY_DESCRIPTORS: readonly CanvasPropertyDescriptor[] = 
   { name: "fontFamily", targetType: "text", elementKinds: ["text"] },
   { name: "fontSize", targetType: "number", elementKinds: ["text"] },
   { name: "lineHeight", targetType: "text", elementKinds: ["text"] },
-  { name: "cornerRadius", targetType: "number", elementKinds: ["rect", "frame"] },
-  { name: "src", targetType: "image", elementKinds: ["image"] },
+  { name: "image", targetType: "image", elementKinds: ["image"] },
   { name: "alt", targetType: "text", elementKinds: ["image"] },
   { name: "objectFit", targetType: "text", elementKinds: ["image"] },
   { name: "textAlign", targetType: "text", elementKinds: ["text"] },

@@ -14,3 +14,5 @@ export * from "./shapes";
 export * from "./property-values";
 export * from "./canvas-properties";
 export * from "./theme-settings";
+
+export * from "./images";

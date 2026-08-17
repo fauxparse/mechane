@@ -24,6 +24,7 @@ function collectFontFamilies(artboards: readonly CanvasArtboardDocument[]): read
   return [...families];
 }
 const EMPTY_VARIABLES = [] as const;
+const EMPTY_IMAGE_ASSETS = [] as const;
 
 function sameValue(left: unknown, right: unknown): boolean {
   if (isPropertyConnection(left) || isPropertyConnection(right)) {
@@ -107,6 +108,8 @@ export function useCanvasInspectorModel({
   artboards,
   selection,
   variables = EMPTY_VARIABLES,
+  imageAssets = EMPTY_IMAGE_ASSETS,
+  onImageUpload,
   inspectorPreview = null,
   currentDimensions = null,
   onUpdateElement,
@@ -168,6 +171,8 @@ export function useCanvasInspectorModel({
             elements,
             selected,
             variables,
+            imageAssets,
+            onImageUpload,
             fontFamilies,
             inspectorPreview,
             currentDimensions,
@@ -183,6 +188,8 @@ export function useCanvasInspectorModel({
       aspectRatioLock,
       common,
       fontFamilies,
+      imageAssets,
+      onImageUpload,
       currentDimensions,
       inspectorPreview,
       elements,
