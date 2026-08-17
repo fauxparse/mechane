@@ -281,7 +281,10 @@ function toFlowEdge(
   const source = graphNodes.find((node) => node.id === edge.sourceId);
   const target = graphNodes.find((node) => node.id === edge.targetId);
   const targetType =
-    (target?.variables?.find((variable) => variable.id === targetVariableId)?.type as Type | null | undefined) ?? null;
+    (target?.variables?.find((variable) => variable.id === targetVariableId)?.type as
+      | Type
+      | null
+      | undefined) ?? null;
   const coercing =
     edge.kind === "wiring" &&
     typeof source?.type === "string" &&
@@ -322,11 +325,14 @@ function toFlowEdge(
  * no caller has to remember that.
  */
 export function graphToFlow(
-  graph: {
-    nodes: readonly MappableNode[];
-    edges: readonly MappableEdge[];
-    shapes?: readonly Shape[];
-  } | null | undefined,
+  graph:
+    | {
+        nodes: readonly MappableNode[];
+        edges: readonly MappableEdge[];
+        shapes?: readonly Shape[];
+      }
+    | null
+    | undefined,
   options: { collapsedFlowIds?: ReadonlySet<string> } = {},
 ): {
   nodes: ShowFlowNode[];
@@ -389,7 +395,11 @@ export function graphToFlow(
       const hiddenTarget = graph.nodes.find((node) => node.id === edge.targetId);
       const flowId = hiddenTarget?.parentId;
       if (edge.kind === "wiring" && flowId && collapsed.has(flowId)) {
-          return { ...toFlowEdge(edge, graph.nodes, graph.shapes), target: flowId, targetHandle: INPUT_HANDLE };
+        return {
+          ...toFlowEdge(edge, graph.nodes, graph.shapes),
+          target: flowId,
+          targetHandle: INPUT_HANDLE,
+        };
       }
       return toFlowEdge(edge, graph.nodes, graph.shapes);
     }),

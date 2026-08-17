@@ -52,12 +52,28 @@ describe("Shape grammar", () => {
     const a: Shape = {
       id: "a",
       name: "A",
-      fields: [{ id: "b", name: "B", type: { kind: "shape", shapeId: "b" }, required: true, defaultValue: {} }],
+      fields: [
+        {
+          id: "b",
+          name: "B",
+          type: { kind: "shape", shapeId: "b" },
+          required: true,
+          defaultValue: {},
+        },
+      ],
     };
     const b: Shape = {
       id: "b",
       name: "B",
-      fields: [{ id: "a", name: "A", type: { kind: "shape", shapeId: "a" }, required: true, defaultValue: {} }],
+      fields: [
+        {
+          id: "a",
+          name: "A",
+          type: { kind: "shape", shapeId: "a" },
+          required: true,
+          defaultValue: {},
+        },
+      ],
     };
     expect(() => assertValidShapes([a, b])).toThrow(InvalidShapeError);
   });
@@ -83,12 +99,17 @@ describe("Shape values", () => {
     const value = { name: "Ada", addresses: [{ street: "Main Street" }] };
     expect(conformsToShape(value, person, [person, address])).toBe(true);
     expect(conformsToShape({ addresses: [] }, person, [person, address])).toBe(false);
-    expect(conformsToShape({ name: "Ada", addresses: [{ street: 42 }] }, person, [person, address])).toBe(false);
+    expect(
+      conformsToShape({ name: "Ada", addresses: [{ street: 42 }] }, person, [person, address]),
+    ).toBe(false);
   });
 
   it("accepts stable field ids as value keys", () => {
     expect(() =>
-      assertValueConformsToShape({ name: "Ada", addresses: [{ street: "Main" }] }, person, [person, address]),
+      assertValueConformsToShape({ name: "Ada", addresses: [{ street: "Main" }] }, person, [
+        person,
+        address,
+      ]),
     ).not.toThrow();
   });
 
@@ -100,7 +121,13 @@ describe("Shape values", () => {
         { id: "count", name: "Count", type: "number", required: true, defaultValue: 0 },
         { id: "removed", name: "Removed", type: "text", required: false, defaultValue: null },
         { id: "renamed", name: "Before", type: "text", required: true, defaultValue: "" },
-        { id: "when", name: "When", type: "datetime", required: true, defaultValue: "2025-01-01T00:00:00.000Z" },
+        {
+          id: "when",
+          name: "When",
+          type: "datetime",
+          required: true,
+          defaultValue: "2025-01-01T00:00:00.000Z",
+        },
       ],
     };
     const newShape: Shape = {
@@ -122,7 +149,9 @@ describe("Shape values", () => {
 
     expect(result.value).toEqual({ count: "12", added: true, renamed: "Ada", when: "2025-04-03" });
     expect(result.losses.map(({ fieldId }) => fieldId)).toEqual(["removed", "when"]);
-    expect(coerceShapeValue({}, oldShape, newShape, [oldShape, newShape], { added: false }).value).toMatchObject({ added: false });
+    expect(
+      coerceShapeValue({}, oldShape, newShape, [oldShape, newShape], { added: false }).value,
+    ).toMatchObject({ added: false });
   });
 
   it("uses the new default when a retype cannot be converted", () => {
@@ -139,7 +168,14 @@ describe("Shape values", () => {
 
     expect(coerceShapeValue({ value: "not a number" }, oldShape, newShape)).toEqual({
       value: { value: 7 },
-      losses: [{ path: ["value"], fieldId: "value", fieldName: "Value", reason: "Value could not be converted from text to number; default used." }],
+      losses: [
+        {
+          path: ["value"],
+          fieldId: "value",
+          fieldName: "Value",
+          reason: "Value could not be converted from text to number; default used.",
+        },
+      ],
     });
   });
 });
@@ -156,7 +192,15 @@ describe("type compatibility", () => {
     const source: Shape = {
       id: "source",
       name: "Source",
-      fields: [{ id: "source_count", name: "Count Value", type: "number", required: true, defaultValue: 0 }],
+      fields: [
+        {
+          id: "source_count",
+          name: "Count Value",
+          type: "number",
+          required: true,
+          defaultValue: 0,
+        },
+      ],
     };
     const target: Shape = {
       id: "target",
@@ -166,7 +210,13 @@ describe("type compatibility", () => {
         { id: "target_extra", name: "Extra", type: "text", required: false, defaultValue: null },
       ],
     };
-    expect(areTypesCompatible({ kind: "shape", shapeId: source.id }, { kind: "shape", shapeId: target.id }, [source, target])).toBe(true);
+    expect(
+      areTypesCompatible(
+        { kind: "shape", shapeId: source.id },
+        { kind: "shape", shapeId: target.id },
+        [source, target],
+      ),
+    ).toBe(true);
   });
 });
 

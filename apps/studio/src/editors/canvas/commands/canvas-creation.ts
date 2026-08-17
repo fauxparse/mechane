@@ -68,12 +68,15 @@ export interface CanvasCreationTarget {
 }
 
 function rectsIntersect(left: CanvasClientRect, right: CanvasClientRect): boolean {
-  return left.x < right.right && left.right > right.x && left.y < right.bottom && left.bottom > right.y;
+  return (
+    left.x < right.right && left.right > right.x && left.y < right.bottom && left.bottom > right.y
+  );
 }
 
 function distanceToRect(point: { x: number; y: number }, rect: CanvasClientRect): number {
   const dx = point.x < rect.x ? rect.x - point.x : point.x > rect.right ? point.x - rect.right : 0;
-  const dy = point.y < rect.y ? rect.y - point.y : point.y > rect.bottom ? point.y - rect.bottom : 0;
+  const dy =
+    point.y < rect.y ? rect.y - point.y : point.y > rect.bottom ? point.y - rect.bottom : 0;
   return dx * dx + dy * dy;
 }
 

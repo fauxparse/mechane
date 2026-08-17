@@ -34,7 +34,10 @@ class LocalChannel implements RealtimeChannel {
     return message;
   }
 
-  subscribe(handler: RealtimeMessageHandler, options: RealtimeSubscribeOptions = {}): RealtimeSubscription {
+  subscribe(
+    handler: RealtimeMessageHandler,
+    options: RealtimeSubscribeOptions = {},
+  ): RealtimeSubscription {
     const after = options.after ?? 0;
     const oldest = this.history[0]?.sequence ?? this.sequence + 1;
     if (after > 0 && after < oldest - 1) {
@@ -85,7 +88,10 @@ function isRunChannel(value: string): value is RealtimeChannelName {
 }
 
 export interface LocalRealtimeServerOptions {
-  authorize?: (request: IncomingMessage, channel: RealtimeChannelName) => boolean | Promise<boolean>;
+  authorize?: (
+    request: IncomingMessage,
+    channel: RealtimeChannelName,
+  ) => boolean | Promise<boolean>;
 }
 
 /** Bridges the local provider to WebSocket clients in the API dev process. */
@@ -109,7 +115,9 @@ export class LocalRealtimeServer {
 
   close(): Promise<void> {
     for (const client of this.server.clients) client.close();
-    return new Promise((resolve, reject) => this.server.close((error) => (error ? reject(error) : resolve())));
+    return new Promise((resolve, reject) =>
+      this.server.close((error) => (error ? reject(error) : resolve())),
+    );
   }
 
   private handleConnection(socket: WebSocket, request: IncomingMessage): void {
@@ -124,12 +132,16 @@ export class LocalRealtimeServer {
         return;
       }
       if (!isSubscribeCommand(value) || !isRunChannel(value.channel)) {
-        socket.send(JSON.stringify({ type: "error", payload: { reason: "Invalid subscribe command." } }));
+        socket.send(
+          JSON.stringify({ type: "error", payload: { reason: "Invalid subscribe command." } }),
+        );
         return;
       }
       const channel = value.channel;
       if (this.options.authorize && !(await this.options.authorize(request, channel))) {
-        socket.send(JSON.stringify({ type: "error", payload: { reason: "Unauthorized channel." } }));
+        socket.send(
+          JSON.stringify({ type: "error", payload: { reason: "Unauthorized channel." } }),
+        );
         return;
       }
       const subscription = this.provider.channel(channel).subscribe(

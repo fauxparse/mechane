@@ -67,6 +67,7 @@ The generator publishes the manifest metadata that those consumers use.
    `primary` must be one of the fixed hue slots: `red`, `orange`, `yellow`,
    `green`, `aqua`, `blue`, or `purple`. The first manifest entry is the
    default palette.
+
 3. **Keep the source pin current.** The manifest's `sourceCommit` must match
    the commit used for the vendored Tinted Schemes files. If the upstream
    corpus is updated, update the pin and review the vendored licence and
@@ -82,6 +83,7 @@ The generator publishes the manifest metadata that those consumers use.
    palette metadata, and writes the contrast report and acknowledgement file.
    `src/styles/globals.css` is static and imports the generated stylesheet; do
    not edit generated token blocks by hand.
+
 5. **Review and verify.** Inspect the generated CSS and
    `src/styles/contrast-report.json`. Contrast findings are reported rather
    than used to fail generation; resolve or explicitly acknowledge any

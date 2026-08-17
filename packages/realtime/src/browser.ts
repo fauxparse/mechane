@@ -31,7 +31,10 @@ export class WebSocketRealtimeSubscriber implements RealtimeSubscriber {
     this.socket = this.connect();
   }
 
-  subscribe(handler: RealtimeMessageHandler, options: RealtimeSubscribeOptions = {}): RealtimeSubscription {
+  subscribe(
+    handler: RealtimeMessageHandler,
+    options: RealtimeSubscribeOptions = {},
+  ): RealtimeSubscription {
     if (options.after !== undefined) this.lastSequence = options.after;
     const wasEmpty = this.handlers.size === 0;
     this.handlers.add(handler);
@@ -52,11 +55,13 @@ export class WebSocketRealtimeSubscriber implements RealtimeSubscriber {
 
   private subscribeOnSocket(): void {
     if (this.handlers.size === 0) return;
-    this.socket.send(JSON.stringify({
-      type: "subscribe",
-      channel: this.channel,
-      ...(this.lastSequence > 0 ? { after: this.lastSequence } : {}),
-    }));
+    this.socket.send(
+      JSON.stringify({
+        type: "subscribe",
+        channel: this.channel,
+        ...(this.lastSequence > 0 ? { after: this.lastSequence } : {}),
+      }),
+    );
   }
 
   private handleMessage(raw: unknown): void {

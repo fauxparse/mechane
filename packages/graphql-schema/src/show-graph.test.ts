@@ -14,14 +14,11 @@ describe("Show graph operations", () => {
     GetActiveRunQuery,
     StartRunMutation,
     EndRunMutation,
-  ])(
-    "validates %s against the generated schema",
-    (operation) => {
-      const schema = buildSchema(
-        readFileSync(fileURLToPath(new URL("../schema.graphql", import.meta.url)), "utf8"),
-      );
+  ])("validates %s against the generated schema", (operation) => {
+    const schema = buildSchema(
+      readFileSync(fileURLToPath(new URL("../schema.graphql", import.meta.url)), "utf8"),
+    );
 
-      expect(validate(schema, operation)).toEqual([]);
-    },
-  );
+    expect(validate(schema, operation)).toEqual([]);
+  });
 });

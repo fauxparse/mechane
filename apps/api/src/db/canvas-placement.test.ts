@@ -12,7 +12,12 @@ describe("placeCanvasPosition", () => {
   });
 
   it("continues past multiple occupied positions", () => {
-    expect(placeCanvasPosition({ x: 0, y: 0 }, [{ x: 0, y: 0 }, { x: 760, y: 0 }])).toEqual({
+    expect(
+      placeCanvasPosition({ x: 0, y: 0 }, [
+        { x: 0, y: 0 },
+        { x: 760, y: 0 },
+      ]),
+    ).toEqual({
       x: 1520,
       y: 0,
     });

@@ -123,53 +123,69 @@ describe("canvasForCreation", () => {
 
   it("returns the only Canvas intersected by the draft", () => {
     expect(
-      canvasForCreation(targets, {
-        x: 80,
-        y: 20,
-        width: 30,
-        height: 30,
-        right: 110,
-        bottom: 50,
-      }, { x: 105, y: 35 }),
+      canvasForCreation(
+        targets,
+        {
+          x: 80,
+          y: 20,
+          width: 30,
+          height: 30,
+          right: 110,
+          bottom: 50,
+        },
+        { x: 105, y: 35 },
+      ),
     ).toBe("left");
   });
 
   it("uses the release point when a draft intersects multiple Canvases", () => {
     expect(
-      canvasForCreation(targets, {
-        x: 80,
-        y: 20,
-        width: 70,
-        height: 30,
-        right: 150,
-        bottom: 50,
-      }, { x: 135, y: 35 }),
+      canvasForCreation(
+        targets,
+        {
+          x: 80,
+          y: 20,
+          width: 70,
+          height: 30,
+          right: 150,
+          bottom: 50,
+        },
+        { x: 135, y: 35 },
+      ),
     ).toBe("right");
   });
 
   it("falls back to the closest intersected Canvas", () => {
     expect(
-      canvasForCreation(targets, {
-        x: 80,
-        y: 20,
-        width: 70,
-        height: 30,
-        right: 150,
-        bottom: 50,
-      }, { x: 110, y: 35 }),
+      canvasForCreation(
+        targets,
+        {
+          x: 80,
+          y: 20,
+          width: 70,
+          height: 30,
+          right: 150,
+          bottom: 50,
+        },
+        { x: 110, y: 35 },
+      ),
     ).toBe("left");
   });
 
   it("returns null when the draft misses every Canvas", () => {
     expect(
-      canvasForCreation(targets, {
-        x: 300,
-        y: 20,
-        width: 30,
-        height: 30,
-        right: 330,
-        bottom: 50,
-      }, { x: 315, y: 35 }),
+      canvasForCreation(
+        targets,
+        {
+          x: 300,
+          y: 20,
+          width: 30,
+          height: 30,
+          right: 330,
+          bottom: 50,
+        },
+        { x: 315, y: 35 },
+      ),
     ).toBeNull();
   });
 });

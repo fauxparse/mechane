@@ -54,9 +54,14 @@ describe("LocalRealtimeProvider", () => {
     client.send(JSON.stringify({ type: "subscribe", channel: runChannel("run_3") }));
     await provider.channel(runChannel("run_3")).publish("run.cutover", { version: 2 });
 
-    expect(JSON.parse(await received)).toMatchObject({ type: "run.cutover", payload: { version: 2 } });
+    expect(JSON.parse(await received)).toMatchObject({
+      type: "run.cutover",
+      payload: { version: 2 },
+    });
     client.close();
     await realtime.close();
-    await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
   });
 });

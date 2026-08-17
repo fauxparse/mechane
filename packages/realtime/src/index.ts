@@ -22,11 +22,17 @@ export type RealtimeMessageHandler = (message: RealtimeMessage) => void;
 
 export interface RealtimeChannel {
   publish<T>(type: string, payload: T): Promise<RealtimeMessage<T>>;
-  subscribe(handler: RealtimeMessageHandler, options?: RealtimeSubscribeOptions): RealtimeSubscription;
+  subscribe(
+    handler: RealtimeMessageHandler,
+    options?: RealtimeSubscribeOptions,
+  ): RealtimeSubscription;
 }
 
 export interface RealtimeSubscriber {
-  subscribe(handler: RealtimeMessageHandler, options?: RealtimeSubscribeOptions): RealtimeSubscription;
+  subscribe(
+    handler: RealtimeMessageHandler,
+    options?: RealtimeSubscribeOptions,
+  ): RealtimeSubscription;
 }
 
 export interface RealtimeProvider {
