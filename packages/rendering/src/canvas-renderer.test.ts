@@ -58,6 +58,53 @@ describe("CanvasRenderer", () => {
 
     expect(html).toMatch(/<img[^>]*data-element-id="image"[^>]*draggable="false"/);
   });
+
+  it("defaults image fitting to cover and center and serializes overrides", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "default-image",
+            type: "image",
+            image: {
+              assetId: "image-1",
+              revision: "revision-1",
+              url: "https://example.com/image.png",
+              width: 320,
+              height: 180,
+              alt: "",
+              mimeType: "image/png",
+              blurHash: null,
+            },
+          },
+          {
+            id: "positioned-image",
+            type: "image",
+            objectFit: "contain",
+            objectPosition: "right bottom",
+            image: {
+              assetId: "image-2",
+              revision: "revision-2",
+              url: "https://example.com/other.png",
+              width: 320,
+              height: 180,
+              alt: "",
+              mimeType: "image/png",
+              blurHash: null,
+            },
+          },
+        ],
+      },
+    });
+
+    expect(html).toContain("object-fit:cover");
+    expect(html).toContain("object-position:center");
+    expect(html).toContain("object-fit:contain");
+    expect(html).toContain("object-position:right bottom");
+  });
   it("marks empty frames as painted hit targets", () => {
     const html = markup({
       kind: "scene",

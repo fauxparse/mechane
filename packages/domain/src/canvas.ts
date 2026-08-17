@@ -56,6 +56,17 @@ export type TextAlign = "left" | "center" | "right" | "justify" | "start" | "end
 export type TextVerticalAlign = "top" | "center" | "bottom";
 export type TextOverflow = "visible" | "clip" | "ellipsis";
 export type ObjectFit = "fill" | "contain" | "cover" | "none" | "scale-down";
+export type ObjectPosition =
+  | "center"
+  | "left top"
+  | "center top"
+  | "right top"
+  | "left center"
+  | "center center"
+  | "right center"
+  | "left bottom"
+  | "center bottom"
+  | "right bottom";
 
 export type StrokeStyle = "solid" | "dotted" | "dashed";
 
@@ -162,6 +173,7 @@ export interface ImageElement extends ElementBase {
   image?: PropertyValue<ImageAssetReference | ResolvedImageValue>;
   alt?: PropertyValue<string>;
   objectFit?: PropertyValue<ObjectFit>;
+  objectPosition?: PropertyValue<ObjectPosition>;
 }
 export interface FrameElement extends CornerRadiusElement {
   type: "frame";

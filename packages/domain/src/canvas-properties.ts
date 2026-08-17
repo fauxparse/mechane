@@ -19,6 +19,7 @@ export type CanvasPropertyName =
   | "image"
   | "alt"
   | "objectFit"
+  | "objectPosition"
   | "textAlign"
   | "textVerticalAlign"
   | "lineHeight"
@@ -42,6 +43,7 @@ export const CANVAS_PROPERTY_DESCRIPTORS: readonly CanvasPropertyDescriptor[] = 
   { name: "image", targetType: "image", elementKinds: ["image"] },
   { name: "alt", targetType: "text", elementKinds: ["image"] },
   { name: "objectFit", targetType: "text", elementKinds: ["image"] },
+  { name: "objectPosition", targetType: "text", elementKinds: ["image"] },
   { name: "textAlign", targetType: "text", elementKinds: ["text"] },
   { name: "textVerticalAlign", targetType: "text", elementKinds: ["text"] },
   { name: "letterSpacing", targetType: "number", elementKinds: ["text"] },

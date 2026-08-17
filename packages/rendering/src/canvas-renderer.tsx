@@ -287,7 +287,12 @@ function typeStyle(element: Element): CSSProperties {
       overflowWrap: truncates ? "normal" : "anywhere",
     };
   }
-  if (element.type === "image") return { objectFit: literal(element.objectFit) ?? "fill" };
+  if (element.type === "image") {
+    return {
+      objectFit: literal(element.objectFit) ?? "cover",
+      objectPosition: literal(element.objectPosition) ?? "center",
+    };
+  }
   return {};
 }
 
