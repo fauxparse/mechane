@@ -26,6 +26,7 @@ import { db } from "./client";
 import { readCanvasById, writeCanvasRows } from "./canvas";
 import type { CanvasWithOwner, StoredCanvas } from "./canvas";
 import { placeCanvasPosition } from "./canvas-placement";
+import { newCanvasRootProperties } from "./canvas-defaults";
 import { realtimeProvider } from "../realtime";
 import { reconcileActiveRunValues } from "./runs";
 import type { StoredDevice } from "./devices";
@@ -506,7 +507,7 @@ async function writeGraph(
         rank: "a",
         name: null,
         hidden: false,
-        properties: {},
+        properties: newCanvasRootProperties(),
       });
     }
   }
@@ -541,7 +542,7 @@ async function writeGraph(
       rank: "a",
       name: null,
       hidden: false,
-      properties: {},
+      properties: newCanvasRootProperties(),
     });
   }
 
