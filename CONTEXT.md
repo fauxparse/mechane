@@ -143,7 +143,7 @@ _Avoid_: Image Value, image file, upload
 
 ### Image Value
 
-A read-only reference to an Image Asset that can flow through Sources, Variables, Transformers, and Element properties. It exposes the asset's delivery information and descriptive metadata to consumers without exposing storage or processing internals.
+A read-only reference to an Image Asset that can flow through Sources, Variables, Transformers, and Element properties. It exposes the asset's delivery information and descriptive metadata to consumers without exposing storage or processing internals; an absent image has no Image Value rather than an empty URL.
 
 _Avoid_: Image Asset, image URL
 
