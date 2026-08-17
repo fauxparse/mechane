@@ -20,7 +20,7 @@ export function useImageAssets(showId: ShowId | null) {
       const data = await graphqlRequest(GRAPHQL_ENDPOINT, ImageAssetsQuery, {
         showId: showId as ShowId,
       });
-      return data.imageAssets;
+      return data.imageAssets.map((asset) => ({ ...asset, url: resolveApiUrl(asset.url) }));
     },
   });
 }

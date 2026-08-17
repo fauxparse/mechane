@@ -2,14 +2,21 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { and, eq } from "drizzle-orm";
 
+import { applyCorsHeaders } from "../../src/lib/cors";
 import { db } from "../../src/db/client";
 import { imageAssets } from "../../src/db/schema";
 import { blobStore } from "../../src/storage/blob-store";
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
+  const isPreflight = applyCorsHeaders(res, req.headers.origin, req.method);
+  if (isPreflight) {
+    res.statusCode = 204;
+    res.end();
+    return;
+  }
   if (req.method !== "GET") {
     res.statusCode = 405;
-    res.setHeader("Allow", "GET");
+    res.setHeader("Allow", "OPTIONS, GET");
     res.end();
     return;
   }
@@ -24,7 +31,13 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   const [asset] = await db
     .select()
     .from(imageAssets)
-    .where(and(eq(imageAssets.id, assetId), eq(imageAssets.revision, revision), eq(imageAssets.state, "active")));
+    .where(
+      and(
+        eq(imageAssets.id, assetId),
+        eq(imageAssets.revision, revision),
+        eq(imageAssets.state, "active"),
+      ),
+    );
   if (!asset) {
     res.statusCode = 404;
     res.end();
