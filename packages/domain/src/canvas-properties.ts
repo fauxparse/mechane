@@ -5,9 +5,9 @@ import {
   isPropertyConnection,
   propertyCoercion,
 } from "./property-values";
+import { isImageAssetReference } from "./shapes";
 import type { SceneVariable } from "./graph";
-import type { Shape, Type } from "./shapes";
-
+import type { ImageAssetReference, ResolvedImageValue, Shape, Type } from "./shapes";
 export type CanvasPropertyName =
   | "opacity"
   | "fill"
@@ -84,6 +84,7 @@ export interface CanvasPropertyContext {
   readonly variables: readonly SceneVariable[];
   readonly values?: Readonly<Record<string, unknown>>;
   readonly shapes?: readonly Shape[];
+  readonly imageAssets?: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
 }
 
 function rawValue(value: unknown): unknown {
@@ -97,6 +98,18 @@ function defaultFor(targetType: Type): unknown {
   return rawValue(defaultPropertyValue(targetType));
 }
 
+function resolveImageAsset(
+  value: unknown,
+  imageAssets: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[] | undefined,
+): unknown {
+  if (!isImageAssetReference(value)) return value;
+  return (
+    imageAssets?.find(
+      (asset) => asset.assetId === value.assetId && asset.revision === value.revision,
+    ) ?? value
+  );
+}
+
 function resolveElement(element: Element, context: CanvasPropertyContext): Element {
   const next = {
     ...element,
@@ -106,16 +119,20 @@ function resolveElement(element: Element, context: CanvasPropertyContext): Eleme
   for (const descriptor of CANVAS_PROPERTY_DESCRIPTORS) {
     if (!descriptor.elementKinds.includes(element.type)) continue;
     const value = record[descriptor.name];
-    if (!isPropertyConnection(value)) continue;
-    const variable = context.variables.find((candidate) => candidate.id === value.variableId);
-    const sourceType = variable?.type;
-    const coercion = sourceType ? propertyCoercion(sourceType, descriptor.targetType) : null;
-    if (!variable || !sourceType || !coercion) {
-      record[descriptor.name] = defaultFor(descriptor.targetType);
-      continue;
+    if (isPropertyConnection(value)) {
+      const variable = context.variables.find((candidate) => candidate.id === value.variableId);
+      const sourceType = variable?.type;
+      const coercion = sourceType ? propertyCoercion(sourceType, descriptor.targetType) : null;
+      if (!variable || !sourceType || !coercion) {
+        record[descriptor.name] = defaultFor(descriptor.targetType);
+      } else {
+        const sourceValue = rawValue(context.values?.[variable.id]) ?? defaultFor(sourceType);
+        record[descriptor.name] = coercePropertyValue(sourceValue, coercion);
+      }
     }
-    const sourceValue = rawValue(context.values?.[variable.id]) ?? defaultFor(sourceType);
-    record[descriptor.name] = coercePropertyValue(sourceValue, coercion);
+    if (descriptor.name === "image") {
+      record.image = resolveImageAsset(record.image, context.imageAssets);
+    }
   }
   return next;
 }

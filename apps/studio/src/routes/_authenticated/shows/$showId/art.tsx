@@ -78,6 +78,10 @@ function CanvasWorkspaceRoute() {
       const renderCanvas = resolveCanvasProperties(canvas, {
         variables,
         shapes: graphEditing.graph.shapes,
+        imageAssets: (imageAssets.data ?? []).map((asset) => ({
+          ...asset,
+          assetId: asset.id,
+        })),
       });
       return {
         ...artboard,
@@ -87,7 +91,7 @@ function CanvasWorkspaceRoute() {
         position: edited?.position ?? artboard.position,
       };
     });
-  }, [canvasCommands.workspace.artboards, graphEditing.graph, workspace.data]);
+  }, [canvasCommands.workspace.artboards, graphEditing.graph, imageAssets.data, workspace.data]);
 
   // An artboard's name belongs to the Scene or Block that owns the Canvas, so a rename is a
   // Show-graph gesture. The graph stack owns the live name and the same save path as every
