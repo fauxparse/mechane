@@ -30,10 +30,11 @@ pnpm install
 cp apps/api/.env.example apps/api/.env
 overmind start -f Procfile.dev   # starts Postgres, MinIO, API, Studio, Player, and Storybook
 # In another terminal, after Postgres and MinIO report ready:
-pnpm --filter @mechane/api db:migrate   # apply Better Auth's tables
+pnpm --filter @mechane/api db:migrate   # apply the database schema
 pnpm db:seed      # wipe + recreate a default dev account (test@example.com)
+# The API persistence tests run against this same local Postgres database.
 # Storybook is included in Procfile.dev.
-pnpm test         # unit tests
+pnpm test         # unit and database-backed API tests
 pnpm lint
 pnpm typecheck
 pnpm codegen      # regenerate packages/graphql-schema's schema.graphql + gql.tada types
