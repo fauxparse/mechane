@@ -28,11 +28,13 @@ packages/
 ```
 pnpm install
 cp apps/api/.env.example apps/api/.env
-overmind start -f Procfile.dev   # starts Postgres, MinIO, API, Studio, Player, and Storybook
+cp apps/api/.env.test.example apps/api/.env.test
+overmind start -f Procfile.dev   # starts Postgres, test Postgres, MinIO, API, Studio, Player, and Storybook
 # In another terminal, after Postgres and MinIO report ready:
-pnpm --filter @mechane/api db:migrate   # apply the database schema
+pnpm --filter @mechane/api db:migrate   # apply the development database schema
+pnpm db:test:migrate                         # apply the test database schema
 pnpm db:seed      # wipe + recreate a default dev account (test@example.com)
-# The API persistence tests run against this same local Postgres database.
+# The API persistence tests use the separate test Postgres database on port 5434.
 # Storybook is included in Procfile.dev.
 pnpm test         # unit and database-backed API tests
 pnpm lint

@@ -8,6 +8,7 @@
     "dev:api": "pnpm --filter @mechane/api dev",
     "db:seed": "pnpm --filter @mechane/api db:seed",
     "db:migrate": "pnpm --filter @mechane/api db:migrate",
+    "db:test:migrate": "DATABASE_URL=postgres://mechane:mechane@localhost:5434/mechane_test pnpm --filter @mechane/api db:migrate",
     "db:push": "pnpm --filter @mechane/api db:push",
     "storybook": "pnpm --filter @mechane/storybook storybook",
     "build-storybook": "pnpm --filter @mechane/storybook build-storybook",
