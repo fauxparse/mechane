@@ -6,6 +6,7 @@ build/
 *.tsbuildinfo
 .env
 .env.local
+.env.test
 .DS_Store
 storybook-static/
 coverage/

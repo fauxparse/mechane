@@ -8,6 +8,23 @@ on:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgres://mechane:mechane@localhost:5433/mechane_test
+    services:
+      postgres:
+        image: postgres:18.6
+        env:
+          POSTGRES_USER: mechane
+          POSTGRES_PASSWORD: mechane
+          POSTGRES_DB: mechane_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U mechane -d mechane_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+          --health-start-period 5s
     steps:
       - uses: actions/checkout@v7
 
@@ -22,6 +39,8 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Apply database migrations
+        run: pnpm db:migrate
       - name: Check generated GraphQL schema/types are up to date
         run: |
           pnpm codegen
