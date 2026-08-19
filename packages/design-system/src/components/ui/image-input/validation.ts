@@ -13,19 +13,24 @@ const imageDimensions = async (file: File): Promise<ImageInputDimensions> => {
     }
   }
 
-  const url = URL.createObjectURL(file);
-  try {
-    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const element = new Image();
-      element.onload = () => resolve(element);
-      element.onerror = () =>
-        reject(new Error("The selected file could not be decoded as an image."));
-      element.src = url;
-    });
-    return { width: image.naturalWidth, height: image.naturalHeight };
-  } finally {
-    URL.revokeObjectURL(url);
-  }
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") resolve(reader.result);
+      else reject(new Error("The selected file could not be read."));
+    };
+    reader.onerror = () =>
+      reject(reader.error ?? new Error("The selected file could not be read."));
+    reader.readAsDataURL(file);
+  });
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const element = new Image();
+    element.onload = () => resolve(element);
+    element.onerror = () =>
+      reject(new Error("The selected file could not be decoded as an image."));
+    element.src = dataUrl;
+  });
+  return { width: image.naturalWidth, height: image.naturalHeight };
 };
 
 const error = (

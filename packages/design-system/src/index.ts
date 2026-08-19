@@ -187,7 +187,10 @@ export {
   type ImageInputProps,
   type ImageInputValidation,
   type ImageInputValue,
+  type ImageInputCrop,
 } from "./components/ui/image-input/ImageInput";
+export { ImageCropper } from "./components/ui/image-input/ImageCropper";
+export type { ImageCropperProps } from "./components/ui/image-input/ImageCropper";
 
 export { THEME_COLOR_METADATA } from "./themes/generated";
 export type { ThemeColorKey } from "./themes/generated";
