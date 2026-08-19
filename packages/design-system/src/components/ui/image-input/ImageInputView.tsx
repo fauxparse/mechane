@@ -115,19 +115,21 @@ export const ImageInputView = ({
             Cancel
           </Button>
         )}
-        {variableControl}
         {onEdit && !isBusy && !readOnly && (
           <Button type="button" variant="secondary" onClick={onEdit}>
             <PencilIcon className="size-4" />
             Edit
           </Button>
         )}
-        {onDelete && value && !isBusy && !readOnly && (
+      </div>
+      <div className="absolute top-2 right-2 z-2 flex items-center gap-1">
+        {!isBusy && variableControl}
+        {!isBusy && onDelete && value && !readOnly && (
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="absolute top-2 right-2 z-2 group-data-[empty=true]/input:hidden rounded-full bg-neutral-900/50 hover:bg-neutral-900/75 dark:bg-neutral-900/50 dark:hover:bg-neutral-900/75 fg-neutral-100"
+            className="rounded-full bg-neutral-900/50 hover:bg-neutral-900/75 dark:bg-neutral-900/50 dark:hover:bg-neutral-900/75 fg-neutral-100"
             onClick={onDelete}
           >
             <Trash2Icon className="size-4" />

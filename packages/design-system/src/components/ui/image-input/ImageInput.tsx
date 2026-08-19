@@ -1,7 +1,8 @@
 import { type ImageValue, type ResolvedImageValue, type VariableReference } from "@mechane/domain";
-import { Link2Icon, Unlink2Icon } from "lucide-react";
+import { PlugIcon } from "lucide-react";
 
 import { Button } from "../button";
+import { cn } from "../../../lib/utils";
 import { Popover, PopoverContent } from "../popover";
 import { VariablePicker } from "../property-input/variable-picker";
 import { ImageCropper } from "./ImageCropper";
@@ -66,16 +67,17 @@ export const ImageInput = ({
     variables.length > 0 && !readOnly ? (
       <Button
         type="button"
-        variant={controller.linkedVariable ? "secondary" : "ghost"}
+        variant="ghost"
         size="icon"
+        className={cn(
+          "w-5 h-5 rounded-xs p-0 aspect-square",
+          controller.linkedVariable &&
+            "bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground",
+        )}
         aria-label={controller.linkedVariable ? "Disconnect variable" : "Connect variable"}
         onClick={controller.openVariablePicker}
       >
-        {controller.linkedVariable ? (
-          <Unlink2Icon className="size-4" aria-hidden="true" />
-        ) : (
-          <Link2Icon className="size-4" aria-hidden="true" />
-        )}
+        <PlugIcon className="size-4" aria-hidden="true" />
       </Button>
     ) : undefined;
 
