@@ -75,8 +75,8 @@ export const ImageInput = ({
             className={cn(
               "h-5 rounded-xs p-0.5",
               controller.linkedVariable
-                ? "max-w-40 gap-1 px-1.5 bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground"
-                : "w-5 aspect-square bg-transparent",
+                ? "max-w-40 gap-1 px-1.5 bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground aria-expanded:bg-muted aria-expanded:text-foreground"
+                : "w-5 aspect-square bg-transparent hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
             )}
             aria-label={
               controller.linkedVariable
