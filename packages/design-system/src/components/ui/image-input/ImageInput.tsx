@@ -3,7 +3,7 @@ import { PlugIcon } from "lucide-react";
 
 import { Button } from "../button";
 import { cn } from "../../../lib/utils";
-import { Popover, PopoverContent } from "../popover";
+import { Popover, PopoverContent, PopoverTrigger } from "../popover";
 import { VariablePicker } from "../property-input/variable-picker";
 import { ImageCropper } from "./ImageCropper";
 import { ImageInputView } from "./ImageInputView";
@@ -67,27 +67,30 @@ export const ImageInput = ({
   });
   const variableControl =
     allowLink && variables.length > 0 && !readOnly ? (
-      <Button
-        type="button"
-        variant="ghost"
-        className={cn(
-          "h-5 rounded-xs p-0.5",
-          controller.linkedVariable
-            ? "max-w-40 gap-1 px-1.5 bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground"
-            : "w-5 aspect-square bg-transparent",
-        )}
-        aria-label={
-          controller.linkedVariable
-            ? `Connected variable: ${controller.linkedVariable.name}`
-            : "Connect variable"
+      <PopoverTrigger
+        render={
+          <Button
+            type="button"
+            variant="ghost"
+            className={cn(
+              "h-5 rounded-xs p-0.5",
+              controller.linkedVariable
+                ? "max-w-40 gap-1 px-1.5 bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground"
+                : "w-5 aspect-square bg-transparent",
+            )}
+            aria-label={
+              controller.linkedVariable
+                ? `Connected variable: ${controller.linkedVariable.name}`
+                : "Connect variable"
+            }
+          >
+            <PlugIcon className="size-4 shrink-0" aria-hidden="true" />
+            {controller.linkedVariable && (
+              <span className="truncate text-xs">{controller.linkedVariable.name}</span>
+            )}
+          </Button>
         }
-        onClick={controller.openVariablePicker}
-      >
-        <PlugIcon className="size-4 shrink-0" aria-hidden="true" />
-        {controller.linkedVariable && (
-          <span className="truncate text-xs">{controller.linkedVariable.name}</span>
-        )}
-      </Button>
+      />
     ) : undefined;
 
   return (
