@@ -19,6 +19,7 @@ const variables: SceneVariable[] = [
   { id: "opacity-variable", name: "Opacity / Default", type: "number" },
   { id: "accent-variable", name: "Color / Accent", type: "color" },
   { id: "copy-variable", name: "Copy / Headline", type: "text" },
+  { id: "image-variable", name: "Image / Background", type: "image" },
 ];
 
 const imageAssets: readonly ImageAsset[] = [
@@ -447,6 +448,7 @@ export const ImageElement: Story = {
     <InspectorStory
       initialArtboard={artboard(imageRoot)}
       initialSelection={{ artId: ART_ID, elementIds: ["image"] }}
+      storyVariables={variables}
       storyImageAssets={imageAssets}
     />
   ),

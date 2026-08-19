@@ -1,8 +1,11 @@
+import type { ResolvedImageValue } from "@mechane/domain";
 import { isId, resolveCanvasProperties } from "@mechane/domain";
+import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import type { ShowId } from "@mechane/domain";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
+import { resolveApiUrl } from "../../../../api/client";
 import { useCanvasWorkspace } from "../../../../api/canvas";
 import { useImageAssets, useImageUpload } from "../../../../api/images";
 import { useShow } from "../../../../api/shows";
@@ -137,6 +140,34 @@ function CanvasWorkspaceRoute() {
     }
   }, [focused, navigate, onCanvasRoute, params.showId, requestedArtId, workspace.data]);
 
+  const handleImageUpload = useCallback(
+    ({ file, signal, onProgress, onSuccess, onError }: ImageInputOnUploadProps) => {
+      void imageUpload
+        .mutateAsync({ file, signal, onProgress })
+        .then((asset) => {
+          const resolvedValue = {
+            assetId: asset.id,
+            revision: asset.revision,
+            url: resolveApiUrl(asset.url),
+            width: asset.width,
+            height: asset.height,
+            alt: asset.alt,
+            mimeType: asset.mimeType,
+            blurHash: asset.blurHash,
+          } as ResolvedImageValue & { revision: string };
+          onSuccess(resolvedValue);
+        })
+        .catch((error: unknown) => {
+          if (signal.aborted) return;
+          onError({
+            code: "NETWORK_FAILURE",
+            message: error instanceof Error ? error.message : "The image upload failed.",
+            cause: error,
+          });
+        });
+    },
+    [imageUpload],
+  );
   if (showId === null || show.isError || !show.data) {
     return (
       <p className="p-6" role="alert">
@@ -155,7 +186,7 @@ function CanvasWorkspaceRoute() {
       focusedArtId={focused?.artId ?? null}
       variables={focusedVariables}
       imageAssets={imageAssets.data ?? []}
-      onImageUpload={(file) => void imageUpload.mutateAsync({ file })}
+      onImageUpload={handleImageUpload}
       onFocusArtboard={(artId) =>
         void navigate({
           to: "/shows/$showId/art/$artId",

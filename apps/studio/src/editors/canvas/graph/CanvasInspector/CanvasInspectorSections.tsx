@@ -1,9 +1,9 @@
-import { useState } from "react";
-import type { ObjectFit, ObjectPosition } from "@mechane/domain";
+import type { ImageValue, ObjectFit, ObjectPosition, VariableReference } from "@mechane/domain";
 import { isPropertyConnection } from "@mechane/domain";
 import {
   Button,
-  ImageIcon,
+  ImageInput,
+  type ImageInputValue,
   RotateCcwIcon,
   Select,
   SelectContent,
@@ -16,8 +16,8 @@ import { canvasDisplayName, canvasElementDisplayName } from "../../data/canvas-n
 import { elementIconFor } from "../utils";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
-import { ImageAssetPicker } from "./ImageAssetPicker";
 import { ObjectPositionSelector } from "./ObjectPositionSelector";
+import { variableInput } from "./canvas-inspector-values";
 import { Section, SectionRow } from "./Section";
 
 export const InspectorHeader = () => {
@@ -79,10 +79,12 @@ const imageReferenceFor = (value: unknown): { assetId: string; revision: string 
   }
   return { assetId: value.assetId, revision: value.revision };
 };
+const isImageVariable = (value: ImageInputValue | null): value is VariableReference<ImageValue> =>
+  value !== null && typeof value === "object" && "id" in value && "name" in value;
 
 export const ImageSection = () => {
-  const { selected, update, common, imageAssets, onImageUpload } = useCanvasInspectorContext();
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const { selected, update, common, variables, imageAssets, onImageUpload } =
+    useCanvasInspectorContext();
   const allImages = selected.length > 0 && selected.every((element) => element.type === "image");
   if (!allImages) return null;
 
@@ -98,97 +100,117 @@ export const ImageSection = () => {
     rawObjectPosition === undefined &&
     selected.some((element) => Reflect.get(element, "objectPosition") !== undefined);
   const objectPositionValue = objectPositionMixed ? undefined : positionValue(rawObjectPosition);
-  const hasImage = selected.some((element) => {
-    const image = Reflect.get(element, "image");
-    return image !== undefined && image !== null;
-  });
   const sharedImage = selected.length === 1 ? imageReferenceFor(common("image")) : null;
   const intrinsicAsset = sharedImage
     ? imageAssets.find(
         (asset) => asset.id === sharedImage.assetId && asset.revision === sharedImage.revision,
       )
     : undefined;
+  const linkedImage = variableInput(common("image"), "image", variables);
+  const imageInputValue: ImageInputValue | null = isImageVariable(
+    linkedImage as ImageInputValue | null,
+  )
+    ? (linkedImage as ImageInputValue)
+    : intrinsicAsset
+      ? { ...intrinsicAsset, assetId: intrinsicAsset.id }
+      : null;
+  const imageInputVariables = variables.filter((variable) => variable.type === "image");
+  const imageInputAssets = imageAssets.map((asset) => ({
+    assetId: asset.id,
+    url: asset.url,
+    width: asset.width,
+    height: asset.height,
+    alt: asset.alt,
+    mimeType: asset.mimeType,
+    blurHash: asset.blurHash,
+  }));
+
+  const handleImageChange = (next: ImageInputValue | null) => {
+    if (isImageVariable(next)) {
+      update({ image: { kind: "variable", variableId: next.id } });
+      return;
+    }
+    if (next === null) {
+      update({}, ["image"]);
+      return;
+    }
+    const revision =
+      "revision" in next && typeof next.revision === "string"
+        ? next.revision
+        : imageAssets.find((asset) => asset.id === next.assetId)?.revision;
+    if (revision) update({ image: { assetId: next.assetId, revision } });
+  };
 
   return (
-    <>
-      <Section label="Image">
-        <SectionRow>
-          <ObjectPositionSelector
-            className="col-start-1 row-start-1 row-span-2"
-            value={objectPositionValue}
-            onChange={(value) => update({ objectPosition: value })}
-          />
-          <Select
-            items={OBJECT_FIT_OPTIONS}
-            value={objectFitValue}
-            onValueChange={(value) => {
-              if (value) update({ objectFit: value as ObjectFit });
-            }}
-          >
-            <SelectTrigger
-              aria-label="Object fit"
-              className="w-full rounded-sm border-0 bg-muted/50 px-2 row-start-1 col-start-2"
-              size="sm"
-            >
-              <SelectValue
-                placeholder={
-                  objectFitMixed
-                    ? "Mixed"
-                    : OBJECT_FIT_OPTIONS.find((option) => option.value === objectFitValue)?.label
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {OBJECT_FIT_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            size="sm"
-            variant="outline"
-            className="w-full col-start-2"
-            disabled={!intrinsicAsset}
-            onClick={() => {
-              if (!intrinsicAsset || selected.length !== 1) return;
-              const current = selected[0]!;
-              update({
-                sizing: {
-                  ...current.sizing,
-                  width: { mode: "fixed", value: intrinsicAsset.width },
-                  height: { mode: "fixed", value: intrinsicAsset.height },
-                },
-                objectFit: "cover",
-                objectPosition: "center center",
-              });
-            }}
-          >
-            <RotateCcwIcon />
-            Reset size
-          </Button>
-        </SectionRow>
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full col-span-2"
-          onClick={() => setPickerOpen(true)}
+    <Section label="Image">
+      <SectionRow>
+        <ObjectPositionSelector
+          className="col-start-1 row-start-1 row-span-2"
+          value={objectPositionValue}
+          onChange={(value) => update({ objectPosition: value })}
+        />
+        <Select
+          items={OBJECT_FIT_OPTIONS}
+          value={objectFitValue}
+          onValueChange={(value) => {
+            if (value) update({ objectFit: value as ObjectFit });
+          }}
         >
-          <ImageIcon />
-          {hasImage ? "Change image" : "Choose image"}
+          <SelectTrigger
+            aria-label="Object fit"
+            className="w-full rounded-sm border-0 bg-muted/50 px-2 row-start-1 col-start-2"
+            size="sm"
+          >
+            <SelectValue
+              placeholder={
+                objectFitMixed
+                  ? "Mixed"
+                  : OBJECT_FIT_OPTIONS.find((option) => option.value === objectFitValue)?.label
+              }
+            />
+          </SelectTrigger>
+          <SelectContent>
+            {OBJECT_FIT_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full col-start-2"
+          disabled={!intrinsicAsset}
+          onClick={() => {
+            if (!intrinsicAsset || selected.length !== 1) return;
+            const current = selected[0]!;
+            update({
+              sizing: {
+                ...current.sizing,
+                width: { mode: "fixed", value: intrinsicAsset.width },
+                height: { mode: "fixed", value: intrinsicAsset.height },
+              },
+              objectFit: "cover",
+              objectPosition: "center center",
+            });
+          }}
+        >
+          <RotateCcwIcon />
+          Reset size
         </Button>
-      </Section>
-      <ImageAssetPicker
-        open={pickerOpen}
-        onOpenChange={setPickerOpen}
-        assets={imageAssets}
-        onUpload={onImageUpload}
-        onSelect={(asset) => {
-          update({ image: { assetId: asset.id, revision: asset.revision } });
-          setPickerOpen(false);
-        }}
-      />
-    </>
+      </SectionRow>
+      <SectionRow>
+        <ImageInput
+          className="col-span-3"
+          value={imageInputValue}
+          variables={imageInputVariables}
+          imageAssets={imageInputAssets}
+          onChange={handleImageChange}
+          onDelete={() => update({}, ["image"])}
+          onUpload={onImageUpload}
+        />
+      </SectionRow>
+    </Section>
   );
 };

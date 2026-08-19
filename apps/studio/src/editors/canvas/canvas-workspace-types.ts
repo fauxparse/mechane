@@ -1,3 +1,4 @@
+import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent, RefObject } from "react";
 
 import type { NewElement } from "@mechane/commands";
@@ -54,7 +55,7 @@ export interface CanvasWorkspaceEditorProps {
   ): void;
   variables?: readonly SceneVariable[];
   imageAssets?: readonly ImageAsset[];
-  onImageUpload?(file: File): void;
+  onImageUpload?(props: ImageInputOnUploadProps): void;
   onDeleteElements?(canvasId: string, elementIds: readonly string[]): void;
   onRenameArtboard?(artId: string, name: string): void;
 }
@@ -123,7 +124,7 @@ export interface CanvasWorkspaceSurfaceProps {
   ): void;
   variables?: readonly SceneVariable[];
   imageAssets?: readonly ImageAsset[];
-  onImageUpload?(file: File): void;
+  onImageUpload?(props: ImageInputOnUploadProps): void;
   onMoveElement?(
     canvasId: string,
     elementId: string,
