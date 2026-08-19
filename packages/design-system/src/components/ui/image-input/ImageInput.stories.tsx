@@ -17,9 +17,8 @@ const meta: Meta<typeof ImageInput> = {
 };
 
 export default meta;
-const imagePreviewUrl = `data:image/svg+xml,${encodeURIComponent(
-  "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 425'><rect width='640' height='425' fill='#252525'/><circle cx='200' cy='200' r='120' fill='#f59e0b'/></svg>",
-)}`;
+const imagePreviewUrl = "https://picsum.photos/id/56/640/425";
+const secondaryImagePreviewUrl = "https://picsum.photos/id/1025/640/425";
 const fileToDataUrl = (file: File) =>
   new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -145,7 +144,7 @@ export const ConnectedVariable: Story = {
       },
       {
         assetId: "456",
-        url: imagePreviewUrl,
+        url: secondaryImagePreviewUrl,
         width: 640,
         height: 425,
         alt: "Background image",
@@ -172,7 +171,7 @@ export const VariableSelection: Story = {
       },
       {
         assetId: "456",
-        url: imagePreviewUrl,
+        url: secondaryImagePreviewUrl,
         width: 640,
         height: 425,
         alt: "Background image",
