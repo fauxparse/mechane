@@ -156,6 +156,33 @@ export const ConnectedVariable: Story = {
   },
 };
 
+export const VariableSelection: Story = {
+  args: {
+    value: null,
+    variables: [imageVariable, secondaryImageVariable],
+    imageAssets: [
+      {
+        assetId: "123",
+        url: imagePreviewUrl,
+        width: 640,
+        height: 425,
+        alt: "Variable image",
+        mimeType: "image/svg+xml",
+        blurHash: null,
+      },
+      {
+        assetId: "456",
+        url: imagePreviewUrl,
+        width: 640,
+        height: 425,
+        alt: "Background image",
+        mimeType: "image/svg+xml",
+        blurHash: null,
+      },
+    ],
+  },
+};
+
 export const HiddenConnector: Story = {
   args: {
     value: imageVariable,
