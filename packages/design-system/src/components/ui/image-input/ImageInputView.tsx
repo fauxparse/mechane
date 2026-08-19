@@ -66,6 +66,7 @@ export const ImageInputView = ({
         className,
       )}
       data-empty={!resolvedValue && !previewUrl}
+      data-state={phase}
       data-dragging={isDragging || undefined}
       aria-readonly={readOnly || undefined}
     >
@@ -80,7 +81,12 @@ export const ImageInputView = ({
         }
       />
       <div
-        className="relative z-1 flex w-full h-full flex-col items-center justify-center gap-4 p-4 rounded-[inherit] bg-muted/50 border border-dashed border-transparent group-data-[empty=false]/input:opacity-0 group-data-[empty=false]/input:backdrop-blur-sm group-data-[empty=false]/input:backdrop-saturate-25 group-data-[empty=false]/input:backdrop-brightness-50 hover:opacity-100 group-data-[state=loading]/input:opacity-100 group-data-[dragging=true]/input:border-foreground group-data-[dragging=true]/input:opacity-100 transition-opacity duration-500 hover:duration-300"
+        className={cn(
+          "relative z-1 flex w-full h-full flex-col items-center justify-center gap-4 p-4 rounded-[inherit] bg-muted/50 border border-dashed border-transparent transition-opacity duration-500 hover:duration-300",
+          isBusy
+            ? "opacity-100"
+            : "group-data-[empty=false]/input:opacity-0 group-data-[empty=false]/input:backdrop-blur-sm group-data-[empty=false]/input:backdrop-saturate-25 group-data-[empty=false]/input:backdrop-brightness-50 hover:opacity-100 group-data-[dragging=true]/input:border-foreground group-data-[dragging=true]/input:opacity-100",
+        )}
         onDragEnter={onDragEnter}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}

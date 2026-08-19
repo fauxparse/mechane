@@ -17,6 +17,9 @@ const meta: Meta<typeof ImageInput> = {
 };
 
 export default meta;
+const imagePreviewUrl = `data:image/svg+xml,${encodeURIComponent(
+  "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 425'><rect width='640' height='425' fill='#252525'/><circle cx='200' cy='200' r='120' fill='#f59e0b'/></svg>",
+)}`;
 
 const imageVariable = {
   id: "hero-image",
@@ -42,7 +45,7 @@ const Harness = (args: NonNullable<Story["args"]>) => {
       } else {
         onSuccess({
           assetId: "123",
-          url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 425'%3E%3Crect width='640' height='425' fill='%23252525'/%3E%3C/svg%3E",
+          url: imagePreviewUrl,
           width: 640,
           height: 425,
           alt: file.name,
@@ -64,7 +67,7 @@ export const WithValue: Story = {
   args: {
     value: {
       assetId: "123",
-      url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 425'%3E%3Crect width='640' height='425' fill='%23252525'/%3E%3C/svg%3E",
+      url: imagePreviewUrl,
       width: 640,
       height: 425,
       alt: "Image",
@@ -81,7 +84,7 @@ export const ConnectedVariable: Story = {
     imageAssets: [
       {
         assetId: "123",
-        url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 425'%3E%3Crect width='640' height='425' fill='%23252525'/%3E%3C/svg%3E",
+        url: imagePreviewUrl,
         width: 640,
         height: 425,
         alt: "Variable image",

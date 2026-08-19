@@ -235,17 +235,17 @@ export const ImageCropper = ({
         <div className="flex items-center gap-3">
           <MinusIcon className="size-4 text-muted-foreground" aria-hidden="true" />
           <Slider.Root
-            value={[zoom]}
+            value={zoom}
             min={1}
             max={3}
             step={0.01}
             className="flex-1"
-            onValueChange={(nextValue) => setZoom((nextValue as number[])[0] ?? 1)}
+            onValueChange={(nextValue) => setZoom(nextValue as number)}
           >
             <Slider.Control className="py-3">
               <Slider.Track className="h-2 bg-muted">
                 <Slider.Indicator />
-                <Slider.Thumb index={0} aria-label="Zoom" />
+                <Slider.Thumb aria-label="Zoom" />
               </Slider.Track>
             </Slider.Control>
           </Slider.Root>
