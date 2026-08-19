@@ -1,13 +1,11 @@
 import { type ImageValue, type ResolvedImageValue, type VariableReference } from "@mechane/domain";
 import { useCallback } from "react";
-import { PlugIcon } from "lucide-react";
 
-import { Button } from "../button";
 import { useToastManager } from "../toast";
-import { cn } from "../../../lib/utils";
-import { Popover, PopoverContent, PopoverTrigger } from "../popover";
+import { Popover, PopoverContent } from "../popover";
 import { VariablePicker } from "../property-input/variable-picker";
 import { ImageCropper } from "./ImageCropper";
+import { ImageInputVariableControl } from "./ImageInputVariableControl";
 import { ImageInputView } from "./ImageInputView";
 import type { ImageInputCrop } from "./crop-types";
 import { useImageInputController } from "./use-image-input-controller";
@@ -79,33 +77,6 @@ export const ImageInput = ({
     onError: handleImageError,
     onUpload,
   });
-  const variableControl =
-    allowLink && variables.length > 0 && !readOnly ? (
-      <PopoverTrigger
-        render={
-          <Button
-            type="button"
-            variant="ghost"
-            className={cn(
-              "h-5 rounded-xs p-0.5",
-              controller.linkedVariable
-                ? "max-w-40 gap-1 px-1.5 bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground aria-expanded:bg-muted aria-expanded:text-foreground"
-                : "w-5 aspect-square bg-transparent hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
-            )}
-            aria-label={
-              controller.linkedVariable
-                ? `Connected variable: ${controller.linkedVariable.name}`
-                : "Connect variable"
-            }
-          >
-            <PlugIcon className="size-4 shrink-0" aria-hidden="true" />
-            {controller.linkedVariable && (
-              <span className="truncate text-xs">{controller.linkedVariable.name}</span>
-            )}
-          </Button>
-        }
-      />
-    ) : undefined;
 
   return (
     <>
@@ -126,6 +97,7 @@ export const ImageInput = ({
           progress={controller.imageState.progress}
           previewUrl={controller.imageState.previewUrl}
           isDragging={controller.imageState.isDragging}
+          pickerOpen={controller.imageState.variablesOpen}
           readOnly={readOnly}
           canUpload={Boolean(onUpload)}
           inputRef={controller.inputRef}
@@ -136,7 +108,13 @@ export const ImageInput = ({
           onDrop={controller.handleDrop}
           onBrowse={() => controller.inputRef.current?.click()}
           onCancelUpload={controller.handleCancelUpload}
-          variableControl={variableControl}
+          variableControl={
+            allowLink && variables.length > 0 && !readOnly ? (
+              <ImageInputVariableControl linkedVariable={controller.linkedVariable} />
+            ) : (
+              <span />
+            )
+          }
           onEdit={crop && controller.resolvedValue && onUpload ? controller.handleEdit : undefined}
           onDelete={onDelete}
         />

@@ -14,17 +14,11 @@ import type { GraphNode, NodeKind, Position } from "@mechane/domain";
 import {
   Bot,
   Box,
-  Calendar,
-  CalendarClock,
-  Circle,
-  Hash,
-  List,
   Projector,
   Smartphone,
-  ToggleLeft,
   TvMinimal,
-  Type,
   Workflow,
+  variableTypeIcon,
 } from "@mechane/design-system";
 import type { LucideIcon } from "@mechane/design-system";
 
@@ -124,40 +118,21 @@ export const CREATABLE_NODES: CreatableNode[] = [
 ];
 
 /**
- * A Source's icon reflects the *type of data it holds* (#35) rather than
- * "Source" in general — the icon is doing the work a hue would otherwise do.
- *
- * Structured and semantic Source types extend the original mapping without
- * introducing hue-based node chrome (#109).
- */
-export const SOURCE_TYPE_ICONS = {
-  text: Type,
-  number: Hash,
-  boolean: ToggleLeft,
-  object: Box,
-  array: List,
-  image: Box,
-  color: Circle,
-  date: Calendar,
-  datetime: CalendarClock,
-} as const satisfies Record<string, LucideIcon>;
-
-/**
  * The icon a node shows. Two kinds don't answer with a constant:
  *
  *   - **Device** resolves by instance cardinality (#35, #45): a
  *     `Smartphone` for a per-connection (Audience) Device, a `Projector`
  *     for a shared one.
- *   - **Source** resolves by data type, per `SOURCE_TYPE_ICONS` above.
+ *   - **Source** resolves by data type, via `variableTypeIcon` — a Source's
+ *     icon reflects the type of data it holds (#35) rather than "Source" in
+ *     general.
  */
 export function nodeIcon(
   kind: NodeKind,
   hints: { perConnection?: boolean; sourceType?: string } = {},
 ) {
   if (kind === "device" && hints.perConnection) return Smartphone;
-  if (kind === "source") {
-    return SOURCE_TYPE_ICONS[hints.sourceType as keyof typeof SOURCE_TYPE_ICONS] ?? Box;
-  }
+  if (kind === "source") return variableTypeIcon(hints.sourceType);
   return NODE_KIND_META[kind].icon;
 }
 

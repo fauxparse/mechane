@@ -18,6 +18,7 @@ type ImageInputViewProps = {
   progress: number;
   previewUrl: string | null;
   isDragging: boolean;
+  pickerOpen?: boolean;
   readOnly: boolean;
   canUpload: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
@@ -43,6 +44,7 @@ export const ImageInputView = ({
   progress,
   previewUrl,
   isDragging,
+  pickerOpen = false,
   readOnly,
   canUpload,
   inputRef,
@@ -67,6 +69,7 @@ export const ImageInputView = ({
       data-empty={!resolvedValue && !previewUrl}
       data-state={phase}
       data-dragging={isDragging || undefined}
+      data-picker-open={pickerOpen || undefined}
       aria-readonly={readOnly || undefined}
     >
       <img
@@ -81,10 +84,10 @@ export const ImageInputView = ({
       />
       <div
         className={cn(
-          "relative z-1 flex w-full h-full flex-col items-center justify-center gap-4 p-4 rounded-[inherit] bg-muted/50 border border-dashed border-transparent transition-opacity duration-500 hover:duration-300",
+          "relative z-1 flex w-full h-full flex-col items-center justify-center gap-2 p-2 rounded-[inherit] bg-muted/50 border border-dashed border-transparent transition-opacity duration-500 hover:duration-300",
           isBusy
             ? "opacity-100"
-            : "group-data-[empty=false]/input:opacity-0 group-data-[empty=false]/input:backdrop-blur-sm group-data-[empty=false]/input:backdrop-saturate-25 group-data-[empty=false]/input:backdrop-brightness-50 hover:opacity-100 group-data-[dragging=true]/input:border-foreground group-data-[dragging=true]/input:opacity-100",
+            : "group-data-[empty=false]/input:opacity-0 group-data-[empty=false]/input:backdrop-blur-sm group-data-[empty=false]/input:backdrop-saturate-25 group-data-[empty=false]/input:backdrop-brightness-50 hover:opacity-100 group-data-[picker-open=true]/input:opacity-100 group-data-[dragging=true]/input:border-foreground group-data-[dragging=true]/input:opacity-100",
         )}
         onDragEnter={onDragEnter}
         onDragOver={onDragOver}
@@ -104,6 +107,7 @@ export const ImageInputView = ({
         <Button
           type="button"
           variant="outline"
+          size="sm"
           className="group-data-[empty=false]/input:border-foreground group-data-[empty=false]/input:hover:border-foreground disabled:border-transparent"
           onClick={onBrowse}
           disabled={readOnly || isBusy || !canUpload}
@@ -121,20 +125,20 @@ export const ImageInputView = ({
             Edit
           </Button>
         )}
-      </div>
-      <div className="absolute top-2 right-2 z-2 flex items-center gap-1">
-        {!isBusy && variableControl}
-        {!isBusy && onDelete && value && !readOnly && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="rounded-full bg-neutral-900/50 hover:bg-neutral-900/75 dark:bg-neutral-900/50 dark:hover:bg-neutral-900/75 fg-neutral-100"
-            onClick={onDelete}
-          >
-            <Trash2Icon className="size-4" />
-          </Button>
-        )}
+        <div className="absolute top-2 left-2 right-2 z-2 flex justify-between items-center gap-2 pointer-events-none">
+          {!isBusy && variableControl}
+          {!isBusy && onDelete && value && !readOnly && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="rounded-full bg-neutral-900/50 hover:bg-neutral-900/75 dark:bg-neutral-900/50 dark:hover:bg-neutral-900/75 fg-neutral-100 pointer-events-auto"
+              onClick={onDelete}
+            >
+              <Trash2Icon className="size-4" />
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

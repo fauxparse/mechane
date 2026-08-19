@@ -4,8 +4,11 @@ import type { ShapeValue } from "@mechane/domain";
 
 import { Button } from "../button";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "../input-group";
-import { getValueText } from "./use-property-input";
 import type { VariableReference } from "./property-input-types";
+import { cn } from "../../../lib/utils";
+import { getValueText } from "./use-property-input";
+import { VARIABLE_TYPE_ICONS } from "./variable-type-icons";
+import { Swatch } from "../swatch";
 
 export function VariablePicker<T extends ShapeValue>({
   query,
@@ -93,7 +96,11 @@ export function VariablePicker<T extends ShapeValue>({
           onKeyDown={handleSearchKeyDown}
         />
         <InputGroupAddon align="inline-end">
-          <InputGroupButton aria-label="Close variable picker" onClick={onClose}>
+          <InputGroupButton
+            className="p-0 size-6 hover:bg-transparent"
+            aria-label="Close variable picker"
+            onClick={onClose}
+          >
             <XIcon />
           </InputGroupButton>
         </InputGroupAddon>
@@ -102,7 +109,7 @@ export function VariablePicker<T extends ShapeValue>({
         id={`${listId}-list`}
         role="listbox"
         aria-label="Variables"
-        className="max-h-64 overflow-y-auto p-1"
+        className="max-h-64 overflow-y-auto p-2"
       >
         {variables.length > 0 ? (
           variables.map((variable, index) => (
@@ -119,14 +126,13 @@ export function VariablePicker<T extends ShapeValue>({
               ref={(element) => {
                 optionRefs.current[index] = element;
               }}
-              className="w-full justify-start gap-2 aria-selected:bg-accent aria-selected:text-accent-foreground"
+              className="group/option w-full justify-start gap-2 p-2 aria-selected:bg-accent aria-selected:text-accent-foreground rounded-sm"
               onMouseEnter={() => setHighlightedIndex(index)}
               onClick={() => onSelect(variable)}
             >
+              <VariableIcon variable={variable} />
               <span className="truncate">{variable.name}</span>
-              <span className="ml-auto truncate text-xs text-muted-foreground">
-                {getValueText(variable.current)}
-              </span>
+              <VariableRepresentation variable={variable} className="ml-auto" />
             </Button>
           ))
         ) : (
@@ -145,3 +151,37 @@ export function VariablePicker<T extends ShapeValue>({
     </>
   );
 }
+
+const VariableIcon = <T extends ShapeValue>({ variable }: { variable: VariableReference<T> }) => {
+  const Icon = VARIABLE_TYPE_ICONS[variable.current?.kind ?? "object"];
+  return <Icon />;
+};
+
+const representableKinds = new Set(["text", "number", "boolean", "color"]);
+
+const VariableRepresentation = <T extends ShapeValue>({
+  className,
+  variable,
+}: {
+  className?: string;
+  variable: VariableReference<T>;
+}) => {
+  const value = variable.current;
+
+  return (
+    <span
+      className={cn(
+        "truncate text-xs text-muted-foreground group-hover/option:text-accent-foreground/75",
+        className,
+      )}
+    >
+      {value && representableKinds.has(value.kind) ? (
+        value.kind === "color" ? (
+          <Swatch color={value.value} />
+        ) : (
+          getValueText(value)
+        )
+      ) : null}
+    </span>
+  );
+};
