@@ -1,5 +1,3 @@
-import { DragEvent } from "react";
-
 export const ACCEPTED_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",
@@ -29,11 +27,3 @@ export const isAcceptedImageFile = (file: File): boolean => {
   if (extensionStart === -1) return false;
   return ACCEPTED_IMAGE_EXTENSIONS.has(file.name.slice(extensionStart).toLowerCase());
 };
-
-export const firstAcceptedImage = (files: FileList | null | undefined): File | undefined => {
-  if (!files) return undefined;
-  return Array.from(files).find(isAcceptedImageFile);
-};
-
-export const isFileDrag = (event: DragEvent): boolean =>
-  Array.from(event.dataTransfer.types).includes("Files");

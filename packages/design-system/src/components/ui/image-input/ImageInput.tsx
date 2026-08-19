@@ -1,13 +1,15 @@
-import { isResolvedImageValue, type ResolvedImageValue } from "@mechane/domain";
-import { ChangeEvent, DragEvent, useCallback, useEffect, useReducer, useRef } from "react";
+import { type ImageValue, type ResolvedImageValue, type VariableReference } from "@mechane/domain";
+import { Link2Icon, Unlink2Icon } from "lucide-react";
 
+import { Button } from "../button";
+import { Popover, PopoverContent } from "../popover";
+import { VariablePicker } from "../property-input/variable-picker";
 import { ImageCropper } from "./ImageCropper";
 import { ImageInputView } from "./ImageInputView";
 import type { ImageInputCrop } from "./crop-types";
-import { validateImageFile } from "./validation";
+import { useImageInputController } from "./use-image-input-controller";
 import type {
   ImageInputError,
-  ImageInputErrorCode,
   ImageInputOnUploadProps,
   ImageInputValue,
   ImageInputValidation,
@@ -25,6 +27,8 @@ export type { ImageInputCrop } from "./crop-types";
 export type ImageInputProps = {
   className?: string;
   value: ImageInputValue | null;
+  variables?: VariableReference<ImageValue>[];
+  imageAssets?: readonly ResolvedImageValue[];
   readOnly?: boolean;
   validation?: ImageInputValidation;
   crop?: ImageInputCrop;
@@ -34,127 +38,11 @@ export type ImageInputProps = {
   onUpload?: (props: ImageInputOnUploadProps) => void;
 };
 
-type ImageInputState = {
-  phase: "idle" | "loading";
-  isValidating: boolean;
-  progress: number;
-  previewFile: File | null;
-  previewUrl: string | null;
-  error: ImageInputError | null;
-  isDragging: boolean;
-  cropOpen: boolean;
-  cropSource: File | string | null;
-  cropSession: number;
-};
-
-type ImageInputAction =
-  | { type: "begin-validation" }
-  | { type: "validation-complete"; file: File }
-  | { type: "preview-url"; url: string }
-  | { type: "progress"; value: number }
-  | { type: "dragging"; value: boolean }
-  | { type: "open-crop"; source: File | string }
-  | { type: "close-crop" }
-  | { type: "cancel" }
-  | { type: "error"; error: ImageInputError }
-  | { type: "success" };
-
-const initialImageInputState: ImageInputState = {
-  phase: "idle",
-  isValidating: false,
-  progress: 0,
-  previewFile: null,
-  previewUrl: null,
-  error: null,
-  isDragging: false,
-  cropOpen: false,
-  cropSource: null,
-  cropSession: 0,
-};
-
-const imageInputReducer = (state: ImageInputState, action: ImageInputAction): ImageInputState => {
-  switch (action.type) {
-    case "begin-validation":
-      return {
-        ...state,
-        phase: "loading",
-        isValidating: true,
-        progress: 0,
-        previewFile: null,
-        previewUrl: null,
-        error: null,
-        cropOpen: false,
-        cropSource: null,
-      };
-    case "validation-complete":
-      return { ...state, isValidating: false, previewFile: action.file, previewUrl: null };
-    case "preview-url":
-      return { ...state, previewUrl: action.url };
-    case "progress":
-      return { ...state, progress: Math.min(100, Math.max(0, action.value)) };
-    case "dragging":
-      return { ...state, isDragging: action.value };
-    case "open-crop":
-      return {
-        ...state,
-        phase: "idle",
-        isValidating: false,
-        cropOpen: true,
-        cropSource: action.source,
-        cropSession: state.cropSession + 1,
-      };
-    case "close-crop":
-      return { ...state, cropOpen: false, cropSource: null };
-    case "cancel":
-      return {
-        ...state,
-        phase: "idle",
-        isValidating: false,
-        previewFile: null,
-        previewUrl: null,
-        error: null,
-        cropOpen: false,
-        cropSource: null,
-      };
-    case "error":
-      return {
-        ...state,
-        phase: "idle",
-        isValidating: false,
-        previewFile: null,
-        previewUrl: null,
-        error: action.error,
-        cropOpen: false,
-        cropSource: null,
-      };
-    case "success":
-      return {
-        ...state,
-        phase: "idle",
-        isValidating: false,
-        previewFile: null,
-        previewUrl: null,
-        error: null,
-        cropOpen: false,
-        cropSource: null,
-      };
-  }
-};
-
-const errorFromUnknown = (
-  value: unknown,
-  fallbackCode: ImageInputErrorCode,
-  fallbackMessage: string,
-): ImageInputError => {
-  if (typeof value === "object" && value !== null && "code" in value && "message" in value) {
-    return value as ImageInputError;
-  }
-  return { code: fallbackCode, message: fallbackMessage, cause: value };
-};
-
 export const ImageInput = ({
   className,
   value,
+  variables = [],
+  imageAssets = [],
   readOnly = false,
   validation,
   crop,
@@ -163,246 +51,100 @@ export const ImageInput = ({
   onError,
   onUpload,
 }: ImageInputProps) => {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const validationRequestRef = useRef(0);
-  const [imageState, dispatch] = useReducer(imageInputReducer, initialImageInputState);
-  const dragDepthRef = useRef(0);
-  const uploadControllerRef = useRef<AbortController | null>(null);
-  const activeUploadRequestRef = useRef<number | null>(null);
-
-  const resolvedValue = isResolvedImageValue(value) ? value : null;
-  const isBusy = imageState.phase === "loading" || imageState.cropOpen;
-
-  useEffect(() => {
-    if (!imageState.previewFile) return;
-
-    const url = URL.createObjectURL(imageState.previewFile);
-    dispatch({ type: "preview-url", url });
-
-    return () => URL.revokeObjectURL(url);
-  }, [imageState.previewFile]);
-
-  const reportError = useCallback(
-    (nextError: ImageInputError) => {
-      uploadControllerRef.current = null;
-      activeUploadRequestRef.current = null;
-      dispatch({ type: "error", error: nextError });
-      onError?.(nextError);
-    },
-    [onError],
-  );
-
-  const handleUploadProgress = useCallback((nextProgress: number) => {
-    dispatch({ type: "progress", value: nextProgress });
-  }, []);
-
-  const handleUploadSuccess = useCallback(
-    (nextValue: ResolvedImageValue) => {
-      if (uploadControllerRef.current?.signal.aborted) return;
-      uploadControllerRef.current = null;
-      activeUploadRequestRef.current = null;
-      dispatch({ type: "success" });
-      onChange(nextValue);
-    },
-    [onChange],
-  );
-
-  const handleUploadError = useCallback(
-    (uploadError: ImageInputError) => {
-      if (uploadControllerRef.current?.signal.aborted) {
-        uploadControllerRef.current = null;
-        activeUploadRequestRef.current = null;
-        dispatch({ type: "cancel" });
-        return;
-      }
-      reportError(uploadError);
-    },
-    [reportError],
-  );
-
-  const uploadValidatedFile = (file: File, requestId: number) => {
-    if (validationRequestRef.current !== requestId || !onUpload) return;
-    const controller = new AbortController();
-    uploadControllerRef.current = controller;
-    activeUploadRequestRef.current = requestId;
-    dispatch({ type: "validation-complete", file });
-    try {
-      onUpload({
-        file,
-        signal: controller.signal,
-        onProgress: (nextProgress) => {
-          if (activeUploadRequestRef.current === requestId) {
-            handleUploadProgress(nextProgress);
-          }
-        },
-        onSuccess: (nextValue) => {
-          if (activeUploadRequestRef.current === requestId) {
-            handleUploadSuccess(nextValue);
-          }
-        },
-        onError: (uploadError) => {
-          if (activeUploadRequestRef.current === requestId) {
-            handleUploadError(uploadError);
-          }
-        },
-      });
-    } catch (uploadError) {
-      if (controller.signal.aborted) {
-        dispatch({ type: "cancel" });
-      } else {
-        reportError(
-          errorFromUnknown(
-            uploadError,
-            "NETWORK_FAILURE",
-            "The image upload could not be started.",
-          ),
-        );
-      }
-    }
-  };
-
-  const startUpload = async (file: File, skipCrop = false) => {
-    if (readOnly || !onUpload) return;
-    const requestId = ++validationRequestRef.current;
-    dispatch({ type: "begin-validation" });
-
-    try {
-      await validateImageFile(file, validation);
-    } catch (validationError) {
-      if (validationRequestRef.current !== requestId) return;
-      reportError(
-        errorFromUnknown(
-          validationError,
-          "INVALID_IMAGE",
-          "The selected file could not be used as an image.",
-        ),
-      );
-      return;
-    }
-
-    if (validationRequestRef.current !== requestId) return;
-    if (crop && !skipCrop) {
-      dispatch({ type: "open-crop", source: file });
-      return;
-    }
-    uploadValidatedFile(file, requestId);
-  };
-
-  const handleCropComplete = (file: File) => {
-    dispatch({ type: "close-crop" });
-    void startUpload(file, true);
-  };
-
-  const handleCropCancel = () => {
-    dispatch({ type: "close-crop" });
-  };
-  const handleCancelUpload = () => {
-    validationRequestRef.current += 1;
-    uploadControllerRef.current?.abort();
-    uploadControllerRef.current = null;
-    activeUploadRequestRef.current = null;
-    dispatch({ type: "cancel" });
-  };
-
-  const handleFileInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.currentTarget.files?.[0];
-    if (file) void startUpload(file);
-    event.currentTarget.value = "";
-  };
-
-  const resetDragState = () => {
-    dragDepthRef.current = 0;
-    dispatch({ type: "dragging", value: false });
-  };
-
-  const handleDragEnter = (event: DragEvent<HTMLElement>) => {
-    if (
-      readOnly ||
-      isBusy ||
-      !onUpload ||
-      !Array.from(event.dataTransfer.types).includes("Files")
-    ) {
-      return;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-    dragDepthRef.current += 1;
-    dispatch({ type: "dragging", value: true });
-  };
-
-  const handleDragOver = (event: DragEvent<HTMLElement>) => {
-    if (
-      readOnly ||
-      isBusy ||
-      !onUpload ||
-      !Array.from(event.dataTransfer.types).includes("Files")
-    ) {
-      return;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-    event.dataTransfer.dropEffect = "copy";
-  };
-
-  const handleDragLeave = (event: DragEvent<HTMLElement>) => {
-    if (readOnly || !Array.from(event.dataTransfer.types).includes("Files")) return;
-    event.preventDefault();
-    event.stopPropagation();
-    dragDepthRef.current -= 1;
-    if (dragDepthRef.current <= 0) resetDragState();
-  };
-
-  const handleDrop = (event: DragEvent<HTMLElement>) => {
-    if (readOnly || isBusy || !onUpload) return;
-    event.preventDefault();
-    event.stopPropagation();
-    resetDragState();
-    const file = event.dataTransfer.files[0];
-    if (file) void startUpload(file);
-  };
-
-  const handleEdit = () => {
-    if (!crop || !resolvedValue || readOnly || !onUpload) return;
-    dispatch({ type: "open-crop", source: resolvedValue.url });
-  };
+  const controller = useImageInputController({
+    value,
+    variables,
+    imageAssets,
+    readOnly,
+    validation,
+    crop,
+    onChange,
+    onError,
+    onUpload,
+  });
+  const variableControl =
+    variables.length > 0 && !readOnly ? (
+      <Button
+        type="button"
+        variant={controller.linkedVariable ? "secondary" : "ghost"}
+        size="icon"
+        aria-label={controller.linkedVariable ? "Disconnect variable" : "Connect variable"}
+        onClick={controller.openVariablePicker}
+      >
+        {controller.linkedVariable ? (
+          <Unlink2Icon className="size-4" aria-hidden="true" />
+        ) : (
+          <Link2Icon className="size-4" aria-hidden="true" />
+        )}
+      </Button>
+    ) : undefined;
 
   return (
     <>
-      <ImageInputView
-        className={className}
-        value={value}
-        resolvedValue={resolvedValue}
-        phase={imageState.phase}
-        busy={isBusy}
-        isValidating={imageState.isValidating}
-        progress={imageState.progress}
-        previewUrl={imageState.previewUrl}
-        error={imageState.error}
-        isDragging={imageState.isDragging}
-        readOnly={readOnly}
-        canUpload={Boolean(onUpload)}
-        onFileInputChange={handleFileInputChange}
-        onDragEnter={handleDragEnter}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onBrowse={() => inputRef.current?.click()}
-        onCancelUpload={handleCancelUpload}
-        onEdit={crop && resolvedValue && onUpload ? handleEdit : undefined}
-        onDelete={onDelete}
-      />
+      <Popover
+        open={controller.imageState.variablesOpen}
+        onOpenChange={(open) => {
+          if (open) controller.openVariablePicker();
+          else controller.closeVariablePicker();
+        }}
+      >
+        <ImageInputView
+          className={className}
+          value={value}
+          resolvedValue={controller.resolvedValue}
+          phase={controller.imageState.phase}
+          busy={controller.isBusy}
+          isValidating={controller.imageState.isValidating}
+          progress={controller.imageState.progress}
+          previewUrl={controller.imageState.previewUrl}
+          error={controller.imageState.error}
+          isDragging={controller.imageState.isDragging}
+          readOnly={readOnly}
+          canUpload={Boolean(onUpload)}
+          onFileInputChange={controller.handleFileInputChange}
+          onDragEnter={controller.handleDragEnter}
+          onDragOver={controller.handleDragOver}
+          onDragLeave={controller.handleDragLeave}
+          onDrop={controller.handleDrop}
+          onBrowse={() => controller.inputRef.current?.click()}
+          onCancelUpload={controller.handleCancelUpload}
+          variableControl={variableControl}
+          onEdit={crop && controller.resolvedValue && onUpload ? controller.handleEdit : undefined}
+          onDelete={onDelete}
+        />
+        <PopoverContent align="end" className="gap-0 overflow-hidden p-0">
+          <VariablePicker
+            query={controller.imageState.variableQuery}
+            variables={controller.filteredVariables}
+            totalVariables={variables.length}
+            linkedVariable={controller.linkedVariable}
+            onQueryChange={controller.updateVariableQuery}
+            onClose={controller.closeVariablePicker}
+            onSelect={controller.handleSelectVariable}
+            onDisconnect={controller.handleDisconnectVariable}
+          />
+        </PopoverContent>
+      </Popover>
       <ImageCropper
-        key={imageState.cropSession}
-        open={imageState.cropOpen}
-        source={imageState.cropSource}
+        key={controller.imageState.cropSession}
+        open={controller.imageState.cropOpen}
+        source={controller.imageState.cropSource}
         aspectRatio={crop?.aspectRatio}
         outputWidth={crop?.outputWidth}
         outputHeight={crop?.outputHeight}
-        fileName={imageState.cropSource instanceof File ? imageState.cropSource.name : undefined}
-        fileType={imageState.cropSource instanceof File ? imageState.cropSource.type : undefined}
-        onCancel={handleCropCancel}
-        onComplete={handleCropComplete}
-        onError={reportError}
+        fileName={
+          controller.imageState.cropSource instanceof File
+            ? controller.imageState.cropSource.name
+            : undefined
+        }
+        fileType={
+          controller.imageState.cropSource instanceof File
+            ? controller.imageState.cropSource.type
+            : undefined
+        }
+        onCancel={controller.handleCropCancel}
+        onComplete={controller.handleCropComplete}
+        onError={controller.reportError}
       />
     </>
   );

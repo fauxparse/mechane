@@ -1,5 +1,5 @@
 import type { ResolvedImageValue } from "@mechane/domain";
-import type { ChangeEvent, CSSProperties, DragEvent } from "react";
+import type { ChangeEvent, CSSProperties, DragEvent, ReactNode } from "react";
 import { PencilIcon, Trash2Icon } from "lucide-react";
 
 import { Alert, AlertDescription } from "../alert";
@@ -29,6 +29,7 @@ type ImageInputViewProps = {
   onDrop: (event: DragEvent<HTMLElement>) => void;
   onBrowse: () => void;
   onCancelUpload: () => void;
+  variableControl?: ReactNode;
   onEdit?: () => void;
   onDelete?: () => void;
 };
@@ -53,6 +54,7 @@ export const ImageInputView = ({
   onDrop,
   onBrowse,
   onCancelUpload,
+  variableControl,
   onEdit,
   onDelete,
 }: ImageInputViewProps) => {
@@ -63,7 +65,7 @@ export const ImageInputView = ({
         "group/input relative w-full aspect-video rounded-md grid overflow-hidden *:col-start-1 *:row-start-1",
         className,
       )}
-      data-empty={!value && !previewUrl}
+      data-empty={!resolvedValue && !previewUrl}
       data-dragging={isDragging || undefined}
       aria-readonly={readOnly || undefined}
     >
@@ -107,6 +109,7 @@ export const ImageInputView = ({
             Cancel
           </Button>
         )}
+        {variableControl}
         {onEdit && !isBusy && !readOnly && (
           <Button type="button" variant="secondary" onClick={onEdit}>
             <PencilIcon className="size-4" />
