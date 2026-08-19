@@ -1,7 +1,9 @@
 import { type ImageValue, type ResolvedImageValue, type VariableReference } from "@mechane/domain";
+import { useCallback } from "react";
 import { PlugIcon } from "lucide-react";
 
 import { Button } from "../button";
+import { useToastManager } from "../toast";
 import { cn } from "../../../lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "../popover";
 import { VariablePicker } from "../property-input/variable-picker";
@@ -54,6 +56,18 @@ export const ImageInput = ({
   onError,
   onUpload,
 }: ImageInputProps) => {
+  const toastManager = useToastManager();
+  const handleImageError = useCallback(
+    (error: ImageInputError) => {
+      toastManager.add({
+        title: "Image upload failed",
+        description: error.message,
+        type: "error",
+      });
+      onError?.(error);
+    },
+    [onError, toastManager],
+  );
   const controller = useImageInputController({
     value,
     variables,
@@ -62,7 +76,7 @@ export const ImageInput = ({
     validation,
     crop,
     onChange,
-    onError,
+    onError: handleImageError,
     onUpload,
   });
   const variableControl =
@@ -111,10 +125,10 @@ export const ImageInput = ({
           isValidating={controller.imageState.isValidating}
           progress={controller.imageState.progress}
           previewUrl={controller.imageState.previewUrl}
-          error={controller.imageState.error}
           isDragging={controller.imageState.isDragging}
           readOnly={readOnly}
           canUpload={Boolean(onUpload)}
+          inputRef={controller.inputRef}
           onFileInputChange={controller.handleFileInputChange}
           onDragEnter={controller.handleDragEnter}
           onDragOver={controller.handleDragOver}

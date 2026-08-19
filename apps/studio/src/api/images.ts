@@ -55,6 +55,7 @@ const putUpload = async ({
     }
 
     request.open(method, resolveApiUrl(url));
+    request.withCredentials = true;
     Object.entries(headers).forEach(([name, value]) => request.setRequestHeader(name, value));
     request.upload.onprogress = (event) => {
       if (event.lengthComputable) onProgress?.((event.loaded / event.total) * 100);

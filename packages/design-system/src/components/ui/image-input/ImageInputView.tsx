@@ -1,13 +1,12 @@
 import type { ResolvedImageValue } from "@mechane/domain";
-import type { ChangeEvent, CSSProperties, DragEvent, ReactNode } from "react";
+import type { ChangeEvent, CSSProperties, DragEvent, ReactNode, RefObject } from "react";
 import { PencilIcon, Trash2Icon } from "lucide-react";
 
-import { Alert, AlertDescription } from "../alert";
 import { Button } from "../button";
 import { cn } from "../../../lib/utils";
 import { ImageUploadIcon } from "./ImageUploadIcon";
 import { ACCEPTED_IMAGE_ACCEPT } from "./utils";
-import type { ImageInputError, ImageInputValue } from "./types";
+import type { ImageInputValue } from "./types";
 
 type ImageInputViewProps = {
   className?: string;
@@ -18,10 +17,10 @@ type ImageInputViewProps = {
   isValidating: boolean;
   progress: number;
   previewUrl: string | null;
-  error: ImageInputError | null;
   isDragging: boolean;
   readOnly: boolean;
   canUpload: boolean;
+  inputRef: RefObject<HTMLInputElement | null>;
   onFileInputChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onDragEnter: (event: DragEvent<HTMLElement>) => void;
   onDragOver: (event: DragEvent<HTMLElement>) => void;
@@ -43,10 +42,10 @@ export const ImageInputView = ({
   isValidating,
   progress,
   previewUrl,
-  error,
   isDragging,
   readOnly,
   canUpload,
+  inputRef,
   onFileInputChange,
   onDragEnter,
   onDragOver,
@@ -98,6 +97,7 @@ export const ImageInputView = ({
           type="file"
           aria-label="Choose image file"
           accept={ACCEPTED_IMAGE_ACCEPT}
+          ref={inputRef}
           onChange={onFileInputChange}
           disabled={readOnly || isBusy || !canUpload}
         />
@@ -136,14 +136,6 @@ export const ImageInputView = ({
           </Button>
         )}
       </div>
-      {error && (
-        <Alert
-          variant="destructive"
-          className="absolute inset-x-2 bottom-2 z-3 w-auto py-2 text-xs"
-        >
-          <AlertDescription>{error.message}</AlertDescription>
-        </Alert>
-      )}
     </div>
   );
 };

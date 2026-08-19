@@ -5,6 +5,7 @@ import { uploadImageFile } from "./images";
 
 type FakeRequest = {
   status: number;
+  withCredentials: boolean;
   upload: {
     onprogress:
       | ((event: { lengthComputable: boolean; loaded: number; total: number }) => void)
@@ -22,6 +23,7 @@ type FakeRequest = {
 const createRequestClass = (onSend: (request: FakeRequest) => void) => {
   class Request implements FakeRequest {
     status = 200;
+    withCredentials = false;
     upload = { onprogress: null };
     onload: (() => void) | null = null;
     onerror: (() => void) | null = null;
@@ -58,7 +60,7 @@ afterEach(() => {
 });
 
 describe("uploadImageFile", () => {
-  it("reports byte progress and completes the upload", async () => {
+  it("reports byte progress and sends authenticated upload requests", async () => {
     const fetchMock = vi.fn(async () => {
       const response =
         fetchMock.mock.calls.length === 1
@@ -82,9 +84,11 @@ describe("uploadImageFile", () => {
       return new Response(JSON.stringify(response), { status: 200 });
     });
     vi.stubGlobal("fetch", fetchMock);
+    let uploadRequest: FakeRequest | null = null;
     vi.stubGlobal(
       "XMLHttpRequest",
       createRequestClass((request) => {
+        uploadRequest = request;
         request.upload.onprogress?.({ lengthComputable: true, loaded: 5, total: 10 });
         queueMicrotask(() => request.onload?.());
       }),
@@ -97,6 +101,7 @@ describe("uploadImageFile", () => {
     });
 
     expect(result.id).toBe("asset-1");
+    expect((uploadRequest as FakeRequest | null)?.withCredentials).toBe(true);
     expect(progress).toEqual([50, 100]);
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
