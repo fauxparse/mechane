@@ -31,6 +31,7 @@ export type ImageInputProps = {
   variables?: VariableReference<ImageValue>[];
   imageAssets?: readonly ResolvedImageValue[];
   readOnly?: boolean;
+  allowLink?: boolean;
   validation?: ImageInputValidation;
   crop?: ImageInputCrop;
   onChange: (value: ImageInputValue | null) => void;
@@ -45,6 +46,7 @@ export const ImageInput = ({
   variables = [],
   imageAssets = [],
   readOnly = false,
+  allowLink = true,
   validation,
   crop,
   onChange,
@@ -64,20 +66,27 @@ export const ImageInput = ({
     onUpload,
   });
   const variableControl =
-    variables.length > 0 && !readOnly ? (
+    allowLink && variables.length > 0 && !readOnly ? (
       <Button
         type="button"
         variant="ghost"
-        size="icon"
         className={cn(
-          "w-5 h-5 rounded-xs p-0 aspect-square",
-          controller.linkedVariable &&
-            "bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground",
+          "h-5 rounded-xs p-0.5",
+          controller.linkedVariable
+            ? "max-w-40 gap-1 px-1.5 bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground"
+            : "w-5 aspect-square bg-transparent",
         )}
-        aria-label={controller.linkedVariable ? "Disconnect variable" : "Connect variable"}
+        aria-label={
+          controller.linkedVariable
+            ? `Connected variable: ${controller.linkedVariable.name}`
+            : "Connect variable"
+        }
         onClick={controller.openVariablePicker}
       >
-        <PlugIcon className="size-4" aria-hidden="true" />
+        <PlugIcon className="size-4 shrink-0" aria-hidden="true" />
+        {controller.linkedVariable && (
+          <span className="truncate text-xs">{controller.linkedVariable.name}</span>
+        )}
       </Button>
     ) : undefined;
 

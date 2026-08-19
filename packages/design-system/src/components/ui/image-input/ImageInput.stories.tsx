@@ -49,6 +49,16 @@ const imageVariable = {
     value: { assetId: "123", revision: "1" },
   },
 } satisfies VariableReference<ImageValue>;
+
+const secondaryImageVariable = {
+  id: "background-image",
+  name: "Background image",
+  type: "image",
+  current: {
+    kind: "image",
+    value: { assetId: "456", revision: "1" },
+  },
+} satisfies VariableReference<ImageValue>;
 type Story = StoryObj<typeof ImageInput>;
 
 const Harness = (args: NonNullable<Story["args"]>) => {
@@ -122,7 +132,7 @@ export const WithValue: Story = {
 export const ConnectedVariable: Story = {
   args: {
     value: imageVariable,
-    variables: [imageVariable],
+    variables: [imageVariable, secondaryImageVariable],
     imageAssets: [
       {
         assetId: "123",
@@ -133,6 +143,23 @@ export const ConnectedVariable: Story = {
         mimeType: "image/svg+xml",
         blurHash: null,
       },
+      {
+        assetId: "456",
+        url: imagePreviewUrl,
+        width: 640,
+        height: 425,
+        alt: "Background image",
+        mimeType: "image/svg+xml",
+        blurHash: null,
+      },
     ],
+  },
+};
+
+export const HiddenConnector: Story = {
+  args: {
+    value: imageVariable,
+    variables: [imageVariable],
+    allowLink: false,
   },
 };
