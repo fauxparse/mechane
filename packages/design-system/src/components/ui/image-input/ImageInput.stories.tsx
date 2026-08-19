@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ImageInput, ImageInputOnUploadProps } from "./ImageInput";
-import { ResolvedImageValue } from "@mechane/domain";
+import type { ImageInputOnUploadProps } from "./ImageInput";
+import type { ResolvedImageValue } from "@mechane/domain";
 import { useCallback, useState } from "react";
+import { ImageInput } from "./ImageInput";
 
 const meta: Meta<typeof ImageInput> = {
   title: "design-system/ImageInput",
@@ -26,24 +27,24 @@ const Harness = (args: Story["args"]) => {
     let totalProgress = 0;
 
     const step = () => {
-      totalProgress = Math.min(totalProgress + Math.random() * 10 + 5, 100);
+      totalProgress = Math.min(totalProgress + 15, 100);
       onProgress(totalProgress);
       if (totalProgress < 100) {
         window.setTimeout(step, 250);
       } else {
         onSuccess({
           assetId: "123",
-          url: URL.createObjectURL(file),
+          url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 425'%3E%3Crect width='640' height='425' fill='%23252525'/%3E%3C/svg%3E",
           width: 640,
           height: 425,
-          alt: "Image",
+          alt: file.name,
           mimeType: file.type,
           blurHash: null,
         });
       }
     };
 
-    setTimeout(step, 250);
+    window.setTimeout(step, 250);
   }, []);
 
   return <ImageInput value={value} onChange={setValue} onUpload={onUpload} {...args} />;
@@ -55,11 +56,11 @@ export const WithValue: Story = {
   args: {
     value: {
       assetId: "123",
-      url: "https://picsum.photos/id/56/640/480",
+      url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 425'%3E%3Crect width='640' height='425' fill='%23252525'/%3E%3C/svg%3E",
       width: 640,
       height: 425,
       alt: "Image",
-      mimeType: "image/jpeg",
+      mimeType: "image/svg+xml",
       blurHash: null,
     } satisfies ResolvedImageValue,
   },

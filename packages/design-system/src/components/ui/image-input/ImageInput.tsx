@@ -1,129 +1,254 @@
-import { ResolvedImageValue } from "@mechane/domain";
-import { cn } from "../../../lib/utils";
-import { ImageUploadIcon } from "./ImageUploadIcon";
+import { isResolvedImageValue, type ResolvedImageValue } from "@mechane/domain";
 import {
   ChangeEvent,
   CSSProperties,
   DragEvent,
   useCallback,
   useEffect,
+  useReducer,
   useRef,
-  useState,
 } from "react";
-import { Button } from "../button";
-import { ACCEPTED_IMAGE_ACCEPT, firstAcceptedImage, isFileDrag } from "./utils";
 import { Trash2Icon } from "lucide-react";
+
+import { Alert, AlertDescription } from "../alert";
+import { Button } from "../button";
+import { cn } from "../../../lib/utils";
+import { ImageUploadIcon } from "./ImageUploadIcon";
+import { ACCEPTED_IMAGE_ACCEPT } from "./utils";
+import { validateImageFile } from "./validation";
+import type {
+  ImageInputError,
+  ImageInputErrorCode,
+  ImageInputOnUploadProps,
+  ImageInputValue,
+  ImageInputValidation,
+} from "./types";
+
+export type {
+  ImageInputError,
+  ImageInputErrorCode,
+  ImageInputOnUploadProps,
+  ImageInputValue,
+  ImageInputValidation,
+} from "./types";
 
 export type ImageInputProps = {
   className?: string;
-  value: ResolvedImageValue | null;
+  value: ImageInputValue | null;
   readOnly?: boolean;
-  onChange: (value: ResolvedImageValue | null) => void;
+  validation?: ImageInputValidation;
+  onChange: (value: ImageInputValue | null) => void;
   onDelete?: () => void;
+  onError?: (error: ImageInputError) => void;
   onUpload?: (props: ImageInputOnUploadProps) => void;
 };
 
-export type ImageInputOnUploadProps = {
-  file: File;
-  onProgress: (progress: number) => void;
-  onSuccess: (value: ResolvedImageValue) => void;
-  onError: (error: Error) => void;
+type ImageInputState = {
+  phase: "idle" | "loading";
+  isValidating: boolean;
+  progress: number;
+  previewFile: File | null;
+  previewUrl: string | null;
+  error: ImageInputError | null;
+  isDragging: boolean;
+};
+
+type ImageInputAction =
+  | { type: "begin-validation" }
+  | { type: "validation-complete"; file: File }
+  | { type: "preview-url"; url: string }
+  | { type: "progress"; value: number }
+  | { type: "dragging"; value: boolean }
+  | { type: "error"; error: ImageInputError }
+  | { type: "success" };
+
+const initialImageInputState: ImageInputState = {
+  phase: "idle",
+  isValidating: false,
+  progress: 0,
+  previewFile: null,
+  previewUrl: null,
+  error: null,
+  isDragging: false,
+};
+
+const imageInputReducer = (state: ImageInputState, action: ImageInputAction): ImageInputState => {
+  switch (action.type) {
+    case "begin-validation":
+      return {
+        ...state,
+        phase: "loading",
+        isValidating: true,
+        progress: 0,
+        previewFile: null,
+        previewUrl: null,
+        error: null,
+      };
+    case "validation-complete":
+      return { ...state, isValidating: false, previewFile: action.file, previewUrl: null };
+    case "preview-url":
+      return { ...state, previewUrl: action.url };
+    case "progress":
+      return { ...state, progress: Math.min(100, Math.max(0, action.value)) };
+    case "dragging":
+      return { ...state, isDragging: action.value };
+    case "error":
+      return {
+        ...state,
+        phase: "idle",
+        isValidating: false,
+        previewFile: null,
+        previewUrl: null,
+        error: action.error,
+      };
+    case "success":
+      return {
+        ...state,
+        phase: "idle",
+        isValidating: false,
+        previewFile: null,
+        previewUrl: null,
+        error: null,
+      };
+  }
+};
+
+const errorFromUnknown = (
+  value: unknown,
+  fallbackCode: ImageInputErrorCode,
+  fallbackMessage: string,
+): ImageInputError => {
+  if (typeof value === "object" && value !== null && "code" in value && "message" in value) {
+    return value as ImageInputError;
+  }
+  return { code: fallbackCode, message: fallbackMessage, cause: value };
 };
 
 export const ImageInput = ({
   className,
   value,
   readOnly = false,
+  validation,
   onChange,
   onDelete,
+  onError,
   onUpload,
 }: ImageInputProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const [state, setState] = useState<"idle" | "loading">("idle");
-  const [progress, setProgress] = useState(0);
-  const [previewFile, setPreviewFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
+  const validationRequestRef = useRef(0);
+  const [imageState, dispatch] = useReducer(imageInputReducer, initialImageInputState);
   const dragDepthRef = useRef(0);
-  const [isDragging, setIsDragging] = useState(false);
+
+  const resolvedValue = isResolvedImageValue(value) ? value : null;
+  const isBusy = imageState.phase === "loading";
 
   useEffect(() => {
-    if (!previewFile) return;
+    if (!imageState.previewFile) return;
 
-    const url = URL.createObjectURL(previewFile);
-    setPreviewUrl(url);
+    const url = URL.createObjectURL(imageState.previewFile);
+    dispatch({ type: "preview-url", url });
 
     return () => URL.revokeObjectURL(url);
-  }, [previewFile]);
+  }, [imageState.previewFile]);
 
-  const handleUploadProgress = useCallback((progress: number) => {
-    setProgress(progress);
+  const reportError = useCallback(
+    (nextError: ImageInputError) => {
+      dispatch({ type: "error", error: nextError });
+      onError?.(nextError);
+    },
+    [onError],
+  );
+
+  const handleUploadProgress = useCallback((nextProgress: number) => {
+    dispatch({ type: "progress", value: nextProgress });
   }, []);
 
   const handleUploadSuccess = useCallback(
-    (value: ResolvedImageValue) => {
-      setState("idle");
-      setPreviewFile(null);
-      setPreviewUrl(null);
-      onChange(value);
+    (nextValue: ResolvedImageValue) => {
+      dispatch({ type: "success" });
+      onChange(nextValue);
     },
     [onChange],
   );
 
-  const handleUploadError = useCallback(() => {
-    setState("idle");
-    setPreviewFile(null);
-    setPreviewUrl(null);
-    onChange(null);
-  }, [onChange]);
+  const handleUploadError = useCallback(
+    (uploadError: ImageInputError) => {
+      reportError(uploadError);
+    },
+    [reportError],
+  );
 
-  const startUpload = (file: File) => {
-    setState("loading");
-    setProgress(0);
-    setPreviewUrl(null);
-    setPreviewFile(file);
-    if (onUpload) {
-      setState("loading");
-      setProgress(0);
+  const startUpload = async (file: File) => {
+    if (readOnly) return;
+    const requestId = ++validationRequestRef.current;
+    dispatch({ type: "begin-validation" });
+
+    if (!onUpload) {
+      reportError({
+        code: "UPLOAD_UNAVAILABLE",
+        message: "Image uploads are not available here.",
+      });
+      return;
+    }
+
+    try {
+      await validateImageFile(file, validation);
+    } catch (validationError) {
+      if (validationRequestRef.current !== requestId) return;
+      reportError(
+        errorFromUnknown(
+          validationError,
+          "INVALID_IMAGE",
+          "The selected file could not be used as an image.",
+        ),
+      );
+      return;
+    }
+
+    if (validationRequestRef.current !== requestId) return;
+    dispatch({ type: "validation-complete", file });
+    try {
       onUpload({
         file,
         onProgress: handleUploadProgress,
         onSuccess: handleUploadSuccess,
         onError: handleUploadError,
       });
-      return;
+    } catch (uploadError) {
+      reportError(
+        errorFromUnknown(uploadError, "NETWORK_FAILURE", "The image upload could not be started."),
+      );
     }
   };
 
   const handleFileInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = firstAcceptedImage(event.currentTarget.files);
-    if (file) startUpload(file);
+    const file = event.currentTarget.files?.[0];
+    if (file) void startUpload(file);
     event.currentTarget.value = "";
   };
 
   const resetDragState = () => {
     dragDepthRef.current = 0;
-    setIsDragging(false);
+    dispatch({ type: "dragging", value: false });
   };
 
   const handleDragEnter = (event: DragEvent<HTMLElement>) => {
-    if (!isFileDrag(event)) return;
+    if (readOnly || !onUpload || !Array.from(event.dataTransfer.types).includes("Files")) return;
     event.preventDefault();
     event.stopPropagation();
     dragDepthRef.current += 1;
-    setIsDragging(true);
+    dispatch({ type: "dragging", value: true });
   };
 
   const handleDragOver = (event: DragEvent<HTMLElement>) => {
-    if (!isFileDrag(event)) return;
+    if (readOnly || !onUpload || !Array.from(event.dataTransfer.types).includes("Files")) return;
     event.preventDefault();
     event.stopPropagation();
-    event.dataTransfer.dropEffect = onUpload ? "copy" : "none";
+    event.dataTransfer.dropEffect = "copy";
   };
 
   const handleDragLeave = (event: DragEvent<HTMLElement>) => {
-    if (!isFileDrag(event)) return;
+    if (readOnly || !Array.from(event.dataTransfer.types).includes("Files")) return;
     event.preventDefault();
     event.stopPropagation();
     dragDepthRef.current -= 1;
@@ -131,11 +256,12 @@ export const ImageInput = ({
   };
 
   const handleDrop = (event: DragEvent<HTMLElement>) => {
+    if (readOnly || !onUpload) return;
     event.preventDefault();
     event.stopPropagation();
     resetDragState();
-    const file = firstAcceptedImage(event.dataTransfer.files);
-    if (file) startUpload(file);
+    const file = event.dataTransfer.files[0];
+    if (file) void startUpload(file);
   };
 
   return (
@@ -144,18 +270,18 @@ export const ImageInput = ({
         "group/input relative w-full aspect-video rounded-md grid overflow-hidden *:col-start-1 *:row-start-1",
         className,
       )}
-      data-empty={!value}
-      data-state={state}
-      data-dragging={isDragging || undefined}
-      aria-readonly={!!readOnly}
+      data-empty={!value && !imageState.previewUrl}
+      data-state={imageState.phase}
+      data-dragging={imageState.isDragging || undefined}
+      aria-readonly={readOnly || undefined}
     >
       <img
-        src={previewUrl ?? value?.url}
-        alt={value?.alt ?? "Image preview"}
+        src={imageState.previewUrl ?? resolvedValue?.url}
+        alt={resolvedValue?.alt ?? "Image preview"}
         className="group-data-[empty=true]/input:hidden group-data-[state=loading]/input:block size-full min-h-0 min-w-0 object-cover rounded-[inherit] group-data-[state=loading]/input:opacity-100 group-data-[state=loading]/input:blur-(--progress-blur) transition-all"
         style={
           {
-            "--progress-blur": `${Math.round((100 - progress) / 2)}px`,
+            "--progress-blur": `${Math.round((100 - imageState.progress) / 2)}px`,
           } as CSSProperties
         }
       />
@@ -166,7 +292,7 @@ export const ImageInput = ({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        <ImageUploadIcon state={state} progress={progress} />
+        <ImageUploadIcon state={imageState.phase} progress={imageState.progress} />
         <input
           ref={inputRef}
           className="sr-only"
@@ -174,17 +300,18 @@ export const ImageInput = ({
           aria-label="Choose image file"
           accept={ACCEPTED_IMAGE_ACCEPT}
           onChange={handleFileInputChange}
+          disabled={readOnly || isBusy || !onUpload}
         />
         <Button
           type="button"
           variant="outline"
           className="group-data-[empty=false]/input:border-foreground group-data-[empty=false]/input:hover:border-foreground disabled:border-transparent"
           onClick={() => inputRef.current?.click()}
-          disabled={state === "loading"}
+          disabled={readOnly || isBusy || !onUpload}
         >
-          {state === "loading" ? "Uploading..." : "Browse files"}
+          {imageState.isValidating ? "Checking..." : isBusy ? "Uploading..." : "Browse files"}
         </Button>
-        {onDelete && state !== "loading" && (
+        {onDelete && value && !isBusy && !readOnly && (
           <Button
             type="button"
             variant="ghost"
@@ -196,6 +323,14 @@ export const ImageInput = ({
           </Button>
         )}
       </div>
+      {imageState.error && (
+        <Alert
+          variant="destructive"
+          className="absolute inset-x-2 bottom-2 z-3 w-auto py-2 text-xs"
+        >
+          <AlertDescription>{imageState.error.message}</AlertDescription>
+        </Alert>
+      )}
     </div>
   );
 };

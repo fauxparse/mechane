@@ -179,7 +179,15 @@ export {
   SelectTrigger,
   SelectValue,
 } from "./components/ui/select";
-export { ImageInput } from "./components/ui/image-input/ImageInput";
+export {
+  ImageInput,
+  type ImageInputError,
+  type ImageInputErrorCode,
+  type ImageInputOnUploadProps,
+  type ImageInputProps,
+  type ImageInputValidation,
+  type ImageInputValue,
+} from "./components/ui/image-input/ImageInput";
 
 export { THEME_COLOR_METADATA } from "./themes/generated";
 export type { ThemeColorKey } from "./themes/generated";
