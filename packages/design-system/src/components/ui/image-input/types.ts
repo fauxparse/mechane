@@ -22,6 +22,7 @@ export type ImageInputError = {
 
 export type ImageInputOnUploadProps = {
   file: File;
+  signal: AbortSignal;
   onProgress: (progress: number) => void;
   onSuccess: (value: ResolvedImageValue) => void;
   onError: (error: ImageInputError) => void;

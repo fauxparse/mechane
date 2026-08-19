@@ -111,12 +111,6 @@ export const ImageCropper = ({
     return () => URL.revokeObjectURL(url);
   }, [source]);
 
-  useEffect(() => {
-    if (!open) return;
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-  }, [open, source]);
-
   const handleImageLoad = () => {
     const image = imageRef.current;
     if (!image || image.naturalWidth === 0 || image.naturalHeight === 0) return;

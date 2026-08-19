@@ -155,7 +155,7 @@ function CanvasWorkspaceRoute() {
       focusedArtId={focused?.artId ?? null}
       variables={focusedVariables}
       imageAssets={imageAssets.data ?? []}
-      onImageUpload={(file) => void imageUpload.mutateAsync(file)}
+      onImageUpload={(file) => void imageUpload.mutateAsync({ file })}
       onFocusArtboard={(artId) =>
         void navigate({
           to: "/shows/$showId/art/$artId",

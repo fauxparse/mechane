@@ -25,6 +25,8 @@ export class GraphQLRequestError extends Error {
   }
 }
 
+export type GraphQLRequestOptions = Pick<RequestInit, "signal">;
+
 /**
  * Sends a GraphQL request to `endpoint`, including credentials so the
  * Better Auth session cookie travels with it. Throws `GraphQLRequestError`
@@ -48,17 +50,20 @@ export async function graphqlRequest<TResult, TVariables extends Record<string, 
   endpoint: string,
   document: TadaDocumentNode<TResult, TVariables>,
   variables: TVariables,
+  options?: GraphQLRequestOptions,
 ): Promise<TResult>;
 export async function graphqlRequest<TResult, TVariables extends Record<string, unknown>>(
   endpoint: string,
   document: TadaDocumentNode<TResult, TVariables>,
   variables?: TVariables,
+  options?: GraphQLRequestOptions,
 ): Promise<TResult> {
   const response = await fetch(endpoint, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query: print(document), variables }),
+    ...options,
   });
 
   if (!response.ok) {
