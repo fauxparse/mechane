@@ -160,7 +160,7 @@ export interface TextElement extends ElementBase {
   padding?: number | Padding;
 }
 
-export interface ImageElement extends ElementBase {
+export interface ImageElement extends CornerRadiusElement {
   type: "image";
   image?: PropertyValue<ImageAssetReference | ResolvedImageValue>;
   alt?: PropertyValue<string>;
@@ -189,7 +189,7 @@ export interface Padding {
 }
 
 export function hasCornerRadius(element: Element): element is CornerRadiusElement {
-  return element.type === "rect" || element.type === "frame";
+  return element.type === "rect" || element.type === "frame" || element.type === "image";
 }
 
 export function isContainerElement(element: Element): element is FrameElement {

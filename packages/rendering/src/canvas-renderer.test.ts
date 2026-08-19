@@ -371,6 +371,25 @@ describe("CanvasRenderer", () => {
 
     expect(html).toContain("border-radius:24px");
   });
+  it("renders corner radii on images", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "rounded-image",
+            type: "image",
+            cornerRadius: 24,
+            image: { assetId: "asset-1", revision: "1" },
+          },
+        ],
+      },
+    });
+
+    expect(html).toContain("border-radius:24px");
+  });
   it("uses auto gap to distribute flex children with space-between", () => {
     const html = markup({
       kind: "scene",
