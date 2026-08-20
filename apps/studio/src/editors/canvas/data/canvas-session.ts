@@ -1,4 +1,4 @@
-import type { CanvasCamera } from "../graph/canvas-camera";
+import type { CanvasCamera } from "../components/canvas-camera";
 
 const cameraByShow = new Map<string, CanvasCamera>();
 

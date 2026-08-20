@@ -1,5 +1,5 @@
 import type { Element } from "@mechane/domain";
-import type { CanvasClientRect } from "../graph/canvas-geometry";
+import type { CanvasClientRect } from "../components/canvas-geometry";
 
 /** Replaces fill axes with the rendered dimensions an absolute parent can honor. */
 export function fixedFillSizing(

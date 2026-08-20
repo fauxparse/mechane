@@ -5,8 +5,8 @@ import type { NewElement } from "@mechane/commands";
 import type { SceneVariable, Position } from "@mechane/domain";
 import type { ImageAsset } from "@mechane/graphql-schema";
 import type { CanvasArtboardDocument } from "../../api/canvas";
-import type { CanvasCamera } from "./graph/canvas-camera";
-import type { CanvasSelection } from "./graph/canvas-selection";
+import type { CanvasCamera } from "./components/canvas-camera";
+import type { CanvasSelection } from "./components/canvas-selection";
 import type { ResizeHandle } from "./commands/canvas-resize";
 import type { CanvasTool } from "./Toolbar/Toolbar";
 

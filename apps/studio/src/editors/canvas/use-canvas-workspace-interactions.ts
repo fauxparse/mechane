@@ -8,11 +8,11 @@ import type { Position, FrameElement } from "@mechane/domain";
 
 import type { CanvasArtboardDocument } from "../../api/canvas";
 import { useEditableArea } from "../../components/EditorLayout/editable-area";
-import { contentOrigin, selectedCanvasRects, useCanvasGeometry } from "./graph/canvas-geometry";
-import type { CanvasClientRect } from "./graph/canvas-geometry";
-import type { CanvasSelection } from "./graph/canvas-selection";
-import { useCanvasCamera } from "./graph/use-canvas-camera";
-import { roundToLogicalPixel } from "./graph/canvas-pixels";
+import { contentOrigin, selectedCanvasRects, useCanvasGeometry } from "./components/canvas-geometry";
+import type { CanvasClientRect } from "./components/canvas-geometry";
+import type { CanvasSelection } from "./components/canvas-selection";
+import { useCanvasCamera } from "./components/use-canvas-camera";
+import { roundToLogicalPixel } from "./components/canvas-pixels";
 
 import {
   containedSelection,
@@ -21,7 +21,7 @@ import {
   selectionRect,
   toggleSelection,
   topmostPaintedElementAtPoint,
-} from "./graph/canvas-selection";
+} from "./components/canvas-selection";
 import {
   canvasForCreation,
   containingFrame,
