@@ -7,7 +7,7 @@ import { focusContext } from "../show/keyboard/focus-context";
 
 import type { CanvasWorkspaceEditorProps } from "./canvas-workspace-types";
 export type { CanvasWorkspaceEditorProps } from "./canvas-workspace-types";
-import { CanvasWorkspaceSurface } from "./graph/CanvasWorkspaceSurface";
+import { CanvasWorkspaceSurface } from "./components/CanvasWorkspaceSurface";
 import { useCanvasWorkspaceInteractions } from "./use-canvas-workspace-interactions";
 import { canvasToolFor } from "./keyboard/canvas-keyboard";
 
