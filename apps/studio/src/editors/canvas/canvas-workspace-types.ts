@@ -21,6 +21,7 @@ export interface CanvasWorkspaceEditorProps {
   selectedElementIds?: readonly string[];
   onSelectionChange?(selection: CanvasSelection): void;
   initialCamera?: CanvasCamera;
+  onCameraChange?(camera: CanvasCamera): void;
   onCreateElement?(canvasId: string, element: NewElement, parentId: string, rank: string): void;
   onMoveElement?(
     canvasId: string,

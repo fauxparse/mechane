@@ -2,11 +2,15 @@
 // workspace; this index route owns the graph command stack.
 import type { ShowId } from "@mechane/domain";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useShowGraph, useShowGraphEdits } from "../../../../api/show-graph";
 import { ShowGraphEditor } from "../../../../editors/show/ShowGraphEditor";
 import type { ShowGraphEditorHandle } from "../../../../editors/show/ShowGraphEditor";
+import {
+  rememberedShowViewport,
+  rememberShowViewport,
+} from "../../../../editors/show/data/show-session";
 
 export const Route = createFileRoute("/_authenticated/shows/$showId/")({
   component: ShowGraphIndexRoute,
@@ -17,6 +21,13 @@ function ShowGraphIndexRoute() {
   const showId = params.showId as ShowId;
   const draft = useShowGraph(showId, "draft");
   const editor = useRef<ShowGraphEditorHandle>(null);
+  const initialViewport = rememberedShowViewport(showId);
+  const onViewportChange = useCallback(
+    (viewport: Parameters<typeof rememberShowViewport>[1]) => {
+      rememberShowViewport(showId, viewport);
+    },
+    [showId],
+  );
   const saveGraph = useShowGraphEdits(showId, draft.data?.version, {
     onAmend: (edits) => editor.current?.applyAmendments(edits),
   });
@@ -38,6 +49,8 @@ function ShowGraphIndexRoute() {
           setEdited(true);
           saveGraph.enqueue(edits);
         }}
+        initialViewport={initialViewport}
+        onViewportChange={onViewportChange}
       />
       {saveGraph.error ? (
         <p

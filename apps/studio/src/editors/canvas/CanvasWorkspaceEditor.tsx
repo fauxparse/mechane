@@ -33,6 +33,7 @@ export function CanvasWorkspaceEditor({
   onDeleteElements,
   onRenameArtboard,
   initialCamera,
+  onCameraChange,
 }: CanvasWorkspaceEditorProps) {
   const {
     ordered,
@@ -89,6 +90,7 @@ export function CanvasWorkspaceEditor({
     selectedArtId,
     selectedElementIds,
     onSelectionChange,
+    onCameraChange,
     initialCamera,
     onCreateElement,
     onMoveElement,

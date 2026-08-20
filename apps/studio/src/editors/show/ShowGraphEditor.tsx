@@ -77,7 +77,7 @@ import {
   useNodesState,
   useReactFlow,
 } from "@xyflow/react";
-import type { Connection, FitViewOptions, OnNodeDrag, XYPosition } from "@xyflow/react";
+import type { Connection, FitViewOptions, OnNodeDrag, Viewport, XYPosition } from "@xyflow/react";
 
 import "@xyflow/react/dist/style.css";
 import "./graph/show-graph-editor.css";
@@ -157,6 +157,9 @@ export interface ShowGraphEditorProps {
    * mutation.
    */
   onEdit?: (edits: readonly GraphEdit[], graph: ShowGraph) => void;
+  /** Restores the Show Editor viewport for this browser session. */
+  initialViewport?: Viewport;
+  onViewportChange?(viewport: Viewport): void;
   className?: string;
   ref?: Ref<ShowGraphEditorHandle>;
 }
@@ -181,7 +184,14 @@ function moveIntoFlowDisabledReason(selectedNodes: GraphNode[]): string | undefi
   return undefined;
 }
 
-function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditorProps) {
+function ShowGraphEditorInner({
+  graph,
+  onEdit,
+  initialViewport,
+  onViewportChange,
+  className,
+  ref,
+}: ShowGraphEditorProps) {
   const editing = useGraphEditing(graph, onEdit);
   const { commands } = editing;
   // Collapse is deliberately local view state (#44): it never enters the
@@ -204,7 +214,7 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
   const { fitView, getNodes, getZoom, setCenter, screenToFlowPosition } = useReactFlow();
   // Framing targets the Editable Area, not the viewport the graph paints into.
   const fitViewOptions = useFitViewOptions();
-  useInitialFrame(fitView, fitViewOptions);
+  useInitialFrame(fitView, fitViewOptions, initialViewport === undefined);
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<DeletionScope | null>(null);
@@ -430,6 +440,8 @@ function ShowGraphEditorInner({ graph, onEdit, className, ref }: ShowGraphEditor
           create={create}
           fitView={fitView}
           fitViewOptions={fitViewOptions}
+          initialViewport={initialViewport}
+          onViewportChange={onViewportChange}
           selectedNodeIds={selectedNodeIds}
           selectedEdgeIds={selectedEdgeIds}
           requestDelete={requestDelete}
@@ -468,6 +480,8 @@ interface ShowGraphContextMenuProps {
   create(creatable: CreatableNode, at: Position): unknown;
   fitView(options: FitViewOptions): void;
   fitViewOptions: FitViewOptions;
+  initialViewport?: Viewport;
+  onViewportChange?(viewport: Viewport): void;
   selectedNodeIds: string[];
   selectedEdgeIds: string[];
   requestDelete(): void;
@@ -490,6 +504,8 @@ function ShowGraphContextMenu({
   create,
   fitView,
   fitViewOptions,
+  initialViewport,
+  onViewportChange,
   selectedNodeIds,
   selectedEdgeIds,
   requestDelete,
@@ -554,7 +570,9 @@ function ShowGraphContextMenu({
             zoomOnScroll
             minZoom={MIN_ZOOM}
             maxZoom={MAX_ZOOM}
-            fitView
+            defaultViewport={initialViewport}
+            onViewportChange={onViewportChange}
+            fitView={initialViewport === undefined}
             fitViewOptions={fitViewOptions}
             proOptions={{ hideAttribution: true }}
             aria-label="Show graph"

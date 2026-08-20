@@ -140,6 +140,7 @@ export function useCanvasWorkspaceInteractions({
   selectedElementIds,
   onSelectionChange,
   initialCamera,
+  onCameraChange,
   onCreateElement,
   onMoveElement,
   onMoveElementBetweenCanvases,
@@ -217,7 +218,11 @@ export function useCanvasWorkspaceInteractions({
     zoomIn,
     zoomOut,
     resetCamera,
-  } = useCanvasCamera(initialCamera, selection.artId !== null && selection.elementIds.length > 0);
+  } = useCanvasCamera(
+    initialCamera,
+    selection.artId !== null && selection.elementIds.length > 0,
+    onCameraChange,
+  );
   const geometryKey = useMemo(
     () =>
       `${camera.x}:${camera.y}:${camera.zoom}|${JSON.stringify(
