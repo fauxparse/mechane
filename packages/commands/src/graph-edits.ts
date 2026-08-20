@@ -31,7 +31,14 @@
 //     was composed from, not as "delete Flow, recursively". The server
 //     applies what it is told; blast radius is the editor's policy (#42).
 
-import type { GraphEdge, GraphNode, Position, SceneVariable, ShowGraph } from "@mechane/domain";
+import type {
+  FlowColor,
+  GraphEdge,
+  GraphNode,
+  Position,
+  SceneVariable,
+  ShowGraph,
+} from "@mechane/domain";
 
 import {
   addEdge,
@@ -46,6 +53,7 @@ import {
   renameNode,
   renameSceneVariable,
   reparentNode,
+  setFlowColor,
   setFlowDefaultScene,
 } from "./graph-commands";
 import type { ShowGraphCommand } from "./graph-commands";
@@ -80,6 +88,11 @@ export type GraphEdit =
       readonly type: typeof GRAPH_COMMAND_TYPES.setFlowDefaultScene;
       readonly flowId: string;
       readonly sceneId: string | null;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setFlowColor;
+      readonly flowId: string;
+      readonly color: FlowColor | null;
     }
   | {
       readonly type: typeof GRAPH_COMMAND_TYPES.addSceneVariable;
@@ -146,6 +159,11 @@ export function commandForEdit(edit: GraphEdit): ShowGraphCommand {
       return removeEdge(edit.edgeId);
     case GRAPH_COMMAND_TYPES.setFlowDefaultScene:
       return setFlowDefaultScene(edit.flowId, edit.sceneId);
+    case GRAPH_COMMAND_TYPES.setFlowColor:
+      if (edit.color === null) {
+        throw new UnknownGraphEditError("A Flow color edit cannot clear a Flow color.");
+      }
+      return setFlowColor(edit.flowId, edit.color);
     case GRAPH_COMMAND_TYPES.addSceneVariable:
       return addSceneVariable(edit.sceneId, edit.variable);
     case GRAPH_COMMAND_TYPES.renameSceneVariable:
@@ -194,6 +212,8 @@ function supersedes(edit: GraphEdit): { key: string; ids: readonly string[] } | 
         key: `defaultScene:${edit.flowId}`,
         ids: edit.sceneId === null ? [edit.flowId] : [edit.flowId, edit.sceneId],
       };
+    case GRAPH_COMMAND_TYPES.setFlowColor:
+      return { key: `flowColor:${edit.flowId}`, ids: [edit.flowId] };
     case GRAPH_COMMAND_TYPES.renameSceneVariable:
       return {
         key: `renameVariable:${edit.sceneId}:${edit.variableId}`,

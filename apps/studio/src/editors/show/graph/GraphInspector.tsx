@@ -15,8 +15,24 @@
 //     need model that doesn't exist (ADR-0004's JEXL subset; PRD §10 defers
 //     the Shape schema), so the panel says so rather than shipping a field
 //     that writes nowhere.
-import { Button, Check, cn, Copy, Input, Label, Plus, QrCode, X } from "@mechane/design-system";
-import type { DeviceNode, GraphNode, SceneNode } from "@mechane/domain";
+import {
+  Button,
+  Check,
+  cn,
+  Copy,
+  Input,
+  Label,
+  Plus,
+  QrCode,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  X,
+} from "@mechane/design-system";
+import { DEFAULT_FLOW_COLOR, FLOW_COLORS, isFlowColor } from "@mechane/domain";
+import type { DeviceNode, FlowNode, FlowColor, GraphNode, SceneNode } from "@mechane/domain";
 import { useCallback, useEffect, useState } from "react";
 
 import { nodeIcon, NODE_KIND_META } from "./node-kinds";
@@ -87,6 +103,8 @@ function SingleNode({ node, editing }: { node: GraphNode; editing: GraphEditing 
         <h2 className="text-sm font-medium">{label}</h2>
       </div>
 
+      {node.kind === "flow" ? <FlowColorField flow={node} editing={editing} /> : null}
+
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="inspector-name">Name</Label>
         <Input
@@ -118,6 +136,42 @@ function SingleNode({ node, editing }: { node: GraphNode; editing: GraphEditing 
       ) : null}
 
       {node.kind === "device" ? <DevicePairing device={node} /> : null}
+    </div>
+  );
+}
+
+function FlowColorField({ flow, editing }: { flow: FlowNode; editing: GraphEditing }) {
+  const value = flow.color ?? DEFAULT_FLOW_COLOR;
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor="inspector-flow-color">Color</Label>
+      <Select
+        value={value}
+        onValueChange={(next) => {
+          if (next && isFlowColor(next)) editing.setFlowColor(flow.id, next);
+        }}
+      >
+        <SelectTrigger id="inspector-flow-color" size="sm" aria-label="Flow color">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {FLOW_COLORS.map((color: FlowColor) => (
+            <SelectItem key={color} value={color}>
+              <span
+                className="mr-2 inline-block size-2 rounded-full"
+                style={{
+                  backgroundColor:
+                    color === "neutral"
+                      ? "var(--palette-neutral-500)"
+                      : `var(--palette-${color}-500)`,
+                }}
+              />
+              {color[0]?.toUpperCase()}
+              {color.slice(1)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

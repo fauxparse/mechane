@@ -10,8 +10,13 @@
 // error" further in.
 import type { GraphEdit } from "@mechane/commands";
 import { GRAPH_COMMAND_TYPES } from "@mechane/commands";
-import type { GraphEdge, GraphNode, Type } from "@mechane/domain";
-import { isEdgeKind, isNodeKind, wiringTargetVariableId } from "@mechane/domain";
+import type { FlowColor, GraphEdge, GraphNode, Type } from "@mechane/domain";
+import {
+  assertValidFlowColor,
+  isEdgeKind,
+  isNodeKind,
+  wiringTargetVariableId,
+} from "@mechane/domain";
 import { GraphQLError } from "graphql";
 
 import type { AppliedShowGraphEdits, StoredShowGraph } from "../db/show-graph";
@@ -39,12 +44,12 @@ export interface GraphNodeInput {
   name: string;
   parentId?: string | null;
   defaultSceneId?: string | null;
+  color?: string | null;
   type?: TypeInput | null;
   position: PositionInput;
   variables?: SceneVariableInput[] | null;
   perConnection?: boolean | null;
 }
-
 
 export interface GraphEdgeInput {
   id: string;
@@ -81,6 +86,7 @@ export interface GraphEditInput {
   sceneId?: string | null;
   variableId?: string | null;
   variable?: SceneVariableInput | null;
+  color?: string | null;
 }
 
 function badInput(message: string): GraphQLError {
@@ -129,6 +135,15 @@ function parseType(input: TypeInput | null | undefined): Type | undefined {
   throw badInput(`Invalid Shape type "${input.kind}".`);
 }
 
+function parseFlowColor(input: string | null | undefined): FlowColor | undefined {
+  if (input === null || input === undefined) return undefined;
+  try {
+    return assertValidFlowColor(input);
+  } catch (error) {
+    throw badInput(error instanceof Error ? error.message : `Invalid Flow color "${input}".`);
+  }
+}
+
 function parseNode(input: GraphNodeInput): GraphNode {
   if (!isNodeKind(input.kind)) {
     throw badInput(`Unknown graph node kind "${input.kind}" on node "${input.id}".`);
@@ -159,12 +174,16 @@ function parseNode(input: GraphNodeInput): GraphNode {
       if (parentId !== null) {
         throw badInput(`Flow "${input.id}" was given a parentId; Flows are never nested.`);
       }
-      return {
-        ...base,
-        kind: "flow",
-        parentId: null,
-        defaultSceneId: input.defaultSceneId ?? null,
-      };
+      {
+        const color = parseFlowColor(input.color);
+        return {
+          ...base,
+          kind: "flow",
+          parentId: null,
+          defaultSceneId: input.defaultSceneId ?? null,
+          ...(color ? { color } : {}),
+        };
+      }
     case "source":
       if (!type) throw badInput(`Source "${input.id}" must have a Type.`);
       return { ...base, kind: "source", parentId, type };
@@ -268,6 +287,12 @@ export function parseGraphEdit(edit: GraphEditInput): GraphEdit {
         // Also meaningfully null: a Flow can be left without an entry Scene.
         sceneId: edit.sceneId ?? null,
       };
+    case GRAPH_COMMAND_TYPES.setFlowColor:
+      return {
+        type: edit.type,
+        flowId: required(edit, "flowId", edit.flowId),
+        color: parseFlowColor(required(edit, "color", edit.color))!,
+      };
     case GRAPH_COMMAND_TYPES.addSceneVariable: {
       const variable = required(edit, "variable", edit.variable);
       return {
@@ -333,6 +358,7 @@ export function serializeGraphEdit(edit: GraphEdit) {
     sceneId: null as string | null,
     variableId: null as string | null,
     variable: null as { id: string; name: string } | null,
+    color: null as string | null,
     pairingCode: null as string | null,
   };
   switch (edit.type) {
@@ -357,6 +383,8 @@ export function serializeGraphEdit(edit: GraphEdit) {
       return { ...base, edgeId: edit.edgeId };
     case "graph.setFlowDefaultScene":
       return { ...base, flowId: edit.flowId, sceneId: edit.sceneId };
+    case "graph.setFlowColor":
+      return { ...base, flowId: edit.flowId, color: edit.color };
     case "graph.addSceneVariable":
       return { ...base, sceneId: edit.sceneId, variable: edit.variable };
     case "graph.renameSceneVariable":
@@ -418,7 +446,7 @@ function serializeNode(node: GraphNode) {
     kind: node.kind,
     name: node.name,
     parentId: node.parentId,
-    defaultSceneId: node.kind === "flow" ? node.defaultSceneId : null,
+    color: node.kind === "flow" ? (node.color ?? "neutral") : null,
     position: node.position,
     variables:
       node.kind === "scene"

@@ -44,6 +44,7 @@ export const GetShowGraphQuery = graphql(`
           }
         }
         ... on FlowNode {
+          color
           defaultSceneId
         }
         ... on SourceNode {

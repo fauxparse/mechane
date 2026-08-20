@@ -28,8 +28,22 @@
 // because the editor now holds the *domain* graph so that commands can act on
 // it (#41), while a freshly fetched graph is still the wire shape. Both draw
 // the same way, and neither has to be converted just to be rendered.
-import { areTypesCompatible, findCoercion, isEdgeKind, isNodeKind } from "@mechane/domain";
-import type { EdgeKind, NodeKind, Position, PrimitiveType, Shape, Type } from "@mechane/domain";
+import {
+  areTypesCompatible,
+  DEFAULT_FLOW_COLOR,
+  findCoercion,
+  isEdgeKind,
+  isNodeKind,
+} from "@mechane/domain";
+import type {
+  EdgeKind,
+  FlowColor,
+  NodeKind,
+  Position,
+  PrimitiveType,
+  Shape,
+  Type,
+} from "@mechane/domain";
 import type { Edge, Node } from "@xyflow/react";
 
 /**
@@ -45,6 +59,7 @@ export interface MappableNode {
   position: Position;
   parentId?: string | null;
   defaultSceneId?: string | null;
+  color?: FlowColor | null;
   type?: unknown;
   variables?: readonly { id: string; name: string; type?: unknown }[] | null;
   fieldDefaults?: readonly unknown[] | null;
@@ -96,6 +111,8 @@ export const FLOW_CONTENT_ORIGIN: Position = {
 // `Record<string, unknown>`, which an interface does not satisfy structurally
 // (interfaces have no implicit index signature).
 export type ShowNodeData = {
+  /** The Flow colorway, or neutral for every non-Flow node (#316). */
+  color: FlowColor;
   kind: NodeKind;
   name: string;
   type: Type | null;
@@ -139,6 +156,8 @@ export type ShowEdgeData = {
   targetVariableId: string | null;
   coercing: boolean;
   invalidReason: string | null;
+  /** The colorway used to render this edge in the editor (#316). */
+  color: FlowColor;
 };
 
 /**
@@ -227,6 +246,7 @@ function toFlowNode(
   defaultSceneIds: Set<string>,
   drivenDeviceIds: Set<string>,
   collapsed: boolean,
+  color: FlowColor,
 ): ShowFlowNode {
   const kind = nodeKindOf(node);
   const isFlow = kind === "flow";
@@ -247,6 +267,7 @@ function toFlowNode(
         : flowSize(children)
       : { width: NODE_WIDTH, height: nodeHeight(node) },
     data: {
+      color,
       kind,
       name: node.name,
       type: (node.type as Type | null | undefined) ?? null,
@@ -280,6 +301,12 @@ function toFlowEdge(
   const targetVariableId = edge.targetVariableId ?? edge.targetPath?.[0] ?? null;
   const source = graphNodes.find((node) => node.id === edge.sourceId);
   const target = graphNodes.find((node) => node.id === edge.targetId);
+  const sourceParentId = source?.parentId ?? null;
+  const targetParentId = target?.parentId ?? null;
+  const color =
+    sourceParentId !== null && sourceParentId === targetParentId
+      ? (graphNodes.find((node) => node.id === sourceParentId)?.color ?? DEFAULT_FLOW_COLOR)
+      : DEFAULT_FLOW_COLOR;
   const targetType =
     (target?.variables?.find((variable) => variable.id === targetVariableId)?.type as
       | Type
@@ -309,6 +336,7 @@ function toFlowEdge(
     targetHandle: edge.kind === "wiring" && targetVariableId ? targetVariableId : INPUT_HANDLE,
     data: {
       kind: edge.kind,
+      color,
       // The wire shape resolves the Variable for the client; the domain shape
       // carries it as the head of the target path (`wiringTargetVariableId`),
       // so read whichever one is there.
@@ -354,6 +382,9 @@ export function graphToFlow(
   for (const node of graph.nodes) {
     (node.kind === "flow" ? flows : rest).push(node);
   }
+  const flowColors = new Map(
+    flows.map((flow) => [flow.id, flow.color ?? DEFAULT_FLOW_COLOR] as const),
+  );
 
   // Which Variables have a producer, and which Scenes are their Flow's entry
   // point — both are facts about the *graph* that a single node has to display
@@ -386,6 +417,9 @@ export function graphToFlow(
             defaultSceneIds,
             drivenDeviceIds,
             collapsed.has(node.id),
+            node.kind === "flow"
+              ? (node.color ?? DEFAULT_FLOW_COLOR)
+              : ((node.parentId ? flowColors.get(node.parentId) : undefined) ?? DEFAULT_FLOW_COLOR),
           ),
         );
       }

@@ -20,12 +20,20 @@ import {
   removeSceneVariable,
   renameNode,
   renameSceneVariable,
+  setFlowColor,
   moveNodesIntoFlow,
   moveNodesOutOfFlow,
 } from "@mechane/commands";
 import type { GraphEdit, Gesture } from "@mechane/commands";
 import { connectionEdge, connectionError, connectionTargets, generateId } from "@mechane/domain";
-import type { ConnectionTargets, GraphNode, NodeKind, Position, ShowGraph } from "@mechane/domain";
+import type {
+  ConnectionTargets,
+  FlowColor,
+  GraphNode,
+  NodeKind,
+  Position,
+  ShowGraph,
+} from "@mechane/domain";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import { INPUT_HANDLE, OUTPUT_HANDLE } from "../graph/graph-to-flow";
@@ -86,6 +94,7 @@ export interface GraphEditing {
   /** Structural Flow moves; collapse is intentionally not part of this API. */
   moveIntoFlow(nodeIds: string[], flowId: string, origin: Position): void;
   moveOutOfFlow(nodeIds: string[], positions: Position[]): string | null;
+  setFlowColor(flowId: string, color: FlowColor): void;
 }
 
 /**
@@ -270,6 +279,13 @@ export function useGraphEditing(
     [execute],
   );
 
+  const changeFlowColor = useCallback(
+    (flowId: string, color: FlowColor) => {
+      execute(setFlowColor(flowId, color));
+    },
+    [execute],
+  );
+
   const moveIntoFlow = useCallback(
     (nodeIds: string[], flowId: string, origin: Position) => {
       execute(moveNodesIntoFlow(graph, nodeIds, flowId, origin));
@@ -306,6 +322,7 @@ export function useGraphEditing(
     scopeOf,
     connecting: connectingFrom !== null,
     targets,
+    setFlowColor: changeFlowColor,
     beginConnect,
     endConnect,
     canDrop,

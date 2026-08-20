@@ -10,6 +10,7 @@ import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
 import { CANVAS_COMMAND_TYPES, applyCanvasEdits, applyGraphEdits } from "@mechane/commands";
 import type {
   Canvas,
+  FlowColor,
   GraphEdge,
   GraphNode,
   GraphState,
@@ -27,6 +28,7 @@ import { readCanvasById, writeCanvasRows } from "./canvas";
 import type { CanvasWithOwner, StoredCanvas } from "./canvas";
 import { placeCanvasPosition } from "./canvas-placement";
 import { DEFAULT_CANVAS_FILL, newCanvasRootProperties } from "./canvas-defaults";
+import { graphNodeInsertValues } from "./graph-node-values";
 import { realtimeProvider } from "../realtime";
 import { reconcileActiveRunValues } from "./runs";
 import type { StoredDevice } from "./devices";
@@ -143,7 +145,13 @@ function toNode(
         variables: variablesByScene.get(row.id) ?? [],
       };
     case "flow":
-      return { ...base, kind: "flow", parentId: null, defaultSceneId: row.defaultSceneId };
+      return {
+        ...base,
+        kind: "flow",
+        parentId: null,
+        defaultSceneId: row.defaultSceneId,
+        ...(row.color ? { color: row.color as FlowColor } : {}),
+      };
     case "source":
       return {
         ...base,
@@ -348,6 +356,7 @@ export async function readShowGraph(
  * Throws `InvalidShowGraphError` before touching the database if the graph
  * isn't structurally well-formed.
  */
+
 async function writeGraph(
   tx: Tx,
   showId: string,
@@ -486,18 +495,7 @@ async function writeGraph(
   ];
   for (const nodes of [topLevel, nested]) {
     if (nodes.length === 0) continue;
-    await tx.insert(graphNodes).values(
-      nodes.map((node) => ({
-        id: node.id,
-        graphId: row.id,
-        kind: node.kind,
-        name: node.name,
-        parentId: node.parentId,
-        type: node.kind === "source" || node.kind === "transformer" ? (node.type ?? null) : null,
-        positionX: node.position.x,
-        positionY: node.position.y,
-      })),
-    );
+    await tx.insert(graphNodes).values(nodes.map((node) => graphNodeInsertValues(node, row.id)));
   }
 
   // Scene and Block definitions always have an artboard. Existing Scene

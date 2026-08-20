@@ -182,6 +182,9 @@ type FlowNode implements GraphNode {
 
   """The Flow's design-time entry Scene, if one is set."""
   defaultSceneId: ID
+
+  """The Flow editor colorway; absent values are exposed as neutral."""
+  color: String!
 }
 
 type SourceNode implements GraphNode {
@@ -461,6 +464,7 @@ input GraphNodeInput {
   name: String!
   parentId: ID
   defaultSceneId: ID
+  color: String
   type: TypeInput
   position: PositionInput!
   variables: [SceneVariableInput!]
@@ -513,6 +517,9 @@ type GraphEdit {
   variableId: ID
   variable: SceneVariable
 
+  """The Flow editor colorway for graph.setFlowColor."""
+  color: String
+
   """
   Devices only: the code the server minted for a Device this batch created (#45).
   """
@@ -526,8 +533,8 @@ and the server applies, in place of a whole-graph replacement.
 `type` is the command that made it: "graph.addNode", "graph.removeNode",
 "graph.moveNode", "graph.renameNode", "graph.reparentNode",
 "graph.addEdge", "graph.removeEdge", "graph.setFlowDefaultScene",
-"graph.addSceneVariable", "graph.renameSceneVariable", or
-"graph.removeSceneVariable".
+"graph.setFlowColor", "graph.addSceneVariable",
+"graph.renameSceneVariable", or "graph.removeSceneVariable".
 
 Every other field is optional because GraphQL has no input unions:
 `type` decides which of them are read, and an edit missing one its type
@@ -553,6 +560,9 @@ input GraphEditInput {
   """The Flow a node is being placed in, or null for Show level."""
   parentId: ID
 
+  """The Flow editor colorway, for graph.setFlowColor."""
+  color: String
+
   """The new name, for a rename."""
   name: String
   flowId: ID
@@ -576,6 +586,7 @@ input ShowEditInput {
   node: GraphNodeInput
   edgeId: ID
   edge: GraphEdgeInput
+  color: String
   position: PositionInput
   parentId: ID
   name: String

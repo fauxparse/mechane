@@ -354,6 +354,7 @@ export const graphNodes = pgTable(
     // `assertValidShowGraph` is what keeps this pointing at a Scene of
     // this Flow.
     defaultSceneId: text("default_scene_id"),
+    color: text("color"),
     type: jsonb("type"),
     positionX: doublePrecision("position_x").notNull().default(0),
     positionY: doublePrecision("position_y").notNull().default(0),

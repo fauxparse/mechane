@@ -30,6 +30,20 @@ type Story = StoryObj<typeof ShowGraphEditor>;
  */
 export const Default: Story = {};
 
+const COLORFUL_GRAPH = {
+  ...SAMPLE_GRAPH,
+  nodes: SAMPLE_GRAPH.nodes.map((node, index) =>
+    node.__typename === "FlowNode"
+      ? { ...node, color: (["red", "aqua", "purple"] as const)[index % 3] }
+      : node,
+  ),
+};
+
+/** Each Flow can carry its own subtle colorway (#316). */
+export const FlowColors: Story = {
+  args: { graph: COLORFUL_GRAPH },
+};
+
 /**
  * Creating nodes (#42, #27). Two paths, both here:
  *
