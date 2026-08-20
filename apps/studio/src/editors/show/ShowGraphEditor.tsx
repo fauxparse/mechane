@@ -27,7 +27,7 @@
 //     a11y, kept on wholesale rather than reimplemented.
 //   - **A drag's valid targets are the domain's answer** (`connectionTargets`),
 //     computed once at drag start; the affordance itself is #35's dashed
-//     outline plus dimming, painted by ./ShowGraphNodes.
+//     outline plus dimming, painted by the graph node adapters.
 import { describeDeletion } from "@mechane/commands";
 import type { DeletionScope, GraphEdit } from "@mechane/commands";
 import {
@@ -100,15 +100,15 @@ import type { ShowFlowEdge, ShowFlowNode } from "./graph/graph-to-flow";
 import { NodeInteractionProvider } from "./graph/node-interaction";
 import type { CreatableNode } from "./graph/node-kinds";
 import { CREATABLE_NODES } from "./graph/node-kinds";
-import { ShowFlowNode as FlowNodeBody } from "./graph/ShowGraphNodes";
-import { ReactFlowBaseNode } from "./graph/nodes/BaseNode";
+import { FlowNode } from "./graph/nodes/FlowNode";
+import { ReactFlowBaseNode } from "./graph/nodes/ReactFlowBaseNode";
 import { useEditorKeys } from "./keyboard/use-editor-keys";
 import { useGraphEditing } from "./commands/use-graph-editing";
 import { useUndoKeys } from "./keyboard/use-undo-keys";
 import { useViewportKeys } from "./keyboard/use-viewport-keys";
 import { useShowGraphEditorActions } from "./commands/use-show-graph-editor-actions";
 import { useFitViewOptions, useInitialFrame } from "./graph/use-fit-view-options";
-import { ShowEdgeRoutingProvider } from "./graph/show-edge-rendering";
+import { ShowEdgeRoutingProvider } from "./graph/ShowEdgeRoutingProvider";
 import { showEdgeTypes } from "./graph/show-edge-types";
 import type { ApiGraph } from "./data/api-graph";
 import type { PaletteCommand } from "./commands/palette-commands";
@@ -119,7 +119,7 @@ export const MAX_ZOOM = 2;
 
 const nodeTypes = {
   [PLACEHOLDER_NODE_TYPE]: ReactFlowBaseNode,
-  [FLOW_NODE_TYPE]: FlowNodeBody,
+  [FLOW_NODE_TYPE]: FlowNode,
 };
 
 /** How long a refused connection's reason stays on screen. */

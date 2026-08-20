@@ -351,6 +351,33 @@ describe("graphToFlow", () => {
       });
     });
 
+    it("redirects every edge targeting a hidden child to the Flow handle", () => {
+      const { edges } = graphToFlow(
+        {
+          nodes: [
+            node({ id: "flow_1", kind: "flow" }),
+            node({ id: "scene_1", kind: "scene", parentId: "flow_1" }),
+            node({ id: "source_1", kind: "source" }),
+          ],
+          edges: [
+            edge({
+              id: "navigate_hidden",
+              kind: "navigate",
+              sourceId: "source_1",
+              targetId: "scene_1",
+            }),
+          ],
+        },
+        { collapsedFlowIds: new Set(["flow_1"]) },
+      );
+
+      expect(edges[0]).toMatchObject({
+        source: "source_1",
+        target: "flow_1",
+        targetHandle: INPUT_HANDLE,
+      });
+    });
+
     // Until nodes grow per-Variable handles (#35) the Variable is data, not
     // a handle — but it has to survive the trip, or #35 has to re-derive it.
     it("carries a wiring edge's target Variable", () => {

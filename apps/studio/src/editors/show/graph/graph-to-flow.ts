@@ -84,7 +84,7 @@ export interface MappableEdge {
  * to nothing), so the node bodies commit to a fixed width (#35 — no user
  * resizing, values live in the inspector) and this module does the arithmetic.
  */
-export const NODE_WIDTH = 208;
+export const NODE_WIDTH = 240;
 
 /** A node with no rows: the header alone. */
 export const NODE_HEIGHT = 56;
@@ -98,8 +98,8 @@ const VARIABLE_LIST_PADDING = 8;
 /** Breathing room between a Flow's boundary and the nodes inside it. */
 const FLOW_PADDING = 24;
 
-/** Height of a Flow's own title row, above the area its children sit in. */
-const FLOW_HEADER_HEIGHT = 36;
+/** Height of the shared Flow header, above the area its children sit in. */
+const FLOW_HEADER_HEIGHT = 50;
 
 /** First safe child position: below the header and inside the Flow padding. */
 export const FLOW_CONTENT_ORIGIN: Position = {
@@ -263,7 +263,7 @@ function toFlowNode(
     // opening a Show would frame a graph with some of its nodes off-screen.
     style: isFlow
       ? collapsed
-        ? { width: NODE_WIDTH, height: FLOW_HEADER_HEIGHT + FLOW_PADDING }
+        ? { width: NODE_WIDTH, height: FLOW_HEADER_HEIGHT }
         : flowSize(children)
       : { width: NODE_WIDTH, height: nodeHeight(node) },
     data: {
@@ -428,7 +428,9 @@ export function graphToFlow(
     edges: graph.edges.map((edge) => {
       const hiddenTarget = graph.nodes.find((node) => node.id === edge.targetId);
       const flowId = hiddenTarget?.parentId;
-      if (edge.kind === "wiring" && flowId && collapsed.has(flowId)) {
+      // React Flow cannot draw an edge to a hidden child. Once a Flow is
+      // collapsed, every incoming edge lands on the Flow's own input handle.
+      if (flowId && collapsed.has(flowId)) {
         return {
           ...toFlowEdge(edge, graph.nodes, graph.shapes),
           target: flowId,

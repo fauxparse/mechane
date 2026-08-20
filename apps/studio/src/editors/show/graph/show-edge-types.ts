@@ -1,4 +1,4 @@
-import { BatchSmartSmoothStepEdge } from "./show-edge-rendering";
+import { BatchSmartSmoothStepEdge } from "./BatchSmartSmoothStepEdge";
 
 export const showEdgeTypes = {
   smartSmoothStep: BatchSmartSmoothStepEdge,

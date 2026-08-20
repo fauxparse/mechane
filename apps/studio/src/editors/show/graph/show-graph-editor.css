@@ -150,40 +150,6 @@
   }
 }
 
-.mechane-show-graph .show-flow {
-  background: color-mix(in oklab, var(--flow-500) 6%, var(--color-background));
-  border-color: color-mix(in oklab, var(--flow-500) 30%, var(--color-border));
-}
-
-.mechane-show-graph .show-flow-header {
-  background: color-mix(in oklab, var(--flow-500) 7%, var(--color-card));
-  border-color: color-mix(in oklab, var(--flow-500) 24%, var(--color-border));
-}
-
-.mechane-show-graph .show-flow-selected,
-.mechane-show-graph .show-node-selected {
-  border-color: var(--flow-500);
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--flow-500) 42%, transparent);
-}
-
-.mechane-show-graph .show-flow-targetable,
-.mechane-show-graph .show-node-targetable {
-  border-color: color-mix(in oklab, var(--flow-500) 70%, transparent);
-  outline: 1px dashed color-mix(in oklab, var(--flow-500) 70%, transparent);
-}
-
-.mechane-show-graph .show-node {
-  border-color: color-mix(in oklab, var(--flow-500) 20%, var(--color-border));
-}
-
-.mechane-show-graph .show-flow-handle {
-  background-color: var(--flow-500) !important;
-}
-
-.mechane-show-graph .show-flow-handle[data-targetable="true"] {
-  background-color: var(--color-primary) !important;
-}
-
 .mechane-show-graph .react-flow__controls,
 .mechane-show-graph .react-flow__minimap {
   overflow: hidden;

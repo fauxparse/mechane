@@ -1,6 +1,6 @@
-import { BaseEdge, SmoothStepEdge, type EdgeProps, type Node } from "@xyflow/react";
-import { SmartEdgeBatchRoutingProvider, useSmartEdgeRoute } from "@tisoap/react-flow-smart-edge";
-import type { CSSProperties, ReactNode } from "react";
+import { BaseEdge, SmoothStepEdge, type EdgeProps } from "@xyflow/react";
+import { useSmartEdgeRoute } from "@tisoap/react-flow-smart-edge";
+import type { CSSProperties } from "react";
 
 function edgeStyle(props: EdgeProps): CSSProperties {
   const color = props.data?.color ?? "neutral";
@@ -31,19 +31,5 @@ export function BatchSmartSmoothStepEdge(props: EdgeProps) {
         fontWeight: 700,
       }}
     />
-  );
-}
-
-export function ShowEdgeRoutingProvider({
-  nodes,
-  children,
-}: {
-  nodes: Node[];
-  children: ReactNode;
-}) {
-  return (
-    <SmartEdgeBatchRoutingProvider nodes={nodes} options={{ preset: "smoothstep" }}>
-      {children}
-    </SmartEdgeBatchRoutingProvider>
   );
 }
