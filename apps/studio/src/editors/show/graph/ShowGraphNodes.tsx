@@ -324,7 +324,7 @@ export function ShowNode({ id, data, selected }: NodeProps<ShowFlowNodeType>) {
         id={INPUT_HANDLE}
         type="target"
         position={Position.Left}
-        className={cn(HANDLE_CLASS, hasVariables && "!top-6")}
+        className={cn(HANDLE_CLASS, hasVariables && "top-6!")}
         data-targetable={targetable}
         isConnectableStart={false}
       />
@@ -332,7 +332,7 @@ export function ShowNode({ id, data, selected }: NodeProps<ShowFlowNodeType>) {
         id={OUTPUT_HANDLE}
         type="source"
         position={Position.Right}
-        className={cn(HANDLE_CLASS, hasVariables && "!top-6")}
+        className={cn(HANDLE_CLASS, hasVariables && "top-6!")}
         isConnectableEnd={false}
       />
     </div>
