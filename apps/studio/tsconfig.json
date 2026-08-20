@@ -4,10 +4,15 @@
     "outDir": "dist",
     "rootDir": "src",
     "paths": {
-      "*": ["./*"],
-      "@/*": ["./src/*"]
+      "*": [
+        "./*"
+      ],
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
-  "include": ["src"],
-  "exclude": ["src/**/*.stories.tsx"]
+  "include": [
+    "src"
+  ]
 }

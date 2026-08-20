@@ -100,7 +100,8 @@ import type { ShowFlowEdge, ShowFlowNode } from "./graph/graph-to-flow";
 import { NodeInteractionProvider } from "./graph/node-interaction";
 import type { CreatableNode } from "./graph/node-kinds";
 import { CREATABLE_NODES } from "./graph/node-kinds";
-import { ShowFlowNode as FlowNodeBody, ShowNode } from "./graph/ShowGraphNodes";
+import { ShowFlowNode as FlowNodeBody } from "./graph/ShowGraphNodes";
+import { ReactFlowBaseNode } from "./graph/nodes/BaseNode";
 import { useEditorKeys } from "./keyboard/use-editor-keys";
 import { useGraphEditing } from "./commands/use-graph-editing";
 import { useUndoKeys } from "./keyboard/use-undo-keys";
@@ -117,7 +118,7 @@ export const MIN_ZOOM = 0.1;
 export const MAX_ZOOM = 2;
 
 const nodeTypes = {
-  [PLACEHOLDER_NODE_TYPE]: ShowNode,
+  [PLACEHOLDER_NODE_TYPE]: ReactFlowBaseNode,
   [FLOW_NODE_TYPE]: FlowNodeBody,
 };
 
@@ -531,7 +532,7 @@ function ShowGraphContextMenu({
   const selectedFlow =
     selectedNodes.length === 1 && selectedNodes[0]?.kind === "flow" ? selectedNodes[0] : null;
   return (
-    <ContextMenu>
+    <ContextMenu disabled>
       <ContextMenuTrigger
         className="h-full w-full"
         onContextMenu={(event) => {

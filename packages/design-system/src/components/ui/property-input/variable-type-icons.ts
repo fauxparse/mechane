@@ -27,6 +27,6 @@ export const VARIABLE_TYPE_ICONS = {
   datetime: CalendarClock,
 } as const satisfies Record<ShapeValue["kind"], LucideIcon>;
 
-export function variableTypeIcon(type: string | undefined): LucideIcon {
-  return VARIABLE_TYPE_ICONS[type as keyof typeof VARIABLE_TYPE_ICONS] ?? Box;
+export function variableTypeIcon(type: ShapeValue["kind"] | undefined): LucideIcon {
+  return VARIABLE_TYPE_ICONS[type ?? "object"] ?? Box;
 }

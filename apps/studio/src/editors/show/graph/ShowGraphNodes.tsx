@@ -1,71 +1,21 @@
-// The node bodies (issue #42, per #35's visual language).
+// The Flow node body and React Flow interaction state for the Show graph.
 //
-// #35's rules, and why each is here rather than somewhere more obvious:
-//
-//   - **Icon + label, identical chrome.** No per-kind hue: the design system's
-//     tokens are semantic, hue is reserved for *state*, and PRD §7 wants the
-//     chrome recessive. So identity is `nodeIcon(kind)` plus the name.
-//   - **A Scene grows a row per Variable, each with its own handle.** #20
-//     makes Variables named handles; an unlabelled port would be unusable, and
-//     a wiring edge has to land on the row rather than on the node.
-//   - **Fixed width, truncating.** Full values live in the inspector. No
-//     resizing — that would mean a resize command and a schema field.
-//   - **Selected is `ring-2 ring-primary`; drag-targetable is a dashed
-//     outline** (#36's correction to #35: `ring` is primary-derived, so the
-//     two treatments would have been indistinguishable). Non-targetable nodes
-//     dim to 25% during a drag, which answers "why can't I drop here" by
-//     showing where you can, without painting the canvas red.
-//   - **Dangling input**: a `destructive` dot on the Variable row plus a
-//     header warning. The only state here that means the Show breaks at
-//     performance time, reachable by a legal action, and otherwise invisible.
-//     No downstream propagation — that's the consuming node's own concern
-//     (#29).
-//
-// Inline rename lives in the node (double-click, or F2) because the name is
-// the node's own text (#27); everything fuller is the inspector's.
-import {
-  Check,
-  ChevronDown,
-  ChevronRight,
-  Copy,
-  House,
-  TriangleAlert,
-  cn,
-} from "@mechane/design-system";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+// Regular graph nodes are rendered by ../nodes/BaseNode. This module retains
+// the Flow container because it has containment-specific chrome and collapse
+// controls, plus the shared connection state used by the BaseNode adapter.
+import { ChevronDown, ChevronRight, House, TriangleAlert, cn } from "@mechane/design-system";
+import { useLayoutEffect, useRef } from "react";
 import { Handle, Position, useConnection } from "@xyflow/react";
 import type { NodeProps } from "@xyflow/react";
 
-import { INPUT_HANDLE, OUTPUT_HANDLE, VARIABLE_ROW_HEIGHT } from "./graph-to-flow";
+import { INPUT_HANDLE, OUTPUT_HANDLE } from "./graph-to-flow";
 import type { ShowFlowNode as ShowFlowNodeType, ShowNodeData } from "./graph-to-flow";
-import { nodeIcon, NODE_KIND_META } from "./node-kinds";
+import { nodeIcon } from "./node-kinds";
 import { useNodeInteraction } from "./node-interaction";
 
 /** Handle styling — quiet by default, accented by the active Flow colorway. */
 const HANDLE_CLASS =
   "show-flow-handle !h-2 !w-2 !border-background !bg-muted-foreground data-[targetable=true]:!bg-primary";
-
-/**
- * Node chrome shared by every kind (#35: identical `card` chrome), plus the
- * three states that read visually.
- */
-function nodeClass({
-  selected,
-  targetable,
-  dimmed,
-}: {
-  selected: boolean;
-  targetable: boolean;
-  dimmed: boolean;
-}) {
-  return cn(
-    "show-node h-full w-full overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm transition-opacity",
-    selected && "show-node-selected",
-    // Dashed, not `ring` — see the header note on #36's correction.
-    targetable && !selected && "show-node-targetable",
-    dimmed && "opacity-25",
-  );
-}
 
 interface HeaderProps {
   nodeId: string;
@@ -189,7 +139,7 @@ function RenameField({
 }
 
 /** Whether a connection is being dragged, and what it may land on. */
-function useDragState(nodeId: string) {
+export function useDragState(nodeId: string) {
   const { targets, connecting } = useNodeInteraction();
   // React Flow knows when a connection is in flight; the *targets* are the
   // domain's answer (`connectionTargets`), gathered at drag start.
@@ -205,138 +155,6 @@ function useDragState(nodeId: string) {
     dimmed: inFlight && !targetable && connectionNodeId !== nodeId,
     variableIds: targets?.variableIds,
   };
-}
-
-/**
- * A Device's pairing code, with a button to copy it (#6's criterion, kept
- * in #45).
- *
- * The code, not the QR: a QR small enough to sit on a canvas node is too
- * small to scan and too loud for chrome PRD §7 wants recessive, so the
- * scannable one lives in the inspector, where it can be big. What a
- * director needs *here* is to read a code off the node they're wiring.
- *
- * Before the first save there is no code to show — ids are minted on the
- * client, codes on the server (#45) — so the row holds its place with a
- * placeholder rather than appearing later and reflowing the node.
- */
-function PairingCode({ code }: { code: string | null }) {
-  const [copied, setCopied] = useState(false);
-
-  // Copying is a canvas gesture on a node that also responds to clicks and
-  // double-clicks; without this the copy would also select or rename.
-  const copy = useCallback(
-    (event: React.MouseEvent) => {
-      event.stopPropagation();
-      if (!code) return;
-      void navigator.clipboard.writeText(code).then(() => setCopied(true));
-    },
-    [code],
-  );
-
-  useEffect(() => {
-    if (!copied) return;
-    const timer = setTimeout(() => setCopied(false), 1500);
-    return () => clearTimeout(timer);
-  }, [copied]);
-
-  return (
-    <div className="flex items-center gap-1.5 px-3 pb-2">
-      <span
-        className={cn(
-          "min-w-0 flex-1 font-mono text-xs",
-          code ? "text-muted-foreground" : "text-muted-foreground/50",
-        )}
-      >
-        {code ?? "·····"}
-      </span>
-      <button
-        type="button"
-        // Nothing to copy until the graph has been saved once.
-        disabled={!code}
-        onClick={copy}
-        // React Flow would otherwise start a node drag from the button.
-        onMouseDown={(event) => event.stopPropagation()}
-        className="nodrag shrink-0 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
-        aria-label={code ? `Copy pairing code ${code}` : "Pairing code not assigned yet"}
-      >
-        {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-      </button>
-    </div>
-  );
-}
-
-export function ShowNode({ id, data, selected }: NodeProps<ShowFlowNodeType>) {
-  const { targetable, dimmed, variableIds } = useDragState(id);
-  const { beginRename } = useNodeInteraction();
-  const wiredVariableIds = new Set(data.wiredVariableIds);
-  const hasVariables = data.variables.length > 0;
-
-  return (
-    <div
-      className={nodeClass({ selected: Boolean(selected), targetable, dimmed })}
-      data-flow-theme={data.color}
-      onDoubleClick={() => beginRename(id)}
-      // React Flow's own `aria-label` names the node "Node"; the kind and name
-      // are what a keyboard user Tabbing through actually needs.
-      aria-label={`${NODE_KIND_META[data.kind].label}: ${data.name}`}
-    >
-      <NodeHeader nodeId={id} data={data} />
-
-      {data.kind === "device" ? <PairingCode code={data.pairingCode} /> : null}
-
-      {hasVariables ? (
-        <ul className="flex flex-col pb-2">
-          {data.variables.map((variable) => {
-            const wired = wiredVariableIds.has(variable.id);
-            return (
-              <li
-                key={variable.id}
-                className="relative flex items-center gap-1.5 px-3 text-xs text-muted-foreground"
-                style={{ height: VARIABLE_ROW_HEIGHT }}
-              >
-                <span
-                  className={cn(
-                    "size-1.5 shrink-0 rounded-full",
-                    wired ? "bg-muted-foreground" : "bg-destructive",
-                  )}
-                  aria-hidden
-                />
-                <span className="min-w-0 flex-1 truncate">{variable.name}</span>
-                {/* Each Variable's own handle, on its own row (#20, #35). */}
-                <Handle
-                  id={variable.id}
-                  type="target"
-                  position={Position.Left}
-                  className={HANDLE_CLASS}
-                  data-targetable={variableIds?.has(variable.id) ?? false}
-                  isConnectableStart={false}
-                />
-              </li>
-            );
-          })}
-        </ul>
-      ) : null}
-
-      {/* The node-level input: what a Navigate, Device, or Transformer wiring
-          edge lands on. A Scene's Variables are addressed separately, above. */}
-      <Handle
-        id={INPUT_HANDLE}
-        type="target"
-        position={Position.Left}
-        className={cn(HANDLE_CLASS, hasVariables && "top-6!")}
-        data-targetable={targetable}
-        isConnectableStart={false}
-      />
-      <Handle
-        id={OUTPUT_HANDLE}
-        type="source"
-        position={Position.Right}
-        className={cn(HANDLE_CLASS, hasVariables && "top-6!")}
-        isConnectableEnd={false}
-      />
-    </div>
-  );
 }
 
 /**

@@ -10,7 +10,7 @@
 // strictly semantic and hue is reserved for *state* (selection, a dangling
 // input) rather than type — and PRD §7 wants the chrome recessive.
 import { generateId, NODE_ID_ENTITIES } from "@mechane/domain";
-import type { GraphNode, NodeKind, Position } from "@mechane/domain";
+import type { GraphNode, NodeKind, Position, ShapeValue } from "@mechane/domain";
 import {
   Bot,
   Box,
@@ -21,6 +21,7 @@ import {
   variableTypeIcon,
 } from "@mechane/design-system";
 import type { LucideIcon } from "@mechane/design-system";
+import { ShowNodeData } from "./graph-to-flow";
 
 export interface NodeKindMeta {
   kind: NodeKind;
@@ -132,7 +133,7 @@ export function nodeIcon(
   hints: { perConnection?: boolean; sourceType?: string } = {},
 ) {
   if (kind === "device" && hints.perConnection) return Smartphone;
-  if (kind === "source") return variableTypeIcon(hints.sourceType);
+  if (kind === "source") return variableTypeIcon(hints.sourceType as ShapeValue["kind"]);
   return NODE_KIND_META[kind].icon;
 }
 
@@ -180,3 +181,12 @@ export function createNode(
       return { ...base, kind: "transformer", parentId };
   }
 }
+
+export const typeLabel = (type: ShowNodeData["type"]): string | null => {
+  if (!type) return null;
+  return typeof type === "string"
+    ? type
+    : type.kind === "array"
+      ? `array<${typeLabel(type.of) ?? "?"}>`
+      : `Shape:${type.shapeId}`;
+};

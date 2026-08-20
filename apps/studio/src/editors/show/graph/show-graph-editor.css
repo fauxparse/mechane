@@ -131,6 +131,25 @@
   --flow-950: var(--palette-purple-950);
 }
 
+.mechane-show-graph [data-flow-theme] {
+  --flow-border: var(--flow-400);
+  --flow-background: var(--flow-500);
+  --flow-foreground: var(--flow-900);
+  --flow-muted-foreground: var(--flow-700);
+  --flow-connected: var(--flow-500);
+
+  &[data-flow-theme="neutral"] {
+    --flow-connected: var(--accent-500);
+  }
+
+  html[data-theme-mode="dark"] & {
+    --flow-border: var(--flow-600);
+    --flow-background: var(--flow-800);
+    --flow-foreground: var(--flow-50);
+    --flow-muted-foreground: var(--flow-400);
+  }
+}
+
 .mechane-show-graph .show-flow {
   background: color-mix(in oklab, var(--flow-500) 6%, var(--color-background));
   border-color: color-mix(in oklab, var(--flow-500) 30%, var(--color-border));
