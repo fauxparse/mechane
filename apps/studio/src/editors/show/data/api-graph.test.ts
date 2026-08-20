@@ -55,7 +55,13 @@ function apiEdge(
 
 const GRAPH: ApiGraph = {
   nodes: [
-    apiNode({ id: "flow_vote", kind: "flow", name: "Vote", defaultSceneId: "scene_voting" }),
+    apiNode({
+      id: "flow_vote",
+      kind: "flow",
+      name: "Vote",
+      defaultSceneId: "scene_voting",
+      color: "blue",
+    }),
     apiNode({
       id: "scene_voting",
       kind: "scene",
@@ -112,6 +118,7 @@ describe("toShowGraph", () => {
   it("keeps a Flow's default Scene", () => {
     const flow = toShowGraph(GRAPH).nodes.find((node) => node.id === "flow_vote") as FlowNode;
     expect(flow.defaultSceneId).toBe("scene_voting");
+    expect(flow.color).toBe("blue");
   });
 
   // The point of the conversion: fields that don't belong to a kind are gone,

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { FlowColor } from "@mechane/domain";
 
 import {
   FLOW_NODE_TYPE,
@@ -20,6 +21,7 @@ type ShowGraphNode = {
   name: string;
   parentId: string | null;
   defaultSceneId: string | null;
+  color?: FlowColor | null;
   position: { x: number; y: number };
   variables: { id: string; name: string; type?: unknown }[];
   type?: unknown;
@@ -90,6 +92,7 @@ describe("graphToFlow", () => {
       edges: [],
     });
     expect(nodes[0]?.data).toEqual({
+      color: "neutral",
       kind: "scene",
       name: "Cast your vote",
       type: null,
@@ -190,6 +193,23 @@ describe("graphToFlow", () => {
     expect(byId.get("edge_wire")?.targetHandle).toBe("variable_1");
     expect(byId.get("edge_wire")?.sourceHandle).toBe(OUTPUT_HANDLE);
     expect(byId.get("edge_nav")?.targetHandle).toBe(INPUT_HANDLE);
+  });
+
+  it("uses the Flow color within a Flow and neutral across scopes", () => {
+    const { edges } = graphToFlow({
+      nodes: [
+        node({ id: "flow_1", kind: "flow", color: "purple" }),
+        node({ id: "source_1", kind: "source", parentId: "flow_1" }),
+        node({ id: "scene_1", kind: "scene", parentId: "flow_1" }),
+        node({ id: "device_1", kind: "device" }),
+      ],
+      edges: [
+        edge({ id: "inside", kind: "wiring", sourceId: "source_1", targetId: "scene_1" }),
+        edge({ id: "outside", kind: "device", sourceId: "flow_1", targetId: "device_1" }),
+      ],
+    });
+    expect(edges.find((edge) => edge.id === "inside")?.data?.color).toBe("purple");
+    expect(edges.find((edge) => edge.id === "outside")?.data?.color).toBe("neutral");
   });
 
   it("renders Flows as containers and everything else as placeholders", () => {

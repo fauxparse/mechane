@@ -16,9 +16,9 @@
 // from a discriminated union to one flat wire shape, per edit instead of per
 // graph.
 import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
-import type { GraphEdge, GraphNode, Shape, Type, ShowGraph } from "@mechane/domain";
+import type { FlowColor, GraphEdge, GraphNode, Shape, Type, ShowGraph } from "@mechane/domain";
+import { DEFAULT_FLOW_COLOR, isFlowColor } from "@mechane/domain";
 import type { ApplyShowEditsResult, ShowGraph as ApiShowGraph } from "@mechane/graphql-schema";
-
 type ApiType = ApiShowGraph["shapes"][number]["fields"][number]["type"];
 type ApiGraphNode = {
   __typename: string;
@@ -27,7 +27,7 @@ type ApiGraphNode = {
   parentId: string | null;
   position: { x: number; y: number };
   defaultSceneId?: string | null;
-  type?: ApiType | null;
+  color?: unknown;
   sourceType?: ApiType;
   transformerType?: ApiType | null;
   fieldDefaults?: { fieldPath: string[]; value: unknown }[];
@@ -133,11 +133,22 @@ function toNode(node: ApiGraphNode): GraphNode {
         })),
       };
     }
-    case "FlowNode":
+    case "FlowNode": {
       // Flows and Devices are always Show-level peers (#23, #26), which the
       // domain types as `parentId: null` — so it is asserted here rather than
       // read, and a wire graph that disagrees fails domain validation.
-      return { ...base, kind: "flow", parentId: null, defaultSceneId: node.defaultSceneId ?? null };
+      const color = typeof node.color === "string" ? node.color : DEFAULT_FLOW_COLOR;
+      if (!isFlowColor(color)) {
+        throw new Error(`Unknown Flow color "${color}" on node "${node.id}".`);
+      }
+      return {
+        ...base,
+        kind: "flow",
+        parentId: null,
+        defaultSceneId: node.defaultSceneId ?? null,
+        ...(node.color ? { color } : {}),
+      };
+    }
     case "DeviceNode":
       return {
         ...base,
@@ -238,6 +249,7 @@ interface ApiNodeInput {
   name: string;
   parentId: string | null;
   defaultSceneId: string | null;
+  color?: FlowColor | null;
   type: TypeInput | null;
   position: { x: number; y: number };
   variables: { id: string; name: string; type: TypeInput | null }[];
@@ -263,6 +275,7 @@ function toNodeInput(node: GraphNode): ApiNodeInput {
     name: node.name,
     parentId: node.parentId,
     defaultSceneId: node.kind === "flow" ? node.defaultSceneId : null,
+    ...(node.kind === "flow" ? { color: node.color ?? null } : {}),
     type: node.kind === "source" || node.kind === "transformer" ? toTypeInput(node.type) : null,
     position: { x: node.position.x, y: node.position.y },
     variables:
@@ -308,6 +321,7 @@ export interface StudioEditInput {
   name?: string;
   flowId?: string;
   sceneId?: string | null;
+  color?: FlowColor | null;
   variableId?: string;
   variable?: { id: string; name: string; type?: TypeInput | null };
   elementId?: string;
@@ -375,6 +389,8 @@ export function toEditInput(edit: StudioEdit): StudioEditInput {
       return { ...input, edgeId: edit.edgeId };
     case "graph.setFlowDefaultScene":
       return { ...input, flowId: edit.flowId, sceneId: edit.sceneId };
+    case "graph.setFlowColor":
+      return { ...input, flowId: edit.flowId, color: edit.color };
     case "graph.addSceneVariable":
       return {
         ...input,

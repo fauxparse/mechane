@@ -92,6 +92,26 @@ describe("parseGraphEdit", () => {
     ).toEqual({ type: "graph.setFlowDefaultScene", flowId: "flow_a", sceneId: null });
   });
 
+  it("parses a Flow color edit", () => {
+    expect(
+      parseGraphEdit({
+        type: GRAPH_COMMAND_TYPES.setFlowColor,
+        flowId: "flow_a",
+        color: "purple",
+      }),
+    ).toEqual({ type: "graph.setFlowColor", flowId: "flow_a", color: "purple" });
+  });
+
+  it("rejects an unknown Flow color", () => {
+    expect(() =>
+      parseGraphEdit({
+        type: GRAPH_COMMAND_TYPES.setFlowColor,
+        flowId: "flow_a",
+        color: "pink",
+      }),
+    ).toThrow(GraphQLError);
+  });
+
   it.each([
     ["a node", { type: GRAPH_COMMAND_TYPES.addNode }],
     ["a nodeId", { type: GRAPH_COMMAND_TYPES.removeNode }],
@@ -100,6 +120,7 @@ describe("parseGraphEdit", () => {
     ["an edge", { type: GRAPH_COMMAND_TYPES.addEdge }],
     ["an edgeId", { type: GRAPH_COMMAND_TYPES.removeEdge }],
     ["a flowId", { type: GRAPH_COMMAND_TYPES.setFlowDefaultScene }],
+    ["a Flow color", { type: GRAPH_COMMAND_TYPES.setFlowColor, flowId: "flow_a" }],
     ["a variable", { type: GRAPH_COMMAND_TYPES.addSceneVariable, sceneId: "scene_lobby" }],
     ["a variableId", { type: GRAPH_COMMAND_TYPES.removeSceneVariable, sceneId: "scene_lobby" }],
   ])("refuses an edit missing %s", (_what, edit) => {

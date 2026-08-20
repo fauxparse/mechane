@@ -34,12 +34,7 @@ import {
   publishShowGraph,
   readShowGraph,
 } from "../db/show-graph";
-import {
-  commitBlob,
-  imageDeliveryUrl,
-  listImageAssets,
-  toImageAsset,
-} from "../db/images";
+import { commitBlob, imageDeliveryUrl, listImageAssets, toImageAsset } from "../db/images";
 import { blobUploadSessions, imageAssets, shows, userSettings } from "../db/schema";
 import { blobStore } from "../storage/blob-store";
 import { ImageProcessingError, processImage } from "../images";
@@ -350,6 +345,8 @@ export const schema = createSchema<GraphQLContext>({
       position: Position!
       "The Flow's design-time entry Scene, if one is set."
       defaultSceneId: ID
+      "The Flow editor colorway; absent values are exposed as neutral."
+      color: String!
     }
 
     type SourceNode implements GraphNode {
@@ -617,6 +614,7 @@ export const schema = createSchema<GraphQLContext>({
       name: String!
       parentId: ID
       defaultSceneId: ID
+      color: String
       type: TypeInput
       position: PositionInput!
       variables: [SceneVariableInput!]
@@ -663,6 +661,8 @@ export const schema = createSchema<GraphQLContext>({
       sceneId: ID
       variableId: ID
       variable: SceneVariable
+      "The Flow editor colorway for graph.setFlowColor."
+      color: String
       "Devices only: the code the server minted for a Device this batch created (#45)."
       pairingCode: String
     }
@@ -674,8 +674,8 @@ export const schema = createSchema<GraphQLContext>({
     \`type\` is the command that made it: "graph.addNode", "graph.removeNode",
     "graph.moveNode", "graph.renameNode", "graph.reparentNode",
     "graph.addEdge", "graph.removeEdge", "graph.setFlowDefaultScene",
-    "graph.addSceneVariable", "graph.renameSceneVariable", or
-    "graph.removeSceneVariable".
+    "graph.setFlowColor", "graph.addSceneVariable",
+    "graph.renameSceneVariable", or "graph.removeSceneVariable".
 
     Every other field is optional because GraphQL has no input unions:
     \`type\` decides which of them are read, and an edit missing one its type
@@ -694,6 +694,8 @@ export const schema = createSchema<GraphQLContext>({
       position: PositionInput
       "The Flow a node is being placed in, or null for Show level."
       parentId: ID
+      "The Flow editor colorway, for graph.setFlowColor."
+      color: String
       "The new name, for a rename."
       name: String
       flowId: ID
@@ -714,6 +716,7 @@ export const schema = createSchema<GraphQLContext>({
       node: GraphNodeInput
       edgeId: ID
       edge: GraphEdgeInput
+      color: String
       position: PositionInput
       parentId: ID
       name: String
@@ -810,7 +813,6 @@ export const schema = createSchema<GraphQLContext>({
       abortImageUpload(sessionId: ID!): Boolean!
       deleteImageAsset(showId: ID!, assetId: ID!): Boolean!
     }
-
   `,
   resolvers: {
     JSON: new GraphQLScalarType({
@@ -849,42 +851,68 @@ export const schema = createSchema<GraphQLContext>({
             ),
           )
           .then(([row]) => row);
-        if (!asset) throw new GraphQLError("Image asset not found.", { extensions: { code: "NOT_FOUND" } });
+        if (!asset)
+          throw new GraphQLError("Image asset not found.", { extensions: { code: "NOT_FOUND" } });
         return imageDeliveryUrl(asset.id, asset.revision);
       },
       width: async (value: { value: { assetId: string; revision: string } }) => {
         const [asset] = await db
           .select({ width: imageAssets.width })
           .from(imageAssets)
-          .where(and(eq(imageAssets.id, value.value.assetId), eq(imageAssets.revision, value.value.revision)));
+          .where(
+            and(
+              eq(imageAssets.id, value.value.assetId),
+              eq(imageAssets.revision, value.value.revision),
+            ),
+          );
         return asset?.width ?? 0;
       },
       height: async (value: { value: { assetId: string; revision: string } }) => {
         const [asset] = await db
           .select({ height: imageAssets.height })
           .from(imageAssets)
-          .where(and(eq(imageAssets.id, value.value.assetId), eq(imageAssets.revision, value.value.revision)));
+          .where(
+            and(
+              eq(imageAssets.id, value.value.assetId),
+              eq(imageAssets.revision, value.value.revision),
+            ),
+          );
         return asset?.height ?? 0;
       },
       alt: async (value: { value: { assetId: string; revision: string } }) => {
         const [asset] = await db
           .select({ alt: imageAssets.alt })
           .from(imageAssets)
-          .where(and(eq(imageAssets.id, value.value.assetId), eq(imageAssets.revision, value.value.revision)));
+          .where(
+            and(
+              eq(imageAssets.id, value.value.assetId),
+              eq(imageAssets.revision, value.value.revision),
+            ),
+          );
         return asset?.alt ?? "";
       },
       mimeType: async (value: { value: { assetId: string; revision: string } }) => {
         const [asset] = await db
           .select({ mimeType: imageAssets.mimeType })
           .from(imageAssets)
-          .where(and(eq(imageAssets.id, value.value.assetId), eq(imageAssets.revision, value.value.revision)));
+          .where(
+            and(
+              eq(imageAssets.id, value.value.assetId),
+              eq(imageAssets.revision, value.value.revision),
+            ),
+          );
         return asset?.mimeType ?? "application/octet-stream";
       },
       blurHash: async (value: { value: { assetId: string; revision: string } }) => {
         const [asset] = await db
           .select({ blurHash: imageAssets.blurHash })
           .from(imageAssets)
-          .where(and(eq(imageAssets.id, value.value.assetId), eq(imageAssets.revision, value.value.revision)));
+          .where(
+            and(
+              eq(imageAssets.id, value.value.assetId),
+              eq(imageAssets.revision, value.value.revision),
+            ),
+          );
         return asset?.blurHash ?? null;
       },
     },
@@ -1139,26 +1167,33 @@ export const schema = createSchema<GraphQLContext>({
         if (!session) throw new GraphQLError("Upload session could not be created.");
         return imageUploadSession(session);
       },
-      completeImageUpload: async (
-        _parent,
-        { sessionId }: { sessionId: string },
-        context,
-      ) => {
+      completeImageUpload: async (_parent, { sessionId }: { sessionId: string }, context) => {
         const userId = requireUserId(context);
         const [session] = await db
           .select()
           .from(blobUploadSessions)
           .where(and(eq(blobUploadSessions.id, sessionId), eq(blobUploadSessions.userId, userId)));
-        if (!session) throw new GraphQLError("Upload session not found.", { extensions: { code: "NOT_FOUND" } });
+        if (!session)
+          throw new GraphQLError("Upload session not found.", {
+            extensions: { code: "NOT_FOUND" },
+          });
         if (session.expiresAt <= new Date()) {
-          throw new GraphQLError("Upload session expired.", { extensions: { code: "SESSION_EXPIRED" } });
+          throw new GraphQLError("Upload session expired.", {
+            extensions: { code: "SESSION_EXPIRED" },
+          });
         }
         try {
           const bytes = await blobStore.readUpload(sessionId);
           if (bytes.byteLength !== session.byteLength) {
-            throw new ImageProcessingError("INTEGRITY_MISMATCH", "Uploaded byte count does not match the declared length.");
+            throw new ImageProcessingError(
+              "INTEGRITY_MISMATCH",
+              "Uploaded byte count does not match the declared length.",
+            );
           }
-          const processed = processImage(bytes, session.declaredMimeType ?? "application/octet-stream");
+          const processed = processImage(
+            bytes,
+            session.declaredMimeType ?? "application/octet-stream",
+          );
           await db
             .update(blobUploadSessions)
             .set({ state: "candidate", candidateDigest: processed.digest })
@@ -1184,17 +1219,27 @@ export const schema = createSchema<GraphQLContext>({
           .from(blobUploadSessions)
           .where(and(eq(blobUploadSessions.id, sessionId), eq(blobUploadSessions.userId, userId)));
         if (!session || !session.candidateDigest) {
-          throw new GraphQLError("Upload candidate not found.", { extensions: { code: "NOT_FOUND" } });
+          throw new GraphQLError("Upload candidate not found.", {
+            extensions: { code: "NOT_FOUND" },
+          });
         }
         try {
           const bytes = await blobStore.readUpload(sessionId);
-          const processed = processImage(bytes, session.declaredMimeType ?? "application/octet-stream");
+          const processed = processImage(
+            bytes,
+            session.declaredMimeType ?? "application/octet-stream",
+          );
           await commitBlob(processed);
           await blobStore.commitUpload(sessionId, processed);
           const [existing] = await db
             .select()
             .from(imageAssets)
-            .where(and(eq(imageAssets.showId, session.showId), eq(imageAssets.blobDigest, session.candidateDigest)));
+            .where(
+              and(
+                eq(imageAssets.showId, session.showId),
+                eq(imageAssets.blobDigest, session.candidateDigest),
+              ),
+            );
           if (existing) {
             await db
               .update(blobUploadSessions)

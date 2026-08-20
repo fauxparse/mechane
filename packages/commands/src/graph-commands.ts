@@ -30,6 +30,7 @@
 
 import type {
   DeviceNode,
+  FlowColor,
   GraphEdge,
   GraphNode,
   Position,
@@ -60,6 +61,7 @@ export const GRAPH_COMMAND_TYPES = {
   addEdge: "graph.addEdge",
   removeEdge: "graph.removeEdge",
   setFlowDefaultScene: "graph.setFlowDefaultScene",
+  setFlowColor: "graph.setFlowColor",
   addSceneVariable: "graph.addSceneVariable",
   renameSceneVariable: "graph.renameSceneVariable",
   removeSceneVariable: "graph.removeSceneVariable",
@@ -551,6 +553,46 @@ function withFlowDefaultScene(graph: ShowGraph, flowId: string, sceneId: string 
   const node = graph.nodes[index] as GraphNode;
   if (node.kind !== "flow") throw new UnknownGraphTargetError("Flow", flowId);
   return replaceNode(graph, index, { ...node, defaultSceneId: sceneId });
+}
+
+/** Sets a Flow's editor colorway (#316). */
+export function setFlowColor(
+  flowId: string,
+  color: FlowColor,
+  label = "Set Flow color",
+): ShowGraphCommand {
+  return capturing<ShowGraph, FlowColor | undefined, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setFlowColor,
+    label,
+    scope: "selection",
+    coalesceKey: `${GRAPH_COMMAND_TYPES.setFlowColor}:${flowId}`,
+    edits: [{ type: GRAPH_COMMAND_TYPES.setFlowColor, flowId, color }],
+    restoreEdits: (captured) => [
+      {
+        type: GRAPH_COMMAND_TYPES.setFlowColor,
+        flowId,
+        color: captured ?? null,
+      },
+    ],
+    capture: (graph) => {
+      const node = graph.nodes[nodeIndex(graph, flowId)] as GraphNode;
+      if (node.kind !== "flow") throw new UnknownGraphTargetError("Flow", flowId);
+      return node.color;
+    },
+    isEmpty: (_graph, captured) => (captured ?? "neutral") === color,
+    apply: (graph) => withFlowColor(graph, flowId, color),
+    restore: (graph, captured) => withFlowColor(graph, flowId, captured ?? null),
+  });
+}
+
+function withFlowColor(graph: ShowGraph, flowId: string, color: FlowColor | null): ShowGraph {
+  const index = nodeIndex(graph, flowId);
+  const node = graph.nodes[index] as GraphNode;
+  if (node.kind !== "flow") throw new UnknownGraphTargetError("Flow", flowId);
+  const next = { ...node };
+  if (color === null) delete next.color;
+  else next.color = color;
+  return replaceNode(graph, index, next);
 }
 
 /**

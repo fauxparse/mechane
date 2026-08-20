@@ -25,6 +25,7 @@ import {
   moveNodesIntoFlow,
   moveNodesOutOfFlow,
   reparentNode,
+  setFlowColor,
   setFlowDefaultScene,
   UnknownGraphTargetError,
 } from "./graph-commands";
@@ -373,6 +374,23 @@ describe("setFlowDefaultScene", () => {
     expect(() => setFlowDefaultScene(VOTING.id, RESULTS.id).apply(GRAPH)).toThrow(
       UnknownGraphTargetError,
     );
+  });
+});
+
+describe("setFlowColor", () => {
+  it("sets a Flow color and restores an absent color exactly", () => {
+    const applied = expectExactRoundTrip(setFlowColor(VOTE_FLOW.id, "purple"));
+    expect(applied.state.nodes.find((node) => node.id === VOTE_FLOW.id)).toMatchObject({
+      color: "purple",
+    });
+  });
+
+  it("changes nothing when the effective color is already neutral", () => {
+    expect(setFlowColor(VOTE_FLOW.id, "neutral").apply(GRAPH).inverse.isEmpty).toBe(true);
+  });
+
+  it("refuses a node that is not a Flow", () => {
+    expect(() => setFlowColor(VOTING.id, "red").apply(GRAPH)).toThrow(UnknownGraphTargetError);
   });
 });
 

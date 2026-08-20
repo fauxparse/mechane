@@ -31,6 +31,37 @@ import type { Shape, Type } from "./shapes";
 /** The kinds of node that render on the Show canvas. Nothing else does. */
 export const NODE_KINDS = ["scene", "flow", "source", "transformer", "device"] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
+/** Colorways available to a Flow's editor chrome (#316). */
+export const FLOW_COLORS = [
+  "neutral",
+  "red",
+  "orange",
+  "yellow",
+  "green",
+  "aqua",
+  "blue",
+  "purple",
+] as const;
+export type FlowColor = (typeof FLOW_COLORS)[number];
+
+export function isFlowColor(value: string): value is FlowColor {
+  return FLOW_COLORS.includes(value as FlowColor);
+}
+
+/** The colorway used when a Flow has no stored color yet (#316). */
+export const DEFAULT_FLOW_COLOR: FlowColor = "neutral";
+
+export class InvalidFlowColorError extends Error {
+  constructor(value: string) {
+    super(`Invalid Flow color: "${value}". Expected one of: ${FLOW_COLORS.join(", ")}.`);
+    this.name = "InvalidFlowColorError";
+  }
+}
+
+export function assertValidFlowColor(value: string): FlowColor {
+  if (!isFlowColor(value)) throw new InvalidFlowColorError(value);
+  return value;
+}
 
 /** The kinds of edge. All three run producer → consumer. */
 export const EDGE_KINDS = ["wiring", "navigate", "device"] as const;
@@ -89,6 +120,8 @@ export interface FlowNode extends BaseNode {
   parentId: null;
   /** The Flow's design-time entry Scene, if one has been chosen (#23). */
   defaultSceneId: string | null;
+  /** Optional editor colorway; absent means neutral (#316). */
+  color?: FlowColor;
 }
 
 export interface SourceNode extends BaseNode {
@@ -679,7 +712,12 @@ export function assertValidShowGraph(graph: ShowGraph): ShowGraph {
     }
     assertFinitePosition(node);
     assertValidNesting(node, nodes);
-    if (node.kind === "flow") assertValidDefaultScene(node, nodes);
+    if (node.kind === "flow") {
+      if (node.color !== undefined && !isFlowColor(node.color)) {
+        throw new InvalidShowGraphError(`Flow "${node.id}" has an invalid color.`);
+      }
+      assertValidDefaultScene(node, nodes);
+    }
     if (node.kind === "scene") {
       assertUniqueIds(
         node.variables.map((variable) => variable.name),

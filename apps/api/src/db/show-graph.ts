@@ -10,6 +10,7 @@ import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
 import { CANVAS_COMMAND_TYPES, applyCanvasEdits, applyGraphEdits } from "@mechane/commands";
 import type {
   Canvas,
+  FlowColor,
   GraphEdge,
   GraphNode,
   GraphState,
@@ -143,7 +144,13 @@ function toNode(
         variables: variablesByScene.get(row.id) ?? [],
       };
     case "flow":
-      return { ...base, kind: "flow", parentId: null, defaultSceneId: row.defaultSceneId };
+      return {
+        ...base,
+        kind: "flow",
+        parentId: null,
+        defaultSceneId: row.defaultSceneId,
+        ...(row.color ? { color: row.color as FlowColor } : {}),
+      };
     case "source":
       return {
         ...base,
@@ -493,6 +500,7 @@ async function writeGraph(
         kind: node.kind,
         name: node.name,
         parentId: node.parentId,
+        defaultSceneId: node.kind === "flow" ? node.defaultSceneId : null,
         type: node.kind === "source" || node.kind === "transformer" ? (node.type ?? null) : null,
         positionX: node.position.x,
         positionY: node.position.y,

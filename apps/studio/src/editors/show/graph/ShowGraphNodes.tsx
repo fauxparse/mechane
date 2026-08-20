@@ -41,9 +41,9 @@ import type { ShowFlowNode as ShowFlowNodeType, ShowNodeData } from "./graph-to-
 import { nodeIcon, NODE_KIND_META } from "./node-kinds";
 import { useNodeInteraction } from "./node-interaction";
 
-/** Handle styling — token-driven, like everything else React Flow ships raw. */
+/** Handle styling — quiet by default, accented by the active Flow colorway. */
 const HANDLE_CLASS =
-  "!h-2 !w-2 !border-background !bg-muted-foreground data-[targetable=true]:!bg-primary";
+  "show-flow-handle !h-2 !w-2 !border-background !bg-muted-foreground data-[targetable=true]:!bg-primary";
 
 /**
  * Node chrome shared by every kind (#35: identical `card` chrome), plus the
@@ -59,12 +59,10 @@ function nodeClass({
   dimmed: boolean;
 }) {
   return cn(
-    "h-full w-full overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm transition-opacity",
-    selected && "border-primary ring-2 ring-primary shadow-lg",
+    "show-node h-full w-full overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-sm transition-opacity",
+    selected && "show-node-selected",
     // Dashed, not `ring` — see the header note on #36's correction.
-    targetable &&
-      !selected &&
-      "border-dashed border-primary/70 outline-1 outline-dashed outline-primary/70",
+    targetable && !selected && "show-node-targetable",
     dimmed && "opacity-25",
   );
 }
@@ -356,13 +354,12 @@ export function ShowFlowNode({ id, data, selected }: NodeProps<ShowFlowNodeType>
   return (
     <div
       className={cn(
-        "h-full w-full rounded-xl border border-border bg-accent/20 transition-opacity",
-        selected && "border-primary ring-2 ring-primary",
-        targetable &&
-          !selected &&
-          "border-dashed border-primary/70 outline-1 outline-dashed outline-primary/70",
+        "show-flow h-full w-full rounded-xl border border-border transition-opacity",
+        selected && "show-flow-selected",
+        targetable && !selected && "show-flow-targetable",
         dimmed && "opacity-25",
       )}
+      data-flow-theme={data.color}
       onDoubleClick={(event) => {
         // A double-click on a child bubbles here too; only the Flow's own
         // chrome should rename the Flow.
@@ -375,7 +372,7 @@ export function ShowFlowNode({ id, data, selected }: NodeProps<ShowFlowNodeType>
       }}
       aria-label={`Flow: ${data.name}`}
     >
-      <div className="border-b border-border/60 bg-card/40">
+      <div className="show-flow-header border-b border-border/60">
         <div className="flex items-center">
           <button
             type="button"

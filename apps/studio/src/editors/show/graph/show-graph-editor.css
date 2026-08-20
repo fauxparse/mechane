@@ -1,29 +1,169 @@
 /*
- * Design-system overrides for the chrome React Flow ships (issue #40, #21).
+ * Show graph chrome and Flow colorways (#316).
  *
- * React Flow's `<Controls/>` and `<MiniMap/>` hardcode near-white surfaces
- * and near-black icons, which are unreadable on a dark background — found by the
- * #35 prototype, and the reason #21 made restyling them mandatory rather
- * than cosmetic. #21 also settled that these stay React Flow's components,
- * restyled: a visual override, not a rebuild.
- *
- * Plain CSS rather than Tailwind classes on the components, for two reasons
- * that both come down to *what* needs overriding:
- *
- *   - The minimap's mask and node colors are SVG `fill` **presentation
- *     attributes**, which can't take a `var()`. So React Flow's own
- *     `maskColor`/`nodeColor` props can only be handed a literal color —
- *     the one thing a themed app must never hardcode (PRD §7). A CSS rule
- *     outranks a presentation attribute, so `fill` is settable here and
- *     nowhere else.
- *   - Everything else needed `!important` and a descendant selector to reach
- *     inside a vendor component anyway. Spelling that as CSS says what's
- *     happening; spelling it as `[&_button]:!bg-card` only obscures it.
- *
- * Scoped under one class so this can't leak into any other React Flow
- * instance (the Scene/Canvas editor is a separate surface with its own
- * chrome needs).
+ * The active Flow scale is deliberately exposed as --flow-50 through
+ * --flow-950. Keep component styling pointed at these aliases so changing one
+ * colorway remains a small, obvious CSS edit.
  */
+.mechane-show-graph {
+  --flow-50: var(--palette-neutral-50);
+  --flow-100: var(--palette-neutral-100);
+  --flow-200: var(--palette-neutral-200);
+  --flow-300: var(--palette-neutral-300);
+  --flow-400: var(--palette-neutral-400);
+  --flow-500: var(--palette-neutral-500);
+  --flow-600: var(--palette-neutral-600);
+  --flow-700: var(--palette-neutral-700);
+  --flow-800: var(--palette-neutral-800);
+  --flow-900: var(--palette-neutral-900);
+  --flow-950: var(--palette-neutral-950);
+}
+
+.mechane-show-graph [data-flow-theme="neutral"] {
+  --flow-50: var(--palette-neutral-50);
+  --flow-100: var(--palette-neutral-100);
+  --flow-200: var(--palette-neutral-200);
+  --flow-300: var(--palette-neutral-300);
+  --flow-400: var(--palette-neutral-400);
+  --flow-500: var(--palette-neutral-500);
+  --flow-600: var(--palette-neutral-600);
+  --flow-700: var(--palette-neutral-700);
+  --flow-800: var(--palette-neutral-800);
+  --flow-900: var(--palette-neutral-900);
+  --flow-950: var(--palette-neutral-950);
+}
+
+.mechane-show-graph [data-flow-theme="red"] {
+  --flow-50: var(--palette-red-50);
+  --flow-100: var(--palette-red-100);
+  --flow-200: var(--palette-red-200);
+  --flow-300: var(--palette-red-300);
+  --flow-400: var(--palette-red-400);
+  --flow-500: var(--palette-red-500);
+  --flow-600: var(--palette-red-600);
+  --flow-700: var(--palette-red-700);
+  --flow-800: var(--palette-red-800);
+  --flow-900: var(--palette-red-900);
+  --flow-950: var(--palette-red-950);
+}
+
+.mechane-show-graph [data-flow-theme="orange"] {
+  --flow-50: var(--palette-orange-50);
+  --flow-100: var(--palette-orange-100);
+  --flow-200: var(--palette-orange-200);
+  --flow-300: var(--palette-orange-300);
+  --flow-400: var(--palette-orange-400);
+  --flow-500: var(--palette-orange-500);
+  --flow-600: var(--palette-orange-600);
+  --flow-700: var(--palette-orange-700);
+  --flow-800: var(--palette-orange-800);
+  --flow-900: var(--palette-orange-900);
+  --flow-950: var(--palette-orange-950);
+}
+
+.mechane-show-graph [data-flow-theme="yellow"] {
+  --flow-50: var(--palette-yellow-50);
+  --flow-100: var(--palette-yellow-100);
+  --flow-200: var(--palette-yellow-200);
+  --flow-300: var(--palette-yellow-300);
+  --flow-400: var(--palette-yellow-400);
+  --flow-500: var(--palette-yellow-500);
+  --flow-600: var(--palette-yellow-600);
+  --flow-700: var(--palette-yellow-700);
+  --flow-800: var(--palette-yellow-800);
+  --flow-900: var(--palette-yellow-900);
+  --flow-950: var(--palette-yellow-950);
+}
+
+.mechane-show-graph [data-flow-theme="green"] {
+  --flow-50: var(--palette-green-50);
+  --flow-100: var(--palette-green-100);
+  --flow-200: var(--palette-green-200);
+  --flow-300: var(--palette-green-300);
+  --flow-400: var(--palette-green-400);
+  --flow-500: var(--palette-green-500);
+  --flow-600: var(--palette-green-600);
+  --flow-700: var(--palette-green-700);
+  --flow-800: var(--palette-green-800);
+  --flow-900: var(--palette-green-900);
+  --flow-950: var(--palette-green-950);
+}
+
+.mechane-show-graph [data-flow-theme="aqua"] {
+  --flow-50: var(--palette-aqua-50);
+  --flow-100: var(--palette-aqua-100);
+  --flow-200: var(--palette-aqua-200);
+  --flow-300: var(--palette-aqua-300);
+  --flow-400: var(--palette-aqua-400);
+  --flow-500: var(--palette-aqua-500);
+  --flow-600: var(--palette-aqua-600);
+  --flow-700: var(--palette-aqua-700);
+  --flow-800: var(--palette-aqua-800);
+  --flow-900: var(--palette-aqua-900);
+  --flow-950: var(--palette-aqua-950);
+}
+
+.mechane-show-graph [data-flow-theme="blue"] {
+  --flow-50: var(--palette-blue-50);
+  --flow-100: var(--palette-blue-100);
+  --flow-200: var(--palette-blue-200);
+  --flow-300: var(--palette-blue-300);
+  --flow-400: var(--palette-blue-400);
+  --flow-500: var(--palette-blue-500);
+  --flow-600: var(--palette-blue-600);
+  --flow-700: var(--palette-blue-700);
+  --flow-800: var(--palette-blue-800);
+  --flow-900: var(--palette-blue-900);
+  --flow-950: var(--palette-blue-950);
+}
+
+.mechane-show-graph [data-flow-theme="purple"] {
+  --flow-50: var(--palette-purple-50);
+  --flow-100: var(--palette-purple-100);
+  --flow-200: var(--palette-purple-200);
+  --flow-300: var(--palette-purple-300);
+  --flow-400: var(--palette-purple-400);
+  --flow-500: var(--palette-purple-500);
+  --flow-600: var(--palette-purple-600);
+  --flow-700: var(--palette-purple-700);
+  --flow-800: var(--palette-purple-800);
+  --flow-900: var(--palette-purple-900);
+  --flow-950: var(--palette-purple-950);
+}
+
+.mechane-show-graph .show-flow {
+  background: color-mix(in oklab, var(--flow-500) 6%, var(--color-background));
+  border-color: color-mix(in oklab, var(--flow-500) 30%, var(--color-border));
+}
+
+.mechane-show-graph .show-flow-header {
+  background: color-mix(in oklab, var(--flow-500) 7%, var(--color-card));
+  border-color: color-mix(in oklab, var(--flow-500) 24%, var(--color-border));
+}
+
+.mechane-show-graph .show-flow-selected,
+.mechane-show-graph .show-node-selected {
+  border-color: var(--flow-500);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--flow-500) 42%, transparent);
+}
+
+.mechane-show-graph .show-flow-targetable,
+.mechane-show-graph .show-node-targetable {
+  border-color: color-mix(in oklab, var(--flow-500) 70%, transparent);
+  outline: 1px dashed color-mix(in oklab, var(--flow-500) 70%, transparent);
+}
+
+.mechane-show-graph .show-node {
+  border-color: color-mix(in oklab, var(--flow-500) 20%, var(--color-border));
+}
+
+.mechane-show-graph .show-flow-handle {
+  background-color: var(--flow-500) !important;
+}
+
+.mechane-show-graph .show-flow-handle[data-targetable="true"] {
+  background-color: var(--color-primary) !important;
+}
 
 .mechane-show-graph .react-flow__controls,
 .mechane-show-graph .react-flow__minimap {
@@ -31,61 +171,49 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg, 0.5rem);
   box-shadow: 0 4px 6px -1px oklch(0 0 0 / 25%);
+  background-color: color-mix(in oklab, var(--flow-500) 4%, var(--color-card));
 }
 
 .mechane-show-graph .react-flow__controls-button {
   border-bottom-color: var(--color-border);
-  background-color: var(--color-card);
+  background-color: transparent;
   fill: var(--color-card-foreground);
 }
 
 .mechane-show-graph .react-flow__controls-button:hover {
-  background-color: var(--color-secondary);
+  background-color: color-mix(in oklab, var(--flow-500) 10%, var(--color-card));
 }
 
 .mechane-show-graph .react-flow__controls-button:focus-visible {
-  outline: 2px solid var(--color-ring);
+  outline: 2px solid var(--flow-500);
   outline-offset: -2px;
 }
 
-.mechane-show-graph .react-flow__minimap {
-  background-color: var(--color-card);
-}
-
-/* The dot grid, also hardcoded (`#91919a`) by React Flow. Quiet on purpose:
-   the graph is the content, the grid is only there for parallax while
-   panning (PRD §7 — chrome recedes). */
 .mechane-show-graph .react-flow__background-pattern {
   fill: var(--color-muted-foreground);
-  fill-opacity: 0.35;
+  fill-opacity: 0.24;
 }
 
-/* The dimmed area outside the current viewport. */
 .mechane-show-graph .react-flow__minimap-mask {
   fill: var(--color-background);
-  fill-opacity: 0.7;
+  fill-opacity: 0.76;
 }
 
 .mechane-show-graph .react-flow__minimap-node {
-  fill: var(--color-muted-foreground);
+  fill: var(--flow-400);
   stroke: none;
 }
 
-/* Selection is worth seeing at overview scale — it's what zoom-to-selection
-   is about to frame. */
 .mechane-show-graph .react-flow__minimap-node.selected {
-  fill: var(--color-primary);
+  fill: var(--flow-500);
 }
 
-/*
- * React Flow paints edges with a hardcoded `#b1b1b7`, which reads as noise
- * on a dark background and as too-dark on a light one. Edge *styling* proper is
- * #35's; this is just enough to make the graph legible in both modes.
- */
 .mechane-show-graph .react-flow__edge-path {
-  stroke: var(--color-muted-foreground);
+  stroke: var(--flow-edge-500, var(--flow-500));
+  stroke-opacity: 0.72;
 }
 
 .mechane-show-graph .react-flow__edge.selected .react-flow__edge-path {
-  stroke: var(--color-primary);
+  stroke: var(--flow-edge-500, var(--flow-500));
+  stroke-width: 2.25;
 }

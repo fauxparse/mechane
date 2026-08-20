@@ -55,6 +55,7 @@ import {
   Trash2,
   Undo2,
 } from "@mechane/design-system";
+import { DEFAULT_FLOW_COLOR, FLOW_COLORS, isFlowColor } from "@mechane/domain";
 import type { GraphNode, Position, ShowGraph } from "@mechane/domain";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type {
@@ -433,9 +434,13 @@ function ShowGraphEditorInner({
     <NodeInteractionProvider value={interaction}>
       {/* `mechane-show-graph` is what ./show-graph-editor.css hangs its
           overrides off, so they can't leak into another React Flow instance. */}
-      <div className={cn("mechane-show-graph relative h-full w-full bg-background", className)}>
+      <div
+        className={cn("mechane-show-graph relative h-full w-full bg-background", className)}
+        data-flow-theme="neutral"
+      >
         <ShowGraphContextMenu
           menuPosition={menuPosition}
+          selectedNodes={selectedNodes}
           screenToFlowPosition={screenToFlowPosition}
           create={create}
           fitView={fitView}
@@ -477,6 +482,7 @@ function ShowGraphEditorInner({
 interface ShowGraphContextMenuProps {
   menuPosition: MutableRefObject<Position>;
   screenToFlowPosition: ReturnType<typeof useReactFlow>["screenToFlowPosition"];
+  selectedNodes: GraphNode[];
   create(creatable: CreatableNode, at: Position): unknown;
   fitView(options: FitViewOptions): void;
   fitViewOptions: FitViewOptions;
@@ -501,6 +507,7 @@ interface ShowGraphContextMenuProps {
 function ShowGraphContextMenu({
   menuPosition,
   screenToFlowPosition,
+  selectedNodes,
   create,
   fitView,
   fitViewOptions,
@@ -521,6 +528,8 @@ function ShowGraphContextMenu({
   isValidConnection,
   jumpToMinimapPoint,
 }: ShowGraphContextMenuProps) {
+  const selectedFlow =
+    selectedNodes.length === 1 && selectedNodes[0]?.kind === "flow" ? selectedNodes[0] : null;
   return (
     <ContextMenu>
       <ContextMenuTrigger
@@ -614,6 +623,35 @@ function ShowGraphContextMenu({
             })}
           </ContextMenuSubmenuContent>
         </ContextMenuSubmenu>
+        {selectedFlow ? (
+          <ContextMenuSubmenu>
+            <ContextMenuSubmenuTrigger>
+              <Pencil /> Flow color
+            </ContextMenuSubmenuTrigger>
+            <ContextMenuSubmenuContent>
+              {FLOW_COLORS.map((color) => (
+                <ContextMenuItem
+                  key={color}
+                  onClick={() => {
+                    if (isFlowColor(color)) editing.setFlowColor(selectedFlow.id, color);
+                  }}
+                >
+                  <span
+                    className="mr-2 inline-block size-2 rounded-full"
+                    style={{
+                      backgroundColor:
+                        color === DEFAULT_FLOW_COLOR
+                          ? "var(--palette-neutral-500)"
+                          : `var(--palette-${color}-500)`,
+                    }}
+                  />
+                  {color[0]?.toUpperCase()}
+                  {color.slice(1)}
+                </ContextMenuItem>
+              ))}
+            </ContextMenuSubmenuContent>
+          </ContextMenuSubmenu>
+        ) : null}
         <ContextMenuSeparator />
         <ContextMenuItem onClick={() => fitView(fitViewOptions)}>
           <Maximize2 /> Fit whole Show
