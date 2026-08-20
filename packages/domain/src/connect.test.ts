@@ -126,6 +126,18 @@ describe("connectionKindFor", () => {
     expect(connectionKindFor(GRAPH, { sourceId: PHONE.id, targetId: VOTING.id })).toBeNull();
     expect(connectionKindFor(GRAPH, { sourceId: VOTE.id, targetId: VOTING.id })).toBeNull();
   });
+  it("allows a value source to feed a Source input", () => {
+    expect(
+      connectionEdge(GRAPH, { sourceId: TALLY.id, targetId: LOCAL.id }, "edge_source"),
+    ).toEqual(
+      expect.objectContaining({
+        kind: "wiring",
+        sourceId: TALLY.id,
+        targetId: LOCAL.id,
+        targetPath: [],
+      }),
+    );
+  });
 });
 
 describe("connectionEdge", () => {
@@ -318,7 +330,9 @@ describe("canConnect", () => {
 describe("connectionTargets", () => {
   it("lists the Scenes and Variables a Source may feed", () => {
     const targets = connectionTargets(GRAPH, TALLY.id);
-    expect([...targets.nodeIds].sort()).toEqual([LOBBY.id, VOTING.id, TRANSFORMER.id]);
+    expect([...targets.nodeIds].sort()).toEqual(
+      [LOBBY.id, VOTING.id, LOCAL.id, TRANSFORMER.id].sort(),
+    );
     expect([...targets.variableIds].sort()).toEqual(["variable_house", "variable_prompt"]);
   });
 
@@ -345,7 +359,9 @@ describe("connectionTargets", () => {
 
   it("lists value targets for Device virtual source handles", () => {
     const targets = connectionTargets(GRAPH, PHONE.id, DEVICE_SOURCE_HANDLES.pairingCode);
-    expect([...targets.nodeIds].sort()).toEqual([LOBBY.id, VOTING.id, TRANSFORMER.id]);
+    expect([...targets.nodeIds].sort()).toEqual(
+      [LOBBY.id, VOTING.id, LOCAL.id, TALLY.id, TRANSFORMER.id].sort(),
+    );
     expect([...targets.variableIds].sort()).toEqual(["variable_house", "variable_prompt"]);
   });
 });

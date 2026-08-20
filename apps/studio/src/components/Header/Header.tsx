@@ -31,23 +31,26 @@ import {
   Input,
   InsideSidebar,
   LogOutIcon,
+  MoonIcon,
   PencilIcon,
   PlayIcon,
   SettingsIcon,
   SidebarIcon,
   SidebarTrigger,
   SquareIcon,
+  SunIcon,
   Tabs,
   TabsList,
   TabsTrigger,
   TvMinimalIcon,
   WorkflowIcon,
 } from "@mechane/design-system";
-import type { PublishState } from "@mechane/domain";
+import { DEFAULT_THEME_MODE, type PublishState, type ThemeMode } from "@mechane/domain";
 import { useState } from "react";
 import type { FormEvent, MouseEvent } from "react";
 
 import { navigationIntentFor } from "./header-navigation";
+import { useUserSettings } from "../../api/settings";
 
 /** Which editor the Chrome is currently wrapped around. */
 export type EditorKind = "show" | "canvas";
@@ -148,6 +151,9 @@ export const Header = ({
     onRename(draftName);
     setDraftName(null);
   };
+
+  const { settings, updateSettings } = useUserSettings();
+  const mode = (settings?.themeMode ?? DEFAULT_THEME_MODE) as ThemeMode;
 
   return (
     // `pointer-events-none` on the bar with `pointer-events-auto` on each
@@ -272,6 +278,21 @@ export const Header = ({
                 </a>
               }
             />
+            <DropdownMenuItem
+              onClick={() => updateSettings({ themeMode: mode === "dark" ? "light" : "dark" })}
+            >
+              {mode === "dark" ? (
+                <>
+                  <SunIcon />
+                  <span>Light mode</span>
+                </>
+              ) : (
+                <>
+                  <MoonIcon className="size-4" />
+                  <span>Dark mode</span>
+                </>
+              )}
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem variant="destructive" onClick={onLogOut}>

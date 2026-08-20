@@ -50,15 +50,14 @@ export function connectionKindFor(graph: ShowGraph, request: ConnectionRequest):
   const producer = findNode(graph, request.sourceId);
   const consumer = findNode(graph, request.targetId);
   if (!producer || !consumer) return null;
-  if (consumer.kind === "device") return "device";
-  if (consumer.kind !== "scene" && consumer.kind !== "transformer") return null;
-  if (
+  const producesValue =
     producer.kind === "source" ||
     producer.kind === "transformer" ||
-    (producer.kind === "device" && deviceSourceType(request.sourceHandle) !== null)
-  ) {
-    return "wiring";
-  }
+    (producer.kind === "device" && deviceSourceType(request.sourceHandle) !== null);
+  if (consumer.kind === "device") return "device";
+  if (consumer.kind === "source") return producesValue ? "wiring" : null;
+  if (consumer.kind !== "scene" && consumer.kind !== "transformer") return null;
+  if (producesValue) return "wiring";
   if (producer.kind === "scene") return "navigate";
   return null;
 }
@@ -82,7 +81,7 @@ export function connectionEdge(
   switch (kind) {
     case "wiring": {
       const consumer = findNode(graph, request.targetId);
-      if (consumer?.kind === "transformer") {
+      if (consumer?.kind === "transformer" || consumer?.kind === "source") {
         return { ...base, kind: "wiring", targetPath: [] };
       }
       const variableId = request.targetVariableId;

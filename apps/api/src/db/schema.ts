@@ -524,11 +524,11 @@ export const graphEdges = pgTable(
       sql`coalesce(${table.cueId}, '')`,
       sql`coalesce(${table.actionId}, '')`,
     ),
-    // Only a wiring edge addresses a value, and it must name at least the
-    // Scene Variable it feeds.
+    // Wiring may target a named Scene Variable or an unnamed Source/Transformer
+    // input. Domain validation enforces the target-specific rule.
     check(
       "graph_edges_paths_are_wiring_only",
-      sql`(${table.kind} = 'wiring') = (cardinality(${table.targetPath}) > 0)`,
+      sql`${table.kind} = 'wiring' or cardinality(${table.targetPath}) = 0`,
     ),
     check(
       "graph_edges_source_path_is_wiring_only",

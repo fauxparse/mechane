@@ -524,15 +524,15 @@ function assertValidWiringEdge(
     );
   }
   const consumer = requireNode(nodes, edge.targetId, `Wiring edge "${edge.id}"`);
-  if (consumer.kind !== "scene" && consumer.kind !== "transformer") {
+  if (consumer.kind !== "scene" && consumer.kind !== "transformer" && consumer.kind !== "source") {
     throw new InvalidShowGraphError(
-      `wiring edge "${edge.id}" targets a ${consumer.kind}; wiring targets a Transformer or a Variable on a Scene.`,
+      `wiring edge "${edge.id}" targets a ${consumer.kind}; wiring targets a Source, Transformer, or Variable on a Scene.`,
     );
   }
-  if (consumer.kind === "transformer") {
+  if (consumer.kind === "transformer" || consumer.kind === "source") {
     if (edge.targetPath.length > 0) {
       throw new InvalidShowGraphError(
-        `wiring edge "${edge.id}" targets a Transformer with a value path; Transformer inputs are not named yet.`,
+        `wiring edge "${edge.id}" targets a ${consumer.kind} with a value path; its input is not named.`,
       );
     }
   } else {
@@ -548,14 +548,12 @@ function assertValidWiringEdge(
       );
     }
   }
-  // Flow-local scoping (#29): a Flow-local producer's value only exists
-  // per audience instance of its own Flow, so it can't feed anything
-  // outside that Flow. Show-level producers stay unrestricted. This is a
-  // placement rule, not a connection rule — hence here and not in #24.
   const targetType =
     consumer.kind === "scene"
       ? (consumer.variables.find((variable) => variable.id === edge.targetPath[0])?.type ?? null)
-      : null;
+      : consumer.kind === "source"
+        ? consumer.type
+        : null;
   if (sourceType && targetType && !areTypesCompatible(sourceType, targetType, shapes)) {
     throw new InvalidShowGraphError(
       `wiring edge "${edge.id}" connects incompatible types; no supported coercion exists.`,

@@ -576,7 +576,23 @@ function ShowGraphContextMenu({
             onConnectStart={(_event, { nodeId, handleId }) => {
               if (nodeId) editing.beginConnect(nodeId, handleId);
             }}
-            onConnectEnd={editing.endConnect}
+            onConnectEnd={(event, connectionState) => {
+              editing.endConnect();
+              if (
+                connectionState.toNode ||
+                !connectionState.fromNode ||
+                !connectionState.fromHandle
+              ) {
+                return;
+              }
+              const point = "changedTouches" in event ? event.changedTouches[0] : event;
+              if (!point) return;
+              editing.createSourceFromConnection(
+                connectionState.fromNode.id,
+                connectionState.fromHandle.id ?? "",
+                screenToFlowPosition({ x: point.clientX, y: point.clientY }),
+              );
+            }}
             onConnect={onConnect}
             isValidConnection={(connection) => isValidConnection(connection as Connection)}
             // Deletion goes through a Command instead (see the header note).

@@ -25,7 +25,13 @@ import {
   moveNodesOutOfFlow,
 } from "@mechane/commands";
 import type { GraphEdit, Gesture } from "@mechane/commands";
-import { connectionEdge, connectionError, connectionTargets, generateId } from "@mechane/domain";
+import {
+  connectionEdge,
+  connectionError,
+  connectionTargets,
+  deviceSourceType,
+  generateId,
+} from "@mechane/domain";
 import type {
   ConnectionTargets,
   FlowColor,
@@ -33,6 +39,7 @@ import type {
   NodeKind,
   Position,
   ShowGraph,
+  Type,
 } from "@mechane/domain";
 import { useCallback, useMemo, useRef, useState } from "react";
 
@@ -63,9 +70,11 @@ export interface GraphEditing {
     kind: NodeKind,
     position: Position,
     parentId?: string | null,
-    options?: { perConnection?: boolean; defaultName?: string },
+    options?: { perConnection?: boolean; defaultName?: string; sourceType?: Type },
   ): GraphNode;
   createFlowWithNodes(nodeIds: string[], position: Position, childOrigin: Position): GraphNode;
+  /** Creates a typed Source and connects it to a dropped source handle. */
+  createSourceFromConnection(sourceId: string, sourceHandle: string, position: Position): void;
 
   /** The node being renamed inline, if any. */
   renaming: string | null;
@@ -130,19 +139,46 @@ export function useGraphEditing(
         : null,
     [connectingFrom, graph],
   );
-
   const createNodeOfKind = useCallback(
     (
       kind: NodeKind,
       position: Position,
       parentId: string | null = null,
-      options: { perConnection?: boolean; defaultName?: string } = {},
+      options: { perConnection?: boolean; defaultName?: string; sourceType?: Type } = {},
     ) => {
       const node = createNode(kind, position, parentId, options);
       execute(addNode(node, `Add ${kind}`));
       return node;
     },
     [execute],
+  );
+  const createSourceFromConnection = useCallback(
+    (sourceId: string, sourceHandle: string, position: Position) => {
+      const producer = graph.nodes.find((node) => node.id === sourceId);
+      const sourceType =
+        producer?.kind === "device"
+          ? deviceSourceType(sourceHandle)
+          : producer?.kind === "source" || producer?.kind === "transformer"
+            ? producer.type
+            : null;
+      if (!sourceType) return;
+
+      const node = createNode("source", position, null, { sourceType });
+      const graphWithSource = { ...graph, nodes: [...graph.nodes, node] };
+      const edge = connectionEdge(
+        graphWithSource,
+        { sourceId, sourceHandle, targetId: node.id },
+        generateId("edge"),
+      );
+      if (!edge) return;
+      execute(
+        composite({
+          label: "Create Source",
+          commands: [addNode(node, "Create source"), addEdge(edge, "Connect")],
+        }),
+      );
+    },
+    [execute, graph],
   );
 
   const createFlowWithSelection = useCallback(
@@ -326,6 +362,7 @@ export function useGraphEditing(
     graph,
     amend: commands.amend,
     createNodeOfKind,
+    createSourceFromConnection,
     createFlowWithNodes: createFlowWithSelection,
     renaming,
     beginRename,

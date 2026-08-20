@@ -13,10 +13,10 @@ import { useUserSettings } from "./api/settings";
 
 export function AppThemeProvider({ children }: { children: ReactNode }) {
   const me = useMe();
-  const settings = useUserSettings({ enabled: Boolean(me.data) });
+  const { settings } = useUserSettings({ enabled: Boolean(me.data) });
 
-  const mode = (settings.data?.themeMode ?? DEFAULT_THEME_MODE) as ThemeMode;
-  const palette = (settings.data?.themePalette ?? DEFAULT_THEME_PALETTE) as ThemePalette;
+  const mode = (settings?.themeMode ?? DEFAULT_THEME_MODE) as ThemeMode;
+  const palette = (settings?.themePalette ?? DEFAULT_THEME_PALETTE) as ThemePalette;
 
   return (
     <ThemeProvider mode={mode} palette={palette}>

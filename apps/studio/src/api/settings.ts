@@ -7,15 +7,19 @@ import {
   GetUserSettingsQuery,
   graphqlRequest,
   UpdateUserSettingsMutation,
+  UserSettings,
 } from "@mechane/graphql-schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { GRAPHQL_ENDPOINT } from "./client";
+import { useCallback } from "react";
 
 export const userSettingsQueryKey = ["userSettings"] as const;
 
 export function useUserSettings(options: { enabled?: boolean } = {}) {
-  return useQuery({
+  const queryClient = useQueryClient();
+
+  const settings = useQuery({
     queryKey: userSettingsQueryKey,
     enabled: options.enabled,
     queryFn: async () => {
@@ -23,11 +27,8 @@ export function useUserSettings(options: { enabled?: boolean } = {}) {
       return data.userSettings;
     },
   });
-}
 
-export function useUpdateUserSettings() {
-  const queryClient = useQueryClient();
-  return useMutation({
+  const update = useMutation({
     mutationFn: async (patch: { themeMode?: string; themePalette?: string }) => {
       const data = await graphqlRequest(GRAPHQL_ENDPOINT, UpdateUserSettingsMutation, patch);
       return data.updateUserSettings;
@@ -36,4 +37,16 @@ export function useUpdateUserSettings() {
       queryClient.setQueryData(userSettingsQueryKey, settings);
     },
   });
+
+  const updateSettings = useCallback(
+    (patch: Partial<UserSettings>) => {
+      update.mutate(patch);
+    },
+    [update],
+  );
+
+  return {
+    settings: (settings?.data ?? {}) as Partial<UserSettings>,
+    updateSettings,
+  };
 }

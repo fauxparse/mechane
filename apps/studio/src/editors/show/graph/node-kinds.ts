@@ -10,7 +10,7 @@
 // strictly semantic and hue is reserved for *state* (selection, a dangling
 // input) rather than type — and PRD §7 wants the chrome recessive.
 import { generateId, NODE_ID_ENTITIES } from "@mechane/domain";
-import type { GraphNode, NodeKind, Position, ShapeValue } from "@mechane/domain";
+import type { GraphNode, NodeKind, Position, ShapeValue, Type } from "@mechane/domain";
 import {
   Bot,
   Box,
@@ -149,7 +149,7 @@ export function createNode(
   kind: NodeKind,
   position: Position,
   parentId: string | null = null,
-  options: { perConnection?: boolean; defaultName?: string } = {},
+  options: { perConnection?: boolean; defaultName?: string; sourceType?: Type } = {},
 ): GraphNode {
   const base = {
     id: generateId(NODE_ID_ENTITIES[kind]),
@@ -176,7 +176,7 @@ export function createNode(
         pairingCode: null,
       };
     case "source":
-      return { ...base, kind: "source", parentId, type: "text" };
+      return { ...base, kind: "source", parentId, type: options.sourceType ?? "text" };
     case "transformer":
       return { ...base, kind: "transformer", parentId };
   }

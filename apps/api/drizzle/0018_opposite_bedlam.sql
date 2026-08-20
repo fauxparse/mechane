@@ -1,0 +1,2 @@
+ALTER TABLE "graph_edges" DROP CONSTRAINT "graph_edges_paths_are_wiring_only";--> statement-breakpoint
+ALTER TABLE "graph_edges" ADD CONSTRAINT "graph_edges_paths_are_wiring_only" CHECK ("graph_edges"."kind" = 'wiring' or cardinality("graph_edges"."target_path") = 0);
