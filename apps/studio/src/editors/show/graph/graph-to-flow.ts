@@ -246,6 +246,7 @@ function toFlowNode(
   defaultSceneIds: Set<string>,
   drivenDeviceIds: Set<string>,
   collapsed: boolean,
+  color: FlowColor,
 ): ShowFlowNode {
   const kind = nodeKindOf(node);
   const isFlow = kind === "flow";
@@ -266,7 +267,7 @@ function toFlowNode(
         : flowSize(children)
       : { width: NODE_WIDTH, height: nodeHeight(node) },
     data: {
-      color: isFlow ? (node.color ?? DEFAULT_FLOW_COLOR) : DEFAULT_FLOW_COLOR,
+      color,
       kind,
       name: node.name,
       type: (node.type as Type | null | undefined) ?? null,
@@ -381,6 +382,9 @@ export function graphToFlow(
   for (const node of graph.nodes) {
     (node.kind === "flow" ? flows : rest).push(node);
   }
+  const flowColors = new Map(
+    flows.map((flow) => [flow.id, flow.color ?? DEFAULT_FLOW_COLOR] as const),
+  );
 
   // Which Variables have a producer, and which Scenes are their Flow's entry
   // point — both are facts about the *graph* that a single node has to display
@@ -413,6 +417,9 @@ export function graphToFlow(
             defaultSceneIds,
             drivenDeviceIds,
             collapsed.has(node.id),
+            node.kind === "flow"
+              ? (node.color ?? DEFAULT_FLOW_COLOR)
+              : ((node.parentId ? flowColors.get(node.parentId) : undefined) ?? DEFAULT_FLOW_COLOR),
           ),
         );
       }

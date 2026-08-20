@@ -227,6 +227,19 @@ describe("graphToFlow", () => {
     expect(types.get("transformer_1")).toBe(PLACEHOLDER_NODE_TYPE);
   });
 
+  it("assigns each contained node its parent Flow colorway", () => {
+    const { nodes } = graphToFlow({
+      nodes: [
+        node({ id: "flow_1", kind: "flow", color: "aqua" }),
+        node({ id: "scene_1", kind: "scene", parentId: "flow_1" }),
+        node({ id: "device_1", kind: "device" }),
+      ],
+      edges: [],
+    });
+    expect(nodes.find((node) => node.id === "flow_1")?.data.color).toBe("aqua");
+    expect(nodes.find((node) => node.id === "scene_1")?.data.color).toBe("aqua");
+    expect(nodes.find((node) => node.id === "device_1")?.data.color).toBe("neutral");
+  });
   // Sizes have to be known before the first measurement, or the `fitView`
   // that runs on first paint leaves nodes off-screen.
   it("sizes every node up front", () => {

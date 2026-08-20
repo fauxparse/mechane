@@ -275,6 +275,7 @@ export function ShowNode({ id, data, selected }: NodeProps<ShowFlowNodeType>) {
   return (
     <div
       className={nodeClass({ selected: Boolean(selected), targetable, dimmed })}
+      data-flow-theme={data.color}
       onDoubleClick={() => beginRename(id)}
       // React Flow's own `aria-label` names the node "Node"; the kind and name
       // are what a keyboard user Tabbing through actually needs.
