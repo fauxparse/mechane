@@ -33,7 +33,7 @@ import { layerDropPlacement, layerDropPlacementInCanvas } from "../data/canvas-l
 import type { LayerDropZone } from "../data/canvas-layer-drop";
 import { canvasLayerRows, expansionForSelection } from "../data/canvas-layer-tree";
 import type { LayerRow } from "../data/canvas-layer-tree";
-import { artboardLabel } from "../data/canvas-workspace";
+import { artboardLabel, shouldFrameForeignLayer } from "../data/canvas-workspace";
 import type { CanvasSelection } from "./canvas-selection";
 import { rangeSelection } from "./canvas-selection";
 import { elementIconFor } from "./utils";
@@ -550,8 +550,12 @@ export function CanvasLayers({
                           renaming={renamingId === `${row.artId}:${row.id}`}
                           onToggle={() => toggle(row.id)}
                           onSelectRow={(shiftKey) => {
+                            if (
+                              shouldFrameForeignLayer(focusedArtId, row.artId, row.kind, shiftKey)
+                            ) {
+                              onFrameArtboard(artboard);
+                            }
                             onFocusArtboard(row.artId);
-                            if (row.kind === "canvas") onFrameArtboard(artboard);
                             const anchor = selectionAnchorRef.current;
                             const layerIds = visible.flatMap(
                               ({ row: candidate, artboard: candidateArtboard }) =>

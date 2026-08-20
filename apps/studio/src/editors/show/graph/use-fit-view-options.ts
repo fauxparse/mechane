@@ -88,6 +88,7 @@ const INITIAL_FRAME_GRACE_MS = 1000;
 export function useInitialFrame(
   fitView: (options: FitViewOptions) => void,
   options: FitViewOptions,
+  enabled = true,
 ): void {
   const inset = useEditableArea();
   const mountedAt = useRef<number | null>(null);
@@ -100,10 +101,11 @@ export function useInitialFrame(
   // to one call, so depending on it honestly is cheaper than mutating a ref
   // during render to hide it.
   useEffect(() => {
+    if (!enabled) return;
     mountedAt.current ??= performance.now();
     if (corrected.current || insetTotal === 0) return;
     if (performance.now() - mountedAt.current > INITIAL_FRAME_GRACE_MS) return;
     corrected.current = true;
     fitView(options);
-  }, [fitView, insetTotal, options]);
+  }, [enabled, fitView, insetTotal, options]);
 }

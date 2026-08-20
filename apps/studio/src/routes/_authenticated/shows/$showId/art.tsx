@@ -16,6 +16,10 @@ import {
   isCanvasPath,
   resolveFocusedArtboard,
 } from "../../../../editors/canvas/data/canvas-workspace";
+import {
+  rememberedCanvasCamera,
+  rememberCanvasCamera,
+} from "../../../../editors/canvas/data/canvas-session";
 import { useCanvasCommands } from "../../../../editors/canvas/commands/use-canvas-commands";
 import { useGraphEditing } from "../../../../editors/show/commands/use-graph-editing";
 import { useUndoKeys } from "../../../../editors/show/keyboard/use-undo-keys";
@@ -34,6 +38,13 @@ function CanvasWorkspaceRoute() {
   const imageUpload = useImageUpload(showId);
   const draft = useShowGraph(showId, "draft");
   const workspace = useCanvasWorkspace(showId);
+  const initialCamera = showId ? rememberedCanvasCamera(showId) : undefined;
+  const onCameraChange = useCallback(
+    (camera: Parameters<typeof rememberCanvasCamera>[1]) => {
+      if (showId) rememberCanvasCamera(showId, camera);
+    },
+    [showId],
+  );
   const save = useShowGraphEdits(showId, draft.data?.version);
   const lastUndoTarget = useRef<"canvas" | "graph" | null>(null);
   const canvasCommands = useCanvasCommands(workspace.data, (edits) => {
@@ -183,6 +194,8 @@ function CanvasWorkspaceRoute() {
   return (
     <CanvasWorkspaceEditor
       artboards={artboards}
+      initialCamera={initialCamera}
+      onCameraChange={onCameraChange}
       focusedArtId={focused?.artId ?? null}
       variables={focusedVariables}
       imageAssets={imageAssets.data ?? []}

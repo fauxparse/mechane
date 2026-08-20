@@ -1,5 +1,5 @@
 import type { PointerEvent } from "react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import type { Position } from "@mechane/domain";
 
@@ -21,6 +21,7 @@ export function useCanvasCamera(
    * otherwise one press both moves the Element and flies the camera. Zoom keys are unaffected.
    */
   arrowKeysReserved = false,
+  onCameraChange?: (camera: CanvasCamera) => void,
 ) {
   const [camera, setCamera] = useState(initialCamera);
   const cameraRef = useRef(camera);
@@ -29,9 +30,22 @@ export function useCanvasCamera(
   const cameraDrag = useRef<CameraDrag | null>(null);
   const cameraAnimation = useRef<number | null>(null);
   const cameraAnimationToken = useRef(0);
+  const onCameraChangeRef = useRef(onCameraChange);
+  useLayoutEffect(() => {
+    onCameraChangeRef.current = onCameraChange;
+  }, [onCameraChange]);
   useLayoutEffect(() => {
     cameraRef.current = camera;
   }, [camera]);
+  const setCameraState = useCallback(
+    (next: CanvasCamera | ((current: CanvasCamera) => CanvasCamera)) => {
+      const resolved = typeof next === "function" ? next(cameraRef.current) : next;
+      cameraRef.current = resolved;
+      setCamera(resolved);
+      onCameraChangeRef.current?.(resolved);
+    },
+    [],
+  );
   const cancelCameraAnimation = () => {
     cameraAnimationToken.current += 1;
     if (cameraAnimation.current !== null) {
@@ -53,8 +67,7 @@ export function useCanvasCamera(
         y: start.y + (destination.y - start.y) * eased,
         zoom: start.zoom + (destination.zoom - start.zoom) * eased,
       };
-      cameraRef.current = next;
-      setCamera(next);
+      setCameraState(next);
       if (progress < 1) {
         cameraAnimation.current = window.requestAnimationFrame(tick);
       } else {
@@ -93,12 +106,12 @@ export function useCanvasCamera(
       event.preventDefault();
       cancelCameraAnimation();
       if (intent.type === "pan") {
-        setCamera((current) => panCanvasCamera(current, -intent.dx, -intent.dy));
+        setCameraState((current) => panCanvasCamera(current, -intent.dx, -intent.dy));
         return;
       }
       const bounds = workspaceRef.current?.getBoundingClientRect();
       if (!bounds) return;
-      setCamera((current) =>
+      setCameraState((current) =>
         zoomCanvasCamera(
           current,
           { x: bounds.width / 2, y: bounds.height / 2 },
@@ -115,7 +128,7 @@ export function useCanvasCamera(
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
     };
-  }, []);
+  }, [setCameraState]);
 
   const beginCameraDrag = (event: PointerEvent<HTMLElement>) => {
     if (event.button !== 0 || !spaceHeld.current) return;
@@ -131,7 +144,7 @@ export function useCanvasCamera(
   const moveCameraDrag = (event: PointerEvent<HTMLElement>) => {
     const drag = cameraDrag.current;
     if (!drag || event.pointerId !== drag.pointerId) return;
-    setCamera((current) => ({
+    setCameraState((current) => ({
       ...current,
       x: drag.origin.x + event.clientX - drag.start.x,
       y: drag.origin.y + event.clientY - drag.start.y,
@@ -168,7 +181,7 @@ export function useCanvasCamera(
       panY = 0;
       zoomDelta = 0;
       cancelCameraAnimation();
-      setCamera((current) => {
+      setCameraState((current) => {
         let next = current;
         if (nextPanX !== 0 || nextPanY !== 0) {
           next = panCanvasCamera(next, nextPanX, nextPanY);
@@ -202,13 +215,13 @@ export function useCanvasCamera(
       workspace.removeEventListener("gesturechange", onGesture);
       if (frame !== null) window.cancelAnimationFrame(frame);
     };
-  }, []);
+  }, [setCameraState]);
 
   const zoomAtCenter = (factor: number) => {
     const bounds = workspaceRef.current?.getBoundingClientRect();
     if (!bounds) return;
     cancelCameraAnimation();
-    setCamera((current) =>
+    setCameraState((current) =>
       zoomCanvasCamera(
         current,
         { x: bounds.width / 2, y: bounds.height / 2 },
@@ -232,7 +245,7 @@ export function useCanvasCamera(
   const zoomOut = () => zoomAtCenter(1 / 1.2);
   const resetCamera = () => {
     cancelCameraAnimation();
-    setCamera(initialCamera);
+    setCameraState(initialCamera);
   };
 
   return {
