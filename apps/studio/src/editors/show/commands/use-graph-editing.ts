@@ -74,8 +74,8 @@ export interface GraphEditing {
     options?: { perConnection?: boolean; defaultName?: string; sourceType?: Type },
   ): GraphNode;
   createFlowWithNodes(nodeIds: string[], position: Position, childOrigin: Position): GraphNode;
-  /** Creates a typed Source and connects it to a dropped source handle. */
-  createSourceFromConnection(sourceId: string, sourceHandle: string, position: Position): void;
+  /** Creates a typed Source or Device and connects it to a dropped source handle. */
+  createNodeFromConnection(sourceId: string, sourceHandle: string, position: Position): void;
 
   /** The node being renamed inline, if any. */
   renaming: string | null;
@@ -153,7 +153,7 @@ export function useGraphEditing(
     },
     [execute],
   );
-  const createSourceFromConnection = useCallback(
+  const createNodeFromConnection = useCallback(
     (sourceId: string, sourceHandle: string, position: Position) => {
       const producer = graph.nodes.find((node) => node.id === sourceId);
       const sourceType =
@@ -162,23 +162,28 @@ export function useGraphEditing(
           : producer?.kind === "source" || producer?.kind === "transformer"
             ? producer.type
             : null;
-      if (!sourceType) return;
+      const node =
+        producer?.kind === "flow" && sourceHandle === OUTPUT_HANDLE
+          ? createNode("device", position)
+          : sourceType
+            ? createNode("source", position, null, {
+                sourceType,
+                defaultName: sourceLabelFor(graph, sourceId, sourceHandle),
+              })
+            : null;
+      if (!node) return;
 
-      const node = createNode("source", position, null, {
-        sourceType,
-        defaultName: sourceLabelFor(graph, sourceId, sourceHandle),
-      });
-      const graphWithSource = { ...graph, nodes: [...graph.nodes, node] };
+      const graphWithNode = { ...graph, nodes: [...graph.nodes, node] };
       const edge = connectionEdge(
-        graphWithSource,
+        graphWithNode,
         { sourceId, sourceHandle, targetId: node.id },
         generateId("edge"),
       );
       if (!edge) return;
       execute(
         composite({
-          label: "Create Source",
-          commands: [addNode(node, "Create source"), addEdge(edge, "Connect")],
+          label: node.kind === "device" ? "Create Device" : "Create Source",
+          commands: [addNode(node, `Create ${node.kind}`), addEdge(edge, "Connect")],
         }),
       );
     },
@@ -366,7 +371,7 @@ export function useGraphEditing(
     graph,
     amend: commands.amend,
     createNodeOfKind,
-    createSourceFromConnection,
+    createNodeFromConnection,
     createFlowWithNodes: createFlowWithSelection,
     renaming,
     beginRename,

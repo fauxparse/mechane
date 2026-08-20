@@ -136,7 +136,7 @@ export function ShowGraphContextMenu({
               }
               const point = "changedTouches" in event ? event.changedTouches[0] : event;
               if (!point) return;
-              editing.createSourceFromConnection(
+              editing.createNodeFromConnection(
                 connectionState.fromNode.id,
                 connectionState.fromHandle.id ?? "",
                 screenToFlowPosition({ x: point.clientX, y: point.clientY }),

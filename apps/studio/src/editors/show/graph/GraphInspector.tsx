@@ -20,7 +20,7 @@ export function GraphInspector({ selected, editing, className }: GraphInspectorP
       // `nokey` is React Flow's own escape hatch: keys pressed in here are the
       // panel's, not the canvas's (#37).
       className={cn(
-        "nokey pointer-events-auto flex w-72 flex-col gap-4 overflow-y-auto rounded-xl border border-border bg-card/95 p-4 shadow-lg backdrop-blur",
+        "nokey pointer-events-auto flex w-72 flex-col gap-4 overflow-y-auto",
         className,
       )}
       aria-label="Inspector"

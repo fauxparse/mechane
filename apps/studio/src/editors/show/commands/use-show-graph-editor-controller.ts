@@ -145,14 +145,20 @@ export function useShowGraphEditorController({
       MESSAGE_MS,
     );
   }, []);
-  const selectedNodeIds = useMemo(
-    () => nodes.filter((node) => node.selected).map((node) => node.id),
-    [nodes],
-  );
-  const selectedEdgeIds = useMemo(
-    () => edges.filter((edge) => edge.selected).map((edge) => edge.id),
-    [edges],
-  );
+  const selectedNodeIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const node of nodes) {
+      if (node.selected) ids.push(node.id);
+    }
+    return ids;
+  }, [nodes]);
+  const selectedEdgeIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const edge of edges) {
+      if (edge.selected) ids.push(edge.id);
+    }
+    return ids;
+  }, [edges]);
   const selectedNodeIdSet = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds]);
   const selectedNodes = useMemo(
     () => editing.graph.nodes.filter((node) => selectedNodeIdSet.has(node.id)),
