@@ -12,10 +12,11 @@
 
 @theme inline {
   --font-sans: "Space Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.85);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.5);
+  --radius-xs: 0.125rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1.5rem;
 }
 
 :root {

@@ -1,3 +1,4 @@
+import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import type { Element, SceneVariable } from "@mechane/domain";
 import type { ImageAsset } from "@mechane/graphql-schema";
 
@@ -29,7 +30,7 @@ export type CanvasInspectorProps = {
   selection: CanvasSelection;
   variables?: readonly SceneVariable[];
   imageAssets?: readonly ImageAsset[];
-  onImageUpload?(file: File): void;
+  onImageUpload?(props: ImageInputOnUploadProps): void;
   inspectorPreview?: CanvasInspectorPreview | null;
   currentDimensions?: CanvasInspectorDimensions | null;
   onUpdateElement?(
@@ -55,7 +56,7 @@ export type CanvasInspectorModel = {
   selected: readonly Element[];
   variables: readonly SceneVariable[];
   imageAssets: readonly ImageAsset[];
-  onImageUpload?(file: File): void;
+  onImageUpload?(props: ImageInputOnUploadProps): void;
   fontFamilies: readonly string[];
   inspectorPreview: CanvasInspectorPreview | null;
   currentDimensions: CanvasInspectorDimensions | null;

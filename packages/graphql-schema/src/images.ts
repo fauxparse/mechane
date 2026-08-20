@@ -64,5 +64,11 @@ export const FinalizeImageUploadMutation = graphql(`
   }
 `);
 
+export const AbortImageUploadMutation = graphql(`
+  mutation AbortImageUpload($sessionId: ID!) {
+    abortImageUpload(sessionId: $sessionId)
+  }
+`);
+
 export type ImageAsset = ResultOf<typeof ImageAssetsQuery>["imageAssets"][number];
 export type ImageUploadSession = ResultOf<typeof BeginImageUploadMutation>["beginImageUpload"];

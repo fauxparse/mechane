@@ -5,6 +5,7 @@ import { Button } from "./button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -40,14 +41,16 @@ export const WithIconsAndSeparator: Story = {
         The Tempest <ChevronDown data-icon="inline-end" />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        <DropdownMenuLabel>Show</DropdownMenuLabel>
-        <DropdownMenuItem>
-          <Pencil /> Rename
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive">
-          <Trash2 /> Delete
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Show</DropdownMenuLabel>
+          <DropdownMenuItem>
+            <Pencil /> Rename
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem variant="destructive">
+            <Trash2 /> Delete
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   ),

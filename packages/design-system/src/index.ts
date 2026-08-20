@@ -171,6 +171,7 @@ export {
 } from "./components/ui/property-input/property-input";
 export { ThemeProvider, useTheme } from "./theme/theme-provider";
 export type { ThemeContextValue, ThemeProviderProps } from "./theme/theme-provider";
+export { Swatch } from "./components/ui/swatch";
 export { Switch } from "./components/ui/switch";
 export {
   Select,
@@ -179,6 +180,23 @@ export {
   SelectTrigger,
   SelectValue,
 } from "./components/ui/select";
+export {
+  VARIABLE_TYPE_ICONS,
+  variableTypeIcon,
+} from "./components/ui/property-input/variable-type-icons";
+
+export {
+  ImageInput,
+  type ImageInputError,
+  type ImageInputErrorCode,
+  type ImageInputOnUploadProps,
+  type ImageInputProps,
+  type ImageInputValidation,
+  type ImageInputValue,
+  type ImageInputCrop,
+} from "./components/ui/image-input/ImageInput";
+export { ImageCropper } from "./components/ui/image-input/ImageCropper";
+export type { ImageCropperProps } from "./components/ui/image-input/ImageCropper";
 
 export { THEME_COLOR_METADATA } from "./themes/generated";
 export type { ThemeColorKey } from "./themes/generated";

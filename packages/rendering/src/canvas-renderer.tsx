@@ -239,6 +239,13 @@ function contentFor(element: Element): ReactNode {
 }
 
 function typeStyle(element: Element): CSSProperties {
+  if (element.type === "image") {
+    return {
+      borderRadius: cornerRadiusValue(element.cornerRadius),
+      objectFit: literal(element.objectFit) ?? "cover",
+      objectPosition: literal(element.objectPosition) ?? "center",
+    };
+  }
   if (hasCornerRadius(element)) {
     return { borderRadius: cornerRadiusValue(element.cornerRadius) };
   }
@@ -285,12 +292,6 @@ function typeStyle(element: Element): CSSProperties {
       textOverflow: truncates ? "ellipsis" : "clip",
       whiteSpace: truncates ? "nowrap" : "pre-wrap",
       overflowWrap: truncates ? "normal" : "anywhere",
-    };
-  }
-  if (element.type === "image") {
-    return {
-      objectFit: literal(element.objectFit) ?? "cover",
-      objectPosition: literal(element.objectPosition) ?? "center",
     };
   }
   return {};

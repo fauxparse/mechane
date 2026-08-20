@@ -12,33 +12,10 @@ import {
   SelectValue,
 } from "@mechane/design-system";
 
-import { canvasDisplayName, canvasElementDisplayName } from "../../data/canvas-names";
-import { elementIconFor } from "../utils";
-
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { ObjectPositionSelector } from "./ObjectPositionSelector";
 import { variableInput } from "./canvas-inspector-values";
 import { Section, SectionRow } from "./Section";
-
-export const InspectorHeader = () => {
-  const { focused, elements } = useCanvasInspectorContext();
-  const Icon = elementIconFor(elements.map((element) => element.type));
-  const label =
-    elements.length > 1
-      ? `${elements.length} Elements`
-      : elements[0]
-        ? canvasElementDisplayName(elements[0])
-        : focused
-          ? canvasDisplayName(focused)
-          : "Selection";
-
-  return (
-    <div className="flex items-center gap-2">
-      <Icon className="size-4" />
-      <span className="truncate grow">{label}</span>
-    </div>
-  );
-};
 
 const OBJECT_FIT_OPTIONS: readonly { value: ObjectFit; label: string }[] = [
   { value: "cover", label: "Fill" },

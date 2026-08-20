@@ -24,13 +24,13 @@ const CanvasInspectorContent = () => (
       <InspectorHeader />
     </SidebarHeader>
     <SidebarContent className="p-0 gap-0">
+      <ImageSection />
       <PositionSection />
       <LayoutSection />
       <AppearanceSection />
       <FillSection />
       <StrokeSection />
       <TextSection />
-      <ImageSection />
     </SidebarContent>
   </>
 );

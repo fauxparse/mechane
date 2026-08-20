@@ -1,4 +1,9 @@
-import { ThemeProvider, TooltipProvider } from "@mechane/design-system";
+import {
+  ThemeProvider,
+  ToastProvider,
+  ToastViewport,
+  TooltipProvider,
+} from "@mechane/design-system";
 import { DEFAULT_THEME_PALETTE, THEME_PALETTE_METADATA } from "@mechane/domain";
 import { createElement } from "react";
 import { Preview } from "@storybook/react-vite";
@@ -46,13 +51,18 @@ const preview: Preview = {
         createElement(
           TooltipProvider,
           null,
-          context.parameters.layout === "fullscreen"
-            ? createElement(Story)
-            : createElement(
-                "div",
-                { className: "bg-background p-6 text-foreground" },
-                createElement(Story),
-              ),
+          createElement(
+            ToastProvider,
+            null,
+            context.parameters.layout === "fullscreen"
+              ? createElement(Story)
+              : createElement(
+                  "div",
+                  { className: "bg-background p-6 text-foreground" },
+                  createElement(Story),
+                ),
+            createElement(ToastViewport),
+          ),
         ),
       ),
   ],

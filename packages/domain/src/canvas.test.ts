@@ -36,6 +36,7 @@ describe("Canvas model", () => {
   it("recognizes elements that support corner radii", () => {
     expect(hasCornerRadius({ id: "rect", type: "rect" })).toBe(true);
     expect(hasCornerRadius({ id: "frame", type: "frame" })).toBe(true);
+    expect(hasCornerRadius({ id: "image", type: "image" })).toBe(true);
     expect(hasCornerRadius({ id: "text", type: "text" })).toBe(false);
   });
   it("rejects invalid Frame gap values", () => {

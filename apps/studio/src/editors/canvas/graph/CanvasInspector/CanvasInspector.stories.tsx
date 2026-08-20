@@ -3,6 +3,7 @@ import type { CanvasEdit } from "@mechane/commands";
 import type { ImageAsset } from "@mechane/graphql-schema";
 import { FrameElement, hasCornerRadius, SceneVariable } from "@mechane/domain";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import { useCallback, useState } from "react";
 
 import type { CanvasArtboardDocument as ApiCanvasArtboardDocument } from "../../../../api/canvas";
@@ -19,6 +20,7 @@ const variables: SceneVariable[] = [
   { id: "opacity-variable", name: "Opacity / Default", type: "number" },
   { id: "accent-variable", name: "Color / Accent", type: "color" },
   { id: "copy-variable", name: "Copy / Headline", type: "text" },
+  { id: "image-variable", name: "Image / Background", type: "image" },
 ];
 
 const imageAssets: readonly ImageAsset[] = [
@@ -33,7 +35,20 @@ const imageAssets: readonly ImageAsset[] = [
     blurHash: null,
   },
 ];
-
+const storyImageUpload = ({ onProgress, onSuccess }: ImageInputOnUploadProps) => {
+  const asset = imageAssets[0];
+  if (!asset) return;
+  onProgress(100);
+  onSuccess({
+    assetId: asset.id,
+    url: asset.url,
+    width: asset.width,
+    height: asset.height,
+    alt: asset.alt,
+    mimeType: asset.mimeType,
+    blurHash: asset.blurHash,
+  });
+};
 const variable = (variableId: string) => ({ kind: "variable" as const, variableId });
 
 const artboard = (
@@ -321,12 +336,14 @@ function InspectorStory({
   initialSelection,
   storyVariables = [],
   storyImageAssets = [],
+  onImageUpload = storyImageUpload,
   currentDimensions,
 }: {
   initialArtboard: ApiCanvasArtboardDocument;
   initialSelection: CanvasSelection;
   storyVariables?: readonly SceneVariable[];
   storyImageAssets?: readonly ImageAsset[];
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
   currentDimensions?: { elementId: string; width: number; height: number };
 }) {
   const [current, setCurrent] = useState(initialArtboard);
@@ -354,6 +371,7 @@ function InspectorStory({
             variables={storyVariables}
             imageAssets={storyImageAssets}
             onUpdateElements={onUpdateElements}
+            onImageUpload={onImageUpload}
             currentDimensions={currentDimensions}
           />
         </EditorSlot>
@@ -447,6 +465,7 @@ export const ImageElement: Story = {
     <InspectorStory
       initialArtboard={artboard(imageRoot)}
       initialSelection={{ artId: ART_ID, elementIds: ["image"] }}
+      storyVariables={variables}
       storyImageAssets={imageAssets}
     />
   ),
