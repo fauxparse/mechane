@@ -330,6 +330,42 @@ describe("graphToFlow", () => {
       );
     });
 
+    it("keeps manual Flow dimensions while expanding for moved children", () => {
+      const manual = { width: 1000, height: 900 };
+      const { nodes } = graphToFlow(
+        {
+          nodes: [
+            node({ id: "flow_1", kind: "flow" }),
+            node({ id: "scene_1", kind: "scene", parentId: "flow_1", position: { x: 40, y: 80 } }),
+          ],
+          edges: [],
+        },
+        { flowDimensions: new Map([["flow_1", manual]]) },
+      );
+
+      expect(nodes.find((n) => n.id === "flow_1")?.style).toEqual(manual);
+
+      const moved = graphToFlow(
+        {
+          nodes: [
+            node({ id: "flow_1", kind: "flow" }),
+            node({
+              id: "scene_1",
+              kind: "scene",
+              parentId: "flow_1",
+              position: { x: 1200, y: 1000 },
+            }),
+          ],
+          edges: [],
+        },
+        { flowDimensions: new Map([["flow_1", manual]]) },
+      );
+
+      const expanded = moved.nodes.find((n) => n.id === "flow_1")?.style;
+      expect(expanded?.width).toBeGreaterThan(manual.width);
+      expect(expanded?.height).toBeGreaterThan(manual.height);
+    });
+
     it("refuses to render a kind it doesn't know", () => {
       expect(() =>
         graphToFlow({ nodes: [node({ id: "x_1", kind: "sprocket" })], edges: [] }),
@@ -348,6 +384,35 @@ describe("graphToFlow", () => {
         source: "scene_1",
         target: "scene_2",
         data: { kind: "navigate", targetVariableId: null },
+      });
+    });
+
+    it("maps a virtual Device source path to its handle", () => {
+      const { edges } = graphToFlow({
+        nodes: [
+          node({ id: "device_1", kind: "device", pairingCode: "V9BEZ" }),
+          node({
+            id: "scene_1",
+            kind: "scene",
+            variables: [{ id: "variable_1", name: "image" }],
+          }),
+        ],
+        edges: [
+          edge({
+            id: "e_qr",
+            kind: "wiring",
+            sourceId: "device_1",
+            targetId: "scene_1",
+            sourcePath: ["qr-code"],
+            targetPath: ["variable_1"],
+            targetVariableId: "variable_1",
+          }),
+        ],
+      });
+
+      expect(edges[0]).toMatchObject({
+        sourceHandle: "qr-code",
+        targetHandle: "variable_1",
       });
     });
 

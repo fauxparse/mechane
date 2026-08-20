@@ -96,7 +96,7 @@ import {
   NODE_WIDTH,
   PLACEHOLDER_NODE_TYPE,
 } from "./graph/graph-to-flow";
-import type { ShowFlowEdge, ShowFlowNode } from "./graph/graph-to-flow";
+import type { FlowDimensions, ShowFlowEdge, ShowFlowNode } from "./graph/graph-to-flow";
 import { NodeInteractionProvider } from "./graph/node-interaction";
 import type { CreatableNode } from "./graph/node-kinds";
 import { CREATABLE_NODES } from "./graph/node-kinds";
@@ -199,15 +199,29 @@ function ShowGraphEditorInner({
   // Collapse is deliberately local view state (#44): it never enters the
   // graph, command stack, persistence, or undo history.
   const [collapsedFlowIds, setCollapsedFlowIds] = useState<Set<string>>(() => new Set());
+  const [flowDimensions, setFlowDimensions] = useState<Map<string, FlowDimensions>>(
+    () => new Map(),
+  );
   const drawn = useMemo(
-    () => graphToFlow(editing.graph, { collapsedFlowIds }),
-    [collapsedFlowIds, editing.graph],
+    () => graphToFlow(editing.graph, { collapsedFlowIds, flowDimensions }),
+    [collapsedFlowIds, editing.graph, flowDimensions],
   );
   const toggleCollapse = useCallback((flowId: string) => {
     setCollapsedFlowIds((current) => {
       const next = new Set(current);
       if (next.has(flowId)) next.delete(flowId);
       else next.add(flowId);
+      return next;
+    });
+  }, []);
+  const resizeFlow = useCallback((flowId: string, dimensions: FlowDimensions) => {
+    setFlowDimensions((current) => {
+      const previous = current.get(flowId);
+      if (previous?.width === dimensions.width && previous.height === dimensions.height) {
+        return current;
+      }
+      const next = new Map(current);
+      next.set(flowId, dimensions);
       return next;
     });
   }, []);
@@ -427,8 +441,9 @@ function ShowGraphEditorInner({
       connecting: editing.connecting,
       targets: editing.targets,
       toggleCollapse,
+      resizeFlow,
     }),
-    [editing, toggleCollapse],
+    [editing, resizeFlow, toggleCollapse],
   );
 
   return (
@@ -558,7 +573,9 @@ function ShowGraphContextMenu({
             onNodeDragStart={beginDrag}
             onNodeDrag={(_event, _node, moved) => dragTo(moved)}
             onNodeDragStop={endDrag}
-            onConnectStart={(_event, { nodeId }) => nodeId && editing.beginConnect(nodeId)}
+            onConnectStart={(_event, { nodeId, handleId }) => {
+              if (nodeId) editing.beginConnect(nodeId, handleId);
+            }}
             onConnectEnd={editing.endConnect}
             onConnect={onConnect}
             isValidConnection={(connection) => isValidConnection(connection as Connection)}

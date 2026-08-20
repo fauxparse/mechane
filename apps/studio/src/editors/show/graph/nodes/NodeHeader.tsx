@@ -10,6 +10,7 @@ import { upperFirst } from "es-toolkit";
 import { DummyHandle } from "./DummyHandle";
 
 export interface NodeHeaderProps {
+  className?: string;
   data: ShowFlowNode["data"];
   renaming?: boolean;
   onRenameChange?(name: string): void;
@@ -17,6 +18,7 @@ export interface NodeHeaderProps {
   onRenameCancel?(): void;
   targetable?: boolean;
   showInputHandle?: boolean;
+  showOutputHandle?: boolean;
   connectedHandleIds?: ReadonlySet<string>;
   subtitleAddon?: ReactNode;
   actions?: ReactNode;
@@ -24,6 +26,7 @@ export interface NodeHeaderProps {
 }
 
 export function NodeHeader({
+  className,
   data,
   renaming = false,
   onRenameChange,
@@ -31,6 +34,7 @@ export function NodeHeader({
   onRenameCancel,
   targetable = false,
   showInputHandle = true,
+  showOutputHandle = true,
   connectedHandleIds,
   subtitleAddon,
   actions,
@@ -42,7 +46,12 @@ export function NodeHeader({
   });
 
   return (
-    <div className="relative grid grid-cols-[2rem_1fr_auto] grid-rows-[1fr_auto] gap-x-2 gap-y-0 border-b border-(--flow-border)/20 px-2 bg-(--flow-background)/25 items-center grid-flow-row-dense rounded-t-[calc(var(--radius-md)-1px)]">
+    <div
+      className={cn(
+        "relative grid grid-cols-[2rem_1fr_auto] grid-rows-[1fr_auto] gap-x-2 gap-y-0 border-b border-(--flow-border)/20 px-2 bg-(--flow-background)/25 items-center grid-flow-row-dense rounded-t-[calc(var(--radius-md)-1px)] last:rounded-b-[calc(var(--radius-md)-1px)] last:border-b-0",
+        className,
+      )}
+    >
       <Icon className="row-span-2 justify-self-center text-(--flow-muted-foreground) size-5" />
       <div className="col-start-2 pt-1 flex min-w-0">
         {renaming ? (
@@ -82,14 +91,16 @@ export function NodeHeader({
           isConnectableStart={false}
         />
       ) : null}
-      <HandleComponent
-        id={OUTPUT_HANDLE}
-        type="source"
-        position={Position.Right}
-        className={cn(HANDLE_CLASS)}
-        data-connected={connectedHandleIds?.has(OUTPUT_HANDLE) ?? false}
-        isConnectableEnd={false}
-      />
+      {showOutputHandle ? (
+        <HandleComponent
+          id={OUTPUT_HANDLE}
+          type="source"
+          position={Position.Right}
+          className={cn(HANDLE_CLASS)}
+          data-connected={connectedHandleIds?.has(OUTPUT_HANDLE) ?? false}
+          isConnectableEnd={false}
+        />
+      ) : null}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import {
   connectionKindFor,
   connectionTargets,
 } from "./connect";
+import { DEVICE_SOURCE_HANDLES } from "./graph";
 import type {
   DeviceNode,
   FlowNode,
@@ -94,6 +95,32 @@ describe("connectionKindFor", () => {
     expect(connectionKindFor(GRAPH, { sourceId: VOTE.id, targetId: PHONE.id })).toBe("device");
   });
 
+  it("treats Device QR and pairing handles as value sources", () => {
+    expect(
+      connectionKindFor(GRAPH, {
+        sourceId: PHONE.id,
+        sourceHandle: DEVICE_SOURCE_HANDLES.qrCode,
+        targetId: VOTING.id,
+      }),
+    ).toBe("wiring");
+    expect(
+      connectionKindFor(GRAPH, {
+        sourceId: PHONE.id,
+        sourceHandle: DEVICE_SOURCE_HANDLES.pairingCode,
+        targetId: VOTING.id,
+      }),
+    ).toBe("wiring");
+  });
+  it("does not treat a virtual output as a target handle", () => {
+    expect(
+      connectionKindFor(GRAPH, {
+        sourceId: TALLY.id,
+        targetId: PHONE.id,
+        targetHandle: DEVICE_SOURCE_HANDLES.pairingCode,
+      }),
+    ).toBeNull();
+  });
+
   it("has no kind for pairs no edge runs between", () => {
     expect(connectionKindFor(GRAPH, { sourceId: VOTING.id, targetId: TALLY.id })).toBeNull();
     expect(connectionKindFor(GRAPH, { sourceId: PHONE.id, targetId: VOTING.id })).toBeNull();
@@ -124,6 +151,27 @@ describe("connectionEdge", () => {
     });
   });
 
+  it("stores Device virtual source handles in the source path", () => {
+    expect(
+      connectionEdge(
+        GRAPH,
+        {
+          sourceId: PHONE.id,
+          sourceHandle: DEVICE_SOURCE_HANDLES.qrCode,
+          targetId: VOTING.id,
+          targetVariableId: "variable_prompt",
+        },
+        "edge_qr",
+      ),
+    ).toEqual(
+      expect.objectContaining({
+        kind: "wiring",
+        sourcePath: [DEVICE_SOURCE_HANDLES.qrCode],
+        targetPath: ["variable_prompt"],
+      }),
+    );
+  });
+
   it("won't build a wiring edge with no Variable to land on", () => {
     expect(
       connectionEdge(GRAPH, { sourceId: TALLY.id, targetId: VOTING.id }, "edge_new"),
@@ -148,6 +196,16 @@ describe("canConnect", () => {
     expect(canConnect(GRAPH, { sourceId: VOTING.id, targetId: RESULTS.id })).toBe(true);
     expect(canConnect(GRAPH, { sourceId: VOTE.id, targetId: PHONE.id })).toBe(true);
     expect(canConnect(GRAPH, { sourceId: LOBBY.id, targetId: PHONE.id })).toBe(true);
+  });
+  it("allows Device virtual sources to feed Variables", () => {
+    expect(
+      canConnect(GRAPH, {
+        sourceId: PHONE.id,
+        sourceHandle: DEVICE_SOURCE_HANDLES.pairingCode,
+        targetId: VOTING.id,
+        targetVariableId: "variable_prompt",
+      }),
+    ).toBe(true);
   });
 
   // A retry transition (#24). Everything else self-connecting is nonsense.
@@ -244,6 +302,7 @@ describe("canConnect", () => {
         targetVariableId: "variable_prompt",
       }),
     ).toBe("That connection already exists.");
+
     expect(connectionError(wired, { sourceId: VOTING.id, targetId: RESULTS.id })).toBe(
       "These Scenes are already connected.",
     );
@@ -282,5 +341,11 @@ describe("connectionTargets", () => {
 
   it("lists nothing for a node nothing can leave", () => {
     expect(connectionTargets(GRAPH, PHONE.id).nodeIds.size).toBe(0);
+  });
+
+  it("lists value targets for Device virtual source handles", () => {
+    const targets = connectionTargets(GRAPH, PHONE.id, DEVICE_SOURCE_HANDLES.pairingCode);
+    expect([...targets.nodeIds].sort()).toEqual([LOBBY.id, VOTING.id, TRANSFORMER.id]);
+    expect([...targets.variableIds].sort()).toEqual(["variable_house", "variable_prompt"]);
   });
 });

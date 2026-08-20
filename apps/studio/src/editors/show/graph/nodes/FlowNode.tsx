@@ -1,7 +1,7 @@
 import { Button, ChevronDown, ChevronRight, cn } from "@mechane/design-system";
-import { Handle, type NodeProps } from "@xyflow/react";
+import { Handle, NodeResizer, type NodeProps } from "@xyflow/react";
 
-import type { ShowFlowNode } from "../graph-to-flow";
+import { FLOW_HEADER_HEIGHT, NODE_WIDTH, type ShowFlowNode } from "../graph-to-flow";
 import { NODE_KIND_META } from "../node-kinds";
 import { useConnectedHandleIds } from "../use-connected-handle-ids";
 import { useDragState } from "../use-drag-state";
@@ -15,8 +15,15 @@ import { NodeHeader } from "./NodeHeader";
 export function FlowNode({ id, data, selected }: NodeProps<ShowFlowNode>) {
   const { targetable, dimmed } = useDragState(id);
   const connectedHandleIds = useConnectedHandleIds(id);
-  const { renaming, beginRename, renameTo, commitRename, cancelRename, toggleCollapse } =
-    useNodeInteraction();
+  const {
+    renaming,
+    beginRename,
+    renameTo,
+    commitRename,
+    cancelRename,
+    toggleCollapse,
+    resizeFlow,
+  } = useNodeInteraction();
   const childLabel = `${data.childCount} ${data.childCount === 1 ? "node" : "nodes"}`;
 
   return (
@@ -34,7 +41,17 @@ export function FlowNode({ id, data, selected }: NodeProps<ShowFlowNode>) {
       }}
       aria-label={`${NODE_KIND_META[data.kind].label}: ${data.name}`}
     >
+      <NodeResizer
+        isVisible={!data.collapsed}
+        minWidth={NODE_WIDTH}
+        minHeight={FLOW_HEADER_HEIGHT}
+        color="var(--flow-border)"
+        handleClassName="opacity-0"
+        lineClassName="opacity-0"
+        onResizeEnd={(_, dimensions) => resizeFlow(id, dimensions)}
+      />
       <NodeHeader
+        className="bg-transparent border-0"
         data={data}
         renaming={renaming === id}
         onRenameChange={renameTo}

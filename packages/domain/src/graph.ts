@@ -187,6 +187,20 @@ export type GraphNode = SceneNode | FlowNode | SourceNode | TransformerNode | De
  */
 export type ValuePath = string[];
 
+/** Virtual value handles exposed by Device nodes. */
+export const DEVICE_SOURCE_HANDLES = {
+  qrCode: "qr-code",
+  pairingCode: "pairing-code",
+} as const;
+
+export type DeviceSourceHandle = (typeof DEVICE_SOURCE_HANDLES)[keyof typeof DEVICE_SOURCE_HANDLES];
+
+export function deviceSourceType(handle: string | null | undefined): Type | null {
+  if (handle === DEVICE_SOURCE_HANDLES.qrCode) return "image";
+  if (handle === DEVICE_SOURCE_HANDLES.pairingCode) return "text";
+  return null;
+}
+
 interface BaseEdge {
   id: string;
   sourceId: string;
@@ -489,9 +503,24 @@ function assertValidWiringEdge(
   shapes: readonly Shape[],
 ): void {
   const producer = requireNode(nodes, edge.sourceId, `Wiring edge "${edge.id}"`);
-  if (producer.kind !== "source" && producer.kind !== "transformer") {
+  const sourceType =
+    producer.kind === "device"
+      ? deviceSourceType(edge.sourcePath[0])
+      : producer.kind === "source" || producer.kind === "transformer"
+        ? producer.type
+        : null;
+  if (
+    producer.kind !== "source" &&
+    producer.kind !== "transformer" &&
+    (producer.kind !== "device" || sourceType === null)
+  ) {
     throw new InvalidShowGraphError(
-      `wiring edge "${edge.id}" starts at a ${producer.kind}; only a Source or Transformer produces data.`,
+      `wiring edge "${edge.id}" starts at a ${producer.kind}; only a Source, Transformer, or virtual Device source produces data.`,
+    );
+  }
+  if (producer.kind === "device" && edge.sourcePath.length !== 1) {
+    throw new InvalidShowGraphError(
+      `wiring edge "${edge.id}" must name one virtual Device source handle.`,
     );
   }
   const consumer = requireNode(nodes, edge.targetId, `Wiring edge "${edge.id}"`);
@@ -523,7 +552,6 @@ function assertValidWiringEdge(
   // per audience instance of its own Flow, so it can't feed anything
   // outside that Flow. Show-level producers stay unrestricted. This is a
   // placement rule, not a connection rule — hence here and not in #24.
-  const sourceType = producer.type ?? null;
   const targetType =
     consumer.kind === "scene"
       ? (consumer.variables.find((variable) => variable.id === edge.targetPath[0])?.type ?? null)

@@ -42,10 +42,12 @@ import { useGraphCommands } from "./use-graph-commands";
 import type { GraphCommands } from "./use-graph-commands";
 import type { ApiGraph } from "../data/api-graph";
 
-/** A connection the user is trying to make, as React Flow reports it. */
+/** A drag from one node's handle to another's, as React Flow reports it. */
 export interface ConnectionAttempt {
   source: string;
   target: string;
+  /** The source handle, including a Device's virtual value handle. */
+  sourceHandle?: string | null;
   /** The handle dropped on: a Variable id for wiring, `in` otherwise. */
   targetHandle?: string | null;
 }
@@ -81,7 +83,7 @@ export interface GraphEditing {
   connecting: boolean;
   /** What the in-flight drag may land on, or null when idle. */
   targets: ConnectionTargets | null;
-  beginConnect(sourceId: string): void;
+  beginConnect(sourceId: string, sourceHandle?: string | null): void;
   endConnect(): void;
   /** Whether React Flow should let this connection be dropped. */
   canDrop(attempt: ConnectionAttempt): boolean;
@@ -114,12 +116,18 @@ export function useGraphEditing(
   const [renaming, setRenaming] = useState<string | null>(null);
   const renamingNode = useRef<string | null>(null);
   const rename = useRef<Gesture<ShowGraph, GraphEdit> | null>(null);
-  const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
+  const [connectingFrom, setConnectingFrom] = useState<{
+    nodeId: string;
+    sourceHandle: string | null;
+  } | null>(null);
   // Computed once when the drag starts, not per hover: the answer is about the
   // whole graph (#35's affordance dims every non-target), and recomputing it on
   // pointer move would be the same answer at a cost.
   const targets = useMemo(
-    () => (connectingFrom ? connectionTargets(graph, connectingFrom) : null),
+    () =>
+      connectingFrom
+        ? connectionTargets(graph, connectingFrom.nodeId, connectingFrom.sourceHandle)
+        : null,
     [connectingFrom, graph],
   );
 
@@ -196,15 +204,21 @@ export function useGraphEditing(
     [execute, graph],
   );
 
-  const beginConnect = useCallback((sourceId: string) => setConnectingFrom(sourceId), []);
+  const beginConnect = useCallback(
+    (sourceId: string, sourceHandle: string | null = null) =>
+      setConnectingFrom({ nodeId: sourceId, sourceHandle }),
+    [],
+  );
   const endConnect = useCallback(() => setConnectingFrom(null), []);
 
   const requestOf = useCallback(
     (attempt: ConnectionAttempt) => ({
       sourceId: attempt.source,
       targetId: attempt.target,
-      // React Flow reports the handle that was dropped on; a Variable's handle
-      // *is* its id (see ./graph-to-flow), so a wiring drop identifies its
+      sourceHandle: attempt.sourceHandle,
+      targetHandle: attempt.targetHandle,
+      // React Flow reports the handle that was dropped; a Variable's handle
+      // *is* its id (see ./graph-to-flow), so a wiring drop identifies the
       // Variable and a node-level drop reports the node's own handle instead.
       targetVariableId: variableHandle(attempt.targetHandle),
     }),

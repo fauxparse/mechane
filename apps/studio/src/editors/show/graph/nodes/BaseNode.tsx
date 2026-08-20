@@ -1,9 +1,13 @@
+import { DEVICE_SOURCE_HANDLES } from "@mechane/domain";
 import { Position, type HandleProps } from "@xyflow/react";
 import type { ShowFlowNode } from "../graph-to-flow";
 import {
   AlertCircleIcon,
   Button,
   cn,
+  CopyButton,
+  ExternalLinkIcon,
+  QrCode,
   SettingsIcon,
   variableTypeIcon,
 } from "@mechane/design-system";
@@ -71,6 +75,7 @@ export const BaseNode = ({
         onRenameCancel={onRenameCancel}
         targetable={targetable}
         connectedHandleIds={connectedHandleIds}
+        showOutputHandle={data.kind !== "device"}
         handle={HandleComponent}
         actions={
           <>
@@ -85,7 +90,50 @@ export const BaseNode = ({
           </>
         }
       />
-
+      {data.kind === "device" && data.pairingCode ? (
+        <div className="pt-2 pb-4">
+          <div className="flex items-center justify-center relative">
+            <QrCode
+              value={data.pairingCode}
+              className="size-24"
+              label={`QR code for pairing code ${data.pairingCode}`}
+            />
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="absolute right-4 top-1/2 -translate-y-1/2"
+            >
+              <ExternalLinkIcon />
+            </Button>
+            <HandleComponent
+              id={DEVICE_SOURCE_HANDLES.qrCode}
+              type="source"
+              position={Position.Right}
+              className={HANDLE_CLASS}
+              data-connected={connectedHandleIds?.has(DEVICE_SOURCE_HANDLES.qrCode) ?? false}
+              isConnectableEnd={false}
+            />
+          </div>
+          <div className="relative flex items-center justify-center">
+            <span className="font-mono text-2xl font-medium tracking-widest">
+              {data.pairingCode}
+            </span>
+            <CopyButton
+              value={data.pairingCode}
+              className="absolute right-4 top-1/2 -translate-y-1/2"
+            />
+            <HandleComponent
+              id={DEVICE_SOURCE_HANDLES.pairingCode}
+              type="source"
+              position={Position.Right}
+              className={HANDLE_CLASS}
+              style={{ zIndex: 10 }}
+              data-connected={connectedHandleIds?.has(DEVICE_SOURCE_HANDLES.pairingCode) ?? false}
+              isConnectableEnd={false}
+            />
+          </div>
+        </div>
+      ) : null}
       {data.variables?.length > 0 ? (
         <div className="grid grid-cols-[2.5rem_1fr] gap-x-2 gap-y-0">
           {data.variables.map((variable) => {

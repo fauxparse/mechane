@@ -215,12 +215,14 @@ describe("assertValidShowGraph", () => {
       expect(() => assertValidShowGraph(showGraph)).not.toThrow();
     });
 
-    it("rejects a wiring edge that starts anywhere but a Source or Transformer", () => {
+    it("rejects a wiring edge that starts anywhere but a Source, Transformer, or virtual Device source", () => {
       const showGraph = graph(
         [scene("c1", null, ["v1"]), scene("c2", null, ["v2"])],
         [wiring("e1", "c1", "c2", ["v2"])],
       );
-      expect(() => assertValidShowGraph(showGraph)).toThrow(/only a Source or Transformer/);
+      expect(() => assertValidShowGraph(showGraph)).toThrow(
+        /only a Source, Transformer, or virtual Device source/,
+      );
     });
 
     it("rejects a wiring edge targeting a node that isn't a Scene", () => {

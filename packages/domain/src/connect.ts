@@ -17,7 +17,7 @@
 // uses on a candidate edge. That keeps persisted graphs and drag validation
 // on the same seam.
 
-import { assertValidShowGraph, findNode, InvalidShowGraphError } from "./graph";
+import { assertValidShowGraph, deviceSourceType, findNode, InvalidShowGraphError } from "./graph";
 import { resolveShapeFieldMapping } from "./shapes";
 import type { EdgeKind, GraphEdge, GraphNode, ShowGraph } from "./graph";
 
@@ -25,6 +25,10 @@ import type { EdgeKind, GraphEdge, GraphNode, ShowGraph } from "./graph";
 export interface ConnectionRequest {
   sourceId: string;
   targetId: string;
+  /** The source handle, including a Device's virtual value handle. */
+  sourceHandle?: string | null;
+  /** The target handle React Flow reports for the drop. */
+  targetHandle?: string | null;
   /**
    * The Scene Variable a wiring edge would feed. Wiring always lands on a
    * Variable (#20), so a drag that stops at the Scene's body rather than one
@@ -42,12 +46,19 @@ export interface ConnectionRequest {
  * between them.
  */
 export function connectionKindFor(graph: ShowGraph, request: ConnectionRequest): EdgeKind | null {
+  if (deviceSourceType(request.targetHandle) !== null) return null;
   const producer = findNode(graph, request.sourceId);
   const consumer = findNode(graph, request.targetId);
   if (!producer || !consumer) return null;
   if (consumer.kind === "device") return "device";
   if (consumer.kind !== "scene" && consumer.kind !== "transformer") return null;
-  if (producer.kind === "source" || producer.kind === "transformer") return "wiring";
+  if (
+    producer.kind === "source" ||
+    producer.kind === "transformer" ||
+    (producer.kind === "device" && deviceSourceType(request.sourceHandle) !== null)
+  ) {
+    return "wiring";
+  }
   if (producer.kind === "scene") return "navigate";
   return null;
 }
@@ -60,7 +71,14 @@ export function connectionEdge(
 ): GraphEdge | null {
   const kind = connectionKindFor(graph, request);
   if (kind === null) return null;
-  const base = { id, sourceId: request.sourceId, targetId: request.targetId, sourcePath: [] };
+  const producer = findNode(graph, request.sourceId);
+  const virtualSourceType = deviceSourceType(request.sourceHandle);
+  const base = {
+    id,
+    sourceId: request.sourceId,
+    targetId: request.targetId,
+    sourcePath: virtualSourceType && request.sourceHandle ? [request.sourceHandle] : [],
+  };
   switch (kind) {
     case "wiring": {
       const consumer = findNode(graph, request.targetId);
@@ -69,13 +87,14 @@ export function connectionEdge(
       }
       const variableId = request.targetVariableId;
       if (!variableId) return null;
-      const producer = findNode(graph, request.sourceId);
       const target =
         consumer?.kind === "scene"
           ? consumer.variables.find((variable) => variable.id === variableId)
           : undefined;
       const producerType =
-        producer?.kind === "source" || producer?.kind === "transformer" ? producer.type : undefined;
+        producer?.kind === "source" || producer?.kind === "transformer"
+          ? producer.type
+          : virtualSourceType;
       const fieldMapping =
         producerType && target?.type
           ? resolveShapeFieldMapping(producerType, target.type, graph.shapes ?? [])
@@ -188,22 +207,20 @@ function humanise(error: InvalidShowGraphError, kind: EdgeKind): string {
   }
   return reason.replace(/^Invalid Show graph: /, "");
 }
-
-/** Everything a drag from one node could legally land on. */
+/**
+ * Everything a drag from one node could legally land on.
+ */
 export interface ConnectionTargets {
   /** Nodes with at least one valid landing point. */
   nodeIds: Set<string>;
   /** Scene Variables that would accept the drag, across all Scenes. */
   variableIds: Set<string>;
 }
-
-/**
- * What a drag from `sourceId` may connect to, for #35's affordance: valid
- * targets get a dashed outline, everything else dims to 25%. Computed for
- * the whole graph at drag start rather than per hover, so the canvas can
- * answer "why can't I drop here" by showing where you can.
- */
-export function connectionTargets(graph: ShowGraph, sourceId: string): ConnectionTargets {
+export function connectionTargets(
+  graph: ShowGraph,
+  sourceId: string,
+  sourceHandle?: string | null,
+): ConnectionTargets {
   const nodeIds = new Set<string>();
   const variableIds = new Set<string>();
   for (const node of graph.nodes) {
@@ -212,19 +229,31 @@ export function connectionTargets(graph: ShowGraph, sourceId: string): Connectio
       // Only a wiring drag lands on a Variable row. A Navigate drag onto one
       // still connects the two Scenes (the row is part of the Scene), but the
       // row itself isn't the target, so it doesn't get the affordance.
-      const rowsAreTargets = connectionKindFor(graph, { sourceId, targetId: node.id }) === "wiring";
+      const rowsAreTargets =
+        connectionKindFor(graph, { sourceId, sourceHandle, targetId: node.id }) === "wiring";
       for (const variable of rowsAreTargets ? node.variables : []) {
-        if (canConnect(graph, { sourceId, targetId: node.id, targetVariableId: variable.id })) {
+        if (
+          canConnect(graph, {
+            sourceId,
+            sourceHandle,
+            targetId: node.id,
+            targetVariableId: variable.id,
+          })
+        ) {
           variableIds.add(variable.id);
           anyVariable = true;
         }
       }
       // A Navigate edge lands on the Scene itself rather than on a Variable,
       // so a Scene can be targetable with no targetable Variables.
-      if (anyVariable || canConnect(graph, { sourceId, targetId: node.id })) nodeIds.add(node.id);
+      if (anyVariable || canConnect(graph, { sourceId, sourceHandle, targetId: node.id })) {
+        nodeIds.add(node.id);
+      }
       continue;
     }
-    if (canConnect(graph, { sourceId, targetId: node.id })) nodeIds.add(node.id);
+    if (canConnect(graph, { sourceId, sourceHandle, targetId: node.id })) {
+      nodeIds.add(node.id);
+    }
   }
   return { nodeIds, variableIds };
 }

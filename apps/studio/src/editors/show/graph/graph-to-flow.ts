@@ -31,6 +31,7 @@
 import {
   areTypesCompatible,
   DEFAULT_FLOW_COLOR,
+  deviceSourceType,
   findCoercion,
   isEdgeKind,
   isNodeKind,
@@ -72,17 +73,16 @@ export interface MappableEdge {
   kind: string;
   sourceId: string;
   targetId: string;
+  sourcePath?: readonly string[] | null;
   targetPath?: readonly string[] | null;
-  /** The wire shape resolves this for the client; the domain reads it off the path. */
   targetVariableId?: string | null;
   fieldMapping?: unknown;
 }
 
 /**
- * Node geometry. React Flow measures rendered nodes itself, but a Flow's size
- * has to be known *before* first render (an unsized parent clips its children
- * to nothing), so the node bodies commit to a fixed width (#35 — no user
- * resizing, values live in the inspector) and this module does the arithmetic.
+ * Node geometry. React Flow measures rendered nodes itself, but the initial
+ * dimensions must be known before first paint. Flows can be resized locally;
+ * their dimensions remain a minimum and grow when children need more room.
  */
 export const NODE_WIDTH = 240;
 
@@ -99,7 +99,7 @@ const VARIABLE_LIST_PADDING = 8;
 const FLOW_PADDING = 24;
 
 /** Height of the shared Flow header, above the area its children sit in. */
-const FLOW_HEADER_HEIGHT = 50;
+export const FLOW_HEADER_HEIGHT = 50;
 
 /** First safe child position: below the header and inside the Flow padding. */
 export const FLOW_CONTENT_ORIGIN: Position = {
@@ -227,15 +227,26 @@ export function nodeHeight(node: MappableNode): number {
   return NODE_HEIGHT + variables * VARIABLE_ROW_HEIGHT + VARIABLE_LIST_PADDING;
 }
 
-export function flowSize(children: readonly MappableNode[]): { width: number; height: number } {
+export interface FlowDimensions {
+  width: number;
+  height: number;
+}
+
+export function flowSize(
+  children: readonly MappableNode[],
+  minimum?: FlowDimensions,
+): FlowDimensions {
   const right = children.reduce((max, child) => Math.max(max, child.position.x + NODE_WIDTH), 0);
   const bottom = children.reduce(
     (max, child) => Math.max(max, child.position.y + nodeHeight(child)),
     0,
   );
   return {
-    width: Math.max(NODE_WIDTH, right) + FLOW_PADDING,
-    height: Math.max(FLOW_HEADER_HEIGHT + NODE_HEIGHT, bottom) + FLOW_PADDING,
+    width: Math.max(minimum?.width ?? 0, Math.max(NODE_WIDTH, right) + FLOW_PADDING),
+    height: Math.max(
+      minimum?.height ?? 0,
+      Math.max(FLOW_HEADER_HEIGHT + NODE_HEIGHT, bottom) + FLOW_PADDING,
+    ),
   };
 }
 
@@ -246,6 +257,7 @@ function toFlowNode(
   defaultSceneIds: Set<string>,
   drivenDeviceIds: Set<string>,
   collapsed: boolean,
+  minimumDimensions: FlowDimensions | undefined,
   color: FlowColor,
 ): ShowFlowNode {
   const kind = nodeKindOf(node);
@@ -264,7 +276,7 @@ function toFlowNode(
     style: isFlow
       ? collapsed
         ? { width: NODE_WIDTH, height: FLOW_HEADER_HEIGHT }
-        : flowSize(children)
+        : flowSize(children, minimumDimensions)
       : { width: NODE_WIDTH, height: nodeHeight(node) },
     data: {
       color,
@@ -303,6 +315,10 @@ function toFlowEdge(
   const target = graphNodes.find((node) => node.id === edge.targetId);
   const sourceParentId = source?.parentId ?? null;
   const targetParentId = target?.parentId ?? null;
+  const sourceType =
+    source?.kind === "device"
+      ? deviceSourceType(edge.sourcePath?.[0])
+      : (source?.type as Type | null | undefined);
   const color =
     sourceParentId !== null && sourceParentId === targetParentId
       ? (graphNodes.find((node) => node.id === sourceParentId)?.color ?? DEFAULT_FLOW_COLOR)
@@ -314,15 +330,15 @@ function toFlowEdge(
       | undefined) ?? null;
   const coercing =
     edge.kind === "wiring" &&
-    typeof source?.type === "string" &&
+    typeof sourceType === "string" &&
     typeof targetType === "string" &&
-    source.type !== targetType &&
-    findCoercion(source.type as PrimitiveType, targetType as PrimitiveType) !== undefined;
+    sourceType !== targetType &&
+    findCoercion(sourceType as PrimitiveType, targetType as PrimitiveType) !== undefined;
   const invalidReason =
     edge.kind === "wiring" &&
-    source?.type &&
+    sourceType &&
     targetType &&
-    !areTypesCompatible(source.type as Type, targetType, shapes)
+    !areTypesCompatible(sourceType, targetType, shapes)
       ? "Incompatible types"
       : null;
   return {
@@ -330,7 +346,8 @@ function toFlowEdge(
     type: SMART_SMOOTH_STEP_EDGE_TYPE,
     source: edge.sourceId,
     target: edge.targetId,
-    sourceHandle: OUTPUT_HANDLE,
+    sourceHandle:
+      source?.kind === "device" && edge.sourcePath?.[0] ? edge.sourcePath[0] : OUTPUT_HANDLE,
     // A wiring edge terminates on its Variable's row; the other two kinds have
     // one input to aim at, so they take the node's own handle.
     targetHandle: edge.kind === "wiring" && targetVariableId ? targetVariableId : INPUT_HANDLE,
@@ -361,7 +378,10 @@ export function graphToFlow(
       }
     | null
     | undefined,
-  options: { collapsedFlowIds?: ReadonlySet<string> } = {},
+  options: {
+    collapsedFlowIds?: ReadonlySet<string>;
+    flowDimensions?: ReadonlyMap<string, FlowDimensions>;
+  } = {},
 ): {
   nodes: ShowFlowNode[];
   edges: ShowFlowEdge[];
@@ -369,6 +389,7 @@ export function graphToFlow(
   if (!graph) return { nodes: [], edges: [] };
 
   const collapsed = options.collapsedFlowIds ?? new Set<string>();
+  const flowDimensions = options.flowDimensions ?? new Map<string, FlowDimensions>();
   const childrenByParent = new Map<string, MappableNode[]>();
   for (const node of graph.nodes) {
     if (!node.parentId) continue;
@@ -417,6 +438,7 @@ export function graphToFlow(
             defaultSceneIds,
             drivenDeviceIds,
             collapsed.has(node.id),
+            flowDimensions.get(node.id),
             node.kind === "flow"
               ? (node.color ?? DEFAULT_FLOW_COLOR)
               : ((node.parentId ? flowColors.get(node.parentId) : undefined) ?? DEFAULT_FLOW_COLOR),

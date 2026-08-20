@@ -54,7 +54,7 @@ function CommandPaletteDialog({ open, onOpenChange, commands }: CommandPalettePr
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="top-24 w-[min(34rem,calc(100vw-2rem))] translate-y-0 gap-3 p-0"
+        className="top-24 w-[min(34rem,calc(100vw-2rem))] translate-y-0 gap-3 p-0 rounded-lg"
         aria-label="Command palette"
       >
         <div className="border-b border-border p-2">
@@ -70,7 +70,7 @@ function CommandPaletteDialog({ open, onOpenChange, commands }: CommandPalettePr
             role="combobox"
             aria-expanded
             aria-controls="command-palette-list"
-            className="border-0 shadow-none focus-visible:ring-0"
+            className="border-0 shadow-none focus-visible:ring-0 rounded-md bg-transparent dark:bg-transparent"
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "ArrowDown") {
