@@ -42,6 +42,7 @@ import type {
   Type,
 } from "@mechane/domain";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { sourceLabelFor } from "../graph/source-label";
 
 import { INPUT_HANDLE, OUTPUT_HANDLE } from "../graph/graph-to-flow";
 import { createNode } from "../graph/node-kinds";
@@ -163,7 +164,10 @@ export function useGraphEditing(
             : null;
       if (!sourceType) return;
 
-      const node = createNode("source", position, null, { sourceType });
+      const node = createNode("source", position, null, {
+        sourceType,
+        defaultName: sourceLabelFor(graph, sourceId, sourceHandle),
+      });
       const graphWithSource = { ...graph, nodes: [...graph.nodes, node] };
       const edge = connectionEdge(
         graphWithSource,
