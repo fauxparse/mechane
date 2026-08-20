@@ -96,6 +96,8 @@ export interface HeaderProps {
   onRename(name: string): void;
   renaming?: boolean;
   renameError?: string;
+  /** Overrides persistence when an embedding surface owns theme state. */
+  onThemeModeChange?(mode: ThemeMode): void;
 }
 
 /**
@@ -138,6 +140,7 @@ export const Header = ({
   onRename,
   renaming = false,
   renameError,
+  onThemeModeChange,
 }: HeaderProps) => {
   // `null` means "not renaming". Rename is inline rather than a dialog: it is a
   // one-field edit, and a modal over an editor the director is mid-thought in
@@ -279,7 +282,11 @@ export const Header = ({
               }
             />
             <DropdownMenuItem
-              onClick={() => updateSettings({ themeMode: mode === "dark" ? "light" : "dark" })}
+              onClick={() => {
+                const nextMode = mode === "dark" ? "light" : "dark";
+                onThemeModeChange?.(nextMode);
+                if (!onThemeModeChange) updateSettings({ themeMode: nextMode });
+              }}
             >
               {mode === "dark" ? (
                 <>
