@@ -155,6 +155,12 @@ export {
   SelectTrigger,
   SelectValue,
 } from "./components/ui/select";
+export {
+  TypeSelect,
+  type TypeSelectOption,
+  type TypeSelectProps,
+  type TypeSelectTriggerProps,
+} from "./components/ui/type-select";
 export { Separator } from "./components/ui/separator";
 export {
   InsideSidebar,

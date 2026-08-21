@@ -13,18 +13,10 @@ import {
   InputGroupInput,
   PlusIcon,
   Section,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Trash2Icon,
+  TypeSelect,
   typeFromVariableKind,
-  VARIABLE_TYPE_ICONS,
-  variableTypeIcon,
   variableTypeKind,
-  variableTypeLabel,
-  type VariableTypeIconKind,
 } from "@mechane/design-system";
 import type { SceneNode, SceneVariable, Type } from "@mechane/domain";
 import { useCallback } from "react";
@@ -136,7 +128,7 @@ const VariableRow = ({
     group,
   });
 
-  const Icon = variableTypeIcon(variable.type);
+  const currentType: Type = variable.type ?? { kind: "object" };
 
   return (
     <div
@@ -160,38 +152,18 @@ const VariableRow = ({
           </button>
         </InputGroupAddon>
         <InputGroupAddon className="py-0">
-          <Select
-            value={variableTypeKind(variable.type)}
-            items={Object.entries(VARIABLE_TYPE_ICONS).map(([type]) => ({
-              value: type,
-              label: type,
-            }))}
-            onValueChange={(next) => {
-              if (next == null) return;
-              onChangeType(
-                variable.id,
-                typeFromVariableKind(variableTypeKind(next), variable.type),
-              );
-            }}
-          >
-            <SelectTrigger
-              size="sm"
-              className="p-1 border-0 h-6 bg-transparent dark:bg-transparent hover:text-foreground dark:hover:text-foreground"
-              chevron={false}
-            >
-              <SelectValue>
-                <Icon />
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent className="w-fit min-w-40!">
-              {Object.entries(VARIABLE_TYPE_ICONS).map(([type, TypeIcon]) => (
-                <SelectItem key={type} value={type}>
-                  <TypeIcon />
-                  {variableTypeLabel(type as VariableTypeIconKind)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <TypeSelect
+            value={currentType}
+            includeObject
+            includeArray
+            showLabel={false}
+            triggerSize="sm"
+            aria-label={`Type for ${variable.name}`}
+            triggerClassName="border-0 bg-transparent dark:bg-transparent hover:text-foreground dark:hover:text-foreground"
+            onValueChange={(next) =>
+              onChangeType(variable.id, typeFromVariableKind(variableTypeKind(next), currentType))
+            }
+          />
         </InputGroupAddon>
         <InputGroupInput
           value={variable.name}
