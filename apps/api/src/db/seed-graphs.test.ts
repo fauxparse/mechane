@@ -28,6 +28,10 @@ describe("Voting demo seed", () => {
     expect(tally.variables.map((variable) => variable.id)).toEqual([...TALLY_VARIABLE_IDS]);
     expect(audience.variables.map((variable) => variable.id)).toEqual([...AUDIENCE_VARIABLE_IDS]);
     expect(graph.nodes.filter((node) => node.kind === "device").map((node) => node.name)).toEqual(["Projector", "Audience"]);
+    const audienceFlow = graph.nodes.find((node) => node.kind === "flow" && node.name === "Audience");
+    expect(audienceFlow?.kind).toBe("flow");
+    expect(audience?.parentId).toBe(audienceFlow?.id);
+    expect(audience?.position).toEqual({ x: 24, y: 74 });
   });
 
   it("builds valid tally and audience Canvases", () => {

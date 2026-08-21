@@ -107,7 +107,7 @@ export function votingGraph(): ShowGraph {
         kind: "scene",
         name: "Choose a candidate",
         parentId: AUDIENCE_FLOW_ID,
-        position: { x: 460, y: 560 },
+        position: { x: 24, y: 74 },
         variables: audienceVariables,
       },
       {
