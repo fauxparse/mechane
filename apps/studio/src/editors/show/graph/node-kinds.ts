@@ -19,7 +19,7 @@ import {
   variableTypeIcon,
   Workflow,
 } from "@mechane/design-system";
-import type { GraphNode, NodeKind, Position, ShapeValue, Type } from "@mechane/domain";
+import type { GraphNode, NodeKind, Position, Shape, ShapeValue, Type } from "@mechane/domain";
 import { generateId, NODE_ID_ENTITIES } from "@mechane/domain";
 import { ShowNodeData } from "./graph-to-flow";
 
@@ -179,13 +179,16 @@ export function createNode(
   }
 }
 
-export const typeLabel = (type: ShowNodeData["type"]): string | null => {
+export const typeLabel = (
+  type: ShowNodeData["type"],
+  shapes: readonly Shape[] = [],
+): string | null => {
   if (!type) return null;
   return typeof type === "string"
     ? type
     : type.kind === "array"
-      ? `array<${typeLabel(type.of) ?? "?"}>`
+      ? `array<${typeLabel(type.of, shapes) ?? "?"}>`
       : type.kind === "object"
         ? "object"
-        : `Shape:${type.shapeId}`;
+        : (shapes.find((shape) => shape.id === type.shapeId)?.name ?? "Shape");
 };

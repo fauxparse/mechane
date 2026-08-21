@@ -13,7 +13,6 @@ import { Position, type HandleProps } from "@xyflow/react";
 import { useMemo, type ComponentType, type MouseEventHandler } from "react";
 import type { ShowFlowNode } from "../graph-to-flow";
 import { HANDLE_CLASS } from "../handle-styles";
-import { typeLabel } from "../node-kinds";
 import { DummyHandle } from "./DummyHandle";
 import { NodeHeader } from "./NodeHeader";
 
@@ -160,9 +159,6 @@ export const BaseNode = ({
                 <Icon className="size-4 inline-block justify-self-center ml-2" />
                 <div className="flex items-center gap-2 w-full justify-between pr-2">
                   <div className="truncate">{variable.name}</div>
-                  <div className="truncate text-right opacity-75 mr-2">
-                    {typeLabel(variable.type ?? null)}
-                  </div>
                 </div>
               </div>
             );
