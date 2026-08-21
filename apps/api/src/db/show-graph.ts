@@ -448,20 +448,19 @@ async function writeGraph(
     await tx
       .insert(shapes)
       .values(graphShapes.map((shape) => ({ id: shape.id, graphId: row.id, name: shape.name })));
-    await tx.insert(shapeFields).values(
-      graphShapes.flatMap((shape) =>
-        shape.fields.map((field, position) => ({
-          id: field.id,
-          graphId: row.id,
-          shapeId: shape.id,
-          name: field.name,
-          position,
-          type: field.type,
-          required: field.required,
-          defaultValue: field.defaultValue,
-        })),
-      ),
+    const fieldRows = graphShapes.flatMap((shape) =>
+      shape.fields.map((field, position) => ({
+        id: field.id,
+        graphId: row.id,
+        shapeId: shape.id,
+        name: field.name,
+        position,
+        type: field.type,
+        required: field.required,
+        defaultValue: field.defaultValue,
+      })),
     );
+    if (fieldRows.length > 0) await tx.insert(shapeFields).values(fieldRows);
     const refs = graphShapes.flatMap((shape) =>
       shape.fields.flatMap((field) => {
         const referenced = new Set<string>();
