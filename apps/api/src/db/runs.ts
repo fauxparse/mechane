@@ -1,12 +1,12 @@
-import { runChannel } from "@mechane/realtime";
+import { playerChannel, runChannel } from "@mechane/realtime";
 import type { Run, RunStatus, ShowGraph, SourceValues } from "@mechane/domain";
 import { coerceShapeValue, defaultSourceValues } from "@mechane/domain";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 
 import { db } from "./client";
 import { realtimeProvider } from "../realtime";
 import { readShowGraph } from "./show-graph";
-import { runs, shows } from "./schema";
+import { devices, runs, shows } from "./schema";
 
 export interface RunValueLoss {
   sourceId: string;
@@ -35,6 +35,17 @@ function toRun(row: RunRow): Run {
     endedAt: row.endedAt,
     sourceValues: row.sourceValues as SourceValues,
   };
+}
+
+/** Notifies every paired Player for a Show that its snapshot may have changed. */
+export async function publishPlayerUpdates(showId: string): Promise<void> {
+  const rows = await db
+    .select({ id: devices.id })
+    .from(devices)
+    .where(and(eq(devices.showId, showId), isNull(devices.retiredAt)));
+  await Promise.all(
+    rows.map(({ id }) => realtimeProvider.channel(playerChannel(id)).publish("player.updated", null)),
+  );
 }
 
 export async function readActiveRun(showId: string, executor: Executor = db): Promise<Run | null> {
@@ -71,7 +82,10 @@ export async function startRun(showId: string): Promise<Run> {
     if (!row) throw new Error(`Failed to start a Run for Show "${showId}".`);
     return toRun(row);
   });
-  await realtimeProvider.channel(runChannel(run.id)).publish("run.started", run);
+  await Promise.all([
+    realtimeProvider.channel(runChannel(run.id)).publish("run.started", run),
+    publishPlayerUpdates(showId),
+  ]);
   return run;
 }
 
@@ -169,6 +183,11 @@ export async function endRun(showId: string): Promise<Run | null> {
       .returning();
     return row ? toRun(row) : null;
   });
-  if (run) await realtimeProvider.channel(runChannel(run.id)).publish("run.ended", run);
+  if (run) {
+    await Promise.all([
+      realtimeProvider.channel(runChannel(run.id)).publish("run.ended", run),
+      publishPlayerUpdates(showId),
+    ]);
+  }
   return run;
 }

@@ -42,11 +42,8 @@ const CODE_LENGTH = 5;
 const CODE_ALPHABET = "123456789ABCDEFGHJKMNPQRSTUVWXYZ";
 
 /**
- * How many codes to try before giving up. Collisions are drawn against one
- * Show's Devices, not the whole table, so even a Show with a hundred
- * Devices is choosing from tens of millions — a second attempt is already
- * vanishingly unlikely, and eight makes "we ran out" mean a real bug
- * rather than bad luck.
+ * How many codes to try before giving up. Collisions are drawn against every
+ * Device because pairing accepts a code without a separate Show id.
  */
 const CODE_ATTEMPTS = 8;
 
@@ -70,11 +67,10 @@ function candidatePairingCode(): string {
 }
 
 /**
- * Inserts a Device row, retrying until its code doesn't collide with one
- * already in use on this Show. The uniqueness that matters is the
- * database's, not the generator's: two directors saving at once would both
- * see an empty result from a pre-check, so the insert itself has to be
- * what decides.
+ * Inserts a Device row, retrying until its code doesn't collide anywhere.
+ * The uniqueness that matters is the database's, not the generator's: two
+ * directors saving at once would both see an empty result from a pre-check,
+ * so the insert itself has to be what decides.
  */
 async function insertDevice(tx: Tx, showId: string, node: DeviceNode): Promise<StoredDevice> {
   for (let attempt = 0; attempt < CODE_ATTEMPTS; attempt += 1) {
@@ -82,12 +78,12 @@ async function insertDevice(tx: Tx, showId: string, node: DeviceNode): Promise<S
     const [row] = await tx
       .insert(devices)
       .values({ id: node.id, showId, pairingCode, perConnection: node.perConnection })
-      .onConflictDoNothing({ target: [devices.showId, devices.pairingCode] })
+      .onConflictDoNothing({ target: devices.pairingCode })
       .returning();
     if (row) return { pairingCode: row.pairingCode, perConnection: row.perConnection };
   }
   throw new Error(
-    `Couldn't mint a unique pairing code for Device "${node.id}" on Show "${showId}" in ${CODE_ATTEMPTS} attempts.`,
+    `Couldn't mint a unique pairing code for Device "${node.id}" in ${CODE_ATTEMPTS} attempts.`,
   );
 }
 

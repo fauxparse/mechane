@@ -21,6 +21,21 @@ type Run {
   sourceValues: JSON!
 }
 
+type PlayerDevice {
+  id: ID!
+  name: String!
+  perConnection: Boolean!
+}
+
+type PlayerSession {
+  device: PlayerDevice!
+  run: Run
+  graph: ShowGraph!
+  scene: SceneNode
+  canvas: Canvas
+  imageAssets: [ImageAsset!]!
+}
+
 """The signed-in user's design-system preference (PRD.md §7)."""
 type UserSettings {
   """Display mode: light or dark."""
@@ -695,6 +710,12 @@ type ImageAsset {
 type Query {
   """The signed-in user, or null if the request has no valid session."""
   me: User
+
+  """
+  A public Device snapshot resolved by its pairing code. The code is the
+  Device credential; no signed-in session is required.
+  """
+  playerSession(pairingCode: String!): PlayerSession
 
   """The signed-in user's own Shows, most recently updated first."""
   shows: [Show!]!

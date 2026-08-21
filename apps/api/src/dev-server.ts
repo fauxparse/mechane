@@ -13,6 +13,7 @@ import { db } from "./db/client";
 import { imageAssets } from "./db/schema";
 import { blobStore } from "./storage/blob-store";
 import { yoga } from "./graphql/server";
+import { handleRealtimeAuthRoute } from "./realtime-auth";
 import { applyCorsHeaders } from "./lib/cors";
 import { localRealtimeServer } from "./realtime";
 
@@ -75,9 +76,9 @@ async function handleBinaryRoute(req: IncomingMessage, res: ServerResponse): Pro
   return false;
 }
 
-const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
+const server = createServer(async (req, res) => {
+  if (await handleRealtimeAuthRoute(req, res)) return;
   if (await handleBinaryRoute(req, res)) return;
-  // graphql-yoga applies its own CORS headers (configured in
   // graphql/server.ts) for /api/graphql; Better Auth's handler doesn't, so
   // it needs the same treatment applied manually here.
   if (req.url?.startsWith("/api/auth")) {

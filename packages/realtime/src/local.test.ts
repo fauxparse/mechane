@@ -4,7 +4,7 @@ import WebSocket from "ws";
 import { describe, expect, it } from "vitest";
 
 import { LocalRealtimeProvider, LocalRealtimeServer } from "./local";
-import { runChannel } from "./index";
+import { playerChannel, runChannel } from "./index";
 
 describe("LocalRealtimeProvider", () => {
   it("publishes ordered messages and replays after a cursor", async () => {
@@ -31,6 +31,16 @@ describe("LocalRealtimeProvider", () => {
     channel.subscribe((message) => received.push(message.type), { after: 1 });
 
     expect(received).toEqual(["snapshot-required"]);
+  });
+
+  it("supports stable Player channels independently of Run channels", async () => {
+    const channel = new LocalRealtimeProvider().channel(playerChannel("device_1"));
+    const received: string[] = [];
+    channel.subscribe((message) => received.push(message.type));
+
+    await channel.publish("player.updated", null);
+
+    expect(received).toEqual(["player.updated"]);
   });
 
   it("delivers a subscribed message over WebSockets", async () => {

@@ -90,9 +90,18 @@ importers:
       '@mechane/design-system':
         specifier: workspace:*
         version: link:../../packages/design-system
+      '@mechane/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@mechane/graphql-schema':
         specifier: workspace:*
         version: link:../../packages/graphql-schema
+      '@mechane/realtime':
+        specifier: workspace:*
+        version: link:../../packages/realtime
+      '@mechane/rendering':
+        specifier: workspace:*
+        version: link:../../packages/rendering
       '@tanstack/react-router':
         specifier: ^1.150.0
         version: 1.170.19(react-dom@19.2.8(react@19.2.8))(react@19.2.8)

@@ -565,10 +565,9 @@ export const devices = pgTable(
       .notNull()
       .references(() => shows.id, { onDelete: "cascade" }),
     // The code a physical device pairs with (#8), and the Device's whole
-    // public identity — the QR, the join URL and the code read aloud are
-    // all this one string. Five characters from an alphabet with no
-    // look-alikes (see `CODE_ALPHABET` in ./devices), unique within the
-    // Show, minted server-side because a client can't check uniqueness.
+    // public identity — the QR, join URL, and code read aloud all carry this
+    // one string. Pairing accepts only the code, so it must be globally
+    // unique rather than unique within a Show.
     pairingCode: text("pairing_code").notNull(),
     // How many logical instances this Device is — see `DeviceNode` in
     // @mechane/domain. Fixed at creation: it decides Event attribution,
@@ -584,14 +583,10 @@ export const devices = pgTable(
   },
   (table) => [
     primaryKey({ columns: [table.showId, table.id] }),
-    // Codes only need to be unique within the Show that resolves them —
-    // a joining device supplies the Show's identity along with the code.
-    // Retired codes stay in the index so a retired Device's code isn't
-    // recycled onto a different Device while the old QR is still out
-    // there in the world.
-    unique("devices_pairing_code_unique").on(table.showId, table.pairingCode),
-    // The alphabet, restated as a constraint: A-Z and 1-9, less I, L and O
-    // (and 0), so a stored code can't be one a human would mistype.
+    // Retired codes stay reserved so an old QR cannot silently pair with a
+    // different Device.
+    unique("devices_pairing_code_unique").on(table.pairingCode),
+    // Database validation mirrors the human-readable pairing alphabet.
     check(
       "devices_pairing_code_is_unambiguous",
       sql`${table.pairingCode} ~ '^[1-9A-HJKMNP-Z]{5}$'`,
