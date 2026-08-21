@@ -39,7 +39,7 @@ function ArrayEditor({ type, value, shapes, label, onChange, onOpenShape }: { ty
 function PrimitiveEditor({ type, value, label, onChange }: { type: Extract<Type, string>; value: unknown; label: string; onChange(value: unknown): void }) {
   if (type === "boolean") return <label className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm font-medium">{label}<input type="checkbox" checked={value === true} onChange={(event) => onChange(event.target.checked)} /></label>;
   const inputType = type === "number" ? "number" : type === "date" ? "date" : type === "datetime" ? "datetime-local" : "text";
-  return <label className="grid gap-2 text-sm font-medium">{label}<input type={inputType} value={value === null || value === undefined ? "" : String(value)} className="h-9 rounded-md border border-input bg-background px-3 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" onChange={(event) => onChange(type === "number" ? Number(event.target.value) : event.target.value)} /></label>;
+  return <label className="grid gap-2 text-sm font-medium">{label}<input type={inputType} value={value === null || value === undefined ? "" : String(value)} className="h-9 rounded-md border border-input bg-background px-3 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" onChange={(event) => { if (type !== "number") { onChange(event.target.value); return; } const next = event.target.valueAsNumber; onChange(Number.isFinite(next) ? next : 0); }} /></label>;
 }
 
 

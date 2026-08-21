@@ -59,8 +59,9 @@ function makeId(prefix: "shape" | "field"): string {
 
 function nextName(existing: readonly string[], base: string): string {
   if (!existing.includes(base)) return base;
+  const names = new Set(existing);
   let suffix = 2;
-  while (existing.includes(`${base}${suffix}`)) suffix += 1;
+  while (names.has(`${base}${suffix}`)) suffix += 1;
   return `${base}${suffix}`;
 }
 
@@ -119,7 +120,7 @@ function cloneShape(shape: Shape, shapes: readonly Shape[]): Shape {
 }
 
 export function ShapeWorkspace({ graph, shapeId, editing, saving, saveError, retrySave, runActive, onOpenShape, onBack }: ShapeWorkspaceProps) {
-  const shapes = graph.shapes ?? [];
+  const shapes = useMemo(() => graph.shapes ?? [], [graph.shapes]);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<"name" | "recent">("name");
   const selected = shapes.find((shape) => shape.id === shapeId) ?? null;

@@ -148,6 +148,8 @@ export function TypeSelect({
         aria-label={ariaLabel}
         size={triggerSize}
         aria-invalid={ariaInvalid}
+        className={cn("min-w-0", !showLabel && "w-7 justify-center px-1.5", triggerClassName)}
+        chevron={showLabel}
         render={customTrigger}
       >
         <SelectValue>
