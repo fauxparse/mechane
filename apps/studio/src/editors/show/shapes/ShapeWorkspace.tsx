@@ -343,7 +343,6 @@ function FieldDetails({ field, shapes, currentShapeId, onChange, onDuplicate, on
           <TypeSelect
             value={field.type}
             shapes={shapes.filter((candidate) => candidate.id !== currentShapeId)}
-            includeObject={false}
             includeArray
             triggerClassName="w-full"
             onValueChange={(type) => {
@@ -358,7 +357,6 @@ function FieldDetails({ field, shapes, currentShapeId, onChange, onDuplicate, on
             <TypeSelect
               value={arrayItemType}
               shapes={shapes.filter((candidate) => candidate.id !== currentShapeId)}
-              includeObject={false}
               includeArray={false}
               triggerClassName="w-full"
               onValueChange={(type) => {

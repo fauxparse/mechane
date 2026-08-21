@@ -154,7 +154,6 @@ const VariableRow = ({
         <InputGroupAddon className="py-0">
           <TypeSelect
             value={currentType}
-            includeObject
             includeArray
             showLabel={false}
             triggerSize="sm"

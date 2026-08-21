@@ -3,6 +3,7 @@ import {
   BoxIcon,
   CalendarClockIcon,
   CalendarIcon,
+  ChevronRightIcon,
   HashIcon,
   ImageIcon,
   ListIcon,
@@ -11,10 +12,20 @@ import {
   TypeIcon,
   type LucideIcon,
 } from "lucide-react";
-import type { ReactElement, ReactNode } from "react";
+import type { ReactElement } from "react";
 
 import { cn } from "../../lib/utils";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "./select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSubmenu,
+  DropdownMenuSubmenuContent,
+  DropdownMenuSubmenuTrigger,
+  DropdownMenuTrigger,
+} from "./dropdown-menu";
 
 export type TypeSelectOption = {
   value: Type;
@@ -33,7 +44,6 @@ export type TypeSelectProps = {
   value: Type | null | undefined;
   onValueChange(value: Type): void;
   shapes?: readonly Shape[];
-  includeObject?: boolean;
   includeArray?: boolean;
   disabled?: boolean;
   "aria-label"?: string;
@@ -43,7 +53,6 @@ export type TypeSelectProps = {
   showLabel?: boolean;
   renderTrigger?(props: TypeSelectTriggerProps): ReactElement;
   optionDisabled?(option: TypeSelectOption): boolean;
-  children?: ReactNode;
 };
 
 const PRIMITIVE_OPTIONS: readonly TypeSelectOption[] = [
@@ -56,9 +65,6 @@ const PRIMITIVE_OPTIONS: readonly TypeSelectOption[] = [
   { value: "datetime", label: "Date and time", icon: CalendarClockIcon },
 ];
 
-const OBJECT_OPTION: TypeSelectOption = { value: { kind: "object" }, label: "Object", icon: BoxIcon };
-const ARRAY_OPTION: TypeSelectOption = { value: { kind: "array", of: "text" }, label: "Array", icon: ListIcon };
-
 function optionKey(type: Type): string {
   if (typeof type === "string") return type;
   if (type.kind === "shape") return `shape:${type.shapeId}`;
@@ -69,35 +75,27 @@ function typeLabel(type: Type, shapes: readonly Shape[]): string {
   if (typeof type === "string") {
     return PRIMITIVE_OPTIONS.find((option) => option.value === type)?.label ?? type;
   }
-  if (type.kind === "array") return "Array";
-  if (type.kind === "object") return "Object";
-  return shapes.find((shape) => shape.id === type.shapeId)?.name ?? "Shape";
+  if (type.kind === "array") return `Array of ${typeLabel(type.of, shapes)}`;
+  if (type.kind === "shape") return shapes.find((shape) => shape.id === type.shapeId)?.name ?? "Shape";
+  return "Object";
 }
 
 function typeIcon(type: Type): LucideIcon {
-  if (typeof type === "string") {
-    return PRIMITIVE_OPTIONS.find((option) => option.value === type)?.icon ?? BoxIcon;
-  }
+  if (typeof type === "string") return PRIMITIVE_OPTIONS.find((option) => option.value === type)?.icon ?? BoxIcon;
   if (type.kind === "array") return ListIcon;
   return BoxIcon;
 }
 
-function optionsFor({ shapes = [], includeObject = true, includeArray = true }: Pick<TypeSelectProps, "shapes" | "includeObject" | "includeArray">): { primitives: TypeSelectOption[]; shapes: TypeSelectOption[]; composed: TypeSelectOption[] } {
-  return {
-    primitives: [...PRIMITIVE_OPTIONS],
-    shapes: shapes.map((shape) => ({ value: { kind: "shape", shapeId: shape.id }, label: shape.name, icon: BoxIcon })),
-    composed: [
-      ...(includeObject ? [OBJECT_OPTION] : []),
-      ...(includeArray ? [ARRAY_OPTION] : []),
-    ],
-  };
+function shapeOptions(shapes: readonly Shape[]): TypeSelectOption[] {
+  return [...shapes]
+    .sort((left, right) => left.name.localeCompare(right.name))
+    .map((shape) => ({ value: { kind: "shape", shapeId: shape.id }, label: shape.name, icon: BoxIcon }));
 }
 
 export function TypeSelect({
   value,
   onValueChange,
-  shapes,
-  includeObject = true,
+  shapes = [],
   includeArray = true,
   disabled = false,
   "aria-label": ariaLabel = "Type",
@@ -107,75 +105,72 @@ export function TypeSelect({
   showLabel = true,
   renderTrigger,
   optionDisabled,
-  children,
 }: TypeSelectProps) {
   const currentValue = value ?? null;
-  const key = currentValue ? optionKey(currentValue) : "";
-  const label = currentValue ? typeLabel(currentValue, shapes ?? []) : "Choose a Type";
+  const label = currentValue ? typeLabel(currentValue, shapes) : "Choose a Type";
   const Icon = currentValue ? typeIcon(currentValue) : BoxIcon;
-  const options = optionsFor({ shapes, includeObject, includeArray });
   const customTrigger = renderTrigger?.({ value: currentValue, label, icon: Icon });
+  const shapeTypeOptions = shapeOptions(shapes);
 
-  function renderOption(option: TypeSelectOption) {
-    const disabledOption = disabled || option.disabled || optionDisabled?.(option) === true;
+  const isDisabled = (option: TypeSelectOption) => disabled || option.disabled === true || optionDisabled?.(option) === true;
+  const selectType = (next: Type) => {
+    const option = { value: next, label: typeLabel(next, shapes), icon: typeIcon(next) };
+    if (!isDisabled(option)) onValueChange(next);
+  };
+  const renderOption = (option: TypeSelectOption) => {
     const OptionIcon = option.icon;
-    return (
-      <SelectItem key={optionKey(option.value)} value={optionKey(option.value)} disabled={disabledOption}>
-        <OptionIcon className="size-4 text-muted-foreground" />
-        {option.label}
-      </SelectItem>
-    );
-  }
+    return <DropdownMenuItem key={optionKey(option.value)} disabled={isDisabled(option)} onClick={() => selectType(option.value)}><OptionIcon className="size-4 text-muted-foreground" />{option.label}</DropdownMenuItem>;
+  };
+
+  const defaultTrigger = (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      aria-invalid={ariaInvalid}
+      disabled={disabled}
+      className={cn(
+        "flex min-w-0 items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50",
+        triggerSize === "sm" ? "h-7 rounded-sm" : "h-8",
+        !showLabel && "w-7 justify-center px-1.5",
+        triggerClassName,
+      )}
+    >
+      <Icon className="size-4 shrink-0" />
+      {showLabel ? <span className="truncate">{label}</span> : null}
+      {showLabel ? <ChevronRightIcon className="size-4 rotate-90 text-muted-foreground" /> : null}
+    </button>
+  );
 
   return (
-    <Select
-      value={key}
-      onValueChange={(next) => {
-        if (!next) return;
-        const selected = [...options.primitives, ...options.shapes, ...options.composed].find(
-          (option) => optionKey(option.value) === next,
-        );
-        if (selected) onValueChange(selected.value);
-      }}
-      disabled={disabled}
-      items={[...options.primitives, ...options.shapes, ...options.composed].map((option) => ({
-        value: optionKey(option.value),
-        label: option.label,
-      }))}
-      modal={false}
-    >
-      <SelectTrigger
-        aria-label={ariaLabel}
-        size={triggerSize}
-        aria-invalid={ariaInvalid}
-        className={cn("min-w-0", !showLabel && "w-7 justify-center px-1.5", triggerClassName)}
-        chevron={showLabel}
-        render={customTrigger}
-      >
-        <SelectValue>
-          <Icon className="size-4 shrink-0" />
-          {showLabel ? <span className="truncate">{label}</span> : null}
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent>
-        <SelectGroup>
-          <SelectLabel>Basic Types</SelectLabel>
-          {options.primitives.map(renderOption)}
-        </SelectGroup>
-        {options.shapes.length > 0 ? (
-          <SelectGroup>
-            <SelectLabel>Shapes</SelectLabel>
-            {options.shapes.map(renderOption)}
-          </SelectGroup>
+    <DropdownMenu>
+      <DropdownMenuTrigger render={customTrigger ?? defaultTrigger} />
+      <DropdownMenuContent>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Basic Types</DropdownMenuLabel>
+          {PRIMITIVE_OPTIONS.map(renderOption)}
+        </DropdownMenuGroup>
+        {shapeTypeOptions.length > 0 ? (
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Shapes</DropdownMenuLabel>
+            {shapeTypeOptions.map(renderOption)}
+          </DropdownMenuGroup>
         ) : null}
-        {options.composed.length > 0 ? (
-          <SelectGroup>
-            <SelectLabel>Structured Types</SelectLabel>
-            {options.composed.map(renderOption)}
-          </SelectGroup>
+        {includeArray ? (
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Structured Types</DropdownMenuLabel>
+            <DropdownMenuSubmenu>
+              <DropdownMenuSubmenuTrigger>Array of…</DropdownMenuSubmenuTrigger>
+              <DropdownMenuSubmenuContent>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Array item Type</DropdownMenuLabel>
+                  {PRIMITIVE_OPTIONS.map((option) => renderOption({ ...option, value: { kind: "array", of: option.value }, label: `Array of ${option.label}`, icon: ListIcon }))}
+                  {shapeTypeOptions.map((option) => renderOption({ ...option, value: { kind: "array", of: option.value }, label: `Array of ${option.label}`, icon: ListIcon }))}
+                </DropdownMenuGroup>
+              </DropdownMenuSubmenuContent>
+            </DropdownMenuSubmenu>
+          </DropdownMenuGroup>
         ) : null}
-        {children}
-      </SelectContent>
-    </Select>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
