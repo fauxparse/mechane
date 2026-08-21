@@ -3,8 +3,8 @@ import type { Element, SceneVariable } from "@mechane/domain";
 import type { ImageAsset } from "@mechane/graphql-schema";
 
 import type { CanvasArtboardDocument } from "../../../../api/canvas";
+import type { DeviceQrImage } from "../../canvas-workspace-types";
 import type { CanvasSelection } from "../canvas-selection";
-
 export type CanvasInspectorPreview = {
   elementId: string;
   x?: number;
@@ -30,6 +30,7 @@ export type CanvasInspectorProps = {
   selection: CanvasSelection;
   variables?: readonly SceneVariable[];
   imageAssets?: readonly ImageAsset[];
+  deviceQrImages?: Readonly<Record<string, DeviceQrImage>>;
   onImageUpload?(props: ImageInputOnUploadProps): void;
   inspectorPreview?: CanvasInspectorPreview | null;
   currentDimensions?: CanvasInspectorDimensions | null;
@@ -56,6 +57,7 @@ export type CanvasInspectorModel = {
   selected: readonly Element[];
   variables: readonly SceneVariable[];
   imageAssets: readonly ImageAsset[];
+  deviceQrImages: Readonly<Record<string, DeviceQrImage>>;
   onImageUpload?(props: ImageInputOnUploadProps): void;
   fontFamilies: readonly string[];
   inspectorPreview: CanvasInspectorPreview | null;

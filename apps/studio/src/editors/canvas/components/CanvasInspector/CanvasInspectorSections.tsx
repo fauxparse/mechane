@@ -85,7 +85,7 @@ const isImageVariable = (value: ImageInputValue | null): value is VariableRefere
   value !== null && typeof value === "object" && "id" in value && "name" in value;
 
 export const ImageSection = () => {
-  const { selected, update, common, variables, imageAssets, onImageUpload } =
+  const { selected, update, common, variables, imageAssets, deviceQrImages, onImageUpload } =
     useCanvasInspectorContext();
   const allImages = selected.length > 0 && selected.every((element) => element.type === "image");
   if (!allImages) return null;
@@ -109,6 +109,11 @@ export const ImageSection = () => {
       )
     : undefined;
   const linkedImage = variableInput(common("image"), "image", variables);
+  const linkedVariable = isImageVariable(linkedImage as ImageInputValue | null)
+    ? (linkedImage as VariableReference<ImageValue>)
+    : null;
+  const linkedQrAsset = linkedVariable ? deviceQrImages[linkedVariable.id] : undefined;
+  const resetAsset = intrinsicAsset ?? linkedQrAsset;
   const imageInputValue: ImageInputValue | null = isImageVariable(
     linkedImage as ImageInputValue | null,
   )
@@ -192,15 +197,15 @@ export const ImageSection = () => {
           size="sm"
           variant="outline"
           className="w-full col-start-2"
-          disabled={!intrinsicAsset}
+          disabled={!resetAsset}
           onClick={() => {
-            if (!intrinsicAsset || selected.length !== 1) return;
+            if (!resetAsset || selected.length !== 1) return;
             const current = selected[0]!;
             update({
               sizing: {
                 ...current.sizing,
-                width: { mode: "fixed", value: intrinsicAsset.width },
-                height: { mode: "fixed", value: intrinsicAsset.height },
+                width: { mode: "fixed", value: resetAsset.width },
+                height: { mode: "fixed", value: resetAsset.height },
               },
               objectFit: "cover",
               objectPosition: "center center",

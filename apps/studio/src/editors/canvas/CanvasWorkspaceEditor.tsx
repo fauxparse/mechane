@@ -29,6 +29,7 @@ export function CanvasWorkspaceEditor({
   onUpdateElements,
   variables,
   imageAssets,
+  deviceQrImages,
   onImageUpload,
   onDeleteElements,
   onRenameArtboard,
@@ -209,6 +210,7 @@ export function CanvasWorkspaceEditor({
         onUpdateElements={onUpdateElements}
         variables={variables}
         imageAssets={imageAssets}
+        deviceQrImages={deviceQrImages}
         onImageUpload={onImageUpload}
         onMoveElement={onMoveElement}
         onMoveElementBetweenCanvases={onMoveElementBetweenCanvases}

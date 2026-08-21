@@ -2,9 +2,15 @@ import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent, RefObject } from "react";
 
 import type { NewElement } from "@mechane/commands";
-import type { SceneVariable, Position } from "@mechane/domain";
+import type {
+  ImageAssetReference,
+  Position,
+  ResolvedImageValue,
+  SceneVariable,
+} from "@mechane/domain";
 import type { ImageAsset } from "@mechane/graphql-schema";
 import type { CanvasArtboardDocument } from "../../api/canvas";
+export type DeviceQrImage = ResolvedImageValue & Pick<ImageAssetReference, "revision">;
 import type { CanvasCamera } from "./components/canvas-camera";
 import type { CanvasSelection } from "./components/canvas-selection";
 import type { ResizeHandle } from "./commands/canvas-resize";
@@ -56,6 +62,7 @@ export interface CanvasWorkspaceEditorProps {
   ): void;
   variables?: readonly SceneVariable[];
   imageAssets?: readonly ImageAsset[];
+  deviceQrImages?: Readonly<Record<string, DeviceQrImage>>;
   onImageUpload?(props: ImageInputOnUploadProps): void;
   onDeleteElements?(canvasId: string, elementIds: readonly string[]): void;
   onRenameArtboard?(artId: string, name: string): void;
@@ -159,6 +166,7 @@ export interface CanvasWorkspaceSurfaceProps {
   onEndWorkspaceInteraction(event: PointerEvent<HTMLElement>): void;
   onCancelWorkspaceInteraction(event: PointerEvent<HTMLElement>): void;
   onBeginCreation(event: PointerEvent<HTMLElement>, artboard: CanvasArtboardDocument | null): void;
+  deviceQrImages?: Readonly<Record<string, DeviceQrImage>>;
   onMoveCreation(event: PointerEvent<HTMLElement>): void;
   onFinishCreation(event: PointerEvent<HTMLElement>, cancel?: boolean): void;
   onSelectAtPoint(event: PointerEvent<HTMLElement>, artboard: CanvasArtboardDocument): void;
