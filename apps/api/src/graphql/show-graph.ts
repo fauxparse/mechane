@@ -10,7 +10,7 @@
 // error" further in.
 import type { GraphEdit } from "@mechane/commands";
 import { GRAPH_COMMAND_TYPES } from "@mechane/commands";
-import type { FlowColor, GraphEdge, GraphNode, Type } from "@mechane/domain";
+import type { FlowColor, GraphEdge, GraphNode, Shape, Type } from "@mechane/domain";
 import {
   assertValidFlowColor,
   isEdgeKind,
@@ -64,6 +64,20 @@ export interface GraphEdgeInput {
   actionId?: string | null;
 }
 
+interface ShapeFieldInput {
+  id: string;
+  name: string;
+  type: TypeInput;
+  position: number;
+  required: boolean;
+  defaultValue?: unknown;
+}
+
+interface ShapeInput {
+  id: string;
+  name: string;
+  fields: ShapeFieldInput[];
+}
 /**
  * One edit off the wire (#103), before it becomes a `GraphEdit`.
  *
@@ -91,6 +105,7 @@ export interface GraphEditInput {
   color?: string | null;
   perConnection?: boolean | null;
   variableType?: TypeInput | null;
+  shapes?: ShapeInput[] | null;
 }
 
 function badInput(message: string): GraphQLError {
@@ -138,6 +153,23 @@ function parseType(input: TypeInput | null | undefined): Type | undefined {
   if (input.kind === "object") return { kind: "object" };
   if (input.kind === "shape" && input.shapeId) return { kind: "shape", shapeId: input.shapeId };
   throw badInput(`Invalid Shape type "${input.kind}".`);
+}
+
+function parseShape(input: ShapeInput): Shape {
+  return {
+    id: input.id,
+    name: input.name,
+    fields: input.fields
+      .slice()
+      .sort((left, right) => left.position - right.position)
+      .map((field) => ({
+        id: field.id,
+        name: field.name,
+        type: parseType(field.type)!,
+        required: field.required,
+        defaultValue: field.defaultValue ?? null,
+      })),
+  };
 }
 
 function parseFlowColor(input: string | null | undefined): FlowColor | undefined {
@@ -296,6 +328,8 @@ export function parseGraphEdit(edit: GraphEditInput): GraphEdit {
         nodeId: required(edit, "nodeId", edit.nodeId),
         color: edit.color === null ? null : parseFlowColor(required(edit, "color", edit.color))!,
       };
+    case GRAPH_COMMAND_TYPES.setShapes:
+      return { type: edit.type, shapes: (edit.shapes ?? []).map(parseShape) };
     case GRAPH_COMMAND_TYPES.addSceneVariable: {
       const variable = required(edit, "variable", edit.variable);
       return {

@@ -250,6 +250,36 @@ function toTypeInput(type: Type | null | undefined): TypeInput | null {
   return { kind: "shape", shapeId: type.shapeId };
 }
 
+interface ApiShapeFieldInput {
+  id: string;
+  name: string;
+  type: TypeInput;
+  position: number;
+  required: boolean;
+  defaultValue: unknown;
+}
+
+interface ApiShapeInput {
+  id: string;
+  name: string;
+  fields: ApiShapeFieldInput[];
+}
+
+function toShapeInput(shape: Shape): ApiShapeInput {
+  return {
+    id: shape.id,
+    name: shape.name,
+    fields: shape.fields.map((field, position) => ({
+      id: field.id,
+      name: field.name,
+      type: toTypeInput(field.type)!,
+      position,
+      required: field.required,
+      defaultValue: field.defaultValue ?? null,
+    })),
+  };
+}
+
 interface ApiNodeInput {
   id: string;
   kind: string;
@@ -326,6 +356,7 @@ export interface StudioEditInput {
   canvasId?: string;
   nodeId?: string;
   node?: ApiNodeInput;
+  shapes?: ApiShapeInput[];
   edgeId?: string;
   edge?: ApiEdgeInput;
   position?: { x: number; y: number };
@@ -406,6 +437,8 @@ export function toEditInput(edit: StudioEdit): StudioEditInput {
       return { ...input, flowId: edit.flowId, sceneId: edit.sceneId };
     case "graph.setNodeColor":
       return { ...input, nodeId: edit.nodeId, color: edit.color };
+    case "graph.setShapes":
+      return { ...input, shapes: edit.shapes.map(toShapeInput) };
     case "graph.addSceneVariable":
       return {
         ...input,

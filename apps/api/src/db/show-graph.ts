@@ -448,20 +448,19 @@ async function writeGraph(
     await tx
       .insert(shapes)
       .values(graphShapes.map((shape) => ({ id: shape.id, graphId: row.id, name: shape.name })));
-    await tx.insert(shapeFields).values(
-      graphShapes.flatMap((shape) =>
-        shape.fields.map((field, position) => ({
-          id: field.id,
-          graphId: row.id,
-          shapeId: shape.id,
-          name: field.name,
-          position,
-          type: field.type,
-          required: field.required,
-          defaultValue: field.defaultValue,
-        })),
-      ),
+    const fieldRows = graphShapes.flatMap((shape) =>
+      shape.fields.map((field, position) => ({
+        id: field.id,
+        graphId: row.id,
+        shapeId: shape.id,
+        name: field.name,
+        position,
+        type: field.type,
+        required: field.required,
+        defaultValue: field.defaultValue,
+      })),
     );
+    if (fieldRows.length > 0) await tx.insert(shapeFields).values(fieldRows);
     const refs = graphShapes.flatMap((shape) =>
       shape.fields.flatMap((field) => {
         const referenced = new Set<string>();
@@ -685,10 +684,10 @@ export async function applyShowGraphEdits(
     if (current.version !== baseVersion) {
       throw new GraphVersionConflictError(baseVersion, current.version);
     }
-    const next = {
-      shapes: current.shapes ?? [],
-      ...applyGraphEdits({ nodes: current.nodes, edges: current.edges }, edits),
-    };
+    const next = applyGraphEdits(
+      { shapes: current.shapes ?? [], nodes: current.nodes, edges: current.edges },
+      edits,
+    );
     const written = await writeGraph(tx, showId, "draft", next, baseVersion);
     return {
       showId,
@@ -733,10 +732,10 @@ export async function applyShowEdits(
       if (!canvas) throw new Error(`Canvas "${canvasId}" was not found.`);
       currentCanvases.set(canvasId, canvas);
     }
-    const nextGraph = {
-      shapes: current.shapes ?? [],
-      ...applyGraphEdits({ nodes: current.nodes, edges: current.edges }, graphEdits),
-    };
+    const nextGraph = applyGraphEdits(
+      { shapes: current.shapes ?? [], nodes: current.nodes, edges: current.edges },
+      graphEdits,
+    );
     const nextCanvases = new Map<string, EditableCanvas>(
       [...currentCanvases].map(([canvasId, currentCanvas]) => [
         canvasId,

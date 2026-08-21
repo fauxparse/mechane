@@ -88,7 +88,7 @@ export function SingleNode({ node, editing }: { node: GraphNode; editing: GraphE
         </>
       )}
 
-      {node.kind === "scene" ? <Variables node={node} editing={editing} /> : null}
+      {node.kind === "scene" ? <Variables node={node} editing={editing} shapes={editing.graph.shapes ?? []} /> : null}
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="inspector-name">Name</Label>

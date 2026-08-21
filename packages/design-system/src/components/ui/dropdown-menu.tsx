@@ -9,6 +9,7 @@
 import { Menu } from "@base-ui/react/menu";
 import { Separator as SeparatorPrimitive } from "@base-ui/react/separator";
 import { cva, type VariantProps } from "class-variance-authority";
+import { ChevronRightIcon } from "lucide-react";
 
 import { cn } from "../../lib/utils";
 import { menuItemClass, menuLabelClass, menuPopupClass, menuSeparatorClass } from "./menu-styles";
@@ -104,14 +105,47 @@ function DropdownMenuSeparator({ className, ...props }: SeparatorPrimitive.Props
     />
   );
 }
+function DropdownMenuSubmenu(props: Menu.SubmenuRoot.Props) {
+  return <Menu.SubmenuRoot {...props} />;
+}
+
+function DropdownMenuSubmenuTrigger({ className, children, ...props }: Menu.SubmenuTrigger.Props) {
+  return (
+    <Menu.SubmenuTrigger
+      data-slot="dropdown-menu-submenu-trigger"
+      className={cn(dropdownMenuItemVariants({ className }))}
+      {...props}
+    >
+      <span className="flex-1 flex items-center gap-2">{children}</span>
+      <ChevronRightIcon className="ml-auto size-4" />
+    </Menu.SubmenuTrigger>
+  );
+}
+
+function DropdownMenuSubmenuContent({ className, ...props }: Menu.Popup.Props) {
+  return (
+    <Menu.Portal>
+      <Menu.Positioner side="inline-end" align="start" className="z-100 outline-none">
+        <Menu.Popup
+          data-slot="dropdown-menu-submenu-content"
+          className={cn("z-100 min-w-40", menuPopupClass, className)}
+          {...props}
+        />
+      </Menu.Positioner>
+    </Menu.Portal>
+  );
+}
 
 export {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   dropdownMenuItemVariants,
-  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSubmenu,
+  DropdownMenuSubmenuContent,
+  DropdownMenuSubmenuTrigger,
   DropdownMenuTrigger,
 };

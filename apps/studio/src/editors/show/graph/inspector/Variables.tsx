@@ -13,20 +13,12 @@ import {
   InputGroupInput,
   PlusIcon,
   Section,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Trash2Icon,
+  TypeSelect,
   typeFromVariableKind,
-  VARIABLE_TYPE_ICONS,
-  variableTypeIcon,
   variableTypeKind,
-  variableTypeLabel,
-  type VariableTypeIconKind,
 } from "@mechane/design-system";
-import type { SceneNode, SceneVariable, Type } from "@mechane/domain";
+import type { SceneNode, SceneVariable, Shape, Type } from "@mechane/domain";
 import { useCallback } from "react";
 import type { GraphEditing } from "../../commands/use-graph-editing";
 import { reorderVariableIndices } from "./variable-order";
@@ -34,6 +26,7 @@ import { reorderVariableIndices } from "./variable-order";
 type VariablesProps = {
   node: SceneNode;
   editing: GraphEditing;
+  shapes?: readonly Shape[];
 };
 
 const variableSensors = (defaults: typeof defaultPreset.sensors) =>
@@ -48,7 +41,7 @@ const variableSensors = (defaults: typeof defaultPreset.sensors) =>
       : sensor,
   );
 
-export const Variables = ({ node, editing }: VariablesProps) => {
+export const Variables = ({ node, editing, shapes = [] }: VariablesProps) => {
   const renameVariable = useCallback(
     (variableId: string, name: string) => {
       editing.renameVariable(node.id, variableId, name);
@@ -105,6 +98,7 @@ export const Variables = ({ node, editing }: VariablesProps) => {
                 editing.setVariableType(node.id, variableId, type)
               }
               onRemove={removeVariable}
+              shapes={shapes}
             />
           ))}
         </div>
@@ -117,6 +111,7 @@ type VariableRowProps = {
   variable: SceneVariable;
   index: number;
   group: string;
+  shapes: readonly Shape[];
   onRename: (variableId: string, name: string) => void;
   onChangeType: (variableId: string, type: Type) => void;
   onRemove: (variableId: string) => void;
@@ -126,6 +121,7 @@ const VariableRow = ({
   variable,
   index,
   group,
+  shapes,
   onRename,
   onChangeType,
   onRemove,
@@ -136,7 +132,7 @@ const VariableRow = ({
     group,
   });
 
-  const Icon = variableTypeIcon(variable.type);
+  const currentType: Type = variable.type ?? { kind: "object" };
 
   return (
     <div
@@ -160,38 +156,18 @@ const VariableRow = ({
           </button>
         </InputGroupAddon>
         <InputGroupAddon className="py-0">
-          <Select
-            value={variableTypeKind(variable.type)}
-            items={Object.entries(VARIABLE_TYPE_ICONS).map(([type]) => ({
-              value: type,
-              label: type,
-            }))}
-            onValueChange={(next) => {
-              if (next == null) return;
-              onChangeType(
-                variable.id,
-                typeFromVariableKind(variableTypeKind(next), variable.type),
-              );
-            }}
-          >
-            <SelectTrigger
-              size="sm"
-              className="p-1 border-0 h-6 bg-transparent dark:bg-transparent hover:text-foreground dark:hover:text-foreground"
-              chevron={false}
-            >
-              <SelectValue>
-                <Icon />
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent className="w-fit min-w-40!">
-              {Object.entries(VARIABLE_TYPE_ICONS).map(([type, TypeIcon]) => (
-                <SelectItem key={type} value={type}>
-                  <TypeIcon />
-                  {variableTypeLabel(type as VariableTypeIconKind)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <TypeSelect
+            value={currentType}
+            shapes={shapes}
+            includeArray
+            showLabel={false}
+            triggerSize="sm"
+            aria-label={`Type for ${variable.name}`}
+            triggerClassName="border-0 bg-transparent dark:bg-transparent hover:text-foreground dark:hover:text-foreground"
+            onValueChange={(next) =>
+              onChangeType(variable.id, typeFromVariableKind(variableTypeKind(next), currentType))
+            }
+          />
         </InputGroupAddon>
         <InputGroupInput
           value={variable.name}

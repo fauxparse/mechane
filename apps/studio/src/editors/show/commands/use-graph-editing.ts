@@ -27,6 +27,7 @@ import {
   setDevicePerConnection,
   setNodeColor,
   setSceneVariableType,
+  setShapes as setShapeDefinitions,
 } from "@mechane/commands";
 import type {
   ConnectionTargets,
@@ -34,6 +35,7 @@ import type {
   GraphNode,
   NodeKind,
   Position,
+  Shape,
   ShowGraph,
   Type,
 } from "@mechane/domain";
@@ -111,6 +113,7 @@ export interface GraphEditing {
   /** Structural Flow moves; collapse is intentionally not part of this API. */
   moveIntoFlow(nodeIds: string[], flowId: string, origin: Position): void;
   moveOutOfFlow(nodeIds: string[], positions: Position[]): string | null;
+  setShapes(shapes: Shape[]): void;
   setNodeColor(nodeId: string, color: FlowColor): void;
   setDevicePerConnection(nodeId: string, perConnection: boolean): void;
 }
@@ -403,6 +406,13 @@ export function useGraphEditing(
     [execute],
   );
 
+  const changeShapes = useCallback(
+    (shapes: Shape[]) => {
+      execute(setShapeDefinitions(shapes));
+    },
+    [execute],
+  );
+
   const changeDevicePerConnection = useCallback(
     (nodeId: string, perConnection: boolean) => {
       execute(setDevicePerConnection(nodeId, perConnection));
@@ -447,6 +457,7 @@ export function useGraphEditing(
     scopeOf,
     connecting: connectingFrom !== null,
     targets,
+    setShapes: changeShapes,
     setNodeColor: changeNodeColor,
     setDevicePerConnection: changeDevicePerConnection,
     beginConnect,

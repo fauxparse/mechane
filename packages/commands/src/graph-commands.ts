@@ -36,6 +36,7 @@ import type {
   Position,
   SceneNode,
   SceneVariable,
+  Shape,
   ShowGraph,
   Type,
 } from "@mechane/domain";
@@ -63,6 +64,7 @@ export const GRAPH_COMMAND_TYPES = {
   removeEdge: "graph.removeEdge",
   setFlowDefaultScene: "graph.setFlowDefaultScene",
   setNodeColor: "graph.setNodeColor",
+  setShapes: "graph.setShapes",
   addSceneVariable: "graph.addSceneVariable",
   renameSceneVariable: "graph.renameSceneVariable",
   setSceneVariableType: "graph.setSceneVariableType",
@@ -591,6 +593,22 @@ function withNodeColor(graph: ShowGraph, nodeId: string, color: FlowColor | null
   if (color === null) delete next.color;
   else next.color = color;
   return replaceNode(graph, index, next);
+}
+
+/** Replaces the Show-scoped Shape definitions as one undoable edit. */
+export function setShapes(shapes: Shape[], label = "Update Shapes"): ShowGraphCommand {
+  return capturing<ShowGraph, Shape[], GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setShapes,
+    label,
+    scope: "global",
+    coalesceKey: GRAPH_COMMAND_TYPES.setShapes,
+    edits: [{ type: GRAPH_COMMAND_TYPES.setShapes, shapes }],
+    restoreEdits: (captured) => [{ type: GRAPH_COMMAND_TYPES.setShapes, shapes: captured }],
+    capture: (graph) => graph.shapes ?? [],
+    isEmpty: (graph) => JSON.stringify(graph.shapes ?? []) === JSON.stringify(shapes),
+    apply: (graph) => ({ ...graph, shapes }),
+    restore: (graph, captured) => ({ ...graph, shapes: captured }),
+  });
 }
 
 /**

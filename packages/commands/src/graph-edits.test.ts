@@ -4,6 +4,7 @@ import type {
   FlowNode,
   NavigateEdge,
   SceneNode,
+  Shape,
   ShowGraph,
   SourceNode,
   WiringEdge,
@@ -30,6 +31,7 @@ import {
   setDevicePerConnection,
   setFlowDefaultScene,
   setSceneVariableType,
+  setShapes,
 } from "./graph-commands";
 import type { GraphEdit } from "./graph-edits";
 import {
@@ -133,6 +135,7 @@ const GRAPH: ShowGraph = {
 function stored(graph: ShowGraph) {
   const byId = (a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id);
   return {
+    shapes: [...(graph.shapes ?? [])].sort(byId),
     nodes: [...graph.nodes].sort(byId),
     edges: [...graph.edges].sort(byId),
   };
@@ -231,6 +234,15 @@ describe("every primitive command's edits reproduce it", () => {
     // Takes the wiring edge that fed it, so the undo transmits both.
     const applied = expectEditsReproduce(removeSceneVariable(VOTING.id, "variable_prompt"));
     expect(applied.state.edges.map((edge) => edge.id)).not.toContain(WIRE.id);
+  });
+
+  it("setShapes", () => {
+    const shape: Shape = {
+      id: "shape_vote",
+      name: "Vote",
+      fields: [{ id: "field_count", name: "count", type: "number", required: true, defaultValue: 0 }],
+    };
+    expectEditsReproduce(setShapes([shape]));
   });
 });
 

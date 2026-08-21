@@ -1,13 +1,13 @@
 import type { ShapeValue, Type } from "@mechane/domain";
 import { upperFirst } from "es-toolkit";
 import {
-  BoxIcon,
   CalendarClockIcon,
   CalendarIcon,
   HashIcon,
   ImageIcon,
   ListIcon,
   PaletteIcon,
+  PuzzleIcon,
   ToggleLeftIcon,
   TypeIcon,
   type LucideIcon,
@@ -21,7 +21,7 @@ export const VARIABLE_TYPE_ICONS = {
   text: TypeIcon,
   number: HashIcon,
   boolean: ToggleLeftIcon,
-  object: BoxIcon,
+  object: PuzzleIcon,
   array: ListIcon,
   image: ImageIcon,
   color: PaletteIcon,
