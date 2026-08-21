@@ -1,4 +1,6 @@
+import { DEVICE_SOURCE_HANDLES } from "./graph";
 import type { Canvas, Element, ElementKind } from "./canvas";
+import { deviceQrImageValue } from "./device-qr";
 import {
   coercePropertyValue,
   defaultPropertyValue,
@@ -6,7 +8,7 @@ import {
   propertyCoercion,
 } from "./property-values";
 import { isImageAssetReference } from "./shapes";
-import type { SceneVariable } from "./graph";
+import type { SceneVariable, ShowGraph } from "./graph";
 import type { ImageAssetReference, ResolvedImageValue, Shape, Type } from "./shapes";
 export type CanvasPropertyName =
   | "opacity"
@@ -83,6 +85,7 @@ export function opacityFromPercent(value: number): number {
 }
 
 export interface CanvasPropertyContext {
+  readonly graph?: ShowGraph;
   readonly variables: readonly SceneVariable[];
   readonly values?: Readonly<Record<string, unknown>>;
   readonly shapes?: readonly Shape[];
@@ -124,6 +127,22 @@ function valueAtPath(value: unknown, path: readonly string[]): unknown {
   }
   return current;
 }
+function deviceQrValueForVariable(
+  variableId: string,
+  graph: ShowGraph | undefined,
+): (ResolvedImageValue & Pick<ImageAssetReference, "revision">) | undefined {
+  if (!graph) return undefined;
+  const edge = graph.edges.find(
+    (candidate) =>
+      candidate.kind === "wiring" &&
+      candidate.targetPath[0] === variableId &&
+      candidate.sourcePath[0] === DEVICE_SOURCE_HANDLES.qrCode,
+  );
+  if (!edge) return undefined;
+  const device = graph.nodes.find((node) => node.id === edge.sourceId);
+  if (device?.kind !== "device" || !device.pairingCode) return undefined;
+  return deviceQrImageValue(device.id, device.pairingCode);
+}
 
 function resolveImageAsset(
   value: unknown,
@@ -154,7 +173,10 @@ function resolveElement(element: Element, context: CanvasPropertyContext): Eleme
       if (!variable || !sourceType || !coercion) {
         record[descriptor.name] = defaultFor(descriptor.targetType);
       } else {
-        const sourceValue = valueAtPath(rawValue(context.values?.[variable.id]), fieldPath) ?? defaultFor(sourceType);
+        const sourceValue =
+          deviceQrValueForVariable(variable.id, context.graph) ??
+          valueAtPath(rawValue(context.values?.[variable.id]), fieldPath) ??
+          defaultFor(sourceType);
         record[descriptor.name] = coercePropertyValue(sourceValue, coercion);
       }
     }

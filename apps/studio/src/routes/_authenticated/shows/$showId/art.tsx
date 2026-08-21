@@ -90,6 +90,7 @@ function CanvasWorkspaceRoute() {
       const owner = nodes.get(artboard.artId);
       const variables = owner?.kind === "scene" ? owner.variables : [];
       const renderCanvas = resolveCanvasProperties(canvas, {
+        graph: graphEditing.graph,
         variables,
         shapes: graphEditing.graph.shapes,
         imageAssets: (imageAssets.data ?? []).map((asset) => ({
