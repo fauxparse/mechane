@@ -28,6 +28,7 @@ import { randomUUID } from "node:crypto";
 import { readCanvas, readCanvasWorkspace } from "../db/canvas";
 import { db } from "../db/client";
 import { withUniqueId } from "../db/ids";
+import { readPlayerSession } from "../player";
 import { commitBlob, imageDeliveryUrl, listImageAssets, toImageAsset } from "../db/images";
 import { endRun, readActiveRun, startRun } from "../db/runs";
 import { blobUploadSessions, imageAssets, shows, userSettings } from "../db/schema";
@@ -193,7 +194,20 @@ export const schema = createSchema<GraphQLContext>({
       endedAt: String
       sourceValues: JSON!
     }
+    type PlayerDevice {
+      id: ID!
+      name: String!
+      perConnection: Boolean!
+    }
 
+    type PlayerSession {
+      device: PlayerDevice!
+      run: Run
+      graph: ShowGraph!
+      scene: SceneNode
+      canvas: Canvas
+      imageAssets: [ImageAsset!]!
+    }
     "The signed-in user's design-system preference (PRD.md §7)."
     type UserSettings {
       "Display mode: light or dark."
@@ -813,6 +827,11 @@ export const schema = createSchema<GraphQLContext>({
     type Query {
       "The signed-in user, or null if the request has no valid session."
       me: User
+      """
+      A public Device snapshot resolved by its pairing code. The code is the
+      Device credential; no signed-in session is required.
+      """
+      playerSession(pairingCode: String!): PlayerSession
       "The signed-in user's own Shows, most recently updated first."
       shows: [Show!]!
       "A single Show owned by the signed-in user, or null if it doesn't exist or isn't theirs."
@@ -970,6 +989,10 @@ export const schema = createSchema<GraphQLContext>({
     },
     Query: {
       me: (_parent, _args, context) => context.user,
+      playerSession: async (_parent, { pairingCode }: { pairingCode: string }) => {
+        const session = await readPlayerSession(pairingCode);
+        return session ? { ...session, graph: serializeShowGraph(session.graph) } : null;
+      },
       shows: async (_parent, _args, context) => {
         const userId = requireUserId(context);
         return db.select().from(shows).where(eq(shows.userId, userId)).orderBy(shows.updatedAt);

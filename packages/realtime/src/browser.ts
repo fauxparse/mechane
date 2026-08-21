@@ -1,3 +1,4 @@
+import * as Ably from "ably";
 import type {
   RealtimeChannelName,
   RealtimeMessage,
@@ -90,5 +91,31 @@ export class WebSocketRealtimeSubscriber implements RealtimeSubscriber {
       }
     };
     return socket;
+  }
+}
+
+/** Production subscriber using Ably's browser client and token auth. */
+export class AblyRealtimeSubscriber implements RealtimeSubscriber {
+  private readonly client: Ably.Realtime;
+  private readonly channel: Ably.RealtimeChannel;
+
+  constructor(authUrl: string, channelName: RealtimeChannelName) {
+    this.client = new Ably.Realtime({ authUrl, authMethod: "GET" });
+    this.channel = this.client.channels.get(channelName);
+  }
+
+  subscribe(
+    handler: RealtimeMessageHandler,
+    _options?: RealtimeSubscribeOptions,
+  ): RealtimeSubscription {
+    const listener = (message: Ably.Message) => handler(message.data as RealtimeMessage);
+    this.channel.subscribe(listener);
+    return {
+      close: () => this.channel.unsubscribe(listener),
+    };
+  }
+
+  close(): void {
+    this.client.close();
   }
 }

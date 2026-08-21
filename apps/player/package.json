@@ -10,7 +10,10 @@
   },
   "dependencies": {
     "@mechane/design-system": "workspace:*",
+    "@mechane/domain": "workspace:*",
     "@mechane/graphql-schema": "workspace:*",
+    "@mechane/realtime": "workspace:*",
+    "@mechane/rendering": "workspace:*",
     "@tanstack/react-router": "^1.150.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

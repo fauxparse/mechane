@@ -1,6 +1,9 @@
 export const RUN_CHANNEL_PREFIX = "run:";
+export const PLAYER_CHANNEL_PREFIX = "player:";
 
-export type RealtimeChannelName = `${typeof RUN_CHANNEL_PREFIX}${string}`;
+export type RealtimeChannelName =
+  | `${typeof RUN_CHANNEL_PREFIX}${string}`
+  | `${typeof PLAYER_CHANNEL_PREFIX}${string}`;
 
 export interface RealtimeMessage<T = unknown> {
   id: string;
@@ -41,4 +44,7 @@ export interface RealtimeProvider {
 
 export function runChannel(runId: string): RealtimeChannelName {
   return `${RUN_CHANNEL_PREFIX}${runId}`;
+}
+export function playerChannel(deviceId: string): RealtimeChannelName {
+  return `${PLAYER_CHANNEL_PREFIX}${deviceId}`;
 }

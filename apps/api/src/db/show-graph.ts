@@ -32,7 +32,7 @@ import { db } from "./client";
 import type { StoredDevice } from "./devices";
 import { retireUnreferencedDevices, syncDevices } from "./devices";
 import { graphNodeInsertValues } from "./graph-node-values";
-import { reconcileActiveRunValues } from "./runs";
+import { publishPlayerUpdates, reconcileActiveRunValues } from "./runs";
 import {
   blocks,
   canvasElements,
@@ -852,6 +852,7 @@ export async function publishShowGraph(
       losses: result.reconciled.losses,
     });
   }
+  await publishPlayerUpdates(showId);
 
   return { ...result.published, losses: result.reconciled.losses };
 }

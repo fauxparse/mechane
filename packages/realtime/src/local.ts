@@ -11,7 +11,7 @@ import type {
   RealtimeSubscribeOptions,
   RealtimeSubscription,
 } from "./index";
-import { RUN_CHANNEL_PREFIX } from "./index";
+import { PLAYER_CHANNEL_PREFIX, RUN_CHANNEL_PREFIX } from "./index";
 
 const MAX_HISTORY = 1_000;
 
@@ -83,8 +83,11 @@ function isSubscribeCommand(value: unknown): value is SubscribeCommand {
   return command.type === "subscribe" && typeof command.channel === "string";
 }
 
-function isRunChannel(value: string): value is RealtimeChannelName {
-  return value.startsWith(RUN_CHANNEL_PREFIX) && value.length > RUN_CHANNEL_PREFIX.length;
+function isRealtimeChannel(value: string): value is RealtimeChannelName {
+  return (
+    (value.startsWith(RUN_CHANNEL_PREFIX) || value.startsWith(PLAYER_CHANNEL_PREFIX)) &&
+    value.length > value.indexOf(":") + 1
+  );
 }
 
 export interface LocalRealtimeServerOptions {
@@ -131,7 +134,7 @@ export class LocalRealtimeServer {
         socket.send(JSON.stringify({ type: "error", payload: { reason: "Invalid JSON." } }));
         return;
       }
-      if (!isSubscribeCommand(value) || !isRunChannel(value.channel)) {
+      if (!isSubscribeCommand(value) || !isRealtimeChannel(value.channel)) {
         socket.send(
           JSON.stringify({ type: "error", payload: { reason: "Invalid subscribe command." } }),
         );

@@ -44,23 +44,25 @@ export const CodeInput = ({ value, length = 5, onChange }: CodeInputProps) => {
   };
 
   const handleChange = (index: number, character: string) => {
-    const newCode = value.slice(0, index) + character.slice(0, 1).toUpperCase();
+    const nextCharacter = character.slice(-1).toUpperCase();
+    if (nextCharacter && !/^[A-HJ-KM-NP-Z1-9]$/.test(nextCharacter)) return;
+    const newCode = value.slice(0, index) + nextCharacter;
     onChange(newCode);
-    if (index < length - 1) {
+    if (nextCharacter && index < length - 1) {
       inputs.current[index + 1]?.focus();
     }
   };
 
-  const handlePaste = (value: string) => {
-    const newCode = value.slice(0, length).toUpperCase();
-    if (newCode.match(new RegExp(`^[A-Z0-9]{${length}}$`))) {
+  const handlePaste = (pastedValue: string) => {
+    const newCode = pastedValue.toUpperCase().replace(/[^A-HJ-KM-NP-Z1-9]/g, "").slice(0, length);
+    if (newCode.length > 0) {
       onChange(newCode);
-      inputs.current[inputs.current.length - 1]?.focus();
+      inputs.current[Math.min(newCode.length, length) - 1]?.focus();
     }
   };
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-2" role="group" aria-label="Pairing code">
       {Array.from({ length }).map((_, index) => (
         <input
           ref={(el) => {
@@ -70,8 +72,12 @@ export const CodeInput = ({ value, length = 5, onChange }: CodeInputProps) => {
           }}
           key={index}
           type="text"
+          inputMode="text"
+          autoComplete={index === 0 ? "one-time-code" : "off"}
+          aria-label={`Pairing code character ${index + 1} of ${length}`}
+          maxLength={1}
           size={1}
-          className="text-[3rem] w-[1em] bg-white/50 border-0 rounded-md text-center text-neutral-900 outline-none focus-visible:ring-4 focus-visible:ring-neutral-900/10 leading-[0.75] p-2"
+          className="w-[1em] rounded-md border-0 bg-white/50 p-2 text-center text-[3rem] leading-[0.75] text-neutral-900 outline-none focus-visible:ring-4 focus-visible:ring-neutral-900/10"
           value={value[index] ?? ""}
           autoFocus={index === 0 || undefined}
           onKeyDown={(e) => handleKeyDown(index, e)}

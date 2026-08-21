@@ -15,6 +15,18 @@ export interface AblyRealtimeOptions {
   key: string;
 }
 
+export async function createAblyTokenRequest(options: {
+  key: string;
+  clientId: string;
+  capability: string;
+}) {
+  const rest = new Ably.Rest({ key: options.key });
+  return rest.auth.createTokenRequest({
+    clientId: options.clientId,
+    capability: options.capability,
+  });
+}
+
 class AblyChannel implements RealtimeChannel {
   constructor(private readonly channel: Ably.RealtimeChannel) {}
 
