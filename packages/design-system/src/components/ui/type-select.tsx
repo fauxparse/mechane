@@ -1,17 +1,5 @@
-import type { Shape, Type } from "@mechane/domain";
-import {
-  BoxIcon,
-  CalendarClockIcon,
-  CalendarIcon,
-  ChevronRightIcon,
-  HashIcon,
-  ImageIcon,
-  ListIcon,
-  PaletteIcon,
-  ToggleLeftIcon,
-  TypeIcon,
-  type LucideIcon,
-} from "lucide-react";
+import { PRIMITIVE_TYPES, type Shape, type Type } from "@mechane/domain";
+import { ChevronRightIcon, type LucideIcon } from "lucide-react";
 import type { ReactElement } from "react";
 
 import { cn } from "../../lib/utils";
@@ -20,13 +8,13 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuSubmenu,
   DropdownMenuSubmenuContent,
   DropdownMenuSubmenuTrigger,
   DropdownMenuTrigger,
 } from "./dropdown-menu";
-
+import { variableTypeIcon, variableTypeLabel } from "./property-input/variable-type-icons";
 export type TypeSelectOption = {
   value: Type;
   label: string;
@@ -55,15 +43,11 @@ export type TypeSelectProps = {
   optionDisabled?(option: TypeSelectOption): boolean;
 };
 
-const PRIMITIVE_OPTIONS: readonly TypeSelectOption[] = [
-  { value: "text", label: "Text", icon: TypeIcon },
-  { value: "number", label: "Number", icon: HashIcon },
-  { value: "boolean", label: "Boolean", icon: ToggleLeftIcon },
-  { value: "image", label: "Image", icon: ImageIcon },
-  { value: "color", label: "Color", icon: PaletteIcon },
-  { value: "date", label: "Date", icon: CalendarIcon },
-  { value: "datetime", label: "Date and time", icon: CalendarClockIcon },
-];
+const PRIMITIVE_OPTIONS: readonly TypeSelectOption[] = PRIMITIVE_TYPES.map((value) => ({
+  value,
+  label: variableTypeLabel(value),
+  icon: variableTypeIcon(value),
+}));
 
 function optionKey(type: Type): string {
   if (typeof type === "string") return type;
@@ -72,20 +56,14 @@ function optionKey(type: Type): string {
 }
 
 function typeLabel(type: Type, shapes: readonly Shape[]): string {
-  if (typeof type === "string") {
-    return PRIMITIVE_OPTIONS.find((option) => option.value === type)?.label ?? type;
-  }
+  if (typeof type === "string") return variableTypeLabel(type);
   if (type.kind === "array") return `Array of ${typeLabel(type.of, shapes)}`;
-  if (type.kind === "shape")
-    return shapes.find((shape) => shape.id === type.shapeId)?.name ?? "Shape";
+  if (type.kind === "shape") return shapes.find((shape) => shape.id === type.shapeId)?.name ?? "Shape";
   return "Object";
 }
 
 function typeIcon(type: Type): LucideIcon {
-  if (typeof type === "string")
-    return PRIMITIVE_OPTIONS.find((option) => option.value === type)?.icon ?? BoxIcon;
-  if (type.kind === "array") return ListIcon;
-  return BoxIcon;
+  return variableTypeIcon(type);
 }
 
 function shapeOptions(shapes: readonly Shape[]): TypeSelectOption[] {
@@ -94,7 +72,7 @@ function shapeOptions(shapes: readonly Shape[]): TypeSelectOption[] {
     .map((shape) => ({
       value: { kind: "shape", shapeId: shape.id },
       label: shape.name,
-      icon: BoxIcon,
+      icon: variableTypeIcon({ kind: "shape", shapeId: shape.id }),
     }));
 }
 
@@ -114,9 +92,10 @@ export function TypeSelect({
 }: TypeSelectProps) {
   const currentValue = value ?? null;
   const label = currentValue ? typeLabel(currentValue, shapes) : "Choose a Type";
-  const Icon = currentValue ? typeIcon(currentValue) : BoxIcon;
+  const Icon = currentValue ? typeIcon(currentValue) : variableTypeIcon("object");
   const customTrigger = renderTrigger?.({ value: currentValue, label, icon: Icon });
   const shapeTypeOptions = shapeOptions(shapes);
+  const ArrayIcon = variableTypeIcon("array");
 
   const isDisabled = (option: TypeSelectOption) =>
     disabled || option.disabled === true || optionDisabled?.(option) === true;
@@ -162,43 +141,46 @@ export function TypeSelect({
       <DropdownMenuTrigger render={customTrigger ?? defaultTrigger} />
       <DropdownMenuContent>
         <DropdownMenuGroup>
-          <DropdownMenuLabel>Basic Types</DropdownMenuLabel>
           {PRIMITIVE_OPTIONS.map(renderOption)}
-        </DropdownMenuGroup>
-        {shapeTypeOptions.length > 0 ? (
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>Shapes</DropdownMenuLabel>
-            {shapeTypeOptions.map(renderOption)}
-          </DropdownMenuGroup>
-        ) : null}
-        {includeArray ? (
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>Structured Types</DropdownMenuLabel>
+          {includeArray ? (
             <DropdownMenuSubmenu>
-              <DropdownMenuSubmenuTrigger>Array of…</DropdownMenuSubmenuTrigger>
+              <DropdownMenuSubmenuTrigger>
+                <ArrayIcon className="size-4 text-muted-foreground" />
+                <span>Array of…</span>
+              </DropdownMenuSubmenuTrigger>
               <DropdownMenuSubmenuContent>
                 <DropdownMenuGroup>
-                  <DropdownMenuLabel>Array item Type</DropdownMenuLabel>
                   {PRIMITIVE_OPTIONS.map((option) =>
                     renderOption({
                       ...option,
                       value: { kind: "array", of: option.value },
-                      label: `Array of ${option.label}`,
-                      icon: option.icon,
-                    }),
-                  )}
-                  {shapeTypeOptions.map((option) =>
-                    renderOption({
-                      ...option,
-                      value: { kind: "array", of: option.value },
-                      label: `Array of ${option.label}`,
                       icon: option.icon,
                     }),
                   )}
                 </DropdownMenuGroup>
+                {shapeTypeOptions.length > 0 ? (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuGroup>
+                      {shapeTypeOptions.map((option) =>
+                        renderOption({
+                          ...option,
+                          value: { kind: "array", of: option.value },
+                          icon: option.icon,
+                        }),
+                      )}
+                    </DropdownMenuGroup>
+                  </>
+                ) : null}
               </DropdownMenuSubmenuContent>
             </DropdownMenuSubmenu>
-          </DropdownMenuGroup>
+          ) : null}
+        </DropdownMenuGroup>
+        {shapeTypeOptions.length > 0 ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>{shapeTypeOptions.map(renderOption)}</DropdownMenuGroup>
+          </>
         ) : null}
       </DropdownMenuContent>
     </DropdownMenu>

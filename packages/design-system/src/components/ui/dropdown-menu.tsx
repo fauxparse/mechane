@@ -8,8 +8,8 @@
 // trigger. Reach for the parts directly if that ever stops being true.
 import { Menu } from "@base-ui/react/menu";
 import { Separator as SeparatorPrimitive } from "@base-ui/react/separator";
-import { ChevronRightIcon } from "lucide-react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { ChevronRightIcon } from "lucide-react";
 
 import { cn } from "../../lib/utils";
 import { menuItemClass, menuLabelClass, menuPopupClass, menuSeparatorClass } from "./menu-styles";
@@ -116,7 +116,7 @@ function DropdownMenuSubmenuTrigger({ className, children, ...props }: Menu.Subm
       className={cn(dropdownMenuItemVariants({ className }))}
       {...props}
     >
-      <span className="flex-1">{children}</span>
+      <span className="flex-1 flex items-center gap-2">{children}</span>
       <ChevronRightIcon className="ml-auto size-4" />
     </Menu.SubmenuTrigger>
   );
@@ -136,13 +136,12 @@ function DropdownMenuSubmenuContent({ className, ...props }: Menu.Popup.Props) {
   );
 }
 
-
 export {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   dropdownMenuItemVariants,
-  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuSubmenu,
