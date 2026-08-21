@@ -1,0 +1,239 @@
+@property --blob-1-x {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 40%;
+}
+@property --blob-1-y {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 20%;
+}
+@property --blob-2-x {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 80%;
+}
+@property --blob-2-y {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+@property --blob-3-x {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+@property --blob-3-y {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 50%;
+}
+@property --blob-4-x {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 80%;
+}
+@property --blob-4-y {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 50%;
+}
+@property --blob-5-x {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+@property --blob-5-y {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
+@property --blob-6-x {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 80%;
+}
+@property --blob-6-y {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
+@property --blob-7-x {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+@property --blob-7-y {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+
+body {
+  margin: 0;
+}
+
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  background-color: hsla(0, 0%, 100%, 1);
+  background-image:
+    radial-gradient(
+      at var(--blob-1-x) var(--blob-1-y),
+      hsla(28, 100%, 74%, 1) 0px,
+      transparent 50%
+    ),
+    radial-gradient(
+      at var(--blob-2-x) var(--blob-2-y),
+      hsla(189, 100%, 56%, 1) 0px,
+      transparent 50%
+    ),
+    radial-gradient(
+      at var(--blob-3-x) var(--blob-3-y),
+      hsla(355, 100%, 93%, 1) 0px,
+      transparent 50%
+    ),
+    radial-gradient(
+      at var(--blob-4-x) var(--blob-4-y),
+      hsla(340, 100%, 76%, 1) 0px,
+      transparent 50%
+    ),
+    radial-gradient(
+      at var(--blob-5-x) var(--blob-5-y),
+      hsla(22, 100%, 77%, 1) 0px,
+      transparent 50%
+    ),
+    radial-gradient(
+      at var(--blob-6-x) var(--blob-6-y),
+      hsla(242, 100%, 70%, 0.7) 0px,
+      transparent 50%
+    ),
+    radial-gradient(
+      at var(--blob-7-x) var(--blob-7-y),
+      hsla(343, 100%, 76%, 1) 0px,
+      transparent 50%
+    );
+  background-size: 100vw 100vh;
+  animation:
+    drift-1 14s ease-in-out infinite,
+    drift-2 18s ease-in-out infinite,
+    drift-3 12s ease-in-out infinite,
+    drift-4 20s ease-in-out infinite,
+    drift-5 16s ease-in-out infinite,
+    drift-6 22s ease-in-out infinite,
+    drift-7 11s ease-in-out infinite;
+}
+
+@keyframes drift-1 {
+  0%,
+  100% {
+    --blob-1-x: 40%;
+    --blob-1-y: 20%;
+  }
+  33% {
+    --blob-1-x: 58%;
+    --blob-1-y: 38%;
+  }
+  66% {
+    --blob-1-x: 28%;
+    --blob-1-y: 8%;
+  }
+}
+
+@keyframes drift-2 {
+  0%,
+  100% {
+    --blob-2-x: 80%;
+    --blob-2-y: 0%;
+  }
+  40% {
+    --blob-2-x: 62%;
+    --blob-2-y: 18%;
+  }
+  70% {
+    --blob-2-x: 92%;
+    --blob-2-y: 12%;
+  }
+}
+
+@keyframes drift-3 {
+  0%,
+  100% {
+    --blob-3-x: 0%;
+    --blob-3-y: 50%;
+  }
+  35% {
+    --blob-3-x: 18%;
+    --blob-3-y: 38%;
+  }
+  70% {
+    --blob-3-x: 8%;
+    --blob-3-y: 68%;
+  }
+}
+
+@keyframes drift-4 {
+  0%,
+  100% {
+    --blob-4-x: 80%;
+    --blob-4-y: 50%;
+  }
+  30% {
+    --blob-4-x: 68%;
+    --blob-4-y: 62%;
+  }
+  65% {
+    --blob-4-x: 90%;
+    --blob-4-y: 36%;
+  }
+}
+
+@keyframes drift-5 {
+  0%,
+  100% {
+    --blob-5-x: 0%;
+    --blob-5-y: 100%;
+  }
+  40% {
+    --blob-5-x: 16%;
+    --blob-5-y: 82%;
+  }
+  75% {
+    --blob-5-x: -4%;
+    --blob-5-y: 88%;
+  }
+}
+
+@keyframes drift-6 {
+  0%,
+  100% {
+    --blob-6-x: 80%;
+    --blob-6-y: 100%;
+  }
+  45% {
+    --blob-6-x: 72%;
+    --blob-6-y: 78%;
+  }
+  80% {
+    --blob-6-x: 94%;
+    --blob-6-y: 92%;
+  }
+}
+
+@keyframes drift-7 {
+  0%,
+  100% {
+    --blob-7-x: 0%;
+    --blob-7-y: 0%;
+  }
+  50% {
+    --blob-7-x: 22%;
+    --blob-7-y: 16%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body {
+    animation: none;
+  }
+}
