@@ -11,13 +11,17 @@
   "dependencies": {
     "@mechane/design-system": "workspace:*",
     "@mechane/graphql-schema": "workspace:*",
+    "@tanstack/react-router": "^1.150.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@tanstack/router-plugin": "^1.168.24",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
     "vite": "^7.0.0"
   }
