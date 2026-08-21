@@ -57,7 +57,7 @@ export const LayoutSection = () => {
 
   return (
     <Section label="Layout">
-      <SizeFields key={selectionKey} />
+      <SizeFields key={`size:${selectionKey}`} />
       {frame && (
         <>
           <ToggleGroup
@@ -128,7 +128,7 @@ export const LayoutSection = () => {
             </>
           )}
           <PaddingControl
-            key={selectionKey}
+            key={`padding:${selectionKey}`}
             padding={padding}
             mixed={paddingMixed}
             update={update}
@@ -147,7 +147,12 @@ export const LayoutSection = () => {
         </>
       )}
       {canEditPadding && !frame && (
-        <PaddingControl key={selectionKey} padding={padding} mixed={paddingMixed} update={update} />
+        <PaddingControl
+          key={`padding:${selectionKey}`}
+          padding={padding}
+          mixed={paddingMixed}
+          update={update}
+        />
       )}
     </Section>
   );
