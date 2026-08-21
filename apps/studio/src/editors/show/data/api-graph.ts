@@ -16,9 +16,9 @@
 // from a discriminated union to one flat wire shape, per edit instead of per
 // graph.
 import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
-import type { FlowColor, GraphEdge, GraphNode, Shape, Type, ShowGraph } from "@mechane/domain";
-import { DEFAULT_FLOW_COLOR, isFlowColor } from "@mechane/domain";
-import type { ApplyShowEditsResult, ShowGraph as ApiShowGraph } from "@mechane/graphql-schema";
+import type { FlowColor, GraphEdge, GraphNode, Shape, ShowGraph, Type } from "@mechane/domain";
+import { isFlowColor } from "@mechane/domain";
+import type { ShowGraph as ApiShowGraph, ApplyShowEditsResult } from "@mechane/graphql-schema";
 type ApiType = ApiShowGraph["shapes"][number]["fields"][number]["type"];
 type ApiGraphNode = {
   __typename: string;
@@ -34,6 +34,7 @@ type ApiGraphNode = {
   variables?: {
     id: string;
     name: string;
+    rank?: string | null;
     type?: ApiType | null;
     suggestedDimensions?: { width: number; height: number } | null;
   }[];
@@ -85,6 +86,7 @@ function toType(type: ApiType): Type {
   if (["text", "number", "boolean", "image", "color", "date", "datetime"].includes(type.kind)) {
     return type.kind as Type;
   }
+  if (type.kind === "object") return { kind: "object" };
   throw new Error(`Unknown Shape type "${type.kind}".`);
 }
 
@@ -111,10 +113,22 @@ function toShape(shape: ApiShowGraph["shapes"][number]): Shape {
 }
 
 function toNode(node: ApiGraphNode): GraphNode {
+  const color =
+    node.color === null || node.color === undefined
+      ? undefined
+      : typeof node.color === "string" && isFlowColor(node.color)
+        ? node.color
+        : (() => {
+            throw new Error(
+              `Unknown Show node color "${String(node.color)}" on node "${node.id}".`,
+            );
+          })();
   const base = {
     id: node.id,
     name: node.name,
+    parentId: node.parentId ?? null,
     position: { x: node.position.x, y: node.position.y },
+    ...(color ? { color } : {}),
   };
   switch (node.__typename) {
     case "SceneNode": {
@@ -122,10 +136,10 @@ function toNode(node: ApiGraphNode): GraphNode {
       return {
         ...base,
         kind: "scene",
-        parentId: scene.parentId ?? null,
         variables: scene.variables.map((variable) => ({
           id: variable.id,
           name: variable.name,
+          ...(variable.rank ? { rank: variable.rank } : {}),
           type: variable.type ? toType(variable.type as ApiType) : null,
           ...(variable.suggestedDimensions
             ? { suggestedDimensions: variable.suggestedDimensions }
@@ -133,22 +147,16 @@ function toNode(node: ApiGraphNode): GraphNode {
         })),
       };
     }
-    case "FlowNode": {
+    case "FlowNode":
       // Flows and Devices are always Show-level peers (#23, #26), which the
       // domain types as `parentId: null` — so it is asserted here rather than
       // read, and a wire graph that disagrees fails domain validation.
-      const color = typeof node.color === "string" ? node.color : DEFAULT_FLOW_COLOR;
-      if (!isFlowColor(color)) {
-        throw new Error(`Unknown Flow color "${color}" on node "${node.id}".`);
-      }
       return {
         ...base,
         kind: "flow",
         parentId: null,
         defaultSceneId: node.defaultSceneId ?? null,
-        ...(node.color ? { color } : {}),
       };
-    }
     case "DeviceNode":
       return {
         ...base,
@@ -236,11 +244,10 @@ type TypeInput = { kind: string; of?: TypeInput | null; shapeId?: string | null 
 
 function toTypeInput(type: Type | null | undefined): TypeInput | null {
   if (!type) return null;
-  return typeof type === "string"
-    ? { kind: type }
-    : type.kind === "array"
-      ? { kind: "array", of: toTypeInput(type.of) }
-      : { kind: "shape", shapeId: type.shapeId };
+  if (typeof type === "string") return { kind: type };
+  if (type.kind === "array") return { kind: "array", of: toTypeInput(type.of) };
+  if (type.kind === "object") return { kind: "object" };
+  return { kind: "shape", shapeId: type.shapeId };
 }
 
 interface ApiNodeInput {
@@ -252,7 +259,7 @@ interface ApiNodeInput {
   color?: FlowColor | null;
   type: TypeInput | null;
   position: { x: number; y: number };
-  variables: { id: string; name: string; type: TypeInput | null }[];
+  variables: { id: string; name: string; rank?: string | null; type: TypeInput | null }[];
   perConnection: boolean;
 }
 
@@ -275,12 +282,17 @@ function toNodeInput(node: GraphNode): ApiNodeInput {
     name: node.name,
     parentId: node.parentId,
     defaultSceneId: node.kind === "flow" ? node.defaultSceneId : null,
-    ...(node.kind === "flow" ? { color: node.color ?? null } : {}),
+    color: node.color ?? null,
     type: node.kind === "source" || node.kind === "transformer" ? toTypeInput(node.type) : null,
     position: { x: node.position.x, y: node.position.y },
     variables:
       node.kind === "scene"
-        ? node.variables.map((v) => ({ id: v.id, name: v.name, type: toTypeInput(v.type) }))
+        ? node.variables.map((v) => ({
+            id: v.id,
+            name: v.name,
+            ...(v.rank ? { rank: v.rank } : {}),
+            type: toTypeInput(v.type),
+          }))
         : [],
     perConnection: node.kind === "device" ? node.perConnection : false,
   };
@@ -320,10 +332,13 @@ export interface StudioEditInput {
   parentId?: string | null;
   name?: string;
   flowId?: string;
+  variable?: { id: string; name: string; rank?: string | null; type?: TypeInput | null };
+  variableType?: TypeInput | null;
   sceneId?: string | null;
-  color?: FlowColor | null;
   variableId?: string;
-  variable?: { id: string; name: string; type?: TypeInput | null };
+  variableIds?: string[];
+  color?: FlowColor | null;
+  perConnection?: boolean;
   elementId?: string;
   rank?: string;
   element?: Record<string, unknown>;
@@ -389,8 +404,8 @@ export function toEditInput(edit: StudioEdit): StudioEditInput {
       return { ...input, edgeId: edit.edgeId };
     case "graph.setFlowDefaultScene":
       return { ...input, flowId: edit.flowId, sceneId: edit.sceneId };
-    case "graph.setFlowColor":
-      return { ...input, flowId: edit.flowId, color: edit.color };
+    case "graph.setNodeColor":
+      return { ...input, nodeId: edit.nodeId, color: edit.color };
     case "graph.addSceneVariable":
       return {
         ...input,
@@ -404,10 +419,25 @@ export function toEditInput(edit: StudioEdit): StudioEditInput {
         variableId: edit.variableId,
         name: edit.name,
       };
+    case "graph.setSceneVariableType":
+      return {
+        ...input,
+        sceneId: edit.sceneId,
+        variableId: edit.variableId,
+        variableType: toTypeInput(edit.variableType),
+      };
+    case "graph.reorderSceneVariables":
+      return {
+        ...input,
+        sceneId: edit.sceneId,
+        variableIds: [...edit.variableIds],
+      };
     case "graph.removeSceneVariable":
       return { ...input, sceneId: edit.sceneId, variableId: edit.variableId };
     case "graph.setDevicePairingCode":
       throw new Error("A pairing code is the server's to mint, not the editor's to send.");
+    case "graph.setDevicePerConnection":
+      return { ...input, nodeId: edit.nodeId, perConnection: edit.perConnection };
   }
 }
 

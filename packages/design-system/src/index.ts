@@ -2,8 +2,19 @@
 // and shared component primitives (Tailwind + Base UI + shadcn/ui). Every new
 // visual component added here needs a Storybook story in the same change —
 // see PRD.md §9 "Component convention".
+
 export { cn } from "./lib/utils";
 
+export { THEME_COLOR_METADATA } from "./themes/generated";
+export type { ThemeColorKey } from "./themes/generated";
+
+export {
+  Section,
+  SectionHelperText,
+  SectionRow,
+  type SectionProps,
+} from "./components/inspector-section";
+export { ThemeSwitcher, type ThemeSwitcherProps } from "./components/theme-switcher";
 export { Alert, AlertAction, AlertDescription, AlertTitle } from "./components/ui/alert";
 export {
   AlertDialog,
@@ -22,6 +33,17 @@ export {
   AvatarGroupCount,
   AvatarImage,
 } from "./components/ui/avatar";
+export { Badge, badgeVariants } from "./components/ui/badge";
+export { Button, buttonVariants } from "./components/ui/button";
+export {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "./components/ui/card";
 export {
   Combobox,
   ComboboxChip,
@@ -42,17 +64,6 @@ export {
   ComboboxValue,
   useComboboxAnchor,
 } from "./components/ui/combobox";
-export { Badge, badgeVariants } from "./components/ui/badge";
-export { Button, buttonVariants } from "./components/ui/button";
-export {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "./components/ui/card";
 export {
   ContextMenu,
   ContextMenuContent,
@@ -65,6 +76,7 @@ export {
   ContextMenuSubmenuTrigger,
   ContextMenuTrigger,
 } from "./components/ui/context-menu";
+export { CopyButton } from "./components/ui/copy-button";
 export {
   Dialog,
   DialogClose,
@@ -77,63 +89,25 @@ export {
 export {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  dropdownMenuItemVariants,
   DropdownMenuGroup,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  dropdownMenuItemVariants,
 } from "./components/ui/dropdown-menu";
+export { ImageCropper } from "./components/ui/image-input/ImageCropper";
+export type { ImageCropperProps } from "./components/ui/image-input/ImageCropper";
 export {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarRail,
-  SidebarSeparator,
-  SidebarTrigger,
-  useSidebar,
-  InsideSidebar,
-  SIDEBAR_BREAKPOINT,
-  SIDEBAR_TRANSITION_MS,
-} from "./components/ui/sidebar";
-export {
-  Tooltip,
-  TooltipArrow,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "./components/ui/tooltip";
-export {
-  Toast,
-  ToastAction,
-  ToastClose,
-  ToastContent,
-  ToastDescription,
-  ToastProvider,
-  ToastTitle,
-  ToastViewport,
-  createToastManager,
-  useToastManager,
-} from "./components/ui/toast";
-export { Separator } from "./components/ui/separator";
-export { Tabs, TabsContent, TabsList, TabsTrigger, tabsListVariants } from "./components/ui/tabs";
-export { Toggle, toggleVariants } from "./components/ui/toggle";
-export { ToggleGroup, ToggleGroupItem } from "./components/ui/toggle-group";
-export { Slider } from "./components/ui/slider";
-export type {
-  SidebarMenuButtonProps,
-  SidebarProps,
-  SidebarProviderProps,
-} from "./components/ui/sidebar";
+  ImageInput,
+  type ImageInputCrop,
+  type ImageInputError,
+  type ImageInputErrorCode,
+  type ImageInputOnUploadProps,
+  type ImageInputProps,
+  type ImageInputValidation,
+  type ImageInputValue,
+} from "./components/ui/image-input/ImageInput";
 export { Input } from "./components/ui/input";
 export {
   InputGroup,
@@ -143,11 +117,7 @@ export {
   InputGroupText,
   InputGroupTextarea,
 } from "./components/ui/input-group";
-export { Textarea } from "./components/ui/textarea";
 export { Label } from "./components/ui/label";
-export { QrCode } from "./components/ui/qr-code";
-export { ThemeSwitcher } from "./components/theme-switcher";
-export type { ThemeSwitcherProps } from "./components/theme-switcher";
 export {
   Popover,
   PopoverContent,
@@ -169,10 +139,15 @@ export {
   type PropertyInputValue,
   type VariableReference,
 } from "./components/ui/property-input/property-input";
-export { ThemeProvider, useTheme } from "./theme/theme-provider";
-export type { ThemeContextValue, ThemeProviderProps } from "./theme/theme-provider";
-export { Swatch } from "./components/ui/swatch";
-export { Switch } from "./components/ui/switch";
+export {
+  VARIABLE_TYPE_ICONS,
+  typeFromVariableKind,
+  variableTypeIcon,
+  variableTypeKind,
+  variableTypeLabel,
+  type VariableTypeIconKind,
+} from "./components/ui/property-input/variable-type-icons";
+export { QrCode } from "./components/ui/qr-code";
 export {
   Select,
   SelectContent,
@@ -180,26 +155,61 @@ export {
   SelectTrigger,
   SelectValue,
 } from "./components/ui/select";
+export { Separator } from "./components/ui/separator";
 export {
-  VARIABLE_TYPE_ICONS,
-  variableTypeIcon,
-} from "./components/ui/property-input/variable-type-icons";
-
+  InsideSidebar,
+  SIDEBAR_BREAKPOINT,
+  SIDEBAR_TRANSITION_MS,
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarSeparator,
+  SidebarTrigger,
+  useSidebar,
+} from "./components/ui/sidebar";
+export type {
+  SidebarMenuButtonProps,
+  SidebarProps,
+  SidebarProviderProps,
+} from "./components/ui/sidebar";
+export { Slider } from "./components/ui/slider";
+export { Swatch } from "./components/ui/swatch";
+export { Switch } from "./components/ui/switch";
+export { Tabs, TabsContent, TabsList, TabsTrigger, tabsListVariants } from "./components/ui/tabs";
+export { Textarea } from "./components/ui/textarea";
 export {
-  ImageInput,
-  type ImageInputError,
-  type ImageInputErrorCode,
-  type ImageInputOnUploadProps,
-  type ImageInputProps,
-  type ImageInputValidation,
-  type ImageInputValue,
-  type ImageInputCrop,
-} from "./components/ui/image-input/ImageInput";
-export { ImageCropper } from "./components/ui/image-input/ImageCropper";
-export type { ImageCropperProps } from "./components/ui/image-input/ImageCropper";
-
-export { THEME_COLOR_METADATA } from "./themes/generated";
-export type { ThemeColorKey } from "./themes/generated";
+  Toast,
+  ToastAction,
+  ToastClose,
+  ToastContent,
+  ToastDescription,
+  ToastProvider,
+  ToastTitle,
+  ToastViewport,
+  createToastManager,
+  useToastManager,
+} from "./components/ui/toast";
+export { Toggle, toggleVariants } from "./components/ui/toggle";
+export { ToggleGroup, ToggleGroupItem } from "./components/ui/toggle-group";
+export {
+  Tooltip,
+  TooltipArrow,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "./components/ui/tooltip";
+export { ThemeProvider, useTheme } from "./theme/theme-provider";
+export type { ThemeContextValue, ThemeProviderProps } from "./theme/theme-provider";
 
 export { FontSizeIcon } from "./icons/FontSizeIcon";
 export { GapHorizontalIcon } from "./icons/GapHorizontalIcon";
@@ -225,7 +235,7 @@ export { RadiusBottomRightIcon } from "./icons/RadiusBottomRightIcon";
 export { RadiusIcon } from "./icons/RadiusIcon";
 export { RadiusTopLeftIcon } from "./icons/RadiusTopLeftIcon";
 export { RadiusTopRightIcon } from "./icons/RadiusTopRightIcon";
-export { TextAlignVerticalTopIcon } from "./icons/TextAlignVerticalTopIcon";
-export { TextAlignVerticalCenterIcon } from "./icons/TextAlignVerticalCenterIcon";
 export { TextAlignVerticalBottomIcon } from "./icons/TextAlignVerticalBottomIcon";
+export { TextAlignVerticalCenterIcon } from "./icons/TextAlignVerticalCenterIcon";
+export { TextAlignVerticalTopIcon } from "./icons/TextAlignVerticalTopIcon";
 export * from "lucide-react";

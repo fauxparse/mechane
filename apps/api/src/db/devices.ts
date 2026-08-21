@@ -99,11 +99,9 @@ async function insertDevice(tx: Tx, showId: string, node: DeviceNode): Promise<S
  * identity outliving any one graph state:
  *
  *   - A Device the table hasn't seen gets a row and a freshly minted code.
- *   - A Device it has seen keeps the code and `perConnection` it already
- *     had. `perConnection` is fixed at creation, so an incoming node that
- *     disagrees is not obeyed — the stored value wins and is what comes
- *     back, rather than the write silently rewriting Event attribution for
- *     every edge already pointing at it.
+ *   - A Device it has seen keeps the code it already had and takes
+ *     `perConnection` from the incoming node, so an inspector toggle
+ *     survives a save. The pairing code is still the server's.
  *   - A Device that had been retired is un-retired, because it is
  *     referenced again. That is what makes undo of a delete restore the
  *     *same* code rather than mint a new one.
@@ -138,8 +136,18 @@ export async function syncDevices(
   const returning = await Promise.all(
     deviceNodes.map(async (node) => {
       const known = stored.get(node.id);
-      if (known) return [node.id, known] as const;
-      return [node.id, await insertDevice(tx, showId, node)] as const;
+      if (!known) return [node.id, await insertDevice(tx, showId, node)] as const;
+      if (known.perConnection === node.perConnection) {
+        return [node.id, known] as const;
+      }
+      await tx
+        .update(devices)
+        .set({ perConnection: node.perConnection, updatedAt: new Date() })
+        .where(and(eq(devices.showId, showId), eq(devices.id, node.id)));
+      return [
+        node.id,
+        { pairingCode: known.pairingCode, perConnection: node.perConnection },
+      ] as const;
     }),
   );
 

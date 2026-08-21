@@ -23,7 +23,7 @@ type Run {
 
 """The signed-in user's design-system preference (PRD.md §7)."""
 type UserSettings {
-  """Display mode: "light" or "dark"."""
+  """Display mode: light or dark."""
   themeMode: String!
 
   """Which built-in theme is active."""
@@ -44,6 +44,7 @@ A named port on a Scene. A wiring edge targets one of these, not the Scene as a 
 type SceneVariable {
   id: ID!
   name: String!
+  rank: String
   type: Type
   suggestedDimensions: SuggestedImageDimensions
 }
@@ -162,6 +163,11 @@ interface GraphNode {
   """The Flow containing this node, or null if it's Show-level."""
   parentId: ID
   position: Position!
+
+  """
+  The node editor colorway; absent values are neutral or inherit their Flow.
+  """
+  color: String
 }
 
 type SceneNode implements GraphNode {
@@ -169,6 +175,7 @@ type SceneNode implements GraphNode {
   name: String!
   parentId: ID
   position: Position!
+  color: String
 
   """The Variables wiring edges can target."""
   variables: [SceneVariable!]!
@@ -178,13 +185,11 @@ type FlowNode implements GraphNode {
   id: ID!
   name: String!
   parentId: ID
+  color: String
   position: Position!
 
   """The Flow's design-time entry Scene, if one is set."""
   defaultSceneId: ID
-
-  """The Flow editor colorway; absent values are exposed as neutral."""
-  color: String!
 }
 
 type SourceNode implements GraphNode {
@@ -192,6 +197,7 @@ type SourceNode implements GraphNode {
   name: String!
   parentId: ID
   position: Position!
+  color: String
   type: Type!
 
   """Sparse default overrides for Source fields, keyed by stable field ids."""
@@ -203,6 +209,7 @@ type TransformerNode implements GraphNode {
   name: String!
   parentId: ID
   position: Position!
+  color: String
   type: Type
 }
 
@@ -211,6 +218,7 @@ type DeviceNode implements GraphNode {
   name: String!
   parentId: ID
   position: Position!
+  color: String
 
   """Whether each connection is its own logical instance."""
   perConnection: Boolean!
@@ -280,7 +288,7 @@ A Show's graph in one state. Draft and published are independently readable (ADR
 type ShowGraph {
   showId: ID!
 
-  """Either "draft" or "published"."""
+  """Either draft or published."""
   state: String!
   nodes: [GraphNode!]!
   edges: [GraphEdge!]!
@@ -454,6 +462,7 @@ input SuggestedImageDimensionsInput {
 input SceneVariableInput {
   id: ID!
   name: String!
+  rank: String
   type: TypeInput
   suggestedDimensions: SuggestedImageDimensionsInput
 }
@@ -471,9 +480,8 @@ input GraphNodeInput {
 
   """
   Device nodes only: whether each connection is its own instance.
-  Defaults to false, and is only read when the Device is new — it is
-  fixed at creation, so a later change is ignored rather than obeyed.
-  There is no pairingCode input: codes are minted server-side.
+  Defaults to false for a new Device. There is no pairingCode input:
+  codes are minted server-side.
   """
   perConnection: Boolean
 }
@@ -511,30 +519,35 @@ type GraphEdit {
   edge: GraphEdge
   position: Position
   parentId: ID
-  name: String
-  flowId: ID
+
+  """The Show node editor colorway for graph.setNodeColor."""
+  color: String
   sceneId: ID
   variableId: ID
+  variableIds: [ID!]
   variable: SceneVariable
 
-  """The Flow editor colorway for graph.setFlowColor."""
-  color: String
+  """The Variable's Type, for graph.setSceneVariableType."""
+  variableType: Type
 
   """
   Devices only: the code the server minted for a Device this batch created (#45).
   """
   pairingCode: String
+
+  """
+  Devices only: whether each connection is its own instance, for graph.setDevicePerConnection.
+  """
+  perConnection: Boolean
 }
 
 """
-One edit to a Show's graph (issue #103) — the unit the editor produces
-and the server applies, in place of a whole-graph replacement.
-
 `type` is the command that made it: "graph.addNode", "graph.removeNode",
 "graph.moveNode", "graph.renameNode", "graph.reparentNode",
 "graph.addEdge", "graph.removeEdge", "graph.setFlowDefaultScene",
-"graph.setFlowColor", "graph.addSceneVariable",
-"graph.renameSceneVariable", or "graph.removeSceneVariable".
+"graph.setNodeColor", "graph.addSceneVariable",
+"graph.renameSceneVariable", "graph.setSceneVariableType", "graph.reorderSceneVariables",
+"graph.removeSceneVariable", or "graph.setDevicePerConnection".
 
 Every other field is optional because GraphQL has no input unions:
 `type` decides which of them are read, and an edit missing one its type
@@ -550,18 +563,13 @@ input GraphEditInput {
   """The whole node, for graph.addNode — including a restored one."""
   node: GraphNodeInput
   edgeId: ID
-  edge: GraphEdgeInput
 
-  """
-  Where a moved or reparented node lands. Flow-local coordinates when it has a parent.
-  """
+  """The Show node editor colorway, for graph.setNodeColor."""
+  color: String
   position: PositionInput
 
   """The Flow a node is being placed in, or null for Show level."""
   parentId: ID
-
-  """The Flow editor colorway, for graph.setFlowColor."""
-  color: String
 
   """The new name, for a rename."""
   name: String
@@ -572,7 +580,16 @@ input GraphEditInput {
   """
   sceneId: ID
   variableId: ID
+  variableIds: [ID!]
   variable: SceneVariableInput
+
+  """The Variable's Type, for graph.setSceneVariableType. Null clears it."""
+  variableType: TypeInput
+
+  """
+  Devices only: whether each connection is its own instance, for graph.setDevicePerConnection.
+  """
+  perConnection: Boolean
 }
 
 """
@@ -593,12 +610,21 @@ input ShowEditInput {
   flowId: ID
   sceneId: ID
   variableId: ID
+  variableIds: [ID!]
   variable: SceneVariableInput
+
+  """The Variable's Type, for graph.setSceneVariableType. Null clears it."""
+  variableType: TypeInput
   elementId: ID
   rank: String
   element: JSON
   properties: JSON
   unsetProperties: [String!]
+
+  """
+  Devices only: whether each connection is its own instance, for graph.setDevicePerConnection.
+  """
+  perConnection: Boolean
 }
 
 type AppliedShowEdits {

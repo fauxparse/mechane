@@ -127,7 +127,7 @@ describe("graphToFlow", () => {
       ],
       edges: [],
     });
-    const heights = new Map(nodes.map((n) => [n.id, (n.style as { height: number }).height]));
+    const heights = new Map(nodes.map((n) => [n.id, n.initialHeight]));
     expect(heights.get("scene_bare")).toBe(NODE_HEIGHT);
     expect(heights.get("scene_wired")).toBeGreaterThan(NODE_HEIGHT + 2 * VARIABLE_ROW_HEIGHT - 1);
   });
@@ -227,27 +227,34 @@ describe("graphToFlow", () => {
     expect(types.get("transformer_1")).toBe(PLACEHOLDER_NODE_TYPE);
   });
 
-  it("assigns each contained node its parent Flow colorway", () => {
+  it("uses each node color, inheriting its Flow color when unset", () => {
     const { nodes } = graphToFlow({
       nodes: [
         node({ id: "flow_1", kind: "flow", color: "aqua" }),
         node({ id: "scene_1", kind: "scene", parentId: "flow_1" }),
+        node({ id: "scene_2", kind: "scene", parentId: "flow_1", color: "red" }),
         node({ id: "device_1", kind: "device" }),
       ],
       edges: [],
     });
     expect(nodes.find((node) => node.id === "flow_1")?.data.color).toBe("aqua");
     expect(nodes.find((node) => node.id === "scene_1")?.data.color).toBe("aqua");
+    expect(nodes.find((node) => node.id === "scene_2")?.data.color).toBe("red");
     expect(nodes.find((node) => node.id === "device_1")?.data.color).toBe("neutral");
   });
-  // Sizes have to be known before the first measurement, or the `fitView`
-  // that runs on first paint leaves nodes off-screen.
-  it("sizes every node up front", () => {
+  // The initial estimate is available for fitView, but ordinary nodes must
+  // remain intrinsically sized after React Flow measures their DOM wrapper.
+  it("seeds dimensions without pinning content-driven node height", () => {
     const { nodes } = graphToFlow({
       nodes: [node({ id: "device_1", kind: "device" })],
       edges: [],
     });
-    expect(nodes[0]?.style).toEqual({ width: NODE_WIDTH, height: NODE_HEIGHT });
+    expect(nodes[0]).toMatchObject({
+      initialWidth: NODE_WIDTH,
+      initialHeight: NODE_HEIGHT,
+      style: { width: NODE_WIDTH, minHeight: NODE_HEIGHT },
+    });
+    expect(nodes[0]?.style).not.toHaveProperty("height");
   });
 
   // A Device with nothing driving it displays nothing at performance time,
@@ -330,6 +337,42 @@ describe("graphToFlow", () => {
       );
     });
 
+    it("keeps manual Flow dimensions while expanding for moved children", () => {
+      const manual = { width: 1000, height: 900 };
+      const { nodes } = graphToFlow(
+        {
+          nodes: [
+            node({ id: "flow_1", kind: "flow" }),
+            node({ id: "scene_1", kind: "scene", parentId: "flow_1", position: { x: 40, y: 80 } }),
+          ],
+          edges: [],
+        },
+        { flowDimensions: new Map([["flow_1", manual]]) },
+      );
+
+      expect(nodes.find((n) => n.id === "flow_1")?.style).toEqual(manual);
+
+      const moved = graphToFlow(
+        {
+          nodes: [
+            node({ id: "flow_1", kind: "flow" }),
+            node({
+              id: "scene_1",
+              kind: "scene",
+              parentId: "flow_1",
+              position: { x: 1200, y: 1000 },
+            }),
+          ],
+          edges: [],
+        },
+        { flowDimensions: new Map([["flow_1", manual]]) },
+      );
+
+      const expanded = moved.nodes.find((n) => n.id === "flow_1")?.style;
+      expect(expanded?.width).toBeGreaterThan(manual.width);
+      expect(expanded?.height).toBeGreaterThan(manual.height);
+    });
+
     it("refuses to render a kind it doesn't know", () => {
       expect(() =>
         graphToFlow({ nodes: [node({ id: "x_1", kind: "sprocket" })], edges: [] }),
@@ -348,6 +391,62 @@ describe("graphToFlow", () => {
         source: "scene_1",
         target: "scene_2",
         data: { kind: "navigate", targetVariableId: null },
+      });
+    });
+
+    it("maps a virtual Device source path to its handle", () => {
+      const { edges } = graphToFlow({
+        nodes: [
+          node({ id: "device_1", kind: "device", pairingCode: "V9BEZ" }),
+          node({
+            id: "scene_1",
+            kind: "scene",
+            variables: [{ id: "variable_1", name: "image" }],
+          }),
+        ],
+        edges: [
+          edge({
+            id: "e_qr",
+            kind: "wiring",
+            sourceId: "device_1",
+            targetId: "scene_1",
+            sourcePath: ["qr-code"],
+            targetPath: ["variable_1"],
+            targetVariableId: "variable_1",
+          }),
+        ],
+      });
+
+      expect(edges[0]).toMatchObject({
+        sourceHandle: "qr-code",
+        targetHandle: "variable_1",
+      });
+    });
+
+    it("redirects every edge targeting a hidden child to the Flow handle", () => {
+      const { edges } = graphToFlow(
+        {
+          nodes: [
+            node({ id: "flow_1", kind: "flow" }),
+            node({ id: "scene_1", kind: "scene", parentId: "flow_1" }),
+            node({ id: "source_1", kind: "source" }),
+          ],
+          edges: [
+            edge({
+              id: "navigate_hidden",
+              kind: "navigate",
+              sourceId: "source_1",
+              targetId: "scene_1",
+            }),
+          ],
+        },
+        { collapsedFlowIds: new Set(["flow_1"]) },
+      );
+
+      expect(edges[0]).toMatchObject({
+        source: "source_1",
+        target: "flow_1",
+        targetHandle: INPUT_HANDLE,
       });
     });
 

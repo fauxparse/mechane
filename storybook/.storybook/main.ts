@@ -1,5 +1,13 @@
+import { fileURLToPath } from "node:url";
+
 import tailwindcss from "@tailwindcss/vite";
 import type { StorybookConfig } from "@storybook/react-vite";
+
+const studioSrc = fileURLToPath(new URL("../../apps/studio/src", import.meta.url));
+const studioShowSrc = fileURLToPath(new URL("../../apps/studio/src/editors/show", import.meta.url));
+const studioCanvasSrc = fileURLToPath(
+  new URL("../../apps/studio/src/editors/canvas", import.meta.url),
+);
 
 // Repository-level component workbench for Studio and shared workspace
 // packages. Tailwind needs to see their classes through this Storybook's
@@ -15,6 +23,16 @@ const config: StorybookConfig = {
     options: {},
   },
   async viteFinal(viteConfig) {
+    viteConfig.resolve = {
+      ...viteConfig.resolve,
+      alias: {
+        ...viteConfig.resolve?.alias,
+        "@": studioSrc,
+        "@studio": studioSrc,
+        "@show-editor": studioShowSrc,
+        "@canvas-editor": studioCanvasSrc,
+      },
+    };
     const rollupOptions = viteConfig.build?.rollupOptions;
     const existingOnWarn = rollupOptions?.onwarn;
 

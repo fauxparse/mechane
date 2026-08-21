@@ -9,18 +9,19 @@
 // `card` chrome, no per-kind hue, because the design system's tokens are
 // strictly semantic and hue is reserved for *state* (selection, a dangling
 // input) rather than type — and PRD §7 wants the chrome recessive.
-import { generateId, NODE_ID_ENTITIES } from "@mechane/domain";
-import type { GraphNode, NodeKind, Position } from "@mechane/domain";
+import type { LucideIcon } from "@mechane/design-system";
 import {
   Bot,
   Box,
   Projector,
   Smartphone,
   TvMinimal,
-  Workflow,
   variableTypeIcon,
+  Workflow,
 } from "@mechane/design-system";
-import type { LucideIcon } from "@mechane/design-system";
+import type { GraphNode, NodeKind, Position, ShapeValue, Type } from "@mechane/domain";
+import { generateId, NODE_ID_ENTITIES } from "@mechane/domain";
+import { ShowNodeData } from "./graph-to-flow";
 
 export interface NodeKindMeta {
   kind: NodeKind;
@@ -77,8 +78,7 @@ export const CREATABLE_KINDS: NodeKind[] = ["scene", "flow", "source", "transfor
 /**
  * What a create menu or palette actually offers. Not the same list as the
  * node kinds: a Device comes in two flavours the director chooses between
- * up front (#45), because `perConnection` is fixed at creation and a
- * dropdown inside the inspector would imply it can be changed later.
+ * up front (#45), so the common cases don't start as the wrong kind.
  *
  * "Audience" rather than "Per-connection Device" — the mechanism is the
  * honest name for the field, but the use case is the honest name for the
@@ -132,7 +132,7 @@ export function nodeIcon(
   hints: { perConnection?: boolean; sourceType?: string } = {},
 ) {
   if (kind === "device" && hints.perConnection) return Smartphone;
-  if (kind === "source") return variableTypeIcon(hints.sourceType);
+  if (kind === "source") return variableTypeIcon(hints.sourceType as ShapeValue["kind"]);
   return NODE_KIND_META[kind].icon;
 }
 
@@ -148,7 +148,7 @@ export function createNode(
   kind: NodeKind,
   position: Position,
   parentId: string | null = null,
-  options: { perConnection?: boolean; defaultName?: string } = {},
+  options: { perConnection?: boolean; defaultName?: string; sourceType?: Type } = {},
 ): GraphNode {
   const base = {
     id: generateId(NODE_ID_ENTITIES[kind]),
@@ -164,8 +164,6 @@ export function createNode(
       // the default (#44).
       return { ...base, kind: "flow", parentId: null, defaultSceneId: null };
     case "device":
-      // `perConnection` is settled here and never again — it decides Event
-      // attribution, so the inspector shows it rather than edits it (#45).
       // The code is the server's to mint, so a new Device has none yet.
       return {
         ...base,
@@ -175,8 +173,19 @@ export function createNode(
         pairingCode: null,
       };
     case "source":
-      return { ...base, kind: "source", parentId, type: "text" };
+      return { ...base, kind: "source", parentId, type: options.sourceType ?? "text" };
     case "transformer":
       return { ...base, kind: "transformer", parentId };
   }
 }
+
+export const typeLabel = (type: ShowNodeData["type"]): string | null => {
+  if (!type) return null;
+  return typeof type === "string"
+    ? type
+    : type.kind === "array"
+      ? `array<${typeLabel(type.of) ?? "?"}>`
+      : type.kind === "object"
+        ? "object"
+        : `Shape:${type.shapeId}`;
+};

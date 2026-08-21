@@ -17,7 +17,7 @@
 // uses on a candidate edge. That keeps persisted graphs and drag validation
 // on the same seam.
 
-import { assertValidShowGraph, findNode, InvalidShowGraphError } from "./graph";
+import { assertValidShowGraph, deviceSourceType, findNode, InvalidShowGraphError } from "./graph";
 import { resolveShapeFieldMapping } from "./shapes";
 import type { EdgeKind, GraphEdge, GraphNode, ShowGraph } from "./graph";
 
@@ -25,10 +25,15 @@ import type { EdgeKind, GraphEdge, GraphNode, ShowGraph } from "./graph";
 export interface ConnectionRequest {
   sourceId: string;
   targetId: string;
+  /** The source handle, including a Device's virtual value handle. */
+  sourceHandle?: string | null;
+  /** The target handle React Flow reports for the drop. */
+  targetHandle?: string | null;
   /**
    * The Scene Variable a wiring edge would feed. Wiring always lands on a
-   * Variable (#20), so a drag that stops at the Scene's body rather than one
-   * of its Variable rows has nowhere to land, and says so.
+   * Variable (#20), so a drag that stops at the Scene body rather than one of
+   * its Variable rows has nowhere to land, and says so. The node-level input
+   * handle is the exception: it requests a new Variable.
    */
   targetVariableId?: string | null;
 }
@@ -42,12 +47,18 @@ export interface ConnectionRequest {
  * between them.
  */
 export function connectionKindFor(graph: ShowGraph, request: ConnectionRequest): EdgeKind | null {
+  if (deviceSourceType(request.targetHandle) !== null) return null;
   const producer = findNode(graph, request.sourceId);
   const consumer = findNode(graph, request.targetId);
   if (!producer || !consumer) return null;
+  const producesValue =
+    producer.kind === "source" ||
+    producer.kind === "transformer" ||
+    (producer.kind === "device" && deviceSourceType(request.sourceHandle) !== null);
   if (consumer.kind === "device") return "device";
+  if (consumer.kind === "source") return producesValue ? "wiring" : null;
   if (consumer.kind !== "scene" && consumer.kind !== "transformer") return null;
-  if (producer.kind === "source" || producer.kind === "transformer") return "wiring";
+  if (producesValue) return "wiring";
   if (producer.kind === "scene") return "navigate";
   return null;
 }
@@ -60,22 +71,30 @@ export function connectionEdge(
 ): GraphEdge | null {
   const kind = connectionKindFor(graph, request);
   if (kind === null) return null;
-  const base = { id, sourceId: request.sourceId, targetId: request.targetId, sourcePath: [] };
+  const producer = findNode(graph, request.sourceId);
+  const virtualSourceType = deviceSourceType(request.sourceHandle);
+  const base = {
+    id,
+    sourceId: request.sourceId,
+    targetId: request.targetId,
+    sourcePath: virtualSourceType && request.sourceHandle ? [request.sourceHandle] : [],
+  };
   switch (kind) {
     case "wiring": {
       const consumer = findNode(graph, request.targetId);
-      if (consumer?.kind === "transformer") {
+      if (consumer?.kind === "transformer" || consumer?.kind === "source") {
         return { ...base, kind: "wiring", targetPath: [] };
       }
       const variableId = request.targetVariableId;
       if (!variableId) return null;
-      const producer = findNode(graph, request.sourceId);
       const target =
         consumer?.kind === "scene"
           ? consumer.variables.find((variable) => variable.id === variableId)
           : undefined;
       const producerType =
-        producer?.kind === "source" || producer?.kind === "transformer" ? producer.type : undefined;
+        producer?.kind === "source" || producer?.kind === "transformer"
+          ? producer.type
+          : virtualSourceType;
       const fieldMapping =
         producerType && target?.type
           ? resolveShapeFieldMapping(producerType, target.type, graph.shapes ?? [])
@@ -100,6 +119,18 @@ export function connectionEdge(
 /** Ids that can't collide with a real edge, since a candidate is never stored. */
 const CANDIDATE_EDGE_ID = "edge_candidate";
 
+/** React Flow's node-level input handle creates a new Scene Variable. */
+const SCENE_INPUT_HANDLE = "in";
+const CANDIDATE_VARIABLE_ID = "variable_candidate";
+
+function implicitVariableType(graph: ShowGraph, request: ConnectionRequest) {
+  const producer = findNode(graph, request.sourceId);
+  const virtualSourceType = deviceSourceType(request.sourceHandle);
+  return producer?.kind === "source" || producer?.kind === "transformer"
+    ? producer.type
+    : virtualSourceType;
+}
+
 /**
  * Why this connection can't be made, or null if it can — phrased for a
  * person, since it reaches the palette and the inspector rather than a log.
@@ -119,31 +150,55 @@ export function connectionError(graph: ShowGraph, request: ConnectionRequest): s
   if (kind === null) {
     return `A ${producer.kind} can't connect to a ${consumer.kind}.`;
   }
+
+  let candidateGraph = graph;
+  let candidateRequest = request;
   if (
     kind === "wiring" &&
-    findNode(graph, request.targetId)?.kind === "scene" &&
+    consumer.kind === "scene" &&
+    request.targetHandle === SCENE_INPUT_HANDLE &&
     !request.targetVariableId
   ) {
+    const type = implicitVariableType(graph, request);
+    if (!type) return "The source must have a Type to create a Variable.";
+    let variableId = CANDIDATE_VARIABLE_ID;
+    while (consumer.variables.some((variable) => variable.id === variableId)) {
+      variableId = `${variableId}_`;
+    }
+    candidateGraph = {
+      ...graph,
+      nodes: graph.nodes.map((node) =>
+        node.id === consumer.id && node.kind === "scene"
+          ? { ...node, variables: [...node.variables, { id: variableId, name: "variable", type }] }
+          : node,
+      ),
+    };
+    candidateRequest = { ...request, targetVariableId: variableId };
+  }
+
+  if (kind === "wiring" && consumer.kind === "scene" && !candidateRequest.targetVariableId) {
     return "Drop onto one of the Scene's Variables.";
   }
 
-  const candidate = connectionEdge(graph, request, CANDIDATE_EDGE_ID);
+  const candidate = connectionEdge(candidateGraph, candidateRequest, CANDIDATE_EDGE_ID);
   if (!candidate) return `A ${producer.kind} can't connect to a ${consumer.kind}.`;
   try {
-    const producer = findNode(graph, request.sourceId);
-    const consumer = findNode(graph, request.targetId);
     const nodes =
-      producer?.parentId !== null &&
-      producer?.parentId !== undefined &&
-      consumer?.kind === "transformer" &&
+      producer.parentId !== null &&
+      producer.parentId !== undefined &&
+      consumer.kind === "transformer" &&
       consumer.parentId === null
-        ? graph.nodes.map((node) =>
+        ? candidateGraph.nodes.map((node) =>
             node.id === consumer.id
               ? ({ ...node, parentId: producer.parentId } as GraphNode)
               : node,
           )
-        : graph.nodes;
-    assertValidShowGraph({ shapes: graph.shapes, nodes, edges: [...graph.edges, candidate] });
+        : candidateGraph.nodes;
+    assertValidShowGraph({
+      shapes: candidateGraph.shapes,
+      nodes,
+      edges: [...candidateGraph.edges, candidate],
+    });
   } catch (error) {
     if (error instanceof InvalidShowGraphError) return humanise(error, kind);
     throw error;
@@ -188,22 +243,20 @@ function humanise(error: InvalidShowGraphError, kind: EdgeKind): string {
   }
   return reason.replace(/^Invalid Show graph: /, "");
 }
-
-/** Everything a drag from one node could legally land on. */
+/**
+ * Everything a drag from one node could legally land on.
+ */
 export interface ConnectionTargets {
   /** Nodes with at least one valid landing point. */
   nodeIds: Set<string>;
   /** Scene Variables that would accept the drag, across all Scenes. */
   variableIds: Set<string>;
 }
-
-/**
- * What a drag from `sourceId` may connect to, for #35's affordance: valid
- * targets get a dashed outline, everything else dims to 25%. Computed for
- * the whole graph at drag start rather than per hover, so the canvas can
- * answer "why can't I drop here" by showing where you can.
- */
-export function connectionTargets(graph: ShowGraph, sourceId: string): ConnectionTargets {
+export function connectionTargets(
+  graph: ShowGraph,
+  sourceId: string,
+  sourceHandle?: string | null,
+): ConnectionTargets {
   const nodeIds = new Set<string>();
   const variableIds = new Set<string>();
   for (const node of graph.nodes) {
@@ -212,19 +265,37 @@ export function connectionTargets(graph: ShowGraph, sourceId: string): Connectio
       // Only a wiring drag lands on a Variable row. A Navigate drag onto one
       // still connects the two Scenes (the row is part of the Scene), but the
       // row itself isn't the target, so it doesn't get the affordance.
-      const rowsAreTargets = connectionKindFor(graph, { sourceId, targetId: node.id }) === "wiring";
+      const rowsAreTargets =
+        connectionKindFor(graph, { sourceId, sourceHandle, targetId: node.id }) === "wiring";
       for (const variable of rowsAreTargets ? node.variables : []) {
-        if (canConnect(graph, { sourceId, targetId: node.id, targetVariableId: variable.id })) {
+        if (
+          canConnect(graph, {
+            sourceId,
+            sourceHandle,
+            targetId: node.id,
+            targetVariableId: variable.id,
+          })
+        ) {
           variableIds.add(variable.id);
           anyVariable = true;
         }
       }
-      // A Navigate edge lands on the Scene itself rather than on a Variable,
-      // so a Scene can be targetable with no targetable Variables.
-      if (anyVariable || canConnect(graph, { sourceId, targetId: node.id })) nodeIds.add(node.id);
+      // A wiring drag may also land on the Scene's node-level input handle,
+      // which creates a Variable. Navigate edges still land on the Scene body.
+      const sceneTargetable = canConnect(
+        graph,
+        rowsAreTargets
+          ? { sourceId, sourceHandle, targetId: node.id, targetHandle: SCENE_INPUT_HANDLE }
+          : { sourceId, sourceHandle, targetId: node.id },
+      );
+      if (anyVariable || sceneTargetable) {
+        nodeIds.add(node.id);
+      }
       continue;
     }
-    if (canConnect(graph, { sourceId, targetId: node.id })) nodeIds.add(node.id);
+    if (canConnect(graph, { sourceId, sourceHandle, targetId: node.id })) {
+      nodeIds.add(node.id);
+    }
   }
   return { nodeIds, variableIds };
 }

@@ -10,18 +10,17 @@ import type { ThemeMode, ThemePalette } from "@mechane/domain";
 import { DEFAULT_THEME_MODE, DEFAULT_THEME_PALETTE } from "@mechane/domain";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
-import { useUpdateUserSettings, useUserSettings } from "../../api/settings";
+import { useUserSettings } from "../../api/settings";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsRoute,
 });
 
 function SettingsRoute() {
-  const settings = useUserSettings();
-  const updateSettings = useUpdateUserSettings();
+  const { settings, updateSettings } = useUserSettings();
 
-  const mode = (settings.data?.themeMode ?? DEFAULT_THEME_MODE) as ThemeMode;
-  const palette = (settings.data?.themePalette ?? DEFAULT_THEME_PALETTE) as ThemePalette;
+  const mode = (settings?.themeMode ?? DEFAULT_THEME_MODE) as ThemeMode;
+  const palette = (settings?.themePalette ?? DEFAULT_THEME_PALETTE) as ThemePalette;
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 p-6">
@@ -35,8 +34,8 @@ function SettingsRoute() {
         <ThemeSwitcher
           mode={mode}
           palette={palette}
-          onModeChange={(nextMode) => updateSettings.mutate({ themeMode: nextMode })}
-          onPaletteChange={(nextPalette) => updateSettings.mutate({ themePalette: nextPalette })}
+          onModeChange={(nextMode) => updateSettings({ themeMode: nextMode })}
+          onPaletteChange={(nextPalette) => updateSettings({ themePalette: nextPalette })}
         />
       </section>
     </main>

@@ -10,6 +10,8 @@
 import { createContext, useContext } from "react";
 import type { ConnectionTargets } from "@mechane/domain";
 
+import type { FlowDimensions } from "./graph-to-flow";
+
 export interface NodeInteraction {
   /** The node whose name is being edited inline, if any. */
   renaming: string | null;
@@ -27,6 +29,8 @@ export interface NodeInteraction {
   targets: ConnectionTargets | null;
   /** Toggles a Flow's local collapsed view state; not an edit command. */
   toggleCollapse(flowId: string): void;
+  /** Updates a Flow's local view dimensions after mouse resizing. */
+  resizeFlow(flowId: string, dimensions: FlowDimensions): void;
 }
 
 const IDLE: NodeInteraction = {
@@ -38,6 +42,7 @@ const IDLE: NodeInteraction = {
   connecting: false,
   targets: null,
   toggleCollapse: () => {},
+  resizeFlow: () => {},
 };
 
 const NodeInteractionContext = createContext<NodeInteraction>(IDLE);

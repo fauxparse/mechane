@@ -1,6 +1,5 @@
-import { PropertyInput } from "@mechane/design-system";
+import { PropertyInput, Section, SectionRow } from "@mechane/design-system";
 
-import { Section, SectionRow } from "./Section";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { isVariableInput } from "./canvas-inspector-values";
 

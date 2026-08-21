@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@boringnode/pluralize": "^0.1.0",
     "@dnd-kit/collision": "0.5.0",
     "@dnd-kit/dom": "0.5.0",
     "@dnd-kit/react": "0.5.0",

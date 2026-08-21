@@ -1,13 +1,13 @@
-import { assertValidShowGraph, isId } from "@mechane/domain";
 import type { ShowGraph } from "@mechane/domain";
+import { assertValidShowGraph, isId } from "@mechane/domain";
 import { describe, expect, it } from "vitest";
 
 import {
-  createNode,
-  nodeIcon,
-  NODE_KIND_META,
   CREATABLE_KINDS,
   CREATABLE_NODES,
+  createNode,
+  NODE_KIND_META,
+  nodeIcon,
 } from "./node-kinds";
 
 describe("createNode", () => {
@@ -57,9 +57,7 @@ describe("createNode", () => {
     expect(() => assertValidShowGraph(graph)).not.toThrow();
   });
 
-  // #45: perConnection is fixed at creation, so this is the only place it
-  // is ever set — and a Device that isn't explicitly per-connection is the
-  // shared kind, never the other way round.
+  // A Device that isn't explicitly per-connection is the shared kind.
   it("makes a shared Device unless asked for a per-connection one", () => {
     const shared = createNode("device", { x: 0, y: 0 });
     expect(shared.kind === "device" && shared.perConnection).toBe(false);
@@ -81,8 +79,7 @@ describe("createNode", () => {
 
 describe("CREATABLE_NODES", () => {
   // The menu offers one more entry than there are node kinds: a Device
-  // comes in two flavours chosen up front, because the choice can't be
-  // revisited later (#45).
+  // comes in two flavours so the common cases start as the right kind.
   it("offers Audience as a second kind of Device", () => {
     const devices = CREATABLE_NODES.filter((creatable) => creatable.kind === "device");
     expect(devices.map((creatable) => creatable.perConnection)).toEqual([false, true]);

@@ -5,7 +5,6 @@
 // Kept out of the resolvers so the GraphQL layer stays a thin adapter: the
 // resolvers authenticate, check ownership, validate through the domain, and
 // call one of the three functions below.
-import { runChannel } from "@mechane/realtime";
 import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
 import { CANVAS_COMMAND_TYPES, applyCanvasEdits, applyGraphEdits } from "@mechane/commands";
 import type {
@@ -16,23 +15,24 @@ import type {
   GraphState,
   SceneVariable,
   Shape,
-  SourceFieldDefault,
   ShapeField,
   ShowGraph,
+  SourceFieldDefault,
   Type,
 } from "@mechane/domain";
 import { assertValidShowGraph, emptyShowGraph, generateId, isEdgeKind } from "@mechane/domain";
+import { runChannel } from "@mechane/realtime";
 import { and, eq, inArray } from "drizzle-orm";
-import { db } from "./client";
-import { readCanvasById, writeCanvasRows } from "./canvas";
-import type { CanvasWithOwner, StoredCanvas } from "./canvas";
-import { placeCanvasPosition } from "./canvas-placement";
-import { DEFAULT_CANVAS_FILL, newCanvasRootProperties } from "./canvas-defaults";
-import { graphNodeInsertValues } from "./graph-node-values";
 import { realtimeProvider } from "../realtime";
-import { reconcileActiveRunValues } from "./runs";
+import type { CanvasWithOwner, StoredCanvas } from "./canvas";
+import { readCanvasById, writeCanvasRows } from "./canvas";
+import { DEFAULT_CANVAS_FILL, newCanvasRootProperties } from "./canvas-defaults";
+import { placeCanvasPosition } from "./canvas-placement";
+import { db } from "./client";
 import type { StoredDevice } from "./devices";
 import { retireUnreferencedDevices, syncDevices } from "./devices";
+import { graphNodeInsertValues } from "./graph-node-values";
+import { reconcileActiveRunValues } from "./runs";
 import {
   blocks,
   canvasElements,
@@ -41,12 +41,12 @@ import {
   graphEdges,
   graphNodeVariables,
   graphNodes,
-  shapeFields,
   shapeFieldRefs,
+  shapeFields,
   shapes,
-  sourceFieldDefaults,
   showGraphs,
   shows,
+  sourceFieldDefaults,
 } from "./schema";
 
 export interface PublishLoss {
@@ -135,6 +135,7 @@ function toNode(
     id: row.id,
     name: row.name,
     position: { x: row.positionX, y: row.positionY },
+    ...(row.color ? { color: row.color as FlowColor } : {}),
   };
   switch (row.kind) {
     case "scene":
@@ -150,7 +151,6 @@ function toNode(
         kind: "flow",
         parentId: null,
         defaultSceneId: row.defaultSceneId,
-        ...(row.color ? { color: row.color as FlowColor } : {}),
       };
     case "source":
       return {
@@ -235,6 +235,7 @@ function groupVariables(rows: VariableRow[]): Map<string, SceneVariable[]> {
     variables.push({
       id: row.id,
       name: row.name,
+      ...(row.rank ? { rank: row.rank } : {}),
       type: row.type as Type | undefined,
       ...(row.suggestedDimensions
         ? { suggestedDimensions: row.suggestedDimensions as { width: number; height: number } }
@@ -268,8 +269,8 @@ export async function readShowGraph(
     // composed against nothing, and says so.
     return { ...emptyShowGraph(), showId, state, updatedAt: new Date(0), version: 0 };
   }
-  // Ordered by id so a graph reads back the same way twice — the graph
-  // doesn't care, but a diff of two reads (or a test) does. (See issue #43.)
+  // Ordered by Variable rank, then id for deterministic ties, so a graph
+  // reads back in the same order the editor shows it.
   //
   // In sequence, not in parallel: `executor` may be a transaction, and a
   // transaction is one connection, which can only be running one query at a
@@ -294,7 +295,7 @@ export async function readShowGraph(
     .select()
     .from(graphNodeVariables)
     .where(eq(graphNodeVariables.graphId, row.id))
-    .orderBy(graphNodeVariables.id);
+    .orderBy(graphNodeVariables.sceneId, graphNodeVariables.rank, graphNodeVariables.id);
   const sourceDefaultRows = await executor
     .select()
     .from(sourceFieldDefaults)
@@ -467,7 +468,7 @@ async function writeGraph(
         const collect = (type: Type): void => {
           if (typeof type === "string") return;
           if (type.kind === "shape") referenced.add(type.shapeId);
-          else collect(type.of);
+          else if (type.kind === "array") collect(type.of);
         };
         collect(field.type);
         return [...referenced].map((referencedShapeId) => ({
@@ -482,9 +483,9 @@ async function writeGraph(
 
   // Device identity is Show-level and outlives this write (#45), so it
   // is reconciled rather than rewritten: new Devices get a row and a
-  // minted code, and known ones keep the code and `perConnection` they
-  // already had. What comes back is what the caller is told, so a client
-  // that guessed at either is corrected rather than obeyed.
+  // minted code, known ones keep their code, and `perConnection` follows
+  // the node so an inspector change lands. What comes back is what the
+  // caller is told.
   const deviceIdentities = await syncDevices(tx, showId, graph.nodes);
 
   // Show-level nodes first: a nested node's `parent_id` foreign key needs
@@ -585,11 +586,12 @@ async function writeGraph(
 
   const variables = graph.nodes.flatMap((node) =>
     node.kind === "scene"
-      ? node.variables.map((variable) => ({
+      ? node.variables.map((variable, position) => ({
           id: variable.id,
           graphId: row.id,
           sceneId: node.id,
           name: variable.name,
+          rank: variable.rank ?? String(position).padStart(10, "0"),
           type: variable.type ?? null,
           suggestedDimensions: variable.suggestedDimensions ?? null,
         }))

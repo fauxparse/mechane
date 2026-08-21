@@ -8,24 +8,26 @@
 //
 // Everything routes through `useGraphCommands`, so everything is undoable, and
 // everything reaches the server by the same path an undo does (ADR-0005).
+import type { Gesture, GraphEdit } from "@mechane/commands";
 import {
   addEdge,
   addNode,
-  composite,
-  reparentNode,
-  createFlowWithNodes,
   addSceneVariable,
+  composite,
+  createFlowWithNodes,
   deleteGraphElements,
   deletionScope,
+  moveNodesIntoFlow,
+  moveNodesOutOfFlow,
   removeSceneVariable,
   renameNode,
   renameSceneVariable,
-  setFlowColor,
-  moveNodesIntoFlow,
-  moveNodesOutOfFlow,
+  reorderSceneVariables,
+  reparentNode,
+  setDevicePerConnection,
+  setNodeColor,
+  setSceneVariableType,
 } from "@mechane/commands";
-import type { GraphEdit, Gesture } from "@mechane/commands";
-import { connectionEdge, connectionError, connectionTargets, generateId } from "@mechane/domain";
 import type {
   ConnectionTargets,
   FlowColor,
@@ -33,19 +35,30 @@ import type {
   NodeKind,
   Position,
   ShowGraph,
+  Type,
+} from "@mechane/domain";
+import {
+  connectionEdge,
+  connectionError,
+  connectionTargets,
+  deviceSourceType,
+  generateId,
 } from "@mechane/domain";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { sourceLabelFor } from "../graph/source-label";
 
+import type { ApiGraph } from "../data/api-graph";
 import { INPUT_HANDLE, OUTPUT_HANDLE } from "../graph/graph-to-flow";
 import { createNode } from "../graph/node-kinds";
-import { useGraphCommands } from "./use-graph-commands";
 import type { GraphCommands } from "./use-graph-commands";
-import type { ApiGraph } from "../data/api-graph";
+import { useGraphCommands } from "./use-graph-commands";
 
-/** A connection the user is trying to make, as React Flow reports it. */
+/** A drag from one node's handle to another's, as React Flow reports it. */
 export interface ConnectionAttempt {
   source: string;
   target: string;
+  /** The source handle, including a Device's virtual value handle. */
+  sourceHandle?: string | null;
   /** The handle dropped on: a Variable id for wiring, `in` otherwise. */
   targetHandle?: string | null;
 }
@@ -61,9 +74,11 @@ export interface GraphEditing {
     kind: NodeKind,
     position: Position,
     parentId?: string | null,
-    options?: { perConnection?: boolean; defaultName?: string },
+    options?: { perConnection?: boolean; defaultName?: string; sourceType?: Type },
   ): GraphNode;
   createFlowWithNodes(nodeIds: string[], position: Position, childOrigin: Position): GraphNode;
+  /** Creates a typed Source or Device and connects it to a dropped source handle. */
+  createNodeFromConnection(sourceId: string, sourceHandle: string, position: Position): void;
 
   /** The node being renamed inline, if any. */
   renaming: string | null;
@@ -81,7 +96,7 @@ export interface GraphEditing {
   connecting: boolean;
   /** What the in-flight drag may land on, or null when idle. */
   targets: ConnectionTargets | null;
-  beginConnect(sourceId: string): void;
+  beginConnect(sourceId: string, sourceHandle?: string | null): void;
   endConnect(): void;
   /** Whether React Flow should let this connection be dropped. */
   canDrop(attempt: ConnectionAttempt): boolean;
@@ -90,11 +105,14 @@ export interface GraphEditing {
 
   addVariable(sceneId: string): void;
   renameVariable(sceneId: string, variableId: string, name: string): void;
+  setVariableType(sceneId: string, variableId: string, type: Type): void;
+  reorderVariables(sceneId: string, variableIds: readonly string[]): void;
   removeVariable(sceneId: string, variableId: string): void;
   /** Structural Flow moves; collapse is intentionally not part of this API. */
   moveIntoFlow(nodeIds: string[], flowId: string, origin: Position): void;
   moveOutOfFlow(nodeIds: string[], positions: Position[]): string | null;
-  setFlowColor(flowId: string, color: FlowColor): void;
+  setNodeColor(nodeId: string, color: FlowColor): void;
+  setDevicePerConnection(nodeId: string, perConnection: boolean): void;
 }
 
 /**
@@ -114,27 +132,68 @@ export function useGraphEditing(
   const [renaming, setRenaming] = useState<string | null>(null);
   const renamingNode = useRef<string | null>(null);
   const rename = useRef<Gesture<ShowGraph, GraphEdit> | null>(null);
-  const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
+  const [connectingFrom, setConnectingFrom] = useState<{
+    nodeId: string;
+    sourceHandle: string | null;
+  } | null>(null);
   // Computed once when the drag starts, not per hover: the answer is about the
   // whole graph (#35's affordance dims every non-target), and recomputing it on
   // pointer move would be the same answer at a cost.
   const targets = useMemo(
-    () => (connectingFrom ? connectionTargets(graph, connectingFrom) : null),
+    () =>
+      connectingFrom
+        ? connectionTargets(graph, connectingFrom.nodeId, connectingFrom.sourceHandle)
+        : null,
     [connectingFrom, graph],
   );
-
   const createNodeOfKind = useCallback(
     (
       kind: NodeKind,
       position: Position,
       parentId: string | null = null,
-      options: { perConnection?: boolean; defaultName?: string } = {},
+      options: { perConnection?: boolean; defaultName?: string; sourceType?: Type } = {},
     ) => {
       const node = createNode(kind, position, parentId, options);
       execute(addNode(node, `Add ${kind}`));
       return node;
     },
     [execute],
+  );
+  const createNodeFromConnection = useCallback(
+    (sourceId: string, sourceHandle: string, position: Position) => {
+      const producer = graph.nodes.find((node) => node.id === sourceId);
+      const sourceType =
+        producer?.kind === "device"
+          ? deviceSourceType(sourceHandle)
+          : producer?.kind === "source" || producer?.kind === "transformer"
+            ? producer.type
+            : null;
+      const node =
+        producer?.kind === "flow" && sourceHandle === OUTPUT_HANDLE
+          ? createNode("device", position)
+          : sourceType
+            ? createNode("source", position, null, {
+                sourceType,
+                defaultName: sourceLabelFor(graph, sourceId, sourceHandle),
+              })
+            : null;
+      if (!node) return;
+
+      const graphWithNode = { ...graph, nodes: [...graph.nodes, node] };
+      const edge = connectionEdge(
+        graphWithNode,
+        { sourceId, sourceHandle, targetId: node.id },
+        generateId("edge"),
+      );
+      if (!edge) return;
+      execute(
+        composite({
+          label: node.kind === "device" ? "Create Device" : "Create Source",
+          commands: [addNode(node, `Create ${node.kind}`), addEdge(edge, "Connect")],
+        }),
+      );
+    },
+    [execute, graph],
   );
 
   const createFlowWithSelection = useCallback(
@@ -196,15 +255,21 @@ export function useGraphEditing(
     [execute, graph],
   );
 
-  const beginConnect = useCallback((sourceId: string) => setConnectingFrom(sourceId), []);
+  const beginConnect = useCallback(
+    (sourceId: string, sourceHandle: string | null = null) =>
+      setConnectingFrom({ nodeId: sourceId, sourceHandle }),
+    [],
+  );
   const endConnect = useCallback(() => setConnectingFrom(null), []);
 
   const requestOf = useCallback(
     (attempt: ConnectionAttempt) => ({
       sourceId: attempt.source,
       targetId: attempt.target,
-      // React Flow reports the handle that was dropped on; a Variable's handle
-      // *is* its id (see ./graph-to-flow), so a wiring drop identifies its
+      sourceHandle: attempt.sourceHandle,
+      targetHandle: attempt.targetHandle,
+      // React Flow reports the handle that was dropped; a Variable's handle
+      // *is* its id (see ./graph-to-flow), so a wiring drop identifies the
       // Variable and a node-level drop reports the node's own handle instead.
       targetVariableId: variableHandle(attempt.targetHandle),
     }),
@@ -219,12 +284,40 @@ export function useGraphEditing(
   const connect = useCallback(
     (attempt: ConnectionAttempt) => {
       const request = requestOf(attempt);
-      const reason = connectionError(graph, request);
-      if (reason) return reason;
-      const edge = connectionEdge(graph, request, generateId("edge"));
-      if (!edge) return "That connection can't be made.";
       const producer = graph.nodes.find((node) => node.id === request.sourceId);
       const consumer = graph.nodes.find((node) => node.id === request.targetId);
+      const sourceType =
+        producer?.kind === "source" || producer?.kind === "transformer"
+          ? producer.type
+          : producer?.kind === "device"
+            ? deviceSourceType(request.sourceHandle)
+            : null;
+      const variable =
+        consumer?.kind === "scene" &&
+        attempt.targetHandle === INPUT_HANDLE &&
+        !request.targetVariableId &&
+        sourceType
+          ? {
+              id: generateId("variable"),
+              name: `variable${consumer.variables.length + 1}`,
+              type: sourceType,
+            }
+          : null;
+      const connectionGraph = variable
+        ? {
+            ...graph,
+            nodes: graph.nodes.map((node) =>
+              node.id === consumer?.id && node.kind === "scene"
+                ? { ...node, variables: [...node.variables, variable] }
+                : node,
+            ),
+          }
+        : graph;
+      const connectionRequest = variable ? { ...request, targetVariableId: variable.id } : request;
+      const reason = connectionError(connectionGraph, connectionRequest);
+      if (reason) return reason;
+      const edge = connectionEdge(connectionGraph, connectionRequest, generateId("edge"));
+      if (!edge) return "That connection can't be made.";
       if (
         producer?.parentId !== null &&
         producer?.parentId !== undefined &&
@@ -236,6 +329,16 @@ export function useGraphEditing(
             label: "Connect",
             commands: [
               reparentNode(consumer.id, producer.parentId, consumer.position),
+              addEdge(edge, "Connect"),
+            ],
+          }),
+        );
+      } else if (variable && consumer?.kind === "scene") {
+        execute(
+          composite({
+            label: "Create Variable and Connect",
+            commands: [
+              addSceneVariable(consumer.id, variable, "Create Variable"),
               addEdge(edge, "Connect"),
             ],
           }),
@@ -272,6 +375,20 @@ export function useGraphEditing(
     [beginGesture],
   );
 
+  const setVariableType = useCallback(
+    (sceneId: string, variableId: string, type: Type) => {
+      execute(setSceneVariableType(sceneId, variableId, type));
+    },
+    [execute],
+  );
+
+  const reorderVariables = useCallback(
+    (sceneId: string, variableIds: readonly string[]) => {
+      execute(reorderSceneVariables(sceneId, variableIds));
+    },
+    [execute],
+  );
+
   const removeVariable = useCallback(
     (sceneId: string, variableId: string) => {
       execute(removeSceneVariable(sceneId, variableId));
@@ -279,9 +396,16 @@ export function useGraphEditing(
     [execute],
   );
 
-  const changeFlowColor = useCallback(
-    (flowId: string, color: FlowColor) => {
-      execute(setFlowColor(flowId, color));
+  const changeNodeColor = useCallback(
+    (nodeId: string, color: FlowColor) => {
+      execute(setNodeColor(nodeId, color));
+    },
+    [execute],
+  );
+
+  const changeDevicePerConnection = useCallback(
+    (nodeId: string, perConnection: boolean) => {
+      execute(setDevicePerConnection(nodeId, perConnection));
     },
     [execute],
   );
@@ -312,6 +436,7 @@ export function useGraphEditing(
     graph,
     amend: commands.amend,
     createNodeOfKind,
+    createNodeFromConnection,
     createFlowWithNodes: createFlowWithSelection,
     renaming,
     beginRename,
@@ -322,13 +447,16 @@ export function useGraphEditing(
     scopeOf,
     connecting: connectingFrom !== null,
     targets,
-    setFlowColor: changeFlowColor,
+    setNodeColor: changeNodeColor,
+    setDevicePerConnection: changeDevicePerConnection,
     beginConnect,
     endConnect,
     canDrop,
     connect,
     addVariable,
     renameVariable,
+    setVariableType,
+    reorderVariables,
     removeVariable,
     moveIntoFlow,
     moveOutOfFlow,

@@ -1,4 +1,4 @@
-import type { FlowNode } from "@mechane/domain";
+import type { FlowNode, SceneNode } from "@mechane/domain";
 import { describe, expect, it } from "vitest";
 
 import { graphNodeInsertValues } from "./graph-node-values";
@@ -13,12 +13,30 @@ const FLOW: FlowNode = {
   color: "purple",
 };
 
+const SCENE: SceneNode = {
+  id: "scene_vote",
+  kind: "scene",
+  name: "Vote",
+  parentId: "flow_vote",
+  position: { x: 0, y: 0 },
+  color: "aqua",
+  variables: [],
+};
+
 describe("graphNodeInsertValues", () => {
   it("includes a Flow color in the row written for reload", () => {
     expect(graphNodeInsertValues(FLOW, "graph_draft")).toMatchObject({
       graphId: "graph_draft",
       id: "flow_vote",
       color: "purple",
+    });
+  });
+
+  it("includes a non-Flow node color in the row written for reload", () => {
+    expect(graphNodeInsertValues(SCENE, "graph_draft")).toMatchObject({
+      graphId: "graph_draft",
+      id: "scene_vote",
+      color: "aqua",
     });
   });
 });

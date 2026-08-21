@@ -26,6 +26,36 @@ export const showGraphQueryKey = (id: ShowId, state: GraphState) =>
   ["shows", id, "graph", state] as const;
 
 /**
+ * Applies cache-safe graph edits without replacing the editor's command-stack
+ * snapshot. Reordering only changes the Variable array on the addressed Scene.
+ */
+export function patchShowGraphQueryData(
+  previous: ShowGraph | undefined,
+  edits: readonly GraphEdit[],
+): ShowGraph | undefined {
+  if (!previous) return previous;
+  let changed = false;
+  const nodes = previous.nodes.map((node) => {
+    if (node.__typename !== "SceneNode") return node;
+    let variables = node.variables;
+    for (const edit of edits) {
+      if (edit.type !== "graph.reorderSceneVariables" || edit.sceneId !== node.id) continue;
+      const variablesById = new Map(variables.map((variable) => [variable.id, variable]));
+      const nextVariables = edit.variableIds.map((variableId, index) => {
+        const variable = variablesById.get(variableId);
+        return variable ? { ...variable, rank: String(index).padStart(10, "0") } : undefined;
+      });
+      if (nextVariables.some((variable) => variable === undefined)) return node;
+      variables = nextVariables as typeof variables;
+    }
+    if (variables === node.variables) return node;
+    changed = true;
+    return { ...node, variables };
+  });
+  return changed ? { ...previous, nodes } : previous;
+}
+
+/**
  * A Show's graph in one state. `id` is nullable for the same reason as
  * `useShow`'s: a route can hand over an id it couldn't validate without
  * faking one, and the request is skipped rather than made and missed.
@@ -173,10 +203,13 @@ export function useShowGraphEdits(
         version.current = result.version;
         queryClient.setQueryData(
           showGraphQueryKey(result.showId as ShowId, "draft"),
-          (previous: ShowGraph | undefined) =>
-            previous
-              ? { ...previous, updatedAt: result.updatedAt, version: result.version }
-              : undefined,
+          (previous: ShowGraph | undefined) => {
+            const graphEdits = edits.filter((edit): edit is GraphEdit => !("canvasId" in edit));
+            const patched = patchShowGraphQueryData(previous, graphEdits);
+            return patched
+              ? { ...patched, updatedAt: result.updatedAt, version: result.version }
+              : undefined;
+          },
         );
         if (result.amendments.length > 0) {
           amend.current?.(result.amendments.map(toGraphEdit));
@@ -208,11 +241,18 @@ export function useShowGraphEdits(
   const enqueue = useCallback(
     (edits: readonly (GraphEdit | CanvasWorkspaceEdit)[]) => {
       if (edits.length === 0) return;
+      if (showId) {
+        const graphEdits = edits.filter((edit): edit is GraphEdit => !("canvasId" in edit));
+        queryClient.setQueryData(
+          showGraphQueryKey(showId, "draft"),
+          (previous: ShowGraph | undefined) => patchShowGraphQueryData(previous, graphEdits),
+        );
+      }
       pending.current.push(...edits);
       if (timer.current !== null) window.clearTimeout(timer.current);
       timer.current = window.setTimeout(flush, SAVE_DEBOUNCE_MS);
     },
-    [flush],
+    [flush, queryClient, showId],
   );
 
   return { enqueue, saving, error };

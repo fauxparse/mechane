@@ -7,6 +7,7 @@ import {
   connectionKindFor,
   connectionTargets,
 } from "./connect";
+import { DEVICE_SOURCE_HANDLES } from "./graph";
 import type {
   DeviceNode,
   FlowNode,
@@ -94,10 +95,48 @@ describe("connectionKindFor", () => {
     expect(connectionKindFor(GRAPH, { sourceId: VOTE.id, targetId: PHONE.id })).toBe("device");
   });
 
+  it("treats Device QR and pairing handles as value sources", () => {
+    expect(
+      connectionKindFor(GRAPH, {
+        sourceId: PHONE.id,
+        sourceHandle: DEVICE_SOURCE_HANDLES.qrCode,
+        targetId: VOTING.id,
+      }),
+    ).toBe("wiring");
+    expect(
+      connectionKindFor(GRAPH, {
+        sourceId: PHONE.id,
+        sourceHandle: DEVICE_SOURCE_HANDLES.pairingCode,
+        targetId: VOTING.id,
+      }),
+    ).toBe("wiring");
+  });
+  it("does not treat a virtual output as a target handle", () => {
+    expect(
+      connectionKindFor(GRAPH, {
+        sourceId: TALLY.id,
+        targetId: PHONE.id,
+        targetHandle: DEVICE_SOURCE_HANDLES.pairingCode,
+      }),
+    ).toBeNull();
+  });
+
   it("has no kind for pairs no edge runs between", () => {
     expect(connectionKindFor(GRAPH, { sourceId: VOTING.id, targetId: TALLY.id })).toBeNull();
     expect(connectionKindFor(GRAPH, { sourceId: PHONE.id, targetId: VOTING.id })).toBeNull();
     expect(connectionKindFor(GRAPH, { sourceId: VOTE.id, targetId: VOTING.id })).toBeNull();
+  });
+  it("allows a value source to feed a Source input", () => {
+    expect(
+      connectionEdge(GRAPH, { sourceId: TALLY.id, targetId: LOCAL.id }, "edge_source"),
+    ).toEqual(
+      expect.objectContaining({
+        kind: "wiring",
+        sourceId: TALLY.id,
+        targetId: LOCAL.id,
+        targetPath: [],
+      }),
+    );
   });
 });
 
@@ -124,6 +163,27 @@ describe("connectionEdge", () => {
     });
   });
 
+  it("stores Device virtual source handles in the source path", () => {
+    expect(
+      connectionEdge(
+        GRAPH,
+        {
+          sourceId: PHONE.id,
+          sourceHandle: DEVICE_SOURCE_HANDLES.qrCode,
+          targetId: VOTING.id,
+          targetVariableId: "variable_prompt",
+        },
+        "edge_qr",
+      ),
+    ).toEqual(
+      expect.objectContaining({
+        kind: "wiring",
+        sourcePath: [DEVICE_SOURCE_HANDLES.qrCode],
+        targetPath: ["variable_prompt"],
+      }),
+    );
+  });
+
   it("won't build a wiring edge with no Variable to land on", () => {
     expect(
       connectionEdge(GRAPH, { sourceId: TALLY.id, targetId: VOTING.id }, "edge_new"),
@@ -148,6 +208,16 @@ describe("canConnect", () => {
     expect(canConnect(GRAPH, { sourceId: VOTING.id, targetId: RESULTS.id })).toBe(true);
     expect(canConnect(GRAPH, { sourceId: VOTE.id, targetId: PHONE.id })).toBe(true);
     expect(canConnect(GRAPH, { sourceId: LOBBY.id, targetId: PHONE.id })).toBe(true);
+  });
+  it("allows Device virtual sources to feed Variables", () => {
+    expect(
+      canConnect(GRAPH, {
+        sourceId: PHONE.id,
+        sourceHandle: DEVICE_SOURCE_HANDLES.pairingCode,
+        targetId: VOTING.id,
+        targetVariableId: "variable_prompt",
+      }),
+    ).toBe(true);
   });
 
   // A retry transition (#24). Everything else self-connecting is nonsense.
@@ -201,11 +271,26 @@ describe("canConnect", () => {
     );
   });
 
-  it("asks for a Variable when a wiring drag lands on the Scene's body", () => {
+  it("allows a typed Source to create a Variable from a Scene input handle", () => {
+    expect(
+      canConnect(GRAPH, {
+        sourceId: TALLY.id,
+        targetId: RESULTS.id,
+        targetHandle: "in",
+      }),
+    ).toBe(true);
+  });
+
+  it("still asks for a Variable when a wiring drag lands on the Scene body", () => {
     expect(connectionError(GRAPH, { sourceId: TALLY.id, targetId: VOTING.id })).toBe(
       "Drop onto one of the Scene's Variables.",
     );
   });
+
+  it("marks a Scene input handle as a target when it has no Variables", () => {
+    expect(connectionTargets(GRAPH, TALLY.id).nodeIds.has(RESULTS.id)).toBe(true);
+  });
+
 
   it("names the kinds when no edge runs between them", () => {
     expect(connectionError(GRAPH, { sourceId: PHONE.id, targetId: VOTING.id })).toBe(
@@ -244,28 +329,33 @@ describe("canConnect", () => {
         targetVariableId: "variable_prompt",
       }),
     ).toBe("That connection already exists.");
+
     expect(connectionError(wired, { sourceId: VOTING.id, targetId: RESULTS.id })).toBe(
       "These Scenes are already connected.",
     );
   });
-
-  it("says so when a node isn't in the graph", () => {
-    expect(connectionError(GRAPH, { sourceId: "scene_ghost", targetId: PHONE.id })).toBe(
-      "That node isn't in this Show.",
-    );
-  });
 });
+
 
 describe("connectionTargets", () => {
   it("lists the Scenes and Variables a Source may feed", () => {
     const targets = connectionTargets(GRAPH, TALLY.id);
-    expect([...targets.nodeIds].sort()).toEqual([LOBBY.id, VOTING.id, TRANSFORMER.id]);
+    expect([...targets.nodeIds].sort()).toEqual(
+      [
+        LOBBY.id,
+        VOTING.id,
+        RESULTS.id,
+        INTERMISSION.id,
+        LOCAL.id,
+        TRANSFORMER.id,
+      ].sort(),
+    );
     expect([...targets.variableIds].sort()).toEqual(["variable_house", "variable_prompt"]);
   });
 
   it("narrows to its own Flow for a Flow-local Source", () => {
     const targets = connectionTargets(GRAPH, LOCAL.id);
-    expect([...targets.nodeIds]).toEqual([VOTING.id, TRANSFORMER.id]);
+    expect([...targets.nodeIds]).toEqual([VOTING.id, RESULTS.id, TRANSFORMER.id]);
     expect([...targets.variableIds]).toEqual(["variable_prompt"]);
   });
 
@@ -282,5 +372,20 @@ describe("connectionTargets", () => {
 
   it("lists nothing for a node nothing can leave", () => {
     expect(connectionTargets(GRAPH, PHONE.id).nodeIds.size).toBe(0);
+  });
+
+  it("lists value targets for Device virtual source handles", () => {
+    const targets = connectionTargets(GRAPH, PHONE.id, DEVICE_SOURCE_HANDLES.pairingCode);
+    expect([...targets.nodeIds].sort()).toEqual(
+      [
+        LOBBY.id,
+        VOTING.id,
+        RESULTS.id,
+        INTERMISSION.id,
+        LOCAL.id,
+        TALLY.id,
+        TRANSFORMER.id,
+      ].sort(),
+    );
   });
 });

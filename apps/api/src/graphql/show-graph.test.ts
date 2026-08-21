@@ -6,13 +6,13 @@ import { GRAPH_COMMAND_TYPES } from "@mechane/commands";
 import { GraphQLError } from "graphql";
 import { describe, expect, it } from "vitest";
 
+import type { GraphEditInput } from "./show-graph";
 import {
   parseGraphEdit,
   resolveGraphEdgeType,
   resolveGraphNodeType,
   serializeGraphEdit,
 } from "./show-graph";
-import type { GraphEditInput } from "./show-graph";
 
 describe("GraphNode interface resolution", () => {
   it.each([
@@ -92,21 +92,87 @@ describe("parseGraphEdit", () => {
     ).toEqual({ type: "graph.setFlowDefaultScene", flowId: "flow_a", sceneId: null });
   });
 
-  it("parses a Flow color edit", () => {
+  it("parses a Device per-connection edit, including false", () => {
     expect(
       parseGraphEdit({
-        type: GRAPH_COMMAND_TYPES.setFlowColor,
-        flowId: "flow_a",
-        color: "purple",
+        type: GRAPH_COMMAND_TYPES.setDevicePerConnection,
+        nodeId: "device_phone",
+        perConnection: false,
       }),
-    ).toEqual({ type: "graph.setFlowColor", flowId: "flow_a", color: "purple" });
+    ).toEqual({
+      type: "graph.setDevicePerConnection",
+      nodeId: "device_phone",
+      perConnection: false,
+    });
+  });
+  it("parses a Scene Variable reorder edit", () => {
+    expect(
+      parseGraphEdit({
+        type: GRAPH_COMMAND_TYPES.reorderSceneVariables,
+        sceneId: "scene_a",
+        variableIds: ["variable_b", "variable_a"],
+      }),
+    ).toEqual({
+      type: "graph.reorderSceneVariables",
+      sceneId: "scene_a",
+      variableIds: ["variable_b", "variable_a"],
+    });
   });
 
-  it("rejects an unknown Flow color", () => {
+  it("parses a color edit for any node", () => {
+    expect(
+      parseGraphEdit({
+        type: GRAPH_COMMAND_TYPES.setNodeColor,
+        nodeId: "scene_a",
+        color: "purple",
+      }),
+    ).toEqual({ type: "graph.setNodeColor", nodeId: "scene_a", color: "purple" });
+  });
+
+  it("parses a Variable type edit, including object", () => {
+    expect(
+      parseGraphEdit({
+        type: GRAPH_COMMAND_TYPES.setSceneVariableType,
+        sceneId: "scene_a",
+        variableId: "variable_a",
+        variableType: { kind: "text" },
+      }),
+    ).toEqual({
+      type: "graph.setSceneVariableType",
+      sceneId: "scene_a",
+      variableId: "variable_a",
+      variableType: "text",
+    });
+    expect(
+      parseGraphEdit({
+        type: GRAPH_COMMAND_TYPES.setSceneVariableType,
+        sceneId: "scene_a",
+        variableId: "variable_a",
+        variableType: { kind: "object" },
+      }),
+    ).toEqual({
+      type: "graph.setSceneVariableType",
+      sceneId: "scene_a",
+      variableId: "variable_a",
+      variableType: { kind: "object" },
+    });
+  });
+
+  it("parses a node color clear for undo", () => {
+    expect(
+      parseGraphEdit({
+        type: GRAPH_COMMAND_TYPES.setNodeColor,
+        nodeId: "scene_a",
+        color: null,
+      }),
+    ).toEqual({ type: "graph.setNodeColor", nodeId: "scene_a", color: null });
+  });
+
+  it("rejects an unknown node color", () => {
     expect(() =>
       parseGraphEdit({
-        type: GRAPH_COMMAND_TYPES.setFlowColor,
-        flowId: "flow_a",
+        type: GRAPH_COMMAND_TYPES.setNodeColor,
+        nodeId: "scene_a",
         color: "pink",
       }),
     ).toThrow(GraphQLError);
@@ -120,9 +186,15 @@ describe("parseGraphEdit", () => {
     ["an edge", { type: GRAPH_COMMAND_TYPES.addEdge }],
     ["an edgeId", { type: GRAPH_COMMAND_TYPES.removeEdge }],
     ["a flowId", { type: GRAPH_COMMAND_TYPES.setFlowDefaultScene }],
-    ["a Flow color", { type: GRAPH_COMMAND_TYPES.setFlowColor, flowId: "flow_a" }],
+    ["a node color", { type: GRAPH_COMMAND_TYPES.setNodeColor, nodeId: "scene_lobby" }],
     ["a variable", { type: GRAPH_COMMAND_TYPES.addSceneVariable, sceneId: "scene_lobby" }],
+    ["variableIds", { type: GRAPH_COMMAND_TYPES.reorderSceneVariables, sceneId: "scene_lobby" }],
     ["a variableId", { type: GRAPH_COMMAND_TYPES.removeSceneVariable, sceneId: "scene_lobby" }],
+    [
+      "a variableType",
+      { type: GRAPH_COMMAND_TYPES.setSceneVariableType, sceneId: "scene_lobby", variableId: "v" },
+    ],
+    ["perConnection", { type: GRAPH_COMMAND_TYPES.setDevicePerConnection, nodeId: "device_phone" }],
   ])("refuses an edit missing %s", (_what, edit) => {
     expect(() => parseGraphEdit(edit as GraphEditInput)).toThrow(GraphQLError);
   });

@@ -261,6 +261,7 @@ export function useShowGraphEditorActions({
       const reason = editing.connect({
         source: connection.source,
         target: connection.target,
+        sourceHandle: connection.sourceHandle,
         targetHandle: connection.targetHandle,
       });
       if (reason) say(reason);
@@ -276,6 +277,7 @@ export function useShowGraphEditorActions({
         editing.canDrop({
           source: connection.source,
           target: connection.target,
+          sourceHandle: connection.sourceHandle,
           targetHandle: connection.targetHandle,
         }),
       ),

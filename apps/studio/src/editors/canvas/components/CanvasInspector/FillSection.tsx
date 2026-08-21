@@ -8,6 +8,8 @@ import {
   PaintBucketIcon,
   PlusIcon,
   PropertyInput,
+  Section,
+  SectionRow,
   Slider,
   ToggleGroup,
   ToggleGroupItem,
@@ -20,7 +22,6 @@ import { PropertyField } from "./CanvasInspectorFields";
 import { gradientForMode, insertedGradientStop } from "./gradient-utils";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { isVariableInput } from "./canvas-inspector-values";
-import { Section, SectionRow } from "./Section";
 const isGradientFill = (value: unknown): value is GradientFill =>
   value !== null && typeof value === "object" && "stops" in value && Array.isArray(value.stops);
 

@@ -3,52 +3,52 @@
 // owned-resource vertical slice, using `requireUserId` (./context.ts) and
 // `assertOwnedBy`/`assertValidShowName` (@mechane/domain) the same way
 // every later owned resource (Scene, Device, ...) should.
-import { CanvasEditError } from "@mechane/commands";
 import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
+import { CanvasEditError } from "@mechane/commands";
+import type { GraphState } from "@mechane/domain";
 import {
-  DEFAULT_IMAGE_UPLOAD_POLICY,
   assertOwnedBy,
   assertValidGraphState,
   assertValidShowName,
   assertValidThemeMode,
   assertValidThemePalette,
+  DEFAULT_IMAGE_UPLOAD_POLICY,
   defaultThemeSettings,
   InvalidGraphStateError,
   InvalidShowNameError,
-  isId,
   InvalidThemeModeError,
   InvalidThemePaletteError,
+  isId,
 } from "@mechane/domain";
-import type { GraphState } from "@mechane/domain";
 import { and, eq } from "drizzle-orm";
 import { GraphQLError, GraphQLScalarType, Kind } from "graphql";
 import { createSchema } from "graphql-yoga";
 
-import { db } from "../db/client";
+import { randomUUID } from "node:crypto";
 import { readCanvas, readCanvasWorkspace } from "../db/canvas";
+import { db } from "../db/client";
 import { withUniqueId } from "../db/ids";
+import { commitBlob, imageDeliveryUrl, listImageAssets, toImageAsset } from "../db/images";
 import { endRun, readActiveRun, startRun } from "../db/runs";
+import { blobUploadSessions, imageAssets, shows, userSettings } from "../db/schema";
 import {
   applyShowEdits as applyShowEditsToDb,
   GraphVersionConflictError,
   publishShowGraph,
   readShowGraph,
 } from "../db/show-graph";
-import { commitBlob, imageDeliveryUrl, listImageAssets, toImageAsset } from "../db/images";
-import { blobUploadSessions, imageAssets, shows, userSettings } from "../db/schema";
-import { blobStore } from "../storage/blob-store";
 import { ImageProcessingError, processImage } from "../images";
-import { randomUUID } from "node:crypto";
-import { requireUserId } from "./context";
+import { blobStore } from "../storage/blob-store";
+import { parseCanvasEdit, resolveCanvasElementType, serializeCanvas } from "./canvas";
 import type { GraphQLContext } from "./context";
+import { requireUserId } from "./context";
+import type { GraphEditInput } from "./show-graph";
 import {
   parseGraphEdit,
   resolveGraphEdgeType,
   resolveGraphNodeType,
   serializeShowGraph,
 } from "./show-graph";
-import { parseCanvasEdit, resolveCanvasElementType, serializeCanvas } from "./canvas";
-import type { GraphEditInput } from "./show-graph";
 
 function serializeRun(run: Awaited<ReturnType<typeof startRun>>) {
   return {
@@ -196,7 +196,7 @@ export const schema = createSchema<GraphQLContext>({
 
     "The signed-in user's design-system preference (PRD.md §7)."
     type UserSettings {
-      "Display mode: \\"light\\" or \\"dark\\"."
+      "Display mode: light or dark."
       themeMode: String!
       "Which built-in theme is active."
       themePalette: String!
@@ -212,6 +212,7 @@ export const schema = createSchema<GraphQLContext>({
     type SceneVariable {
       id: ID!
       name: String!
+      rank: String
       type: Type
       suggestedDimensions: SuggestedImageDimensions
     }
@@ -327,6 +328,8 @@ export const schema = createSchema<GraphQLContext>({
       "The Flow containing this node, or null if it's Show-level."
       parentId: ID
       position: Position!
+      "The node editor colorway; absent values are neutral or inherit their Flow."
+      color: String
     }
 
     type SceneNode implements GraphNode {
@@ -334,6 +337,7 @@ export const schema = createSchema<GraphQLContext>({
       name: String!
       parentId: ID
       position: Position!
+      color: String
       "The Variables wiring edges can target."
       variables: [SceneVariable!]!
     }
@@ -342,11 +346,10 @@ export const schema = createSchema<GraphQLContext>({
       id: ID!
       name: String!
       parentId: ID
+      color: String
       position: Position!
       "The Flow's design-time entry Scene, if one is set."
       defaultSceneId: ID
-      "The Flow editor colorway; absent values are exposed as neutral."
-      color: String!
     }
 
     type SourceNode implements GraphNode {
@@ -354,6 +357,7 @@ export const schema = createSchema<GraphQLContext>({
       name: String!
       parentId: ID
       position: Position!
+      color: String
       type: Type!
       "Sparse default overrides for Source fields, keyed by stable field ids."
       fieldDefaults: [SourceFieldDefault!]!
@@ -364,6 +368,7 @@ export const schema = createSchema<GraphQLContext>({
       name: String!
       parentId: ID
       position: Position!
+      color: String
       type: Type
     }
 
@@ -372,6 +377,7 @@ export const schema = createSchema<GraphQLContext>({
       name: String!
       parentId: ID
       position: Position!
+      color: String
       "Whether each connection is its own logical instance."
       perConnection: Boolean!
       "The server-minted pairing code, absent before the first save."
@@ -433,7 +439,7 @@ export const schema = createSchema<GraphQLContext>({
     "A Show's graph in one state. Draft and published are independently readable (ADR-0002)."
     type ShowGraph {
       showId: ID!
-      "Either \\"draft\\" or \\"published\\"."
+      "Either draft or published."
       state: String!
       nodes: [GraphNode!]!
       edges: [GraphEdge!]!
@@ -604,6 +610,7 @@ export const schema = createSchema<GraphQLContext>({
     input SceneVariableInput {
       id: ID!
       name: String!
+      rank: String
       type: TypeInput
       suggestedDimensions: SuggestedImageDimensionsInput
     }
@@ -620,9 +627,8 @@ export const schema = createSchema<GraphQLContext>({
       variables: [SceneVariableInput!]
       """
       Device nodes only: whether each connection is its own instance.
-      Defaults to false, and is only read when the Device is new — it is
-      fixed at creation, so a later change is ignored rather than obeyed.
-      There is no pairingCode input: codes are minted server-side.
+      Defaults to false for a new Device. There is no pairingCode input:
+      codes are minted server-side.
       """
       perConnection: Boolean
     }
@@ -656,26 +662,26 @@ export const schema = createSchema<GraphQLContext>({
       edge: GraphEdge
       position: Position
       parentId: ID
-      name: String
-      flowId: ID
+      "The Show node editor colorway for graph.setNodeColor."
+      color: String
       sceneId: ID
       variableId: ID
+      variableIds: [ID!]
       variable: SceneVariable
-      "The Flow editor colorway for graph.setFlowColor."
-      color: String
+      "The Variable's Type, for graph.setSceneVariableType."
+      variableType: Type
       "Devices only: the code the server minted for a Device this batch created (#45)."
       pairingCode: String
+      "Devices only: whether each connection is its own instance, for graph.setDevicePerConnection."
+      perConnection: Boolean
     }
-
     """
-    One edit to a Show's graph (issue #103) — the unit the editor produces
-    and the server applies, in place of a whole-graph replacement.
-
     \`type\` is the command that made it: "graph.addNode", "graph.removeNode",
     "graph.moveNode", "graph.renameNode", "graph.reparentNode",
     "graph.addEdge", "graph.removeEdge", "graph.setFlowDefaultScene",
-    "graph.setFlowColor", "graph.addSceneVariable",
-    "graph.renameSceneVariable", or "graph.removeSceneVariable".
+    "graph.setNodeColor", "graph.addSceneVariable",
+    "graph.renameSceneVariable", "graph.setSceneVariableType", "graph.reorderSceneVariables",
+    "graph.removeSceneVariable", or "graph.setDevicePerConnection".
 
     Every other field is optional because GraphQL has no input unions:
     \`type\` decides which of them are read, and an edit missing one its type
@@ -689,20 +695,23 @@ export const schema = createSchema<GraphQLContext>({
       "The whole node, for graph.addNode — including a restored one."
       node: GraphNodeInput
       edgeId: ID
-      edge: GraphEdgeInput
-      "Where a moved or reparented node lands. Flow-local coordinates when it has a parent."
+      "The Show node editor colorway, for graph.setNodeColor."
+      color: String
       position: PositionInput
       "The Flow a node is being placed in, or null for Show level."
       parentId: ID
-      "The Flow editor colorway, for graph.setFlowColor."
-      color: String
       "The new name, for a rename."
       name: String
       flowId: ID
       "The Flow's entry Scene, or the Scene owning a Variable. Null clears a Flow's default."
       sceneId: ID
       variableId: ID
+      variableIds: [ID!]
       variable: SceneVariableInput
+      "The Variable's Type, for graph.setSceneVariableType. Null clears it."
+      variableType: TypeInput
+      "Devices only: whether each connection is its own instance, for graph.setDevicePerConnection."
+      perConnection: Boolean
     }
 
     """
@@ -723,12 +732,17 @@ export const schema = createSchema<GraphQLContext>({
       flowId: ID
       sceneId: ID
       variableId: ID
+      variableIds: [ID!]
       variable: SceneVariableInput
+      "The Variable's Type, for graph.setSceneVariableType. Null clears it."
+      variableType: TypeInput
       elementId: ID
       rank: String
       element: JSON
       properties: JSON
       unsetProperties: [String!]
+      "Devices only: whether each connection is its own instance, for graph.setDevicePerConnection."
+      perConnection: Boolean
     }
 
     type AppliedShowEdits {
@@ -920,8 +934,9 @@ export const schema = createSchema<GraphQLContext>({
       __resolveType: resolveGraphEdgeType,
     },
     Type: {
-      kind: (type: string | { kind: "array"; of: unknown } | { kind: "shape"; shapeId: string }) =>
-        typeof type === "string" ? type : type.kind,
+      kind: (
+        type: string | { kind: "array" | "object" | "shape"; of?: unknown; shapeId?: string },
+      ) => (typeof type === "string" ? type : type.kind),
       of: (type: { kind: "array"; of: unknown }) => (type.kind === "array" ? type.of : null),
       shapeId: (type: { kind: "shape"; shapeId: string }) =>
         type.kind === "shape" ? type.shapeId : null,

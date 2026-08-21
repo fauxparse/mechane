@@ -1,4 +1,3 @@
-import { assertValidShowGraph } from "@mechane/domain";
 import type {
   DeviceEdge,
   DeviceNode,
@@ -9,6 +8,7 @@ import type {
   SourceNode,
   WiringEdge,
 } from "@mechane/domain";
+import { assertValidShowGraph } from "@mechane/domain";
 import { describe, expect, it } from "vitest";
 
 import type { Command } from "./command";
@@ -24,10 +24,12 @@ import {
   removeNode,
   removeSceneVariable,
   renameNode,
-  setDevicePairingCode,
   renameSceneVariable,
   reparentNode,
+  setDevicePairingCode,
+  setDevicePerConnection,
   setFlowDefaultScene,
+  setSceneVariableType,
 } from "./graph-commands";
 import type { GraphEdit } from "./graph-edits";
 import {
@@ -182,6 +184,10 @@ describe("every primitive command's edits reproduce it", () => {
     expectEditsReproduce(renameNode(LOBBY.id, "Foyer"));
   });
 
+  it("setDevicePerConnection", () => {
+    expectEditsReproduce(setDevicePerConnection(PHONE.id, false));
+  });
+
   it("reparentNode", () => {
     expectEditsReproduce(reparentNode(TALLY.id, VOTE_FLOW.id, { x: 5, y: 5 }));
   });
@@ -215,6 +221,10 @@ describe("every primitive command's edits reproduce it", () => {
 
   it("renameSceneVariable", () => {
     expectEditsReproduce(renameSceneVariable(VOTING.id, "variable_prompt", "question"));
+  });
+
+  it("setSceneVariableType", () => {
+    expectEditsReproduce(setSceneVariableType(VOTING.id, "variable_prompt", "text"));
   });
 
   it("removeSceneVariable", () => {

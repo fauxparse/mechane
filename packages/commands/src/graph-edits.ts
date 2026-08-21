@@ -38,25 +38,29 @@ import type {
   Position,
   SceneVariable,
   ShowGraph,
+  Type,
 } from "@mechane/domain";
 
+import type { ShowGraphCommand } from "./graph-commands";
 import {
   addEdge,
   addNode,
   addSceneVariable,
   GRAPH_COMMAND_TYPES,
-  setDevicePairingCode,
   moveNode,
   removeEdge,
   removeNode,
   removeSceneVariable,
   renameNode,
   renameSceneVariable,
+  reorderSceneVariables,
   reparentNode,
-  setFlowColor,
+  setDevicePairingCode,
+  setDevicePerConnection,
   setFlowDefaultScene,
+  setNodeColor,
+  setSceneVariableType,
 } from "./graph-commands";
-import type { ShowGraphCommand } from "./graph-commands";
 
 /**
  * One serialisable mutation of a Show graph — the unit the client sends and
@@ -90,8 +94,8 @@ export type GraphEdit =
       readonly sceneId: string | null;
     }
   | {
-      readonly type: typeof GRAPH_COMMAND_TYPES.setFlowColor;
-      readonly flowId: string;
+      readonly type: typeof GRAPH_COMMAND_TYPES.setNodeColor;
+      readonly nodeId: string;
       readonly color: FlowColor | null;
     }
   | {
@@ -100,10 +104,21 @@ export type GraphEdit =
       readonly variable: SceneVariable;
     }
   | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.reorderSceneVariables;
+      readonly sceneId: string;
+      readonly variableIds: readonly string[];
+    }
+  | {
       readonly type: typeof GRAPH_COMMAND_TYPES.renameSceneVariable;
       readonly sceneId: string;
       readonly variableId: string;
       readonly name: string;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setSceneVariableType;
+      readonly sceneId: string;
+      readonly variableId: string;
+      readonly variableType: Type | null;
     }
   | {
       readonly type: typeof GRAPH_COMMAND_TYPES.removeSceneVariable;
@@ -121,6 +136,11 @@ export type GraphEdit =
       readonly type: typeof GRAPH_COMMAND_TYPES.setDevicePairingCode;
       readonly nodeId: string;
       readonly pairingCode: string | null;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setDevicePerConnection;
+      readonly nodeId: string;
+      readonly perConnection: boolean;
     };
 
 /** An edit naming something the graph doesn't contain, or a type nothing knows. */
@@ -159,19 +179,22 @@ export function commandForEdit(edit: GraphEdit): ShowGraphCommand {
       return removeEdge(edit.edgeId);
     case GRAPH_COMMAND_TYPES.setFlowDefaultScene:
       return setFlowDefaultScene(edit.flowId, edit.sceneId);
-    case GRAPH_COMMAND_TYPES.setFlowColor:
-      if (edit.color === null) {
-        throw new UnknownGraphEditError("A Flow color edit cannot clear a Flow color.");
-      }
-      return setFlowColor(edit.flowId, edit.color);
+    case GRAPH_COMMAND_TYPES.setNodeColor:
+      return setNodeColor(edit.nodeId, edit.color);
     case GRAPH_COMMAND_TYPES.addSceneVariable:
       return addSceneVariable(edit.sceneId, edit.variable);
+    case GRAPH_COMMAND_TYPES.reorderSceneVariables:
+      return reorderSceneVariables(edit.sceneId, edit.variableIds);
     case GRAPH_COMMAND_TYPES.renameSceneVariable:
       return renameSceneVariable(edit.sceneId, edit.variableId, edit.name);
+    case GRAPH_COMMAND_TYPES.setSceneVariableType:
+      return setSceneVariableType(edit.sceneId, edit.variableId, edit.variableType);
     case GRAPH_COMMAND_TYPES.removeSceneVariable:
       return removeSceneVariable(edit.sceneId, edit.variableId);
     case GRAPH_COMMAND_TYPES.setDevicePairingCode:
       return setDevicePairingCode(edit.nodeId, edit.pairingCode);
+    case GRAPH_COMMAND_TYPES.setDevicePerConnection:
+      return setDevicePerConnection(edit.nodeId, edit.perConnection);
     default: {
       // Exhaustive over the union above; reachable only from an edit that
       // came off the wire with a type this build has never heard of, which
@@ -212,15 +235,20 @@ function supersedes(edit: GraphEdit): { key: string; ids: readonly string[] } | 
         key: `defaultScene:${edit.flowId}`,
         ids: edit.sceneId === null ? [edit.flowId] : [edit.flowId, edit.sceneId],
       };
-    case GRAPH_COMMAND_TYPES.setFlowColor:
-      return { key: `flowColor:${edit.flowId}`, ids: [edit.flowId] };
-    case GRAPH_COMMAND_TYPES.renameSceneVariable:
+    case GRAPH_COMMAND_TYPES.setNodeColor:
+      return { key: `nodeColor:${edit.nodeId}`, ids: [edit.nodeId] };
+    case GRAPH_COMMAND_TYPES.setSceneVariableType:
       return {
-        key: `renameVariable:${edit.sceneId}:${edit.variableId}`,
+        key: `variableType:${edit.sceneId}:${edit.variableId}`,
         ids: [edit.sceneId, edit.variableId],
       };
-    case GRAPH_COMMAND_TYPES.setDevicePairingCode:
-      return { key: `pairingCode:${edit.nodeId}`, ids: [edit.nodeId] };
+    case GRAPH_COMMAND_TYPES.reorderSceneVariables:
+      return {
+        key: `variableOrder:${edit.sceneId}`,
+        ids: [edit.sceneId, ...edit.variableIds],
+      };
+    case GRAPH_COMMAND_TYPES.setDevicePerConnection:
+      return { key: `perConnection:${edit.nodeId}`, ids: [edit.nodeId] };
     default:
       return null;
   }

@@ -1,0 +1,1 @@
+ALTER TABLE "graph_node_variables" RENAME COLUMN "position" TO "rank";

@@ -13,13 +13,13 @@ import {
   PaddingTopIcon,
   PaddingVerticalIcon,
   PropertyInput,
+  Section,
   Switch,
   Toggle,
   ToggleGroup,
   ToggleGroupItem,
 } from "@mechane/design-system";
 
-import { Section } from "./Section";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { SizeFields } from "./CanvasInspectorFields";
 import { isVariableInput } from "./canvas-inspector-values";

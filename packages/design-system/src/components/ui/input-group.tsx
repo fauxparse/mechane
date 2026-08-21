@@ -82,13 +82,15 @@ function InputGroupButton({
   type = "button",
   variant = "ghost",
   size = "xs",
+  ref,
   ...props
 }: Omit<ComponentProps<typeof Button>, "size" | "type"> &
   VariantProps<typeof inputGroupButtonVariants> & {
     type?: "button" | "submit" | "reset";
-  }) {
+  } & { ref?: React.RefObject<HTMLButtonElement> }) {
   return (
     <Button
+      ref={ref}
       type={type}
       data-size={size}
       variant={variant}
@@ -140,7 +142,7 @@ export {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
-  InputGroupText,
   InputGroupInput,
+  InputGroupText,
   InputGroupTextarea,
 };

@@ -1,9 +1,9 @@
-import { assertValidShowGraph } from "@mechane/domain";
 import type { FlowNode, NavigateEdge, SceneNode, WiringEdge } from "@mechane/domain";
+import { assertValidShowGraph } from "@mechane/domain";
 import { describe, expect, it } from "vitest";
 
-import { toEditInput, toGraphEdit, toShowGraph } from "./api-graph";
 import type { ApiGraph } from "./api-graph";
+import { toEditInput, toGraphEdit, toShowGraph } from "./api-graph";
 
 type ApiNode = ApiGraph["nodes"][number];
 type ApiEdge = ApiGraph["edges"][number];
@@ -67,6 +67,7 @@ const GRAPH: ApiGraph = {
       kind: "scene",
       parentId: "flow_vote",
       position: { x: 24, y: 48 },
+      color: "aqua",
       variables: [{ id: "variable_prompt", name: "prompt", type: null }],
     }),
     apiNode({ id: "source_tally", kind: "source", position: { x: 300, y: 0 } }),
@@ -113,6 +114,7 @@ describe("toShowGraph", () => {
     expect(voting.position).toEqual({ x: 24, y: 48 });
     expect(voting.parentId).toBe("flow_vote");
     expect(voting.variables).toEqual([{ id: "variable_prompt", name: "prompt", type: null }]);
+    expect(voting.color).toBe("aqua");
   });
 
   it("keeps a Flow's default Scene", () => {
@@ -190,6 +192,7 @@ describe("toEditInput", () => {
         name: "Lobby",
         parentId: "flow_vote",
         defaultSceneId: null,
+        color: null,
         type: null,
         position: { x: 3, y: 4 },
         variables: [{ id: "variable_prompt", name: "prompt", type: null }],
@@ -204,8 +207,37 @@ describe("toEditInput", () => {
       nodeId: "scene_lobby",
     });
     expect(
-      toEditInput({ type: "graph.renameSceneVariable", sceneId: "s", variableId: "v", name: "n" }),
+      toEditInput({
+        type: "graph.renameSceneVariable",
+        sceneId: "s",
+        variableId: "v",
+        name: "n",
+      }),
     ).toEqual({ type: "graph.renameSceneVariable", sceneId: "s", variableId: "v", name: "n" });
+    expect(
+      toEditInput({
+        type: "graph.setSceneVariableType",
+        sceneId: "s",
+        variableId: "v",
+        variableType: { kind: "object" },
+      }),
+    ).toEqual({
+      type: "graph.setSceneVariableType",
+      sceneId: "s",
+      variableId: "v",
+      variableType: { kind: "object" },
+    });
+    expect(
+      toEditInput({
+        type: "graph.reorderSceneVariables",
+        sceneId: "s",
+        variableIds: ["b", "a"],
+      }),
+    ).toEqual({
+      type: "graph.reorderSceneVariables",
+      sceneId: "s",
+      variableIds: ["b", "a"],
+    });
   });
 
   it("carries the nulls that mean something", () => {
@@ -291,5 +323,19 @@ describe("toGraphEdit", () => {
         pairingCode: "AB12C",
       }),
     ).toThrow(/server's to mint/);
+  });
+
+  it("sends a Device per-connection edit", () => {
+    expect(
+      toEditInput({
+        type: "graph.setDevicePerConnection",
+        nodeId: "device_phone",
+        perConnection: true,
+      }),
+    ).toEqual({
+      type: "graph.setDevicePerConnection",
+      nodeId: "device_phone",
+      perConnection: true,
+    });
   });
 });

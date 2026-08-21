@@ -5,6 +5,8 @@ import {
   PenToolIcon,
   PlusIcon,
   PropertyInput,
+  Section,
+  SectionRow,
   Select,
   SelectContent,
   SelectItem,
@@ -15,7 +17,6 @@ import {
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { isVariableInput } from "./canvas-inspector-values";
-import { Section, SectionRow } from "./Section";
 
 const DEFAULT_STROKE: Stroke = {
   width: 1,

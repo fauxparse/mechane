@@ -182,7 +182,7 @@ export function SidebarHeader({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       data-slot="sidebar-header"
-      className={cn("flex flex-col gap-2 border-b border-border p-3", className)}
+      className={cn("flex flex-col gap-2 border-b border-border px-4 py-3", className)}
       {...props}
     />
   );
