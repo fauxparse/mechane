@@ -5,6 +5,8 @@ import {
   assertValidShowGraph,
   containingFlowId,
   deviceInstanceCardinality,
+  deviceSourceType,
+  DEVICE_SOURCE_HANDLES,
   emptyShowGraph,
   findNode,
   formatValuePath,
@@ -474,6 +476,11 @@ describe("structural queries", () => {
 
   it("returns null for an unknown node", () => {
     expect(findNode(showGraph, "nope")).toBeNull();
+  });
+
+  it("types Device virtual outputs as image and text values", () => {
+    expect(deviceSourceType(DEVICE_SOURCE_HANDLES.qrCode)).toBe("image");
+    expect(deviceSourceType(DEVICE_SOURCE_HANDLES.pairingCode)).toBe("text");
   });
 
   it("reads a Device's instance cardinality from perConnection", () => {

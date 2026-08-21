@@ -1,5 +1,5 @@
-import type { ResolvedImageValue } from "@mechane/domain";
-import { isId, resolveCanvasProperties } from "@mechane/domain";
+import type { ImageAssetReference, ResolvedImageValue } from "@mechane/domain";
+import { DEVICE_SOURCE_HANDLES, deviceQrImageValue, isId, resolveCanvasProperties } from "@mechane/domain";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import type { ShowId } from "@mechane/domain";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
@@ -90,6 +90,7 @@ function CanvasWorkspaceRoute() {
       const owner = nodes.get(artboard.artId);
       const variables = owner?.kind === "scene" ? owner.variables : [];
       const renderCanvas = resolveCanvasProperties(canvas, {
+        graph: graphEditing.graph,
         variables,
         shapes: graphEditing.graph.shapes,
         imageAssets: (imageAssets.data ?? []).map((asset) => ({
@@ -179,6 +180,18 @@ function CanvasWorkspaceRoute() {
     },
     [imageUpload],
   );
+  const deviceQrImages = useMemo(() => {
+    const images: Record<string, ResolvedImageValue & Pick<ImageAssetReference, "revision">> = {};
+    const nodesById = new Map(graphEditing.graph.nodes.map((node) => [node.id, node]));
+    for (const edge of graphEditing.graph.edges) {
+      if (edge.kind !== "wiring" || edge.sourcePath[0] !== DEVICE_SOURCE_HANDLES.qrCode) continue;
+      const variableId = edge.targetPath[0];
+      const device = nodesById.get(edge.sourceId);
+      if (!variableId || device?.kind !== "device" || !device.pairingCode) continue;
+      images[variableId] = deviceQrImageValue(device.id, device.pairingCode);
+    }
+    return images;
+  }, [graphEditing.graph]);
   if (showId === null || show.isError || !show.data) {
     return (
       <p className="p-6" role="alert">
@@ -198,6 +211,7 @@ function CanvasWorkspaceRoute() {
       onCameraChange={onCameraChange}
       focusedArtId={focused?.artId ?? null}
       variables={focusedVariables}
+      deviceQrImages={deviceQrImages}
       imageAssets={imageAssets.data ?? []}
       onImageUpload={handleImageUpload}
       onFocusArtboard={(artId) =>

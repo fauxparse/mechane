@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import { opacityFromPercent, opacityToPercent, resolveCanvasProperties } from "./canvas-properties";
+import { DEVICE_SOURCE_HANDLES } from "./graph";
 import type { Canvas } from "./canvas";
-import type { SceneVariable } from "./graph";
+import type { SceneVariable, ShowGraph } from "./graph";
 import type { Shape } from "./shapes";
 const variables: SceneVariable[] = [
   { id: "score", name: "Score", type: "number" },
@@ -107,7 +108,71 @@ describe("resolveCanvasProperties", () => {
     );
     expect(incompatible.root.children?.[0]).toMatchObject({ content: "" });
   });
+  it("renders a Device QR connection as a resolved image and tracks code changes", () => {
+    const graph: ShowGraph = {
+      shapes: [],
+      nodes: [
+        {
+          id: "device_qr",
+          kind: "device",
+          name: "Audience",
+          parentId: null,
+          position: { x: 0, y: 0 },
+          perConnection: true,
+          pairingCode: "AB23C",
+        },
+        {
+          id: "scene_qr",
+          kind: "scene",
+          name: "Join",
+          parentId: null,
+          position: { x: 0, y: 0 },
+          variables: [{ id: "variable_qr", name: "QR", type: "image" }],
+        },
+      ],
+      edges: [
+        {
+          id: "edge_qr",
+          kind: "wiring",
+          sourceId: "device_qr",
+          targetId: "scene_qr",
+          sourcePath: [DEVICE_SOURCE_HANDLES.qrCode],
+          targetPath: ["variable_qr"],
+        },
+      ],
+    };
+    const imageCanvas: Canvas = {
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [{ id: "qr", type: "image", image: { kind: "variable", variableId: "variable_qr" } }],
+      },
+    };
+    const first = resolveCanvasProperties(imageCanvas, { graph, variables: graph.nodes[1]?.kind === "scene" ? graph.nodes[1].variables : [] });
+    const firstImage = first.root.children?.[0];
+    expect(firstImage && "image" in firstImage ? firstImage.image : undefined).toMatchObject({
+      assetId: "device-qr:device_qr",
+      revision: "AB23C",
+      mimeType: "image/svg+xml",
+    });
+    const firstUrl = firstImage && "image" in firstImage && typeof firstImage.image === "object" && firstImage.image !== null && "url" in firstImage.image ? firstImage.image.url : "";
+    expect(firstUrl).toMatch(/^data:image\/svg\+xml,/);
+    const changedGraph: ShowGraph = {
+      ...graph,
+      nodes: graph.nodes.map((node) =>
+        node.kind === "device" ? { ...node, pairingCode: "CD45E" } : node,
+      ),
+    };
+    const changed = resolveCanvasProperties(imageCanvas, {
+      graph: changedGraph,
+      variables: graph.nodes[1]?.kind === "scene" ? graph.nodes[1].variables : [],
+    });
+    const changedImage = changed.root.children?.[0];
+    const changedUrl = changedImage && "image" in changedImage && typeof changedImage.image === "object" && changedImage.image !== null && "url" in changedImage.image ? changedImage.image.url : "";
+    expect(changedUrl).not.toBe(firstUrl);
 
+  });
   it("resolves a Shape Field path before coercing an Element property", () => {
     const candidate: Shape = {
       id: "shape_candidate",
