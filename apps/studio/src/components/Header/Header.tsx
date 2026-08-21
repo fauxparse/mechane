@@ -90,6 +90,7 @@ export interface HeaderProps {
   onLogOut(): void;
   publishState: PublishState;
   onPublish(): void;
+  publishDisabledReason?: string;
   publishing?: boolean;
   runActive?: boolean;
   onStartRun(): void;
@@ -134,6 +135,7 @@ export const Header = ({
   onLogOut,
   publishState,
   onPublish,
+  publishDisabledReason,
   publishing = false,
   runActive = false,
   onStartRun,
@@ -358,13 +360,18 @@ export const Header = ({
               }
             />
             <DropdownMenuContent>
-              {dirty ? (
+              {publishDisabledReason ? (
+                <Alert className="mb-1 rounded-sm border-0 bg-destructive/25 p-2 text-destructive-foreground ring-1 ring-destructive">
+                  <AlertTriangleIcon />
+                  <AlertTitle>{publishDisabledReason}</AlertTitle>
+                </Alert>
+              ) : dirty ? (
                 <Alert className="mb-1 rounded-sm border-0 bg-destructive/25 p-2 text-destructive-foreground ring-1 ring-destructive">
                   <AlertTriangleIcon />
                   <AlertTitle>This show has unpublished changes.</AlertTitle>
                 </Alert>
               ) : null}
-              <DropdownMenuItem disabled={!dirty || publishing} onClick={onPublish}>
+              <DropdownMenuItem disabled={!dirty || publishing || Boolean(publishDisabledReason)} onClick={onPublish}>
                 <CheckIcon /> {publishing ? "Publishing…" : "Publish changes"}
               </DropdownMenuItem>
               {runActive ? (

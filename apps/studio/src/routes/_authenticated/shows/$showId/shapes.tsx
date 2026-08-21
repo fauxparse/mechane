@@ -2,9 +2,10 @@ import type { ShowId } from "@mechane/domain";
 import { isId } from "@mechane/domain";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 
+import { useActiveRun } from "../../../../api/runs";
 import { useShowGraph, useShowGraphEdits } from "../../../../api/show-graph";
-import { ShapeWorkspace } from "../../../../editors/show/shapes/ShapeWorkspace";
 import { useGraphEditing } from "../../../../editors/show/commands/use-graph-editing";
+import { ShapeWorkspace } from "../../../../editors/show/shapes/ShapeWorkspace";
 
 export const Route = createFileRoute("/_authenticated/shows/$showId/shapes")({
   component: ShapesRoute,
@@ -13,8 +14,8 @@ export const Route = createFileRoute("/_authenticated/shows/$showId/shapes")({
 function ShapesRoute() {
   const params = Route.useParams();
   const showId: ShowId | null = isId("show", params.showId) ? params.showId : null;
+  const activeRun = useActiveRun(showId);
   const navigate = useNavigate();
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const shapeId = useRouterState({
     select: ({ matches }) =>
       (matches.find(({ routeId }) => routeId === "/_authenticated/shows/$showId/shapes/$shapeId")?.params as
@@ -38,6 +39,7 @@ function ShapesRoute() {
       saving={save.saving}
       saveError={save.error}
       retrySave={save.retry}
+      runActive={activeRun.data !== null && activeRun.data !== undefined}
       onOpenShape={(nextShapeId) => void navigate({ to: "/shows/$showId/shapes/$shapeId", params: { showId: params.showId, shapeId: nextShapeId } })}
       onBack={() => void navigate({ to: "/shows/$showId/shapes", params: { showId: params.showId } })}
     />

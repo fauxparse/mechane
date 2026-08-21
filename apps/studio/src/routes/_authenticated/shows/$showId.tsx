@@ -18,11 +18,12 @@ import { useEffect, useState } from "react";
 import { usePublishShowGraph, useShowGraph } from "../../../api/show-graph";
 import { useActiveRun, useEndRun, useStartRun } from "../../../api/runs";
 import { useRenameShow, useShow } from "../../../api/shows";
-import { useSignOut } from "../../../api/auth";
 import { useMe } from "../../../api/me";
+import { useSignOut } from "../../../api/auth";
 import { EditorLayout } from "../../../components/EditorLayout/EditorLayout";
 import { useStoredSidebarState } from "../../../components/EditorLayout/use-stored-sidebar-state";
 import type { EditorKind } from "../../../components/Header/Header";
+import { useShapeEditorStatus } from "../../../editors/show/shapes/shape-editor-status";
 
 export const Route = createFileRoute("/_authenticated/shows/$showId")({
   component: ShowEditorLayout,
@@ -47,6 +48,7 @@ function ShowEditorLayout() {
   const endRun = useEndRun();
   const signOut = useSignOut();
   const [sidebarsOpen, setSidebarsOpen] = useStoredSidebarState();
+  const shapeEditorStatus = useShapeEditorStatus();
 
   // Which editor the tabs should show as current. Derived from the matched
   // route rather than the pathname, so the Canvas editor's nested `$artId`
@@ -133,7 +135,11 @@ function ShowEditorLayout() {
         },
         onLogOut: () => signOut.mutate(),
         publishState: state,
-        onPublish: () => publish.mutate(currentShow.id),
+        publishDisabledReason: shapeEditorStatus.invalidReason ?? undefined,
+        onPublish: () => {
+          if (shapeEditorStatus.activeRunWarning && !window.confirm("Publishing Shape changes during the active Run may coerce live values. Continue?")) return;
+          publish.mutate(currentShow.id);
+        },
         publishing: publish.isPending,
         runActive: activeRun.data !== null && activeRun.data !== undefined,
         onStartRun: () => startRun.mutate(currentShow.id),

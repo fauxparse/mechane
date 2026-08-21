@@ -15,12 +15,13 @@ import {
   cn,
 } from "@mechane/design-system";
 import type { Shape, ShapeField, ShowGraph, Type } from "@mechane/domain";
-import { defaultValueForType } from "@mechane/domain";
-import { useCallback, useMemo, useState } from "react";
+import { assertValidShapes, defaultValueForType } from "@mechane/domain";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
 import type { GraphEditing } from "../commands/use-graph-editing";
 import { ShapeDefaultEditor } from "./ShapeDefaultEditor";
+import { setShapeEditorStatus } from "./shape-editor-status";
 
 const shapeNameSchema = z.string().trim().min(1, "Shape name is required.");
 const fieldNameSchema = z
@@ -47,6 +48,7 @@ type ShapeWorkspaceProps = {
   saving: boolean;
   saveError: Error | null;
   retrySave(): void;
+  runActive: boolean;
   onOpenShape(shapeId: string): void;
   onBack(): void;
 };
@@ -116,11 +118,23 @@ function cloneShape(shape: Shape, shapes: readonly Shape[]): Shape {
   };
 }
 
-export function ShapeWorkspace({ graph, shapeId, editing, saving, saveError, retrySave, onOpenShape, onBack }: ShapeWorkspaceProps) {
+export function ShapeWorkspace({ graph, shapeId, editing, saving, saveError, retrySave, runActive, onOpenShape, onBack }: ShapeWorkspaceProps) {
   const shapes = graph.shapes ?? [];
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<"name" | "recent">("name");
   const selected = shapes.find((shape) => shape.id === shapeId) ?? null;
+  const invalidReason = useMemo(() => {
+    try {
+      assertValidShapes(shapes);
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : "This Shape draft is invalid.";
+    }
+  }, [shapes]);
+  useEffect(() => {
+    setShapeEditorStatus({ invalidReason, activeRunWarning: runActive && selected !== null });
+    return () => setShapeEditorStatus({ invalidReason: null, activeRunWarning: false });
+  }, [invalidReason, runActive, selected]);
   const filtered = useMemo(
     () =>
       shapes
@@ -128,6 +142,9 @@ export function ShapeWorkspace({ graph, shapeId, editing, saving, saveError, ret
         .sort((left, right) => (sort === "name" ? left.name.localeCompare(right.name) : right.id.localeCompare(left.id))),
     [query, shapes, sort],
   );
+  if (shapeId !== null && selected === null) {
+    return <main className="flex min-h-full items-center justify-center bg-background px-6 pt-20"><div className="rounded-xl border border-border bg-card p-8 text-center shadow-sm"><p className="text-sm text-muted-foreground">That Shape no longer exists.</p><button type="button" className="mt-5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground" onClick={onBack}>Back to Shapes</button></div></main>;
+  }
 
   const createShape = () => {
     const shape: Shape = { id: makeId("shape"), name: nextName(shapes.map((item) => item.name), "New Shape"), fields: [] };
@@ -168,6 +185,7 @@ export function ShapeWorkspace({ graph, shapeId, editing, saving, saveError, ret
         ) : (
           <div className="flex flex-col gap-4">
             <SaveStatus saving={saving} error={saveError} retry={retrySave} />
+            {invalidReason ? <ValidationSummary reason={invalidReason} /> : null}
             <ShapeEditor
               key={selected.id}
               shape={selected}
@@ -187,6 +205,10 @@ function SaveStatus({ saving, error, retry }: { saving: boolean; error: Error | 
   if (saving) return <p className="text-xs text-muted-foreground" aria-live="polite">Saving…</p>;
   if (error) return <p className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive" role="alert"><span>Couldn’t save your changes: {error.message}</span><button type="button" className="font-medium underline" onClick={retry}>Retry</button></p>;
   return <p className="text-xs text-muted-foreground" aria-live="polite">Saved as draft</p>;
+}
+
+function ValidationSummary({ reason }: { reason: string }) {
+  return <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive" role="alert"><strong>Publish unavailable.</strong> {reason}</div>;
 }
 
 type ShapeCollectionProps = {
