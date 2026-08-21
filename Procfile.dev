@@ -1,5 +1,6 @@
 db: docker compose up postgres postgres-init minio minio-init
-studio: pnpm dev:studio --port 5173
-player: pnpm dev:player --port 5174
+proxy: docker compose up caddy dnsmasq
+studio: VITE_DEV_PROXY=true pnpm dev:studio --host 0.0.0.0 --port 5173
+player: VITE_DEV_PROXY=true pnpm dev:player --host 0.0.0.0 --port 5174
 api: PORT=4000 pnpm dev:api
 storybook: pnpm storybook

@@ -36,7 +36,7 @@ services:
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
-      MINIO_API_CORS_ALLOW_ORIGIN: http://localhost:5173
+      MINIO_API_CORS_ALLOW_ORIGIN: https://studio.mechane.dev,http://localhost:5173
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -59,7 +59,35 @@ services:
       "mc alias set local http://minio:9000 minioadmin minioadmin &&
       mc mb --ignore-existing local/mechane &&
       mc anonymous set download local/mechane"
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - mechane-caddy-data:/data
+      - mechane-caddy-config:/config
+
+  dnsmasq:
+    build:
+      context: ./docker/dnsmasq
+    restart: unless-stopped
+    command:
+      - --keep-in-foreground
+      - --no-resolv
+      - --no-hosts
+      - --address=/.mechane.dev/127.0.0.1
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+
 
 volumes:
   mechane-minio-data:
   mechane-postgres-18-data:
+  mechane-caddy-data:
+  mechane-caddy-config:
