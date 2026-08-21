@@ -1,190 +1,131 @@
-// Seed graphs (issue #38's model, for the editor of #39 to render). One
-// per seeded Show, hand-built rather than generated: the point is that
-// opening a seeded Show shows something *legible* — a shape a human can
-// recognise as a Show — not a pile of representative nodes.
-//
-// Between them the two graphs cover all five node kinds and all three edge
-// kinds, nested and top-level Scenes, a Flow-local producer and a
-// Show-level one, a wiring edge that carries a whole value and one that
-// picks a field out of a structured one, parallel Navigate edges, and both
-// legal Device edge producers (a Flow and a top-level Scene).
-import type { ShowGraph } from "@mechane/domain";
-import { generateId } from "@mechane/domain";
+// Seed data for the local Voting demo. The graph is intentionally small and
+// legible: three Candidate Sources feed a projected tally and an Audience flow.
+import type { Canvas, FrameElement, PropertyConnection, ShowGraph, TextElement } from "@mechane/domain";
 
-/**
- * "Hamlet" — an audience vote, the canonical shape from the PRD: a Flow
- * whose Scenes loop, fed by a Flow-local Source (one tally per audience
- * instance, #29), with the Flow driving the audience's Device and a
- * top-level holding Scene driving the foyer screen.
- */
-function hamletGraph(): ShowGraph {
-  const vote = generateId("flow");
-  const waiting = generateId("scene");
-  const voting = generateId("scene");
-  const results = generateId("scene");
-  const lobby = generateId("scene");
-  const tally = generateId("source");
-  const winner = generateId("transformer");
-  const audiencePhone = generateId("device");
-  const foyerScreen = generateId("device");
-  const question = generateId("variable");
-  const leader = generateId("variable");
-  const leaderVotes = generateId("variable");
-  const houseMessage = generateId("variable");
+export const CANDIDATE_SHAPE_ID = "shape_candidate";
+export const CANDIDATE_NAME_FIELD_ID = "field_candidate_name";
+export const CANDIDATE_VOTES_FIELD_ID = "field_candidate_votes";
+export const CANDIDATE_AVATAR_FIELD_ID = "field_candidate_avatar";
+
+export const CANDIDATE_SOURCE_IDS = ["source_alice", "source_beatrix", "source_clarissa"] as const;
+export const TALLY_VARIABLE_IDS = ["variable_tally_alice", "variable_tally_beatrix", "variable_tally_clarissa"] as const;
+export const AUDIENCE_VARIABLE_IDS = ["variable_audience_alice", "variable_audience_beatrix", "variable_audience_clarissa"] as const;
+
+const PROJECTOR_ID = "device_projector";
+const TALLY_SCENE_ID = "scene_vote_tally";
+const AUDIENCE_FLOW_ID = "flow_audience";
+const AUDIENCE_SCENE_ID = "scene_audience_vote";
+
+const candidateType = { kind: "shape" as const, shapeId: CANDIDATE_SHAPE_ID };
+
+function candidateFieldDefaults(name: string, votes: number) {
+  return [
+    { nodeId: "", fieldPath: [CANDIDATE_NAME_FIELD_ID], value: name },
+    { nodeId: "", fieldPath: [CANDIDATE_VOTES_FIELD_ID], value: votes },
+  ];
+}
+
+export function votingGraph(): ShowGraph {
+  const [alice, beatrix, clarissa] = CANDIDATE_SOURCE_IDS;
+  const [tallyAlice, tallyBeatrix, tallyClarissa] = TALLY_VARIABLE_IDS;
+  const [audienceAlice, audienceBeatrix, audienceClarissa] = AUDIENCE_VARIABLE_IDS;
+  const candidateShape = {
+    id: CANDIDATE_SHAPE_ID,
+    name: "Candidate",
+    fields: [
+      { id: CANDIDATE_NAME_FIELD_ID, name: "name", type: "text" as const, required: true, defaultValue: "" },
+      { id: CANDIDATE_VOTES_FIELD_ID, name: "votes", type: "number" as const, required: true, defaultValue: 0 },
+      { id: CANDIDATE_AVATAR_FIELD_ID, name: "avatar", type: "image" as const, required: false, defaultValue: null },
+    ],
+  };
+  const sources = [
+    { id: alice, name: "Alice", fieldDefaults: candidateFieldDefaults("Alice", 12), position: { x: 0, y: 0 } },
+    { id: beatrix, name: "Beatrix", fieldDefaults: candidateFieldDefaults("Beatrix", 8), position: { x: 0, y: 180 } },
+    { id: clarissa, name: "Clarissa", fieldDefaults: candidateFieldDefaults("Clarissa", 5), position: { x: 0, y: 360 } },
+  ];
+  const sourceNodes = sources.map((source) => ({
+    id: source.id,
+    kind: "source" as const,
+    name: source.name,
+    parentId: null,
+    position: source.position,
+    type: candidateType,
+    fieldDefaults: source.fieldDefaults.map((defaultValue) => ({ ...defaultValue, nodeId: source.id })),
+  }));
+  const tallyVariables = [tallyAlice, tallyBeatrix, tallyClarissa].map((id, index) => ({
+    id,
+    name: ["Alice", "Beatrix", "Clarissa"][index] ?? id,
+    type: candidateType,
+  }));
+  const audienceVariables = [audienceAlice, audienceBeatrix, audienceClarissa].map((id, index) => ({
+    id,
+    name: ["Alice", "Beatrix", "Clarissa"][index] ?? id,
+    type: candidateType,
+  }));
+  const sourceEdges = sources.flatMap((source, index) => [
+    {
+      id: `edge_${source.id}_tally`,
+      kind: "wiring" as const,
+      sourceId: source.id,
+      targetId: TALLY_SCENE_ID,
+      sourcePath: [],
+      targetPath: [TALLY_VARIABLE_IDS[index] ?? tallyAlice],
+    },
+    {
+      id: `edge_${source.id}_audience`,
+      kind: "wiring" as const,
+      sourceId: source.id,
+      targetId: AUDIENCE_SCENE_ID,
+      sourcePath: [],
+      targetPath: [AUDIENCE_VARIABLE_IDS[index] ?? audienceAlice],
+    },
+  ]);
 
   return {
+    shapes: [candidateShape],
     nodes: [
+      ...sourceNodes,
       {
-        id: vote,
+        id: TALLY_SCENE_ID,
+        kind: "scene",
+        name: "Vote tally",
+        parentId: null,
+        position: { x: 460, y: 0 },
+        variables: tallyVariables,
+      },
+      {
+        id: AUDIENCE_FLOW_ID,
         kind: "flow",
-        name: "Audience vote",
+        name: "Audience",
         parentId: null,
-        position: { x: 0, y: 0 },
-        defaultSceneId: waiting,
+        position: { x: 460, y: 420 },
+        defaultSceneId: AUDIENCE_SCENE_ID,
       },
       {
-        id: waiting,
+        id: AUDIENCE_SCENE_ID,
         kind: "scene",
-        name: "Waiting for the house",
-        parentId: vote,
-        position: { x: 40, y: 80 },
-        variables: [{ id: question, name: "prompt" }],
+        name: "Choose a candidate",
+        parentId: AUDIENCE_FLOW_ID,
+        position: { x: 460, y: 560 },
+        variables: audienceVariables,
       },
       {
-        id: voting,
-        kind: "scene",
-        name: "Cast your vote",
-        parentId: vote,
-        position: { x: 300, y: 80 },
-        variables: [],
-      },
-      {
-        id: results,
-        kind: "scene",
-        name: "The verdict",
-        parentId: vote,
-        position: { x: 560, y: 80 },
-        variables: [
-          { id: leader, name: "winner" },
-          { id: leaderVotes, name: "voteCount" },
-        ],
-      },
-      // Flow-local (#29): each audience instance of the vote counts its own
-      // house, so the tally lives inside the Flow and can only feed Scenes
-      // inside it.
-      {
-        id: tally,
-        kind: "source",
-        name: "Live tally",
-        parentId: vote,
-        position: { x: 300, y: 300 },
-        type: "number",
-      },
-      {
-        id: winner,
-        kind: "transformer",
-        name: "Leading option",
-        parentId: vote,
-        position: { x: 560, y: 300 },
-        type: "text",
-      },
-      // Show-level: a Scene that isn't in any Flow at all (#20/#25).
-      {
-        id: lobby,
-        kind: "scene",
-        name: "Front of house holding slide",
-        parentId: null,
-        position: { x: 0, y: 480 },
-        variables: [{ id: houseMessage, name: "message" }],
-      },
-      {
-        id: audiencePhone,
+        id: PROJECTOR_ID,
         kind: "device",
-        name: "Audience phones",
+        name: "Projector",
         parentId: null,
-        position: { x: 880, y: 0 },
-        // Every phone is its own instance, navigating the Flow
-        // independently (#45) — the one Device here that is.
-        perConnection: true,
-        // Minted by `writeShowGraph`, which the seed goes through like any
-        // other write, so seeded Shows get real codes.
-        pairingCode: null,
-      },
-      {
-        id: foyerScreen,
-        kind: "device",
-        name: "Foyer screen",
-        parentId: null,
-        position: { x: 880, y: 480 },
+        position: { x: 900, y: 120 },
         perConnection: false,
         pairingCode: null,
       },
     ],
     edges: [
+      ...sourceEdges,
       {
-        id: generateId("edge"),
-        kind: "navigate",
-        sourceId: waiting,
-        targetId: voting,
-        sourcePath: [],
-        targetPath: [],
-        cueId: null,
-        actionId: null,
-      },
-      {
-        id: generateId("edge"),
-        kind: "navigate",
-        sourceId: voting,
-        targetId: results,
-        sourcePath: [],
-        targetPath: [],
-        cueId: null,
-        actionId: null,
-      },
-      // Back round for the next audience — a Flow's Scenes are a state
-      // machine, so a cycle here is the normal case, not a mistake.
-      {
-        id: generateId("edge"),
-        kind: "navigate",
-        sourceId: results,
-        targetId: waiting,
-        sourcePath: [],
-        targetPath: [],
-        cueId: null,
-        actionId: null,
-      },
-      // The tally is a structured value; these two edges pull different
-      // fields out of it into different Variables on one Scene.
-      {
-        id: generateId("edge"),
-        kind: "wiring",
-        sourceId: winner,
-        targetId: results,
-        sourcePath: ["option", "label"],
-        targetPath: [leader],
-      },
-      {
-        id: generateId("edge"),
-        kind: "wiring",
-        sourceId: tally,
-        targetId: results,
-        sourcePath: ["total"],
-        targetPath: [leaderVotes],
-      },
-      {
-        id: generateId("edge"),
+        id: "edge_tally_projector",
         kind: "device",
-        sourceId: vote,
-        targetId: audiencePhone,
-        sourcePath: [],
-        targetPath: [],
-      },
-      // The other legal Device producer: a top-level Scene (#26).
-      {
-        id: generateId("edge"),
-        kind: "device",
-        sourceId: lobby,
-        targetId: foyerScreen,
+        sourceId: TALLY_SCENE_ID,
+        targetId: PROJECTOR_ID,
         sourcePath: [],
         targetPath: [],
       },
@@ -192,199 +133,88 @@ function hamletGraph(): ShowGraph {
   };
 }
 
-/**
- * "A Midsummer Night's Dream" — deliberately a different shape: two
- * unrelated Flows, a Show-level Source feeding into one of them (the
- * unrestricted case, in contrast to Hamlet's Flow-local tally), and
- * parallel Navigate edges between one pair of Scenes.
- */
-function midsummerGraph(): ShowGraph {
-  const lovers = generateId("flow");
-  const mechanicals = generateId("flow");
-  const forest = generateId("scene");
-  const chase = generateId("scene");
-  const wake = generateId("scene");
-  const rehearsal = generateId("scene");
-  const play = generateId("scene");
-  const roster = generateId("source");
-  const pairing = generateId("transformer");
-  const houseScreen = generateId("device");
-  const partnerName = generateId("variable");
-  const pursuerName = generateId("variable");
-  const cast = generateId("variable");
+function variable(variableId: string, fieldId?: string): PropertyConnection {
+  return { kind: "variable", variableId, ...(fieldId ? { fieldPath: [fieldId] } : {}) };
+}
 
+function text(id: string, rank: string, content: string | PropertyConnection, name: string): TextElement {
   return {
-    nodes: [
-      {
-        id: lovers,
-        kind: "flow",
-        name: "The lovers",
-        parentId: null,
-        position: { x: 0, y: 0 },
-        defaultSceneId: forest,
-      },
-      {
-        id: forest,
-        kind: "scene",
-        name: "Into the wood",
-        parentId: lovers,
-        position: { x: 40, y: 80 },
-        variables: [],
-      },
-      {
-        id: chase,
-        kind: "scene",
-        name: "The chase",
-        parentId: lovers,
-        position: { x: 300, y: 80 },
-        variables: [{ id: pursuerName, name: "pursuer" }],
-      },
-      {
-        id: wake,
-        kind: "scene",
-        name: "Waking up",
-        parentId: lovers,
-        position: { x: 560, y: 80 },
-        variables: [{ id: partnerName, name: "belovedOf" }],
-      },
-      {
-        id: mechanicals,
-        kind: "flow",
-        name: "The mechanicals",
-        parentId: null,
-        position: { x: 0, y: 400 },
-        defaultSceneId: rehearsal,
-      },
-      {
-        id: rehearsal,
-        kind: "scene",
-        name: "Rehearsal",
-        parentId: mechanicals,
-        position: { x: 40, y: 480 },
-        variables: [{ id: cast, name: "castList" }],
-      },
-      {
-        id: play,
-        kind: "scene",
-        name: "Pyramus and Thisbe",
-        parentId: mechanicals,
-        position: { x: 300, y: 480 },
-        variables: [],
-      },
-      // Show-level producers: one roster for the whole Show, so unlike
-      // Hamlet's tally these may feed Scenes in any Flow.
-      {
-        id: roster,
-        kind: "source",
-        name: "Audience sign-ups",
-        parentId: null,
-        position: { x: 560, y: 700 },
-        type: "text",
-      },
-      {
-        id: pairing,
-        kind: "transformer",
-        name: "Pair them off",
-        parentId: null,
-        position: { x: 820, y: 700 },
-        type: "text",
-      },
-      {
-        id: houseScreen,
-        kind: "device",
-        name: "House screen",
-        parentId: null,
-        position: { x: 880, y: 400 },
-        perConnection: false,
-        pairingCode: null,
-      },
-    ],
-    edges: [
-      {
-        id: generateId("edge"),
-        kind: "navigate",
-        sourceId: forest,
-        targetId: chase,
-        sourcePath: [],
-        targetPath: [],
-        cueId: null,
-        actionId: null,
-      },
-      // Parallel Navigate edges (#20): two different ways out of the chase
-      // into the same Scene. Cues and Actions aren't modelled yet, so what
-      // distinguishes them is still to come — the pair is legal today.
-      {
-        id: generateId("edge"),
-        kind: "navigate",
-        sourceId: chase,
-        targetId: wake,
-        sourcePath: [],
-        targetPath: [],
-        cueId: "cue-exhausted",
-        actionId: null,
-      },
-      {
-        id: generateId("edge"),
-        kind: "navigate",
-        sourceId: chase,
-        targetId: wake,
-        sourcePath: [],
-        targetPath: [],
-        cueId: "cue-puck-intervenes",
-        actionId: null,
-      },
-      {
-        id: generateId("edge"),
-        kind: "navigate",
-        sourceId: rehearsal,
-        targetId: play,
-        sourcePath: [],
-        targetPath: [],
-        cueId: null,
-        actionId: null,
-      },
-      {
-        id: generateId("edge"),
-        kind: "wiring",
-        sourceId: pairing,
-        targetId: wake,
-        sourcePath: ["beloved", "name"],
-        targetPath: [partnerName],
-      },
-      {
-        id: generateId("edge"),
-        kind: "wiring",
-        sourceId: pairing,
-        targetId: chase,
-        sourcePath: ["pursuer", "name"],
-        targetPath: [pursuerName],
-      },
-      // Whole value, no path: the roster goes into the cast list as-is.
-      {
-        id: generateId("edge"),
-        kind: "wiring",
-        sourceId: roster,
-        targetId: rehearsal,
-        sourcePath: [],
-        targetPath: [cast],
-      },
-      {
-        id: generateId("edge"),
-        kind: "device",
-        sourceId: mechanicals,
-        targetId: houseScreen,
-        sourcePath: [],
-        targetPath: [],
-      },
-    ],
+    id,
+    type: "text",
+    rank,
+    name,
+    content,
+    sizing: { width: { mode: "fill" }, height: { mode: "hug" } },
   };
 }
 
-/**
- * A graph builder per seeded Show name. Shows not listed here seed with no
- * graph at all, which is the third state worth being able to look at: empty
- */
-export const SEED_GRAPHS: Record<string, () => ShowGraph> = {
-  Hamlet: hamletGraph,
-  "A Midsummer Night's Dream": midsummerGraph,
+function button(id: string, rank: string, variableId: string, label: string) {
+  return {
+    id,
+    type: "frame" as const,
+    rank,
+    name: `${label} button`,
+    fill: "#2f2f2f",
+    cornerRadius: 10,
+    sizing: { width: { mode: "fill" as const }, height: { mode: "fixed" as const, value: 72 } },
+    children: [text(`${id}_label`, "a", variable(variableId, CANDIDATE_NAME_FIELD_ID), `${label} name`)],
+  };
+}
+
+function root(name: string, children: readonly NonNullable<FrameElement["children"]>[number][]): FrameElement {
+  return {
+    id: `${name.toLowerCase().replaceAll(" ", "-")}-root`,
+    type: "frame",
+    name,
+    rank: "a",
+    layoutMode: "auto",
+    direction: "vertical",
+    gap: 20,
+    padding: 32,
+    sizing: { width: { mode: "fixed", value: 720 }, height: { mode: "hug" } },
+    children,
+  };
+}
+
+export function votingCanvases(): Record<string, Canvas> {
+  const tallyRows = TALLY_VARIABLE_IDS.map((variableId, index) => {
+    const label = ["Alice", "Beatrix", "Clarissa"][index] ?? "Candidate";
+    return {
+      id: `tally-row-${index}`,
+      type: "frame" as const,
+      rank: String.fromCharCode(98 + index),
+      name: `${label} tally row`,
+      layoutMode: "auto" as const,
+      direction: "horizontal" as const,
+      gap: 16,
+      sizing: { width: { mode: "fill" as const }, height: { mode: "hug" as const } },
+      children: [
+        text(`tally-name-${index}`, "a", variable(variableId, CANDIDATE_NAME_FIELD_ID), `${label} name`),
+        text(`tally-votes-${index}`, "b", variable(variableId, CANDIDATE_VOTES_FIELD_ID), `${label} votes`),
+      ],
+    };
+  });
+  return {
+    [TALLY_SCENE_ID]: { kind: "scene", root: root("Vote tally", [text("tally-title", "a", "Vote tally", "Title"), ...tallyRows]) },
+    [AUDIENCE_SCENE_ID]: {
+      kind: "scene",
+      root: root("Choose a candidate", [
+        text("audience-title", "a", "Choose a candidate", "Title"),
+        ...AUDIENCE_VARIABLE_IDS.map((variableId, index) => button(`candidate-button-${index}`, String.fromCharCode(98 + index), variableId, ["Alice", "Beatrix", "Clarissa"][index] ?? "Candidate")),
+      ]),
+    },
+  };
+}
+
+export type SeedGraph = ShowGraph;
+export type SeedCanvases = Record<string, Canvas>;
+export type SeedGraphBuilder = () => SeedGraph;
+export type SeedCanvasBuilder = () => SeedCanvases;
+
+export const SEED_GRAPHS: Record<string, SeedGraphBuilder> = {
+  "Voting demo": votingGraph,
+};
+
+export const SEED_CANVASES: Record<string, SeedCanvasBuilder> = {
+  "Voting demo": votingCanvases,
 };

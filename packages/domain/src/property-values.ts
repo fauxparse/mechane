@@ -6,6 +6,8 @@ import { defaultValueForType } from "./source-defaults";
 export interface PropertyConnection {
   readonly kind: "variable";
   readonly variableId: string;
+  /** Stable Shape Field ids to read before coercing into the Element property. */
+  readonly fieldPath?: readonly string[];
 }
 
 /** A Property is either a literal value or a Variable connection. */
@@ -19,12 +21,12 @@ export type VariableReference<TSource extends ShapeValue = ShapeValue> = SceneVa
 export type PropertyCoercion = "identity" | "number-to-text";
 
 export function isPropertyConnection(value: unknown): value is PropertyConnection {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    (value as { kind?: unknown }).kind === "variable" &&
-    typeof (value as { variableId?: unknown }).variableId === "string"
-  );
+  if (typeof value !== "object" || value === null || !("kind" in value) || value.kind !== "variable") {
+    return false;
+  }
+  if (!("variableId" in value) || typeof value.variableId !== "string") return false;
+  if (!("fieldPath" in value) || value.fieldPath === undefined) return true;
+  return Array.isArray(value.fieldPath) && value.fieldPath.every((segment) => typeof segment === "string");
 }
 
 export function propertyCoercion(source: Type, target: Type): PropertyCoercion | null {

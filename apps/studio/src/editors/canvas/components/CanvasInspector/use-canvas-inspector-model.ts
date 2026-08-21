@@ -32,7 +32,8 @@ function sameValue(left: unknown, right: unknown): boolean {
     return (
       isPropertyConnection(left) &&
       isPropertyConnection(right) &&
-      left.variableId === right.variableId
+      left.variableId === right.variableId &&
+      JSON.stringify(left.fieldPath ?? []) === JSON.stringify(right.fieldPath ?? [])
     );
   }
   if (

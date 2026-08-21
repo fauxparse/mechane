@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { opacityFromPercent, opacityToPercent, resolveCanvasProperties } from "./canvas-properties";
 import type { Canvas } from "./canvas";
 import type { SceneVariable } from "./graph";
-
+import type { Shape } from "./shapes";
 const variables: SceneVariable[] = [
   { id: "score", name: "Score", type: "number" },
   { id: "headline", name: "Headline", type: "text" },
@@ -108,6 +108,42 @@ describe("resolveCanvasProperties", () => {
     expect(incompatible.root.children?.[0]).toMatchObject({ content: "" });
   });
 
+  it("resolves a Shape Field path before coercing an Element property", () => {
+    const candidate: Shape = {
+      id: "shape_candidate",
+      name: "Candidate",
+      fields: [
+        { id: "field_name", name: "name", type: "text", required: true, defaultValue: "" },
+        { id: "field_votes", name: "votes", type: "number", required: true, defaultValue: 0 },
+      ],
+    };
+    const shapeCanvas: Canvas = {
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "name",
+            type: "text",
+            content: { kind: "variable", variableId: "candidate", fieldPath: ["field_name"] },
+          },
+          {
+            id: "votes",
+            type: "text",
+            content: { kind: "variable", variableId: "candidate", fieldPath: ["field_votes"] },
+          },
+        ],
+      },
+    };
+    const resolved = resolveCanvasProperties(shapeCanvas, {
+      variables: [{ id: "candidate", name: "Candidate", type: { kind: "shape", shapeId: candidate.id } }],
+      shapes: [candidate],
+      values: { candidate: { field_name: "Alice", field_votes: 12 } },
+    });
+    expect(resolved.root.children?.[0]).toMatchObject({ content: "Alice" });
+    expect(resolved.root.children?.[1]).toMatchObject({ content: "12" });
+  });
   it("converts opacity at the inspector boundary", () => {
     expect(opacityToPercent(0.42)).toBe(42);
     expect(opacityFromPercent(42)).toBe(0.42);
