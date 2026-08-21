@@ -1,11 +1,5 @@
 import {
-  GOOGLE_FONTS_API_KEY,
-  fontFamilyKey,
-  googleFontVariant,
-  loadGoogleFont,
-} from "../../google-fonts";
-import { useGoogleFonts } from "../../google-fonts-provider";
-import {
+  BoldIcon,
   Button,
   Combobox,
   ComboboxContent,
@@ -22,6 +16,8 @@ import {
   DialogFooter,
   DialogTitle,
   FontSizeIcon,
+  ItalicIcon,
+  LetterSpacingIcon,
   LineHeightIcon,
   NotebookPenIcon,
   PaintBucketIcon,
@@ -37,20 +33,24 @@ import {
   TextAlignCenterIcon,
   TextAlignEndIcon,
   TextAlignStartIcon,
+  TextAlignVerticalBottomIcon,
+  TextAlignVerticalCenterIcon,
+  TextAlignVerticalTopIcon,
   Textarea,
   ToggleGroup,
   ToggleGroupItem,
   TypeIcon,
-  BoldIcon,
   UnderlineIcon,
-  ItalicIcon,
-  TextAlignVerticalTopIcon,
-  TextAlignVerticalCenterIcon,
-  TextAlignVerticalBottomIcon,
-  LetterSpacingIcon,
 } from "@mechane/design-system";
 import type { ShapeValue, TextOverflow } from "@mechane/domain";
 import { Fragment, useEffect, useMemo, useState } from "react";
+import {
+  GOOGLE_FONTS_API_KEY,
+  fontFamilyKey,
+  googleFontVariant,
+  loadGoogleFont,
+} from "../../google-fonts";
+import { useGoogleFonts } from "../../google-fonts-provider";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { PropertyField } from "./CanvasInspectorFields";
@@ -198,7 +198,7 @@ const LINE_HEIGHT_PRESETS = [
   96,
 ] as const;
 const TEXT_OVERFLOW_OPTIONS = [
-  { label: "Visible", value: "visible" },
+  { label: "Overflow", value: "visible" },
   { label: "Clip", value: "clip" },
   { label: "Truncate", value: "ellipsis" },
 ] as const satisfies readonly { label: string; value: TextOverflow }[];
@@ -324,14 +324,15 @@ export const TextSection = () => {
             }}
           >
             <SelectTrigger
-              className="w-full rounded-sm border-0 bg-muted/50 px-2"
+              className="w-full rounded-sm border-0 bg-muted/50 dark:bg-muted/50 hover:bg-muted/75 dark:hover:bg-muted/75 px-2"
               size="sm"
               aria-label="Text overflow"
             >
               <SelectValue
                 placeholder={
-                  TEXT_OVERFLOW_OPTIONS.find((option) => option.value === textOverflow)?.label ??
-                  "Visible"
+                  TEXT_OVERFLOW_OPTIONS.find(
+                    (option) => option.value === (textOverflow ?? "visible"),
+                  )?.label
                 }
               />
             </SelectTrigger>

@@ -50,7 +50,7 @@ function ToggleGroup({
       data-orientation={orientation}
       style={{ "--gap": spacing } as CSSProperties}
       className={cn(
-        "group/toggle-group flex *:grow w-fit p-0.5 flex-row items-center bg-muted/50 gap-[--spacing(var(--gap))] rounded-lg data-[size=sm]:rounded-md data-[orientation=vertical]:flex-col data-[orientation=vertical]:items-stretch *:data-[size=sm]:h-6 *:data-[size=sm]:min-w-6 *:rounded-md *:data-[size=sm]:rounded-xs",
+        "group/toggle-group flex *:grow w-fit p-0.5 flex-row items-center bg-muted/50 gap-[--spacing(var(--gap))] rounded-md data-[size=sm]:rounded-sm data-[orientation=vertical]:flex-col data-[orientation=vertical]:items-stretch *:data-[size=sm]:h-6 *:data-[size=sm]:min-w-6 *:rounded-md *:data-[size=sm]:rounded-xs",
         className,
       )}
       {...props}
