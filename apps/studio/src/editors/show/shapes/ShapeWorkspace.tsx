@@ -838,7 +838,7 @@ function FieldDetails({
           Type
           <TypeSelect
             value={field.type}
-            shapes={shapes.filter((candidate) => candidate.id !== currentShapeId)}
+            shapes={shapes}
             includeArray
             triggerClassName="w-full"
             onValueChange={(type) => {
@@ -853,7 +853,7 @@ function FieldDetails({
             Array item Type
             <TypeSelect
               value={arrayItemType}
-              shapes={shapes.filter((candidate) => candidate.id !== currentShapeId)}
+              shapes={shapes}
               includeArray={false}
               triggerClassName="w-full"
               onValueChange={(type) => {

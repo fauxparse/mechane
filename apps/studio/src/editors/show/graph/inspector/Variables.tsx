@@ -18,7 +18,7 @@ import {
   typeFromVariableKind,
   variableTypeKind,
 } from "@mechane/design-system";
-import type { SceneNode, SceneVariable, Type } from "@mechane/domain";
+import type { SceneNode, SceneVariable, Shape, Type } from "@mechane/domain";
 import { useCallback } from "react";
 import type { GraphEditing } from "../../commands/use-graph-editing";
 import { reorderVariableIndices } from "./variable-order";
@@ -26,6 +26,7 @@ import { reorderVariableIndices } from "./variable-order";
 type VariablesProps = {
   node: SceneNode;
   editing: GraphEditing;
+  shapes?: readonly Shape[];
 };
 
 const variableSensors = (defaults: typeof defaultPreset.sensors) =>
@@ -40,7 +41,7 @@ const variableSensors = (defaults: typeof defaultPreset.sensors) =>
       : sensor,
   );
 
-export const Variables = ({ node, editing }: VariablesProps) => {
+export const Variables = ({ node, editing, shapes = [] }: VariablesProps) => {
   const renameVariable = useCallback(
     (variableId: string, name: string) => {
       editing.renameVariable(node.id, variableId, name);
@@ -97,6 +98,7 @@ export const Variables = ({ node, editing }: VariablesProps) => {
                 editing.setVariableType(node.id, variableId, type)
               }
               onRemove={removeVariable}
+              shapes={shapes}
             />
           ))}
         </div>
@@ -109,6 +111,7 @@ type VariableRowProps = {
   variable: SceneVariable;
   index: number;
   group: string;
+  shapes: readonly Shape[];
   onRename: (variableId: string, name: string) => void;
   onChangeType: (variableId: string, type: Type) => void;
   onRemove: (variableId: string) => void;
@@ -118,6 +121,7 @@ const VariableRow = ({
   variable,
   index,
   group,
+  shapes,
   onRename,
   onChangeType,
   onRemove,
@@ -154,6 +158,7 @@ const VariableRow = ({
         <InputGroupAddon className="py-0">
           <TypeSelect
             value={currentType}
+            shapes={shapes}
             includeArray
             showLabel={false}
             triggerSize="sm"

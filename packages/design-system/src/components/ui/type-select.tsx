@@ -76,12 +76,14 @@ function typeLabel(type: Type, shapes: readonly Shape[]): string {
     return PRIMITIVE_OPTIONS.find((option) => option.value === type)?.label ?? type;
   }
   if (type.kind === "array") return `Array of ${typeLabel(type.of, shapes)}`;
-  if (type.kind === "shape") return shapes.find((shape) => shape.id === type.shapeId)?.name ?? "Shape";
+  if (type.kind === "shape")
+    return shapes.find((shape) => shape.id === type.shapeId)?.name ?? "Shape";
   return "Object";
 }
 
 function typeIcon(type: Type): LucideIcon {
-  if (typeof type === "string") return PRIMITIVE_OPTIONS.find((option) => option.value === type)?.icon ?? BoxIcon;
+  if (typeof type === "string")
+    return PRIMITIVE_OPTIONS.find((option) => option.value === type)?.icon ?? BoxIcon;
   if (type.kind === "array") return ListIcon;
   return BoxIcon;
 }
@@ -89,7 +91,11 @@ function typeIcon(type: Type): LucideIcon {
 function shapeOptions(shapes: readonly Shape[]): TypeSelectOption[] {
   return [...shapes]
     .sort((left, right) => left.name.localeCompare(right.name))
-    .map((shape) => ({ value: { kind: "shape", shapeId: shape.id }, label: shape.name, icon: BoxIcon }));
+    .map((shape) => ({
+      value: { kind: "shape", shapeId: shape.id },
+      label: shape.name,
+      icon: BoxIcon,
+    }));
 }
 
 export function TypeSelect({
@@ -112,14 +118,24 @@ export function TypeSelect({
   const customTrigger = renderTrigger?.({ value: currentValue, label, icon: Icon });
   const shapeTypeOptions = shapeOptions(shapes);
 
-  const isDisabled = (option: TypeSelectOption) => disabled || option.disabled === true || optionDisabled?.(option) === true;
+  const isDisabled = (option: TypeSelectOption) =>
+    disabled || option.disabled === true || optionDisabled?.(option) === true;
   const selectType = (next: Type) => {
     const option = { value: next, label: typeLabel(next, shapes), icon: typeIcon(next) };
     if (!isDisabled(option)) onValueChange(next);
   };
   const renderOption = (option: TypeSelectOption) => {
     const OptionIcon = option.icon;
-    return <DropdownMenuItem key={optionKey(option.value)} disabled={isDisabled(option)} onClick={() => selectType(option.value)}><OptionIcon className="size-4 text-muted-foreground" />{option.label}</DropdownMenuItem>;
+    return (
+      <DropdownMenuItem
+        key={optionKey(option.value)}
+        disabled={isDisabled(option)}
+        onClick={() => selectType(option.value)}
+      >
+        <OptionIcon className="size-4 text-muted-foreground" />
+        {option.label}
+      </DropdownMenuItem>
+    );
   };
 
   const defaultTrigger = (
@@ -163,8 +179,22 @@ export function TypeSelect({
               <DropdownMenuSubmenuContent>
                 <DropdownMenuGroup>
                   <DropdownMenuLabel>Array item Type</DropdownMenuLabel>
-                  {PRIMITIVE_OPTIONS.map((option) => renderOption({ ...option, value: { kind: "array", of: option.value }, label: `Array of ${option.label}`, icon: ListIcon }))}
-                  {shapeTypeOptions.map((option) => renderOption({ ...option, value: { kind: "array", of: option.value }, label: `Array of ${option.label}`, icon: ListIcon }))}
+                  {PRIMITIVE_OPTIONS.map((option) =>
+                    renderOption({
+                      ...option,
+                      value: { kind: "array", of: option.value },
+                      label: `Array of ${option.label}`,
+                      icon: option.icon,
+                    }),
+                  )}
+                  {shapeTypeOptions.map((option) =>
+                    renderOption({
+                      ...option,
+                      value: { kind: "array", of: option.value },
+                      label: `Array of ${option.label}`,
+                      icon: option.icon,
+                    }),
+                  )}
                 </DropdownMenuGroup>
               </DropdownMenuSubmenuContent>
             </DropdownMenuSubmenu>
