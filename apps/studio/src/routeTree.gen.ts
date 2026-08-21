@@ -14,6 +14,7 @@ import { Route as GuestRouteRouteImport } from './routes/_guest/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as GuestSignInRouteImport } from './routes/_guest/sign-in'
+import { Route as PrototypeShapeFieldsRouteImport } from './routes/prototype/shape-fields'
 import { Route as AuthenticatedShowsShowIdRouteImport } from './routes/_authenticated/shows/$showId'
 import { Route as AuthenticatedShowsShowIdIndexRouteImport } from './routes/_authenticated/shows/$showId/index'
 import { Route as AuthenticatedShowsShowIdArtRouteImport } from './routes/_authenticated/shows/$showId/art'
@@ -41,6 +42,11 @@ const GuestSignInRoute = GuestSignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
   getParentRoute: () => GuestRouteRoute,
+} as any)
+const PrototypeShapeFieldsRoute = PrototypeShapeFieldsRouteImport.update({
+  id: '/prototype/shape-fields',
+  path: '/prototype/shape-fields',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedShowsShowIdRoute =
   AuthenticatedShowsShowIdRouteImport.update({
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/sign-in': typeof GuestSignInRoute
+  '/prototype/shape-fields': typeof PrototypeShapeFieldsRoute
   '/shows/$showId': typeof AuthenticatedShowsShowIdRouteWithChildren
   '/shows/$showId/art': typeof AuthenticatedShowsShowIdArtRouteWithChildren
   '/shows/$showId/': typeof AuthenticatedShowsShowIdIndexRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/sign-in': typeof GuestSignInRoute
+  '/prototype/shape-fields': typeof PrototypeShapeFieldsRoute
   '/shows/$showId/art': typeof AuthenticatedShowsShowIdArtRouteWithChildren
   '/shows/$showId': typeof AuthenticatedShowsShowIdIndexRoute
   '/shows/$showId/art/$artId': typeof AuthenticatedShowsShowIdArtArtIdRoute
@@ -90,6 +98,7 @@ export interface FileRoutesById {
   '/_guest': typeof GuestRouteRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_guest/sign-in': typeof GuestSignInRoute
+  '/prototype/shape-fields': typeof PrototypeShapeFieldsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/shows/$showId': typeof AuthenticatedShowsShowIdRouteWithChildren
   '/_authenticated/shows/$showId/art': typeof AuthenticatedShowsShowIdArtRouteWithChildren
@@ -102,6 +111,7 @@ export interface FileRouteTypes {
     | '/'
     | '/settings'
     | '/sign-in'
+    | '/prototype/shape-fields'
     | '/shows/$showId'
     | '/shows/$showId/art'
     | '/shows/$showId/'
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | '/'
     | '/settings'
     | '/sign-in'
+    | '/prototype/shape-fields'
     | '/shows/$showId/art'
     | '/shows/$showId'
     | '/shows/$showId/art/$artId'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/_guest'
     | '/_authenticated/settings'
     | '/_guest/sign-in'
+    | '/prototype/shape-fields'
     | '/_authenticated/'
     | '/_authenticated/shows/$showId'
     | '/_authenticated/shows/$showId/art'
@@ -130,6 +142,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   GuestRouteRoute: typeof GuestRouteRouteWithChildren
+  PrototypeShapeFieldsRoute: typeof PrototypeShapeFieldsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -168,6 +181,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/sign-in'
       preLoaderRoute: typeof GuestSignInRouteImport
       parentRoute: typeof GuestRouteRoute
+    }
+    '/prototype/shape-fields': {
+      id: '/prototype/shape-fields'
+      path: '/prototype/shape-fields'
+      fullPath: '/prototype/shape-fields'
+      preLoaderRoute: typeof PrototypeShapeFieldsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/shows/$showId': {
       id: '/_authenticated/shows/$showId'
@@ -262,6 +282,7 @@ const GuestRouteRouteWithChildren = GuestRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   GuestRouteRoute: GuestRouteRouteWithChildren,
+  PrototypeShapeFieldsRoute: PrototypeShapeFieldsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
