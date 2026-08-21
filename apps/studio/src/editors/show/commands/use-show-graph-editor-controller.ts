@@ -100,9 +100,14 @@ export function useShowGraphEditorController({
     return drawn.nodes.map((node) => {
       const existing = interaction.get(node.id);
       if (!existing) return node;
+      const collapseChanged =
+        node.type === FLOW_NODE_TYPE &&
+        existing.type === FLOW_NODE_TYPE &&
+        existing.data.collapsed !== node.data.collapsed;
       return {
         ...existing,
         ...node,
+        ...(collapseChanged ? { measured: undefined } : {}),
         position:
           dragging.current || (node.type === FLOW_NODE_TYPE && flowDimensions.has(node.id))
             ? existing.position
@@ -147,9 +152,14 @@ export function useShowGraphEditorController({
       return drawn.nodes.map((node) => {
         const existing = interaction.get(node.id);
         if (!existing) return arriving ? { ...node, selected: node.id === arriving } : node;
+        const collapseChanged =
+          node.type === FLOW_NODE_TYPE &&
+          existing.type === FLOW_NODE_TYPE &&
+          existing.data.collapsed !== node.data.collapsed;
         return {
           ...existing,
           ...node,
+          ...(collapseChanged ? { measured: undefined } : {}),
           ...(dragging.current || (node.type === FLOW_NODE_TYPE && flowDimensions.has(node.id))
             ? { position: existing.position }
             : {}),

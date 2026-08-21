@@ -281,6 +281,12 @@ function toFlowNode(
         ? FLOW_HEADER_HEIGHT
         : flowSize(children, minimumDimensions).height
       : minimumHeight,
+    ...(isFlow
+      ? {
+          width: collapsed ? NODE_WIDTH : flowSize(children, minimumDimensions).width,
+          height: collapsed ? FLOW_HEADER_HEIGHT : flowSize(children, minimumDimensions).height,
+        }
+      : {}),
     style: isFlow
       ? collapsed
         ? { width: NODE_WIDTH, height: FLOW_HEADER_HEIGHT }
@@ -372,6 +378,15 @@ function toFlowEdge(
   };
 }
 
+function collapsedFlowOwner(
+  nodeId: string,
+  nodes: readonly MappableNode[],
+  collapsed: ReadonlySet<string>,
+): string | null {
+  const node = nodes.find((candidate) => candidate.id === nodeId);
+  return node?.parentId && collapsed.has(node.parentId) ? node.parentId : null;
+}
+
 /**
  * The graph as React Flow wants it. Flows come first: React Flow still
  * requires a parent to appear before its children, and sorting here means
@@ -457,19 +472,18 @@ export function graphToFlow(
       }
       return nodes;
     }, []),
-    edges: graph.edges.map((edge) => {
-      const hiddenTarget = graph.nodes.find((node) => node.id === edge.targetId);
-      const flowId = hiddenTarget?.parentId;
-      // React Flow cannot draw an edge to a hidden child. Once a Flow is
-      // collapsed, every incoming edge lands on the Flow's own input handle.
-      if (flowId && collapsed.has(flowId)) {
+    edges: graph.edges
+      .map((edge) => {
+        const sourceFlow = collapsedFlowOwner(edge.sourceId, graph.nodes, collapsed);
+        const targetFlow = collapsedFlowOwner(edge.targetId, graph.nodes, collapsed);
+        if (sourceFlow && sourceFlow === targetFlow) return null;
+        const mapped = toFlowEdge(edge, graph.nodes, graph.shapes);
         return {
-          ...toFlowEdge(edge, graph.nodes, graph.shapes),
-          target: flowId,
-          targetHandle: INPUT_HANDLE,
+          ...mapped,
+          ...(sourceFlow ? { source: sourceFlow, sourceHandle: OUTPUT_HANDLE } : {}),
+          ...(targetFlow ? { target: targetFlow, targetHandle: INPUT_HANDLE } : {}),
         };
-      }
-      return toFlowEdge(edge, graph.nodes, graph.shapes);
-    }),
+      })
+      .filter((edge): edge is ShowFlowEdge => edge !== null),
   };
 }
