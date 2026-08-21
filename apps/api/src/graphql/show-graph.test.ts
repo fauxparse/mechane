@@ -129,6 +129,39 @@ describe("parseGraphEdit", () => {
     ).toEqual({ type: "graph.setNodeColor", nodeId: "scene_a", color: "purple" });
   });
 
+  it("parses Shape definition edits with ordered Fields", () => {
+    expect(
+      parseGraphEdit({
+        type: GRAPH_COMMAND_TYPES.setShapes,
+        shapes: [
+          {
+            id: "shape_vote",
+            name: "Vote",
+            fields: [
+              {
+                id: "field_count",
+                name: "count",
+                type: { kind: "number" },
+                position: 1,
+                required: true,
+                defaultValue: 0,
+              },
+            ],
+          },
+        ],
+      }),
+    ).toEqual({
+      type: "graph.setShapes",
+      shapes: [
+        {
+          id: "shape_vote",
+          name: "Vote",
+          fields: [{ id: "field_count", name: "count", type: "number", required: true, defaultValue: 0 }],
+        },
+      ],
+    });
+  });
+
   it("parses a Variable type edit, including object", () => {
     expect(
       parseGraphEdit({
