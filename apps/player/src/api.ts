@@ -116,7 +116,9 @@ export function usePlayerSession(code: string) {
       return null;
     }
   }, [normalizedCode]);
-
+  // The subscription is created after the GraphQL snapshot resolves and is
+  // closed explicitly below; React Doctor cannot follow that nested ownership.
+  // react-doctor-disable-next-line react-doctor/effect-needs-cleanup
   useEffect(() => {
     const controller = new AbortController();
     let subscription: RealtimeSubscription | null = null;
@@ -157,9 +159,10 @@ export function usePlayerSession(code: string) {
     return () => {
       closed = true;
       controller.abort();
-      clearRealtime();
+      subscription?.close();
+      subscriber?.close();
     };
-  }, [load]);
+  }, [load, normalizedCode]);
 
   return state;
 }
