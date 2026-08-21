@@ -7,13 +7,14 @@
 // raw insert) so the password is hashed exactly the way sign-in expects —
 // the hashing scheme is Better Auth's internal concern, not something this
 // script should reimplement.
-import { sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import { auth } from "../auth";
 import { db } from "./client";
-import { readCanvasWorkspace } from "./canvas";
-import { SEED_GRAPHS } from "./seed-graphs";
-import { shows, user } from "./schema";
+import { readCanvasWorkspace, writeCanvasRows } from "./canvas";
+import { SEED_CANVASES, SEED_GRAPHS } from "./seed-graphs";
+import type { SeedCanvases, SeedGraph } from "./seed-graphs";
+import { showGraphs, shows, user } from "./schema";
 // `TRUNCATE ... CASCADE` on `shows` takes the graph tables with it, so they
 // don't need naming in the truncate list below.
 import { publishShowGraph, writeShowGraph } from "./show-graph";
@@ -27,12 +28,9 @@ const DEFAULT_USER = {
   password: "P4$$w0rd!",
 };
 
-// New resource types added by later tickets should extend this list rather
-// than adding their own separate seed script, per the project rule that new
-// functionality ships with seed data so the app is immediately testable.
-// "The Tempest" deliberately gets no graph: an empty graph is valid, and it's
-// the state the editor shows on a brand-new Show, so it's worth having one to open.
-const DEFAULT_SHOW_NAMES = ["Hamlet", "A Midsummer Night's Dream", "The Tempest"];
+// New resource types should be visible in the single local demo Show rather
+// than hidden behind a collection of unrelated examples.
+const DEFAULT_SHOW_NAMES = ["Voting demo"];
 
 async function nukeDatabase(): Promise<void> {
   await db.execute(
@@ -50,11 +48,7 @@ async function seedDefaultUser(): Promise<string> {
     .where(sql`${user.email} = ${DEFAULT_USER.email}`);
   return createdUser.id;
 }
-async function assertSeedCanvases(
-  showId: string,
-  state: "draft" | "published",
-  graph: ReturnType<NonNullable<(typeof SEED_GRAPHS)[string]>>,
-): Promise<void> {
+async function assertSeedCanvases(showId: string, state: "draft" | "published", graph: SeedGraph): Promise<void> {
   const expectedSceneIds = new Set(
     graph.nodes.filter((node) => node.kind === "scene").map((node) => node.id),
   );
@@ -69,6 +63,27 @@ async function assertSeedCanvases(
   }
 }
 
+async function seedCanvases(
+  showId: string,
+  state: "draft" | "published",
+  graph: SeedGraph,
+  canvases: SeedCanvases,
+): Promise<void> {
+  const [graphRow] = await db
+    .select({ id: showGraphs.id })
+    .from(showGraphs)
+    .where(and(eq(showGraphs.showId, showId), eq(showGraphs.state, state)));
+  if (!graphRow) throw new Error(`Seeded ${state} graph for Show "${showId}" was not found.`);
+  await db.transaction(async (tx) => {
+    const now = new Date();
+    for (const [sceneId, canvas] of Object.entries(canvases)) {
+      const scene = graph.nodes.find((node) => node.id === sceneId && node.kind === "scene");
+      if (!scene || scene.kind !== "scene") throw new Error(`Seed canvas "${sceneId}" has no Scene node.`);
+      await writeCanvasRows(tx, showId, graphRow.id, { sceneNodeId: sceneId }, canvas, now, scene.position);
+    }
+  });
+}
+
 async function seedDefaultShows(userId: string): Promise<void> {
   const created = await db
     .insert(shows)
@@ -77,17 +92,15 @@ async function seedDefaultShows(userId: string): Promise<void> {
 
   for (const show of created) {
     const buildGraph = SEED_GRAPHS[show.name];
-    if (!buildGraph) continue;
+    const buildCanvases = SEED_CANVASES[show.name];
+    if (!buildGraph || !buildCanvases) continue;
     const graph = buildGraph();
     await writeShowGraph(show.id, "draft", graph);
+    await seedCanvases(show.id, "draft", graph, buildCanvases());
     await assertSeedCanvases(show.id, "draft", graph);
-    // Publish one of them, so the two draft-state badges the editor can
-    // show (#39) are both reachable without editing anything first:
-    // Hamlet reads as published, the Dream as having unpublished changes.
-    if (show.name === "Hamlet") {
-      await publishShowGraph(show.id);
-      await assertSeedCanvases(show.id, "published", graph);
-    }
+    await publishShowGraph(show.id);
+    await seedCanvases(show.id, "published", graph, buildCanvases());
+    await assertSeedCanvases(show.id, "published", graph);
   }
 }
 
