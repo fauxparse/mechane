@@ -28,6 +28,7 @@ export function CanvasWorkspaceEditor({
   onUpdateElement,
   onUpdateElements,
   variables,
+  shapes,
   imageAssets,
   deviceQrImages,
   onImageUpload,
@@ -209,6 +210,7 @@ export function CanvasWorkspaceEditor({
         onUpdateElement={onUpdateElement}
         onUpdateElements={onUpdateElements}
         variables={variables}
+        shapes={shapes}
         imageAssets={imageAssets}
         deviceQrImages={deviceQrImages}
         onImageUpload={onImageUpload}

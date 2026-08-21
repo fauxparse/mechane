@@ -26,6 +26,7 @@ function collectFontFamilies(artboards: readonly CanvasArtboardDocument[]): read
 const EMPTY_VARIABLES = [] as const;
 const EMPTY_IMAGE_ASSETS = [] as const;
 const EMPTY_DEVICE_QR_IMAGES = {} as const;
+const EMPTY_SHAPES = [] as const;
 
 function sameValue(left: unknown, right: unknown): boolean {
   if (Object.is(left, right)) return true;
@@ -134,6 +135,7 @@ export function useCanvasInspectorModel({
   artboards,
   selection,
   variables = EMPTY_VARIABLES,
+  shapes = EMPTY_SHAPES,
   imageAssets = EMPTY_IMAGE_ASSETS,
   deviceQrImages = EMPTY_DEVICE_QR_IMAGES,
   onImageUpload,
@@ -198,6 +200,7 @@ export function useCanvasInspectorModel({
             elements,
             selected,
             variables,
+            shapes,
             deviceQrImages,
             imageAssets,
             onImageUpload,
@@ -216,18 +219,19 @@ export function useCanvasInspectorModel({
       aspectRatioLock,
       common,
       deviceQrImages,
+      elements,
+      fontFamilies,
       imageAssets,
       onImageUpload,
       currentDimensions,
       inspectorPreview,
-      elements,
-      fontFamilies,
       selected,
       focused,
       target,
       text,
       update,
       variables,
+      shapes,
     ],
   );
 }

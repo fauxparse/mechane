@@ -1,10 +1,9 @@
 import { useState } from "react";
-import type { AxisSize, SceneVariable } from "@mechane/domain";
+import type { AxisSize } from "@mechane/domain";
 import {
   CANVAS_PROPERTY_DESCRIPTORS,
   canvasPropertyDescriptor,
   opacityFromPercent,
-  propertyCoercion,
 } from "@mechane/domain";
 import {
   Link2Icon,
@@ -30,6 +29,7 @@ import {
   sizeValueUnit,
   sizingForMode,
   variableInput,
+  variableOptions,
   type SizeConstraint,
 } from "./canvas-inspector-values";
 type PropertyFieldProps = {
@@ -47,7 +47,8 @@ export const PropertyField = ({
   placeholder,
   presets,
 }: PropertyFieldProps) => {
-  const { target, elements, selected, variables, common, update } = useCanvasInspectorContext();
+  const { target, elements, selected, variables, shapes, common, update } =
+    useCanvasInspectorContext();
   const descriptor = canvasPropertyDescriptor(name, target);
   if (!descriptor) return null;
   if (elements.length > 0 && !elements.every((element) => canvasPropertyDescriptor(name, element)))
@@ -75,13 +76,11 @@ export const PropertyField = ({
   const value = isAuto
     ? null
     : name === "opacity"
-      ? opacityInputValue(variableInput(defaultValue, descriptor.targetType, variables))
-      : variableInput(defaultValue, descriptor.targetType, variables);
+      ? opacityInputValue(variableInput(defaultValue, descriptor.targetType, variables, shapes))
+      : variableInput(defaultValue, descriptor.targetType, variables, shapes);
   const type = inputType(descriptor.targetType);
   if (!type) return null;
-  const availableVariables = variables.filter(
-    (variable) => variable.type && propertyCoercion(variable.type, descriptor.targetType),
-  );
+  const availableVariables = variableOptions(descriptor.targetType, variables, shapes);
 
   return (
     <PropertyInput
@@ -104,7 +103,11 @@ export const PropertyField = ({
       onChange={(next) => {
         if (isVariableInput(next)) {
           update({
-            [name]: { kind: "variable", variableId: next.id },
+            [name]: {
+              kind: "variable",
+              variableId: next.id,
+              fieldPath: next.fieldPath ?? [],
+            },
           });
         } else if (next === null) {
           update({}, [name]);
@@ -131,8 +134,16 @@ type SizeFieldProps = {
 };
 
 const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldProps) => {
-  const { target, selected, common, variables, inspectorPreview, currentDimensions, update } =
-    useCanvasInspectorContext();
+  const {
+    target,
+    selected,
+    common,
+    variables,
+    shapes,
+    inspectorPreview,
+    currentDimensions,
+    update,
+  } = useCanvasInspectorContext();
   const size = common(`sizing.${axis}`) as AxisSize | undefined;
   const sizeMixed =
     size === undefined && selected.some((element) => element.sizing?.[axis] !== undefined);
@@ -158,8 +169,7 @@ const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldProps) =>
         size.value.unit === "%"
       ? "%"
       : "px";
-  const sizeVariables = variables.filter((variable: SceneVariable) => variable.type === "number");
-
+  const sizeVariables = variableOptions("number", variables, shapes);
   return (
     <PropertyInput
       icon={axis === "width" ? "W" : "H"}
@@ -174,7 +184,7 @@ const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldProps) =>
           ? literalValue("number", previewValue)
           : sizeMixed
             ? null
-            : sizeInputValue(size, sizeVariables)
+            : sizeInputValue(size, sizeVariables, shapes)
       }
       sizing={mode}
       variables={sizeVariables}
@@ -189,7 +199,7 @@ const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldProps) =>
           updateSize({
             ...(sizeMixed ? {} : size),
             mode: "fixed",
-            value: { kind: "variable", variableId: next.id },
+            value: { kind: "variable", variableId: next.id, fieldPath: next.fieldPath ?? [] },
           });
         } else if (next?.kind === "number") {
           updateSize({

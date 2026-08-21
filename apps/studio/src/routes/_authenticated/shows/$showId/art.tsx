@@ -211,6 +211,7 @@ function CanvasWorkspaceRoute() {
       onCameraChange={onCameraChange}
       focusedArtId={focused?.artId ?? null}
       variables={focusedVariables}
+      shapes={graphEditing.graph.shapes ?? []}
       deviceQrImages={deviceQrImages}
       imageAssets={imageAssets.data ?? []}
       onImageUpload={handleImageUpload}

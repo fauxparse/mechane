@@ -46,6 +46,7 @@ export function CanvasWorkspaceSurface({
   onUpdateElement,
   onUpdateElements,
   variables,
+  shapes,
   imageAssets,
   deviceQrImages,
   onImageUpload,
@@ -151,6 +152,7 @@ export function CanvasWorkspaceSurface({
           artboards={ordered}
           selection={selection}
           variables={variables}
+          shapes={shapes}
           deviceQrImages={deviceQrImages}
           imageAssets={imageAssets}
           onImageUpload={onImageUpload}

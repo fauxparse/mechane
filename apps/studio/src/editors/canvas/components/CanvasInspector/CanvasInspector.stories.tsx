@@ -1,7 +1,7 @@
 import { applyCanvasEdits, CANVAS_COMMAND_TYPES } from "@mechane/commands";
 import type { CanvasEdit } from "@mechane/commands";
 import type { ImageAsset } from "@mechane/graphql-schema";
-import { FrameElement, hasCornerRadius, SceneVariable } from "@mechane/domain";
+import { FrameElement, hasCornerRadius, SceneVariable, Shape } from "@mechane/domain";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import { useCallback, useState } from "react";
@@ -21,6 +21,21 @@ const variables: SceneVariable[] = [
   { id: "accent-variable", name: "Color / Accent", type: "color" },
   { id: "copy-variable", name: "Copy / Headline", type: "text" },
   { id: "image-variable", name: "Image / Background", type: "image" },
+];
+const candidateShape: Shape = {
+  id: "shape_candidate",
+  name: "Candidate",
+  fields: [
+    { id: "field_name", name: "Name", type: "text", required: true, defaultValue: "" },
+    { id: "field_votes", name: "Votes", type: "number", required: true, defaultValue: 0 },
+  ],
+};
+const shapeVariables: SceneVariable[] = [
+  {
+    id: "candidate-variable",
+    name: "Candidate",
+    type: { kind: "shape", shapeId: candidateShape.id },
+  },
 ];
 
 const imageAssets: readonly ImageAsset[] = [
@@ -49,7 +64,11 @@ const storyImageUpload = ({ onProgress, onSuccess }: ImageInputOnUploadProps) =>
     blurHash: asset.blurHash,
   });
 };
-const variable = (variableId: string) => ({ kind: "variable" as const, variableId });
+const variable = (variableId: string, fieldPath: readonly string[] = []) => ({
+  kind: "variable" as const,
+  variableId,
+  fieldPath,
+});
 
 const artboard = (
   root: FrameElement,
@@ -245,6 +264,15 @@ const connectedRoot: FrameElement = {
     },
   ],
 };
+const shapeConnectedRoot: FrameElement = {
+  ...connectedRoot,
+  id: "shape-connected-root",
+  children: connectedRoot.children?.map((child) =>
+    child.id === "connected-copy"
+      ? { ...child, content: variable("candidate-variable", ["field_name"]) }
+      : child,
+  ),
+};
 const autoGapRoot: FrameElement = {
   ...connectedRoot,
   id: "auto-gap-root",
@@ -335,6 +363,7 @@ function InspectorStory({
   initialArtboard,
   initialSelection,
   storyVariables = [],
+  storyShapes = [],
   storyImageAssets = [],
   onImageUpload = storyImageUpload,
   currentDimensions,
@@ -342,6 +371,7 @@ function InspectorStory({
   initialArtboard: ApiCanvasArtboardDocument;
   initialSelection: CanvasSelection;
   storyVariables?: readonly SceneVariable[];
+  storyShapes?: readonly Shape[];
   storyImageAssets?: readonly ImageAsset[];
   onImageUpload?: (props: ImageInputOnUploadProps) => void;
   currentDimensions?: { elementId: string; width: number; height: number };
@@ -369,10 +399,11 @@ function InspectorStory({
             artboards={[current]}
             selection={initialSelection}
             variables={storyVariables}
+            shapes={storyShapes}
             imageAssets={storyImageAssets}
-            onUpdateElements={onUpdateElements}
             onImageUpload={onImageUpload}
             currentDimensions={currentDimensions}
+            onUpdateElements={onUpdateElements}
           />
         </EditorSlot>
       </MockEditorChrome>
@@ -516,6 +547,17 @@ export const AsymmetricCornerRadius: Story = {
     <InspectorStory
       initialArtboard={artboard(asymmetricRadiusRoot)}
       initialSelection={{ artId: ART_ID, elementIds: ["card"] }}
+    />
+  ),
+};
+
+export const ConnectedShapeProperties: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(shapeConnectedRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: ["connected-copy"] }}
+      storyVariables={shapeVariables}
+      storyShapes={[candidateShape]}
     />
   ),
 };

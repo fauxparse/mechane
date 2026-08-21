@@ -7,6 +7,7 @@ import type {
   Position,
   ResolvedImageValue,
   SceneVariable,
+  Shape,
 } from "@mechane/domain";
 import type { ImageAsset } from "@mechane/graphql-schema";
 import type { CanvasArtboardDocument } from "../../api/canvas";
@@ -61,6 +62,7 @@ export interface CanvasWorkspaceEditorProps {
     }[],
   ): void;
   variables?: readonly SceneVariable[];
+  shapes?: readonly Shape[];
   imageAssets?: readonly ImageAsset[];
   deviceQrImages?: Readonly<Record<string, DeviceQrImage>>;
   onImageUpload?(props: ImageInputOnUploadProps): void;
@@ -131,6 +133,7 @@ export interface CanvasWorkspaceSurfaceProps {
     }[],
   ): void;
   variables?: readonly SceneVariable[];
+  shapes?: readonly Shape[];
   imageAssets?: readonly ImageAsset[];
   onImageUpload?(props: ImageInputOnUploadProps): void;
   onMoveElement?(

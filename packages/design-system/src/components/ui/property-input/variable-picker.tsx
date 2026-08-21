@@ -21,7 +21,7 @@ export function VariablePicker<T extends ShapeValue>({
   onDisconnect,
 }: {
   query: string;
-  variables: VariableReference<T>[];
+  variables: readonly VariableReference<T>[];
   totalVariables: number;
   linkedVariable: VariableReference<T> | null;
   onQueryChange: (query: string) => void;
@@ -114,8 +114,7 @@ export function VariablePicker<T extends ShapeValue>({
         {variables.length > 0 ? (
           variables.map((variable, index) => (
             <Button
-              key={variable.id}
-              id={`${listId}-option-${index}`}
+              key={`${variable.id}:${JSON.stringify(variable.fieldPath ?? [])}`}
               type="button"
               role="option"
               tabIndex={-1}
