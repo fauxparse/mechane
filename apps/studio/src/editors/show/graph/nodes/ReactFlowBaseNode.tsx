@@ -1,4 +1,5 @@
-import { Handle, type NodeProps } from "@xyflow/react";
+import { Handle, useUpdateNodeInternals, type NodeProps } from "@xyflow/react";
+import { useEffect } from "react";
 
 import type { ShowFlowNode } from "../graph-to-flow";
 import { useConnectedHandleIds } from "../use-connected-handle-ids";
@@ -17,7 +18,12 @@ export function ReactFlowBaseNode({ id, data, selected }: NodeProps<ShowFlowNode
   const { targetable, dimmed, variableIds } = useDragState(id);
   const connectedHandleIds = useConnectedHandleIds(id);
   const { renaming, beginRename, renameTo, commitRename, cancelRename } = useNodeInteraction();
+  const updateNodeInternals = useUpdateNodeInternals();
+  const variableHandleKey = data.variables.map((variable) => variable.id).join("|");
 
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [id, updateNodeInternals, variableHandleKey]);
   return (
     <BaseNode
       id={id}

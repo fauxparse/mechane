@@ -11,8 +11,12 @@ export const PRIMITIVE_TYPES = [
 
 export type PrimitiveType = (typeof PRIMITIVE_TYPES)[number];
 
-/** A recursive Type: primitive, array-of-Type, or a named Shape reference. */
-export type Type = PrimitiveType | { kind: "array"; of: Type } | { kind: "shape"; shapeId: string };
+/** A recursive Type: primitive, array-of-Type, unshaped object, or a named Shape reference. */
+export type Type =
+  | PrimitiveType
+  | { kind: "array"; of: Type }
+  | { kind: "object" }
+  | { kind: "shape"; shapeId: string };
 
 export interface TextValue {
   kind: "text";
@@ -114,7 +118,7 @@ const primitiveSet = new Set<string>(PRIMITIVE_TYPES);
 function references(type: Type, result: Set<string>): void {
   if (typeof type === "string") return;
   if (type.kind === "shape") result.add(type.shapeId);
-  else references(type.of, result);
+  else if (type.kind === "array") references(type.of, result);
 }
 
 function assertType(type: Type, shapeIds: Set<string>, context: string): void {
@@ -126,6 +130,7 @@ function assertType(type: Type, shapeIds: Set<string>, context: string): void {
     assertType(type.of, shapeIds, `${context} array element`);
     return;
   }
+  if (type.kind === "object") return;
   if (type.kind !== "shape" || !shapeIds.has(type.shapeId)) {
     throw new InvalidShapeError(`${context} references an unknown Shape.`);
   }
@@ -250,7 +255,6 @@ export function isResolvedImageValue(value: unknown): value is ResolvedImageValu
   );
 }
 
-
 /** Checks whether a JSON-like value conforms to a Type and its Shape references. */
 export function conformsToType(value: unknown, type: Type, shapes: readonly Shape[] = []): boolean {
   try {
@@ -270,10 +274,7 @@ export function assertValueConformsToType(
   if (value === null || value === undefined) throw new InvalidShapeValueError(`${path} is absent.`);
   if (typeof type === "string") {
     const valid =
-      type === "text" ||
-      type === "color" ||
-      type === "date" ||
-      type === "datetime"
+      type === "text" || type === "color" || type === "date" || type === "datetime"
         ? typeof value === "string"
         : type === "image"
           ? isImageAssetReference(value) || isResolvedImageValue(value)
@@ -288,6 +289,12 @@ export function assertValueConformsToType(
     value.forEach((item, index) =>
       assertValueConformsToType(item, type.of, shapes, `${path}[${index}]`),
     );
+    return;
+  }
+  if (type.kind === "object") {
+    if (value === null || typeof value !== "object" || Array.isArray(value)) {
+      throw new InvalidShapeValueError(`${path} is not an object.`);
+    }
     return;
   }
   const shape = shapeMap(shapes).get(type.shapeId);
@@ -441,6 +448,14 @@ export function findCoercion(from: PrimitiveType, to: PrimitiveType): Coercion |
 /** Whether an assignment is supported by the coercion and Shape rules. */
 export function areTypesCompatible(from: Type, to: Type, shapes: readonly Shape[] = []): boolean {
   if (from === to) return true;
+  if (
+    typeof from !== "string" &&
+    typeof to !== "string" &&
+    from.kind === "object" &&
+    to.kind === "object"
+  ) {
+    return true;
+  }
   if (typeof from === "string" && typeof to === "string") return !!findCoercion(from, to);
   if (typeof to !== "string" && to.kind === "array") {
     return typeof from !== "string" && from.kind === "array"
@@ -537,7 +552,9 @@ function typeLabel(type: Type): string {
     ? type
     : type.kind === "array"
       ? `array of ${typeLabel(type.of)}`
-      : `Shape ${type.shapeId}`;
+      : type.kind === "object"
+        ? "object"
+        : `Shape ${type.shapeId}`;
 }
 
 interface TypeCoercion {

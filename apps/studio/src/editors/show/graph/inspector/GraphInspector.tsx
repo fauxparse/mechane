@@ -1,9 +1,9 @@
 import { cn } from "@mechane/design-system";
 import type { GraphNode } from "@mechane/domain";
-
-import type { GraphEditing } from "../commands/use-graph-editing";
-import { MultiSelection } from "./MultiSelection";
-import { SingleNode } from "./SingleNode";
+import { GraphEditing } from "@show-editor/commands/use-graph-editing";
+import { MultiSelection } from "@show-editor/graph/inspector/MultiSelection";
+import { SingleNode } from "@show-editor/graph/inspector/SingleNode";
+import { Header } from "./Header";
 
 export interface GraphInspectorProps {
   /** The selected nodes, in graph order. */
@@ -19,12 +19,10 @@ export function GraphInspector({ selected, editing, className }: GraphInspectorP
     <aside
       // `nokey` is React Flow's own escape hatch: keys pressed in here are the
       // panel's, not the canvas's (#37).
-      className={cn(
-        "nokey pointer-events-auto flex w-72 flex-col gap-4 overflow-y-auto",
-        className,
-      )}
+      className={cn("nokey display-contents pointer-events-auto", className)}
       aria-label="Inspector"
     >
+      <Header selected={selected} />
       {selected.length > 1 ? (
         <MultiSelection selected={selected} />
       ) : (

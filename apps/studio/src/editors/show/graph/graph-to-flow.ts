@@ -111,7 +111,7 @@ export const FLOW_CONTENT_ORIGIN: Position = {
 // `Record<string, unknown>`, which an interface does not satisfy structurally
 // (interfaces have no implicit index signature).
 export type ShowNodeData = {
-  /** The Flow colorway, or neutral for every non-Flow node (#316). */
+  /** The node colorway, or its Flow colorway when unset (#316). */
   color: FlowColor;
   kind: NodeKind;
   name: string;
@@ -262,22 +262,30 @@ function toFlowNode(
 ): ShowFlowNode {
   const kind = nodeKindOf(node);
   const isFlow = kind === "flow";
+  const minimumHeight = nodeHeight(node);
   return {
     id: node.id,
     type: isFlow ? FLOW_NODE_TYPE : PLACEHOLDER_NODE_TYPE,
     position: { x: node.position.x, y: node.position.y },
-    // React Flow reads a child's position as relative to its parent, which is
+    // React Flow reads a child's position as relative to its Flow, which is
     // already how the domain stores a Flow-local node's position.
     ...(node.parentId ? { parentId: node.parentId } : {}),
-    // Every node is sized up front, not just Flows. React Flow measures
-    // rendered nodes, but `fitView` on first paint runs *before* the first
-    // measurement — an unsized node contributes nothing to the bounds, so
-    // opening a Show would frame a graph with some of its nodes off-screen.
+    // Seed fitView before the first DOM measurement, but do not pin ordinary
+    // nodes to that estimate: Devices render a QR code and pairing code whose
+    // intrinsic height is larger than NODE_HEIGHT. React Flow measures the
+    // outer node wrapper, so a fixed height would make the visible content
+    // overflow outside the selection geometry.
+    initialWidth: NODE_WIDTH,
+    initialHeight: isFlow
+      ? collapsed
+        ? FLOW_HEADER_HEIGHT
+        : flowSize(children, minimumDimensions).height
+      : minimumHeight,
     style: isFlow
       ? collapsed
         ? { width: NODE_WIDTH, height: FLOW_HEADER_HEIGHT }
         : flowSize(children, minimumDimensions)
-      : { width: NODE_WIDTH, height: nodeHeight(node) },
+      : { width: NODE_WIDTH, minHeight: minimumHeight },
     data: {
       color,
       kind,
@@ -439,9 +447,11 @@ export function graphToFlow(
             drivenDeviceIds,
             collapsed.has(node.id),
             flowDimensions.get(node.id),
-            node.kind === "flow"
-              ? (node.color ?? DEFAULT_FLOW_COLOR)
-              : ((node.parentId ? flowColors.get(node.parentId) : undefined) ?? DEFAULT_FLOW_COLOR),
+            node.color ??
+              (node.kind === "flow"
+                ? DEFAULT_FLOW_COLOR
+                : ((node.parentId ? flowColors.get(node.parentId) : undefined) ??
+                  DEFAULT_FLOW_COLOR)),
           ),
         );
       }

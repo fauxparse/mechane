@@ -1,8 +1,7 @@
-import { NODE_KIND_META } from "./node-kinds";
+import { NODE_KIND_META } from "../node-kinds";
 import type { GraphNode } from "@mechane/domain";
 
-/** #36: confirm what you have, don't invent multi-edit. */
-export function MultiSelection({ selected }: { selected: GraphNode[] }) {
+export const MultiSelection = ({ selected }: { selected: GraphNode[] }) => {
   const counts = new Map<string, number>();
   for (const node of selected) counts.set(node.kind, (counts.get(node.kind) ?? 0) + 1);
   return (
@@ -20,4 +19,4 @@ export function MultiSelection({ selected }: { selected: GraphNode[] }) {
       </ul>
     </div>
   );
-}
+};

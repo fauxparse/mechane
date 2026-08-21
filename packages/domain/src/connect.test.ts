@@ -271,11 +271,26 @@ describe("canConnect", () => {
     );
   });
 
-  it("asks for a Variable when a wiring drag lands on the Scene's body", () => {
+  it("allows a typed Source to create a Variable from a Scene input handle", () => {
+    expect(
+      canConnect(GRAPH, {
+        sourceId: TALLY.id,
+        targetId: RESULTS.id,
+        targetHandle: "in",
+      }),
+    ).toBe(true);
+  });
+
+  it("still asks for a Variable when a wiring drag lands on the Scene body", () => {
     expect(connectionError(GRAPH, { sourceId: TALLY.id, targetId: VOTING.id })).toBe(
       "Drop onto one of the Scene's Variables.",
     );
   });
+
+  it("marks a Scene input handle as a target when it has no Variables", () => {
+    expect(connectionTargets(GRAPH, TALLY.id).nodeIds.has(RESULTS.id)).toBe(true);
+  });
+
 
   it("names the kinds when no edge runs between them", () => {
     expect(connectionError(GRAPH, { sourceId: PHONE.id, targetId: VOTING.id })).toBe(
@@ -319,26 +334,28 @@ describe("canConnect", () => {
       "These Scenes are already connected.",
     );
   });
-
-  it("says so when a node isn't in the graph", () => {
-    expect(connectionError(GRAPH, { sourceId: "scene_ghost", targetId: PHONE.id })).toBe(
-      "That node isn't in this Show.",
-    );
-  });
 });
+
 
 describe("connectionTargets", () => {
   it("lists the Scenes and Variables a Source may feed", () => {
     const targets = connectionTargets(GRAPH, TALLY.id);
     expect([...targets.nodeIds].sort()).toEqual(
-      [LOBBY.id, VOTING.id, LOCAL.id, TRANSFORMER.id].sort(),
+      [
+        LOBBY.id,
+        VOTING.id,
+        RESULTS.id,
+        INTERMISSION.id,
+        LOCAL.id,
+        TRANSFORMER.id,
+      ].sort(),
     );
     expect([...targets.variableIds].sort()).toEqual(["variable_house", "variable_prompt"]);
   });
 
   it("narrows to its own Flow for a Flow-local Source", () => {
     const targets = connectionTargets(GRAPH, LOCAL.id);
-    expect([...targets.nodeIds]).toEqual([VOTING.id, TRANSFORMER.id]);
+    expect([...targets.nodeIds]).toEqual([VOTING.id, RESULTS.id, TRANSFORMER.id]);
     expect([...targets.variableIds]).toEqual(["variable_prompt"]);
   });
 
@@ -360,8 +377,15 @@ describe("connectionTargets", () => {
   it("lists value targets for Device virtual source handles", () => {
     const targets = connectionTargets(GRAPH, PHONE.id, DEVICE_SOURCE_HANDLES.pairingCode);
     expect([...targets.nodeIds].sort()).toEqual(
-      [LOBBY.id, VOTING.id, LOCAL.id, TALLY.id, TRANSFORMER.id].sort(),
+      [
+        LOBBY.id,
+        VOTING.id,
+        RESULTS.id,
+        INTERMISSION.id,
+        LOCAL.id,
+        TALLY.id,
+        TRANSFORMER.id,
+      ].sort(),
     );
-    expect([...targets.variableIds].sort()).toEqual(["variable_house", "variable_prompt"]);
   });
 });

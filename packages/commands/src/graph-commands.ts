@@ -37,10 +37,11 @@ import type {
   SceneNode,
   SceneVariable,
   ShowGraph,
+  Type,
 } from "@mechane/domain";
 
-import { capturing, composite } from "./command";
 import type { Command } from "./command";
+import { capturing, composite } from "./command";
 import type { GraphEdit } from "./graph-edits";
 
 /**
@@ -61,13 +62,15 @@ export const GRAPH_COMMAND_TYPES = {
   addEdge: "graph.addEdge",
   removeEdge: "graph.removeEdge",
   setFlowDefaultScene: "graph.setFlowDefaultScene",
-  setFlowColor: "graph.setFlowColor",
+  setNodeColor: "graph.setNodeColor",
   addSceneVariable: "graph.addSceneVariable",
   renameSceneVariable: "graph.renameSceneVariable",
+  setSceneVariableType: "graph.setSceneVariableType",
+  reorderSceneVariables: "graph.reorderSceneVariables",
   removeSceneVariable: "graph.removeSceneVariable",
-  moveNodeIntoFlow: "graph.moveNodeIntoFlow",
   moveNodeOutOfFlow: "graph.moveNodeOutOfFlow",
   setDevicePairingCode: "graph.setDevicePairingCode",
+  setDevicePerConnection: "graph.setDevicePerConnection",
 } as const;
 
 export class UnknownGraphTargetError extends Error {
@@ -555,40 +558,35 @@ function withFlowDefaultScene(graph: ShowGraph, flowId: string, sceneId: string 
   return replaceNode(graph, index, { ...node, defaultSceneId: sceneId });
 }
 
-/** Sets a Flow's editor colorway (#316). */
-export function setFlowColor(
-  flowId: string,
-  color: FlowColor,
-  label = "Set Flow color",
+/** Sets any Show node's editor colorway (#316). */
+export function setNodeColor(
+  nodeId: string,
+  color: FlowColor | null,
+  label = "Set node color",
 ): ShowGraphCommand {
   return capturing<ShowGraph, FlowColor | undefined, GraphEdit>({
-    type: GRAPH_COMMAND_TYPES.setFlowColor,
+    type: GRAPH_COMMAND_TYPES.setNodeColor,
     label,
     scope: "selection",
-    coalesceKey: `${GRAPH_COMMAND_TYPES.setFlowColor}:${flowId}`,
-    edits: [{ type: GRAPH_COMMAND_TYPES.setFlowColor, flowId, color }],
+    coalesceKey: `${GRAPH_COMMAND_TYPES.setNodeColor}:${nodeId}`,
+    edits: [{ type: GRAPH_COMMAND_TYPES.setNodeColor, nodeId, color }],
     restoreEdits: (captured) => [
       {
-        type: GRAPH_COMMAND_TYPES.setFlowColor,
-        flowId,
+        type: GRAPH_COMMAND_TYPES.setNodeColor,
+        nodeId,
         color: captured ?? null,
       },
     ],
-    capture: (graph) => {
-      const node = graph.nodes[nodeIndex(graph, flowId)] as GraphNode;
-      if (node.kind !== "flow") throw new UnknownGraphTargetError("Flow", flowId);
-      return node.color;
-    },
-    isEmpty: (_graph, captured) => (captured ?? "neutral") === color,
-    apply: (graph) => withFlowColor(graph, flowId, color),
-    restore: (graph, captured) => withFlowColor(graph, flowId, captured ?? null),
+    capture: (graph) => (graph.nodes[nodeIndex(graph, nodeId)] as GraphNode).color,
+    isEmpty: (_graph, captured) => (captured ?? "neutral") === (color ?? "neutral"),
+    apply: (graph) => withNodeColor(graph, nodeId, color),
+    restore: (graph, captured) => withNodeColor(graph, nodeId, captured ?? null),
   });
 }
 
-function withFlowColor(graph: ShowGraph, flowId: string, color: FlowColor | null): ShowGraph {
-  const index = nodeIndex(graph, flowId);
+function withNodeColor(graph: ShowGraph, nodeId: string, color: FlowColor | null): ShowGraph {
+  const index = nodeIndex(graph, nodeId);
   const node = graph.nodes[index] as GraphNode;
-  if (node.kind !== "flow") throw new UnknownGraphTargetError("Flow", flowId);
   const next = { ...node };
   if (color === null) delete next.color;
   else next.color = color;
@@ -643,6 +641,33 @@ function withPairingCode(graph: ShowGraph, nodeId: string, pairingCode: string |
   return replaceNode(graph, index, { ...device, pairingCode });
 }
 
+/** Sets whether a Device is one instance or one per connection. */
+export function setDevicePerConnection(
+  nodeId: string,
+  perConnection: boolean,
+  label = "Set individual devices",
+): ShowGraphCommand {
+  return capturing<ShowGraph, boolean, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setDevicePerConnection,
+    label,
+    scope: "selection",
+    coalesceKey: `${GRAPH_COMMAND_TYPES.setDevicePerConnection}:${nodeId}`,
+    edits: [{ type: GRAPH_COMMAND_TYPES.setDevicePerConnection, nodeId, perConnection }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.setDevicePerConnection, nodeId, perConnection: captured },
+    ],
+    capture: (graph) => deviceAt(graph, nodeId).device.perConnection,
+    isEmpty: (_graph, captured) => captured === perConnection,
+    apply: (graph) => withPerConnection(graph, nodeId, perConnection),
+    restore: (graph, captured) => withPerConnection(graph, nodeId, captured),
+  });
+}
+
+function withPerConnection(graph: ShowGraph, nodeId: string, perConnection: boolean): ShowGraph {
+  const { index, device } = deviceAt(graph, nodeId);
+  return replaceNode(graph, index, { ...device, perConnection });
+}
+
 // ---------------------------------------------------------------------------
 // Scene Variables
 // ---------------------------------------------------------------------------
@@ -657,6 +682,10 @@ function sceneAt(graph: ShowGraph, sceneId: string): { index: number; scene: Sce
 function withVariables(graph: ShowGraph, sceneId: string, variables: SceneVariable[]): ShowGraph {
   const { index, scene } = sceneAt(graph, sceneId);
   return replaceNode(graph, index, { ...scene, variables });
+}
+
+function variableRank(index: number): string {
+  return String(index).padStart(10, "0");
 }
 
 /**
@@ -730,6 +759,130 @@ function renamed(graph: ShowGraph, sceneId: string, variableId: string, name: st
       variable.id === variableId ? { ...variable, name } : variable,
     ),
   );
+}
+
+function typesEqual(left: Type | null | undefined, right: Type | null | undefined): boolean {
+  return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
+}
+
+/** Sets a Variable's Type. Discrete like a color change, not coalesced per keystroke. */
+export function setSceneVariableType(
+  sceneId: string,
+  variableId: string,
+  type: Type | null,
+  label = "Set Variable type",
+): ShowGraphCommand {
+  return capturing<ShowGraph, Type | null, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setSceneVariableType,
+    label,
+    scope: "selection",
+    coalesceKey: `${GRAPH_COMMAND_TYPES.setSceneVariableType}:${sceneId}:${variableId}`,
+    edits: [
+      { type: GRAPH_COMMAND_TYPES.setSceneVariableType, sceneId, variableId, variableType: type },
+    ],
+    restoreEdits: (captured) => [
+      {
+        type: GRAPH_COMMAND_TYPES.setSceneVariableType,
+        sceneId,
+        variableId,
+        variableType: captured,
+      },
+    ],
+    capture: (graph) => {
+      const { scene } = sceneAt(graph, sceneId);
+      const variable = scene.variables.find((candidate) => candidate.id === variableId);
+      if (!variable) throw new UnknownGraphTargetError("Variable", variableId);
+      return variable.type ?? null;
+    },
+    isEmpty: (_graph, captured) => typesEqual(captured, type),
+    apply: (graph) => typed(graph, sceneId, variableId, type),
+    restore: (graph, captured) => typed(graph, sceneId, variableId, captured),
+  });
+}
+
+function typed(
+  graph: ShowGraph,
+  sceneId: string,
+  variableId: string,
+  type: Type | null,
+): ShowGraph {
+  const { scene } = sceneAt(graph, sceneId);
+  return withVariables(
+    graph,
+    sceneId,
+    scene.variables.map((variable) => {
+      if (variable.id !== variableId) return variable;
+      const next = { ...variable };
+      if (type === null) delete next.type;
+      else next.type = type;
+      if (next.type !== "image") delete next.suggestedDimensions;
+      return next;
+    }),
+  );
+}
+
+/** Moves Scene Variables as one undoable, persisted ordering change. */
+export function reorderSceneVariables(
+  sceneId: string,
+  variableIds: readonly string[],
+  label = "Reorder Variables",
+): ShowGraphCommand {
+  return capturing<ShowGraph, SceneVariable[], GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.reorderSceneVariables,
+    label,
+    scope: "selection",
+    edits: [
+      { type: GRAPH_COMMAND_TYPES.reorderSceneVariables, sceneId, variableIds: [...variableIds] },
+    ],
+    restoreEdits: (captured) => [
+      {
+        type: GRAPH_COMMAND_TYPES.reorderSceneVariables,
+        sceneId,
+        variableIds: captured.map((variable) => variable.id),
+      },
+    ],
+    capture: (graph) =>
+      sceneAt(graph, sceneId).scene.variables.map((variable) => ({ ...variable })),
+    isEmpty: (graph) => {
+      const current = sceneAt(graph, sceneId).scene.variables.map((variable) => variable.id);
+      return (
+        current.length === variableIds.length &&
+        current.every((id, index) => id === variableIds[index])
+      );
+    },
+    apply: (graph) => reordered(graph, sceneId, variableIds),
+    restore: (graph, captured) => withVariables(graph, sceneId, captured),
+  });
+}
+
+function ordered(
+  graph: ShowGraph,
+  sceneId: string,
+  variableIds: readonly string[],
+): SceneVariable[] {
+  const { scene } = sceneAt(graph, sceneId);
+  return variableIds.map((variableId) => {
+    const variable = scene.variables.find((candidate) => candidate.id === variableId);
+    if (!variable) throw new UnknownGraphTargetError("Variable", variableId);
+    return variable;
+  });
+}
+
+function reordered(graph: ShowGraph, sceneId: string, variableIds: readonly string[]): ShowGraph {
+  const { scene } = sceneAt(graph, sceneId);
+  if (
+    variableIds.length !== scene.variables.length ||
+    new Set(variableIds).size !== scene.variables.length
+  ) {
+    throw new Error(
+      `Variable order for Scene "${sceneId}" must contain every Variable exactly once.`,
+    );
+  }
+  const variables = ordered(graph, sceneId, variableIds).map((variable, index) => ({
+    ...variable,
+    rank: variableRank(index),
+  }));
+  return withVariables(graph, sceneId, variables);
 }
 
 /** A removed Variable, and the wiring that fed it (#28). */

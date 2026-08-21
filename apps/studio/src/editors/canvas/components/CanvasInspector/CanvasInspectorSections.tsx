@@ -3,6 +3,8 @@ import { isPropertyConnection } from "@mechane/domain";
 import {
   Button,
   ImageInput,
+  Section,
+  SectionRow,
   type ImageInputValue,
   RotateCcwIcon,
   Select,
@@ -18,7 +20,6 @@ import { elementIconFor } from "../utils";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { ObjectPositionSelector } from "./ObjectPositionSelector";
 import { variableInput } from "./canvas-inspector-values";
-import { Section, SectionRow } from "./Section";
 
 export const InspectorHeader = () => {
   const { focused, elements } = useCanvasInspectorContext();

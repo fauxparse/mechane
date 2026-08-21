@@ -54,7 +54,7 @@ export const Toolbar = ({
 }: ToolbarProps) => {
   return (
     <div
-      className="pointer-events-auto flex items-center gap-2 rounded-xl border border-border bg-muted/50 backdrop-blur-sm p-1 shadow-lg"
+      className="pointer-events-auto flex items-center gap-2 rounded-lg border border-border bg-muted/50 backdrop-blur-sm p-1 shadow-lg"
       role="toolbar"
       aria-label="Canvas tools"
     >
@@ -90,7 +90,7 @@ export const Toolbar = ({
         className="data-[orientation=vertical]:h-6 data-[orientation=vertical]:self-center-safe"
       />
       <div className="flex-1 gap-1">
-        <InputGroup className="border-0 bg-muted/50 dark:bg-muted/50">
+        <InputGroup className="border-0 bg-muted/50 dark:bg-muted/50 rounded-md">
           {/*
             Read-only: the camera exposes stepped zoom, not a setter, so there
             is nothing for a typed value to drive yet.

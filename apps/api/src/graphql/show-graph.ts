@@ -35,6 +35,7 @@ export interface TypeInput {
 export interface SceneVariableInput {
   id: string;
   name: string;
+  rank?: string | null;
   type?: TypeInput | null;
   suggestedDimensions?: { width: number; height: number } | null;
 }
@@ -85,8 +86,11 @@ export interface GraphEditInput {
   flowId?: string | null;
   sceneId?: string | null;
   variableId?: string | null;
+  variableIds?: string[] | null;
   variable?: SceneVariableInput | null;
   color?: string | null;
+  perConnection?: boolean | null;
+  variableType?: TypeInput | null;
 }
 
 function badInput(message: string): GraphQLError {
@@ -131,6 +135,7 @@ function parseType(input: TypeInput | null | undefined): Type | undefined {
     return input.kind as Type;
   }
   if (input.kind === "array" && input.of) return { kind: "array", of: parseType(input.of)! };
+  if (input.kind === "object") return { kind: "object" };
   if (input.kind === "shape" && input.shapeId) return { kind: "shape", shapeId: input.shapeId };
   throw badInput(`Invalid Shape type "${input.kind}".`);
 }
@@ -148,12 +153,14 @@ function parseNode(input: GraphNodeInput): GraphNode {
   if (!isNodeKind(input.kind)) {
     throw badInput(`Unknown graph node kind "${input.kind}" on node "${input.id}".`);
   }
+  const color = parseFlowColor(input.color);
+  const type = parseType(input.type);
   const base = {
     id: input.id,
     name: input.name,
     position: { x: input.position.x, y: input.position.y },
+    ...(color ? { color } : {}),
   };
-  const type = parseType(input.type);
   const parentId = input.parentId ?? null;
   switch (input.kind) {
     case "scene":
@@ -174,16 +181,12 @@ function parseNode(input: GraphNodeInput): GraphNode {
       if (parentId !== null) {
         throw badInput(`Flow "${input.id}" was given a parentId; Flows are never nested.`);
       }
-      {
-        const color = parseFlowColor(input.color);
-        return {
-          ...base,
-          kind: "flow",
-          parentId: null,
-          defaultSceneId: input.defaultSceneId ?? null,
-          ...(color ? { color } : {}),
-        };
-      }
+      return {
+        ...base,
+        kind: "flow",
+        parentId: null,
+        defaultSceneId: input.defaultSceneId ?? null,
+      };
     case "source":
       if (!type) throw badInput(`Source "${input.id}" must have a Type.`);
       return { ...base, kind: "source", parentId, type };
@@ -287,11 +290,11 @@ export function parseGraphEdit(edit: GraphEditInput): GraphEdit {
         // Also meaningfully null: a Flow can be left without an entry Scene.
         sceneId: edit.sceneId ?? null,
       };
-    case GRAPH_COMMAND_TYPES.setFlowColor:
+    case GRAPH_COMMAND_TYPES.setNodeColor:
       return {
         type: edit.type,
-        flowId: required(edit, "flowId", edit.flowId),
-        color: parseFlowColor(required(edit, "color", edit.color))!,
+        nodeId: required(edit, "nodeId", edit.nodeId),
+        color: edit.color === null ? null : parseFlowColor(required(edit, "color", edit.color))!,
       };
     case GRAPH_COMMAND_TYPES.addSceneVariable: {
       const variable = required(edit, "variable", edit.variable);
@@ -301,6 +304,7 @@ export function parseGraphEdit(edit: GraphEditInput): GraphEdit {
         variable: {
           id: variable.id,
           name: variable.name,
+          ...(variable.rank ? { rank: variable.rank } : {}),
           ...(variable.type ? { type: parseType(variable.type) } : {}),
           ...(variable.suggestedDimensions
             ? { suggestedDimensions: variable.suggestedDimensions }
@@ -315,6 +319,23 @@ export function parseGraphEdit(edit: GraphEditInput): GraphEdit {
         variableId: required(edit, "variableId", edit.variableId),
         name: required(edit, "name", edit.name),
       };
+    case GRAPH_COMMAND_TYPES.setSceneVariableType: {
+      if (edit.variableType === undefined) {
+        throw badInput(`A "${edit.type}" edit needs a variableType.`);
+      }
+      return {
+        type: edit.type,
+        sceneId: required(edit, "sceneId", edit.sceneId),
+        variableId: required(edit, "variableId", edit.variableId),
+        variableType: edit.variableType === null ? null : (parseType(edit.variableType) ?? null),
+      };
+    }
+    case GRAPH_COMMAND_TYPES.reorderSceneVariables:
+      return {
+        type: edit.type,
+        sceneId: required(edit, "sceneId", edit.sceneId),
+        variableIds: required(edit, "variableIds", edit.variableIds),
+      };
     case GRAPH_COMMAND_TYPES.removeSceneVariable:
       return {
         type: edit.type,
@@ -327,6 +348,12 @@ export function parseGraphEdit(edit: GraphEditInput): GraphEdit {
       // — but a client naming the type at all has misunderstood who decides,
       // and being told so beats having it silently ignored.
       throw badInput("Pairing codes are minted server-side and can't be set by an edit.");
+    case GRAPH_COMMAND_TYPES.setDevicePerConnection:
+      return {
+        type: edit.type,
+        nodeId: required(edit, "nodeId", edit.nodeId),
+        perConnection: required(edit, "perConnection", edit.perConnection),
+      };
     default:
       // A client speaking a newer dialect than this server. Refusing the
       // batch is the only safe answer: skipping the edit would leave the
@@ -357,9 +384,10 @@ export function serializeGraphEdit(edit: GraphEdit) {
     flowId: null as string | null,
     sceneId: null as string | null,
     variableId: null as string | null,
-    variable: null as { id: string; name: string } | null,
+    variable: null as { id: string; name: string; rank?: string } | null,
     color: null as string | null,
     pairingCode: null as string | null,
+    perConnection: null as boolean | null,
   };
   switch (edit.type) {
     case "graph.addNode":
@@ -383,8 +411,8 @@ export function serializeGraphEdit(edit: GraphEdit) {
       return { ...base, edgeId: edit.edgeId };
     case "graph.setFlowDefaultScene":
       return { ...base, flowId: edit.flowId, sceneId: edit.sceneId };
-    case "graph.setFlowColor":
-      return { ...base, flowId: edit.flowId, color: edit.color };
+    case "graph.setNodeColor":
+      return { ...base, nodeId: edit.nodeId, color: edit.color };
     case "graph.addSceneVariable":
       return { ...base, sceneId: edit.sceneId, variable: edit.variable };
     case "graph.renameSceneVariable":
@@ -394,10 +422,21 @@ export function serializeGraphEdit(edit: GraphEdit) {
         variableId: edit.variableId,
         name: edit.name,
       };
+    case "graph.setSceneVariableType":
+      return {
+        ...base,
+        sceneId: edit.sceneId,
+        variableId: edit.variableId,
+        variableType: edit.variableType,
+      };
+    case "graph.reorderSceneVariables":
+      return { ...base, sceneId: edit.sceneId, variableIds: [...edit.variableIds] };
     case "graph.removeSceneVariable":
       return { ...base, sceneId: edit.sceneId, variableId: edit.variableId };
     case "graph.setDevicePairingCode":
       return { ...base, nodeId: edit.nodeId, pairingCode: edit.pairingCode };
+    case "graph.setDevicePerConnection":
+      return { ...base, nodeId: edit.nodeId, perConnection: edit.perConnection };
   }
 }
 
@@ -446,7 +485,7 @@ function serializeNode(node: GraphNode) {
     kind: node.kind,
     name: node.name,
     parentId: node.parentId,
-    color: node.kind === "flow" ? (node.color ?? "neutral") : null,
+    color: node.color ?? null,
     position: node.position,
     variables:
       node.kind === "scene"

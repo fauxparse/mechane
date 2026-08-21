@@ -9,8 +9,19 @@
       ],
       "@/*": [
         "./src/*"
+      ],
+      "@studio/*": [
+        "./src/*"
+      ],
+      "@show-editor/*": [
+        "./src/editors/show/*"
+      ],
+      "@canvas-editor/*": [
+        "./src/editors/canvas/*"
       ]
     }
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ]
 }

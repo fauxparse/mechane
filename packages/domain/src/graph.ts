@@ -25,13 +25,13 @@
 //   - A Show with zero Flows is valid and unremarkable (#25).
 
 import type { EntityName } from "./id";
-import { areTypesCompatible, assertValidShapes, InvalidShapeError } from "./shapes";
 import type { Shape, Type } from "./shapes";
+import { areTypesCompatible, assertValidShapes, InvalidShapeError } from "./shapes";
 
 /** The kinds of node that render on the Show canvas. Nothing else does. */
 export const NODE_KINDS = ["scene", "flow", "source", "transformer", "device"] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
-/** Colorways available to a Flow's editor chrome (#316). */
+/** Colorways available to every Show node's editor chrome (#316). */
 export const FLOW_COLORS = [
   "neutral",
   "red",
@@ -42,18 +42,19 @@ export const FLOW_COLORS = [
   "blue",
   "purple",
 ] as const;
+/** The shared Show-node color palette. */
 export type FlowColor = (typeof FLOW_COLORS)[number];
 
 export function isFlowColor(value: string): value is FlowColor {
   return FLOW_COLORS.includes(value as FlowColor);
 }
 
-/** The colorway used when a Flow has no stored color yet (#316). */
+/** The colorway used when a Show node has no stored color yet (#316). */
 export const DEFAULT_FLOW_COLOR: FlowColor = "neutral";
 
 export class InvalidFlowColorError extends Error {
   constructor(value: string) {
-    super(`Invalid Flow color: "${value}". Expected one of: ${FLOW_COLORS.join(", ")}.`);
+    super(`Invalid Show node color: "${value}". Expected one of: ${FLOW_COLORS.join(", ")}.`);
     this.name = "InvalidFlowColorError";
   }
 }
@@ -91,6 +92,8 @@ export interface SuggestedImageDimensions {
 export interface SceneVariable {
   id: string;
   name: string;
+  /** Stable lexicographic order key within the owning Scene. */
+  rank?: string;
   /** The value type for this Variable, when defined (#107). */
   type?: Type | null;
   /** Cover-crop defaults for image authoring; never asset identity. */
@@ -101,6 +104,8 @@ interface BaseNode {
   id: string;
   name: string;
   position: Position;
+  /** Optional editor colorway; absent inherits its Flow's color or neutral. */
+  color?: FlowColor;
   /**
    * The Flow containing this node, or null for a Show-level node. This one
    * field carries both Scene nesting and Flow-local placement — see the
@@ -120,8 +125,6 @@ export interface FlowNode extends BaseNode {
   parentId: null;
   /** The Flow's design-time entry Scene, if one has been chosen (#23). */
   defaultSceneId: string | null;
-  /** Optional editor colorway; absent means neutral (#316). */
-  color?: FlowColor;
 }
 
 export interface SourceNode extends BaseNode {
@@ -152,9 +155,8 @@ export interface DeviceNode extends BaseNode {
    *     Flow independently and holds its own Flow-local Source values
    *     (#29); Events are anonymous and aggregated.
    *
-   * This is the field that decides Event attribution, so it is fixed at
-   * creation — flipping it would silently rewrite the meaning of every
-   * edge already pointing here.
+   * This is the field that decides Event attribution. Directors pick a
+   * default at creation and can change it later from the inspector.
    */
   perConnection: boolean;
   /**
@@ -731,17 +733,16 @@ export function assertValidShowGraph(graph: ShowGraph): ShowGraph {
     ),
     "Variable id",
   );
-
   for (const node of graph.nodes) {
     if (node.kind === "source" && !node.type) {
       throw new InvalidShowGraphError(`Source "${node.id}" must have a Type.`);
     }
     assertFinitePosition(node);
     assertValidNesting(node, nodes);
+    if (node.color !== undefined && !isFlowColor(node.color)) {
+      throw new InvalidShowGraphError(`Node "${node.id}" has an invalid color.`);
+    }
     if (node.kind === "flow") {
-      if (node.color !== undefined && !isFlowColor(node.color)) {
-        throw new InvalidShowGraphError(`Flow "${node.id}" has an invalid color.`);
-      }
       assertValidDefaultScene(node, nodes);
     }
     if (node.kind === "scene") {

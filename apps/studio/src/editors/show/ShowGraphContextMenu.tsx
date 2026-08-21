@@ -100,8 +100,7 @@ export function ShowGraphContextMenu({
   isValidConnection,
   jumpToMinimapPoint,
 }: ShowGraphContextMenuProps) {
-  const selectedFlow =
-    selectedNodes.length === 1 && selectedNodes[0]?.kind === "flow" ? selectedNodes[0] : null;
+  const selectedNode = selectedNodes.length === 1 ? (selectedNodes[0] ?? null) : null;
 
   return (
     <ContextMenu disabled>
@@ -196,17 +195,17 @@ export function ShowGraphContextMenu({
             })}
           </ContextMenuSubmenuContent>
         </ContextMenuSubmenu>
-        {selectedFlow ? (
+        {selectedNode ? (
           <ContextMenuSubmenu>
             <ContextMenuSubmenuTrigger>
-              <Pencil /> Flow color
+              <Pencil /> Node color
             </ContextMenuSubmenuTrigger>
             <ContextMenuSubmenuContent>
               {FLOW_COLORS.map((color) => (
                 <ContextMenuItem
                   key={color}
                   onClick={() => {
-                    if (isFlowColor(color)) editing.setFlowColor(selectedFlow.id, color);
+                    if (isFlowColor(color)) editing.setNodeColor(selectedNode.id, color);
                   }}
                 >
                   <span

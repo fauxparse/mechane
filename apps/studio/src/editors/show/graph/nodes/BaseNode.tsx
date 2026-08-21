@@ -1,8 +1,5 @@
-import { DEVICE_SOURCE_HANDLES } from "@mechane/domain";
-import { Position, type HandleProps } from "@xyflow/react";
-import type { ShowFlowNode } from "../graph-to-flow";
 import {
-  AlertCircleIcon,
+  AlertTriangleIcon,
   Button,
   cn,
   CopyButton,
@@ -11,11 +8,14 @@ import {
   SettingsIcon,
   variableTypeIcon,
 } from "@mechane/design-system";
-import { typeLabel } from "../node-kinds";
-import type { ComponentType, MouseEventHandler } from "react";
+import { DEVICE_SOURCE_HANDLES } from "@mechane/domain";
+import { Position, type HandleProps } from "@xyflow/react";
+import { useMemo, type ComponentType, type MouseEventHandler } from "react";
+import type { ShowFlowNode } from "../graph-to-flow";
 import { HANDLE_CLASS } from "../handle-styles";
-import { NodeHeader } from "./NodeHeader";
+import { typeLabel } from "../node-kinds";
 import { DummyHandle } from "./DummyHandle";
+import { NodeHeader } from "./NodeHeader";
 
 export interface BaseNodeProps {
   id: string;
@@ -50,10 +50,15 @@ export const BaseNode = ({
   ariaLabel,
   handle: HandleComponent = DummyHandle,
 }: BaseNodeProps) => {
-  const wiredVariableIds = new Set(data.wiredVariableIds);
-  const hasWarning =
-    data.variables.some((variable) => !wiredVariableIds.has(variable.id)) ||
-    (data.kind === "device" && !data.driven);
+  const warnings = useMemo(() => {
+    const wiredVariableIds = new Set(data.wiredVariableIds);
+    return [
+      ...(data.variables.some((variable) => !wiredVariableIds.has(variable.id))
+        ? ["One or more inputs are not connected"]
+        : []),
+      ...(data.kind === "device" && !data.driven ? ["This device is not displaying anything"] : []),
+    ];
+  }, [data.variables, data.wiredVariableIds, data.kind, data.driven]);
 
   return (
     <div
@@ -79,7 +84,7 @@ export const BaseNode = ({
         handle={HandleComponent}
         actions={
           <>
-            {hasWarning ? <AlertCircleIcon className="size-5 text-destructive" /> : null}
+            {warnings.length > 0 ? <AlertTriangleIcon className="size-5 text-destructive" /> : null}
             <Button
               variant="ghost"
               size="icon"
@@ -137,15 +142,7 @@ export const BaseNode = ({
       {data.variables?.length > 0 ? (
         <div className="grid grid-cols-[2.5rem_1fr] gap-x-2 gap-y-0">
           {data.variables.map((variable) => {
-            const Icon = variableTypeIcon(
-              typeof variable.type === "string"
-                ? variable.type
-                : variable.type?.kind === "array"
-                  ? "array"
-                  : variable.type
-                    ? "object"
-                    : undefined,
-            );
+            const Icon = variableTypeIcon(variable.type);
             return (
               <div
                 key={variable.id}

@@ -31,8 +31,9 @@ export interface ConnectionRequest {
   targetHandle?: string | null;
   /**
    * The Scene Variable a wiring edge would feed. Wiring always lands on a
-   * Variable (#20), so a drag that stops at the Scene's body rather than one
-   * of its Variable rows has nowhere to land, and says so.
+   * Variable (#20), so a drag that stops at the Scene body rather than one of
+   * its Variable rows has nowhere to land, and says so. The node-level input
+   * handle is the exception: it requests a new Variable.
    */
   targetVariableId?: string | null;
 }
@@ -118,6 +119,18 @@ export function connectionEdge(
 /** Ids that can't collide with a real edge, since a candidate is never stored. */
 const CANDIDATE_EDGE_ID = "edge_candidate";
 
+/** React Flow's node-level input handle creates a new Scene Variable. */
+const SCENE_INPUT_HANDLE = "in";
+const CANDIDATE_VARIABLE_ID = "variable_candidate";
+
+function implicitVariableType(graph: ShowGraph, request: ConnectionRequest) {
+  const producer = findNode(graph, request.sourceId);
+  const virtualSourceType = deviceSourceType(request.sourceHandle);
+  return producer?.kind === "source" || producer?.kind === "transformer"
+    ? producer.type
+    : virtualSourceType;
+}
+
 /**
  * Why this connection can't be made, or null if it can — phrased for a
  * person, since it reaches the palette and the inspector rather than a log.
@@ -137,31 +150,55 @@ export function connectionError(graph: ShowGraph, request: ConnectionRequest): s
   if (kind === null) {
     return `A ${producer.kind} can't connect to a ${consumer.kind}.`;
   }
+
+  let candidateGraph = graph;
+  let candidateRequest = request;
   if (
     kind === "wiring" &&
-    findNode(graph, request.targetId)?.kind === "scene" &&
+    consumer.kind === "scene" &&
+    request.targetHandle === SCENE_INPUT_HANDLE &&
     !request.targetVariableId
   ) {
+    const type = implicitVariableType(graph, request);
+    if (!type) return "The source must have a Type to create a Variable.";
+    let variableId = CANDIDATE_VARIABLE_ID;
+    while (consumer.variables.some((variable) => variable.id === variableId)) {
+      variableId = `${variableId}_`;
+    }
+    candidateGraph = {
+      ...graph,
+      nodes: graph.nodes.map((node) =>
+        node.id === consumer.id && node.kind === "scene"
+          ? { ...node, variables: [...node.variables, { id: variableId, name: "variable", type }] }
+          : node,
+      ),
+    };
+    candidateRequest = { ...request, targetVariableId: variableId };
+  }
+
+  if (kind === "wiring" && consumer.kind === "scene" && !candidateRequest.targetVariableId) {
     return "Drop onto one of the Scene's Variables.";
   }
 
-  const candidate = connectionEdge(graph, request, CANDIDATE_EDGE_ID);
+  const candidate = connectionEdge(candidateGraph, candidateRequest, CANDIDATE_EDGE_ID);
   if (!candidate) return `A ${producer.kind} can't connect to a ${consumer.kind}.`;
   try {
-    const producer = findNode(graph, request.sourceId);
-    const consumer = findNode(graph, request.targetId);
     const nodes =
-      producer?.parentId !== null &&
-      producer?.parentId !== undefined &&
-      consumer?.kind === "transformer" &&
+      producer.parentId !== null &&
+      producer.parentId !== undefined &&
+      consumer.kind === "transformer" &&
       consumer.parentId === null
-        ? graph.nodes.map((node) =>
+        ? candidateGraph.nodes.map((node) =>
             node.id === consumer.id
               ? ({ ...node, parentId: producer.parentId } as GraphNode)
               : node,
           )
-        : graph.nodes;
-    assertValidShowGraph({ shapes: graph.shapes, nodes, edges: [...graph.edges, candidate] });
+        : candidateGraph.nodes;
+    assertValidShowGraph({
+      shapes: candidateGraph.shapes,
+      nodes,
+      edges: [...candidateGraph.edges, candidate],
+    });
   } catch (error) {
     if (error instanceof InvalidShowGraphError) return humanise(error, kind);
     throw error;
@@ -243,9 +280,15 @@ export function connectionTargets(
           anyVariable = true;
         }
       }
-      // A Navigate edge lands on the Scene itself rather than on a Variable,
-      // so a Scene can be targetable with no targetable Variables.
-      if (anyVariable || canConnect(graph, { sourceId, sourceHandle, targetId: node.id })) {
+      // A wiring drag may also land on the Scene's node-level input handle,
+      // which creates a Variable. Navigate edges still land on the Scene body.
+      const sceneTargetable = canConnect(
+        graph,
+        rowsAreTargets
+          ? { sourceId, sourceHandle, targetId: node.id, targetHandle: SCENE_INPUT_HANDLE }
+          : { sourceId, sourceHandle, targetId: node.id },
+      );
+      if (anyVariable || sceneTargetable) {
         nodeIds.add(node.id);
       }
       continue;

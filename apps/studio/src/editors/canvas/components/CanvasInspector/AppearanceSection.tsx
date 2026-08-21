@@ -1,4 +1,6 @@
 import {
+  Section,
+  SectionRow,
   cn,
   EyeClosedIcon,
   EyeIcon,
@@ -20,7 +22,6 @@ import type { CornerRadius, CornerRadiusElement } from "@mechane/domain";
 import { hasCornerRadius, isPropertyConnection } from "@mechane/domain";
 import { Dispatch, SetStateAction, useState } from "react";
 
-import { Section, SectionRow } from "./Section";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { PropertyField } from "./CanvasInspectorFields";
 import { isVariableInput } from "./canvas-inspector-values";

@@ -27,6 +27,8 @@ import {
   PaintBucketIcon,
   PencilIcon,
   PropertyInput,
+  Section,
+  SectionRow,
   Select,
   SelectContent,
   SelectItem,
@@ -53,7 +55,6 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { PropertyField } from "./CanvasInspectorFields";
 import { isVariableInput, variableInput } from "./canvas-inspector-values";
-import { Section, SectionRow } from "./Section";
 
 const FontFamilyField = () => {
   const { common, fontFamilies, update } = useCanvasInspectorContext();

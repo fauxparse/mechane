@@ -10,11 +10,10 @@ import {
 import type { DeletionScope } from "@mechane/commands";
 import type { Dispatch, SetStateAction } from "react";
 
-import { EditorPanel } from "../../components/EditorLayout/EditorLayout";
 import { EditorSlot } from "../../components/EditorLayout/editor-slots";
 import { CommandPalette } from "./commands/CommandPalette";
 import type { PaletteCommand } from "./commands/palette-commands";
-import { GraphInspector } from "./graph/GraphInspector";
+import { GraphInspector } from "./graph/inspector/GraphInspector";
 import type { GraphNode } from "@mechane/domain";
 import type { GraphEditing } from "./commands/use-graph-editing";
 
@@ -44,9 +43,7 @@ export function ShowGraphEditorOverlays({
   return (
     <>
       <EditorSlot name="right">
-        <EditorPanel title="Properties">
-          <GraphInspector selected={selectedNodes} editing={editing} />
-        </EditorPanel>
+        <GraphInspector selected={selectedNodes} editing={editing} />
       </EditorSlot>
 
       {message ? (

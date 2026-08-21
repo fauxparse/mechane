@@ -18,6 +18,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@studio": path.resolve(__dirname, "./src"),
+      "@show-editor": path.resolve(__dirname, "./src/editors/show"),
+      "@canvas-editor": path.resolve(__dirname, "./src/editors/canvas"),
     },
   },
 });

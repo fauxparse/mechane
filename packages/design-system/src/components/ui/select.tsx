@@ -1,8 +1,8 @@
 "use client";
 
-import * as React from "react";
 import { Select as SelectPrimitive } from "@base-ui/react/select";
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import * as React from "react";
 import { cn } from "../../lib/utils";
 import { menuItemClass, menuLabelClass, menuPopupClass, menuSeparatorClass } from "./menu-styles";
 
@@ -31,10 +31,12 @@ function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
 function SelectTrigger({
   className,
   size = "default",
+  chevron = true,
   children,
   ...props
 }: SelectPrimitive.Trigger.Props & {
   size?: "sm" | "default";
+  chevron?: boolean;
 }) {
   return (
     <SelectPrimitive.Trigger
@@ -48,9 +50,11 @@ function SelectTrigger({
       {...props}
     >
       {children}
-      <SelectPrimitive.Icon
-        render={<ChevronDownIcon className="pointer-events-none size-4 text-muted-foreground" />}
-      />
+      {chevron && (
+        <SelectPrimitive.Icon
+          render={<ChevronDownIcon className="pointer-events-none size-4 text-muted-foreground" />}
+        />
+      )}
     </SelectPrimitive.Trigger>
   );
 }
@@ -115,7 +119,7 @@ function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Prop
       className={cn(menuItemClass, "relative w-full", className)}
       {...props}
     >
-      <SelectPrimitive.ItemText className="flex flex-1 shrink-0 gap-2 whitespace-nowrap">
+      <SelectPrimitive.ItemText className="flex flex-1 items-center shrink-0 gap-2 whitespace-nowrap">
         {children}
       </SelectPrimitive.ItemText>
       <SelectPrimitive.ItemIndicator

@@ -127,7 +127,7 @@ describe("graphToFlow", () => {
       ],
       edges: [],
     });
-    const heights = new Map(nodes.map((n) => [n.id, (n.style as { height: number }).height]));
+    const heights = new Map(nodes.map((n) => [n.id, n.initialHeight]));
     expect(heights.get("scene_bare")).toBe(NODE_HEIGHT);
     expect(heights.get("scene_wired")).toBeGreaterThan(NODE_HEIGHT + 2 * VARIABLE_ROW_HEIGHT - 1);
   });
@@ -227,27 +227,34 @@ describe("graphToFlow", () => {
     expect(types.get("transformer_1")).toBe(PLACEHOLDER_NODE_TYPE);
   });
 
-  it("assigns each contained node its parent Flow colorway", () => {
+  it("uses each node color, inheriting its Flow color when unset", () => {
     const { nodes } = graphToFlow({
       nodes: [
         node({ id: "flow_1", kind: "flow", color: "aqua" }),
         node({ id: "scene_1", kind: "scene", parentId: "flow_1" }),
+        node({ id: "scene_2", kind: "scene", parentId: "flow_1", color: "red" }),
         node({ id: "device_1", kind: "device" }),
       ],
       edges: [],
     });
     expect(nodes.find((node) => node.id === "flow_1")?.data.color).toBe("aqua");
     expect(nodes.find((node) => node.id === "scene_1")?.data.color).toBe("aqua");
+    expect(nodes.find((node) => node.id === "scene_2")?.data.color).toBe("red");
     expect(nodes.find((node) => node.id === "device_1")?.data.color).toBe("neutral");
   });
-  // Sizes have to be known before the first measurement, or the `fitView`
-  // that runs on first paint leaves nodes off-screen.
-  it("sizes every node up front", () => {
+  // The initial estimate is available for fitView, but ordinary nodes must
+  // remain intrinsically sized after React Flow measures their DOM wrapper.
+  it("seeds dimensions without pinning content-driven node height", () => {
     const { nodes } = graphToFlow({
       nodes: [node({ id: "device_1", kind: "device" })],
       edges: [],
     });
-    expect(nodes[0]?.style).toEqual({ width: NODE_WIDTH, height: NODE_HEIGHT });
+    expect(nodes[0]).toMatchObject({
+      initialWidth: NODE_WIDTH,
+      initialHeight: NODE_HEIGHT,
+      style: { width: NODE_WIDTH, minHeight: NODE_HEIGHT },
+    });
+    expect(nodes[0]?.style).not.toHaveProperty("height");
   });
 
   // A Device with nothing driving it displays nothing at performance time,

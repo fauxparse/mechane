@@ -418,6 +418,7 @@ export const graphNodeVariables = pgTable(
     name: text("name").notNull(),
     type: jsonb("type"),
     suggestedDimensions: jsonb("suggested_dimensions"),
+    rank: text("rank").notNull().default(""),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

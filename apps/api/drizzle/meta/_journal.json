@@ -134,6 +134,20 @@
       "when": 1787222039332,
       "tag": "0018_opposite_bedlam",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1787268461255,
+      "tag": "0019_absent_cloak",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1787274315711,
+      "tag": "0020_goofy_richard_fisk",
+      "breakpoints": true
     }
   ]
 }

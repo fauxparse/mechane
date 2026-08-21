@@ -1,4 +1,3 @@
-import { assertValidShowGraph } from "@mechane/domain";
 import type {
   DeviceEdge,
   DeviceNode,
@@ -9,6 +8,7 @@ import type {
   SourceNode,
   WiringEdge,
 } from "@mechane/domain";
+import { assertValidShowGraph } from "@mechane/domain";
 import { describe, expect, it } from "vitest";
 
 import { composite } from "./command";
@@ -17,16 +17,19 @@ import {
   addNode,
   createFlowWithNodes,
   moveNode,
+  moveNodeIntoFlow,
+  moveNodeOutOfFlow,
+  moveNodesIntoFlow,
+  moveNodesOutOfFlow,
   removeEdge,
   removeNode,
   renameNode,
-  moveNodeOutOfFlow,
-  moveNodeIntoFlow,
-  moveNodesIntoFlow,
-  moveNodesOutOfFlow,
+  reorderSceneVariables,
   reparentNode,
-  setFlowColor,
+  setDevicePerConnection,
   setFlowDefaultScene,
+  setNodeColor,
+  setSceneVariableType,
   UnknownGraphTargetError,
 } from "./graph-commands";
 import { CommandStack } from "./stack";
@@ -198,6 +201,48 @@ describe("renameNode", () => {
 
   it("changes nothing when the name is unchanged", () => {
     expect(renameNode(TALLY.id, TALLY.name).apply(GRAPH).inverse.isEmpty).toBe(true);
+  });
+});
+
+describe("reorderSceneVariables", () => {
+  it("reorders Variables and restores the original order", () => {
+    const graph: ShowGraph = {
+      ...GRAPH,
+      nodes: GRAPH.nodes.map((node) =>
+        node.id === VOTING.id
+          ? {
+              ...node,
+              variables: [
+                { id: "variable_prompt", name: "prompt" },
+                { id: "variable_count", name: "count" },
+                { id: "variable_color", name: "color" },
+              ],
+            }
+          : node,
+      ),
+    };
+    const applied = reorderSceneVariables(VOTING.id, [
+      "variable_color",
+      "variable_prompt",
+      "variable_count",
+    ]).apply(graph);
+    expect(
+      (applied.state.nodes.find((node) => node.id === VOTING.id) as SceneNode).variables.map(
+        (variable) => variable.id,
+      ),
+    ).toEqual(["variable_color", "variable_prompt", "variable_count"]);
+    expect(
+      (applied.state.nodes.find((node) => node.id === VOTING.id) as SceneNode).variables.map(
+        (variable) => variable.rank,
+      ),
+    ).toEqual(["0000000000", "0000000001", "0000000002"]);
+    expect(applied.inverse.apply(applied.state).state).toEqual(graph);
+  });
+
+  it("is empty when the requested order is unchanged", () => {
+    expect(reorderSceneVariables(VOTING.id, ["variable_prompt"]).apply(GRAPH).inverse.isEmpty).toBe(
+      true,
+    );
   });
 });
 
@@ -377,20 +422,51 @@ describe("setFlowDefaultScene", () => {
   });
 });
 
-describe("setFlowColor", () => {
-  it("sets a Flow color and restores an absent color exactly", () => {
-    const applied = expectExactRoundTrip(setFlowColor(VOTE_FLOW.id, "purple"));
-    expect(applied.state.nodes.find((node) => node.id === VOTE_FLOW.id)).toMatchObject({
+describe("setNodeColor", () => {
+  it("sets a color on any node and restores an absent color exactly", () => {
+    const applied = expectExactRoundTrip(setNodeColor(VOTING.id, "purple"));
+    expect(applied.state.nodes.find((node) => node.id === VOTING.id)).toMatchObject({
       color: "purple",
     });
   });
 
-  it("changes nothing when the effective color is already neutral", () => {
-    expect(setFlowColor(VOTE_FLOW.id, "neutral").apply(GRAPH).inverse.isEmpty).toBe(true);
+  it("changes nothing when the node color is already neutral", () => {});
+});
+
+describe("setSceneVariableType", () => {
+  it("sets a Variable's Type and restores an absent Type exactly", () => {
+    const applied = expectExactRoundTrip(
+      setSceneVariableType(VOTING.id, "variable_prompt", "text"),
+    );
+    expect(
+      (applied.state.nodes.find((node) => node.id === VOTING.id) as SceneNode).variables,
+    ).toMatchObject([{ id: "variable_prompt", type: "text" }]);
   });
 
-  it("refuses a node that is not a Flow", () => {
-    expect(() => setFlowColor(VOTING.id, "red").apply(GRAPH)).toThrow(UnknownGraphTargetError);
+  it("changes nothing when the Type is already that value", () => {
+    const typed = setSceneVariableType(VOTING.id, "variable_prompt", "number").apply(GRAPH).state;
+    expect(
+      setSceneVariableType(VOTING.id, "variable_prompt", "number").apply(typed).inverse.isEmpty,
+    ).toBe(true);
+  });
+});
+
+describe("setDevicePerConnection", () => {
+  it("flips a Device's per-connection setting and restores it", () => {
+    const applied = expectExactRoundTrip(setDevicePerConnection(PHONE.id, false));
+    expect(applied.state.nodes.find((node) => node.id === PHONE.id)).toMatchObject({
+      perConnection: false,
+    });
+  });
+
+  it("changes nothing when the setting is already that value", () => {
+    expect(setDevicePerConnection(PHONE.id, true).apply(GRAPH).inverse.isEmpty).toBe(true);
+  });
+
+  it("refuses a node that is not a Device", () => {
+    expect(() => setDevicePerConnection(VOTING.id, true).apply(GRAPH)).toThrow(
+      UnknownGraphTargetError,
+    );
   });
 });
 

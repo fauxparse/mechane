@@ -2,10 +2,10 @@ import { Button, ChevronDown, ChevronRight, cn } from "@mechane/design-system";
 import { Handle, NodeResizer, type NodeProps } from "@xyflow/react";
 
 import { FLOW_HEADER_HEIGHT, NODE_WIDTH, type ShowFlowNode } from "../graph-to-flow";
+import { useNodeInteraction } from "../node-interaction";
 import { NODE_KIND_META } from "../node-kinds";
 import { useConnectedHandleIds } from "../use-connected-handle-ids";
 import { useDragState } from "../use-drag-state";
-import { useNodeInteraction } from "../node-interaction";
 import { NodeHeader } from "./NodeHeader";
 
 /**
@@ -29,7 +29,7 @@ export function FlowNode({ id, data, selected }: NodeProps<ShowFlowNode>) {
   return (
     <div
       className={cn(
-        "show-flow group/node h-full w-full rounded-md border border-(--flow-border) bg-(--flow-background)/10 text-(--flow-foreground) shadow-md transition-opacity data-[selected=true]:ring-4 data-[selected=true]:ring-(--flow-border)/50",
+        "show-flow group/node h-full w-full rounded-md border border-(--flow-border) bg-(--flow-area-background) text-(--flow-foreground) shadow-md transition-opacity data-[selected=true]:ring-4 data-[selected=true]:ring-(--flow-border)/50",
         dimmed && "opacity-25",
       )}
       data-flow-theme={data.color}

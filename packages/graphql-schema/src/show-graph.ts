@@ -25,10 +25,12 @@ export const GetShowGraphQuery = graphql(`
           x
           y
         }
+        color
         ... on SceneNode {
           variables {
             id
             name
+            rank
             type {
               kind
               shapeId
@@ -44,7 +46,6 @@ export const GetShowGraphQuery = graphql(`
           }
         }
         ... on FlowNode {
-          color
           defaultSceneId
         }
         ... on SourceNode {

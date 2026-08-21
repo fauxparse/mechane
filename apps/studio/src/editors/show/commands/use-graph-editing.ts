@@ -8,30 +8,26 @@
 //
 // Everything routes through `useGraphCommands`, so everything is undoable, and
 // everything reaches the server by the same path an undo does (ADR-0005).
+import type { Gesture, GraphEdit } from "@mechane/commands";
 import {
   addEdge,
   addNode,
-  composite,
-  reparentNode,
-  createFlowWithNodes,
   addSceneVariable,
+  composite,
+  createFlowWithNodes,
   deleteGraphElements,
   deletionScope,
+  moveNodesIntoFlow,
+  moveNodesOutOfFlow,
   removeSceneVariable,
   renameNode,
   renameSceneVariable,
-  setFlowColor,
-  moveNodesIntoFlow,
-  moveNodesOutOfFlow,
+  reorderSceneVariables,
+  reparentNode,
+  setDevicePerConnection,
+  setNodeColor,
+  setSceneVariableType,
 } from "@mechane/commands";
-import type { GraphEdit, Gesture } from "@mechane/commands";
-import {
-  connectionEdge,
-  connectionError,
-  connectionTargets,
-  deviceSourceType,
-  generateId,
-} from "@mechane/domain";
 import type {
   ConnectionTargets,
   FlowColor,
@@ -41,14 +37,21 @@ import type {
   ShowGraph,
   Type,
 } from "@mechane/domain";
+import {
+  connectionEdge,
+  connectionError,
+  connectionTargets,
+  deviceSourceType,
+  generateId,
+} from "@mechane/domain";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { sourceLabelFor } from "../graph/source-label";
 
+import type { ApiGraph } from "../data/api-graph";
 import { INPUT_HANDLE, OUTPUT_HANDLE } from "../graph/graph-to-flow";
 import { createNode } from "../graph/node-kinds";
-import { useGraphCommands } from "./use-graph-commands";
 import type { GraphCommands } from "./use-graph-commands";
-import type { ApiGraph } from "../data/api-graph";
+import { useGraphCommands } from "./use-graph-commands";
 
 /** A drag from one node's handle to another's, as React Flow reports it. */
 export interface ConnectionAttempt {
@@ -102,11 +105,14 @@ export interface GraphEditing {
 
   addVariable(sceneId: string): void;
   renameVariable(sceneId: string, variableId: string, name: string): void;
+  setVariableType(sceneId: string, variableId: string, type: Type): void;
+  reorderVariables(sceneId: string, variableIds: readonly string[]): void;
   removeVariable(sceneId: string, variableId: string): void;
   /** Structural Flow moves; collapse is intentionally not part of this API. */
   moveIntoFlow(nodeIds: string[], flowId: string, origin: Position): void;
   moveOutOfFlow(nodeIds: string[], positions: Position[]): string | null;
-  setFlowColor(flowId: string, color: FlowColor): void;
+  setNodeColor(nodeId: string, color: FlowColor): void;
+  setDevicePerConnection(nodeId: string, perConnection: boolean): void;
 }
 
 /**
@@ -278,12 +284,40 @@ export function useGraphEditing(
   const connect = useCallback(
     (attempt: ConnectionAttempt) => {
       const request = requestOf(attempt);
-      const reason = connectionError(graph, request);
-      if (reason) return reason;
-      const edge = connectionEdge(graph, request, generateId("edge"));
-      if (!edge) return "That connection can't be made.";
       const producer = graph.nodes.find((node) => node.id === request.sourceId);
       const consumer = graph.nodes.find((node) => node.id === request.targetId);
+      const sourceType =
+        producer?.kind === "source" || producer?.kind === "transformer"
+          ? producer.type
+          : producer?.kind === "device"
+            ? deviceSourceType(request.sourceHandle)
+            : null;
+      const variable =
+        consumer?.kind === "scene" &&
+        attempt.targetHandle === INPUT_HANDLE &&
+        !request.targetVariableId &&
+        sourceType
+          ? {
+              id: generateId("variable"),
+              name: `variable${consumer.variables.length + 1}`,
+              type: sourceType,
+            }
+          : null;
+      const connectionGraph = variable
+        ? {
+            ...graph,
+            nodes: graph.nodes.map((node) =>
+              node.id === consumer?.id && node.kind === "scene"
+                ? { ...node, variables: [...node.variables, variable] }
+                : node,
+            ),
+          }
+        : graph;
+      const connectionRequest = variable ? { ...request, targetVariableId: variable.id } : request;
+      const reason = connectionError(connectionGraph, connectionRequest);
+      if (reason) return reason;
+      const edge = connectionEdge(connectionGraph, connectionRequest, generateId("edge"));
+      if (!edge) return "That connection can't be made.";
       if (
         producer?.parentId !== null &&
         producer?.parentId !== undefined &&
@@ -295,6 +329,16 @@ export function useGraphEditing(
             label: "Connect",
             commands: [
               reparentNode(consumer.id, producer.parentId, consumer.position),
+              addEdge(edge, "Connect"),
+            ],
+          }),
+        );
+      } else if (variable && consumer?.kind === "scene") {
+        execute(
+          composite({
+            label: "Create Variable and Connect",
+            commands: [
+              addSceneVariable(consumer.id, variable, "Create Variable"),
               addEdge(edge, "Connect"),
             ],
           }),
@@ -331,6 +375,20 @@ export function useGraphEditing(
     [beginGesture],
   );
 
+  const setVariableType = useCallback(
+    (sceneId: string, variableId: string, type: Type) => {
+      execute(setSceneVariableType(sceneId, variableId, type));
+    },
+    [execute],
+  );
+
+  const reorderVariables = useCallback(
+    (sceneId: string, variableIds: readonly string[]) => {
+      execute(reorderSceneVariables(sceneId, variableIds));
+    },
+    [execute],
+  );
+
   const removeVariable = useCallback(
     (sceneId: string, variableId: string) => {
       execute(removeSceneVariable(sceneId, variableId));
@@ -338,9 +396,16 @@ export function useGraphEditing(
     [execute],
   );
 
-  const changeFlowColor = useCallback(
-    (flowId: string, color: FlowColor) => {
-      execute(setFlowColor(flowId, color));
+  const changeNodeColor = useCallback(
+    (nodeId: string, color: FlowColor) => {
+      execute(setNodeColor(nodeId, color));
+    },
+    [execute],
+  );
+
+  const changeDevicePerConnection = useCallback(
+    (nodeId: string, perConnection: boolean) => {
+      execute(setDevicePerConnection(nodeId, perConnection));
     },
     [execute],
   );
@@ -382,13 +447,16 @@ export function useGraphEditing(
     scopeOf,
     connecting: connectingFrom !== null,
     targets,
-    setFlowColor: changeFlowColor,
+    setNodeColor: changeNodeColor,
+    setDevicePerConnection: changeDevicePerConnection,
     beginConnect,
     endConnect,
     canDrop,
     connect,
     addVariable,
     renameVariable,
+    setVariableType,
+    reorderVariables,
     removeVariable,
     moveIntoFlow,
     moveOutOfFlow,

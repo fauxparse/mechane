@@ -5,7 +5,13 @@ import { useEdgesState, useNodesState, useReactFlow } from "@xyflow/react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { OnEdgesChange, OnNodesChange } from "@xyflow/react";
 
-import { absolutePosition, graphToFlow, NODE_HEIGHT, NODE_WIDTH } from "../graph/graph-to-flow";
+import {
+  absolutePosition,
+  FLOW_NODE_TYPE,
+  graphToFlow,
+  NODE_HEIGHT,
+  NODE_WIDTH,
+} from "../graph/graph-to-flow";
 import type { FlowDimensions, ShowFlowEdge, ShowFlowNode } from "../graph/graph-to-flow";
 import { useEditorKeys } from "../keyboard/use-editor-keys";
 import { useGraphEditing } from "./use-graph-editing";
@@ -84,8 +90,27 @@ export function useShowGraphEditorController({
       return next;
     });
   }, []);
+  const dragging = useRef(false);
+  const selectOnArrival = useRef<string | null>(null);
+  const focusOnArrival = useRef<string | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState(drawn.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(drawn.edges);
+  const displayNodes = useMemo(() => {
+    const interaction = new Map(nodes.map((node) => [node.id, node]));
+    return drawn.nodes.map((node) => {
+      const existing = interaction.get(node.id);
+      if (!existing) return node;
+      return {
+        ...existing,
+        ...node,
+        position:
+          dragging.current || (node.type === FLOW_NODE_TYPE && flowDimensions.has(node.id))
+            ? existing.position
+            : node.position,
+        selected: existing.selected,
+      };
+    });
+  }, [drawn, flowDimensions, nodes]);
   const { fitView, getNodes, getZoom, setCenter, screenToFlowPosition } = useReactFlow();
   const fitViewOptions = useFitViewOptions();
   useInitialFrame(fitView, fitViewOptions, initialViewport === undefined);
@@ -98,11 +123,7 @@ export function useShowGraphEditorController({
   useViewportKeys();
   useUndoKeys(commands);
 
-  const dragging = useRef(false);
-  const selectOnArrival = useRef<string | null>(null);
-  const focusOnArrival = useRef<string | null>(null);
   useEffect(() => {
-    if (dragging.current) return;
     const arriving = selectOnArrival.current;
     selectOnArrival.current = null;
     const focusId = focusOnArrival.current;
@@ -124,19 +145,26 @@ export function useShowGraphEditorController({
     setNodes((previous) => {
       const interaction = new Map(previous.map((node) => [node.id, node]));
       return drawn.nodes.map((node) => {
-        if (arriving) return { ...node, selected: node.id === arriving };
         const existing = interaction.get(node.id);
-        return existing ? { ...node, selected: existing.selected } : node;
+        if (!existing) return arriving ? { ...node, selected: node.id === arriving } : node;
+        return {
+          ...existing,
+          ...node,
+          ...(dragging.current || (node.type === FLOW_NODE_TYPE && flowDimensions.has(node.id))
+            ? { position: existing.position }
+            : {}),
+          selected: arriving ? node.id === arriving : existing.selected,
+        };
       });
     });
     setEdges((previous) => {
       const interaction = new Map(previous.map((edge) => [edge.id, edge]));
       return drawn.edges.map((edge) => {
         const existing = interaction.get(edge.id);
-        return existing ? { ...edge, selected: existing.selected } : edge;
+        return existing ? { ...existing, ...edge, selected: existing.selected } : edge;
       });
     });
-  }, [drawn, getNodes, getZoom, setCenter, setNodes, setEdges]);
+  }, [drawn, flowDimensions, getNodes, getZoom, setCenter, setNodes, setEdges]);
 
   const say = useCallback((text: string) => {
     setMessage(text);
@@ -264,8 +292,8 @@ export function useShowGraphEditorController({
     selectedNodes,
     fitView,
     fitViewOptions,
+    nodes: displayNodes,
     screenToFlowPosition,
-    nodes,
     edges,
     onNodesChange,
     onEdgesChange,

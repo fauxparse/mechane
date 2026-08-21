@@ -68,9 +68,8 @@ export const CreatingNodes: Story = {};
  *
  * Worth trying, because each is a rule rather than an accident:
  *
- *   - A Source's drag offers **Variable rows**, not Scene bodies — wiring lands
- *     on a Variable (#20). A Scene with no Variables offers nothing; add one in
- *     the inspector.
+ *   - A Source's drag offers existing Variable rows and each Scene's node-level
+ *     input handle. Dropping on that input creates a typed Variable and connects it.
  *   - A Scene's drag offers other Scenes **in the same Flow** for Navigate
  *     edges, while dropping a Scene into or out of a Flow changes membership.
  *   - A Flow's drag offers only Devices.

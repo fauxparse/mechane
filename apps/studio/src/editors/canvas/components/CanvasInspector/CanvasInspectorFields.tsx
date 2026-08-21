@@ -9,6 +9,7 @@ import {
 import {
   Link2Icon,
   PropertyInput,
+  SectionRow,
   Toggle,
   Unlink2Icon,
   type LucideIcon,
@@ -17,7 +18,6 @@ import {
   type PropertyInputValue,
 } from "@mechane/design-system";
 
-import { SectionRow } from "./Section";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import {
   inputType,
@@ -130,7 +130,7 @@ type SizeFieldProps = {
   onConstraintToggle?: (constraint: SizeConstraint, enabled: boolean) => void;
 };
 
-export const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldProps) => {
+const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldProps) => {
   const { target, selected, common, variables, inspectorPreview, currentDimensions, update } =
     useCanvasInspectorContext();
   const size = common(`sizing.${axis}`) as AxisSize | undefined;

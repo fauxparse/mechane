@@ -49,3 +49,7 @@ Storybook stories MUST NOT make live network or API requests. Put remote data ac
 ## Orthography
 
 Use `color` spelling in code and comments.
+
+## Development environment
+
+The development stack is launched with Overmind using `Procfile.dev`. Do not start any services separately yourself. If the development server is not running, you can use `overmind start -f Procfile.dev`; to restart individual services use `overmind restart [service_name]` (see `Procfile.dev` for available services).\

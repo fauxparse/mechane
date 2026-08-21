@@ -7,22 +7,22 @@ import {
   SelectValue,
 } from "@mechane/design-system";
 import { DEFAULT_FLOW_COLOR, FLOW_COLORS, isFlowColor } from "@mechane/domain";
-import type { FlowColor, FlowNode } from "@mechane/domain";
+import type { FlowColor, GraphNode } from "@mechane/domain";
 
 import type { GraphEditing } from "../commands/use-graph-editing";
 
-export function FlowColorField({ flow, editing }: { flow: FlowNode; editing: GraphEditing }) {
-  const value = flow.color ?? DEFAULT_FLOW_COLOR;
+export function NodeColorField({ node, editing }: { node: GraphNode; editing: GraphEditing }) {
+  const value = node.color ?? DEFAULT_FLOW_COLOR;
   return (
     <div className="flex flex-col gap-1.5">
-      <Label htmlFor="inspector-flow-color">Color</Label>
+      <Label htmlFor="inspector-node-color">Color</Label>
       <Select
         value={value}
         onValueChange={(next) => {
-          if (next && isFlowColor(next)) editing.setFlowColor(flow.id, next);
+          if (next && isFlowColor(next)) editing.setNodeColor(node.id, next);
         }}
       >
-        <SelectTrigger id="inspector-flow-color" size="sm" aria-label="Flow color">
+        <SelectTrigger id="inspector-node-color" size="sm" aria-label="Node color">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
