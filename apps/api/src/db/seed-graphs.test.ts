@@ -27,7 +27,7 @@ describe("Voting demo seed", () => {
     if (tally?.kind !== "scene" || audience?.kind !== "scene") throw new Error("Seed Scenes are missing.");
     expect(tally.variables.map((variable) => variable.id)).toEqual([...TALLY_VARIABLE_IDS]);
     expect(audience.variables.map((variable) => variable.id)).toEqual([...AUDIENCE_VARIABLE_IDS]);
-    expect(graph.nodes.filter((node) => node.kind === "device").map((node) => node.name)).toEqual(["Projector"]);
+    expect(graph.nodes.filter((node) => node.kind === "device").map((node) => node.name)).toEqual(["Projector", "Audience"]);
   });
 
   it("builds valid tally and audience Canvases", () => {

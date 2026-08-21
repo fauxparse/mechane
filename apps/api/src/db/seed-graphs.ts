@@ -12,6 +12,7 @@ export const TALLY_VARIABLE_IDS = ["variable_tally_alice", "variable_tally_beatr
 export const AUDIENCE_VARIABLE_IDS = ["variable_audience_alice", "variable_audience_beatrix", "variable_audience_clarissa"] as const;
 
 const PROJECTOR_ID = "device_projector";
+const AUDIENCE_DEVICE_ID = "device_audience";
 const TALLY_SCENE_ID = "scene_vote_tally";
 const AUDIENCE_FLOW_ID = "flow_audience";
 const AUDIENCE_SCENE_ID = "scene_audience_vote";
@@ -118,6 +119,15 @@ export function votingGraph(): ShowGraph {
         perConnection: false,
         pairingCode: null,
       },
+      {
+        id: AUDIENCE_DEVICE_ID,
+        kind: "device",
+        name: "Audience",
+        parentId: null,
+        position: { x: 900, y: 520 },
+        perConnection: true,
+        pairingCode: null,
+      },
     ],
     edges: [
       ...sourceEdges,
@@ -126,6 +136,14 @@ export function votingGraph(): ShowGraph {
         kind: "device",
         sourceId: TALLY_SCENE_ID,
         targetId: PROJECTOR_ID,
+        sourcePath: [],
+        targetPath: [],
+      },
+      {
+        id: "edge_audience_device",
+        kind: "device",
+        sourceId: AUDIENCE_FLOW_ID,
+        targetId: AUDIENCE_DEVICE_ID,
         sourcePath: [],
         targetPath: [],
       },
