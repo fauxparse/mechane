@@ -75,7 +75,7 @@ export function NodeHeader({
         )}
       </div>
       <div className="col-start-2 text-xs text-(--flow-muted-foreground) truncate uppercase tracking-wide leading-none pb-2">
-        {typeLabel(data.type) ?? upperFirst(data.kind)}
+        {typeLabel(data.type, data.shapes) ?? upperFirst(data.kind)}
         {subtitleAddon}
       </div>
       <div className="row-span-2 flex items-center gap-1">{actions}</div>

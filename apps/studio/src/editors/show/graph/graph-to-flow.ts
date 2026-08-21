@@ -116,6 +116,8 @@ export type ShowNodeData = {
   kind: NodeKind;
   name: string;
   type: Type | null;
+  /** Show-scoped Shape definitions used to render human-readable type labels. */
+  shapes?: readonly Shape[];
   /** Scene Variables, in graph order. Empty for every other kind. */
   variables: { id: string; name: string; type?: Type | null }[];
   /** The Scene a Flow enters by default (#23), if one has been chosen. */
@@ -259,6 +261,7 @@ function toFlowNode(
   collapsed: boolean,
   minimumDimensions: FlowDimensions | undefined,
   color: FlowColor,
+  shapes: readonly Shape[] | undefined,
 ): ShowFlowNode {
   const kind = nodeKindOf(node);
   const isFlow = kind === "flow";
@@ -297,6 +300,7 @@ function toFlowNode(
       kind,
       name: node.name,
       type: (node.type as Type | null | undefined) ?? null,
+      ...(shapes && shapes.length > 0 ? { shapes } : {}),
       variables: [...(node.variables ?? [])].map((variable) => ({
         ...variable,
         type: variable.type as Type | null | undefined,
@@ -467,6 +471,7 @@ export function graphToFlow(
                 ? DEFAULT_FLOW_COLOR
                 : ((node.parentId ? flowColors.get(node.parentId) : undefined) ??
                   DEFAULT_FLOW_COLOR)),
+            graph.shapes,
           ),
         );
       }

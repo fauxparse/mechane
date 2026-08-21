@@ -8,6 +8,7 @@ import {
   createNode,
   NODE_KIND_META,
   nodeIcon,
+  typeLabel,
 } from "./node-kinds";
 
 describe("createNode", () => {
@@ -117,5 +118,20 @@ describe("nodeIcon", () => {
     );
     // An unknown (or absent) type is an object, not a crash.
     expect(nodeIcon("source", { sourceType: "hologram" })).toBe(nodeIcon("source"));
+  });
+});
+
+describe("typeLabel", () => {
+  const shapes = [{ id: "shape_person", name: "Person", fields: [] }];
+
+  it("resolves Shape references to their names, including array members", () => {
+    expect(typeLabel({ kind: "shape", shapeId: "shape_person" }, shapes)).toBe("Person");
+    expect(
+      typeLabel({ kind: "array", of: { kind: "shape", shapeId: "shape_person" } }, shapes),
+    ).toBe("array<Person>");
+  });
+
+  it("uses a generic label when a Shape reference is unavailable", () => {
+    expect(typeLabel({ kind: "shape", shapeId: "missing_shape" })).toBe("Shape");
   });
 });
