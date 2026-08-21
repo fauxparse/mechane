@@ -28,6 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   HouseIcon,
+  ShapesIcon,
   Input,
   InsideSidebar,
   LogOutIcon,
@@ -69,6 +70,7 @@ export interface HeaderNavigation {
   settings: HeaderDestination;
   showEditor: HeaderDestination;
   canvasEditor: HeaderDestination;
+  shapes: HeaderDestination;
 }
 
 export interface HeaderUser {
@@ -187,6 +189,14 @@ export const Header = ({
                   Rename
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  render={
+                    <a href={navigation.shapes.href} onClick={activate(navigation.shapes)}>
+                      <ShapesIcon />
+                      <span>Shapes</span>
+                    </a>
+                  }
+                />
                 <DropdownMenuItem
                   render={
                     <a href={navigation.home.href} onClick={activate(navigation.home)}>

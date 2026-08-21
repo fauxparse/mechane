@@ -109,6 +109,11 @@ function ShowEditorLayout() {
             onSelect: () =>
               void navigate({ to: "/shows/$showId", params: { showId: params.showId } }),
           },
+          shapes: {
+            href: `/shows/${params.showId}/shapes`,
+            onSelect: () =>
+              void navigate({ to: "/shows/$showId/shapes", params: { showId: params.showId } }),
+          },
           canvasEditor: {
             href: canvasPath,
             onSelect: () =>

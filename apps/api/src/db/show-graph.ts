@@ -685,10 +685,10 @@ export async function applyShowGraphEdits(
     if (current.version !== baseVersion) {
       throw new GraphVersionConflictError(baseVersion, current.version);
     }
-    const next = {
-      shapes: current.shapes ?? [],
-      ...applyGraphEdits({ nodes: current.nodes, edges: current.edges }, edits),
-    };
+    const next = applyGraphEdits(
+      { shapes: current.shapes ?? [], nodes: current.nodes, edges: current.edges },
+      edits,
+    );
     const written = await writeGraph(tx, showId, "draft", next, baseVersion);
     return {
       showId,
@@ -733,10 +733,10 @@ export async function applyShowEdits(
       if (!canvas) throw new Error(`Canvas "${canvasId}" was not found.`);
       currentCanvases.set(canvasId, canvas);
     }
-    const nextGraph = {
-      shapes: current.shapes ?? [],
-      ...applyGraphEdits({ nodes: current.nodes, edges: current.edges }, graphEdits),
-    };
+    const nextGraph = applyGraphEdits(
+      { shapes: current.shapes ?? [], nodes: current.nodes, edges: current.edges },
+      graphEdits,
+    );
     const nextCanvases = new Map<string, EditableCanvas>(
       [...currentCanvases].map(([canvasId, currentCanvas]) => [
         canvasId,

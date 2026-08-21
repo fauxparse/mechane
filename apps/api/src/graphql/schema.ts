@@ -306,10 +306,25 @@ export const schema = createSchema<GraphQLContext>({
       default: ShapeValue
     }
 
+    input ShapeFieldInput {
+      id: ID!
+      name: String!
+      type: TypeInput!
+      position: Int!
+      required: Boolean!
+      defaultValue: JSON
+    }
+
     type Shape {
       id: ID!
       name: String!
       fields: [ShapeField!]!
+    }
+
+    input ShapeInput {
+      id: ID!
+      name: String!
+      fields: [ShapeFieldInput!]!
     }
 
     type SourceFieldDefault {
@@ -735,6 +750,7 @@ export const schema = createSchema<GraphQLContext>({
       variableIds: [ID!]
       variable: SceneVariableInput
       "The Variable's Type, for graph.setSceneVariableType. Null clears it."
+      shapes: [ShapeInput!]
       variableType: TypeInput
       elementId: ID
       rank: String

@@ -128,10 +128,10 @@ export interface ShowGraphEdits {
   saving: boolean;
   /**
    * Set when a batch was refused. The editor keeps working from its own
-   * state, but nothing further is sent — see below for why that's the
-   * honest behaviour rather than a retry loop.
+   * state and can retry the queued edits explicitly.
    */
   error: Error | null;
+  retry(): void;
 }
 
 /**
@@ -199,6 +199,7 @@ export function useShowGraphEdits(
       edits: edits.map(toEditInput),
     })
       .then((data) => {
+        setError(null);
         const result = data.applyShowEdits;
         version.current = result.version;
         queryClient.setQueryData(
@@ -216,6 +217,7 @@ export function useShowGraphEdits(
         }
       })
       .catch((reason: unknown) => {
+        pending.current.unshift(...batch);
         failed.current = true;
         setError(reason instanceof Error ? reason : new Error(String(reason)));
       })
@@ -255,5 +257,12 @@ export function useShowGraphEdits(
     [flush, queryClient, showId],
   );
 
-  return { enqueue, saving, error };
+  const retry = useCallback(() => {
+    if (!failed.current) return;
+    failed.current = false;
+    setError(null);
+    flush();
+  }, [flush]);
+
+  return { enqueue, saving, error, retry };
 }

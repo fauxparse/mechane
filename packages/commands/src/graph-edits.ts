@@ -37,6 +37,7 @@ import type {
   GraphNode,
   Position,
   SceneVariable,
+  Shape,
   ShowGraph,
   Type,
 } from "@mechane/domain";
@@ -60,6 +61,7 @@ import {
   setFlowDefaultScene,
   setNodeColor,
   setSceneVariableType,
+  setShapes,
 } from "./graph-commands";
 
 /**
@@ -97,6 +99,10 @@ export type GraphEdit =
       readonly type: typeof GRAPH_COMMAND_TYPES.setNodeColor;
       readonly nodeId: string;
       readonly color: FlowColor | null;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setShapes;
+      readonly shapes: Shape[];
     }
   | {
       readonly type: typeof GRAPH_COMMAND_TYPES.addSceneVariable;
@@ -181,6 +187,8 @@ export function commandForEdit(edit: GraphEdit): ShowGraphCommand {
       return setFlowDefaultScene(edit.flowId, edit.sceneId);
     case GRAPH_COMMAND_TYPES.setNodeColor:
       return setNodeColor(edit.nodeId, edit.color);
+    case GRAPH_COMMAND_TYPES.setShapes:
+      return setShapes(edit.shapes);
     case GRAPH_COMMAND_TYPES.addSceneVariable:
       return addSceneVariable(edit.sceneId, edit.variable);
     case GRAPH_COMMAND_TYPES.reorderSceneVariables:
@@ -230,6 +238,8 @@ function supersedes(edit: GraphEdit): { key: string; ids: readonly string[] } | 
         key: `reparent:${edit.nodeId}`,
         ids: edit.parentId === null ? [edit.nodeId] : [edit.nodeId, edit.parentId],
       };
+    case GRAPH_COMMAND_TYPES.setShapes:
+      return { key: GRAPH_COMMAND_TYPES.setShapes, ids: edit.shapes.map((shape) => shape.id) };
     case GRAPH_COMMAND_TYPES.setFlowDefaultScene:
       return {
         key: `defaultScene:${edit.flowId}`,
