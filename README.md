@@ -29,7 +29,8 @@ packages/
 pnpm install
 cp apps/api/.env.example apps/api/.env
 cp apps/api/.env.test.example apps/api/.env.test
-overmind start -f Procfile.dev   # starts Postgres, its test database, MinIO, API, Studio, Player, and Storybook
+cp apps/studio/.env.example apps/studio/.env
+overmind start -f Procfile.dev   # starts the app services, infrastructure, and local HTTPS proxy
 # In another terminal, after Postgres and MinIO report ready:
 pnpm --filter @mechane/api db:migrate   # apply the development database schema
 pnpm db:test:migrate                         # apply the test database schema
@@ -41,6 +42,66 @@ pnpm lint
 pnpm typecheck
 pnpm codegen      # regenerate packages/graphql-schema's schema.graphql + gql.tada types
 ```
+
+### Local HTTPS aliases
+
+The development proxy runs in Docker with Caddy's internal certificate
+authority. Overmind starts it through the `proxy` process in `Procfile.dev`.
+The aliases are:
+
+- `https://studio.mechane.dev` → Studio on `localhost:5173`
+- `https://show.mechane.dev` → Player on `localhost:5174`
+- `https://api.mechane.dev` → API on `localhost:4000`
+
+On macOS, configure the project resolver once:
+
+```sh
+sudo mkdir -p /etc/resolver
+printf 'nameserver 127.0.0.1\nport 53\n' | sudo tee /etc/resolver/mechane.dev
+```
+
+Start the stack with `overmind start -f Procfile.dev`. The first Caddy
+request creates its local root certificate. Copy it out and trust it on the
+host:
+
+```sh
+docker compose cp caddy:/data/caddy/pki/authorities/local/root.crt /tmp/mechane-caddy-root.crt
+
+# macOS
+sudo security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain /tmp/mechane-caddy-root.crt
+
+# Debian/Ubuntu
+sudo cp /tmp/mechane-caddy-root.crt /usr/local/share/ca-certificates/mechane-caddy.crt
+sudo update-ca-certificates
+```
+
+Restart the browser after trusting the certificate. Firefox may require
+importing the certificate into its own certificate store. Caddy keeps its
+certificate authority in the `mechane-caddy-data` Docker volume; do not
+commit the extracted certificate.
+
+Linux hosts without a resolver-file integration can use these equivalent
+entries in `/etc/hosts` as a fallback:
+
+```text
+127.0.0.1 studio.mechane.dev show.mechane.dev api.mechane.dev
+```
+
+To remove the macOS resolver configuration:
+
+```sh
+sudo rm /etc/resolver/mechane.dev
+```
+
+The direct HTTP services remain available at `localhost:5173`, `localhost:5174`,
+and `localhost:4000` when the proxy is unavailable. Run the Vite process
+directly with `VITE_DEV_PROXY=false` when using that fallback so HMR uses HTTP.
+
+When Google sign-in is enabled, register
+`https://api.mechane.dev/api/auth/callback/google` as the local OAuth redirect
+URI. The corresponding API and Studio values are in the checked-in
+`.env.example` files.
 
 ## Local image storage
 
