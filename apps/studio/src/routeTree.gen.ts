@@ -15,6 +15,7 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as GuestSignInRouteImport } from './routes/_guest/sign-in'
 import { Route as PrototypeShapeFieldsRouteImport } from './routes/prototype/shape-fields'
+import { Route as PrototypeShapeTypeDefaultsRouteImport } from './routes/prototype/shape-type-defaults'
 import { Route as AuthenticatedShowsShowIdRouteImport } from './routes/_authenticated/shows/$showId'
 import { Route as AuthenticatedShowsShowIdIndexRouteImport } from './routes/_authenticated/shows/$showId/index'
 import { Route as AuthenticatedShowsShowIdArtRouteImport } from './routes/_authenticated/shows/$showId/art'
@@ -48,6 +49,12 @@ const PrototypeShapeFieldsRoute = PrototypeShapeFieldsRouteImport.update({
   path: '/prototype/shape-fields',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrototypeShapeTypeDefaultsRoute =
+  PrototypeShapeTypeDefaultsRouteImport.update({
+    id: '/prototype/shape-type-defaults',
+    path: '/prototype/shape-type-defaults',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedShowsShowIdRoute =
   AuthenticatedShowsShowIdRouteImport.update({
     id: '/shows/$showId',
@@ -78,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/sign-in': typeof GuestSignInRoute
   '/prototype/shape-fields': typeof PrototypeShapeFieldsRoute
+  '/prototype/shape-type-defaults': typeof PrototypeShapeTypeDefaultsRoute
   '/shows/$showId': typeof AuthenticatedShowsShowIdRouteWithChildren
   '/shows/$showId/art': typeof AuthenticatedShowsShowIdArtRouteWithChildren
   '/shows/$showId/': typeof AuthenticatedShowsShowIdIndexRoute
@@ -88,6 +96,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/sign-in': typeof GuestSignInRoute
   '/prototype/shape-fields': typeof PrototypeShapeFieldsRoute
+  '/prototype/shape-type-defaults': typeof PrototypeShapeTypeDefaultsRoute
   '/shows/$showId/art': typeof AuthenticatedShowsShowIdArtRouteWithChildren
   '/shows/$showId': typeof AuthenticatedShowsShowIdIndexRoute
   '/shows/$showId/art/$artId': typeof AuthenticatedShowsShowIdArtArtIdRoute
@@ -99,6 +108,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_guest/sign-in': typeof GuestSignInRoute
   '/prototype/shape-fields': typeof PrototypeShapeFieldsRoute
+  '/prototype/shape-type-defaults': typeof PrototypeShapeTypeDefaultsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/shows/$showId': typeof AuthenticatedShowsShowIdRouteWithChildren
   '/_authenticated/shows/$showId/art': typeof AuthenticatedShowsShowIdArtRouteWithChildren
@@ -112,6 +122,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sign-in'
     | '/prototype/shape-fields'
+    | '/prototype/shape-type-defaults'
     | '/shows/$showId'
     | '/shows/$showId/art'
     | '/shows/$showId/'
@@ -122,6 +133,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sign-in'
     | '/prototype/shape-fields'
+    | '/prototype/shape-type-defaults'
     | '/shows/$showId/art'
     | '/shows/$showId'
     | '/shows/$showId/art/$artId'
@@ -132,6 +144,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_guest/sign-in'
     | '/prototype/shape-fields'
+    | '/prototype/shape-type-defaults'
     | '/_authenticated/'
     | '/_authenticated/shows/$showId'
     | '/_authenticated/shows/$showId/art'
@@ -143,6 +156,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   GuestRouteRoute: typeof GuestRouteRouteWithChildren
   PrototypeShapeFieldsRoute: typeof PrototypeShapeFieldsRoute
+  PrototypeShapeTypeDefaultsRoute: typeof PrototypeShapeTypeDefaultsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -187,6 +201,13 @@ declare module '@tanstack/react-router' {
       path: '/prototype/shape-fields'
       fullPath: '/prototype/shape-fields'
       preLoaderRoute: typeof PrototypeShapeFieldsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prototype/shape-type-defaults': {
+      id: '/prototype/shape-type-defaults'
+      path: '/prototype/shape-type-defaults'
+      fullPath: '/prototype/shape-type-defaults'
+      preLoaderRoute: typeof PrototypeShapeTypeDefaultsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/shows/$showId': {
@@ -283,6 +304,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   GuestRouteRoute: GuestRouteRouteWithChildren,
   PrototypeShapeFieldsRoute: PrototypeShapeFieldsRoute,
+  PrototypeShapeTypeDefaultsRoute: PrototypeShapeTypeDefaultsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
