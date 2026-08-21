@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { FlowColor } from "@mechane/domain";
 
 import {
+  FLOW_HEADER_HEIGHT,
   FLOW_NODE_TYPE,
   flowSize,
   graphToFlow,
@@ -337,6 +338,23 @@ describe("graphToFlow", () => {
       );
     });
 
+    it("uses compact dimensions while a Flow is collapsed", () => {
+      const { nodes } = graphToFlow(
+        {
+          nodes: [
+            node({ id: "flow_1", kind: "flow" }),
+            node({ id: "scene_1", kind: "scene", parentId: "flow_1", position: { x: 40, y: 80 } }),
+          ],
+          edges: [],
+        },
+        { collapsedFlowIds: new Set(["flow_1"]), flowDimensions: new Map([["flow_1", { width: 900, height: 700 }]]) },
+      );
+      const flow = nodes.find((candidate) => candidate.id === "flow_1");
+      expect(flow?.style).toEqual({ width: NODE_WIDTH, height: FLOW_HEADER_HEIGHT });
+      expect(flow?.width).toBe(NODE_WIDTH);
+      expect(flow?.height).toBe(FLOW_HEADER_HEIGHT);
+    });
+
     it("keeps manual Flow dimensions while expanding for moved children", () => {
       const manual = { width: 1000, height: 900 };
       const { nodes } = graphToFlow(
@@ -450,6 +468,33 @@ describe("graphToFlow", () => {
       });
     });
 
+    it("redirects edges leaving hidden children to the Flow output", () => {
+      const { edges } = graphToFlow(
+        {
+          nodes: [
+            node({ id: "flow_1", kind: "flow" }),
+            node({ id: "source_1", kind: "source", parentId: "flow_1" }),
+            node({ id: "scene_2", kind: "scene" }),
+          ],
+          edges: [
+            edge({
+              id: "wiring_hidden",
+              kind: "wiring",
+              sourceId: "source_1",
+              targetId: "scene_2",
+              targetPath: ["variable_1"],
+            }),
+          ],
+        },
+        { collapsedFlowIds: new Set(["flow_1"]) },
+      );
+
+      expect(edges[0]).toMatchObject({
+        source: "flow_1",
+        sourceHandle: OUTPUT_HANDLE,
+        target: "scene_2",
+      });
+    });
     // Until nodes grow per-Variable handles (#35) the Variable is data, not
     // a handle — but it has to survive the trip, or #35 has to re-derive it.
     it("carries a wiring edge's target Variable", () => {
