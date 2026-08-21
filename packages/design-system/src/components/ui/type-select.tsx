@@ -14,6 +14,7 @@ import {
   DropdownMenuSubmenuTrigger,
   DropdownMenuTrigger,
 } from "./dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
 import { variableTypeIcon, variableTypeLabel } from "./property-input/variable-type-icons";
 export type TypeSelectOption = {
   value: Type;
@@ -146,34 +147,23 @@ export function TypeSelect({
       {showLabel ? <ChevronRightIcon className="size-4 rotate-90 text-muted-foreground" /> : null}
     </button>
   );
-
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger render={customTrigger ?? defaultTrigger} />
-      <DropdownMenuContent>
-        <DropdownMenuGroup>
-          {PRIMITIVE_OPTIONS.map(renderOption)}
-          {includeArray ? (
-            <DropdownMenuSubmenu>
-              <DropdownMenuSubmenuTrigger>
-                <ArrayIcon className="size-4 text-muted-foreground" />
-                <span>Array of…</span>
-              </DropdownMenuSubmenuTrigger>
-              <DropdownMenuSubmenuContent>
-                <DropdownMenuGroup>
-                  {PRIMITIVE_OPTIONS.map((option) =>
-                    renderOption({
-                      ...option,
-                      value: { kind: "array", of: option.value },
-                      icon: option.icon,
-                    }),
-                  )}
-                </DropdownMenuGroup>
-                {shapeTypeOptions.length > 0 ? (
-                  <>
-                    <DropdownMenuSeparator />
+    <Tooltip>
+      <TooltipTrigger render={<span className="inline-flex" />}>
+        <DropdownMenu>
+          <DropdownMenuTrigger render={customTrigger ?? defaultTrigger} />
+          <DropdownMenuContent>
+            <DropdownMenuGroup>
+              {PRIMITIVE_OPTIONS.map(renderOption)}
+              {includeArray ? (
+                <DropdownMenuSubmenu>
+                  <DropdownMenuSubmenuTrigger>
+                    <ArrayIcon className="size-4 text-muted-foreground" />
+                    <span>Array of…</span>
+                  </DropdownMenuSubmenuTrigger>
+                  <DropdownMenuSubmenuContent>
                     <DropdownMenuGroup>
-                      {shapeTypeOptions.map((option) =>
+                      {PRIMITIVE_OPTIONS.map((option) =>
                         renderOption({
                           ...option,
                           value: { kind: "array", of: option.value },
@@ -181,19 +171,34 @@ export function TypeSelect({
                         }),
                       )}
                     </DropdownMenuGroup>
-                  </>
-                ) : null}
-              </DropdownMenuSubmenuContent>
-            </DropdownMenuSubmenu>
-          ) : null}
-        </DropdownMenuGroup>
-        {shapeTypeOptions.length > 0 ? (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>{shapeTypeOptions.map(renderOption)}</DropdownMenuGroup>
-          </>
-        ) : null}
-      </DropdownMenuContent>
-    </DropdownMenu>
+                    {shapeTypeOptions.length > 0 ? (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuGroup>
+                          {shapeTypeOptions.map((option) =>
+                            renderOption({
+                              ...option,
+                              value: { kind: "array", of: option.value },
+                              icon: option.icon,
+                            }),
+                          )}
+                        </DropdownMenuGroup>
+                      </>
+                    ) : null}
+                  </DropdownMenuSubmenuContent>
+                </DropdownMenuSubmenu>
+              ) : null}
+            </DropdownMenuGroup>
+            {shapeTypeOptions.length > 0 ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>{shapeTypeOptions.map(renderOption)}</DropdownMenuGroup>
+              </>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }
