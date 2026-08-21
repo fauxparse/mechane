@@ -1,5 +1,5 @@
 import { PRIMITIVE_TYPES, type Shape, type Type } from "@mechane/domain";
-import { ChevronRightIcon, type LucideIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, type LucideIcon } from "lucide-react";
 import type { ReactElement } from "react";
 
 import { cn } from "../../lib/utils";
@@ -51,8 +51,18 @@ const PRIMITIVE_OPTIONS: readonly TypeSelectOption[] = PRIMITIVE_TYPES.map((valu
 
 function optionKey(type: Type): string {
   if (typeof type === "string") return type;
+  if (type.kind === "array") return `array:${optionKey(type.of)}`;
   if (type.kind === "shape") return `shape:${type.shapeId}`;
   return type.kind;
+}
+
+function typesEqual(left: Type | null, right: Type): boolean {
+  if (left === null) return false;
+  if (typeof left === "string" || typeof right === "string") return left === right;
+  if (left.kind !== right.kind) return false;
+  if (left.kind === "array" && right.kind === "array") return typesEqual(left.of, right.of);
+  if (left.kind === "shape" && right.kind === "shape") return left.shapeId === right.shapeId;
+  return true;
 }
 
 function typeLabel(type: Type, shapes: readonly Shape[]): string {
@@ -113,6 +123,7 @@ export function TypeSelect({
       >
         <OptionIcon className="size-4 text-muted-foreground" />
         {option.label}
+        <CheckIcon className={cn("ml-auto size-4", typesEqual(currentValue, option.value) ? "opacity-100" : "opacity-0")} aria-hidden="true" />
       </DropdownMenuItem>
     );
   };
