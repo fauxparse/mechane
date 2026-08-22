@@ -223,13 +223,7 @@ export function useCanvasWorkspaceInteractions({
     selection.artId !== null && selection.elementIds.length > 0,
     onCameraChange,
   );
-  const geometryKey = useMemo(
-    () =>
-      `${camera.x}:${camera.y}:${camera.zoom}|${JSON.stringify(
-        ordered.map(({ artId, position, canvas }) => [artId, position, canvas.root]),
-      )}`,
-    [camera, ordered],
-  );
+  const geometryKey = useMemo(() => [camera, ordered] as const, [camera, ordered]);
   const geometry = useCanvasGeometry(workspaceRef, geometryKey);
   const setSelection = (next: CanvasSelection) => {
     const normalized = normalizeSelection(next);

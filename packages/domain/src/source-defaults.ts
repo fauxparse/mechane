@@ -36,7 +36,6 @@ function defaultForField(field: ShapeField, shapes: readonly Shape[]): unknown {
   return field.required ? defaultValueForType(field.type, shapes) : null;
 }
 
-
 export function setValueAtPath(value: unknown, path: readonly string[], next: unknown): unknown {
   if (path.length === 0) return next;
   if (!value || typeof value !== "object" || Array.isArray(value)) return value;
@@ -52,33 +51,30 @@ function applyOverride(value: unknown, path: readonly string[], next: unknown): 
   return setValueAtPath(value, path, next);
 }
 
-
 function applySourceOverrides(
   value: unknown,
   overrides: Iterable<{ fieldPath: readonly string[]; value: unknown }>,
 ): unknown {
   let result = value;
-  for (const override of overrides) result = applyOverride(result, override.fieldPath, override.value);
+  for (const override of overrides)
+    result = applyOverride(result, override.fieldPath, override.value);
   return result;
 }
 
 function sourceValue(source: SourceNode, graph: ShowGraph): unknown {
   const value = defaultValueForType(source.type, graph.shapes ?? []);
   const overrides = new Map(
-    (graph.sourceFieldDefaults ?? [])
-      .filter((override) => override.nodeId === source.id)
-      .map((override) => [override.fieldPath.join("\u0000"), override] as const),
+    (source.fieldDefaults ?? []).map(
+      (override) => [override.fieldPath.join("\u0000"), override] as const,
+    ),
   );
-  for (const override of source.fieldDefaults ?? []) {
-    overrides.set(override.fieldPath.join("\u0000"), {
-      nodeId: source.id,
-      fieldPath: override.fieldPath,
-      value: override.value,
-    });
+  for (const override of graph.sourceFieldDefaults ?? []) {
+    if (override.nodeId === source.id) {
+      overrides.set(override.fieldPath.join("\u0000"), override);
+    }
   }
   return applySourceOverrides(value, overrides.values());
 }
-
 
 /**
  * Materialises every Source's design-time defaults for a newly-started Run.

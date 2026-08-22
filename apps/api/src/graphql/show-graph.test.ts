@@ -156,7 +156,9 @@ describe("parseGraphEdit", () => {
         {
           id: "shape_vote",
           name: "Vote",
-          fields: [{ id: "field_count", name: "count", type: "number", required: true, defaultValue: 0 }],
+          fields: [
+            { id: "field_count", name: "count", type: "number", required: true, defaultValue: 0 },
+          ],
         },
       ],
     });
@@ -199,6 +201,21 @@ describe("parseGraphEdit", () => {
         color: null,
       }),
     ).toEqual({ type: "graph.setNodeColor", nodeId: "scene_a", color: null });
+  });
+  it("preserves a null Source value, which clears the override", () => {
+    expect(
+      parseGraphEdit({
+        type: GRAPH_COMMAND_TYPES.setSourceFieldDefault,
+        nodeId: "source_a",
+        fieldPath: ["field_title"],
+        value: null,
+      }),
+    ).toEqual({
+      type: "graph.setSourceFieldDefault",
+      nodeId: "source_a",
+      fieldPath: ["field_title"],
+      value: null,
+    });
   });
 
   it("rejects an unknown node color", () => {

@@ -19,7 +19,7 @@ import {
 } from "@mechane/domain";
 import { GraphQLError } from "graphql";
 
-import type { AppliedShowGraphEdits, StoredShowGraph } from "../db/show-graph";
+import type { StoredShowGraph } from "../db/show-graph";
 
 export interface PositionInput {
   x: number;
@@ -337,7 +337,7 @@ export function parseGraphEdit(edit: GraphEditInput): GraphEdit {
         type: edit.type,
         nodeId: required(edit, "nodeId", edit.nodeId),
         fieldPath: required(edit, "fieldPath", edit.fieldPath),
-        value: required(edit, "value", edit.value),
+        value: edit.value ?? null,
       };
     case GRAPH_COMMAND_TYPES.addSceneVariable: {
       const variable = required(edit, "variable", edit.variable);

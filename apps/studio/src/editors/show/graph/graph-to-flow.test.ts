@@ -26,6 +26,7 @@ type ShowGraphNode = {
   position: { x: number; y: number };
   variables: { id: string; name: string; type?: unknown }[];
   type?: unknown;
+  fieldDefaults?: { fieldPath: string[]; value: unknown }[];
   perConnection?: boolean;
   pairingCode?: string | null;
 };
@@ -110,6 +111,41 @@ describe("graphToFlow", () => {
       pairingCode: null,
       driven: false,
     });
+  });
+  it("lets graph-owned source edits update the rendered node fields", () => {
+    const { nodes } = graphToFlow({
+      shapes: [
+        {
+          id: "shape_profile",
+          name: "Profile",
+          fields: [
+            {
+              id: "headline",
+              name: "Headline",
+              type: "text",
+              required: true,
+              defaultValue: "Default headline",
+            },
+          ],
+        },
+      ],
+      nodes: [
+        node({
+          id: "source_profile",
+          kind: "source",
+          type: { kind: "shape", shapeId: "shape_profile" },
+          fieldDefaults: [{ fieldPath: ["headline"], value: "Legacy headline" }],
+        }),
+      ],
+      edges: [],
+      sourceFieldDefaults: [
+        { nodeId: "source_profile", fieldPath: ["headline"], value: "Edited headline" },
+      ],
+    });
+
+    expect(nodes[0]?.data.fields).toEqual([
+      { id: "headline", name: "Headline", type: "text", value: "Edited headline" },
+    ]);
   });
 
   // #35 puts each Variable's handle on its own row, so a Scene's height is a
@@ -348,7 +384,10 @@ describe("graphToFlow", () => {
           ],
           edges: [],
         },
-        { collapsedFlowIds: new Set(["flow_1"]), flowDimensions: new Map([["flow_1", { width: 900, height: 700 }]]) },
+        {
+          collapsedFlowIds: new Set(["flow_1"]),
+          flowDimensions: new Map([["flow_1", { width: 900, height: 700 }]]),
+        },
       );
       const flow = nodes.find((candidate) => candidate.id === "flow_1");
       expect(flow?.style).toEqual({ width: NODE_WIDTH, height: FLOW_HEADER_HEIGHT });

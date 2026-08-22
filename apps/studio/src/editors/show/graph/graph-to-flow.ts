@@ -232,10 +232,7 @@ function nodeKindOf(node: MappableNode): NodeKind {
 /**
  * How tall a node is. Every kind is one header tall except nodes with rows.
  */
-export function nodeHeight(
-  node: MappableNode,
-  shapes: readonly Shape[] = [],
-): number {
+export function nodeHeight(node: MappableNode, shapes: readonly Shape[] = []): number {
   const rowCount =
     node.kind === "scene"
       ? (node.variables?.length ?? 0)
@@ -283,8 +280,8 @@ function fieldRows(
       : undefined;
   if (node.kind === "source" && value !== undefined) {
     const overrides = [
-      ...graphDefaults.filter((override) => override.nodeId === node.id),
       ...(node.fieldDefaults ?? []),
+      ...graphDefaults.filter((override) => override.nodeId === node.id),
     ];
     for (const override of overrides) {
       value = setValueAtPath(value, override.fieldPath, override.value);
@@ -327,7 +324,9 @@ function toFlowNode(
       : minimumHeight,
     ...(isFlow
       ? {
-          width: collapsed ? NODE_WIDTH : flowSize(children, minimumDimensions, resolvedShapes).width,
+          width: collapsed
+            ? NODE_WIDTH
+            : flowSize(children, minimumDimensions, resolvedShapes).width,
           height: collapsed
             ? FLOW_HEADER_HEIGHT
             : flowSize(children, minimumDimensions, resolvedShapes).height,
@@ -375,7 +374,7 @@ function toFlowEdge(
   const source = graphNodes.find((node) => node.id === edge.sourceId);
   const target = graphNodes.find((node) => node.id === edge.targetId);
   const targetVariableId =
-    edge.targetVariableId ?? (target?.kind === "scene" ? edge.targetPath?.[0] ?? null : null);
+    edge.targetVariableId ?? (target?.kind === "scene" ? (edge.targetPath?.[0] ?? null) : null);
   const sourceParentId = source?.parentId ?? null;
   const targetParentId = target?.parentId ?? null;
   const sourceWholeType =
@@ -399,7 +398,7 @@ function toFlowEdge(
   const targetType =
     target?.kind === "transformer" && target.type && edge.targetPath && edge.targetPath.length > 0
       ? typeAtPath(target.type as Type, edge.targetPath, shapes)
-      : (sceneVariable?.type as Type | null | undefined) ?? null;
+      : ((sceneVariable?.type as Type | null | undefined) ?? null);
   const coercing =
     edge.kind === "wiring" &&
     typeof sourceType === "string" &&

@@ -63,4 +63,25 @@ describe("sceneVariableValues", () => {
       }),
     ).toEqual({ variable_total: { value: 7 } });
   });
+  it("uses the live source value pushed by the editor", () => {
+    expect(
+      sceneVariableValues(graph, "scene_vote", {
+        source_votes: { count: 42 },
+      }),
+    ).toEqual({ variable_total: { value: 42 } });
+  });
+  it("does not treat an editor value equal to the type baseline as legacy", () => {
+    const graphWithPublishedEdit: ShowGraph = {
+      ...graph,
+      nodes: graph.nodes.map((node) =>
+        node.kind === "source" ? { ...node, fieldDefaults: [] } : node,
+      ),
+      sourceFieldDefaults: [{ nodeId: "source_votes", fieldPath: ["count"], value: 0 }],
+    };
+    expect(
+      sceneVariableValues(graphWithPublishedEdit, "scene_vote", {
+        source_votes: { count: 0 },
+      }),
+    ).toEqual({ variable_total: { value: 0 } });
+  });
 });

@@ -140,7 +140,7 @@ export const BaseNode = ({
         </div>
       ) : null}
       {data.fields.length > 0 ? (
-        <div className="grid grid-cols-[2rem_1fr_2rem] gap-x-2">
+        <div className="grid grid-cols-[2.5rem_1fr] gap-x-2">
           {data.fields.map((field) => {
             const Icon = variableTypeIcon(field.type);
             return (
@@ -158,11 +158,17 @@ export const BaseNode = ({
                   isConnectableStart={false}
                   isConnectable={data.kind === "transformer"}
                 />
-                <div className="flex min-w-0 items-center gap-2">
-                  <Icon className="size-4 shrink-0" />
-                  <div className="min-w-0 truncate">{field.name}</div>
+                <Icon className="size-4 shrink-0 justify-self-center ml-2 text-(--flow-muted-foreground)" />
+                <div className="flex min-w-0 items-baseline justify-between gap-2 pr-4">
+                  <div className="min-w-0 truncate">
+                    {field.value === undefined || field.value === null ? (
+                      <span className="text-(--flow-muted-foreground) opacity-50">(empty)</span>
+                    ) : (
+                      formatValue(field.value)
+                    )}
+                  </div>
                   <span className="truncate text-xs text-(--flow-muted-foreground)">
-                    {field.value === undefined ? "—" : formatValue(field.value)}
+                    {field.name}
                   </span>
                 </div>
                 <HandleComponent
@@ -205,7 +211,6 @@ export const BaseNode = ({
           })}
         </div>
       ) : null}
-
     </div>
   );
 };
