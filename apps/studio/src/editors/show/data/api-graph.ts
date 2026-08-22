@@ -72,6 +72,7 @@ export type ApiGraph = {
   nodes: ApiGraphNode[];
   edges: ApiGraphEdge[];
   shapes?: ApiShowGraph["shapes"];
+  sourceFieldDefaults?: { nodeId: string; fieldPath: string[]; value: unknown }[];
 };
 
 function toType(type: ApiType): Type {
@@ -225,11 +226,15 @@ function toEdge(edge: ApiGraphEdge): GraphEdge {
   }
 }
 
-/** The graph as the domain (and therefore as the command layer) wants it. */
 export function toShowGraph(graph: ApiGraph | null | undefined): ShowGraph {
   if (!graph) return { shapes: [], nodes: [], edges: [] };
   return {
     shapes: (graph.shapes ?? []).map(toShape),
+    sourceFieldDefaults: (graph.sourceFieldDefaults ?? []).map((fieldDefault) => ({
+      nodeId: fieldDefault.nodeId,
+      fieldPath: [...fieldDefault.fieldPath],
+      value: fieldDefault.value,
+    })),
     nodes: graph.nodes.map(toNode),
     edges: graph.edges.map(toEdge),
   };
@@ -357,6 +362,8 @@ export interface StudioEditInput {
   nodeId?: string;
   node?: ApiNodeInput;
   shapes?: ApiShapeInput[];
+  fieldPath?: string[];
+  value?: unknown;
   edgeId?: string;
   edge?: ApiEdgeInput;
   position?: { x: number; y: number };
@@ -437,6 +444,13 @@ export function toEditInput(edit: StudioEdit): StudioEditInput {
       return { ...input, flowId: edit.flowId, sceneId: edit.sceneId };
     case "graph.setNodeColor":
       return { ...input, nodeId: edit.nodeId, color: edit.color };
+    case "graph.setSourceFieldDefault":
+      return {
+        ...input,
+        nodeId: edit.nodeId,
+        fieldPath: [...edit.fieldPath],
+        value: edit.value,
+      };
     case "graph.setShapes":
       return { ...input, shapes: edit.shapes.map(toShapeInput) };
     case "graph.addSceneVariable":

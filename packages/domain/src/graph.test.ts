@@ -30,6 +30,7 @@ import type {
   TransformerNode,
   WiringEdge,
 } from "./graph";
+import type { Shape } from "./shapes";
 
 const at = { x: 0, y: 0 };
 
@@ -47,9 +48,12 @@ function scene(id: string, parentId: string | null = null, variableIds: string[]
 function flow(id: string, defaultSceneId: string | null = null): FlowNode {
   return { id, kind: "flow", name: id, position: at, parentId: null, defaultSceneId };
 }
-
-function source(id: string, parentId: string | null = null): SourceNode {
-  return { id, kind: "source", name: id, position: at, parentId, type: "text" };
+function source(
+  id: string,
+  parentId: string | null = null,
+  type: SourceNode["type"] = "text",
+): SourceNode {
+  return { id, kind: "source", name: id, position: at, parentId, type };
 }
 
 function transformer(id: string, parentId: string | null = null): TransformerNode {
@@ -99,10 +103,50 @@ function navigate(
 function deviceEdge(id: string, sourceId: string, targetId: string): DeviceEdge {
   return { id, kind: "device", sourceId, targetId, sourcePath: [], targetPath: [] };
 }
-
-function graph(nodes: GraphNode[], edges: GraphEdge[] = []): ShowGraph {
-  return { nodes, edges };
+function graph(
+  nodes: GraphNode[],
+  edges: GraphEdge[] = [],
+  shapes: Shape[] = [],
+): ShowGraph {
+  return { nodes, edges, shapes };
 }
+const PATH_SHAPES: Shape[] = [
+  {
+    id: "path",
+    name: "Path",
+    fields: [
+      {
+        id: "tally",
+        name: "Tally",
+        type: { kind: "shape", shapeId: "tally" },
+        required: true,
+        defaultValue: { total: 0 },
+      },
+      {
+        id: "voter",
+        name: "Voter",
+        type: { kind: "shape", shapeId: "voter" },
+        required: true,
+        defaultValue: { name: "", score: 0 },
+      },
+    ],
+  },
+  {
+    id: "tally",
+    name: "Tally",
+    fields: [
+      { id: "total", name: "Total", type: "number", required: true, defaultValue: 0 },
+    ],
+  },
+  {
+    id: "voter",
+    name: "Voter",
+    fields: [
+      { id: "name", name: "Name", type: "text", required: true, defaultValue: "" },
+      { id: "score", name: "Score", type: "number", required: true, defaultValue: 0 },
+    ],
+  },
+];
 
 /**
  * A Show exercising every node kind and every edge kind at once: a Flow
@@ -242,8 +286,9 @@ describe("assertValidShowGraph", () => {
 
     it("carries a field path at each end", () => {
       const showGraph = graph(
-        [source("r1"), scene("c1", null, ["v1"])],
+        [source("r1", null, { kind: "shape", shapeId: "path" }), scene("c1", null, ["v1"])],
         [wiring("e1", "r1", "c1", ["v1", "count"], ["tally", "total"])],
+        PATH_SHAPES,
       );
       expect(() => assertValidShowGraph(showGraph)).not.toThrow();
       const [edge] = showGraph.edges;
@@ -253,11 +298,12 @@ describe("assertValidShowGraph", () => {
 
     it("allows two edges feeding different fields of one Variable", () => {
       const showGraph = graph(
-        [source("r1"), scene("c1", null, ["v1"])],
+        [source("r1", null, { kind: "shape", shapeId: "path" }), scene("c1", null, ["v1"])],
         [
           wiring("e1", "r1", "c1", ["v1", "name"], ["voter", "name"]),
           wiring("e2", "r1", "c1", ["v1", "score"], ["voter", "score"]),
         ],
+        PATH_SHAPES,
       );
       expect(() => assertValidShowGraph(showGraph)).not.toThrow();
     });

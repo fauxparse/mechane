@@ -36,24 +36,34 @@ function defaultForField(field: ShapeField, shapes: readonly Shape[]): unknown {
   return field.required ? defaultValueForType(field.type, shapes) : null;
 }
 
-function setPath(root: Record<string, unknown>, path: readonly string[], value: unknown): void {
-  if (path.length === 0) return;
-  let current = root;
-  for (const segment of path.slice(0, -1)) {
-    const next = current[segment];
-    if (!next || typeof next !== "object" || Array.isArray(next)) return;
-    current = next as Record<string, unknown>;
-  }
-  const last = path[path.length - 1];
-  if (last !== undefined) current[last] = value;
+
+export function setValueAtPath(value: unknown, path: readonly string[], next: unknown): unknown {
+  if (path.length === 0) return next;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const [segment, ...rest] = path;
+  if (segment === undefined) return value;
+  return {
+    ...(value as Record<string, unknown>),
+    [segment]: setValueAtPath((value as Record<string, unknown>)[segment], rest, next),
+  };
+}
+
+function applyOverride(value: unknown, path: readonly string[], next: unknown): unknown {
+  return setValueAtPath(value, path, next);
+}
+
+
+function applySourceOverrides(
+  value: unknown,
+  overrides: Iterable<{ fieldPath: readonly string[]; value: unknown }>,
+): unknown {
+  let result = value;
+  for (const override of overrides) result = applyOverride(result, override.fieldPath, override.value);
+  return result;
 }
 
 function sourceValue(source: SourceNode, graph: ShowGraph): unknown {
   const value = defaultValueForType(source.type, graph.shapes ?? []);
-  const root =
-    value && typeof value === "object" && !Array.isArray(value)
-      ? { ...(value as Record<string, unknown>) }
-      : null;
   const overrides = new Map(
     (graph.sourceFieldDefaults ?? [])
       .filter((override) => override.nodeId === source.id)
@@ -66,10 +76,9 @@ function sourceValue(source: SourceNode, graph: ShowGraph): unknown {
       value: override.value,
     });
   }
-  if (!root) return value;
-  for (const override of overrides.values()) setPath(root, override.fieldPath, override.value);
-  return root;
+  return applySourceOverrides(value, overrides.values());
 }
+
 
 /**
  * Materialises every Source's design-time defaults for a newly-started Run.

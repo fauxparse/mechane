@@ -332,6 +332,11 @@ export async function readShowGraph(
     updatedAt: row.updatedAt,
     version: row.version,
     shapes: shapeRows.map((shape) => toShape(shape, shapeFieldRows)),
+    sourceFieldDefaults: sourceDefaultRows.map((sourceDefault) => ({
+      nodeId: sourceDefault.nodeId,
+      fieldPath: sourceDefault.fieldPath,
+      value: sourceDefault.value,
+    })),
     nodes: nodeRows.map((node) =>
       toNode(node, variablesByScene, sourceDefaultsByNode, deviceIdentities),
     ),
@@ -600,16 +605,23 @@ async function writeGraph(
     await tx.insert(graphNodeVariables).values(variables);
   }
 
-  const sourceDefaults = graph.nodes.flatMap((node) =>
-    node.kind === "source"
-      ? (node.fieldDefaults ?? []).map((fieldDefault) => ({
-          graphId: row.id,
-          nodeId: node.id,
-          fieldPath: fieldDefault.fieldPath,
-          value: fieldDefault.value,
-        }))
-      : [],
+  const sourceDefaultsByKey = new Map(
+    [
+      ...(graph.sourceFieldDefaults ?? []),
+      ...graph.nodes.flatMap((node) =>
+        node.kind === "source" ? (node.fieldDefaults ?? []) : [],
+      ),
+    ].map((fieldDefault) => [
+      `${fieldDefault.nodeId}\u0000${fieldDefault.fieldPath.join("\u0000")}`,
+      {
+        graphId: row.id,
+        nodeId: fieldDefault.nodeId,
+        fieldPath: fieldDefault.fieldPath,
+        value: fieldDefault.value,
+      },
+    ]),
   );
+  const sourceDefaults = [...sourceDefaultsByKey.values()];
   if (sourceDefaults.length > 0) await tx.insert(sourceFieldDefaults).values(sourceDefaults);
 
   if (graph.edges.length > 0) {

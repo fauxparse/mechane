@@ -28,6 +28,7 @@ import {
   setNodeColor,
   setSceneVariableType,
   setShapes as setShapeDefinitions,
+  setSourceFieldDefault,
 } from "@mechane/commands";
 import type {
   ConnectionTargets,
@@ -114,6 +115,7 @@ export interface GraphEditing {
   moveIntoFlow(nodeIds: string[], flowId: string, origin: Position): void;
   moveOutOfFlow(nodeIds: string[], positions: Position[]): string | null;
   setShapes(shapes: Shape[]): void;
+  setSourceFieldDefault(nodeId: string, fieldPath: readonly string[], value: unknown): void;
   setNodeColor(nodeId: string, color: FlowColor): void;
   setDevicePerConnection(nodeId: string, perConnection: boolean): void;
 }
@@ -413,6 +415,13 @@ export function useGraphEditing(
     [execute],
   );
 
+  const changeSourceFieldDefault = useCallback(
+    (nodeId: string, fieldPath: readonly string[], value: unknown) => {
+      execute(setSourceFieldDefault(nodeId, fieldPath, value));
+    },
+    [execute],
+  );
+
   const changeDevicePerConnection = useCallback(
     (nodeId: string, perConnection: boolean) => {
       execute(setDevicePerConnection(nodeId, perConnection));
@@ -457,13 +466,14 @@ export function useGraphEditing(
     scopeOf,
     connecting: connectingFrom !== null,
     targets,
-    setShapes: changeShapes,
-    setNodeColor: changeNodeColor,
-    setDevicePerConnection: changeDevicePerConnection,
     beginConnect,
     endConnect,
     canDrop,
     connect,
+    setShapes: changeShapes,
+    setSourceFieldDefault: changeSourceFieldDefault,
+    setNodeColor: changeNodeColor,
+    setDevicePerConnection: changeDevicePerConnection,
     addVariable,
     renameVariable,
     setVariableType,

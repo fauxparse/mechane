@@ -38,6 +38,7 @@ import type {
   SceneVariable,
   Shape,
   ShowGraph,
+  SourceFieldDefault,
   Type,
 } from "@mechane/domain";
 
@@ -65,6 +66,7 @@ export const GRAPH_COMMAND_TYPES = {
   setFlowDefaultScene: "graph.setFlowDefaultScene",
   setNodeColor: "graph.setNodeColor",
   setShapes: "graph.setShapes",
+  setSourceFieldDefault: "graph.setSourceFieldDefault",
   addSceneVariable: "graph.addSceneVariable",
   renameSceneVariable: "graph.renameSceneVariable",
   setSceneVariableType: "graph.setSceneVariableType",
@@ -74,6 +76,7 @@ export const GRAPH_COMMAND_TYPES = {
   setDevicePairingCode: "graph.setDevicePairingCode",
   setDevicePerConnection: "graph.setDevicePerConnection",
 } as const;
+
 
 export class UnknownGraphTargetError extends Error {
   constructor(what: string, id: string) {
@@ -593,6 +596,62 @@ function withNodeColor(graph: ShowGraph, nodeId: string, color: FlowColor | null
   if (color === null) delete next.color;
   else next.color = color;
   return replaceNode(graph, index, next);
+}
+/** Sets or clears one graph-owned Source value override. */
+export function setSourceFieldDefault(
+  nodeId: string,
+  fieldPath: readonly string[],
+  value: unknown,
+  label = "Set Source value",
+): ShowGraphCommand {
+  const path = [...fieldPath];
+  return capturing<ShowGraph, SourceFieldDefault | undefined, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setSourceFieldDefault,
+    label,
+    scope: "selection",
+    coalesceKey: `${GRAPH_COMMAND_TYPES.setSourceFieldDefault}:${nodeId}:${path.join(".")}`,
+    edits: [{ type: GRAPH_COMMAND_TYPES.setSourceFieldDefault, nodeId, fieldPath: path, value }],
+    restoreEdits: (captured) => [
+      {
+        type: GRAPH_COMMAND_TYPES.setSourceFieldDefault,
+        nodeId,
+        fieldPath: path,
+        value: captured?.value ?? null,
+      },
+    ],
+    capture: (graph) =>
+      graph.sourceFieldDefaults?.find(
+        (override) => override.nodeId === nodeId && samePath(override.fieldPath, path),
+      ),
+    isEmpty: (graph) => {
+      const current = graph.sourceFieldDefaults?.find(
+        (override) => override.nodeId === nodeId && samePath(override.fieldPath, path),
+      );
+      return value === null
+        ? current === undefined
+        : current !== undefined && JSON.stringify(current.value) === JSON.stringify(value);
+    },
+    apply: (graph) => withSourceFieldDefault(graph, nodeId, path, value),
+    restore: (graph, captured) =>
+      withSourceFieldDefault(graph, nodeId, path, captured?.value ?? null),
+  });
+}
+
+function withSourceFieldDefault(
+  graph: ShowGraph,
+  nodeId: string,
+  fieldPath: readonly string[],
+  value: unknown,
+): ShowGraph {
+  const remaining = (graph.sourceFieldDefaults ?? []).filter(
+    (override) => !(override.nodeId === nodeId && samePath(override.fieldPath, fieldPath)),
+  );
+  const source = value === null ? remaining : [...remaining, { nodeId, fieldPath: [...fieldPath], value }];
+  return source.length > 0 ? { ...graph, sourceFieldDefaults: source } : { ...graph, sourceFieldDefaults: undefined };
+}
+
+function samePath(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((segment, index) => segment === right[index]);
 }
 
 /** Replaces the Show-scoped Shape definitions as one undoable edit. */

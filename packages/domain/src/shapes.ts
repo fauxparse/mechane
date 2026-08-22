@@ -445,6 +445,12 @@ export function findCoercion(from: PrimitiveType, to: PrimitiveType): Coercion |
   return COERCIONS.find((coercion) => coercion.from === from && coercion.to === to);
 }
 
+/** Returns the immediate fields of a named Shape type. */
+export function fieldsForType(type: Type | null | undefined, shapes: readonly Shape[]): ShapeField[] {
+  if (!type || typeof type === "string" || type.kind !== "shape") return [];
+  return shapes.find((shape) => shape.id === type.shapeId)?.fields ?? [];
+}
+
 /** Whether an assignment is supported by the coercion and Shape rules. */
 export function areTypesCompatible(from: Type, to: Type, shapes: readonly Shape[] = []): boolean {
   if (from === to) return true;

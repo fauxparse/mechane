@@ -18,7 +18,8 @@
 // on the same seam.
 
 import { assertValidShowGraph, deviceSourceType, findNode, InvalidShowGraphError } from "./graph";
-import { resolveShapeFieldMapping } from "./shapes";
+import { fieldsForType, resolveShapeFieldMapping } from "./shapes";
+import { typeAtPath } from "./property-values";
 import type { EdgeKind, GraphEdge, GraphNode, ShowGraph } from "./graph";
 
 /** A drag from one node's handle to another's, as the editor reports it. */
@@ -73,16 +74,30 @@ export function connectionEdge(
   if (kind === null) return null;
   const producer = findNode(graph, request.sourceId);
   const virtualSourceType = deviceSourceType(request.sourceHandle);
+  const sourcePath =
+    virtualSourceType && request.sourceHandle
+      ? [request.sourceHandle]
+      : producer &&
+          (producer.kind === "source" || producer.kind === "transformer") &&
+          request.sourceHandle &&
+          request.sourceHandle !== "out"
+        ? [request.sourceHandle]
+        : [];
   const base = {
     id,
     sourceId: request.sourceId,
     targetId: request.targetId,
-    sourcePath: virtualSourceType && request.sourceHandle ? [request.sourceHandle] : [],
+    sourcePath,
   };
   switch (kind) {
     case "wiring": {
       const consumer = findNode(graph, request.targetId);
-      if (consumer?.kind === "transformer" || consumer?.kind === "source") {
+      if (consumer?.kind === "transformer") {
+        const targetPath =
+          request.targetHandle && request.targetHandle !== "in" ? [request.targetHandle] : [];
+        return { ...base, kind: "wiring", targetPath };
+      }
+      if (consumer?.kind === "source") {
         return { ...base, kind: "wiring", targetPath: [] };
       }
       const variableId = request.targetVariableId;
@@ -93,7 +108,9 @@ export function connectionEdge(
           : undefined;
       const producerType =
         producer?.kind === "source" || producer?.kind === "transformer"
-          ? producer.type
+          ? producer.type && sourcePath.length > 0
+            ? typeAtPath(producer.type, sourcePath, graph.shapes ?? [])
+            : producer.type
           : virtualSourceType;
       const fieldMapping =
         producerType && target?.type
@@ -232,9 +249,6 @@ function humanise(error: InvalidShowGraphError, kind: EdgeKind): string {
   if (reason.includes("nested Scene is reached via its Flow")) {
     return "A Device is driven by a Flow or a top-level Scene, not by a Scene inside a Flow.";
   }
-  if (reason.includes("overlapping paths")) {
-    return "That Variable path is already connected.";
-  }
   if (reason.includes("more than one driver")) {
     return "That Device already has a driver.";
   }
@@ -251,6 +265,8 @@ export interface ConnectionTargets {
   nodeIds: Set<string>;
   /** Scene Variables that would accept the drag, across all Scenes. */
   variableIds: Set<string>;
+  /** Shape fields that would accept the drag, across typed nodes. */
+  fieldIds: Set<string>;
 }
 export function connectionTargets(
   graph: ShowGraph,
@@ -259,12 +275,10 @@ export function connectionTargets(
 ): ConnectionTargets {
   const nodeIds = new Set<string>();
   const variableIds = new Set<string>();
+  const fieldIds = new Set<string>();
   for (const node of graph.nodes) {
     if (node.kind === "scene") {
       let anyVariable = false;
-      // Only a wiring drag lands on a Variable row. A Navigate drag onto one
-      // still connects the two Scenes (the row is part of the Scene), but the
-      // row itself isn't the target, so it doesn't get the affordance.
       const rowsAreTargets =
         connectionKindFor(graph, { sourceId, sourceHandle, targetId: node.id }) === "wiring";
       for (const variable of rowsAreTargets ? node.variables : []) {
@@ -280,22 +294,34 @@ export function connectionTargets(
           anyVariable = true;
         }
       }
-      // A wiring drag may also land on the Scene's node-level input handle,
-      // which creates a Variable. Navigate edges still land on the Scene body.
       const sceneTargetable = canConnect(
         graph,
         rowsAreTargets
           ? { sourceId, sourceHandle, targetId: node.id, targetHandle: SCENE_INPUT_HANDLE }
           : { sourceId, sourceHandle, targetId: node.id },
       );
-      if (anyVariable || sceneTargetable) {
-        nodeIds.add(node.id);
-      }
+      if (anyVariable || sceneTargetable) nodeIds.add(node.id);
       continue;
+    }
+    if (node.kind === "transformer" && node.type) {
+      const fields = fieldsForType(node.type, graph.shapes ?? []);
+      for (const field of fields) {
+        if (
+          canConnect(graph, {
+            sourceId,
+            sourceHandle,
+            targetId: node.id,
+            targetHandle: field.id,
+          })
+        ) {
+          fieldIds.add(field.id);
+          nodeIds.add(node.id);
+        }
+      }
     }
     if (canConnect(graph, { sourceId, sourceHandle, targetId: node.id })) {
       nodeIds.add(node.id);
     }
   }
-  return { nodeIds, variableIds };
+  return { nodeIds, variableIds, fieldIds };
 }

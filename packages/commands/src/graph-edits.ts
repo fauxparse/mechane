@@ -62,6 +62,7 @@ import {
   setNodeColor,
   setSceneVariableType,
   setShapes,
+  setSourceFieldDefault,
 } from "./graph-commands";
 
 /**
@@ -103,6 +104,12 @@ export type GraphEdit =
   | {
       readonly type: typeof GRAPH_COMMAND_TYPES.setShapes;
       readonly shapes: Shape[];
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setSourceFieldDefault;
+      readonly nodeId: string;
+      readonly fieldPath: readonly string[];
+      readonly value: unknown;
     }
   | {
       readonly type: typeof GRAPH_COMMAND_TYPES.addSceneVariable;
@@ -197,6 +204,8 @@ export function commandForEdit(edit: GraphEdit): ShowGraphCommand {
       return renameSceneVariable(edit.sceneId, edit.variableId, edit.name);
     case GRAPH_COMMAND_TYPES.setSceneVariableType:
       return setSceneVariableType(edit.sceneId, edit.variableId, edit.variableType);
+    case GRAPH_COMMAND_TYPES.setSourceFieldDefault:
+      return setSourceFieldDefault(edit.nodeId, edit.fieldPath, edit.value);
     case GRAPH_COMMAND_TYPES.removeSceneVariable:
       return removeSceneVariable(edit.sceneId, edit.variableId);
     case GRAPH_COMMAND_TYPES.setDevicePairingCode:
@@ -237,6 +246,11 @@ function supersedes(edit: GraphEdit): { key: string; ids: readonly string[] } | 
       return {
         key: `reparent:${edit.nodeId}`,
         ids: edit.parentId === null ? [edit.nodeId] : [edit.nodeId, edit.parentId],
+      };
+    case GRAPH_COMMAND_TYPES.setSourceFieldDefault:
+      return {
+        key: `sourceFieldDefault:${edit.nodeId}:${edit.fieldPath.join(".")}`,
+        ids: [edit.nodeId, ...edit.fieldPath],
       };
     case GRAPH_COMMAND_TYPES.setShapes:
       return { key: GRAPH_COMMAND_TYPES.setShapes, ids: edit.shapes.map((shape) => shape.id) };
