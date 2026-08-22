@@ -54,11 +54,20 @@ function sourceValue(source: SourceNode, graph: ShowGraph): unknown {
     value && typeof value === "object" && !Array.isArray(value)
       ? { ...(value as Record<string, unknown>) }
       : null;
-  const overrides = (graph.sourceFieldDefaults ?? []).filter(
-    (override) => override.nodeId === source.id,
+  const overrides = new Map(
+    (graph.sourceFieldDefaults ?? [])
+      .filter((override) => override.nodeId === source.id)
+      .map((override) => [override.fieldPath.join("\u0000"), override] as const),
   );
+  for (const override of source.fieldDefaults ?? []) {
+    overrides.set(override.fieldPath.join("\u0000"), {
+      nodeId: source.id,
+      fieldPath: override.fieldPath,
+      value: override.value,
+    });
+  }
   if (!root) return value;
-  for (const override of overrides) setPath(root, override.fieldPath, override.value);
+  for (const override of overrides.values()) setPath(root, override.fieldPath, override.value);
   return root;
 }
 

@@ -85,8 +85,16 @@ const isImageVariable = (value: ImageInputValue | null): value is VariableRefere
   value !== null && typeof value === "object" && "id" in value && "name" in value;
 
 export const ImageSection = () => {
-  const { selected, update, common, variables, imageAssets, deviceQrImages, onImageUpload } =
-    useCanvasInspectorContext();
+  const {
+    selected,
+    update,
+    common,
+    variables,
+    shapes,
+    imageAssets,
+    deviceQrImages,
+    onImageUpload,
+  } = useCanvasInspectorContext();
   const allImages = selected.length > 0 && selected.every((element) => element.type === "image");
   if (!allImages) return null;
 
@@ -108,7 +116,7 @@ export const ImageSection = () => {
         (asset) => asset.id === sharedImage.assetId && asset.revision === sharedImage.revision,
       )
     : undefined;
-  const linkedImage = variableInput(common("image"), "image", variables);
+  const linkedImage = variableInput(common("image"), "image", variables, shapes);
   const linkedVariable = isImageVariable(linkedImage as ImageInputValue | null)
     ? (linkedImage as VariableReference<ImageValue>)
     : null;
@@ -134,7 +142,9 @@ export const ImageSection = () => {
 
   const handleImageChange = (next: ImageInputValue | null) => {
     if (isImageVariable(next)) {
-      update({ image: { kind: "variable", variableId: next.id } });
+      update({
+        image: { kind: "variable", variableId: next.id, fieldPath: next.fieldPath ?? [] },
+      });
       return;
     }
     if (next === null) {

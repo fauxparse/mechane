@@ -1,6 +1,13 @@
 // Seed data for the local Voting demo. The graph is intentionally small and
 // legible: three Candidate Sources feed a projected tally and an Audience flow.
-import type { Canvas, FrameElement, PropertyConnection, ShowGraph, TextElement } from "@mechane/domain";
+import type {
+  Canvas,
+  FrameElement,
+  Position,
+  PropertyConnection,
+  ShowGraph,
+  TextElement,
+} from "@mechane/domain";
 
 export const CANDIDATE_SHAPE_ID = "shape_candidate";
 export const CANDIDATE_NAME_FIELD_ID = "field_candidate_name";
@@ -8,8 +15,16 @@ export const CANDIDATE_VOTES_FIELD_ID = "field_candidate_votes";
 export const CANDIDATE_AVATAR_FIELD_ID = "field_candidate_avatar";
 
 export const CANDIDATE_SOURCE_IDS = ["source_alice", "source_beatrix", "source_clarissa"] as const;
-export const TALLY_VARIABLE_IDS = ["variable_tally_alice", "variable_tally_beatrix", "variable_tally_clarissa"] as const;
-export const AUDIENCE_VARIABLE_IDS = ["variable_audience_alice", "variable_audience_beatrix", "variable_audience_clarissa"] as const;
+export const TALLY_VARIABLE_IDS = [
+  "variable_tally_alice",
+  "variable_tally_beatrix",
+  "variable_tally_clarissa",
+] as const;
+export const AUDIENCE_VARIABLE_IDS = [
+  "variable_audience_alice",
+  "variable_audience_beatrix",
+  "variable_audience_clarissa",
+] as const;
 
 const PROJECTOR_ID = "device_projector";
 const AUDIENCE_DEVICE_ID = "device_audience";
@@ -34,15 +49,48 @@ export function votingGraph(): ShowGraph {
     id: CANDIDATE_SHAPE_ID,
     name: "Candidate",
     fields: [
-      { id: CANDIDATE_NAME_FIELD_ID, name: "name", type: "text" as const, required: true, defaultValue: "" },
-      { id: CANDIDATE_VOTES_FIELD_ID, name: "votes", type: "number" as const, required: true, defaultValue: 0 },
-      { id: CANDIDATE_AVATAR_FIELD_ID, name: "avatar", type: "image" as const, required: false, defaultValue: null },
+      {
+        id: CANDIDATE_NAME_FIELD_ID,
+        name: "name",
+        type: "text" as const,
+        required: true,
+        defaultValue: "",
+      },
+      {
+        id: CANDIDATE_VOTES_FIELD_ID,
+        name: "votes",
+        type: "number" as const,
+        required: true,
+        defaultValue: 0,
+      },
+      {
+        id: CANDIDATE_AVATAR_FIELD_ID,
+        name: "avatar",
+        type: "image" as const,
+        required: false,
+        defaultValue: null,
+      },
     ],
   };
   const sources = [
-    { id: alice, name: "Alice", fieldDefaults: candidateFieldDefaults("Alice", 12), position: { x: 0, y: 0 } },
-    { id: beatrix, name: "Beatrix", fieldDefaults: candidateFieldDefaults("Beatrix", 8), position: { x: 0, y: 180 } },
-    { id: clarissa, name: "Clarissa", fieldDefaults: candidateFieldDefaults("Clarissa", 5), position: { x: 0, y: 360 } },
+    {
+      id: alice,
+      name: "Alice",
+      fieldDefaults: candidateFieldDefaults("Alice", 12),
+      position: { x: 0, y: 0 },
+    },
+    {
+      id: beatrix,
+      name: "Beatrix",
+      fieldDefaults: candidateFieldDefaults("Beatrix", 8),
+      position: { x: 0, y: 180 },
+    },
+    {
+      id: clarissa,
+      name: "Clarissa",
+      fieldDefaults: candidateFieldDefaults("Clarissa", 5),
+      position: { x: 0, y: 360 },
+    },
   ];
   const sourceNodes = sources.map((source) => ({
     id: source.id,
@@ -51,7 +99,10 @@ export function votingGraph(): ShowGraph {
     parentId: null,
     position: source.position,
     type: candidateType,
-    fieldDefaults: source.fieldDefaults.map((defaultValue) => ({ ...defaultValue, nodeId: source.id })),
+    fieldDefaults: source.fieldDefaults.map((defaultValue) => ({
+      ...defaultValue,
+      nodeId: source.id,
+    })),
   }));
   const tallyVariables = [tallyAlice, tallyBeatrix, tallyClarissa].map((id, index) => ({
     id,
@@ -150,12 +201,23 @@ export function votingGraph(): ShowGraph {
     ],
   };
 }
+const SEEDED_CANVAS_WIDTH = 720;
+const SEEDED_CANVAS_GAP = 80;
 
-function variable(variableId: string, fieldId?: string): PropertyConnection {
-  return { kind: "variable", variableId, ...(fieldId ? { fieldPath: [fieldId] } : {}) };
+export function seedCanvasPosition(index: number): Position {
+  return { x: index * (SEEDED_CANVAS_WIDTH + SEEDED_CANVAS_GAP), y: 0 };
 }
 
-function text(id: string, rank: string, content: string | PropertyConnection, name: string): TextElement {
+function variable(variableId: string, fieldId: string): PropertyConnection {
+  return { kind: "variable", variableId, fieldPath: [fieldId] };
+}
+
+function text(
+  id: string,
+  rank: string,
+  content: string | PropertyConnection,
+  name: string,
+): TextElement {
   return {
     id,
     type: "text",
@@ -175,11 +237,16 @@ function button(id: string, rank: string, variableId: string, label: string) {
     fill: "#2f2f2f",
     cornerRadius: 10,
     sizing: { width: { mode: "fill" as const }, height: { mode: "fixed" as const, value: 72 } },
-    children: [text(`${id}_label`, "a", variable(variableId, CANDIDATE_NAME_FIELD_ID), `${label} name`)],
+    children: [
+      text(`${id}_label`, "a", variable(variableId, CANDIDATE_NAME_FIELD_ID), `${label} name`),
+    ],
   };
 }
 
-function root(name: string, children: readonly NonNullable<FrameElement["children"]>[number][]): FrameElement {
+function root(
+  name: string,
+  children: readonly NonNullable<FrameElement["children"]>[number][],
+): FrameElement {
   return {
     id: `${name.toLowerCase().replaceAll(" ", "-")}-root`,
     type: "frame",
@@ -207,18 +274,38 @@ export function votingCanvases(): Record<string, Canvas> {
       gap: 16,
       sizing: { width: { mode: "fill" as const }, height: { mode: "hug" as const } },
       children: [
-        text(`tally-name-${index}`, "a", variable(variableId, CANDIDATE_NAME_FIELD_ID), `${label} name`),
-        text(`tally-votes-${index}`, "b", variable(variableId, CANDIDATE_VOTES_FIELD_ID), `${label} votes`),
+        text(
+          `tally-name-${index}`,
+          "a",
+          variable(variableId, CANDIDATE_NAME_FIELD_ID),
+          `${label} name`,
+        ),
+        text(
+          `tally-votes-${index}`,
+          "b",
+          variable(variableId, CANDIDATE_VOTES_FIELD_ID),
+          `${label} votes`,
+        ),
       ],
     };
   });
   return {
-    [TALLY_SCENE_ID]: { kind: "scene", root: root("Vote tally", [text("tally-title", "a", "Vote tally", "Title"), ...tallyRows]) },
+    [TALLY_SCENE_ID]: {
+      kind: "scene",
+      root: root("Vote tally", [text("tally-title", "a", "Vote tally", "Title"), ...tallyRows]),
+    },
     [AUDIENCE_SCENE_ID]: {
       kind: "scene",
       root: root("Choose a candidate", [
         text("audience-title", "a", "Choose a candidate", "Title"),
-        ...AUDIENCE_VARIABLE_IDS.map((variableId, index) => button(`candidate-button-${index}`, String.fromCharCode(98 + index), variableId, ["Alice", "Beatrix", "Clarissa"][index] ?? "Candidate")),
+        ...AUDIENCE_VARIABLE_IDS.map((variableId, index) =>
+          button(
+            `candidate-button-${index}`,
+            String.fromCharCode(98 + index),
+            variableId,
+            ["Alice", "Beatrix", "Clarissa"][index] ?? "Candidate",
+          ),
+        ),
       ]),
     },
   };

@@ -34,6 +34,7 @@ const graph = {
       parentId: null,
       position: { x: 0, y: 0 },
       type: { kind: "shape" as const, shapeId: "shape_vote" },
+      fieldDefaults: [{ nodeId: "source_votes", fieldPath: ["field_label"], value: "votes" }],
     },
     {
       id: "source_count",
@@ -50,7 +51,7 @@ const graph = {
 describe("defaultSourceValues", () => {
   it("materialises Shape defaults and sparse Source overrides", () => {
     expect(defaultSourceValues(graph)).toEqual({
-      source_votes: { field_count: 3, field_label: null },
+      source_votes: { field_count: 3, field_label: "votes" },
       source_count: 0,
     });
   });

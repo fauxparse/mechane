@@ -6,6 +6,8 @@ import {
   defaultPropertyValue,
   isPropertyConnection,
   propertyCoercion,
+  typeAtPath,
+  valueAtPath,
 } from "./property-values";
 import { isImageAssetReference } from "./shapes";
 import type { SceneVariable, ShowGraph } from "./graph";
@@ -103,30 +105,6 @@ function defaultFor(targetType: Type): unknown {
   return rawValue(defaultPropertyValue(targetType));
 }
 
-function typeAtPath(type: Type, path: readonly string[], shapes: readonly Shape[]): Type | null {
-  let current: Type = type;
-  for (const fieldId of path) {
-    if (typeof current !== "object") return null;
-    const shapeId = Reflect.get(current, "shapeId");
-    if (typeof shapeId !== "string") return null;
-    const shape = shapes.find((candidate) => candidate.id === shapeId);
-    const field = shape?.fields.find((candidate) => candidate.id === fieldId);
-    if (!field) return null;
-    current = field.type;
-  }
-  return current;
-}
-
-function valueAtPath(value: unknown, path: readonly string[]): unknown {
-  let current = value;
-  for (const fieldId of path) {
-    if (typeof current !== "object" || current === null || Array.isArray(current) || !(fieldId in current)) {
-      return undefined;
-    }
-    current = Reflect.get(current, fieldId);
-  }
-  return current;
-}
 function deviceQrValueForVariable(
   variableId: string,
   graph: ShowGraph | undefined,
@@ -168,7 +146,9 @@ function resolveElement(element: Element, context: CanvasPropertyContext): Eleme
     if (isPropertyConnection(value)) {
       const variable = context.variables.find((candidate) => candidate.id === value.variableId);
       const fieldPath = value.fieldPath ?? [];
-      const sourceType = variable?.type ? typeAtPath(variable.type, fieldPath, context.shapes ?? []) : null;
+      const sourceType = variable?.type
+        ? typeAtPath(variable.type, fieldPath, context.shapes ?? [])
+        : null;
       const coercion = sourceType ? propertyCoercion(sourceType, descriptor.targetType) : null;
       if (!variable || !sourceType || !coercion) {
         record[descriptor.name] = defaultFor(descriptor.targetType);

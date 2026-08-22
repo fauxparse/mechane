@@ -54,7 +54,7 @@ import { useGoogleFonts } from "../../google-fonts-provider";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { PropertyField } from "./CanvasInspectorFields";
-import { isVariableInput, variableInput } from "./canvas-inspector-values";
+import { isVariableInput, variableInput, variableOptions } from "./canvas-inspector-values";
 
 const FontFamilyField = () => {
   const { common, fontFamilies, update } = useCanvasInspectorContext();
@@ -204,15 +204,10 @@ const TEXT_OVERFLOW_OPTIONS = [
 ] as const satisfies readonly { label: string; value: TextOverflow }[];
 
 export const TextSection = () => {
-  const { selected, common, update, variables } = useCanvasInspectorContext();
+  const { selected, common, update, variables, shapes } = useCanvasInspectorContext();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogDraft, setDialogDraft] = useState("");
   const googleFontsQuery = useGoogleFonts();
-
-  const contentInput = variableInput(common("content"), "text", variables);
-  const content =
-    !isVariableInput(contentInput) && contentInput?.kind === "text" ? contentInput.value : "";
-  const textVariables = variables.filter((variable) => variable.type === "text");
   const openDialog = () => {
     setDialogDraft(content);
     setDialogOpen(true);
@@ -222,6 +217,10 @@ export const TextSection = () => {
     setDialogOpen(false);
   };
 
+  const contentInput = variableInput(common("content"), "text", variables, shapes);
+  const content =
+    !isVariableInput(contentInput) && contentInput?.kind === "text" ? contentInput.value : "";
+  const textVariables = variableOptions("text", variables, shapes);
   const fontFamilyValue = common("fontFamily");
   const fontFamily = typeof fontFamilyValue === "string" ? fontFamilyValue : null;
   const selectedGoogleFont = googleFontsQuery.data?.find(
@@ -277,7 +276,13 @@ export const TextSection = () => {
             renderInactiveValue={renderTextValue}
             onChange={(next) => {
               if (isVariableInput(next)) {
-                update({ content: { kind: "variable", variableId: next.id } });
+                update({
+                  content: {
+                    kind: "variable",
+                    variableId: next.id,
+                    fieldPath: next.fieldPath ?? [],
+                  },
+                });
               } else if (next === null) {
                 update({}, ["content"]);
               } else {

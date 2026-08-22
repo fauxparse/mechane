@@ -4,6 +4,21 @@ import type { ShowGraph } from "@mechane/domain";
 import { sceneVariableValues } from "./player-state";
 
 const graph: ShowGraph = {
+  shapes: [
+    {
+      id: "votes",
+      name: "Votes",
+      fields: [
+        {
+          id: "count",
+          name: "Count",
+          type: "number",
+          required: true,
+          defaultValue: null,
+        },
+      ],
+    },
+  ],
   nodes: [
     {
       id: "source_votes",
@@ -12,6 +27,7 @@ const graph: ShowGraph = {
       parentId: null,
       position: { x: 0, y: 0 },
       type: { kind: "shape", shapeId: "votes" },
+      fieldDefaults: [{ nodeId: "source_votes", fieldPath: ["count"], value: 7 }],
     },
     {
       id: "scene_vote",
@@ -35,6 +51,11 @@ const graph: ShowGraph = {
 };
 
 describe("sceneVariableValues", () => {
+  it("falls back to design-time Source values for legacy primitive defaults", () => {
+    expect(sceneVariableValues(graph, "scene_vote", { source_votes: { count: 0 } })).toEqual({
+      variable_total: { value: 7 },
+    });
+  });
   it("projects live source fields onto nested scene variable paths", () => {
     expect(
       sceneVariableValues(graph, "scene_vote", {

@@ -1,4 +1,13 @@
-import type { Canvas, Element, GraphEdge, GraphNode, SourceValues } from "@mechane/domain";
+import type {
+  Canvas,
+  Element,
+  GraphEdge,
+  GraphNode,
+  Shape,
+  SourceValues,
+  Type,
+} from "@mechane/domain";
+import { PRIMITIVE_TYPES } from "@mechane/domain";
 import type { PlayerSession } from "./api";
 
 type ApiRecord = Record<string, unknown>;
@@ -11,6 +20,45 @@ function withoutNulls(value: ApiRecord): ApiRecord {
   return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== null));
 }
 
+function toType(value: unknown): Type {
+  const input = record(value);
+  if (input.kind === "array") {
+    if (input.of === null || input.of === undefined) {
+      throw new Error("Array Shape types must include an element type.");
+    }
+    return { kind: "array", of: toType(input.of) };
+  }
+  if (input.kind === "shape") {
+    if (typeof input.shapeId !== "string" || input.shapeId.length === 0) {
+      throw new Error("Shape references must include a Shape id.");
+    }
+    return { kind: "shape", shapeId: input.shapeId };
+  }
+  const primitive = PRIMITIVE_TYPES.find((candidate) => candidate === input.kind);
+  if (primitive) return primitive;
+  if (input.kind === "object") return { kind: "object" };
+  throw new Error(`Unknown Player Type "${String(input.kind)}".`);
+}
+
+function toShape(value: unknown): Shape {
+  const input = record(value);
+  const fields = Array.isArray(input.fields) ? input.fields : [];
+  return {
+    id: String(input.id),
+    name: String(input.name),
+    fields: fields.map((field) => {
+      const normalized = record(field);
+      return {
+        id: String(normalized.id),
+        name: String(normalized.name),
+        type: toType(normalized.type),
+        required: normalized.required === true,
+        defaultValue: normalized.defaultValue,
+      };
+    }),
+  };
+}
+
 function nodeKind(typename: unknown): GraphNode["kind"] {
   switch (typename) {
     case "SceneNode":
@@ -21,6 +69,7 @@ function nodeKind(typename: unknown): GraphNode["kind"] {
       return "source";
     case "TransformerNode":
       return "transformer";
+
     case "DeviceNode":
       return "device";
     default:
@@ -44,11 +93,24 @@ function edgeKind(typename: unknown): GraphEdge["kind"] {
 function toNode(value: unknown): GraphNode {
   const input = record(value);
   const { __typename, sourceType, transformerType, ...fields } = input;
+  const normalizedFields = withoutNulls(fields);
+  if (Array.isArray(normalizedFields.variables)) {
+    normalizedFields.variables = normalizedFields.variables.map((variable) => {
+      const normalized = withoutNulls(record(variable));
+      const variableType = normalized.type;
+      return {
+        ...normalized,
+        ...(variableType !== undefined && variableType !== null
+          ? { type: toType(variableType) }
+          : {}),
+      };
+    });
+  }
   const type = sourceType ?? transformerType ?? fields.type;
   return {
-    ...withoutNulls(fields),
+    ...normalizedFields,
     kind: nodeKind(__typename),
-    ...(type !== undefined && type !== null ? { type } : {}),
+    ...(type !== undefined && type !== null ? { type: toType(type) } : {}),
   } as GraphNode;
 }
 
@@ -63,7 +125,9 @@ function toElement(value: unknown): Element {
   const { __typename, children, ...fields } = input;
   return {
     ...withoutNulls(fields),
-    type: String(__typename).replace(/Element$/, "").toLowerCase(),
+    type: String(__typename)
+      .replace(/Element$/, "")
+      .toLowerCase(),
     children: Array.isArray(children) ? children.map(toElement) : [],
   } as unknown as Element;
 }
@@ -82,7 +146,7 @@ function toGraph(value: unknown): PlayerSession["graph"] {
     ...input,
     nodes: Array.isArray(input.nodes) ? input.nodes.map(toNode) : [],
     edges: Array.isArray(input.edges) ? input.edges.map(toEdge) : [],
-    shapes: Array.isArray(input.shapes) ? input.shapes : [],
+    shapes: Array.isArray(input.shapes) ? input.shapes.map(toShape) : [],
   } as unknown as PlayerSession["graph"];
 }
 

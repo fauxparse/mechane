@@ -33,7 +33,7 @@ export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   dimension?: "width" | "height";
   unit?: PropertyInputUnit;
   sizing?: PropertyInputSizing;
-  variables?: VariableReference[];
+  variables?: readonly VariableReference[];
   min?: number;
   max?: number;
   step?: number;

@@ -22,6 +22,20 @@ const variables: VariableReference<ShapeValue>[] = [
   { id: "spacing-large", name: "Spacing / Large", current: { kind: "number", value: 24 } },
   { id: "brand-color", name: "Color / Brand", current: { kind: "color", value: "#c94f9d" } },
 ];
+const shapeFieldVariables: VariableReference<ShapeValue>[] = [
+  {
+    id: "candidate",
+    name: "Candidate → Name",
+    fieldPath: ["field_candidate_name"],
+    current: { kind: "text", value: "Alice" },
+  },
+  {
+    id: "candidate",
+    name: "Candidate → Votes",
+    fieldPath: ["field_candidate_votes"],
+    current: { kind: "number", value: 12 },
+  },
+];
 
 const isNumberValue = (
   value: PropertyInputValue<ShapeValue> | null | undefined,
@@ -29,6 +43,21 @@ const isNumberValue = (
   value !== null && value !== undefined && "kind" in value && value.kind === "number";
 
 export const Default: Story = {};
+export const ShapeFieldConnection: Story = {
+  args: {
+    type: "text",
+    value: { kind: "text", value: "" },
+    variables: shapeFieldVariables,
+  },
+  render: (args) => {
+    const [value, setValue] = useState(args.value);
+    return (
+      <div className="w-80">
+        <PropertyInput {...args} value={value} onChange={setValue} />
+      </div>
+    );
+  },
+};
 export const InactiveValue: Story = {
   args: {
     type: "text",

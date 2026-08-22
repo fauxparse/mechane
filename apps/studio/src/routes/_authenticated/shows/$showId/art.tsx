@@ -1,7 +1,13 @@
-import type { ImageAssetReference, ResolvedImageValue } from "@mechane/domain";
-import { DEVICE_SOURCE_HANDLES, deviceQrImageValue, isId, resolveCanvasProperties } from "@mechane/domain";
+import {
+  DEVICE_SOURCE_HANDLES,
+  defaultSourceValues,
+  deviceQrImageValue,
+  isId,
+  resolveCanvasProperties,
+  sceneVariableValues,
+} from "@mechane/domain";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
-import type { ShowId } from "@mechane/domain";
+import type { ImageAssetReference, ResolvedImageValue, ShowId } from "@mechane/domain";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
@@ -83,15 +89,21 @@ function CanvasWorkspaceRoute() {
       canvasCommands.workspace.artboards.map((artboard) => [artboard.canvasId, artboard]),
     );
     const nodes = new Map(graphEditing.graph.nodes.map((node) => [node.id, node]));
+    const sourceValues = defaultSourceValues(graphEditing.graph);
     return (workspace.data ?? []).map((artboard) => {
       const edited = current.get(artboard.canvasId);
       const name = nodes.get(artboard.artId)?.name ?? artboard.name;
       const canvas = edited?.canvas ?? artboard.canvas;
       const owner = nodes.get(artboard.artId);
       const variables = owner?.kind === "scene" ? owner.variables : [];
+      const values =
+        owner?.kind === "scene"
+          ? sceneVariableValues(graphEditing.graph, owner.id, sourceValues)
+          : undefined;
       const renderCanvas = resolveCanvasProperties(canvas, {
         graph: graphEditing.graph,
         variables,
+        values,
         shapes: graphEditing.graph.shapes,
         imageAssets: (imageAssets.data ?? []).map((asset) => ({
           ...asset,
@@ -211,6 +223,7 @@ function CanvasWorkspaceRoute() {
       onCameraChange={onCameraChange}
       focusedArtId={focused?.artId ?? null}
       variables={focusedVariables}
+      shapes={graphEditing.graph.shapes ?? []}
       deviceQrImages={deviceQrImages}
       imageAssets={imageAssets.data ?? []}
       onImageUpload={handleImageUpload}

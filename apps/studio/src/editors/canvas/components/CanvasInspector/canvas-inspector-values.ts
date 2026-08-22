@@ -2,12 +2,19 @@ import type {
   AxisSize,
   ElementSizing,
   SceneVariable,
+  Shape,
   ShapeValue,
   SizeMode,
   Type,
   VariableReference,
 } from "@mechane/domain";
-import { defaultPropertyValue, isPropertyConnection, opacityToPercent } from "@mechane/domain";
+import {
+  defaultPropertyValue,
+  isPropertyConnection,
+  opacityToPercent,
+  propertyFieldPaths,
+  typeAtPath,
+} from "@mechane/domain";
 import type { PropertyInputConstraint, PropertyInputValue } from "@mechane/design-system";
 
 export type SizeConstraint = PropertyInputConstraint;
@@ -44,17 +51,47 @@ export const variableInput = (
   value: unknown,
   type: Type,
   variables: readonly SceneVariable[],
+  shapes: readonly Shape[] = [],
 ): PropertyInputValue | null => {
   if (isPropertyConnection(value)) {
     const variable = variables.find((candidate) => candidate.id === value.variableId);
     if (!variable) return null;
+    const fieldPath = value.fieldPath ?? [];
+    const sourceType = variable.type ? typeAtPath(variable.type, fieldPath, shapes) : null;
+    const field =
+      variable.type && sourceType
+        ? propertyFieldPaths(variable.type, sourceType, shapes).find(
+            (candidate) => JSON.stringify(candidate.fieldPath) === JSON.stringify(fieldPath),
+          )
+        : undefined;
     return {
       ...variable,
-      current: variable.type ? (defaultPropertyValue(variable.type) ?? undefined) : undefined,
+      name:
+        fieldPath.length > 0
+          ? `${variable.name} → ${field?.label.join(" → ") ?? "Unavailable"}`
+          : variable.name,
+      fieldPath,
+      current: sourceType ? (defaultPropertyValue(sourceType) ?? undefined) : undefined,
     };
   }
   return literalValue(type, value);
 };
+
+export const variableOptions = (
+  type: Type,
+  variables: readonly SceneVariable[],
+  shapes: readonly Shape[],
+): readonly VariableReference[] =>
+  variables.flatMap((variable) => {
+    if (!variable.type) return [];
+    return propertyFieldPaths(variable.type, type, shapes).map((field) => ({
+      ...variable,
+      name:
+        field.label.length > 0 ? `${variable.name} → ${field.label.join(" → ")}` : variable.name,
+      fieldPath: field.fieldPath,
+      current: defaultPropertyValue(field.type) ?? undefined,
+    }));
+  });
 
 export const isVariableInput = (value: PropertyInputValue | null): value is VariableReference =>
   value !== null && typeof value === "object" && "id" in value && "name" in value;
@@ -80,10 +117,11 @@ function hasValue(value: object): value is { value?: unknown } {
 export const sizeInputValue = (
   size: unknown,
   variables: readonly SceneVariable[],
+  shapes: readonly Shape[] = [],
 ): PropertyInputValue | null => {
   if (!size || typeof size !== "object" || !hasValue(size)) return null;
   const raw = size.value;
-  if (isPropertyConnection(raw)) return variableInput(raw, "number", variables);
+  if (isPropertyConnection(raw)) return variableInput(raw, "number", variables, shapes);
   if (typeof raw === "number") return literalValue("number", raw);
   if (raw && typeof raw === "object" && hasValue(raw)) {
     return literalValue("number", raw.value);
