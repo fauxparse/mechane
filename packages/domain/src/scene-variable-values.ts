@@ -1,5 +1,5 @@
-import type { ShowGraph } from "./graph";
-import { defaultSourceValues, type SourceValues } from "./source-defaults";
+import type { ShowGraph, SourceNode } from "./graph";
+import { defaultSourceValues, defaultValueForType, type SourceValues } from "./source-defaults";
 
 function valueAtPath(value: unknown, path: readonly string[]): unknown {
   let current = value;
@@ -42,6 +42,26 @@ function mergeRuntimeValue(designValue: unknown, runtimeValue: unknown): unknown
   }
   return runtimeValue;
 }
+
+/**
+ * Runs created before Source defaults were materialized contain the generic Type defaults.
+ * Treat that exact snapshot as uninitialized so a deployment does not blank an existing Run.
+ */
+function isLegacyDefault(
+  source: SourceNode | undefined,
+  designValue: unknown,
+  runtimeValue: unknown,
+  shapes: ShowGraph["shapes"],
+): boolean {
+  if (!source || runtimeValue === undefined) return false;
+  const baseline = defaultValueForType(source.type, shapes ?? []);
+  const runtimeJson = JSON.stringify(runtimeValue);
+  return (
+    runtimeJson !== undefined &&
+    runtimeJson === JSON.stringify(baseline) &&
+    runtimeJson !== JSON.stringify(designValue)
+  );
+}
 /** Resolves Source values onto one Scene's Variables through Show wiring. */
 export function sceneVariableValues(
   graph: ShowGraph,
@@ -52,10 +72,19 @@ export function sceneVariableValues(
   const sourceIds = new Set([...Object.keys(designTimeSourceValues), ...Object.keys(sourceValues)]);
   const resolvedSourceValues: SourceValues = {};
   for (const sourceId of sourceIds) {
-    resolvedSourceValues[sourceId] = mergeRuntimeValue(
-      designTimeSourceValues[sourceId],
-      sourceValues[sourceId],
+    const source = graph.nodes.find(
+      (node): node is SourceNode => node.kind === "source" && node.id === sourceId,
     );
+    const designValue = designTimeSourceValues[sourceId];
+    const runtimeValue = sourceValues[sourceId];
+    resolvedSourceValues[sourceId] = isLegacyDefault(
+      source,
+      designValue,
+      runtimeValue,
+      graph.shapes,
+    )
+      ? designValue
+      : mergeRuntimeValue(designValue, runtimeValue);
   }
   const values: Record<string, unknown> = {};
   for (const edge of graph.edges) {

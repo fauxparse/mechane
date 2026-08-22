@@ -14,7 +14,7 @@ const graph: ShowGraph = {
           name: "Count",
           type: "number",
           required: true,
-          defaultValue: 12,
+          defaultValue: null,
         },
       ],
     },
@@ -51,8 +51,8 @@ const graph: ShowGraph = {
 };
 
 describe("sceneVariableValues", () => {
-  it("falls back to design-time Source values when runtime data is missing", () => {
-    expect(sceneVariableValues(graph, "scene_vote", { source_votes: {} })).toEqual({
+  it("falls back to design-time Source values for legacy primitive defaults", () => {
+    expect(sceneVariableValues(graph, "scene_vote", { source_votes: { count: 0 } })).toEqual({
       variable_total: { value: 7 },
     });
   });

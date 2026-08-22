@@ -1,17 +1,17 @@
 import { Combobox as ComboboxPrimitive } from "@base-ui/react";
+import type { ShapeValue } from "@mechane/domain";
 import { isFunction, isObject } from "es-toolkit/compat";
 import type { LucideIcon } from "lucide-react";
-import type { ShapeValue } from "@mechane/domain";
 import type { PointerEventHandler, ReactNode } from "react";
 
-import { InputGroupAddon, InputGroupButton } from "../input-group";
 import { cn } from "../../../lib/utils";
-import { formatValueText, getColorInputValue } from "./use-property-input";
+import { InputGroupAddon, InputGroupButton } from "../input-group";
 import type {
   PropertyInputType,
   PropertyInputUnit,
   VariableReference,
 } from "./property-input-types";
+import { formatValueText, getColorInputValue } from "./use-property-input";
 
 function renderIcon(icon: LucideIcon | string) {
   if (isFunction(icon) || isObject(icon)) {
@@ -88,7 +88,7 @@ export function Addons<T extends ShapeValue>({
         </InputGroupAddon>
       )}
       {linkedVariable && (
-        <InputGroupAddon align="inline-start" className="ml-1 max-w-[55%] overflow-hidden">
+        <InputGroupAddon align="inline-start" className="ml-1 max-w-[55%] pl-0 overflow-hidden">
           <span
             className="inline-flex h-6 min-w-0 items-center truncate rounded bg-background/80 px-1.5 text-xs text-foreground ring-1 ring-border/60"
             data-slot="property-input-chip"
