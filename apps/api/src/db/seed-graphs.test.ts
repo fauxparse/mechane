@@ -1,12 +1,16 @@
-import { assertValidCanvas, assertValidShowGraph, resolveCanvasProperties } from "@mechane/domain";
+import {
+  assertValidCanvas,
+  assertValidShowGraph,
+  defaultSourceValues,
+  resolveCanvasProperties,
+  sceneVariableValues,
+} from "@mechane/domain";
 import { describe, expect, it } from "vitest";
 
 import {
   AUDIENCE_VARIABLE_IDS,
-  CANDIDATE_NAME_FIELD_ID,
   CANDIDATE_SHAPE_ID,
   CANDIDATE_SOURCE_IDS,
-  CANDIDATE_VOTES_FIELD_ID,
   SEED_CANVASES,
   seedCanvasPosition,
   SEED_GRAPHS,
@@ -53,20 +57,17 @@ describe("Voting demo seed", () => {
     expect(canvases.scene_vote_tally?.root.children).toHaveLength(4);
     expect(canvases.scene_audience_vote?.root.children).toHaveLength(4);
   });
-  it("resolves seeded Candidate field bindings from Scene Variables", () => {
+  it("resolves seeded Candidate field bindings from Source defaults", () => {
     const graph = votingGraph();
     const canvases = votingCanvases();
     const tally = graph.nodes.find((node) => node.kind === "scene" && node.name === "Vote tally");
     if (tally?.kind !== "scene") throw new Error("Vote tally Scene is missing.");
+    const values = sceneVariableValues(graph, tally.id, defaultSourceValues(graph));
     const resolved = resolveCanvasProperties(canvases.scene_vote_tally!, {
+      graph,
       variables: tally.variables,
       shapes: graph.shapes,
-      values: {
-        [TALLY_VARIABLE_IDS[0]]: {
-          [CANDIDATE_NAME_FIELD_ID]: "Alice",
-          [CANDIDATE_VOTES_FIELD_ID]: 12,
-        },
-      },
+      values,
     });
     const firstRow = resolved.root.children?.[1];
     expect(firstRow).toMatchObject({
