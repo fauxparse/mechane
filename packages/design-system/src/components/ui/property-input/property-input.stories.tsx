@@ -49,6 +49,14 @@ export const ShapeFieldConnection: Story = {
     value: { kind: "text", value: "" },
     variables: shapeFieldVariables,
   },
+  render: (args) => {
+    const [value, setValue] = useState(args.value);
+    return (
+      <div className="w-80">
+        <PropertyInput {...args} value={value} onChange={setValue} />
+      </div>
+    );
+  },
 };
 export const InactiveValue: Story = {
   args: {

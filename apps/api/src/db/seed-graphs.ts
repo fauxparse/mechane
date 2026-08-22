@@ -3,6 +3,7 @@
 import type {
   Canvas,
   FrameElement,
+  Position,
   PropertyConnection,
   ShowGraph,
   TextElement,
@@ -200,9 +201,15 @@ export function votingGraph(): ShowGraph {
     ],
   };
 }
+const SEEDED_CANVAS_WIDTH = 720;
+const SEEDED_CANVAS_GAP = 80;
 
-function variable(variableId: string, fieldId?: string): PropertyConnection {
-  return { kind: "variable", variableId, fieldPath: fieldId ? [fieldId] : [] };
+export function seedCanvasPosition(index: number): Position {
+  return { x: index * (SEEDED_CANVAS_WIDTH + SEEDED_CANVAS_GAP), y: 0 };
+}
+
+function variable(variableId: string, fieldId: string): PropertyConnection {
+  return { kind: "variable", variableId, fieldPath: [fieldId] };
 }
 
 function text(

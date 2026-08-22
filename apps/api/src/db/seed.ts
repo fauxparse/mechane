@@ -12,7 +12,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { auth } from "../auth";
 import { db } from "./client";
 import { readCanvasWorkspace, writeCanvasRows } from "./canvas";
-import { SEED_CANVASES, SEED_GRAPHS } from "./seed-graphs";
+import { SEED_CANVASES, SEED_GRAPHS, seedCanvasPosition } from "./seed-graphs";
 import type { SeedCanvases, SeedGraph } from "./seed-graphs";
 import { showGraphs, shows, user } from "./schema";
 // `TRUNCATE ... CASCADE` on `shows` takes the graph tables with it, so they
@@ -48,7 +48,11 @@ async function seedDefaultUser(): Promise<string> {
     .where(sql`${user.email} = ${DEFAULT_USER.email}`);
   return createdUser.id;
 }
-async function assertSeedCanvases(showId: string, state: "draft" | "published", graph: SeedGraph): Promise<void> {
+async function assertSeedCanvases(
+  showId: string,
+  state: "draft" | "published",
+  graph: SeedGraph,
+): Promise<void> {
   const expectedSceneIds = new Set(
     graph.nodes.filter((node) => node.kind === "scene").map((node) => node.id),
   );
@@ -76,10 +80,19 @@ async function seedCanvases(
   if (!graphRow) throw new Error(`Seeded ${state} graph for Show "${showId}" was not found.`);
   await db.transaction(async (tx) => {
     const now = new Date();
-    for (const [sceneId, canvas] of Object.entries(canvases)) {
+    for (const [index, [sceneId, canvas]] of Object.entries(canvases).entries()) {
       const scene = graph.nodes.find((node) => node.id === sceneId && node.kind === "scene");
-      if (!scene || scene.kind !== "scene") throw new Error(`Seed canvas "${sceneId}" has no Scene node.`);
-      await writeCanvasRows(tx, showId, graphRow.id, { sceneNodeId: sceneId }, canvas, now, scene.position);
+      if (!scene || scene.kind !== "scene")
+        throw new Error(`Seed canvas "${sceneId}" has no Scene node.`);
+      await writeCanvasRows(
+        tx,
+        showId,
+        graphRow.id,
+        { sceneNodeId: sceneId },
+        canvas,
+        now,
+        seedCanvasPosition(index),
+      );
     }
   });
 }
