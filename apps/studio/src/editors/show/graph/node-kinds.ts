@@ -19,7 +19,15 @@ import {
   variableTypeIcon,
   Workflow,
 } from "@mechane/design-system";
-import type { GraphNode, NodeKind, Position, Shape, ShapeValue, Type } from "@mechane/domain";
+import type {
+  FlowColor,
+  GraphNode,
+  NodeKind,
+  Position,
+  Shape,
+  ShapeValue,
+  Type,
+} from "@mechane/domain";
 import { generateId, NODE_ID_ENTITIES } from "@mechane/domain";
 import { ShowNodeData } from "./graph-to-flow";
 
@@ -148,12 +156,18 @@ export function createNode(
   kind: NodeKind,
   position: Position,
   parentId: string | null = null,
-  options: { perConnection?: boolean; defaultName?: string; sourceType?: Type } = {},
+  options: {
+    perConnection?: boolean;
+    defaultName?: string;
+    sourceType?: Type;
+    color?: FlowColor;
+  } = {},
 ): GraphNode {
   const base = {
     id: generateId(NODE_ID_ENTITIES[kind]),
     name: options.defaultName ?? NODE_KIND_META[kind].defaultName,
     position: { x: Math.round(position.x), y: Math.round(position.y) },
+    ...(options.color ? { color: options.color } : {}),
   };
   switch (kind) {
     case "scene":

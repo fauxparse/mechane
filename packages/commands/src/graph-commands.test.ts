@@ -141,6 +141,29 @@ describe("addNode / removeNode", () => {
     // Device edge, which never touched it, stays.
     expect(applied.state.edges.map((edge) => edge.id)).toEqual([TO_PHONE.id]);
   });
+  it("preserves graph-owned metadata when removing a node", () => {
+    const shapes = [
+      {
+        id: "shape_profile",
+        name: "Profile",
+        fields: [
+          {
+            id: "headline",
+            name: "Headline",
+            type: "text" as const,
+            required: true,
+            defaultValue: "",
+          },
+        ],
+      },
+    ];
+    const sourceFieldDefaults = [{ nodeId: TALLY.id, fieldPath: ["headline"], value: "Before" }];
+    const graph = { ...GRAPH, shapes, sourceFieldDefaults };
+    const applied = removeNode(TALLY.id).apply(graph);
+
+    expect(applied.state.shapes).toEqual(shapes);
+    expect(applied.state.sourceFieldDefaults).toEqual(sourceFieldDefaults);
+  });
 
   // The snapshot, in the sense #28 means it: node data, position, edges, and
   // graph order all come back identical, not merely equivalent.

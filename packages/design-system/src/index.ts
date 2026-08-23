@@ -143,6 +143,10 @@ export {
   type VariableReference,
 } from "./components/ui/property-input/property-input";
 export {
+  parsePropertyInputValue,
+  propertyInputValidationMessage,
+} from "./components/ui/property-input/use-property-input";
+export {
   VARIABLE_TYPE_ICONS,
   typeFromVariableKind,
   variableTypeIcon,

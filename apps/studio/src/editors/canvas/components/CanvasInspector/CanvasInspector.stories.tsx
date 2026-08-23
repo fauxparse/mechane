@@ -1,17 +1,16 @@
-import { applyCanvasEdits, CANVAS_COMMAND_TYPES } from "@mechane/commands";
 import type { CanvasEdit } from "@mechane/commands";
-import type { ImageAsset } from "@mechane/graphql-schema";
-import { FrameElement, hasCornerRadius, SceneVariable, Shape } from "@mechane/domain";
-import type { Meta, StoryObj } from "@storybook/react-vite";
+import { applyCanvasEdits, CANVAS_COMMAND_TYPES } from "@mechane/commands";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
+import { Sidebar, SidebarProvider } from "@mechane/design-system";
+import { FrameElement, hasCornerRadius, SceneVariable, Shape } from "@mechane/domain";
+import type { ImageAsset } from "@mechane/graphql-schema";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useCallback, useState } from "react";
 
 import type { CanvasArtboardDocument as ApiCanvasArtboardDocument } from "../../../../api/canvas";
-import { MockEditorChrome } from "../../../../components/EditorLayout/MockEditorChrome";
 import { StaticGoogleFontsProvider } from "../../google-fonts-provider";
 import type { CanvasSelection } from "../canvas-selection";
 import { CanvasInspector } from "../CanvasInspector/CanvasInspector";
-import { EditorSlot } from "../../../../components/EditorLayout/editor-slots";
 
 const CANVAS_ID = "canvas-inspector-story";
 const ART_ID = "scene-inspector-story";
@@ -391,9 +390,9 @@ function InspectorStory({
 
   return (
     <StaticGoogleFontsProvider fonts={[]}>
-      <MockEditorChrome activeEditor="canvas">
-        <div className="size-full bg-background" />
-        <EditorSlot name="right">
+      <SidebarProvider className="min-h-screen w-full bg-background">
+        <div className="min-h-screen flex-1 bg-background" />
+        <Sidebar collapsible="offcanvas" variant="floating" side="right" aria-label="Properties">
           <CanvasInspector
             focused={current}
             artboards={[current]}
@@ -405,8 +404,8 @@ function InspectorStory({
             currentDimensions={currentDimensions}
             onUpdateElements={onUpdateElements}
           />
-        </EditorSlot>
-      </MockEditorChrome>
+        </Sidebar>
+      </SidebarProvider>
     </StaticGoogleFontsProvider>
   );
 }

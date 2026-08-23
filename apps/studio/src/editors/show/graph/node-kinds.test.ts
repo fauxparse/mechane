@@ -30,6 +30,9 @@ describe("createNode", () => {
     expect(createNode("scene", { x: 0, y: 0 }, "flow_1").parentId).toBe("flow_1");
     expect(createNode("source", { x: 0, y: 0 }, "flow_1").parentId).toBe("flow_1");
   });
+  it("preserves an explicitly inherited color", () => {
+    expect(createNode("source", { x: 0, y: 0 }, null, { color: "purple" }).color).toBe("purple");
+  });
 
   // #23 and #26: Flows and Devices are always Show-level peers, so a parent is
   // refused rather than stored and rejected later.

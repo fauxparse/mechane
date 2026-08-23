@@ -18,10 +18,9 @@
 // on the same seam.
 
 import { assertValidShowGraph, deviceSourceType, findNode, InvalidShowGraphError } from "./graph";
-import { fieldsForType, resolveShapeFieldMapping } from "./shapes";
+import { fieldsForType, resolveShapeFieldMapping, type Type } from "./shapes";
 import { typeAtPath } from "./property-values";
 import type { EdgeKind, GraphEdge, GraphNode, ShowGraph } from "./graph";
-
 /** A drag from one node's handle to another's, as the editor reports it. */
 export interface ConnectionRequest {
   sourceId: string;
@@ -37,6 +36,27 @@ export interface ConnectionRequest {
    * handle is the exception: it requests a new Variable.
    */
   targetVariableId?: string | null;
+}
+/**
+ * Resolves the value type exposed by a producer handle.
+ *
+ * Shape field handles expose the field type; the node's `type` is used only
+ * for its whole-node output.
+ */
+export function sourceTypeAtHandle(
+  graph: ShowGraph,
+  sourceId: string,
+  sourceHandle?: string | null,
+): Type | null {
+  const producer = findNode(graph, sourceId);
+  const virtualSourceType = deviceSourceType(sourceHandle);
+  if (virtualSourceType) return virtualSourceType;
+  if (producer?.kind !== "source" && producer?.kind !== "transformer") return null;
+  if (!producer.type) return null;
+  if (sourceHandle && sourceHandle !== "out") {
+    return typeAtPath(producer.type, [sourceHandle], graph.shapes ?? []);
+  }
+  return producer.type;
 }
 
 /**
@@ -106,12 +126,7 @@ export function connectionEdge(
         consumer?.kind === "scene"
           ? consumer.variables.find((variable) => variable.id === variableId)
           : undefined;
-      const producerType =
-        producer?.kind === "source" || producer?.kind === "transformer"
-          ? producer.type && sourcePath.length > 0
-            ? typeAtPath(producer.type, sourcePath, graph.shapes ?? [])
-            : producer.type
-          : virtualSourceType;
+      const producerType = sourceTypeAtHandle(graph, request.sourceId, request.sourceHandle);
       const fieldMapping =
         producerType && target?.type
           ? resolveShapeFieldMapping(producerType, target.type, graph.shapes ?? [])
@@ -140,12 +155,8 @@ const CANDIDATE_EDGE_ID = "edge_candidate";
 const SCENE_INPUT_HANDLE = "in";
 const CANDIDATE_VARIABLE_ID = "variable_candidate";
 
-function implicitVariableType(graph: ShowGraph, request: ConnectionRequest) {
-  const producer = findNode(graph, request.sourceId);
-  const virtualSourceType = deviceSourceType(request.sourceHandle);
-  return producer?.kind === "source" || producer?.kind === "transformer"
-    ? producer.type
-    : virtualSourceType;
+function implicitVariableType(graph: ShowGraph, request: ConnectionRequest): Type | null {
+  return sourceTypeAtHandle(graph, request.sourceId, request.sourceHandle);
 }
 
 /**

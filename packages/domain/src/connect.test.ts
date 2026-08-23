@@ -6,6 +6,7 @@ import {
   connectionError,
   connectionKindFor,
   connectionTargets,
+  sourceTypeAtHandle,
 } from "./connect";
 import { DEVICE_SOURCE_HANDLES } from "./graph";
 import type {
@@ -79,6 +80,30 @@ const GRAPH: ShowGraph = {
   nodes: [VOTE, INTERVAL, VOTING, RESULTS, INTERMISSION, LOBBY, TALLY, LOCAL, TRANSFORMER, PHONE],
   edges: [],
 };
+const SHAPED_GRAPH: ShowGraph = {
+  shapes: [
+    {
+      id: "shape_profile",
+      name: "Profile",
+      fields: [
+        { id: "headline", name: "Headline", type: "text", required: true, defaultValue: "" },
+        { id: "score", name: "Score", type: "number", required: true, defaultValue: 0 },
+      ],
+    },
+  ],
+  nodes: [
+    ...GRAPH.nodes,
+    {
+      id: "source_profile",
+      kind: "source",
+      name: "Profile",
+      position: at,
+      parentId: null,
+      type: { kind: "shape", shapeId: "shape_profile" },
+    },
+  ],
+  edges: [],
+};
 
 describe("connectionKindFor", () => {
   it("reads wiring to a Transformer as a data connection", () => {
@@ -139,8 +164,39 @@ describe("connectionKindFor", () => {
     );
   });
 });
+describe("sourceTypeAtHandle", () => {
+  it("resolves a shape field handle to that field's type", () => {
+    expect(sourceTypeAtHandle(SHAPED_GRAPH, "source_profile", "score")).toBe("number");
+    expect(sourceTypeAtHandle(SHAPED_GRAPH, "source_profile", "headline")).toBe("text");
+    expect(sourceTypeAtHandle(SHAPED_GRAPH, "source_profile", "out")).toEqual({
+      kind: "shape",
+      shapeId: "shape_profile",
+    });
+    expect(
+      connectionError(SHAPED_GRAPH, {
+        sourceId: "source_profile",
+        sourceHandle: "score",
+        targetId: LOBBY.id,
+        targetHandle: "in",
+      }),
+    ).toBeNull();
+  });
+});
 
 describe("connectionEdge", () => {
+  it("stores shape field handles in the source path", () => {
+    expect(
+      connectionEdge(
+        SHAPED_GRAPH,
+        {
+          sourceId: "source_profile",
+          sourceHandle: "score",
+          targetId: "source_tally",
+        },
+        "edge_field",
+      ),
+    ).toEqual(expect.objectContaining({ kind: "wiring", sourcePath: ["score"] }));
+  });
   it("leaves Transformer input paths unnamed", () => {
     expect(
       connectionEdge(GRAPH, { sourceId: TALLY.id, targetId: TRANSFORMER.id }, "edge_new"),
@@ -291,7 +347,6 @@ describe("canConnect", () => {
     expect(connectionTargets(GRAPH, TALLY.id).nodeIds.has(RESULTS.id)).toBe(true);
   });
 
-
   it("names the kinds when no edge runs between them", () => {
     expect(connectionError(GRAPH, { sourceId: PHONE.id, targetId: VOTING.id })).toBe(
       "A device can't connect to a scene.",
@@ -336,19 +391,11 @@ describe("canConnect", () => {
   });
 });
 
-
 describe("connectionTargets", () => {
   it("lists the Scenes and Variables a Source may feed", () => {
     const targets = connectionTargets(GRAPH, TALLY.id);
     expect([...targets.nodeIds].sort()).toEqual(
-      [
-        LOBBY.id,
-        VOTING.id,
-        RESULTS.id,
-        INTERMISSION.id,
-        LOCAL.id,
-        TRANSFORMER.id,
-      ].sort(),
+      [LOBBY.id, VOTING.id, RESULTS.id, INTERMISSION.id, LOCAL.id, TRANSFORMER.id].sort(),
     );
     expect([...targets.variableIds].sort()).toEqual(["variable_house", "variable_prompt"]);
   });
@@ -377,15 +424,7 @@ describe("connectionTargets", () => {
   it("lists value targets for Device virtual source handles", () => {
     const targets = connectionTargets(GRAPH, PHONE.id, DEVICE_SOURCE_HANDLES.pairingCode);
     expect([...targets.nodeIds].sort()).toEqual(
-      [
-        LOBBY.id,
-        VOTING.id,
-        RESULTS.id,
-        INTERMISSION.id,
-        LOCAL.id,
-        TALLY.id,
-        TRANSFORMER.id,
-      ].sort(),
+      [LOBBY.id, VOTING.id, RESULTS.id, INTERMISSION.id, LOCAL.id, TALLY.id, TRANSFORMER.id].sort(),
     );
   });
 });

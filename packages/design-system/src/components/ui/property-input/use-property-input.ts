@@ -54,6 +54,29 @@ export const getColorInputValue = (value: string): string => {
   return "#000000";
 };
 
+export function parsePropertyInputValue<T extends ShapeValue = ShapeValue>(
+  type: PropertyInputType,
+  rawValue: string,
+  min?: number,
+  max?: number,
+): PropertyInputValue<T> | null | undefined {
+  if (type === "color") {
+    const parsed = parseHexColor(rawValue);
+    return parsed ? createValue<T>(type, rgbaToHex(parsed)) : undefined;
+  }
+  if (type !== "number") return createValue<T>(type, rawValue);
+
+  const numericValue = rawValue.replace(/%/g, "").trim();
+  if (numericValue === "") return null;
+  const parsed = Number(numericValue);
+  if (!Number.isFinite(parsed)) return undefined;
+  return createValue<T>(type, Math.min(max ?? Infinity, Math.max(min ?? -Infinity, parsed)));
+}
+
+export function propertyInputValidationMessage(type: PropertyInputType): string {
+  return type === "color" ? "Enter a valid color." : "Enter a finite number.";
+}
+
 const createValue = <T extends ShapeValue>(type: PropertyInputType, value: string | number): T =>
   ({
     kind: type === "color" ? "color" : type,
@@ -84,6 +107,7 @@ export function usePropertyInput<T extends ShapeValue>({
   onChange,
   onSizingChange,
   onAutoChange,
+  onValidationError,
   constraints,
   onConstraintToggle,
 }: PropertyInputProps<T>) {
@@ -127,26 +151,13 @@ export function usePropertyInput<T extends ShapeValue>({
     }
     draftInputRef.current = nextValue;
     setDraftInputValue(nextValue);
+    onValidationError?.(null);
     // The color picker emits draft values continuously while dragging; valid samples must reach
     // controlled consumers immediately so renderers can paint the current color.
     if (inputType === "color" && nextValue !== null) {
       const parsed = parseHexColor(nextValue);
       if (parsed) commit(createValue<T>(inputType, rgbaToHex(parsed)));
     }
-  };
-
-  const parseInputValue = (rawValue: string): PropertyInputValue<T> | null | undefined => {
-    if (inputType === "color") {
-      const parsed = parseHexColor(rawValue);
-      return parsed ? createValue<T>(inputType, rgbaToHex(parsed)) : undefined;
-    }
-    if (inputType !== "number") return createValue<T>(inputType, rawValue);
-
-    const numericValue = rawValue.replace(/%/g, "").trim();
-    if (numericValue === "") return null;
-    const parsed = Number(numericValue);
-    if (!Number.isFinite(parsed)) return undefined;
-    return createValue<T>(inputType, Math.min(max ?? Infinity, Math.max(min ?? -Infinity, parsed)));
   };
 
   const commitRawValue = (rawValue: string | number) => {
@@ -156,16 +167,20 @@ export function usePropertyInput<T extends ShapeValue>({
   const commitDraftInput = () => {
     const rawValue = draftInputRef.current;
     if (rawValue === null) return;
-    const nextValue = parseInputValue(rawValue);
+    const nextValue = parsePropertyInputValue<T>(inputType, rawValue, min, max);
+    if (nextValue === undefined) {
+      onValidationError?.(propertyInputValidationMessage(inputType));
+      return;
+    }
+    onValidationError?.(null);
     const sameColor =
       inputType === "color" &&
       nextValue !== null &&
-      nextValue !== undefined &&
       !isVariableReference(nextValue) &&
       nextValue.kind === "color" &&
       currentValue?.kind === "color" &&
       nextValue.value === currentValue.value;
-    if (nextValue !== undefined && !sameColor) commit(nextValue);
+    if (!sameColor) commit(nextValue);
     updateDraftInput(null);
   };
 

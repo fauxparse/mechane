@@ -1,9 +1,20 @@
-import type { GraphEditing } from "../../commands/use-graph-editing";
-import type { Shape, SourceNode, ShowGraph } from "@mechane/domain";
+import { setSourceFieldDefault as setSourceFieldDefaultCommand } from "@mechane/commands";
+import { Sidebar, SidebarContent, SidebarProvider } from "@mechane/design-system";
+import { type Shape, type ShowGraph, type SourceNode } from "@mechane/domain";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 
+import type { GraphEditing } from "../../commands/use-graph-editing";
 import { SourceValues } from "./SourceValues";
+
+const detailsShape: Shape = {
+  id: "shape-details",
+  name: "Details",
+  fields: [
+    { id: "city", name: "City", type: "text", required: true, defaultValue: "London" },
+    { id: "active", name: "Active", type: "boolean", required: true, defaultValue: true },
+  ],
+};
 
 const shape: Shape = {
   id: "shape-profile",
@@ -14,7 +25,7 @@ const shape: Shape = {
     {
       id: "details",
       name: "Details",
-      type: { kind: "object" },
+      type: { kind: "shape", shapeId: detailsShape.id },
       required: true,
       defaultValue: { city: "London", active: true },
     },
@@ -31,14 +42,14 @@ const source: SourceNode = {
 };
 
 const initialGraph: ShowGraph = {
-  shapes: [shape],
+  shapes: [detailsShape, shape],
   nodes: [source],
   edges: [],
 };
 
 const meta = {
   title: "studio/SourceValues",
-  parameters: { layout: "centered" },
+  parameters: { layout: "fullscreen" },
 } satisfies Meta;
 
 export default meta;
@@ -46,22 +57,32 @@ type Story = StoryObj<typeof meta>;
 
 function SourceValuesStory() {
   const [graph, setGraph] = useState(initialGraph);
+  const updateGraph = (command: { apply(current: ShowGraph): { state: ShowGraph } }) => {
+    setGraph((current) => command.apply(current).state);
+  };
   const editing = {
     graph,
+    setSourceFieldDefault: (nodeId: string, fieldPath: readonly string[], value: unknown) =>
+      updateGraph(setSourceFieldDefaultCommand(nodeId, fieldPath, value)),
     commands: {
       beginGesture: () => ({
-        update: (command: { apply: (current: ShowGraph) => { state: ShowGraph } }) => {
-          setGraph((current) => command.apply(current).state);
-        },
+        update: updateGraph,
         commit: () => {},
         abort: () => {},
       }),
     },
   } as unknown as GraphEditing;
 
-  return <SourceValues node={source} editing={editing} />;
+  return (
+    <SidebarProvider className="min-h-screen w-full bg-background">
+      <div className="min-h-screen flex-1 bg-background" />
+      <Sidebar collapsible="offcanvas" side="right" variant="floating" aria-label="Source values">
+        <SidebarContent className="p-0">
+          <SourceValues node={source} editing={editing} />
+        </SidebarContent>
+      </Sidebar>
+    </SidebarProvider>
+  );
 }
 
-export const Default: Story = {
-  render: () => <SourceValuesStory />,
-};
+export const Default: Story = { render: SourceValuesStory };

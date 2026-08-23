@@ -32,14 +32,15 @@ export const PropertyInput = <T extends ShapeValue>({
   step,
   presets,
   scrubScale = 2,
+  constraints,
   allowAuto,
   allowLink = true,
   auto,
   onChange,
   onSizingChange,
   onAutoChange,
-  constraints,
   onConstraintToggle,
+  onValidationError,
 }: PropertyInputProps<T>) => {
   const [inputActive, setInputActive] = useState(false);
   const input = usePropertyInput({
@@ -58,6 +59,7 @@ export const PropertyInput = <T extends ShapeValue>({
     onChange,
     onSizingChange,
     onAutoChange,
+    onValidationError,
     constraints,
     onConstraintToggle,
   });
@@ -169,6 +171,7 @@ export const PropertyInput = <T extends ShapeValue>({
             presets={presets}
             auto={input.auto}
             allowAuto={allowAuto}
+            allowLink={allowLink}
             linkedVariable={input.linkedVariable}
             onColorChange={input.updateDraftInput}
           />

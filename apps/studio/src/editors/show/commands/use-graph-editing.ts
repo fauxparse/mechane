@@ -44,8 +44,8 @@ import {
   connectionEdge,
   connectionError,
   connectionTargets,
-  deviceSourceType,
   generateId,
+  sourceTypeAtHandle,
 } from "@mechane/domain";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { sourceLabelFor } from "../graph/source-label";
@@ -77,7 +77,12 @@ export interface GraphEditing {
     kind: NodeKind,
     position: Position,
     parentId?: string | null,
-    options?: { perConnection?: boolean; defaultName?: string; sourceType?: Type },
+    options?: {
+      perConnection?: boolean;
+      defaultName?: string;
+      sourceType?: Type;
+      color?: FlowColor;
+    },
   ): GraphNode;
   createFlowWithNodes(nodeIds: string[], position: Position, childOrigin: Position): GraphNode;
   /** Creates a typed Source or Device and connects it to a dropped source handle. */
@@ -156,7 +161,12 @@ export function useGraphEditing(
       kind: NodeKind,
       position: Position,
       parentId: string | null = null,
-      options: { perConnection?: boolean; defaultName?: string; sourceType?: Type } = {},
+      options: {
+        perConnection?: boolean;
+        defaultName?: string;
+        sourceType?: Type;
+        color?: FlowColor;
+      } = {},
     ) => {
       const node = createNode(kind, position, parentId, options);
       execute(addNode(node, `Add ${kind}`));
@@ -167,18 +177,14 @@ export function useGraphEditing(
   const createNodeFromConnection = useCallback(
     (sourceId: string, sourceHandle: string, position: Position) => {
       const producer = graph.nodes.find((node) => node.id === sourceId);
-      const sourceType =
-        producer?.kind === "device"
-          ? deviceSourceType(sourceHandle)
-          : producer?.kind === "source" || producer?.kind === "transformer"
-            ? producer.type
-            : null;
+      const sourceType = sourceTypeAtHandle(graph, sourceId, sourceHandle);
       const node =
         producer?.kind === "flow" && sourceHandle === OUTPUT_HANDLE
-          ? createNode("device", position)
+          ? createNode("device", position, null, { color: producer?.color })
           : sourceType
             ? createNode("source", position, null, {
                 sourceType,
+                color: producer?.color,
                 defaultName: sourceLabelFor(graph, sourceId, sourceHandle),
               })
             : null;
@@ -291,12 +297,7 @@ export function useGraphEditing(
       const request = requestOf(attempt);
       const producer = graph.nodes.find((node) => node.id === request.sourceId);
       const consumer = graph.nodes.find((node) => node.id === request.targetId);
-      const sourceType =
-        producer?.kind === "source" || producer?.kind === "transformer"
-          ? producer.type
-          : producer?.kind === "device"
-            ? deviceSourceType(request.sourceHandle)
-            : null;
+      const sourceType = sourceTypeAtHandle(graph, request.sourceId, request.sourceHandle);
       const variable =
         consumer?.kind === "scene" &&
         attempt.targetHandle === INPUT_HANDLE &&

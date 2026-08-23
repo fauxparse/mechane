@@ -77,7 +77,6 @@ export const GRAPH_COMMAND_TYPES = {
   setDevicePerConnection: "graph.setDevicePerConnection",
 } as const;
 
-
 export class UnknownGraphTargetError extends Error {
   constructor(what: string, id: string) {
     super(`Show graph has no ${what} "${id}".`);
@@ -227,6 +226,7 @@ export function removeNode(nodeId: string, label?: string): ShowGraphCommand {
       };
     },
     apply: (graph) => ({
+      ...graph,
       nodes: graph.nodes
         .filter((node) => node.id !== nodeId)
         .map((node) =>
@@ -646,8 +646,11 @@ function withSourceFieldDefault(
   const remaining = (graph.sourceFieldDefaults ?? []).filter(
     (override) => !(override.nodeId === nodeId && samePath(override.fieldPath, fieldPath)),
   );
-  const source = value === null ? remaining : [...remaining, { nodeId, fieldPath: [...fieldPath], value }];
-  return source.length > 0 ? { ...graph, sourceFieldDefaults: source } : { ...graph, sourceFieldDefaults: undefined };
+  const source =
+    value === null ? remaining : [...remaining, { nodeId, fieldPath: [...fieldPath], value }];
+  return source.length > 0
+    ? { ...graph, sourceFieldDefaults: source }
+    : { ...graph, sourceFieldDefaults: undefined };
 }
 
 function samePath(left: readonly string[], right: readonly string[]): boolean {

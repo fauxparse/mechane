@@ -51,4 +51,6 @@ export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   /** Marks the min/max menu items as active. */
   constraints?: PropertyInputConstraints;
   onConstraintToggle?: (constraint: PropertyInputConstraint, enabled: boolean) => void;
+  /** Reports why a draft could not be committed, or clears the current error. */
+  onValidationError?: (message: string | null) => void;
 };
