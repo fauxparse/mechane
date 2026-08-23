@@ -50,6 +50,14 @@ export function Menu<T extends ShapeValue>({
   linkedVariable: VariableReference<T> | null;
   onColorChange: (value: string | null) => void;
 }) {
+  const hasMenuItems =
+    inputType === "color" ||
+    dimension !== undefined ||
+    (presets?.length ?? 0) > 0 ||
+    allowAuto ||
+    allowLink;
+  if (!hasMenuItems) return null;
+
   return (
     <ComboboxContent className={cn("p-0.5 min-w-fit", inputType === "color" && "overflow-y-auto")}>
       {inputType === "color" && (
