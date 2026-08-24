@@ -311,7 +311,7 @@ describe("toGraphEdit", () => {
     // A server ahead of this client. Applying half of what it sent would put
     // the editor on a graph neither of them believes in.
     expect(() => toGraphEdit({ type: "graph.explode", nodeId: null, pairingCode: null })).toThrow(
-      /Unknown Show graph amendment/,
+      /Unknown Show graph edit/,
     );
   });
 

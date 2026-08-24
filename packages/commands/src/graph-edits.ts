@@ -13,7 +13,9 @@
 // one-to-one pairing is deliberate: `commandForEdit` turns an edit back into
 // the very command that produced it, so the server applies edits through the
 // same code the client did, and "the server disagreed with the client about
-// what a delete does" is not a class of bug that exists here.
+// what a delete does" is not a class of bug that exists here. The pairing
+// itself lives in ./graph-edit-codec, next to the flattening it travels as
+// (#347), so that an edit type has one entry to add rather than six.
 //
 // Two things the wire format deliberately does *not* carry:
 //
@@ -42,28 +44,9 @@ import type {
   Type,
 } from "@mechane/domain";
 
+import { graphEditCodec } from "./graph-edit-codec";
 import type { ShowGraphCommand } from "./graph-commands";
-import {
-  addEdge,
-  addNode,
-  addSceneVariable,
-  GRAPH_COMMAND_TYPES,
-  moveNode,
-  removeEdge,
-  removeNode,
-  removeSceneVariable,
-  renameNode,
-  renameSceneVariable,
-  reorderSceneVariables,
-  reparentNode,
-  setDevicePairingCode,
-  setDevicePerConnection,
-  setFlowDefaultScene,
-  setNodeColor,
-  setSceneVariableType,
-  setShapes,
-  setSourceFieldDefault,
-} from "./graph-commands";
+import { GRAPH_COMMAND_TYPES } from "./graph-commands";
 
 /**
  * One serialisable mutation of a Show graph — the unit the client sends and
@@ -175,53 +158,14 @@ export class UnknownGraphEditError extends Error {
  * from the first.
  */
 export function commandForEdit(edit: GraphEdit): ShowGraphCommand {
-  switch (edit.type) {
-    case GRAPH_COMMAND_TYPES.addNode:
-      return addNode(edit.node);
-    case GRAPH_COMMAND_TYPES.removeNode:
-      return removeNode(edit.nodeId);
-    case GRAPH_COMMAND_TYPES.moveNode:
-      return moveNode(edit.nodeId, edit.position);
-    case GRAPH_COMMAND_TYPES.renameNode:
-      return renameNode(edit.nodeId, edit.name);
-    case GRAPH_COMMAND_TYPES.reparentNode:
-      return reparentNode(edit.nodeId, edit.parentId, edit.position);
-    case GRAPH_COMMAND_TYPES.addEdge:
-      return addEdge(edit.edge);
-    case GRAPH_COMMAND_TYPES.removeEdge:
-      return removeEdge(edit.edgeId);
-    case GRAPH_COMMAND_TYPES.setFlowDefaultScene:
-      return setFlowDefaultScene(edit.flowId, edit.sceneId);
-    case GRAPH_COMMAND_TYPES.setNodeColor:
-      return setNodeColor(edit.nodeId, edit.color);
-    case GRAPH_COMMAND_TYPES.setShapes:
-      return setShapes(edit.shapes);
-    case GRAPH_COMMAND_TYPES.addSceneVariable:
-      return addSceneVariable(edit.sceneId, edit.variable);
-    case GRAPH_COMMAND_TYPES.reorderSceneVariables:
-      return reorderSceneVariables(edit.sceneId, edit.variableIds);
-    case GRAPH_COMMAND_TYPES.renameSceneVariable:
-      return renameSceneVariable(edit.sceneId, edit.variableId, edit.name);
-    case GRAPH_COMMAND_TYPES.setSceneVariableType:
-      return setSceneVariableType(edit.sceneId, edit.variableId, edit.variableType);
-    case GRAPH_COMMAND_TYPES.setSourceFieldDefault:
-      return setSourceFieldDefault(edit.nodeId, edit.fieldPath, edit.value);
-    case GRAPH_COMMAND_TYPES.removeSceneVariable:
-      return removeSceneVariable(edit.sceneId, edit.variableId);
-    case GRAPH_COMMAND_TYPES.setDevicePairingCode:
-      return setDevicePairingCode(edit.nodeId, edit.pairingCode);
-    case GRAPH_COMMAND_TYPES.setDevicePerConnection:
-      return setDevicePerConnection(edit.nodeId, edit.perConnection);
-    default: {
-      // Exhaustive over the union above; reachable only from an edit that
-      // came off the wire with a type this build has never heard of, which
-      // is worth failing the whole batch over rather than skipping.
-      const unknown: never = edit;
-      throw new UnknownGraphEditError(
-        `Unknown Show graph edit "${(unknown as { type: string }).type}".`,
-      );
-    }
+  const codec = graphEditCodec(edit.type);
+  if (!codec) {
+    // Not reachable from the union above; reachable from an edit that came
+    // off the wire with a type this build has never heard of, which is worth
+    // failing the whole batch over rather than skipping.
+    throw new UnknownGraphEditError(`Unknown Show graph edit "${edit.type}".`);
   }
+  return codec.command(edit);
 }
 
 /**

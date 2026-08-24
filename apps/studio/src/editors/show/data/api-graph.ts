@@ -14,9 +14,15 @@
 // The other direction is no longer a whole graph (#103): what goes back is a
 // list of edits, so `toEditInput` is the outbound half — the same widening
 // from a discriminated union to one flat wire shape, per edit instead of per
-// graph.
-import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
-import type { FlowColor, GraphEdge, GraphNode, Shape, ShowGraph, Type } from "@mechane/domain";
+// graph. For *graph* edits that widening is not written here: it is
+// @mechane/commands' `encodeGraphEdit`, the same descriptor the server
+// decodes with (#347), so a field cannot travel one way only. What stays here
+// is the Canvas edit vocabulary, which has no server-side counterpart to
+// disagree with, and the one policy this end owns: a pairing code is not the
+// editor's to send.
+import type { CanvasWorkspaceEdit, FlatGraphEdit, GraphEdit } from "@mechane/commands";
+import { decodeGraphEdit, encodeGraphEdit, GRAPH_COMMAND_TYPES } from "@mechane/commands";
+import type { GraphEdge, GraphNode, Shape, ShowGraph, Type } from "@mechane/domain";
 import { isFlowColor } from "@mechane/domain";
 import type { ShowGraph as ApiShowGraph, ApplyShowEditsResult } from "@mechane/graphql-schema";
 type ApiType = ApiShowGraph["shapes"][number]["fields"][number]["type"];
@@ -240,112 +246,6 @@ export function toShowGraph(graph: ApiGraph | null | undefined): ShowGraph {
 }
 
 /**
- * A node as mutation input: the same flat shape the query returns, minus the
- * fields the server derives (a Device's pairing code is minted server-side,
- * #45) and minus the fields that don't belong to this kind.
- */
-type TypeInput = { kind: string; of?: TypeInput | null; shapeId?: string | null };
-
-function toTypeInput(type: Type | null | undefined): TypeInput | null {
-  if (!type) return null;
-  if (typeof type === "string") return { kind: type };
-  if (type.kind === "array") return { kind: "array", of: toTypeInput(type.of) };
-  return { kind: "shape", shapeId: type.shapeId };
-}
-
-interface ApiShapeFieldInput {
-  id: string;
-  name: string;
-  type: TypeInput;
-  position: number;
-  required: boolean;
-  defaultValue: unknown;
-}
-
-interface ApiShapeInput {
-  id: string;
-  name: string;
-  fields: ApiShapeFieldInput[];
-}
-
-function toShapeInput(shape: Shape): ApiShapeInput {
-  return {
-    id: shape.id,
-    name: shape.name,
-    fields: shape.fields.map((field, position) => ({
-      id: field.id,
-      name: field.name,
-      type: toTypeInput(field.type)!,
-      position,
-      required: field.required,
-      defaultValue: field.defaultValue ?? null,
-    })),
-  };
-}
-
-interface ApiNodeInput {
-  id: string;
-  kind: string;
-  name: string;
-  parentId: string | null;
-  defaultSceneId: string | null;
-  color?: FlowColor | null;
-  type: TypeInput | null;
-  position: { x: number; y: number };
-  variables: { id: string; name: string; rank?: string | null; type: TypeInput | null }[];
-  perConnection: boolean;
-}
-
-interface ApiEdgeInput {
-  id: string;
-  kind: string;
-  sourceId: string;
-  targetId: string;
-  sourcePath: string[];
-  targetPath: string[];
-  fieldMapping?: Record<string, string> | null;
-  cueId: string | null;
-  actionId: string | null;
-}
-
-function toNodeInput(node: GraphNode): ApiNodeInput {
-  return {
-    id: node.id,
-    kind: node.kind,
-    name: node.name,
-    parentId: node.parentId,
-    defaultSceneId: node.kind === "flow" ? node.defaultSceneId : null,
-    color: node.color ?? null,
-    type: node.kind === "source" || node.kind === "transformer" ? toTypeInput(node.type) : null,
-    position: { x: node.position.x, y: node.position.y },
-    variables:
-      node.kind === "scene"
-        ? node.variables.map((v) => ({
-            id: v.id,
-            name: v.name,
-            ...(v.rank ? { rank: v.rank } : {}),
-            type: toTypeInput(v.type),
-          }))
-        : [],
-    perConnection: node.kind === "device" ? node.perConnection : false,
-  };
-}
-
-function toEdgeInput(edge: GraphEdge): ApiEdgeInput {
-  return {
-    id: edge.id,
-    kind: edge.kind,
-    sourceId: edge.sourceId,
-    targetId: edge.targetId,
-    sourcePath: [...edge.sourcePath],
-    targetPath: [...edge.targetPath],
-    ...(edge.kind === "wiring" ? { fieldMapping: edge.fieldMapping ?? null } : {}),
-    cueId: edge.kind === "navigate" ? edge.cueId : null,
-    actionId: edge.kind === "navigate" ? edge.actionId : null,
-  };
-}
-
-/**
  * One Studio edit as the mutation input wants it (#103, #164).
  *
  * Graph edits already carry their whole target. Canvas workspace edits carry
@@ -354,33 +254,21 @@ function toEdgeInput(edge: GraphEdge): ApiEdgeInput {
  */
 export type StudioEdit = GraphEdit | CanvasWorkspaceEdit;
 
-export interface StudioEditInput {
-  type: string;
+/**
+ * One Studio edit, flat, as the `ShowEditInput` mutation wants it.
+ *
+ * The graph half is `FlatGraphEdit` (the codec's shape, #347); the Canvas
+ * half adds the Canvas id and the element fields, which travel only in this
+ * direction and have no inbound counterpart to drift from.
+ */
+export type StudioEditInput = FlatGraphEdit & {
   canvasId?: string;
-  nodeId?: string;
-  node?: ApiNodeInput;
-  shapes?: ApiShapeInput[];
-  fieldPath?: string[];
-  value?: unknown;
-  edgeId?: string;
-  edge?: ApiEdgeInput;
-  position?: { x: number; y: number };
-  parentId?: string | null;
-  name?: string;
-  flowId?: string;
-  variable?: { id: string; name: string; rank?: string | null; type?: TypeInput | null };
-  variableType?: TypeInput | null;
-  sceneId?: string | null;
-  variableId?: string;
-  variableIds?: string[];
-  color?: FlowColor | null;
-  perConnection?: boolean;
   elementId?: string;
   rank?: string;
   element?: Record<string, unknown>;
   properties?: Record<string, unknown>;
   unsetProperties?: string[];
-}
+};
 
 export function toEditInput(edit: StudioEdit): StudioEditInput {
   if ("canvasId" in edit) {
@@ -417,73 +305,10 @@ export function toEditInput(edit: StudioEdit): StudioEditInput {
     }
   }
 
-  const input: StudioEditInput = { type: edit.type };
-  switch (edit.type) {
-    case "graph.addNode":
-      return { ...input, node: toNodeInput(edit.node) };
-    case "graph.removeNode":
-      return { ...input, nodeId: edit.nodeId };
-    case "graph.moveNode":
-      return { ...input, nodeId: edit.nodeId, position: edit.position };
-    case "graph.renameNode":
-      return { ...input, nodeId: edit.nodeId, name: edit.name };
-    case "graph.reparentNode":
-      return {
-        ...input,
-        nodeId: edit.nodeId,
-        parentId: edit.parentId,
-        position: edit.position,
-      };
-    case "graph.addEdge":
-      return { ...input, edge: toEdgeInput(edit.edge) };
-    case "graph.removeEdge":
-      return { ...input, edgeId: edit.edgeId };
-    case "graph.setFlowDefaultScene":
-      return { ...input, flowId: edit.flowId, sceneId: edit.sceneId };
-    case "graph.setNodeColor":
-      return { ...input, nodeId: edit.nodeId, color: edit.color };
-    case "graph.setSourceFieldDefault":
-      return {
-        ...input,
-        nodeId: edit.nodeId,
-        fieldPath: [...edit.fieldPath],
-        value: edit.value,
-      };
-    case "graph.setShapes":
-      return { ...input, shapes: edit.shapes.map(toShapeInput) };
-    case "graph.addSceneVariable":
-      return {
-        ...input,
-        sceneId: edit.sceneId,
-        variable: { ...edit.variable, type: toTypeInput(edit.variable.type) },
-      };
-    case "graph.renameSceneVariable":
-      return {
-        ...input,
-        sceneId: edit.sceneId,
-        variableId: edit.variableId,
-        name: edit.name,
-      };
-    case "graph.setSceneVariableType":
-      return {
-        ...input,
-        sceneId: edit.sceneId,
-        variableId: edit.variableId,
-        variableType: toTypeInput(edit.variableType),
-      };
-    case "graph.reorderSceneVariables":
-      return {
-        ...input,
-        sceneId: edit.sceneId,
-        variableIds: [...edit.variableIds],
-      };
-    case "graph.removeSceneVariable":
-      return { ...input, sceneId: edit.sceneId, variableId: edit.variableId };
-    case "graph.setDevicePairingCode":
-      throw new Error("A pairing code is the server's to mint, not the editor's to send.");
-    case "graph.setDevicePerConnection":
-      return { ...input, nodeId: edit.nodeId, perConnection: edit.perConnection };
+  if (edit.type === GRAPH_COMMAND_TYPES.setDevicePairingCode) {
+    throw new Error("A pairing code is the server's to mint, not the editor's to send.");
   }
+  return encodeGraphEdit(edit);
 }
 
 /** An amendment as the mutation returns it (#111). */
@@ -492,24 +317,14 @@ export type ApiGraphEdit = ApplyShowEditsResult["amendments"][number];
 /**
  * An amendment from the server, as an edit the command layer can apply.
  *
- * The inbound counterpart of `toEditInput`, and deliberately narrow: the
- * server only ever sends amendments it has decided for itself, which today is
- * a Device's minted pairing code (#45). Anything else arriving here is a
- * server speaking a dialect this build doesn't know, and saying so beats
- * applying half of it.
+ * The inbound counterpart of `toEditInput`, through the same descriptor
+ * (#347): what the server tells this editor about a change it didn't make is
+ * the same vocabulary a realtime channel will use for a change someone else
+ * made (ADR-0003), so widening the amendments this editor understands is a
+ * matter of widening the mutation's selection set, not of writing another
+ * table. An amendment naming a type this build has never heard of throws
+ * rather than applying half of it.
  */
 export function toGraphEdit(edit: ApiGraphEdit): GraphEdit {
-  switch (edit.type) {
-    case "graph.setDevicePairingCode":
-      if (!edit.nodeId) {
-        throw new Error("A pairing-code amendment arrived without a Device.");
-      }
-      return {
-        type: "graph.setDevicePairingCode",
-        nodeId: edit.nodeId,
-        pairingCode: edit.pairingCode ?? null,
-      };
-    default:
-      throw new Error(`Unknown Show graph amendment "${edit.type}".`);
-  }
+  return decodeGraphEdit(edit);
 }

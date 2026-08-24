@@ -8,107 +8,31 @@
 // `assertValidShowGraph` sees it. Anything malformed becomes a
 // BAD_USER_INPUT GraphQLError here rather than a generic "Unexpected
 // error" further in.
-import type { GraphEdit } from "@mechane/commands";
+//
+// The flattening itself is not written here: an edit's flat shape and the
+// two halves of its translation live in one descriptor per edit type in
+// @mechane/commands' `graph-edit-codec` (#347), so this module is an adapter
+// over it. What stays here is what is genuinely GraphQL's: turning a codec
+// refusal into BAD_USER_INPUT, and refusing on the way *in* the one edit
+// that only ever travels out (#111).
+import type { FlatGraphEdit, GraphEdit } from "@mechane/commands";
+import { decodeGraphEdit, encodeGraphEdit, GraphEditCodecError } from "@mechane/commands";
 import { GRAPH_COMMAND_TYPES } from "@mechane/commands";
-import type { FlowColor, GraphEdge, GraphNode, Shape, Type } from "@mechane/domain";
-import {
-  assertValidFlowColor,
-  isEdgeKind,
-  isNodeKind,
-  wiringTargetVariableId,
-} from "@mechane/domain";
+import type { GraphEdge, GraphNode } from "@mechane/domain";
+import { wiringTargetVariableId } from "@mechane/domain";
 import { GraphQLError } from "graphql";
 
 import type { StoredShowGraph } from "../db/show-graph";
 
-export interface PositionInput {
-  x: number;
-  y: number;
-}
-
-export interface TypeInput {
-  kind: string;
-  of?: TypeInput | null;
-  shapeId?: string | null;
-}
-
-export interface SceneVariableInput {
-  id: string;
-  name: string;
-  rank?: string | null;
-  type?: TypeInput | null;
-  suggestedDimensions?: { width: number; height: number } | null;
-}
-export interface GraphNodeInput {
-  id: string;
-  kind: string;
-  name: string;
-  parentId?: string | null;
-  defaultSceneId?: string | null;
-  color?: string | null;
-  type?: TypeInput | null;
-  position: PositionInput;
-  variables?: SceneVariableInput[] | null;
-  perConnection?: boolean | null;
-}
-
-export interface GraphEdgeInput {
-  id: string;
-  kind: string;
-  sourceId: string;
-  targetId: string;
-  sourcePath?: string[] | null;
-  targetPath?: string[] | null;
-  fieldMapping?: Record<string, string> | null;
-  cueId?: string | null;
-  actionId?: string | null;
-}
-
-interface ShapeFieldInput {
-  id: string;
-  name: string;
-  type: TypeInput;
-  position: number;
-  required: boolean;
-  defaultValue?: unknown;
-}
-
-interface ShapeInput {
-  id: string;
-  name: string;
-  fields: ShapeFieldInput[];
-}
 /**
  * One edit off the wire (#103), before it becomes a `GraphEdit`.
  *
- * Flat and almost entirely optional, because GraphQL has no input unions:
- * `type` says which of these fields mean anything, and `parseGraphEdit`
- * below is where "a rename needs a name" stops being a convention. An
- * absent field reads as null, which is why nothing here needs to
- * distinguish the two — "clear the default Scene" and "say nothing about
- * the default Scene" are never both legal for the same `type`.
+ * The flat shape is the codec's (`FlatGraphEdit`), not this module's — it is
+ * flat and almost entirely optional because GraphQL has no input unions, and
+ * `type` says which of its fields mean anything. Named here because the
+ * resolver and the schema both talk about `GraphEditInput`.
  */
-export interface GraphEditInput {
-  type: string;
-  nodeId?: string | null;
-  node?: GraphNodeInput | null;
-  edgeId?: string | null;
-  edge?: GraphEdgeInput | null;
-  position?: PositionInput | null;
-  parentId?: string | null;
-  name?: string | null;
-  flowId?: string | null;
-  sceneId?: string | null;
-  variableId?: string | null;
-  variableIds?: string[] | null;
-  variable?: SceneVariableInput | null;
-  color?: string | null;
-  perConnection?: boolean | null;
-  variableType?: TypeInput | null;
-  shapes?: ShapeInput[] | null;
-  fieldPath?: string[] | null;
-  value?: unknown;
-}
+export type GraphEditInput = FlatGraphEdit;
 
 function badInput(message: string): GraphQLError {
   return new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
@@ -146,261 +70,35 @@ export function resolveGraphEdgeType(edge: Pick<GraphEdge, "kind">): string {
   }
 }
 
-function parseType(input: TypeInput | null | undefined): Type | undefined {
-  if (!input) return undefined;
-  if (["text", "number", "boolean", "image", "color", "date", "datetime"].includes(input.kind)) {
-    return input.kind as Type;
-  }
-  if (input.kind === "array" && input.of) return { kind: "array", of: parseType(input.of)! };
-  if (input.kind === "shape" && input.shapeId) return { kind: "shape", shapeId: input.shapeId };
-  throw badInput(`Invalid Shape type "${input.kind}".`);
-}
-
-function parseShape(input: ShapeInput): Shape {
-  return {
-    id: input.id,
-    name: input.name,
-    fields: input.fields
-      .slice()
-      .sort((left, right) => left.position - right.position)
-      .map((field) => ({
-        id: field.id,
-        name: field.name,
-        type: parseType(field.type)!,
-        required: field.required,
-        defaultValue: field.defaultValue ?? null,
-      })),
-  };
-}
-
-function parseFlowColor(input: string | null | undefined): FlowColor | undefined {
-  if (input === null || input === undefined) return undefined;
-  try {
-    return assertValidFlowColor(input);
-  } catch (error) {
-    throw badInput(error instanceof Error ? error.message : `Invalid Flow color "${input}".`);
-  }
-}
-
-function parseNode(input: GraphNodeInput): GraphNode {
-  if (!isNodeKind(input.kind)) {
-    throw badInput(`Unknown graph node kind "${input.kind}" on node "${input.id}".`);
-  }
-  const color = parseFlowColor(input.color);
-  const type = parseType(input.type);
-  const base = {
-    id: input.id,
-    name: input.name,
-    position: { x: input.position.x, y: input.position.y },
-    ...(color ? { color } : {}),
-  };
-  const parentId = input.parentId ?? null;
-  switch (input.kind) {
-    case "scene":
-      return {
-        ...base,
-        kind: "scene",
-        parentId,
-        variables: (input.variables ?? []).map((variable) => ({
-          id: variable.id,
-          name: variable.name,
-          type: parseType(variable.type),
-          ...(variable.suggestedDimensions
-            ? { suggestedDimensions: variable.suggestedDimensions }
-            : {}),
-        })),
-      };
-    case "flow":
-      if (parentId !== null) {
-        throw badInput(`Flow "${input.id}" was given a parentId; Flows are never nested.`);
-      }
-      return {
-        ...base,
-        kind: "flow",
-        parentId: null,
-        defaultSceneId: input.defaultSceneId ?? null,
-      };
-    case "source":
-      if (!type) throw badInput(`Source "${input.id}" must have a Type.`);
-      return { ...base, kind: "source", parentId, type };
-    case "transformer":
-      return { ...base, kind: "transformer", parentId, type: type ?? null };
-    case "device":
-      if (parentId !== null) {
-        throw badInput(`Device "${input.id}" was given a parentId; Devices are Show-level.`);
-      }
-      return {
-        ...base,
-        kind: "device",
-        parentId: null,
-        perConnection: input.perConnection ?? false,
-        pairingCode: null,
-      };
-  }
-}
-
-function parseEdge(input: GraphEdgeInput): GraphEdge {
-  if (!isEdgeKind(input.kind)) {
-    throw badInput(`Unknown edge kind "${input.kind}" on edge "${input.id}".`);
-  }
-  const base = {
-    id: input.id,
-    sourceId: input.sourceId,
-    targetId: input.targetId,
-    sourcePath: input.sourcePath ?? [],
-    targetPath: input.targetPath ?? [],
-  };
-  switch (input.kind) {
-    case "wiring":
-      return { ...base, kind: "wiring", fieldMapping: input.fieldMapping ?? undefined };
-    case "navigate":
-      return {
-        ...base,
-        kind: "navigate",
-        cueId: input.cueId ?? null,
-        actionId: input.actionId ?? null,
-      };
-    case "device":
-      return { ...base, kind: "device" };
-  }
-}
-
-/** The field `type` says this edit must carry, or a BAD_USER_INPUT error. */
-function required<T>(edit: GraphEditInput, field: string, value: T | null | undefined): T {
-  if (value === null || value === undefined) {
-    throw badInput(`A "${edit.type}" edit needs a ${field}.`);
-  }
-  return value;
-}
-
-function position(edit: GraphEditInput): { x: number; y: number } {
-  const value = required(edit, "position", edit.position);
-  return { x: value.x, y: value.y };
-}
-
 /**
  * One edit, from wire input to the command layer's own type (#103).
  *
- * The checks here are about the *envelope* — did a rename bring a name —
- * not about the graph. Whether the node being renamed exists is the
- * command's business when the batch is applied, and whether the result is a
- * legal Show is `assertValidShowGraph`'s at the end of it.
+ * Two things happen here, and only these two. The translation is the codec's
+ * (`decodeGraphEdit`), including the envelope checks — "a rename needs a
+ * name" is a fact about the edit vocabulary, not about GraphQL, and it has to
+ * hold for every surface that decodes one. What is GraphQL's is the error
+ * shape a client sees, and who is allowed to say what.
+ *
+ * Neither the codec nor this function looks at the graph: whether the node
+ * being renamed exists is the command's business when the batch is applied,
+ * and whether the result is a legal Show is `assertValidShowGraph`'s at the
+ * end of it.
  */
 export function parseGraphEdit(edit: GraphEditInput): GraphEdit {
-  switch (edit.type) {
-    case GRAPH_COMMAND_TYPES.addNode:
-      return { type: edit.type, node: parseNode(required(edit, "node", edit.node)) };
-    case GRAPH_COMMAND_TYPES.removeNode:
-      return { type: edit.type, nodeId: required(edit, "nodeId", edit.nodeId) };
-    case GRAPH_COMMAND_TYPES.moveNode:
-      return {
-        type: edit.type,
-        nodeId: required(edit, "nodeId", edit.nodeId),
-        position: position(edit),
-      };
-    case GRAPH_COMMAND_TYPES.renameNode:
-      return {
-        type: edit.type,
-        nodeId: required(edit, "nodeId", edit.nodeId),
-        name: required(edit, "name", edit.name),
-      };
-    case GRAPH_COMMAND_TYPES.reparentNode:
-      return {
-        type: edit.type,
-        nodeId: required(edit, "nodeId", edit.nodeId),
-        // Null is the whole point here: it means "out to Show level".
-        parentId: edit.parentId ?? null,
-        position: position(edit),
-      };
-    case GRAPH_COMMAND_TYPES.addEdge:
-      return { type: edit.type, edge: parseEdge(required(edit, "edge", edit.edge)) };
-    case GRAPH_COMMAND_TYPES.removeEdge:
-      return { type: edit.type, edgeId: required(edit, "edgeId", edit.edgeId) };
-    case GRAPH_COMMAND_TYPES.setFlowDefaultScene:
-      return {
-        type: edit.type,
-        flowId: required(edit, "flowId", edit.flowId),
-        // Also meaningfully null: a Flow can be left without an entry Scene.
-        sceneId: edit.sceneId ?? null,
-      };
-    case GRAPH_COMMAND_TYPES.setNodeColor:
-      return {
-        type: edit.type,
-        nodeId: required(edit, "nodeId", edit.nodeId),
-        color: edit.color === null ? null : parseFlowColor(required(edit, "color", edit.color))!,
-      };
-    case GRAPH_COMMAND_TYPES.setShapes:
-      return { type: edit.type, shapes: (edit.shapes ?? []).map(parseShape) };
-    case GRAPH_COMMAND_TYPES.setSourceFieldDefault:
-      return {
-        type: edit.type,
-        nodeId: required(edit, "nodeId", edit.nodeId),
-        fieldPath: required(edit, "fieldPath", edit.fieldPath),
-        value: edit.value ?? null,
-      };
-    case GRAPH_COMMAND_TYPES.addSceneVariable: {
-      const variable = required(edit, "variable", edit.variable);
-      return {
-        type: edit.type,
-        sceneId: required(edit, "sceneId", edit.sceneId),
-        variable: {
-          id: variable.id,
-          name: variable.name,
-          ...(variable.rank ? { rank: variable.rank } : {}),
-          ...(variable.type ? { type: parseType(variable.type) } : {}),
-          ...(variable.suggestedDimensions
-            ? { suggestedDimensions: variable.suggestedDimensions }
-            : {}),
-        },
-      };
-    }
-    case GRAPH_COMMAND_TYPES.renameSceneVariable:
-      return {
-        type: edit.type,
-        sceneId: required(edit, "sceneId", edit.sceneId),
-        variableId: required(edit, "variableId", edit.variableId),
-        name: required(edit, "name", edit.name),
-      };
-    case GRAPH_COMMAND_TYPES.setSceneVariableType: {
-      if (edit.variableType === undefined) {
-        throw badInput(`A "${edit.type}" edit needs a variableType.`);
-      }
-      return {
-        type: edit.type,
-        sceneId: required(edit, "sceneId", edit.sceneId),
-        variableId: required(edit, "variableId", edit.variableId),
-        variableType: edit.variableType === null ? null : (parseType(edit.variableType) ?? null),
-      };
-    }
-    case GRAPH_COMMAND_TYPES.reorderSceneVariables:
-      return {
-        type: edit.type,
-        sceneId: required(edit, "sceneId", edit.sceneId),
-        variableIds: required(edit, "variableIds", edit.variableIds),
-      };
-    case GRAPH_COMMAND_TYPES.removeSceneVariable:
-      return {
-        type: edit.type,
-        sceneId: required(edit, "sceneId", edit.sceneId),
-        variableId: required(edit, "variableId", edit.variableId),
-      };
-    case GRAPH_COMMAND_TYPES.setDevicePairingCode:
-      // Only ever travels server → client (#45, #111). `GraphEditInput` has
-      // no `pairingCode` field, so this isn't reachable with a code attached
-      // — but a client naming the type at all has misunderstood who decides,
-      // and being told so beats having it silently ignored.
-      throw badInput("Pairing codes are minted server-side and can't be set by an edit.");
-    case GRAPH_COMMAND_TYPES.setDevicePerConnection:
-      return {
-        type: edit.type,
-        nodeId: required(edit, "nodeId", edit.nodeId),
-        perConnection: required(edit, "perConnection", edit.perConnection),
-      };
-    default:
-      // A client speaking a newer dialect than this server. Refusing the
-      // batch is the only safe answer: skipping the edit would leave the
-      // client believing in a graph the server never built.
-      throw badInput(`Unknown Show graph edit "${edit.type}".`);
+  if (edit.type === GRAPH_COMMAND_TYPES.setDevicePairingCode) {
+    // Only ever travels server -> client (#45, #111). A client naming the
+    // type at all has misunderstood who decides, and being told so beats
+    // having it silently ignored.
+    throw badInput("Pairing codes are minted server-side and can't be set by an edit.");
+  }
+  try {
+    return decodeGraphEdit(edit);
+  } catch (error) {
+    // An unknown type included: a client speaking a newer dialect than this
+    // server. Refusing the batch is the only safe answer — skipping the edit
+    // would leave the client believing in a graph the server never built.
+    if (error instanceof GraphEditCodecError) throw badInput(error.message);
+    throw error;
   }
 }
 
@@ -414,6 +112,10 @@ export function parseGraphEdit(edit: GraphEditInput): GraphEdit {
  * (ADR-0003): a list of edits. One vocabulary, sent from two places.
  */
 export function serializeGraphEdit(edit: GraphEdit) {
+  // Every field the output type declares, so a client selecting one this edit
+  // says nothing about reads null rather than nothing. The edit's own fields
+  // come from the same codec the inbound direction uses, which is the point:
+  // a field cannot travel one way only.
   const base = {
     type: edit.type,
     nodeId: null as string | null,
@@ -426,7 +128,9 @@ export function serializeGraphEdit(edit: GraphEdit) {
     flowId: null as string | null,
     sceneId: null as string | null,
     variableId: null as string | null,
-    variable: null as { id: string; name: string; rank?: string } | null,
+    variableIds: null as string[] | null,
+    variable: null as unknown,
+    variableType: null as unknown,
     color: null as string | null,
     shapes: null as unknown[] | null,
     fieldPath: null as string[] | null,
@@ -434,64 +138,15 @@ export function serializeGraphEdit(edit: GraphEdit) {
     pairingCode: null as string | null,
     perConnection: null as boolean | null,
   };
-  switch (edit.type) {
-    case "graph.addNode":
-      return { ...base, node: serializeNode(edit.node) };
-    case "graph.removeNode":
-      return { ...base, nodeId: edit.nodeId };
-    case "graph.moveNode":
-      return { ...base, nodeId: edit.nodeId, position: edit.position };
-    case "graph.renameNode":
-      return { ...base, nodeId: edit.nodeId, name: edit.name };
-    case "graph.reparentNode":
-      return {
-        ...base,
-        nodeId: edit.nodeId,
-        parentId: edit.parentId,
-        position: edit.position,
-      };
-    case "graph.addEdge":
-      return { ...base, edge: serializeEdge(edit.edge) };
-    case "graph.removeEdge":
-      return { ...base, edgeId: edit.edgeId };
-    case "graph.setFlowDefaultScene":
-      return { ...base, flowId: edit.flowId, sceneId: edit.sceneId };
-    case "graph.setShapes":
-      return { ...base, shapes: edit.shapes };
-    case "graph.setSourceFieldDefault":
-      return {
-        ...base,
-        nodeId: edit.nodeId,
-        fieldPath: [...edit.fieldPath],
-        value: edit.value,
-      };
-    case "graph.setNodeColor":
-      return { ...base, nodeId: edit.nodeId, color: edit.color };
-    case "graph.addSceneVariable":
-      return { ...base, sceneId: edit.sceneId, variable: edit.variable };
-    case "graph.renameSceneVariable":
-      return {
-        ...base,
-        sceneId: edit.sceneId,
-        variableId: edit.variableId,
-        name: edit.name,
-      };
-    case "graph.setSceneVariableType":
-      return {
-        ...base,
-        sceneId: edit.sceneId,
-        variableId: edit.variableId,
-        variableType: edit.variableType,
-      };
-    case "graph.reorderSceneVariables":
-      return { ...base, sceneId: edit.sceneId, variableIds: [...edit.variableIds] };
-    case "graph.removeSceneVariable":
-      return { ...base, sceneId: edit.sceneId, variableId: edit.variableId };
-    case "graph.setDevicePairingCode":
-      return { ...base, nodeId: edit.nodeId, pairingCode: edit.pairingCode };
-    case "graph.setDevicePerConnection":
-      return { ...base, nodeId: edit.nodeId, perConnection: edit.perConnection };
-  }
+  const encoded = encodeGraphEdit(edit);
+  return {
+    ...base,
+    ...encoded,
+    // `node` and `edge` resolve through the GraphNode/GraphEdge interfaces
+    // (ADR-0007, ADR-0008), which need the domain `kind` the flat shape drops.
+    ...(edit.type === GRAPH_COMMAND_TYPES.addNode ? { node: serializeNode(edit.node) } : {}),
+    ...(edit.type === GRAPH_COMMAND_TYPES.addEdge ? { edge: serializeEdge(edit.edge) } : {}),
+  };
 }
 
 /**
