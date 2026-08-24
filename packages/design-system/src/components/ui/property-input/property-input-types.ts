@@ -29,6 +29,8 @@ export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   type?: PropertyInputType;
   /** Render the current value in place of the input while it is inactive. */
   renderInactiveValue?: (value: ShapeValue | null) => ReactNode;
+  /** Render controls inside the input's trailing addon. */
+  actions?: ReactNode;
   placeholder?: string;
   dimension?: "width" | "height";
   unit?: PropertyInputUnit;

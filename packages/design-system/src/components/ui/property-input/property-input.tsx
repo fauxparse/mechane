@@ -23,6 +23,7 @@ export const PropertyInput = <T extends ShapeValue>({
   value,
   type = "text",
   renderInactiveValue,
+  actions,
   placeholder,
   dimension,
   unit = "px",
@@ -152,6 +153,7 @@ export const PropertyInput = <T extends ShapeValue>({
               onScrubPointerDown={input.handleScrubPointerDown}
               onScrubPointerMove={input.handleScrubPointerMove}
               onScrubPointerEnd={input.handleScrubPointerEnd}
+              actions={actions}
               connector={
                 <Connector
                   dimension={dimension}

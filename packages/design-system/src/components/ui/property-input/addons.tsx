@@ -33,6 +33,7 @@ export function Addons<T extends ShapeValue>({
   onScrubPointerMove,
   onScrubPointerEnd,
   connector,
+  actions,
 }: {
   icon?: LucideIcon | string;
   inputType: PropertyInputType;
@@ -45,6 +46,7 @@ export function Addons<T extends ShapeValue>({
   onScrubPointerMove: PointerEventHandler<HTMLSpanElement>;
   onScrubPointerEnd: PointerEventHandler<HTMLSpanElement>;
   connector: ReactNode;
+  actions?: ReactNode;
 }) {
   return (
     <>
@@ -99,6 +101,11 @@ export function Addons<T extends ShapeValue>({
         </InputGroupAddon>
       )}
       {allowLink && connector}
+      {actions ? (
+        <InputGroupAddon align="inline-end" className="h-full gap-0 pr-1 has-[>button]:mr-0">
+          {actions}
+        </InputGroupAddon>
+      ) : null}
     </>
   );
 }

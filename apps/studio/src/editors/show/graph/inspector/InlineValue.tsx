@@ -1,7 +1,7 @@
 import type { Gesture, GraphEdit } from "@mechane/commands";
 import { setSourceFieldDefault } from "@mechane/commands";
 import { formatValuePath, type ShowGraph } from "@mechane/domain";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
 import type { GraphEditing } from "../../commands/use-graph-editing";
 import { SourcePrimitiveInput } from "./SourcePrimitiveInput";
@@ -13,10 +13,12 @@ export function InlineValue({
   row,
   nodeId,
   editing,
+  actions,
 }: {
   row: SourceValueRow;
   nodeId: string;
   editing: GraphEditing;
+  actions?: ReactNode;
 }) {
   const gesture = useRef<SourceValueGesture | null>(null);
   const commitTimer = useRef<number | null>(null);
@@ -60,6 +62,7 @@ export function InlineValue({
       value={row.value}
       path={row.fieldPath}
       label={row.label}
+      actions={actions}
       onChange={(value) => {
         updateValue(value);
         if (primitiveType === "boolean") finishGesture();
