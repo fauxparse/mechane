@@ -146,17 +146,29 @@ describe("resolveCanvasProperties", () => {
       root: {
         id: "root",
         type: "frame",
-        children: [{ id: "qr", type: "image", image: { kind: "variable", variableId: "variable_qr" } }],
+        children: [
+          { id: "qr", type: "image", image: { kind: "variable", variableId: "variable_qr" } },
+        ],
       },
     };
-    const first = resolveCanvasProperties(imageCanvas, { graph, variables: graph.nodes[1]?.kind === "scene" ? graph.nodes[1].variables : [] });
+    const first = resolveCanvasProperties(imageCanvas, {
+      graph,
+      variables: graph.nodes[1]?.kind === "scene" ? graph.nodes[1].variables : [],
+    });
     const firstImage = first.root.children?.[0];
     expect(firstImage && "image" in firstImage ? firstImage.image : undefined).toMatchObject({
       assetId: "device-qr:device_qr",
       revision: "AB23C",
       mimeType: "image/svg+xml",
     });
-    const firstUrl = firstImage && "image" in firstImage && typeof firstImage.image === "object" && firstImage.image !== null && "url" in firstImage.image ? firstImage.image.url : "";
+    const firstUrl =
+      firstImage &&
+      "image" in firstImage &&
+      typeof firstImage.image === "object" &&
+      firstImage.image !== null &&
+      "url" in firstImage.image
+        ? firstImage.image.url
+        : "";
     expect(firstUrl).toMatch(/^data:image\/svg\+xml,/);
     const changedGraph: ShowGraph = {
       ...graph,
@@ -169,9 +181,15 @@ describe("resolveCanvasProperties", () => {
       variables: graph.nodes[1]?.kind === "scene" ? graph.nodes[1].variables : [],
     });
     const changedImage = changed.root.children?.[0];
-    const changedUrl = changedImage && "image" in changedImage && typeof changedImage.image === "object" && changedImage.image !== null && "url" in changedImage.image ? changedImage.image.url : "";
+    const changedUrl =
+      changedImage &&
+      "image" in changedImage &&
+      typeof changedImage.image === "object" &&
+      changedImage.image !== null &&
+      "url" in changedImage.image
+        ? changedImage.image.url
+        : "";
     expect(changedUrl).not.toBe(firstUrl);
-
   });
   it("resolves a Shape Field path before coercing an Element property", () => {
     const candidate: Shape = {
@@ -202,7 +220,9 @@ describe("resolveCanvasProperties", () => {
       },
     };
     const resolved = resolveCanvasProperties(shapeCanvas, {
-      variables: [{ id: "candidate", name: "Candidate", type: { kind: "shape", shapeId: candidate.id } }],
+      variables: [
+        { id: "candidate", name: "Candidate", type: { kind: "shape", shapeId: candidate.id } },
+      ],
       shapes: [candidate],
       values: { candidate: { field_name: "Alice", field_votes: 12 } },
     });

@@ -371,7 +371,10 @@ export const Header = ({
                   <AlertTitle>This show has unpublished changes.</AlertTitle>
                 </Alert>
               ) : null}
-              <DropdownMenuItem disabled={!dirty || publishing || Boolean(publishDisabledReason)} onClick={onPublish}>
+              <DropdownMenuItem
+                disabled={!dirty || publishing || Boolean(publishDisabledReason)}
+                onClick={onPublish}
+              >
                 <CheckIcon /> {publishing ? "Publishing…" : "Publish changes"}
               </DropdownMenuItem>
               {runActive ? (

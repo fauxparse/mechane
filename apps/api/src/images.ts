@@ -45,10 +45,18 @@ function positiveDimensions(width: number, height: number): { width: number; hei
 }
 
 function dimensions(bytes: Buffer, mimeType: string): { width: number; height: number } {
-  if (mimeType === "image/png" && bytes.length >= 24 && bytes.subarray(0, 8).equals(Buffer.from("89504e470d0a1a0a", "hex"))) {
+  if (
+    mimeType === "image/png" &&
+    bytes.length >= 24 &&
+    bytes.subarray(0, 8).equals(Buffer.from("89504e470d0a1a0a", "hex"))
+  ) {
     return positiveDimensions(bytes.readUInt32BE(16), bytes.readUInt32BE(20));
   }
-  if (mimeType === "image/gif" && bytes.length >= 10 && bytes.subarray(0, 6).toString() === "GIF89a") {
+  if (
+    mimeType === "image/gif" &&
+    bytes.length >= 10 &&
+    bytes.subarray(0, 6).toString() === "GIF89a"
+  ) {
     fail("UNSUPPORTED_MEDIA_TYPE", "Animated and legacy GIF images are not supported.");
   }
   if (mimeType === "image/jpeg" && bytes.length > 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
@@ -66,13 +74,14 @@ function dimensions(bytes: Buffer, mimeType: string): { width: number; height: n
       offset += 2 + length;
     }
   }
-  if (mimeType === "image/webp" && bytes.length >= 30 && bytes.subarray(0, 4).toString() === "RIFF") {
+  if (
+    mimeType === "image/webp" &&
+    bytes.length >= 30 &&
+    bytes.subarray(0, 4).toString() === "RIFF"
+  ) {
     const chunk = bytes.subarray(12, 16).toString();
     if (chunk === "VP8X") {
-      return positiveDimensions(
-        1 + bytes.readUIntLE(24, 3),
-        1 + bytes.readUIntLE(27, 3),
-      );
+      return positiveDimensions(1 + bytes.readUIntLE(24, 3), 1 + bytes.readUIntLE(27, 3));
     }
   }
   if (mimeType === "image/svg+xml") {
@@ -80,7 +89,9 @@ function dimensions(bytes: Buffer, mimeType: string): { width: number; height: n
     if (/<script\b|\bon[a-z]+\s*=|javascript:/i.test(text)) {
       fail("MALFORMED_IMAGE", "SVG contains executable content.");
     }
-    const viewBox = text.match(/\bviewBox\s*=\s*["']\s*[-\d.]+\s+[-\d.]+\s+([\d.]+)\s+([\d.]+)\s*["']/i);
+    const viewBox = text.match(
+      /\bviewBox\s*=\s*["']\s*[-\d.]+\s+[-\d.]+\s+([\d.]+)\s+([\d.]+)\s*["']/i,
+    );
     const width = text.match(/\bwidth\s*=\s*["']\s*(\d+(?:\.\d+)?)\s*(?:px)?\s*["']/i);
     const height = text.match(/\bheight\s*=\s*["']\s*(\d+(?:\.\d+)?)\s*(?:px)?\s*["']/i);
     const parsedWidth = viewBox ? Number(viewBox[1]) : width ? Number(width[1]) : NaN;
@@ -91,9 +102,21 @@ function dimensions(bytes: Buffer, mimeType: string): { width: number; height: n
 }
 
 function verifiedMimeType(bytes: Buffer, declared: string): string {
-  const supported = new Set(["image/jpeg", "image/png", "image/webp", "image/avif", "image/heic", "image/heif", "image/svg+xml"]);
-  if (!supported.has(declared)) fail("UNSUPPORTED_MEDIA_TYPE", "The image media type is not supported.");
-  if (declared === "image/png" && !bytes.subarray(0, 8).equals(Buffer.from("89504e470d0a1a0a", "hex"))) {
+  const supported = new Set([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/avif",
+    "image/heic",
+    "image/heif",
+    "image/svg+xml",
+  ]);
+  if (!supported.has(declared))
+    fail("UNSUPPORTED_MEDIA_TYPE", "The image media type is not supported.");
+  if (
+    declared === "image/png" &&
+    !bytes.subarray(0, 8).equals(Buffer.from("89504e470d0a1a0a", "hex"))
+  ) {
     fail("MALFORMED_IMAGE", "The uploaded bytes are not a PNG.");
   }
   if (declared === "image/svg+xml" && !bytes.toString("utf8").includes("<svg")) {
@@ -117,7 +140,10 @@ export function processImage(bytes: Buffer, declaredMimeType: string): Processed
     byteLength: bytes.byteLength,
     mimeType,
     ...size,
-    blurHash: mimeType === "image/svg+xml" ? null : createHash("sha256").update(bytes).digest("base64url").slice(0, 32),
+    blurHash:
+      mimeType === "image/svg+xml"
+        ? null
+        : createHash("sha256").update(bytes).digest("base64url").slice(0, 32),
   };
 }
 

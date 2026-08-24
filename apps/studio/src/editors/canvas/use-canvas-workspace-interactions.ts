@@ -8,7 +8,11 @@ import type { Position, FrameElement } from "@mechane/domain";
 
 import type { CanvasArtboardDocument } from "../../api/canvas";
 import { useEditableArea } from "../../components/EditorLayout/editable-area";
-import { contentOrigin, selectedCanvasRects, useCanvasGeometry } from "./components/canvas-geometry";
+import {
+  contentOrigin,
+  selectedCanvasRects,
+  useCanvasGeometry,
+} from "./components/canvas-geometry";
 import type { CanvasClientRect } from "./components/canvas-geometry";
 import type { CanvasSelection } from "./components/canvas-selection";
 import { useCanvasCamera } from "./components/use-canvas-camera";

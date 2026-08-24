@@ -21,7 +21,8 @@ const authHandler = toNodeHandler(auth);
 
 async function readBody(request: IncomingMessage): Promise<Buffer> {
   const chunks: Buffer[] = [];
-  for await (const chunk of request) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  for await (const chunk of request)
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   return Buffer.concat(chunks);
 }
 
@@ -36,7 +37,9 @@ async function handleBinaryRoute(req: IncomingMessage, res: ServerResponse): Pro
     return true;
   }
   if (parts[1] === "uploads" && parts[2] && req.method === "PUT") {
-    const session = await auth.api.getSession({ headers: new Headers(req.headers as Record<string, string>) });
+    const session = await auth.api.getSession({
+      headers: new Headers(req.headers as Record<string, string>),
+    });
     if (!session) {
       res.statusCode = 401;
       res.end("Authentication required.");
@@ -52,7 +55,13 @@ async function handleBinaryRoute(req: IncomingMessage, res: ServerResponse): Pro
     const [asset] = await db
       .select()
       .from(imageAssets)
-      .where(and(eq(imageAssets.id, parts[2]), eq(imageAssets.revision, parts[3]), eq(imageAssets.state, "active")));
+      .where(
+        and(
+          eq(imageAssets.id, parts[2]),
+          eq(imageAssets.revision, parts[3]),
+          eq(imageAssets.state, "active"),
+        ),
+      );
     if (!asset) {
       res.statusCode = 404;
       res.end();

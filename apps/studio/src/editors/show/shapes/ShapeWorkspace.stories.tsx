@@ -10,7 +10,13 @@ const SHAPES: Shape[] = [
     id: "shape_vote",
     name: "Vote",
     fields: [
-      { id: "field_prompt", name: "prompt", type: "text", required: true, defaultValue: "Choose one" },
+      {
+        id: "field_prompt",
+        name: "prompt",
+        type: "text",
+        required: true,
+        defaultValue: "Choose one",
+      },
       { id: "field_count", name: "count", type: "number", required: true, defaultValue: 0 },
     ],
   },

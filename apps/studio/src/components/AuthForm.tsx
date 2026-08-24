@@ -21,7 +21,7 @@ import {
   MailIcon,
   UserRoundIcon,
 } from "@mechane/design-system";
-import type { FormEvent } from "react";
+import type { SubmitEvent } from "react";
 import { useId, useState } from "react";
 
 import "./AuthForm.css";
@@ -103,7 +103,7 @@ export function AuthForm({
   const formId = useId();
   const copy = COPY[mode];
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     onSubmit({ name, email, password });
   };

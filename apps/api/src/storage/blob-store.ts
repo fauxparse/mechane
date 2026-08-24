@@ -83,7 +83,10 @@ export class LocalBlobStore implements BlobStore {
 }
 
 function isMissingObject(error: unknown): boolean {
-  return error instanceof S3ServiceException && ["NoSuchKey", "NotFound", "NoSuchBucket"].includes(error.name);
+  return (
+    error instanceof S3ServiceException &&
+    ["NoSuchKey", "NotFound", "NoSuchBucket"].includes(error.name)
+  );
 }
 
 export class MinioBlobStore implements BlobStore {
@@ -112,7 +115,11 @@ export class MinioBlobStore implements BlobStore {
       try {
         await this.client.send(new HeadBucketCommand({ Bucket: this.bucket }));
       } catch (error: unknown) {
-        if (!(error instanceof S3ServiceException) || !["NotFound", "NoSuchBucket"].includes(error.name)) throw error;
+        if (
+          !(error instanceof S3ServiceException) ||
+          !["NotFound", "NoSuchBucket"].includes(error.name)
+        )
+          throw error;
         await this.client.send(new CreateBucketCommand({ Bucket: this.bucket }));
       }
     })();
@@ -134,17 +141,21 @@ export class MinioBlobStore implements BlobStore {
 
   async putUpload(sessionId: string, bytes: Uint8Array): Promise<void> {
     await this.ensureBucket();
-    await this.client.send(new PutObjectCommand({
-      Bucket: this.bucket,
-      Key: this.uploadKey(sessionId),
-      Body: bytes,
-      ContentLength: bytes.byteLength,
-    }));
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: this.uploadKey(sessionId),
+        Body: bytes,
+        ContentLength: bytes.byteLength,
+      }),
+    );
   }
 
   async readUpload(sessionId: string): Promise<Buffer> {
     await this.ensureBucket();
-    const response = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: this.uploadKey(sessionId) }));
+    const response = await this.client.send(
+      new GetObjectCommand({ Bucket: this.bucket, Key: this.uploadKey(sessionId) }),
+    );
     if (!response.Body) throw new Error(`Upload ${sessionId} has no stored body.`);
     return Buffer.from(await response.Body.transformToByteArray());
   }
@@ -156,13 +167,15 @@ export class MinioBlobStore implements BlobStore {
       await this.client.send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }));
     } catch (error) {
       if (!isMissingObject(error)) throw error;
-      await this.client.send(new CopyObjectCommand({
-        Bucket: this.bucket,
-        Key: key,
-        CopySource: encodeURIComponent(`${this.bucket}/${this.uploadKey(sessionId)}`),
-        ContentType: candidate.mimeType,
-        MetadataDirective: "REPLACE",
-      }));
+      await this.client.send(
+        new CopyObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+          CopySource: encodeURIComponent(`${this.bucket}/${this.uploadKey(sessionId)}`),
+          ContentType: candidate.mimeType,
+          MetadataDirective: "REPLACE",
+        }),
+      );
     }
     await this.deleteUpload(sessionId);
   }
@@ -170,7 +183,9 @@ export class MinioBlobStore implements BlobStore {
   async readBlob(digest: string): Promise<Buffer | null> {
     await this.ensureBucket();
     try {
-      const response = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: this.blobKey(digest) }));
+      const response = await this.client.send(
+        new GetObjectCommand({ Bucket: this.bucket, Key: this.blobKey(digest) }),
+      );
       if (!response.Body) return null;
       return Buffer.from(await response.Body.transformToByteArray());
     } catch (error) {
@@ -181,7 +196,9 @@ export class MinioBlobStore implements BlobStore {
 
   async deleteUpload(sessionId: string): Promise<void> {
     await this.ensureBucket();
-    await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: this.uploadKey(sessionId) }));
+    await this.client.send(
+      new DeleteObjectCommand({ Bucket: this.bucket, Key: this.uploadKey(sessionId) }),
+    );
   }
 }
 

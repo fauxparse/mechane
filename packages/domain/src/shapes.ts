@@ -12,10 +12,7 @@ export const PRIMITIVE_TYPES = [
 export type PrimitiveType = (typeof PRIMITIVE_TYPES)[number];
 
 /** A recursive Type: primitive, array-of-Type, or a named Shape reference. */
-export type Type =
-  | PrimitiveType
-  | { kind: "array"; of: Type }
-  | { kind: "shape"; shapeId: string };
+export type Type = PrimitiveType | { kind: "array"; of: Type } | { kind: "shape"; shapeId: string };
 
 export interface TextValue {
   kind: "text";
@@ -433,7 +430,10 @@ export function findCoercion(from: PrimitiveType, to: PrimitiveType): Coercion |
 }
 
 /** Returns the immediate fields of a named Shape type. */
-export function fieldsForType(type: Type | null | undefined, shapes: readonly Shape[]): ShapeField[] {
+export function fieldsForType(
+  type: Type | null | undefined,
+  shapes: readonly Shape[],
+): ShapeField[] {
   if (!type || typeof type === "string" || type.kind !== "shape") return [];
   return shapes.find((shape) => shape.id === type.shapeId)?.fields ?? [];
 }

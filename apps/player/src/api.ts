@@ -2,10 +2,7 @@ import type { Canvas, GraphNode, ShowGraph, SourceValues } from "@mechane/domain
 import type { RealtimeSubscriber, RealtimeSubscription } from "@mechane/realtime";
 import { playerChannel } from "@mechane/realtime";
 import { AblyRealtimeSubscriber, WebSocketRealtimeSubscriber } from "@mechane/realtime/browser";
-import {
-  GetPlayerSessionQuery,
-  graphqlRequest,
-} from "@mechane/graphql-schema";
+import { GetPlayerSessionQuery, graphqlRequest } from "@mechane/graphql-schema";
 import { useCallback, useEffect, useState } from "react";
 import { defaultApiBaseUrl, shouldUseRealtimeSocket } from "./api-url";
 import { normalizePlayerSession } from "./player-mappers";
@@ -99,23 +96,30 @@ export function usePlayerSession(code: string) {
   const normalizedCode = code.trim().toUpperCase();
   const [state, setState] = useState<PlayerState>({ status: "idle" });
 
-  const load = useCallback(async (signal: AbortSignal, showLoading: boolean) => {
-    if (showLoading) setState((current) => ({ status: "loading", session: current.status === "ready" ? current.session : null }));
-    try {
-      const session = await fetchPlayerSession(normalizedCode, signal);
-      if (!signal.aborted) setState({ status: "ready", session });
-      return session;
-    } catch (error) {
-      if (signal.aborted) return null;
-      const requestError = error instanceof PlayerRequestError ? error : null;
-      setState({
-        status: "error",
-        message: requestError?.message ?? "Unable to connect. Check your network and try again.",
-        notFound: requestError?.status === 404,
-      });
-      return null;
-    }
-  }, [normalizedCode]);
+  const load = useCallback(
+    async (signal: AbortSignal, showLoading: boolean) => {
+      if (showLoading)
+        setState((current) => ({
+          status: "loading",
+          session: current.status === "ready" ? current.session : null,
+        }));
+      try {
+        const session = await fetchPlayerSession(normalizedCode, signal);
+        if (!signal.aborted) setState({ status: "ready", session });
+        return session;
+      } catch (error) {
+        if (signal.aborted) return null;
+        const requestError = error instanceof PlayerRequestError ? error : null;
+        setState({
+          status: "error",
+          message: requestError?.message ?? "Unable to connect. Check your network and try again.",
+          notFound: requestError?.status === 404,
+        });
+        return null;
+      }
+    },
+    [normalizedCode],
+  );
   // The subscription is created after the GraphQL snapshot resolves and is
   // closed explicitly below; React Doctor cannot follow that nested ownership.
   // react-doctor-disable-next-line react-doctor/effect-needs-cleanup

@@ -85,7 +85,6 @@ services:
       - "53:53/tcp"
       - "53:53/udp"
 
-
 volumes:
   mechane-minio-data:
   mechane-postgres-18-data:

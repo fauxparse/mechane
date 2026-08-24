@@ -240,7 +240,9 @@ describe("every primitive command's edits reproduce it", () => {
     const shape: Shape = {
       id: "shape_vote",
       name: "Vote",
-      fields: [{ id: "field_count", name: "count", type: "number", required: true, defaultValue: 0 }],
+      fields: [
+        { id: "field_count", name: "count", type: "number", required: true, defaultValue: 0 },
+      ],
     };
     expectEditsReproduce(setShapes([shape]));
   });
