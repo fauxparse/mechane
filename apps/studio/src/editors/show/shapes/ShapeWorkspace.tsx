@@ -88,14 +88,14 @@ function shapeReferences(shapes: readonly Shape[], sourceId: string, targetId: s
     const shape = shapes.find((candidate) => candidate.id === shapeId);
     return (
       shape?.fields.some((field) => {
-        if (typeof field.type === "string" || field.type.kind === "object") return false;
+        if (typeof field.type === "string") return false;
         if (field.type.kind === "shape") return visit(field.type.shapeId);
         return visitType(field.type.of);
       }) ?? false
     );
   };
   const visitType = (type: Type): boolean => {
-    if (typeof type === "string" || type.kind === "object") return false;
+    if (typeof type === "string") return false;
     if (type.kind === "shape") return visit(type.shapeId);
     return visitType(type.of);
   };
@@ -764,7 +764,7 @@ function FieldDetails({
     onSubmit: ({ value }) => onChange({ name: value.name }),
   });
   const referencesCycle = (type: Type) => {
-    if (typeof type === "string" || type.kind === "object") return false;
+    if (typeof type === "string") return false;
     const target = referencedShapeId(type);
     return target ? shapeReferences(shapes, target, currentShapeId) : false;
   };
@@ -901,12 +901,11 @@ function FieldDetails({
 function typeLabel(type: Type): string {
   if (typeof type === "string") return type === "datetime" ? "date/time" : type;
   if (type.kind === "array") return "array";
-  if (type.kind === "shape") return "Shape";
-  return "object";
+  return "Shape";
 }
 
 function referencedShapeId(type: Type): string | null {
-  if (typeof type === "string" || type.kind === "object") return null;
+  if (typeof type === "string") return null;
   if (type.kind === "shape") return type.shapeId;
   return typeof type.of === "object" && type.of.kind === "shape" ? type.of.shapeId : null;
 }

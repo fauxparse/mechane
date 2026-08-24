@@ -18,5 +18,6 @@ export function useDragState(nodeId: string) {
     // gesture, not a rejected target.
     dimmed: inFlight && !targetable && connectionNodeId !== nodeId,
     variableIds: targets?.variableIds,
+    fieldIds: targets?.fieldIds,
   };
 }

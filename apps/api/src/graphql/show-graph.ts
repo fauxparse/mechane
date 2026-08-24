@@ -19,7 +19,7 @@ import {
 } from "@mechane/domain";
 import { GraphQLError } from "graphql";
 
-import type { AppliedShowGraphEdits, StoredShowGraph } from "../db/show-graph";
+import type { StoredShowGraph } from "../db/show-graph";
 
 export interface PositionInput {
   x: number;
@@ -106,6 +106,8 @@ export interface GraphEditInput {
   perConnection?: boolean | null;
   variableType?: TypeInput | null;
   shapes?: ShapeInput[] | null;
+  fieldPath?: string[] | null;
+  value?: unknown;
 }
 
 function badInput(message: string): GraphQLError {
@@ -150,7 +152,6 @@ function parseType(input: TypeInput | null | undefined): Type | undefined {
     return input.kind as Type;
   }
   if (input.kind === "array" && input.of) return { kind: "array", of: parseType(input.of)! };
-  if (input.kind === "object") return { kind: "object" };
   if (input.kind === "shape" && input.shapeId) return { kind: "shape", shapeId: input.shapeId };
   throw badInput(`Invalid Shape type "${input.kind}".`);
 }
@@ -330,6 +331,13 @@ export function parseGraphEdit(edit: GraphEditInput): GraphEdit {
       };
     case GRAPH_COMMAND_TYPES.setShapes:
       return { type: edit.type, shapes: (edit.shapes ?? []).map(parseShape) };
+    case GRAPH_COMMAND_TYPES.setSourceFieldDefault:
+      return {
+        type: edit.type,
+        nodeId: required(edit, "nodeId", edit.nodeId),
+        fieldPath: required(edit, "fieldPath", edit.fieldPath),
+        value: edit.value ?? null,
+      };
     case GRAPH_COMMAND_TYPES.addSceneVariable: {
       const variable = required(edit, "variable", edit.variable);
       return {
@@ -420,6 +428,9 @@ export function serializeGraphEdit(edit: GraphEdit) {
     variableId: null as string | null,
     variable: null as { id: string; name: string; rank?: string } | null,
     color: null as string | null,
+    shapes: null as unknown[] | null,
+    fieldPath: null as string[] | null,
+    value: null as unknown,
     pairingCode: null as string | null,
     perConnection: null as boolean | null,
   };
@@ -445,6 +456,15 @@ export function serializeGraphEdit(edit: GraphEdit) {
       return { ...base, edgeId: edit.edgeId };
     case "graph.setFlowDefaultScene":
       return { ...base, flowId: edit.flowId, sceneId: edit.sceneId };
+    case "graph.setShapes":
+      return { ...base, shapes: edit.shapes };
+    case "graph.setSourceFieldDefault":
+      return {
+        ...base,
+        nodeId: edit.nodeId,
+        fieldPath: [...edit.fieldPath],
+        value: edit.value,
+      };
     case "graph.setNodeColor":
       return { ...base, nodeId: edit.nodeId, color: edit.color };
     case "graph.addSceneVariable":
@@ -474,17 +494,6 @@ export function serializeGraphEdit(edit: GraphEdit) {
   }
 }
 
-/** The answer to an edit batch: a version, a timestamp, and any amendments. */
-export function serializeAppliedEdits(applied: AppliedShowGraphEdits) {
-  return {
-    showId: applied.showId,
-    state: applied.state,
-    updatedAt: applied.updatedAt.toISOString(),
-    version: applied.version,
-    amendments: applied.amendments.map(serializeGraphEdit),
-  };
-}
-
 /**
  * The wire shape of a graph. Graph nodes retain their domain `kind` internally
  * so GraphQL's GraphNode interface resolver can select the concrete output
@@ -501,6 +510,11 @@ export function serializeShowGraph(graph: StoredShowGraph) {
     nodes: graph.nodes.map(serializeNode),
     edges: graph.edges.map(serializeEdge),
     shapes: (graph.shapes ?? []).map(serializeShape),
+    sourceFieldDefaults: (graph.sourceFieldDefaults ?? []).map((fieldDefault) => ({
+      nodeId: fieldDefault.nodeId,
+      fieldPath: fieldDefault.fieldPath,
+      value: fieldDefault.value,
+    })),
     losses: graph.losses ?? [],
   };
 }

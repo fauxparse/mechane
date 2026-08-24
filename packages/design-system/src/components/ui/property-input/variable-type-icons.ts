@@ -27,7 +27,7 @@ export const VARIABLE_TYPE_ICONS = {
   color: PaletteIcon,
   date: CalendarIcon,
   datetime: CalendarClockIcon,
-} as const satisfies Record<ShapeValue["kind"], LucideIcon>;
+} as const satisfies Record<ShapeValue["kind"] | "object", LucideIcon>;
 
 export type VariableTypeIconKind = keyof typeof VARIABLE_TYPE_ICONS;
 
@@ -46,7 +46,9 @@ export function variableTypeKind(
   return isVariableTypeIconKind(type.kind) ? type.kind : "object";
 }
 
-export function variableTypeIcon(type: Type | ShapeValue["kind"] | null | undefined): LucideIcon {
+export function variableTypeIcon(
+  type: Type | ShapeValue["kind"] | "object" | null | undefined,
+): LucideIcon {
   return VARIABLE_TYPE_ICONS[variableTypeKind(type)];
 }
 
@@ -57,19 +59,4 @@ export function variableTypeLabel(type: Type | ShapeValue["kind"] | null | undef
     default:
       return upperFirst(variableTypeKind(type));
   }
-}
-
-/** Domain Type corresponding to an icon-map key, preserving array/shape detail. */
-export function typeFromVariableKind(kind: VariableTypeIconKind, previous?: Type | null): Type {
-  if (kind === "array") {
-    return previous && typeof previous === "object" && previous.kind === "array"
-      ? previous
-      : { kind: "array", of: "text" };
-  }
-  if (kind === "object") {
-    return previous && typeof previous === "object" && previous.kind === "shape"
-      ? previous
-      : { kind: "object" };
-  }
-  return kind;
 }

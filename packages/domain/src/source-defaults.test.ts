@@ -34,7 +34,10 @@ const graph = {
       parentId: null,
       position: { x: 0, y: 0 },
       type: { kind: "shape" as const, shapeId: "shape_vote" },
-      fieldDefaults: [{ nodeId: "source_votes", fieldPath: ["field_label"], value: "votes" }],
+      fieldDefaults: [
+        { nodeId: "source_votes", fieldPath: ["field_count"], value: 99 },
+        { nodeId: "source_votes", fieldPath: ["field_label"], value: "votes" },
+      ],
     },
     {
       id: "source_count",

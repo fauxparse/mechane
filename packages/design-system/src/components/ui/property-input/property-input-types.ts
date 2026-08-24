@@ -29,6 +29,8 @@ export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   type?: PropertyInputType;
   /** Render the current value in place of the input while it is inactive. */
   renderInactiveValue?: (value: ShapeValue | null) => ReactNode;
+  /** Render controls inside the input's trailing addon. */
+  actions?: ReactNode;
   placeholder?: string;
   dimension?: "width" | "height";
   unit?: PropertyInputUnit;
@@ -51,4 +53,6 @@ export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   /** Marks the min/max menu items as active. */
   constraints?: PropertyInputConstraints;
   onConstraintToggle?: (constraint: PropertyInputConstraint, enabled: boolean) => void;
+  /** Reports why a draft could not be committed, or clears the current error. */
+  onValidationError?: (message: string | null) => void;
 };

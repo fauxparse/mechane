@@ -219,13 +219,13 @@ describe("toEditInput", () => {
         type: "graph.setSceneVariableType",
         sceneId: "s",
         variableId: "v",
-        variableType: { kind: "object" },
+        variableType: { kind: "shape", shapeId: "profile" },
       }),
     ).toEqual({
       type: "graph.setSceneVariableType",
       sceneId: "s",
       variableId: "v",
-      variableType: { kind: "object" },
+      variableType: { kind: "shape", shapeId: "profile" },
     });
     expect(
       toEditInput({

@@ -34,6 +34,7 @@ export function Menu<T extends ShapeValue>({
   presets,
   auto,
   allowAuto,
+  allowLink = true,
   linkedVariable,
   onColorChange,
 }: {
@@ -45,9 +46,18 @@ export function Menu<T extends ShapeValue>({
   presets?: readonly PropertyInputPreset[];
   auto: boolean;
   allowAuto?: boolean;
+  allowLink?: boolean;
   linkedVariable: VariableReference<T> | null;
   onColorChange: (value: string | null) => void;
 }) {
+  const hasMenuItems =
+    inputType === "color" ||
+    dimension !== undefined ||
+    (presets?.length ?? 0) > 0 ||
+    allowAuto ||
+    allowLink;
+  if (!hasMenuItems) return null;
+
   return (
     <ComboboxContent className={cn("p-0.5 min-w-fit", inputType === "color" && "overflow-y-auto")}>
       {inputType === "color" && (
@@ -132,10 +142,12 @@ export function Menu<T extends ShapeValue>({
               <CheckIcon className={cn("ml-auto", auto ? "opacity-100" : "opacity-0")} />
             </ComboboxItem>
           )}
-          <ComboboxItem value="connect">
-            <PlugIcon />
-            {linkedVariable ? "Change variable…" : "Connect variable…"}
-          </ComboboxItem>
+          {allowLink && (
+            <ComboboxItem value="connect">
+              <PlugIcon />
+              {linkedVariable ? "Change variable…" : "Connect variable…"}
+            </ComboboxItem>
+          )}
         </ComboboxGroup>
       </ComboboxList>
     </ComboboxContent>

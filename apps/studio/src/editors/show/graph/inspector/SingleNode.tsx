@@ -13,6 +13,7 @@ import {
 import { FLOW_COLORS, FlowColor, type GraphNode } from "@mechane/domain";
 import type { GraphEditing } from "../../commands/use-graph-editing";
 import { Variables } from "./Variables";
+import { SourceValues } from "./SourceValues";
 
 export function SingleNode({ node, editing }: { node: GraphNode; editing: GraphEditing }) {
   return (
@@ -88,7 +89,10 @@ export function SingleNode({ node, editing }: { node: GraphNode; editing: GraphE
         </>
       )}
 
-      {node.kind === "scene" ? <Variables node={node} editing={editing} shapes={editing.graph.shapes ?? []} /> : null}
+      {node.kind === "scene" ? (
+        <Variables node={node} editing={editing} shapes={editing.graph.shapes ?? []} />
+      ) : null}
+      {node.kind === "source" ? <SourceValues node={node} editing={editing} /> : null}
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="inspector-name">Name</Label>
@@ -109,12 +113,6 @@ export function SingleNode({ node, editing }: { node: GraphNode; editing: GraphE
         <p className="text-xs text-muted-foreground">
           Expressions arrive with the Transformer slice — they evaluate server-side (ADR-0004), so
           there's nothing to type here yet.
-        </p>
-      ) : null}
-
-      {node.kind === "source" ? (
-        <p className="text-xs text-muted-foreground">
-          Shapes and default values arrive with the Source slice.
         </p>
       ) : null}
     </SidebarContent>

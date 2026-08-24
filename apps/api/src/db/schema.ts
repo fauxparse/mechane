@@ -188,9 +188,9 @@ export const runs = pgTable(
     status: text("status").notNull().default("active"),
     startedAt: timestamp("started_at").notNull().defaultNow(),
     endedAt: timestamp("ended_at"),
-    // A Run owns the live values for its Sources. This is a snapshot of the
-    // published graph's defaults at start time, so later graph edits cannot
-    // rewrite history or mutate a live performance.
+    // A Run owns the live values for its Sources. This starts as a snapshot of
+    // the published graph's defaults; explicit Source value edits in the
+    // director are synchronized into the active Run immediately.
     sourceValues: jsonb("source_values")
       .notNull()
       .default(sql`'{}'::jsonb`),

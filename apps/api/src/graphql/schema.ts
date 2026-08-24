@@ -307,7 +307,6 @@ export const schema = createSchema<GraphQLContext>({
       color: String
       date: String
       datetime: String
-      object: JSON
       array: JSON
     }
 
@@ -342,6 +341,7 @@ export const schema = createSchema<GraphQLContext>({
     }
 
     type SourceFieldDefault {
+      nodeId: ID!
       fieldPath: [ID!]!
       value: JSON
     }
@@ -464,7 +464,6 @@ export const schema = createSchema<GraphQLContext>({
       path: [String!]!
       reason: String!
     }
-
     "A Show's graph in one state. Draft and published are independently readable (ADR-0002)."
     type ShowGraph {
       showId: ID!
@@ -473,6 +472,8 @@ export const schema = createSchema<GraphQLContext>({
       nodes: [GraphNode!]!
       edges: [GraphEdge!]!
       shapes: [Shape!]!
+      "Sparse graph-owned Source values, keyed by Source node and field path."
+      sourceFieldDefaults: [SourceFieldDefault!]!
       updatedAt: String!
       """
       How many times this graph has been written. An edit batch names the
@@ -693,12 +694,10 @@ export const schema = createSchema<GraphQLContext>({
       parentId: ID
       "The Show node editor colorway for graph.setNodeColor."
       color: String
-      sceneId: ID
-      variableId: ID
-      variableIds: [ID!]
-      variable: SceneVariable
-      "The Variable's Type, for graph.setSceneVariableType."
-      variableType: Type
+      "The graph-owned Source field path for graph.setSourceFieldDefault."
+      fieldPath: [ID!]
+      "The graph-owned Source field value; null clears the override."
+      value: JSON
       "Devices only: the code the server minted for a Device this batch created (#45)."
       pairingCode: String
       "Devices only: whether each connection is its own instance, for graph.setDevicePerConnection."
@@ -710,7 +709,7 @@ export const schema = createSchema<GraphQLContext>({
     "graph.addEdge", "graph.removeEdge", "graph.setFlowDefaultScene",
     "graph.setNodeColor", "graph.addSceneVariable",
     "graph.renameSceneVariable", "graph.setSceneVariableType", "graph.reorderSceneVariables",
-    "graph.removeSceneVariable", or "graph.setDevicePerConnection".
+    "graph.setSourceFieldDefault", "graph.removeSceneVariable", or "graph.setDevicePerConnection".
 
     Every other field is optional because GraphQL has no input unions:
     \`type\` decides which of them are read, and an edit missing one its type
@@ -739,10 +738,13 @@ export const schema = createSchema<GraphQLContext>({
       variable: SceneVariableInput
       "The Variable's Type, for graph.setSceneVariableType. Null clears it."
       variableType: TypeInput
+      "The Source field path, for graph.setSourceFieldDefault."
+      fieldPath: [ID!]
+      "The Source field value; null clears the override."
+      value: JSON
       "Devices only: whether each connection is its own instance, for graph.setDevicePerConnection."
       perConnection: Boolean
     }
-
     """
     One serialisable Show edit. \`type\` selects a graph or Canvas command;
     Canvas commands additionally name the Canvas they target.
@@ -765,7 +767,12 @@ export const schema = createSchema<GraphQLContext>({
       variable: SceneVariableInput
       "The Variable's Type, for graph.setSceneVariableType. Null clears it."
       shapes: [ShapeInput!]
+      "The Variable's Type, for graph.setSceneVariableType. Null clears it."
       variableType: TypeInput
+      "The Source field path, for graph.setSourceFieldDefault."
+      fieldPath: [ID!]
+      "The Source field value; null clears the override."
+      value: JSON
       elementId: ID
       rank: String
       element: JSON
@@ -969,9 +976,8 @@ export const schema = createSchema<GraphQLContext>({
       __resolveType: resolveGraphEdgeType,
     },
     Type: {
-      kind: (
-        type: string | { kind: "array" | "object" | "shape"; of?: unknown; shapeId?: string },
-      ) => (typeof type === "string" ? type : type.kind),
+      kind: (type: string | { kind: "array" | "shape"; of?: unknown; shapeId?: string }) =>
+        typeof type === "string" ? type : type.kind,
       of: (type: { kind: "array"; of: unknown }) => (type.kind === "array" ? type.of : null),
       shapeId: (type: { kind: "shape"; shapeId: string }) =>
         type.kind === "shape" ? type.shapeId : null,

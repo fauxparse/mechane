@@ -16,6 +16,11 @@ export const GetShowGraphQuery = graphql(`
       state
       updatedAt
       version
+      sourceFieldDefaults {
+        nodeId
+        fieldPath
+        value
+      }
       nodes {
         __typename
         id

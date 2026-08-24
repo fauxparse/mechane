@@ -72,8 +72,8 @@ export function useFitViewOptions(): FitViewOptions {
 const INITIAL_FRAME_GRACE_MS = 1000;
 
 /**
- * Re-frames the graph once if the Editable Area only became known *after* React
- * Flow's declarative `fitView` had already run.
+ * Re-frames the graph once if the Editable Area only became known *after* the
+ * initial frame.
  *
  * The ordering is unavoidable: the Chrome cannot measure its header and cannot
  * know which sidebars exist until the editor inside it has rendered and declared

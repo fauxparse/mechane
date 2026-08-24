@@ -156,7 +156,7 @@ export function ShowGraphContextMenu({
             maxZoom={MAX_ZOOM}
             defaultViewport={initialViewport}
             onViewportChange={onViewportChange}
-            fitView={initialViewport === undefined}
+            fitView={false}
             fitViewOptions={fitViewOptions}
             proOptions={{ hideAttribution: true }}
             aria-label="Show graph"

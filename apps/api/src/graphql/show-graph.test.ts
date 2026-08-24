@@ -156,39 +156,23 @@ describe("parseGraphEdit", () => {
         {
           id: "shape_vote",
           name: "Vote",
-          fields: [{ id: "field_count", name: "count", type: "number", required: true, defaultValue: 0 }],
+          fields: [
+            { id: "field_count", name: "count", type: "number", required: true, defaultValue: 0 },
+          ],
         },
       ],
     });
   });
 
-  it("parses a Variable type edit, including object", () => {
-    expect(
-      parseGraphEdit({
-        type: GRAPH_COMMAND_TYPES.setSceneVariableType,
-        sceneId: "scene_a",
-        variableId: "variable_a",
-        variableType: { kind: "text" },
-      }),
-    ).toEqual({
-      type: "graph.setSceneVariableType",
-      sceneId: "scene_a",
-      variableId: "variable_a",
-      variableType: "text",
-    });
-    expect(
+  it("rejects an anonymous object Variable type", () => {
+    expect(() =>
       parseGraphEdit({
         type: GRAPH_COMMAND_TYPES.setSceneVariableType,
         sceneId: "scene_a",
         variableId: "variable_a",
         variableType: { kind: "object" },
       }),
-    ).toEqual({
-      type: "graph.setSceneVariableType",
-      sceneId: "scene_a",
-      variableId: "variable_a",
-      variableType: { kind: "object" },
-    });
+    ).toThrow('Invalid Shape type "object".');
   });
 
   it("parses a node color clear for undo", () => {
@@ -199,6 +183,21 @@ describe("parseGraphEdit", () => {
         color: null,
       }),
     ).toEqual({ type: "graph.setNodeColor", nodeId: "scene_a", color: null });
+  });
+  it("preserves a null Source value, which clears the override", () => {
+    expect(
+      parseGraphEdit({
+        type: GRAPH_COMMAND_TYPES.setSourceFieldDefault,
+        nodeId: "source_a",
+        fieldPath: ["field_title"],
+        value: null,
+      }),
+    ).toEqual({
+      type: "graph.setSourceFieldDefault",
+      nodeId: "source_a",
+      fieldPath: ["field_title"],
+      value: null,
+    });
   });
 
   it("rejects an unknown node color", () => {

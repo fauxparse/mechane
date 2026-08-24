@@ -48,6 +48,7 @@ export function FlowNode({ id, data, selected }: NodeProps<ShowFlowNode>) {
         color="var(--flow-border)"
         handleClassName="opacity-0"
         lineClassName="opacity-0"
+        onResize={(_, dimensions) => resizeFlow(id, dimensions)}
         onResizeEnd={(_, dimensions) => resizeFlow(id, dimensions)}
       />
       <NodeHeader

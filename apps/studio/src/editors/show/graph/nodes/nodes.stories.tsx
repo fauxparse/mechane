@@ -21,6 +21,7 @@ const meta: Meta<BaseNodeStoryArgs> = {
       color: "orange",
       kind: "scene",
       type: null,
+      fields: [],
       variables: [],
       wiredVariableIds: [],
       defaultSceneId: null,
@@ -58,6 +59,7 @@ export const WiredScene: Story = {
       color: "neutral",
       kind: "scene",
       name: "Scoreboard",
+      fields: [],
       type: null,
       variables: [
         {

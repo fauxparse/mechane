@@ -44,8 +44,52 @@ export async function publishPlayerUpdates(showId: string): Promise<void> {
     .from(devices)
     .where(and(eq(devices.showId, showId), isNull(devices.retiredAt)));
   await Promise.all(
-    rows.map(({ id }) => realtimeProvider.channel(playerChannel(id)).publish("player.updated", null)),
+    rows.map(({ id }) =>
+      realtimeProvider.channel(playerChannel(id)).publish("player.updated", null),
+    ),
   );
+}
+
+/** Replaces the live values for Sources edited in the director. */
+export function sourceValuesForEditedSources(
+  current: SourceValues,
+  graph: ShowGraph,
+  sourceNodeIds: ReadonlySet<string>,
+): SourceValues {
+  const defaults = defaultSourceValues(graph);
+  const next = { ...current };
+  for (const sourceNodeId of sourceNodeIds) {
+    if (sourceNodeId in defaults) next[sourceNodeId] = defaults[sourceNodeId];
+    else delete next[sourceNodeId];
+  }
+  return next;
+}
+
+export async function syncActiveRunSourceValues(
+  showId: string,
+  graph: ShowGraph,
+  sourceNodeIds: ReadonlySet<string>,
+  executor: Executor = db,
+): Promise<boolean> {
+  if (sourceNodeIds.size === 0) return false;
+  const [run] = await executor
+    .select()
+    .from(runs)
+    .where(and(eq(runs.showId, showId), eq(runs.status, "active")))
+    .orderBy(desc(runs.startedAt))
+    .limit(1)
+    .for("update");
+  if (!run) return false;
+  const sourceValues = sourceValuesForEditedSources(
+    run.sourceValues as SourceValues,
+    graph,
+    sourceNodeIds,
+  );
+  await executor
+    .update(runs)
+    .set({ sourceValues, updatedAt: new Date() })
+    .where(eq(runs.id, run.id));
+  return true;
 }
 
 export async function readActiveRun(showId: string, executor: Executor = db): Promise<Run | null> {

@@ -23,6 +23,7 @@ export interface BaseNodeProps {
   targetable?: boolean;
   dimmed?: boolean;
   variableIds?: ReadonlySet<string>;
+  fieldIds?: ReadonlySet<string>;
   connectedHandleIds?: ReadonlySet<string>;
   renaming?: boolean;
   onDoubleClick?: MouseEventHandler<HTMLDivElement>;
@@ -32,7 +33,6 @@ export interface BaseNodeProps {
   ariaLabel?: string;
   handle?: ComponentType<HandleProps>;
 }
-
 export const BaseNode = ({
   id,
   data,
@@ -40,6 +40,7 @@ export const BaseNode = ({
   targetable = false,
   dimmed = false,
   variableIds,
+  fieldIds,
   connectedHandleIds,
   renaming = false,
   onDoubleClick,
@@ -138,6 +139,51 @@ export const BaseNode = ({
           </div>
         </div>
       ) : null}
+      {data.fields.length > 0 ? (
+        <div className="grid grid-cols-[2.5rem_1fr] gap-x-2">
+          {data.fields.map((field) => {
+            const Icon = variableTypeIcon(field.type);
+            return (
+              <div
+                key={field.id}
+                className="border-t first:border-t-0 border-(--flow-border)/50 relative grid col-span-full grid-cols-subgrid items-center py-2"
+              >
+                <HandleComponent
+                  id={field.id}
+                  type="target"
+                  position={Position.Left}
+                  className={HANDLE_CLASS}
+                  data-targetable={fieldIds?.has(field.id) ?? false}
+                  data-connected={connectedHandleIds?.has(field.id) ?? false}
+                  isConnectableStart={false}
+                  isConnectable={data.kind === "transformer"}
+                />
+                <Icon className="size-4 shrink-0 justify-self-center ml-2 text-(--flow-muted-foreground)" />
+                <div className="flex min-w-0 items-baseline justify-between gap-2 pr-4">
+                  <div className="min-w-0 truncate">
+                    {field.value === undefined || field.value === null ? (
+                      <span className="text-(--flow-muted-foreground) opacity-50">(empty)</span>
+                    ) : (
+                      formatValue(field.value)
+                    )}
+                  </div>
+                  <span className="truncate text-xs text-(--flow-muted-foreground)">
+                    {field.name}
+                  </span>
+                </div>
+                <HandleComponent
+                  id={field.id}
+                  type="source"
+                  position={Position.Right}
+                  className={HANDLE_CLASS}
+                  data-connected={connectedHandleIds?.has(field.id) ?? false}
+                  isConnectableEnd={false}
+                />
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
       {data.variables?.length > 0 ? (
         <div className="grid grid-cols-[2.5rem_1fr] gap-x-2 gap-y-0">
           {data.variables.map((variable) => {
@@ -168,3 +214,10 @@ export const BaseNode = ({
     </div>
   );
 };
+function formatValue(value: unknown): string {
+  if (typeof value === "string") return value.includes("\n") ? "text" : value || "empty";
+  if (value === null || value === undefined) return "No value";
+  if (typeof value === "boolean" || typeof value === "number") return String(value);
+  if (Array.isArray(value)) return `[${value.length} items]`;
+  return "{…}";
+}

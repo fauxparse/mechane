@@ -1,7 +1,7 @@
 import type { DeletionScope } from "@mechane/commands";
 import type { GraphNode, Position } from "@mechane/domain";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { useEdgesState, useNodesState, useReactFlow } from "@xyflow/react";
+import { useEdgesState, useNodesInitialized, useNodesState, useReactFlow } from "@xyflow/react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { OnEdgesChange, OnNodesChange } from "@xyflow/react";
 
@@ -118,7 +118,28 @@ export function useShowGraphEditorController({
   }, [drawn, flowDimensions, nodes]);
   const { fitView, getNodes, getZoom, setCenter, screenToFlowPosition } = useReactFlow();
   const fitViewOptions = useFitViewOptions();
-  useInitialFrame(fitView, fitViewOptions, initialViewport === undefined);
+  // The graph arrives after the editor mounts; fit only after its nodes are measured.
+  const nodesInitialized = useNodesInitialized();
+  const initialViewportFitted = useRef(false);
+  useEffect(() => {
+    if (
+      initialViewport !== undefined ||
+      graph === null ||
+      graph === undefined ||
+      graph.nodes.length === 0 ||
+      !nodesInitialized ||
+      initialViewportFitted.current
+    ) {
+      return;
+    }
+    initialViewportFitted.current = true;
+    fitView(fitViewOptions);
+  }, [fitView, fitViewOptions, graph, initialViewport, nodesInitialized]);
+  useInitialFrame(
+    fitView,
+    fitViewOptions,
+    initialViewport === undefined && graph !== null && graph !== undefined,
+  );
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<DeletionScope | null>(null);

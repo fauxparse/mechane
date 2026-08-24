@@ -15,15 +15,16 @@ import { BaseNode } from "./BaseNode";
  * can render in Storybook and other non-canvas contexts without a provider.
  */
 export function ReactFlowBaseNode({ id, data, selected }: NodeProps<ShowFlowNode>) {
-  const { targetable, dimmed, variableIds } = useDragState(id);
+  const { targetable, dimmed, variableIds, fieldIds } = useDragState(id);
   const connectedHandleIds = useConnectedHandleIds(id);
   const { renaming, beginRename, renameTo, commitRename, cancelRename } = useNodeInteraction();
   const updateNodeInternals = useUpdateNodeInternals();
   const variableHandleKey = data.variables.map((variable) => variable.id).join("|");
+  const fieldHandleKey = data.fields.map((field) => field.id).join("|");
 
   useEffect(() => {
     updateNodeInternals(id);
-  }, [id, updateNodeInternals, variableHandleKey]);
+  }, [id, updateNodeInternals, variableHandleKey, fieldHandleKey]);
   return (
     <BaseNode
       id={id}
@@ -32,6 +33,7 @@ export function ReactFlowBaseNode({ id, data, selected }: NodeProps<ShowFlowNode
       targetable={targetable}
       dimmed={dimmed}
       variableIds={variableIds}
+      fieldIds={fieldIds}
       connectedHandleIds={connectedHandleIds}
       renaming={renaming === id}
       onDoubleClick={() => beginRename(id)}

@@ -32,7 +32,7 @@ import { db } from "./client";
 import type { StoredDevice } from "./devices";
 import { retireUnreferencedDevices, syncDevices } from "./devices";
 import { graphNodeInsertValues } from "./graph-node-values";
-import { publishPlayerUpdates, reconcileActiveRunValues } from "./runs";
+import { publishPlayerUpdates, reconcileActiveRunValues, syncActiveRunSourceValues } from "./runs";
 import {
   blocks,
   canvasElements,
@@ -332,6 +332,11 @@ export async function readShowGraph(
     updatedAt: row.updatedAt,
     version: row.version,
     shapes: shapeRows.map((shape) => toShape(shape, shapeFieldRows)),
+    sourceFieldDefaults: sourceDefaultRows.map((sourceDefault) => ({
+      nodeId: sourceDefault.nodeId,
+      fieldPath: sourceDefault.fieldPath,
+      value: sourceDefault.value,
+    })),
     nodes: nodeRows.map((node) =>
       toNode(node, variablesByScene, sourceDefaultsByNode, deviceIdentities),
     ),
@@ -600,16 +605,23 @@ async function writeGraph(
     await tx.insert(graphNodeVariables).values(variables);
   }
 
-  const sourceDefaults = graph.nodes.flatMap((node) =>
-    node.kind === "source"
-      ? (node.fieldDefaults ?? []).map((fieldDefault) => ({
-          graphId: row.id,
-          nodeId: node.id,
-          fieldPath: fieldDefault.fieldPath,
-          value: fieldDefault.value,
-        }))
-      : [],
+  // Reads expose graph-owned defaults in both the node compatibility field and
+  // the graph-level collection; explicit graph edits must win over that legacy copy.
+  const sourceDefaultsByKey = new Map(
+    [
+      ...graph.nodes.flatMap((node) => (node.kind === "source" ? (node.fieldDefaults ?? []) : [])),
+      ...(graph.sourceFieldDefaults ?? []),
+    ].map((fieldDefault) => [
+      `${fieldDefault.nodeId}\u0000${fieldDefault.fieldPath.join("\u0000")}`,
+      {
+        graphId: row.id,
+        nodeId: fieldDefault.nodeId,
+        fieldPath: fieldDefault.fieldPath,
+        value: fieldDefault.value,
+      },
+    ]),
   );
+  const sourceDefaults = [...sourceDefaultsByKey.values()];
   if (sourceDefaults.length > 0) await tx.insert(sourceFieldDefaults).values(sourceDefaults);
 
   if (graph.edges.length > 0) {
@@ -685,7 +697,12 @@ export async function applyShowGraphEdits(
       throw new GraphVersionConflictError(baseVersion, current.version);
     }
     const next = applyGraphEdits(
-      { shapes: current.shapes ?? [], nodes: current.nodes, edges: current.edges },
+      {
+        shapes: current.shapes ?? [],
+        sourceFieldDefaults: current.sourceFieldDefaults ?? [],
+        nodes: current.nodes,
+        edges: current.edges,
+      },
       edits,
     );
     const written = await writeGraph(tx, showId, "draft", next, baseVersion);
@@ -713,14 +730,18 @@ type EditableCanvas = {
   position: StoredCanvas["position"];
 };
 
-/** Applies graph and Canvas edits against one shared Show version transaction. */
+/** Applies graph and Canvas edits against one shared Show version transaction.
+ *
+ * Source value edits also update the active Run and notify paired Players after
+ * the transaction commits, so the editor and device views share live values.
+ */
 export async function applyShowEdits(
   showId: string,
   graphEdits: readonly GraphEdit[],
   canvasEdits: readonly CanvasWorkspaceEdit[],
   baseVersion: number,
 ): Promise<AppliedShowEdits> {
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const current = await readShowGraph(showId, "draft", tx);
     if (current.version !== baseVersion) {
       throw new GraphVersionConflictError(baseVersion, current.version);
@@ -733,7 +754,12 @@ export async function applyShowEdits(
       currentCanvases.set(canvasId, canvas);
     }
     const nextGraph = applyGraphEdits(
-      { shapes: current.shapes ?? [], nodes: current.nodes, edges: current.edges },
+      {
+        shapes: current.shapes ?? [],
+        sourceFieldDefaults: current.sourceFieldDefaults ?? [],
+        nodes: current.nodes,
+        edges: current.edges,
+      },
       graphEdits,
     );
     const nextCanvases = new Map<string, EditableCanvas>(
@@ -757,6 +783,32 @@ export async function applyShowEdits(
       }
     }
     const written = await writeGraph(tx, showId, "draft", nextGraph, baseVersion);
+    const sourceEdits = graphEdits.filter(
+      (edit): edit is Extract<GraphEdit, { type: "graph.setSourceFieldDefault" }> =>
+        edit.type === "graph.setSourceFieldDefault",
+    );
+    let playerUpdated = false;
+    if (sourceEdits.length > 0) {
+      const published = await readShowGraph(showId, "published", tx);
+      const liveSourceEdits = sourceEdits.filter((edit) =>
+        published.nodes.some((node) => node.kind === "source" && node.id === edit.nodeId),
+      );
+      if (liveSourceEdits.length > 0) {
+        const liveSourceNodeIds = new Set(liveSourceEdits.map((edit) => edit.nodeId));
+        const liveGraph = applyGraphEdits(
+          {
+            shapes: published.shapes ?? [],
+            sourceFieldDefaults: published.sourceFieldDefaults ?? [],
+            nodes: published.nodes,
+            edges: published.edges,
+          },
+          liveSourceEdits,
+        );
+        await writeGraph(tx, showId, "published", liveGraph);
+        await syncActiveRunSourceValues(showId, liveGraph, liveSourceNodeIds, tx);
+        playerUpdated = true;
+      }
+    }
     let storedCanvas: StoredCanvas | null = null;
     if (nextCanvases.size > 0) {
       const [graph] = await tx
@@ -786,8 +838,11 @@ export async function applyShowEdits(
       version: written.version,
       amendments: amendments(nextGraph, written),
       canvas: storedCanvas,
+      playerUpdated,
     };
   });
+  if (result.playerUpdated) await publishPlayerUpdates(showId);
+  return result;
 }
 
 /**

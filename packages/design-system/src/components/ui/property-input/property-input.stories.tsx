@@ -233,6 +233,14 @@ export const Number: Story = {
     return <PropertyInput {...args} value={value} onChange={setValue} />;
   },
 };
+export const NoMenu: Story = {
+  args: {
+    type: "number",
+    value: { kind: "number", value: 24 },
+    icon: "↔",
+    allowLink: false,
+  },
+};
 
 export const Color: Story = {
   args: {

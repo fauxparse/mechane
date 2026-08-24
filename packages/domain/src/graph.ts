@@ -27,7 +27,7 @@
 import type { EntityName } from "./id";
 import type { Shape, Type } from "./shapes";
 import { areTypesCompatible, assertValidShapes, InvalidShapeError } from "./shapes";
-
+import { typeAtPath } from "./property-values";
 /** The kinds of node that render on the Show canvas. Nothing else does. */
 export const NODE_KINDS = ["scene", "flow", "source", "transformer", "device"] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
@@ -505,12 +505,14 @@ function assertValidWiringEdge(
   shapes: readonly Shape[],
 ): void {
   const producer = requireNode(nodes, edge.sourceId, `Wiring edge "${edge.id}"`);
+  const wholeProducerType =
+    producer.kind === "source" || producer.kind === "transformer" ? producer.type : null;
   const sourceType =
     producer.kind === "device"
       ? deviceSourceType(edge.sourcePath[0])
-      : producer.kind === "source" || producer.kind === "transformer"
-        ? producer.type
-        : null;
+      : wholeProducerType && edge.sourcePath.length > 0
+        ? typeAtPath(wholeProducerType, edge.sourcePath, shapes)
+        : wholeProducerType;
   if (
     producer.kind !== "source" &&
     producer.kind !== "transformer" &&
@@ -525,18 +527,40 @@ function assertValidWiringEdge(
       `wiring edge "${edge.id}" must name one virtual Device source handle.`,
     );
   }
+  if (
+    (producer.kind === "source" || producer.kind === "transformer") &&
+    wholeProducerType &&
+    edge.sourcePath.length > 0 &&
+    sourceType === null
+  ) {
+    throw new InvalidShowGraphError(
+      `wiring edge "${edge.id}" names a Source or Transformer field that does not exist.`,
+    );
+  }
   const consumer = requireNode(nodes, edge.targetId, `Wiring edge "${edge.id}"`);
   if (consumer.kind !== "scene" && consumer.kind !== "transformer" && consumer.kind !== "source") {
     throw new InvalidShowGraphError(
       `wiring edge "${edge.id}" targets a ${consumer.kind}; wiring targets a Source, Transformer, or Variable on a Scene.`,
     );
   }
-  if (consumer.kind === "transformer" || consumer.kind === "source") {
-    if (edge.targetPath.length > 0) {
+  let targetType: Type | null = null;
+  if (consumer.kind === "transformer") {
+    targetType =
+      consumer.type && edge.targetPath.length > 0
+        ? typeAtPath(consumer.type, edge.targetPath, shapes)
+        : (consumer.type ?? null);
+    if (consumer.type && edge.targetPath.length > 0 && targetType === null) {
       throw new InvalidShowGraphError(
-        `wiring edge "${edge.id}" targets a ${consumer.kind} with a value path; its input is not named.`,
+        `wiring edge "${edge.id}" targets a Transformer field that does not exist.`,
       );
     }
+  } else if (consumer.kind === "source") {
+    if (edge.targetPath.length > 0) {
+      throw new InvalidShowGraphError(
+        `wiring edge "${edge.id}" targets a Source field; Source inputs are not named.`,
+      );
+    }
+    targetType = consumer.type;
   } else {
     if (edge.targetPath.length === 0) {
       throw new InvalidShowGraphError(
@@ -544,18 +568,16 @@ function assertValidWiringEdge(
       );
     }
     const variableId = wiringTargetVariableId(edge);
-    if (!consumer.variables.some((variable) => variable.id === variableId)) {
+    const variable = consumer.variables.find((candidate) => candidate.id === variableId);
+    if (!variable) {
       throw new InvalidShowGraphError(
         `wiring edge "${edge.id}" targets Variable "${variableId}", which Scene "${consumer.id}" doesn't have.`,
       );
     }
+    targetType = variable.type
+      ? typeAtPath(variable.type, edge.targetPath.slice(1), shapes)
+      : null;
   }
-  const targetType =
-    consumer.kind === "scene"
-      ? (consumer.variables.find((variable) => variable.id === edge.targetPath[0])?.type ?? null)
-      : consumer.kind === "source"
-        ? consumer.type
-        : null;
   if (sourceType && targetType && !areTypesCompatible(sourceType, targetType, shapes)) {
     throw new InvalidShowGraphError(
       `wiring edge "${edge.id}" connects incompatible types; no supported coercion exists.`,
@@ -614,13 +636,13 @@ function assertNoDuplicateEdges(edges: GraphEdge[]): void {
   for (const edge of edges) {
     const discriminator =
       edge.kind === "navigate"
-        ? `${edge.cueId ?? ""} ${edge.actionId ?? ""}`
+        ? `${edge.cueId ?? ""}${edge.actionId ?? ""}`
         : // Two wiring edges between the same pair of nodes are distinct if
           // they move different fields: feeding a Scene Variable's `name`
           // and `score` from two fields of one Source is two edges, not a
           // duplicate.
           `${formatValuePath(edge.sourcePath)} > ${formatValuePath(edge.targetPath)}`;
-    const key = `${edge.kind} ${edge.sourceId} ${edge.targetId} ${discriminator}`;
+    const key = `${edge.kind}${edge.sourceId}${edge.targetId}${discriminator}`;
     if (seen.has(key)) {
       throw new InvalidShowGraphError(
         edge.kind === "navigate"
@@ -640,7 +662,8 @@ function isPathPrefix(prefix: string[], path: string[]): boolean {
 function assertNoWiringFanIn(edges: GraphEdge[], nodes: Map<string, GraphNode>): void {
   const wiring = edges.filter(
     (edge): edge is WiringEdge =>
-      edge.kind === "wiring" && nodes.get(edge.targetId)?.kind !== "transformer",
+      edge.kind === "wiring" &&
+      (nodes.get(edge.targetId)?.kind !== "transformer" || edge.targetPath.length > 0),
   );
   for (let i = 0; i < wiring.length; i += 1) {
     const left = wiring[i];
