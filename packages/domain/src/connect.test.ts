@@ -6,6 +6,7 @@ import {
   connectionError,
   connectionKindFor,
   connectionTargets,
+  planConnection,
   sourceTypeAtHandle,
 } from "./connect";
 import { DEVICE_SOURCE_HANDLES } from "./graph";
@@ -335,6 +336,74 @@ describe("canConnect", () => {
         targetHandle: "in",
       }),
     ).toBe(true);
+  });
+
+  it("plans a non-colliding Variable name from the actual Scene", () => {
+    const graph: ShowGraph = {
+      ...GRAPH,
+      nodes: GRAPH.nodes.map((node) =>
+        node.id === RESULTS.id
+          ? { ...node, variables: [{ id: "variable_existing", name: "variable2" }] }
+          : node,
+      ),
+    };
+    const plan = planConnection(
+      graph,
+      { sourceId: TALLY.id, targetId: RESULTS.id, targetHandle: "in" },
+      { edgeId: "edge_new", variableId: "variable_new" },
+    );
+    expect(plan).toEqual({
+      edits: [
+        {
+          type: "graph.addSceneVariable",
+          sceneId: RESULTS.id,
+          variable: { id: "variable_new", name: "variable3", type: "number" },
+        },
+        {
+          type: "graph.addEdge",
+          edge: {
+            id: "edge_new",
+            kind: "wiring",
+            sourceId: TALLY.id,
+            targetId: RESULTS.id,
+            sourcePath: [],
+            targetPath: ["variable_new"],
+          },
+        },
+      ],
+    });
+    expect(
+      connectionError(graph, { sourceId: TALLY.id, targetId: RESULTS.id, targetHandle: "in" }),
+    ).toBeNull();
+  });
+
+  it("plans adoption of a top-level Transformer into a Source's Flow", () => {
+    const plan = planConnection(
+      GRAPH,
+      { sourceId: LOCAL.id, targetId: TRANSFORMER.id },
+      { edgeId: "edge_new", variableId: "variable_unused" },
+    );
+    expect(plan).toEqual({
+      edits: [
+        {
+          type: "graph.reparentNode",
+          nodeId: TRANSFORMER.id,
+          parentId: VOTE.id,
+          position: TRANSFORMER.position,
+        },
+        {
+          type: "graph.addEdge",
+          edge: {
+            id: "edge_new",
+            kind: "wiring",
+            sourceId: LOCAL.id,
+            targetId: TRANSFORMER.id,
+            sourcePath: [],
+            targetPath: [],
+          },
+        },
+      ],
+    });
   });
 
   it("still asks for a Variable when a wiring drag lands on the Scene body", () => {
