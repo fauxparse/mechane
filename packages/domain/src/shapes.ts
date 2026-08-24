@@ -111,6 +111,73 @@ function references(type: Type, result: Set<string>): void {
   if (type.kind === "shape") result.add(type.shapeId);
   else if (type.kind === "array") references(type.of, result);
 }
+/** Whether `type` directly or indirectly names `targetId`. */
+export function typeReferencesShape(type: Type, targetId: string): boolean {
+  if (typeof type === "string") return false;
+  if (type.kind === "shape") return type.shapeId === targetId;
+  return typeReferencesShape(type.of, targetId);
+}
+
+/** Whether `shapeId` reaches `targetId` through its Field Types. */
+export function shapeReferencesShape(
+  shapes: readonly Shape[],
+  shapeId: string,
+  targetId: string,
+): boolean {
+  const byId = new Map(shapes.map((shape) => [shape.id, shape]));
+  const visited = new Set<string>();
+  const visit = (currentId: string): boolean => {
+    if (visited.has(currentId)) return false;
+    visited.add(currentId);
+    const shape = byId.get(currentId);
+    return (
+      shape?.fields.some((field) => {
+        if (typeof field.type === "string") return false;
+        if (field.type.kind === "shape") {
+          return field.type.shapeId === targetId || visit(field.type.shapeId);
+        }
+        return visitType(field.type.of);
+      }) ?? false
+    );
+  };
+  const visitType = (type: Type): boolean => {
+    if (typeof type === "string") return false;
+    if (type.kind === "shape") return type.shapeId === targetId || visit(type.shapeId);
+    return visitType(type.of);
+  };
+  return visit(shapeId);
+}
+/** Validates a Type against the known Shape set without checking defaults. */
+export function assertValidShapeType(
+  type: Type,
+  shapes: readonly Shape[],
+  context = "Shape Type",
+): void {
+  assertType(
+    type,
+    new Set(shapes.map((shape) => shape.id)),
+    context,
+  );
+}
+
+/** Refuses a Field name that would collide within its Shape. */
+export function assertShapeFieldNameAvailable(
+  shape: Shape,
+  name: string,
+  fieldId?: string,
+): void {
+  if (shape.fields.some((field) => field.id !== fieldId && field.name === name)) {
+    throw new InvalidShapeError(`Shape ${shape.name} has duplicate Field name: ${name}.`);
+  }
+}
+
+/** Refuses deleting a Shape that another Shape reaches through its Fields. */
+export function assertShapeCanBeRemoved(shapes: readonly Shape[], shapeId: string): void {
+  if (shapes.some((shape) => shape.id !== shapeId && shapeReferencesShape(shapes, shape.id, shapeId))) {
+    throw new InvalidShapeError(`Shape "${shapeId}" is used by another Shape.`);
+  }
+}
+
 
 function assertType(type: Type, shapeIds: Set<string>, context: string): void {
   if (typeof type === "string") {

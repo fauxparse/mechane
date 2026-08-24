@@ -13,21 +13,31 @@ import {
   addEdge,
   addNode,
   addSceneVariable,
+  addShape,
+  addShapeField,
   commandForEdit,
   composite,
   createFlowWithNodes,
   deleteGraphElements,
   deletionScope,
+  duplicateShape,
   moveNodesIntoFlow,
   moveNodesOutOfFlow,
   removeSceneVariable,
+  removeShape,
+  removeShapeField,
   renameNode,
   renameSceneVariable,
+  renameShape,
+  renameShapeField,
   reorderSceneVariables,
+  reorderShapeFields,
   setDevicePerConnection,
   setNodeColor,
   setSceneVariableType,
-  setShapes as setShapeDefinitions,
+  setShapeFieldDefault,
+  setShapeFieldRequired,
+  setShapeFieldType,
   setSourceFieldDefault,
 } from "@mechane/commands";
 import type {
@@ -37,6 +47,7 @@ import type {
   NodeKind,
   Position,
   Shape,
+  ShapeField,
   ShowGraph,
   Type,
 } from "@mechane/domain";
@@ -117,10 +128,20 @@ export interface GraphEditing {
   setVariableType(sceneId: string, variableId: string, type: Type): void;
   reorderVariables(sceneId: string, variableIds: readonly string[]): void;
   removeVariable(sceneId: string, variableId: string): void;
+  addShape(shape: Shape): void;
+  renameShape(shapeId: string, name: string): void;
+  duplicateShape(shape: Shape): void;
+  removeShape(shapeId: string): void;
+  addShapeField(shapeId: string, field: ShapeField): void;
+  renameShapeField(shapeId: string, fieldId: string, name: string): void;
+  setShapeFieldType(shapeId: string, fieldId: string, type: Type): void;
+  setShapeFieldRequired(shapeId: string, fieldId: string, required: boolean): void;
+  setShapeFieldDefault(shapeId: string, fieldId: string, defaultValue: unknown): void;
+  reorderShapeFields(shapeId: string, fieldIds: readonly string[]): void;
+  removeShapeField(shapeId: string, fieldId: string): void;
   /** Structural Flow moves; collapse is intentionally not part of this API. */
   moveIntoFlow(nodeIds: string[], flowId: string, origin: Position): void;
   moveOutOfFlow(nodeIds: string[], positions: Position[]): string | null;
-  setShapes(shapes: Shape[]): void;
   setSourceFieldDefault(nodeId: string, fieldPath: readonly string[], value: unknown): void;
   setNodeColor(nodeId: string, color: FlowColor): void;
   setDevicePerConnection(nodeId: string, perConnection: boolean): void;
@@ -366,9 +387,78 @@ export function useGraphEditing(
     [execute],
   );
 
-  const changeShapes = useCallback(
-    (shapes: Shape[]) => {
-      execute(setShapeDefinitions(shapes));
+  const changeShape = useCallback(
+    (shape: Shape) => {
+      execute(addShape(shape));
+    },
+    [execute],
+  );
+
+  const changeShapeName = useCallback(
+    (shapeId: string, name: string) => {
+      execute(renameShape(shapeId, name));
+    },
+    [execute],
+  );
+
+  const changeShapeDuplicate = useCallback(
+    (shape: Shape) => {
+      execute(duplicateShape(shape));
+    },
+    [execute],
+  );
+
+  const changeShapeRemoval = useCallback(
+    (shapeId: string) => {
+      execute(removeShape(shapeId));
+    },
+    [execute],
+  );
+
+  const changeShapeField = useCallback(
+    (shapeId: string, field: ShapeField) => {
+      execute(addShapeField(shapeId, field));
+    },
+    [execute],
+  );
+
+  const changeShapeFieldName = useCallback(
+    (shapeId: string, fieldId: string, name: string) => {
+      execute(renameShapeField(shapeId, fieldId, name));
+    },
+    [execute],
+  );
+
+  const changeShapeFieldType = useCallback(
+    (shapeId: string, fieldId: string, type: Type) => {
+      execute(setShapeFieldType(shapeId, fieldId, type));
+    },
+    [execute],
+  );
+
+  const changeShapeFieldRequired = useCallback(
+    (shapeId: string, fieldId: string, required: boolean) => {
+      execute(setShapeFieldRequired(shapeId, fieldId, required));
+    },
+    [execute],
+  );
+  const changeShapeFieldDefault = useCallback(
+    (shapeId: string, fieldId: string, defaultValue: unknown) => {
+      execute(setShapeFieldDefault(shapeId, fieldId, defaultValue));
+    },
+    [execute],
+  );
+
+  const changeShapeFieldOrder = useCallback(
+    (shapeId: string, fieldIds: readonly string[]) => {
+      execute(reorderShapeFields(shapeId, fieldIds));
+    },
+    [execute],
+  );
+
+  const changeShapeFieldRemoval = useCallback(
+    (shapeId: string, fieldId: string) => {
+      execute(removeShapeField(shapeId, fieldId));
     },
     [execute],
   );
@@ -428,7 +518,17 @@ export function useGraphEditing(
     endConnect,
     canDrop,
     connect,
-    setShapes: changeShapes,
+    addShape: changeShape,
+    renameShape: changeShapeName,
+    duplicateShape: changeShapeDuplicate,
+    removeShape: changeShapeRemoval,
+    addShapeField: changeShapeField,
+    renameShapeField: changeShapeFieldName,
+    setShapeFieldType: changeShapeFieldType,
+    setShapeFieldRequired: changeShapeFieldRequired,
+    setShapeFieldDefault: changeShapeFieldDefault,
+    reorderShapeFields: changeShapeFieldOrder,
+    removeShapeField: changeShapeFieldRemoval,
     setSourceFieldDefault: changeSourceFieldDefault,
     setNodeColor: changeNodeColor,
     setDevicePerConnection: changeDevicePerConnection,

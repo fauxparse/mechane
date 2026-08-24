@@ -37,24 +37,31 @@ import type {
   SceneNode,
   SceneVariable,
   Shape,
+  ShapeField,
   ShowGraph,
   SourceFieldDefault,
   Type,
+} from "@mechane/domain";
+import {
+  InvalidShapeError,
+  assertShapeCanBeRemoved,
+  assertShapeFieldNameAvailable,
+  assertValidShapeType,
+  assertValidShapes,
+  shapeReferencesShape,
 } from "@mechane/domain";
 
 import type { Command } from "./command";
 import { capturing, composite } from "./command";
 import type { GraphEdit } from "./graph-edits";
+/** A command over the Show graph and its serialisable edit vocabulary. */
+export type ShowGraphCommand = Command<ShowGraph, GraphEdit>;
+
 
 /**
  * A command over a Show graph, which also knows how to say what it did on the
- * wire (#103) — see ./graph-edits for the vocabulary, and note that the
- * *inverse* of one of these carries edits too, so an undo is transmitted the
- * same way as any other edit (ADR-0005).
+ * wire (#103) — see ./graph-edits for the vocabulary.
  */
-export type ShowGraphCommand = Command<ShowGraph, GraphEdit>;
-
-/** Command `type` strings, so surfaces can recognise commands they care about. */
 export const GRAPH_COMMAND_TYPES = {
   addNode: "graph.addNode",
   removeNode: "graph.removeNode",
@@ -66,6 +73,17 @@ export const GRAPH_COMMAND_TYPES = {
   setFlowDefaultScene: "graph.setFlowDefaultScene",
   setNodeColor: "graph.setNodeColor",
   setShapes: "graph.setShapes",
+  addShape: "graph.addShape",
+  renameShape: "graph.renameShape",
+  duplicateShape: "graph.duplicateShape",
+  removeShape: "graph.removeShape",
+  addShapeField: "graph.addShapeField",
+  renameShapeField: "graph.renameShapeField",
+  setShapeFieldType: "graph.setShapeFieldType",
+  setShapeFieldDefault: "graph.setShapeFieldDefault",
+  setShapeFieldRequired: "graph.setShapeFieldRequired",
+  reorderShapeFields: "graph.reorderShapeFields",
+  removeShapeField: "graph.removeShapeField",
   setSourceFieldDefault: "graph.setSourceFieldDefault",
   addSceneVariable: "graph.addSceneVariable",
   renameSceneVariable: "graph.renameSceneVariable",
@@ -672,6 +690,368 @@ export function setShapes(shapes: Shape[], label = "Update Shapes"): ShowGraphCo
     restore: (graph, captured) => ({ ...graph, shapes: captured }),
   });
 }
+function shapesOf(graph: ShowGraph): Shape[] {
+  return graph.shapes ?? [];
+}
+
+function shapeAt(graph: ShowGraph, shapeId: string): { index: number; shape: Shape } {
+  const shapes = shapesOf(graph);
+  const index = shapes.findIndex((shape) => shape.id === shapeId);
+  if (index === -1) throw new UnknownGraphTargetError("Shape", shapeId);
+  return { index, shape: shapes[index] as Shape };
+}
+
+function shapeFieldAt(
+  graph: ShowGraph,
+  shapeId: string,
+  fieldId: string,
+): { shapeIndex: number; fieldIndex: number; shape: Shape; field: ShapeField } {
+  const { index: shapeIndex, shape } = shapeAt(graph, shapeId);
+  const fieldIndex = shape.fields.findIndex((field) => field.id === fieldId);
+  if (fieldIndex === -1) throw new UnknownGraphTargetError("Shape Field", fieldId);
+  return { shapeIndex, fieldIndex, shape, field: shape.fields[fieldIndex] as ShapeField };
+}
+
+function withShapes(graph: ShowGraph, shapes: Shape[]): ShowGraph {
+  return { ...graph, shapes };
+}
+
+function replaceShape(
+  graph: ShowGraph,
+  shapeId: string,
+  update: (shape: Shape) => Shape,
+): ShowGraph {
+  const { index } = shapeAt(graph, shapeId);
+  const shapes = shapesOf(graph).slice();
+  shapes[index] = update(shapes[index] as Shape);
+  return withShapes(graph, shapes);
+}
+
+function replaceShapeField(
+  graph: ShowGraph,
+  shapeId: string,
+  fieldId: string,
+  update: (field: ShapeField) => ShapeField,
+): ShowGraph {
+  return replaceShape(graph, shapeId, (shape) => ({
+    ...shape,
+    fields: shape.fields.map((field) => (field.id === fieldId ? update(field) : field)),
+  }));
+}
+
+function assertShapeTypeChange(
+  graph: ShowGraph,
+  shapeId: string,
+  fieldId: string,
+  type: Type,
+): void {
+  const shapes = shapesOf(graph);
+  assertValidShapeType(type, shapes, `Field ${fieldId}`);
+  const next = replaceShapeField(graph, shapeId, fieldId, (field) => ({ ...field, type }));
+  if (shapeReferencesShape(next.shapes ?? [], shapeId, shapeId)) {
+    throw new InvalidShapeError("Shape references must be acyclic.");
+  }
+}
+
+function shapeFieldOrder(
+  graph: ShowGraph,
+  shapeId: string,
+  fieldIds: readonly string[],
+): ShapeField[] {
+  const { shape } = shapeAt(graph, shapeId);
+  if (
+    fieldIds.length !== shape.fields.length ||
+    new Set(fieldIds).size !== shape.fields.length
+  ) {
+    throw new InvalidShapeError(
+      `Field order for Shape "${shapeId}" must contain every Field exactly once.`,
+    );
+  }
+  return fieldIds.map((fieldId) => {
+    const field = shape.fields.find((candidate) => candidate.id === fieldId);
+    if (!field) throw new UnknownGraphTargetError("Shape Field", fieldId);
+    return field;
+  });
+}
+
+/** Adds one Show-scoped Shape definition. */
+export function addShape(shape: Shape, label = "Add Shape"): ShowGraphCommand {
+  return capturing<ShowGraph, null, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.addShape,
+    label,
+    scope: "global",
+    edits: [{ type: GRAPH_COMMAND_TYPES.addShape, shape }],
+    restoreEdits: () => [{ type: GRAPH_COMMAND_TYPES.removeShape, shapeId: shape.id }],
+    capture: () => null,
+    apply: (graph) => {
+      const shapes = [...shapesOf(graph), shape];
+      assertValidShapes(shapes);
+      return withShapes(graph, shapes);
+    },
+    restore: (graph) => withShapes(graph, shapesOf(graph).filter((candidate) => candidate.id !== shape.id)),
+  });
+}
+
+/** Renames a Shape. */
+export function renameShape(
+  shapeId: string,
+  name: string,
+  label = "Rename Shape",
+): ShowGraphCommand {
+  return capturing<ShowGraph, string, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.renameShape,
+    label,
+    scope: "selection",
+    coalesceKey: `${GRAPH_COMMAND_TYPES.renameShape}:${shapeId}`,
+    edits: [{ type: GRAPH_COMMAND_TYPES.renameShape, shapeId, name }],
+    restoreEdits: (captured) => [{ type: GRAPH_COMMAND_TYPES.renameShape, shapeId, name: captured }],
+    capture: (graph) => shapeAt(graph, shapeId).shape.name,
+    isEmpty: (_graph, captured) => captured === name,
+    apply: (graph) => replaceShape(graph, shapeId, (shape) => ({ ...shape, name })),
+    restore: (graph, captured) => replaceShape(graph, shapeId, (shape) => ({ ...shape, name: captured })),
+  });
+}
+
+/** Adds a materialised duplicate Shape with its own undoable edit. */
+export function duplicateShape(shape: Shape, label = "Duplicate Shape"): ShowGraphCommand {
+  return capturing<ShowGraph, null, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.duplicateShape,
+    label,
+    scope: "global",
+    edits: [{ type: GRAPH_COMMAND_TYPES.duplicateShape, shape }],
+    restoreEdits: () => [{ type: GRAPH_COMMAND_TYPES.removeShape, shapeId: shape.id }],
+    capture: () => null,
+    apply: (graph) => {
+      const shapes = [...shapesOf(graph), shape];
+      assertValidShapes(shapes);
+      return withShapes(graph, shapes);
+    },
+    restore: (graph) => withShapes(graph, shapesOf(graph).filter((candidate) => candidate.id !== shape.id)),
+  });
+}
+
+/** Removes a Shape, refusing definitions still referenced by another Shape. */
+export function removeShape(shapeId: string, label = "Delete Shape"): ShowGraphCommand {
+  return capturing<ShowGraph, { index: number; shape: Shape }, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.removeShape,
+    label,
+    scope: "selection",
+    edits: [{ type: GRAPH_COMMAND_TYPES.removeShape, shapeId }],
+    restoreEdits: (captured) => [{ type: GRAPH_COMMAND_TYPES.addShape, shape: captured.shape }],
+    capture: (graph) => {
+      const { index, shape } = shapeAt(graph, shapeId);
+      assertShapeCanBeRemoved(shapesOf(graph), shapeId);
+      return { index, shape };
+    },
+    apply: (graph) => withShapes(graph, shapesOf(graph).filter((shape) => shape.id !== shapeId)),
+    restore: (graph, captured) => {
+      const shapes = shapesOf(graph).slice();
+      shapes.splice(Math.min(captured.index, shapes.length), 0, captured.shape);
+      return withShapes(graph, shapes);
+    },
+  });
+}
+
+/** Adds a Field to a Shape. */
+export function addShapeField(
+  shapeId: string,
+  field: ShapeField,
+  label = "Add Field",
+): ShowGraphCommand {
+  return capturing<ShowGraph, null, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.addShapeField,
+    label,
+    scope: "selection",
+    edits: [{ type: GRAPH_COMMAND_TYPES.addShapeField, shapeId, field }],
+    restoreEdits: () => [{ type: GRAPH_COMMAND_TYPES.removeShapeField, shapeId, fieldId: field.id }],
+    capture: () => null,
+    apply: (graph) => {
+      const { shape } = shapeAt(graph, shapeId);
+      assertShapeFieldNameAvailable(shape, field.name);
+      assertValidShapeType(field.type, shapesOf(graph), `Field ${field.name}`);
+      const next = replaceShape(graph, shapeId, (current) => ({
+        ...current,
+        fields: [...current.fields, field],
+      }));
+      if (shapeReferencesShape(next.shapes ?? [], shapeId, shapeId)) {
+        throw new InvalidShapeError("Shape references must be acyclic.");
+      }
+      return next;
+    },
+    restore: (graph) =>
+      replaceShape(graph, shapeId, (shape) => ({
+        ...shape,
+        fields: shape.fields.filter((candidate) => candidate.id !== field.id),
+      })),
+  });
+}
+
+/** Renames a Field, keeping names unique within its Shape. */
+export function renameShapeField(
+  shapeId: string,
+  fieldId: string,
+  name: string,
+  label = "Rename Field",
+): ShowGraphCommand {
+  return capturing<ShowGraph, string, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.renameShapeField,
+    label,
+    scope: "selection",
+    coalesceKey: `${GRAPH_COMMAND_TYPES.renameShapeField}:${shapeId}:${fieldId}`,
+    edits: [{ type: GRAPH_COMMAND_TYPES.renameShapeField, shapeId, fieldId, name }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.renameShapeField, shapeId, fieldId, name: captured },
+    ],
+    capture: (graph) => shapeFieldAt(graph, shapeId, fieldId).field.name,
+    isEmpty: (_graph, captured) => captured === name,
+    apply: (graph) => {
+      const { shape } = shapeFieldAt(graph, shapeId, fieldId);
+      assertShapeFieldNameAvailable(shape, name, fieldId);
+      return replaceShapeField(graph, shapeId, fieldId, (field) => ({ ...field, name }));
+    },
+    restore: (graph, captured) =>
+      replaceShapeField(graph, shapeId, fieldId, (field) => ({ ...field, name: captured })),
+  });
+}
+
+/** Sets a Field's Type, rejecting unknown references and cycles. */
+export function setShapeFieldType(
+  shapeId: string,
+  fieldId: string,
+  type: Type,
+  label = "Set Field type",
+): ShowGraphCommand {
+  return capturing<ShowGraph, Type, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setShapeFieldType,
+    label,
+    scope: "selection",
+    coalesceKey: `${GRAPH_COMMAND_TYPES.setShapeFieldType}:${shapeId}:${fieldId}`,
+    edits: [{ type: GRAPH_COMMAND_TYPES.setShapeFieldType, shapeId, fieldId, fieldType: type }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.setShapeFieldType, shapeId, fieldId, fieldType: captured },
+    ],
+    capture: (graph) => shapeFieldAt(graph, shapeId, fieldId).field.type,
+    isEmpty: (graph, captured) => JSON.stringify(captured) === JSON.stringify(type),
+    apply: (graph) => {
+      assertShapeTypeChange(graph, shapeId, fieldId, type);
+      return replaceShapeField(graph, shapeId, fieldId, (field) => ({ ...field, type }));
+    },
+    restore: (graph, captured) => replaceShapeField(graph, shapeId, fieldId, (field) => ({ ...field, type: captured })),
+  });
+}
+
+/** Sets a Field's default value. */
+export function setShapeFieldDefault(
+  shapeId: string,
+  fieldId: string,
+  defaultValue: unknown,
+  label = "Set Field default",
+): ShowGraphCommand {
+  return capturing<ShowGraph, unknown, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setShapeFieldDefault,
+    label,
+    scope: "selection",
+    coalesceKey: `${GRAPH_COMMAND_TYPES.setShapeFieldDefault}:${shapeId}:${fieldId}`,
+    edits: [{ type: GRAPH_COMMAND_TYPES.setShapeFieldDefault, shapeId, fieldId, defaultValue }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.setShapeFieldDefault, shapeId, fieldId, defaultValue: captured },
+    ],
+    capture: (graph) => shapeFieldAt(graph, shapeId, fieldId).field.defaultValue,
+    isEmpty: (_graph, captured) => JSON.stringify(captured) === JSON.stringify(defaultValue),
+    apply: (graph) =>
+      replaceShapeField(graph, shapeId, fieldId, (field) => ({ ...field, defaultValue })),
+    restore: (graph, captured) =>
+      replaceShapeField(graph, shapeId, fieldId, (field) => ({ ...field, defaultValue: captured })),
+  });
+}
+
+/** Sets whether a Field is required. */
+export function setShapeFieldRequired(
+  shapeId: string,
+  fieldId: string,
+  required: boolean,
+  label = "Set Field required",
+): ShowGraphCommand {
+  return capturing<ShowGraph, boolean, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setShapeFieldRequired,
+    label,
+    scope: "selection",
+    coalesceKey: `${GRAPH_COMMAND_TYPES.setShapeFieldRequired}:${shapeId}:${fieldId}`,
+    edits: [{ type: GRAPH_COMMAND_TYPES.setShapeFieldRequired, shapeId, fieldId, required }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.setShapeFieldRequired, shapeId, fieldId, required: captured },
+    ],
+    capture: (graph) => shapeFieldAt(graph, shapeId, fieldId).field.required,
+    isEmpty: (_graph, captured) => captured === required,
+    apply: (graph) =>
+      replaceShapeField(graph, shapeId, fieldId, (field) => ({ ...field, required })),
+    restore: (graph, captured) =>
+      replaceShapeField(graph, shapeId, fieldId, (field) => ({ ...field, required: captured })),
+  });
+}
+
+/** Reorders the Fields of a Shape. */
+export function reorderShapeFields(
+  shapeId: string,
+  fieldIds: readonly string[],
+  label = "Reorder Fields",
+): ShowGraphCommand {
+  return capturing<ShowGraph, ShapeField[], GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.reorderShapeFields,
+    label,
+    scope: "selection",
+    edits: [{ type: GRAPH_COMMAND_TYPES.reorderShapeFields, shapeId, fieldIds: [...fieldIds] }],
+    restoreEdits: (captured) => [
+      {
+        type: GRAPH_COMMAND_TYPES.reorderShapeFields,
+        shapeId,
+        fieldIds: captured.map((field) => field.id),
+      },
+    ],
+    capture: (graph) => shapeAt(graph, shapeId).shape.fields.map((field) => ({ ...field })),
+    isEmpty: (graph) => {
+      const current = shapeAt(graph, shapeId).shape.fields.map((field) => field.id);
+      return current.length === fieldIds.length && current.every((id, index) => id === fieldIds[index]);
+    },
+    apply: (graph) =>
+      replaceShape(graph, shapeId, (shape) => ({
+        ...shape,
+        fields: shapeFieldOrder(graph, shapeId, fieldIds),
+      })),
+    restore: (graph, captured) => replaceShape(graph, shapeId, (shape) => ({ ...shape, fields: captured })),
+  });
+}
+
+/** Removes a Field from a Shape. */
+export function removeShapeField(
+  shapeId: string,
+  fieldId: string,
+  label = "Delete Field",
+): ShowGraphCommand {
+  return capturing<ShowGraph, { index: number; field: ShapeField }, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.removeShapeField,
+    label,
+    scope: "selection",
+    edits: [{ type: GRAPH_COMMAND_TYPES.removeShapeField, shapeId, fieldId }],
+    restoreEdits: (captured) => [{ type: GRAPH_COMMAND_TYPES.addShapeField, shapeId, field: captured.field }],
+    capture: (graph) => {
+      const { fieldIndex, field } = shapeFieldAt(graph, shapeId, fieldId);
+      return { index: fieldIndex, field };
+    },
+    apply: (graph) =>
+      replaceShape(graph, shapeId, (shape) => ({
+        ...shape,
+        fields: shape.fields.filter((field) => field.id !== fieldId),
+      })),
+    restore: (graph, captured) =>
+      replaceShape(graph, shapeId, (shape) => {
+        const fields = shape.fields.slice();
+        fields.splice(Math.min(captured.index, fields.length), 0, captured.field);
+        return { ...shape, fields };
+      }),
+  });
+}
+
 
 /**
  * Records the pairing code the server minted for a Device (#45, #111).

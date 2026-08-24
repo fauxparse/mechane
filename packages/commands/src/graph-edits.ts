@@ -40,6 +40,7 @@ import type {
   Position,
   SceneVariable,
   Shape,
+  ShapeField,
   ShowGraph,
   Type,
 } from "@mechane/domain";
@@ -87,6 +88,53 @@ export type GraphEdit =
   | {
       readonly type: typeof GRAPH_COMMAND_TYPES.setShapes;
       readonly shapes: Shape[];
+    }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.addShape; readonly shape: Shape }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.renameShape;
+      readonly shapeId: string;
+      readonly name: string;
+    }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.duplicateShape; readonly shape: Shape }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.removeShape; readonly shapeId: string }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.addShapeField;
+      readonly shapeId: string;
+      readonly field: ShapeField;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.renameShapeField;
+      readonly shapeId: string;
+      readonly fieldId: string;
+      readonly name: string;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setShapeFieldType;
+      readonly shapeId: string;
+      readonly fieldId: string;
+      readonly fieldType: Type;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setShapeFieldDefault;
+      readonly shapeId: string;
+      readonly fieldId: string;
+      readonly defaultValue: unknown;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.reorderShapeFields;
+      readonly shapeId: string;
+      readonly fieldIds: readonly string[];
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.removeShapeField;
+      readonly shapeId: string;
+      readonly fieldId: string;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setShapeFieldRequired;
+      readonly shapeId: string;
+      readonly fieldId: string;
+      readonly required: boolean;
     }
   | {
       readonly type: typeof GRAPH_COMMAND_TYPES.setSourceFieldDefault;
@@ -198,6 +246,33 @@ function supersedes(edit: GraphEdit): { key: string; ids: readonly string[] } | 
       };
     case GRAPH_COMMAND_TYPES.setShapes:
       return { key: GRAPH_COMMAND_TYPES.setShapes, ids: edit.shapes.map((shape) => shape.id) };
+    case GRAPH_COMMAND_TYPES.renameShape:
+      return { key: `renameShape:${edit.shapeId}`, ids: [edit.shapeId] };
+    case GRAPH_COMMAND_TYPES.renameShapeField:
+      return {
+        key: `renameShapeField:${edit.shapeId}:${edit.fieldId}`,
+        ids: [edit.shapeId, edit.fieldId],
+      };
+    case GRAPH_COMMAND_TYPES.setShapeFieldType:
+      return {
+        key: `shapeFieldType:${edit.shapeId}:${edit.fieldId}`,
+        ids: [edit.shapeId, edit.fieldId],
+      };
+    case GRAPH_COMMAND_TYPES.setShapeFieldDefault:
+      return {
+        key: `shapeFieldDefault:${edit.shapeId}:${edit.fieldId}`,
+        ids: [edit.shapeId, edit.fieldId],
+      };
+    case GRAPH_COMMAND_TYPES.setShapeFieldRequired:
+      return {
+        key: `shapeFieldRequired:${edit.shapeId}:${edit.fieldId}`,
+        ids: [edit.shapeId, edit.fieldId],
+      };
+    case GRAPH_COMMAND_TYPES.reorderShapeFields:
+      return {
+        key: `shapeFieldOrder:${edit.shapeId}`,
+        ids: [edit.shapeId, ...edit.fieldIds],
+      };
     case GRAPH_COMMAND_TYPES.setFlowDefaultScene:
       return {
         key: `defaultScene:${edit.flowId}`,
@@ -229,6 +304,15 @@ function structuralIds(edit: GraphEdit): readonly string[] {
       return [edit.node.id];
     case GRAPH_COMMAND_TYPES.removeNode:
       return [edit.nodeId];
+    case GRAPH_COMMAND_TYPES.addShape:
+    case GRAPH_COMMAND_TYPES.duplicateShape:
+      return [edit.shape.id];
+    case GRAPH_COMMAND_TYPES.removeShape:
+      return [edit.shapeId];
+    case GRAPH_COMMAND_TYPES.addShapeField:
+      return [edit.shapeId, edit.field.id];
+    case GRAPH_COMMAND_TYPES.removeShapeField:
+      return [edit.shapeId, edit.fieldId];
     case GRAPH_COMMAND_TYPES.addSceneVariable:
       return [edit.variable.id];
     case GRAPH_COMMAND_TYPES.removeSceneVariable:

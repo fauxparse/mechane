@@ -47,20 +47,31 @@ import {
   addEdge,
   addNode,
   addSceneVariable,
+  addShape,
+  addShapeField,
+  duplicateShape,
   GRAPH_COMMAND_TYPES,
   moveNode,
   removeEdge,
   removeNode,
   removeSceneVariable,
+  removeShape,
+  removeShapeField,
   renameNode,
   renameSceneVariable,
+  renameShape,
+  renameShapeField,
   reorderSceneVariables,
+  reorderShapeFields,
   reparentNode,
   setDevicePairingCode,
   setDevicePerConnection,
   setFlowDefaultScene,
   setNodeColor,
   setSceneVariableType,
+  setShapeFieldDefault,
+  setShapeFieldRequired,
+  setShapeFieldType,
   setShapes,
   setSourceFieldDefault,
 } from "./graph-commands";
@@ -145,6 +156,14 @@ export interface FlatGraphEdit {
   edgeId?: string | null;
   edge?: FlatGraphEdge | null;
   position?: Position | null;
+  shapeId?: string | null;
+  shape?: FlatShape | null;
+  fieldId?: string | null;
+  field?: FlatShapeField | null;
+  fieldIds?: string[] | null;
+  fieldType?: FlatType | null;
+  defaultValue?: unknown;
+  required?: boolean | null;
   parentId?: string | null;
   name?: string | null;
   flowId?: string | null;
@@ -232,6 +251,27 @@ export function encodeShape(shape: Shape): FlatShape {
     })),
   };
 }
+function encodeShapeField(field: ShapeField): FlatShapeField {
+  return {
+    id: field.id,
+    name: field.name,
+    type: encodeType(field.type)!,
+    position: 0,
+    required: field.required,
+    defaultValue: field.defaultValue ?? null,
+  };
+}
+
+function decodeShapeField(flat: FlatShapeField): ShapeField {
+  return {
+    id: flat.id,
+    name: flat.name,
+    type: decodeType(flat.type)!,
+    required: flat.required,
+    defaultValue: flat.defaultValue ?? null,
+  };
+}
+
 
 export function decodeShape(flat: FlatShape): Shape {
   return {
@@ -504,6 +544,135 @@ export const GRAPH_EDIT_CODECS: { [T in GraphEdit["type"]]: GraphEditCodec<T> } 
     decode: (flat) => ({
       type: GRAPH_COMMAND_TYPES.setShapes,
       shapes: (flat.shapes ?? []).map(decodeShape),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.addShape]: {
+    command: (edit) => addShape(edit.shape),
+    encode: (edit) => ({ type: edit.type, shape: encodeShape(edit.shape) }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.addShape,
+      shape: decodeShape(required(flat, "shape", flat.shape)),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.renameShape]: {
+    command: (edit) => renameShape(edit.shapeId, edit.name),
+    encode: (edit) => ({ type: edit.type, shapeId: edit.shapeId, name: edit.name }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.renameShape,
+      shapeId: required(flat, "shapeId", flat.shapeId),
+      name: required(flat, "name", flat.name),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.duplicateShape]: {
+    command: (edit) => duplicateShape(edit.shape),
+    encode: (edit) => ({ type: edit.type, shape: encodeShape(edit.shape) }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.duplicateShape,
+      shape: decodeShape(required(flat, "shape", flat.shape)),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.removeShape]: {
+    command: (edit) => removeShape(edit.shapeId),
+    encode: (edit) => ({ type: edit.type, shapeId: edit.shapeId }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.removeShape,
+      shapeId: required(flat, "shapeId", flat.shapeId),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.addShapeField]: {
+    command: (edit) => addShapeField(edit.shapeId, edit.field),
+    encode: (edit) => ({ type: edit.type, shapeId: edit.shapeId, field: encodeShapeField(edit.field) }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.addShapeField,
+      shapeId: required(flat, "shapeId", flat.shapeId),
+      field: decodeShapeField(required(flat, "field", flat.field)),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.renameShapeField]: {
+    command: (edit) => renameShapeField(edit.shapeId, edit.fieldId, edit.name),
+    encode: (edit) => ({
+      type: edit.type,
+      shapeId: edit.shapeId,
+      fieldId: edit.fieldId,
+      name: edit.name,
+    }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.renameShapeField,
+      shapeId: required(flat, "shapeId", flat.shapeId),
+      fieldId: required(flat, "fieldId", flat.fieldId),
+      name: required(flat, "name", flat.name),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.setShapeFieldType]: {
+    command: (edit) => setShapeFieldType(edit.shapeId, edit.fieldId, edit.fieldType),
+    encode: (edit) => ({
+      type: edit.type,
+      shapeId: edit.shapeId,
+      fieldId: edit.fieldId,
+      fieldType: encodeType(edit.fieldType),
+    }),
+    decode: (flat) => {
+      if (flat.fieldType === undefined) {
+        throw new GraphEditCodecError(`A "${flat.type}" edit needs a fieldType.`);
+      }
+      return {
+        type: GRAPH_COMMAND_TYPES.setShapeFieldType,
+        shapeId: required(flat, "shapeId", flat.shapeId),
+        fieldId: required(flat, "fieldId", flat.fieldId),
+        fieldType: decodeType(flat.fieldType)!,
+      };
+    },
+  },
+  [GRAPH_COMMAND_TYPES.setShapeFieldDefault]: {
+    command: (edit) => setShapeFieldDefault(edit.shapeId, edit.fieldId, edit.defaultValue),
+    encode: (edit) => ({
+      type: edit.type,
+      shapeId: edit.shapeId,
+      fieldId: edit.fieldId,
+      defaultValue: edit.defaultValue,
+    }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.setShapeFieldDefault,
+      shapeId: required(flat, "shapeId", flat.shapeId),
+      fieldId: required(flat, "fieldId", flat.fieldId),
+      defaultValue: flat.defaultValue ?? null,
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.setShapeFieldRequired]: {
+    command: (edit) => setShapeFieldRequired(edit.shapeId, edit.fieldId, edit.required),
+    encode: (edit) => ({
+      type: edit.type,
+      shapeId: edit.shapeId,
+      fieldId: edit.fieldId,
+      required: edit.required,
+    }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.setShapeFieldRequired,
+      shapeId: required(flat, "shapeId", flat.shapeId),
+      fieldId: required(flat, "fieldId", flat.fieldId),
+      required: required(flat, "required", flat.required),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.reorderShapeFields]: {
+    command: (edit) => reorderShapeFields(edit.shapeId, edit.fieldIds),
+    encode: (edit) => ({
+      type: edit.type,
+      shapeId: edit.shapeId,
+      fieldIds: [...edit.fieldIds],
+    }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.reorderShapeFields,
+      shapeId: required(flat, "shapeId", flat.shapeId),
+      fieldIds: required(flat, "fieldIds", flat.fieldIds),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.removeShapeField]: {
+    command: (edit) => removeShapeField(edit.shapeId, edit.fieldId),
+    encode: (edit) => ({ type: edit.type, shapeId: edit.shapeId, fieldId: edit.fieldId }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.removeShapeField,
+      shapeId: required(flat, "shapeId", flat.shapeId),
+      fieldId: required(flat, "fieldId", flat.fieldId),
     }),
   },
   [GRAPH_COMMAND_TYPES.setSourceFieldDefault]: {

@@ -14,12 +14,13 @@ import {
   TypeSelect,
 } from "@mechane/design-system";
 import type { Shape, ShapeField, ShowGraph, Type } from "@mechane/domain";
-import { assertValidShapes, defaultValueForType } from "@mechane/domain";
+import { assertValidShapes, defaultValueForType, shapeReferencesShape } from "@mechane/domain";
 import { useForm } from "@tanstack/react-form";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
 import type { GraphEditing } from "../commands/use-graph-editing";
+import { typeLabel } from "../graph/node-kinds";
 import { ShapeDefaultEditor } from "./ShapeDefaultEditor";
 import { setShapeEditorStatus } from "./shape-editor-status";
 
@@ -65,49 +66,8 @@ function nextName(existing: readonly string[], base: string): string {
   while (names.has(`${base}${suffix}`)) suffix += 1;
   return `${base}${suffix}`;
 }
-
-function shapeUsesShape(shape: Shape, targetId: string): boolean {
-  return shape.fields.some((field) => typeUsesShape(field.type, targetId));
-}
-
-function typeUsesShape(type: Type, targetId: string): boolean {
-  if (typeof type === "string") return false;
-  if (type.kind === "shape") return type.shapeId === targetId;
-  if (type.kind === "array") return typeUsesShape(type.of, targetId);
-  return false;
-}
-
-function shapeReferences(shapes: readonly Shape[], sourceId: string, targetId: string): boolean {
-  const source = shapes.find((shape) => shape.id === sourceId);
-  if (!source) return false;
-  const visited = new Set<string>();
-  const visit = (shapeId: string): boolean => {
-    if (shapeId === targetId) return true;
-    if (visited.has(shapeId)) return false;
-    visited.add(shapeId);
-    const shape = shapes.find((candidate) => candidate.id === shapeId);
-    return (
-      shape?.fields.some((field) => {
-        if (typeof field.type === "string") return false;
-        if (field.type.kind === "shape") return visit(field.type.shapeId);
-        return visitType(field.type.of);
-      }) ?? false
-    );
-  };
-  const visitType = (type: Type): boolean => {
-    if (typeof type === "string") return false;
-    if (type.kind === "shape") return visit(type.shapeId);
-    return visitType(type.of);
-  };
-  return visit(source.id);
-}
-
-function updateShape(
-  shapes: readonly Shape[],
-  shapeId: string,
-  update: (shape: Shape) => Shape,
-): Shape[] {
-  return shapes.map((shape) => (shape.id === shapeId ? update(shape) : shape));
+function shapeUsesShape(shapes: readonly Shape[], sourceId: string, targetId: string): boolean {
+  return shapeReferencesShape(shapes, sourceId, targetId);
 }
 
 function cloneShape(shape: Shape, shapes: readonly Shape[]): Shape {
@@ -190,23 +150,19 @@ export function ShapeWorkspace({
       ),
       fields: [],
     };
-    editing.setShapes([...shapes, shape]);
+    editing.addShape(shape);
     onOpenShape(shape.id);
   };
 
   const duplicateShape = (shape: Shape) => {
     const copy = cloneShape(shape, shapes);
-    editing.setShapes([...shapes, copy]);
+    editing.duplicateShape(copy);
     onOpenShape(copy.id);
   };
 
   const deleteShape = (shape: Shape) => {
-    const usedBy = shapes.filter(
-      (candidate) => candidate.id !== shape.id && shapeUsesShape(candidate, shape.id),
-    );
-    if (usedBy.length > 0) return;
     if (!window.confirm(`Delete Shape “${shape.name}”?`)) return;
-    editing.setShapes(shapes.filter((candidate) => candidate.id !== shape.id));
+    editing.removeShape(shape.id);
     if (shape.id === shapeId) onBack();
   };
 
@@ -408,10 +364,10 @@ function EmptyShapes({ hasQuery, onCreate }: { hasQuery: boolean; onCreate(): vo
           Create Shape
         </button>
       ) : null}
+
     </div>
   );
 }
-
 function ShapeCard({
   shape,
   shapes,
@@ -426,7 +382,7 @@ function ShapeCard({
   onDelete(shape: Shape): void;
 }) {
   const usedBy = shapes.filter(
-    (candidate) => candidate.id !== shape.id && shapeUsesShape(candidate, shape.id),
+    (candidate) => candidate.id !== shape.id && shapeUsesShape(shapes, candidate.id, shape.id),
   );
   return (
     <article className="group rounded-xl border border-border bg-card p-5 shadow-sm transition hover:border-primary/50 hover:shadow-md">
@@ -502,11 +458,7 @@ function ShapeEditor({
     shape.fields[0]?.id ?? null,
   );
   const selectedField = shape.fields.find((field) => field.id === selectedFieldId) ?? null;
-  const replaceShape = useCallback(
-    (update: (current: Shape) => Shape) => editing.setShapes(updateShape(shapes, shape.id, update)),
-    [editing, shape.id, shapes],
-  );
-  const renameShape = (name: string) => replaceShape((current) => ({ ...current, name }));
+  const renameShape = (name: string) => editing.renameShape(shape.id, name);
   const addField = () => {
     const name = nextName(
       shape.fields.map((field) => field.name),
@@ -519,7 +471,7 @@ function ShapeEditor({
       required: false,
       defaultValue: null,
     };
-    replaceShape((current) => ({ ...current, fields: [...current.fields, field] }));
+    editing.addShapeField(shape.id, field);
     setSelectedFieldId(field.id);
   };
   const duplicateField = (field: ShapeField) => {
@@ -531,24 +483,24 @@ function ShapeEditor({
         `${field.name}Copy`,
       ),
     };
-    replaceShape((current) => ({ ...current, fields: [...current.fields, copy] }));
+    editing.addShapeField(shape.id, copy);
     setSelectedFieldId(copy.id);
   };
   const deleteField = (field: ShapeField) => {
     if (!window.confirm(`Delete Field “${field.name}”?`)) return;
-    replaceShape((current) => ({
-      ...current,
-      fields: current.fields.filter((candidate) => candidate.id !== field.id),
-    }));
+    editing.removeShapeField(shape.id, field.id);
     setSelectedFieldId((current) => (current === field.id ? null : current));
   };
-  const updateField = (fieldId: string, update: Partial<ShapeField>) =>
-    replaceShape((current) => ({
-      ...current,
-      fields: current.fields.map((field) =>
-        field.id === fieldId ? { ...field, ...update } : field,
-      ),
-    }));
+  const updateField = (fieldId: string, update: Partial<ShapeField>) => {
+    if ("name" in update && update.name !== undefined)
+      editing.renameShapeField(shape.id, fieldId, update.name);
+    if ("type" in update && update.type !== undefined)
+      editing.setShapeFieldType(shape.id, fieldId, update.type);
+    if ("required" in update && update.required !== undefined)
+      editing.setShapeFieldRequired(shape.id, fieldId, update.required);
+    if ("defaultValue" in update)
+      editing.setShapeFieldDefault(shape.id, fieldId, update.defaultValue);
+  };
   const reorderFields = useCallback(
     (event: DragEndEvent) => {
       if (event.canceled) return;
@@ -563,18 +515,16 @@ function ShapeEditor({
         typeof target.id !== "string"
       )
         return;
-      replaceShape((current) => {
-        const from = current.fields.findIndex((field) => field.id === source.id);
-        const to = current.fields.findIndex((field) => field.id === target.id);
-        if (from < 0 || to < 0 || from === to) return current;
-        const fields = [...current.fields];
-        const [moved] = fields.splice(from, 1);
-        if (!moved) return current;
-        fields.splice(to, 0, moved);
-        return { ...current, fields };
-      });
+      const from = shape.fields.findIndex((field) => field.id === source.id);
+      const to = shape.fields.findIndex((field) => field.id === target.id);
+      if (from < 0 || to < 0 || from === to) return;
+      const fieldIds = shape.fields.map((field) => field.id);
+      const [moved] = fieldIds.splice(from, 1);
+      if (!moved) return;
+      fieldIds.splice(to, 0, moved);
+      editing.reorderShapeFields(shape.id, fieldIds);
     },
-    [replaceShape],
+    [editing, shape],
   );
   const nameForm = useForm({
     defaultValues: { name: shape.name },
@@ -766,7 +716,7 @@ function FieldDetails({
   const referencesCycle = (type: Type) => {
     if (typeof type === "string") return false;
     const target = referencedShapeId(type);
-    return target ? shapeReferences(shapes, target, currentShapeId) : false;
+    return target ? shapeReferencesShape(shapes, target, currentShapeId) : false;
   };
   const arrayItemType =
     typeof field.type === "object" && field.type.kind === "array" ? field.type.of : null;
@@ -898,11 +848,6 @@ function FieldDetails({
   );
 }
 
-function typeLabel(type: Type): string {
-  if (typeof type === "string") return type === "datetime" ? "date/time" : type;
-  if (type.kind === "array") return "array";
-  return "Shape";
-}
 
 function referencedShapeId(type: Type): string | null {
   if (typeof type === "string") return null;

@@ -18,19 +18,30 @@ import {
   addEdge,
   addNode,
   addSceneVariable,
+  addShape,
+  addShapeField,
+  duplicateShape,
   moveNode,
   moveNodesIntoFlow,
   moveNodesOutOfFlow,
   removeEdge,
   removeNode,
   removeSceneVariable,
+  removeShape,
+  removeShapeField,
   renameNode,
   renameSceneVariable,
+  renameShape,
+  renameShapeField,
+  reorderShapeFields,
   reparentNode,
   setDevicePairingCode,
   setDevicePerConnection,
   setFlowDefaultScene,
   setSceneVariableType,
+  setShapeFieldDefault,
+  setShapeFieldRequired,
+  setShapeFieldType,
   setShapes,
 } from "./graph-commands";
 import type { GraphEdit } from "./graph-edits";
@@ -122,6 +133,30 @@ const GRAPH: ShowGraph = {
   nodes: [VOTE_FLOW, VOTING, RESULTS, LOBBY, TALLY, PHONE],
   edges: [WIRE, NAVIGATE, TO_PHONE],
 };
+const ADDRESS_SHAPE: Shape = {
+  id: "shape_address",
+  name: "Address",
+  fields: [
+    { id: "field_street", name: "street", type: "text", required: true, defaultValue: "" },
+    { id: "field_city", name: "city", type: "text", required: false, defaultValue: null },
+  ],
+};
+
+const PERSON_SHAPE: Shape = {
+  id: "shape_person",
+  name: "Person",
+  fields: [
+    {
+      id: "field_address",
+      name: "address",
+      type: { kind: "shape", shapeId: ADDRESS_SHAPE.id },
+      required: true,
+      defaultValue: { field_street: "" },
+    },
+  ],
+};
+
+const SHAPE_GRAPH: ShowGraph = { ...GRAPH, shapes: [ADDRESS_SHAPE, PERSON_SHAPE] };
 
 /**
  * A graph as the *server* sees it: nodes and edges by id, in id order.
@@ -245,6 +280,57 @@ describe("every primitive command's edits reproduce it", () => {
       ],
     };
     expectEditsReproduce(setShapes([shape]));
+  });
+
+  it("shape commands", () => {
+    const added: Shape = {
+      id: "shape_vote",
+      name: "Vote",
+      fields: [],
+    };
+    const field = {
+      id: "field_count",
+      name: "count",
+      type: "number" as const,
+      required: true,
+      defaultValue: 0,
+    };
+    expectEditsReproduce(addShape(added), SHAPE_GRAPH);
+    expectEditsReproduce(duplicateShape({ ...added, id: "shape_vote_copy" }), SHAPE_GRAPH);
+    expectEditsReproduce(renameShape(ADDRESS_SHAPE.id, "Location"), SHAPE_GRAPH);
+    expectEditsReproduce(addShapeField(ADDRESS_SHAPE.id, field), SHAPE_GRAPH);
+    expectEditsReproduce(renameShapeField(ADDRESS_SHAPE.id, "field_street", "road"), SHAPE_GRAPH);
+    expectEditsReproduce(
+      setShapeFieldType(ADDRESS_SHAPE.id, "field_street", "number"),
+      SHAPE_GRAPH,
+    );
+    expectEditsReproduce(
+      setShapeFieldDefault(ADDRESS_SHAPE.id, "field_street", "Main"),
+      SHAPE_GRAPH,
+    );
+    expectEditsReproduce(
+      setShapeFieldRequired(ADDRESS_SHAPE.id, "field_city", true),
+      SHAPE_GRAPH,
+    );
+    expectEditsReproduce(
+      reorderShapeFields(ADDRESS_SHAPE.id, ["field_city", "field_street"]),
+      SHAPE_GRAPH,
+    );
+    expectEditsReproduce(removeShapeField(ADDRESS_SHAPE.id, "field_city"), SHAPE_GRAPH);
+    expectEditsReproduce(removeShape("shape_person"), SHAPE_GRAPH);
+  });
+
+  it("refuses duplicate Field names, Shape cycles, and deleting a used Shape", () => {
+    expect(() =>
+      renameShapeField(ADDRESS_SHAPE.id, "field_city", "street").apply(SHAPE_GRAPH),
+    ).toThrow(/duplicate Field name/);
+    expect(() =>
+      setShapeFieldType(PERSON_SHAPE.id, "field_address", {
+        kind: "shape",
+        shapeId: PERSON_SHAPE.id,
+      }).apply(SHAPE_GRAPH),
+    ).toThrow(/acyclic/);
+    expect(() => removeShape(ADDRESS_SHAPE.id).apply(SHAPE_GRAPH)).toThrow(/used/);
   });
 });
 

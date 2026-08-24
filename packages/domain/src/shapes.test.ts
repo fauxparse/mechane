@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   areTypesCompatible,
+  assertShapeCanBeRemoved,
+  assertShapeFieldNameAvailable,
+  assertValidShapeType,
   assertValidShapes,
   topologicallySortShapes,
   assertValueConformsToShape,
@@ -11,6 +14,7 @@ import {
   COERCIONS,
   CoercionError,
   InvalidShapeError,
+  shapeReferencesShape,
 } from "./shapes";
 import type { Shape } from "./shapes";
 
@@ -91,6 +95,18 @@ describe("Shape grammar", () => {
         },
       ]),
     ).toThrow(InvalidShapeError);
+  });
+
+  it("exposes command-level name, reference, and deletion guards", () => {
+    expect(shapeReferencesShape([person, address], person.id, address.id)).toBe(true);
+    expect(shapeReferencesShape([person, address], address.id, address.id)).toBe(false);
+    expect(() => assertShapeFieldNameAvailable(person, "Addresses", "new")).toThrow(
+      /duplicate Field name/,
+    );
+    expect(() => assertValidShapeType({ kind: "shape", shapeId: "missing" }, [address])).toThrow(
+      /unknown Shape/,
+    );
+    expect(() => assertShapeCanBeRemoved([person, address], address.id)).toThrow(/used/);
   });
 });
 
