@@ -112,6 +112,33 @@ describe("graphToFlow", () => {
       driven: false,
     });
   });
+  it("narrows rendered data by node kind", () => {
+    const { nodes } = graphToFlow({
+      nodes: [
+        node({ id: "flow_1", kind: "flow", defaultSceneId: "scene_1" }),
+        node({ id: "scene_1", kind: "scene" }),
+        node({ id: "source_1", kind: "source" }),
+        node({ id: "device_1", kind: "device", pairingCode: "ABC123" }),
+      ],
+      edges: [],
+    });
+    const byId = new Map(nodes.map((flowNode) => [flowNode.id, flowNode]));
+    const flow = byId.get("flow_1");
+    if (!flow || flow.data.kind !== "flow") throw new Error("Expected a Flow node.");
+    expect(flow.data.collapsed).toBe(false);
+
+    const scene = byId.get("scene_1");
+    if (!scene || scene.data.kind !== "scene") throw new Error("Expected a Scene node.");
+    expect(scene.data.type).toBeNull();
+
+    const source = byId.get("source_1");
+    if (!source || source.data.kind !== "source") throw new Error("Expected a Source node.");
+    expect(source.data.fields).toEqual([]);
+
+    const device = byId.get("device_1");
+    if (!device || device.data.kind !== "device") throw new Error("Expected a Device node.");
+    expect(device.data.pairingCode).toBe("ABC123");
+  });
   it("lets graph-owned source edits update the rendered node fields", () => {
     const { nodes } = graphToFlow({
       shapes: [

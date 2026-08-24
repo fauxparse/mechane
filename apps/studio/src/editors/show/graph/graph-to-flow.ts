@@ -116,52 +116,108 @@ export const FLOW_CONTENT_ORIGIN: Position = {
   y: FLOW_HEADER_HEIGHT + FLOW_PADDING,
 };
 
-// `type`, not `interface`: React Flow v12 constrains node and edge data to
-// `Record<string, unknown>`, which an interface does not satisfy structurally
-// (interfaces have no implicit index signature).
-export type ShowNodeData = {
+type ShowNodeField = { id: string; name: string; type: Type; value: unknown };
+type ShowNodeVariable = { id: string; name: string; type?: Type | null };
+
+type ShowNodeDataBase = {
   /** The node colorway, or its Flow colorway when unset (#316). */
   color: FlowColor;
-  kind: NodeKind;
   name: string;
-  type: Type | null;
   /** Show-scoped Shape definitions used to render human-readable type labels. */
   shapes?: readonly Shape[];
   /** Immediate Shape fields rendered as value rows on Source/Transformer nodes. */
-  fields: { id: string; name: string; type: Type; value: unknown }[];
+  fields: ShowNodeField[];
   /** Scene Variables, in graph order. Empty for every other kind. */
-  variables: { id: string; name: string; type?: Type | null }[];
-  /** The Scene a Flow enters by default (#23), if one has been chosen. */
-  defaultSceneId: string | null;
+  variables: ShowNodeVariable[];
   /**
-   * Variables with a producer wired into them. #35's dangling-input marker is
-   * the complement: a Variable *not* in here has nothing feeding it, which is
-   * the one state that breaks the Show at performance time and is otherwise
-   * invisible.
+   * Variables with a producer wired into them. #35's dangling-input marker
+   * is the complement: a Variable *not* in here has nothing feeding it.
    */
   wiredVariableIds: string[];
-  /** Whether this Flow is the default-Scene owner of a Scene in the graph. */
+  /** Whether this is the Flow's default-Scene owner. */
   isDefaultScene: boolean;
-  /** Nodes inside this Flow — how a Flow says "3 scenes" (#35, #44). */
+  /** Nodes inside this Flow. */
   childCount: number;
   /** Devices only: one instance per connection rather than one shared (#45). */
   perConnection: boolean;
-  /**
-   * Devices only: whether a Flow or top-level Scene drives this Device.
-   * An undriven Device is legal and expected — the director will often
-   * place the projector before the Flow exists — so it reads as a warning
-   * on the node, never as a blocked publish (#45).
-   */
+  /** Devices only: whether a Flow or top-level Scene drives this Device. */
   driven: boolean;
-  /**
-   * Devices only: the Show-level pairing code, or null while the server
-   * hasn't minted one — the state a Device is in between appearing on the
-   * canvas and the first save coming back (#45).
-   */
+  /** Devices only: the Show-level pairing code. */
   pairingCode: string | null;
-  /** Local canvas view state; never persisted or commanded (#44). */
-  collapsed?: boolean;
 };
+
+type FlowNodeData = ShowNodeDataBase & {
+  kind: "flow";
+  type: null;
+  defaultSceneId: string | null;
+  fields: [];
+  variables: [];
+  wiredVariableIds: [];
+  isDefaultScene: false;
+  childCount: number;
+  perConnection: false;
+  driven: false;
+  pairingCode: null;
+  collapsed: boolean;
+};
+
+type SceneNodeData = ShowNodeDataBase & {
+  kind: "scene";
+  type: null;
+  defaultSceneId: null;
+  fields: [];
+  variables: ShowNodeVariable[];
+  childCount: 0;
+  perConnection: false;
+  driven: false;
+  pairingCode: null;
+  collapsed?: never;
+};
+
+type SourceNodeData = ShowNodeDataBase & {
+  kind: "source";
+  type: Type | null;
+  defaultSceneId: null;
+  fields: ShowNodeField[];
+  variables: [];
+  childCount: 0;
+  perConnection: false;
+  driven: false;
+  pairingCode: null;
+  collapsed?: never;
+};
+
+type TransformerNodeData = ShowNodeDataBase & {
+  kind: "transformer";
+  type: Type | null;
+  defaultSceneId: null;
+  fields: ShowNodeField[];
+  variables: [];
+  childCount: 0;
+  perConnection: false;
+  driven: false;
+  pairingCode: null;
+  collapsed?: never;
+};
+
+type DeviceNodeData = ShowNodeDataBase & {
+  kind: "device";
+  type: null;
+  defaultSceneId: null;
+  fields: [];
+  variables: [];
+  wiredVariableIds: [];
+  isDefaultScene: false;
+  childCount: 0;
+  collapsed?: never;
+};
+
+export type ShowNodeData =
+  | FlowNodeData
+  | SceneNodeData
+  | SourceNodeData
+  | TransformerNodeData
+  | DeviceNodeData;
 
 export type ShowEdgeData = {
   kind: EdgeKind;
@@ -294,6 +350,119 @@ function fieldRows(
     value: valueAtPath(value, [field.id]),
   }));
 }
+function nodeData({
+  node,
+  kind,
+  color,
+  shapes,
+  fields,
+  variables,
+  wiredVariableIds,
+  defaultSceneIds,
+  childCount,
+  drivenDeviceIds,
+  collapsed,
+}: {
+  node: MappableNode;
+  kind: NodeKind;
+  color: FlowColor;
+  shapes: readonly Shape[] | undefined;
+  fields: ShowNodeField[];
+  variables: ShowNodeVariable[];
+  wiredVariableIds: ReadonlySet<string>;
+  defaultSceneIds: ReadonlySet<string>;
+  childCount: number;
+  drivenDeviceIds: ReadonlySet<string>;
+  collapsed: boolean;
+}): ShowNodeData {
+  const type = (node.type as Type | null | undefined) ?? null;
+  const shared = {
+    color,
+    name: node.name,
+    ...(shapes && shapes.length > 0 ? { shapes } : {}),
+  };
+  switch (kind) {
+    case "flow":
+      return {
+        ...shared,
+        kind,
+        type: null,
+        fields: [],
+        variables: [],
+        defaultSceneId: node.defaultSceneId ?? null,
+        wiredVariableIds: [],
+        isDefaultScene: false,
+        childCount,
+        perConnection: false,
+        pairingCode: null,
+        driven: false,
+        collapsed,
+      };
+    case "scene":
+      return {
+        ...shared,
+        kind,
+        type: null,
+        fields: [],
+        variables,
+        defaultSceneId: null,
+        isDefaultScene: defaultSceneIds.has(node.id),
+        childCount: 0,
+        wiredVariableIds: variables.reduce<string[]>((ids, variable) => {
+          if (wiredVariableIds.has(variable.id)) ids.push(variable.id);
+          return ids;
+        }, []),
+        perConnection: false,
+        pairingCode: null,
+        driven: false,
+      };
+    case "source":
+      return {
+        ...shared,
+        kind,
+        type,
+        fields,
+        variables: [],
+        defaultSceneId: null,
+        wiredVariableIds: [],
+        isDefaultScene: false,
+        childCount: 0,
+        perConnection: false,
+        pairingCode: null,
+        driven: false,
+      };
+    case "transformer":
+      return {
+        ...shared,
+        kind,
+        type,
+        fields,
+        variables: [],
+        defaultSceneId: null,
+        wiredVariableIds: [],
+        isDefaultScene: false,
+        childCount: 0,
+        perConnection: false,
+        pairingCode: null,
+        driven: false,
+      };
+    case "device":
+      return {
+        ...shared,
+        kind,
+        type: null,
+        fields: [],
+        variables: [],
+        defaultSceneId: null,
+        wiredVariableIds: [],
+        isDefaultScene: false,
+        childCount: 0,
+        perConnection: node.perConnection ?? false,
+        pairingCode: node.pairingCode ?? null,
+        driven: drivenDeviceIds.has(node.id),
+      };
+  }
+}
 
 function toFlowNode(
   node: MappableNode,
@@ -311,6 +480,11 @@ function toFlowNode(
   const isFlow = kind === "flow";
   const resolvedShapes = shapes ?? [];
   const minimumHeight = nodeHeight(node, resolvedShapes);
+  const variables = [...(node.variables ?? [])].map((variable) => ({
+    ...variable,
+    type: variable.type as Type | null | undefined,
+  }));
+  const fields = fieldRows(node, resolvedShapes, graphDefaults);
   return {
     id: node.id,
     type: isFlow ? FLOW_NODE_TYPE : PLACEHOLDER_NODE_TYPE,
@@ -337,29 +511,19 @@ function toFlowNode(
         ? { width: NODE_WIDTH, height: FLOW_HEADER_HEIGHT }
         : flowSize(children, minimumDimensions, resolvedShapes)
       : { width: NODE_WIDTH, minHeight: minimumHeight },
-    data: {
-      color,
+    data: nodeData({
+      node,
       kind,
-      name: node.name,
-      type: (node.type as Type | null | undefined) ?? null,
-      ...(shapes && shapes.length > 0 ? { shapes } : {}),
-      variables: [...(node.variables ?? [])].map((variable) => ({
-        ...variable,
-        type: variable.type as Type | null | undefined,
-      })),
-      fields: fieldRows(node, resolvedShapes, graphDefaults),
-      defaultSceneId: node.defaultSceneId ?? null,
-      wiredVariableIds: (node.variables ?? []).reduce<string[]>((ids, variable) => {
-        if (wiredVariableIds.has(variable.id)) ids.push(variable.id);
-        return ids;
-      }, []),
-      isDefaultScene: defaultSceneIds.has(node.id),
+      color,
+      shapes,
+      fields,
+      variables,
+      wiredVariableIds,
+      defaultSceneIds,
       childCount: children.length,
-      perConnection: node.perConnection ?? false,
-      pairingCode: node.pairingCode ?? null,
-      driven: drivenDeviceIds.has(node.id),
-      ...(isFlow ? { collapsed } : {}),
-    },
+      drivenDeviceIds,
+      collapsed,
+    }),
   };
 }
 
