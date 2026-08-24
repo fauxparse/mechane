@@ -691,6 +691,15 @@ export const schema = createSchema<GraphQLContext>({
       edge: GraphEdge
       position: Position
       parentId: ID
+      "The Shape target for shape commands."
+      shapeId: ID
+      shape: Shape
+      "The Shape Field target for shape commands."
+      fieldId: ID
+      field: ShapeField
+      fieldType: Type
+      defaultValue: JSON
+      required: Boolean
       "The Show node editor colorway for graph.setNodeColor."
       color: String
       "The graph-owned Source field path for graph.setSourceFieldDefault."
@@ -722,6 +731,14 @@ export const schema = createSchema<GraphQLContext>({
       variableId: ID
       variableIds: [ID!]
       variable: SceneVariableInput
+      "Shape command target and materialised payloads."
+      shapeId: ID
+      shape: ShapeInput
+      fieldId: ID
+      field: ShapeFieldInput
+      fieldType: TypeInput
+      defaultValue: JSON
+      required: Boolean
       "The Variable's Type, for graph.setSceneVariableType. Null clears it."
       shapes: [ShapeInput!]
       "The Variable's Type, for graph.setSceneVariableType. Null clears it."

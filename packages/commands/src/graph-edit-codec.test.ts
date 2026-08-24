@@ -97,6 +97,69 @@ const FIXTURES: { [T in GraphEdit["type"]]: Extract<GraphEdit, { type: T }> } = 
       },
     ],
   },
+  "graph.addShape": {
+    type: "graph.addShape",
+    shape: {
+      id: "shape_vote",
+      name: "Vote",
+      fields: [],
+    },
+  },
+  "graph.renameShape": { type: "graph.renameShape", shapeId: "shape_vote", name: "Ballot" },
+  "graph.duplicateShape": {
+    type: "graph.duplicateShape",
+    shape: {
+      id: "shape_vote_copy",
+      name: "Vote copy",
+      fields: [],
+    },
+  },
+  "graph.removeShape": { type: "graph.removeShape", shapeId: "shape_vote" },
+  "graph.addShapeField": {
+    type: "graph.addShapeField",
+    shapeId: "shape_vote",
+    field: {
+      id: "field_count",
+      name: "count",
+      type: "number",
+      required: true,
+      defaultValue: 0,
+    },
+  },
+  "graph.renameShapeField": {
+    type: "graph.renameShapeField",
+    shapeId: "shape_vote",
+    fieldId: "field_count",
+    name: "total",
+  },
+  "graph.setShapeFieldType": {
+    type: "graph.setShapeFieldType",
+    shapeId: "shape_vote",
+    fieldId: "field_count",
+    fieldType: "text",
+  },
+  "graph.setShapeFieldDefault": {
+    type: "graph.setShapeFieldDefault",
+    shapeId: "shape_vote",
+    fieldId: "field_count",
+    defaultValue: 7,
+  },
+  "graph.setShapeFieldRequired": {
+    type: "graph.setShapeFieldRequired",
+    shapeId: "shape_vote",
+    fieldId: "field_count",
+    required: false,
+  },
+  "graph.reorderShapeFields": {
+    type: "graph.reorderShapeFields",
+    shapeId: "shape_vote",
+    fieldIds: ["field_options", "field_count"],
+  },
+  "graph.removeShapeField": {
+    type: "graph.removeShapeField",
+    shapeId: "shape_vote",
+    fieldId: "field_count",
+  },
   "graph.setSourceFieldDefault": {
     type: "graph.setSourceFieldDefault",
     nodeId: "source_votes",

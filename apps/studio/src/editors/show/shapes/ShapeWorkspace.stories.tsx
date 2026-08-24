@@ -33,7 +33,17 @@ function noop(): void {}
 
 const editing = {
   graph: GRAPH,
-  setShapes: noop,
+  addShape: noop,
+  renameShape: noop,
+  duplicateShape: noop,
+  removeShape: noop,
+  addShapeField: noop,
+  renameShapeField: noop,
+  setShapeFieldType: noop,
+  setShapeFieldRequired: noop,
+  setShapeFieldDefault: noop,
+  reorderShapeFields: noop,
+  removeShapeField: noop,
 } as unknown as GraphEditing;
 
 const meta = {
