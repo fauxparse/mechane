@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { defaultSourceValues } from "./source-defaults";
+import { defaultSourceValues, sourceDefaultsFor } from "./source-defaults";
 
 const graph = {
   shapes: [
@@ -25,7 +25,10 @@ const graph = {
       ],
     },
   ],
-  sourceFieldDefaults: [{ nodeId: "source_votes", fieldPath: ["field_count"], value: 3 }],
+  sourceFieldDefaults: [
+    { nodeId: "source_votes", fieldPath: ["field_count"], value: 3 },
+    { nodeId: "source_votes", fieldPath: ["field_label"], value: "votes" },
+  ],
   nodes: [
     {
       id: "source_votes",
@@ -34,10 +37,6 @@ const graph = {
       parentId: null,
       position: { x: 0, y: 0 },
       type: { kind: "shape" as const, shapeId: "shape_vote" },
-      fieldDefaults: [
-        { nodeId: "source_votes", fieldPath: ["field_count"], value: 99 },
-        { nodeId: "source_votes", fieldPath: ["field_label"], value: "votes" },
-      ],
     },
     {
       id: "source_count",
@@ -52,6 +51,13 @@ const graph = {
 };
 
 describe("defaultSourceValues", () => {
+  it("returns only the requested Source's graph-owned defaults", () => {
+    expect(sourceDefaultsFor(graph, "source_votes")).toEqual([
+      { nodeId: "source_votes", fieldPath: ["field_count"], value: 3 },
+      { nodeId: "source_votes", fieldPath: ["field_label"], value: "votes" },
+    ]);
+    expect(sourceDefaultsFor(graph, "source_count")).toEqual([]);
+  });
   it("materialises Shape defaults and sparse Source overrides", () => {
     expect(defaultSourceValues(graph)).toEqual({
       source_votes: { field_count: 3, field_label: "votes" },

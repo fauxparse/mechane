@@ -19,7 +19,7 @@ import type { FlatGraphEdit, GraphEdit } from "@mechane/commands";
 import { decodeGraphEdit, encodeGraphEdit, GraphEditCodecError } from "@mechane/commands";
 import { GRAPH_COMMAND_TYPES } from "@mechane/commands";
 import type { GraphEdge, GraphNode } from "@mechane/domain";
-import { wiringTargetVariableId } from "@mechane/domain";
+import { sourceDefaultsFor, wiringTargetVariableId } from "@mechane/domain";
 import { GraphQLError } from "graphql";
 
 import type { StoredShowGraph } from "../db/show-graph";
@@ -152,7 +152,7 @@ export function serializeShowGraph(graph: StoredShowGraph) {
     updatedAt: graph.updatedAt.toISOString(),
     // What the next edit batch has to be composed against (#103).
     version: graph.version,
-    nodes: graph.nodes.map(serializeNode),
+    nodes: graph.nodes.map((node) => serializeNode(node, graph)),
     edges: graph.edges.map(serializeEdge),
     shapes: (graph.shapes ?? []).map(serializeShape),
     sourceFieldDefaults: (graph.sourceFieldDefaults ?? []).map((fieldDefault) => ({
@@ -172,7 +172,7 @@ function serializeShape(shape: import("@mechane/domain").Shape) {
   };
 }
 
-function serializeNode(node: GraphNode) {
+function serializeNode(node: GraphNode, graph?: Pick<StoredShowGraph, "sourceFieldDefaults">) {
   return {
     id: node.id,
     kind: node.kind,
@@ -185,7 +185,7 @@ function serializeNode(node: GraphNode) {
         ? node.variables.map((variable) => ({ ...variable, type: variable.type ?? null }))
         : [],
     type: node.kind === "source" || node.kind === "transformer" ? (node.type ?? null) : null,
-    fieldDefaults: node.kind === "source" ? (node.fieldDefaults ?? []) : [],
+    fieldDefaults: node.kind === "source" && graph ? sourceDefaultsFor(graph, node.id) : [],
     perConnection: node.kind === "device" && node.perConnection,
     pairingCode: node.kind === "device" ? node.pairingCode : null,
   };

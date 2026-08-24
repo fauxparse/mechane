@@ -17,7 +17,6 @@ import type {
   Shape,
   ShapeField,
   ShowGraph,
-  SourceFieldDefault,
   Type,
 } from "@mechane/domain";
 import { assertValidShowGraph, emptyShowGraph, generateId, isEdgeKind } from "@mechane/domain";
@@ -127,8 +126,6 @@ type ShapeFieldRow = typeof shapeFields.$inferSelect;
 function toNode(
   row: NodeRow,
   variablesByScene: Map<string, SceneVariable[]>,
-  sourceDefaultsByNode: Map<string, SourceFieldDefault[]>,
-
   deviceIdentities: Map<string, StoredDevice>,
 ): GraphNode {
   const base = {
@@ -158,7 +155,6 @@ function toNode(
         kind: "source",
         parentId: row.parentId,
         type: row.type as Type,
-        fieldDefaults: sourceDefaultsByNode.get(row.id) ?? [],
       };
     case "transformer":
       return {
@@ -300,16 +296,6 @@ export async function readShowGraph(
     .select()
     .from(sourceFieldDefaults)
     .where(eq(sourceFieldDefaults.graphId, row.id));
-  const sourceDefaultsByNode = new Map<string, SourceFieldDefault[]>();
-  for (const sourceDefault of sourceDefaultRows) {
-    const defaults = sourceDefaultsByNode.get(sourceDefault.nodeId) ?? [];
-    defaults.push({
-      nodeId: sourceDefault.nodeId,
-      fieldPath: sourceDefault.fieldPath,
-      value: sourceDefault.value,
-    });
-    sourceDefaultsByNode.set(sourceDefault.nodeId, defaults);
-  }
   const edgeRows = await executor
     .select()
     .from(graphEdges)
@@ -337,9 +323,7 @@ export async function readShowGraph(
       fieldPath: sourceDefault.fieldPath,
       value: sourceDefault.value,
     })),
-    nodes: nodeRows.map((node) =>
-      toNode(node, variablesByScene, sourceDefaultsByNode, deviceIdentities),
-    ),
+    nodes: nodeRows.map((node) => toNode(node, variablesByScene, deviceIdentities)),
     edges: edgeRows.map(toEdge),
   };
 }
@@ -605,23 +589,12 @@ async function writeGraph(
     await tx.insert(graphNodeVariables).values(variables);
   }
 
-  // Reads expose graph-owned defaults in both the node compatibility field and
-  // the graph-level collection; explicit graph edits must win over that legacy copy.
-  const sourceDefaultsByKey = new Map(
-    [
-      ...graph.nodes.flatMap((node) => (node.kind === "source" ? (node.fieldDefaults ?? []) : [])),
-      ...(graph.sourceFieldDefaults ?? []),
-    ].map((fieldDefault) => [
-      `${fieldDefault.nodeId}\u0000${fieldDefault.fieldPath.join("\u0000")}`,
-      {
-        graphId: row.id,
-        nodeId: fieldDefault.nodeId,
-        fieldPath: fieldDefault.fieldPath,
-        value: fieldDefault.value,
-      },
-    ]),
-  );
-  const sourceDefaults = [...sourceDefaultsByKey.values()];
+  const sourceDefaults = (graph.sourceFieldDefaults ?? []).map((fieldDefault) => ({
+    graphId: row.id,
+    nodeId: fieldDefault.nodeId,
+    fieldPath: fieldDefault.fieldPath,
+    value: fieldDefault.value,
+  }));
   if (sourceDefaults.length > 0) await tx.insert(sourceFieldDefaults).values(sourceDefaults);
 
   if (graph.edges.length > 0) {

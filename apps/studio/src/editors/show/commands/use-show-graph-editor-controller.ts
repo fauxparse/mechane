@@ -1,5 +1,5 @@
 import type { DeletionScope } from "@mechane/commands";
-import type { GraphNode, Position } from "@mechane/domain";
+import { defaultSourceValues, type GraphNode, type Position } from "@mechane/domain";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useEdgesState, useNodesInitialized, useNodesState, useReactFlow } from "@xyflow/react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
@@ -68,9 +68,10 @@ export function useShowGraphEditorController({
   const [flowDimensions, setFlowDimensions] = useState<Map<string, FlowDimensions>>(
     () => new Map(),
   );
+  const sourceValues = useMemo(() => defaultSourceValues(editing.graph), [editing.graph]);
   const drawn = useMemo(
-    () => graphToFlow(editing.graph, { collapsedFlowIds, flowDimensions }),
-    [collapsedFlowIds, editing.graph, flowDimensions],
+    () => graphToFlow(editing.graph, { collapsedFlowIds, flowDimensions, sourceValues }),
+    [collapsedFlowIds, editing.graph, flowDimensions, sourceValues],
   );
   const toggleCollapse = useCallback((flowId: string) => {
     setCollapsedFlowIds((current) => {

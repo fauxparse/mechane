@@ -11,6 +11,7 @@ import {
   resolveGraphEdgeType,
   resolveGraphNodeType,
   serializeGraphEdit,
+  serializeShowGraph,
 } from "./show-graph";
 
 describe("GraphNode interface resolution", () => {
@@ -243,6 +244,33 @@ describe("parseGraphEdit", () => {
     } catch (error) {
       expect((error as GraphQLError).extensions.code).toBe("BAD_USER_INPUT");
     }
+  });
+});
+
+describe("Show graph serialization", () => {
+  it("resolves Source defaults from the graph-level collection", () => {
+    const serialized = serializeShowGraph({
+      showId: "show_a",
+      state: "draft",
+      updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+      version: 1,
+      nodes: [
+        {
+          id: "source_a",
+          kind: "source",
+          name: "Source",
+          parentId: null,
+          position: { x: 0, y: 0 },
+          type: "text",
+        },
+      ],
+      edges: [],
+      sourceFieldDefaults: [{ nodeId: "source_a", fieldPath: [], value: "Edited" }],
+    });
+
+    expect(serialized.nodes[0]?.fieldDefaults).toEqual([
+      { nodeId: "source_a", fieldPath: [], value: "Edited" },
+    ]);
   });
 });
 

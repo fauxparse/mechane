@@ -31,13 +31,11 @@
 import {
   areTypesCompatible,
   DEFAULT_FLOW_COLOR,
-  defaultValueForType,
   deviceSourceType,
   fieldsForType,
   findCoercion,
   isEdgeKind,
   isNodeKind,
-  setValueAtPath,
   typeAtPath,
   valueAtPath,
 } from "@mechane/domain";
@@ -48,7 +46,6 @@ import type {
   Position,
   PrimitiveType,
   Shape,
-  SourceFieldDefault,
   Type,
 } from "@mechane/domain";
 import type { Edge, Node } from "@xyflow/react";
@@ -69,7 +66,6 @@ export interface MappableNode {
   color?: FlowColor | null;
   type?: unknown;
   variables?: readonly { id: string; name: string; type?: unknown }[] | null;
-  fieldDefaults?: readonly { fieldPath: readonly string[]; value: unknown }[] | null;
   perConnection?: boolean | null;
   pairingCode?: string | null;
 }
@@ -324,25 +320,12 @@ export function flowSize(
   };
 }
 
-function fieldRows(
+export function fieldRows(
   node: MappableNode,
+  value: unknown,
   shapes: readonly Shape[],
-  graphDefaults: readonly SourceFieldDefault[],
 ): { id: string; name: string; type: Type; value: unknown }[] {
   const fields = fieldsForType(node.type as Type | null | undefined, shapes);
-  let value =
-    node.kind === "source" && node.type
-      ? defaultValueForType(node.type as Type, shapes)
-      : undefined;
-  if (node.kind === "source" && value !== undefined) {
-    const overrides = [
-      ...(node.fieldDefaults ?? []),
-      ...graphDefaults.filter((override) => override.nodeId === node.id),
-    ];
-    for (const override of overrides) {
-      value = setValueAtPath(value, override.fieldPath, override.value);
-    }
-  }
   return fields.map((field) => ({
     id: field.id,
     name: field.name,
@@ -474,7 +457,7 @@ function toFlowNode(
   minimumDimensions: FlowDimensions | undefined,
   color: FlowColor,
   shapes: readonly Shape[] | undefined,
-  graphDefaults: readonly SourceFieldDefault[],
+  value: unknown,
 ): ShowFlowNode {
   const kind = nodeKindOf(node);
   const isFlow = kind === "flow";
@@ -484,7 +467,7 @@ function toFlowNode(
     ...variable,
     type: variable.type as Type | null | undefined,
   }));
-  const fields = fieldRows(node, resolvedShapes, graphDefaults);
+  const fields = fieldRows(node, value, resolvedShapes);
   return {
     id: node.id,
     type: isFlow ? FLOW_NODE_TYPE : PLACEHOLDER_NODE_TYPE,
@@ -626,13 +609,13 @@ export function graphToFlow(
         nodes: readonly MappableNode[];
         edges: readonly MappableEdge[];
         shapes?: readonly Shape[];
-        sourceFieldDefaults?: readonly SourceFieldDefault[];
       }
     | null
     | undefined,
   options: {
     collapsedFlowIds?: ReadonlySet<string>;
     flowDimensions?: ReadonlyMap<string, FlowDimensions>;
+    sourceValues?: Readonly<Record<string, unknown>>;
   } = {},
 ): {
   nodes: ShowFlowNode[];
@@ -697,7 +680,7 @@ export function graphToFlow(
                 : ((node.parentId ? flowColors.get(node.parentId) : undefined) ??
                   DEFAULT_FLOW_COLOR)),
             graph.shapes,
-            graph.sourceFieldDefaults ?? [],
+            options.sourceValues?.[node.id],
           ),
         );
       }

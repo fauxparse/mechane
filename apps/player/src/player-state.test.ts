@@ -27,7 +27,6 @@ const graph: ShowGraph = {
       parentId: null,
       position: { x: 0, y: 0 },
       type: { kind: "shape", shapeId: "votes" },
-      fieldDefaults: [{ nodeId: "source_votes", fieldPath: ["count"], value: 7 }],
     },
     {
       id: "scene_vote",
@@ -48,6 +47,7 @@ const graph: ShowGraph = {
       targetPath: ["variable_total", "value"],
     },
   ],
+  sourceFieldDefaults: [{ nodeId: "source_votes", fieldPath: ["count"], value: 7 }],
 };
 
 describe("sceneVariableValues", () => {
@@ -73,9 +73,6 @@ describe("sceneVariableValues", () => {
   it("does not treat an editor value equal to the type baseline as legacy", () => {
     const graphWithPublishedEdit: ShowGraph = {
       ...graph,
-      nodes: graph.nodes.map((node) =>
-        node.kind === "source" ? { ...node, fieldDefaults: [] } : node,
-      ),
       sourceFieldDefaults: [{ nodeId: "source_votes", fieldPath: ["count"], value: 0 }],
     };
     expect(
