@@ -34,6 +34,14 @@ function ensureDirectories() {
   fs.mkdirSync(SOCKET_DIR, { recursive: true });
 }
 
+function ensureTestEnvironment(root) {
+  const template = path.join(root, "apps", "api", ".env.test.example");
+  const target = path.join(root, "apps", "api", ".env.test");
+  if (!fs.existsSync(template) || fs.existsSync(target)) return;
+  fs.copyFileSync(template, target);
+  console.log(`Test environment ready: ${target}`);
+}
+
 function loadInstances() {
   if (!fs.existsSync(STATE_FILE)) return [];
   try {
@@ -163,6 +171,7 @@ function primaryRecord(root) {
 }
 
 async function start(root, daemonize) {
+  ensureTestEnvironment(root);
   const primary = primaryRoot(root);
   if (root === primary) {
     const record = primaryRecord(root);
@@ -222,6 +231,7 @@ function createWorktree(root, args) {
   if (fs.existsSync(target)) fail(`target already exists: ${target}`);
 
   run("git", ["worktree", "add", "-b", branch, target], { cwd: root });
+  ensureTestEnvironment(target);
   run("pnpm", ["install"], { cwd: target });
   console.log(`\nWorktree ready: ${target}`);
   console.log(`Next: cd ${target} && pnpm mechane:up`);
