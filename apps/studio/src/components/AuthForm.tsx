@@ -24,6 +24,30 @@ import {
 import type { FormEvent } from "react";
 import { useId, useState } from "react";
 
+import "./AuthForm.css";
+
+function runViewTransition(update: () => void) {
+  if (typeof document === "undefined" || typeof window === "undefined") {
+    update();
+    return;
+  }
+
+  const prefersReducedMotion =
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  const startViewTransition = (
+    document as Document & {
+      startViewTransition?: (callback: () => void) => unknown;
+    }
+  ).startViewTransition;
+
+  if (prefersReducedMotion || !startViewTransition) {
+    update();
+    return;
+  }
+
+  startViewTransition.call(document, update);
+}
+
 export type AuthMode = "sign-in" | "sign-up";
 
 export interface AuthFormValues {
@@ -87,12 +111,19 @@ export function AuthForm({
   return (
     <Card
       size="lg"
-      className={cn("rounded-lg shadow-xl bg-muted/30 p-1 gap-0 backdrop-blur-lg", className)}
+      className={cn(
+        "auth-form-card rounded-lg bg-muted/30 p-1 shadow-xl gap-0 backdrop-blur-lg",
+        className,
+      )}
     >
       <CardContent className="flex flex-col gap-5 bg-muted/30 rounded-md shadow-md pb-(--card-spacing)">
         <CardHeader className="px-0 pt-(--card-spacing)">
-          <CardTitle className="text-xl">{copy.title}</CardTitle>
-          <CardDescription>{copy.description}</CardDescription>
+          <CardTitle className="auth-form-title text-xl">
+            <span>{copy.title}</span>
+          </CardTitle>
+          <CardDescription className="auth-form-description">
+            <span>{copy.description}</span>
+          </CardDescription>
         </CardHeader>
         {googleEnabled ? (
           <>
@@ -118,7 +149,7 @@ export function AuthForm({
 
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           {mode === "sign-up" ? (
-            <InputGroup size="lg">
+            <InputGroup size="lg" className="auth-form-name-field">
               <InputGroupAddon>
                 <UserRoundIcon className="size-6 text-muted-foreground" />
               </InputGroupAddon>
@@ -135,7 +166,7 @@ export function AuthForm({
             </InputGroup>
           ) : null}
 
-          <InputGroup size="lg">
+          <InputGroup size="lg" className="auth-form-email-field">
             <InputGroupAddon>
               <MailIcon className="size-6 text-muted-foreground" />
             </InputGroupAddon>
@@ -153,7 +184,7 @@ export function AuthForm({
             />
           </InputGroup>
 
-          <InputGroup size="lg">
+          <InputGroup size="lg" className="auth-form-password-field">
             <InputGroupAddon>
               <LockIcon className="size-6 text-muted-foreground" />
             </InputGroupAddon>
@@ -180,17 +211,22 @@ export function AuthForm({
           <Button
             type="submit"
             size="lg"
-            className="w-full rounded-md h-10 text-lg"
+            className="auth-form-submit w-full rounded-md h-10 text-lg"
             disabled={pending}
           >
-            {pending ? "One moment…" : copy.submitLabel}
+            <span>{pending ? "One moment…" : copy.submitLabel}</span>
           </Button>
         </form>
       </CardContent>
 
-      <CardFooter className="flex-col p-(--card-spacing) border-t-0 bg-transparent">
-        <Button type="button" variant="link" className="text-base" onClick={onToggleMode}>
-          {copy.switchLabel}
+      <CardFooter className="auth-form-footer flex-col p-(--card-spacing) border-t-0 bg-transparent">
+        <Button
+          type="button"
+          variant="link"
+          className="text-base"
+          onClick={() => runViewTransition(onToggleMode)}
+        >
+          <span>{copy.switchLabel}</span>
         </Button>
       </CardFooter>
     </Card>

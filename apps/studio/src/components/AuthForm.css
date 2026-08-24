@@ -1,0 +1,102 @@
+@media (prefers-reduced-motion: no-preference) {
+  .auth-form-card {
+    view-transition-name: auth-form-card;
+  }
+
+  .auth-form-name-field {
+    view-transition-name: auth-form-name-field;
+  }
+
+  .auth-form-email-field {
+    view-transition-name: auth-form-email-field;
+  }
+
+  .auth-form-password-field {
+    view-transition-name: auth-form-password-field;
+  }
+
+  .auth-form-submit {
+    view-transition-name: auth-form-submit;
+  }
+
+  .auth-form-footer {
+    view-transition-name: auth-form-footer;
+  }
+
+  .auth-form-title {
+    view-transition-name: auth-form-title;
+  }
+
+  .auth-form-description {
+    view-transition-name: auth-form-description;
+  }
+
+  ::view-transition-group(auth-form-card),
+  ::view-transition-group(auth-form-name-field),
+  ::view-transition-group(auth-form-email-field),
+  ::view-transition-group(auth-form-password-field),
+  ::view-transition-group(auth-form-submit),
+  ::view-transition-group(auth-form-footer) {
+    animation-duration: 320ms;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /*
+   * Let the card group interpolate its position and bounds. Stretch both
+   * snapshots into that animated box while keeping the default snapshot
+   * fade so the named fields and copy transitions remain visible.
+   */
+  ::view-transition-old(auth-form-card),
+  ::view-transition-new(auth-form-card) {
+    width: 100%;
+    height: 100%;
+  }
+
+  ::view-transition-image-pair(auth-form-card) {
+    mix-blend-mode: normal;
+  }
+
+  ::view-transition-old(auth-form-name-field) {
+    animation: auth-form-fade-out 220ms ease both;
+  }
+
+  ::view-transition-new(auth-form-name-field) {
+    animation: auth-form-fade-in 300ms ease both;
+  }
+
+  ::view-transition-old(auth-form-title),
+  ::view-transition-old(auth-form-description),
+  ::view-transition-old(auth-form-footer) {
+    animation: auth-form-copy-out 160ms ease both;
+  }
+
+  ::view-transition-new(auth-form-title),
+  ::view-transition-new(auth-form-description),
+  ::view-transition-new(auth-form-footer) {
+    animation: auth-form-copy-in 240ms ease both;
+  }
+
+  @keyframes auth-form-fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes auth-form-fade-out {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes auth-form-copy-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes auth-form-copy-out {
+    to {
+      opacity: 0;
+    }
+  }
+}
