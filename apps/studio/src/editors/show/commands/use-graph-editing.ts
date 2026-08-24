@@ -13,6 +13,7 @@ import {
   addEdge,
   addNode,
   addSceneVariable,
+  commandForEdit,
   composite,
   createFlowWithNodes,
   deleteGraphElements,
@@ -23,7 +24,6 @@ import {
   renameNode,
   renameSceneVariable,
   reorderSceneVariables,
-  reparentNode,
   setDevicePerConnection,
   setNodeColor,
   setSceneVariableType,
@@ -45,6 +45,7 @@ import {
   connectionError,
   connectionTargets,
   generateId,
+  planConnection,
   sourceTypeAtHandle,
 } from "@mechane/domain";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -295,63 +296,19 @@ export function useGraphEditing(
   const connect = useCallback(
     (attempt: ConnectionAttempt) => {
       const request = requestOf(attempt);
-      const producer = graph.nodes.find((node) => node.id === request.sourceId);
-      const consumer = graph.nodes.find((node) => node.id === request.targetId);
-      const sourceType = sourceTypeAtHandle(graph, request.sourceId, request.sourceHandle);
-      const variable =
-        consumer?.kind === "scene" &&
-        attempt.targetHandle === INPUT_HANDLE &&
-        !request.targetVariableId &&
-        sourceType
-          ? {
-              id: generateId("variable"),
-              name: `variable${consumer.variables.length + 1}`,
-              type: sourceType,
-            }
-          : null;
-      const connectionGraph = variable
-        ? {
-            ...graph,
-            nodes: graph.nodes.map((node) =>
-              node.id === consumer?.id && node.kind === "scene"
-                ? { ...node, variables: [...node.variables, variable] }
-                : node,
-            ),
-          }
-        : graph;
-      const connectionRequest = variable ? { ...request, targetVariableId: variable.id } : request;
-      const reason = connectionError(connectionGraph, connectionRequest);
-      if (reason) return reason;
-      const edge = connectionEdge(connectionGraph, connectionRequest, generateId("edge"));
-      if (!edge) return "That connection can't be made.";
-      if (
-        producer?.parentId !== null &&
-        producer?.parentId !== undefined &&
-        consumer?.kind === "transformer" &&
-        consumer.parentId === null
-      ) {
-        execute(
-          composite({
-            label: "Connect",
-            commands: [
-              reparentNode(consumer.id, producer.parentId, consumer.position),
-              addEdge(edge, "Connect"),
-            ],
-          }),
-        );
-      } else if (variable && consumer?.kind === "scene") {
-        execute(
-          composite({
-            label: "Create Variable and Connect",
-            commands: [
-              addSceneVariable(consumer.id, variable, "Create Variable"),
-              addEdge(edge, "Connect"),
-            ],
-          }),
-        );
-      } else {
-        execute(addEdge(edge, "Connect"));
-      }
+      const plan = planConnection(graph, request, {
+        edgeId: generateId("edge"),
+        variableId: generateId("variable"),
+      });
+      if ("error" in plan) return plan.error;
+      execute(
+        composite({
+          label: plan.edits.some((edit) => edit.type === "graph.addSceneVariable")
+            ? "Create Variable and Connect"
+            : "Connect",
+          commands: plan.edits.map((edit) => commandForEdit(edit)),
+        }),
+      );
       return null;
     },
     [execute, graph, requestOf],

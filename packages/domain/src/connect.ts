@@ -20,7 +20,7 @@
 import { assertValidShowGraph, deviceSourceType, findNode, InvalidShowGraphError } from "./graph";
 import { fieldsForType, resolveShapeFieldMapping, type Type } from "./shapes";
 import { typeAtPath } from "./property-values";
-import type { EdgeKind, GraphEdge, GraphNode, ShowGraph } from "./graph";
+import type { EdgeKind, GraphEdge, GraphNode, SceneVariable, ShowGraph } from "./graph";
 /** A drag from one node's handle to another's, as the editor reports it. */
 export interface ConnectionRequest {
   sourceId: string;
@@ -148,15 +148,187 @@ export function connectionEdge(
   }
 }
 
-/** Ids that can't collide with a real edge, since a candidate is never stored. */
-const CANDIDATE_EDGE_ID = "edge_candidate";
-
 /** React Flow's node-level input handle creates a new Scene Variable. */
 const SCENE_INPUT_HANDLE = "in";
-const CANDIDATE_VARIABLE_ID = "variable_candidate";
+
+/** IDs supplied by the editor for the edits a landed connection will emit. */
+export interface ConnectionIds {
+  edgeId: string;
+  variableId: string;
+}
+
+/**
+ * The small subset of graph edits a connection can plan. The shape is
+ * intentionally the same as `@mechane/commands`' GraphEdit union without
+ * making the domain depend on the command layer.
+ */
+export type ConnectionPlanEdit =
+  | {
+      readonly type: "graph.addSceneVariable";
+      readonly sceneId: string;
+      readonly variable: SceneVariable;
+    }
+  | {
+      readonly type: "graph.reparentNode";
+      readonly nodeId: string;
+      readonly parentId: string | null;
+      readonly position: { x: number; y: number };
+    }
+  | {
+      readonly type: "graph.addEdge";
+      readonly edge: GraphEdge;
+    };
+
+export type ConnectionPlan = { edits: ConnectionPlanEdit[] } | { error: string };
 
 function implicitVariableType(graph: ShowGraph, request: ConnectionRequest): Type | null {
   return sourceTypeAtHandle(graph, request.sourceId, request.sourceHandle);
+}
+
+function nextVariableName(variables: readonly SceneVariable[]): string {
+  const names = new Set(variables.map((variable) => variable.name));
+  let suffix = variables.length + 1;
+  while (names.has(`variable${suffix}`)) suffix += 1;
+  return `variable${suffix}`;
+}
+
+function applyConnectionPlanEdit(graph: ShowGraph, edit: ConnectionPlanEdit): ShowGraph {
+  switch (edit.type) {
+    case "graph.addSceneVariable":
+      return {
+        ...graph,
+        nodes: graph.nodes.map((node) =>
+          node.kind === "scene" && node.id === edit.sceneId
+            ? { ...node, variables: [...node.variables, { ...edit.variable }] }
+            : node,
+        ),
+      };
+    case "graph.reparentNode":
+      return {
+        ...graph,
+        nodes: graph.nodes.map((node) =>
+          node.id === edit.nodeId
+            ? ({
+                ...node,
+                parentId: edit.parentId,
+                position: { ...edit.position },
+              } as GraphNode)
+            : node,
+        ),
+      };
+    case "graph.addEdge":
+      return { ...graph, edges: [...graph.edges, edit.edge] };
+  }
+}
+
+function unusedId(graph: ShowGraph, base: string, used: (graph: ShowGraph) => string[]): string {
+  const existing = new Set(used(graph));
+  let id = base;
+  while (existing.has(id)) id = `${id}_`;
+  return id;
+}
+
+function candidateIds(graph: ShowGraph): ConnectionIds {
+  return {
+    edgeId: unusedId(graph, "edge_candidate", (current) =>
+      current.edges.map((edge) => edge.id),
+    ),
+    variableId: unusedId(graph, "variable_candidate", (current) =>
+      current.nodes.flatMap((node) =>
+        node.kind === "scene" ? node.variables.map((variable) => variable.id) : [],
+      ),
+    ),
+  };
+}
+
+/**
+ * Plans the exact edits a landed connection will execute, or explains why
+ * those edits would leave the Show invalid. Validation runs against the graph
+ * produced by these same edits, so affordances and execution cannot diverge.
+ */
+export function planConnection(
+  graph: ShowGraph,
+  request: ConnectionRequest,
+  ids: ConnectionIds,
+): ConnectionPlan {
+  if (request.sourceId === request.targetId) {
+    const node = findNode(graph, request.sourceId);
+    // A Scene may Navigate to itself (a "retry" transition, #24); nothing
+    // else has a meaningful self-edge.
+    if (!node || node.kind !== "scene") return { error: "A node can't connect to itself." };
+  }
+  const producer = findNode(graph, request.sourceId);
+  const consumer = findNode(graph, request.targetId);
+  if (!producer || !consumer) return { error: "That node isn't in this Show." };
+
+  const kind = connectionKindFor(graph, request);
+  if (kind === null) {
+    return { error: `A ${producer.kind} can't connect to a ${consumer.kind}.` };
+  }
+
+  let planningGraph = graph;
+  let targetVariableId = request.targetVariableId;
+  const edits: ConnectionPlanEdit[] = [];
+  if (
+    kind === "wiring" &&
+    consumer.kind === "scene" &&
+    request.targetHandle === SCENE_INPUT_HANDLE &&
+    !targetVariableId
+  ) {
+    const type = implicitVariableType(graph, request);
+    if (!type) return { error: "The source must have a Type to create a Variable." };
+    const variable: SceneVariable = {
+      id: ids.variableId,
+      name: nextVariableName(consumer.variables),
+      type,
+    };
+    const variableEdit: ConnectionPlanEdit = {
+      type: "graph.addSceneVariable",
+      sceneId: consumer.id,
+      variable,
+    };
+    edits.push(variableEdit);
+    planningGraph = applyConnectionPlanEdit(planningGraph, variableEdit);
+    targetVariableId = variable.id;
+  }
+
+  if (kind === "wiring" && consumer.kind === "scene" && !targetVariableId) {
+    return { error: "Drop onto one of the Scene's Variables." };
+  }
+
+  const edge = connectionEdge(
+    planningGraph,
+    { ...request, targetVariableId },
+    ids.edgeId,
+  );
+  if (!edge) return { error: `A ${producer.kind} can't connect to a ${consumer.kind}.` };
+
+  if (
+    producer.parentId !== null &&
+    producer.parentId !== undefined &&
+    consumer.kind === "transformer" &&
+    consumer.parentId === null
+  ) {
+    const reparentEdit: ConnectionPlanEdit = {
+      type: "graph.reparentNode",
+      nodeId: consumer.id,
+      parentId: producer.parentId,
+      position: { ...consumer.position },
+    };
+    edits.push(reparentEdit);
+    planningGraph = applyConnectionPlanEdit(planningGraph, reparentEdit);
+  }
+
+  const edgeEdit: ConnectionPlanEdit = { type: "graph.addEdge", edge };
+  edits.push(edgeEdit);
+  planningGraph = applyConnectionPlanEdit(planningGraph, edgeEdit);
+  try {
+    assertValidShowGraph(planningGraph);
+  } catch (error) {
+    if (error instanceof InvalidShowGraphError) return { error: humanise(error, kind) };
+    throw error;
+  }
+  return { edits };
 }
 
 /**
@@ -164,74 +336,8 @@ function implicitVariableType(graph: ShowGraph, request: ConnectionRequest): Typ
  * person, since it reaches the palette and the inspector rather than a log.
  */
 export function connectionError(graph: ShowGraph, request: ConnectionRequest): string | null {
-  if (request.sourceId === request.targetId) {
-    const node = findNode(graph, request.sourceId);
-    // A Scene may Navigate to itself (a "retry" transition, #24); nothing
-    // else has a meaningful self-edge.
-    if (!node || node.kind !== "scene") return "A node can't connect to itself.";
-  }
-  const producer = findNode(graph, request.sourceId);
-  const consumer = findNode(graph, request.targetId);
-  if (!producer || !consumer) return "That node isn't in this Show.";
-
-  const kind = connectionKindFor(graph, request);
-  if (kind === null) {
-    return `A ${producer.kind} can't connect to a ${consumer.kind}.`;
-  }
-
-  let candidateGraph = graph;
-  let candidateRequest = request;
-  if (
-    kind === "wiring" &&
-    consumer.kind === "scene" &&
-    request.targetHandle === SCENE_INPUT_HANDLE &&
-    !request.targetVariableId
-  ) {
-    const type = implicitVariableType(graph, request);
-    if (!type) return "The source must have a Type to create a Variable.";
-    let variableId = CANDIDATE_VARIABLE_ID;
-    while (consumer.variables.some((variable) => variable.id === variableId)) {
-      variableId = `${variableId}_`;
-    }
-    candidateGraph = {
-      ...graph,
-      nodes: graph.nodes.map((node) =>
-        node.id === consumer.id && node.kind === "scene"
-          ? { ...node, variables: [...node.variables, { id: variableId, name: "variable", type }] }
-          : node,
-      ),
-    };
-    candidateRequest = { ...request, targetVariableId: variableId };
-  }
-
-  if (kind === "wiring" && consumer.kind === "scene" && !candidateRequest.targetVariableId) {
-    return "Drop onto one of the Scene's Variables.";
-  }
-
-  const candidate = connectionEdge(candidateGraph, candidateRequest, CANDIDATE_EDGE_ID);
-  if (!candidate) return `A ${producer.kind} can't connect to a ${consumer.kind}.`;
-  try {
-    const nodes =
-      producer.parentId !== null &&
-      producer.parentId !== undefined &&
-      consumer.kind === "transformer" &&
-      consumer.parentId === null
-        ? candidateGraph.nodes.map((node) =>
-            node.id === consumer.id
-              ? ({ ...node, parentId: producer.parentId } as GraphNode)
-              : node,
-          )
-        : candidateGraph.nodes;
-    assertValidShowGraph({
-      shapes: candidateGraph.shapes,
-      nodes,
-      edges: [...candidateGraph.edges, candidate],
-    });
-  } catch (error) {
-    if (error instanceof InvalidShowGraphError) return humanise(error, kind);
-    throw error;
-  }
-  return null;
+  const result = planConnection(graph, request, candidateIds(graph));
+  return "error" in result ? result.error : null;
 }
 
 /** Whether this connection may be made. */
