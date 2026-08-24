@@ -1,6 +1,6 @@
 import { playerChannel, runChannel } from "@mechane/realtime";
 import type { Run, RunStatus, ShowGraph, SourceValues } from "@mechane/domain";
-import { coerceShapeValue, defaultSourceValues } from "@mechane/domain";
+import { coerceShapeValue, defaultSourceValues, sourceDefaultsFor } from "@mechane/domain";
 import { and, desc, eq, isNull } from "drizzle-orm";
 
 import { db } from "./client";
@@ -185,7 +185,7 @@ export async function reconcileActiveRunValues(
     }
 
     const overrides = Object.fromEntries(
-      (source.fieldDefaults ?? [])
+      sourceDefaultsFor(newGraph, source.id)
         .filter((override) => override.fieldPath.length === 1)
         .map((override) => [override.fieldPath[0], override.value]),
     );

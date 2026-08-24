@@ -34,10 +34,10 @@ const AUDIENCE_SCENE_ID = "scene_audience_vote";
 
 const candidateType = { kind: "shape" as const, shapeId: CANDIDATE_SHAPE_ID };
 
-function candidateFieldDefaults(name: string, votes: number) {
+function candidateFieldDefaults(nodeId: string, name: string, votes: number) {
   return [
-    { nodeId: "", fieldPath: [CANDIDATE_NAME_FIELD_ID], value: name },
-    { nodeId: "", fieldPath: [CANDIDATE_VOTES_FIELD_ID], value: votes },
+    { nodeId, fieldPath: [CANDIDATE_NAME_FIELD_ID], value: name },
+    { nodeId, fieldPath: [CANDIDATE_VOTES_FIELD_ID], value: votes },
   ];
 }
 
@@ -76,21 +76,23 @@ export function votingGraph(): ShowGraph {
     {
       id: alice,
       name: "Alice",
-      fieldDefaults: candidateFieldDefaults("Alice", 12),
       position: { x: 0, y: 0 },
     },
     {
       id: beatrix,
       name: "Beatrix",
-      fieldDefaults: candidateFieldDefaults("Beatrix", 8),
       position: { x: 0, y: 180 },
     },
     {
       id: clarissa,
       name: "Clarissa",
-      fieldDefaults: candidateFieldDefaults("Clarissa", 5),
       position: { x: 0, y: 360 },
     },
+  ];
+  const sourceFieldDefaults = [
+    ...candidateFieldDefaults(alice, "Alice", 12),
+    ...candidateFieldDefaults(beatrix, "Beatrix", 8),
+    ...candidateFieldDefaults(clarissa, "Clarissa", 5),
   ];
   const sourceNodes = sources.map((source) => ({
     id: source.id,
@@ -99,10 +101,6 @@ export function votingGraph(): ShowGraph {
     parentId: null,
     position: source.position,
     type: candidateType,
-    fieldDefaults: source.fieldDefaults.map((defaultValue) => ({
-      ...defaultValue,
-      nodeId: source.id,
-    })),
   }));
   const tallyVariables = [tallyAlice, tallyBeatrix, tallyClarissa].map((id, index) => ({
     id,
@@ -135,6 +133,7 @@ export function votingGraph(): ShowGraph {
 
   return {
     shapes: [candidateShape],
+    sourceFieldDefaults,
     nodes: [
       ...sourceNodes,
       {

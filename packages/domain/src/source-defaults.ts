@@ -1,4 +1,4 @@
-import type { GraphNode, ShowGraph, SourceNode } from "./graph";
+import type { GraphNode, ShowGraph, SourceFieldDefault, SourceNode } from "./graph";
 import type { Shape, ShapeField, Type } from "./shapes";
 
 /** Live Source values at the start of a Run, keyed by Source node id. */
@@ -60,19 +60,16 @@ function applySourceOverrides(
   return result;
 }
 
+export function sourceDefaultsFor(
+  graph: Pick<ShowGraph, "sourceFieldDefaults">,
+  nodeId: string,
+): SourceFieldDefault[] {
+  return (graph.sourceFieldDefaults ?? []).filter((override) => override.nodeId === nodeId);
+}
+
 function sourceValue(source: SourceNode, graph: ShowGraph): unknown {
   const value = defaultValueForType(source.type, graph.shapes ?? []);
-  const overrides = new Map(
-    (source.fieldDefaults ?? []).map(
-      (override) => [override.fieldPath.join("\u0000"), override] as const,
-    ),
-  );
-  for (const override of graph.sourceFieldDefaults ?? []) {
-    if (override.nodeId === source.id) {
-      overrides.set(override.fieldPath.join("\u0000"), override);
-    }
-  }
-  return applySourceOverrides(value, overrides.values());
+  return applySourceOverrides(value, sourceDefaultsFor(graph, source.id));
 }
 
 /**

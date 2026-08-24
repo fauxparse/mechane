@@ -34,7 +34,6 @@ const graph: ShowGraph = {
       position: { x: 0, y: 0 },
       parentId: null,
       type: { kind: "shape", shapeId: "shape_profile" },
-      fieldDefaults: [{ nodeId: "source_profile", fieldPath: ["headline"], value: "Before" }],
     },
   ],
   edges: [],

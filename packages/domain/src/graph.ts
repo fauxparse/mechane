@@ -130,7 +130,6 @@ export interface FlowNode extends BaseNode {
 export interface SourceNode extends BaseNode {
   kind: "source";
   type: Type;
-  fieldDefaults?: SourceFieldDefault[];
 }
 
 export interface TransformerNode extends BaseNode {

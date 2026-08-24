@@ -15,6 +15,7 @@ import {
   defaultSourceValues,
   fieldsForType,
   formatValuePath,
+  sourceDefaultsFor,
   type SourceNode,
   valueAtPath,
 } from "@mechane/domain";
@@ -31,9 +32,8 @@ function hasGraphOverride(
   nodeId: string,
   fieldPath: readonly string[],
 ): boolean {
-  return (graph.sourceFieldDefaults ?? []).some(
+  return sourceDefaultsFor(graph, nodeId).some(
     (override) =>
-      override.nodeId === nodeId &&
       override.fieldPath.length === fieldPath.length &&
       override.fieldPath.every((segment, index) => segment === fieldPath[index]),
   );

@@ -4,6 +4,7 @@ import type { FlowColor } from "@mechane/domain";
 import {
   FLOW_HEADER_HEIGHT,
   FLOW_NODE_TYPE,
+  fieldRows,
   flowSize,
   graphToFlow,
   INPUT_HANDLE,
@@ -26,7 +27,7 @@ type ShowGraphNode = {
   position: { x: number; y: number };
   variables: { id: string; name: string; type?: unknown }[];
   type?: unknown;
-  fieldDefaults?: { fieldPath: string[]; value: unknown }[];
+
   perConnection?: boolean;
   pairingCode?: string | null;
 };
@@ -139,39 +140,42 @@ describe("graphToFlow", () => {
     if (!device || device.data.kind !== "device") throw new Error("Expected a Device node.");
     expect(device.data.pairingCode).toBe("ABC123");
   });
-  it("lets graph-owned source edits update the rendered node fields", () => {
-    const { nodes } = graphToFlow({
-      shapes: [
-        {
-          id: "shape_profile",
-          name: "Profile",
-          fields: [
-            {
-              id: "headline",
-              name: "Headline",
-              type: "text",
-              required: true,
-              defaultValue: "Default headline",
-            },
-          ],
-        },
-      ],
-      nodes: [
-        node({
-          id: "source_profile",
-          kind: "source",
-          type: { kind: "shape", shapeId: "shape_profile" },
-          fieldDefaults: [{ fieldPath: ["headline"], value: "Legacy headline" }],
-        }),
-      ],
-      edges: [],
-      sourceFieldDefaults: [
-        { nodeId: "source_profile", fieldPath: ["headline"], value: "Edited headline" },
-      ],
-    });
+  it("projects handed Shape values into rows in Shape order", () => {
+    const shapes = [
+      {
+        id: "shape_profile",
+        name: "Profile",
+        fields: [
+          {
+            id: "first",
+            name: "First",
+            type: "number" as const,
+            required: true,
+            defaultValue: 0,
+          },
+          {
+            id: "second",
+            name: "Second",
+            type: "text" as const,
+            required: true,
+            defaultValue: "",
+          },
+        ],
+      },
+    ];
+    const rows = fieldRows(
+      node({
+        id: "transformer_profile",
+        kind: "transformer",
+        type: { kind: "shape", shapeId: "shape_profile" },
+      }),
+      { first: 3, second: "Edited headline" },
+      shapes,
+    );
 
-    expect(nodes[0]?.data.fields).toEqual([
-      { id: "headline", name: "Headline", type: "text", value: "Edited headline" },
+    expect(rows).toEqual([
+      { id: "first", name: "First", type: "number", value: 3 },
+      { id: "second", name: "Second", type: "text", value: "Edited headline" },
     ]);
   });
 

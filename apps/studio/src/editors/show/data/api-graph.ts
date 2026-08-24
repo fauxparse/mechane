@@ -178,11 +178,6 @@ function toNode(node: ApiGraphNode): GraphNode {
         kind: "source",
         parentId: source.parentId ?? null,
         type: toType(source.sourceType as ApiType),
-        fieldDefaults: source.fieldDefaults.map((fieldDefault) => ({
-          nodeId: source.id,
-          fieldPath: [...fieldDefault.fieldPath],
-          value: fieldDefault.value,
-        })),
       };
     }
     case "TransformerNode": {
