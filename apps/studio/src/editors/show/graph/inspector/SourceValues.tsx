@@ -21,7 +21,7 @@ import {
 import { useMemo, useState } from "react";
 
 import type { GraphEditing } from "../../commands/use-graph-editing";
-import { InlineValue } from "./InlineValue";
+import { InlineValue } from "./ValueEditor";
 import { SourceValueDialog } from "./SourceValueDialog";
 import type { SourceValueRow } from "./source-value-types";
 import { previewValue, sourceValuesEqual, usesModal } from "./source-values-helpers";
