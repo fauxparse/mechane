@@ -13,11 +13,40 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-  Input,
-  Label,
+  cn,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  LockIcon,
+  MailIcon,
+  UserRoundIcon,
 } from "@mechane/design-system";
-import { useId, useState } from "react";
 import type { FormEvent } from "react";
+import { useId, useState } from "react";
+
+import "./AuthForm.css";
+
+function runViewTransition(update: () => void) {
+  if (typeof document === "undefined" || typeof window === "undefined") {
+    update();
+    return;
+  }
+
+  const prefersReducedMotion =
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  const startViewTransition = (
+    document as Document & {
+      startViewTransition?: (callback: () => void) => unknown;
+    }
+  ).startViewTransition;
+
+  if (prefersReducedMotion || !startViewTransition) {
+    update();
+    return;
+  }
+
+  startViewTransition.call(document, update);
+}
 
 export type AuthMode = "sign-in" | "sign-up";
 
@@ -39,16 +68,21 @@ export interface AuthFormProps {
   className?: string;
 }
 
-const COPY: Record<AuthMode, { title: string; description: string; submitLabel: string }> = {
+const COPY: Record<
+  AuthMode,
+  { title: string; description: string; submitLabel: string; switchLabel: string }
+> = {
   "sign-in": {
     title: "Welcome back",
-    description: "Sign in to pick up your Shows where you left off.",
+    description: "Sign in to pick up your shows where you left off.",
     submitLabel: "Sign in",
+    switchLabel: "Don't have an account? Sign up",
   },
   "sign-up": {
     title: "Create your account",
-    description: "Start building interactive tech for your next Show.",
+    description: "Start building interactive tech for your next show.",
     submitLabel: "Create account",
+    switchLabel: "Already have an account? Sign in",
   },
 };
 
@@ -75,19 +109,29 @@ export function AuthForm({
   };
 
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle className="text-xl">{copy.title}</CardTitle>
-        <CardDescription>{copy.description}</CardDescription>
-      </CardHeader>
-
-      <CardContent className="flex flex-col gap-5">
+    <Card
+      size="lg"
+      className={cn(
+        "auth-form-card rounded-lg bg-muted/30 p-1 shadow-xl gap-0 backdrop-blur-lg",
+        className,
+      )}
+    >
+      <CardContent className="flex flex-col gap-5 bg-muted/30 rounded-md shadow-md pb-(--card-spacing)">
+        <CardHeader className="px-0 pt-(--card-spacing)">
+          <CardTitle className="auth-form-title text-xl">
+            <span>{copy.title}</span>
+          </CardTitle>
+          <CardDescription className="auth-form-description">
+            <span>{copy.description}</span>
+          </CardDescription>
+        </CardHeader>
         {googleEnabled ? (
           <>
             <Button
               type="button"
               variant="outline"
-              className="w-full"
+              size="lg"
+              className="w-full rounded-md h-10 text-base border-2"
               onClick={onGoogleSignIn}
               disabled={googlePending}
             >
@@ -95,7 +139,7 @@ export function AuthForm({
               {googlePending ? "Connecting…" : "Continue with Google"}
             </Button>
 
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="flex items-center gap-3 text-sm uppercase tracking-widest text-muted-foreground">
               <span className="h-px flex-1 bg-border" />
               or
               <span className="h-px flex-1 bg-border" />
@@ -105,39 +149,49 @@ export function AuthForm({
 
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           {mode === "sign-up" ? (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`${formId}-name`}>Name</Label>
-              <Input
+            <InputGroup size="lg" className="auth-form-name-field">
+              <InputGroupAddon>
+                <UserRoundIcon className="size-6 text-muted-foreground" />
+              </InputGroupAddon>
+              <InputGroupInput
                 id={`${formId}-name`}
                 type="text"
                 autoComplete="name"
+                placeholder="Name"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 disabled={pending}
                 required
               />
-            </div>
+            </InputGroup>
           ) : null}
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={`${formId}-email`}>Email</Label>
-            <Input
+          <InputGroup size="lg" className="auth-form-email-field">
+            <InputGroupAddon>
+              <MailIcon className="size-6 text-muted-foreground" />
+            </InputGroupAddon>
+            <InputGroupInput
               id={`${formId}-email`}
               type="email"
+              placeholder="Email address"
               autoComplete="email"
+              autoFocus={mode === "sign-in" || undefined}
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               disabled={pending}
               aria-invalid={error ? true : undefined}
               required
             />
-          </div>
+          </InputGroup>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={`${formId}-password`}>Password</Label>
-            <Input
+          <InputGroup size="lg" className="auth-form-password-field">
+            <InputGroupAddon>
+              <LockIcon className="size-6 text-muted-foreground" />
+            </InputGroupAddon>
+            <InputGroupInput
               id={`${formId}-password`}
               type="password"
+              placeholder="Password"
               autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -146,7 +200,7 @@ export function AuthForm({
               required
               minLength={8}
             />
-          </div>
+          </InputGroup>
 
           {error ? (
             <p role="alert" className="text-sm text-destructive">
@@ -154,17 +208,25 @@ export function AuthForm({
             </p>
           ) : null}
 
-          <Button type="submit" className="w-full" disabled={pending}>
-            {pending ? "One moment…" : copy.submitLabel}
+          <Button
+            type="submit"
+            size="lg"
+            className="auth-form-submit w-full rounded-md h-10 text-lg"
+            disabled={pending}
+          >
+            <span>{pending ? "One moment…" : copy.submitLabel}</span>
           </Button>
         </form>
       </CardContent>
 
-      <CardFooter className="justify-center">
-        <Button type="button" variant="link" onClick={onToggleMode}>
-          {mode === "sign-in"
-            ? "Don't have an account? Sign up"
-            : "Already have an account? Sign in"}
+      <CardFooter className="auth-form-footer flex-col p-(--card-spacing) border-t-0 bg-transparent">
+        <Button
+          type="button"
+          variant="link"
+          className="text-base"
+          onClick={() => runViewTransition(onToggleMode)}
+        >
+          <span>{copy.switchLabel}</span>
         </Button>
       </CardFooter>
     </Card>

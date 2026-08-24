@@ -1,20 +1,30 @@
+import { cva, VariantProps } from "class-variance-authority";
 import * as React from "react";
-
 import { cn } from "../../lib/utils";
+
+const cardVariants = cva(
+  "group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-xl bg-card py-(--card-spacing) text-sm text-card-foreground ring-1 ring-foreground/10 has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl",
+  {
+    variants: {
+      size: {
+        default: "[--card-spacing:--spacing(4)]",
+        sm: "[--card-spacing:--spacing(3)] has-data-[slot=card-footer]:pb-0",
+        lg: "[--card-spacing:--spacing(6)]",
+      },
+    },
+  },
+);
 
 function Card({
   className,
   size = "default",
   ...props
-}: React.ComponentProps<"div"> & { size?: "default" | "sm" }) {
+}: React.ComponentProps<"div"> & VariantProps<typeof cardVariants>) {
   return (
     <div
       data-slot="card"
       data-size={size}
-      className={cn(
-        "group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-xl bg-card py-(--card-spacing) text-sm text-card-foreground ring-1 ring-foreground/10 [--card-spacing:--spacing(4)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)] data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl",
-        className,
-      )}
+      className={cn(cardVariants({ size, className }))}
       {...props}
     />
   );
@@ -25,7 +35,7 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-header"
       className={cn(
-        "group/card-header @container/card-header grid auto-rows-min items-start gap-1 rounded-t-xl px-(--card-spacing) has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:pb-(--card-spacing)",
+        "group/card-header @container/card-header grid auto-rows-min items-start gap-1 rounded-[inherit] rounded-b-none px-(--card-spacing) has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:pb-(--card-spacing)",
         className,
       )}
       {...props}
@@ -50,7 +60,7 @@ function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn("text-sm text-muted-foreground group-data-[size=lg]/card:text-base", className)}
       {...props}
     />
   );
@@ -77,7 +87,7 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-footer"
       className={cn(
-        "flex items-center rounded-b-xl border-t bg-muted/50 p-(--card-spacing)",
+        "flex items-center rounded-[inherit] rounded-t-none border-t bg-muted/50 p-(--card-spacing) pt-0",
         className,
       )}
       {...props}
@@ -85,4 +95,4 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-export { Card, CardHeader, CardFooter, CardTitle, CardAction, CardDescription, CardContent };
+export { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle };
