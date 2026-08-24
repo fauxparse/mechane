@@ -574,9 +574,7 @@ function assertValidWiringEdge(
         `wiring edge "${edge.id}" targets Variable "${variableId}", which Scene "${consumer.id}" doesn't have.`,
       );
     }
-    targetType = variable.type
-      ? typeAtPath(variable.type, edge.targetPath.slice(1), shapes)
-      : null;
+    targetType = variable.type ? typeAtPath(variable.type, edge.targetPath.slice(1), shapes) : null;
   }
   if (sourceType && targetType && !areTypesCompatible(sourceType, targetType, shapes)) {
     throw new InvalidShowGraphError(

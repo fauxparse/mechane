@@ -122,7 +122,13 @@ export function TypeSelect({
       >
         <OptionIcon className="size-4 text-muted-foreground" />
         {option.label}
-        <CheckIcon className={cn("ml-auto size-4", typesEqual(currentValue, option.value) ? "opacity-100" : "opacity-0")} aria-hidden="true" />
+        <CheckIcon
+          className={cn(
+            "ml-auto size-4",
+            typesEqual(currentValue, option.value) ? "opacity-100" : "opacity-0",
+          )}
+          aria-hidden="true"
+        />
       </DropdownMenuItem>
     );
   };

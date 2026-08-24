@@ -103,11 +103,7 @@ function navigate(
 function deviceEdge(id: string, sourceId: string, targetId: string): DeviceEdge {
   return { id, kind: "device", sourceId, targetId, sourcePath: [], targetPath: [] };
 }
-function graph(
-  nodes: GraphNode[],
-  edges: GraphEdge[] = [],
-  shapes: Shape[] = [],
-): ShowGraph {
+function graph(nodes: GraphNode[], edges: GraphEdge[] = [], shapes: Shape[] = []): ShowGraph {
   return { nodes, edges, shapes };
 }
 const PATH_SHAPES: Shape[] = [
@@ -134,9 +130,7 @@ const PATH_SHAPES: Shape[] = [
   {
     id: "tally",
     name: "Tally",
-    fields: [
-      { id: "total", name: "Total", type: "number", required: true, defaultValue: 0 },
-    ],
+    fields: [{ id: "total", name: "Total", type: "number", required: true, defaultValue: 0 }],
   },
   {
     id: "voter",

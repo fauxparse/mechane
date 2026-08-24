@@ -18,16 +18,25 @@ function ShapesRoute() {
   const navigate = useNavigate();
   const shapeId = useRouterState({
     select: ({ matches }) =>
-      (matches.find(({ routeId }) => routeId === "/_authenticated/shows/$showId/shapes/$shapeId")?.params as
-        | { shapeId?: string }
-        | undefined)?.shapeId ?? null,
+      (
+        matches.find(({ routeId }) => routeId === "/_authenticated/shows/$showId/shapes/$shapeId")
+          ?.params as { shapeId?: string } | undefined
+      )?.shapeId ?? null,
   });
   const draft = useShowGraph(showId, "draft");
   const save = useShowGraphEdits(showId, draft.data?.version);
   const editing = useGraphEditing(draft.data, (edits) => save.enqueue(edits));
 
   if (showId === null || draft.isError) {
-    return <ShapeRouteState message={draft.error instanceof Error ? draft.error.message : "This Show could not be loaded."} actionLabel="Retry" onAction={() => void draft.refetch()} />;
+    return (
+      <ShapeRouteState
+        message={
+          draft.error instanceof Error ? draft.error.message : "This Show could not be loaded."
+        }
+        actionLabel="Retry"
+        onAction={() => void draft.refetch()}
+      />
+    );
   }
   if (draft.isPending || !draft.data) return <ShapeRouteState message="Loading Shapes…" />;
 
@@ -40,12 +49,42 @@ function ShapesRoute() {
       saveError={save.error}
       retrySave={save.retry}
       runActive={activeRun.data !== null && activeRun.data !== undefined}
-      onOpenShape={(nextShapeId) => void navigate({ to: "/shows/$showId/shapes/$shapeId", params: { showId: params.showId, shapeId: nextShapeId } })}
-      onBack={() => void navigate({ to: "/shows/$showId/shapes", params: { showId: params.showId } })}
+      onOpenShape={(nextShapeId) =>
+        void navigate({
+          to: "/shows/$showId/shapes/$shapeId",
+          params: { showId: params.showId, shapeId: nextShapeId },
+        })
+      }
+      onBack={() =>
+        void navigate({ to: "/shows/$showId/shapes", params: { showId: params.showId } })
+      }
     />
   );
 }
 
-function ShapeRouteState({ message, actionLabel, onAction }: { message: string; actionLabel?: string; onAction?(): void }) {
-  return <main className="flex min-h-full items-center justify-center bg-background px-6 pt-20"><div className="max-w-md rounded-xl border border-border bg-card p-8 text-center shadow-sm"><p className="text-sm text-muted-foreground">{message}</p>{actionLabel && onAction ? <button type="button" className="mt-5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground" onClick={onAction}>{actionLabel}</button> : null}</div></main>;
+function ShapeRouteState({
+  message,
+  actionLabel,
+  onAction,
+}: {
+  message: string;
+  actionLabel?: string;
+  onAction?(): void;
+}) {
+  return (
+    <main className="flex min-h-full items-center justify-center bg-background px-6 pt-20">
+      <div className="max-w-md rounded-xl border border-border bg-card p-8 text-center shadow-sm">
+        <p className="text-sm text-muted-foreground">{message}</p>
+        {actionLabel && onAction ? (
+          <button
+            type="button"
+            className="mt-5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            onClick={onAction}
+          >
+            {actionLabel}
+          </button>
+        ) : null}
+      </div>
+    </main>
+  );
 }

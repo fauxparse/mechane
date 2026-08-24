@@ -59,10 +59,13 @@ export async function commitBlob(input: {
   byteLength: number;
   mimeType: string;
 }): Promise<void> {
-  await db.insert(blobs).values({
-    digest: input.digest,
-    byteLength: input.byteLength,
-    mimeType: input.mimeType,
-    deliveryPath: `/api/blobs/${input.digest}`,
-  }).onConflictDoNothing();
+  await db
+    .insert(blobs)
+    .values({
+      digest: input.digest,
+      byteLength: input.byteLength,
+      mimeType: input.mimeType,
+      deliveryPath: `/api/blobs/${input.digest}`,
+    })
+    .onConflictDoNothing();
 }

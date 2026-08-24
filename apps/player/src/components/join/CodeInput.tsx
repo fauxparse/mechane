@@ -54,7 +54,10 @@ export const CodeInput = ({ value, length = 5, onChange }: CodeInputProps) => {
   };
 
   const handlePaste = (pastedValue: string) => {
-    const newCode = pastedValue.toUpperCase().replace(/[^A-HJ-KM-NP-Z1-9]/g, "").slice(0, length);
+    const newCode = pastedValue
+      .toUpperCase()
+      .replace(/[^A-HJ-KM-NP-Z1-9]/g, "")
+      .slice(0, length);
     if (newCode.length > 0) {
       onChange(newCode);
       inputs.current[Math.min(newCode.length, length) - 1]?.focus();

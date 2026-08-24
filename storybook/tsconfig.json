@@ -3,24 +3,12 @@
   "compilerOptions": {
     "noEmit": true,
     "paths": {
-      "*": [
-        "./*"
-      ],
-      "@storybook/react-vite": [
-        "./node_modules/@storybook/react-vite/dist/index.d.ts"
-      ],
-      "@/*": [
-        "../apps/studio/src/*"
-      ],
-      "@studio/*": [
-        "../apps/studio/src/*"
-      ],
-      "@show-editor/*": [
-        "../apps/studio/src/editors/show/*"
-      ],
-      "@canvas-editor/*": [
-        "../apps/studio/src/editors/canvas/*"
-      ]
+      "*": ["./*"],
+      "@storybook/react-vite": ["./node_modules/@storybook/react-vite/dist/index.d.ts"],
+      "@/*": ["../apps/studio/src/*"],
+      "@studio/*": ["../apps/studio/src/*"],
+      "@show-editor/*": ["../apps/studio/src/editors/show/*"],
+      "@canvas-editor/*": ["../apps/studio/src/editors/canvas/*"]
     }
   },
   "include": [

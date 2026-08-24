@@ -55,10 +55,14 @@ export function assertSuggestedImageDimensions(
   value: unknown,
 ): asserts value is { width: number; height: number } {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error("Suggested image dimensions must be positive integer pixels no greater than 8000.");
+    throw new Error(
+      "Suggested image dimensions must be positive integer pixels no greater than 8000.",
+    );
   }
   if (!("width" in value) || !("height" in value)) {
-    throw new Error("Suggested image dimensions must be positive integer pixels no greater than 8000.");
+    throw new Error(
+      "Suggested image dimensions must be positive integer pixels no greater than 8000.",
+    );
   }
   const width = value.width;
   const height = value.height;
@@ -72,6 +76,8 @@ export function assertSuggestedImageDimensions(
     width > DEFAULT_IMAGE_UPLOAD_POLICY.maxAxis ||
     height > DEFAULT_IMAGE_UPLOAD_POLICY.maxAxis
   ) {
-    throw new Error("Suggested image dimensions must be positive integer pixels no greater than 8000.");
+    throw new Error(
+      "Suggested image dimensions must be positive integer pixels no greater than 8000.",
+    );
   }
 }

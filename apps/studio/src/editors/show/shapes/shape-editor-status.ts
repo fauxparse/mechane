@@ -10,7 +10,11 @@ let status = EMPTY_STATUS;
 const listeners = new Set<() => void>();
 
 export function setShapeEditorStatus(next: ShapeEditorStatus): void {
-  if (status.invalidReason === next.invalidReason && status.activeRunWarning === next.activeRunWarning) return;
+  if (
+    status.invalidReason === next.invalidReason &&
+    status.activeRunWarning === next.activeRunWarning
+  )
+    return;
   status = next;
   for (const listener of listeners) listener();
 }

@@ -4,24 +4,12 @@
     "outDir": "dist",
     "rootDir": "src",
     "paths": {
-      "*": [
-        "./*"
-      ],
-      "@/*": [
-        "./src/*"
-      ],
-      "@studio/*": [
-        "./src/*"
-      ],
-      "@show-editor/*": [
-        "./src/editors/show/*"
-      ],
-      "@canvas-editor/*": [
-        "./src/editors/canvas/*"
-      ]
+      "*": ["./*"],
+      "@/*": ["./src/*"],
+      "@studio/*": ["./src/*"],
+      "@show-editor/*": ["./src/editors/show/*"],
+      "@canvas-editor/*": ["./src/editors/canvas/*"]
     }
   },
-  "include": [
-    "src"
-  ]
+  "include": ["src"]
 }

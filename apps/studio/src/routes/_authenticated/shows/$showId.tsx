@@ -137,7 +137,13 @@ function ShowEditorLayout() {
         publishState: state,
         publishDisabledReason: shapeEditorStatus.invalidReason ?? undefined,
         onPublish: () => {
-          if (shapeEditorStatus.activeRunWarning && !window.confirm("Publishing Shape changes during the active Run may coerce live values. Continue?")) return;
+          if (
+            shapeEditorStatus.activeRunWarning &&
+            !window.confirm(
+              "Publishing Shape changes during the active Run may coerce live values. Continue?",
+            )
+          )
+            return;
           publish.mutate(currentShow.id);
         },
         publishing: publish.isPending,

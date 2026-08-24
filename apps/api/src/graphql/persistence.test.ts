@@ -95,7 +95,10 @@ async function rawRequest<T>(
   source: string,
   contextValue: GraphQLContext,
   variableValues?: Record<string, unknown>,
-): Promise<{ data?: T; errors?: Array<{ message: string; extensions?: Record<string, unknown> }> }> {
+): Promise<{
+  data?: T;
+  errors?: Array<{ message: string; extensions?: Record<string, unknown> }>;
+}> {
   const response = await testYoga(contextValue).fetch("http://localhost/api/graphql", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -145,19 +148,27 @@ describe("GraphQL persistence", () => {
     });
     expect(reread.show).toEqual(created.createShow);
 
-    const renamed = await request<{ renameShow: { id: string; name: string } }>(RENAME_SHOW, context, {
-      id: created.createShow.id,
-      name: "Opening Night",
-    });
+    const renamed = await request<{ renameShow: { id: string; name: string } }>(
+      RENAME_SHOW,
+      context,
+      {
+        id: created.createShow.id,
+        name: "Opening Night",
+      },
+    );
     expect(renamed.renameShow).toEqual({ id: created.createShow.id, name: "Opening Night" });
 
     const listed = await request<{ shows: Array<{ id: string; name: string }> }>(SHOWS, context);
     expect(listed.shows).toContainEqual(renamed.renameShow);
 
     await request<{ deleteShow: boolean }>(DELETE_SHOW, context, { id: created.createShow.id });
-    const afterDelete = await request<{ show: { id: string; name: string } | null }>(SHOW, context, {
-      id: created.createShow.id,
-    });
+    const afterDelete = await request<{ show: { id: string; name: string } | null }>(
+      SHOW,
+      context,
+      {
+        id: created.createShow.id,
+      },
+    );
     expect(afterDelete.show).toBeNull();
 
     const persistedRows = await db.select().from(shows).where(eq(shows.id, created.createShow.id));
@@ -172,17 +183,14 @@ describe("GraphQL persistence", () => {
     );
     expect(defaults.userSettings).toEqual({ themeMode: "dark", themePalette: "gruvbox" });
 
-    const updated = await request<{ updateUserSettings: { themeMode: string; themePalette: string } }>(
-      UPDATE_USER_SETTINGS,
-      context,
-      { themeMode: "dark", themePalette: "catppuccin" },
-    );
+    const updated = await request<{
+      updateUserSettings: { themeMode: string; themePalette: string };
+    }>(UPDATE_USER_SETTINGS, context, { themeMode: "dark", themePalette: "catppuccin" });
     expect(updated.updateUserSettings).toEqual({ themeMode: "dark", themePalette: "catppuccin" });
     const persistedRows = await db
       .select()
       .from(userSettings)
       .where(and(eq(userSettings.userId, testUser.id), eq(userSettings.themeMode, "dark")));
     expect(persistedRows).toHaveLength(1);
-
   });
 });
