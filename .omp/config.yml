@@ -1,0 +1,7 @@
+task:
+  isolation:
+    mode: auto
+    apply: true
+    merge: patch
+worktree:
+  base: ~/.omp/wt

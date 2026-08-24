@@ -43,6 +43,60 @@ pnpm typecheck
 pnpm codegen      # regenerate packages/graphql-schema's schema.graphql + gql.tada types
 ```
 
+## Parallel worktrees and OMP
+
+The primary checkout uses the normal stack:
+
+```sh
+overmind start -f Procfile.dev
+```
+
+For parallel work, create a Git worktree from the primary checkout:
+
+```sh
+pnpm mechane:worktree create issue/123-fix-canvas
+cd ../mechane-issue-123-fix-canvas
+```
+
+The `create` command installs dependencies in the new worktree. Start its
+app instance and OMP session with one command:
+
+```sh
+pnpm mechane:up
+```
+
+Secondary worktrees use direct HTTP and automatically receive their own Studio,
+Player, API, Overmind socket, and OMP profile. They reuse the primary
+Postgres/MinIO stack; Caddy and DNSMasq remain single-host services.
+
+Useful commands from a worktree:
+
+```sh
+pnpm mechane:worktree status
+pnpm mechane:worktree stop
+pnpm mechane:omp -- --continue
+```
+
+`pnpm mechane:up` prints the assigned URLs. Port assignments and generated
+Overmind files are stored outside the repository under
+`~/.omp/mechane-worktrees`.
+
+When OMP is already running in a checkout, ask it to use the `issue-worktree`
+workflow, for example:
+
+```text
+Fix issue #123 in a worktree.
+```
+
+OMP can use an isolated task workspace for a one-session change. For a
+persistent issue branch and pull request, it creates an
+`issue/<number>-<short-slug>` worktree and starts a new OMP session from that
+directory. The current OMP session cannot change its own working directory.
+
+The OMP-specific workflow is defined in `.omp/AGENTS.md` and the
+`.omp/skills/issue-worktree` skill. Keep the primary checkout clean and do all
+issue edits, tests, commits, and pull-request operations in the issue worktree.
+
 ### Local HTTPS aliases
 
 The development proxy runs in Docker with Caddy's internal certificate
