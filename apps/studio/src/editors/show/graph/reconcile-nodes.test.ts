@@ -1,0 +1,121 @@
+import { describe, expect, it } from "vitest";
+
+import { FLOW_NODE_TYPE } from "./graph-to-flow";
+import { reconcileEdges, reconcileNodes } from "./reconcile-nodes";
+import type { ShowFlowEdge, ShowFlowNode } from "./graph-to-flow";
+
+function node(id: string, overrides: Partial<ShowFlowNode> = {}): ShowFlowNode {
+  return {
+    id,
+    type: "showNode",
+    position: { x: 0, y: 0 },
+    data: {} as ShowFlowNode["data"],
+    ...overrides,
+  } as ShowFlowNode;
+}
+
+function flowNode(id: string, collapsed: boolean, overrides: Partial<ShowFlowNode> = {}) {
+  return node(id, {
+    type: FLOW_NODE_TYPE,
+    data: { collapsed } as ShowFlowNode["data"],
+    ...overrides,
+  });
+}
+
+describe("reconcileNodes", () => {
+  it("keeps a dragged node's live position", () => {
+    const drawn = [node("source", { position: { x: 200, y: 300 } })];
+    const live = [node("source", { position: { x: 20, y: 30 } })];
+
+    expect(reconcileNodes(drawn, live, { dragging: true })).toEqual([
+      expect.objectContaining({ position: { x: 20, y: 30 } }),
+    ]);
+  });
+
+  it("keeps a manually resized Flow's live position while redrawing its size", () => {
+    const drawn = [
+      flowNode("flow", false, {
+        position: { x: 200, y: 300 },
+        style: { width: 640, height: 480 },
+      }),
+    ];
+    const live = [
+      flowNode("flow", false, {
+        position: { x: 20, y: 30 },
+        style: { width: 320, height: 240 },
+      }),
+    ];
+
+    expect(reconcileNodes(drawn, live, { manualFlowIds: new Set(["flow"]) })).toEqual([
+      expect.objectContaining({
+        position: { x: 20, y: 30 },
+        style: { width: 640, height: 480 },
+      }),
+    ]);
+  });
+
+  it("clears measured dimensions when a Flow collapses or expands", () => {
+    const drawn = [flowNode("flow", true)];
+    const live = [flowNode("flow", false, { measured: { width: 320, height: 240 } })];
+
+    expect(reconcileNodes(drawn, live)[0]).toEqual(
+      expect.objectContaining({ measured: undefined }),
+    );
+  });
+
+  it("preserves live selection when the graph changes", () => {
+    const drawn = [node("source", { data: { name: "Updated" } as ShowFlowNode["data"] })];
+    const live = [
+      node("source", { selected: true, data: { name: "Old" } as ShowFlowNode["data"] }),
+    ];
+
+    expect(reconcileNodes(drawn, live)[0]).toEqual(
+      expect.objectContaining({ selected: true, data: { name: "Updated" } }),
+    );
+  });
+
+  it("selects only the arriving node", () => {
+    const drawn = [node("first"), node("arriving")];
+    const live = [node("first", { selected: true })];
+
+    expect(reconcileNodes(drawn, live, { selectOnArrival: "arriving" })).toEqual([
+      expect.objectContaining({ id: "first", selected: false }),
+      expect.objectContaining({ id: "arriving", selected: true }),
+    ]);
+  });
+});
+
+describe("reconcileEdges", () => {
+  it("preserves live edge selection while applying drawn edge data", () => {
+    const drawnEdge = {
+      id: "edge",
+      source: "source",
+      target: "target",
+      data: {
+        kind: "wiring",
+        targetVariableId: null,
+        coercing: false,
+        invalidReason: null,
+        color: "neutral",
+      },
+    } as ShowFlowEdge;
+    const drawn = [drawnEdge];
+    const live: ShowFlowEdge[] = [
+      {
+        ...drawnEdge,
+        data: {
+          kind: "wiring",
+          targetVariableId: null,
+          coercing: false,
+          invalidReason: "old",
+          color: "neutral",
+        },
+        selected: true,
+      },
+    ];
+
+    expect(reconcileEdges(drawn, live)).toEqual([
+      expect.objectContaining({ data: drawnEdge.data, selected: true }),
+    ]);
+  });
+});
