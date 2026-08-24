@@ -21,4 +21,11 @@ describe("Show graph operations", () => {
 
     expect(validate(schema, operation)).toEqual([]);
   });
+  it("does not publish the removed graph-only input", () => {
+    const schema = buildSchema(
+      readFileSync(fileURLToPath(new URL("../schema.graphql", import.meta.url)), "utf8"),
+    );
+
+    expect(schema.getType("GraphEditInput")).toBeUndefined();
+  });
 });

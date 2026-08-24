@@ -2,11 +2,10 @@
 // about whether one JSON object is a well-formed edit, which is the whole of
 // what this boundary decides — whether the *graph* accepts it is the command
 // layer's answer, given when the batch is applied.
-import { GRAPH_COMMAND_TYPES } from "@mechane/commands";
+import { GRAPH_COMMAND_TYPES, type FlatGraphEdit } from "@mechane/commands";
 import { GraphQLError } from "graphql";
 import { describe, expect, it } from "vitest";
 
-import type { GraphEditInput } from "./show-graph";
 import {
   parseGraphEdit,
   resolveGraphEdgeType,
@@ -228,7 +227,7 @@ describe("parseGraphEdit", () => {
     ],
     ["perConnection", { type: GRAPH_COMMAND_TYPES.setDevicePerConnection, nodeId: "device_phone" }],
   ])("refuses an edit missing %s", (_what, edit) => {
-    expect(() => parseGraphEdit(edit as GraphEditInput)).toThrow(GraphQLError);
+    expect(() => parseGraphEdit(edit as FlatGraphEdit)).toThrow(GraphQLError);
   });
 
   it("refuses an edit type it doesn't know, rather than ignoring it", () => {

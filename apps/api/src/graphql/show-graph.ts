@@ -24,16 +24,6 @@ import { GraphQLError } from "graphql";
 
 import type { StoredShowGraph } from "../db/show-graph";
 
-/**
- * One edit off the wire (#103), before it becomes a `GraphEdit`.
- *
- * The flat shape is the codec's (`FlatGraphEdit`), not this module's — it is
- * flat and almost entirely optional because GraphQL has no input unions, and
- * `type` says which of its fields mean anything. Named here because the
- * resolver and the schema both talk about `GraphEditInput`.
- */
-export type GraphEditInput = FlatGraphEdit;
-
 function badInput(message: string): GraphQLError {
   return new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
 }
@@ -84,7 +74,7 @@ export function resolveGraphEdgeType(edge: Pick<GraphEdge, "kind">): string {
  * and whether the result is a legal Show is `assertValidShowGraph`'s at the
  * end of it.
  */
-export function parseGraphEdit(edit: GraphEditInput): GraphEdit {
+export function parseGraphEdit(edit: FlatGraphEdit): GraphEdit {
   if (edit.type === GRAPH_COMMAND_TYPES.setDevicePairingCode) {
     // Only ever travels server -> client (#45, #111). A client naming the
     // type at all has misunderstood who decides, and being told so beats
@@ -103,8 +93,8 @@ export function parseGraphEdit(edit: GraphEditInput): GraphEdit {
 }
 
 /**
- * One amendment on its way *out* (#111) — the same flat shape as
- * `GraphEditInput`, plus the one field that only ever travels this direction.
+ * One amendment on its way *out* (#111) — the codec's flat graph-edit shape,
+ * plus the one field that only ever travels this direction.
  *
  * A shared shape rather than "a pairing code response", because what the
  * server has to tell a client about a change it didn't make is the same thing

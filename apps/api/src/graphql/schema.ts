@@ -3,7 +3,7 @@
 // owned-resource vertical slice, using `requireUserId` (./context.ts) and
 // `assertOwnedBy`/`assertValidShowName` (@mechane/domain) the same way
 // every later owned resource (Scene, Device, ...) should.
-import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
+import type { CanvasWorkspaceEdit, FlatGraphEdit, GraphEdit } from "@mechane/commands";
 import { CanvasEditError } from "@mechane/commands";
 import type { GraphState } from "@mechane/domain";
 import {
@@ -43,7 +43,6 @@ import { blobStore } from "../storage/blob-store";
 import { parseCanvasEdit, resolveCanvasElementType, serializeCanvas } from "./canvas";
 import type { GraphQLContext } from "./context";
 import { requireUserId } from "./context";
-import type { GraphEditInput } from "./show-graph";
 import {
   parseGraphEdit,
   resolveGraphEdgeType,
@@ -678,8 +677,8 @@ export const schema = createSchema<GraphQLContext>({
     }
 
     """
-    One edit on its way out (issue #111): the same shape as
-    \`GraphEditInput\`, plus \`pairingCode\`, which only ever travels in this
+    One edit on its way out (issue #111): the same graph-edit fields as
+    \`ShowEditInput\`, plus \`pairingCode\`, which only ever travels in this
     direction. What the server tells a client about a change it didn't make
     is the same vocabulary a realtime channel will use for a change someone
     else made (ADR-0003).
@@ -700,48 +699,6 @@ export const schema = createSchema<GraphQLContext>({
       value: JSON
       "Devices only: the code the server minted for a Device this batch created (#45)."
       pairingCode: String
-      "Devices only: whether each connection is its own instance, for graph.setDevicePerConnection."
-      perConnection: Boolean
-    }
-    """
-    \`type\` is the command that made it: "graph.addNode", "graph.removeNode",
-    "graph.moveNode", "graph.renameNode", "graph.reparentNode",
-    "graph.addEdge", "graph.removeEdge", "graph.setFlowDefaultScene",
-    "graph.setNodeColor", "graph.addSceneVariable",
-    "graph.renameSceneVariable", "graph.setSceneVariableType", "graph.reorderSceneVariables",
-    "graph.setSourceFieldDefault", "graph.removeSceneVariable", or "graph.setDevicePerConnection".
-
-    Every other field is optional because GraphQL has no input unions:
-    \`type\` decides which of them are read, and an edit missing one its type
-    needs is rejected. Undoing an edit is an ordinary edit here, not a
-    direction of travel the server knows about (ADR-0005).
-    """
-    input GraphEditInput {
-      type: String!
-      "The node an edit acts on: remove, move, rename, reparent."
-      nodeId: ID
-      "The whole node, for graph.addNode — including a restored one."
-      node: GraphNodeInput
-      edgeId: ID
-      "The Show node editor colorway, for graph.setNodeColor."
-      color: String
-      position: PositionInput
-      "The Flow a node is being placed in, or null for Show level."
-      parentId: ID
-      "The new name, for a rename."
-      name: String
-      flowId: ID
-      "The Flow's entry Scene, or the Scene owning a Variable. Null clears a Flow's default."
-      sceneId: ID
-      variableId: ID
-      variableIds: [ID!]
-      variable: SceneVariableInput
-      "The Variable's Type, for graph.setSceneVariableType. Null clears it."
-      variableType: TypeInput
-      "The Source field path, for graph.setSourceFieldDefault."
-      fieldPath: [ID!]
-      "The Source field value; null clears the override."
-      value: JSON
       "Devices only: whether each connection is its own instance, for graph.setDevicePerConnection."
       perConnection: Boolean
     }
@@ -1114,7 +1071,7 @@ export const schema = createSchema<GraphQLContext>({
               }
               canvasEdits.push({ canvasId, edit: parseCanvasEdit(record) });
             } else {
-              graphEdits.push(parseGraphEdit(record as unknown as GraphEditInput));
+              graphEdits.push(parseGraphEdit(record as unknown as FlatGraphEdit));
             }
           }
           const applied = await applyShowEditsToDb(showId, graphEdits, canvasEdits, baseVersion);
