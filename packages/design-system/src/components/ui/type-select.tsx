@@ -53,8 +53,7 @@ const PRIMITIVE_OPTIONS: readonly TypeSelectOption[] = PRIMITIVE_TYPES.map((valu
 function optionKey(type: Type): string {
   if (typeof type === "string") return type;
   if (type.kind === "array") return `array:${optionKey(type.of)}`;
-  if (type.kind === "shape") return `shape:${type.shapeId}`;
-  return type.kind;
+  return `shape:${type.shapeId}`;
 }
 
 function typesEqual(left: Type | null, right: Type): boolean {
@@ -69,8 +68,7 @@ function typesEqual(left: Type | null, right: Type): boolean {
 function typeLabel(type: Type, shapes: readonly Shape[]): string {
   if (typeof type === "string") return variableTypeLabel(type);
   if (type.kind === "array") return `Array of ${typeLabel(type.of, shapes)}`;
-  if (type.kind === "shape") return shapes.find((shape) => shape.id === type.shapeId)?.name ?? "Shape";
-  return "Object";
+  return shapes.find((shape) => shape.id === type.shapeId)?.name ?? "Shape";
 }
 
 function typeIcon(type: Type): LucideIcon {

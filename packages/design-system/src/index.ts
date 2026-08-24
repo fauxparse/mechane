@@ -148,7 +148,6 @@ export {
 } from "./components/ui/property-input/use-property-input";
 export {
   VARIABLE_TYPE_ICONS,
-  typeFromVariableKind,
   variableTypeIcon,
   variableTypeKind,
   variableTypeLabel,

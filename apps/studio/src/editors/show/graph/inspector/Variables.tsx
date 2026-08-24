@@ -15,8 +15,6 @@ import {
   Section,
   Trash2Icon,
   TypeSelect,
-  typeFromVariableKind,
-  variableTypeKind,
 } from "@mechane/design-system";
 import type { SceneNode, SceneVariable, Shape, Type } from "@mechane/domain";
 import { useCallback } from "react";
@@ -132,7 +130,7 @@ const VariableRow = ({
     group,
   });
 
-  const currentType: Type = variable.type ?? { kind: "object" };
+  const currentType: Type | null = variable.type ?? null;
 
   return (
     <div
@@ -164,9 +162,7 @@ const VariableRow = ({
             triggerSize="sm"
             aria-label={`Type for ${variable.name}`}
             triggerClassName="border-0 bg-transparent dark:bg-transparent hover:text-foreground dark:hover:text-foreground"
-            onValueChange={(next) =>
-              onChangeType(variable.id, typeFromVariableKind(variableTypeKind(next), currentType))
-            }
+            onValueChange={(next) => onChangeType(variable.id, next)}
           />
         </InputGroupAddon>
         <InputGroupInput

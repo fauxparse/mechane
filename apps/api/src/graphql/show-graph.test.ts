@@ -164,33 +164,15 @@ describe("parseGraphEdit", () => {
     });
   });
 
-  it("parses a Variable type edit, including object", () => {
-    expect(
-      parseGraphEdit({
-        type: GRAPH_COMMAND_TYPES.setSceneVariableType,
-        sceneId: "scene_a",
-        variableId: "variable_a",
-        variableType: { kind: "text" },
-      }),
-    ).toEqual({
-      type: "graph.setSceneVariableType",
-      sceneId: "scene_a",
-      variableId: "variable_a",
-      variableType: "text",
-    });
-    expect(
+  it("rejects an anonymous object Variable type", () => {
+    expect(() =>
       parseGraphEdit({
         type: GRAPH_COMMAND_TYPES.setSceneVariableType,
         sceneId: "scene_a",
         variableId: "variable_a",
         variableType: { kind: "object" },
       }),
-    ).toEqual({
-      type: "graph.setSceneVariableType",
-      sceneId: "scene_a",
-      variableId: "variable_a",
-      variableType: { kind: "object" },
-    });
+    ).toThrow('Invalid Shape type "object".');
   });
 
   it("parses a node color clear for undo", () => {

@@ -87,7 +87,6 @@ function toType(type: ApiType): Type {
   if (["text", "number", "boolean", "image", "color", "date", "datetime"].includes(type.kind)) {
     return type.kind as Type;
   }
-  if (type.kind === "object") return { kind: "object" };
   throw new Error(`Unknown Shape type "${type.kind}".`);
 }
 
@@ -251,7 +250,6 @@ function toTypeInput(type: Type | null | undefined): TypeInput | null {
   if (!type) return null;
   if (typeof type === "string") return { kind: type };
   if (type.kind === "array") return { kind: "array", of: toTypeInput(type.of) };
-  if (type.kind === "object") return { kind: "object" };
   return { kind: "shape", shapeId: type.shapeId };
 }
 

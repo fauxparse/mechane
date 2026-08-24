@@ -307,7 +307,6 @@ export const schema = createSchema<GraphQLContext>({
       color: String
       date: String
       datetime: String
-      object: JSON
       array: JSON
     }
 
@@ -977,9 +976,8 @@ export const schema = createSchema<GraphQLContext>({
       __resolveType: resolveGraphEdgeType,
     },
     Type: {
-      kind: (
-        type: string | { kind: "array" | "object" | "shape"; of?: unknown; shapeId?: string },
-      ) => (typeof type === "string" ? type : type.kind),
+      kind: (type: string | { kind: "array" | "shape"; of?: unknown; shapeId?: string }) =>
+        typeof type === "string" ? type : type.kind,
       of: (type: { kind: "array"; of: unknown }) => (type.kind === "array" ? type.of : null),
       shapeId: (type: { kind: "shape"; shapeId: string }) =>
         type.kind === "shape" ? type.shapeId : null,

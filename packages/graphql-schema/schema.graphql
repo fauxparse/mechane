@@ -142,7 +142,6 @@ input ShapeValueInput @oneOf {
   color: String
   date: String
   datetime: String
-  object: JSON
   array: JSON
 }
 

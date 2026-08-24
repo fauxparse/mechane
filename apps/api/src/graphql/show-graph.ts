@@ -152,7 +152,6 @@ function parseType(input: TypeInput | null | undefined): Type | undefined {
     return input.kind as Type;
   }
   if (input.kind === "array" && input.of) return { kind: "array", of: parseType(input.of)! };
-  if (input.kind === "object") return { kind: "object" };
   if (input.kind === "shape" && input.shapeId) return { kind: "shape", shapeId: input.shapeId };
   throw badInput(`Invalid Shape type "${input.kind}".`);
 }

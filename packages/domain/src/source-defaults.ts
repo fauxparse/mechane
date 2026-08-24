@@ -23,7 +23,6 @@ function primitiveDefault(type: Type): unknown {
 export function defaultValueForType(type: Type, shapes: readonly Shape[] = []): unknown {
   if (typeof type === "string") return primitiveDefault(type);
   if (type.kind === "array") return [];
-  if (type.kind === "object") return {};
   const shape = shapes.find((candidate) => candidate.id === type.shapeId);
   if (!shape) return null;
   return Object.fromEntries(

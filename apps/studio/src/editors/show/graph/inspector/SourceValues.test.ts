@@ -18,7 +18,6 @@ describe("sourceValueEditor", () => {
 
   it("routes structural values to modal editing", () => {
     expect(sourceValueEditor.usesModal({ kind: "array", of: "text" }, [])).toBe(true);
-    expect(sourceValueEditor.usesModal({ kind: "object" }, {})).toBe(true);
     expect(sourceValueEditor.usesModal({ kind: "shape", shapeId: "profile" }, {})).toBe(true);
   });
 

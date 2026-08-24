@@ -198,11 +198,7 @@ export const typeLabel = (
   shapes: readonly Shape[] = [],
 ): string | null => {
   if (!type) return null;
-  return typeof type === "string"
-    ? type
-    : type.kind === "array"
-      ? `array<${typeLabel(type.of, shapes) ?? "?"}>`
-      : type.kind === "object"
-        ? "object"
-        : (shapes.find((shape) => shape.id === type.shapeId)?.name ?? "Shape");
+  if (typeof type === "string") return type;
+  if (type.kind === "array") return `array<${typeLabel(type.of, shapes) ?? "?"}>`;
+  return shapes.find((shape) => shape.id === type.shapeId)?.name ?? "Shape";
 };

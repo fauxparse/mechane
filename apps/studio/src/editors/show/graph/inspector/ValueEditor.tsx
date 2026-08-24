@@ -33,11 +33,6 @@ export function ValueEditor(props: ValueEditorProps) {
   if (type.kind === "shape") {
     return <ShapeEditor {...props} type={type} renderValue={ValueEditor} />;
   }
-  if (type.kind === "object") {
-    return (
-      <p className="text-sm text-destructive">Object values must reference a defined shape.</p>
-    );
-  }
   const exhaustive: never = type;
   return exhaustive;
 }

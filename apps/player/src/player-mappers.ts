@@ -36,7 +36,6 @@ function toType(value: unknown): Type {
   }
   const primitive = PRIMITIVE_TYPES.find((candidate) => candidate === input.kind);
   if (primitive) return primitive;
-  if (input.kind === "object") return { kind: "object" };
   throw new Error(`Unknown Player Type "${String(input.kind)}".`);
 }
 
