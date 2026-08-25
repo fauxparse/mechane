@@ -439,6 +439,50 @@ describe("canConnect", () => {
     });
   });
 
+  it("copies a Source field value into a created Source default", () => {
+    const graph: ShowGraph = {
+      ...SHAPED_GRAPH,
+      sourceFieldDefaults: [{ nodeId: "source_profile", fieldPath: ["score"], value: 7 }],
+    };
+    const created: SourceNode = {
+      id: "source_created",
+      kind: "source",
+      name: "Created",
+      position: at,
+      parentId: null,
+      type: "number",
+    };
+    expect(
+      planConnection(
+        graph,
+        { sourceId: "source_profile", sourceHandle: "score", targetId: created.id },
+        { edgeId: "edge_created", variableId: "variable_unused" },
+        { addNode: created },
+      ),
+    ).toEqual({
+      edits: [
+        { type: "graph.addNode", node: created },
+        {
+          type: "graph.setSourceFieldDefault",
+          nodeId: created.id,
+          fieldPath: [],
+          value: 7,
+        },
+        {
+          type: "graph.addEdge",
+          edge: {
+            id: "edge_created",
+            kind: "wiring",
+            sourceId: "source_profile",
+            targetId: created.id,
+            sourcePath: ["score"],
+            targetPath: [],
+          },
+        },
+      ],
+    });
+  });
+
   it("rejects an editor-created node outside a Flow-local Source's Flow", () => {
     const created: SourceNode = {
       id: "source_created",
