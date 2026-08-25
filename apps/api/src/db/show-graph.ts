@@ -21,21 +21,17 @@ import type {
 } from "@mechane/domain";
 import { assertValidShowGraph, emptyShowGraph, generateId, isEdgeKind } from "@mechane/domain";
 import { runChannel } from "@mechane/realtime";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, notInArray, sql } from "drizzle-orm";
 import { realtimeProvider } from "../realtime";
 import type { CanvasWithOwner, StoredCanvas } from "./canvas";
 import { readCanvasById, writeCanvasRows } from "./canvas";
-import { DEFAULT_CANVAS_FILL, newCanvasRootProperties } from "./canvas-defaults";
-import { placeCanvasPosition } from "./canvas-placement";
 import { db } from "./client";
 import type { StoredDevice } from "./devices";
 import { retireUnreferencedDevices, syncDevices } from "./devices";
 import { graphNodeInsertValues } from "./graph-node-values";
 import { publishPlayerUpdates, reconcileActiveRunValues, syncActiveRunSourceValues } from "./runs";
+import { reconcileSceneCanvases } from "./scene-canvases";
 import {
-  blocks,
-  canvasElements,
-  canvases,
   devices,
   graphEdges,
   graphNodeVariables,
@@ -47,7 +43,6 @@ import {
   shows,
   sourceFieldDefaults,
 } from "./schema";
-
 export interface PublishLoss {
   sourceId: string;
   fieldId: string;
@@ -329,15 +324,11 @@ export async function readShowGraph(
 }
 
 /**
- * Replaces the Show's graph in `state` with `graph`, wholesale, inside `tx`.
+ * Reconciles the Show's graph in `state` inside `tx`.
  *
- * Whole-graph replacement is now a *storage* decision rather than the
- * protocol (#103): the wire carries edits, and this is where a graph that
- * has already had them applied gets written down. Rewriting four small
- * tables is cheaper than working out which rows an edit batch touched, and —
- * unlike the wholesale mutation this replaced — it happens with the version
- * that was read still held under a row lock, so it can't overwrite a write
- * it never saw.
+ * Graph table rows are reconciled under the version lock. Scene Canvases are
+ * reconciled additively by `scene-canvases.ts`, so ordinary graph edits never
+ * rewrite an existing Canvas or its Element tree.
  *
  * `expectedVersion` is that check: `undefined` means "whatever is there"
  * (publish, which is a copy rather than an edit), a number means the write
@@ -384,54 +375,20 @@ async function writeGraph(
     throw new Error(`Failed to upsert the ${state} graph row for Show "${showId}".`);
   }
 
-  // Rewriting graph nodes cascades their Scene Canvases. Snapshot them first
-  // so every surviving Scene keeps its Canvas id and Element tree across
-  // ordinary graph edits.
-  const previousCanvases = await tx.select().from(canvases).where(eq(canvases.graphId, row.id));
-  const previousSceneCanvases = previousCanvases.filter((canvas) => canvas.sceneNodeId !== null);
-  const previousCanvasIds = previousCanvases.map((canvas) => canvas.id);
-  const previousElements =
-    previousCanvasIds.length > 0
-      ? await tx
-          .select()
-          .from(canvasElements)
-          .where(inArray(canvasElements.canvasId, previousCanvasIds))
-      : [];
-  const previousElementsByCanvas = new Map<string, typeof previousElements>();
-  for (const element of previousElements) {
-    const elements = previousElementsByCanvas.get(element.canvasId) ?? [];
-    elements.push(element);
-    previousElementsByCanvas.set(element.canvasId, elements);
+  // Graph rows are rewritten, but retained node identities stay in place so
+  // their Scene Canvases and Element trees cannot be cascaded away.
+  await tx.delete(graphEdges).where(eq(graphEdges.graphId, row.id));
+  await tx.delete(graphNodeVariables).where(eq(graphNodeVariables.graphId, row.id));
+  await tx.delete(sourceFieldDefaults).where(eq(sourceFieldDefaults.graphId, row.id));
+  const nodeIds = graph.nodes.map((node) => node.id);
+  if (nodeIds.length > 0) {
+    await tx
+      .delete(graphNodes)
+      .where(and(eq(graphNodes.graphId, row.id), notInArray(graphNodes.id, nodeIds)));
+  } else {
+    await tx.delete(graphNodes).where(eq(graphNodes.graphId, row.id));
   }
-  const latestCanvasFill: Record<"scene" | "block", string | undefined> = {
-    scene: undefined,
-    block: undefined,
-  };
-  for (const canvas of [...previousCanvases].sort(
-    (left, right) => left.createdAt.getTime() - right.createdAt.getTime(),
-  )) {
-    const root = previousElementsByCanvas
-      .get(canvas.id)
-      ?.find((element) => element.parentId === null);
-    const properties = root?.properties;
-    if (!properties || typeof properties !== "object" || Array.isArray(properties)) continue;
-    if (!("fill" in properties)) continue;
-    const fill = properties.fill;
-    if (typeof fill === "string" && fill.length > 0) {
-      latestCanvasFill[canvas.sceneNodeId === null ? "block" : "scene"] = fill;
-    }
-  }
-
-  const previousSceneByOwner = new Map(
-    previousSceneCanvases.map((canvas) => [canvas.sceneNodeId!, canvas]),
-  );
-  const occupiedCanvasPositions = previousCanvases.map((canvas) => ({
-    x: canvas.positionX,
-    y: canvas.positionY,
-  }));
-
   await tx.delete(shapes).where(eq(shapes.graphId, row.id));
-  await tx.delete(graphNodes).where(eq(graphNodes.graphId, row.id));
   const graphShapes = graph.shapes ?? [];
   if (graphShapes.length > 0) {
     await tx
@@ -482,95 +439,33 @@ async function writeGraph(
     graph.nodes.filter((node) => node.parentId === null),
     graph.nodes.filter((node) => node.parentId !== null),
   ];
-  for (const nodes of [topLevel, nested]) {
-    if (nodes.length === 0) continue;
-    await tx.insert(graphNodes).values(nodes.map((node) => graphNodeInsertValues(node, row.id)));
-  }
-
-  // Scene and Block definitions always have an artboard. Existing Scene
-  // canvases retain their ids and element trees; new owners receive a valid
-  // empty Frame so the database invariant is true before the transaction
-  // commits. This path is also what seeds create.
-  for (const node of graph.nodes.filter((node) => node.kind === "scene")) {
-    const previous = previousSceneByOwner.get(node.id);
-    const inheritedFill = latestCanvasFill.scene;
-    const canvasId = previous?.id ?? generateId("canvas");
-    const position = previous
-      ? { x: previous.positionX, y: previous.positionY }
-      : placeCanvasPosition(node.position, occupiedCanvasPositions);
-    if (!previous) occupiedCanvasPositions.push(position);
-    await tx.insert(canvases).values({
-      id: canvasId,
-      graphId: row.id,
-      sceneNodeId: node.id,
-      blockId: null,
-      positionX: position.x,
-      positionY: position.y,
-      ...(previous ? { createdAt: previous.createdAt, updatedAt: previous.updatedAt } : {}),
-    });
-    const elements = previousElementsByCanvas.get(canvasId);
-    if (elements && elements.length > 0) {
-      await tx.insert(canvasElements).values(elements);
-    } else {
-      await tx.insert(canvasElements).values({
-        id: `${canvasId}-root`,
-        canvasId,
-        parentId: null,
-        type: "frame",
-        rank: "a",
-        name: null,
-        hidden: false,
-        properties: newCanvasRootProperties(inheritedFill),
-      });
-    }
-    if (!previous) latestCanvasFill.scene = inheritedFill ?? DEFAULT_CANVAS_FILL;
-  }
-
-  const graphBlocks = await tx.select().from(blocks).where(eq(blocks.graphId, row.id));
-  const existingBlockIds = new Set(
-    previousCanvases.flatMap((canvas) => (canvas.blockId ? [canvas.blockId] : [])),
-  );
-  let newBlockIndex = 0;
-  for (const block of graphBlocks) {
-    if (existingBlockIds.has(block.id)) continue;
-    const canvasId = generateId("canvas");
-    const inheritedFill = latestCanvasFill.block;
-    const position = placeCanvasPosition(
-      { x: 0, y: 460 + newBlockIndex * 460 },
-      occupiedCanvasPositions,
-    );
-    newBlockIndex += 1;
-    occupiedCanvasPositions.push(position);
-    await tx.insert(canvases).values({
-      id: canvasId,
-      graphId: row.id,
-      sceneNodeId: null,
-      blockId: block.id,
-      positionX: position.x,
-      positionY: position.y,
-    });
-    await tx.insert(canvasElements).values({
-      id: `${canvasId}-root`,
-      canvasId,
-      parentId: null,
-      type: "frame",
-      rank: "a",
-      name: null,
-      hidden: false,
-      properties: newCanvasRootProperties(inheritedFill),
-    });
-    latestCanvasFill.block = inheritedFill ?? DEFAULT_CANVAS_FILL;
-  }
-
-  // A Flow's default Scene is one of its own children, so it can only be
-  // set once those children exist.
-  for (const node of graph.nodes) {
-    if (node.kind !== "flow" || node.defaultSceneId === null) continue;
+  const upsertNodes = async (nodes: readonly GraphNode[]) => {
+    if (nodes.length === 0) return;
     await tx
-      .update(graphNodes)
-      .set({ defaultSceneId: node.defaultSceneId })
-      .where(eq(graphNodes.id, node.id));
-  }
+      .insert(graphNodes)
+      .values(nodes.map((node) => graphNodeInsertValues(node, row.id)))
+      .onConflictDoUpdate({
+        target: [graphNodes.graphId, graphNodes.id],
+        set: {
+          kind: sql.raw("excluded.kind"),
+          name: sql.raw("excluded.name"),
+          parentId: sql.raw("excluded.parent_id"),
+          defaultSceneId: sql.raw("excluded.default_scene_id"),
+          color: sql.raw("excluded.color"),
+          type: sql.raw("excluded.type"),
+          positionX: sql.raw("excluded.position_x"),
+          positionY: sql.raw("excluded.position_y"),
+          updatedAt: new Date(),
+        },
+      });
+  };
+  await upsertNodes(topLevel);
+  await upsertNodes(nested);
+  await reconcileSceneCanvases(
+    tx,
+    row.id,
+    graph.nodes.filter((node) => node.kind === "scene").map((node) => node.id),
+  );
 
   const variables = graph.nodes.flatMap((node) =>
     node.kind === "scene"
