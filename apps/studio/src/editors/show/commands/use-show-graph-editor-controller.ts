@@ -5,14 +5,9 @@ import { useEdgesState, useNodesInitialized, useNodesState, useReactFlow } from 
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { OnEdgesChange, OnNodesChange } from "@xyflow/react";
 
-import {
-  absolutePosition,
-  FLOW_NODE_TYPE,
-  graphToFlow,
-  NODE_HEIGHT,
-  NODE_WIDTH,
-} from "../graph/graph-to-flow";
+import { absolutePosition, graphToFlow, NODE_HEIGHT, NODE_WIDTH } from "../graph/graph-to-flow";
 import type { FlowDimensions, ShowFlowEdge, ShowFlowNode } from "../graph/graph-to-flow";
+import { reconcileEdges, reconcileNodes } from "../graph/reconcile-nodes";
 import { useEditorKeys } from "../keyboard/use-editor-keys";
 import { useGraphEditing } from "./use-graph-editing";
 import { useUndoKeys } from "../keyboard/use-undo-keys";
@@ -96,27 +91,16 @@ export function useShowGraphEditorController({
   const focusOnArrival = useRef<string | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState(drawn.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(drawn.edges);
-  const displayNodes = useMemo(() => {
-    const interaction = new Map(nodes.map((node) => [node.id, node]));
-    return drawn.nodes.map((node) => {
-      const existing = interaction.get(node.id);
-      if (!existing) return node;
-      const collapseChanged =
-        node.type === FLOW_NODE_TYPE &&
-        existing.type === FLOW_NODE_TYPE &&
-        existing.data.collapsed !== node.data.collapsed;
-      return {
-        ...existing,
-        ...node,
-        ...(collapseChanged ? { measured: undefined } : {}),
-        position:
-          dragging.current || (node.type === FLOW_NODE_TYPE && flowDimensions.has(node.id))
-            ? existing.position
-            : node.position,
-        selected: existing.selected,
-      };
-    });
-  }, [drawn, flowDimensions, nodes]);
+  const manualFlowIds = useMemo(() => new Set(flowDimensions.keys()), [flowDimensions]);
+  const displayNodes = useMemo(
+    () =>
+      reconcileNodes(drawn.nodes, nodes, {
+        dragging: dragging.current,
+        manualFlowIds,
+      }),
+    [drawn.nodes, manualFlowIds, nodes],
+  );
+  const displayEdges = useMemo(() => reconcileEdges(drawn.edges, edges), [drawn.edges, edges]);
   const { fitView, getNodes, getZoom, setCenter, screenToFlowPosition } = useReactFlow();
   const fitViewOptions = useFitViewOptions();
   // The graph arrives after the editor mounts; fit only after its nodes are measured.
@@ -169,34 +153,15 @@ export function useShowGraphEditorController({
         });
       });
     }
-    setNodes((previous) => {
-      const interaction = new Map(previous.map((node) => [node.id, node]));
-      return drawn.nodes.map((node) => {
-        const existing = interaction.get(node.id);
-        if (!existing) return arriving ? { ...node, selected: node.id === arriving } : node;
-        const collapseChanged =
-          node.type === FLOW_NODE_TYPE &&
-          existing.type === FLOW_NODE_TYPE &&
-          existing.data.collapsed !== node.data.collapsed;
-        return {
-          ...existing,
-          ...node,
-          ...(collapseChanged ? { measured: undefined } : {}),
-          ...(dragging.current || (node.type === FLOW_NODE_TYPE && flowDimensions.has(node.id))
-            ? { position: existing.position }
-            : {}),
-          selected: arriving ? node.id === arriving : existing.selected,
-        };
-      });
-    });
-    setEdges((previous) => {
-      const interaction = new Map(previous.map((edge) => [edge.id, edge]));
-      return drawn.edges.map((edge) => {
-        const existing = interaction.get(edge.id);
-        return existing ? { ...existing, ...edge, selected: existing.selected } : edge;
-      });
-    });
-  }, [drawn, flowDimensions, getNodes, getZoom, setCenter, setNodes, setEdges]);
+    setNodes((previous) =>
+      reconcileNodes(drawn.nodes, previous, {
+        dragging: dragging.current,
+        manualFlowIds,
+        selectOnArrival: arriving,
+      }),
+    );
+    setEdges((previous) => reconcileEdges(drawn.edges, previous));
+  }, [drawn, getNodes, getZoom, manualFlowIds, setCenter, setEdges, setNodes]);
 
   const say = useCallback((text: string) => {
     setMessage(text);
@@ -326,7 +291,7 @@ export function useShowGraphEditorController({
     fitViewOptions,
     nodes: displayNodes,
     screenToFlowPosition,
-    edges,
+    edges: displayEdges,
     onNodesChange,
     onEdgesChange,
     selectedNodeIds,
