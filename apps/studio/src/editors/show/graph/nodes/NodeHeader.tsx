@@ -3,7 +3,8 @@ import type { ReactNode, ComponentType } from "react";
 
 import { cn } from "@mechane/design-system";
 
-import { INPUT_HANDLE, OUTPUT_HANDLE, type ShowFlowNode } from "../graph-to-flow";
+import type { ShowFlowNode } from "../graph-to-flow";
+import { handleFor } from "../handle-ids";
 import { HANDLE_CLASS } from "../handle-styles";
 import { nodeIcon, typeLabel } from "../node-kinds";
 import { upperFirst } from "es-toolkit";
@@ -82,22 +83,22 @@ export function NodeHeader({
 
       {showInputHandle ? (
         <HandleComponent
-          id={INPUT_HANDLE}
+          id={handleFor({ kind: "input" })}
           type="target"
           position={Position.Left}
           className={cn(HANDLE_CLASS)}
           data-targetable={targetable}
-          data-connected={connectedHandleIds?.has(INPUT_HANDLE) ?? false}
+          data-connected={connectedHandleIds?.has(handleFor({ kind: "input" })) ?? false}
           isConnectableStart={false}
         />
       ) : null}
       {showOutputHandle ? (
         <HandleComponent
-          id={OUTPUT_HANDLE}
+          id={handleFor({ kind: "output" })}
           type="source"
           position={Position.Right}
           className={cn(HANDLE_CLASS)}
-          data-connected={connectedHandleIds?.has(OUTPUT_HANDLE) ?? false}
+          data-connected={connectedHandleIds?.has(handleFor({ kind: "output" })) ?? false}
           isConnectableEnd={false}
         />
       ) : null}

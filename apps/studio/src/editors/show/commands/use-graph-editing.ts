@@ -63,7 +63,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { sourceLabelFor } from "../graph/source-label";
 
 import type { ApiGraph } from "../data/api-graph";
-import { INPUT_HANDLE, OUTPUT_HANDLE } from "../graph/graph-to-flow";
+import { handleFor, readHandle, type HandleId } from "../graph/handle-ids";
 import { createNode } from "../graph/node-kinds";
 import type { GraphCommands } from "./use-graph-commands";
 import { useGraphCommands } from "./use-graph-commands";
@@ -72,9 +72,9 @@ import { useGraphCommands } from "./use-graph-commands";
 export interface ConnectionAttempt {
   source: string;
   target: string;
-  /** The source handle, including a Device's virtual value handle. */
+  /** The encoded source handle, including a Device's virtual value handle. */
   sourceHandle?: string | null;
-  /** The handle dropped on: a Variable id for wiring, `in` otherwise. */
+  /** The encoded handle dropped on the target. */
   targetHandle?: string | null;
 }
 
@@ -174,7 +174,13 @@ export function useGraphEditing(
   const targets = useMemo(
     () =>
       connectingFrom
-        ? connectionTargets(graph, connectingFrom.nodeId, connectingFrom.sourceHandle)
+        ? connectionTargets(
+            graph,
+            connectingFrom.nodeId,
+            domainHandle(
+              connectingFrom.sourceHandle ? readHandle(connectingFrom.sourceHandle) : null,
+            ),
+          )
         : null,
     [connectingFrom, graph],
   );
@@ -199,23 +205,27 @@ export function useGraphEditing(
   const createNodeFromConnection = useCallback(
     (sourceId: string, sourceHandle: string, position: Position) => {
       const producer = graph.nodes.find((node) => node.id === sourceId);
-      const sourceType = sourceTypeAtHandle(graph, sourceId, sourceHandle);
+      const decodedSource = readHandle(sourceHandle);
+      if (!decodedSource) return;
+      const domainSourceHandle = domainHandle(decodedSource);
+      const sourceType = sourceTypeAtHandle(graph, sourceId, domainSourceHandle);
       const node =
-        producer?.kind === "flow" && sourceHandle === OUTPUT_HANDLE
+        producer?.kind === "flow" && decodedSource.kind === "output"
           ? createNode("device", position, null, { color: producer?.color })
           : sourceType
             ? createNode("source", position, null, {
-                sourceType,
                 color: producer?.color,
-                defaultName: sourceLabelFor(graph, sourceId, sourceHandle),
+                defaultName: sourceLabelFor(graph, sourceId, domainSourceHandle ?? ""),
               })
             : null;
       if (!node) return;
-
-      const graphWithNode = { ...graph, nodes: [...graph.nodes, node] };
+      const graphWithNode = {
+        ...graph,
+        nodes: [...graph.nodes, node],
+      };
       const edge = connectionEdge(
         graphWithNode,
-        { sourceId, sourceHandle, targetId: node.id },
+        { sourceId, sourceHandle: domainSourceHandle, targetId: node.id },
         generateId("edge"),
       );
       if (!edge) return;
@@ -295,19 +305,17 @@ export function useGraphEditing(
   );
   const endConnect = useCallback(() => setConnectingFrom(null), []);
 
-  const requestOf = useCallback(
-    (attempt: ConnectionAttempt) => ({
+  const requestOf = useCallback((attempt: ConnectionAttempt) => {
+    const sourceHandle = attempt.sourceHandle ? readHandle(attempt.sourceHandle) : null;
+    const targetHandle = attempt.targetHandle ? readHandle(attempt.targetHandle) : null;
+    return {
       sourceId: attempt.source,
       targetId: attempt.target,
-      sourceHandle: attempt.sourceHandle,
-      targetHandle: attempt.targetHandle,
-      // React Flow reports the handle that was dropped; a Variable's handle
-      // *is* its id (see ./graph-to-flow), so a wiring drop identifies the
-      // Variable and a node-level drop reports the node's own handle instead.
-      targetVariableId: variableHandle(attempt.targetHandle),
-    }),
-    [],
-  );
+      sourceHandle: domainHandle(sourceHandle),
+      targetHandle: domainHandle(targetHandle),
+      targetVariableId: targetHandle?.kind === "variable" ? targetHandle.id : null,
+    };
+  }, []);
 
   const canDrop = useCallback(
     (attempt: ConnectionAttempt) => connectionError(graph, requestOf(attempt)) === null,
@@ -541,9 +549,16 @@ export function useGraphEditing(
     moveOutOfFlow,
   };
 }
-
-/** The Variable a drop landed on, or null if it landed on a node-level handle. */
-function variableHandle(handle: string | null | undefined): string | null {
+function domainHandle(handle: HandleId | null): string | null {
   if (!handle) return null;
-  return handle === INPUT_HANDLE || handle === OUTPUT_HANDLE ? null : handle;
+  switch (handle.kind) {
+    case "input":
+    case "output":
+      return handleFor(handle);
+    case "variable":
+    case "field":
+      return handle.id;
+    case "deviceSource":
+      return handle.name;
+  }
 }

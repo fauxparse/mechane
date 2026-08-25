@@ -7,13 +7,12 @@ import {
   fieldRows,
   flowSize,
   graphToFlow,
-  INPUT_HANDLE,
   NODE_HEIGHT,
   NODE_WIDTH,
-  OUTPUT_HANDLE,
   PLACEHOLDER_NODE_TYPE,
   VARIABLE_ROW_HEIGHT,
 } from "./graph-to-flow";
+import { handleFor } from "./handle-ids";
 
 // These fixtures exercise the mapper's structural wire input rather than
 // the generated GraphQL result union.
@@ -259,9 +258,11 @@ describe("graphToFlow", () => {
       ],
     });
     const byId = new Map(edges.map((e) => [e.id, e]));
-    expect(byId.get("edge_wire")?.targetHandle).toBe("variable_1");
-    expect(byId.get("edge_wire")?.sourceHandle).toBe(OUTPUT_HANDLE);
-    expect(byId.get("edge_nav")?.targetHandle).toBe(INPUT_HANDLE);
+    expect(byId.get("edge_wire")?.targetHandle).toBe(
+      handleFor({ kind: "variable", id: "variable_1" }),
+    );
+    expect(byId.get("edge_wire")?.sourceHandle).toBe(handleFor({ kind: "output" }));
+    expect(byId.get("edge_nav")?.targetHandle).toBe(handleFor({ kind: "input" }));
   });
 
   it("uses the Flow color within a Flow and neutral across scopes", () => {
@@ -507,8 +508,8 @@ describe("graphToFlow", () => {
       });
 
       expect(edges[0]).toMatchObject({
-        sourceHandle: "qr-code",
-        targetHandle: "variable_1",
+        sourceHandle: handleFor({ kind: "deviceSource", name: "qr-code" }),
+        targetHandle: handleFor({ kind: "variable", id: "variable_1" }),
       });
     });
 
@@ -535,7 +536,7 @@ describe("graphToFlow", () => {
       expect(edges[0]).toMatchObject({
         source: "source_1",
         target: "flow_1",
-        targetHandle: INPUT_HANDLE,
+        targetHandle: handleFor({ kind: "input" }),
       });
     });
 
@@ -562,7 +563,7 @@ describe("graphToFlow", () => {
 
       expect(edges[0]).toMatchObject({
         source: "flow_1",
-        sourceHandle: OUTPUT_HANDLE,
+        sourceHandle: handleFor({ kind: "output" }),
         target: "scene_2",
       });
     });
