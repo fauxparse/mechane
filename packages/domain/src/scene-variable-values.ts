@@ -21,6 +21,22 @@ function assignAtPath(current: unknown, path: readonly string[], value: unknown)
   object[segment] = assignAtPath(object[segment], rest, value);
   return object;
 }
+function mapWiringValue(
+  value: unknown,
+  fieldMapping: Readonly<Record<string, string>> | undefined,
+): unknown {
+  if (!fieldMapping || value === null || typeof value !== "object" || Array.isArray(value)) {
+    return value;
+  }
+  const source = value as Record<string, unknown>;
+  const mapped: Record<string, unknown> = {};
+  for (const [sourceFieldId, targetFieldId] of Object.entries(fieldMapping)) {
+    if (Object.prototype.hasOwnProperty.call(source, sourceFieldId)) {
+      mapped[targetFieldId] = source[sourceFieldId];
+    }
+  }
+  return mapped;
+}
 
 function mergeRuntimeValue(designValue: unknown, runtimeValue: unknown): unknown {
   if (runtimeValue === undefined) return designValue;
@@ -92,7 +108,10 @@ export function sceneVariableValues(
     const [variableId, ...variablePath] = edge.targetPath;
     if (!variableId) continue;
 
-    const sourceValue = valueAtPath(resolvedSourceValues[edge.sourceId], edge.sourcePath);
+    const sourceValue = mapWiringValue(
+      valueAtPath(resolvedSourceValues[edge.sourceId], edge.sourcePath),
+      edge.fieldMapping,
+    );
     if (sourceValue === undefined) continue;
     values[variableId] = assignAtPath(values[variableId], variablePath, sourceValue);
   }
