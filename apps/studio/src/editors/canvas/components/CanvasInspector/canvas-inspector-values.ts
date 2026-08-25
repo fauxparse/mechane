@@ -11,7 +11,6 @@ import type {
 import {
   defaultPropertyValue,
   isPropertyConnection,
-  opacityToPercent,
   propertyFieldPaths,
   typeAtPath,
 } from "@mechane/domain";
@@ -95,20 +94,6 @@ export const variableOptions = (
 
 export const isVariableInput = (value: PropertyInputValue | null): value is VariableReference =>
   value !== null && typeof value === "object" && "id" in value && "name" in value;
-
-export const opacityInputValue = (value: PropertyInputValue | null): PropertyInputValue | null => {
-  if (isVariableInput(value)) {
-    const current = value.current;
-    return {
-      ...value,
-      current:
-        current?.kind === "number"
-          ? { ...current, value: opacityToPercent(current.value) }
-          : current,
-    };
-  }
-  return value?.kind === "number" ? { ...value, value: opacityToPercent(value.value) } : value;
-};
 
 function hasValue(value: object): value is { value?: unknown } {
   return "value" in value;

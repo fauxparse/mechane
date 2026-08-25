@@ -1,10 +1,6 @@
 import { useState } from "react";
 import type { AxisSize } from "@mechane/domain";
-import {
-  CANVAS_PROPERTY_DESCRIPTORS,
-  canvasPropertyDescriptor,
-  opacityFromPercent,
-} from "@mechane/domain";
+import { CANVAS_PROPERTY_DESCRIPTORS, canvasPropertyDescriptor } from "@mechane/domain";
 import {
   Link2Icon,
   PropertyInput,
@@ -22,11 +18,10 @@ import {
   inputType,
   isVariableInput,
   literalValue,
-  opacityInputValue,
-  sizeConstraintKey,
   sizeInputValue,
   sizeValueNumber,
   sizeValueUnit,
+  sizeConstraintKey,
   sizingForMode,
   variableInput,
   variableOptions,
@@ -59,25 +54,11 @@ export const PropertyField = ({
     rawValue === undefined &&
     selected.length > 0 &&
     selected.every((element) => !(name in element) || Reflect.get(element, name) === undefined);
-  const defaultValue = isUnset
-    ? name === "opacity"
-      ? 1
-      : name === "cornerRadius"
-        ? 0
-        : name === "fontSize"
-          ? 16
-          : name === "lineHeight"
-            ? "auto"
-            : name === "letterSpacing"
-              ? 0
-              : undefined
-    : rawValue;
-  const isAuto = name === "lineHeight" && defaultValue === "auto";
+  const defaultValue = isUnset ? descriptor.defaultValue : rawValue;
+  const isAuto = descriptor.allowAuto === true && defaultValue === "auto";
   const value = isAuto
     ? null
-    : name === "opacity"
-      ? opacityInputValue(variableInput(defaultValue, descriptor.targetType, variables, shapes))
-      : variableInput(defaultValue, descriptor.targetType, variables, shapes);
+    : descriptor.toInput(variableInput(defaultValue, descriptor.targetType, variables, shapes));
   const type = inputType(descriptor.targetType);
   if (!type) return null;
   const availableVariables = variableOptions(descriptor.targetType, variables, shapes);
@@ -88,18 +69,20 @@ export const PropertyField = ({
       type={type}
       value={value}
       placeholder={isAuto ? "Auto" : placeholder}
-      unit={name === "opacity" ? "%" : undefined}
-      step={name === "opacity" ? 1 : undefined}
+      unit={descriptor.unit}
+      step={descriptor.step}
       presets={presets}
       variables={availableVariables}
-      allowAuto={name === "lineHeight"}
+      allowAuto={descriptor.allowAuto}
       auto={isAuto}
       onAutoChange={
-        name === "lineHeight" ? (nextAuto) => update({ [name]: nextAuto ? "auto" : 0 }) : undefined
+        descriptor.allowAuto
+          ? (nextAuto) => update({ [name]: nextAuto ? descriptor.defaultValue : 0 })
+          : undefined
       }
       icon={icon}
-      min={name === "opacity" ? 0 : undefined}
-      max={name === "opacity" ? 100 : undefined}
+      min={descriptor.min}
+      max={descriptor.max}
       onChange={(next) => {
         if (isVariableInput(next)) {
           update({
@@ -112,11 +95,7 @@ export const PropertyField = ({
         } else if (next === null) {
           update({}, [name]);
         } else {
-          const nextValue =
-            name === "opacity" && next.kind === "number"
-              ? opacityFromPercent(next.value)
-              : next.value;
-          update({ [name]: nextValue });
+          update({ [name]: descriptor.fromInput(next.value) });
         }
       }}
     />
