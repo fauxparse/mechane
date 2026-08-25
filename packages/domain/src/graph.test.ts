@@ -23,6 +23,7 @@ import type {
   FlowNode,
   GraphEdge,
   GraphNode,
+  GraphViolation,
   NavigateEdge,
   SceneNode,
   ShowGraph,
@@ -33,6 +34,17 @@ import type {
 import type { Shape } from "./shapes";
 
 const at = { x: 0, y: 0 };
+
+function expectViolation(run: () => unknown, reason: GraphViolation): void {
+  try {
+    run();
+  } catch (error) {
+    expect(error).toBeInstanceOf(InvalidShowGraphError);
+    expect(error).toMatchObject({ reason });
+    return;
+  }
+  throw new Error(`Expected InvalidShowGraphError with reason "${reason}".`);
+}
 
 function scene(id: string, parentId: string | null = null, variableIds: string[] = []): SceneNode {
   return {
@@ -183,9 +195,7 @@ describe("assertValidShowGraph", () => {
   });
 
   it("rejects duplicate node ids", () => {
-    expect(() => assertValidShowGraph(graph([scene("c1"), scene("c1")]))).toThrow(
-      InvalidShowGraphError,
-    );
+    expectViolation(() => assertValidShowGraph(graph([scene("c1"), scene("c1")])), "duplicateId");
   });
 
   it("rejects duplicate edge ids", () => {
@@ -193,7 +203,7 @@ describe("assertValidShowGraph", () => {
       [flow("f1"), scene("c1", "f1"), scene("c2", "f1")],
       [navigate("e1", "c1", "c2", "cue-a"), navigate("e1", "c2", "c1", "cue-b")],
     );
-    expect(() => assertValidShowGraph(showGraph)).toThrow(InvalidShowGraphError);
+    expectViolation(() => assertValidShowGraph(showGraph), "duplicateId");
   });
 
   it("rejects two Variables with the same name on one Scene", () => {
@@ -202,13 +212,13 @@ describe("assertValidShowGraph", () => {
       { id: "v1", name: "tally" },
       { id: "v2", name: "tally" },
     ];
-    expect(() => assertValidShowGraph(graph([withDuplicateNames]))).toThrow(InvalidShowGraphError);
+    expectViolation(() => assertValidShowGraph(graph([withDuplicateNames])), "duplicateId");
   });
 
   it("rejects a node whose position isn't a finite number", () => {
     const adrift = scene("c1");
     adrift.position = { x: Number.NaN, y: 0 };
-    expect(() => assertValidShowGraph(graph([adrift]))).toThrow(InvalidShowGraphError);
+    expectViolation(() => assertValidShowGraph(graph([adrift])), "nonFinitePosition");
   });
 
   describe("nesting", () => {
@@ -219,29 +229,29 @@ describe("assertValidShowGraph", () => {
 
     it("rejects a Flow nested inside another Flow", () => {
       const nested = { ...flow("f2"), parentId: "f1" } as unknown as FlowNode;
-      expect(() => assertValidShowGraph(graph([flow("f1"), nested]))).toThrow(
-        /Flow "f2" is nested/,
-      );
+      expectViolation(() => assertValidShowGraph(graph([flow("f1"), nested])), "flowNested");
     });
 
     it("rejects a Device nested inside a Flow", () => {
       const nested = { ...device("d1"), parentId: "f1" } as unknown as DeviceNode;
-      expect(() => assertValidShowGraph(graph([flow("f1"), nested]))).toThrow(/Device "d1"/);
+      expectViolation(() => assertValidShowGraph(graph([flow("f1"), nested])), "deviceNested");
     });
 
     it("rejects a node nested inside something that isn't a Flow", () => {
-      expect(() => assertValidShowGraph(graph([scene("c1"), source("r1", "c1")]))).toThrow(
-        /which is a scene, not a Flow/,
+      expectViolation(
+        () => assertValidShowGraph(graph([scene("c1"), source("r1", "c1")])),
+        "invalidParent",
       );
     });
 
     it("rejects a node whose parent isn't in the graph", () => {
-      expect(() => assertValidShowGraph(graph([scene("c1", "f1")]))).toThrow(InvalidShowGraphError);
+      expectViolation(() => assertValidShowGraph(graph([scene("c1", "f1")])), "missingNode");
     });
 
     it("rejects a Flow whose default Scene isn't one of its own Scenes", () => {
-      expect(() => assertValidShowGraph(graph([flow("f1", "c1"), scene("c1")]))).toThrow(
-        /default Scene must be a Scene inside that Flow/,
+      expectViolation(
+        () => assertValidShowGraph(graph([flow("f1", "c1"), scene("c1")])),
+        "invalidDefaultScene",
       );
     });
   });
@@ -260,14 +270,12 @@ describe("assertValidShowGraph", () => {
         [scene("c1", null, ["v1"]), scene("c2", null, ["v2"])],
         [wiring("e1", "c1", "c2", ["v2"])],
       );
-      expect(() => assertValidShowGraph(showGraph)).toThrow(
-        /only a Source, Transformer, or virtual Device source/,
-      );
+      expectViolation(() => assertValidShowGraph(showGraph), "invalidWiringSource");
     });
 
     it("rejects a wiring edge targeting a node that isn't a Scene", () => {
       const showGraph = graph([source("r1"), device("d1")], [wiring("e1", "r1", "d1", ["v1"])]);
-      expect(() => assertValidShowGraph(showGraph)).toThrow(/targets a device/);
+      expectViolation(() => assertValidShowGraph(showGraph), "invalidWiringTarget");
     });
 
     it("rejects a wiring edge targeting a Variable the Scene doesn't have", () => {
@@ -275,7 +283,7 @@ describe("assertValidShowGraph", () => {
         [source("r1"), scene("c1", null, ["v1"])],
         [wiring("e1", "r1", "c1", ["v-nope"])],
       );
-      expect(() => assertValidShowGraph(showGraph)).toThrow(/doesn't have/);
+      expectViolation(() => assertValidShowGraph(showGraph), "missingVariable");
     });
 
     it("carries a field path at each end", () => {
@@ -307,7 +315,21 @@ describe("assertValidShowGraph", () => {
         [source("r1"), source("r2"), scene("c1", null, ["v1"])],
         [wiring("e1", "r1", "c1", ["v1"]), wiring("e2", "r2", "c1", ["v1", "name"])],
       );
-      expect(() => assertValidShowGraph(showGraph)).toThrow(/overlapping paths/);
+      expectViolation(() => assertValidShowGraph(showGraph), "wiringFanIn");
+    });
+    it("rejects incompatible wiring types with a discriminator", () => {
+      const target = scene("c1", null, ["v1"]);
+      target.variables[0]!.type = "image";
+      const showGraph = graph([source("r1"), target], [wiring("e1", "r1", "c1", ["v1"])]);
+      expectViolation(() => assertValidShowGraph(showGraph), "incompatibleTypes");
+    });
+
+    it("rejects wiring cycles with a discriminator", () => {
+      const showGraph = graph(
+        [source("r1"), source("r2")],
+        [wiring("e1", "r1", "r2", []), wiring("e2", "r2", "r1", [])],
+      );
+      expectViolation(() => assertValidShowGraph(showGraph), "wiringCycle");
     });
 
     it("rejects a Device with more than one driver", () => {
@@ -315,7 +337,7 @@ describe("assertValidShowGraph", () => {
         [flow("f1"), scene("c1"), device("d1")],
         [deviceEdge("e1", "f1", "d1"), deviceEdge("e2", "c1", "d1")],
       );
-      expect(() => assertValidShowGraph(showGraph)).toThrow(/more than one driver/);
+      expectViolation(() => assertValidShowGraph(showGraph), "deviceHasDriver");
     });
 
     it("rejects a wiring edge with no target path at all", () => {
@@ -323,7 +345,7 @@ describe("assertValidShowGraph", () => {
         [source("r1"), scene("c1", null, ["v1"])],
         [wiring("e1", "r1", "c1", [])],
       );
-      expect(() => assertValidShowGraph(showGraph)).toThrow(/empty target path/);
+      expectViolation(() => assertValidShowGraph(showGraph), "emptyTargetPath");
     });
 
     it("rejects an empty segment in a path", () => {
@@ -331,7 +353,7 @@ describe("assertValidShowGraph", () => {
         [source("r1"), scene("c1", null, ["v1"])],
         [wiring("e1", "r1", "c1", ["v1"], ["tally", ""])],
       );
-      expect(() => assertValidShowGraph(showGraph)).toThrow(/empty segment/);
+      expectViolation(() => assertValidShowGraph(showGraph), "emptyPathSegment");
     });
 
     it("rejects a duplicate wiring edge", () => {
@@ -339,7 +361,7 @@ describe("assertValidShowGraph", () => {
         [source("r1"), scene("c1", null, ["v1"])],
         [wiring("e1", "r1", "c1", ["v1"]), wiring("e2", "r1", "c1", ["v1"])],
       );
-      expect(() => assertValidShowGraph(showGraph)).toThrow(/duplicate wiring edge/);
+      expectViolation(() => assertValidShowGraph(showGraph), "duplicateEdge");
     });
   });
 
@@ -357,7 +379,7 @@ describe("assertValidShowGraph", () => {
         [flow("f1"), source("r1", "f1"), scene("c1", null, ["v1"])],
         [wiring("e1", "r1", "c1", ["v1"])],
       );
-      expect(() => assertValidShowGraph(showGraph)).toThrow(/outside its Flow/);
+      expectViolation(() => assertValidShowGraph(showGraph), "flowLocalEscape");
     });
 
     it("rejects a Flow-local Source feeding a Scene in a different Flow", () => {
@@ -365,7 +387,7 @@ describe("assertValidShowGraph", () => {
         [flow("f1"), flow("f2"), source("r1", "f1"), scene("c1", "f2", ["v1"])],
         [wiring("e1", "r1", "c1", ["v1"])],
       );
-      expect(() => assertValidShowGraph(showGraph)).toThrow(/outside its Flow/);
+      expectViolation(() => assertValidShowGraph(showGraph), "flowLocalEscape");
     });
 
     it("lets a Show-level Source feed a Scene inside a Flow", () => {
@@ -389,7 +411,7 @@ describe("assertValidShowGraph", () => {
         [flow("f1"), source("r1", "f1"), transformer("t1")],
         [wiring("e1", "r1", "t1", [])],
       );
-      expect(() => assertValidShowGraph(showGraph)).toThrow(/outside its Flow/);
+      expectViolation(() => assertValidShowGraph(showGraph), "flowLocalEscape");
     });
   });
 
@@ -407,7 +429,7 @@ describe("assertValidShowGraph", () => {
         [flow("f1"), scene("c1", "f1"), scene("c2", "f1")],
         [navigate("e1", "c1", "c2", "cue-a"), navigate("e2", "c1", "c2", "cue-a")],
       );
-      expect(() => assertValidShowGraph(showGraph)).toThrow(/duplicate Navigate edge/);
+      expectViolation(() => assertValidShowGraph(showGraph), "duplicateEdge");
     });
 
     it("allows self-loops and bidirectional pairs", () => {
@@ -423,18 +445,18 @@ describe("assertValidShowGraph", () => {
         [flow("f1"), flow("f2"), scene("c1", "f1"), scene("c2", "f2")],
         [navigate("e1", "c1", "c2")],
       );
-      expect(() => assertValidShowGraph(showGraph)).toThrow(/same Flow/);
+      expectViolation(() => assertValidShowGraph(showGraph), "crossFlowNavigate");
     });
 
     it("rejects an edge between top-level Scenes — a Flow is the state machine", () => {
       const showGraph = graph([scene("c1"), scene("c2")], [navigate("e1", "c1", "c2")]);
-      expect(() => assertValidShowGraph(showGraph)).toThrow(/same Flow/);
+      expectViolation(() => assertValidShowGraph(showGraph), "crossFlowNavigate");
     });
 
     it("rejects an edge carrying a value path — a Navigate edge moves no value", () => {
       const withPath: NavigateEdge = { ...navigate("e1", "c1", "c2"), targetPath: ["v1"] };
       const showGraph = graph([flow("f1"), scene("c1", "f1"), scene("c2", "f1")], [withPath]);
-      expect(() => assertValidShowGraph(showGraph)).toThrow(/only wiring edges address values/);
+      expectViolation(() => assertValidShowGraph(showGraph), "valuePathOnNonWiring");
     });
 
     it("rejects an edge that doesn't run Scene → Scene", () => {
@@ -442,7 +464,7 @@ describe("assertValidShowGraph", () => {
         [flow("f1"), scene("c1", "f1"), source("r1", "f1")],
         [navigate("e1", "c1", "r1")],
       );
-      expect(() => assertValidShowGraph(showGraph)).toThrow(/from a Scene to a Scene/);
+      expectViolation(() => assertValidShowGraph(showGraph), "invalidNavigateEndpoints");
     });
   });
 
@@ -468,23 +490,24 @@ describe("assertValidShowGraph", () => {
         [flow("f1"), scene("c1", "f1"), device("d1")],
         [deviceEdge("e1", "c1", "d1")],
       );
-      expect(() => assertValidShowGraph(showGraph)).toThrow(/reached via its Flow/);
+      expectViolation(() => assertValidShowGraph(showGraph), "nestedSceneDrivesDevice");
     });
 
     it("rejects an edge from a Source", () => {
       const showGraph = graph([source("r1"), device("d1")], [deviceEdge("e1", "r1", "d1")]);
-      expect(() => assertValidShowGraph(showGraph)).toThrow(/only a Flow or top-level Scene/);
+      expectViolation(() => assertValidShowGraph(showGraph), "invalidDeviceSource");
     });
 
     it("rejects an edge that doesn't end at a Device", () => {
       const showGraph = graph([flow("f1"), scene("c1")], [deviceEdge("e1", "f1", "c1")]);
-      expect(() => assertValidShowGraph(showGraph)).toThrow(/must end at a Device/);
+      expectViolation(() => assertValidShowGraph(showGraph), "invalidDeviceTarget");
     });
 
     it("rejects an edge whose Device isn't in the graph", () => {
-      expect(() =>
-        assertValidShowGraph(graph([flow("f1")], [deviceEdge("e1", "f1", "d1")])),
-      ).toThrow(InvalidShowGraphError);
+      expectViolation(
+        () => assertValidShowGraph(graph([flow("f1")], [deviceEdge("e1", "f1", "d1")])),
+        "missingNode",
+      );
     });
   });
 });

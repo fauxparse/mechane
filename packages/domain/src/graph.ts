@@ -3,11 +3,8 @@
 // §6.2 — one canvas, not two). See /CONTEXT.md for the vocabulary.
 //
 // This module defines what a graph *is* and which structures are
-// well-formed. It deliberately stops short of the connection rules that
-// reject an otherwise well-formed edge — fan-in, wiring cycles, one target
-// per Device all belong to the Connection validation slice (issue #24).
-// The split is: this module decides what's representable, that one decides
-// what's permitted.
+// Connection rules are validated here as part of the same graph boundary:
+// graph writes and drag validation must not disagree.
 //
 // Locked decisions this encodes (issues #20, #23, #25, #26, #29):
 //
@@ -267,7 +264,10 @@ export type GraphEdge = WiringEdge | NavigateEdge | DeviceEdge;
 export function wiringTargetVariableId(edge: WiringEdge): string {
   const [variableId] = edge.targetPath;
   if (variableId === undefined) {
-    throw new InvalidShowGraphError(`wiring edge "${edge.id}" has an empty target path.`);
+    throw new InvalidShowGraphError(
+      "emptyTargetPath",
+      `wiring edge "${edge.id}" has an empty target path.`,
+    );
   }
   return variableId;
 }
@@ -298,10 +298,48 @@ export function emptyShowGraph(): ShowGraph {
   return { shapes: [], nodes: [], edges: [] };
 }
 
+export type GraphViolation =
+  | "invalidShape"
+  | "emptyTargetPath"
+  | "invalidImageVariableType"
+  | "invalidImageDimensions"
+  | "missingNode"
+  | "duplicateId"
+  | "nonFinitePosition"
+  | "flowNested"
+  | "deviceNested"
+  | "invalidParent"
+  | "invalidDefaultScene"
+  | "emptyPathSegment"
+  | "valuePathOnNonWiring"
+  | "invalidWiringSource"
+  | "invalidDeviceSourceHandle"
+  | "missingSourceField"
+  | "invalidWiringTarget"
+  | "missingTransformerField"
+  | "sourceInputPath"
+  | "missingVariable"
+  | "incompatibleTypes"
+  | "flowLocalEscape"
+  | "invalidNavigateEndpoints"
+  | "crossFlowNavigate"
+  | "nestedSceneDrivesDevice"
+  | "invalidDeviceSource"
+  | "invalidDeviceTarget"
+  | "duplicateEdge"
+  | "wiringFanIn"
+  | "deviceHasDriver"
+  | "wiringCycle"
+  | "missingSourceType"
+  | "invalidNodeColor";
+
 export class InvalidShowGraphError extends Error {
-  constructor(reason: string) {
-    super(`Invalid Show graph: ${reason}`);
+  readonly reason: GraphViolation;
+
+  constructor(reason: GraphViolation, detail: string) {
+    super(`Invalid Show graph: ${detail}`);
     this.name = "InvalidShowGraphError";
+    this.reason = reason;
   }
 }
 
@@ -388,6 +426,7 @@ function assertImageVariableMetadata(variable: SceneVariable, sceneId: string): 
   if (variable.suggestedDimensions === undefined) return;
   if (variable.type !== "image") {
     throw new InvalidShowGraphError(
+      "invalidImageVariableType",
       `Variable "${variable.id}" on Scene "${sceneId}" can only have suggested image dimensions when its Type is image.`,
     );
   }
@@ -401,6 +440,7 @@ function assertImageVariableMetadata(variable: SceneVariable, sceneId: string): 
     height > 8000
   ) {
     throw new InvalidShowGraphError(
+      "invalidImageDimensions",
       `Variable "${variable.id}" has invalid suggested image dimensions; both axes must be integer pixels from 1 through 8000.`,
     );
   }
@@ -418,7 +458,10 @@ export function findNode(graph: ShowGraph, nodeId: string): GraphNode | null {
 function requireNode(nodes: Map<string, GraphNode>, id: string, role: string): GraphNode {
   const node = nodes.get(id);
   if (!node) {
-    throw new InvalidShowGraphError(`${role} references node "${id}", which isn't in the graph.`);
+    throw new InvalidShowGraphError(
+      "missingNode",
+      `${role} references node "${id}", which isn't in the graph.`,
+    );
   }
   return node;
 }
@@ -427,7 +470,7 @@ function assertUniqueIds(ids: Iterable<string>, what: string): void {
   const seen = new Set<string>();
   for (const id of ids) {
     if (seen.has(id)) {
-      throw new InvalidShowGraphError(`duplicate ${what} "${id}".`);
+      throw new InvalidShowGraphError("duplicateId", `duplicate ${what} "${id}".`);
     }
     seen.add(id);
   }
@@ -435,7 +478,10 @@ function assertUniqueIds(ids: Iterable<string>, what: string): void {
 
 function assertFinitePosition(node: GraphNode): void {
   if (!Number.isFinite(node.position.x) || !Number.isFinite(node.position.y)) {
-    throw new InvalidShowGraphError(`node "${node.id}" has a non-finite position.`);
+    throw new InvalidShowGraphError(
+      "nonFinitePosition",
+      `node "${node.id}" has a non-finite position.`,
+    );
   }
 }
 
@@ -447,14 +493,18 @@ function assertValidNesting(node: GraphNode, nodes: Map<string, GraphNode>): voi
   const parentId: string | null = node.parentId;
   if (parentId === null) return;
   if (node.kind === "flow") {
-    throw new InvalidShowGraphError(`Flow "${node.id}" is nested inside another node.`);
+    throw new InvalidShowGraphError(
+      "flowNested",
+      `Flow "${node.id}" is nested inside another node.`,
+    );
   }
   if (node.kind === "device") {
-    throw new InvalidShowGraphError(`Device "${node.id}" is nested inside a Flow.`);
+    throw new InvalidShowGraphError("deviceNested", `Device "${node.id}" is nested inside a Flow.`);
   }
   const parent = requireNode(nodes, parentId, `Node "${node.id}"`);
   if (parent.kind !== "flow") {
     throw new InvalidShowGraphError(
+      "invalidParent",
       `node "${node.id}" is nested inside "${parent.id}", which is a ${parent.kind}, not a Flow.`,
     );
   }
@@ -465,6 +515,7 @@ function assertValidDefaultScene(flow: FlowNode, nodes: Map<string, GraphNode>):
   const scene = requireNode(nodes, flow.defaultSceneId, `Flow "${flow.id}"'s default Scene`);
   if (scene.kind !== "scene" || scene.parentId !== flow.id) {
     throw new InvalidShowGraphError(
+      "invalidDefaultScene",
       `Flow "${flow.id}"'s default Scene must be a Scene inside that Flow.`,
     );
   }
@@ -477,6 +528,7 @@ function assertValidPathSegments(edge: GraphEdge): void {
   ] as const) {
     if (path.some((segment) => segment.length === 0)) {
       throw new InvalidShowGraphError(
+        "emptyPathSegment",
         `edge "${edge.id}" has an empty segment in its ${name} path.`,
       );
     }
@@ -493,6 +545,7 @@ function assertValidPathSegments(edge: GraphEdge): void {
 function assertNoPaths(edge: NavigateEdge | DeviceEdge): void {
   if (edge.sourcePath.length > 0 || edge.targetPath.length > 0) {
     throw new InvalidShowGraphError(
+      "valuePathOnNonWiring",
       `${edge.kind === "navigate" ? "Navigate" : "Device"} edge "${edge.id}" carries a value path; only wiring edges address values.`,
     );
   }
@@ -518,11 +571,13 @@ function assertValidWiringEdge(
     (producer.kind !== "device" || sourceType === null)
   ) {
     throw new InvalidShowGraphError(
+      "invalidWiringSource",
       `wiring edge "${edge.id}" starts at a ${producer.kind}; only a Source, Transformer, or virtual Device source produces data.`,
     );
   }
   if (producer.kind === "device" && edge.sourcePath.length !== 1) {
     throw new InvalidShowGraphError(
+      "invalidDeviceSourceHandle",
       `wiring edge "${edge.id}" must name one virtual Device source handle.`,
     );
   }
@@ -533,12 +588,14 @@ function assertValidWiringEdge(
     sourceType === null
   ) {
     throw new InvalidShowGraphError(
+      "missingSourceField",
       `wiring edge "${edge.id}" names a Source or Transformer field that does not exist.`,
     );
   }
   const consumer = requireNode(nodes, edge.targetId, `Wiring edge "${edge.id}"`);
   if (consumer.kind !== "scene" && consumer.kind !== "transformer" && consumer.kind !== "source") {
     throw new InvalidShowGraphError(
+      "invalidWiringTarget",
       `wiring edge "${edge.id}" targets a ${consumer.kind}; wiring targets a Source, Transformer, or Variable on a Scene.`,
     );
   }
@@ -550,12 +607,14 @@ function assertValidWiringEdge(
         : (consumer.type ?? null);
     if (consumer.type && edge.targetPath.length > 0 && targetType === null) {
       throw new InvalidShowGraphError(
+        "missingTransformerField",
         `wiring edge "${edge.id}" targets a Transformer field that does not exist.`,
       );
     }
   } else if (consumer.kind === "source") {
     if (edge.targetPath.length > 0) {
       throw new InvalidShowGraphError(
+        "sourceInputPath",
         `wiring edge "${edge.id}" targets a Source field; Source inputs are not named.`,
       );
     }
@@ -563,6 +622,7 @@ function assertValidWiringEdge(
   } else {
     if (edge.targetPath.length === 0) {
       throw new InvalidShowGraphError(
+        "emptyTargetPath",
         `wiring edge "${edge.id}" has an empty target path; it must at least name the Scene Variable it feeds.`,
       );
     }
@@ -570,6 +630,7 @@ function assertValidWiringEdge(
     const variable = consumer.variables.find((candidate) => candidate.id === variableId);
     if (!variable) {
       throw new InvalidShowGraphError(
+        "missingVariable",
         `wiring edge "${edge.id}" targets Variable "${variableId}", which Scene "${consumer.id}" doesn't have.`,
       );
     }
@@ -577,11 +638,13 @@ function assertValidWiringEdge(
   }
   if (sourceType && targetType && !areTypesCompatible(sourceType, targetType, shapes)) {
     throw new InvalidShowGraphError(
+      "incompatibleTypes",
       `wiring edge "${edge.id}" connects incompatible types; no supported coercion exists.`,
     );
   }
   if (producer.parentId !== null && producer.parentId !== consumer.parentId) {
     throw new InvalidShowGraphError(
+      "flowLocalEscape",
       `wiring edge "${edge.id}" feeds a Flow-local ${producer.kind} into a node outside its Flow.`,
     );
   }
@@ -591,12 +654,16 @@ function assertValidNavigateEdge(edge: NavigateEdge, nodes: Map<string, GraphNod
   const from = requireNode(nodes, edge.sourceId, `Navigate edge "${edge.id}"`);
   const to = requireNode(nodes, edge.targetId, `Navigate edge "${edge.id}"`);
   if (from.kind !== "scene" || to.kind !== "scene") {
-    throw new InvalidShowGraphError(`Navigate edge "${edge.id}" must run from a Scene to a Scene.`);
+    throw new InvalidShowGraphError(
+      "invalidNavigateEndpoints",
+      `Navigate edge "${edge.id}" must run from a Scene to a Scene.`,
+    );
   }
   // A Flow *is* the state machine, so a Navigate edge only means anything
   // inside one, and never across two (each Flow is siloed — #19, #25).
   if (from.parentId === null || from.parentId !== to.parentId) {
     throw new InvalidShowGraphError(
+      "crossFlowNavigate",
       `Navigate edge "${edge.id}" must connect two Scenes in the same Flow.`,
     );
   }
@@ -609,17 +676,22 @@ function assertValidDeviceEdge(edge: DeviceEdge, nodes: Map<string, GraphNode>):
   } else if (producer.kind === "scene") {
     if (producer.parentId !== null) {
       throw new InvalidShowGraphError(
+        "nestedSceneDrivesDevice",
         `Device edge "${edge.id}" starts at a Scene inside a Flow; a nested Scene is reached via its Flow.`,
       );
     }
   } else {
     throw new InvalidShowGraphError(
+      "invalidDeviceSource",
       `Device edge "${edge.id}" starts at a ${producer.kind}; only a Flow or top-level Scene drives a Device.`,
     );
   }
   const consumer = requireNode(nodes, edge.targetId, `Device edge "${edge.id}"`);
   if (consumer.kind !== "device") {
-    throw new InvalidShowGraphError(`Device edge "${edge.id}" must end at a Device.`);
+    throw new InvalidShowGraphError(
+      "invalidDeviceTarget",
+      `Device edge "${edge.id}" must end at a Device.`,
+    );
   }
 }
 
@@ -642,6 +714,7 @@ function assertNoDuplicateEdges(edges: GraphEdge[]): void {
     const key = `${edge.kind}${edge.sourceId}${edge.targetId}${discriminator}`;
     if (seen.has(key)) {
       throw new InvalidShowGraphError(
+        "duplicateEdge",
         edge.kind === "navigate"
           ? `duplicate Navigate edge between "${edge.sourceId}" and "${edge.targetId}" for the same Cue/Action pairing.`
           : `duplicate ${edge.kind} edge between "${edge.sourceId}" and "${edge.targetId}".`,
@@ -677,6 +750,7 @@ function assertNoWiringFanIn(edges: GraphEdge[], nodes: Map<string, GraphNode>):
         continue;
       }
       throw new InvalidShowGraphError(
+        "wiringFanIn",
         `wiring edges "${left.id}" and "${right.id}" both feed overlapping paths on Variable "${left.targetPath[0]}".`,
       );
     }
@@ -690,6 +764,7 @@ function assertOneDriverPerDevice(edges: GraphEdge[]): void {
     const previous = drivers.get(edge.targetId);
     if (previous) {
       throw new InvalidShowGraphError(
+        "deviceHasDriver",
         `Device "${edge.targetId}" has more than one driver (edges "${previous}" and "${edge.id}").`,
       );
     }
@@ -707,7 +782,10 @@ function assertNoWiringCycles(edges: GraphEdge[]): void {
   const visited = new Set<string>();
   const visit = (nodeId: string): void => {
     if (visiting.has(nodeId)) {
-      throw new InvalidShowGraphError(`wiring edges form a cycle at node "${nodeId}".`);
+      throw new InvalidShowGraphError(
+        "wiringCycle",
+        `wiring edges form a cycle at node "${nodeId}".`,
+      );
     }
     if (visited.has(nodeId)) return;
     visiting.add(nodeId);
@@ -734,7 +812,7 @@ export function assertValidShowGraph(graph: ShowGraph): ShowGraph {
     assertValidShapes(graph.shapes ?? []);
   } catch (error) {
     if (error instanceof InvalidShapeError) {
-      throw new InvalidShowGraphError(error.message);
+      throw new InvalidShowGraphError("invalidShape", error.message);
     }
     throw error;
   }
@@ -755,12 +833,15 @@ export function assertValidShowGraph(graph: ShowGraph): ShowGraph {
   );
   for (const node of graph.nodes) {
     if (node.kind === "source" && !node.type) {
-      throw new InvalidShowGraphError(`Source "${node.id}" must have a Type.`);
+      throw new InvalidShowGraphError("missingSourceType", `Source "${node.id}" must have a Type.`);
     }
     assertFinitePosition(node);
     assertValidNesting(node, nodes);
     if (node.color !== undefined && !isFlowColor(node.color)) {
-      throw new InvalidShowGraphError(`Node "${node.id}" has an invalid color.`);
+      throw new InvalidShowGraphError(
+        "invalidNodeColor",
+        `Node "${node.id}" has an invalid color.`,
+      );
     }
     if (node.kind === "flow") {
       assertValidDefaultScene(node, nodes);

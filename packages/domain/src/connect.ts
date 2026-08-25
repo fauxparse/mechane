@@ -230,9 +230,7 @@ function unusedId(graph: ShowGraph, base: string, used: (graph: ShowGraph) => st
 
 function candidateIds(graph: ShowGraph): ConnectionIds {
   return {
-    edgeId: unusedId(graph, "edge_candidate", (current) =>
-      current.edges.map((edge) => edge.id),
-    ),
+    edgeId: unusedId(graph, "edge_candidate", (current) => current.edges.map((edge) => edge.id)),
     variableId: unusedId(graph, "variable_candidate", (current) =>
       current.nodes.flatMap((node) =>
         node.kind === "scene" ? node.variables.map((variable) => variable.id) : [],
@@ -296,11 +294,7 @@ export function planConnection(
     return { error: "Drop onto one of the Scene's Variables." };
   }
 
-  const edge = connectionEdge(
-    planningGraph,
-    { ...request, targetVariableId },
-    ids.edgeId,
-  );
+  const edge = connectionEdge(planningGraph, { ...request, targetVariableId }, ids.edgeId);
   if (!edge) return { error: `A ${producer.kind} can't connect to a ${consumer.kind}.` };
 
   if (
@@ -351,28 +345,74 @@ export function canConnect(graph: ShowGraph, request: ConnectionRequest): boolea
  * mid-drag wants to know what to do instead.
  */
 function humanise(error: InvalidShowGraphError, kind: EdgeKind): string {
-  const reason = error.message;
-  if (reason.includes("duplicate")) {
-    return kind === "navigate"
-      ? "These Scenes are already connected."
-      : "That connection already exists.";
+  switch (error.reason) {
+    case "invalidShape":
+      return "This Show's shapes are invalid.";
+    case "emptyTargetPath":
+      return "Drop onto one of the Scene's Variables.";
+    case "invalidImageVariableType":
+    case "invalidImageDimensions":
+      return "That Variable's image settings are invalid.";
+    case "missingNode":
+      return "That node isn't in this Show.";
+    case "duplicateId":
+      return "That id is already in use.";
+    case "nonFinitePosition":
+      return "That node's position is invalid.";
+    case "flowNested":
+    case "deviceNested":
+    case "invalidParent":
+      return "That node can't be nested there.";
+    case "invalidDefaultScene":
+      return "A Flow's default Scene must be inside that Flow.";
+    case "emptyPathSegment":
+      return "A value path can't contain an empty field.";
+    case "valuePathOnNonWiring":
+      return "Navigate and Device edges don't carry values.";
+    case "invalidWiringSource":
+      return "Wiring must start at a Source, Transformer, or virtual Device source.";
+    case "invalidDeviceSourceHandle":
+      return "Choose one virtual Device source.";
+    case "missingSourceField":
+    case "missingTransformerField":
+      return "That field no longer exists.";
+    case "invalidWiringTarget":
+      return "Wiring must target a Source, Transformer, or Scene Variable.";
+    case "sourceInputPath":
+      return "Source inputs aren't named fields.";
+    case "missingVariable":
+      return "That Scene Variable no longer exists.";
+    case "incompatibleTypes":
+      return "Those values have incompatible types.";
+    case "flowLocalEscape":
+      return "A Source inside a Flow can only feed nodes in that Flow.";
+    case "invalidNavigateEndpoints":
+      return "Navigate edges connect two Scenes.";
+    case "crossFlowNavigate":
+      return "Navigate edges connect two Scenes in the same Flow.";
+    case "nestedSceneDrivesDevice":
+      return "A Device is driven by a Flow or a top-level Scene, not by a Scene inside a Flow.";
+    case "invalidDeviceSource":
+      return "A Device is driven by a Flow or a top-level Scene.";
+    case "invalidDeviceTarget":
+      return "A Device edge must end at a Device.";
+    case "duplicateEdge":
+      return kind === "navigate"
+        ? "These Scenes are already connected."
+        : "That connection already exists.";
+    case "wiringFanIn":
+      return "A Variable path can only have one producer.";
+    case "deviceHasDriver":
+      return "That Device already has a driver.";
+    case "wiringCycle":
+      return "Wiring can't form a cycle.";
+    case "missingSourceType":
+      return "The source must have a Type.";
+    case "invalidNodeColor":
+      return "That node color is invalid.";
   }
-  if (reason.includes("same Flow")) {
-    return "Navigate edges connect two Scenes in the same Flow.";
-  }
-  if (reason.includes("Flow-local")) {
-    return "A Source inside a Flow can only feed nodes in that Flow.";
-  }
-  if (reason.includes("nested Scene is reached via its Flow")) {
-    return "A Device is driven by a Flow or a top-level Scene, not by a Scene inside a Flow.";
-  }
-  if (reason.includes("more than one driver")) {
-    return "That Device already has a driver.";
-  }
-  if (reason.includes("wiring edges form a cycle")) {
-    return "Wiring can't form a cycle.";
-  }
-  return reason.replace(/^Invalid Show graph: /, "");
+  const unreachable: never = error.reason;
+  return unreachable;
 }
 /**
  * Everything a drag from one node could legally land on.
