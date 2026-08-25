@@ -32,6 +32,7 @@ import {
   setSceneVariableType,
   UnknownGraphTargetError,
 } from "./graph-commands";
+import { applyGraphEdits } from "./graph-edits";
 import { CommandStack } from "./stack";
 
 // A Show worth deleting things out of: a vote Flow with two Scenes and a
@@ -141,7 +142,7 @@ describe("addNode / removeNode", () => {
     // Device edge, which never touched it, stays.
     expect(applied.state.edges.map((edge) => edge.id)).toEqual([TO_PHONE.id]);
   });
-  it("preserves graph-owned metadata when removing a node", () => {
+  it("removes Source defaults with their node and restores them on undo", () => {
     const shapes = [
       {
         id: "shape_profile",
@@ -162,7 +163,11 @@ describe("addNode / removeNode", () => {
     const applied = removeNode(TALLY.id).apply(graph);
 
     expect(applied.state.shapes).toEqual(shapes);
-    expect(applied.state.sourceFieldDefaults).toEqual(sourceFieldDefaults);
+    expect(
+      applyGraphEdits(graph, [{ type: "graph.removeNode", nodeId: TALLY.id }]).sourceFieldDefaults,
+    ).toBeUndefined();
+    expect(applied.state.sourceFieldDefaults).toBeUndefined();
+    expect(applied.inverse.apply(applied.state).state).toEqual(graph);
   });
 
   // The snapshot, in the sense #28 means it: node data, position, edges, and

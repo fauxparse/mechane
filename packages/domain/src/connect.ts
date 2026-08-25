@@ -19,7 +19,8 @@
 
 import { assertValidShowGraph, deviceSourceType, findNode, InvalidShowGraphError } from "./graph";
 import { fieldsForType, resolveShapeFieldMapping, type Type } from "./shapes";
-import { typeAtPath } from "./property-values";
+import { defaultSourceValues } from "./source-defaults";
+import { typeAtPath, valueAtPath } from "./property-values";
 import type { EdgeKind, GraphEdge, GraphNode, SceneVariable, ShowGraph } from "./graph";
 /** A drag from one node's handle to another's, as the editor reports it. */
 export interface ConnectionRequest {
@@ -57,6 +58,19 @@ export function sourceTypeAtHandle(
     return typeAtPath(producer.type, [sourceHandle], graph.shapes ?? []);
   }
   return producer.type;
+}
+
+/** Resolves a Source's design-time value exposed by one of its handles. */
+export function sourceValueAtHandle(
+  graph: ShowGraph,
+  sourceId: string,
+  sourceHandle?: string | null,
+): unknown {
+  const producer = findNode(graph, sourceId);
+  if (producer?.kind !== "source") return undefined;
+  const value = defaultSourceValues(graph)[sourceId];
+  const path = sourceHandle && sourceHandle !== "out" ? [sourceHandle] : [];
+  return valueAtPath(value, path);
 }
 
 /**
@@ -171,6 +185,12 @@ export type ConnectionPlanEdit =
       readonly node: GraphNode;
     }
   | {
+      readonly type: "graph.setSourceFieldDefault";
+      readonly nodeId: string;
+      readonly fieldPath: readonly string[];
+      readonly value: unknown;
+    }
+  | {
       readonly type: "graph.addSceneVariable";
       readonly sceneId: string;
       readonly variable: SceneVariable;
@@ -198,11 +218,25 @@ function nextVariableName(variables: readonly SceneVariable[]): string {
   while (names.has(`variable${suffix}`)) suffix += 1;
   return `variable${suffix}`;
 }
-
 function applyConnectionPlanEdit(graph: ShowGraph, edit: ConnectionPlanEdit): ShowGraph {
   switch (edit.type) {
     case "graph.addNode":
       return { ...graph, nodes: [...graph.nodes, { ...edit.node }] };
+    case "graph.setSourceFieldDefault": {
+      const remaining = (graph.sourceFieldDefaults ?? []).filter(
+        (current) =>
+          current.nodeId !== edit.nodeId ||
+          current.fieldPath.length !== edit.fieldPath.length ||
+          !current.fieldPath.every((segment, index) => segment === edit.fieldPath[index]),
+      );
+      return {
+        ...graph,
+        sourceFieldDefaults: [
+          ...remaining,
+          { nodeId: edit.nodeId, fieldPath: [...edit.fieldPath], value: edit.value },
+        ],
+      };
+    }
     case "graph.addSceneVariable":
       return {
         ...graph,
@@ -268,6 +302,25 @@ export function planConnection(
     const nodeEdit: ConnectionPlanEdit = { type: "graph.addNode", node: { ...options.addNode } };
     edits.push(nodeEdit);
     planningGraph = applyConnectionPlanEdit(planningGraph, nodeEdit);
+
+    if (options.addNode.kind === "source") {
+      const sourceValue = sourceValueAtHandle(graph, request.sourceId, request.sourceHandle);
+      const targetDefault = defaultSourceValues(planningGraph)[options.addNode.id];
+      if (
+        sourceValue !== undefined &&
+        sourceValue !== null &&
+        JSON.stringify(sourceValue) !== JSON.stringify(targetDefault)
+      ) {
+        const valueEdit: ConnectionPlanEdit = {
+          type: "graph.setSourceFieldDefault",
+          nodeId: options.addNode.id,
+          fieldPath: [],
+          value: sourceValue,
+        };
+        edits.push(valueEdit);
+        planningGraph = applyConnectionPlanEdit(planningGraph, valueEdit);
+      }
+    }
   }
 
   if (request.sourceId === request.targetId) {

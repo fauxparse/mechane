@@ -191,20 +191,22 @@ interface RemovedNode {
   node: GraphNode;
   /** Incident edges with the index each sat at, ascending. */
   edges: { index: number; edge: GraphEdge }[];
+  /** Source defaults owned by this node, with their original positions. */
+  sourceFieldDefaults: { index: number; value: SourceFieldDefault }[];
   /** Flows whose `defaultSceneId` pointed at this node and had to be cleared. */
   defaultSceneFlowIds: string[];
 }
 
 /**
- * Removes one node, the edges that touched it, and any Flow's reference to
- * it as a default Scene — capturing all three, so the inverse rebuilds it
- * exactly (#28).
+ * Removes one node, the edges that touched it, its Source defaults, and any
+ * Flow's reference to it as a default Scene — capturing all four, so the
+ * inverse rebuilds it exactly (#28).
  *
  * The default-Scene clearing is the small case of #28's "side effects live
  * inside the snapshot": deleting a Flow's entry Scene has to leave the Flow
  * without one, and one undo has to bring back both the Scene and the Flow's
- * pointer to it. Same principle as moving into a Flow's auto-assignment, one order of
- * magnitude smaller.
+ * pointer to it. Source defaults follow the same rule; leaving one behind
+ * would make the graph invalid at the persistence boundary.
  *
  * This removes *one* node. Nested Scenes inside a deleted Flow are the
  * cascade policy in #42 — composed from several of these, which is what
@@ -238,28 +240,46 @@ export function removeNode(nodeId: string, label?: string): ShowGraphCommand {
         edges: graph.edges
           .map((edge, edgeIdx) => ({ index: edgeIdx, edge }))
           .filter(({ edge }) => edge.sourceId === nodeId || edge.targetId === nodeId),
+        sourceFieldDefaults: (graph.sourceFieldDefaults ?? [])
+          .map((value, defaultIdx) => ({ index: defaultIdx, value }))
+          .filter(({ value }) => value.nodeId === nodeId),
         defaultSceneFlowIds: graph.nodes
           .filter((other) => other.kind === "flow" && other.defaultSceneId === nodeId)
           .map((other) => other.id),
       };
     },
-    apply: (graph) => ({
-      ...graph,
-      nodes: graph.nodes
-        .filter((node) => node.id !== nodeId)
-        .map((node) =>
-          node.kind === "flow" && node.defaultSceneId === nodeId
-            ? { ...node, defaultSceneId: null }
-            : node,
-        ),
-      edges: graph.edges.filter((edge) => edge.sourceId !== nodeId && edge.targetId !== nodeId),
-    }),
+    apply: (graph) => {
+      const sourceFieldDefaults = (graph.sourceFieldDefaults ?? []).filter(
+        (value) => value.nodeId !== nodeId,
+      );
+      return {
+        ...graph,
+        nodes: graph.nodes
+          .filter((node) => node.id !== nodeId)
+          .map((node) =>
+            node.kind === "flow" && node.defaultSceneId === nodeId
+              ? { ...node, defaultSceneId: null }
+              : node,
+          ),
+        edges: graph.edges.filter((edge) => edge.sourceId !== nodeId && edge.targetId !== nodeId),
+        ...(sourceFieldDefaults.length > 0
+          ? { sourceFieldDefaults }
+          : { sourceFieldDefaults: undefined }),
+      };
+    },
     restore: (graph, captured) => {
       let next = insertNode(graph, captured.index, captured.node);
       // Ascending indices, so each splice lands where it was: restoring the
       // earlier edge first keeps the later one's index meaningful.
       for (const { index, edge } of captured.edges) {
         next = insertEdge(next, index, edge);
+      }
+      if (captured.sourceFieldDefaults.length > 0) {
+        const sourceFieldDefaults = [...(next.sourceFieldDefaults ?? [])];
+        for (const { index, value } of captured.sourceFieldDefaults) {
+          sourceFieldDefaults.splice(Math.min(index, sourceFieldDefaults.length), 0, value);
+        }
+        next = { ...next, sourceFieldDefaults };
       }
       const flows = new Set(captured.defaultSceneFlowIds);
       if (flows.size > 0) {
