@@ -291,7 +291,6 @@ export const SizeFields = () => {
           aria-label={`${isAspectRatioLocked ? "Unlock" : "Lock"} aspect ratio`}
           pressed={isAspectRatioLocked}
           onPressedChange={setAspectRatioLock}
-          size="sm"
         >
           {isAspectRatioLocked ? <Link2Icon /> : <Unlink2Icon />}
         </Toggle>

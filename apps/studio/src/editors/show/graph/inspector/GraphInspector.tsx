@@ -2,6 +2,7 @@ import {
   cn,
   EditableName,
   InputGroupAddon,
+  InspectorProvider,
   SidebarHeader,
   SquareDashedIcon,
 } from "@mechane/design-system";
@@ -110,18 +111,20 @@ export function GraphInspector({ selected, editing, className }: GraphInspectorP
   if (!node) return null;
 
   return (
-    <aside
-      // `nokey` is React Flow's own escape hatch: keys pressed in here are the
-      // panel's, not the canvas's (#37).
-      className={cn("nokey display-contents pointer-events-auto", className)}
-      aria-label="Inspector"
-    >
-      <InspectorHeader selected={selected} editing={editing} />
-      {selected.length > 1 ? (
-        <MultiSelection selected={selected} />
-      ) : (
-        <SingleNode node={node} editing={editing} />
-      )}
-    </aside>
+    <InspectorProvider>
+      <aside
+        // `nokey` is React Flow's own escape hatch: keys pressed in here are the
+        // panel's, not the canvas's (#37).
+        className={cn("nokey display-contents pointer-events-auto", className)}
+        aria-label="Inspector"
+      >
+        <InspectorHeader selected={selected} editing={editing} />
+        {selected.length > 1 ? (
+          <MultiSelection selected={selected} />
+        ) : (
+          <SingleNode node={node} editing={editing} />
+        )}
+      </aside>
+    </InspectorProvider>
   );
 }

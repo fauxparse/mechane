@@ -1,6 +1,7 @@
 import type { SceneNode, SceneVariable, Type } from "@mechane/domain";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
+import { InspectorProvider } from "@mechane/design-system";
 
 import type { VariableEditing } from "../../commands/use-graph-editing";
 import { Variables } from "./Variables";
@@ -48,7 +49,11 @@ function VariablesStory() {
       setVariables((current) => current.filter((variable) => variable.id !== variableId)),
   } as unknown as VariableEditing;
 
-  return <Variables node={nodeFor(variables)} editing={editing} />;
+  return (
+    <InspectorProvider>
+      <Variables node={nodeFor(variables)} editing={editing} />
+    </InspectorProvider>
+  );
 }
 
 export const Default: Story = {

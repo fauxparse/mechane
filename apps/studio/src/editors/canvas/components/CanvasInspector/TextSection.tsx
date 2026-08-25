@@ -109,7 +109,7 @@ const FontFamilyField = () => {
         }}
       >
         <ComboboxInput
-          className="w-full border-0 rounded-sm bg-muted/50 h-7"
+          className="w-full"
           icon={TypeIcon}
           aria-label="Font family"
           placeholder="Search fonts"
@@ -302,7 +302,7 @@ export const TextSection = () => {
         </SectionRow>
         <SectionRow>
           <PropertyField name="fontSize" icon={FontSizeIcon} presets={FONT_SIZE_PRESETS} />
-          <ToggleGroup multiple size="sm" value={activeStyles} onValueChange={updateTextStyles}>
+          <ToggleGroup multiple value={activeStyles} onValueChange={updateTextStyles}>
             <ToggleGroupItem value="bold" aria-label="Toggle bold">
               <BoldIcon />
             </ToggleGroupItem>
@@ -329,8 +329,7 @@ export const TextSection = () => {
             }}
           >
             <SelectTrigger
-              className="w-full rounded-sm border-0 bg-muted/50 dark:bg-muted/50 hover:bg-muted/75 dark:hover:bg-muted/75 px-2"
-              size="sm"
+              className="hover:bg-muted/75 dark:hover:bg-muted/75"
               aria-label="Text overflow"
             >
               <SelectValue
@@ -352,7 +351,6 @@ export const TextSection = () => {
         </SectionRow>
         <SectionRow>
           <ToggleGroup
-            size="sm"
             spacing={0}
             className="w-full"
             value={textAlign ? [textAlign] : []}
@@ -376,7 +374,6 @@ export const TextSection = () => {
             aria-label="Vertical alignment"
             spacing={0}
             className="w-full"
-            size="sm"
             value={[textVerticalAlign ?? "top"]}
             onValueChange={([value]) => {
               if (value) update({ textVerticalAlign: value });
@@ -402,7 +399,6 @@ export const TextSection = () => {
             autoFocus
             value={dialogDraft}
             aria-label="Text content"
-            className="min-h-40 resize-y"
             onChange={(event) => setDialogDraft(event.target.value)}
           />
           <DialogFooter>

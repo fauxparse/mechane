@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Copy, Eye, Search as SearchIcon } from "@mechane/design-system";
+import { Copy, Eye, InspectorProvider, Search as SearchIcon } from "@mechane/design-system";
 
 import {
   InputGroup,
@@ -66,5 +66,19 @@ export const Textarea: Story = {
         </InputGroupButton>
       </InputGroupAddon>
     </InputGroup>
+  ),
+};
+
+export const InspectorVibe: Story = {
+  render: () => (
+    <InspectorProvider>
+      <InputGroup className="w-80">
+        <InputGroupAddon>W</InputGroupAddon>
+        <InputGroupInput placeholder="Inspector field" aria-label="Inspector field" />
+        <InputGroupAddon align="inline-end">
+          <InputGroupButton aria-label="Clear">×</InputGroupButton>
+        </InputGroupAddon>
+      </InputGroup>
+    </InspectorProvider>
   ),
 };

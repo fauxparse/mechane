@@ -89,10 +89,7 @@ export const StrokeSection = () => {
                 updateStroke({ style: value as StrokeStyle });
               }}
             >
-              <SelectTrigger
-                className="w-full rounded-sm border-0 bg-muted/50 dark:bg-muted/50 px-2"
-                size="sm"
-              >
+              <SelectTrigger>
                 <SelectValue placeholder={style === undefined ? "Mixed" : undefined} />
               </SelectTrigger>
               <SelectContent>
@@ -129,8 +126,7 @@ export const StrokeSection = () => {
       ) : (
         <Button
           variant="outline"
-          size="sm"
-          className="col-span-2 rounded-sm"
+          className="col-span-2"
           aria-label="Add stroke"
           onClick={() => updateStroke({ width: 1, style: "solid", color: "#000000" })}
         >

@@ -111,7 +111,6 @@ const CornerRadiusControl = ({
           onChange={(value) => updateRadius({ topRight: value })}
         />
         <Toggle
-          size="sm"
           aria-label="Use one corner radius"
           aria-pressed={true}
           onClick={() => {
@@ -146,7 +145,6 @@ const CornerRadiusControl = ({
         onChange={(value) => update({ cornerRadius: value })}
       />
       <Toggle
-        size="sm"
         aria-label="Edit corner radii individually"
         aria-pressed={false}
         onClick={() => setExpanded(true)}
@@ -180,7 +178,6 @@ export const AppearanceSection = () => {
           <TooltipTrigger
             render={
               <Toggle
-                size="sm"
                 className="p-0 size-7"
                 pressed={common("hidden") === true}
                 onPressedChange={(hidden) => update({ hidden })}

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { InspectorProvider } from "@mechane/design-system";
 
 import { Button } from "./button";
 
@@ -49,5 +50,20 @@ export const AllVariants: Story = {
       <Button variant="destructive">Destructive</Button>
       <Button variant="link">Link</Button>
     </div>
+  ),
+};
+
+export const InspectorVibe: Story = {
+  render: () => (
+    <InspectorProvider>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button>Save</Button>
+        <Button variant="outline">Add stroke</Button>
+        <Button variant="ghost" size="icon-sm" aria-label="More options">
+          …
+        </Button>
+        <Button vibe="default">Opt out</Button>
+      </div>
+    </InspectorProvider>
   ),
 };

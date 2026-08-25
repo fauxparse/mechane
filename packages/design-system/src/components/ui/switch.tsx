@@ -1,19 +1,25 @@
 import { Switch as SwitchPrimitive } from "@base-ui/react/switch";
 import { cn } from "../../lib/utils";
+import { useVibe, type Vibe } from "../inspector-vibe";
 
 function Switch({
   className,
-  size = "default",
+  size,
+  vibe: vibeProp,
   indeterminate = false,
   ...props
 }: SwitchPrimitive.Root.Props & {
   size?: "sm" | "default";
+  vibe?: Vibe;
   indeterminate?: boolean;
 }) {
+  const vibe = useVibe(vibeProp);
+  const resolvedSize = size ?? (vibe === "inspector" ? "sm" : "default");
   return (
     <SwitchPrimitive.Root
       data-slot="switch"
-      data-size={size}
+      data-size={resolvedSize}
+      data-vibe={vibe}
       data-indeterminate={indeterminate ? "" : undefined}
       className={cn(
         "peer group/switch relative inline-flex shrink-0 items-center rounded-full border border-transparent transition-all outline-none after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-[size=default]:h-[18.4px] data-[size=default]:w-8 data-[size=sm]:h-3.5 data-[size=sm]:w-6 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-checked:bg-primary data-unchecked:bg-input dark:data-unchecked:bg-input/80 data-indeterminate:bg-input dark:data-indeterminate:bg-input/80 data-disabled:cursor-not-allowed data-disabled:opacity-50",

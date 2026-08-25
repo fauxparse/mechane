@@ -2,6 +2,7 @@ import type { ComponentProps, CSSProperties, PropsWithChildren } from "react";
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 
 import { cn } from "../../lib/utils";
+import { useVibe, type Vibe } from "../inspector-vibe";
 import { Button } from "./button";
 
 const SIDEBAR_WIDTH = "16rem";
@@ -188,11 +189,21 @@ export function SidebarHeader({ className, ...props }: ComponentProps<"div">) {
   );
 }
 
-export function SidebarContent({ className, ...props }: ComponentProps<"div">) {
+export function SidebarContent({
+  className,
+  vibe: vibeProp,
+  ...props
+}: ComponentProps<"div"> & { vibe?: Vibe }) {
+  const vibe = useVibe(vibeProp);
   return (
     <div
       data-slot="sidebar-content"
-      className={cn("flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-2", className)}
+      data-vibe={vibe}
+      className={cn(
+        "flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-2",
+        vibe === "inspector" && "p-0",
+        className,
+      )}
       {...props}
     />
   );

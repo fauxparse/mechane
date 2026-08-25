@@ -2,6 +2,7 @@ import { PRIMITIVE_TYPES, type Shape, type Type } from "@mechane/domain";
 import { CheckIcon, ChevronRightIcon, type LucideIcon } from "lucide-react";
 import type { ReactElement } from "react";
 
+import { useVibe, type Vibe } from "../inspector-vibe";
 import { cn } from "../../lib/utils";
 import {
   DropdownMenu,
@@ -39,6 +40,7 @@ export type TypeSelectProps = {
   "aria-invalid"?: boolean;
   triggerClassName?: string;
   triggerSize?: "sm" | "default";
+  vibe?: Vibe;
   showLabel?: boolean;
   renderTrigger?(props: TypeSelectTriggerProps): ReactElement;
   optionDisabled?(option: TypeSelectOption): boolean;
@@ -94,11 +96,14 @@ export function TypeSelect({
   "aria-label": ariaLabel = "Type",
   "aria-invalid": ariaInvalid,
   triggerClassName,
-  triggerSize = "default",
+  triggerSize,
+  vibe: vibeProp,
   showLabel = true,
   renderTrigger,
   optionDisabled,
 }: TypeSelectProps) {
+  const vibe = useVibe(vibeProp);
+  const resolvedTriggerSize = triggerSize ?? (vibe === "inspector" ? "sm" : "default");
   const currentValue = value ?? null;
   const label = currentValue ? typeLabel(currentValue, shapes) : "Choose a Type";
   const Icon = currentValue ? typeIcon(currentValue) : variableTypeIcon("object");
@@ -141,7 +146,8 @@ export function TypeSelect({
       disabled={disabled}
       className={cn(
         "flex min-w-0 items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50",
-        triggerSize === "sm" ? "h-7 rounded-sm" : "h-8",
+        resolvedTriggerSize === "sm" ? "h-7 rounded-sm" : "h-8",
+        vibe === "inspector" && "w-full border-0 bg-muted/50 px-2 dark:bg-muted/50",
         !showLabel && "w-7 justify-center px-1.5",
         triggerClassName,
       )}

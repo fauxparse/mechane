@@ -15,11 +15,10 @@ import { Variables } from "./Variables";
 
 export function SingleNode({ node, editing }: { node: GraphNode; editing: GraphInspectorEditing }) {
   return (
-    <SidebarContent className="p-0">
+    <SidebarContent>
       <Section label="color">
         <SectionRow>
           <ToggleGroup
-            size="sm"
             className="col-span-full bg-transparent flex w-full justify-between"
             value={node.color ? [node.color] : ["neutral"]}
             onValueChange={([value]) => {

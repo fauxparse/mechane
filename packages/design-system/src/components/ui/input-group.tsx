@@ -2,6 +2,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { forwardRef, type ComponentProps } from "react";
 
 import { cn } from "../../lib/utils";
+import { useVibe, VibeProvider, type Vibe } from "../inspector-vibe";
 import { Button } from "./button";
 import { Input } from "./input";
 import { Textarea } from "./textarea";
@@ -20,17 +21,31 @@ const inputGroupVariants = cva(
 
 const InputGroup = forwardRef<
   HTMLDivElement,
-  ComponentProps<"div"> & VariantProps<typeof inputGroupVariants>
->(function InputGroup({ className, size = "default", ...props }, ref) {
+  ComponentProps<"div"> & {
+    vibe?: Vibe;
+  } & VariantProps<typeof inputGroupVariants>
+>(function InputGroup({ className, size = "default", vibe: vibeProp, children, ...props }, ref) {
+  const vibe = useVibe(vibeProp);
   return (
-    <div
-      ref={ref}
-      data-slot="input-group"
-      data-size={size}
-      role="group"
-      className={inputGroupVariants({ size, className })}
-      {...props}
-    />
+    <VibeProvider vibe={vibe}>
+      <div
+        ref={ref}
+        data-slot="input-group"
+        data-size={size}
+        data-vibe={vibe}
+        role="group"
+        className={inputGroupVariants({
+          size,
+          className: cn(
+            vibe === "inspector" && "h-7 rounded-sm border-0 bg-muted/50 dark:bg-muted/50",
+            className,
+          ),
+        })}
+        {...props}
+      >
+        {children}
+      </div>
+    </VibeProvider>
   );
 });
 
@@ -56,14 +71,21 @@ const inputGroupAddonVariants = cva(
 function InputGroupAddon({
   className,
   align = "inline-start",
+  vibe: vibeProp,
   ...props
-}: ComponentProps<"div"> & VariantProps<typeof inputGroupAddonVariants>) {
+}: ComponentProps<"div"> & VariantProps<typeof inputGroupAddonVariants> & { vibe?: Vibe }) {
+  const vibe = useVibe(vibeProp);
   return (
     <div
       role="group"
       data-slot="input-group-addon"
       data-align={align}
-      className={cn(inputGroupAddonVariants({ align }), className)}
+      className={cn(
+        inputGroupAddonVariants({ align }),
+        vibe === "inspector" && "py-0",
+        vibe === "inspector" && align === "inline-end" && "mr-0",
+        className,
+      )}
       onClick={(event) => {
         if ((event.target as HTMLElement).closest("button")) return;
         event.currentTarget.parentElement?.querySelector("input")?.focus();
@@ -91,20 +113,26 @@ function InputGroupButton({
   className,
   type = "button",
   variant = "ghost",
-  size = "xs",
+  size,
+  vibe: vibeProp,
   ref,
   ...props
 }: Omit<ComponentProps<typeof Button>, "size" | "type"> &
   VariantProps<typeof inputGroupButtonVariants> & {
     type?: "button" | "submit" | "reset";
+    vibe?: Vibe;
   } & { ref?: React.RefObject<HTMLButtonElement> }) {
+  const vibe = useVibe(vibeProp);
+  const resolvedSize = size ?? (vibe === "inspector" ? "icon-xs" : "xs");
   return (
     <Button
       ref={ref}
       type={type}
-      data-size={size}
+      data-size={resolvedSize}
+      size={resolvedSize}
       variant={variant}
-      className={cn(inputGroupButtonVariants({ size }), className)}
+      vibe={vibe}
+      className={cn(inputGroupButtonVariants({ size: resolvedSize }), className)}
       {...props}
     />
   );
@@ -122,10 +150,16 @@ function InputGroupText({ className, ...props }: ComponentProps<"span">) {
   );
 }
 
-function InputGroupInput({ className, ...props }: ComponentProps<"input">) {
+function InputGroupInput({
+  className,
+  vibe: vibeProp,
+  ...props
+}: ComponentProps<"input"> & { vibe?: Vibe }) {
+  const vibe = useVibe(vibeProp);
   return (
     <Input
       data-slot="input-group-control"
+      vibe={vibe}
       className={cn(
         "flex-1 rounded-none border-0 bg-transparent shadow-none ring-0 focus-visible:ring-0 disabled:bg-transparent aria-invalid:ring-0 dark:bg-transparent dark:disabled:bg-transparent",
         className,
@@ -135,10 +169,16 @@ function InputGroupInput({ className, ...props }: ComponentProps<"input">) {
   );
 }
 
-function InputGroupTextarea({ className, ...props }: ComponentProps<"textarea">) {
+function InputGroupTextarea({
+  className,
+  vibe: vibeProp,
+  ...props
+}: ComponentProps<"textarea"> & { vibe?: Vibe }) {
+  const vibe = useVibe(vibeProp);
   return (
     <Textarea
       data-slot="input-group-control"
+      vibe={vibe}
       className={cn(
         "flex-1 resize-none rounded-none border-0 bg-transparent py-2 shadow-none ring-0 focus-visible:ring-0 disabled:bg-transparent aria-invalid:ring-0 dark:bg-transparent dark:disabled:bg-transparent",
         className,

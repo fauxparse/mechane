@@ -61,7 +61,7 @@ export const LayoutSection = () => {
       {frame && (
         <>
           <ToggleGroup
-            className="w-full rounded-sm *:grow"
+            className="w-full *:grow"
             spacing={0}
             value={[
               layoutModeMixed
@@ -83,13 +83,13 @@ export const LayoutSection = () => {
               }
             }}
           >
-            <ToggleGroupItem value="absolute" size="sm">
+            <ToggleGroupItem value="absolute">
               <LayoutNoneIcon />
             </ToggleGroupItem>
-            <ToggleGroupItem value="horizontal" size="sm">
+            <ToggleGroupItem value="horizontal">
               <LayoutHorizontalIcon />
             </ToggleGroupItem>
-            <ToggleGroupItem value="vertical" size="sm">
+            <ToggleGroupItem value="vertical">
               <LayoutVerticalIcon />
             </ToggleGroupItem>
           </ToggleGroup>
@@ -232,7 +232,6 @@ const PaddingControl = ({
           onChange={(value) => updatePadding({ top: value })}
         />
         <Toggle
-          size="sm"
           aria-label="Use horizontal and vertical padding"
           aria-pressed={true}
           onClick={() => {
@@ -279,7 +278,6 @@ const PaddingControl = ({
       />
       <Toggle
         type="button"
-        size="sm"
         aria-label="Edit padding individually"
         aria-pressed={false}
         onClick={() => setExpanded(true)}

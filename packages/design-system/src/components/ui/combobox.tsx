@@ -3,6 +3,7 @@ import { Check, ChevronDown, LucideIcon, X } from "lucide-react";
 import type { ComponentPropsWithRef, RefObject } from "react";
 import { createContext, useContext, useRef } from "react";
 
+import { useVibe, type Vibe } from "../inspector-vibe";
 import { cn } from "../../lib/utils";
 import {
   InputGroup,
@@ -82,16 +83,19 @@ function ComboboxInput({
   icon: Icon,
   showTrigger = true,
   showClear = false,
+  vibe: vibeProp,
   ...props
 }: ComboboxPrimitive.Input.Props & {
   icon?: LucideIcon;
   showTrigger?: boolean;
   showClear?: boolean;
+  vibe?: Vibe;
 }) {
   const anchorRef = useContext(ComboboxAnchorContext);
+  const vibe = useVibe(vibeProp);
 
   return (
-    <InputGroup ref={anchorRef} className={cn("w-auto", className)}>
+    <InputGroup ref={anchorRef} vibe={vibe} className={cn("w-auto", className)}>
       {Icon ? (
         <InputGroupAddon className="aspect-square flex items-center justify-center px-1">
           <InputGroupText>

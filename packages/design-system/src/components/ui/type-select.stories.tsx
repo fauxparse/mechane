@@ -1,7 +1,7 @@
 import type { Shape } from "@mechane/domain";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { InspectorProvider } from "@mechane/design-system";
 import { useState } from "react";
-
 import { TypeSelect } from "./type-select";
 
 const meta = {
@@ -61,4 +61,12 @@ export const Interactive: Story = {
     const [value, setValue] = useState(args.value);
     return <TypeSelect {...args} value={value} onValueChange={setValue} />;
   },
+};
+
+export const InspectorVibe: Story = {
+  render: (args) => (
+    <InspectorProvider>
+      <TypeSelect {...args} />
+    </InspectorProvider>
+  ),
 };

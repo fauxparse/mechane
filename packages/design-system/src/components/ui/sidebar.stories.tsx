@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Box, SlidersHorizontal } from "@mechane/design-system";
+import { Box, InspectorProvider, SlidersHorizontal } from "@mechane/design-system";
 
 import {
   Sidebar,
@@ -82,4 +82,33 @@ export const IndependentPanels: Story = {
 export const BothPanelsCollapsed: Story = {
   args: { defaultOpen: false },
   render: IndependentPanels.render,
+};
+
+export const InspectorVibe: Story = {
+  render: (args: ComponentProps<typeof SidebarProvider>) => (
+    <InspectorProvider>
+      <SidebarProvider {...args} className="h-80 w-64">
+        <Sidebar aria-label="Inspector">
+          <SidebarHeader>
+            <strong>Inspector</strong>
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupLabel>Properties</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton isActive>
+                      <SlidersHorizontal />
+                      <span>Layout</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+        </Sidebar>
+      </SidebarProvider>
+    </InspectorProvider>
+  ),
 };

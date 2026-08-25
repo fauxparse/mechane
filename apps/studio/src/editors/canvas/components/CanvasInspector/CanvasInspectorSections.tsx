@@ -211,11 +211,7 @@ export const ImageSection = () => {
             if (value) update({ objectFit: value as ObjectFit });
           }}
         >
-          <SelectTrigger
-            aria-label="Object fit"
-            className="w-full rounded-sm border-0 bg-muted/50 px-2 row-start-1 col-start-2"
-            size="sm"
-          >
+          <SelectTrigger aria-label="Object fit" className="row-start-1 col-start-2">
             <SelectValue
               placeholder={
                 objectFitMixed
@@ -233,7 +229,6 @@ export const ImageSection = () => {
           </SelectContent>
         </Select>
         <Button
-          size="sm"
           variant="outline"
           className="w-full col-start-2"
           disabled={!resetAsset}

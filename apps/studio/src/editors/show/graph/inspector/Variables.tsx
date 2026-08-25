@@ -141,7 +141,7 @@ const VariableRow = ({
         isDropTarget ? "ring-2 ring-primary" : "",
       )}
     >
-      <InputGroup className="col-span-2 grid grid-cols-[auto_auto_1fr] bg-muted/50 border-0 rounded-sm pl-0 items-center">
+      <InputGroup className="col-span-2 grid grid-cols-[auto_auto_1fr] pl-0 items-center">
         <InputGroupAddon className="p-0 ml-0!">
           <button
             ref={handleRef}
@@ -159,9 +159,8 @@ const VariableRow = ({
             shapes={shapes}
             includeArray
             showLabel={false}
-            triggerSize="sm"
             aria-label={`Type for ${variable.name}`}
-            triggerClassName="border-0 bg-transparent dark:bg-transparent hover:text-foreground dark:hover:text-foreground"
+            triggerClassName="hover:text-foreground dark:hover:text-foreground"
             onValueChange={(next) => onChangeType(variable.id, next)}
           />
         </InputGroupAddon>

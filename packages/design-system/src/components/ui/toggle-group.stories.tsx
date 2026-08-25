@@ -4,6 +4,7 @@ import {
   AlignLeft,
   AlignRight,
   Bold,
+  InspectorProvider,
   Italic,
   Underline,
 } from "@mechane/design-system";
@@ -96,5 +97,23 @@ export const Disabled: Story = {
         <Underline />
       </ToggleGroupItem>
     </ToggleGroup>
+  ),
+};
+
+export const InspectorVibe: Story = {
+  render: () => (
+    <InspectorProvider>
+      <ToggleGroup variant="outline" multiple defaultValue={["left"]}>
+        <ToggleGroupItem value="left" aria-label="Align left">
+          <AlignLeft />
+        </ToggleGroupItem>
+        <ToggleGroupItem value="center" aria-label="Align center">
+          <AlignCenter />
+        </ToggleGroupItem>
+        <ToggleGroupItem value="right" aria-label="Align right">
+          <AlignRight />
+        </ToggleGroupItem>
+      </ToggleGroup>
+    </InspectorProvider>
   ),
 };

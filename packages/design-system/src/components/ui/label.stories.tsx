@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { InspectorProvider } from "@mechane/design-system";
 
 import { Input } from "./input";
 import { Label } from "./label";
@@ -22,5 +23,16 @@ export const WithInput: Story = {
       <Label htmlFor="story-input">Show name</Label>
       <Input id="story-input" placeholder="Hamlet" />
     </div>
+  ),
+};
+
+export const InspectorVibe: Story = {
+  render: () => (
+    <InspectorProvider>
+      <div className="flex w-80 flex-col gap-1">
+        <Label htmlFor="inspector-input">Inspector label</Label>
+        <Input id="inspector-input" placeholder="Inspector field" />
+      </div>
+    </InspectorProvider>
   ),
 };
