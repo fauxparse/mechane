@@ -417,13 +417,19 @@ describe("canConnect", () => {
     expect(
       planConnection(
         GRAPH,
-        { sourceId: TALLY.id, targetId: created.id },
+        { sourceId: TALLY.id, sourceHandle: "out", targetId: created.id },
         { edgeId: "edge_created", variableId: "variable_unused" },
         { addNode: created },
       ),
     ).toEqual({
       edits: [
         { type: "graph.addNode", node: created },
+        {
+          type: "graph.setSourceFieldDefault",
+          nodeId: created.id,
+          fieldPath: [],
+          value: 0,
+        },
         {
           type: "graph.addEdge",
           edge: {

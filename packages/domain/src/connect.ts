@@ -269,11 +269,12 @@ function candidateIds(graph: ShowGraph): ConnectionIds {
   };
 }
 function sourceDefaultForConnection(graph: ShowGraph, request: ConnectionRequest): unknown {
-  if (!request.sourceHandle || request.sourceHandle === "out") return undefined;
+  if (!request.sourceHandle) return undefined;
   const source = findNode(graph, request.sourceId);
   if (source?.kind !== "source") return undefined;
   const sourceValue = defaultSourceValues(graph)[source.id];
-  return valueAtPath(sourceValue, [request.sourceHandle]);
+  const sourcePath = request.sourceHandle === "out" ? [] : [request.sourceHandle];
+  return valueAtPath(sourceValue, sourcePath);
 }
 
 /**
