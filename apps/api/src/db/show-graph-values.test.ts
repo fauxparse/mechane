@@ -69,6 +69,68 @@ describe("shape source value persistence", () => {
       { nodeId: "source_profile", fieldPath: ["headline"], value: "After" },
     ]);
   });
+  it("persists a Source created by a value-handle edit batch", async () => {
+    await db.insert(user).values({
+      id: userId,
+      name: "Shape Value Test",
+      email: `${userId}@example.com`,
+      emailVerified: true,
+    });
+    await db.insert(shows).values({ id: showId, name: "Shape Value Test", userId });
+    await writeShowGraph(showId, "draft", graph);
+
+    const draft = await readShowGraph(showId, "draft");
+    const created = {
+      id: "source_created",
+      kind: "source" as const,
+      name: "Created",
+      position: { x: 120, y: 0 },
+      parentId: null,
+      type: "text" as const,
+    };
+    await applyShowEdits(
+      showId,
+      [
+        { type: "graph.addNode", node: created },
+        {
+          type: "graph.setSourceFieldDefault",
+          nodeId: created.id,
+          fieldPath: [],
+          value: "Copied",
+        },
+        {
+          type: "graph.addEdge",
+          edge: {
+            id: "edge_created",
+            kind: "wiring",
+            sourceId: "source_profile",
+            targetId: created.id,
+            sourcePath: ["headline"],
+            targetPath: [],
+          },
+        },
+      ],
+      [],
+      draft.version,
+    );
+
+    const reread = await readShowGraph(showId, "draft");
+    expect(reread.nodes).toContainEqual(created);
+    expect(reread.edges).toContainEqual({
+      id: "edge_created",
+      kind: "wiring",
+      sourceId: "source_profile",
+      targetId: created.id,
+      sourcePath: ["headline"],
+      targetPath: [],
+    });
+    expect(reread.sourceFieldDefaults).toContainEqual({
+      nodeId: created.id,
+      fieldPath: [],
+      value: "Copied",
+    });
+  });
+
   it("deletes a field-derived source without invalidating sibling wiring", async () => {
     await db.insert(user).values({
       id: userId,
