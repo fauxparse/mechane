@@ -71,6 +71,9 @@ describe("normalizePlayerSession", () => {
         state: "published",
         updatedAt: "2026-08-22T00:00:00.000Z",
         version: 1,
+        sourceFieldDefaults: [
+          { nodeId: "source_candidate", fieldPath: ["field_name"], value: "Alice" },
+        ],
         nodes: [
           {
             __typename: "SourceNode",
@@ -139,9 +142,14 @@ describe("normalizePlayerSession", () => {
     });
 
     expect(session.graph.shapes?.[0]?.fields[0]?.type).toBe("text");
-    expect(session.graph.nodes.find((node) => node.kind === "source")).toMatchObject({
+    expect(session.graph.sourceFieldDefaults).toEqual([
+      { nodeId: "source_candidate", fieldPath: ["field_name"], value: "Alice" },
+    ]);
+    const sourceNode = session.graph.nodes.find((node) => node.kind === "source");
+    expect(sourceNode).toMatchObject({
       type: { kind: "shape", shapeId: "candidate" },
     });
+    expect("fieldDefaults" in (sourceNode ?? {})).toBe(false);
     expect(session.scene?.kind === "scene" ? session.scene.variables[0]?.type : null).toEqual({
       kind: "shape",
       shapeId: "candidate",
