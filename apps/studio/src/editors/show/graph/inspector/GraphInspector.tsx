@@ -1,4 +1,10 @@
-import { cn, SidebarHeader, SquareDashedIcon } from "@mechane/design-system";
+import {
+  cn,
+  EditableName,
+  InputGroupAddon,
+  SidebarHeader,
+  SquareDashedIcon,
+} from "@mechane/design-system";
 import type { GraphNode } from "@mechane/domain";
 import type { GraphInspectorEditing } from "@show-editor/commands/use-graph-editing";
 import { pluralize } from "../../../../utils/pluralize";
@@ -19,7 +25,13 @@ function common<T>(selected: readonly GraphNode[], get: (node: GraphNode) => T):
   return selected.every((node) => Object.is(get(node), value)) ? value : null;
 }
 
-function InspectorHeader({ selected }: { selected: GraphNode[] }) {
+function InspectorHeader({
+  selected,
+  editing,
+}: {
+  selected: GraphNode[];
+  editing: GraphInspectorEditing;
+}) {
   const kind = common(selected, (node) => node.kind);
   const perConnection = common(selected, (node) =>
     node.kind === "device" ? node.perConnection : false,
@@ -34,7 +46,7 @@ function InspectorHeader({ selected }: { selected: GraphNode[] }) {
       })
     : SquareDashedIcon;
   const [first] = selected;
-  const name = selected.length === 1 ? (first?.name ?? null) : null;
+  const name = selected.length === 1 ? (first?.name ?? "") : null;
   const label =
     perConnection && kind === "device"
       ? "audience device"
@@ -45,8 +57,30 @@ function InspectorHeader({ selected }: { selected: GraphNode[] }) {
   return (
     <SidebarHeader>
       <div className="flex items-center gap-2">
-        <Icon className="size-4" />
-        <span className="truncate grow">{name ?? pluralize(label, selected.length)}</span>
+        {name !== null ? (
+          <EditableName
+            key={first?.id}
+            value={name}
+            ariaLabel="Name"
+            onStartEditing={() => {
+              if (first) editing.beginRename(first.id);
+            }}
+            onCommit={(nextName) => {
+              editing.renameTo(nextName);
+              editing.commitRename();
+            }}
+            onCancel={editing.cancelRename}
+          >
+            <InputGroupAddon align="inline-start" className="px-1 mr-0">
+              <Icon className="size-4 shrink-0" />
+            </InputGroupAddon>
+          </EditableName>
+        ) : (
+          <>
+            <Icon className="size-4 shrink-0" />
+            <span className="truncate grow">{pluralize(label, selected.length)}</span>
+          </>
+        )}
       </div>
     </SidebarHeader>
   );
@@ -82,7 +116,7 @@ export function GraphInspector({ selected, editing, className }: GraphInspectorP
       className={cn("nokey display-contents pointer-events-auto", className)}
       aria-label="Inspector"
     >
-      <InspectorHeader selected={selected} />
+      <InspectorHeader selected={selected} editing={editing} />
       {selected.length > 1 ? (
         <MultiSelection selected={selected} />
       ) : (

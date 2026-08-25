@@ -14,6 +14,7 @@ export {
   SectionRow,
   type SectionProps,
 } from "./components/inspector-section";
+export { EditableName, type EditableNameProps } from "./components/editable-name";
 export { ThemeSwitcher, type ThemeSwitcherProps } from "./components/theme-switcher";
 export { Alert, AlertAction, AlertDescription, AlertTitle } from "./components/ui/alert";
 export {
