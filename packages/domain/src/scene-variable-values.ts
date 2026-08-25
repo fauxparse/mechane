@@ -25,7 +25,13 @@ function mapWiringValue(
   value: unknown,
   fieldMapping: Readonly<Record<string, string>> | undefined,
 ): unknown {
-  if (!fieldMapping || value === null || typeof value !== "object" || Array.isArray(value)) {
+  if (
+    !fieldMapping ||
+    Object.keys(fieldMapping).length === 0 ||
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  ) {
     return value;
   }
   const source = value as Record<string, unknown>;
