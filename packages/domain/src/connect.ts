@@ -18,9 +18,8 @@
 // on the same seam.
 
 import { assertValidShowGraph, deviceSourceType, findNode, InvalidShowGraphError } from "./graph";
-import { defaultSourceValues } from "./source-defaults";
 import { fieldsForType, resolveShapeFieldMapping, type Type } from "./shapes";
-import { typeAtPath, valueAtPath } from "./property-values";
+import { typeAtPath } from "./property-values";
 import type { EdgeKind, GraphEdge, GraphNode, SceneVariable, ShowGraph } from "./graph";
 /** A drag from one node's handle to another's, as the editor reports it. */
 export interface ConnectionRequest {
@@ -183,12 +182,6 @@ export type ConnectionPlanEdit =
       readonly position: { x: number; y: number };
     }
   | {
-      readonly type: "graph.setSourceFieldDefault";
-      readonly nodeId: string;
-      readonly fieldPath: readonly string[];
-      readonly value: unknown;
-    }
-  | {
       readonly type: "graph.addEdge";
       readonly edge: GraphEdge;
     };
@@ -232,20 +225,6 @@ function applyConnectionPlanEdit(graph: ShowGraph, edit: ConnectionPlanEdit): Sh
             : node,
         ),
       };
-    case "graph.setSourceFieldDefault": {
-      const sourceFieldDefaults = (graph.sourceFieldDefaults ?? []).filter(
-        (current) =>
-          current.nodeId !== edit.nodeId ||
-          current.fieldPath.join(".") !== edit.fieldPath.join("."),
-      );
-      return {
-        ...graph,
-        sourceFieldDefaults: [
-          ...sourceFieldDefaults,
-          { nodeId: edit.nodeId, fieldPath: [...edit.fieldPath], value: edit.value },
-        ],
-      };
-    }
     case "graph.addEdge":
       return { ...graph, edges: [...graph.edges, edit.edge] };
   }
@@ -268,32 +247,6 @@ function candidateIds(graph: ShowGraph): ConnectionIds {
     ),
   };
 }
-function sourceDefaultForConnection(graph: ShowGraph, request: ConnectionRequest): unknown {
-  if (!request.sourceHandle) return undefined;
-  const source = findNode(graph, request.sourceId);
-  if (source?.kind !== "source") return undefined;
-  if (request.sourceHandle === "out") {
-    return valueAtPath(defaultSourceValues(graph)[source.id], []);
-  }
-  const field = fieldsForType(source.type, graph.shapes ?? []).find(
-    (candidate) => candidate.id === request.sourceHandle,
-  );
-  const fieldPaths = [[request.sourceHandle], ...(field ? [[field.name]] : [])];
-  const override = graph.sourceFieldDefaults?.find(
-    (candidate) =>
-      candidate.nodeId === source.id &&
-      fieldPaths.some(
-        (path) =>
-          path.length === candidate.fieldPath.length &&
-          path.every((segment, index) => segment === candidate.fieldPath[index]),
-      ),
-  );
-  if (override) return override.value;
-  const sourceValue = defaultSourceValues(graph)[source.id];
-  const direct = valueAtPath(sourceValue, [request.sourceHandle]);
-  return direct === undefined && field ? valueAtPath(sourceValue, [field.name]) : direct;
-}
-
 /**
  * Plans the exact edits a landed connection will execute, or explains why
  * those edits would leave the Show invalid. Validation runs against the graph
@@ -314,21 +267,7 @@ export function planConnection(
     const nodeEdit: ConnectionPlanEdit = { type: "graph.addNode", node: { ...options.addNode } };
     edits.push(nodeEdit);
     planningGraph = applyConnectionPlanEdit(planningGraph, nodeEdit);
-    if (options.addNode.kind === "source") {
-      const sourceValue = sourceDefaultForConnection(planningGraph, request);
-      if (sourceValue !== undefined && sourceValue !== null) {
-        const defaultEdit: ConnectionPlanEdit = {
-          type: "graph.setSourceFieldDefault",
-          nodeId: options.addNode.id,
-          fieldPath: [],
-          value: sourceValue,
-        };
-        edits.push(defaultEdit);
-        planningGraph = applyConnectionPlanEdit(planningGraph, defaultEdit);
-      }
-    }
   }
-
   if (request.sourceId === request.targetId) {
     const node = findNode(planningGraph, request.sourceId);
     // A Scene may Navigate to itself (a "retry" transition, #24); nothing

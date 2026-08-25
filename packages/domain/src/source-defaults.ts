@@ -82,7 +82,41 @@ export function defaultSourceValues(graph: ShowGraph): SourceValues {
   for (const node of graph.nodes) {
     if (node.kind === "source") values[node.id] = sourceValue(node, graph);
   }
+  propagateSourceWiring(graph, values);
   return values;
+}
+function valueAtPath(value: unknown, path: readonly string[]): unknown {
+  let current = value;
+  for (const segment of path) {
+    if (current === null || typeof current !== "object" || Array.isArray(current)) return undefined;
+    if (!(segment in current)) return undefined;
+    current = Reflect.get(current, segment);
+  }
+  return current;
+}
+
+export function propagateSourceWiring(graph: ShowGraph, values: SourceValues): void {
+  const resolving = new Set<string>();
+  const resolved = new Set<string>();
+  const resolve = (sourceId: string): void => {
+    if (resolved.has(sourceId) || resolving.has(sourceId)) return;
+    resolving.add(sourceId);
+    for (const edge of graph.edges) {
+      if (edge.kind !== "wiring" || edge.targetId !== sourceId) continue;
+      const producer = graph.nodes.find((node) => node.id === edge.sourceId);
+      if (producer?.kind !== "source") continue;
+      resolve(producer.id);
+      const sourceValue = valueAtPath(values[producer.id], edge.sourcePath);
+      if (sourceValue !== undefined) {
+        values[sourceId] = setValueAtPath(values[sourceId], edge.targetPath, sourceValue);
+      }
+    }
+    resolving.delete(sourceId);
+    resolved.add(sourceId);
+  };
+  for (const node of graph.nodes) {
+    if (node.kind === "source") resolve(node.id);
+  }
 }
 
 /** Narrowing helper for callers iterating a graph's nodes. */

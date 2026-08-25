@@ -1,5 +1,10 @@
 import type { ShowGraph, SourceNode } from "./graph";
-import { defaultSourceValues, defaultValueForType, type SourceValues } from "./source-defaults";
+import {
+  defaultSourceValues,
+  defaultValueForType,
+  propagateSourceWiring,
+  type SourceValues,
+} from "./source-defaults";
 
 function valueAtPath(value: unknown, path: readonly string[]): unknown {
   let current = value;
@@ -108,6 +113,7 @@ export function sceneVariableValues(
       ? designValue
       : mergeRuntimeValue(designValue, runtimeValue);
   }
+  propagateSourceWiring(graph, resolvedSourceValues);
   const values: Record<string, unknown> = {};
   for (const edge of graph.edges) {
     if (edge.kind !== "wiring" || edge.targetId !== sceneId) continue;

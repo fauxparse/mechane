@@ -93,12 +93,6 @@ describe("shape source value persistence", () => {
       [
         { type: "graph.addNode", node: created },
         {
-          type: "graph.setSourceFieldDefault",
-          nodeId: created.id,
-          fieldPath: [],
-          value: "Copied",
-        },
-        {
           type: "graph.addEdge",
           edge: {
             id: "edge_created",
@@ -124,7 +118,7 @@ describe("shape source value persistence", () => {
       sourcePath: ["headline"],
       targetPath: [],
     });
-    expect(reread.sourceFieldDefaults).toContainEqual({
+    expect(reread.sourceFieldDefaults).not.toContainEqual({
       nodeId: created.id,
       fieldPath: [],
       value: "Copied",
