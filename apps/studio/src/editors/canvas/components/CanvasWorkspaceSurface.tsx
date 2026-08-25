@@ -159,6 +159,7 @@ export function CanvasWorkspaceSurface({
           inspectorPreview={inspectorPreview}
           currentDimensions={currentDimensions}
           onUpdateElement={onUpdateElement}
+          onRenameArtboard={onRenameArtboard}
           onUpdateElements={onUpdateElements}
         />
       </EditorSlot>

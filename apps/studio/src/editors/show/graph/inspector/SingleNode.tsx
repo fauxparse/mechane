@@ -1,7 +1,5 @@
 import {
   CopyButton,
-  Input,
-  Label,
   Section,
   SectionHelperText,
   SectionRow,
@@ -12,8 +10,8 @@ import {
 } from "@mechane/design-system";
 import { FLOW_COLORS, FlowColor, type GraphNode } from "@mechane/domain";
 import type { GraphInspectorEditing } from "../../commands/use-graph-editing";
-import { Variables } from "./Variables";
 import { SourceValues } from "./SourceValues";
+import { Variables } from "./Variables";
 
 export function SingleNode({ node, editing }: { node: GraphNode; editing: GraphInspectorEditing }) {
   return (
@@ -22,7 +20,7 @@ export function SingleNode({ node, editing }: { node: GraphNode; editing: GraphI
         <SectionRow>
           <ToggleGroup
             size="sm"
-            className="col-span-2 bg-transparent"
+            className="col-span-full bg-transparent flex w-full justify-between"
             value={node.color ? [node.color] : ["neutral"]}
             onValueChange={([value]) => {
               if (value) {
@@ -31,7 +29,7 @@ export function SingleNode({ node, editing }: { node: GraphNode; editing: GraphI
             }}
           >
             {FLOW_COLORS.map((color) => (
-              <ToggleGroupItem key={color} value={color} className="p-1 rounded-full!">
+              <ToggleGroupItem key={color} value={color} className="p-1 rounded-full! grow-0!">
                 <span
                   className="inline-block size-4 rounded-full"
                   style={{
@@ -93,21 +91,6 @@ export function SingleNode({ node, editing }: { node: GraphNode; editing: GraphI
         <Variables node={node} editing={editing} shapes={editing.graph.shapes ?? []} />
       ) : null}
       {node.kind === "source" ? <SourceValues node={node} editing={editing} /> : null}
-
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="inspector-name">Name</Label>
-        <Input
-          id="inspector-name"
-          value={node.name}
-          // The same command a double-click rename runs, coalesced the same way
-          // — so a name typed here is one undo entry, not one per keystroke.
-          onChange={(event) => {
-            editing.beginRename(node.id);
-            editing.renameTo(event.target.value);
-          }}
-          onBlur={editing.commitRename}
-        />
-      </div>
 
       {node.kind === "transformer" ? (
         <p className="text-xs text-muted-foreground">

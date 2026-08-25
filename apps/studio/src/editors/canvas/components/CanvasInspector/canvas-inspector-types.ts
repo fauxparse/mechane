@@ -35,6 +35,7 @@ export type CanvasInspectorProps = {
   onImageUpload?(props: ImageInputOnUploadProps): void;
   inspectorPreview?: CanvasInspectorPreview | null;
   currentDimensions?: CanvasInspectorDimensions | null;
+  onRenameArtboard?(artId: string, name: string): void;
   onUpdateElement?(
     canvasId: string,
     elementId: string,
@@ -61,6 +62,7 @@ export type CanvasInspectorModel = {
   imageAssets: readonly ImageAsset[];
   deviceQrImages: Readonly<Record<string, DeviceQrImage>>;
   onImageUpload?(props: ImageInputOnUploadProps): void;
+  onRenameArtboard?(artId: string, name: string): void;
   fontFamilies: readonly string[];
   inspectorPreview: CanvasInspectorPreview | null;
   currentDimensions: CanvasInspectorDimensions | null;

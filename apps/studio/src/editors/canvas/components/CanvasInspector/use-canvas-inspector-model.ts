@@ -141,6 +141,7 @@ export function useCanvasInspectorModel({
   onImageUpload,
   inspectorPreview = null,
   currentDimensions = null,
+  onRenameArtboard,
   onUpdateElement,
   onUpdateElements,
 }: CanvasInspectorProps): CanvasInspectorModel | null {
@@ -204,6 +205,7 @@ export function useCanvasInspectorModel({
             deviceQrImages,
             imageAssets,
             onImageUpload,
+            onRenameArtboard,
             fontFamilies,
             inspectorPreview,
             currentDimensions,
@@ -221,6 +223,7 @@ export function useCanvasInspectorModel({
       deviceQrImages,
       elements,
       fontFamilies,
+      onRenameArtboard,
       imageAssets,
       onImageUpload,
       currentDimensions,
