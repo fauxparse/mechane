@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { opacityFromPercent, opacityToPercent, resolveCanvasProperties } from "./canvas-properties";
+import { CANVAS_PROPERTY_DESCRIPTORS, resolveCanvasProperties } from "./canvas-properties";
 import { DEVICE_SOURCE_HANDLES } from "./graph";
 import type { Canvas } from "./canvas";
 import type { SceneVariable, ShowGraph } from "./graph";
@@ -229,8 +229,36 @@ describe("resolveCanvasProperties", () => {
     expect(resolved.root.children?.[0]).toMatchObject({ content: "Alice" });
     expect(resolved.root.children?.[1]).toMatchObject({ content: "12" });
   });
-  it("converts opacity at the inspector boundary", () => {
-    expect(opacityToPercent(0.42)).toBe(42);
-    expect(opacityFromPercent(42)).toBe(0.42);
+  it("describes inspector defaults, constraints, and opacity conversion", () => {
+    const descriptor = (name: string) =>
+      CANVAS_PROPERTY_DESCRIPTORS.find((candidate) => candidate.name === name);
+    const opacity = descriptor("opacity");
+
+    expect(opacity).toMatchObject({
+      defaultValue: 1,
+      unit: "%",
+      min: 0,
+      max: 100,
+      step: 1,
+    });
+    expect(descriptor("cornerRadius")).toMatchObject({ defaultValue: 0 });
+    expect(descriptor("fontSize")).toMatchObject({ defaultValue: 16 });
+    expect(descriptor("lineHeight")).toMatchObject({ defaultValue: "auto", allowAuto: true });
+    expect(descriptor("letterSpacing")).toMatchObject({ defaultValue: 0 });
+
+    expect(opacity?.toInput({ kind: "number", value: 0.42 })).toEqual({
+      kind: "number",
+      value: 42,
+    });
+    expect(
+      opacity?.toInput({
+        id: "score",
+        name: "Score",
+        type: "number",
+        current: { kind: "number", value: 0.42 },
+      }),
+    ).toMatchObject({ current: { kind: "number", value: 42 } });
+    expect(opacity?.fromInput(42)).toBe(0.42);
+    expect(opacity?.toInput(null)).toBeNull();
   });
 });
