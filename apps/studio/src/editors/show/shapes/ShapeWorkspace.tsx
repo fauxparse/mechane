@@ -19,7 +19,7 @@ import { useForm } from "@tanstack/react-form";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
-import type { GraphEditing } from "../commands/use-graph-editing";
+import type { ShapeEditing } from "../commands/use-graph-editing";
 import { typeLabel } from "../graph/node-kinds";
 import { ShapeDefaultEditor } from "./ShapeDefaultEditor";
 import { setShapeEditorStatus } from "./shape-editor-status";
@@ -46,7 +46,7 @@ const sensors = (defaults: typeof defaultPreset.sensors) =>
 type ShapeWorkspaceProps = {
   graph: ShowGraph;
   shapeId: string | null;
-  editing: GraphEditing;
+  editing: ShapeEditing;
   saving: boolean;
   saveError: Error | null;
   retrySave(): void;
@@ -364,7 +364,6 @@ function EmptyShapes({ hasQuery, onCreate }: { hasQuery: boolean; onCreate(): vo
           Create Shape
         </button>
       ) : null}
-
     </div>
   );
 }
@@ -450,7 +449,7 @@ function ShapeEditor({
 }: {
   shape: Shape;
   shapes: readonly Shape[];
-  editing: GraphEditing;
+  editing: ShapeEditing;
   onBack(): void;
   onOpenShape(shapeId: string): void;
 }) {
@@ -847,7 +846,6 @@ function FieldDetails({
     </div>
   );
 }
-
 
 function referencedShapeId(type: Type): string | null {
   if (typeof type === "string") return null;

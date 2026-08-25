@@ -1,5 +1,5 @@
-import { moveNode, moveNodesIntoFlow, moveNodesOutOfFlow } from "@mechane/commands";
-import type { GraphNode, Position } from "@mechane/domain";
+import { composite, moveNode, moveNodesIntoFlow, moveNodesOutOfFlow } from "@mechane/commands";
+import type { GraphNode, Position, ShowGraph } from "@mechane/domain";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { Connection, FitViewOptions, OnNodeDrag, XYPosition } from "@xyflow/react";
 import type { MouseEvent as ReactMouseEvent } from "react";
@@ -12,8 +12,7 @@ import {
 } from "../graph/graph-to-flow";
 import type { ShowFlowNode } from "../graph/graph-to-flow";
 import type { CreatableNode } from "../graph/node-kinds";
-import { composite } from "@mechane/commands";
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import type { DeletionScope } from "@mechane/commands";
 
 function moveComposite(moved: { id: string; position: Position }[]) {
@@ -25,11 +24,19 @@ function moveComposite(moved: { id: string; position: Position }[]) {
   });
 }
 
-type Editing = ReturnType<typeof import("./use-graph-editing").useGraphEditing>;
+import type {
+  GraphConnectionEditing,
+  GraphCreationEditing,
+  GraphDeletionEditing,
+} from "./use-graph-editing";
+import type { GraphCommands } from "./use-graph-commands";
 
 interface Options {
-  editing: Editing;
-  commands: Editing["commands"];
+  graph: ShowGraph;
+  commands: GraphCommands;
+  creation: GraphCreationEditing;
+  deletion: GraphDeletionEditing;
+  connections: GraphConnectionEditing;
   selectedNodes: GraphNode[];
   selectedNodeIds: string[];
   selectedEdgeIds: string[];
@@ -50,8 +57,11 @@ interface Options {
 }
 
 export function useShowGraphEditorActions({
-  editing,
+  graph,
   commands,
+  creation,
+  deletion,
+  connections,
   selectedNodes,
   selectedNodeIds,
   selectedEdgeIds,
@@ -67,6 +77,10 @@ export function useShowGraphEditorActions({
   selectOnArrival,
   focusOnArrival,
 }: Options) {
+  const editing = useMemo(
+    () => ({ graph, ...creation, ...deletion, ...connections }),
+    [connections, creation, deletion, graph],
+  );
   const { beginGesture } = commands;
   const flowAt = useCallback(
     (point: Position): ShowFlowNode | null =>

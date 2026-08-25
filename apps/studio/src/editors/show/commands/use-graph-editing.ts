@@ -8,7 +8,7 @@
 //
 // Everything routes through `useGraphCommands`, so everything is undoable, and
 // everything reaches the server by the same path an undo does (ADR-0005).
-import type { Gesture, GraphEdit } from "@mechane/commands";
+import type { DeletionScope, Gesture, GraphEdit } from "@mechane/commands";
 import {
   addNode,
   addSceneVariable,
@@ -76,13 +76,21 @@ export interface ConnectionAttempt {
   targetHandle?: string | null;
 }
 
-export interface GraphEditing {
+export interface GraphCommandEditing {
   commands: GraphCommands;
   graph: ShowGraph;
-  /** Applies server-side amendments to the graph, off the undo stack (#111). */
   amend(edits: readonly GraphEdit[]): void;
+}
 
-  /** Creates a node of `kind` at `position` (flow coordinates), and returns it. */
+export interface GraphGestureEditing {
+  renaming: string | null;
+  beginRename(nodeId: string): void;
+  renameTo(name: string): void;
+  commitRename(): void;
+  cancelRename(): void;
+}
+
+export interface GraphCreationEditing {
   createNodeOfKind(
     kind: NodeKind,
     position: Position,
@@ -95,37 +103,24 @@ export interface GraphEditing {
     },
   ): GraphNode;
   createFlowWithNodes(nodeIds: string[], position: Position, childOrigin: Position): GraphNode;
-  /** Creates a typed Source or Device and connects it to a dropped source handle. */
   createNodeFromConnection(sourceId: string, sourceHandle: string, position: Position): void;
+}
 
-  /** The node being renamed inline, if any. */
-  renaming: string | null;
-  beginRename(nodeId: string): void;
-  renameTo(name: string): void;
-  commitRename(): void;
-  cancelRename(): void;
-
-  /** Deletes nodes and edges as one entry, cascade included (#27, #28, #36). */
+export interface GraphDeletionEditing {
   deleteElements(nodeIds: string[], edgeIds?: string[]): void;
-  /** What a delete would destroy, for the confirmation dialog (#27). */
-  scopeOf(nodeIds: string[], edgeIds?: string[]): ReturnType<typeof deletionScope>;
+  scopeOf(nodeIds: string[], edgeIds?: string[]): DeletionScope;
+}
 
-  /** True while a connection is being dragged from a handle. */
+export interface GraphConnectionEditing {
   connecting: boolean;
-  /** What the in-flight drag may land on, or null when idle. */
   targets: ConnectionTargets | null;
   beginConnect(sourceId: string, sourceHandle?: string | null): void;
   endConnect(): void;
-  /** Whether React Flow should let this connection be dropped. */
   canDrop(attempt: ConnectionAttempt): boolean;
-  /** Makes the connection, or returns why it can't be made. */
   connect(attempt: ConnectionAttempt): string | null;
+}
 
-  addVariable(sceneId: string): void;
-  renameVariable(sceneId: string, variableId: string, name: string): void;
-  setVariableType(sceneId: string, variableId: string, type: Type): void;
-  reorderVariables(sceneId: string, variableIds: readonly string[]): void;
-  removeVariable(sceneId: string, variableId: string): void;
+export interface ShapeEditing {
   addShape(shape: Shape): void;
   renameShape(shapeId: string, name: string): void;
   duplicateShape(shape: Shape): void;
@@ -137,12 +132,73 @@ export interface GraphEditing {
   setShapeFieldDefault(shapeId: string, fieldId: string, defaultValue: unknown): void;
   reorderShapeFields(shapeId: string, fieldIds: readonly string[]): void;
   removeShapeField(shapeId: string, fieldId: string): void;
-  /** Structural Flow moves; collapse is intentionally not part of this API. */
-  moveIntoFlow(nodeIds: string[], flowId: string, origin: Position): void;
-  moveOutOfFlow(nodeIds: string[], positions: Position[]): string | null;
+}
+
+export interface VariableEditing {
+  addVariable(sceneId: string): void;
+  renameVariable(sceneId: string, variableId: string, name: string): void;
+  setVariableType(sceneId: string, variableId: string, type: Type): void;
+  reorderVariables(sceneId: string, variableIds: readonly string[]): void;
+  removeVariable(sceneId: string, variableId: string): void;
+}
+
+export interface SourceValueEditing {
+  graph: ShowGraph;
+  commands: Pick<GraphCommands, "beginGesture">;
   setSourceFieldDefault(nodeId: string, fieldPath: readonly string[], value: unknown): void;
+}
+
+export interface GraphEditing {
+  command: GraphCommandEditing;
+  gestures: GraphGestureEditing;
+  creation: GraphCreationEditing;
+  deletion: GraphDeletionEditing;
+  connections: GraphConnectionEditing;
+  shapes: ShapeEditing;
+  variables: VariableEditing;
+  sourceValues: SourceValueEditing;
   setNodeColor(nodeId: string, color: FlowColor): void;
   setDevicePerConnection(nodeId: string, perConnection: boolean): void;
+  moveIntoFlow(nodeIds: string[], flowId: string, origin: Position): void;
+  moveOutOfFlow(nodeIds: string[], positions: Position[]): string | null;
+}
+export interface GraphInspectorEditing {
+  graph: ShowGraph;
+  commands: Pick<GraphCommands, "beginGesture">;
+  renaming: string | null;
+  beginRename(nodeId: string): void;
+  renameTo(name: string): void;
+  commitRename(): void;
+  cancelRename(): void;
+  setNodeColor(nodeId: string, color: FlowColor): void;
+  setDevicePerConnection(nodeId: string, perConnection: boolean): void;
+  addVariable(sceneId: string): void;
+  renameVariable(sceneId: string, variableId: string, name: string): void;
+  setVariableType(sceneId: string, variableId: string, type: Type): void;
+  reorderVariables(sceneId: string, variableIds: readonly string[]): void;
+  removeVariable(sceneId: string, variableId: string): void;
+  setSourceFieldDefault(nodeId: string, fieldPath: readonly string[], value: unknown): void;
+}
+export interface GraphInspectorNodeEditing {
+  setNodeColor(nodeId: string, color: FlowColor): void;
+  setDevicePerConnection(nodeId: string, perConnection: boolean): void;
+}
+
+export function graphInspectorEditing(
+  graph: ShowGraph,
+  gestures: GraphGestureEditing,
+  variables: VariableEditing,
+  sourceValues: SourceValueEditing,
+  nodeEditing: GraphInspectorNodeEditing,
+): GraphInspectorEditing {
+  return {
+    graph,
+    commands: sourceValues.commands,
+    ...gestures,
+    ...variables,
+    setSourceFieldDefault: sourceValues.setSourceFieldDefault,
+    ...nodeEditing,
+  };
 }
 
 /**
@@ -503,44 +559,55 @@ export function useGraphEditing(
   );
 
   return {
-    commands,
-    graph,
-    amend: commands.amend,
-    createNodeOfKind,
-    createNodeFromConnection,
-    createFlowWithNodes: createFlowWithSelection,
-    renaming,
-    beginRename,
-    renameTo,
-    commitRename,
-    cancelRename,
-    deleteElements,
-    scopeOf,
-    connecting: connectingFrom !== null,
-    targets,
-    beginConnect,
-    endConnect,
-    canDrop,
-    connect,
-    addShape: changeShape,
-    renameShape: changeShapeName,
-    duplicateShape: changeShapeDuplicate,
-    removeShape: changeShapeRemoval,
-    addShapeField: changeShapeField,
-    renameShapeField: changeShapeFieldName,
-    setShapeFieldType: changeShapeFieldType,
-    setShapeFieldRequired: changeShapeFieldRequired,
-    setShapeFieldDefault: changeShapeFieldDefault,
-    reorderShapeFields: changeShapeFieldOrder,
-    removeShapeField: changeShapeFieldRemoval,
-    setSourceFieldDefault: changeSourceFieldDefault,
+    command: { commands, graph, amend: commands.amend },
+    gestures: {
+      renaming,
+      beginRename,
+      renameTo,
+      commitRename,
+      cancelRename,
+    },
+    creation: {
+      createNodeOfKind,
+      createNodeFromConnection,
+      createFlowWithNodes: createFlowWithSelection,
+    },
+    deletion: { deleteElements, scopeOf },
+    connections: {
+      connecting: connectingFrom !== null,
+      targets,
+      beginConnect,
+      endConnect,
+      canDrop,
+      connect,
+    },
+    shapes: {
+      addShape: changeShape,
+      renameShape: changeShapeName,
+      duplicateShape: changeShapeDuplicate,
+      removeShape: changeShapeRemoval,
+      addShapeField: changeShapeField,
+      renameShapeField: changeShapeFieldName,
+      setShapeFieldType: changeShapeFieldType,
+      setShapeFieldRequired: changeShapeFieldRequired,
+      setShapeFieldDefault: changeShapeFieldDefault,
+      reorderShapeFields: changeShapeFieldOrder,
+      removeShapeField: changeShapeFieldRemoval,
+    },
+    variables: {
+      addVariable,
+      renameVariable,
+      setVariableType,
+      reorderVariables,
+      removeVariable,
+    },
+    sourceValues: {
+      graph,
+      commands: { beginGesture: commands.beginGesture },
+      setSourceFieldDefault: changeSourceFieldDefault,
+    },
     setNodeColor: changeNodeColor,
     setDevicePerConnection: changeDevicePerConnection,
-    addVariable,
-    renameVariable,
-    setVariableType,
-    reorderVariables,
-    removeVariable,
     moveIntoFlow,
     moveOutOfFlow,
   };

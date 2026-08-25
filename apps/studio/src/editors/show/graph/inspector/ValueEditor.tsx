@@ -10,7 +10,7 @@ import {
 } from "@mechane/domain";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import type { GraphEditing } from "../../commands/use-graph-editing";
+import type { SourceValueEditing } from "../../commands/use-graph-editing";
 import { typeLabel as graphTypeLabel } from "../node-kinds";
 import type { SourceValueRow, ValueEditorProps, ValueEditorRenderer } from "./source-value-types";
 import { previewValue, propertyInputType } from "./source-values-helpers";
@@ -224,7 +224,7 @@ export function InlineValue({
 }: {
   row: SourceValueRow;
   nodeId: string;
-  editing: GraphEditing;
+  editing: SourceValueEditing;
   actions?: ReactNode;
 }) {
   const gesture = useRef<SourceValueGesture | null>(null);

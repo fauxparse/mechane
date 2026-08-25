@@ -42,7 +42,9 @@ import type { ShowGraphEditorProps } from "./ShowGraphEditor";
 
 export function ShowGraphEditorInner(props: ShowGraphEditorProps) {
   const {
-    editing,
+    creation,
+    connections,
+    inspector,
     interaction,
     menuPosition,
     selectedNodes,
@@ -98,7 +100,9 @@ export function ShowGraphEditorInner(props: ShowGraphEditorProps) {
           beginDrag={beginDrag}
           dragTo={dragTo}
           endDrag={endDrag}
-          editing={editing}
+          creation={creation}
+          connections={connections}
+          setNodeColor={inspector.setNodeColor}
           onConnect={onConnect}
           isValidConnection={(connection) => isValidConnection(connection as Connection)}
           jumpToMinimapPoint={jumpToMinimapPoint}
@@ -106,7 +110,7 @@ export function ShowGraphEditorInner(props: ShowGraphEditorProps) {
 
         <ShowGraphEditorOverlays
           selectedNodes={selectedNodes}
-          editing={editing}
+          inspector={inspector}
           message={message}
           paletteOpen={paletteOpen}
           setPaletteOpen={setPaletteOpen}

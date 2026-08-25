@@ -42,9 +42,9 @@ function ShapesRoute() {
 
   return (
     <ShapeWorkspace
-      graph={editing.graph}
+      graph={editing.command.graph}
       shapeId={shapeId}
-      editing={editing}
+      editing={editing.shapes}
       saving={save.saving}
       saveError={save.error}
       retrySave={save.retry}

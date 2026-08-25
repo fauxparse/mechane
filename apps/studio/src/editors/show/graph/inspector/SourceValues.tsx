@@ -21,14 +21,14 @@ import {
 } from "@mechane/domain";
 import { useMemo, useState } from "react";
 
-import type { GraphEditing } from "../../commands/use-graph-editing";
+import type { SourceValueEditing } from "../../commands/use-graph-editing";
 import { InlineValue } from "./ValueEditor";
 import { SourceValueDialog } from "./SourceValueDialog";
 import type { SourceValueRow } from "./source-value-types";
 import { previewValue, sourceValuesEqual, usesModal } from "./source-values-helpers";
 
 function hasGraphOverride(
-  graph: GraphEditing["graph"],
+  graph: SourceValueEditing["graph"],
   nodeId: string,
   fieldPath: readonly string[],
 ): boolean {
@@ -39,7 +39,7 @@ function hasGraphOverride(
   );
 }
 
-function sourceValueRows(node: SourceNode, editing: GraphEditing): SourceValueRow[] {
+function sourceValueRows(node: SourceNode, editing: SourceValueEditing): SourceValueRow[] {
   const value = defaultSourceValues(editing.graph)[node.id];
   const shapes = editing.graph.shapes ?? [];
   const fields = fieldsForType(node.type, shapes);
@@ -70,7 +70,7 @@ function SourceValueActions({
 }: {
   row: SourceValueRow;
   nodeId: string;
-  editing: GraphEditing;
+  editing: SourceValueEditing;
   onEdit: () => void;
 }) {
   const modal = usesModal(row.type, row.value);
@@ -106,7 +106,13 @@ function SourceValueActions({
   );
 }
 
-export const SourceValues = ({ node, editing }: { node: SourceNode; editing: GraphEditing }) => {
+export const SourceValues = ({
+  node,
+  editing,
+}: {
+  node: SourceNode;
+  editing: SourceValueEditing;
+}) => {
   const rows = useMemo(() => sourceValueRows(node, editing), [editing, node]);
   const shapes = editing.graph.shapes ?? [];
   const [activeRow, setActiveRow] = useState<SourceValueRow | null>(null);

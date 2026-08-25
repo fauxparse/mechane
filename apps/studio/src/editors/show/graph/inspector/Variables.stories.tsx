@@ -2,7 +2,7 @@ import type { SceneNode, SceneVariable, Type } from "@mechane/domain";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 
-import type { GraphEditing } from "../../commands/use-graph-editing";
+import type { VariableEditing } from "../../commands/use-graph-editing";
 import { Variables } from "./Variables";
 
 const meta = {
@@ -46,7 +46,7 @@ function VariablesStory() {
       ),
     removeVariable: (_sceneId: string, variableId: string) =>
       setVariables((current) => current.filter((variable) => variable.id !== variableId)),
-  } as unknown as GraphEditing;
+  } as unknown as VariableEditing;
 
   return <Variables node={nodeFor(variables)} editing={editing} />;
 }

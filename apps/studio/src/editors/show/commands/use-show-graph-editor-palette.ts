@@ -5,7 +5,6 @@ import { CREATABLE_NODES } from "../graph/node-kinds";
 import type { GraphNode, Position } from "@mechane/domain";
 import { useMemo } from "react";
 
-import type { GraphEditing } from "./use-graph-editing";
 import type { GraphCommands } from "./use-graph-commands";
 import type { PaletteCommand } from "./palette-commands";
 import { moveIntoFlowDisabledReason, moveOutOfFlowDisabledReason } from "../show-graph-guards";
@@ -24,7 +23,9 @@ export interface ShowGraphEditorPaletteOptions {
   fitViewOptions: FitViewOptions;
   zoomToSelection(): void;
   renameSelected(): void;
-  editing: GraphEditing;
+  moveIntoFlow(nodeIds: string[], flowId: string, origin: Position): void;
+  moveOutOfFlow(nodeIds: string[], positions: Position[]): string | null;
+  addVariable(sceneId: string): void;
   say(text: string): void;
   requestDelete(): void;
   nodes: ShowFlowNode[];
@@ -41,11 +42,17 @@ export function useShowGraphEditorPalette({
   fitViewOptions,
   zoomToSelection,
   renameSelected,
-  editing,
+  moveIntoFlow,
+  moveOutOfFlow,
+  addVariable,
   say,
   requestDelete,
   nodes,
 }: ShowGraphEditorPaletteOptions): PaletteCommand[] {
+  const editing = useMemo(
+    () => ({ moveIntoFlow, moveOutOfFlow, addVariable }),
+    [addVariable, moveIntoFlow, moveOutOfFlow],
+  );
   return useMemo<PaletteCommand[]>(() => {
     const single = selectedNodes.length === 1 ? (selectedNodes[0] as GraphNode) : null;
     const nothingSelected = selectedNodes.length === 0 && selectedEdgeIds.length === 0;

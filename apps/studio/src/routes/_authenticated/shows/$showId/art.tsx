@@ -62,34 +62,34 @@ function CanvasWorkspaceRoute() {
     save.enqueue(edits);
   });
   const undo = useCallback(() => {
-    if (lastUndoTarget.current === "graph" && graphEditing.commands.canUndo) {
-      graphEditing.commands.undo();
+    if (lastUndoTarget.current === "graph" && graphEditing.command.commands.canUndo) {
+      graphEditing.command.commands.undo();
     } else if (lastUndoTarget.current === "canvas" && canvasCommands.canUndo) {
       canvasCommands.undo();
-    } else if (graphEditing.commands.canUndo) {
-      graphEditing.commands.undo();
+    } else if (graphEditing.command.commands.canUndo) {
+      graphEditing.command.commands.undo();
     } else {
       canvasCommands.undo();
     }
-  }, [canvasCommands, graphEditing.commands]);
+  }, [canvasCommands, graphEditing.command.commands]);
   const redo = useCallback(() => {
-    if (lastUndoTarget.current === "graph" && graphEditing.commands.canRedo) {
-      graphEditing.commands.redo();
+    if (lastUndoTarget.current === "graph" && graphEditing.command.commands.canRedo) {
+      graphEditing.command.commands.redo();
     } else if (lastUndoTarget.current === "canvas" && canvasCommands.canRedo) {
       canvasCommands.redo();
-    } else if (graphEditing.commands.canRedo) {
-      graphEditing.commands.redo();
+    } else if (graphEditing.command.commands.canRedo) {
+      graphEditing.command.commands.redo();
     } else {
       canvasCommands.redo();
     }
-  }, [canvasCommands, graphEditing.commands]);
+  }, [canvasCommands, graphEditing.command.commands]);
   useUndoKeys({ undo, redo });
   const artboards = useMemo(() => {
     const current = new Map(
       canvasCommands.workspace.artboards.map((artboard) => [artboard.canvasId, artboard]),
     );
-    const nodes = new Map(graphEditing.graph.nodes.map((node) => [node.id, node]));
-    const sourceValues = defaultSourceValues(graphEditing.graph);
+    const nodes = new Map(graphEditing.command.graph.nodes.map((node) => [node.id, node]));
+    const sourceValues = defaultSourceValues(graphEditing.command.graph);
     return (workspace.data ?? []).map((artboard) => {
       const edited = current.get(artboard.canvasId);
       const name = nodes.get(artboard.artId)?.name ?? artboard.name;
@@ -98,13 +98,13 @@ function CanvasWorkspaceRoute() {
       const variables = owner?.kind === "scene" ? owner.variables : [];
       const values =
         owner?.kind === "scene"
-          ? sceneVariableValues(graphEditing.graph, owner.id, sourceValues)
+          ? sceneVariableValues(graphEditing.command.graph, owner.id, sourceValues)
           : undefined;
       const renderCanvas = resolveCanvasProperties(canvas, {
-        graph: graphEditing.graph,
+        graph: graphEditing.command.graph,
         variables,
         values,
-        shapes: graphEditing.graph.shapes,
+        shapes: graphEditing.command.graph.shapes,
         imageAssets: (imageAssets.data ?? []).map((asset) => ({
           ...asset,
           assetId: asset.id,
@@ -118,7 +118,12 @@ function CanvasWorkspaceRoute() {
         position: edited?.position ?? artboard.position,
       };
     });
-  }, [canvasCommands.workspace.artboards, graphEditing.graph, imageAssets.data, workspace.data]);
+  }, [
+    canvasCommands.workspace.artboards,
+    graphEditing.command.graph,
+    imageAssets.data,
+    workspace.data,
+  ]);
 
   // An artboard's name belongs to the Scene or Block that owns the Canvas, so a rename is a
   // Show-graph gesture. The graph stack owns the live name and the same save path as every
@@ -126,11 +131,16 @@ function CanvasWorkspaceRoute() {
   const renameArtboard = useCallback(
     (artId: string, name: string) => {
       if (!showId) return;
-      graphEditing.beginRename(artId);
-      graphEditing.renameTo(name);
-      graphEditing.commitRename();
+      graphEditing.gestures.beginRename(artId);
+      graphEditing.gestures.renameTo(name);
+      graphEditing.gestures.commitRename();
     },
-    [graphEditing.beginRename, graphEditing.commitRename, graphEditing.renameTo, showId],
+    [
+      graphEditing.gestures.beginRename,
+      graphEditing.gestures.commitRename,
+      graphEditing.gestures.renameTo,
+      showId,
+    ],
   );
   const requestedArtId = showId ? artIdFromPath(pathname, showId) : null;
   const focused = resolveFocusedArtboard(artboards, requestedArtId);
@@ -194,8 +204,8 @@ function CanvasWorkspaceRoute() {
   );
   const deviceQrImages = useMemo(() => {
     const images: Record<string, ResolvedImageValue & Pick<ImageAssetReference, "revision">> = {};
-    const nodesById = new Map(graphEditing.graph.nodes.map((node) => [node.id, node]));
-    for (const edge of graphEditing.graph.edges) {
+    const nodesById = new Map(graphEditing.command.graph.nodes.map((node) => [node.id, node]));
+    for (const edge of graphEditing.command.graph.edges) {
       if (edge.kind !== "wiring" || edge.sourcePath[0] !== DEVICE_SOURCE_HANDLES.qrCode) continue;
       const variableId = edge.targetPath[0];
       const device = nodesById.get(edge.sourceId);
@@ -203,7 +213,7 @@ function CanvasWorkspaceRoute() {
       images[variableId] = deviceQrImageValue(device.id, device.pairingCode);
     }
     return images;
-  }, [graphEditing.graph]);
+  }, [graphEditing.command.graph]);
   if (showId === null || show.isError || !show.data) {
     return (
       <p className="p-6" role="alert">
@@ -214,7 +224,7 @@ function CanvasWorkspaceRoute() {
   if (show.isPending || workspace.isPending || draft.isPending) {
     return <p className="p-6 text-muted-foreground">Loading Canvas workspace…</p>;
   }
-  const focusedNode = graphEditing.graph.nodes.find((node) => node.id === focused?.artId);
+  const focusedNode = graphEditing.command.graph.nodes.find((node) => node.id === focused?.artId);
   const focusedVariables = focusedNode?.kind === "scene" ? focusedNode.variables : [];
   return (
     <CanvasWorkspaceEditor
@@ -223,7 +233,7 @@ function CanvasWorkspaceRoute() {
       onCameraChange={onCameraChange}
       focusedArtId={focused?.artId ?? null}
       variables={focusedVariables}
-      shapes={graphEditing.graph.shapes ?? []}
+      shapes={graphEditing.command.graph.shapes ?? []}
       deviceQrImages={deviceQrImages}
       imageAssets={imageAssets.data ?? []}
       onImageUpload={handleImageUpload}
