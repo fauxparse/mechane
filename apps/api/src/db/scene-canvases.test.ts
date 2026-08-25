@@ -1,3 +1,4 @@
+import { CANVAS_COMMAND_TYPES, type CanvasWorkspaceEdit } from "@mechane/commands";
 import type { ShowGraph } from "@mechane/domain";
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
@@ -6,7 +7,7 @@ import { db } from "./client";
 import { readCanvasWorkspace } from "./canvas";
 import { latestCanvasFills } from "./scene-canvases";
 import { shows, user } from "./schema";
-import { writeShowGraph } from "./show-graph";
+import { applyShowEdits, readShowGraph, writeShowGraph } from "./show-graph";
 
 const userId = `scene-canvas-test-${crypto.randomUUID()}`;
 const showId = `scene-canvas-show-${crypto.randomUUID()}`;
@@ -86,6 +87,13 @@ describe("Scene Canvas reconciliation", () => {
     expect(initial).toHaveLength(1);
     const original = initial[0];
     if (!original) throw new Error("Initial Scene Canvas was not created.");
+    const canvasEdit: CanvasWorkspaceEdit = {
+      canvasId: original.id,
+      edit: { type: CANVAS_COMMAND_TYPES.moveArtboard, position: { x: 120, y: 40 } },
+    };
+    const draft = await readShowGraph(showId, "draft");
+    const applied = await applyShowEdits(showId, [], [canvasEdit], draft.version);
+    expect(applied.canvas?.position).toEqual({ x: 120, y: 40 });
 
     await writeShowGraph(
       showId,
