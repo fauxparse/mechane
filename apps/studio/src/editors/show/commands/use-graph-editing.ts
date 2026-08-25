@@ -10,7 +10,6 @@
 // everything reaches the server by the same path an undo does (ADR-0005).
 import type { Gesture, GraphEdit } from "@mechane/commands";
 import {
-  addEdge,
   addNode,
   addSceneVariable,
   addShape,
@@ -52,7 +51,6 @@ import type {
   Type,
 } from "@mechane/domain";
 import {
-  connectionEdge,
   connectionError,
   connectionTargets,
   generateId,
@@ -216,23 +214,21 @@ export function useGraphEditing(
             ? createNode("source", position, null, {
                 color: producer?.color,
                 defaultName: sourceLabelFor(graph, sourceId, domainSourceHandle ?? ""),
+                sourceType,
               })
             : null;
       if (!node) return;
-      const graphWithNode = {
-        ...graph,
-        nodes: [...graph.nodes, node],
-      };
-      const edge = connectionEdge(
-        graphWithNode,
+      const plan = planConnection(
+        graph,
         { sourceId, sourceHandle: domainSourceHandle, targetId: node.id },
-        generateId("edge"),
+        { edgeId: generateId("edge"), variableId: generateId("variable") },
+        { addNode: node },
       );
-      if (!edge) return;
+      if ("error" in plan) return;
       execute(
         composite({
           label: node.kind === "device" ? "Create Device" : "Create Source",
-          commands: [addNode(node, `Create ${node.kind}`), addEdge(edge, "Connect")],
+          commands: plan.edits.map((edit) => commandForEdit(edit)),
         }),
       );
     },
