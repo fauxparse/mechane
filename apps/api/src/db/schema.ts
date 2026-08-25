@@ -546,9 +546,9 @@ export const graphEdges = pgTable(
 // A Device's identity (issue #45), which is a *Show*-level thing and so
 // deliberately not a graph table: a pairing code is stable at the Show
 // level and persists across every Run (PRD.md §4.3), while a graph row
-// belongs to one draft-or-published state and is rewritten wholesale on
-// every save. Storing the code on `graph_nodes` would fork it at publish
-// and lose it on the next write.
+// belongs to one draft-or-published state and is reconciled on every save.
+// Storing the code on `graph_nodes` would fork it at publish and lose it on
+// the next write.
 //
 // A row's `id` *is* the id of the Device node that owns it. Node ids are
 // generated client-side (#47) and copied verbatim by publish, so they are
