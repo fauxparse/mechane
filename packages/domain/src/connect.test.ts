@@ -439,6 +439,52 @@ describe("canConnect", () => {
     });
   });
 
+  it("copies a value-handle default into an editor-created Source", () => {
+    const created: SourceNode = {
+      id: "source_created",
+      kind: "source",
+      name: "Created",
+      position: at,
+      parentId: null,
+      type: "text",
+    };
+    const sourceGraph: ShowGraph = {
+      ...SHAPED_GRAPH,
+      sourceFieldDefaults: [
+        { nodeId: "source_profile", fieldPath: ["headline"], value: "Copied value" },
+      ],
+    };
+    const plan = planConnection(
+      sourceGraph,
+      { sourceId: "source_profile", sourceHandle: "headline", targetId: created.id },
+      { edgeId: "edge_created", variableId: "variable_unused" },
+      { addNode: created },
+    );
+
+    expect(plan).toEqual({
+      edits: [
+        { type: "graph.addNode", node: created },
+        {
+          type: "graph.setSourceFieldDefault",
+          nodeId: created.id,
+          fieldPath: [],
+          value: "Copied value",
+        },
+        {
+          type: "graph.addEdge",
+          edge: {
+            id: "edge_created",
+            kind: "wiring",
+            sourceId: "source_profile",
+            targetId: created.id,
+            sourcePath: ["headline"],
+            targetPath: [],
+          },
+        },
+      ],
+    });
+  });
+
   it("rejects an editor-created node outside a Flow-local Source's Flow", () => {
     const created: SourceNode = {
       id: "source_created",
