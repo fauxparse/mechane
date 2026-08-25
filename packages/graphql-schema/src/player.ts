@@ -7,6 +7,11 @@ const PlayerGraphFields = graphql(`
     state
     updatedAt
     version
+    sourceFieldDefaults {
+      nodeId
+      fieldPath
+      value
+    }
     nodes {
       __typename
       id
@@ -47,10 +52,6 @@ const PlayerGraphFields = graphql(`
             kind
             shapeId
           }
-        }
-        fieldDefaults {
-          fieldPath
-          value
         }
       }
       ... on TransformerNode {

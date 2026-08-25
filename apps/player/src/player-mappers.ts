@@ -92,7 +92,9 @@ function edgeKind(typename: unknown): GraphEdge["kind"] {
 function toNode(value: unknown): GraphNode {
   const input = record(value);
   const { __typename, sourceType, transformerType, ...fields } = input;
-  const normalizedFields = withoutNulls(fields);
+  const normalizedFields = Object.fromEntries(
+    Object.entries(withoutNulls(fields)).filter(([key]) => key !== "fieldDefaults"),
+  );
   if (Array.isArray(normalizedFields.variables)) {
     normalizedFields.variables = normalizedFields.variables.map((variable) => {
       const normalized = withoutNulls(record(variable));
