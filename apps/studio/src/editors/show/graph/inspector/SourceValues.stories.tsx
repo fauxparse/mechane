@@ -4,7 +4,7 @@ import { type Shape, type ShowGraph, type SourceNode } from "@mechane/domain";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 
-import type { GraphEditing } from "../../commands/use-graph-editing";
+import type { SourceValueEditing } from "../../commands/use-graph-editing";
 import { SourceValues } from "./SourceValues";
 
 const detailsShape: Shape = {
@@ -71,7 +71,7 @@ function SourceValuesStory() {
         abort: () => {},
       }),
     },
-  } as unknown as GraphEditing;
+  } as unknown as SourceValueEditing;
 
   return (
     <SidebarProvider className="min-h-screen w-full bg-background">

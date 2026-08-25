@@ -15,7 +15,7 @@ import {
   Trash2,
 } from "@mechane/design-system";
 import { DEFAULT_FLOW_COLOR, FLOW_COLORS, isFlowColor } from "@mechane/domain";
-import type { GraphNode, Position } from "@mechane/domain";
+import type { FlowColor, GraphNode, Position } from "@mechane/domain";
 import {
   Background,
   BackgroundVariant,
@@ -35,7 +35,7 @@ import type {
 } from "@xyflow/react";
 import type { MutableRefObject } from "react";
 
-import type { GraphEditing } from "./commands/use-graph-editing";
+import type { GraphConnectionEditing, GraphCreationEditing } from "./commands/use-graph-editing";
 import { FLOW_NODE_TYPE, PLACEHOLDER_NODE_TYPE } from "./graph/graph-to-flow";
 import type { ShowFlowEdge, ShowFlowNode } from "./graph/graph-to-flow";
 import { ShowEdgeRoutingProvider } from "./graph/ShowEdgeRoutingProvider";
@@ -70,7 +70,9 @@ export interface ShowGraphContextMenuProps {
   beginDrag: OnNodeDrag<ShowFlowNode>;
   dragTo(moved: ShowFlowNode[]): void;
   endDrag: OnNodeDrag<ShowFlowNode>;
-  editing: GraphEditing;
+  creation: GraphCreationEditing;
+  connections: GraphConnectionEditing;
+  setNodeColor(nodeId: string, color: FlowColor): void;
   onConnect(connection: Connection): void;
   isValidConnection(connection: Connection | ShowFlowEdge): boolean;
   jumpToMinimapPoint(event: React.MouseEvent, position: XYPosition): void;
@@ -95,11 +97,14 @@ export function ShowGraphContextMenu({
   beginDrag,
   dragTo,
   endDrag,
-  editing,
+  creation,
+  connections,
+  setNodeColor,
   onConnect,
   isValidConnection,
   jumpToMinimapPoint,
 }: ShowGraphContextMenuProps) {
+  const editing = { ...creation, ...connections, setNodeColor };
   const selectedNode = selectedNodes.length === 1 ? (selectedNodes[0] ?? null) : null;
 
   return (

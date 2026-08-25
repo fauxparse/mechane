@@ -15,11 +15,11 @@ import { CommandPalette } from "./commands/CommandPalette";
 import type { PaletteCommand } from "./commands/palette-commands";
 import { GraphInspector } from "./graph/inspector/GraphInspector";
 import type { GraphNode } from "@mechane/domain";
-import type { GraphEditing } from "./commands/use-graph-editing";
+import type { GraphInspectorEditing } from "./commands/use-graph-editing";
 
 export interface ShowGraphEditorOverlaysProps {
   selectedNodes: GraphNode[];
-  editing: GraphEditing;
+  inspector: GraphInspectorEditing;
   message: string | null;
   paletteOpen: boolean;
   setPaletteOpen: Dispatch<SetStateAction<boolean>>;
@@ -31,7 +31,7 @@ export interface ShowGraphEditorOverlaysProps {
 
 export function ShowGraphEditorOverlays({
   selectedNodes,
-  editing,
+  inspector,
   message,
   paletteOpen,
   setPaletteOpen,
@@ -43,7 +43,7 @@ export function ShowGraphEditorOverlays({
   return (
     <>
       <EditorSlot name="right">
-        <GraphInspector selected={selectedNodes} editing={editing} />
+        <GraphInspector selected={selectedNodes} editing={inspector} />
       </EditorSlot>
 
       {message ? (

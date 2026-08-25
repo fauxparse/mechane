@@ -1,6 +1,6 @@
 import { cn, SidebarHeader, SquareDashedIcon } from "@mechane/design-system";
 import type { GraphNode } from "@mechane/domain";
-import type { GraphEditing } from "@show-editor/commands/use-graph-editing";
+import type { GraphInspectorEditing } from "@show-editor/commands/use-graph-editing";
 import { pluralize } from "../../../../utils/pluralize";
 import { NODE_KIND_META, nodeIcon } from "../node-kinds";
 import { SingleNode } from "./SingleNode";
@@ -8,7 +8,7 @@ import { SingleNode } from "./SingleNode";
 export interface GraphInspectorProps {
   /** The selected nodes, in graph order. */
   selected: GraphNode[];
-  editing: GraphEditing;
+  editing: GraphInspectorEditing;
   className?: string;
 }
 

@@ -11,11 +11,11 @@ import {
   ToggleGroupItem,
 } from "@mechane/design-system";
 import { FLOW_COLORS, FlowColor, type GraphNode } from "@mechane/domain";
-import type { GraphEditing } from "../../commands/use-graph-editing";
+import type { GraphInspectorEditing } from "../../commands/use-graph-editing";
 import { Variables } from "./Variables";
 import { SourceValues } from "./SourceValues";
 
-export function SingleNode({ node, editing }: { node: GraphNode; editing: GraphEditing }) {
+export function SingleNode({ node, editing }: { node: GraphNode; editing: GraphInspectorEditing }) {
   return (
     <SidebarContent className="p-0">
       <Section label="color">

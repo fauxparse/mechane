@@ -10,6 +10,15 @@ import type { FlowDimensions, ShowFlowEdge, ShowFlowNode } from "../graph/graph-
 import { reconcileEdges, reconcileNodes } from "../graph/reconcile-nodes";
 import { useEditorKeys } from "../keyboard/use-editor-keys";
 import { useGraphEditing } from "./use-graph-editing";
+import { graphInspectorEditing } from "./use-graph-editing";
+import type {
+  GraphCommandEditing,
+  GraphConnectionEditing,
+  GraphCreationEditing,
+  GraphDeletionEditing,
+  GraphGestureEditing,
+  GraphInspectorEditing,
+} from "./use-graph-editing";
 import { useUndoKeys } from "../keyboard/use-undo-keys";
 import { useViewportKeys } from "../keyboard/use-viewport-keys";
 import { useShowGraphEditorActions } from "./use-show-graph-editor-actions";
@@ -21,7 +30,12 @@ import type { PaletteCommand } from "./palette-commands";
 import type { NodeInteraction } from "../graph/node-interaction";
 
 export interface ShowGraphEditorController {
-  editing: ReturnType<typeof useGraphEditing>;
+  command: GraphCommandEditing;
+  gestures: GraphGestureEditing;
+  creation: GraphCreationEditing;
+  deletion: GraphDeletionEditing;
+  connections: GraphConnectionEditing;
+  inspector: GraphInspectorEditing;
   menuPosition: MutableRefObject<Position>;
   selectedNodes: GraphNode[];
   nodes: ShowFlowNode[];
@@ -58,15 +72,16 @@ export function useShowGraphEditorController({
   ref,
 }: ShowGraphEditorProps): ShowGraphEditorController {
   const editing = useGraphEditing(graph, onEdit);
-  const { commands } = editing;
+  const { command, gestures, creation, deletion, connections, variables } = editing;
+  const { commands } = command;
   const [collapsedFlowIds, setCollapsedFlowIds] = useState<Set<string>>(() => new Set());
   const [flowDimensions, setFlowDimensions] = useState<Map<string, FlowDimensions>>(
     () => new Map(),
   );
-  const sourceValues = useMemo(() => defaultSourceValues(editing.graph), [editing.graph]);
+  const sourceValues = useMemo(() => defaultSourceValues(command.graph), [command.graph]);
   const drawn = useMemo(
-    () => graphToFlow(editing.graph, { collapsedFlowIds, flowDimensions, sourceValues }),
-    [collapsedFlowIds, editing.graph, flowDimensions, sourceValues],
+    () => graphToFlow(command.graph, { collapsedFlowIds, flowDimensions, sourceValues }),
+    [collapsedFlowIds, command.graph, flowDimensions, sourceValues],
   );
   const toggleCollapse = useCallback((flowId: string) => {
     setCollapsedFlowIds((current) => {
@@ -186,12 +201,15 @@ export function useShowGraphEditorController({
   }, [edges]);
   const selectedNodeIdSet = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds]);
   const selectedNodes = useMemo(
-    () => editing.graph.nodes.filter((node) => selectedNodeIdSet.has(node.id)),
-    [editing.graph.nodes, selectedNodeIdSet],
+    () => command.graph.nodes.filter((node) => selectedNodeIdSet.has(node.id)),
+    [command.graph.nodes, selectedNodeIdSet],
   );
   const actions = useShowGraphEditorActions({
-    editing,
+    graph: command.graph,
     commands,
+    creation,
+    deletion,
+    connections,
     selectedNodes,
     selectedNodeIds,
     selectedEdgeIds,
@@ -213,18 +231,18 @@ export function useShowGraphEditorController({
     setEdges((previous) => previous.map((edge) => ({ ...edge, selected: true })));
   }, [setEdges, setNodes]);
   const deselect = useCallback(() => {
-    if (editing.renaming) {
-      editing.cancelRename();
+    if (gestures.renaming) {
+      gestures.cancelRename();
       return;
     }
     setNodes((previous) => previous.map((node) => ({ ...node, selected: false })));
     setEdges((previous) => previous.map((edge) => ({ ...edge, selected: false })));
-  }, [editing, setEdges, setNodes]);
+  }, [gestures, setEdges, setNodes]);
   const renameSelected = useCallback(() => {
     const [only] = selectedNodeIds;
     if (!only || selectedNodeIds.length > 1) return;
-    editing.beginRename(only);
-  }, [editing, selectedNodeIds]);
+    gestures.beginRename(only);
+  }, [gestures, selectedNodeIds]);
   useEditorKeys(
     useMemo(
       () => ({
@@ -252,24 +270,26 @@ export function useShowGraphEditorController({
     fitViewOptions,
     zoomToSelection: actions.zoomToSelection,
     renameSelected,
-    editing,
+    moveIntoFlow: editing.moveIntoFlow,
+    moveOutOfFlow: editing.moveOutOfFlow,
+    addVariable: variables.addVariable,
     say,
     requestDelete: actions.requestDelete,
     nodes,
   });
   const interaction = useMemo<NodeInteraction>(
     () => ({
-      renaming: editing.renaming,
-      beginRename: editing.beginRename,
-      renameTo: editing.renameTo,
-      commitRename: editing.commitRename,
-      cancelRename: editing.cancelRename,
-      connecting: editing.connecting,
-      targets: editing.targets,
+      renaming: gestures.renaming,
+      beginRename: gestures.beginRename,
+      renameTo: gestures.renameTo,
+      commitRename: gestures.commitRename,
+      cancelRename: gestures.cancelRename,
+      connecting: connections.connecting,
+      targets: connections.targets,
       toggleCollapse,
       resizeFlow,
     }),
-    [editing, resizeFlow, toggleCollapse],
+    [connections, gestures, resizeFlow, toggleCollapse],
   );
 
   useImperativeHandle(
@@ -278,13 +298,21 @@ export function useShowGraphEditorController({
       fitToNodes: actions.fitToNodes,
       zoomToSelection: actions.zoomToSelection,
       fitToGraph: () => fitView(fitViewOptions),
-      applyAmendments: editing.amend,
+      applyAmendments: command.amend,
     }),
-    [actions.fitToNodes, actions.zoomToSelection, editing.amend, fitView, fitViewOptions],
+    [actions.fitToNodes, actions.zoomToSelection, command.amend, fitView, fitViewOptions],
   );
 
   return {
-    editing,
+    command,
+    gestures,
+    creation,
+    deletion,
+    connections,
+    inspector: graphInspectorEditing(command.graph, gestures, variables, editing.sourceValues, {
+      setNodeColor: editing.setNodeColor,
+      setDevicePerConnection: editing.setDevicePerConnection,
+    }),
     menuPosition,
     selectedNodes,
     fitView,

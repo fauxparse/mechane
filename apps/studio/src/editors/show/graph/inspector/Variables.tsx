@@ -18,12 +18,12 @@ import {
 } from "@mechane/design-system";
 import type { SceneNode, SceneVariable, Shape, Type } from "@mechane/domain";
 import { useCallback } from "react";
-import type { GraphEditing } from "../../commands/use-graph-editing";
+import type { VariableEditing } from "../../commands/use-graph-editing";
 import { reorderVariableIndices } from "./variable-order";
 
 type VariablesProps = {
   node: SceneNode;
-  editing: GraphEditing;
+  editing: VariableEditing;
   shapes?: readonly Shape[];
 };
 

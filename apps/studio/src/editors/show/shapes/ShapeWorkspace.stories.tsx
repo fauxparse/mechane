@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { ShowGraph, Shape } from "@mechane/domain";
 
 import { ShapeWorkspace } from "./ShapeWorkspace";
-import type { GraphEditing } from "../commands/use-graph-editing";
+import type { ShapeEditing } from "../commands/use-graph-editing";
 
 const SHAPES: Shape[] = [
   {
@@ -44,7 +44,7 @@ const editing = {
   setShapeFieldDefault: noop,
   reorderShapeFields: noop,
   removeShapeField: noop,
-} as unknown as GraphEditing;
+} as unknown as ShapeEditing;
 
 const meta = {
   title: "studio/ShapeWorkspace",
