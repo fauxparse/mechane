@@ -4,6 +4,7 @@
 export * from "./connect";
 export * from "./canvas";
 export * from "./graph";
+export * from "./graph-facts";
 export * from "./id";
 export * from "./ownership";
 export * from "./publish";

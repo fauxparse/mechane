@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { FlowColor } from "@mechane/domain";
+import type { EdgeKind, FlowColor, GraphEdge, GraphNode, NodeKind, Type } from "@mechane/domain";
 
 import {
   FLOW_HEADER_HEIGHT,
@@ -14,57 +14,93 @@ import {
 } from "./graph-to-flow";
 import { handleFor } from "./handle-ids";
 
-// These fixtures exercise the mapper's structural wire input rather than
-// the generated GraphQL result union.
+// These fixtures exercise vendor projection and geometry using domain graph
+// nodes and edges; reusable graph facts have their own domain test suite.
 type ShowGraphNode = {
   id: string;
-  kind: string;
+  kind: NodeKind;
   name: string;
   parentId: string | null;
   defaultSceneId: string | null;
   color?: FlowColor | null;
   position: { x: number; y: number };
-  variables: { id: string; name: string; type?: unknown }[];
-  type?: unknown;
-
+  variables: { id: string; name: string; type?: Type | null }[];
+  type?: Type | null;
   perConnection?: boolean;
   pairingCode?: string | null;
 };
-function node(overrides: Partial<ShowGraphNode> & Pick<ShowGraphNode, "id" | "kind">) {
-  return {
-    name: overrides.id,
-    parentId: null,
-    defaultSceneId: null,
-    position: { x: 0, y: 0 },
-    variables: [],
-    ...overrides,
-  } as ShowGraphNode;
+
+function node(overrides: Partial<ShowGraphNode> & Pick<ShowGraphNode, "id" | "kind">): GraphNode {
+  const base = {
+    id: overrides.id,
+    name: overrides.name ?? overrides.id,
+    parentId: overrides.parentId ?? null,
+    position: overrides.position ?? { x: 0, y: 0 },
+    ...(overrides.color ? { color: overrides.color } : {}),
+  };
+  switch (overrides.kind) {
+    case "scene":
+      return { ...base, kind: "scene", variables: overrides.variables ?? [] };
+    case "flow":
+      return {
+        ...base,
+        kind: "flow",
+        parentId: null,
+        defaultSceneId: overrides.defaultSceneId ?? null,
+      };
+    case "source":
+      return { ...base, kind: "source", type: overrides.type ?? "text" };
+    case "transformer":
+      return { ...base, kind: "transformer", type: overrides.type ?? null };
+    case "device":
+      return {
+        ...base,
+        kind: "device",
+        parentId: null,
+        perConnection: overrides.perConnection ?? false,
+        pairingCode: overrides.pairingCode ?? null,
+      };
+  }
 }
 
 type ShowGraphEdge = {
   id: string;
-  kind: string;
+  kind: EdgeKind;
   sourceId: string;
   targetId: string;
   sourcePath: string[];
   targetPath: string[];
-  targetVariableId: string | null;
-  cueId: string | null;
-  actionId: string | null;
-  fieldMapping?: unknown;
+  targetVariableId?: string | null;
+  cueId?: string | null;
+  actionId?: string | null;
+  fieldMapping?: Record<string, string>;
 };
 
-function edge(overrides: Partial<ShowGraphEdge> & Pick<ShowGraphEdge, "id" | "kind">) {
-  return {
-    sourceId: "a",
-    targetId: "b",
-    sourcePath: [],
-    targetPath: [],
-    targetVariableId: null,
-    cueId: null,
-    actionId: null,
-    ...overrides,
-  } as ShowGraphEdge;
+function edge(overrides: Partial<ShowGraphEdge> & Pick<ShowGraphEdge, "id" | "kind">): GraphEdge {
+  const base = {
+    id: overrides.id,
+    sourceId: overrides.sourceId ?? "a",
+    targetId: overrides.targetId ?? "b",
+    sourcePath: overrides.sourcePath ?? [],
+    targetPath: overrides.targetPath ?? [],
+  };
+  switch (overrides.kind) {
+    case "wiring":
+      return {
+        ...base,
+        kind: "wiring",
+        ...(overrides.fieldMapping ? { fieldMapping: overrides.fieldMapping } : {}),
+      };
+    case "navigate":
+      return {
+        ...base,
+        kind: "navigate",
+        cueId: overrides.cueId ?? null,
+        actionId: overrides.actionId ?? null,
+      };
+    case "device":
+      return { ...base, kind: "device" };
+  }
 }
 
 describe("graphToFlow", () => {
@@ -270,11 +306,22 @@ describe("graphToFlow", () => {
       nodes: [
         node({ id: "flow_1", kind: "flow", color: "purple" }),
         node({ id: "source_1", kind: "source", parentId: "flow_1" }),
-        node({ id: "scene_1", kind: "scene", parentId: "flow_1" }),
+        node({
+          id: "scene_1",
+          kind: "scene",
+          parentId: "flow_1",
+          variables: [{ id: "variable_1", name: "Value", type: "text" }],
+        }),
         node({ id: "device_1", kind: "device" }),
       ],
       edges: [
-        edge({ id: "inside", kind: "wiring", sourceId: "source_1", targetId: "scene_1" }),
+        edge({
+          id: "inside",
+          kind: "wiring",
+          sourceId: "source_1",
+          targetId: "scene_1",
+          targetPath: ["variable_1"],
+        }),
         edge({ id: "outside", kind: "device", sourceId: "flow_1", targetId: "device_1" }),
       ],
     });
@@ -338,7 +385,16 @@ describe("graphToFlow", () => {
           node({ id: "device_1", kind: "device" }),
           node({ id: "device_2", kind: "device" }),
         ],
-        edges: [{ id: "edge_1", kind: "device", sourceId: "flow_1", targetId: "device_1" }],
+        edges: [
+          {
+            id: "edge_1",
+            kind: "device",
+            sourceId: "flow_1",
+            targetId: "device_1",
+            sourcePath: [],
+            targetPath: [],
+          },
+        ],
       });
       const byId = new Map(nodes.map((flowNode) => [flowNode.id, flowNode]));
       expect(byId.get("device_1")?.data.driven).toBe(true);
@@ -462,12 +518,6 @@ describe("graphToFlow", () => {
       expect(expanded?.width).toBeGreaterThan(manual.width);
       expect(expanded?.height).toBeGreaterThan(manual.height);
     });
-
-    it("refuses to render a kind it doesn't know", () => {
-      expect(() =>
-        graphToFlow({ nodes: [node({ id: "x_1", kind: "sprocket" })], edges: [] }),
-      ).toThrow(/Unknown Show graph node kind "sprocket"/);
-    });
   });
 
   describe("edges", () => {
@@ -571,13 +621,21 @@ describe("graphToFlow", () => {
     // a handle — but it has to survive the trip, or #35 has to re-derive it.
     it("carries a wiring edge's target Variable", () => {
       const { edges } = graphToFlow({
-        nodes: [],
+        nodes: [
+          node({ id: "source_1", kind: "source" }),
+          node({
+            id: "scene_1",
+            kind: "scene",
+            variables: [{ id: "variable_1", name: "Value", type: "text" }],
+          }),
+        ],
         edges: [
           edge({
             id: "e1",
             kind: "wiring",
+            sourceId: "source_1",
+            targetId: "scene_1",
             targetPath: ["variable_1", "name"],
-            targetVariableId: "variable_1",
           }),
         ],
       });
