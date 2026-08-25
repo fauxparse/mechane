@@ -15,6 +15,7 @@ export * from "./shapes";
 export * from "./device-qr";
 export * from "./property-values";
 export * from "./canvas-properties";
+export * from "./canvas-property-resolution";
 export * from "./theme-settings";
 
 export * from "./images";

@@ -20,6 +20,8 @@ export interface CanvasRendererProps {
   onTextKeyDown?(elementId: string, event: ReactKeyboardEvent<HTMLDivElement>): void;
 }
 
-export function renderCanvas(canvas: Canvas | FrameElement | CanvasRendererProps): ReactNode {
+export function renderCanvas(
+  canvas: CanvasRendererProps["canvas"] | CanvasRendererProps,
+): ReactNode {
   return createElement(CanvasRenderer, "canvas" in canvas ? canvas : { canvas });
 }

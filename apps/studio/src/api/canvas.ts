@@ -1,8 +1,7 @@
-import type { Canvas, Element, ShowId } from "@mechane/domain";
+import type { Canvas, Element, ResolvedCanvas, ShowId } from "@mechane/domain";
 import { GetShowCanvasesQuery, graphqlRequest } from "@mechane/graphql-schema";
 import type { ShowCanvas } from "@mechane/graphql-schema";
 import { useQuery } from "@tanstack/react-query";
-
 import { GRAPHQL_ENDPOINT } from "./client";
 
 export interface CanvasArtboardDocument {
@@ -13,7 +12,7 @@ export interface CanvasArtboardDocument {
   /** Persisted values, including PropertyConnection objects, used by the Inspector. */
   readonly canvas: Canvas;
   /** Materialised values used only for painting the Canvas. */
-  readonly renderCanvas?: Canvas;
+  readonly renderCanvas?: ResolvedCanvas;
   readonly position: { x: number; y: number };
 }
 

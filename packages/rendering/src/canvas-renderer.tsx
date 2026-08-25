@@ -16,20 +16,21 @@ import type {
   FrameElement,
   LayoutAlignment,
   PropertyConnection,
+  ResolvedCanvasValue,
+  ResolvedElement,
   Rotation,
   SizeValue,
 } from "@mechane/domain";
-import { hasCornerRadius, isPropertyConnection } from "@mechane/domain";
+import { isPropertyConnection } from "@mechane/domain";
 import type { CanvasRendererProps } from "./canvas-render";
 function literal<T>(value: T | PropertyConnection | undefined): T | undefined {
   return isPropertyConnection(value) ? undefined : (value as T | undefined);
 }
-
 interface RenderElementOptions {
-  element: Element;
+  element: ResolvedElement;
   root?: boolean;
   sceneRoot?: boolean;
-  parent?: FrameElement;
+  parent?: Extract<ResolvedElement, { type: "frame" }>;
   editingElementId?: string | null;
   imageLoading?: "eager" | "lazy";
   onImageError?: (elementId: string, url: string, event: unknown) => void;
@@ -37,28 +38,31 @@ interface RenderElementOptions {
   onTextKeyDown?: (elementId: string, event: ReactKeyboardEvent<HTMLDivElement>) => void;
 }
 
-function sizeValue(value: SizeValue | PropertyConnection | undefined): string | undefined {
+function sizeValue(
+  value: ResolvedCanvasValue<SizeValue> | PropertyConnection | undefined,
+): string | undefined {
   if (value === undefined || isPropertyConnection(value)) return undefined;
   if (typeof value === "number") return `${value}px`;
   return `${value.value}${value.unit}`;
 }
-
-function sizeFor(element: Element, axis: "width" | "height"): AxisSize | undefined {
+function sizeFor(
+  element: ResolvedElement,
+  axis: "width" | "height",
+): ResolvedCanvasValue<AxisSize> | undefined {
   return element.sizing?.[axis];
 }
-
 function valueFor(
-  element: Element,
+  element: ResolvedElement,
   axis: "minWidth" | "maxWidth" | "minHeight" | "maxHeight",
-): SizeValue | undefined {
+): ResolvedCanvasValue<SizeValue> | undefined {
   return element.sizing?.[axis];
 }
 
-function rotationFor(element: Element): Rotation {
+function rotationFor(element: ResolvedElement): Rotation {
   return element.layout?.rotation ?? element.rotation ?? 0;
 }
 
-function ratioFor(element: Element): AspectRatioLock | undefined {
+function ratioFor(element: ResolvedElement): AspectRatioLock | undefined {
   return element.layout?.aspectRatio ?? element.aspectRatio;
 }
 
@@ -69,7 +73,7 @@ function writingModeFor(rotation: Rotation): CSSProperties["writingMode"] {
 }
 
 function dimensionFor(
-  element: Element,
+  element: ResolvedElement,
   axis: "width" | "height",
   rotation: Rotation,
 ): string | undefined {
@@ -85,7 +89,7 @@ function dimensionFor(
   return sizeValue(authored?.value);
 }
 function constraintFor(
-  element: Element,
+  element: ResolvedElement,
   axis: "minWidth" | "maxWidth" | "minHeight" | "maxHeight",
   rotation: Rotation,
 ): string | undefined {
@@ -103,7 +107,6 @@ function paddingValue(padding: FrameElement["padding"]): string | undefined {
     padding.left ?? 0
   }px`;
 }
-
 function cornerRadiusValue(radius: CornerRadiusElement["cornerRadius"]): string | undefined {
   const value = literal(radius);
   if (value === undefined) return undefined;
@@ -139,7 +142,9 @@ function strokeStyles(stroke: Element["stroke"]): CSSProperties {
   };
 }
 
-function sortedChildren(children: readonly Element[] | undefined): readonly Element[] {
+function sortedChildren(
+  children: readonly ResolvedElement[] | undefined,
+): readonly ResolvedElement[] {
   if (!children || children.length < 2) return children ?? [];
   return [...children].sort((a, b) => (a.rank ?? "").localeCompare(b.rank ?? ""));
 }
@@ -178,7 +183,7 @@ function anchorStyles(anchor: AnchorPosition | undefined): CSSProperties {
     bottom: vertical === "bottom" ? `${anchor.offsetY ?? 0}px` : undefined,
   };
 }
-function elementStyle(element: Element, root: boolean, sceneRoot: boolean): CSSProperties {
+function elementStyle(element: ResolvedElement, root: boolean, sceneRoot: boolean): CSSProperties {
   const rotation = root ? 0 : rotationFor(element);
   const ratio = ratioFor(element);
   const physicalRatio =
@@ -209,7 +214,7 @@ function elementStyle(element: Element, root: boolean, sceneRoot: boolean): CSSP
   return style;
 }
 
-function frameStyle(frame: FrameElement): CSSProperties {
+function frameStyle(frame: Extract<ResolvedElement, { type: "frame" }>): CSSProperties {
   const auto = frame.layoutMode === "auto" || frame.autoLayout === true;
   if (auto) {
     const automaticGap = frame.gap === "auto";
@@ -233,12 +238,12 @@ function frameStyle(frame: FrameElement): CSSProperties {
   };
 }
 
-function contentFor(element: Element): ReactNode {
+function contentFor(element: ResolvedElement): ReactNode {
   if (element.type !== "text") return undefined;
   return literal(element.content) ?? literal(element.text) ?? literal(element.value) ?? "";
 }
 
-function typeStyle(element: Element): CSSProperties {
+function typeStyle(element: ResolvedElement): CSSProperties {
   if (element.type === "image") {
     return {
       borderRadius: cornerRadiusValue(element.cornerRadius),
@@ -246,7 +251,7 @@ function typeStyle(element: Element): CSSProperties {
       objectPosition: literal(element.objectPosition) ?? "center",
     };
   }
-  if (hasCornerRadius(element)) {
+  if (element.type === "rect" || element.type === "frame") {
     return { borderRadius: cornerRadiusValue(element.cornerRadius) };
   }
   if (element.type === "ellipse") return { borderRadius: "50%" };
@@ -455,7 +460,7 @@ export const CanvasRenderer = memo(function CanvasRenderer({
   onTextDoubleClick,
   onTextKeyDown,
 }: CanvasRendererProps): ReactNode {
-  const root = "root" in canvas ? canvas.root : canvas;
+  const root = ("root" in canvas ? canvas.root : canvas) as ResolvedElement;
   const sceneRoot = "root" in canvas && canvas.kind === "scene";
   return createElement(
     "div",
