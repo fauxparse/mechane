@@ -161,8 +161,15 @@ export interface ConnectionIds {
  * The small subset of graph edits a connection can plan. The shape is
  * intentionally the same as `@mechane/commands`' GraphEdit union without
  * making the domain depend on the command layer.
+ *
+ * A plan may also include a node that the editor is creating at the end of
+ * the drag. Validation then sees the new endpoint before the edge is built.
  */
 export type ConnectionPlanEdit =
+  | {
+      readonly type: "graph.addNode";
+      readonly node: GraphNode;
+    }
   | {
       readonly type: "graph.addSceneVariable";
       readonly sceneId: string;
@@ -194,6 +201,8 @@ function nextVariableName(variables: readonly SceneVariable[]): string {
 
 function applyConnectionPlanEdit(graph: ShowGraph, edit: ConnectionPlanEdit): ShowGraph {
   switch (edit.type) {
+    case "graph.addNode":
+      return { ...graph, nodes: [...graph.nodes, { ...edit.node }] };
     case "graph.addSceneVariable":
       return {
         ...graph,
@@ -248,32 +257,42 @@ export function planConnection(
   graph: ShowGraph,
   request: ConnectionRequest,
   ids: ConnectionIds,
+  options: { readonly addNode?: GraphNode } = {},
 ): ConnectionPlan {
+  let planningGraph = graph;
+  const edits: ConnectionPlanEdit[] = [];
+  if (options.addNode) {
+    if (options.addNode.id !== request.targetId) {
+      return { error: "That connection target doesn't match the node being created." };
+    }
+    const nodeEdit: ConnectionPlanEdit = { type: "graph.addNode", node: { ...options.addNode } };
+    edits.push(nodeEdit);
+    planningGraph = applyConnectionPlanEdit(planningGraph, nodeEdit);
+  }
+
   if (request.sourceId === request.targetId) {
-    const node = findNode(graph, request.sourceId);
+    const node = findNode(planningGraph, request.sourceId);
     // A Scene may Navigate to itself (a "retry" transition, #24); nothing
     // else has a meaningful self-edge.
     if (!node || node.kind !== "scene") return { error: "A node can't connect to itself." };
   }
-  const producer = findNode(graph, request.sourceId);
-  const consumer = findNode(graph, request.targetId);
+  const producer = findNode(planningGraph, request.sourceId);
+  const consumer = findNode(planningGraph, request.targetId);
   if (!producer || !consumer) return { error: "That node isn't in this Show." };
 
-  const kind = connectionKindFor(graph, request);
+  const kind = connectionKindFor(planningGraph, request);
   if (kind === null) {
     return { error: `A ${producer.kind} can't connect to a ${consumer.kind}.` };
   }
 
-  let planningGraph = graph;
   let targetVariableId = request.targetVariableId;
-  const edits: ConnectionPlanEdit[] = [];
   if (
     kind === "wiring" &&
     consumer.kind === "scene" &&
     request.targetHandle === SCENE_INPUT_HANDLE &&
     !targetVariableId
   ) {
-    const type = implicitVariableType(graph, request);
+    const type = implicitVariableType(planningGraph, request);
     if (!type) return { error: "The source must have a Type to create a Variable." };
     const variable: SceneVariable = {
       id: ids.variableId,
@@ -289,7 +308,6 @@ export function planConnection(
     planningGraph = applyConnectionPlanEdit(planningGraph, variableEdit);
     targetVariableId = variable.id;
   }
-
   if (kind === "wiring" && consumer.kind === "scene" && !targetVariableId) {
     return { error: "Drop onto one of the Scene's Variables." };
   }

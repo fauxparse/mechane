@@ -405,6 +405,58 @@ describe("canConnect", () => {
       ],
     });
   });
+  it("plans a connection to an editor-created node before validation", () => {
+    const created: SourceNode = {
+      id: "source_created",
+      kind: "source",
+      name: "Created",
+      position: at,
+      parentId: null,
+      type: "number",
+    };
+    expect(
+      planConnection(
+        GRAPH,
+        { sourceId: TALLY.id, targetId: created.id },
+        { edgeId: "edge_created", variableId: "variable_unused" },
+        { addNode: created },
+      ),
+    ).toEqual({
+      edits: [
+        { type: "graph.addNode", node: created },
+        {
+          type: "graph.addEdge",
+          edge: {
+            id: "edge_created",
+            kind: "wiring",
+            sourceId: TALLY.id,
+            targetId: created.id,
+            sourcePath: [],
+            targetPath: [],
+          },
+        },
+      ],
+    });
+  });
+
+  it("rejects an editor-created node outside a Flow-local Source's Flow", () => {
+    const created: SourceNode = {
+      id: "source_created",
+      kind: "source",
+      name: "Created",
+      position: at,
+      parentId: null,
+      type: "number",
+    };
+    expect(
+      planConnection(
+        GRAPH,
+        { sourceId: LOCAL.id, targetId: created.id },
+        { edgeId: "edge_created", variableId: "variable_unused" },
+        { addNode: created },
+      ),
+    ).toEqual({ error: "A Source inside a Flow can only feed nodes in that Flow." });
+  });
 
   it("still asks for a Variable when a wiring drag lands on the Scene body", () => {
     expect(connectionError(GRAPH, { sourceId: TALLY.id, targetId: VOTING.id })).toBe(
