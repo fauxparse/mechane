@@ -209,6 +209,19 @@ export interface Canvas {
   root: FrameElement;
   kind?: "scene" | "block";
 }
+/**
+ * The detached shape consumed by rendering after Property Connections are resolved.
+ * Keeping this type distinct prevents renderer code from owning graph resolution.
+ */
+export type ResolvedCanvasValue<T> = T extends PropertyConnection
+  ? never
+  : T extends readonly (infer Item)[]
+    ? readonly ResolvedCanvasValue<Item>[]
+    : T extends object
+      ? { [Key in keyof T]: ResolvedCanvasValue<T[Key]> }
+      : T;
+export type ResolvedElement = ResolvedCanvasValue<Element>;
+export type ResolvedCanvas = ResolvedCanvasValue<Canvas>;
 
 export class InvalidCanvasError extends Error {
   constructor(reason: string) {

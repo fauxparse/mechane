@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { CANVAS_PROPERTY_DESCRIPTORS, resolveCanvasProperties } from "./canvas-properties";
+import { CANVAS_PROPERTY_DESCRIPTORS } from "./canvas-properties";
+import { resolveCanvasProperties } from "./canvas-property-resolution";
 import { DEVICE_SOURCE_HANDLES } from "./graph";
 import type { Canvas } from "./canvas";
 import type { SceneVariable, ShowGraph } from "./graph";
@@ -228,6 +229,58 @@ describe("resolveCanvasProperties", () => {
     });
     expect(resolved.root.children?.[0]).toMatchObject({ content: "Alice" });
     expect(resolved.root.children?.[1]).toMatchObject({ content: "12" });
+  });
+  it("resolves sizing connections and deterministic typed defaults", () => {
+    const candidate: Shape = {
+      id: "candidate_defaults",
+      name: "Candidate",
+      fields: [
+        { id: "field_name", name: "Name", type: "text", required: true, defaultValue: "Unknown" },
+        { id: "field_votes", name: "Votes", type: "number", required: true, defaultValue: 7 },
+      ],
+    };
+    const input: Canvas = {
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "sized",
+            type: "text",
+            content: { kind: "variable", variableId: "candidate", fieldPath: ["field_name"] },
+            fontSize: { kind: "variable", variableId: "score" },
+            sizing: {
+              width: { mode: "fixed", value: { kind: "variable", variableId: "score" } },
+            },
+          },
+          {
+            id: "votes",
+            type: "text",
+            content: { kind: "variable", variableId: "candidate", fieldPath: ["field_votes"] },
+          },
+        ],
+      },
+    };
+    const resolved = resolveCanvasProperties(input, {
+      variables: [
+        { id: "score", name: "Score", type: "number" },
+        { id: "candidate", name: "Candidate", type: { kind: "shape", shapeId: candidate.id } },
+      ],
+      shapes: [candidate],
+      values: { score: "invalid", candidate: {} },
+    });
+
+    expect(resolved.root.children?.[0]).toMatchObject({
+      content: "Unknown",
+      fontSize: 0,
+      sizing: { width: { mode: "fixed", value: 0 } },
+    });
+    expect(resolved.root.children?.[1]).toMatchObject({ content: "7" });
+    expect(input.root.children?.[0]).toMatchObject({
+      content: { kind: "variable", variableId: "candidate", fieldPath: ["field_name"] },
+      sizing: { width: { value: { kind: "variable", variableId: "score" } } },
+    });
   });
   it("describes inspector defaults, constraints, and opacity conversion", () => {
     const descriptor = (name: string) =>
