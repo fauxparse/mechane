@@ -447,14 +447,14 @@ async function writeGraph(
       .onConflictDoUpdate({
         target: [graphNodes.graphId, graphNodes.id],
         set: {
-          kind: sql`excluded.${graphNodes.kind}`,
-          name: sql`excluded.${graphNodes.name}`,
-          parentId: sql`excluded.${graphNodes.parentId}`,
-          defaultSceneId: sql`excluded.${graphNodes.defaultSceneId}`,
-          color: sql`excluded.${graphNodes.color}`,
-          type: sql`excluded.${graphNodes.type}`,
-          positionX: sql`excluded.${graphNodes.positionX}`,
-          positionY: sql`excluded.${graphNodes.positionY}`,
+          kind: sql.raw("excluded.kind"),
+          name: sql.raw("excluded.name"),
+          parentId: sql.raw("excluded.parent_id"),
+          defaultSceneId: sql.raw("excluded.default_scene_id"),
+          color: sql.raw("excluded.color"),
+          type: sql.raw("excluded.type"),
+          positionX: sql.raw("excluded.position_x"),
+          positionY: sql.raw("excluded.position_y"),
           updatedAt: new Date(),
         },
       });
