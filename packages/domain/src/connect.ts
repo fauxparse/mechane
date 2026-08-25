@@ -272,9 +272,26 @@ function sourceDefaultForConnection(graph: ShowGraph, request: ConnectionRequest
   if (!request.sourceHandle) return undefined;
   const source = findNode(graph, request.sourceId);
   if (source?.kind !== "source") return undefined;
+  if (request.sourceHandle === "out") {
+    return valueAtPath(defaultSourceValues(graph)[source.id], []);
+  }
+  const field = fieldsForType(source.type, graph.shapes ?? []).find(
+    (candidate) => candidate.id === request.sourceHandle,
+  );
+  const fieldPaths = [[request.sourceHandle], ...(field ? [[field.name]] : [])];
+  const override = graph.sourceFieldDefaults?.find(
+    (candidate) =>
+      candidate.nodeId === source.id &&
+      fieldPaths.some(
+        (path) =>
+          path.length === candidate.fieldPath.length &&
+          path.every((segment, index) => segment === candidate.fieldPath[index]),
+      ),
+  );
+  if (override) return override.value;
   const sourceValue = defaultSourceValues(graph)[source.id];
-  const sourcePath = request.sourceHandle === "out" ? [] : [request.sourceHandle];
-  return valueAtPath(sourceValue, sourcePath);
+  const direct = valueAtPath(sourceValue, [request.sourceHandle]);
+  return direct === undefined && field ? valueAtPath(sourceValue, [field.name]) : direct;
 }
 
 /**
