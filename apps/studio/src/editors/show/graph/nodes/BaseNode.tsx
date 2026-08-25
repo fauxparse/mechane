@@ -12,6 +12,7 @@ import { DEVICE_SOURCE_HANDLES } from "@mechane/domain";
 import { Position, type HandleProps } from "@xyflow/react";
 import { useMemo, type ComponentType, type MouseEventHandler } from "react";
 import type { ShowFlowNode } from "../graph-to-flow";
+import { handleFor } from "../handle-ids";
 import { HANDLE_CLASS } from "../handle-styles";
 import { DummyHandle } from "./DummyHandle";
 import { NodeHeader } from "./NodeHeader";
@@ -111,11 +112,15 @@ export const BaseNode = ({
               <ExternalLinkIcon />
             </Button>
             <HandleComponent
-              id={DEVICE_SOURCE_HANDLES.qrCode}
+              id={handleFor({ kind: "deviceSource", name: DEVICE_SOURCE_HANDLES.qrCode })}
               type="source"
               position={Position.Right}
               className={HANDLE_CLASS}
-              data-connected={connectedHandleIds?.has(DEVICE_SOURCE_HANDLES.qrCode) ?? false}
+              data-connected={
+                connectedHandleIds?.has(
+                  handleFor({ kind: "deviceSource", name: DEVICE_SOURCE_HANDLES.qrCode }),
+                ) ?? false
+              }
               isConnectableEnd={false}
             />
           </div>
@@ -128,12 +133,16 @@ export const BaseNode = ({
               className="absolute right-4 top-1/2 -translate-y-1/2"
             />
             <HandleComponent
-              id={DEVICE_SOURCE_HANDLES.pairingCode}
+              id={handleFor({ kind: "deviceSource", name: DEVICE_SOURCE_HANDLES.pairingCode })}
               type="source"
               position={Position.Right}
               className={HANDLE_CLASS}
               style={{ zIndex: 10 }}
-              data-connected={connectedHandleIds?.has(DEVICE_SOURCE_HANDLES.pairingCode) ?? false}
+              data-connected={
+                connectedHandleIds?.has(
+                  handleFor({ kind: "deviceSource", name: DEVICE_SOURCE_HANDLES.pairingCode }),
+                ) ?? false
+              }
               isConnectableEnd={false}
             />
           </div>
@@ -149,12 +158,14 @@ export const BaseNode = ({
                 className="border-t first:border-t-0 border-(--flow-border)/50 relative grid col-span-full grid-cols-subgrid items-center py-2"
               >
                 <HandleComponent
-                  id={field.id}
+                  id={handleFor({ kind: "field", id: field.id })}
                   type="target"
                   position={Position.Left}
                   className={HANDLE_CLASS}
                   data-targetable={fieldIds?.has(field.id) ?? false}
-                  data-connected={connectedHandleIds?.has(field.id) ?? false}
+                  data-connected={
+                    connectedHandleIds?.has(handleFor({ kind: "field", id: field.id })) ?? false
+                  }
                   isConnectableStart={false}
                   isConnectable={data.kind === "transformer"}
                 />
@@ -172,11 +183,13 @@ export const BaseNode = ({
                   </span>
                 </div>
                 <HandleComponent
-                  id={field.id}
+                  id={handleFor({ kind: "field", id: field.id })}
                   type="source"
                   position={Position.Right}
                   className={HANDLE_CLASS}
-                  data-connected={connectedHandleIds?.has(field.id) ?? false}
+                  data-connected={
+                    connectedHandleIds?.has(handleFor({ kind: "field", id: field.id })) ?? false
+                  }
                   isConnectableEnd={false}
                 />
               </div>
@@ -194,12 +207,15 @@ export const BaseNode = ({
                 className="border-t first:border-t-0 border-(--flow-border)/50 relative grid col-span-full grid-cols-subgrid items-center py-2"
               >
                 <HandleComponent
-                  id={variable.id}
+                  id={handleFor({ kind: "variable", id: variable.id })}
                   type="target"
                   position={Position.Left}
                   className={HANDLE_CLASS}
                   data-targetable={variableIds?.has(variable.id) ?? false}
-                  data-connected={connectedHandleIds?.has(variable.id) ?? false}
+                  data-connected={
+                    connectedHandleIds?.has(handleFor({ kind: "variable", id: variable.id })) ??
+                    false
+                  }
                   isConnectableStart={false}
                 />
                 <Icon className="size-4 inline-block justify-self-center ml-2" />

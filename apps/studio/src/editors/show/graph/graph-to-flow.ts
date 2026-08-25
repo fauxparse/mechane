@@ -50,6 +50,7 @@ import type {
 } from "@mechane/domain";
 import type { Edge, Node } from "@xyflow/react";
 
+import { handleFor } from "./handle-ids";
 /**
  * A node as this mapper needs it described. Structural rather than named, so
  * the domain's discriminated union and other graph fixtures can use the same
@@ -226,14 +227,9 @@ export type ShowEdgeData = {
 };
 
 /**
- * Handle ids. A wiring edge lands on the Variable's *own* handle (#35), which
- * is why the Variable id is the handle id — React Flow addresses handles by
- * string, and the Variable already has a stable one. The two constants below
- * are for everything that isn't a Variable.
+ * React Flow handle ids are encoded by ./handle-ids. Keeping that boundary
+ * here means graph mapping never needs to know how the ids are represented.
  */
-export const OUTPUT_HANDLE = "out";
-export const INPUT_HANDLE = "in";
-
 export type ShowFlowNode = Node<ShowNodeData>;
 export type ShowFlowEdge = Edge<ShowEdgeData>;
 
@@ -559,23 +555,24 @@ function toFlowEdge(
     !areTypesCompatible(sourceType, targetType, shapes)
       ? "Incompatible types"
       : null;
+  const sourcePath = edge.sourcePath?.[0];
   return {
     id: edge.id,
     type: SMART_SMOOTH_STEP_EDGE_TYPE,
     source: edge.sourceId,
     target: edge.targetId,
     sourceHandle:
-      source?.kind === "device" && edge.sourcePath?.[0]
-        ? edge.sourcePath[0]
-        : edge.sourcePath && edge.sourcePath.length > 0
-          ? edge.sourcePath[0]
-          : OUTPUT_HANDLE,
+      source?.kind === "device" && sourcePath
+        ? handleFor({ kind: "deviceSource", name: sourcePath })
+        : sourcePath
+          ? handleFor({ kind: "field", id: sourcePath })
+          : handleFor({ kind: "output" }),
     targetHandle:
       edge.kind === "wiring" && target?.kind === "scene" && targetVariableId
-        ? targetVariableId
+        ? handleFor({ kind: "variable", id: targetVariableId })
         : edge.kind === "wiring" && target?.kind === "transformer" && edge.targetPath?.[0]
-          ? edge.targetPath[0]
-          : INPUT_HANDLE,
+          ? handleFor({ kind: "field", id: edge.targetPath[0] })
+          : handleFor({ kind: "input" }),
     data: {
       kind: edge.kind,
       color,
@@ -694,8 +691,10 @@ export function graphToFlow(
         const mapped = toFlowEdge(edge, graph.nodes, graph.shapes);
         return {
           ...mapped,
-          ...(sourceFlow ? { source: sourceFlow, sourceHandle: OUTPUT_HANDLE } : {}),
-          ...(targetFlow ? { target: targetFlow, targetHandle: INPUT_HANDLE } : {}),
+          ...(sourceFlow
+            ? { source: sourceFlow, sourceHandle: handleFor({ kind: "output" }) }
+            : {}),
+          ...(targetFlow ? { target: targetFlow, targetHandle: handleFor({ kind: "input" }) } : {}),
         };
       })
       .filter((edge): edge is ShowFlowEdge => edge !== null),
