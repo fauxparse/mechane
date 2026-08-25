@@ -1,86 +1,30 @@
-// Maps a Show graph as the API returns it (issue #38) onto React Flow's
-// node and edge shapes (issue #40).
+// React Flow projection for the Show graph. React Flow types stop here; the
+// graph and its derived facts stay in @mechane/domain.
 //
-// This is the whole of the vendor boundary for graph *shape*: React Flow's
-// `Node`/`Edge` types stop here, and everything upstream of this module
-// speaks the domain's language. That matters more than usual because two of
-// the mappings are not one-to-one:
-//
-//   - **Containment.** The domain says "this node's parent is that Flow"
-//     (`parentId`, #29). React Flow says "this node is a child of that
-//     node, and its position is relative to it" (also `parentId` — spelled
-//     `parentNode` before v12, so the shared name is coincidence). Same fact,
-//     and the domain's stored positions for Flow-local nodes are already
-//     relative to their Flow — but React Flow additionally needs the parent
-//     to be *sized*, and to appear before its children in the array. Both
-//     are handled below; neither is a thing the domain should know.
-//
-//   - **Wiring targets.** A wiring edge lands on a Scene *Variable*
-//     (`targetPath[0]`), which will be a per-Variable handle once nodes get
-//     their real visual language (#35). The placeholder node has one input
-//     handle, so the Variable is carried in `data` and not yet addressed as
-//     a handle — the edge is drawn to the node, not to the row.
-//
-// Node bodies are deliberately placeholders: issue #40 is about the camera,
-// and the visual language is #35's.
-//
-// The input types are structural rather than named (see `MappableNode`),
-// because the editor now holds the *domain* graph so that commands can act on
-// it (#41), while a freshly fetched graph is still the wire shape. Both draw
-// the same way, and neither has to be converted just to be rendered.
-import {
-  areTypesCompatible,
-  DEFAULT_FLOW_COLOR,
-  deviceSourceType,
-  fieldsForType,
-  findCoercion,
-  isEdgeKind,
-  isNodeKind,
-  typeAtPath,
-  valueAtPath,
-} from "@mechane/domain";
+// This adapter owns only vendor-shaped nodes and edges, containment ordering,
+// geometry, handles, and collapsed Flow projection. The domain fact seam owns
+// inherited colors, wired Variables, driven Devices, entry Scenes, and type
+// compatibility so other Show Editor surfaces can reuse those answers.
+import { deriveShowGraphFacts, fieldsForType, valueAtPath } from "@mechane/domain";
 import type {
   EdgeKind,
   FlowColor,
-  NodeKind,
+  GraphEdge,
+  GraphNode,
   Position,
-  PrimitiveType,
   Shape,
+  ShowGraph,
+  ShowGraphEdgeFacts,
+  ShowGraphNodeFacts,
   Type,
 } from "@mechane/domain";
 import type { Edge, Node } from "@xyflow/react";
 
 import { handleFor } from "./handle-ids";
-/**
- * A node as this mapper needs it described. Structural rather than named, so
- * the domain's discriminated union and other graph fixtures can use the same
- * rendering path. The GraphQL interface has already been converted by
- * ./api-graph before the editor reaches this mapper.
- */
-export interface MappableNode {
-  id: string;
-  kind: string;
-  name: string;
-  position: Position;
-  parentId?: string | null;
-  defaultSceneId?: string | null;
-  color?: FlowColor | null;
-  type?: unknown;
-  variables?: readonly { id: string; name: string; type?: unknown }[] | null;
-  perConnection?: boolean | null;
-  pairingCode?: string | null;
-}
 
-export interface MappableEdge {
-  id: string;
-  kind: string;
-  sourceId: string;
-  targetId: string;
-  sourcePath?: readonly string[] | null;
-  targetPath?: readonly string[] | null;
-  targetVariableId?: string | null;
-  fieldMapping?: unknown;
-}
+/** The domain graph is the adapter's only input; React Flow types stop below. */
+export type MappableNode = GraphNode;
+export type MappableEdge = GraphEdge;
 
 /**
  * Node geometry. React Flow measures rendered nodes itself, but the initial
@@ -259,16 +203,6 @@ export const PLACEHOLDER_NODE_TYPE = "showNode";
 export const FLOW_NODE_TYPE = "showFlow";
 export const SMART_SMOOTH_STEP_EDGE_TYPE = "smartSmoothStep";
 
-function nodeKindOf(node: MappableNode): NodeKind {
-  // The API types `kind` as a string, so this is the boundary that turns it
-  // back into the closed set the domain defines. A graph that gained a kind
-  // this build doesn't know about should say so, not render as a blank box.
-  if (!isNodeKind(node.kind)) {
-    throw new Error(`Unknown Show graph node kind "${node.kind}" on node "${node.id}".`);
-  }
-  return node.kind;
-}
-
 /**
  * How big a Flow has to be to hold its children. Children keep their stored
  * positions (free-form, #25) — the container grows around them rather than
@@ -283,9 +217,9 @@ function nodeKindOf(node: MappableNode): NodeKind {
 export function nodeHeight(node: MappableNode, shapes: readonly Shape[] = []): number {
   const rowCount =
     node.kind === "scene"
-      ? (node.variables?.length ?? 0)
+      ? node.variables.length
       : node.kind === "source" || node.kind === "transformer"
-        ? fieldsForType(node.type as Type | null | undefined, shapes).length
+        ? fieldsForType(node.type, shapes).length
         : 0;
   return rowCount === 0
     ? NODE_HEIGHT
@@ -321,7 +255,8 @@ export function fieldRows(
   value: unknown,
   shapes: readonly Shape[],
 ): { id: string; name: string; type: Type; value: unknown }[] {
-  const fields = fieldsForType(node.type as Type | null | undefined, shapes);
+  const type = node.kind === "source" || node.kind === "transformer" ? node.type : null;
+  const fields = fieldsForType(type, shapes);
   return fields.map((field) => ({
     id: field.id,
     name: field.name,
@@ -331,44 +266,36 @@ export function fieldRows(
 }
 function nodeData({
   node,
-  kind,
-  color,
+  facts,
   shapes,
   fields,
   variables,
-  wiredVariableIds,
-  defaultSceneIds,
   childCount,
-  drivenDeviceIds,
   collapsed,
 }: {
   node: MappableNode;
-  kind: NodeKind;
-  color: FlowColor;
+  facts: ShowGraphNodeFacts;
   shapes: readonly Shape[] | undefined;
   fields: ShowNodeField[];
   variables: ShowNodeVariable[];
-  wiredVariableIds: ReadonlySet<string>;
-  defaultSceneIds: ReadonlySet<string>;
   childCount: number;
-  drivenDeviceIds: ReadonlySet<string>;
   collapsed: boolean;
 }): ShowNodeData {
-  const type = (node.type as Type | null | undefined) ?? null;
+  const type = node.kind === "source" || node.kind === "transformer" ? (node.type ?? null) : null;
   const shared = {
-    color,
+    color: facts.color,
     name: node.name,
     ...(shapes && shapes.length > 0 ? { shapes } : {}),
   };
-  switch (kind) {
+  switch (node.kind) {
     case "flow":
       return {
         ...shared,
-        kind,
+        kind: "flow",
         type: null,
         fields: [],
         variables: [],
-        defaultSceneId: node.defaultSceneId ?? null,
+        defaultSceneId: node.defaultSceneId,
         wiredVariableIds: [],
         isDefaultScene: false,
         childCount,
@@ -380,17 +307,14 @@ function nodeData({
     case "scene":
       return {
         ...shared,
-        kind,
+        kind: "scene",
         type: null,
         fields: [],
         variables,
         defaultSceneId: null,
-        isDefaultScene: defaultSceneIds.has(node.id),
+        isDefaultScene: facts.isDefaultScene,
         childCount: 0,
-        wiredVariableIds: variables.reduce<string[]>((ids, variable) => {
-          if (wiredVariableIds.has(variable.id)) ids.push(variable.id);
-          return ids;
-        }, []),
+        wiredVariableIds: [...facts.wiredVariableIds],
         perConnection: false,
         pairingCode: null,
         driven: false,
@@ -398,7 +322,7 @@ function nodeData({
     case "source":
       return {
         ...shared,
-        kind,
+        kind: "source",
         type,
         fields,
         variables: [],
@@ -413,7 +337,7 @@ function nodeData({
     case "transformer":
       return {
         ...shared,
-        kind,
+        kind: "transformer",
         type,
         fields,
         variables: [],
@@ -428,7 +352,7 @@ function nodeData({
     case "device":
       return {
         ...shared,
-        kind,
+        kind: "device",
         type: null,
         fields: [],
         variables: [],
@@ -436,9 +360,9 @@ function nodeData({
         wiredVariableIds: [],
         isDefaultScene: false,
         childCount: 0,
-        perConnection: node.perConnection ?? false,
-        pairingCode: node.pairingCode ?? null,
-        driven: drivenDeviceIds.has(node.id),
+        perConnection: node.perConnection,
+        pairingCode: node.pairingCode,
+        driven: facts.driven,
       };
   }
 }
@@ -446,23 +370,24 @@ function nodeData({
 function toFlowNode(
   node: MappableNode,
   children: readonly MappableNode[],
-  wiredVariableIds: Set<string>,
-  defaultSceneIds: Set<string>,
-  drivenDeviceIds: Set<string>,
+  facts: ShowGraphNodeFacts,
   collapsed: boolean,
   minimumDimensions: FlowDimensions | undefined,
-  color: FlowColor,
   shapes: readonly Shape[] | undefined,
   value: unknown,
 ): ShowFlowNode {
-  const kind = nodeKindOf(node);
+  const kind = node.kind;
   const isFlow = kind === "flow";
   const resolvedShapes = shapes ?? [];
   const minimumHeight = nodeHeight(node, resolvedShapes);
-  const variables = [...(node.variables ?? [])].map((variable) => ({
-    ...variable,
-    type: variable.type as Type | null | undefined,
-  }));
+  const variables =
+    node.kind === "scene"
+      ? node.variables.map((variable) => ({
+          id: variable.id,
+          name: variable.name,
+          type: variable.type,
+        }))
+      : [];
   const fields = fieldRows(node, value, resolvedShapes);
   return {
     id: node.id,
@@ -492,15 +417,11 @@ function toFlowNode(
       : { width: NODE_WIDTH, minHeight: minimumHeight },
     data: nodeData({
       node,
-      kind,
-      color,
+      facts,
       shapes,
       fields,
       variables,
-      wiredVariableIds,
-      defaultSceneIds,
       childCount: children.length,
-      drivenDeviceIds,
       collapsed,
     }),
   };
@@ -509,53 +430,11 @@ function toFlowNode(
 function toFlowEdge(
   edge: MappableEdge,
   graphNodes: readonly MappableNode[],
-  shapes: readonly Shape[] = [],
+  facts: ShowGraphEdgeFacts,
 ): ShowFlowEdge {
-  if (!isEdgeKind(edge.kind)) {
-    throw new Error(`Unknown Show graph edge kind "${edge.kind}" on edge "${edge.id}".`);
-  }
   const source = graphNodes.find((node) => node.id === edge.sourceId);
   const target = graphNodes.find((node) => node.id === edge.targetId);
-  const targetVariableId =
-    edge.targetVariableId ?? (target?.kind === "scene" ? (edge.targetPath?.[0] ?? null) : null);
-  const sourceParentId = source?.parentId ?? null;
-  const targetParentId = target?.parentId ?? null;
-  const sourceWholeType =
-    source?.kind === "source" || source?.kind === "transformer"
-      ? (source.type as Type | null | undefined)
-      : null;
-  const sourceType =
-    source?.kind === "device"
-      ? deviceSourceType(edge.sourcePath?.[0])
-      : sourceWholeType && edge.sourcePath && edge.sourcePath.length > 0
-        ? typeAtPath(sourceWholeType, edge.sourcePath, shapes)
-        : sourceWholeType;
-  const color =
-    sourceParentId !== null && sourceParentId === targetParentId
-      ? (graphNodes.find((node) => node.id === sourceParentId)?.color ?? DEFAULT_FLOW_COLOR)
-      : DEFAULT_FLOW_COLOR;
-  const sceneVariable =
-    target?.kind === "scene"
-      ? target.variables?.find((variable) => variable.id === targetVariableId)
-      : undefined;
-  const targetType =
-    target?.kind === "transformer" && target.type && edge.targetPath && edge.targetPath.length > 0
-      ? typeAtPath(target.type as Type, edge.targetPath, shapes)
-      : ((sceneVariable?.type as Type | null | undefined) ?? null);
-  const coercing =
-    edge.kind === "wiring" &&
-    typeof sourceType === "string" &&
-    typeof targetType === "string" &&
-    sourceType !== targetType &&
-    findCoercion(sourceType as PrimitiveType, targetType as PrimitiveType) !== undefined;
-  const invalidReason =
-    edge.kind === "wiring" &&
-    sourceType &&
-    targetType &&
-    !areTypesCompatible(sourceType, targetType, shapes)
-      ? "Incompatible types"
-      : null;
-  const sourcePath = edge.sourcePath?.[0];
+  const sourcePath = edge.sourcePath[0];
   return {
     id: edge.id,
     type: SMART_SMOOTH_STEP_EDGE_TYPE,
@@ -568,20 +447,17 @@ function toFlowEdge(
           ? handleFor({ kind: "field", id: sourcePath })
           : handleFor({ kind: "output" }),
     targetHandle:
-      edge.kind === "wiring" && target?.kind === "scene" && targetVariableId
-        ? handleFor({ kind: "variable", id: targetVariableId })
-        : edge.kind === "wiring" && target?.kind === "transformer" && edge.targetPath?.[0]
+      edge.kind === "wiring" && target?.kind === "scene" && facts.targetVariableId
+        ? handleFor({ kind: "variable", id: facts.targetVariableId })
+        : edge.kind === "wiring" && target?.kind === "transformer" && edge.targetPath[0]
           ? handleFor({ kind: "field", id: edge.targetPath[0] })
           : handleFor({ kind: "input" }),
     data: {
       kind: edge.kind,
-      color,
-      // The wire shape resolves the Variable for the client; the domain shape
-      // carries it as the head of the target path (`wiringTargetVariableId`),
-      // so read whichever one is there.
-      targetVariableId,
-      coercing,
-      invalidReason,
+      color: facts.color,
+      targetVariableId: facts.targetVariableId,
+      coercing: facts.typeCompatibility === "coercing",
+      invalidReason: facts.typeCompatibility === "incompatible" ? "Incompatible types" : null,
     },
   };
 }
@@ -601,14 +477,7 @@ function collapsedFlowOwner(
  * no caller has to remember that.
  */
 export function graphToFlow(
-  graph:
-    | {
-        nodes: readonly MappableNode[];
-        edges: readonly MappableEdge[];
-        shapes?: readonly Shape[];
-      }
-    | null
-    | undefined,
+  graph: ShowGraph | null | undefined,
   options: {
     collapsedFlowIds?: ReadonlySet<string>;
     flowDimensions?: ReadonlyMap<string, FlowDimensions>;
@@ -620,6 +489,7 @@ export function graphToFlow(
 } {
   if (!graph) return { nodes: [], edges: [] };
 
+  const facts = deriveShowGraphFacts(graph);
   const collapsed = options.collapsedFlowIds ?? new Set<string>();
   const flowDimensions = options.flowDimensions ?? new Map<string, FlowDimensions>();
   const childrenByParent = new Map<string, MappableNode[]>();
@@ -635,29 +505,6 @@ export function graphToFlow(
   for (const node of graph.nodes) {
     (node.kind === "flow" ? flows : rest).push(node);
   }
-  const flowColors = new Map(
-    flows.map((flow) => [flow.id, flow.color ?? DEFAULT_FLOW_COLOR] as const),
-  );
-
-  // Which Variables have a producer, and which Scenes are their Flow's entry
-  // point — both are facts about the *graph* that a single node has to display
-  // (#35), so they're gathered once here rather than by each node body.
-  const wiredVariableIds = new Set<string>();
-  for (const edge of graph.edges) {
-    if (edge.kind !== "wiring") continue;
-    const id = edge.targetVariableId ?? edge.targetPath?.[0];
-    if (id) wiredVariableIds.add(id);
-  }
-  const defaultSceneIds = new Set<string>();
-  for (const node of graph.nodes) {
-    if (node.defaultSceneId) defaultSceneIds.add(node.defaultSceneId);
-  }
-  // Which Devices something drives. Same reasoning as the wired-Variable
-  // set above: a fact about the graph that one node has to display.
-  const drivenDeviceIds = new Set<string>();
-  for (const edge of graph.edges) {
-    if (edge.kind === "device") drivenDeviceIds.add(edge.targetId);
-  }
 
   return {
     nodes: [...flows, ...rest].reduce<ShowFlowNode[]>((nodes, node) => {
@@ -666,16 +513,14 @@ export function graphToFlow(
           toFlowNode(
             node,
             childrenByParent.get(node.id) ?? [],
-            wiredVariableIds,
-            defaultSceneIds,
-            drivenDeviceIds,
+            facts.nodes.get(node.id) ?? {
+              color: "neutral",
+              wiredVariableIds: [],
+              isDefaultScene: false,
+              driven: false,
+            },
             collapsed.has(node.id),
             flowDimensions.get(node.id),
-            node.color ??
-              (node.kind === "flow"
-                ? DEFAULT_FLOW_COLOR
-                : ((node.parentId ? flowColors.get(node.parentId) : undefined) ??
-                  DEFAULT_FLOW_COLOR)),
             graph.shapes,
             options.sourceValues?.[node.id],
           ),
@@ -688,7 +533,17 @@ export function graphToFlow(
         const sourceFlow = collapsedFlowOwner(edge.sourceId, graph.nodes, collapsed);
         const targetFlow = collapsedFlowOwner(edge.targetId, graph.nodes, collapsed);
         if (sourceFlow && sourceFlow === targetFlow) return null;
-        const mapped = toFlowEdge(edge, graph.nodes, graph.shapes);
+        const mapped = toFlowEdge(
+          edge,
+          graph.nodes,
+          facts.edges.get(edge.id) ?? {
+            targetVariableId: null,
+            sourceType: null,
+            targetType: null,
+            typeCompatibility: "unknown",
+            color: "neutral",
+          },
+        );
         return {
           ...mapped,
           ...(sourceFlow
