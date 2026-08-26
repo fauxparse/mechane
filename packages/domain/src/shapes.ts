@@ -153,19 +153,11 @@ export function assertValidShapeType(
   shapes: readonly Shape[],
   context = "Shape Type",
 ): void {
-  assertType(
-    type,
-    new Set(shapes.map((shape) => shape.id)),
-    context,
-  );
+  assertType(type, new Set(shapes.map((shape) => shape.id)), context);
 }
 
 /** Refuses a Field name that would collide within its Shape. */
-export function assertShapeFieldNameAvailable(
-  shape: Shape,
-  name: string,
-  fieldId?: string,
-): void {
+export function assertShapeFieldNameAvailable(shape: Shape, name: string, fieldId?: string): void {
   if (shape.fields.some((field) => field.id !== fieldId && field.name === name)) {
     throw new InvalidShapeError(`Shape ${shape.name} has duplicate Field name: ${name}.`);
   }
@@ -173,11 +165,12 @@ export function assertShapeFieldNameAvailable(
 
 /** Refuses deleting a Shape that another Shape reaches through its Fields. */
 export function assertShapeCanBeRemoved(shapes: readonly Shape[], shapeId: string): void {
-  if (shapes.some((shape) => shape.id !== shapeId && shapeReferencesShape(shapes, shape.id, shapeId))) {
+  if (
+    shapes.some((shape) => shape.id !== shapeId && shapeReferencesShape(shapes, shape.id, shapeId))
+  ) {
     throw new InvalidShapeError(`Shape "${shapeId}" is used by another Shape.`);
   }
 }
-
 
 function assertType(type: Type, shapeIds: Set<string>, context: string): void {
   if (typeof type === "string") {
@@ -439,6 +432,17 @@ const coercions: Coercion[] = [
     convert: (value) => String(value),
   },
   {
+    from: "number",
+    to: "boolean",
+    reason: "Zero is false and non-zero numbers are true.",
+    convert: (value) => {
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        throw new CoercionError("Cannot convert value to boolean.");
+      }
+      return value !== 0;
+    },
+  },
+  {
     from: "boolean",
     to: "text",
     reason: "Booleans can be represented as text.",
@@ -478,12 +482,12 @@ const coercions: Coercion[] = [
   {
     from: "text",
     to: "boolean",
-    reason: "Text can be parsed as a boolean.",
+    reason: "Empty text, false, and numeric zero are false; other text is true.",
     convert: (value) => {
       const text = parseText(value, "boolean").toLowerCase();
-      if (text === "true") return true;
-      if (text === "false") return false;
-      throw new CoercionError("Invalid boolean.");
+      if (text.length === 0 || text === "false") return false;
+      const numeric = Number(text);
+      return Number.isFinite(numeric) ? numeric !== 0 : true;
     },
   },
 ];
@@ -563,11 +567,38 @@ export function resolveShapeFieldMapping(
   return mapping;
 }
 
-export function coerceValue(value: unknown, from: PrimitiveType, to: PrimitiveType): unknown {
-  if (from === to) return value;
-  const coercion = findCoercion(from, to);
-  if (!coercion) throw new CoercionError(`No coercion exists from ${from} to ${to}.`);
-  return coercion.convert(value);
+export function coerceValue(
+  value: unknown,
+  from: Type,
+  to: Type,
+  shapes: readonly Shape[] = [],
+): unknown {
+  if (typeof from === "string" && typeof to === "string") {
+    if (from === to) return value;
+    const coercion = findCoercion(from, to);
+    if (!coercion) throw new CoercionError(`No coercion exists from ${from} to ${to}.`);
+    return coercion.convert(value);
+  }
+  if (typeof to !== "string" && to.kind === "array") {
+    const sourceType = typeof from !== "string" && from.kind === "array" ? from.of : from;
+    const values = Array.isArray(value) ? value : [value];
+    return values.map((item) => coerceValue(item, sourceType, to.of, shapes));
+  }
+  if (typeof from !== "string" && from.kind === "array") {
+    throw new CoercionError(`Cannot convert ${typeLabel(from)} to ${typeLabel(to)}.`);
+  }
+  if (
+    typeof from !== "string" &&
+    from.kind === "shape" &&
+    typeof to !== "string" &&
+    to.kind === "shape"
+  ) {
+    const source = shapeMap(shapes).get(from.shapeId);
+    const target = shapeMap(shapes).get(to.shapeId);
+    if (!source || !target) throw new CoercionError("Cannot convert an unknown Shape.");
+    return coerceShapeValue(value, source, target, shapes).value;
+  }
+  throw new CoercionError(`Cannot convert ${typeLabel(from)} to ${typeLabel(to)}.`);
 }
 
 export interface ShapeValueLoss {

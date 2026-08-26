@@ -74,6 +74,16 @@ export type GraphEdit =
       readonly position: Position;
     }
   | { readonly type: typeof GRAPH_COMMAND_TYPES.addEdge; readonly edge: GraphEdge }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setSourceType;
+      readonly nodeId: string;
+      readonly sourceType: Type;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setWiringFieldMapping;
+      readonly edgeId: string;
+      readonly fieldMapping: Record<string, string> | null;
+    }
   | { readonly type: typeof GRAPH_COMMAND_TYPES.removeEdge; readonly edgeId: string }
   | {
       readonly type: typeof GRAPH_COMMAND_TYPES.setFlowDefaultScene;
@@ -239,6 +249,10 @@ function supersedes(edit: GraphEdit): { key: string; ids: readonly string[] } | 
         key: `reparent:${edit.nodeId}`,
         ids: edit.parentId === null ? [edit.nodeId] : [edit.nodeId, edit.parentId],
       };
+    case GRAPH_COMMAND_TYPES.setSourceType:
+      return { key: `sourceType:${edit.nodeId}`, ids: [edit.nodeId] };
+    case GRAPH_COMMAND_TYPES.setWiringFieldMapping:
+      return { key: `wiringFieldMapping:${edit.edgeId}`, ids: [edit.edgeId] };
     case GRAPH_COMMAND_TYPES.setSourceFieldDefault:
       return {
         key: `sourceFieldDefault:${edit.nodeId}:${edit.fieldPath.join(".")}`,

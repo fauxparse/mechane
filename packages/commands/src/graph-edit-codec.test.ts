@@ -72,6 +72,16 @@ const FIXTURES: { [T in GraphEdit["type"]]: Extract<GraphEdit, { type: T }> } = 
     },
   },
   "graph.removeEdge": { type: "graph.removeEdge", edgeId: "edge_tally" },
+  "graph.setSourceType": {
+    type: "graph.setSourceType",
+    nodeId: "source_votes",
+    sourceType: { kind: "shape", shapeId: "shape_vote" },
+  },
+  "graph.setWiringFieldMapping": {
+    type: "graph.setWiringFieldMapping",
+    edgeId: "edge_tally",
+    fieldMapping: { field_count: "field_total" },
+  },
   "graph.setFlowDefaultScene": {
     type: "graph.setFlowDefaultScene",
     flowId: "flow_vote",

@@ -30,6 +30,8 @@ import {
   setFlowDefaultScene,
   setNodeColor,
   setSceneVariableType,
+  setSourceType,
+  setWiringFieldMapping,
   UnknownGraphTargetError,
 } from "./graph-commands";
 import { applyGraphEdits } from "./graph-edits";
@@ -459,6 +461,33 @@ describe("setNodeColor", () => {
   });
 
   it("changes nothing when the node color is already neutral", () => {});
+});
+describe("setSourceType", () => {
+  it("sets a Source type and restores the old type", () => {
+    const applied = expectExactRoundTrip(setSourceType(TALLY.id, "text"));
+    expect(applied.state.nodes.find((node) => node.id === TALLY.id)).toMatchObject({
+      type: "text",
+    });
+  });
+
+  it("changes nothing when the Source already has that type", () => {
+    expect(setSourceType(TALLY.id, "number").apply(GRAPH).inverse.isEmpty).toBe(true);
+  });
+
+  it("refuses a node that is not a Source", () => {
+    expect(() => setSourceType(VOTING.id, "text").apply(GRAPH)).toThrow(UnknownGraphTargetError);
+  });
+});
+
+describe("setWiringFieldMapping", () => {
+  it("updates and restores a wiring edge mapping", () => {
+    const applied = expectExactRoundTrip(
+      setWiringFieldMapping(WIRE.id, { source_field: "target_field" }),
+    );
+    expect(applied.state.edges.find((edge) => edge.id === WIRE.id)).toMatchObject({
+      fieldMapping: { source_field: "target_field" },
+    });
+  });
 });
 
 describe("setSceneVariableType", () => {

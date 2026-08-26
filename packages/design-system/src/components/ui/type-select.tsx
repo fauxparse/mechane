@@ -2,8 +2,8 @@ import { PRIMITIVE_TYPES, type Shape, type Type } from "@mechane/domain";
 import { CheckIcon, ChevronRightIcon, type LucideIcon } from "lucide-react";
 import type { ReactElement } from "react";
 
-import { useVibe, type Vibe } from "../inspector-vibe";
 import { cn } from "../../lib/utils";
+import { useVibe, type Vibe } from "../inspector-vibe";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,8 +15,8 @@ import {
   DropdownMenuSubmenuTrigger,
   DropdownMenuTrigger,
 } from "./dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
 import { variableTypeIcon, variableTypeLabel } from "./property-input/variable-type-icons";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
 export type TypeSelectOption = {
   value: Type;
   label: string;
@@ -29,18 +29,17 @@ export type TypeSelectTriggerProps = {
   label: string;
   icon: LucideIcon;
 };
-
 export type TypeSelectProps = {
   value: Type | null | undefined;
   onValueChange(value: Type): void;
   shapes?: readonly Shape[];
   includeArray?: boolean;
   disabled?: boolean;
+  vibe?: Vibe;
   "aria-label"?: string;
   "aria-invalid"?: boolean;
   triggerClassName?: string;
   triggerSize?: "sm" | "default";
-  vibe?: Vibe;
   showLabel?: boolean;
   renderTrigger?(props: TypeSelectTriggerProps): ReactElement;
   optionDisabled?(option: TypeSelectOption): boolean;
@@ -153,61 +152,61 @@ export function TypeSelect({
       )}
     >
       <Icon className="size-4 shrink-0" />
-      {showLabel ? <span className="truncate">{label}</span> : null}
+      {showLabel ? <span className="flex-1 text-left truncate">{label}</span> : null}
       {showLabel ? <ChevronRightIcon className="size-4 rotate-90 text-muted-foreground" /> : null}
     </button>
   );
   return (
     <Tooltip>
-      <TooltipTrigger render={<span className="inline-flex" />}>
-        <DropdownMenu>
-          <DropdownMenuTrigger render={customTrigger ?? defaultTrigger} />
-          <DropdownMenuContent>
-            <DropdownMenuGroup>
-              {PRIMITIVE_OPTIONS.map(renderOption)}
-              {includeArray ? (
-                <DropdownMenuSubmenu>
-                  <DropdownMenuSubmenuTrigger>
-                    <ArrayIcon className="size-4 text-muted-foreground" />
-                    <span>Array of…</span>
-                  </DropdownMenuSubmenuTrigger>
-                  <DropdownMenuSubmenuContent>
-                    <DropdownMenuGroup>
-                      {PRIMITIVE_OPTIONS.map((option) =>
-                        renderOption({
-                          ...option,
-                          value: { kind: "array", of: option.value },
-                          icon: option.icon,
-                        }),
-                      )}
-                    </DropdownMenuGroup>
-                    {shapeTypeOptions.length > 0 ? (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuGroup>
-                          {shapeTypeOptions.map((option) =>
-                            renderOption({
-                              ...option,
-                              value: { kind: "array", of: option.value },
-                              icon: option.icon,
-                            }),
-                          )}
-                        </DropdownMenuGroup>
-                      </>
-                    ) : null}
-                  </DropdownMenuSubmenuContent>
-                </DropdownMenuSubmenu>
-              ) : null}
-            </DropdownMenuGroup>
-            {shapeTypeOptions.length > 0 ? (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>{shapeTypeOptions.map(renderOption)}</DropdownMenuGroup>
-              </>
+      <DropdownMenu>
+        <TooltipTrigger
+          render={<DropdownMenuTrigger render={customTrigger ?? defaultTrigger} />}
+        ></TooltipTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuGroup>
+            {PRIMITIVE_OPTIONS.map(renderOption)}
+            {includeArray ? (
+              <DropdownMenuSubmenu>
+                <DropdownMenuSubmenuTrigger>
+                  <ArrayIcon className="size-4 text-muted-foreground" />
+                  <span>Array of…</span>
+                </DropdownMenuSubmenuTrigger>
+                <DropdownMenuSubmenuContent>
+                  <DropdownMenuGroup>
+                    {PRIMITIVE_OPTIONS.map((option) =>
+                      renderOption({
+                        ...option,
+                        value: { kind: "array", of: option.value },
+                        icon: option.icon,
+                      }),
+                    )}
+                  </DropdownMenuGroup>
+                  {shapeTypeOptions.length > 0 ? (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuGroup>
+                        {shapeTypeOptions.map((option) =>
+                          renderOption({
+                            ...option,
+                            value: { kind: "array", of: option.value },
+                            icon: option.icon,
+                          }),
+                        )}
+                      </DropdownMenuGroup>
+                    </>
+                  ) : null}
+                </DropdownMenuSubmenuContent>
+              </DropdownMenuSubmenu>
             ) : null}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </TooltipTrigger>
+          </DropdownMenuGroup>
+          {shapeTypeOptions.length > 0 ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>{shapeTypeOptions.map(renderOption)}</DropdownMenuGroup>
+            </>
+          ) : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
   );

@@ -40,6 +40,7 @@ const sourceValues = {
 const nodeEditing: GraphInspectorNodeEditing = {
   setNodeColor: () => {},
   setDevicePerConnection: () => {},
+  setSourceType: () => null,
 };
 
 describe("Show Editor editing seams", () => {

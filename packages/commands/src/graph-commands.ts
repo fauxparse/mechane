@@ -57,7 +57,6 @@ import type { GraphEdit } from "./graph-edits";
 /** A command over the Show graph and its serialisable edit vocabulary. */
 export type ShowGraphCommand = Command<ShowGraph, GraphEdit>;
 
-
 /**
  * A command over a Show graph, which also knows how to say what it did on the
  * wire (#103) — see ./graph-edits for the vocabulary.
@@ -71,6 +70,8 @@ export const GRAPH_COMMAND_TYPES = {
   addEdge: "graph.addEdge",
   removeEdge: "graph.removeEdge",
   setFlowDefaultScene: "graph.setFlowDefaultScene",
+  setSourceType: "graph.setSourceType",
+  setWiringFieldMapping: "graph.setWiringFieldMapping",
   setNodeColor: "graph.setNodeColor",
   setShapes: "graph.setShapes",
   addShape: "graph.addShape",
@@ -127,6 +128,33 @@ function replaceNode(graph: ShowGraph, index: number, replacement: GraphNode): S
   const nodes = [...graph.nodes];
   nodes[index] = replacement;
   return { ...graph, nodes };
+}
+
+function replaceEdge(graph: ShowGraph, index: number, replacement: GraphEdge): ShowGraph {
+  const edges = [...graph.edges];
+  edges[index] = replacement;
+  return { ...graph, edges };
+}
+
+function withSourceType(graph: ShowGraph, nodeId: string, type: Type): ShowGraph {
+  const index = nodeIndex(graph, nodeId);
+  const node = graph.nodes[index] as GraphNode;
+  if (node.kind !== "source") throw new UnknownGraphTargetError("Source", nodeId);
+  return replaceNode(graph, index, { ...node, type });
+}
+
+function withWiringFieldMapping(
+  graph: ShowGraph,
+  edgeId: string,
+  fieldMapping: Record<string, string> | null,
+): ShowGraph {
+  const index = edgeIndex(graph, edgeId);
+  const edge = graph.edges[index] as GraphEdge;
+  if (edge.kind !== "wiring") throw new UnknownGraphTargetError("wiring edge", edgeId);
+  const next = { ...edge };
+  if (fieldMapping === null) delete next.fieldMapping;
+  else next.fieldMapping = { ...fieldMapping };
+  return replaceEdge(graph, index, next);
 }
 
 /** `graph` with `node` spliced in at `index` — restoring, not appending. */
@@ -635,6 +663,68 @@ function withNodeColor(graph: ShowGraph, nodeId: string, color: FlowColor | null
   else next.color = color;
   return replaceNode(graph, index, next);
 }
+/** Sets the required type of a Source node. */
+export function setSourceType(
+  nodeId: string,
+  type: Type,
+  label = "Change Source type",
+): ShowGraphCommand {
+  return capturing<ShowGraph, Type, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setSourceType,
+    label,
+    scope: "selection",
+    coalesceKey: `${GRAPH_COMMAND_TYPES.setSourceType}:${nodeId}`,
+    edits: [{ type: GRAPH_COMMAND_TYPES.setSourceType, nodeId, sourceType: type }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.setSourceType, nodeId, sourceType: captured },
+    ],
+    capture: (graph) => {
+      const node = graph.nodes[nodeIndex(graph, nodeId)] as GraphNode;
+      if (node.kind !== "source") throw new UnknownGraphTargetError("Source", nodeId);
+      return node.type;
+    },
+    isEmpty: (graph) => {
+      const node = graph.nodes[nodeIndex(graph, nodeId)] as GraphNode;
+      return node.kind === "source" && JSON.stringify(node.type) === JSON.stringify(type);
+    },
+    apply: (graph) => withSourceType(graph, nodeId, type),
+    restore: (graph, captured) => withSourceType(graph, nodeId, captured),
+  });
+}
+
+/** Replaces a wiring edge's stable Shape field mapping. */
+export function setWiringFieldMapping(
+  edgeId: string,
+  fieldMapping: Record<string, string> | null,
+  label = "Update wiring fields",
+): ShowGraphCommand {
+  return capturing<ShowGraph, Record<string, string> | undefined, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setWiringFieldMapping,
+    label,
+    scope: "selection",
+    edits: [{ type: GRAPH_COMMAND_TYPES.setWiringFieldMapping, edgeId, fieldMapping }],
+    restoreEdits: (captured) => [
+      {
+        type: GRAPH_COMMAND_TYPES.setWiringFieldMapping,
+        edgeId,
+        fieldMapping: captured ?? null,
+      },
+    ],
+    capture: (graph) => {
+      const edge = graph.edges[edgeIndex(graph, edgeId)] as GraphEdge;
+      if (edge.kind !== "wiring") throw new UnknownGraphTargetError("wiring edge", edgeId);
+      return edge.fieldMapping ? { ...edge.fieldMapping } : undefined;
+    },
+    isEmpty: (graph) => {
+      const edge = graph.edges[edgeIndex(graph, edgeId)] as GraphEdge;
+      if (edge.kind !== "wiring") throw new UnknownGraphTargetError("wiring edge", edgeId);
+      return JSON.stringify(edge.fieldMapping ?? null) === JSON.stringify(fieldMapping);
+    },
+    apply: (graph) => withWiringFieldMapping(graph, edgeId, fieldMapping),
+    restore: (graph, captured) => withWiringFieldMapping(graph, edgeId, captured ?? null),
+  });
+}
+
 /** Sets or clears one graph-owned Source value override. */
 export function setSourceFieldDefault(
   nodeId: string,
@@ -779,10 +869,7 @@ function shapeFieldOrder(
   fieldIds: readonly string[],
 ): ShapeField[] {
   const { shape } = shapeAt(graph, shapeId);
-  if (
-    fieldIds.length !== shape.fields.length ||
-    new Set(fieldIds).size !== shape.fields.length
-  ) {
+  if (fieldIds.length !== shape.fields.length || new Set(fieldIds).size !== shape.fields.length) {
     throw new InvalidShapeError(
       `Field order for Shape "${shapeId}" must contain every Field exactly once.`,
     );
@@ -808,7 +895,11 @@ export function addShape(shape: Shape, label = "Add Shape"): ShowGraphCommand {
       assertValidShapes(shapes);
       return withShapes(graph, shapes);
     },
-    restore: (graph) => withShapes(graph, shapesOf(graph).filter((candidate) => candidate.id !== shape.id)),
+    restore: (graph) =>
+      withShapes(
+        graph,
+        shapesOf(graph).filter((candidate) => candidate.id !== shape.id),
+      ),
   });
 }
 
@@ -824,11 +915,14 @@ export function renameShape(
     scope: "selection",
     coalesceKey: `${GRAPH_COMMAND_TYPES.renameShape}:${shapeId}`,
     edits: [{ type: GRAPH_COMMAND_TYPES.renameShape, shapeId, name }],
-    restoreEdits: (captured) => [{ type: GRAPH_COMMAND_TYPES.renameShape, shapeId, name: captured }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.renameShape, shapeId, name: captured },
+    ],
     capture: (graph) => shapeAt(graph, shapeId).shape.name,
     isEmpty: (_graph, captured) => captured === name,
     apply: (graph) => replaceShape(graph, shapeId, (shape) => ({ ...shape, name })),
-    restore: (graph, captured) => replaceShape(graph, shapeId, (shape) => ({ ...shape, name: captured })),
+    restore: (graph, captured) =>
+      replaceShape(graph, shapeId, (shape) => ({ ...shape, name: captured })),
   });
 }
 
@@ -846,7 +940,11 @@ export function duplicateShape(shape: Shape, label = "Duplicate Shape"): ShowGra
       assertValidShapes(shapes);
       return withShapes(graph, shapes);
     },
-    restore: (graph) => withShapes(graph, shapesOf(graph).filter((candidate) => candidate.id !== shape.id)),
+    restore: (graph) =>
+      withShapes(
+        graph,
+        shapesOf(graph).filter((candidate) => candidate.id !== shape.id),
+      ),
   });
 }
 
@@ -863,7 +961,11 @@ export function removeShape(shapeId: string, label = "Delete Shape"): ShowGraphC
       assertShapeCanBeRemoved(shapesOf(graph), shapeId);
       return { index, shape };
     },
-    apply: (graph) => withShapes(graph, shapesOf(graph).filter((shape) => shape.id !== shapeId)),
+    apply: (graph) =>
+      withShapes(
+        graph,
+        shapesOf(graph).filter((shape) => shape.id !== shapeId),
+      ),
     restore: (graph, captured) => {
       const shapes = shapesOf(graph).slice();
       shapes.splice(Math.min(captured.index, shapes.length), 0, captured.shape);
@@ -883,7 +985,9 @@ export function addShapeField(
     label,
     scope: "selection",
     edits: [{ type: GRAPH_COMMAND_TYPES.addShapeField, shapeId, field }],
-    restoreEdits: () => [{ type: GRAPH_COMMAND_TYPES.removeShapeField, shapeId, fieldId: field.id }],
+    restoreEdits: () => [
+      { type: GRAPH_COMMAND_TYPES.removeShapeField, shapeId, fieldId: field.id },
+    ],
     capture: () => null,
     apply: (graph) => {
       const { shape } = shapeAt(graph, shapeId);
@@ -956,7 +1060,8 @@ export function setShapeFieldType(
       assertShapeTypeChange(graph, shapeId, fieldId, type);
       return replaceShapeField(graph, shapeId, fieldId, (field) => ({ ...field, type }));
     },
-    restore: (graph, captured) => replaceShapeField(graph, shapeId, fieldId, (field) => ({ ...field, type: captured })),
+    restore: (graph, captured) =>
+      replaceShapeField(graph, shapeId, fieldId, (field) => ({ ...field, type: captured })),
   });
 }
 
@@ -1031,14 +1136,17 @@ export function reorderShapeFields(
     capture: (graph) => shapeAt(graph, shapeId).shape.fields.map((field) => ({ ...field })),
     isEmpty: (graph) => {
       const current = shapeAt(graph, shapeId).shape.fields.map((field) => field.id);
-      return current.length === fieldIds.length && current.every((id, index) => id === fieldIds[index]);
+      return (
+        current.length === fieldIds.length && current.every((id, index) => id === fieldIds[index])
+      );
     },
     apply: (graph) =>
       replaceShape(graph, shapeId, (shape) => ({
         ...shape,
         fields: shapeFieldOrder(graph, shapeId, fieldIds),
       })),
-    restore: (graph, captured) => replaceShape(graph, shapeId, (shape) => ({ ...shape, fields: captured })),
+    restore: (graph, captured) =>
+      replaceShape(graph, shapeId, (shape) => ({ ...shape, fields: captured })),
   });
 }
 
@@ -1053,7 +1161,9 @@ export function removeShapeField(
     label,
     scope: "selection",
     edits: [{ type: GRAPH_COMMAND_TYPES.removeShapeField, shapeId, fieldId }],
-    restoreEdits: (captured) => [{ type: GRAPH_COMMAND_TYPES.addShapeField, shapeId, field: captured.field }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.addShapeField, shapeId, field: captured.field },
+    ],
     capture: (graph) => {
       const { fieldIndex, field } = shapeFieldAt(graph, shapeId, fieldId);
       return { index: fieldIndex, field };
@@ -1071,7 +1181,6 @@ export function removeShapeField(
       }),
   });
 }
-
 
 /**
  * Records the pairing code the server minted for a Device (#45, #111).

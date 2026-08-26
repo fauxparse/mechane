@@ -702,8 +702,12 @@ export const schema = createSchema<GraphQLContext>({
       required: Boolean
       "The Show node editor colorway for graph.setNodeColor."
       color: String
+      "The Source node Type, for graph.setSourceType."
+      sourceType: Type
       "The graph-owned Source field path for graph.setSourceFieldDefault."
       fieldPath: [ID!]
+      "The wiring edge's stable source-field to target-field mapping."
+      fieldMapping: JSON
       "The graph-owned Source field value; null clears the override."
       value: JSON
       "Devices only: the code the server minted for a Device this batch created (#45)."
@@ -743,8 +747,12 @@ export const schema = createSchema<GraphQLContext>({
       shapes: [ShapeInput!]
       "The Variable's Type, for graph.setSceneVariableType. Null clears it."
       variableType: TypeInput
+      "The Source node Type, for graph.setSourceType."
+      sourceType: TypeInput
       "The Source field path, for graph.setSourceFieldDefault."
       fieldPath: [ID!]
+      "The wiring edge's stable source-field to target-field mapping."
+      fieldMapping: JSON
       "The Source field value; null clears the override."
       value: JSON
       elementId: ID

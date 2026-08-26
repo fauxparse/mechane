@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
 import { InspectorProvider } from "@mechane/design-system";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { Button } from "./button";
 
@@ -16,6 +16,10 @@ type Story = StoryObj<typeof Button>;
 
 export const Default: Story = {};
 
+export const Primary: Story = {
+  args: { variant: "primary" },
+};
+
 export const Outline: Story = {
   args: { variant: "outline" },
 };
@@ -30,6 +34,10 @@ export const Ghost: Story = {
 
 export const Destructive: Story = {
   args: { variant: "destructive" },
+};
+
+export const DestructivePrimary: Story = {
+  args: { variant: "destructive-primary" },
 };
 
 export const Link: Story = {

@@ -110,7 +110,7 @@ describe("deriveShowGraphFacts", () => {
           ? {
               ...node,
               variables: node.variables.map((variable) =>
-                variable.id === "variable_number" ? { ...variable, type: "boolean" } : variable,
+                variable.id === "variable_number" ? { ...variable, type: "date" } : variable,
               ),
             }
           : node,
