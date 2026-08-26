@@ -743,6 +743,16 @@ function assertNoWiringFanIn(edges: GraphEdge[], nodes: Map<string, GraphNode>):
       if (!right) continue;
       if (left.targetId !== right.targetId) continue;
       if (left.targetPath[0] !== right.targetPath[0]) continue;
+      const target = nodes.get(left.targetId);
+      if (
+        target?.kind === "source" &&
+        typeof target.type !== "string" &&
+        target.type.kind === "array" &&
+        left.targetPath.length === 0 &&
+        right.targetPath.length === 0
+      ) {
+        continue;
+      }
       if (
         !isPathPrefix(left.targetPath, right.targetPath) &&
         !isPathPrefix(right.targetPath, left.targetPath)

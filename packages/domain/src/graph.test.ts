@@ -317,6 +317,17 @@ describe("assertValidShowGraph", () => {
       );
       expectViolation(() => assertValidShowGraph(showGraph), "wiringFanIn");
     });
+    it("allows multiple compatible producers for an array Source", () => {
+      const showGraph = graph(
+        [
+          source("array", null, { kind: "array", of: "number" }),
+          source("r1", null, "number"),
+          source("r2", null, { kind: "array", of: "number" }),
+        ],
+        [wiring("e1", "r1", "array", []), wiring("e2", "r2", "array", [])],
+      );
+      expect(() => assertValidShowGraph(showGraph)).not.toThrow();
+    });
     it("rejects incompatible wiring types with a discriminator", () => {
       const target = scene("c1", null, ["v1"]);
       target.variables[0]!.type = "image";
