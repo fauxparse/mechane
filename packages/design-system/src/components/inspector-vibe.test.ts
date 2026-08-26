@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { InspectorProvider } from "./inspector-vibe";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "./ui/input-group";
+import { InputGroup, InputGroupAddon, InputGroupButton } from "./ui/input-group";
 import { Select, SelectTrigger } from "./ui/select";
 import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 
