@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Bold, Bookmark, Italic, Underline } from "@mechane/design-system";
+import { Bold, Bookmark, InspectorProvider, Italic, Underline } from "@mechane/design-system";
 
 import { Toggle } from "./toggle";
 
@@ -78,5 +78,18 @@ export const IconOnly: Story = {
         <Underline />
       </Toggle>
     </div>
+  ),
+};
+
+export const InspectorVibe: Story = {
+  render: () => (
+    <InspectorProvider>
+      <div className="flex items-center gap-2">
+        <Toggle variant="outline">Small action</Toggle>
+        <Toggle aria-label="Inspector icon action">
+          <Bookmark />
+        </Toggle>
+      </div>
+    </InspectorProvider>
   ),
 };

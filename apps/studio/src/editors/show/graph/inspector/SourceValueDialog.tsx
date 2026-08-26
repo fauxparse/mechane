@@ -59,7 +59,6 @@ export function SourceValueDialog({
             autoFocus
             value={typeof draft === "string" ? draft : ""}
             aria-label={`${row.label} value`}
-            className="min-h-40 resize-y"
             onChange={(event) => updateDraft(event.target.value)}
           />
         ) : (

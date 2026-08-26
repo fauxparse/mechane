@@ -10,6 +10,7 @@ import { VariablePicker } from "./variable-picker";
 import { usePropertyInput } from "./use-property-input";
 import type { PropertyInputProps } from "./property-input-types";
 import { cn } from "../../../lib/utils";
+import { useVibe, type Vibe } from "../../inspector-vibe";
 
 export * from "./property-input-types";
 
@@ -37,12 +38,14 @@ export const PropertyInput = <T extends ShapeValue>({
   allowAuto,
   allowLink = true,
   auto,
+  vibe: vibeProp,
   onChange,
   onSizingChange,
   onAutoChange,
   onConstraintToggle,
   onValidationError,
-}: PropertyInputProps<T>) => {
+}: PropertyInputProps<T> & { vibe?: Vibe }) => {
+  const vibe = useVibe(vibeProp);
   const [inputActive, setInputActive] = useState(false);
   const input = usePropertyInput({
     value,
@@ -86,6 +89,7 @@ export const PropertyInput = <T extends ShapeValue>({
       <div
         className={cn("group/property-input w-full min-w-0", className)}
         data-linked={input.linkedVariable ? true : undefined}
+        data-vibe={vibe}
       >
         <Combobox
           value={null}
@@ -104,6 +108,7 @@ export const PropertyInput = <T extends ShapeValue>({
           }}
         >
           <ComboboxInput
+            vibe={vibe}
             type="text"
             ref={input.inputElementRef}
             inputMode={input.inputType === "number" ? "decimal" : undefined}

@@ -1,6 +1,7 @@
 import { Toggle as TogglePrimitive } from "@base-ui/react/toggle";
 import { cva, type VariantProps } from "class-variance-authority";
 
+import { useVibe, type Vibe } from "../inspector-vibe";
 import { cn } from "../../lib/utils";
 import { Ref } from "react";
 
@@ -28,15 +29,26 @@ const toggleVariants = cva(
 
 function Toggle({
   className,
-  variant = "default",
-  size = "default",
+  variant,
+  size,
+  vibe: vibeProp,
   ref,
   ...props
-}: TogglePrimitive.Props & VariantProps<typeof toggleVariants> & { ref?: Ref<"button"> }) {
+}: TogglePrimitive.Props &
+  VariantProps<typeof toggleVariants> & {
+    vibe?: Vibe;
+    ref?: Ref<"button">;
+  }) {
+  const vibe = useVibe(vibeProp);
+  const resolvedSize = size ?? (vibe === "inspector" ? "sm" : "default");
   return (
     <TogglePrimitive
       data-slot="toggle"
-      className={cn(toggleVariants({ variant, size, className }))}
+      className={cn(
+        toggleVariants({ variant: variant ?? "default", size: resolvedSize }),
+        vibe === "inspector" && "rounded-sm",
+        className,
+      )}
       ref={ref}
       {...props}
     />

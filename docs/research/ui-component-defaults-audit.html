@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>UI Component Defaults Audit</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f5f7fb;
+        --surface: #ffffff;
+        --surface-muted: #eef2f8;
+        --ink: #172033;
+        --muted: #5d687c;
+        --line: #d8dfeb;
+        --accent: #315fce;
+        --accent-soft: #e8efff;
+        --green: #176b4d;
+        --green-soft: #e4f5ed;
+        --amber: #8b5b00;
+        --amber-soft: #fff4d6;
+        --red: #a02f3c;
+        --red-soft: #ffebee;
+        --shadow: 0 12px 32px rgb(26 40 72 / 8%);
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font: 16px/1.6 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      a { color: var(--accent); }
+      code, pre, .metric-value { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+      code {
+        padding: .12em .35em;
+        border: 1px solid var(--line);
+        border-radius: .35rem;
+        background: var(--surface-muted);
+        font-size: .88em;
+      }
+      pre {
+        overflow-x: auto;
+        margin: 1rem 0 0;
+        padding: 1rem 1.15rem;
+        border: 1px solid var(--line);
+        border-radius: .65rem;
+        background: #172033;
+        color: #e9eef8;
+        font-size: .88rem;
+        line-height: 1.55;
+      }
+
+      .shell { width: min(1180px, calc(100% - 2rem)); margin: 0 auto; }
+      .hero {
+        padding: 4.5rem 0 3.25rem;
+        background: linear-gradient(135deg, #172033 0%, #263c71 60%, #315fce 100%);
+        color: white;
+      }
+      .eyebrow {
+        margin: 0 0 .65rem;
+        color: #b9c9ff;
+        font-size: .78rem;
+        font-weight: 750;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+      }
+      h1, h2, h3 { line-height: 1.2; letter-spacing: -.025em; }
+      h1 { max-width: 820px; margin: 0; font-size: clamp(2.35rem, 5vw, 4.2rem); }
+      .lede { max-width: 760px; margin: 1.25rem 0 0; color: #dbe4ff; font-size: 1.18rem; }
+      .meta { margin-top: 1.5rem; color: #b9c9ff; font-size: .9rem; }
+
+      main { padding: 2rem 0 5rem; }
+      .layout { display: grid; grid-template-columns: minmax(0, 1fr) 245px; gap: 2rem; align-items: start; }
+      .content { min-width: 0; }
+      .toc {
+        position: sticky;
+        top: 1rem;
+        padding: 1rem;
+        border: 1px solid var(--line);
+        border-radius: .8rem;
+        background: rgb(255 255 255 / 82%);
+        box-shadow: var(--shadow);
+      }
+      .toc strong { display: block; margin-bottom: .5rem; font-size: .82rem; text-transform: uppercase; letter-spacing: .08em; }
+      .toc a { display: block; padding: .28rem 0; font-size: .9rem; text-decoration: none; }
+
+      section { margin: 0 0 2rem; padding: 1.65rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--surface); box-shadow: var(--shadow); }
+      section > :first-child { margin-top: 0; }
+      section > :last-child { margin-bottom: 0; }
+      h2 { margin: 0 0 1rem; font-size: 1.65rem; }
+      h3 { margin: 1.5rem 0 .65rem; font-size: 1.18rem; }
+      p { margin: .7rem 0; }
+      ul, ol { margin: .65rem 0; padding-left: 1.35rem; }
+      li + li { margin-top: .35rem; }
+
+      .callout { padding: 1rem 1.1rem; border-left: 4px solid var(--accent); border-radius: .55rem; background: var(--accent-soft); }
+      .callout.green { border-color: var(--green); background: var(--green-soft); }
+      .callout.amber { border-color: var(--amber); background: var(--amber-soft); }
+      .callout.red { border-color: var(--red); background: var(--red-soft); }
+      .callout strong { display: block; margin-bottom: .25rem; }
+
+      .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: 1.2rem 0 0; }
+      .metric { padding: 1rem; border: 1px solid var(--line); border-radius: .7rem; background: var(--surface-muted); }
+      .metric-value { display: block; color: var(--accent); font-size: 1.8rem; font-weight: 800; }
+      .metric-label { display: block; color: var(--muted); font-size: .88rem; }
+
+      .recommendation { margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--line); }
+      .recommendation:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
+      .recommendation-header { display: flex; flex-wrap: wrap; gap: .65rem; align-items: baseline; justify-content: space-between; }
+      .recommendation h3 { margin-top: 0; }
+      .badge { display: inline-block; padding: .2rem .55rem; border-radius: 999px; background: var(--green-soft); color: var(--green); font-size: .75rem; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+      .badge.caution { background: var(--amber-soft); color: var(--amber); }
+
+      table { width: 100%; border-collapse: collapse; margin: .85rem 0 0; font-size: .92rem; }
+      th, td { padding: .75rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+      th { background: var(--surface-muted); color: var(--muted); font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; }
+      tr:last-child td { border-bottom: 0; }
+      .evidence { color: var(--muted); font-size: .9rem; }
+      .evidence code { display: inline-block; margin: .1rem .15rem .1rem 0; }
+
+      .source-list { margin: .65rem 0 0; padding-left: 1.2rem; }
+      .source-list li { margin: .25rem 0; }
+      .source-list code { background: transparent; border: 0; padding: 0; }
+      footer { padding: 1.25rem 0 3rem; color: var(--muted); font-size: .88rem; }
+
+      @media (max-width: 820px) {
+        .layout { display: block; }
+        .toc { position: static; margin-bottom: 1rem; }
+        .metrics { grid-template-columns: 1fr; }
+        section { padding: 1.2rem; }
+        table { display: block; overflow-x: auto; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <div class="shell">
+        <p class="eyebrow">Mechanē · Design system research</p>
+        <h1>UI component defaults audit</h1>
+        <p class="lede">Repeated Tailwind overrides reveal a shared editor-inspector language. Make production-supported defaults explicit where the product contract is editor-first; use named presets where a primitive must remain context-neutral.</p>
+        <p class="meta">Audited 2026-08-25 · Production consumers under <code>apps/</code>; stories are visual coverage only</p>
+      </div>
+    </header>
+
+    <main>
+      <div class="shell layout">
+        <div class="content">
+          <section id="headline">
+            <h2>At a glance</h2>
+            <div class="callout green">
+              <strong>Decision</strong>
+              Make repeated editor-specific Tailwind bundles into defaults when the product contract is editor-first, or into named presets when the primitives must remain context-neutral. Stories are descriptive examples, not evidence against changing a default.
+            </div>
+            <div class="metrics" aria-label="Audit highlights">
+              <div class="metric"><span class="metric-value">3/3</span><span class="metric-label">SelectTrigger uses share the inspector field bundle</span></div>
+              <div class="metric"><span class="metric-value">3/3</span><span class="metric-label">SidebarContent uses override padding with <code>p-0</code></span></div>
+              <div class="metric"><span class="metric-value">2/2</span><span class="metric-label">Textarea uses share <code>min-h-40 resize-y</code></span></div>
+            </div>
+            <p>The most consistent overrides are compact inspector controls. The report below separates exact duplicate bundles, production-supported default candidates, and frequent but mixed overrides.</p>
+          </section>
+
+          <section id="method">
+            <h2>Scope and method</h2>
+            <ul>
+              <li>Scanned consumer TSX under <code>apps/</code>; production callsite counts exclude design-system implementations and examples.</li>
+              <li>Recorded Storybook/component stories separately as visual coverage. Stories are descriptive examples, not evidence against changing a default.</li>
+              <li>Measured repeated <code>className</code> utility tokens and exact class bundles, then checked each component's current implementation default.</li>
+              <li>Treated repeated production usage as evidence for a default only when the surrounding semantics and layout were also consistent.</li>
+            </ul>
+          </section>
+
+          <section id="recommendations">
+            <h2>Recommended changes</h2>
+
+            <article class="recommendation" id="select-trigger">
+              <div class="recommendation-header"><h3>1. <code>SelectTrigger</code> compact default or inspector preset</h3><span class="badge">Highest confidence</span></div>
+              <p class="evidence"><strong>Evidence:</strong> <code>CanvasInspectorSections.tsx:185</code>, <code>TextSection.tsx:331</code>, and <code>StrokeSection.tsx:92</code>.</p>
+              <p>All three production uses pass <code>size="sm"</code> and repeat the same field treatment:</p>
+              <pre>w-full rounded-sm border-0 bg-muted/50 px-2</pre>
+              <p>Make this compact treatment the default if the design system is editor-first, or add an <code>inspector</code> preset if the component must serve broader surfaces. The treatment is compact size, full width, rounded-small shape, borderless muted surface, and one dark-mode rule. Migrate all three callsites and remove the duplicated classes and size prop.</p>
+              <p>Stories remain visual examples and should be updated to make whichever generic/default and inspector states are intentionally supported explicit.</p>
+            </article>
+
+            <article class="recommendation" id="sidebar-content">
+              <div class="recommendation-header"><h3>2. <code>SidebarContent</code> flush default or vibe</h3><span class="badge">High confidence</span></div>
+              <p class="evidence"><strong>Evidence:</strong> <code>CanvasLayers.tsx:502</code>, <code>CanvasInspector.tsx:26</code>, and <code>SingleNode.tsx:20</code>.</p>
+              <p>Every production use overrides the component's default <code>p-2</code> with <code>p-0</code>. Change the default to <code>p-0</code> if the design system is editor-first; otherwise add a <code>flush</code> or <code>inspector</code> vibe option and migrate those three callsites.</p>
+              <p>The current story's padded examples do not count against this change; they should be updated or made explicit according to the desired default contract.</p>
+            </article>
+
+            <article class="recommendation" id="textarea">
+              <div class="recommendation-header"><h3>3. <code>Textarea</code> taller default or editor variant</h3><span class="badge">High confidence</span></div>
+              <p class="evidence"><strong>Evidence:</strong> <code>TextSection.tsx:401</code> and <code>SourceValueDialog.tsx:58</code>.</p>
+              <p>Both production textareas repeat:</p>
+              <pre>min-h-40 resize-y</pre>
+              <p>Change the default to <code>min-h-40 resize-y</code> if all product textareas are editor-like; otherwise add an <code>editor</code> or <code>multiline</code> variant, then remove the repeated className.</p>
+              <p>Stories are coverage examples, not a reason to retain the compact <code>min-h-16</code> default.</p>
+            <article class="recommendation" id="toggle">
+              <div class="recommendation-header"><h3>4. Make <code>Toggle</code> small by default or add inspector vibe</h3><span class="badge">Production-wide</span></div>
+              <p class="evidence"><strong>Evidence:</strong> all 8 application <code>Toggle</code> callsites pass <code>size="sm"</code>.</p>
+              <p>If the design system is editor-first, change the default Toggle size to <code>sm</code> and remove the redundant props. If the primitive is intended to serve broader contexts, add the inspector vibe instead. Story examples document supported visual states; they do not veto the production-supported default.</p>
+            </article>
+
+            <article class="recommendation" id="graph-button">
+              <div class="recommendation-header"><h3>5. Add a semantic graph-action button variant</h3><span class="badge">Exact duplicate</span></div>
+              <p class="evidence"><strong>Evidence:</strong> <code>BaseNode.tsx:89-95</code> and <code>FlowNode.tsx:71-82</code>.</p>
+              <p>Both buttons use <code>variant="ghost"</code>, <code>size="icon"</code>, and this exact visual bundle:</p>
+              <pre>text-(--flow-muted-foreground) hover:text-(--flow-muted-foreground)
+bg-transparent hover:bg-transparent opacity-50 hover:opacity-100</pre>
+              <p>Add a <code>quiet</code> or <code>graphAction</code> variant for these colors, surface, and opacity rules. Keep size explicit because the neighboring BaseNode action uses <code>icon-sm</code>.</p>
+            </article>
+
+            <article class="recommendation" id="alert">
+              <div class="recommendation-header"><h3>6. Add a compact destructive alert variant</h3><span class="badge">Exact duplicate</span></div>
+              <p class="evidence"><strong>Evidence:</strong> <code>Header.tsx:364-367</code> and <code>Header.tsx:369-372</code>.</p>
+              <p>The two publish-menu alerts repeat:</p>
+              <pre>mb-1 rounded-sm border-0 bg-destructive/25 p-2
+text-destructive-foreground ring-1 ring-destructive</pre>
+              <p>Add an <code>Alert</code> variant such as <code>menu-destructive</code>. Keep <code>mb-1</code> local because it is menu layout spacing. The existing alert already has semantic variants in <code>alert.tsx:6-19</code>.</p>
+            </article>
+
+            <article class="recommendation" id="tabs">
+              <div class="recommendation-header"><h3>7. Add a pill variant to <code>TabsTrigger</code></h3><span class="badge">Exact duplicate</span></div>
+              <p class="evidence"><strong>Evidence:</strong> <code>Header.tsx:244-258</code>.</p>
+              <p>Both editor tabs repeat:</p>
+              <pre>rounded-[100vw] border-0 px-3</pre>
+              <p>Add a <code>pill</code> or <code>compactPill</code> trigger variant. Keep the surrounding <code>TabsList</code> surface local to the Header; it is a navigation treatment, not a universal tabs default.</p>
+            </article>
+          </section>
+          <section id="detail">
+            <h2>Button and InputGroup detail</h2>
+
+            <h3><code>Button</code></h3>
+            <p>Production inventory: 41 openings.</p>
+            <table>
+              <thead><tr><th>Override</th><th>Count</th><th>Decision</th></tr></thead>
+              <tbody>
+                <tr><td><code>variant="ghost"</code></td><td>21/41</td><td>Most common, but mixed with primary, outline, link, destructive, and default actions. Do not make it the global default.</td></tr>
+                <tr><td><code>size="sm"</code></td><td>11/41</td><td>Common in compact chrome, but mixed with <code>lg</code>, <code>icon</code>, <code>icon-sm</code>, and <code>icon-xs</code>.</td></tr>
+                <tr><td><code>size="icon-sm"</code></td><td>8/41</td><td>Strong icon-action cluster. Consider an explicit icon-action preset, but do not change the base Button size.</td></tr>
+                <tr><td><code>variant="ghost" size="icon-sm"</code></td><td>8/41</td><td>Exact combination across inspector, graph, and variable controls; a semantic icon-action preset can consolidate it.</td></tr>
+                <tr><td><code>variant="ghost" size="icon"</code></td><td>4/41</td><td>Icon-only chrome actions with different local semantics; keep size explicit.</td></tr>
+                <tr><td><code>rounded-r-none border-0</code></td><td>2/41</td><td>Exact split-button body bundle at <code>Header.tsx:332</code> and <code>:340</code>; consider a split-button variant if it grows.</td></tr>
+              </tbody>
+            </table>
+            <p class="evidence">The earlier 22/44 and 14 figures included three Storybook openings. Those examples are descriptive; the counts above exclude them.</p>
+
+            <h3><code>InputGroup</code> and children</h3>
+            <p>Production inventory: 6 <code>InputGroup</code>, 7 <code>InputGroupAddon</code>, 3 <code>InputGroupButton</code>, and 6 <code>InputGroupInput</code> openings.</p>
+            <table>
+              <thead><tr><th>Component / override</th><th>Count</th><th>Decision</th></tr></thead>
+              <tbody>
+                <tr><td><code>InputGroup size="lg"</code></td><td>3/6</td><td>All auth fields. The existing <code>lg</code> variant already centralizes the shared height, muted background, and border treatment; keep it named rather than global.</td></tr>
+                <tr><td><code>InputGroup</code> <code>border-0</code></td><td>3/6</td><td>Toolbar, layers search, and variables composites have different geometry; keep border removal layout-specific.</td></tr>
+                <tr><td><code>InputGroup</code> <code>bg-muted/50</code></td><td>2/6</td><td>Different surrounding layouts; do not make it a base default.</td></tr>
+                <tr><td><code>InputGroupButton size="icon-xs"</code></td><td>3/3</td><td>All three zoom controls at <code>Toolbar.tsx:106,114,122</code>. Change the child default from <code>xs</code> to <code>icon-xs</code>, or add a compact-controls preset, and remove the redundant props.</td></tr>
+                <tr><td><code>InputGroupAddon align</code></td><td>2/7 explicit</td><td>Five already use the default <code>inline-start</code>; the explicit values are one end-aligned toolbar addon and one redundant start alignment. No change needed.</td></tr>
+                <tr><td><code>InputGroupInput</code> consumer classes</td><td>1/6</td><td>Only the zoom field adds <code>w-16</code>. No repeated child class override found.</td></tr>
+              </tbody>
+            </table>
+          </section>
+          <section id="contract">
+            <h2>Shared inspector variant contract</h2>
+            <div class="callout green">
+              <strong>Recommended API</strong>
+              Use one cross-component <code>vibe="inspector"</code> contract, optionally supplied by an <code>InspectorProvider</code> around each Canvas and graph inspector. Use <code>vibe</code>, not <code>variant</code>, so Button's semantic variants remain independent.
+            </div>
+            <h3>Common contract</h3>
+            <p>Inspector vibe means compact control height (<code>h-7</code> where applicable), <code>rounded-sm</code>, compact horizontal padding, muted inspector surface, borderless field chrome, and centralized dark-mode styling. Focus, disabled, invalid, and keyboard behavior remain unchanged.</p>
+            <h3>Component matrix</h3>
+            <table>
+              <thead><tr><th>Component</th><th>Inspector behavior</th><th>Migration target</th></tr></thead>
+              <tbody>
+                <tr><td><code>Button</code></td><td>Compact chrome while preserving semantic variant; icon sizes remain explicit</td><td>Replace repeated small/ghost/icon bundles with vibe plus semantic variant</td></tr>
+                <tr><td><code>Input</code></td><td><code>h-7 rounded-sm border-0 bg-muted/50 px-2</code></td><td>Share field treatment with InputGroupInput</td></tr>
+                <tr><td><code>InputGroup</code></td><td>Compact height, muted surface, borderless shell</td><td>Consolidate repeated surface bundles where they describe inspector chrome</td></tr>
+                <tr><td><code>InputGroupAddon</code></td><td>Compact alignment and padding</td><td>Inherit vibe; retain explicit start/end alignment</td></tr>
+                <tr><td><code>InputGroupButton</code></td><td>Compact icon action; <code>icon-xs</code> under inspector vibe</td><td>Remove three toolbar size props</td></tr>
+                <tr><td><code>InputGroupInput</code> / <code>InputGroupTextarea</code></td><td>Compact field chrome</td><td>Inherit vibe from InputGroup; retain content-specific width/type</td></tr>
+                <tr><td><code>SelectTrigger</code></td><td>Small, full-width, rounded-small, borderless muted field</td><td>Remove identical Canvas inspector classes</td></tr>
+                <tr><td><code>Toggle</code></td><td>Small control size and compact padding</td><td>Remove eight repeated <code>size="sm"</code> props</td></tr>
+                <tr><td><code>ToggleGroup</code> / <code>ToggleGroupItem</code></td><td>Small items, compact gap/radius; vibe propagates to items</td><td>Consolidate inspector subset without changing other groups</td></tr>
+                <tr><td><code>Textarea</code></td><td><code>min-h-40 resize-y</code> for editor text fields plus compact chrome</td><td>Remove two repeated editor bundles</td></tr>
+                <tr><td><code>Switch</code> / <code>Slider</code></td><td>Compact inspector dimensions where used</td><td>Implement after visual review confirms shared geometry</td></tr>
+                <tr><td><code>ComboboxInput</code> / <code>PropertyInput</code></td><td>Compact, borderless muted field; preserve variable/sizing/validation behavior</td><td>Replace parallel internal inspector styling</td></tr>
+                <tr><td><code>TypeSelect</code></td><td>Forward vibe to trigger</td><td>Remove <code>triggerSize="sm"</code> and repeated trigger styling</td></tr>
+                <tr><td><code>Label</code></td><td>Optional compact typography only</td><td>Add vibe only if repeated label overrides emerge</td></tr>
+              </tbody>
+            </table>
+            <p class="evidence"><code>Section</code>, <code>SectionRow</code>, <code>SectionHelperText</code>, <code>SidebarContent</code>, and <code>SidebarHeader</code> are already inspector shell components. Dialog, Tabs, DropdownMenu, Tooltip, ImageInput, and CopyButton participate in inspector flows but are overlays/actions, not inline field-vibe controls.</p>
+            <h3>Provider shape</h3>
+            <pre>&lt;InspectorProvider&gt;
+  &lt;CanvasInspector /&gt;
+&lt;/InspectorProvider&gt;
+&lt;InspectorProvider&gt;
+  &lt;GraphInspector /&gt;
+&lt;/InspectorProvider&gt;</pre>
+            <p>Components resolve vibe from the nearest provider; a local <code>vibe</code> prop opts one control out. This makes both inspector surfaces converge without repeating the prop at every callsite.</p>
+          </section>
+
+          <section id="not-global">
+            <h2>Do not make these global defaults</h2>
+            <table>
+              <thead><tr><th>Override</th><th>Evidence</th><th>Decision</th></tr></thead>
+              <tbody>
+                <tr><td><code>ToggleGroup size="sm"</code> / <code>ToggleGroupItem size="sm"</code></td><td>4/9 groups and 7/18 items use <code>sm</code></td><td>Add inspector vibe; group contexts remain mixed outside the inspector.</td></tr>
+                <tr><td><code>ToggleGroup w-full</code></td><td>6 of 9 groups</td><td>Width is layout-dependent; object-position and alignment groups have specialized grid layouts.</td></tr>
+                <tr><td><code>InputGroup</code> custom surface bundles</td><td><code>border-0</code> at 3/6; <code>bg-muted/50</code> at 2/6</td><td>Keep layout-specific until the shared vibe contract replaces them.</td></tr>
+                <tr><td><code>PropertyInput min={0}</code></td><td>6 production number inputs</td><td>Domain validation, not visual styling; values may legitimately differ.</td></tr>
+                <tr><td>Sidebar side/variant/collapse overrides</td><td>Editor layout uses differ</td><td>Keep explicit. Left Layers and right Properties have different semantics.</td></tr>
+                <tr><td><code>TypeSelect triggerClassName="w-full"</code></td><td>2 of 3 uses</td><td>Width belongs to the surrounding form grid; the third trigger has a distinct transparent treatment.</td></tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section id="order">
+            <h2>Implementation order</h2>
+            <ol>
+              <li>Add one <code>InspectorProvider</code>/vibe context and mount it at both Canvas and graph inspector roots.</li>
+              <li>Implement the shared <code>vibe="inspector"</code> contract for <code>Input</code>, <code>InputGroup</code> and children, <code>SelectTrigger</code>, <code>Toggle</code>, <code>ToggleGroup</code>, <code>ToggleGroupItem</code>, <code>Button</code>, <code>Textarea</code>, and custom <code>PropertyInput</code>/<code>TypeSelect</code> controls.</li>
+              <li>Remove proven redundant overrides: compact SelectTrigger classes, <code>SidebarContent p-0</code>, <code>Textarea min-h-40 resize-y</code>, eight Toggle <code>size="sm"</code> props, and three InputGroupButton <code>size="icon-xs"</code> props.</li>
+              <li>Decide whether editor-first defaults should become component defaults or remain provider-scoped; stories do not answer this question.</li>
+              <li>Add semantic variants for graph actions, split-button bodies, compact destructive alerts, and Header tab pills.</li>
+              <li>Update stories as descriptive visual coverage for the selected contract, then run component-specific typecheck and smoke verification.</li>
+            </ol>
+          </section>
+
+          <section id="risks">
+            <h2>Risks and migration notes</h2>
+            <div class="callout amber">
+              <strong>Visual verification matters</strong>
+              Verify Tailwind merge order, focus rings, dark-mode surfaces, mixed-value inspector states, scrollbars, and nested sidebar groups after migration.
+            </div>
+            <ul>
+              <li>Compose vibe styles before consumer <code>className</code> so explicit callsite overrides remain possible.</li>
+              <li><code>p-0</code> changes the content box, not only whitespace; check keyboard focus and scrolling.</li>
+              <li>Provider propagation must not cross modal/overlay boundaries accidentally; preserve each component's semantic variants.</li>
+              <li>Do not delete local classes until every cited callsite uses the selected default or provider vibe and visual coverage documents the resulting states.</li>
+            </ul>
+          </section>
+
+          <section id="conclusion">
+            <h2>Conclusion</h2>
+            <div class="callout">
+              <strong>Recommended direction</strong>
+              Use one shared <code>vibe="inspector"</code> context across Canvas and graph inspector controls. It centralizes compact height, radius, padding, muted surface, border treatment, and child propagation while preserving each component's semantic variants. Make those defaults global only if the design system is intentionally editor-first; otherwise keep them provider-scoped.
+            </div>
+          </section>
+        </div>
+
+        <nav class="toc" aria-label="On this page">
+          <strong>On this page</strong>
+          <a href="#headline">At a glance</a>
+          <a href="#method">Scope and method</a>
+          <a href="#recommendations">Recommended changes</a>
+          <a href="#detail">Button and InputGroup detail</a>
+          <a href="#contract">Shared inspector contract</a>
+          <a href="#not-global">Not global defaults</a>
+          <a href="#order">Implementation order</a>
+          <a href="#risks">Risks</a>
+          <a href="#conclusion">Conclusion</a>
+        </nav>
+      </div>
+      <div class="shell"><footer>Source artifact: <code>docs/research/ui-component-defaults-audit.md</code></footer></div>
+    </main>
+  </body>
+</html>

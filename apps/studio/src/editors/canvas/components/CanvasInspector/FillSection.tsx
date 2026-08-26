@@ -181,7 +181,7 @@ export const FillSection = () => {
   return (
     <Section label="Fill">
       <ToggleGroup
-        className="col-span-2 w-full rounded-sm *:grow"
+        className="col-span-2 w-full *:grow"
         spacing={0.5}
         value={fillMode ? [fillMode] : []}
         onValueChange={([nextMode]) => {
@@ -201,16 +201,16 @@ export const FillSection = () => {
           }
         }}
       >
-        <ToggleGroupItem value="none" size="sm">
+        <ToggleGroupItem value="none">
           <BanIcon />
         </ToggleGroupItem>
-        <ToggleGroupItem value="solid" size="sm" aria-label="Solid fill">
+        <ToggleGroupItem value="solid" aria-label="Solid fill">
           <PaintBucketIcon />
         </ToggleGroupItem>
-        <ToggleGroupItem value="linear" size="sm" aria-label="Linear gradient">
+        <ToggleGroupItem value="linear" aria-label="Linear gradient">
           <GradientLinearIcon />
         </ToggleGroupItem>
-        <ToggleGroupItem value="radial" size="sm" aria-label="Radial gradient">
+        <ToggleGroupItem value="radial" aria-label="Radial gradient">
           <GradientRadialIcon />
         </ToggleGroupItem>
       </ToggleGroup>

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { InspectorProvider } from "@mechane/design-system";
 
 import {
   Combobox,
@@ -159,5 +160,25 @@ export const Empty: Story = {
         <ComboboxList />
       </ComboboxContent>
     </Combobox>
+  ),
+};
+
+export const InspectorVibe: Story = {
+  render: () => (
+    <InspectorProvider>
+      <Combobox items={frameworks}>
+        <ComboboxInput placeholder="Inspector combobox" />
+        <ComboboxContent>
+          <ComboboxEmpty>No items found.</ComboboxEmpty>
+          <ComboboxList>
+            {(item) => (
+              <ComboboxItem key={item} value={item}>
+                {item}
+              </ComboboxItem>
+            )}
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+    </InspectorProvider>
   ),
 };

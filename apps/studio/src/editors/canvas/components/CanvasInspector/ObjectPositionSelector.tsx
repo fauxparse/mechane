@@ -42,7 +42,6 @@ export const ObjectPositionSelector = ({
       {VALUES.map((value) => (
         <Toggle
           key={value}
-          size="sm"
           className={cn(
             "group/button min-w-0 border-0 bg-transparent hover:bg-transparent aria-pressed:bg-transparent h-5 p-0 grid",
           )}

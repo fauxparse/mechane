@@ -136,7 +136,6 @@ function ArrayValueEditor({
       ))}
       <Button
         type="button"
-        size="sm"
         variant="outline"
         className="self-start"
         onClick={() => onChange([...values, defaultValueForType(type.of, shapes)])}
@@ -198,7 +197,6 @@ export function ValueEditor(props: ValueEditorProps) {
     return (
       <Button
         type="button"
-        size="sm"
         variant="outline"
         onClick={() => onChange(defaultValueForType(type, shapes))}
       >

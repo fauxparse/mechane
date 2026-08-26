@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { SidebarContent, SidebarHeader } from "@mechane/design-system";
+import { InspectorProvider, SidebarContent, SidebarHeader } from "@mechane/design-system";
 
 import { AppearanceSection } from "./AppearanceSection";
 import { CanvasInspectorProvider } from "./CanvasInspectorContext";
@@ -23,7 +23,7 @@ const CanvasInspectorContent = () => (
     <SidebarHeader className="">
       <InspectorHeader />
     </SidebarHeader>
-    <SidebarContent className="p-0 gap-0">
+    <SidebarContent className="gap-0">
       <ImageSection />
       <PositionSection />
       <LayoutSection />
@@ -37,10 +37,15 @@ const CanvasInspectorContent = () => (
 
 export const CanvasInspector = memo(function CanvasInspector(props: CanvasInspectorProps) {
   const model = useCanvasInspectorModel(props);
-  if (!model) return <EmptySelection />;
   return (
-    <CanvasInspectorProvider value={model}>
-      <CanvasInspectorContent />
-    </CanvasInspectorProvider>
+    <InspectorProvider>
+      {!model ? (
+        <EmptySelection />
+      ) : (
+        <CanvasInspectorProvider value={model}>
+          <CanvasInspectorContent />
+        </CanvasInspectorProvider>
+      )}
+    </InspectorProvider>
   );
 });

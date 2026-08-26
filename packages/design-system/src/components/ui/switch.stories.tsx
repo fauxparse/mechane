@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { InspectorProvider } from "@mechane/design-system";
 import { useState } from "react";
-
 import { Switch } from "./switch";
 
 const meta: Meta<typeof Switch> = {
@@ -92,3 +92,14 @@ function SettingRow({
     </label>
   );
 }
+
+export const InspectorVibe: Story = {
+  render: () => (
+    <InspectorProvider>
+      <div className="flex items-center gap-3">
+        <Switch aria-label="Inspector off" />
+        <Switch aria-label="Inspector on" defaultChecked />
+      </div>
+    </InspectorProvider>
+  ),
+};

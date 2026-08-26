@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import type { NumberValue, ShapeValue } from "@mechane/domain";
-import { PaintBucketIcon, VariableIcon } from "@mechane/design-system";
+import { InspectorProvider, PaintBucketIcon, VariableIcon } from "@mechane/design-system";
 
 import { PropertyInput, type PropertyInputValue, type VariableReference } from "./property-input";
 
@@ -274,4 +274,20 @@ export const WithVariables: Story = {
       </div>
     );
   },
+};
+
+export const InspectorVibe: Story = {
+  render: () => (
+    <InspectorProvider>
+      <div className="w-80">
+        <PropertyInput
+          type="number"
+          icon="W"
+          value={{ kind: "number", value: 24 }}
+          onChange={() => {}}
+          placeholder="Width"
+        />
+      </div>
+    </InspectorProvider>
+  ),
 };

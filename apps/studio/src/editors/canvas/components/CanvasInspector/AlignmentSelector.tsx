@@ -51,7 +51,6 @@ export const AlignmentSelector = ({
         !auto || i % 3 === 0 ? (
           <Toggle
             key={i}
-            size="sm"
             className={cn(
               "group/button min-w-0 border-0 bg-transparent hover:bg-transparent aria-pressed:bg-transparent h-5 p-0 grid",
               auto

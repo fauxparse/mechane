@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { InspectorProvider } from "@mechane/design-system";
 import { useState } from "react";
-
 import { Slider } from "./slider";
 
 const meta: Meta<typeof Slider.Root> = {
@@ -39,4 +39,19 @@ export const MultipleThumbs: Story = {
       </Slider.Root>
     );
   },
+};
+
+export const InspectorVibe: Story = {
+  render: () => (
+    <InspectorProvider>
+      <Slider.Root defaultValue={[40]} min={0} max={100}>
+        <Slider.Control className="py-3">
+          <Slider.Track className="bg-muted">
+            <Slider.Indicator />
+            <Slider.Thumb index={0} aria-label="Inspector value" />
+          </Slider.Track>
+        </Slider.Control>
+      </Slider.Root>
+    </InspectorProvider>
+  ),
 };

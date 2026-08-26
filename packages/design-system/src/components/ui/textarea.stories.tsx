@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { InspectorProvider } from "@mechane/design-system";
 
 import { Textarea } from "./textarea";
 
@@ -20,4 +21,12 @@ export const WithValue: Story = {
 
 export const Disabled: Story = {
   args: { disabled: true, defaultValue: "This cannot be edited." },
+};
+
+export const InspectorVibe: Story = {
+  render: () => (
+    <InspectorProvider>
+      <Textarea placeholder="Inspector text" aria-label="Inspector text" />
+    </InspectorProvider>
+  ),
 };
