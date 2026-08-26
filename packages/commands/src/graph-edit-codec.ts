@@ -74,6 +74,8 @@ import {
   setShapeFieldType,
   setShapes,
   setSourceFieldDefault,
+  setSourceType,
+  setWiringFieldMapping,
 } from "./graph-commands";
 import type { GraphEdit } from "./graph-edits";
 
@@ -172,9 +174,11 @@ export interface FlatGraphEdit {
   variableIds?: string[] | null;
   variable?: FlatSceneVariable | null;
   variableType?: FlatType | null;
+  sourceType?: FlatType | null;
   color?: string | null;
   shapes?: FlatShape[] | null;
   fieldPath?: string[] | null;
+  fieldMapping?: Record<string, string> | null;
   value?: unknown;
   perConnection?: boolean | null;
   /** Server → client only (#111); see the header note on direction. */
@@ -271,7 +275,6 @@ function decodeShapeField(flat: FlatShapeField): ShapeField {
     defaultValue: flat.defaultValue ?? null,
   };
 }
-
 
 export function decodeShape(flat: FlatShape): Shape {
   return {
@@ -511,6 +514,37 @@ export const GRAPH_EDIT_CODECS: { [T in GraphEdit["type"]]: GraphEditCodec<T> } 
       edgeId: required(flat, "edgeId", flat.edgeId),
     }),
   },
+  [GRAPH_COMMAND_TYPES.setSourceType]: {
+    command: (edit) => setSourceType(edit.nodeId, edit.sourceType),
+    encode: (edit) => ({
+      type: edit.type,
+      nodeId: edit.nodeId,
+      sourceType: encodeType(edit.sourceType),
+    }),
+    decode: (flat) => {
+      if (flat.sourceType === undefined) {
+        throw new GraphEditCodecError(`A "${flat.type}" edit needs a sourceType.`);
+      }
+      return {
+        type: GRAPH_COMMAND_TYPES.setSourceType,
+        nodeId: required(flat, "nodeId", flat.nodeId),
+        sourceType: decodeType(flat.sourceType)!,
+      };
+    },
+  },
+  [GRAPH_COMMAND_TYPES.setWiringFieldMapping]: {
+    command: (edit) => setWiringFieldMapping(edit.edgeId, edit.fieldMapping),
+    encode: (edit) => ({
+      type: edit.type,
+      edgeId: edit.edgeId,
+      fieldMapping: edit.fieldMapping,
+    }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.setWiringFieldMapping,
+      edgeId: required(flat, "edgeId", flat.edgeId),
+      fieldMapping: flat.fieldMapping ?? null,
+    }),
+  },
   [GRAPH_COMMAND_TYPES.setFlowDefaultScene]: {
     command: (edit) => setFlowDefaultScene(edit.flowId, edit.sceneId),
     encode: (edit) => ({ type: edit.type, flowId: edit.flowId, sceneId: edit.sceneId }),
@@ -581,7 +615,11 @@ export const GRAPH_EDIT_CODECS: { [T in GraphEdit["type"]]: GraphEditCodec<T> } 
   },
   [GRAPH_COMMAND_TYPES.addShapeField]: {
     command: (edit) => addShapeField(edit.shapeId, edit.field),
-    encode: (edit) => ({ type: edit.type, shapeId: edit.shapeId, field: encodeShapeField(edit.field) }),
+    encode: (edit) => ({
+      type: edit.type,
+      shapeId: edit.shapeId,
+      field: encodeShapeField(edit.field),
+    }),
     decode: (flat) => ({
       type: GRAPH_COMMAND_TYPES.addShapeField,
       shapeId: required(flat, "shapeId", flat.shapeId),

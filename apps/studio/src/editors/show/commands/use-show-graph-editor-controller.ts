@@ -312,6 +312,7 @@ export function useShowGraphEditorController({
     inspector: graphInspectorEditing(command.graph, gestures, variables, editing.sourceValues, {
       setNodeColor: editing.setNodeColor,
       setDevicePerConnection: editing.setDevicePerConnection,
+      setSourceType: editing.setSourceType,
     }),
     menuPosition,
     selectedNodes,

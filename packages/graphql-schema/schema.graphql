@@ -567,8 +567,14 @@ type GraphEdit {
   """The Show node editor colorway for graph.setNodeColor."""
   color: String
 
+  """The Source node Type, for graph.setSourceType."""
+  sourceType: Type
+
   """The graph-owned Source field path for graph.setSourceFieldDefault."""
   fieldPath: [ID!]
+
+  """The wiring edge's stable source-field to target-field mapping."""
+  fieldMapping: JSON
 
   """The graph-owned Source field value; null clears the override."""
   value: JSON
@@ -620,8 +626,14 @@ input ShowEditInput {
   """The Variable's Type, for graph.setSceneVariableType. Null clears it."""
   variableType: TypeInput
 
+  """The Source node Type, for graph.setSourceType."""
+  sourceType: TypeInput
+
   """The Source field path, for graph.setSourceFieldDefault."""
   fieldPath: [ID!]
+
+  """The wiring edge's stable source-field to target-field mapping."""
+  fieldMapping: JSON
 
   """The Source field value; null clears the override."""
   value: JSON

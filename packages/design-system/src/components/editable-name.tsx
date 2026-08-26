@@ -55,7 +55,7 @@ export function EditableName({
       <InputGroup
         className={cn(
           "min-w-0 flex-1 rounded-sm -ml-1",
-          editing ? "bg-input/30" : "border-transparent bg-transparent",
+          editing ? "bg-input/30" : "border-transparent bg-transparent dark:bg-transparent",
         )}
       >
         {editing ? (

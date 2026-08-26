@@ -42,6 +42,8 @@ import {
   setShapeFieldDefault,
   setShapeFieldRequired,
   setShapeFieldType,
+  setSourceType,
+  setWiringFieldMapping,
   setShapes,
 } from "./graph-commands";
 import type { GraphEdit } from "./graph-edits";
@@ -252,6 +254,13 @@ describe("every primitive command's edits reproduce it", () => {
   it("setFlowDefaultScene", () => {
     expectEditsReproduce(setFlowDefaultScene(VOTE_FLOW.id, RESULTS.id));
   });
+  it("setSourceType", () => {
+    expectEditsReproduce(setSourceType(TALLY.id, "text"));
+  });
+
+  it("setWiringFieldMapping", () => {
+    expectEditsReproduce(setWiringFieldMapping(WIRE.id, { source_field: "target_field" }));
+  });
 
   it("addSceneVariable", () => {
     expectEditsReproduce(addSceneVariable(RESULTS.id, { id: "variable_new", name: "total" }));
@@ -308,10 +317,7 @@ describe("every primitive command's edits reproduce it", () => {
       setShapeFieldDefault(ADDRESS_SHAPE.id, "field_street", "Main"),
       SHAPE_GRAPH,
     );
-    expectEditsReproduce(
-      setShapeFieldRequired(ADDRESS_SHAPE.id, "field_city", true),
-      SHAPE_GRAPH,
-    );
+    expectEditsReproduce(setShapeFieldRequired(ADDRESS_SHAPE.id, "field_city", true), SHAPE_GRAPH);
     expectEditsReproduce(
       reorderShapeFields(ADDRESS_SHAPE.id, ["field_city", "field_street"]),
       SHAPE_GRAPH,

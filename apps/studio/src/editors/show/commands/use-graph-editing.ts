@@ -59,6 +59,12 @@ import {
 } from "@mechane/domain";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { sourceLabelFor } from "../graph/source-label";
+import type { SourceTypeChangePlan } from "../graph/inspector/source-type-change";
+import {
+  planSourceTypeChange,
+  sourceTypeChangeHasImpact,
+  sourceTypeChangeSignature,
+} from "../graph/inspector/source-type-change";
 
 import type { ApiGraph } from "../data/api-graph";
 import { handleFor, readHandle, type HandleId } from "../graph/handle-ids";
@@ -159,6 +165,11 @@ export interface GraphEditing {
   sourceValues: SourceValueEditing;
   setNodeColor(nodeId: string, color: FlowColor): void;
   setDevicePerConnection(nodeId: string, perConnection: boolean): void;
+  setSourceType(
+    nodeId: string,
+    type: Type,
+    confirmedPlan?: SourceTypeChangePlan,
+  ): SourceTypeChangePlan | null;
   moveIntoFlow(nodeIds: string[], flowId: string, origin: Position): void;
   moveOutOfFlow(nodeIds: string[], positions: Position[]): string | null;
 }
@@ -172,6 +183,11 @@ export interface GraphInspectorEditing {
   cancelRename(): void;
   setNodeColor(nodeId: string, color: FlowColor): void;
   setDevicePerConnection(nodeId: string, perConnection: boolean): void;
+  setSourceType(
+    nodeId: string,
+    type: Type,
+    confirmedPlan?: SourceTypeChangePlan,
+  ): SourceTypeChangePlan | null;
   addVariable(sceneId: string): void;
   renameVariable(sceneId: string, variableId: string, name: string): void;
   setVariableType(sceneId: string, variableId: string, type: Type): void;
@@ -182,6 +198,11 @@ export interface GraphInspectorEditing {
 export interface GraphInspectorNodeEditing {
   setNodeColor(nodeId: string, color: FlowColor): void;
   setDevicePerConnection(nodeId: string, perConnection: boolean): void;
+  setSourceType(
+    nodeId: string,
+    type: Type,
+    confirmedPlan?: SourceTypeChangePlan,
+  ): SourceTypeChangePlan | null;
 }
 
 export function graphInspectorEditing(
@@ -433,6 +454,33 @@ export function useGraphEditing(
     [execute],
   );
 
+  const changeSourceType = useCallback(
+    (nodeId: string, type: Type, confirmedPlan?: SourceTypeChangePlan) => {
+      const plan = planSourceTypeChange(graph, nodeId, type);
+      if (!plan) return null;
+      if (confirmedPlan) {
+        if (sourceTypeChangeSignature(confirmedPlan) !== sourceTypeChangeSignature(plan)) {
+          return plan;
+        }
+        execute(
+          composite({
+            label:
+              plan.edgeRemovals.length > 0
+                ? "Change Source type and remove affected items"
+                : "Change Source type",
+            commands: plan.edits.map((edit) => commandForEdit(edit)),
+          }),
+        );
+        return null;
+      }
+      if (sourceTypeChangeHasImpact(plan)) return plan;
+      const [edit] = plan.edits;
+      if (edit) execute(commandForEdit(edit));
+      return null;
+    },
+    [execute, graph],
+  );
+
   const removeVariable = useCallback(
     (sceneId: string, variableId: string) => {
       execute(removeSceneVariable(sceneId, variableId));
@@ -608,6 +656,7 @@ export function useGraphEditing(
     },
     setNodeColor: changeNodeColor,
     setDevicePerConnection: changeDevicePerConnection,
+    setSourceType: changeSourceType,
     moveIntoFlow,
     moveOutOfFlow,
   };

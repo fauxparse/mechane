@@ -11,6 +11,7 @@ import {
 import { FLOW_COLORS, FlowColor, type GraphNode } from "@mechane/domain";
 import type { GraphInspectorEditing } from "../../commands/use-graph-editing";
 import { SourceValues } from "./SourceValues";
+import { SourceTypeSection } from "./SourceTypeSection";
 import { Variables } from "./Variables";
 
 export function SingleNode({ node, editing }: { node: GraphNode; editing: GraphInspectorEditing }) {
@@ -89,8 +90,12 @@ export function SingleNode({ node, editing }: { node: GraphNode; editing: GraphI
       {node.kind === "scene" ? (
         <Variables node={node} editing={editing} shapes={editing.graph.shapes ?? []} />
       ) : null}
-      {node.kind === "source" ? <SourceValues node={node} editing={editing} /> : null}
-
+      {node.kind === "source" ? (
+        <>
+          <SourceTypeSection node={node} editing={editing} />
+          <SourceValues node={node} editing={editing} />
+        </>
+      ) : null}
       {node.kind === "transformer" ? (
         <p className="text-xs text-muted-foreground">
           Expressions arrive with the Transformer slice — they evaluate server-side (ADR-0004), so

@@ -253,6 +253,8 @@ describe("image values", () => {
 describe("type compatibility", () => {
   it("allows table coercions and single-to-array wrapping", () => {
     expect(areTypesCompatible("number", "text")).toBe(true);
+    expect(areTypesCompatible("number", "boolean")).toBe(true);
+    expect(areTypesCompatible("text", "boolean")).toBe(true);
     expect(areTypesCompatible("boolean", { kind: "array", of: "number" })).toBe(false);
     expect(areTypesCompatible("number", { kind: "array", of: "number" })).toBe(true);
     expect(areTypesCompatible({ kind: "array", of: "number" }, "number")).toBe(false);
@@ -294,6 +296,7 @@ describe("coercion table", () => {
   it("contains exactly the supported primitive pairs", () => {
     expect(COERCIONS.map(({ from, to }) => `${from}->${to}`)).toEqual([
       "number->text",
+      "number->boolean",
       "boolean->text",
       "datetime->date",
       "text->number",
@@ -306,13 +309,22 @@ describe("coercion table", () => {
   it("converts lossless and deliberate lossy pairs", () => {
     expect(coerceValue(12, "number", "text")).toBe("12");
     expect(coerceValue(true, "boolean", "text")).toBe("true");
-    expect(coerceValue("2025-04-03T12:30:00Z", "datetime", "date")).toBe("2025-04-03");
-    expect(coerceValue("42", "text", "number")).toBe(42);
+    expect(coerceValue(0, "number", "boolean")).toBe(false);
+    expect(coerceValue(-2, "number", "boolean")).toBe(true);
+    expect(coerceValue("", "text", "boolean")).toBe(false);
     expect(coerceValue("false", "text", "boolean")).toBe(false);
+    expect(coerceValue(" FALSE ", "text", "boolean")).toBe(false);
+    expect(coerceValue("0", "text", "boolean")).toBe(false);
+    expect(coerceValue("2", "text", "boolean")).toBe(true);
+    expect(coerceValue("anything", "text", "boolean")).toBe(true);
+    expect(coerceValue(12, "number", { kind: "array", of: "number" })).toEqual([12]);
+    expect(coerceValue("false", "text", { kind: "array", of: "boolean" })).toEqual([false]);
+    expect(coerceValue("2025-04-03T00:00:00Z", "datetime", "date")).toBe("2025-04-03");
+    expect(coerceValue("42", "text", "number")).toBe(42);
   });
 
-  it("rejects invalid parses and deliberately unsupported pairs", () => {
-    expect(() => coerceValue("maybe", "text", "boolean")).toThrow(CoercionError);
+  it("rejects invalid values and deliberately unsupported pairs", () => {
+    expect(() => coerceValue(42, "text", "boolean")).toThrow(CoercionError);
     expect(() => coerceValue("2025-02-30", "text", "date")).toThrow(CoercionError);
     expect(() => coerceValue("2025-04-03", "date", "datetime")).toThrow(CoercionError);
   });

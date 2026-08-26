@@ -46,6 +46,7 @@ export {
   CardHeader,
   CardTitle,
 } from "./components/ui/card";
+export { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./components/ui/collapsible";
 export {
   Combobox,
   ComboboxChip,

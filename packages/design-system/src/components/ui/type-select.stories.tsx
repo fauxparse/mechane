@@ -32,6 +32,12 @@ export const Compact: Story = {
   },
 };
 
+export const Inspector: Story = {
+  args: {
+    vibe: "inspector",
+  },
+};
+
 export const WithShapes: Story = {
   args: {
     value: { kind: "shape", shapeId: "attendee" },
