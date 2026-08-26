@@ -164,6 +164,31 @@ describe("connectionKindFor", () => {
       }),
     );
   });
+  it("allows multiple value sources to feed an array Source input", () => {
+    const arraySource: SourceNode = {
+      ...LOCAL,
+      id: "source_array",
+      name: "Array input",
+      type: { kind: "array", of: "number" },
+    };
+    const firstEdge = connectionEdge(
+      { ...GRAPH, nodes: [...GRAPH.nodes, arraySource] },
+      { sourceId: TALLY.id, targetId: arraySource.id },
+      "edge_first",
+    );
+    if (!firstEdge) throw new Error("Expected the first array input edge.");
+    const graphWithFirstEdge = {
+      ...GRAPH,
+      nodes: [...GRAPH.nodes, arraySource],
+      edges: [firstEdge],
+    };
+    expect(
+      connectionError(graphWithFirstEdge, {
+        sourceId: LOCAL.id,
+        targetId: arraySource.id,
+      }),
+    ).toBeNull();
+  });
 });
 describe("sourceTypeAtHandle", () => {
   it("resolves a shape field handle to that field's type", () => {

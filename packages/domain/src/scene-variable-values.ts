@@ -52,6 +52,11 @@ function mergeRuntimeValue(designValue: unknown, runtimeValue: unknown): unknown
   }
   return runtimeValue;
 }
+function appendArrayValues(current: unknown, incoming: unknown): unknown[] {
+  const existing = Array.isArray(current) ? current : [];
+  const values = Array.isArray(incoming) ? incoming : [incoming];
+  return [...existing, ...values];
+}
 
 function remapFields(value: unknown, mapping: Record<string, string> | undefined): unknown {
   if (!mapping || Object.keys(mapping).length === 0) return value;
@@ -154,12 +159,17 @@ export function sceneVariableValues(
     if (resolvingNodes.has(nodeId)) return undefined;
 
     resolvingNodes.add(nodeId);
-    let value = resolvedSourceValues[nodeId];
-    for (const edge of wiringEdges) {
-      if (edge.targetId !== nodeId) continue;
+    const incomingEdges = wiringEdges.filter((edge) => edge.targetId === nodeId);
+    const assemblesArray =
+      typeof node.type !== "string" && node.type.kind === "array" && incomingEdges.length > 0;
+    let value = assemblesArray ? [] : resolvedSourceValues[nodeId];
+    for (const edge of incomingEdges) {
       const sourceValue = resolveValue(edge.sourceId, edge.sourcePath);
       if (sourceValue === undefined) continue;
-      value = mergeRuntimeValue(value, remapFields(sourceValue, fieldMappingFor(graph, edge)));
+      const incomingValue = remapFields(sourceValue, fieldMappingFor(graph, edge));
+      value = assemblesArray
+        ? appendArrayValues(value, incomingValue)
+        : mergeRuntimeValue(value, incomingValue);
     }
     resolvedSourceValues[nodeId] = value;
     resolvingNodes.delete(nodeId);
