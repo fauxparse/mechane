@@ -29,6 +29,7 @@
 // the composite correct.
 
 import type {
+  Block,
   DeviceNode,
   FlowColor,
   GraphEdge,
@@ -46,8 +47,11 @@ import {
   InvalidShapeError,
   assertShapeCanBeRemoved,
   assertShapeFieldNameAvailable,
+  assertValidBlockName,
   assertValidShapeType,
   assertValidShapes,
+  duplicateBlock as duplicateBlockResource,
+  renameBlock as renameBlockResource,
   shapeReferencesShape,
 } from "@mechane/domain";
 
@@ -91,9 +95,12 @@ export const GRAPH_COMMAND_TYPES = {
   setSceneVariableType: "graph.setSceneVariableType",
   reorderSceneVariables: "graph.reorderSceneVariables",
   removeSceneVariable: "graph.removeSceneVariable",
-  moveNodeOutOfFlow: "graph.moveNodeOutOfFlow",
   setDevicePairingCode: "graph.setDevicePairingCode",
   setDevicePerConnection: "graph.setDevicePerConnection",
+  addBlock: "graph.addBlock",
+  renameBlock: "graph.renameBlock",
+  duplicateBlock: "graph.duplicateBlock",
+  removeBlock: "graph.removeBlock",
 } as const;
 
 export class UnknownGraphTargetError extends Error {
@@ -1581,5 +1588,113 @@ export function removeEdge(edgeId: string, label = "Disconnect"): ShowGraphComma
       edges: graph.edges.filter((edge) => edge.id !== edgeId),
     }),
     restore: (graph, captured) => insertEdge(graph, captured.index, captured.edge),
+  });
+}
+// ---------------------------------------------------------------------------
+// Blocks
+// ---------------------------------------------------------------------------
+
+function blockAt(graph: ShowGraph, blockId: string): { index: number; block: Block } {
+  const index = (graph.blocks ?? []).findIndex((block) => block.id === blockId);
+  const block = graph.blocks?.[index];
+  if (index < 0 || !block) throw new UnknownGraphTargetError("Block", blockId);
+  return { index, block };
+}
+
+function withBlocks(graph: ShowGraph, blocks: readonly Block[]): ShowGraph {
+  return { ...graph, blocks: [...blocks] };
+}
+
+export function addBlock(block: Block, label = "Add Block"): ShowGraphCommand {
+  return capturing({
+    type: GRAPH_COMMAND_TYPES.addBlock,
+    label,
+    scope: "global",
+    edits: [{ type: GRAPH_COMMAND_TYPES.addBlock, block }],
+    capture: (graph) => graph.blocks ?? [],
+    apply: (graph) => {
+      const blocks = graph.blocks ?? [];
+      if (blocks.some((candidate) => candidate.id === block.id)) {
+        throw new UnknownGraphTargetError("unique Block", block.id);
+      }
+      if (blocks.some((candidate) => candidate.name === block.name)) {
+        throw new InvalidShapeError(`Block name "${block.name}" is already in use.`);
+      }
+      return withBlocks(graph, [...blocks, block]);
+    },
+    restore: (graph, previous) => withBlocks(graph, previous),
+  });
+}
+export function renameBlock(
+  blockId: string,
+  name: string,
+  label = "Rename Block",
+): ShowGraphCommand {
+  const nextName = assertValidBlockName(name);
+  return capturing({
+    type: GRAPH_COMMAND_TYPES.renameBlock,
+    label,
+    scope: "global",
+    edits: [{ type: GRAPH_COMMAND_TYPES.renameBlock, blockId, name: nextName }],
+    capture: (graph) => blockAt(graph, blockId).block.name,
+    apply: (graph) => {
+      const { block } = blockAt(graph, blockId);
+      const other = (graph.blocks ?? []).find(
+        (candidate) => candidate.id !== blockId && candidate.name === nextName,
+      );
+      if (other) throw new InvalidShapeError(`Block name "${nextName}" is already in use.`);
+      return withBlocks(
+        graph,
+        (graph.blocks ?? []).map((candidate) =>
+          candidate.id === blockId ? renameBlockResource(candidate, nextName) : candidate,
+        ),
+      );
+    },
+    restore: (graph, previous) =>
+      withBlocks(
+        graph,
+        (graph.blocks ?? []).map((candidate) =>
+          candidate.id === blockId ? renameBlockResource(candidate, previous) : candidate,
+        ),
+      ),
+  });
+}
+export function duplicateBlock(
+  block: Block,
+  name: string,
+  label = "Duplicate Block",
+): ShowGraphCommand {
+  const nextName = assertValidBlockName(name);
+  const duplicate = duplicateBlockResource(block, nextName);
+  return capturing({
+    type: GRAPH_COMMAND_TYPES.duplicateBlock,
+    label,
+    scope: "global",
+    edits: [{ type: GRAPH_COMMAND_TYPES.duplicateBlock, block: duplicate }],
+    capture: (graph) => graph.blocks ?? [],
+    apply: (graph) => {
+      if ((graph.blocks ?? []).some((candidate) => candidate.name === nextName)) {
+        throw new InvalidShapeError(`Block name "${nextName}" is already in use.`);
+      }
+      return withBlocks(graph, [...(graph.blocks ?? []), duplicate]);
+    },
+    restore: (graph, previous) => withBlocks(graph, previous),
+  });
+}
+export function removeBlock(blockId: string, label = "Delete Block"): ShowGraphCommand {
+  return capturing({
+    type: GRAPH_COMMAND_TYPES.removeBlock,
+    label,
+    scope: "global",
+    edits: [{ type: GRAPH_COMMAND_TYPES.removeBlock, blockId }],
+    capture: (graph) => graph.blocks ?? [],
+    apply: (graph) => {
+      blockAt(graph, blockId);
+      return withBlocks(
+        graph,
+        (graph.blocks ?? []).filter((candidate) => candidate.id !== blockId),
+      );
+    },
+    restore: (graph, previous) => withBlocks(graph, previous),
   });
 }

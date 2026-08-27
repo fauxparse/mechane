@@ -30,6 +30,7 @@
 //     a `BAD_USER_INPUT` GraphQLError; nothing here imports GraphQL.
 
 import type {
+  Block,
   FlowColor,
   GraphEdge,
   GraphNode,
@@ -41,22 +42,25 @@ import type {
   Type,
 } from "@mechane/domain";
 import { assertValidFlowColor, isEdgeKind, isNodeKind } from "@mechane/domain";
-
 import type { ShowGraphCommand } from "./graph-commands";
 import {
+  addBlock,
   addEdge,
   addNode,
   addSceneVariable,
   addShape,
   addShapeField,
+  duplicateBlock,
   duplicateShape,
   GRAPH_COMMAND_TYPES,
   moveNode,
+  removeBlock,
   removeEdge,
   removeNode,
   removeSceneVariable,
   removeShape,
   removeShapeField,
+  renameBlock,
   renameNode,
   renameSceneVariable,
   renameShape,
@@ -154,6 +158,7 @@ export interface FlatShape {
 export interface FlatGraphEdit {
   type: string;
   nodeId?: string | null;
+  blockId?: string | null;
   node?: FlatGraphNode | null;
   edgeId?: string | null;
   edge?: FlatGraphEdge | null;
@@ -181,6 +186,7 @@ export interface FlatGraphEdit {
   fieldMapping?: Record<string, string> | null;
   value?: unknown;
   perConnection?: boolean | null;
+  block?: Block | null;
   /** Server → client only (#111); see the header note on direction. */
   pairingCode?: string | null;
 }
@@ -829,6 +835,39 @@ export const GRAPH_EDIT_CODECS: { [T in GraphEdit["type"]]: GraphEditCodec<T> } 
       type: GRAPH_COMMAND_TYPES.setDevicePerConnection,
       nodeId: required(flat, "nodeId", flat.nodeId),
       perConnection: required(flat, "perConnection", flat.perConnection),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.addBlock]: {
+    command: (edit) => addBlock(edit.block),
+    encode: (edit) => ({ type: edit.type, block: edit.block }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.addBlock,
+      block: required(flat, "block", flat.block),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.renameBlock]: {
+    command: (edit) => renameBlock(edit.blockId, edit.name),
+    encode: (edit) => ({ type: edit.type, blockId: edit.blockId, name: edit.name }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.renameBlock,
+      blockId: required(flat, "blockId", flat.blockId),
+      name: required(flat, "name", flat.name),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.duplicateBlock]: {
+    command: (edit) => duplicateBlock(edit.block, edit.block.name),
+    encode: (edit) => ({ type: edit.type, block: edit.block }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.duplicateBlock,
+      block: required(flat, "block", flat.block),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.removeBlock]: {
+    command: (edit) => removeBlock(edit.blockId),
+    encode: (edit) => ({ type: edit.type, blockId: edit.blockId }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.removeBlock,
+      blockId: required(flat, "blockId", flat.blockId),
     }),
   },
 };
