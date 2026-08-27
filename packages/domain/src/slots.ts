@@ -245,30 +245,66 @@ export function resolveSlotInstances(
       expansion.fieldPath ?? [],
     );
   }
-  const expanded = expansion ? expandSlotSource(expansionValue) : { items: [undefined] };
+  const expanded = expansion
+    ? expandSlotInstances(expansionValue, (item) =>
+        item === null || item === undefined
+          ? { category: "invalidExpansionItem", message: "Slot expansion item is missing." }
+          : undefined,
+      )
+    : { instances: [{ index: 0, item: undefined }] };
   if (expanded.diagnostic) return { instances: [], diagnostic: expanded.diagnostic };
   return {
-    instances: expanded.items.map((item, index) => {
+    instances: expanded.instances.map((instance) => {
+      if (instance.diagnostic) {
+        return { index: instance.index, item: instance.item, diagnostics: [instance.diagnostic] };
+      }
       const resolution = resolveSlotInputs(
         block,
         slot,
         variables,
-        item ?? runtimeItem,
+        instance.item ?? runtimeItem,
         runtimeType,
         shapes,
       );
       if (resolution.diagnostics.length > 0) {
-        return { index, item, diagnostics: resolution.diagnostics };
+        return { index: instance.index, item: instance.item, diagnostics: resolution.diagnostics };
       }
       const selector = block.stateSelectorVariableId
         ? resolution.values[block.stateSelectorVariableId]
         : undefined;
       const selected = applyBlockState(block, resolveBlockState(block, selector));
       return {
-        index,
-        item,
+        index: instance.index,
+        item: instance.item,
         canvas: resolveBlockCanvas(block, resolution.values, shapes, selected),
         diagnostics: [],
+      };
+    }),
+  };
+}
+
+export interface SlotInstance {
+  readonly index: number;
+  readonly item: unknown;
+  readonly diagnostic?: SlotDiagnostic;
+}
+
+export function expandSlotInstances(
+  source: unknown,
+  validateItem?: (item: unknown, index: number) => SlotDiagnostic | undefined,
+): {
+  readonly instances: readonly SlotInstance[];
+  readonly diagnostic?: SlotDiagnostic;
+} {
+  const expanded = expandSlotSource(source);
+  if (expanded.diagnostic) return { instances: [], diagnostic: expanded.diagnostic };
+  return {
+    instances: expanded.items.map((item, index) => {
+      const diagnostic = validateItem?.(item, index);
+      return {
+        index,
+        item,
+        ...(diagnostic ? { diagnostic } : {}),
       };
     }),
   };
