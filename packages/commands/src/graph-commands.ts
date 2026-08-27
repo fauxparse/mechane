@@ -1638,9 +1638,9 @@ export function renameBlock(
     edits: [{ type: GRAPH_COMMAND_TYPES.renameBlock, blockId, name: nextName }],
     capture: (graph) => blockAt(graph, blockId).block.name,
     apply: (graph) => {
-      blockAt(graph, blockId);
+      const { block: current } = blockAt(graph, blockId);
       const other = (graph.blocks ?? []).find(
-        (candidate) => candidate.id !== blockId && candidate.name === nextName,
+        (candidate) => candidate.id !== current.id && candidate.name === nextName,
       );
       if (other) throw new InvalidShapeError(`Block name "${nextName}" is already in use.`);
       return withBlocks(
