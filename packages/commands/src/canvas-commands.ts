@@ -1,4 +1,4 @@
-import type { Canvas, Element, Position, SlotElement } from "@mechane/domain";
+import type { Canvas, Element, Position } from "@mechane/domain";
 import { generateId } from "@mechane/domain";
 import {
   CANVAS_COMMAND_TYPES,
