@@ -169,6 +169,14 @@ export function placeBlockInSlot(
   return addCanvasElement(canvasId, element, parentId, rank);
 }
 
+export function configureSlot(
+  canvasId: string,
+  elementId: string,
+  properties: ElementProperties,
+): CanvasWorkspaceCommand {
+  return updateCanvasElement(canvasId, elementId, properties);
+}
+
 export function removeCanvasElement(canvasId: string, elementId: string): CanvasWorkspaceCommand {
   return capturing<
     CanvasWorkspace,

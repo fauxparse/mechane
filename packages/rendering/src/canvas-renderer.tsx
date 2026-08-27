@@ -20,20 +20,31 @@ import type {
   Rotation,
   SizeValue,
   Stroke,
+  SlotVariableValue,
 } from "@mechane/domain";
-import { isPropertyConnection } from "@mechane/domain";
+import {
+  applyBlockState,
+  expandSlotSource,
+  isPropertyConnection,
+  resolveBlockState,
+  resolveSlotInputs,
+} from "@mechane/domain";
 import type { CanvasRendererProps } from "./canvas-render";
 
 type LayoutParent = Extract<ResolvedElement, { type: "frame" | "slot" }>;
 function literal<T>(value: T | PropertyConnection | undefined): T | undefined {
   return isPropertyConnection(value) ? undefined : (value as T | undefined);
 }
+
 interface RenderElementOptions {
   element: ResolvedElement;
   root?: boolean;
   sceneRoot?: boolean;
   parent?: LayoutParent;
   blocks?: CanvasRendererProps["blocks"];
+  variables?: CanvasRendererProps["variables"];
+  runtimeItem?: unknown;
+  runtimeType?: CanvasRendererProps["runtimeType"];
   mode?: CanvasRendererProps["mode"];
   editingElementId?: string | null;
   imageLoading?: "eager" | "lazy";
@@ -314,6 +325,9 @@ function renderElement({
   sceneRoot = false,
   parent,
   blocks,
+  variables,
+  runtimeItem,
+  runtimeType,
   mode,
   editingElementId,
   imageLoading,
@@ -343,6 +357,9 @@ function renderElement({
             element: child,
             parent: element,
             blocks,
+            variables,
+            runtimeItem,
+            runtimeType,
             mode,
             editingElementId,
             imageLoading,
@@ -366,6 +383,72 @@ function renderElement({
         mode === "player" ? undefined : "Invalid Slot",
       );
     }
+    const expansion = element.expansion?.source;
+    let expansionValue: unknown;
+    if (expansion?.kind === "literal") {
+      expansionValue = expansion.value;
+    } else if (expansion?.kind === "runtimeItem") {
+      expansionValue = runtimeItem;
+    } else if (expansion && "variableId" in expansion) {
+      expansionValue = variables?.find(
+        (variable) => variable.id === expansion.variableId,
+      )?.value;
+    }
+    const expanded = expansion ? expandSlotSource(expansionValue) : { items: [undefined] };
+    if (expanded.diagnostic) {
+      if (mode === "player") return null;
+      return createElement("div", {
+        "data-element-id": element.id,
+        "data-element-type": "slot",
+        "data-slot-diagnostic": expanded.diagnostic.category,
+        style,
+      });
+    }
+    const renderedItems: ReactNode[] = [];
+    for (const [index, item] of expanded.items.entries()) {
+      const resolution = resolveSlotInputs(
+        block,
+        element,
+        variables,
+        item ?? runtimeItem,
+        runtimeType,
+      );
+      if (resolution.diagnostics.length > 0) {
+        if (mode === "player") continue;
+        renderedItems.push(
+          createElement(
+            "div",
+            {
+              key: `${element.id}:${index}`,
+              "data-slot-diagnostic": resolution.diagnostics[0]?.category,
+            },
+            "Invalid Slot",
+          ),
+        );
+        continue;
+      }
+      const selector = block.stateSelectorVariableId
+        ? resolution.values[block.stateSelectorVariableId]
+        : undefined;
+      const selected = applyBlockState(block, resolveBlockState(block, selector));
+      renderedItems.push(
+        createElement(ElementRenderer, {
+          key: `${element.id}:${index}`,
+          element: selected.root as ResolvedElement,
+          parent: element,
+          blocks,
+          variables,
+          runtimeItem: item ?? runtimeItem,
+          runtimeType,
+          mode,
+          editingElementId,
+          imageLoading,
+          onImageError,
+          onTextDoubleClick,
+          onTextKeyDown,
+        }),
+      );
+    }
     return createElement(
       "div",
       {
@@ -374,17 +457,7 @@ function renderElement({
         "data-element-painted": "false",
         style,
       },
-      createElement(ElementRenderer, {
-        element: block.canvas.root as ResolvedElement,
-        parent: element,
-        blocks,
-        mode,
-        editingElementId,
-        imageLoading,
-        onImageError,
-        onTextDoubleClick,
-        onTextKeyDown,
-      }),
+      renderedItems,
     );
   }
   if (element.type === "image") {
@@ -479,6 +552,9 @@ export function ElementRenderer({
   element,
   parent,
   blocks,
+  variables,
+  runtimeItem,
+  runtimeType,
   mode,
   editingElementId,
   imageLoading,
@@ -490,6 +566,9 @@ export function ElementRenderer({
     element,
     parent,
     blocks,
+    variables,
+    runtimeItem,
+    runtimeType,
     mode,
     editingElementId,
     imageLoading,
@@ -506,6 +585,9 @@ export const CanvasRenderer = memo(function CanvasRenderer({
   editingElementId,
   imageLoading,
   blocks,
+  variables,
+  runtimeItem,
+  runtimeType,
   mode,
   onImageError,
   onTextDoubleClick,
@@ -525,6 +607,9 @@ export const CanvasRenderer = memo(function CanvasRenderer({
       root: true,
       sceneRoot,
       blocks,
+      variables,
+      runtimeItem,
+      runtimeType,
       mode,
       editingElementId,
       imageLoading,

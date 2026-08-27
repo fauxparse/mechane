@@ -181,6 +181,21 @@ export interface FrameElement extends CornerRadiusElement {
   clip?: boolean;
 }
 
+export type SlotInputSource =
+  | { readonly kind: "literal"; readonly value: unknown }
+  | { readonly kind: "variable"; readonly variableId: string; readonly fieldPath?: readonly string[] }
+  | { readonly kind: "runtimeItem"; readonly fieldPath?: readonly string[] }
+  | { readonly kind: "unset" };
+
+export interface SlotInputAssignment {
+  readonly variableId: string;
+  readonly source: SlotInputSource;
+}
+
+export interface SlotExpansion {
+  readonly source: SlotInputSource;
+}
+
 export interface SlotElement extends Omit<
   FrameElement,
   "type" | "cornerRadius" | "opacity" | "blendMode" | "fill" | "stroke"
@@ -188,6 +203,8 @@ export interface SlotElement extends Omit<
   type: "slot";
   /** Stable reference to the Show-owned Block this placement instantiates. */
   blockId: string;
+  assignments?: readonly SlotInputAssignment[];
+  expansion?: SlotExpansion;
 }
 export interface Padding {
   top?: number;

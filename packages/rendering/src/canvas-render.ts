@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from "react";
 
-import type { Block, Canvas, FrameElement } from "@mechane/domain";
+import type { Block, Canvas, FrameElement, SlotVariableValue, Type } from "@mechane/domain";
 import { CanvasRenderer } from "./canvas-renderer";
 
 export interface CanvasRendererProps {
@@ -16,6 +16,9 @@ export interface CanvasRendererProps {
   editingElementId?: string | null;
   imageLoading?: "eager" | "lazy";
   blocks?: readonly Block[];
+  variables?: readonly SlotVariableValue[];
+  runtimeItem?: unknown;
+  runtimeType?: Type;
   mode?: "studio" | "player";
   onImageError?(elementId: string, url: string, event: unknown): void;
   onTextDoubleClick?(elementId: string, event: ReactMouseEvent<HTMLDivElement>): void;
