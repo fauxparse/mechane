@@ -8,11 +8,12 @@
 import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
 import { CANVAS_COMMAND_TYPES, applyCanvasEdits, applyGraphEdits } from "@mechane/commands";
 import type { Canvas, GraphState, ShowGraph } from "@mechane/domain";
+import { assertBlockReferencesExist } from "@mechane/domain";
 import { and, eq } from "drizzle-orm";
 import { runChannel } from "@mechane/realtime";
 import { realtimeProvider } from "../realtime";
 import type { CanvasWithOwner, StoredCanvas } from "./canvas";
-import { readCanvasById, writeCanvasRows } from "./canvas";
+import { readCanvasById, readCanvasWorkspace, writeCanvasRows } from "./canvas";
 import { db } from "./client";
 import { retireUnreferencedDevices, syncDevices } from "./devices";
 import { GraphVersionConflictError, persistGraphRows, readGraphRows } from "./graph-persistence";
@@ -356,10 +357,16 @@ export async function publishShowGraph(
   const result = await db.transaction(async (tx) => {
     await tx.select({ id: shows.id }).from(shows).where(eq(shows.id, showId)).for("update");
     const draft = await readShowGraph(showId, "draft", tx);
+    const draftCanvases = await readCanvasWorkspace(showId, "draft", tx);
+    assertBlockReferencesExist(
+      draft.blocks ?? [],
+      draftCanvases.canvases,
+    );
     const publishedBefore = await readShowGraph(showId, "published", tx);
     const reconciled = await reconcileActiveRunValues(showId, publishedBefore, draft, tx);
     const published = await writeGraph(tx, showId, "published", {
       shapes: draft.shapes ?? [],
+      blocks: draft.blocks ?? [],
       nodes: draft.nodes,
       edges: draft.edges,
     });
