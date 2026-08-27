@@ -19,4 +19,5 @@ export * from "./canvas-properties";
 export * from "./canvas-property-resolution";
 export * from "./theme-settings";
 
+export * from "./blocks";
 export * from "./images";

@@ -4,6 +4,9 @@
 // lock. Canvas reconciliation, Device identity, publication, and live Run
 // effects are coordinated by show-graph.ts around this seam.
 import type {
+  Block,
+  BlockState,
+  BlockVariable,
   FlowColor,
   GraphEdge,
   GraphNode,
@@ -14,13 +17,20 @@ import type {
   ShowGraph,
   Type,
 } from "@mechane/domain";
-import { assertValidShowGraph, emptyShowGraph, generateId, isEdgeKind } from "@mechane/domain";
+import {
+  assertValidShowGraph,
+  emptyShowGraph,
+  generateId,
+  isEdgeKind,
+} from "@mechane/domain";
 import { and, eq, notInArray, sql } from "drizzle-orm";
 
 import { db } from "./client";
+import { readCanvas, writeCanvasRows } from "./canvas";
 import type { StoredDevice } from "./devices";
 import { graphNodeInsertValues } from "./graph-node-values";
 import {
+  blocks,
   graphEdges,
   graphNodeVariables,
   graphNodes,
@@ -185,6 +195,58 @@ function groupVariables(rows: VariableRow[]): Map<string, SceneVariable[]> {
   }
   return bySceneId;
 }
+
+function blockMetadata(block: typeof blocks.$inferSelect): {
+  variables: BlockVariable[];
+  states: BlockState[];
+  stateSelectorVariableId: string | null;
+} {
+  const metadata =
+    block.metadata !== null &&
+    typeof block.metadata === "object" &&
+    !Array.isArray(block.metadata)
+      ? (block.metadata as Record<string, unknown>)
+      : {};
+  return {
+    variables: Array.isArray(metadata.variables)
+      ? (metadata.variables as BlockVariable[])
+      : [],
+    states: Array.isArray(metadata.states) ? (metadata.states as BlockState[]) : [],
+    stateSelectorVariableId:
+      typeof metadata.stateSelectorVariableId === "string"
+        ? metadata.stateSelectorVariableId
+        : null,
+  };
+}
+
+async function readBlocks(
+  showId: string,
+  state: GraphState,
+  graphId: string,
+  executor: Executor,
+): Promise<Block[]> {
+  const rows = await executor
+    .select()
+    .from(blocks)
+    .where(eq(blocks.graphId, graphId))
+    .orderBy(blocks.id);
+  const result: Block[] = [];
+  for (const row of rows) {
+    const canvas = await readCanvas(showId, state, { blockId: row.id }, executor);
+    if (!canvas) throw new Error(`Block "${row.id}" has no owned Canvas.`);
+    const metadata = blockMetadata(row);
+    result.push({
+      id: row.id,
+      name: row.name,
+      canvas,
+      variables: metadata.variables,
+      states: metadata.states,
+      stateSelectorVariableId: metadata.stateSelectorVariableId,
+    });
+  }
+  return result;
+}
+
 /**
  * The Show's graph in `state`. A Show that has never been edited (or never
  * published) has no row yet — that reads as the empty graph rather than an
@@ -245,6 +307,7 @@ export async function readGraphRows(
     .from(graphEdges)
     .where(eq(graphEdges.graphId, row.id))
     .orderBy(graphEdges.id);
+  const blockValues = await readBlocks(showId, state, row.id, executor);
   const variablesByScene = groupVariables(variableRows);
   return {
     showId,
@@ -257,6 +320,7 @@ export async function readGraphRows(
       fieldPath: sourceDefault.fieldPath,
       value: sourceDefault.value,
     })),
+    blocks: blockValues,
     nodes: nodeRows.map((node) => toNode(node, variablesByScene, deviceIdentities)),
     edges: edgeRows.map(toEdge),
   };
@@ -354,6 +418,31 @@ export async function persistGraphRows(
       }),
     );
     if (refs.length > 0) await tx.insert(shapeFieldRefs).values(refs);
+  }
+
+  const graphBlocks = graph.blocks ?? [];
+  const blockIds = graphBlocks.map((block) => block.id);
+  if (blockIds.length > 0) {
+    await tx
+      .delete(blocks)
+      .where(and(eq(blocks.graphId, row.id), notInArray(blocks.id, blockIds)));
+  } else {
+    await tx.delete(blocks).where(eq(blocks.graphId, row.id));
+  }
+  for (const block of graphBlocks) {
+    const metadata = {
+      variables: block.variables,
+      states: block.states,
+      stateSelectorVariableId: block.stateSelectorVariableId ?? null,
+    };
+    await tx
+      .insert(blocks)
+      .values({ id: block.id, graphId: row.id, name: block.name, metadata })
+      .onConflictDoUpdate({
+        target: [blocks.graphId, blocks.id],
+        set: { name: block.name, metadata, updatedAt: now },
+      });
+    await writeCanvasRows(tx, showId, row.id, { blockId: block.id }, block.canvas, now);
   }
 
 

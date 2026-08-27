@@ -18,11 +18,27 @@
 import type { FlatGraphEdit, GraphEdit } from "@mechane/commands";
 import { decodeGraphEdit, encodeGraphEdit, GraphEditCodecError } from "@mechane/commands";
 import { GRAPH_COMMAND_TYPES } from "@mechane/commands";
-import type { GraphEdge, GraphNode } from "@mechane/domain";
+import type { Block, GraphEdge, GraphNode } from "@mechane/domain";
 import { sourceDefaultsFor, wiringTargetVariableId } from "@mechane/domain";
 import { GraphQLError } from "graphql";
 
 import type { StoredShowGraph } from "../db/show-graph";
+
+interface SerializedBlock {
+  id: string;
+  name: string;
+  canvas: {
+    id: string;
+    kind: string;
+    position: { x: number; y: number };
+    ownerId: string;
+    ownerName: string;
+    root: unknown;
+  };
+  variables: Block["variables"];
+  states: Block["states"];
+  stateSelectorVariableId: string | null | undefined;
+}
 
 function badInput(message: string): GraphQLError {
   return new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
@@ -109,9 +125,9 @@ export function serializeGraphEdit(edit: GraphEdit) {
   const base = {
     type: edit.type,
     nodeId: null as string | null,
-    node: null as ReturnType<typeof serializeNode> | null,
+    node: null as unknown,
     edgeId: null as string | null,
-    edge: null as ReturnType<typeof serializeEdge> | null,
+    edge: null as unknown,
     position: null as { x: number; y: number } | null,
     parentId: null as string | null,
     name: null as string | null,
@@ -127,6 +143,8 @@ export function serializeGraphEdit(edit: GraphEdit) {
     fieldPath: null as string[] | null,
     fieldMapping: null as Record<string, string> | null,
     value: null as unknown,
+    block: null as SerializedBlock | null,
+    blockId: null as string | null,
     pairingCode: null as string | null,
     perConnection: null as boolean | null,
   };
@@ -134,10 +152,35 @@ export function serializeGraphEdit(edit: GraphEdit) {
   return {
     ...base,
     ...encoded,
-    // `node` and `edge` resolve through the GraphNode/GraphEdge interfaces
-    // (ADR-0007, ADR-0008), which need the domain `kind` the flat shape drops.
     ...(edit.type === GRAPH_COMMAND_TYPES.addNode ? { node: serializeNode(edit.node) } : {}),
     ...(edit.type === GRAPH_COMMAND_TYPES.addEdge ? { edge: serializeEdge(edit.edge) } : {}),
+    ...(edit.type === GRAPH_COMMAND_TYPES.addBlock ||
+    edit.type === GRAPH_COMMAND_TYPES.duplicateBlock
+      ? { block: serializeBlock(edit.block) }
+      : {}),
+  };
+}
+function serializeBlock(block: Block): SerializedBlock {
+  const canvas = block.canvas as Block["canvas"] & {
+    kind?: string;
+    position?: { x: number; y: number };
+    ownerId?: unknown;
+    ownerName?: unknown;
+  };
+  return {
+    id: block.id,
+    name: block.name,
+    canvas: {
+      id: canvas.id,
+      kind: canvas.kind ?? "block",
+      position: canvas.position ?? { x: 0, y: 0 },
+      ownerId: typeof canvas.ownerId === "string" ? canvas.ownerId : block.id,
+      ownerName: typeof canvas.ownerName === "string" ? canvas.ownerName : block.name,
+      root: canvas.root,
+    },
+    variables: block.variables,
+    states: block.states,
+    stateSelectorVariableId: block.stateSelectorVariableId ?? null,
   };
 }
 
@@ -157,6 +200,7 @@ export function serializeShowGraph(graph: StoredShowGraph) {
     nodes: graph.nodes.map((node) => serializeNode(node, graph)),
     edges: graph.edges.map(serializeEdge),
     shapes: (graph.shapes ?? []).map(serializeShape),
+    blocks: (graph.blocks ?? []).map(serializeBlock),
     sourceFieldDefaults: (graph.sourceFieldDefaults ?? []).map((fieldDefault) => ({
       nodeId: fieldDefault.nodeId,
       fieldPath: fieldDefault.fieldPath,
