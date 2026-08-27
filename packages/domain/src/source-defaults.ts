@@ -1,5 +1,6 @@
 import type { GraphNode, ShowGraph, SourceFieldDefault, SourceNode } from "./graph";
 import type { Shape, ShapeField, Type } from "./shapes";
+import { normalizeShapeCollectionInstances } from "./shapes";
 
 /** Live Source values at the start of a Run, keyed by Source node id. */
 export type SourceValues = Record<string, unknown>;
@@ -69,7 +70,8 @@ export function sourceDefaultsFor(
 
 function sourceValue(source: SourceNode, graph: ShowGraph): unknown {
   const value = defaultValueForType(source.type, graph.shapes ?? []);
-  return applySourceOverrides(value, sourceDefaultsFor(graph, source.id));
+  const withOverrides = applySourceOverrides(value, sourceDefaultsFor(graph, source.id));
+  return normalizeShapeCollectionInstances(withOverrides, source.type, graph.shapes ?? []);
 }
 
 /**

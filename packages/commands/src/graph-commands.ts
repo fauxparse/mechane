@@ -53,8 +53,10 @@ import {
   assertValidShapeType,
   assertValidShapes,
   duplicateBlock as duplicateBlockResource,
+  normalizeShapeCollectionInstances,
   renameBlock as renameBlockResource,
   shapeReferencesShape,
+  typeAtPath,
 } from "@mechane/domain";
 
 import type { Command } from "./command";
@@ -783,10 +785,19 @@ function withSourceFieldDefault(
   const remaining = (graph.sourceFieldDefaults ?? []).filter(
     (override) => !(override.nodeId === nodeId && samePath(override.fieldPath, fieldPath)),
   );
-  const source =
-    value === null ? remaining : [...remaining, { nodeId, fieldPath: [...fieldPath], value }];
-  return source.length > 0
-    ? { ...graph, sourceFieldDefaults: source }
+  const source = graph.nodes.find((node) => node.id === nodeId);
+  const sourceType =
+    source?.kind === "source" ? typeAtPath(source.type, fieldPath, graph.shapes ?? []) : null;
+  const normalizedValue =
+    value === null || sourceType === null || sourceType === undefined
+      ? value
+      : normalizeShapeCollectionInstances(value, sourceType, graph.shapes ?? []);
+  const next =
+    normalizedValue === null
+      ? remaining
+      : [...remaining, { nodeId, fieldPath: [...fieldPath], value: normalizedValue }];
+  return next.length > 0
+    ? { ...graph, sourceFieldDefaults: next }
     : { ...graph, sourceFieldDefaults: undefined };
 }
 
@@ -1613,9 +1624,7 @@ function elementReferencesBlock(element: Element, blockId: string): boolean {
 }
 
 function blockIsReferenced(graph: ShowGraph, blockId: string): boolean {
-  return (graph.blocks ?? []).some((block) =>
-    elementReferencesBlock(block.canvas.root, blockId),
-  );
+  return (graph.blocks ?? []).some((block) => elementReferencesBlock(block.canvas.root, blockId));
 }
 
 export function addBlock(block: Block, label = "Add Block"): ShowGraphCommand {

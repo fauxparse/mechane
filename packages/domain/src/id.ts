@@ -22,11 +22,9 @@ const ALPHABET = "23456789abcdefghjkmnpqrstvwxyz";
 const BODY_LENGTH = 7;
 
 /**
- * Type prefixes, one per entity that can appear in a URL. Only `show`
- * exists today; `scene`/`block` are registered ahead of the tables so the
- * letters are allocated in one place (see `ENTITY_BY_PREFIX` below, which
- * makes a duplicate prefix a compile error rather than a discovery months
- * later).
+ * Type prefixes, one per persisted or runtime identity. Runtime identities
+ * use the same readable, collision-resistant format as persisted resources so
+ * they can safely cross GraphQL, realtime, and renderer boundaries.
  */
 export const ID_PREFIXES = {
   show: "s",
@@ -46,6 +44,7 @@ export const ID_PREFIXES = {
   variable: "v",
   edge: "e",
   run: "n",
+  shapeInstance: "x",
 } as const;
 
 export type EntityName = keyof typeof ID_PREFIXES;
@@ -53,7 +52,7 @@ export type IdPrefix = (typeof ID_PREFIXES)[EntityName];
 
 // The reverse mapping, which exists to be type-checked rather than called.
 // If two entities above were given the same prefix, this object could no
-// longer name every entity, and the `satisfies` below would fail: the
+// longer name every entity, and the `satisfies` below would fail:
 const ENTITY_BY_PREFIX = {
   s: "show",
   c: "scene",
@@ -68,6 +67,7 @@ const ENTITY_BY_PREFIX = {
   v: "variable",
   e: "edge",
   n: "run",
+  x: "shapeInstance",
 } as const satisfies Record<IdPrefix, EntityName>;
 
 // ...and this asserts the other direction: every entity is reachable from
@@ -96,6 +96,7 @@ export type FlowId = Id<"flow">;
 export type SourceId = Id<"source">;
 export type RunId = Id<"run">;
 export type TransformerId = Id<"transformer">;
+export type ShapeInstanceId = Id<"shapeInstance">;
 export type DeviceId = Id<"device">;
 export type VariableId = Id<"variable">;
 export type EdgeId = Id<"edge">;

@@ -6,7 +6,13 @@ import {
 } from "./blocks";
 import type { Block, BlockCanvas, BlockVariable } from "./blocks";
 import type { Shape, Type } from "./shapes";
-import { areTypesCompatible, coerceValue } from "./shapes";
+import {
+  areTypesCompatible,
+  coerceValue,
+  isShapeCollectionInstance,
+  shapeCollectionInstanceValue,
+} from "./shapes";
+import type { ShapeInstanceId } from "./id";
 import type { ResolvedCanvas, SlotElement, SlotInputAssignment, SlotInputSource } from "./canvas";
 import { typeAtPath, valueAtPath } from "./property-values";
 import { resolveCanvasProperties } from "./canvas-property-resolution";
@@ -222,6 +228,8 @@ export function expandSlotSource(source: unknown): {
 }
 
 export interface ResolvedSlotInstance {
+  /** Stable only for persisted Shape collection items; scalar arrays retain index identity. */
+  readonly id?: ShapeInstanceId;
   readonly index: number;
   readonly item: unknown;
   readonly canvas?: ResolvedCanvas;
@@ -264,8 +272,14 @@ export function resolveSlotInstances(
   if (expanded.diagnostic) return { instances: [], diagnostic: expanded.diagnostic };
   return {
     instances: expanded.instances.map((instance) => {
+      const identity = instance.id ? { id: instance.id } : {};
       if (instance.diagnostic) {
-        return { index: instance.index, item: instance.item, diagnostics: [instance.diagnostic] };
+        return {
+          ...identity,
+          index: instance.index,
+          item: instance.item,
+          diagnostics: [instance.diagnostic],
+        };
       }
       const resolution = resolveSlotInputs(
         block,
@@ -276,13 +290,19 @@ export function resolveSlotInstances(
         shapes,
       );
       if (resolution.diagnostics.length > 0) {
-        return { index: instance.index, item: instance.item, diagnostics: resolution.diagnostics };
+        return {
+          ...identity,
+          index: instance.index,
+          item: instance.item,
+          diagnostics: resolution.diagnostics,
+        };
       }
       const selector = block.stateSelectorVariableId
         ? resolution.values[block.stateSelectorVariableId]
         : undefined;
       const selected = applyBlockState(block, resolveBlockState(block, selector));
       return {
+        ...identity,
         index: instance.index,
         item: instance.item,
         canvas: resolveBlockCanvas(block, resolution.values, shapes, selected),
@@ -293,6 +313,8 @@ export function resolveSlotInstances(
 }
 
 export interface SlotInstance {
+  /** Stable identity carried by a Shape collection item, when present. */
+  readonly id?: ShapeInstanceId;
   readonly index: number;
   readonly item: unknown;
   readonly diagnostic?: SlotDiagnostic;
@@ -308,9 +330,12 @@ export function expandSlotInstances(
   const expanded = expandSlotSource(source);
   if (expanded.diagnostic) return { instances: [], diagnostic: expanded.diagnostic };
   return {
-    instances: expanded.items.map((item, index) => {
+    instances: expanded.items.map((candidate, index) => {
+      const id = isShapeCollectionInstance(candidate) ? candidate.id : undefined;
+      const item = shapeCollectionInstanceValue(candidate);
       const diagnostic = validateItem?.(item, index);
       return {
+        ...(id ? { id } : {}),
         index,
         item,
         ...(diagnostic ? { diagnostic } : {}),

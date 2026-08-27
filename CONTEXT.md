@@ -134,9 +134,6 @@ A Slot that cannot produce a valid Block instance because its Block reference, r
 
 A structured explanation of an Invalid Slot or omitted repeated item, identifying the failing reference, input, path, source, or item. Unmatched State Selectors are not Slot Diagnostics because they select the Default State.
 
-
-
-
 ### Slot Input Assignment
 
 The value a Slot supplies to one Block Variable: a literal, a parent Variable value, a runtime-item value, or unset. A literal takes precedence over the Block Variable's default; unset invokes the Block Variable's required or optional input contract.
@@ -149,11 +146,15 @@ A sequence of Shape Field names used to select a nested value for a Slot Input A
 
 The Slot behavior that renders one Block instance for each item in a compatible source value. An actual array preserves its order; a scalar is treated as one item, and an empty array renders no instances.
 
-### Index Identity
+### Shape Collection Instance
 
-The identity of a repeated Block instance is its current zero-based position in the source array. Insertion, removal, and reordering can therefore change the identity of later instances; stable collection-item identity is a separate concern.
-
-
+An item in an array whose element Type is a Shape. Each instance carries a
+show-wide generated ID outside the Shape value. The ID is minted when a new
+item enters persisted Source data, survives value edits, reorder, graph
+persistence, publication, and Run snapshots, and is not derived from content
+or position. Inserting an item or duplicating an existing item mints a new ID;
+reordering preserves existing IDs. Slot rendering and React reconciliation use
+this ID; array indices remain positional diagnostics only.
 
 ### State
 
@@ -171,7 +172,6 @@ A distinguished text Variable on a Block that a Slot may populate through its or
 ### Default State
 
 The one explicitly designated State used when a Block's State Selector has no usable match. Its State Overrides apply over the base Canvas like any other State; a Block with no named States renders its base Canvas directly.
-
 
 ### Event
 
@@ -234,7 +234,7 @@ _Avoid_: Binding (acceptable as a synonym), linking
 - A **Slot** has at most one **Slot Input Assignment** for each child **Block Variable**; an assignment may be literal, sourced from a parent Variable, sourced from runtime context, or unset
 - A **Slot Input Assignment** may select a nested value through an **Input Field Path** and uses the shared Type compatibility and coercion contract
 - A **Slot** may use **Array Expansion** to render one Block instance per source item; a scalar source produces one instance and an empty array produces none
-- Repeated Slot instances use **Index Identity**, preserve source order, and have no durable per-item identity
+- **Shape collection items carry stable IDs** outside their Shape values; Slots use those IDs for repeated Shape instances while preserving source order and positional indices for diagnostics
 - Invalid source data invalidates the Slot, while an invalid individual item is omitted and does not prevent valid sibling instances from rendering
 - Each repeated instance resolves its State independently and passes its current item as runtime context to nested Slots
 - A **Slot** instantiates a **Nested Block** in its position; nested rendering is depth-first in Canvas and source order
