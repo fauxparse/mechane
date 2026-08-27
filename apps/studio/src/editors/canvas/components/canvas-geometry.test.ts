@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { clientRect, contentOrigin, selectedCanvasRects } from "./canvas-geometry";
+import { clientRect, contentOrigin, logicalRootSize, selectedCanvasRects } from "./canvas-geometry";
 
 describe("Canvas geometry", () => {
   it("normalizes browser rectangles for screen-space overlays", () => {
@@ -11,6 +11,12 @@ describe("Canvas geometry", () => {
       height: 40,
       right: 92,
       bottom: 64,
+    });
+  });
+  it("normalizes root bounds with the zoom used for measurement", () => {
+    expect(logicalRootSize(clientRect({ x: 0, y: 0, width: 840, height: 300 }), 2)).toEqual({
+      width: 420,
+      height: 150,
     });
   });
 

@@ -85,6 +85,19 @@ export function selectionBoundary<T>(
     current = parent;
   }
 }
+export function authoredSelectionBoundary<T>(
+  element: T,
+  artboard: T,
+  parentOf: (element: T) => T | null,
+  isAuthored: (element: T) => boolean,
+): T | null {
+  let current: T | null = element;
+  while (current && current !== artboard) {
+    if (isAuthored(current)) return current;
+    current = parentOf(current);
+  }
+  return current && isAuthored(current) ? current : null;
+}
 
 export function selectionRect(rects: readonly CanvasClientRect[]): CanvasClientRect | null {
   if (rects.length === 0) return null;
@@ -98,7 +111,7 @@ export function topmostPaintedElementAtPoint(
   artboard: HTMLElement,
   x: number,
   y: number,
-  penetrate = false,
+  _penetrate = false,
 ): HTMLElement | null {
   const elements = [...artboard.querySelectorAll<HTMLElement>("[data-element-id]")];
   const painted = elements.reverse().find((element) => {

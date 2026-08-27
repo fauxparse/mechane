@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  authoredSelectionBoundary,
   containedSelection,
   normalizeSelection,
   rangeSelection,
@@ -61,6 +62,22 @@ describe("Canvas selection", () => {
 
     expect(selectionBoundary(firstLabel, artboard, parentOf, typeOf)).toBe(firstSlot);
     expect(selectionBoundary(secondLabel, artboard, parentOf, typeOf)).toBe(secondSlot);
+  });
+  it("skips rendered nested Slots that are not authored by the Canvas", () => {
+    type Node = { id: string; type: string; parent: Node | null };
+    const artboard: Node = { id: "artboard", type: "artboard", parent: null };
+    const outerSlot: Node = { id: "outer-slot", type: "slot", parent: artboard };
+    const blockRoot: Node = { id: "block-root", type: "frame", parent: outerSlot };
+    const innerSlot: Node = { id: "inner-slot", type: "slot", parent: blockRoot };
+
+    expect(
+      authoredSelectionBoundary(
+        innerSlot,
+        artboard,
+        (node) => node.parent,
+        (node) => node.id === "outer-slot",
+      ),
+    ).toBe(outerSlot);
   });
 
   it("keeps Block descendants selectable outside a Slot", () => {

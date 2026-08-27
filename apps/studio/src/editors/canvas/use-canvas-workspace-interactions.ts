@@ -10,6 +10,7 @@ import type { CanvasArtboardDocument } from "../../api/canvas";
 import { useEditableArea } from "../../components/EditorLayout/editable-area";
 import {
   contentOrigin,
+  logicalRootSize,
   selectedCanvasRects,
   useCanvasGeometry,
 } from "./components/canvas-geometry";
@@ -19,6 +20,7 @@ import { useCanvasCamera } from "./components/use-canvas-camera";
 import { roundToLogicalPixel } from "./components/canvas-pixels";
 
 import {
+  authoredSelectionBoundary,
   containedSelection,
   normalizeSelection,
   rectsOverlap,
@@ -65,6 +67,23 @@ function measuredRect(element: HTMLElement): CanvasClientRect {
     right: rect.right,
     bottom: rect.bottom,
   };
+}
+
+function authoredElementForSelection(
+  element: HTMLElement | null,
+  artboard: HTMLElement,
+  root: FrameElement,
+): HTMLElement | null {
+  if (!element) return null;
+  return authoredSelectionBoundary(
+    element,
+    artboard,
+    (current) => current.parentElement,
+    (current) => {
+      const id = current.dataset.elementId;
+      return id !== undefined && findCanvasElement(root, id) !== null;
+    },
+  );
 }
 
 type DragState = {
@@ -231,21 +250,19 @@ export function useCanvasWorkspaceInteractions({
     onCameraChange,
   );
   const geometryKey = useMemo(() => [camera, ordered] as const, [camera, ordered]);
-  const geometry = useCanvasGeometry(workspaceRef, geometryKey);
+  const geometrySnapshot = useCanvasGeometry(workspaceRef, geometryKey, camera.zoom);
+  const geometry = geometrySnapshot.geometry;
   const artboardSizes = useMemo(() => {
     const sizes = new Map<string, CanvasArtboardDimensions>();
     for (const artboard of ordered) {
       const rootRect = geometry.get(artboard.artId)?.elements.get(artboard.canvas.root.id);
       const measuredRoot = rootRect
-        ? {
-            width: rootRect.width / camera.zoom,
-            height: rootRect.height / camera.zoom,
-          }
+        ? logicalRootSize(rootRect, geometrySnapshot.measuredZoom)
         : undefined;
       sizes.set(artboard.artId, canvasArtboardSize(artboard, measuredRoot));
     }
     return sizes;
-  }, [camera.zoom, geometry, ordered]);
+  }, [geometry, geometrySnapshot.measuredZoom, ordered]);
   const setSelection = (next: CanvasSelection) => {
     const normalized = normalizeSelection(next);
     setLocalSelection(normalized);
@@ -303,11 +320,10 @@ export function useCanvasWorkspaceInteractions({
     artboard: CanvasArtboardDocument,
   ): boolean => {
     if (tool !== "select" || event.button !== 0) return false;
-    const element = topmostPaintedElementAtPoint(
+    const element = authoredElementForSelection(
+      topmostPaintedElementAtPoint(event.currentTarget, event.clientX, event.clientY, event.altKey),
       event.currentTarget,
-      event.clientX,
-      event.clientY,
-      event.altKey,
+      artboard.canvas.root,
     );
     const elementId = element?.dataset.elementId;
     if (!elementId) return false;
@@ -602,6 +618,7 @@ export function useCanvasWorkspaceInteractions({
           ? measured.rect
           : measured.elements.get(elementId);
       if (!box) return [];
+      if (!findCanvasElement(artboard.canvas.root, elementId)) return [];
       const parentInfo = canvasElementParent(artboard.canvas.root, elementId);
       const parentElement = parentInfo
         ? findCanvasElement(artboard.canvas.root, parentInfo.parentId)
@@ -1230,11 +1247,10 @@ export function useCanvasWorkspaceInteractions({
   const selectAtPoint = (event: PointerEvent<HTMLElement>, artboard: CanvasArtboardDocument) => {
     if (event.button !== 0) return;
     event.stopPropagation();
-    const element = topmostPaintedElementAtPoint(
+    const element = authoredElementForSelection(
+      topmostPaintedElementAtPoint(event.currentTarget, event.clientX, event.clientY, event.altKey),
       event.currentTarget,
-      event.clientX,
-      event.clientY,
-      event.altKey,
+      artboard.canvas.root,
     );
     onFocusArtboard(artboard.artId);
     if (!element?.dataset.elementId) {
