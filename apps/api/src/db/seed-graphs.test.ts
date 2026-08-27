@@ -57,7 +57,7 @@ describe("Voting demo seed", () => {
     expect(Object.keys(canvases)).toHaveLength(2);
     for (const canvas of Object.values(canvases))
       expect(() => assertValidCanvas(canvas)).not.toThrow();
-    expect(canvases.scene_vote_tally?.root.children).toHaveLength(7);
+    expect(canvases.scene_vote_tally?.root.children).toHaveLength(4);
     expect(canvases.scene_audience_vote?.root.children).toHaveLength(6);
     expect(
       canvases.scene_vote_tally?.root.children
@@ -70,21 +70,51 @@ describe("Voting demo seed", () => {
         .map((child) => child.type === "slot" && child.blockId),
     ).toEqual(["block_nested", "block_repeated"]);
   });
-  it("resolves seeded Candidate field bindings from Source defaults", () => {
+
+  it("uses Tally Row Slots for every candidate", () => {
+    const tallySlots = votingCanvases().scene_vote_tally?.root.children?.filter(
+      (child) => child.type === "slot",
+    );
+    expect(tallySlots).toHaveLength(3);
+    expect(
+      tallySlots?.map((slot) =>
+        slot.type === "slot" ? slot.assignments?.map((assignment) => assignment.source) : [],
+      ),
+    ).toEqual([
+      [
+        { kind: "literal", value: "Alice" },
+        { kind: "literal", value: 12 },
+        { kind: "literal", value: "Default" },
+      ],
+      [
+        { kind: "literal", value: "Beatrix" },
+        { kind: "literal", value: 8 },
+        { kind: "literal", value: "Default" },
+      ],
+      [
+        { kind: "literal", value: "Clarissa" },
+        { kind: "literal", value: 5 },
+        { kind: "literal", value: "Default" },
+      ],
+    ]);
+  });
+
+  it("resolves seeded Audience bindings from Source defaults", () => {
     const graph = votingGraph();
     const canvases = votingCanvases();
-    const tally = graph.nodes.find((node) => node.kind === "scene" && node.name === "Vote tally");
-    if (tally?.kind !== "scene") throw new Error("Vote tally Scene is missing.");
-    const values = sceneVariableValues(graph, tally.id, defaultSourceValues(graph));
-    const resolved = resolveCanvasProperties(canvases.scene_vote_tally!, {
+    const audience = graph.nodes.find(
+      (node) => node.kind === "scene" && node.name === "Choose a candidate",
+    );
+    if (audience?.kind !== "scene") throw new Error("Audience Scene is missing.");
+    const values = sceneVariableValues(graph, audience.id, defaultSourceValues(graph));
+    const resolved = resolveCanvasProperties(canvases.scene_audience_vote!, {
       graph,
-      variables: tally.variables,
+      variables: audience.variables,
       shapes: graph.shapes,
       values,
     });
-    const firstRow = resolved.root.children?.[1];
-    expect(firstRow).toMatchObject({
-      children: [{ content: "Alice" }, { content: "12" }],
+    expect(resolved.root.children?.[1]).toMatchObject({
+      children: [{ content: "Alice" }],
     });
   });
 

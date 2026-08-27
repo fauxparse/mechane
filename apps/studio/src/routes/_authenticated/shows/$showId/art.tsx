@@ -131,17 +131,21 @@ function CanvasWorkspaceRoute() {
     () =>
       artboards.reduce<Block[]>((blocks, artboard) => {
         if (artboard.kind === "block") {
+          const metadata = graphEditing.command.graph.blocks?.find(
+            (block) => block.id === artboard.artId,
+          );
           blocks.push({
             id: artboard.artId,
             name: artboard.name,
             canvas: { ...artboard.canvas, id: artboard.canvasId },
-            variables: [],
-            states: [],
+            variables: metadata?.variables ?? [],
+            states: metadata?.states ?? [],
+            stateSelectorVariableId: metadata?.stateSelectorVariableId ?? null,
           });
         }
         return blocks;
       }, []),
-    [artboards],
+    [artboards, graphEditing.command.graph.blocks],
   );
 
   // An artboard's name belongs to the Scene or Block that owns the Canvas, so a rename is a

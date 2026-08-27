@@ -45,7 +45,7 @@ function candidateFieldDefaults(nodeId: string, name: string, votes: number) {
 export function workflowBlocks(): Block[] {
   const card: Block = {
     id: "block_card",
-    name: "Candidate card",
+    name: "Tally row",
     canvas: {
       id: "canvas_block_card",
       kind: "block",
@@ -443,46 +443,15 @@ function cardSlot(id: string, rank: string, name: string, votes: number): SlotEl
 }
 
 export function votingCanvases(): Record<string, Canvas> {
-  const tallyRows = TALLY_VARIABLE_IDS.map((variableId, index) => {
-    const label = ["Alice", "Beatrix", "Clarissa"][index] ?? "Candidate";
-    return {
-      id: `tally-row-${index}`,
-      type: "frame" as const,
-      rank: String.fromCharCode(98 + index),
-      name: `${label} tally row`,
-      layoutMode: "auto" as const,
-      direction: "horizontal" as const,
-      gap: 16,
-      sizing: { width: { mode: "fill" as const }, height: { mode: "hug" as const } },
-      children: [
-        text(
-          `tally-name-${index}`,
-          "a",
-          variable(variableId, CANDIDATE_NAME_FIELD_ID),
-          `${label} name`,
-        ),
-        text(
-          `tally-votes-${index}`,
-          "b",
-          variable(variableId, CANDIDATE_VOTES_FIELD_ID),
-          `${label} votes`,
-        ),
-      ],
-    };
-  });
   const tallyCards = [
-    cardSlot("tally-card-alice", "e", "Alice", 12),
-    cardSlot("tally-card-beatrix", "f", "Beatrix", 8),
-    cardSlot("tally-card-clarissa", "g", "Clarissa", 5),
+    cardSlot("tally-card-alice", "b", "Alice", 12),
+    cardSlot("tally-card-beatrix", "c", "Beatrix", 8),
+    cardSlot("tally-card-clarissa", "d", "Clarissa", 5),
   ];
   return {
     [TALLY_SCENE_ID]: {
       kind: "scene",
-      root: root("Vote tally", [
-        text("tally-title", "a", "Vote tally", "Title"),
-        ...tallyRows,
-        ...tallyCards,
-      ]),
+      root: root("Vote tally", [text("tally-title", "a", "Vote tally", "Title"), ...tallyCards]),
     },
     [AUDIENCE_SCENE_ID]: {
       kind: "scene",

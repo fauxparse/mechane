@@ -64,6 +64,61 @@ describe("CanvasRenderer", () => {
     expect(html).toContain("Live");
     expect(html).not.toContain("Base");
   });
+  it("renders Block Variable assignments inside a Slot", () => {
+    const block: Block = {
+      id: "tally-row",
+      name: "Tally row",
+      canvas: {
+        id: "tally-row-canvas",
+        kind: "block",
+        root: {
+          id: "tally-row-root",
+          type: "frame",
+          children: [
+            {
+              id: "name",
+              type: "text",
+              content: { kind: "variable", variableId: "name" },
+            },
+            {
+              id: "votes",
+              type: "text",
+              content: { kind: "variable", variableId: "votes" },
+            },
+          ],
+        },
+      },
+      variables: [
+        { id: "name", name: "Name", type: "text", required: true },
+        { id: "votes", name: "Votes", type: "number", required: true },
+      ],
+      states: [],
+    };
+    const html = markup(
+      {
+        kind: "scene",
+        root: {
+          id: "scene-root",
+          type: "frame",
+          children: [
+            {
+              id: "slot",
+              type: "slot",
+              blockId: block.id,
+              assignments: [
+                { variableId: "name", source: { kind: "literal", value: "Alice" } },
+                { variableId: "votes", source: { kind: "literal", value: 12 } },
+              ],
+            },
+          ],
+        },
+      },
+      { blocks: [block], mode: "player" },
+    );
+
+    expect(html).toContain("Alice");
+    expect(html).toContain("12");
+  });
   it("renders ranked absolute children in one CSS Grid cell without wrappers", () => {
     const html = markup({
       kind: "scene",
