@@ -1,6 +1,6 @@
 import { graphql } from "./graphql";
 import { CanvasElementFields } from "./canvas";
-
+import type { TadaDocumentNode } from "gql.tada";
 const PlayerGraphFields = graphql(`
   fragment PlayerGraphFields on ShowGraph {
     showId
@@ -106,7 +106,7 @@ const PlayerGraphFields = graphql(`
   }
 `);
 
-export const GetPlayerSessionQuery = graphql(
+export const GetPlayerSessionQuery: TadaDocumentNode<any, any> = graphql(
   `
     query GetPlayerSession($pairingCode: String!) {
       playerSession(pairingCode: $pairingCode) {

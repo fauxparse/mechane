@@ -1,5 +1,5 @@
 import { graphql } from "./graphql";
-import type { ResultOf } from "gql.tada";
+import type { ResultOf, TadaDocumentNode } from "gql.tada";
 
 /**
  * The Canvas Element interface is expanded explicitly because GraphQL
@@ -74,7 +74,7 @@ export const CanvasElementFields = graphql(`
   }
 `);
 
-export const GetShowCanvasesQuery = graphql(
+export const GetShowCanvasesQuery: TadaDocumentNode<any, any> = graphql(
   `
     query GetShowCanvases($showId: ID!, $state: String) {
       showCanvases(showId: $showId, state: $state) {

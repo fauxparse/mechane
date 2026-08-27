@@ -8,6 +8,7 @@ const ELEMENT_TYPE_NAMES: Record<ElementKind, string> = {
   text: "Text",
   image: "Image",
   frame: "Frame",
+  slot: "Slot",
 };
 
 const CANVAS_KIND_NAMES: Record<CanvasArtboardDocument["kind"], string> = {
