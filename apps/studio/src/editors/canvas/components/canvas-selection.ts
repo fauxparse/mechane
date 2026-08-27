@@ -70,6 +70,21 @@ export function normalizeSelection(selection: CanvasSelection): CanvasSelection 
   return { artId: selection.artId, elementIds: [...new Set(selection.elementIds)] };
 }
 
+export function selectionBoundary<T>(
+  element: T,
+  artboard: T,
+  parentOf: (element: T) => T | null,
+  typeOf: (element: T) => string | undefined,
+): T {
+  let current = element;
+  while (true) {
+    const parent = parentOf(current);
+    if (!parent || parent === artboard) return current;
+    if (typeOf(parent) === "slot") return parent;
+    current = parent;
+  }
+}
+
 export function selectionRect(rects: readonly CanvasClientRect[]): CanvasClientRect | null {
   if (rects.length === 0) return null;
   const x = Math.min(...rects.map((rect) => rect.x));
@@ -102,9 +117,16 @@ export function topmostPaintedElementAtPoint(
       y,
     );
   });
-  if (!painted || !penetrate) return painted ?? null;
-  const parentId = painted.dataset.elementParentId;
+  if (!painted) return null;
+  const selectable = selectionBoundary(
+    painted,
+    artboard,
+    (element) => element.parentElement,
+    (element) => element.dataset.elementType,
+  );
+  if (!penetrate) return selectable;
+  const parentId = selectable.dataset.elementParentId;
   return parentId
-    ? (elements.find((element) => element.dataset.elementId === parentId) ?? painted)
-    : painted;
+    ? (elements.find((element) => element.dataset.elementId === parentId) ?? selectable)
+    : selectable;
 }

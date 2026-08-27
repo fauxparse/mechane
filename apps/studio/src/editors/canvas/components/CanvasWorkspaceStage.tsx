@@ -223,7 +223,8 @@ export function CanvasWorkspaceStage({
                     .elementFromPoint(event.clientX, event.clientY)
                     ?.closest<HTMLElement>("[data-element-type='text']");
                 if (
-                  textElement?.closest<HTMLElement>("[data-artboard-id]") !== event.currentTarget
+                  textElement?.closest<HTMLElement>("[data-artboard-id]") !== event.currentTarget ||
+                  textElement?.closest<HTMLElement>("[data-element-type='slot']")
                 ) {
                   return;
                 }

@@ -3,9 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   containedSelection,
   normalizeSelection,
+  rangeSelection,
   rectContainsRect,
   rectsOverlap,
-  rangeSelection,
+  selectionBoundary,
   toggleSelection,
 } from "./canvas-selection";
 
@@ -44,6 +45,22 @@ describe("Canvas selection", () => {
       artId: null,
       elementIds: [],
     });
+  });
+
+  it("selects the nearest Slot for rendered Block descendants", () => {
+    type Node = { id: string; type: string; parent: Node | null };
+    const artboard: Node = { id: "artboard", type: "artboard", parent: null };
+    const firstSlot: Node = { id: "slot-first", type: "slot", parent: artboard };
+    const firstRoot: Node = { id: "block-root", type: "frame", parent: firstSlot };
+    const firstLabel: Node = { id: "label", type: "text", parent: firstRoot };
+    const secondSlot: Node = { id: "slot-second", type: "slot", parent: artboard };
+    const secondRoot: Node = { id: "block-root", type: "frame", parent: secondSlot };
+    const secondLabel: Node = { id: "label", type: "text", parent: secondRoot };
+    const parentOf = (node: Node) => node.parent;
+    const typeOf = (node: Node) => node.type;
+
+    expect(selectionBoundary(firstLabel, artboard, parentOf, typeOf)).toBe(firstSlot);
+    expect(selectionBoundary(secondLabel, artboard, parentOf, typeOf)).toBe(secondSlot);
   });
 
   it("selects the inclusive visible range in either direction", () => {
