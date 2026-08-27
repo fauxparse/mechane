@@ -7,6 +7,7 @@ import { ImageSection, InspectorHeader } from "./CanvasInspectorSections";
 import { LayoutSection } from "./LayoutSection";
 import { PositionSection } from "./PositionSection";
 import type { CanvasInspectorProps } from "./canvas-inspector-types";
+import { SlotInputsSection } from "./CanvasInspectorFields";
 import { useCanvasInspectorModel } from "./use-canvas-inspector-model";
 import { FillSection } from "./FillSection";
 import { StrokeSection } from "./StrokeSection";
@@ -26,6 +27,7 @@ const CanvasInspectorContent = () => (
     <SidebarContent className="gap-0">
       <ImageSection />
       <PositionSection />
+      <SlotInputsSection />
       <LayoutSection />
       <AppearanceSection />
       <FillSection />

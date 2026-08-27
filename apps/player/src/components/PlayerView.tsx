@@ -45,6 +45,7 @@ function PlayerCanvas({ session }: { session: PlayerSession }) {
     >
       <CanvasRenderer
         canvas={canvas}
+        shapes={session.graph.shapes}
         blocks={session.blocks ?? []}
         mode="player"
         className="h-full w-full"

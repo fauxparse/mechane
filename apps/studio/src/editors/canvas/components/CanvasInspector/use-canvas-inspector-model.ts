@@ -26,6 +26,7 @@ function collectFontFamilies(artboards: readonly CanvasArtboardDocument[]): read
 const EMPTY_VARIABLES = [] as const;
 const EMPTY_IMAGE_ASSETS = [] as const;
 const EMPTY_DEVICE_QR_IMAGES = {} as const;
+const EMPTY_BLOCKS = [] as const;
 const EMPTY_SHAPES = [] as const;
 
 function sameValue(left: unknown, right: unknown): boolean {
@@ -135,6 +136,7 @@ export function useCanvasInspectorModel({
   artboards,
   selection,
   variables = EMPTY_VARIABLES,
+  blocks = EMPTY_BLOCKS,
   shapes = EMPTY_SHAPES,
   imageAssets = EMPTY_IMAGE_ASSETS,
   deviceQrImages = EMPTY_DEVICE_QR_IMAGES,
@@ -200,6 +202,7 @@ export function useCanvasInspectorModel({
             target,
             elements,
             selected,
+            blocks,
             variables,
             shapes,
             deviceQrImages,
@@ -233,6 +236,7 @@ export function useCanvasInspectorModel({
       target,
       text,
       update,
+      blocks,
       variables,
       shapes,
     ],

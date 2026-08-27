@@ -102,6 +102,7 @@ export function CanvasWorkspaceSurface({
         setTool={setTool}
         camera={camera}
         ordered={ordered}
+        shapes={shapes}
         blocks={blocks}
         drag={drag}
         focused={focused}
@@ -153,6 +154,7 @@ export function CanvasWorkspaceSurface({
           focused={focused}
           artboards={ordered}
           selection={selection}
+          blocks={blocks}
           variables={variables}
           shapes={shapes}
           deviceQrImages={deviceQrImages}

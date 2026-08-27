@@ -21,19 +21,24 @@ import type {
   SizeValue,
   Stroke,
 } from "@mechane/domain";
-import { isPropertyConnection } from "@mechane/domain";
+import { isPropertyConnection, resolveSlotInstances } from "@mechane/domain";
 import type { CanvasRendererProps } from "./canvas-render";
 
 type LayoutParent = Extract<ResolvedElement, { type: "frame" | "slot" }>;
 function literal<T>(value: T | PropertyConnection | undefined): T | undefined {
   return isPropertyConnection(value) ? undefined : (value as T | undefined);
 }
+
 interface RenderElementOptions {
   element: ResolvedElement;
   root?: boolean;
   sceneRoot?: boolean;
   parent?: LayoutParent;
+  shapes?: CanvasRendererProps["shapes"];
   blocks?: CanvasRendererProps["blocks"];
+  variables?: CanvasRendererProps["variables"];
+  runtimeItem?: unknown;
+  runtimeType?: CanvasRendererProps["runtimeType"];
   mode?: CanvasRendererProps["mode"];
   editingElementId?: string | null;
   imageLoading?: "eager" | "lazy";
@@ -313,7 +318,11 @@ function renderElement({
   root = false,
   sceneRoot = false,
   parent,
+  shapes,
   blocks,
+  variables,
+  runtimeItem,
+  runtimeType,
   mode,
   editingElementId,
   imageLoading,
@@ -342,7 +351,11 @@ function renderElement({
             key: child.id,
             element: child,
             parent: element,
+            shapes,
             blocks,
+            variables,
+            runtimeItem,
+            runtimeType,
             mode,
             editingElementId,
             imageLoading,
@@ -366,6 +379,59 @@ function renderElement({
         mode === "player" ? undefined : "Invalid Slot",
       );
     }
+    const resolution = resolveSlotInstances(
+      block,
+      element,
+      variables,
+      runtimeItem,
+      runtimeType,
+      shapes,
+    );
+    if (resolution.diagnostic) {
+      if (mode === "player") return null;
+      return createElement("div", {
+        "data-element-id": element.id,
+        "data-element-type": "slot",
+        "data-slot-diagnostic": resolution.diagnostic.category,
+        style,
+      });
+    }
+    const renderedItems: ReactNode[] = [];
+    for (const instance of resolution.instances) {
+      if (instance.diagnostics.length > 0) {
+        if (mode === "player") continue;
+        renderedItems.push(
+          createElement(
+            "div",
+            {
+              key: `${element.id}:${instance.index}`,
+              "data-slot-diagnostic": instance.diagnostics[0]?.category,
+            },
+            "Invalid Slot",
+          ),
+        );
+        continue;
+      }
+      if (!instance.canvas) continue;
+      renderedItems.push(
+        createElement(ElementRenderer, {
+          key: `${element.id}:${instance.index}`,
+          element: instance.canvas.root as ResolvedElement,
+          parent: element,
+          shapes,
+          blocks,
+          variables,
+          runtimeItem: instance.item ?? runtimeItem,
+          runtimeType,
+          mode,
+          editingElementId,
+          imageLoading,
+          onImageError,
+          onTextDoubleClick,
+          onTextKeyDown,
+        }),
+      );
+    }
     return createElement(
       "div",
       {
@@ -374,17 +440,7 @@ function renderElement({
         "data-element-painted": "false",
         style,
       },
-      createElement(ElementRenderer, {
-        element: block.canvas.root as ResolvedElement,
-        parent: element,
-        blocks,
-        mode,
-        editingElementId,
-        imageLoading,
-        onImageError,
-        onTextDoubleClick,
-        onTextKeyDown,
-      }),
+      renderedItems,
     );
   }
   if (element.type === "image") {
@@ -478,7 +534,11 @@ function renderElement({
 export function ElementRenderer({
   element,
   parent,
+  shapes,
   blocks,
+  variables,
+  runtimeItem,
+  runtimeType,
   mode,
   editingElementId,
   imageLoading,
@@ -489,7 +549,11 @@ export function ElementRenderer({
   return renderElement({
     element,
     parent,
+    shapes,
     blocks,
+    variables,
+    runtimeItem,
+    runtimeType,
     mode,
     editingElementId,
     imageLoading,
@@ -505,7 +569,11 @@ export const CanvasRenderer = memo(function CanvasRenderer({
   style,
   editingElementId,
   imageLoading,
+  shapes,
   blocks,
+  variables,
+  runtimeItem,
+  runtimeType,
   mode,
   onImageError,
   onTextDoubleClick,
@@ -524,7 +592,11 @@ export const CanvasRenderer = memo(function CanvasRenderer({
       element: root,
       root: true,
       sceneRoot,
+      shapes,
       blocks,
+      variables,
+      runtimeItem,
+      runtimeType,
       mode,
       editingElementId,
       imageLoading,

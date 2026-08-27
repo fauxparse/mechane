@@ -37,14 +37,12 @@ export interface Block {
   readonly states: readonly BlockState[];
   readonly stateSelectorVariableId?: string | null;
 }
-
 export class InvalidBlockError extends Error {
   constructor(reason: string) {
     super(`Invalid Block: ${reason}`);
     this.name = "InvalidBlockError";
   }
 }
-
 export class BlockReferenceError extends Error {
   constructor(blockId: string) {
     super(`Block "${blockId}" is still referenced by a Slot.`);
@@ -52,6 +50,15 @@ export class BlockReferenceError extends Error {
   }
 }
 
+export class BlockCycleError extends Error {
+  readonly chain: readonly string[];
+
+  constructor(chain: readonly string[]) {
+    super(`Block reference cycle: ${chain.join(" -> ")}`);
+    this.name = "BlockCycleError";
+    this.chain = chain;
+  }
+}
 const MAX_BLOCK_NAME_LENGTH = 200;
 const PROPERTY_NAMES = new Set([
   "layout",
@@ -172,6 +179,7 @@ export function assertValidBlocks(
   assertUnique(values.map((block) => block.id), "Block");
   assertUnique(values.map((block) => block.name), "Block name");
   for (const block of values) assertValidBlock(block, shapes);
+  assertAcyclicBlockReferences(values);
   return values;
 }
 
@@ -181,6 +189,13 @@ export function blockReferencesInCanvas(canvas: Canvas): readonly string[] {
     if ("blockId" in element && typeof element.blockId === "string") {
       references.push(element.blockId);
     }
+  });
+  return references;
+}
+export function blockReferences(block: Block): readonly string[] {
+  const references: string[] = [];
+  walk(block.canvas.root, (element) => {
+    if (element.type === "slot") references.push(element.blockId);
   });
   return references;
 }
@@ -197,7 +212,29 @@ export function assertBlockReferencesExist(
       }
     }
   }
+}
 
+export function assertAcyclicBlockReferences(blocks: readonly Block[]): void {
+  const byId = new Map(blocks.map((block) => [block.id, block]));
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const path: string[] = [];
+  const visit = (blockId: string): void => {
+    if (visiting.has(blockId)) {
+      const start = path.indexOf(blockId);
+      throw new BlockCycleError([...path.slice(start), blockId]);
+    }
+    if (visited.has(blockId)) return;
+    const block = byId.get(blockId);
+    if (!block) return;
+    visiting.add(blockId);
+    path.push(blockId);
+    for (const reference of blockReferences(block)) visit(reference);
+    path.pop();
+    visiting.delete(blockId);
+    visited.add(blockId);
+  };
+  for (const block of blocks) visit(block.id);
 }
 export function emptyBlock(name: string, id = generateId("block")): Block {
   const canvasId = generateId("canvas");
@@ -279,4 +316,72 @@ export function applyBlockState(block: Block, state: BlockState | null): BlockCa
       children: element.children?.map(visit),
     }) as Element;
   return { ...block.canvas, root: visit(block.canvas.root) as BlockCanvas["root"] };
+}
+
+export function addBlockVariable(block: Block, variable: BlockVariable): Block {
+  if (block.variables.some((candidate) => candidate.id === variable.id)) {
+    throw new InvalidBlockError(`Variable "${variable.id}" already exists.`);
+  }
+  return { ...block, variables: [...block.variables, variable] };
+}
+
+export function updateBlockVariable(block: Block, variable: BlockVariable): Block {
+  if (!block.variables.some((candidate) => candidate.id === variable.id)) {
+    throw new InvalidBlockError(`Variable "${variable.id}" does not exist.`);
+  }
+  return {
+    ...block,
+    variables: block.variables.map((candidate) =>
+      candidate.id === variable.id ? variable : candidate,
+    ),
+  };
+}
+
+export function addBlockState(block: Block, state: BlockState): Block {
+  if (block.states.some((candidate) => candidate.id === state.id)) {
+    throw new InvalidBlockError(`State "${state.id}" already exists.`);
+  }
+  const states =
+    block.states.length === 0
+      ? [{ ...state, isDefault: true }]
+      : [...block.states, { ...state, isDefault: false }];
+  return { ...block, states };
+}
+
+export function renameBlockState(block: Block, stateId: string, name: string): Block {
+  const state = block.states.find((candidate) => candidate.id === stateId);
+  if (!state) throw new InvalidBlockError(`State "${stateId}" does not exist.`);
+  const nextName = assertValidBlockName(name);
+  return {
+    ...block,
+    states: block.states.map((candidate) =>
+      candidate.id === stateId ? { ...candidate, name: nextName } : candidate,
+    ),
+  };
+}
+
+export function setDefaultBlockState(block: Block, stateId: string): Block {
+  if (!block.states.some((candidate) => candidate.id === stateId)) {
+    throw new InvalidBlockError(`State "${stateId}" does not exist.`);
+  }
+  return {
+    ...block,
+    states: block.states.map((state) => ({ ...state, isDefault: state.id === stateId })),
+  };
+}
+
+export function setBlockStateOverrides(
+  block: Block,
+  stateId: string,
+  overrides: readonly BlockStateOverride[],
+): Block {
+  if (!block.states.some((candidate) => candidate.id === stateId)) {
+    throw new InvalidBlockError(`State "${stateId}" does not exist.`);
+  }
+  return {
+    ...block,
+    states: block.states.map((state) =>
+      state.id === stateId ? { ...state, overrides: [...overrides] } : state,
+    ),
+  };
 }
