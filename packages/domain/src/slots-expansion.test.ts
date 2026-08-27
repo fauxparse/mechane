@@ -13,4 +13,20 @@ describe("Slot expansion", () => {
   it("treats a scalar source as one item", () => {
     expect(expandSlotInstances("only").instances).toEqual([{ index: 0, item: "only" }]);
   });
+
+  it("retains indexed diagnostics for invalid items", () => {
+    const result = expandSlotInstances(["valid", null], (item, index) =>
+      item === null
+        ? { category: "invalidExpansionItem", message: `Invalid item ${index}.` }
+        : undefined,
+    );
+    expect(result.instances).toEqual([
+      { index: 0, item: "valid" },
+      {
+        index: 1,
+        item: null,
+        diagnostic: { category: "invalidExpansionItem", message: "Invalid item 1." },
+      },
+    ]);
+  });
 });
