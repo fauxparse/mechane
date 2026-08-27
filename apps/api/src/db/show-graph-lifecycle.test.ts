@@ -1,3 +1,4 @@
+import { emptyBlock } from "@mechane/domain";
 import type { GraphEdit } from "@mechane/commands";
 import type { ShowGraph } from "@mechane/domain";
 import { and, eq, isNull } from "drizzle-orm";
@@ -84,5 +85,44 @@ describe("Show graph lifecycle", () => {
     expect(applied.version).toBe(draftBeforePublish.version + 1);
     expect((await readActiveRun(showId))?.sourceValues).toEqual({ source_score: 2 });
     expect((await readShowGraph(showId, "published")).version).toBe(2);
+  });
+
+  it("persists and publishes Block State metadata", async () => {
+    await createShow();
+    const empty = emptyBlock("Card");
+    const baseBlock = {
+      ...empty,
+      canvas: {
+        ...empty.canvas,
+        root: { ...empty.canvas.root, layoutMode: "auto" as const },
+      },
+    };
+    const block = {
+      ...baseBlock,
+      states: [
+        {
+          id: "default",
+          name: "Default",
+          isDefault: true,
+          overrides: [],
+        },
+        {
+          id: "live",
+          name: "Live",
+          isDefault: false,
+          overrides: [
+            { elementId: baseBlock.canvas.root.id, property: "layoutMode", value: "auto" },
+          ],
+        },
+      ],
+    };
+    await writeShowGraph(showId, "draft", { ...graph, blocks: [block] });
+
+    const draft = await readShowGraph(showId, "draft");
+    expect(draft.blocks?.[0]?.states).toEqual(block.states);
+
+    const published = await publishShowGraph(showId);
+    expect(published.blocks?.[0]?.states).toEqual(block.states);
+    expect((await readShowGraph(showId, "draft")).blocks?.[0]?.states).toEqual(block.states);
   });
 });

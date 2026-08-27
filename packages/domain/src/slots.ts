@@ -38,6 +38,7 @@ export interface SlotResolution {
   readonly diagnostics: readonly SlotDiagnostic[];
 }
 
+
 function sourceValue(
   source: SlotInputSource,
   variables: readonly SlotVariableValue[],

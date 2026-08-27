@@ -1,8 +1,8 @@
 import type { Canvas, Element } from "./canvas";
 import { assertValidCanvas } from "./canvas";
+import { generateId } from "./id";
 import type { Shape, Type } from "./shapes";
 import { assertValidShapeType } from "./shapes";
-import { generateId } from "./id";
 
 export interface BlockVariable {
   readonly id: string;
@@ -37,6 +37,7 @@ export interface Block {
   readonly states: readonly BlockState[];
   readonly stateSelectorVariableId?: string | null;
 }
+
 export class InvalidBlockError extends Error {
   constructor(reason: string) {
     super(`Invalid Block: ${reason}`);
@@ -59,6 +60,7 @@ export class BlockCycleError extends Error {
     this.chain = chain;
   }
 }
+
 const MAX_BLOCK_NAME_LENGTH = 200;
 const PROPERTY_NAMES = new Set([
   "layout",
@@ -133,9 +135,18 @@ export function assertValidBlock(block: Block, shapes: readonly Shape[] = []): B
     throw new InvalidBlockError("its Canvas must be a Block Canvas.");
   }
   assertValidCanvas({ ...block.canvas, kind: "block" });
-  assertUnique(block.variables.map((variable) => variable.id), "Variable");
-  assertUnique(block.states.map((state) => state.id), "State");
-  assertUnique(block.states.map((state) => state.name.toLocaleLowerCase()), "State name");
+  assertUnique(
+    block.variables.map((variable) => variable.id),
+    "Variable",
+  );
+  assertUnique(
+    block.states.map((state) => state.id),
+    "State",
+  );
+  assertUnique(
+    block.states.map((state) => state.name.toLocaleLowerCase()),
+    "State name",
+  );
   for (const variable of block.variables) {
     if (!variable.name.trim()) throw new InvalidBlockError("Variable names must not be empty.");
     assertValidShapeType(variable.type, shapes, `Variable "${variable.name}" type`);
@@ -144,13 +155,18 @@ export function assertValidBlock(block: Block, shapes: readonly Shape[] = []): B
   if (selector !== undefined && selector !== null) {
     const variable = block.variables.find((candidate) => candidate.id === selector);
     if (!variable) throw new InvalidBlockError("the State Selector Variable must exist.");
-    if (variable.type !== "text") throw new InvalidBlockError("the State Selector Variable must be text.");
+    if (variable.type !== "text")
+      throw new InvalidBlockError("the State Selector Variable must be text.");
   }
   if (block.states.length > 0 && block.states.filter((state) => state.isDefault).length !== 1) {
     throw new InvalidBlockError("exactly one Default State is required when States exist.");
   }
   const elementIds = new Set<string>();
-  walk(block.canvas.root, (element) => elementIds.add(element.id));
+  const elementsById = new Map<string, Element>();
+  walk(block.canvas.root, (element) => {
+    elementIds.add(element.id);
+    elementsById.set(element.id, element);
+  });
   for (const state of block.states) {
     if (!state.name.trim()) throw new InvalidBlockError("State names must not be empty.");
     assertUnique(
@@ -161,6 +177,12 @@ export function assertValidBlock(block: Block, shapes: readonly Shape[] = []): B
       if (!elementIds.has(override.elementId)) {
         throw new InvalidBlockError(
           `State "${state.name}" targets missing Element "${override.elementId}".`,
+        );
+      }
+      const element = elementsById.get(override.elementId);
+      if (!element || !(override.property in element)) {
+        throw new InvalidBlockError(
+          `State "${state.name}" targets a missing Property on Element "${override.elementId}".`,
         );
       }
       if (!PROPERTY_NAMES.has(override.property)) {
@@ -176,8 +198,14 @@ export function assertValidBlocks(
   shapes: readonly Shape[] = [],
 ): readonly Block[] {
   const values = blocks ?? [];
-  assertUnique(values.map((block) => block.id), "Block");
-  assertUnique(values.map((block) => block.name), "Block name");
+  assertUnique(
+    values.map((block) => block.id),
+    "Block",
+  );
+  assertUnique(
+    values.map((block) => block.name),
+    "Block name",
+  );
   for (const block of values) assertValidBlock(block, shapes);
   assertAcyclicBlockReferences(values);
   return values;
@@ -192,6 +220,7 @@ export function blockReferencesInCanvas(canvas: Canvas): readonly string[] {
   });
   return references;
 }
+
 export function blockReferences(block: Block): readonly string[] {
   const references: string[] = [];
   walk(block.canvas.root, (element) => {
@@ -236,6 +265,7 @@ export function assertAcyclicBlockReferences(blocks: readonly Block[]): void {
   };
   for (const block of blocks) visit(block.id);
 }
+
 export function emptyBlock(name: string, id = generateId("block")): Block {
   const canvasId = generateId("canvas");
   return {
@@ -282,7 +312,10 @@ export function duplicateBlock(block: Block, name: string, id = generateId("bloc
       elementId: ids.get(override.elementId) ?? override.elementId,
     })),
   }));
-  const variables = block.variables.map((variable) => ({ ...variable, id: generateId("variable") }));
+  const variables = block.variables.map((variable) => ({
+    ...variable,
+    id: generateId("variable"),
+  }));
   return { ...block, id, name: assertValidBlockName(name), canvas, variables, states };
 }
 
@@ -303,7 +336,10 @@ export function resolveBlockState(block: Block, selector: unknown): BlockState |
 export function applyBlockState(block: Block, state: BlockState | null): BlockCanvas {
   if (!state) return block.canvas;
   const overrides = new Map(
-    state.overrides.map((override) => [`${override.elementId}:${override.property}`, override.value]),
+    state.overrides.map((override) => [
+      `${override.elementId}:${override.property}`,
+      override.value,
+    ]),
   );
   const visit = (element: Element): Element =>
     ({

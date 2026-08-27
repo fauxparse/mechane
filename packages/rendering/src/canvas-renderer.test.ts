@@ -3,13 +3,67 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { CanvasRenderer } from "./canvas-renderer";
-import type { Canvas } from "@mechane/domain";
+import type { CanvasRendererProps } from "./canvas-render";
+import type { Block, Canvas, SlotVariableValue } from "@mechane/domain";
 
-function markup(canvas: Canvas): string {
-  return renderToStaticMarkup(createElement(CanvasRenderer, { canvas }));
+function markup(canvas: Canvas, props: Omit<CanvasRendererProps, "canvas"> = {}): string {
+  return renderToStaticMarkup(createElement(CanvasRenderer, { canvas, ...props }));
 }
 
 describe("CanvasRenderer", () => {
+  it("resolves a Slot State Selector before rendering its Block", () => {
+    const block: Block = {
+      id: "card",
+      name: "Card",
+      canvas: {
+        id: "card-canvas",
+        kind: "block",
+        root: {
+          id: "card-root",
+          type: "frame",
+          children: [{ id: "title", type: "text", content: "Base" }],
+        },
+      },
+      variables: [{ id: "selector", name: "State", type: "text", required: false }],
+      states: [
+        { id: "default", name: "Default", isDefault: true, overrides: [] },
+        {
+          id: "live",
+          name: "Live",
+          isDefault: false,
+          overrides: [{ elementId: "title", property: "content", value: "Live" }],
+        },
+      ],
+      stateSelectorVariableId: "selector",
+    };
+    const variables: SlotVariableValue[] = [{ id: "selector", type: "text", value: "Live" }];
+    const html = markup(
+      {
+        kind: "scene",
+        root: {
+          id: "scene-root",
+          type: "frame",
+          children: [
+            {
+              id: "slot",
+              type: "slot",
+              blockId: block.id,
+              assignments: [
+                {
+                  variableId: "selector",
+                  source: { kind: "variable", variableId: "selector" },
+                },
+              ],
+            },
+          ],
+        },
+      },
+      { blocks: [block], variables, mode: "player" },
+    );
+
+    expect(html).toContain("Live");
+    expect(html).not.toContain("Base");
+  });
   it("renders ranked absolute children in one CSS Grid cell without wrappers", () => {
     const html = markup({
       kind: "scene",

@@ -366,6 +366,7 @@ export async function publishShowGraph(
     const reconciled = await reconcileActiveRunValues(showId, publishedBefore, draft, tx);
     const published = await writeGraph(tx, showId, "published", {
       shapes: draft.shapes ?? [],
+
       blocks: draft.blocks ?? [],
       nodes: draft.nodes,
       edges: draft.edges,
