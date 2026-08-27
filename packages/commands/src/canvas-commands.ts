@@ -1,4 +1,5 @@
-import type { Canvas, Element, Position } from "@mechane/domain";
+import type { Canvas, Element, Position, SlotElement } from "@mechane/domain";
+import { generateId } from "@mechane/domain";
 import {
   CANVAS_COMMAND_TYPES,
   canvasElementParent,
@@ -148,6 +149,24 @@ export function addCanvasElement(
     edits: [edit],
     restoreEdits: (captured) => [targetEdit(canvasId, captured.edit)],
   });
+}
+
+/** Places an existing Block as one invisible Slot wrapper. */
+export function placeBlockInSlot(
+  canvasId: string,
+  blockId: string,
+  parentId: string,
+  rank: string,
+  elementId = generateId("canvas"),
+): CanvasWorkspaceCommand {
+  const element: NewElement = {
+    id: elementId,
+    type: "slot",
+    blockId,
+    layoutMode: "auto",
+    autoLayout: true,
+  };
+  return addCanvasElement(canvasId, element, parentId, rank);
 }
 
 export function removeCanvasElement(canvasId: string, elementId: string): CanvasWorkspaceCommand {

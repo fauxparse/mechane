@@ -8,6 +8,7 @@ const ELEMENT_TYPE_NAMES = {
   text: "TextElement",
   image: "ImageElement",
   frame: "FrameElement",
+  slot: "SlotElement",
 } as const;
 
 type CanvasElementDiscriminator = { type: keyof typeof ELEMENT_TYPE_NAMES };

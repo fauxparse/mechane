@@ -7,7 +7,7 @@
 import type { ImageAssetReference, ResolvedImageValue } from "./shapes";
 import { isPropertyConnection } from "./property-values";
 import type { PropertyConnection, PropertyValue } from "./property-values";
-export const ELEMENT_KINDS = ["rect", "ellipse", "text", "image", "frame"] as const;
+export const ELEMENT_KINDS = ["rect", "ellipse", "text", "image", "frame", "slot"] as const;
 export type ElementKind = (typeof ELEMENT_KINDS)[number];
 
 export const SIZE_MODES = ["hug", "fill", "fixed"] as const;
@@ -181,6 +181,28 @@ export interface FrameElement extends CornerRadiusElement {
   clip?: boolean;
 }
 
+export type SlotInputSource =
+  | { readonly kind: "literal"; readonly value: unknown }
+  | { readonly kind: "variable"; readonly variableId: string; readonly fieldPath?: readonly string[] }
+  | { readonly kind: "runtimeItem"; readonly fieldPath?: readonly string[] }
+  | { readonly kind: "unset" };
+
+export interface SlotInputAssignment {
+  readonly variableId: string;
+  readonly source: SlotInputSource;
+}
+
+export interface SlotExpansion {
+  readonly source: SlotInputSource;
+}
+
+export interface SlotElement extends Omit<FrameElement, "type"> {
+  type: "slot";
+  /** Stable reference to the Show-owned Block this placement instantiates. */
+  blockId: string;
+  assignments?: readonly SlotInputAssignment[];
+  expansion?: SlotExpansion;
+}
 export interface Padding {
   top?: number;
   right?: number;
@@ -188,9 +210,6 @@ export interface Padding {
   left?: number;
 }
 
-export function hasCornerRadius(element: Element): element is CornerRadiusElement {
-  return element.type === "rect" || element.type === "frame" || element.type === "image";
-}
 
 export function isContainerElement(element: Element): element is FrameElement {
   return element.type === "frame";
@@ -203,11 +222,15 @@ export interface AnchorPosition {
   offsetY?: number;
 }
 
-export type Element = RectElement | EllipseElement | TextElement | ImageElement | FrameElement;
-
+export type Element = RectElement | EllipseElement | TextElement | ImageElement | FrameElement | SlotElement;
 export interface Canvas {
   root: FrameElement;
   kind?: "scene" | "block";
+}
+export function hasCornerRadius(
+  element: Element,
+): element is RectElement | FrameElement | ImageElement {
+  return element.type === "rect" || element.type === "frame" || element.type === "image";
 }
 /**
  * The detached shape consumed by rendering after Property Connections are resolved.
@@ -333,6 +356,23 @@ function assertLayout(element: Element): void {
       throw new InvalidCanvasError(
         `${element.id} gap must be auto or a finite non-negative number.`,
       );
+    }
+  }
+  if (element.type === "slot") {
+    if (!element.blockId) throw new InvalidCanvasError(`${element.id} requires a Block reference.`);
+    if (element.layoutMode !== undefined && element.layoutMode !== "auto") {
+      throw new InvalidCanvasError(`${element.id} Slots must use auto layout.`);
+    }
+    if (element.autoLayout === false) {
+      throw new InvalidCanvasError(`${element.id} Slots cannot disable auto layout.`);
+    }
+    if (
+      element.opacity !== undefined ||
+      element.blendMode !== undefined ||
+      element.fill !== undefined ||
+      element.stroke !== undefined
+    ) {
+      throw new InvalidCanvasError(`${element.id} Slots cannot define paint properties.`);
     }
   }
 }
