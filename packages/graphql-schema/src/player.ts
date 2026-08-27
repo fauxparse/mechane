@@ -207,6 +207,31 @@ export const GetPlayerSessionQuery: TadaDocumentNode<any, any> = graphql(
               }
             }
           }
+          variables {
+            id
+            name
+            required
+            type {
+              kind
+              shapeId
+              of {
+                kind
+                shapeId
+              }
+            }
+            defaultValue
+          }
+          states {
+            id
+            name
+            isDefault
+            overrides {
+              elementId
+              property
+              value
+            }
+          }
+          stateSelectorVariableId
         }
         imageAssets {
           id

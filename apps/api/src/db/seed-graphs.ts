@@ -1,6 +1,7 @@
 // Seed data for the local Voting demo. The graph is intentionally small and
 // legible: three Candidate Sources feed a projected tally and an Audience flow.
 import type {
+  Block,
   Canvas,
   FrameElement,
   Position,
@@ -39,6 +40,123 @@ function candidateFieldDefaults(nodeId: string, name: string, votes: number) {
     { nodeId, fieldPath: [CANDIDATE_NAME_FIELD_ID], value: name },
     { nodeId, fieldPath: [CANDIDATE_VOTES_FIELD_ID], value: votes },
   ];
+}
+export function workflowBlocks(): Block[] {
+  const card: Block = {
+    id: "block_card",
+    name: "Candidate card",
+    canvas: {
+      id: "canvas_block_card",
+      kind: "block",
+      root: {
+        id: "block_card_root",
+        type: "frame",
+        direction: "vertical",
+        gap: 8,
+        children: [
+          { id: "block_card_title", type: "text", content: "Candidate" },
+          { id: "block_card_votes", type: "text", content: "0" },
+        ],
+      },
+    },
+    variables: [
+      { id: "block_card_name", name: "Name", type: "text", required: true },
+      { id: "block_card_count", name: "Votes", type: "number", required: false, defaultValue: 0 },
+      { id: "block_card_selector", name: "State", type: "text", required: false },
+    ],
+    states: [
+      {
+        id: "block_card_default",
+        name: "Default",
+        isDefault: true,
+        overrides: [],
+      },
+      {
+        id: "block_card_selected",
+        name: "Selected",
+        isDefault: false,
+        overrides: [{ elementId: "block_card_title", property: "content", value: "Selected" }],
+      },
+    ],
+    stateSelectorVariableId: "block_card_selector",
+  };
+  const nested: Block = {
+    id: "block_nested",
+    name: "Nested card",
+    canvas: {
+      id: "canvas_block_nested",
+      kind: "block",
+      root: {
+        id: "block_nested_root",
+        type: "frame",
+        children: [
+          {
+            id: "block_nested_slot",
+            type: "slot",
+            blockId: card.id,
+            assignments: [
+              {
+                variableId: "block_card_name",
+                source: { kind: "runtimeItem", fieldPath: [CANDIDATE_NAME_FIELD_ID] },
+              },
+              {
+                variableId: "block_card_count",
+                source: { kind: "runtimeItem", fieldPath: [CANDIDATE_VOTES_FIELD_ID] },
+              },
+            ],
+          },
+        ],
+      },
+    },
+    variables: [],
+    states: [],
+  };
+  const repeated: Block = {
+    id: "block_repeated",
+    name: "Repeated card",
+    canvas: {
+      id: "canvas_block_repeated",
+      kind: "block",
+      root: {
+        id: "block_repeated_root",
+        type: "frame",
+        children: [
+          {
+            id: "block_repeated_slot",
+            type: "slot",
+            blockId: card.id,
+            expansion: {
+              source: { kind: "variable", variableId: "block_repeated_items" },
+            },
+            assignments: [
+              {
+                variableId: "block_card_name",
+                source: { kind: "runtimeItem", fieldPath: [CANDIDATE_NAME_FIELD_ID] },
+              },
+              {
+                variableId: "block_card_count",
+                source: { kind: "runtimeItem", fieldPath: [CANDIDATE_VOTES_FIELD_ID] },
+              },
+              {
+                variableId: "block_card_selector",
+                source: { kind: "literal", value: "Selected" },
+              },
+            ],
+          },
+        ],
+      },
+    },
+    variables: [
+      {
+        id: "block_repeated_items",
+        name: "Candidates",
+        type: { kind: "array", of: candidateType },
+        required: true,
+      },
+    ],
+    states: [],
+  };
+  return [card, nested, repeated];
 }
 
 export function votingGraph(): ShowGraph {
@@ -134,6 +252,7 @@ export function votingGraph(): ShowGraph {
   return {
     shapes: [candidateShape],
     sourceFieldDefaults,
+    blocks: workflowBlocks(),
     nodes: [
       ...sourceNodes,
       {

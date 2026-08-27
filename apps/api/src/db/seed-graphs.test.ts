@@ -17,6 +17,7 @@ import {
   TALLY_VARIABLE_IDS,
   votingCanvases,
   votingGraph,
+  workflowBlocks,
 } from "./seed-graphs";
 
 describe("Voting demo seed", () => {
@@ -72,6 +73,27 @@ describe("Voting demo seed", () => {
     const firstRow = resolved.root.children?.[1];
     expect(firstRow).toMatchObject({
       children: [{ content: "Alice" }, { content: "12" }],
+    });
+  });
+
+  it("builds complete deterministic Block workflow fixtures", () => {
+    const blocks = workflowBlocks();
+    const card = blocks.find((block) => block.id === "block_card");
+    const nested = blocks.find((block) => block.id === "block_nested");
+    const repeated = blocks.find((block) => block.id === "block_repeated");
+    expect(card?.states.map((state) => state.name)).toEqual(["Default", "Selected"]);
+    expect(card?.stateSelectorVariableId).toBe("block_card_selector");
+    const nestedSlot = nested?.canvas.root.children?.[0];
+    expect(nestedSlot).toMatchObject({ type: "slot", blockId: "block_card" });
+    expect(
+      nestedSlot?.type === "slot" ? nestedSlot.assignments?.map((item) => item.variableId) : [],
+    ).toEqual(expect.arrayContaining(["block_card_name", "block_card_count"]));
+    expect(repeated?.variables[0]?.type).toEqual({
+      kind: "array",
+      of: { kind: "shape", shapeId: CANDIDATE_SHAPE_ID },
+    });
+    expect(repeated?.canvas.root.children?.[0]).toMatchObject({
+      expansion: { source: { kind: "variable", variableId: "block_repeated_items" } },
     });
   });
 

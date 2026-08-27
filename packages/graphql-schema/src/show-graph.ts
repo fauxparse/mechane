@@ -8,34 +8,45 @@
 // from apps/api's schema.
 import { graphql } from "./graphql";
 import type { ResultOf } from "gql.tada";
+import { CanvasElementFields } from "./canvas";
 
-export const GetShowGraphQuery = graphql(`
-  query GetShowGraph($showId: ID!, $state: String) {
-    showGraph(showId: $showId, state: $state) {
-      showId
-      state
-      updatedAt
-      version
-      sourceFieldDefaults {
-        nodeId
-        fieldPath
-        value
-      }
-      nodes {
-        __typename
-        id
-        name
-        parentId
-        position {
-          x
-          y
+export const GetShowGraphQuery = graphql(
+  `
+    query GetShowGraph($showId: ID!, $state: String) {
+      showGraph(showId: $showId, state: $state) {
+        showId
+        state
+        updatedAt
+        version
+        sourceFieldDefaults {
+          nodeId
+          fieldPath
+          value
         }
-        color
-        ... on SceneNode {
+        blocks {
+          id
+          name
+          canvas {
+            id
+            kind
+            ownerId
+            ownerName
+            position {
+              x
+              y
+            }
+            root {
+              ...CanvasElementFields
+              children {
+                ...CanvasElementFields
+              }
+            }
+          }
+          stateSelectorVariableId
           variables {
             id
             name
-            rank
+            required
             type {
               kind
               shapeId
@@ -44,117 +55,155 @@ export const GetShowGraphQuery = graphql(`
                 shapeId
               }
             }
-            suggestedDimensions {
-              width
-              height
+            defaultValue
+          }
+          states {
+            id
+            name
+            isDefault
+            overrides {
+              elementId
+              property
+              value
             }
           }
         }
-        ... on FlowNode {
-          defaultSceneId
-        }
-        ... on SourceNode {
-          sourceType: type {
-            kind
-            shapeId
-            of {
-              kind
-              shapeId
-            }
-          }
-          fieldDefaults {
-            fieldPath
-            value
-          }
-        }
-        ... on TransformerNode {
-          transformerType: type {
-            kind
-            shapeId
-            of {
-              kind
-              shapeId
-            }
-          }
-        }
-        ... on DeviceNode {
-          perConnection
-          pairingCode
-        }
-      }
-      edges {
-        __typename
-        id
-        sourceId
-        targetId
-        sourcePath
-        targetPath
-        ... on WiringEdge {
-          fieldMapping
-          targetVariableId
-        }
-        ... on NavigateEdge {
-          cueId
-          actionId
-        }
-      }
-      shapes {
-        id
-        name
-        fields {
+        nodes {
+          __typename
           id
           name
-          position
-          required
-          default {
-            __typename
-            ... on TextValue {
-              textValue: value
-            }
-            ... on NumberValue {
-              numberValue: value
-            }
-            ... on BooleanValue {
-              booleanValue: value
-            }
-            ... on ImageValue {
-              assetId
-              url
-              width
-              height
-              alt
-              mimeType
-              blurHash
-            }
-            ... on ColorValue {
-              colorValue: value
-            }
-            ... on DateValue {
-              dateValue: value
-            }
-            ... on DateTimeValue {
-              datetimeValue: value
-            }
-            ... on ObjectValue {
-              objectValue: value
-            }
-            ... on ArrayValue {
-              arrayValue: value
+          parentId
+          position {
+            x
+            y
+          }
+          color
+          ... on SceneNode {
+            variables {
+              id
+              name
+              rank
+              type {
+                kind
+                shapeId
+                of {
+                  kind
+                  shapeId
+                }
+              }
+              suggestedDimensions {
+                width
+                height
+              }
             }
           }
-          type {
-            kind
-            shapeId
-            of {
+          ... on FlowNode {
+            defaultSceneId
+          }
+          ... on SourceNode {
+            sourceType: type {
               kind
               shapeId
+              of {
+                kind
+                shapeId
+              }
+            }
+            fieldDefaults {
+              fieldPath
+              value
+            }
+          }
+          ... on TransformerNode {
+            transformerType: type {
+              kind
+              shapeId
+              of {
+                kind
+                shapeId
+              }
+            }
+          }
+          ... on DeviceNode {
+            perConnection
+            pairingCode
+          }
+        }
+        edges {
+          __typename
+          id
+          sourceId
+          targetId
+          sourcePath
+          targetPath
+          ... on WiringEdge {
+            fieldMapping
+            targetVariableId
+          }
+          ... on NavigateEdge {
+            cueId
+            actionId
+          }
+        }
+        shapes {
+          id
+          name
+          fields {
+            id
+            name
+            position
+            required
+            default {
+              __typename
+              ... on TextValue {
+                textValue: value
+              }
+              ... on NumberValue {
+                numberValue: value
+              }
+              ... on BooleanValue {
+                booleanValue: value
+              }
+              ... on ImageValue {
+                assetId
+                url
+                width
+                height
+                alt
+                mimeType
+                blurHash
+              }
+              ... on ColorValue {
+                colorValue: value
+              }
+              ... on DateValue {
+                dateValue: value
+              }
+              ... on DateTimeValue {
+                datetimeValue: value
+              }
+              ... on ObjectValue {
+                objectValue: value
+              }
+              ... on ArrayValue {
+                arrayValue: value
+              }
+            }
+            type {
+              kind
+              shapeId
+              of {
+                kind
+                shapeId
+              }
             }
           }
         }
       }
     }
-  }
-`);
+  `,
+  [CanvasElementFields],
+);
 
 /**
  * Applies a batch of edits to the draft graph (issue #103).
