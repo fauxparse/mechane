@@ -309,3 +309,36 @@ export function expandSlotInstances(
     }),
   };
 }
+
+export function diagnoseSlot(slot: SlotElement, blocks: readonly Block[]): readonly SlotDiagnostic[] {
+  const block = blocks.find((candidate) => candidate.id === slot.blockId);
+  if (!block) {
+    return [{ category: "missingBlock", message: `Block "${slot.blockId}" was not found.` }];
+  }
+  const diagnostics: SlotDiagnostic[] = [];
+  if (slot.layoutMode !== undefined && slot.layoutMode !== "auto") {
+    diagnostics.push({ category: "invalidSlotLayout", message: "Slots must use auto layout." });
+  }
+  if (slot.autoLayout === false) {
+    diagnostics.push({ category: "invalidSlotLayout", message: "Slots cannot disable auto layout." });
+  }
+  const targets = new Set<string>();
+  for (const assignment of slot.assignments ?? []) {
+    if (targets.has(assignment.variableId)) {
+      diagnostics.push({
+        category: "invalidAssignment",
+        message: `Block Variable "${assignment.variableId}" has multiple assignments.`,
+        variableId: assignment.variableId,
+      });
+    }
+    targets.add(assignment.variableId);
+    if (!block.variables.some((variable) => variable.id === assignment.variableId)) {
+      diagnostics.push({
+        category: "invalidAssignment",
+        message: `Block Variable "${assignment.variableId}" was not found.`,
+        variableId: assignment.variableId,
+      });
+    }
+  }
+  return diagnostics;
+}
