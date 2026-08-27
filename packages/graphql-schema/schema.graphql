@@ -540,6 +540,8 @@ type SlotElement implements Element {
   counterAlign: String
   clip: Boolean
   blockId: ID!
+  assignments: JSON
+  expansion: JSON
 }
 
 input PositionInput {

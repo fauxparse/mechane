@@ -60,6 +60,8 @@ export const CanvasElementFields = graphql(`
     }
     ... on SlotElement {
       blockId
+      assignments
+      expansion
       layoutMode
       autoLayout
       direction

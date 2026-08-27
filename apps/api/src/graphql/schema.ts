@@ -682,6 +682,8 @@ export const schema = createSchema<GraphQLContext>({
       counterAlign: String
       clip: Boolean
       blockId: ID!
+      assignments: JSON
+      expansion: JSON
     }
 
     input PositionInput {
