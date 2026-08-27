@@ -302,7 +302,12 @@ export async function writeCanvasRows(
   const [existing] = await tx.select().from(canvases).where(ownerWhere(owner, graphId));
   const identified = canonical as Canvas & { id?: unknown };
   const requestedId = typeof identified.id === "string" ? identified.id : undefined;
-  const canvasId = existing?.id ?? requestedId ?? generateId("canvas");
+  const [idCollision] =
+    !existing && requestedId
+      ? await tx.select({ id: canvases.id }).from(canvases).where(eq(canvases.id, requestedId))
+      : [];
+  const canvasId =
+    existing?.id ?? (idCollision ? generateId("canvas") : requestedId) ?? generateId("canvas");
   const nextPosition = position ?? {
     x: existing?.positionX ?? 0,
     y: existing?.positionY ?? 0,

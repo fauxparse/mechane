@@ -162,7 +162,11 @@ export function assertValidBlock(block: Block, shapes: readonly Shape[] = []): B
     throw new InvalidBlockError("exactly one Default State is required when States exist.");
   }
   const elementIds = new Set<string>();
-  walk(block.canvas.root, (element) => elementIds.add(element.id));
+  const elementsById = new Map<string, Element>();
+  walk(block.canvas.root, (element) => {
+    elementIds.add(element.id);
+    elementsById.set(element.id, element);
+  });
   for (const state of block.states) {
     if (!state.name.trim()) throw new InvalidBlockError("State names must not be empty.");
     assertUnique(
@@ -173,6 +177,12 @@ export function assertValidBlock(block: Block, shapes: readonly Shape[] = []): B
       if (!elementIds.has(override.elementId)) {
         throw new InvalidBlockError(
           `State "${state.name}" targets missing Element "${override.elementId}".`,
+        );
+      }
+      const element = elementsById.get(override.elementId);
+      if (!element || !(override.property in element)) {
+        throw new InvalidBlockError(
+          `State "${state.name}" targets a missing Property on Element "${override.elementId}".`,
         );
       }
       if (!PROPERTY_NAMES.has(override.property)) {
