@@ -76,10 +76,11 @@ export function selectionBoundary<T>(
   parentOf: (element: T) => T | null,
   typeOf: (element: T) => string | undefined,
 ): T {
+  const original = element;
   let current = element;
   while (true) {
     const parent = parentOf(current);
-    if (!parent || parent === artboard) return current;
+    if (!parent || parent === artboard) return original;
     if (typeOf(parent) === "slot") return parent;
     current = parent;
   }
@@ -124,7 +125,6 @@ export function topmostPaintedElementAtPoint(
     (element) => element.parentElement,
     (element) => element.dataset.elementType,
   );
-  if (!penetrate) return selectable;
   const parentId = selectable.dataset.elementParentId;
   return parentId
     ? (elements.find((element) => element.dataset.elementId === parentId) ?? selectable)

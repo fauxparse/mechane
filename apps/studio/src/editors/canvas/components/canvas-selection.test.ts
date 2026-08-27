@@ -63,6 +63,22 @@ describe("Canvas selection", () => {
     expect(selectionBoundary(secondLabel, artboard, parentOf, typeOf)).toBe(secondSlot);
   });
 
+  it("keeps Block descendants selectable outside a Slot", () => {
+    type Node = { id: string; type: string; parent: Node | null };
+    const artboard: Node = { id: "artboard", type: "artboard", parent: null };
+    const blockRoot: Node = { id: "block-root", type: "frame", parent: artboard };
+    const label: Node = { id: "label", type: "text", parent: blockRoot };
+
+    expect(
+      selectionBoundary(
+        label,
+        artboard,
+        (node) => node.parent,
+        (node) => node.type,
+      ),
+    ).toBe(label);
+  });
+
   it("selects the inclusive visible range in either direction", () => {
     expect(rangeSelection(["a", "b", "c", "d"], "b", "d")).toEqual(["b", "c", "d"]);
     expect(rangeSelection(["a", "b", "c", "d"], "d", "b")).toEqual(["b", "c", "d"]);
