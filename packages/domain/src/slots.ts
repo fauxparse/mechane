@@ -273,3 +273,19 @@ export function resolveSlotInstances(
     }),
   };
 }
+
+export interface SlotInstance {
+  readonly index: number;
+  readonly item: unknown;
+}
+
+export function expandSlotInstances(source: unknown): {
+  readonly instances: readonly SlotInstance[];
+  readonly diagnostic?: SlotDiagnostic;
+} {
+  const expanded = expandSlotSource(source);
+  if (expanded.diagnostic) return { instances: [], diagnostic: expanded.diagnostic };
+  return {
+    instances: expanded.items.map((item, index) => ({ index, item })),
+  };
+}
