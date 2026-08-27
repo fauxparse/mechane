@@ -14,6 +14,7 @@ import {
   CANDIDATE_SOURCE_IDS,
   SEED_CANVASES,
   seedCanvasPosition,
+  seedBlockCanvasPosition,
   SEED_GRAPHS,
   TALLY_VARIABLE_IDS,
   votingCanvases,
@@ -56,8 +57,18 @@ describe("Voting demo seed", () => {
     expect(Object.keys(canvases)).toHaveLength(2);
     for (const canvas of Object.values(canvases))
       expect(() => assertValidCanvas(canvas)).not.toThrow();
-    expect(canvases.scene_vote_tally?.root.children).toHaveLength(4);
-    expect(canvases.scene_audience_vote?.root.children).toHaveLength(4);
+    expect(canvases.scene_vote_tally?.root.children).toHaveLength(7);
+    expect(canvases.scene_audience_vote?.root.children).toHaveLength(6);
+    expect(
+      canvases.scene_vote_tally?.root.children
+        ?.filter((child) => child.type === "slot")
+        .map((child) => child.type === "slot" && child.blockId),
+    ).toEqual(["block_card", "block_card", "block_card"]);
+    expect(
+      canvases.scene_audience_vote?.root.children
+        ?.filter((child) => child.type === "slot")
+        .map((child) => child.type === "slot" && child.blockId),
+    ).toEqual(["block_nested", "block_repeated"]);
   });
   it("resolves seeded Candidate field bindings from Source defaults", () => {
     const graph = votingGraph();
@@ -113,6 +124,8 @@ describe("Voting demo seed", () => {
   it("lays seeded Scene Canvases out in a non-overlapping row", () => {
     expect(seedCanvasPosition(0)).toEqual({ x: 0, y: 0 });
     expect(seedCanvasPosition(1)).toEqual({ x: 800, y: 0 });
+    expect(seedBlockCanvasPosition(0)).toEqual({ x: 0, y: 900 });
+    expect(seedBlockCanvasPosition(1)).toEqual({ x: 420, y: 900 });
   });
 
   it("registers only the Voting demo seed builders", () => {

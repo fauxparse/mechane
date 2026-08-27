@@ -7,6 +7,7 @@ import type {
   Position,
   PropertyConnection,
   ShowGraph,
+  SlotElement,
   TextElement,
 } from "@mechane/domain";
 
@@ -53,9 +54,26 @@ export function workflowBlocks(): Block[] {
         type: "frame",
         direction: "vertical",
         gap: 8,
+        padding: 16,
+        sizing: {
+          width: { mode: "fixed", value: 320 },
+          height: { mode: "hug" },
+        },
         children: [
-          { id: "block_card_title", type: "text", rank: "a", content: "Candidate" },
-          { id: "block_card_votes", type: "text", rank: "b", content: "0" },
+          {
+            id: "block_card_title",
+            type: "text",
+            rank: "a",
+            content: { kind: "variable", variableId: "block_card_name" },
+            sizing: { width: { mode: "fill" }, height: { mode: "hug" } },
+          },
+          {
+            id: "block_card_votes",
+            type: "text",
+            rank: "b",
+            content: { kind: "variable", variableId: "block_card_count" },
+            sizing: { width: { mode: "fill" }, height: { mode: "hug" } },
+          },
         ],
       },
     },
@@ -89,6 +107,14 @@ export function workflowBlocks(): Block[] {
       root: {
         id: "block_nested_root",
         type: "frame",
+        layoutMode: "auto",
+        direction: "vertical",
+        gap: 12,
+        padding: 16,
+        sizing: {
+          width: { mode: "fixed", value: 340 },
+          height: { mode: "hug" },
+        },
         children: [
           {
             id: "block_nested_slot",
@@ -98,11 +124,15 @@ export function workflowBlocks(): Block[] {
             assignments: [
               {
                 variableId: "block_card_name",
-                source: { kind: "runtimeItem", fieldPath: [CANDIDATE_NAME_FIELD_ID] },
+                source: { kind: "literal", value: "Nested candidate" },
               },
               {
                 variableId: "block_card_count",
-                source: { kind: "runtimeItem", fieldPath: [CANDIDATE_VOTES_FIELD_ID] },
+                source: { kind: "literal", value: 7 },
+              },
+              {
+                variableId: "block_card_selector",
+                source: { kind: "literal", value: "Selected" },
               },
             ],
           },
@@ -121,6 +151,14 @@ export function workflowBlocks(): Block[] {
       root: {
         id: "block_repeated_root",
         type: "frame",
+        layoutMode: "auto",
+        direction: "vertical",
+        gap: 12,
+        padding: 16,
+        sizing: {
+          width: { mode: "fixed", value: 360 },
+          height: { mode: "hug" },
+        },
         children: [
           {
             id: "block_repeated_slot",
@@ -154,6 +192,11 @@ export function workflowBlocks(): Block[] {
         name: "Candidates",
         type: { kind: "array", of: candidateType },
         required: true,
+        defaultValue: [
+          { [CANDIDATE_NAME_FIELD_ID]: "Alice", [CANDIDATE_VOTES_FIELD_ID]: 12 },
+          { [CANDIDATE_NAME_FIELD_ID]: "Beatrix", [CANDIDATE_VOTES_FIELD_ID]: 8 },
+          { [CANDIDATE_NAME_FIELD_ID]: "Clarissa", [CANDIDATE_VOTES_FIELD_ID]: 5 },
+        ],
       },
     ],
     states: [],
@@ -327,6 +370,9 @@ const SEEDED_CANVAS_GAP = 80;
 export function seedCanvasPosition(index: number): Position {
   return { x: index * (SEEDED_CANVAS_WIDTH + SEEDED_CANVAS_GAP), y: 0 };
 }
+export function seedBlockCanvasPosition(index: number): Position {
+  return { x: index * 420, y: 900 };
+}
 
 function variable(variableId: string, fieldId: string): PropertyConnection {
   return { kind: "variable", variableId, fieldPath: [fieldId] };
@@ -381,6 +427,21 @@ function root(
   };
 }
 
+function cardSlot(id: string, rank: string, name: string, votes: number): SlotElement {
+  return {
+    id,
+    type: "slot",
+    rank,
+    blockId: "block_card",
+    sizing: { width: { mode: "fill" }, height: { mode: "hug" } },
+    assignments: [
+      { variableId: "block_card_name", source: { kind: "literal", value: name } },
+      { variableId: "block_card_count", source: { kind: "literal", value: votes } },
+      { variableId: "block_card_selector", source: { kind: "literal", value: "Default" } },
+    ],
+  };
+}
+
 export function votingCanvases(): Record<string, Canvas> {
   const tallyRows = TALLY_VARIABLE_IDS.map((variableId, index) => {
     const label = ["Alice", "Beatrix", "Clarissa"][index] ?? "Candidate";
@@ -409,10 +470,19 @@ export function votingCanvases(): Record<string, Canvas> {
       ],
     };
   });
+  const tallyCards = [
+    cardSlot("tally-card-alice", "e", "Alice", 12),
+    cardSlot("tally-card-beatrix", "f", "Beatrix", 8),
+    cardSlot("tally-card-clarissa", "g", "Clarissa", 5),
+  ];
   return {
     [TALLY_SCENE_ID]: {
       kind: "scene",
-      root: root("Vote tally", [text("tally-title", "a", "Vote tally", "Title"), ...tallyRows]),
+      root: root("Vote tally", [
+        text("tally-title", "a", "Vote tally", "Title"),
+        ...tallyRows,
+        ...tallyCards,
+      ]),
     },
     [AUDIENCE_SCENE_ID]: {
       kind: "scene",
@@ -426,6 +496,20 @@ export function votingCanvases(): Record<string, Canvas> {
             ["Alice", "Beatrix", "Clarissa"][index] ?? "Candidate",
           ),
         ),
+        {
+          id: "audience-nested-slot",
+          type: "slot",
+          rank: "e",
+          blockId: "block_nested",
+          sizing: { width: { mode: "fill" }, height: { mode: "hug" } },
+        },
+        {
+          id: "audience-repeated-slot",
+          type: "slot",
+          rank: "f",
+          blockId: "block_repeated",
+          sizing: { width: { mode: "fill" }, height: { mode: "hug" } },
+        },
       ]),
     },
   };

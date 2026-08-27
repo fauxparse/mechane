@@ -421,7 +421,7 @@ function renderElement({
           parent: element,
           shapes,
           blocks,
-          variables,
+          variables: instance.variables ?? variables,
           runtimeItem: instance.item ?? runtimeItem,
           runtimeType,
           mode,
