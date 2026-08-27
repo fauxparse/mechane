@@ -1,8 +1,10 @@
-import type { Block, BlockVariable } from "./blocks";
+import { applyBlockState, resolveBlockState } from "./blocks";
+import type { Block, BlockCanvas, BlockVariable } from "./blocks";
 import type { Shape, Type } from "./shapes";
-import { areTypesCompatible, coerceValue, fieldsForType } from "./shapes";
-import type { SlotElement, SlotInputAssignment, SlotInputSource } from "./canvas";
-import { valueAtPath } from "./property-values";
+import { areTypesCompatible, coerceValue } from "./shapes";
+import type { ResolvedCanvas, SlotElement, SlotInputAssignment, SlotInputSource } from "./canvas";
+import { typeAtPath, valueAtPath } from "./property-values";
+import { resolveCanvasProperties } from "./canvas-property-resolution";
 
 export const SLOT_DIAGNOSTIC_CATEGORIES = [
   "missingBlock",
@@ -36,17 +38,6 @@ export interface SlotResolution {
   readonly diagnostics: readonly SlotDiagnostic[];
 }
 
-function fieldType(type: Type, path: readonly string[], shapes: readonly Shape[]): Type | null {
-  let current = type;
-  for (const name of path) {
-    const fields = fieldsForType(current, shapes);
-    const field = fields.find((candidate) => candidate.name === name);
-    if (!field) return null;
-    current = field.type;
-  }
-  return current;
-}
-
 function sourceValue(
   source: SlotInputSource,
   variables: readonly SlotVariableValue[],
@@ -69,16 +60,23 @@ function sourceType(
 ): Type | null {
   if (source.kind === "literal") return null;
   if (source.kind === "unset") return null;
-  const type = source.kind === "runtimeItem" ? runtimeType : variables.find((item) => item.id === source.variableId)?.type;
-  return type ? fieldType(type, source.fieldPath ?? [], shapes) : null;
+  const type =
+    source.kind === "runtimeItem"
+      ? runtimeType
+      : variables.find((item) => item.id === source.variableId)?.type;
+  return type ? typeAtPath(type, source.fieldPath ?? [], shapes) : null;
 }
 
 function literalType(value: unknown): Type | null {
   if (typeof value === "string") return "text";
   if (typeof value === "number" && Number.isFinite(value)) return "number";
   if (typeof value === "boolean") return "boolean";
-  if (Array.isArray(value)) return { kind: "array", of: "text" };
-  return null;
+  if (!Array.isArray(value) || value.length === 0) return null;
+  const itemTypes = value.map(literalType);
+  const first = itemTypes[0];
+  if (!first || itemTypes.some((type) => JSON.stringify(type) !== JSON.stringify(first)))
+    return null;
+  return { kind: "array", of: first };
 }
 
 function defaultValue(variable: BlockVariable): unknown {
@@ -100,12 +98,49 @@ export function resolveSlotInputs(
   runtimeType?: Type,
   shapes: readonly Shape[] = [],
 ): SlotResolution {
+  const assignments = slot.assignments ?? [];
   const values: Record<string, unknown> = {};
   const diagnostics: SlotDiagnostic[] = [];
+  const assigned = new Set<string>();
+  for (const assignment of assignments) {
+    if (assigned.has(assignment.variableId)) {
+      diagnostics.push({
+        category: "invalidAssignment",
+        message: `Block Variable "${assignment.variableId}" has multiple assignments.`,
+        variableId: assignment.variableId,
+      });
+    }
+    assigned.add(assignment.variableId);
+    if (!block.variables.some((variable) => variable.id === assignment.variableId)) {
+      diagnostics.push({
+        category: "invalidAssignment",
+        message: `Block Variable "${assignment.variableId}" was not found.`,
+        variableId: assignment.variableId,
+      });
+    }
+  }
   for (const variable of block.variables) {
-    const assignment = assignmentFor(slot.assignments ?? [], variable.id);
+    const assignment = assignmentFor(assignments, variable.id);
     const source = assignment?.source ?? { kind: "unset" as const };
     const value = sourceValue(source, variables, runtimeItem);
+    const sourceTypeValue = sourceType(source, variables, runtimeType, shapes);
+    const invalidPath =
+      (source.kind === "variable" &&
+        (!variables.some((candidate) => candidate.id === source.variableId) ||
+          ((source.fieldPath?.length ?? 0) > 0 && sourceTypeValue === null))) ||
+      (source.kind === "runtimeItem" &&
+        (source.fieldPath?.length ?? 0) > 0 &&
+        runtimeType !== undefined &&
+        sourceTypeValue === null);
+    if (invalidPath) {
+      diagnostics.push({
+        category: "missingInputPath",
+        message: "Slot input source path was not found.",
+        variableId: variable.id,
+        path: source.fieldPath ?? [],
+      });
+      continue;
+    }
     if (source.kind === "unset" || value === undefined || value === null) {
       const fallback = defaultValue(variable);
       if (fallback !== undefined && fallback !== null) {
@@ -119,8 +154,16 @@ export function resolveSlotInputs(
       }
       continue;
     }
-    const sourceTypeValue = sourceType(source, variables, runtimeType, shapes) ?? literalType(value);
-    if (sourceTypeValue && !areTypesCompatible(sourceTypeValue, variable.type, shapes)) {
+    const inferredType = sourceTypeValue ?? literalType(value);
+    if (source.kind === "literal" && Array.isArray(value) && value.length > 0 && !inferredType) {
+      diagnostics.push({
+        category: "invalidAssignment",
+        message: `Literal input for Block Variable "${variable.name}" has inconsistent item types.`,
+        variableId: variable.id,
+      });
+      continue;
+    }
+    if (inferredType && !areTypesCompatible(inferredType, variable.type, shapes)) {
       diagnostics.push({
         category: "incompatibleInput",
         message: `Input for Block Variable "${variable.name}" is incompatible.`,
@@ -129,8 +172,8 @@ export function resolveSlotInputs(
       continue;
     }
     try {
-      values[variable.id] = sourceTypeValue
-        ? coerceValue(value, sourceTypeValue, variable.type, shapes)
+      values[variable.id] = inferredType
+        ? coerceValue(value, inferredType, variable.type, shapes)
         : value;
     } catch (error) {
       diagnostics.push({
@@ -143,15 +186,89 @@ export function resolveSlotInputs(
   return { values, diagnostics };
 }
 
-export function expandSlotSource(
-  source: unknown,
-): { readonly items: readonly unknown[]; readonly diagnostic?: SlotDiagnostic } {
+export function resolveBlockCanvas(
+  block: Block,
+  values: Readonly<Record<string, unknown>>,
+  shapes: readonly Shape[] = [],
+  canvas: BlockCanvas = block.canvas,
+): ResolvedCanvas {
+  return resolveCanvasProperties(canvas, {
+    variables: block.variables.map(({ id, name, type }) => ({ id, name, type })),
+    values,
+    shapes,
+  });
+}
+
+export function expandSlotSource(source: unknown): {
+  readonly items: readonly unknown[];
+  readonly diagnostic?: SlotDiagnostic;
+} {
   if (Array.isArray(source)) return { items: source };
   if (source === undefined || source === null) {
     return {
       items: [],
-      diagnostic: { category: "invalidExpansionSource", message: "Slot expansion source is missing." },
+      diagnostic: {
+        category: "invalidExpansionSource",
+        message: "Slot expansion source is missing.",
+      },
     };
   }
   return { items: [source] };
+}
+
+export interface ResolvedSlotInstance {
+  readonly index: number;
+  readonly item: unknown;
+  readonly canvas?: ResolvedCanvas;
+  readonly diagnostics: readonly SlotDiagnostic[];
+}
+
+export function resolveSlotInstances(
+  block: Block,
+  slot: SlotElement,
+  variables: readonly SlotVariableValue[] = [],
+  runtimeItem?: unknown,
+  runtimeType?: Type,
+  shapes: readonly Shape[] = [],
+): {
+  readonly instances: readonly ResolvedSlotInstance[];
+  readonly diagnostic?: SlotDiagnostic;
+} {
+  const expansion = slot.expansion?.source;
+  let expansionValue: unknown;
+  if (expansion?.kind === "literal") expansionValue = expansion.value;
+  else if (expansion?.kind === "runtimeItem") expansionValue = runtimeItem;
+  else if (expansion?.kind === "variable") {
+    expansionValue = valueAtPath(
+      variables.find((variable) => variable.id === expansion.variableId)?.value,
+      expansion.fieldPath ?? [],
+    );
+  }
+  const expanded = expansion ? expandSlotSource(expansionValue) : { items: [undefined] };
+  if (expanded.diagnostic) return { instances: [], diagnostic: expanded.diagnostic };
+  return {
+    instances: expanded.items.map((item, index) => {
+      const resolution = resolveSlotInputs(
+        block,
+        slot,
+        variables,
+        item ?? runtimeItem,
+        runtimeType,
+        shapes,
+      );
+      if (resolution.diagnostics.length > 0) {
+        return { index, item, diagnostics: resolution.diagnostics };
+      }
+      const selector = block.stateSelectorVariableId
+        ? resolution.values[block.stateSelectorVariableId]
+        : undefined;
+      const selected = applyBlockState(block, resolveBlockState(block, selector));
+      return {
+        index,
+        item,
+        canvas: resolveBlockCanvas(block, resolution.values, shapes, selected),
+        diagnostics: [],
+      };
+    }),
+  };
 }

@@ -21,13 +21,7 @@ import type {
   SizeValue,
   Stroke,
 } from "@mechane/domain";
-import {
-  applyBlockState,
-  expandSlotSource,
-  isPropertyConnection,
-  resolveBlockState,
-  resolveSlotInputs,
-} from "@mechane/domain";
+import { isPropertyConnection, resolveSlotInstances } from "@mechane/domain";
 import type { CanvasRendererProps } from "./canvas-render";
 
 type LayoutParent = Extract<ResolvedElement, { type: "frame" | "slot" }>;
@@ -40,6 +34,7 @@ interface RenderElementOptions {
   root?: boolean;
   sceneRoot?: boolean;
   parent?: LayoutParent;
+  shapes?: CanvasRendererProps["shapes"];
   blocks?: CanvasRendererProps["blocks"];
   variables?: CanvasRendererProps["variables"];
   runtimeItem?: unknown;
@@ -323,6 +318,7 @@ function renderElement({
   root = false,
   sceneRoot = false,
   parent,
+  shapes,
   blocks,
   variables,
   runtimeItem,
@@ -355,6 +351,7 @@ function renderElement({
             key: child.id,
             element: child,
             parent: element,
+            shapes,
             blocks,
             variables,
             runtimeItem,
@@ -382,62 +379,49 @@ function renderElement({
         mode === "player" ? undefined : "Invalid Slot",
       );
     }
-    const expansion = element.expansion?.source;
-    let expansionValue: unknown;
-    if (expansion?.kind === "literal") {
-      expansionValue = expansion.value;
-    } else if (expansion?.kind === "runtimeItem") {
-      expansionValue = runtimeItem;
-    } else if (expansion && "variableId" in expansion) {
-      expansionValue = variables?.find(
-        (variable) => variable.id === expansion.variableId,
-      )?.value;
-    }
-    const expanded = expansion ? expandSlotSource(expansionValue) : { items: [undefined] };
-    if (expanded.diagnostic) {
+    const resolution = resolveSlotInstances(
+      block,
+      element,
+      variables,
+      runtimeItem,
+      runtimeType,
+      shapes,
+    );
+    if (resolution.diagnostic) {
       if (mode === "player") return null;
       return createElement("div", {
         "data-element-id": element.id,
         "data-element-type": "slot",
-        "data-slot-diagnostic": expanded.diagnostic.category,
+        "data-slot-diagnostic": resolution.diagnostic.category,
         style,
       });
     }
     const renderedItems: ReactNode[] = [];
-    for (const [index, item] of expanded.items.entries()) {
-      const resolution = resolveSlotInputs(
-        block,
-        element,
-        variables,
-        item ?? runtimeItem,
-        runtimeType,
-      );
-      if (resolution.diagnostics.length > 0) {
+    for (const instance of resolution.instances) {
+      if (instance.diagnostics.length > 0) {
         if (mode === "player") continue;
         renderedItems.push(
           createElement(
             "div",
             {
-              key: `${element.id}:${index}`,
-              "data-slot-diagnostic": resolution.diagnostics[0]?.category,
+              key: `${element.id}:${instance.index}`,
+              "data-slot-diagnostic": instance.diagnostics[0]?.category,
             },
             "Invalid Slot",
           ),
         );
         continue;
       }
-      const selector = block.stateSelectorVariableId
-        ? resolution.values[block.stateSelectorVariableId]
-        : undefined;
-      const selected = applyBlockState(block, resolveBlockState(block, selector));
+      if (!instance.canvas) continue;
       renderedItems.push(
         createElement(ElementRenderer, {
-          key: `${element.id}:${index}`,
-          element: selected.root as ResolvedElement,
+          key: `${element.id}:${instance.index}`,
+          element: instance.canvas.root as ResolvedElement,
           parent: element,
+          shapes,
           blocks,
           variables,
-          runtimeItem: item ?? runtimeItem,
+          runtimeItem: instance.item ?? runtimeItem,
           runtimeType,
           mode,
           editingElementId,
@@ -550,6 +534,7 @@ function renderElement({
 export function ElementRenderer({
   element,
   parent,
+  shapes,
   blocks,
   variables,
   runtimeItem,
@@ -564,6 +549,7 @@ export function ElementRenderer({
   return renderElement({
     element,
     parent,
+    shapes,
     blocks,
     variables,
     runtimeItem,
@@ -583,6 +569,7 @@ export const CanvasRenderer = memo(function CanvasRenderer({
   style,
   editingElementId,
   imageLoading,
+  shapes,
   blocks,
   variables,
   runtimeItem,
@@ -605,6 +592,7 @@ export const CanvasRenderer = memo(function CanvasRenderer({
       element: root,
       root: true,
       sceneRoot,
+      shapes,
       blocks,
       variables,
       runtimeItem,

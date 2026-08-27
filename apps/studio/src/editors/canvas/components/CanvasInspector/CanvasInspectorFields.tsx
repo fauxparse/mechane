@@ -1,9 +1,10 @@
 import { useState } from "react";
-import type { AxisSize } from "@mechane/domain";
+import type { AxisSize, SlotInputSource } from "@mechane/domain";
 import { CANVAS_PROPERTY_DESCRIPTORS, canvasPropertyDescriptor } from "@mechane/domain";
 import {
   Link2Icon,
   PropertyInput,
+  Section,
   SectionRow,
   Toggle,
   Unlink2Icon,
@@ -99,6 +100,72 @@ export const PropertyField = ({
         }
       }}
     />
+  );
+};
+
+export const SlotInputsSection = () => {
+  const { target, blocks, variables, shapes, update } = useCanvasInspectorContext();
+  if (target.type !== "slot") return null;
+  const block = blocks.find((candidate) => candidate.id === target.blockId);
+  if (!block) return null;
+  const assignments = target.assignments ?? [];
+  const updateAssignment = (variableId: string, source: SlotInputSource) => {
+    update({
+      assignments: [
+        ...assignments.filter((assignment) => assignment.variableId !== variableId),
+        { variableId, source },
+      ],
+    });
+  };
+  return (
+    <Section label="Block Inputs">
+      {block.variables.map((variable) => {
+        const type = inputType(variable.type);
+        if (!type) return null;
+        const assignment = assignments.find((item) => item.variableId === variable.id);
+        const source = assignment?.source;
+        const value =
+          source?.kind === "variable"
+            ? variableInput(
+                {
+                  kind: "variable",
+                  variableId: source.variableId,
+                  fieldPath: source.fieldPath ?? [],
+                },
+                variable.type,
+                variables,
+                shapes,
+              )
+            : source?.kind === "literal"
+              ? literalValue(variable.type, source.value)
+              : null;
+        return (
+          <SectionRow key={variable.id}>
+            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+              {variable.name}
+            </span>
+            <PropertyInput
+              className="min-w-0 flex-1"
+              type={type}
+              value={value}
+              variables={variableOptions(variable.type, variables, shapes)}
+              onChange={(next: PropertyInputValue | null) => {
+                const nextSource: SlotInputSource = isVariableInput(next)
+                  ? {
+                      kind: "variable",
+                      variableId: next.id,
+                      fieldPath: next.fieldPath ?? [],
+                    }
+                  : next
+                    ? { kind: "literal", value: next.value }
+                    : { kind: "unset" };
+                updateAssignment(variable.id, nextSource);
+              }}
+            />
+          </SectionRow>
+        );
+      })}
+    </Section>
   );
 };
 

@@ -1,5 +1,5 @@
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
-import type { Element, SceneVariable, Shape } from "@mechane/domain";
+import type { Block, Element, SceneVariable, Shape } from "@mechane/domain";
 import type { ImageAsset } from "@mechane/graphql-schema";
 
 import type { CanvasArtboardDocument } from "../../../../api/canvas";
@@ -29,6 +29,7 @@ export type CanvasInspectorProps = {
   artboards: readonly CanvasArtboardDocument[];
   selection: CanvasSelection;
   variables?: readonly SceneVariable[];
+  blocks?: readonly Block[];
   shapes?: readonly Shape[];
   imageAssets?: readonly ImageAsset[];
   deviceQrImages?: Readonly<Record<string, DeviceQrImage>>;
@@ -57,6 +58,7 @@ export type CanvasInspectorModel = {
   target: Element;
   elements: readonly Element[];
   selected: readonly Element[];
+  blocks: readonly Block[];
   variables: readonly SceneVariable[];
   shapes: readonly Shape[];
   imageAssets: readonly ImageAsset[];
