@@ -58,19 +58,6 @@ export const CanvasElementFields = graphql(`
       counterAlign
       clip
     }
-      ... on SlotElement {
-        blockId
-        layoutMode
-        autoLayout
-        direction
-        gap
-        padding
-        alignPrimary
-        alignCounter
-        primaryAlign
-        counterAlign
-        clip
-      }
   }
 `);
 

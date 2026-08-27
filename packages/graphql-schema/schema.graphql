@@ -552,6 +552,18 @@ input SuggestedImageDimensionsInput {
   height: Int!
 }
 
+input GraphEdgeInput {
+  id: ID!
+  kind: String!
+  sourceId: ID!
+  targetId: ID!
+  sourcePath: [String!]
+  targetPath: [String!]
+  fieldMapping: JSON
+  cueId: ID
+  actionId: ID
+}
+
 input SceneVariableInput {
   id: ID!
   name: String!
@@ -590,7 +602,6 @@ input GraphEdgeInput {
   cueId: ID
   actionId: ID
 }
-
 type GraphEdit {
   type: String!
   nodeId: ID

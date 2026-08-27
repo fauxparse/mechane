@@ -7,7 +7,6 @@
 // so they can't drift from what's actually selected — and, transitively,
 // from apps/api's schema.
 import { graphql } from "./graphql";
-import { CanvasElementFields } from "./canvas";
 import type { ResultOf } from "gql.tada";
 
 export const GetShowGraphQuery = graphql(`
@@ -48,19 +47,6 @@ export const GetShowGraphQuery = graphql(`
             elementId
             property
             value
-          }
-        }
-        canvas {
-          id
-          kind
-          position {
-            x
-            y
-          }
-          ownerId
-          ownerName
-          root {
-            ...CanvasElementFields
           }
         }
       }
@@ -195,9 +181,9 @@ export const GetShowGraphQuery = graphql(`
           }
         }
       }
-    }
   }
-`, [CanvasElementFields]);
+  }
+`);
 
 /**
  * Applies a batch of edits to the draft graph (issue #103).

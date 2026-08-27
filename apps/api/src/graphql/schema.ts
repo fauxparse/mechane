@@ -693,6 +693,17 @@ export const schema = createSchema<GraphQLContext>({
       width: Int!
       height: Int!
     }
+    input GraphEdgeInput {
+      id: ID!
+      kind: String!
+      sourceId: ID!
+      targetId: ID!
+      sourcePath: [String!]
+      targetPath: [String!]
+      fieldMapping: JSON
+      cueId: ID
+      actionId: ID
+    }
 
     input SceneVariableInput {
       id: ID!
