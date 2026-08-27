@@ -175,6 +175,30 @@ export function assertValidBlocks(
   return values;
 }
 
+export function blockReferencesInCanvas(canvas: Canvas): readonly string[] {
+  const references: string[] = [];
+  walk(canvas.root, (element) => {
+    if ("blockId" in element && typeof element.blockId === "string") {
+      references.push(element.blockId);
+    }
+  });
+  return references;
+}
+
+export function assertBlockReferencesExist(
+  blocks: readonly Block[],
+  canvases: readonly Canvas[],
+): void {
+  const blockIds = new Set(blocks.map((block) => block.id));
+  for (const canvas of canvases) {
+    for (const blockId of blockReferencesInCanvas(canvas)) {
+      if (!blockIds.has(blockId)) {
+        throw new InvalidBlockError(`Canvas contains a reference to missing Block "${blockId}".`);
+      }
+    }
+  }
+
+}
 export function emptyBlock(name: string, id = generateId("block")): Block {
   const canvasId = generateId("canvas");
   return {
