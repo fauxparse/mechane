@@ -22,7 +22,7 @@
 // editor's to send.
 import type { CanvasWorkspaceEdit, FlatGraphEdit, GraphEdit } from "@mechane/commands";
 import { decodeGraphEdit, encodeGraphEdit, GRAPH_COMMAND_TYPES } from "@mechane/commands";
-import type { GraphEdge, GraphNode, Shape, ShowGraph, Type } from "@mechane/domain";
+import type { Block, Element, GraphEdge, GraphNode, Shape, ShowGraph, Type } from "@mechane/domain";
 import { isFlowColor } from "@mechane/domain";
 import type { ShowGraph as ApiShowGraph, ApplyShowEditsResult } from "@mechane/graphql-schema";
 type ApiType = ApiShowGraph["shapes"][number]["fields"][number]["type"];
@@ -78,6 +78,7 @@ export type ApiGraph = {
   nodes: ApiGraphNode[];
   edges: ApiGraphEdge[];
   shapes?: ApiShowGraph["shapes"];
+  blocks?: ApiShowGraph["blocks"];
   sourceFieldDefaults?: { nodeId: string; fieldPath: string[]; value: unknown }[];
 };
 
@@ -115,6 +116,53 @@ function toShape(shape: ApiShowGraph["shapes"][number]): Shape {
               ? (Object.entries(field.default).find(([key]) => key !== "__typename")?.[1] ?? null)
               : null,
       })),
+  };
+}
+type ApiCanvasElement = {
+  __typename: string;
+  children?: readonly ApiCanvasElement[];
+  [field: string]: unknown;
+};
+
+function toCanvasElement(input: ApiCanvasElement): Element {
+  const { __typename, children, ...fields } = input;
+  return {
+    ...Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== null)),
+    type: __typename.replace(/Element$/, "").toLowerCase(),
+    children: children?.map(toCanvasElement) ?? [],
+  } as unknown as Element;
+}
+
+function toBlock(block: ApiShowGraph["blocks"][number]): Block {
+  return {
+    id: block.id,
+    name: block.name,
+    canvas: {
+      id: block.canvas.id,
+      kind: "block",
+      root: toCanvasElement(block.canvas.root as unknown as ApiCanvasElement) as Extract<
+        Element,
+        { type: "frame" }
+      >,
+    },
+    variables: block.variables.map((variable) => ({
+      id: variable.id,
+      name: variable.name,
+      required: variable.required,
+      type: toType(variable.type as ApiType),
+      defaultValue: variable.defaultValue,
+    })),
+    states: block.states.map((state) => ({
+      id: state.id,
+      name: state.name,
+      isDefault: state.isDefault,
+      overrides: state.overrides.map((override) => ({
+        elementId: override.elementId,
+        property: override.property,
+        value: override.value,
+      })),
+    })),
+    stateSelectorVariableId: block.stateSelectorVariableId,
   };
 }
 
@@ -236,6 +284,7 @@ export function toShowGraph(graph: ApiGraph | null | undefined): ShowGraph {
       value: fieldDefault.value,
     })),
     nodes: graph.nodes.map(toNode),
+    ...(graph.blocks ? { blocks: graph.blocks.map(toBlock) } : {}),
     edges: graph.edges.map(toEdge),
   };
 }

@@ -62,6 +62,7 @@ export function workflowBlocks(): Block[] {
     variables: [
       { id: "block_card_name", name: "Name", type: "text", required: true },
       { id: "block_card_count", name: "Votes", type: "number", required: false, defaultValue: 0 },
+      { id: "block_card_selector", name: "State", type: "text", required: false },
     ],
     states: [
       {
@@ -77,7 +78,7 @@ export function workflowBlocks(): Block[] {
         overrides: [{ elementId: "block_card_title", property: "content", value: "Selected" }],
       },
     ],
-    stateSelectorVariableId: null,
+    stateSelectorVariableId: "block_card_selector",
   };
   const nested: Block = {
     id: "block_nested",
@@ -88,7 +89,23 @@ export function workflowBlocks(): Block[] {
       root: {
         id: "block_nested_root",
         type: "frame",
-        children: [{ id: "block_nested_slot", type: "slot", blockId: card.id }],
+        children: [
+          {
+            id: "block_nested_slot",
+            type: "slot",
+            blockId: card.id,
+            assignments: [
+              {
+                variableId: "block_card_name",
+                source: { kind: "runtimeItem", fieldPath: [CANDIDATE_NAME_FIELD_ID] },
+              },
+              {
+                variableId: "block_card_count",
+                source: { kind: "runtimeItem", fieldPath: [CANDIDATE_VOTES_FIELD_ID] },
+              },
+            ],
+          },
+        ],
       },
     },
     variables: [],
@@ -108,17 +125,39 @@ export function workflowBlocks(): Block[] {
             id: "block_repeated_slot",
             type: "slot",
             blockId: card.id,
-            expansion: { source: { kind: "runtimeItem" } },
+            expansion: {
+              source: { kind: "variable", variableId: "block_repeated_items" },
+            },
+            assignments: [
+              {
+                variableId: "block_card_name",
+                source: { kind: "runtimeItem", fieldPath: [CANDIDATE_NAME_FIELD_ID] },
+              },
+              {
+                variableId: "block_card_count",
+                source: { kind: "runtimeItem", fieldPath: [CANDIDATE_VOTES_FIELD_ID] },
+              },
+              {
+                variableId: "block_card_selector",
+                source: { kind: "literal", value: "Selected" },
+              },
+            ],
           },
         ],
       },
     },
-    variables: [],
+    variables: [
+      {
+        id: "block_repeated_items",
+        name: "Candidates",
+        type: { kind: "array", of: candidateType },
+        required: true,
+      },
+    ],
     states: [],
   };
   return [card, nested, repeated];
 }
-
 
 export function votingGraph(): ShowGraph {
   const [alice, beatrix, clarissa] = CANDIDATE_SOURCE_IDS;

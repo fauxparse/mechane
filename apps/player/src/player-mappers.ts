@@ -146,12 +146,47 @@ function toBlock(value: unknown): Block {
   const input = record(value);
   const canvasInput = record(input.canvas);
   const canvas = toCanvas(canvasInput);
+  const variables = Array.isArray(input.variables)
+    ? input.variables.map((variable) => {
+        const normalized = record(variable);
+        return {
+          id: String(normalized.id),
+          name: String(normalized.name),
+          type: toType(normalized.type),
+          required: normalized.required === true,
+          defaultValue: normalized.defaultValue,
+        };
+      })
+    : [];
+  const states = Array.isArray(input.states)
+    ? input.states.map((state) => {
+        const normalized = record(state);
+        const overrides = Array.isArray(normalized.overrides)
+          ? normalized.overrides.map((override) => {
+              const item = record(override);
+              return {
+                elementId: String(item.elementId),
+                property: String(item.property),
+                value: item.value,
+              };
+            })
+          : [];
+        return {
+          id: String(normalized.id),
+          name: String(normalized.name),
+          isDefault: normalized.isDefault === true,
+          overrides,
+        };
+      })
+    : [];
   return {
     id: String(input.id),
     name: String(input.name),
     canvas: { ...canvas, id: String(canvasInput.id) },
-    variables: [],
-    states: [],
+    variables,
+    states,
+    stateSelectorVariableId:
+      typeof input.stateSelectorVariableId === "string" ? input.stateSelectorVariableId : null,
   };
 }
 

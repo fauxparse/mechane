@@ -155,4 +155,53 @@ describe("normalizePlayerSession", () => {
       shapeId: "candidate",
     });
   });
+  it("preserves Block variables, State overrides, and selectors", () => {
+    const session = normalizePlayerSession({
+      device: { id: "device_1", name: "Audience", perConnection: true },
+      run: null,
+      graph: { nodes: [], edges: [], shapes: [] },
+      scene: null,
+      canvas: null,
+      blocks: [
+        {
+          id: "block-card",
+          name: "Card",
+          stateSelectorVariableId: "selector",
+          canvas: {
+            id: "canvas-card",
+            kind: "block",
+            root: {
+              __typename: "FrameElement",
+              id: "root",
+              children: [],
+            },
+          },
+          variables: [
+            {
+              id: "selector",
+              name: "State",
+              type: { kind: "text", shapeId: null, of: null },
+              required: false,
+              defaultValue: null,
+            },
+          ],
+          states: [
+            {
+              id: "default",
+              name: "Default",
+              isDefault: true,
+              overrides: [],
+            },
+          ],
+        },
+      ],
+      imageAssets: [],
+    });
+
+    expect(session.blocks?.[0]).toMatchObject({
+      stateSelectorVariableId: "selector",
+      variables: [{ id: "selector", type: "text" }],
+      states: [{ id: "default", isDefault: true }],
+    });
+  });
 });
