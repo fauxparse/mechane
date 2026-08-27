@@ -5,6 +5,7 @@ import {
   resolveCanvasProperties,
   sceneVariableValues,
 } from "@mechane/domain";
+import type { Element } from "@mechane/domain";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -95,6 +96,18 @@ describe("Voting demo seed", () => {
     expect(repeated?.canvas.root.children?.[0]).toMatchObject({
       expansion: { source: { kind: "variable", variableId: "block_repeated_items" } },
     });
+  });
+
+  it("assigns persisted ranks to every Block sibling", () => {
+    const visit = (element: Element): void => {
+      const children = element.children ?? [];
+      const ranks = children.map((child) => child.rank);
+      expect(ranks.every((rank) => rank !== undefined && rank !== "")).toBe(true);
+      expect(new Set(ranks).size).toBe(ranks.length);
+      children.forEach(visit);
+    };
+
+    workflowBlocks().forEach((block) => visit(block.canvas.root));
   });
 
   it("lays seeded Scene Canvases out in a non-overlapping row", () => {

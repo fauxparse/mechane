@@ -54,8 +54,8 @@ export function workflowBlocks(): Block[] {
         direction: "vertical",
         gap: 8,
         children: [
-          { id: "block_card_title", type: "text", content: "Candidate" },
-          { id: "block_card_votes", type: "text", content: "0" },
+          { id: "block_card_title", type: "text", rank: "a", content: "Candidate" },
+          { id: "block_card_votes", type: "text", rank: "b", content: "0" },
         ],
       },
     },
@@ -93,6 +93,7 @@ export function workflowBlocks(): Block[] {
           {
             id: "block_nested_slot",
             type: "slot",
+            rank: "a",
             blockId: card.id,
             assignments: [
               {
@@ -124,6 +125,7 @@ export function workflowBlocks(): Block[] {
           {
             id: "block_repeated_slot",
             type: "slot",
+            rank: "a",
             blockId: card.id,
             expansion: {
               source: { kind: "variable", variableId: "block_repeated_items" },
