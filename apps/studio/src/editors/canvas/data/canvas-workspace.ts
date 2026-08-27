@@ -3,8 +3,11 @@ import type { CanvasArtboardDocument } from "../../../api/canvas";
 
 const SCENE_PREVIEW_SIZE = { width: 720, height: 420 };
 const DEFAULT_BLOCK_SIZE = { width: 720, height: 420 };
-function authoredPixels(size: { mode: string; value?: unknown } | undefined): number | undefined {
-  if (!size || size.mode !== "fixed" || size.value === undefined) return undefined;
+function authoredPixels(
+  size: { mode: string; value?: unknown } | undefined,
+  modes: readonly string[] = ["fixed"],
+): number | undefined {
+  if (!size || !modes.includes(size.mode) || size.value === undefined) return undefined;
   if (isPropertyConnection(size.value)) return undefined;
   if (typeof size.value === "number") return size.value;
   if (
@@ -20,15 +23,31 @@ function authoredPixels(size: { mode: string; value?: unknown } | undefined): nu
   return undefined;
 }
 
-export function canvasArtboardSize(artboard: CanvasArtboardDocument): {
+export interface MeasuredCanvasRoot {
+  readonly width: number;
+  readonly height: number;
+}
+
+export function canvasArtboardSize(
+  artboard: CanvasArtboardDocument,
+  measuredRoot?: MeasuredCanvasRoot,
+): {
   width: number;
   height: number;
 } {
   const root = artboard.canvas.root;
   const fallback = artboard.kind === "scene" ? SCENE_PREVIEW_SIZE : DEFAULT_BLOCK_SIZE;
+  const designWidth = authoredPixels(root.sizing?.width, ["fixed", "fill"]);
+  const designHeight = authoredPixels(root.sizing?.height, ["fixed", "fill"]);
   return {
-    width: authoredPixels(root.sizing?.width) ?? fallback.width,
-    height: authoredPixels(root.sizing?.height) ?? fallback.height,
+    width:
+      root.sizing?.width?.mode === "hug"
+        ? (measuredRoot?.width ?? fallback.width)
+        : (designWidth ?? fallback.width),
+    height:
+      root.sizing?.height?.mode === "hug"
+        ? (measuredRoot?.height ?? fallback.height)
+        : (designHeight ?? fallback.height),
   };
 }
 

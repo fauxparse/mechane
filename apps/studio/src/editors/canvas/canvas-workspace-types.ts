@@ -72,11 +72,17 @@ export interface CanvasWorkspaceEditorProps {
   onDeleteElements?(canvasId: string, elementIds: readonly string[]): void;
   onRenameArtboard?(artId: string, name: string): void;
 }
+export interface CanvasArtboardDimensions {
+  readonly width: number;
+  readonly height: number;
+}
+
 export interface CanvasWorkspaceSurfaceProps {
   ordered: readonly CanvasArtboardDocument[];
   focused: CanvasArtboardDocument | null;
   camera: CanvasCamera;
   workspaceRef: RefObject<HTMLElement | null>;
+  artboardSizes: ReadonlyMap<string, CanvasArtboardDimensions>;
   blocks?: readonly Block[];
   selection: CanvasSelection;
   tool: CanvasTool;

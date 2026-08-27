@@ -49,7 +49,10 @@ import {
   unlockedAspectRatioProperties,
 } from "./commands/canvas-resize";
 import type { ResizeBox, ResizeHandle } from "./commands/canvas-resize";
-import type { CanvasWorkspaceEditorProps } from "./canvas-workspace-types";
+import type {
+  CanvasWorkspaceEditorProps,
+  CanvasArtboardDimensions,
+} from "./canvas-workspace-types";
 import { artboardLabel, canvasArtboardSize } from "./data/canvas-workspace";
 
 function measuredRect(element: HTMLElement): CanvasClientRect {
@@ -229,13 +232,27 @@ export function useCanvasWorkspaceInteractions({
   );
   const geometryKey = useMemo(() => [camera, ordered] as const, [camera, ordered]);
   const geometry = useCanvasGeometry(workspaceRef, geometryKey);
+  const artboardSizes = useMemo(() => {
+    const sizes = new Map<string, CanvasArtboardDimensions>();
+    for (const artboard of ordered) {
+      const rootRect = geometry.get(artboard.artId)?.elements.get(artboard.canvas.root.id);
+      const measuredRoot = rootRect
+        ? {
+            width: rootRect.width / camera.zoom,
+            height: rootRect.height / camera.zoom,
+          }
+        : undefined;
+      sizes.set(artboard.artId, canvasArtboardSize(artboard, measuredRoot));
+    }
+    return sizes;
+  }, [camera.zoom, geometry, ordered]);
   const setSelection = (next: CanvasSelection) => {
     const normalized = normalizeSelection(next);
     setLocalSelection(normalized);
     onSelectionChange?.(normalized);
   };
   const frameArtboard = (artboard: CanvasArtboardDocument) => {
-    const size = canvasArtboardSize(artboard);
+    const size = artboardSizes.get(artboard.artId) ?? canvasArtboardSize(artboard);
     frameRect(
       {
         x: artboard.position.x,
@@ -1384,6 +1401,7 @@ export function useCanvasWorkspaceInteractions({
         }
       : null;
   return {
+    artboardSizes,
     ordered,
     focused,
     camera,

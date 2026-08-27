@@ -5,3 +5,5 @@ task:
     merge: patch
 worktree:
   base: ~/.omp/wt
+terminal:
+  showImages: false

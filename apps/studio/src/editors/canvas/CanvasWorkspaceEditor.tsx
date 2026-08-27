@@ -57,6 +57,7 @@ export function CanvasWorkspaceEditor({
     resizeCursor,
     inspectorPreview,
     currentDimensions,
+    artboardSizes,
     resizable,
     cancelCreation,
     zoomIn,
@@ -151,7 +152,16 @@ export function CanvasWorkspaceEditor({
         run: deleteSelection,
       },
     ],
-    [blocks, deleteSelection, onPlaceBlock, resetCamera, selection.elementIds.length, setTool, zoomIn, zoomOut],
+    [
+      blocks,
+      deleteSelection,
+      onPlaceBlock,
+      resetCamera,
+      selection.elementIds.length,
+      setTool,
+      zoomIn,
+      zoomOut,
+    ],
   );
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -211,6 +221,7 @@ export function CanvasWorkspaceEditor({
         resizeCursor={resizeCursor}
         inspectorPreview={inspectorPreview}
         currentDimensions={currentDimensions}
+        artboardSizes={artboardSizes}
         overlayRect={overlayRect}
         resizable={resizable}
         onFocusArtboard={onFocusArtboard}

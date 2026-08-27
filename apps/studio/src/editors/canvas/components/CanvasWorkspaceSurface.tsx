@@ -41,6 +41,7 @@ export function CanvasWorkspaceSurface({
   resizeCursor,
   inspectorPreview,
   currentDimensions,
+  artboardSizes,
   resizable,
   onFocusArtboard,
   onUpdateElement,
@@ -101,6 +102,7 @@ export function CanvasWorkspaceSurface({
         tool={tool}
         setTool={setTool}
         camera={camera}
+        artboardSizes={artboardSizes}
         ordered={ordered}
         shapes={shapes}
         blocks={blocks}
