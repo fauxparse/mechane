@@ -205,6 +205,7 @@ export const schema = createSchema<GraphQLContext>({
       graph: ShowGraph!
       scene: SceneNode
       canvas: Canvas
+      blocks: [Block!]!
       imageAssets: [ImageAsset!]!
     }
     "The signed-in user's design-system preference (PRD.md §7)."
@@ -654,6 +655,33 @@ export const schema = createSchema<GraphQLContext>({
       primaryAlign: String
       counterAlign: String
       clip: Boolean
+    }
+    type SlotElement implements Element {
+      id: ID!
+      name: String
+      parentId: ID
+      rank: String!
+      hidden: Boolean!
+      layout: JSON
+      sizing: JSON
+      rotation: Int
+      opacity: JSON
+      blendMode: String
+      fill: JSON
+      stroke: JSON
+      anchor: JSON
+      children: [Element!]!
+      layoutMode: String
+      autoLayout: Boolean
+      direction: String
+      gap: JSON
+      padding: JSON
+      alignPrimary: String
+      alignCounter: String
+      primaryAlign: String
+      counterAlign: String
+      clip: Boolean
+      blockId: ID!
     }
 
     input PositionInput {

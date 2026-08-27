@@ -1,4 +1,5 @@
 import type {
+  Block,
   Canvas,
   Element,
   GraphEdge,
@@ -141,6 +142,19 @@ function toCanvas(value: unknown): Canvas {
   };
 }
 
+function toBlock(value: unknown): Block {
+  const input = record(value);
+  const canvasInput = record(input.canvas);
+  const canvas = toCanvas(canvasInput);
+  return {
+    id: String(input.id),
+    name: String(input.name),
+    canvas: { ...canvas, id: String(canvasInput.id) },
+    variables: [],
+    states: [],
+  };
+}
+
 function toGraph(value: unknown): PlayerSession["graph"] {
   const input = record(value);
   return {
@@ -148,6 +162,7 @@ function toGraph(value: unknown): PlayerSession["graph"] {
     nodes: Array.isArray(input.nodes) ? input.nodes.map(toNode) : [],
     edges: Array.isArray(input.edges) ? input.edges.map(toEdge) : [],
     shapes: Array.isArray(input.shapes) ? input.shapes.map(toShape) : [],
+    blocks: Array.isArray(input.blocks) ? input.blocks.map(toBlock) : [],
   } as unknown as PlayerSession["graph"];
 }
 
@@ -173,6 +188,7 @@ export function normalizePlayerSession(value: unknown): PlayerSession {
     graph: toGraph(input.graph),
     scene: scene as PlayerSession["scene"],
     canvas: canvas as PlayerSession["canvas"],
+    blocks: Array.isArray(input.blocks) ? input.blocks.map(toBlock) : [],
     imageAssets: imageAssets.map((asset) => ({
       assetId: String(asset.id),
       revision: String(asset.revision),

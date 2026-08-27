@@ -1,5 +1,6 @@
 import { ElementKind } from "@mechane/domain";
 import {
+  Blocks as BlocksIcon,
   CircleIcon,
   FrameIcon,
   ImageIcon,
@@ -15,6 +16,7 @@ const ELEMENT_ICONS: Record<ElementKind, LucideIcon> = {
   ellipse: CircleIcon,
   text: TypeIcon,
   image: ImageIcon,
+  slot: BlocksIcon,
 };
 
 export const elementIconFor = (kind: ElementKind | ElementKind[] | undefined) => {

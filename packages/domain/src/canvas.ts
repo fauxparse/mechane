@@ -7,7 +7,7 @@
 import type { ImageAssetReference, ResolvedImageValue } from "./shapes";
 import { isPropertyConnection } from "./property-values";
 import type { PropertyConnection, PropertyValue } from "./property-values";
-export const ELEMENT_KINDS = ["rect", "ellipse", "text", "image", "frame"] as const;
+export const ELEMENT_KINDS = ["rect", "ellipse", "text", "image", "frame", "slot"] as const;
 export type ElementKind = (typeof ELEMENT_KINDS)[number];
 
 export const SIZE_MODES = ["hug", "fill", "fixed"] as const;
@@ -181,6 +181,14 @@ export interface FrameElement extends CornerRadiusElement {
   clip?: boolean;
 }
 
+export interface SlotElement extends Omit<
+  FrameElement,
+  "type" | "cornerRadius" | "opacity" | "blendMode" | "fill" | "stroke"
+> {
+  type: "slot";
+  /** Stable reference to the Show-owned Block this placement instantiates. */
+  blockId: string;
+}
 export interface Padding {
   top?: number;
   right?: number;
@@ -188,9 +196,6 @@ export interface Padding {
   left?: number;
 }
 
-export function hasCornerRadius(element: Element): element is CornerRadiusElement {
-  return element.type === "rect" || element.type === "frame" || element.type === "image";
-}
 
 export function isContainerElement(element: Element): element is FrameElement {
   return element.type === "frame";
@@ -203,11 +208,15 @@ export interface AnchorPosition {
   offsetY?: number;
 }
 
-export type Element = RectElement | EllipseElement | TextElement | ImageElement | FrameElement;
-
+export type Element = RectElement | EllipseElement | TextElement | ImageElement | FrameElement | SlotElement;
 export interface Canvas {
   root: FrameElement;
   kind?: "scene" | "block";
+}
+export function hasCornerRadius(
+  element: Element,
+): element is RectElement | FrameElement | ImageElement {
+  return element.type === "rect" || element.type === "frame" || element.type === "image";
 }
 /**
  * The detached shape consumed by rendering after Property Connections are resolved.
@@ -262,6 +271,25 @@ function assertAxisSize(size: AxisSize | undefined, context: string): void {
 }
 
 function assertLayout(element: Element): void {
+  if (element.type === "slot") {
+    if (!element.blockId) throw new InvalidCanvasError(`${element.id} requires a Block reference.`);
+    if (element.layoutMode !== undefined && element.layoutMode !== "auto") {
+      throw new InvalidCanvasError(`${element.id} Slots must use auto layout.`);
+    }
+    if (element.autoLayout === false) {
+      throw new InvalidCanvasError(`${element.id} Slots cannot disable auto layout.`);
+    }
+    if (
+      "opacity" in element ||
+      "blendMode" in element ||
+      "fill" in element ||
+      "stroke" in element ||
+      "cornerRadius" in element
+    ) {
+      throw new InvalidCanvasError(`${element.id} Slots cannot define paint properties.`);
+    }
+    return;
+  }
   const sizing = element.sizing;
   for (const [axis, size] of [
     ["width", sizing?.width],

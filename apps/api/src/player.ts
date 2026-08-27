@@ -65,6 +65,7 @@ export async function readPlayerSession(pairingCode: string) {
     graph,
     scene,
     canvas,
+    blocks: graph.blocks ?? [],
     imageAssets,
   };
 }

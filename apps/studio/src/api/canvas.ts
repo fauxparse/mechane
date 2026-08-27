@@ -30,7 +30,8 @@ function elementType(typename: string): Element["type"] {
     type === "ellipse" ||
     type === "text" ||
     type === "image" ||
-    type === "frame"
+    type === "frame" ||
+    type === "slot"
   )
     return type;
   throw new Error(`Unknown Canvas Element type "${typename}".`);

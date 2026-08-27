@@ -2,12 +2,13 @@ import {
   DEVICE_SOURCE_HANDLES,
   defaultSourceValues,
   deviceQrImageValue,
+  generateId,
   isId,
   resolveCanvasProperties,
   sceneVariableValues,
 } from "@mechane/domain";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
-import type { ImageAssetReference, ResolvedImageValue, ShowId } from "@mechane/domain";
+import type { Block, ImageAssetReference, ResolvedImageValue, ShowId } from "@mechane/domain";
 import type { CanvasArtboardDocument } from "../../../../api/canvas";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -126,6 +127,23 @@ function CanvasWorkspaceRoute() {
     workspace.data,
   ]);
 
+  const blocks = useMemo<readonly Block[]>(
+    () =>
+      artboards.reduce<Block[]>((blocks, artboard) => {
+        if (artboard.kind === "block") {
+          blocks.push({
+            id: artboard.artId,
+            name: artboard.name,
+            canvas: { ...artboard.canvas, id: artboard.canvasId },
+            variables: [],
+            states: [],
+          });
+        }
+        return blocks;
+      }, []),
+    [artboards],
+  );
+
   // An artboard's name belongs to the Scene or Block that owns the Canvas, so a rename is a
   // Show-graph gesture. The graph stack owns the live name and the same save path as every
   // Canvas edit; the undo coordinator above keeps both editor histories in order.
@@ -145,6 +163,21 @@ function CanvasWorkspaceRoute() {
   );
   const requestedArtId = showId ? artIdFromPath(pathname, showId) : null;
   const focused = resolveFocusedArtboard(artboards, requestedArtId);
+
+  const placeBlock = useCallback(
+    (blockId: string) => {
+      if (!focused) return;
+      const parentId = focused.canvas.root.id;
+      const rank = String(focused.canvas.root.children?.length ?? 0);
+      canvasCommands.createElement(
+        focused.canvasId,
+        { id: generateId("canvas"), type: "slot", blockId },
+        parentId,
+        rank,
+      );
+    },
+    [canvasCommands.createElement, focused],
+  );
 
   // This route stays mounted for a moment while the router transitions away
   // from it, and during that moment `pathname` is already the destination's. Bail
@@ -234,6 +267,8 @@ function CanvasWorkspaceRoute() {
       onCameraChange={onCameraChange}
       focusedArtId={focused?.artId ?? null}
       variables={focusedVariables}
+      blocks={blocks}
+      onPlaceBlock={placeBlock}
       shapes={graphEditing.command.graph.shapes ?? []}
       deviceQrImages={deviceQrImages}
       imageAssets={imageAssets.data ?? []}

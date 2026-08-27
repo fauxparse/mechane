@@ -11,7 +11,6 @@ import type {
   AspectRatioLock,
   AxisSize,
   CornerRadiusElement,
-  Element,
   Fill,
   FrameElement,
   LayoutAlignment,
@@ -20,18 +19,22 @@ import type {
   ResolvedElement,
   Rotation,
   SizeValue,
+  Stroke,
 } from "@mechane/domain";
 import { isPropertyConnection } from "@mechane/domain";
 import type { CanvasRendererProps } from "./canvas-render";
+
+type LayoutParent = Extract<ResolvedElement, { type: "frame" | "slot" }>;
 function literal<T>(value: T | PropertyConnection | undefined): T | undefined {
   return isPropertyConnection(value) ? undefined : (value as T | undefined);
 }
-
 interface RenderElementOptions {
   element: ResolvedElement;
   root?: boolean;
   sceneRoot?: boolean;
-  parent?: Extract<ResolvedElement, { type: "frame" }>;
+  parent?: LayoutParent;
+  blocks?: CanvasRendererProps["blocks"];
+  mode?: CanvasRendererProps["mode"];
   editingElementId?: string | null;
   imageLoading?: "eager" | "lazy";
   onImageError?: (elementId: string, url: string, event: unknown) => void;
@@ -136,7 +139,7 @@ function fillStyles(fill: Fill | undefined): CSSProperties {
   if (fill === undefined || isPropertyConnection(fill)) return {};
   return typeof fill === "string" ? { backgroundColor: fill } : { backgroundImage: cssFill(fill) };
 }
-function strokeStyles(stroke: Element["stroke"]): CSSProperties {
+function strokeStyles(stroke: Stroke | PropertyConnection | undefined): CSSProperties {
   if (!stroke || isPropertyConnection(stroke)) return {};
   return {
     borderColor: stroke.color,
@@ -191,6 +194,7 @@ function elementStyle(element: ResolvedElement, root: boolean, sceneRoot: boolea
   const ratio = ratioFor(element);
   const physicalRatio =
     ratio && (rotation === 90 || rotation === 270) ? 1 / ratio.ratio : ratio?.ratio;
+  const paint = element.type === "slot" ? undefined : element;
   const style: CSSProperties = {
     boxSizing: "border-box",
     width: root && sceneRoot ? "100%" : dimensionFor(element, "width", rotation),
@@ -200,13 +204,12 @@ function elementStyle(element: ResolvedElement, root: boolean, sceneRoot: boolea
     minHeight: root ? undefined : constraintFor(element, "minHeight", rotation),
     maxHeight: root ? undefined : constraintFor(element, "maxHeight", rotation),
     aspectRatio: physicalRatio,
-    opacity: literal(element.opacity),
-    mixBlendMode: literal(element.blendMode),
-    ...fillStyles(literal(element.fill)),
-    // Paint and position fills beneath the border so gradients cover the stroke area too.
+    opacity: literal(paint?.opacity),
+    mixBlendMode: literal(paint?.blendMode),
+    ...fillStyles(literal(paint?.fill)),
     backgroundClip: "border-box",
     backgroundOrigin: "border-box",
-    ...strokeStyles(element.stroke),
+    ...strokeStyles(paint?.stroke),
     writingMode: writingModeFor(rotation),
     display: element.type === "image" ? "block" : undefined,
     alignSelf: element.alignSelf ? align(element.alignSelf) : undefined,
@@ -217,7 +220,7 @@ function elementStyle(element: ResolvedElement, root: boolean, sceneRoot: boolea
   return style;
 }
 
-function frameStyle(frame: Extract<ResolvedElement, { type: "frame" }>): CSSProperties {
+function frameStyle(frame: LayoutParent): CSSProperties {
   const auto = frame.layoutMode === "auto" || frame.autoLayout === true;
   if (auto) {
     const automaticGap = frame.gap === "auto";
@@ -310,6 +313,8 @@ function renderElement({
   root = false,
   sceneRoot = false,
   parent,
+  blocks,
+  mode,
   editingElementId,
   imageLoading,
   onImageError,
@@ -320,7 +325,7 @@ function renderElement({
   const editing = element.type === "text" && element.id === editingElementId;
   const style = {
     ...elementStyle(element, root, sceneRoot),
-    ...(element.type === "frame" ? frameStyle(element) : {}),
+    ...(element.type === "frame" || element.type === "slot" ? frameStyle(element) : {}),
     ...typeStyle(element),
     ...(editing ? { userSelect: "text" as const } : {}),
     ...(parent && !parentIsAuto ? { gridArea: "1 / 1", ...anchorStyles(element.anchor) } : {}),
@@ -337,6 +342,8 @@ function renderElement({
             key: child.id,
             element: child,
             parent: element,
+            blocks,
+            mode,
             editingElementId,
             imageLoading,
             onImageError,
@@ -345,6 +352,41 @@ function renderElement({
           }),
         )
       : undefined;
+  if (element.type === "slot") {
+    const block = blocks?.find((candidate) => candidate.id === element.blockId);
+    if (!block) {
+      return createElement(
+        "div",
+        {
+          "data-element-id": element.id,
+          "data-element-type": "slot",
+          "data-slot-diagnostic": "missingBlock",
+          style,
+        },
+        mode === "player" ? undefined : "Invalid Slot",
+      );
+    }
+    return createElement(
+      "div",
+      {
+        "data-element-id": element.id,
+        "data-element-type": "slot",
+        "data-element-painted": "false",
+        style,
+      },
+      createElement(ElementRenderer, {
+        element: block.canvas.root as ResolvedElement,
+        parent: element,
+        blocks,
+        mode,
+        editingElementId,
+        imageLoading,
+        onImageError,
+        onTextDoubleClick,
+        onTextKeyDown,
+      }),
+    );
+  }
   if (element.type === "image") {
     const image = literal(element.image);
     const resolved =
@@ -436,6 +478,8 @@ function renderElement({
 export function ElementRenderer({
   element,
   parent,
+  blocks,
+  mode,
   editingElementId,
   imageLoading,
   onImageError,
@@ -445,6 +489,8 @@ export function ElementRenderer({
   return renderElement({
     element,
     parent,
+    blocks,
+    mode,
     editingElementId,
     imageLoading,
     onImageError,
@@ -459,6 +505,8 @@ export const CanvasRenderer = memo(function CanvasRenderer({
   style,
   editingElementId,
   imageLoading,
+  blocks,
+  mode,
   onImageError,
   onTextDoubleClick,
   onTextKeyDown,
@@ -476,6 +524,8 @@ export const CanvasRenderer = memo(function CanvasRenderer({
       element: root,
       root: true,
       sceneRoot,
+      blocks,
+      mode,
       editingElementId,
       imageLoading,
       onImageError,

@@ -28,6 +28,7 @@ type CanvasWorkspaceStageProps = Pick<
   | "setTool"
   | "camera"
   | "ordered"
+  | "blocks"
   | "drag"
   | "focused"
   | "onBeginCreation"
@@ -72,6 +73,7 @@ export function CanvasWorkspaceStage({
   tool,
   camera,
   ordered,
+  blocks,
   drag,
   focused,
   onBeginCreation,
@@ -244,6 +246,8 @@ export function CanvasWorkspaceStage({
             >
               <CanvasRenderer
                 canvas={artboard.renderCanvas ?? artboard.canvas}
+                blocks={blocks}
+                mode="studio"
                 editingElementId={textEdit?.artId === artboard.artId ? textEdit.elementId : null}
                 onTextDoubleClick={beginTextEdit}
                 onTextKeyDown={handleTextKeyDown}

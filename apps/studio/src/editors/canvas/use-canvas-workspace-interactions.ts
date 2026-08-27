@@ -485,7 +485,10 @@ export function useCanvasWorkspaceInteractions({
         const parentElement = targetArtboard
           ? findCanvasElement(targetArtboard.canvas.root, preview.parentId)
           : null;
-        const parentStrokeWidth = Math.max(0, parentElement?.stroke?.width ?? 0);
+        const parentStrokeWidth =
+          parentElement && "stroke" in parentElement
+            ? Math.max(0, parentElement.stroke?.width ?? 0)
+            : 0;
         const parentOrigin = parentRect
           ? contentOrigin(parentRect, parentStrokeWidth, parentStrokeWidth, camera.zoom)
           : null;

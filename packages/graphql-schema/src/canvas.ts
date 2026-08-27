@@ -1,5 +1,5 @@
 import { graphql } from "./graphql";
-import type { ResultOf } from "gql.tada";
+import type { TadaDocumentNode } from "gql.tada";
 
 /**
  * The Canvas Element interface is expanded explicitly because GraphQL
@@ -58,10 +58,50 @@ export const CanvasElementFields = graphql(`
       counterAlign
       clip
     }
+      ... on SlotElement {
+        blockId
+        layoutMode
+        autoLayout
+        direction
+        gap
+        padding
+        alignPrimary
+        alignCounter
+        primaryAlign
+        counterAlign
+        clip
+      }
   }
 `);
 
-export const GetShowCanvasesQuery = graphql(
+export interface CanvasElementDocument {
+  readonly __typename?: string;
+  readonly children?: readonly CanvasElementDocument[];
+  readonly [field: string]: unknown;
+}
+
+export interface ShowCanvasDocument {
+  readonly id: string;
+  readonly kind: string;
+  readonly ownerId: string;
+  readonly ownerName: string;
+  readonly position: { readonly x: number; readonly y: number };
+  readonly root: CanvasElementDocument;
+}
+
+export interface GetShowCanvasesResult {
+  readonly showCanvases: readonly ShowCanvasDocument[];
+}
+
+export interface GetShowCanvasesVariables {
+  readonly showId: string;
+  readonly state?: string | null;
+}
+
+export const GetShowCanvasesQuery: TadaDocumentNode<
+  GetShowCanvasesResult,
+  GetShowCanvasesVariables
+> = graphql(
   `
     query GetShowCanvases($showId: ID!, $state: String) {
       showCanvases(showId: $showId, state: $state) {
@@ -94,4 +134,4 @@ export const GetShowCanvasesQuery = graphql(
   [CanvasElementFields],
 );
 
-export type ShowCanvas = ResultOf<typeof GetShowCanvasesQuery>["showCanvases"][number];
+export type ShowCanvas = ShowCanvasDocument;

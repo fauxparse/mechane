@@ -3,6 +3,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent, RefObject } fro
 
 import type { NewElement } from "@mechane/commands";
 import type {
+  Block,
   ImageAssetReference,
   Position,
   ResolvedImageValue,
@@ -63,18 +64,20 @@ export interface CanvasWorkspaceEditorProps {
   ): void;
   variables?: readonly SceneVariable[];
   shapes?: readonly Shape[];
+  blocks?: readonly Block[];
+  onPlaceBlock?(blockId: string): void;
   imageAssets?: readonly ImageAsset[];
   deviceQrImages?: Readonly<Record<string, DeviceQrImage>>;
   onImageUpload?(props: ImageInputOnUploadProps): void;
   onDeleteElements?(canvasId: string, elementIds: readonly string[]): void;
   onRenameArtboard?(artId: string, name: string): void;
 }
-
 export interface CanvasWorkspaceSurfaceProps {
   ordered: readonly CanvasArtboardDocument[];
   focused: CanvasArtboardDocument | null;
   camera: CanvasCamera;
   workspaceRef: RefObject<HTMLElement | null>;
+  blocks?: readonly Block[];
   selection: CanvasSelection;
   tool: CanvasTool;
   setTool(tool: CanvasTool): void;

@@ -26,12 +26,13 @@ export function CanvasWorkspaceEditor({
   onMoveElement,
   onMoveElementBetweenCanvases,
   onUpdateElement,
-  onUpdateElements,
   variables,
   shapes,
-  imageAssets,
+  blocks,
+  onPlaceBlock,
   deviceQrImages,
   onImageUpload,
+  imageAssets,
   onDeleteElements,
   onRenameArtboard,
   initialCamera,
@@ -132,6 +133,12 @@ export function CanvasWorkspaceEditor({
       },
       { id: "create-text", label: "Create Text", scope: "canvas", run: () => setTool("text") },
       { id: "create-image", label: "Create Image", scope: "canvas", run: () => setTool("image") },
+      ...(blocks ?? []).map((block) => ({
+        id: `place-block-${block.id}`,
+        label: `Place ${block.name}`,
+        scope: "canvas" as const,
+        run: () => onPlaceBlock?.(block.id),
+      })),
       { id: "create-frame", label: "Create Frame", scope: "canvas", run: () => setTool("frame") },
       { id: "zoom-in", label: "Zoom In", scope: "canvas", run: zoomIn },
       { id: "zoom-out", label: "Zoom Out", scope: "canvas", run: zoomOut },
@@ -144,7 +151,7 @@ export function CanvasWorkspaceEditor({
         run: deleteSelection,
       },
     ],
-    [deleteSelection, resetCamera, selection.elementIds.length, setTool, zoomIn, zoomOut],
+    [blocks, deleteSelection, onPlaceBlock, resetCamera, selection.elementIds.length, setTool, zoomIn, zoomOut],
   );
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -208,9 +215,9 @@ export function CanvasWorkspaceEditor({
         resizable={resizable}
         onFocusArtboard={onFocusArtboard}
         onUpdateElement={onUpdateElement}
-        onUpdateElements={onUpdateElements}
         variables={variables}
         shapes={shapes}
+        blocks={blocks}
         imageAssets={imageAssets}
         deviceQrImages={deviceQrImages}
         onImageUpload={onImageUpload}
