@@ -386,6 +386,7 @@ function renderElement({
       runtimeItem,
       runtimeType,
       shapes,
+      blocks,
     );
     if (resolution.diagnostic) {
       if (mode === "player") return null;

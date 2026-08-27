@@ -1,4 +1,9 @@
-import { applyBlockState, resolveBlockState } from "./blocks";
+import {
+  applyBlockState,
+  assertAcyclicBlockReferences,
+  BlockCycleError,
+  resolveBlockState,
+} from "./blocks";
 import type { Block, BlockCanvas, BlockVariable } from "./blocks";
 import type { Shape, Type } from "./shapes";
 import { areTypesCompatible, coerceValue } from "./shapes";
@@ -37,7 +42,6 @@ export interface SlotResolution {
   readonly values: Readonly<Record<string, unknown>>;
   readonly diagnostics: readonly SlotDiagnostic[];
 }
-
 
 function sourceValue(
   source: SlotInputSource,
@@ -231,10 +235,15 @@ export function resolveSlotInstances(
   runtimeItem?: unknown,
   runtimeType?: Type,
   shapes: readonly Shape[] = [],
+  allBlocks: readonly Block[] = [block],
 ): {
   readonly instances: readonly ResolvedSlotInstance[];
   readonly diagnostic?: SlotDiagnostic;
 } {
+  const structuralDiagnostics = diagnoseSlot(slot, allBlocks, variables, runtimeType, shapes);
+  if (structuralDiagnostics.length > 0) {
+    return { instances: [], diagnostic: structuralDiagnostics[0] };
+  }
   const expansion = slot.expansion?.source;
   let expansionValue: unknown;
   if (expansion?.kind === "literal") expansionValue = expansion.value;
@@ -310,17 +319,33 @@ export function expandSlotInstances(
   };
 }
 
-export function diagnoseSlot(slot: SlotElement, blocks: readonly Block[]): readonly SlotDiagnostic[] {
+export function diagnoseSlot(
+  slot: SlotElement,
+  blocks: readonly Block[],
+  variables: readonly SlotVariableValue[] = [],
+  runtimeType?: Type,
+  shapes: readonly Shape[] = [],
+): readonly SlotDiagnostic[] {
   const block = blocks.find((candidate) => candidate.id === slot.blockId);
   if (!block) {
     return [{ category: "missingBlock", message: `Block "${slot.blockId}" was not found.` }];
   }
   const diagnostics: SlotDiagnostic[] = [];
+  try {
+    assertAcyclicBlockReferences(blocks);
+  } catch (error) {
+    if (error instanceof BlockCycleError && error.chain.includes(slot.blockId)) {
+      diagnostics.push({ category: "blockCycle", message: error.message });
+    }
+  }
   if (slot.layoutMode !== undefined && slot.layoutMode !== "auto") {
     diagnostics.push({ category: "invalidSlotLayout", message: "Slots must use auto layout." });
   }
   if (slot.autoLayout === false) {
-    diagnostics.push({ category: "invalidSlotLayout", message: "Slots cannot disable auto layout." });
+    diagnostics.push({
+      category: "invalidSlotLayout",
+      message: "Slots cannot disable auto layout.",
+    });
   }
   const targets = new Set<string>();
   for (const assignment of slot.assignments ?? []) {
@@ -337,6 +362,55 @@ export function diagnoseSlot(slot: SlotElement, blocks: readonly Block[]): reado
         category: "invalidAssignment",
         message: `Block Variable "${assignment.variableId}" was not found.`,
         variableId: assignment.variableId,
+      });
+    }
+    const source = assignment.source;
+    const sourceType =
+      source.kind === "variable"
+        ? variables.find((variable) => variable.id === source.variableId)?.type
+        : source.kind === "runtimeItem"
+          ? runtimeType
+          : undefined;
+    const path =
+      source.kind === "literal" || source.kind === "unset" ? [] : (source.fieldPath ?? []);
+    if (
+      (source.kind === "variable" &&
+        (!sourceType || (path.length > 0 && !typeAtPath(sourceType, path, shapes)))) ||
+      (source.kind === "runtimeItem" &&
+        runtimeType !== undefined &&
+        path.length > 0 &&
+        !typeAtPath(runtimeType, path, shapes))
+    ) {
+      diagnostics.push({
+        category: "missingInputPath",
+        message: "Slot input source path was not found.",
+        variableId: assignment.variableId,
+        path,
+      });
+    }
+  }
+  const expansion = slot.expansion?.source;
+  if (expansion) {
+    const path =
+      expansion.kind === "literal" || expansion.kind === "unset" ? [] : (expansion.fieldPath ?? []);
+    const sourceType =
+      expansion.kind === "variable"
+        ? variables.find((variable) => variable.id === expansion.variableId)?.type
+        : expansion.kind === "runtimeItem"
+          ? runtimeType
+          : undefined;
+    if (
+      (expansion.kind === "variable" &&
+        (!sourceType || (path.length > 0 && !typeAtPath(sourceType, path, shapes)))) ||
+      (expansion.kind === "runtimeItem" &&
+        runtimeType !== undefined &&
+        path.length > 0 &&
+        !typeAtPath(runtimeType, path, shapes))
+    ) {
+      diagnostics.push({
+        category: "missingInputPath",
+        message: "Slot expansion source path was not found.",
+        path,
       });
     }
   }
