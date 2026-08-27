@@ -31,6 +31,7 @@
 import type {
   Block,
   DeviceNode,
+  Element,
   FlowColor,
   GraphEdge,
   GraphNode,
@@ -44,6 +45,7 @@ import type {
   Type,
 } from "@mechane/domain";
 import {
+  BlockReferenceError,
   InvalidShapeError,
   assertShapeCanBeRemoved,
   assertShapeFieldNameAvailable,
@@ -1605,13 +1607,25 @@ function withBlocks(graph: ShowGraph, blocks: readonly Block[]): ShowGraph {
   return { ...graph, blocks: [...blocks] };
 }
 
+function elementReferencesBlock(element: Element, blockId: string): boolean {
+  if ("blockId" in element && element.blockId === blockId) return true;
+  return (element.children ?? []).some((child) => elementReferencesBlock(child, blockId));
+}
+
+function blockIsReferenced(graph: ShowGraph, blockId: string): boolean {
+  return (graph.blocks ?? []).some((block) =>
+    elementReferencesBlock(block.canvas.root, blockId),
+  );
+}
+
 export function addBlock(block: Block, label = "Add Block"): ShowGraphCommand {
-  return capturing({
+  return capturing<ShowGraph, null, GraphEdit>({
     type: GRAPH_COMMAND_TYPES.addBlock,
     label,
     scope: "global",
     edits: [{ type: GRAPH_COMMAND_TYPES.addBlock, block }],
-    capture: (graph) => graph.blocks ?? [],
+    restoreEdits: () => [{ type: GRAPH_COMMAND_TYPES.removeBlock, blockId: block.id }],
+    capture: () => null,
     apply: (graph) => {
       const blocks = graph.blocks ?? [];
       if (blocks.some((candidate) => candidate.id === block.id)) {
@@ -1622,7 +1636,11 @@ export function addBlock(block: Block, label = "Add Block"): ShowGraphCommand {
       }
       return withBlocks(graph, [...blocks, block]);
     },
-    restore: (graph, previous) => withBlocks(graph, previous),
+    restore: (graph) =>
+      withBlocks(
+        graph,
+        (graph.blocks ?? []).filter((candidate) => candidate.id !== block.id),
+      ),
   });
 }
 export function renameBlock(
@@ -1631,12 +1649,16 @@ export function renameBlock(
   label = "Rename Block",
 ): ShowGraphCommand {
   const nextName = assertValidBlockName(name);
-  return capturing({
+  return capturing<ShowGraph, string, GraphEdit>({
     type: GRAPH_COMMAND_TYPES.renameBlock,
     label,
     scope: "global",
     edits: [{ type: GRAPH_COMMAND_TYPES.renameBlock, blockId, name: nextName }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.renameBlock, blockId, name: captured },
+    ],
     capture: (graph) => blockAt(graph, blockId).block.name,
+    isEmpty: (_graph, captured) => captured === nextName,
     apply: (graph) => {
       const { block: current } = blockAt(graph, blockId);
       const other = (graph.blocks ?? []).find(
@@ -1666,35 +1688,47 @@ export function duplicateBlock(
 ): ShowGraphCommand {
   const nextName = assertValidBlockName(name);
   const duplicate = duplicateBlockResource(block, nextName);
-  return capturing({
+  return capturing<ShowGraph, null, GraphEdit>({
     type: GRAPH_COMMAND_TYPES.duplicateBlock,
     label,
     scope: "global",
     edits: [{ type: GRAPH_COMMAND_TYPES.duplicateBlock, block: duplicate }],
-    capture: (graph) => graph.blocks ?? [],
+    restoreEdits: () => [{ type: GRAPH_COMMAND_TYPES.removeBlock, blockId: duplicate.id }],
+    capture: () => null,
     apply: (graph) => {
       if ((graph.blocks ?? []).some((candidate) => candidate.name === nextName)) {
         throw new InvalidShapeError(`Block name "${nextName}" is already in use.`);
       }
       return withBlocks(graph, [...(graph.blocks ?? []), duplicate]);
     },
-    restore: (graph, previous) => withBlocks(graph, previous),
+    restore: (graph) =>
+      withBlocks(
+        graph,
+        (graph.blocks ?? []).filter((candidate) => candidate.id !== duplicate.id),
+      ),
   });
 }
 export function removeBlock(blockId: string, label = "Delete Block"): ShowGraphCommand {
-  return capturing({
+  return capturing<ShowGraph, { index: number; block: Block }, GraphEdit>({
     type: GRAPH_COMMAND_TYPES.removeBlock,
     label,
     scope: "global",
     edits: [{ type: GRAPH_COMMAND_TYPES.removeBlock, blockId }],
-    capture: (graph) => graph.blocks ?? [],
-    apply: (graph) => {
-      blockAt(graph, blockId);
-      return withBlocks(
+    restoreEdits: (captured) => [{ type: GRAPH_COMMAND_TYPES.addBlock, block: captured.block }],
+    capture: (graph) => {
+      const captured = blockAt(graph, blockId);
+      if (blockIsReferenced(graph, blockId)) throw new BlockReferenceError(blockId);
+      return captured;
+    },
+    apply: (graph) =>
+      withBlocks(
         graph,
         (graph.blocks ?? []).filter((candidate) => candidate.id !== blockId),
-      );
+      ),
+    restore: (graph, captured) => {
+      const blocks = graph.blocks?.slice() ?? [];
+      blocks.splice(Math.min(captured.index, blocks.length), 0, captured.block);
+      return withBlocks(graph, blocks);
     },
-    restore: (graph, previous) => withBlocks(graph, previous),
   });
 }

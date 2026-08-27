@@ -50,7 +50,6 @@ import {
   addSceneVariable,
   addShape,
   addShapeField,
-  duplicateBlock,
   duplicateShape,
   GRAPH_COMMAND_TYPES,
   moveNode,
@@ -855,7 +854,7 @@ export const GRAPH_EDIT_CODECS: { [T in GraphEdit["type"]]: GraphEditCodec<T> } 
     }),
   },
   [GRAPH_COMMAND_TYPES.duplicateBlock]: {
-    command: (edit) => duplicateBlock(edit.block, edit.block.name),
+    command: (edit) => addBlock(edit.block),
     encode: (edit) => ({ type: edit.type, block: edit.block }),
     decode: (flat) => ({
       type: GRAPH_COMMAND_TYPES.duplicateBlock,

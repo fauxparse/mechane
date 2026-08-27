@@ -166,6 +166,7 @@ export async function applyShowGraphEdits(
       {
         shapes: current.shapes ?? [],
         sourceFieldDefaults: current.sourceFieldDefaults ?? [],
+        blocks: current.blocks ?? [],
         nodes: current.nodes,
         edges: current.edges,
       },
@@ -223,6 +224,7 @@ export async function applyShowEdits(
       {
         shapes: current.shapes ?? [],
         sourceFieldDefaults: current.sourceFieldDefaults ?? [],
+        blocks: current.blocks ?? [],
         nodes: current.nodes,
         edges: current.edges,
       },
@@ -265,6 +267,7 @@ export async function applyShowEdits(
           {
             shapes: published.shapes ?? [],
             sourceFieldDefaults: published.sourceFieldDefaults ?? [],
+            blocks: published.blocks ?? [],
             nodes: published.nodes,
             edges: published.edges,
           },
