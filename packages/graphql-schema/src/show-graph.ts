@@ -7,6 +7,7 @@
 // so they can't drift from what's actually selected — and, transitively,
 // from apps/api's schema.
 import { graphql } from "./graphql";
+import { CanvasElementFields } from "./canvas";
 import type { ResultOf } from "gql.tada";
 
 export const GetShowGraphQuery = graphql(`
@@ -20,6 +21,48 @@ export const GetShowGraphQuery = graphql(`
         nodeId
         fieldPath
         value
+      }
+      blocks {
+        id
+        name
+        stateSelectorVariableId
+        variables {
+          id
+          name
+          required
+          type {
+            kind
+            shapeId
+            of {
+              kind
+              shapeId
+            }
+          }
+          defaultValue
+        }
+        states {
+          id
+          name
+          isDefault
+          overrides {
+            elementId
+            property
+            value
+          }
+        }
+        canvas {
+          id
+          kind
+          position {
+            x
+            y
+          }
+          ownerId
+          ownerName
+          root {
+            ...CanvasElementFields
+          }
+        }
       }
       nodes {
         __typename
@@ -154,7 +197,7 @@ export const GetShowGraphQuery = graphql(`
       }
     }
   }
-`);
+`, [CanvasElementFields]);
 
 /**
  * Applies a batch of edits to the draft graph (issue #103).

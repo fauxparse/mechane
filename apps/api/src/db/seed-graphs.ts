@@ -1,6 +1,7 @@
 // Seed data for the local Voting demo. The graph is intentionally small and
 // legible: three Candidate Sources feed a projected tally and an Audience flow.
 import type {
+  Block,
   Canvas,
   FrameElement,
   Position,
@@ -40,6 +41,84 @@ function candidateFieldDefaults(nodeId: string, name: string, votes: number) {
     { nodeId, fieldPath: [CANDIDATE_VOTES_FIELD_ID], value: votes },
   ];
 }
+export function workflowBlocks(): Block[] {
+  const card: Block = {
+    id: "block_card",
+    name: "Candidate card",
+    canvas: {
+      id: "canvas_block_card",
+      kind: "block",
+      root: {
+        id: "block_card_root",
+        type: "frame",
+        direction: "vertical",
+        gap: 8,
+        children: [
+          { id: "block_card_title", type: "text", content: "Candidate" },
+          { id: "block_card_votes", type: "text", content: "0" },
+        ],
+      },
+    },
+    variables: [
+      { id: "block_card_name", name: "Name", type: "text", required: true },
+      { id: "block_card_count", name: "Votes", type: "number", required: false, defaultValue: 0 },
+    ],
+    states: [
+      {
+        id: "block_card_default",
+        name: "Default",
+        isDefault: true,
+        overrides: [],
+      },
+      {
+        id: "block_card_selected",
+        name: "Selected",
+        isDefault: false,
+        overrides: [{ elementId: "block_card_title", property: "content", value: "Selected" }],
+      },
+    ],
+    stateSelectorVariableId: null,
+  };
+  const nested: Block = {
+    id: "block_nested",
+    name: "Nested card",
+    canvas: {
+      id: "canvas_block_nested",
+      kind: "block",
+      root: {
+        id: "block_nested_root",
+        type: "frame",
+        children: [{ id: "block_nested_slot", type: "slot", blockId: card.id }],
+      },
+    },
+    variables: [],
+    states: [],
+  };
+  const repeated: Block = {
+    id: "block_repeated",
+    name: "Repeated card",
+    canvas: {
+      id: "canvas_block_repeated",
+      kind: "block",
+      root: {
+        id: "block_repeated_root",
+        type: "frame",
+        children: [
+          {
+            id: "block_repeated_slot",
+            type: "slot",
+            blockId: card.id,
+            expansion: { source: { kind: "runtimeItem" } },
+          },
+        ],
+      },
+    },
+    variables: [],
+    states: [],
+  };
+  return [card, nested, repeated];
+}
+
 
 export function votingGraph(): ShowGraph {
   const [alice, beatrix, clarissa] = CANDIDATE_SOURCE_IDS;
@@ -134,6 +213,7 @@ export function votingGraph(): ShowGraph {
   return {
     shapes: [candidateShape],
     sourceFieldDefaults,
+    blocks: workflowBlocks(),
     nodes: [
       ...sourceNodes,
       {
