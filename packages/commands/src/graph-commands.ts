@@ -1638,7 +1638,7 @@ export function renameBlock(
     edits: [{ type: GRAPH_COMMAND_TYPES.renameBlock, blockId, name: nextName }],
     capture: (graph) => blockAt(graph, blockId).block.name,
     apply: (graph) => {
-      const { block } = blockAt(graph, blockId);
+      blockAt(graph, blockId);
       const other = (graph.blocks ?? []).find(
         (candidate) => candidate.id !== blockId && candidate.name === nextName,
       );
