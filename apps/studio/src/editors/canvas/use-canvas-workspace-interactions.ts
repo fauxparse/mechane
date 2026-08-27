@@ -4,6 +4,7 @@ import { useToastManager } from "@mechane/design-system";
 
 import { canvasElementParent, findCanvasElement } from "@mechane/commands";
 import type { NewElement } from "@mechane/commands";
+import { isContainerElement } from "@mechane/domain";
 import type { Position, FrameElement } from "@mechane/domain";
 
 import type { CanvasArtboardDocument } from "../../api/canvas";
@@ -392,11 +393,24 @@ export function useCanvasWorkspaceInteractions({
       setDragPreview(null);
       return;
     }
+    const overSlot = document.elementsFromPoint(event.clientX, event.clientY).some((candidate) => {
+      if (!(candidate instanceof HTMLElement)) return false;
+      const slot = candidate.closest<HTMLElement>("[data-element-type='slot']");
+      return slot !== null && targetArtboard.contains(slot);
+    });
+    if (overSlot) {
+      dragPreviewRef.current = null;
+      setDragPreview(null);
+      return;
+    }
     const draggedNode = element;
     const frames: { node: HTMLElement; rect: CanvasClientRect }[] = [];
     for (const frame of targetArtboard.querySelectorAll<HTMLElement>(
       "[data-element-type='frame']",
     )) {
+      const frameId = frame.dataset.elementId;
+      const frameElement = frameId ? findCanvasElement(targetDocument.canvas.root, frameId) : null;
+      if (!frameElement || !isContainerElement(frameElement)) continue;
       if (draggedNode.contains(frame)) continue;
       const rect = measuredRect(frame);
       if (

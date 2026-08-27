@@ -90,6 +90,7 @@ export function layerDropPlacement(
   const target =
     targetId === root.id ? { parent: root, element: root as Element } : findParent(root, targetId);
   if (!target) return null;
+  if (zone === "inside" && target.element.type !== "frame") return null;
 
   const dropIntoTarget = zone === "inside" || targetId === root.id;
   const parent = dropIntoTarget ? target.element : target.parent;
@@ -126,6 +127,7 @@ export function layerDropPlacementInCanvas(
   const target =
     targetId === root.id ? { parent: root, element: root as Element } : findParent(root, targetId);
   if (!target) return null;
+  if (zone === "inside" && target.element.type !== "frame") return null;
   const dropIntoTarget = zone === "inside" || targetId === root.id;
   const parent = dropIntoTarget ? target.element : target.parent;
   if (parent.type !== "frame") return null;
