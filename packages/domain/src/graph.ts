@@ -25,6 +25,8 @@ import type { EntityName } from "./id";
 import type { Shape, Type } from "./shapes";
 import { areTypesCompatible, assertValidShapes, InvalidShapeError } from "./shapes";
 import { typeAtPath } from "./property-values";
+import { assertValidBlocks } from "./blocks";
+import type { Block } from "./blocks";
 /** The kinds of node that render on the Show canvas. Nothing else does. */
 export const NODE_KINDS = ["scene", "flow", "source", "transformer", "device"] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
@@ -283,16 +285,16 @@ export interface SourceFieldDefault {
   fieldPath: string[];
   value: unknown;
 }
-
 export interface ShowGraph {
   /** Show-scoped type definitions, independent of the canvas node graph. */
   shapes?: Shape[];
   /** Sparse per-Source overrides; absence inherits the Shape default (#107). */
   sourceFieldDefaults?: SourceFieldDefault[];
+  /** Show-owned reusable Block definitions, separate from graph nodes. */
+  blocks?: Block[];
   nodes: GraphNode[];
   edges: GraphEdge[];
 }
-
 /** The empty graph a Show starts life with. Valid — zero Flows is fine (#25). */
 export function emptyShowGraph(): ShowGraph {
   return { shapes: [], nodes: [], edges: [] };
@@ -818,6 +820,7 @@ function assertNoWiringCycles(edges: GraphEdge[]): void {
  * cannot disagree.
  */
 export function assertValidShowGraph(graph: ShowGraph): ShowGraph {
+  assertValidBlocks(graph.blocks, graph.shapes ?? []);
   try {
     assertValidShapes(graph.shapes ?? []);
   } catch (error) {

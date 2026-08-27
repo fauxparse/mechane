@@ -332,6 +332,35 @@ export const schema = createSchema<GraphQLContext>({
       name: String!
       fields: [ShapeField!]!
     }
+    type BlockVariable {
+      id: ID!
+      name: String!
+      type: Type!
+      required: Boolean!
+      defaultValue: JSON
+    }
+
+    type BlockStateOverride {
+      elementId: ID!
+      property: String!
+      value: JSON
+    }
+
+    type BlockState {
+      id: ID!
+      name: String!
+      isDefault: Boolean!
+      overrides: [BlockStateOverride!]!
+    }
+
+    type Block {
+      id: ID!
+      name: String!
+      canvas: Canvas!
+      variables: [BlockVariable!]!
+      states: [BlockState!]!
+      stateSelectorVariableId: ID
+    }
 
     input ShapeInput {
       id: ID!
@@ -471,6 +500,7 @@ export const schema = createSchema<GraphQLContext>({
       nodes: [GraphNode!]!
       edges: [GraphEdge!]!
       shapes: [Shape!]!
+      blocks: [Block!]!
       "Sparse graph-owned Source values, keyed by Source node and field path."
       sourceFieldDefaults: [SourceFieldDefault!]!
       updatedAt: String!
@@ -661,28 +691,17 @@ export const schema = createSchema<GraphQLContext>({
       """
       perConnection: Boolean
     }
-
     input GraphEdgeInput {
       id: ID!
       kind: String!
       sourceId: ID!
       targetId: ID!
-      "Defaults to the empty path (the whole value)."
       sourcePath: [String!]
-      "Wiring edges must give at least the Scene Variable's id. Defaults to empty."
       targetPath: [String!]
       fieldMapping: JSON
       cueId: ID
       actionId: ID
     }
-
-    """
-    One edit on its way out (issue #111): the same graph-edit fields as
-    \`ShowEditInput\`, plus \`pairingCode\`, which only ever travels in this
-    direction. What the server tells a client about a change it didn't make
-    is the same vocabulary a realtime channel will use for a change someone
-    else made (ADR-0003).
-    """
     type GraphEdit {
       type: String!
       nodeId: ID
@@ -710,6 +729,9 @@ export const schema = createSchema<GraphQLContext>({
       fieldMapping: JSON
       "The graph-owned Source field value; null clears the override."
       value: JSON
+      "The Block target for Block lifecycle commands."
+      block: Block
+      blockId: ID
       "Devices only: the code the server minted for a Device this batch created (#45)."
       pairingCode: String
       "Devices only: whether each connection is its own instance, for graph.setDevicePerConnection."
@@ -727,6 +749,9 @@ export const schema = createSchema<GraphQLContext>({
       edgeId: ID
       edge: GraphEdgeInput
       color: String
+      "Block lifecycle payloads are validated by the domain boundary."
+      block: JSON
+      blockId: ID
       position: PositionInput
       parentId: ID
       name: String

@@ -29,7 +29,9 @@
 // the composite correct.
 
 import type {
+  Block,
   DeviceNode,
+  Element,
   FlowColor,
   GraphEdge,
   GraphNode,
@@ -43,11 +45,15 @@ import type {
   Type,
 } from "@mechane/domain";
 import {
+  BlockReferenceError,
   InvalidShapeError,
   assertShapeCanBeRemoved,
   assertShapeFieldNameAvailable,
+  assertValidBlockName,
   assertValidShapeType,
   assertValidShapes,
+  duplicateBlock as duplicateBlockResource,
+  renameBlock as renameBlockResource,
   shapeReferencesShape,
 } from "@mechane/domain";
 
@@ -91,9 +97,12 @@ export const GRAPH_COMMAND_TYPES = {
   setSceneVariableType: "graph.setSceneVariableType",
   reorderSceneVariables: "graph.reorderSceneVariables",
   removeSceneVariable: "graph.removeSceneVariable",
-  moveNodeOutOfFlow: "graph.moveNodeOutOfFlow",
   setDevicePairingCode: "graph.setDevicePairingCode",
   setDevicePerConnection: "graph.setDevicePerConnection",
+  addBlock: "graph.addBlock",
+  renameBlock: "graph.renameBlock",
+  duplicateBlock: "graph.duplicateBlock",
+  removeBlock: "graph.removeBlock",
 } as const;
 
 export class UnknownGraphTargetError extends Error {
@@ -1581,5 +1590,145 @@ export function removeEdge(edgeId: string, label = "Disconnect"): ShowGraphComma
       edges: graph.edges.filter((edge) => edge.id !== edgeId),
     }),
     restore: (graph, captured) => insertEdge(graph, captured.index, captured.edge),
+  });
+}
+// ---------------------------------------------------------------------------
+// Blocks
+// ---------------------------------------------------------------------------
+
+function blockAt(graph: ShowGraph, blockId: string): { index: number; block: Block } {
+  const index = (graph.blocks ?? []).findIndex((block) => block.id === blockId);
+  const block = graph.blocks?.[index];
+  if (index < 0 || !block) throw new UnknownGraphTargetError("Block", blockId);
+  return { index, block };
+}
+
+function withBlocks(graph: ShowGraph, blocks: readonly Block[]): ShowGraph {
+  return { ...graph, blocks: [...blocks] };
+}
+
+function elementReferencesBlock(element: Element, blockId: string): boolean {
+  if ("blockId" in element && element.blockId === blockId) return true;
+  return (element.children ?? []).some((child) => elementReferencesBlock(child, blockId));
+}
+
+function blockIsReferenced(graph: ShowGraph, blockId: string): boolean {
+  return (graph.blocks ?? []).some((block) =>
+    elementReferencesBlock(block.canvas.root, blockId),
+  );
+}
+
+export function addBlock(block: Block, label = "Add Block"): ShowGraphCommand {
+  return capturing<ShowGraph, null, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.addBlock,
+    label,
+    scope: "global",
+    edits: [{ type: GRAPH_COMMAND_TYPES.addBlock, block }],
+    restoreEdits: () => [{ type: GRAPH_COMMAND_TYPES.removeBlock, blockId: block.id }],
+    capture: () => null,
+    apply: (graph) => {
+      const blocks = graph.blocks ?? [];
+      if (blocks.some((candidate) => candidate.id === block.id)) {
+        throw new UnknownGraphTargetError("unique Block", block.id);
+      }
+      if (blocks.some((candidate) => candidate.name === block.name)) {
+        throw new InvalidShapeError(`Block name "${block.name}" is already in use.`);
+      }
+      return withBlocks(graph, [...blocks, block]);
+    },
+    restore: (graph) =>
+      withBlocks(
+        graph,
+        (graph.blocks ?? []).filter((candidate) => candidate.id !== block.id),
+      ),
+  });
+}
+export function renameBlock(
+  blockId: string,
+  name: string,
+  label = "Rename Block",
+): ShowGraphCommand {
+  const nextName = assertValidBlockName(name);
+  return capturing<ShowGraph, string, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.renameBlock,
+    label,
+    scope: "global",
+    edits: [{ type: GRAPH_COMMAND_TYPES.renameBlock, blockId, name: nextName }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.renameBlock, blockId, name: captured },
+    ],
+    capture: (graph) => blockAt(graph, blockId).block.name,
+    isEmpty: (_graph, captured) => captured === nextName,
+    apply: (graph) => {
+      const { block: current } = blockAt(graph, blockId);
+      const other = (graph.blocks ?? []).find(
+        (candidate) => candidate.id !== current.id && candidate.name === nextName,
+      );
+      if (other) throw new InvalidShapeError(`Block name "${nextName}" is already in use.`);
+      return withBlocks(
+        graph,
+        (graph.blocks ?? []).map((candidate) =>
+          candidate.id === blockId ? renameBlockResource(candidate, nextName) : candidate,
+        ),
+      );
+    },
+    restore: (graph, previous) =>
+      withBlocks(
+        graph,
+        (graph.blocks ?? []).map((candidate) =>
+          candidate.id === blockId ? renameBlockResource(candidate, previous) : candidate,
+        ),
+      ),
+  });
+}
+export function duplicateBlock(
+  block: Block,
+  name: string,
+  label = "Duplicate Block",
+): ShowGraphCommand {
+  const nextName = assertValidBlockName(name);
+  const duplicate = duplicateBlockResource(block, nextName);
+  return capturing<ShowGraph, null, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.duplicateBlock,
+    label,
+    scope: "global",
+    edits: [{ type: GRAPH_COMMAND_TYPES.duplicateBlock, block: duplicate }],
+    restoreEdits: () => [{ type: GRAPH_COMMAND_TYPES.removeBlock, blockId: duplicate.id }],
+    capture: () => null,
+    apply: (graph) => {
+      if ((graph.blocks ?? []).some((candidate) => candidate.name === nextName)) {
+        throw new InvalidShapeError(`Block name "${nextName}" is already in use.`);
+      }
+      return withBlocks(graph, [...(graph.blocks ?? []), duplicate]);
+    },
+    restore: (graph) =>
+      withBlocks(
+        graph,
+        (graph.blocks ?? []).filter((candidate) => candidate.id !== duplicate.id),
+      ),
+  });
+}
+export function removeBlock(blockId: string, label = "Delete Block"): ShowGraphCommand {
+  return capturing<ShowGraph, { index: number; block: Block }, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.removeBlock,
+    label,
+    scope: "global",
+    edits: [{ type: GRAPH_COMMAND_TYPES.removeBlock, blockId }],
+    restoreEdits: (captured) => [{ type: GRAPH_COMMAND_TYPES.addBlock, block: captured.block }],
+    capture: (graph) => {
+      const captured = blockAt(graph, blockId);
+      if (blockIsReferenced(graph, blockId)) throw new BlockReferenceError(blockId);
+      return captured;
+    },
+    apply: (graph) =>
+      withBlocks(
+        graph,
+        (graph.blocks ?? []).filter((candidate) => candidate.id !== blockId),
+      ),
+    restore: (graph, captured) => {
+      const blocks = graph.blocks?.slice() ?? [];
+      blocks.splice(Math.min(captured.index, blocks.length), 0, captured.block);
+      return withBlocks(graph, blocks);
+    },
   });
 }

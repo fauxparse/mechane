@@ -34,6 +34,7 @@
 //     applies what it is told; blast radius is the editor's policy (#42).
 
 import type {
+  Block,
   FlowColor,
   GraphEdge,
   GraphNode,
@@ -44,7 +45,6 @@ import type {
   ShowGraph,
   Type,
 } from "@mechane/domain";
-
 import { graphEditCodec } from "./graph-edit-codec";
 import type { ShowGraphCommand } from "./graph-commands";
 import { GRAPH_COMMAND_TYPES } from "./graph-commands";
@@ -195,7 +195,15 @@ export type GraphEdit =
       readonly type: typeof GRAPH_COMMAND_TYPES.setDevicePerConnection;
       readonly nodeId: string;
       readonly perConnection: boolean;
-    };
+    }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.addBlock; readonly block: Block }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.renameBlock;
+      readonly blockId: string;
+      readonly name: string;
+    }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.duplicateBlock; readonly block: Block }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.removeBlock; readonly blockId: string };
 
 /** An edit naming something the graph doesn't contain, or a type nothing knows. */
 export class UnknownGraphEditError extends Error {

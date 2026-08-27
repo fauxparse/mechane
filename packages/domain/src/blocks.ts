@@ -1,0 +1,258 @@
+import type { Canvas, Element } from "./canvas";
+import { assertValidCanvas } from "./canvas";
+import type { Shape, Type } from "./shapes";
+import { assertValidShapeType } from "./shapes";
+import { generateId } from "./id";
+
+export interface BlockVariable {
+  readonly id: string;
+  readonly name: string;
+  readonly type: Type;
+  readonly required: boolean;
+  readonly defaultValue?: unknown;
+}
+
+export interface BlockStateOverride {
+  readonly elementId: string;
+  readonly property: string;
+  readonly value: unknown;
+}
+
+export interface BlockState {
+  readonly id: string;
+  readonly name: string;
+  readonly isDefault: boolean;
+  readonly overrides: readonly BlockStateOverride[];
+}
+
+/** A Block Canvas has a stable identity in addition to the shared Canvas tree. */
+export type BlockCanvas = Canvas & { readonly id: string };
+
+/** A Show-owned reusable visual resource. */
+export interface Block {
+  readonly id: string;
+  readonly name: string;
+  readonly canvas: BlockCanvas;
+  readonly variables: readonly BlockVariable[];
+  readonly states: readonly BlockState[];
+  readonly stateSelectorVariableId?: string | null;
+}
+
+export class InvalidBlockError extends Error {
+  constructor(reason: string) {
+    super(`Invalid Block: ${reason}`);
+    this.name = "InvalidBlockError";
+  }
+}
+
+export class BlockReferenceError extends Error {
+  constructor(blockId: string) {
+    super(`Block "${blockId}" is still referenced by a Slot.`);
+    this.name = "BlockReferenceError";
+  }
+}
+
+const MAX_BLOCK_NAME_LENGTH = 200;
+const PROPERTY_NAMES = new Set([
+  "layout",
+  "sizing",
+  "rotation",
+  "aspectRatio",
+  "opacity",
+  "blendMode",
+  "alignSelf",
+  "fill",
+  "stroke",
+  "anchor",
+  "cornerRadius",
+  "content",
+  "text",
+  "value",
+  "color",
+  "fontFamily",
+  "fontSize",
+  "fontWeight",
+  "fontStyle",
+  "textDecoration",
+  "lineHeight",
+  "letterSpacing",
+  "textAlign",
+  "textVerticalAlign",
+  "textOverflow",
+  "padding",
+  "image",
+  "alt",
+  "objectFit",
+  "objectPosition",
+  "layoutMode",
+  "autoLayout",
+  "direction",
+  "gap",
+  "alignPrimary",
+  "alignCounter",
+  "primaryAlign",
+  "counterAlign",
+  "clip",
+]);
+
+function walk(element: Element, visit: (element: Element) => void): void {
+  visit(element);
+  for (const child of element.children ?? []) walk(child, visit);
+}
+
+function assertUnique(values: readonly string[], label: string): void {
+  const seen = new Set<string>();
+  for (const value of values) {
+    if (!value || seen.has(value)) throw new InvalidBlockError(`${label} ids must be unique.`);
+    seen.add(value);
+  }
+}
+
+export function assertValidBlockName(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) throw new InvalidBlockError("name must not be empty.");
+  if (trimmed.length > MAX_BLOCK_NAME_LENGTH) {
+    throw new InvalidBlockError(`name must be ${MAX_BLOCK_NAME_LENGTH} characters or fewer.`);
+  }
+  return trimmed;
+}
+
+export function assertValidBlock(block: Block, shapes: readonly Shape[] = []): Block {
+  if (!block || typeof block.id !== "string" || !block.id) {
+    throw new InvalidBlockError("an id is required.");
+  }
+  assertValidBlockName(block.name);
+  if (block.canvas.kind !== undefined && block.canvas.kind !== "block") {
+    throw new InvalidBlockError("its Canvas must be a Block Canvas.");
+  }
+  assertValidCanvas({ ...block.canvas, kind: "block" });
+  assertUnique(block.variables.map((variable) => variable.id), "Variable");
+  assertUnique(block.states.map((state) => state.id), "State");
+  assertUnique(block.states.map((state) => state.name.toLocaleLowerCase()), "State name");
+  for (const variable of block.variables) {
+    if (!variable.name.trim()) throw new InvalidBlockError("Variable names must not be empty.");
+    assertValidShapeType(variable.type, shapes, `Variable "${variable.name}" type`);
+  }
+  const selector = block.stateSelectorVariableId;
+  if (selector !== undefined && selector !== null) {
+    const variable = block.variables.find((candidate) => candidate.id === selector);
+    if (!variable) throw new InvalidBlockError("the State Selector Variable must exist.");
+    if (variable.type !== "text") throw new InvalidBlockError("the State Selector Variable must be text.");
+  }
+  if (block.states.length > 0 && block.states.filter((state) => state.isDefault).length !== 1) {
+    throw new InvalidBlockError("exactly one Default State is required when States exist.");
+  }
+  const elementIds = new Set<string>();
+  walk(block.canvas.root, (element) => elementIds.add(element.id));
+  for (const state of block.states) {
+    if (!state.name.trim()) throw new InvalidBlockError("State names must not be empty.");
+    assertUnique(
+      state.overrides.map((override) => `${override.elementId}:${override.property}`),
+      `State "${state.name}" override`,
+    );
+    for (const override of state.overrides) {
+      if (!elementIds.has(override.elementId)) {
+        throw new InvalidBlockError(
+          `State "${state.name}" targets missing Element "${override.elementId}".`,
+        );
+      }
+      if (!PROPERTY_NAMES.has(override.property)) {
+        throw new InvalidBlockError(`State "${state.name}" targets an unknown Property.`);
+      }
+    }
+  }
+  return block;
+}
+
+export function assertValidBlocks(
+  blocks: readonly Block[] | undefined,
+  shapes: readonly Shape[] = [],
+): readonly Block[] {
+  const values = blocks ?? [];
+  assertUnique(values.map((block) => block.id), "Block");
+  assertUnique(values.map((block) => block.name), "Block name");
+  for (const block of values) assertValidBlock(block, shapes);
+  return values;
+}
+
+export function emptyBlock(name: string, id = generateId("block")): Block {
+  const canvasId = generateId("canvas");
+  return {
+    id,
+    name: assertValidBlockName(name),
+    canvas: {
+      id: canvasId,
+      kind: "block",
+      root: { id: `${canvasId}-root`, type: "frame", children: [] },
+    },
+    variables: [],
+    states: [],
+    stateSelectorVariableId: null,
+  };
+}
+
+export function renameBlock(block: Block, name: string): Block {
+  return { ...block, name: assertValidBlockName(name) };
+}
+
+function cloneElement(element: Element, ids: Map<string, string>): Element {
+  const id = `${element.id}-copy-${generateId("canvas").slice(1)}`;
+  ids.set(element.id, id);
+  return {
+    ...element,
+    id,
+    children: element.children?.map((child) => cloneElement(child, ids)),
+  } as Element;
+}
+
+export function duplicateBlock(block: Block, name: string, id = generateId("block")): Block {
+  const ids = new Map<string, string>();
+  const canvasId = generateId("canvas");
+  const canvas = {
+    ...block.canvas,
+    id: canvasId,
+    root: cloneElement(block.canvas.root, ids) as BlockCanvas["root"],
+  } satisfies BlockCanvas;
+  const states = block.states.map((state) => ({
+    ...state,
+    id: generateId("block"),
+    overrides: state.overrides.map((override) => ({
+      ...override,
+      elementId: ids.get(override.elementId) ?? override.elementId,
+    })),
+  }));
+  const variables = block.variables.map((variable) => ({ ...variable, id: generateId("variable") }));
+  return { ...block, id, name: assertValidBlockName(name), canvas, variables, states };
+}
+
+export function defaultBlockState(block: Block): BlockState | null {
+  return block.states.find((state) => state.isDefault) ?? null;
+}
+
+export function resolveBlockState(block: Block, selector: unknown): BlockState | null {
+  if (block.states.length === 0) return null;
+  const value = typeof selector === "string" ? selector.trim() : "";
+  const selected =
+    value.length > 0
+      ? block.states.find((state) => state.name.toLocaleLowerCase() === value.toLocaleLowerCase())
+      : undefined;
+  return selected ?? defaultBlockState(block);
+}
+
+export function applyBlockState(block: Block, state: BlockState | null): BlockCanvas {
+  if (!state) return block.canvas;
+  const overrides = new Map(
+    state.overrides.map((override) => [`${override.elementId}:${override.property}`, override.value]),
+  );
+  const visit = (element: Element): Element =>
+    ({
+      ...element,
+      ...Object.fromEntries(
+        [...overrides.entries()]
+          .filter(([key]) => key.startsWith(`${element.id}:`))
+          .map(([key, value]) => [key.slice(element.id.length + 1), value]),
+      ),
+      children: element.children?.map(visit),
+    }) as Element;
+  return { ...block.canvas, root: visit(block.canvas.root) as BlockCanvas["root"] };
+}

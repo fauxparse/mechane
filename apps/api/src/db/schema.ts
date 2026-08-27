@@ -604,6 +604,7 @@ export const blocks = pgTable(
       .notNull()
       .references(() => showGraphs.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

@@ -11,6 +11,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { SceneNode } from "@mechane/domain";
+import { emptyBlock } from "@mechane/domain";
 import type { GraphEdit } from "./graph-edits";
 import {
   decodeGraphEdit,
@@ -219,6 +220,13 @@ const FIXTURES: { [T in GraphEdit["type"]]: Extract<GraphEdit, { type: T }> } = 
     nodeId: "device_phones",
     perConnection: true,
   },
+  "graph.addBlock": { type: "graph.addBlock", block: emptyBlock("Banner") },
+  "graph.renameBlock": { type: "graph.renameBlock", blockId: "block_banner", name: "Hero" },
+  "graph.duplicateBlock": {
+    type: "graph.duplicateBlock",
+    block: emptyBlock("Banner copy"),
+  },
+  "graph.removeBlock": { type: "graph.removeBlock", blockId: "block_banner" },
 };
 
 describe("graph edit codec", () => {

@@ -300,7 +300,9 @@ export async function writeCanvasRows(
 ): Promise<string> {
   const canonical = canvas;
   const [existing] = await tx.select().from(canvases).where(ownerWhere(owner, graphId));
-  const canvasId = existing?.id ?? generateId("canvas");
+  const identified = canonical as Canvas & { id?: unknown };
+  const requestedId = typeof identified.id === "string" ? identified.id : undefined;
+  const canvasId = existing?.id ?? requestedId ?? generateId("canvas");
   const nextPosition = position ?? {
     x: existing?.positionX ?? 0,
     y: existing?.positionY ?? 0,

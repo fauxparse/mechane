@@ -8,6 +8,7 @@ import {
 } from "@mechane/domain";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import type { ImageAssetReference, ResolvedImageValue, ShowId } from "@mechane/domain";
+import type { CanvasArtboardDocument } from "../../../../api/canvas";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
@@ -90,7 +91,7 @@ function CanvasWorkspaceRoute() {
     );
     const nodes = new Map(graphEditing.command.graph.nodes.map((node) => [node.id, node]));
     const sourceValues = defaultSourceValues(graphEditing.command.graph);
-    return (workspace.data ?? []).map((artboard) => {
+    return (workspace.data ?? []).map((artboard: CanvasArtboardDocument) => {
       const edited = current.get(artboard.canvasId);
       const name = nodes.get(artboard.artId)?.name ?? artboard.name;
       const canvas = edited?.canvas ?? artboard.canvas;
