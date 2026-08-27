@@ -6,7 +6,7 @@ An application for building interactive tech for live theatre shows across multi
 
 ### Show
 
-The top-level project a director or technician builds in Mechanē. A Show is a directed graph of Scenes, Devices, Flows, Sources, Transformers, and the wiring between them.
+A top-level project a director or technician builds in Mechanē. A Show is a directed graph of Scenes, Devices, Flows, Sources, Transformers, and their wiring, plus reusable Blocks.
 _Avoid_: Project, production
 
 ### Run
@@ -36,7 +36,7 @@ _Avoid_: Sequence, section, route
 
 ### Variable
 
-A typed, named value on a Scene or Block. Every Variable has a Type; an untyped Variable is invalid. Scene Variables can receive a value from the Show graph via wiring, or hold a literal default. Block Variables define the values a Slot maps into a Block instance. Variables are the bridge between external data and visual content.
+A typed, named value on a Scene or Block. Every Variable has a Type; an untyped Variable is invalid. Scene Variables can receive a value from the Show graph via wiring, or hold a literal default. Block Variables define the values a Slot maps into a Block instance; each Block Variable has a required or optional input contract, and optional inputs may have typed defaults. Variables are the bridge between external data and visual content.
 
 ### Source
 
@@ -102,13 +102,76 @@ The unique typed conversion derived from a Variable's Type and a Property's Type
 
 ### Block
 
-A reusable, named Scene template with typed Variables and Cues. Blocks can be instantiated inside Scenes and can contain other Blocks.
+A reusable, named Canvas template with typed Variables, named States, and Cues. Blocks can be instantiated inside Scenes and can contain other Blocks.
 _Avoid_: Component (code term), template, widget, piece
 
 ### Slot
 
-A placeholder element inside a Scene or Block that holds a Block instance. A Slot always contains a Block — never raw elements. A Slot may render a single Block instance or one instance per item in an array Variable.
+A transparent layout container Element inside a Scene or Block that holds a Block instance. A Slot always contains a Block — never raw Elements. A Slot may render a single Block instance or one instance per item in an array Variable. Its instance configuration includes one Slot Input Assignment per Block Variable and its own Frame-like layout configuration.
 _Avoid_: Repeater, list
+
+### Slot Layout Container
+
+The invisible container through which a Slot participates in its parent layout and arranges its rendered Block instances. It always uses auto layout, supports the complete Frame layout contract except absolute mode and paint properties, and has sizing independent from the Block instance it contains.
+
+### Nested Block
+
+A Block instantiated by a Slot inside another Block or Scene. Nested Blocks render in the Slot's position and receive only the values and runtime context explicitly supplied by that Slot.
+
+### Block Reference Graph
+
+The directed relationship formed by Blocks referencing other Blocks through Slots. The graph may have arbitrary finite depth but cannot contain a direct or indirect cycle; State selection and runtime data do not change that structural rule.
+
+### Runtime Context
+
+The current item value supplied by an enclosing Array Expansion. A nested Slot may consume it explicitly; a deeper Array Expansion replaces it with its own current item, while explicitly mapped Block Variables preserve values that must cross that boundary.
+
+### Invalid Slot
+
+A Slot that cannot produce a valid Block instance because its Block reference, required input, assignment, field path, expansion source, or layout is invalid. Studio preserves its configuration and shows a diagnostic placeholder; Player renders the Slot blank without affecting its parent or siblings. An invalid repeated item is omitted while valid siblings remain.
+
+### Slot Diagnostic
+
+A structured explanation of an Invalid Slot or omitted repeated item, identifying the failing reference, input, path, source, or item. Unmatched State Selectors are not Slot Diagnostics because they select the Default State.
+
+
+
+
+### Slot Input Assignment
+
+The value a Slot supplies to one Block Variable: a literal, a parent Variable value, a runtime-item value, or unset. A literal takes precedence over the Block Variable's default; unset invokes the Block Variable's required or optional input contract.
+
+### Input Field Path
+
+A sequence of Shape Field names used to select a nested value for a Slot Input Assignment. Field names are scoped by their containing Shape and are the mapping identity; a deliberate Field rename updates affected assignments, while a deleted or unavailable path remains invalid until repaired.
+
+### Array Expansion
+
+The Slot behavior that renders one Block instance for each item in a compatible source value. An actual array preserves its order; a scalar is treated as one item, and an empty array renders no instances.
+
+### Index Identity
+
+The identity of a repeated Block instance is its current zero-based position in the source array. Insertion, removal, and reordering can therefore change the identity of later instances; stable collection-item identity is a separate concern.
+
+
+
+### State
+
+A named variant of a Block's Canvas. A State inherits the Block's base Canvas and overrides values at any depth; values not overridden come from the base Canvas. One State is the default used when a selector does not match.
+_Avoid_: Mode, screen, scene
+
+### State Override
+
+A sparse property-level change attached to a State and addressed by stable Element identity plus Property name. It replaces the complete Property value descriptor — literal or Variable connection — while preserving the Block's base Canvas structure. State Overrides may change any Element Property, including Frame layout properties, but never change Element membership, parentage, stacking order, or Slot instance configuration.
+
+### State Selector
+
+A distinguished text Variable on a Block that a Slot may populate through its ordinary input-mapping model. The resolved selector is compared with State names using case-insensitive exact equality; a missing, blank, or unmatched selector chooses the Block's designated default State.
+
+### Default State
+
+The one explicitly designated State used when a Block's State Selector has no usable match. Its State Overrides apply over the base Canvas like any other State; a Block with no named States renders its base Canvas directly.
+
 
 ### Event
 
@@ -152,7 +215,7 @@ _Avoid_: Binding (acceptable as a synonym), linking
 
 ## Relationships
 
-- A **Show** contains one or more **Scenes**, **Devices**, **Flows**, **Sources**, and **Transformers**
+- A **Show** contains one or more **Scenes**, **Devices**, **Flows**, **Sources**, and **Transformers**, and zero or more **Blocks**
 - A **Scene** belongs to one **Show** and has zero or more **Variables**
 - A **Canvas** belongs to one **Scene** or **Block** and contains that owner's hierarchy of **Elements**
 - A **Flow** groups one or more **Scenes** and tracks a current active **Scene**
@@ -161,11 +224,29 @@ _Avoid_: Binding (acceptable as a synonym), linking
 - A **Variable** can be connected to one or more **Element** properties within a **Scene** or **Block**
 - A **Scene** owns a **Canvas** that contains a hierarchy of **Elements**
 - An **Element** can be a **Slot**, which instantiates a **Block**
-- A **Block** has zero or more **Variables** and zero or more **Cues**
+- A **Block** belongs to one **Show**, owns one **Canvas**, and has zero or more **Variables**, **States**, and **Cues**
+- A **Block** is referenced by stable identity independent of its user-facing name
+- A **Slot** references one **Block** and stores that placement's configuration
 - **Events** are emitted either by **Elements** within a **Scene** (user taps, clicks) or by the **Device** displaying the **Scene** (peripheral keypresses, buzzers)
 - A **Cue** lives on a **Scene** or **Block** and fires its **Actions** when a connected **Event** or direct nested **Block** **Cue** occurs
 - A **Cue** contains one or more **Actions**
 - A **Slot** maps parent **Variables** or runtime context into child **Block** **Variables**
+- A **Slot** has at most one **Slot Input Assignment** for each child **Block Variable**; an assignment may be literal, sourced from a parent Variable, sourced from runtime context, or unset
+- A **Slot Input Assignment** may select a nested value through an **Input Field Path** and uses the shared Type compatibility and coercion contract
+- A **Slot** may use **Array Expansion** to render one Block instance per source item; a scalar source produces one instance and an empty array produces none
+- Repeated Slot instances use **Index Identity**, preserve source order, and have no durable per-item identity
+- Invalid source data invalidates the Slot, while an invalid individual item is omitted and does not prevent valid sibling instances from rendering
+- Each repeated instance resolves its State independently and passes its current item as runtime context to nested Slots
+- A **Slot** instantiates a **Nested Block** in its position; nested rendering is depth-first in Canvas and source order
+- The **Block Reference Graph** is finite and acyclic; proposed direct or indirect cycles are rejected before persistence
+- A nested Block receives only explicitly assigned Variables and the nearest applicable **Runtime Context**; ancestor Variables do not leak implicitly
+- A **Slot** is a transparent layout container whose sizing, alignment, gap, padding, and clipping are independent from the sizing and internal layout of its Block instances
+- An **Invalid Slot** is isolated from its parent and siblings; Studio preserves its configuration with a **Slot Diagnostic**, while Player renders its output blank
+- An invalid repeated item is omitted without invalidating valid siblings, and a later valid value automatically recovers the Slot or item
+- A Slot uses auto layout by default and cannot use absolute layout or visible paint properties; its wrapper participates in its parent as one Element
+- A **State** has sparse **State Overrides** keyed by stable Element identity and Property name; overrides compose independently at any depth over the Block's base Canvas
+- A **Block** may designate one text **Variable** as its **State Selector**, and each **Slot** may map a parent Variable or runtime context into it
+- A Block with named States has exactly one **Default State**; State names use case-insensitive exact matching and missing, blank, or unmatched selectors use the Default State
 - A **Source**, a **Variable** and a **Transformer**'s output each have a **Type**
 - A **Shape** is a **Type**, made of an ordered list of **Fields**, each of which has its own **Type**
 - A **Shape** may be reused by any number of **Sources**, **Variables** and **Transformers** within its **Show**

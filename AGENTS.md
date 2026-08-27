@@ -52,4 +52,18 @@ Use `color` spelling in code and comments.
 
 ## Development environment
 
-The development stack is launched with Overmind using `Procfile.dev`. Do not start any services separately yourself. If the development server is not running, you can use `overmind start -f Procfile.dev`; to restart individual services use `overmind restart [service_name]` (see `Procfile.dev` for available services).\
+The development stack is launched with Overmind using `Procfile.dev`. Do not start any services separately yourself. If the development server is not running, you can use `overmind start -f Procfile.dev`; to restart individual services use `overmind restart [service_name]` (see `Procfile.dev` for available services).
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs for this repo live as GitHub issues, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Use the five default triage labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This is a single-context repo: read the root `CONTEXT.md` and relevant ADRs in `docs/adr/`. See `docs/agents/domain.md`.
