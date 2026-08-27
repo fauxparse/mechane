@@ -691,6 +691,17 @@ export const schema = createSchema<GraphQLContext>({
       """
       perConnection: Boolean
     }
+    input GraphEdgeInput {
+      id: ID!
+      kind: String!
+      sourceId: ID!
+      targetId: ID!
+      sourcePath: [String!]
+      targetPath: [String!]
+      fieldMapping: JSON
+      cueId: ID
+      actionId: ID
+    }
     type GraphEdit {
       type: String!
       nodeId: ID
