@@ -13,6 +13,7 @@ import {
   isPropertyConnection,
   propertyFieldPaths,
   typeAtPath,
+  valueAtPath,
 } from "@mechane/domain";
 import type { PropertyInputConstraint, PropertyInputValue } from "@mechane/design-system";
 
@@ -45,6 +46,8 @@ export const literalValue = (type: Type, value: unknown): ShapeValue | null => {
   }
   return null;
 };
+export const textValueForPreview = (value: ShapeValue | null): string =>
+  value?.kind === "text" || value?.kind === "number" ? String(value.value) : "";
 
 export const variableInput = (
   value: unknown,
@@ -63,6 +66,13 @@ export const variableInput = (
             (candidate) => JSON.stringify(candidate.fieldPath) === JSON.stringify(fieldPath),
           )
         : undefined;
+    const variableFallback =
+      variable.defaultValue === undefined
+        ? undefined
+        : valueAtPath(variable.defaultValue, fieldPath);
+    const fallback =
+      variableFallback ?? (sourceType ? defaultPropertyValue(sourceType) : null);
+    const current = sourceType ? literalValue(sourceType, fallback) : null;
     return {
       ...variable,
       name:
@@ -70,7 +80,7 @@ export const variableInput = (
           ? `${variable.name} → ${field?.label.join(" → ") ?? "Unavailable"}`
           : variable.name,
       fieldPath,
-      current: sourceType ? (defaultPropertyValue(sourceType) ?? undefined) : undefined,
+      current: current ?? undefined,
     };
   }
   return literalValue(type, value);
@@ -83,13 +93,19 @@ export const variableOptions = (
 ): readonly VariableReference[] =>
   variables.flatMap((variable) => {
     if (!variable.type) return [];
-    return propertyFieldPaths(variable.type, type, shapes).map((field) => ({
-      ...variable,
-      name:
-        field.label.length > 0 ? `${variable.name} → ${field.label.join(" → ")}` : variable.name,
-      fieldPath: field.fieldPath,
-      current: defaultPropertyValue(field.type) ?? undefined,
-    }));
+    return propertyFieldPaths(variable.type, type, shapes).map((field) => {
+      const defaultValue =
+        variable.defaultValue === undefined
+          ? defaultPropertyValue(field.type)
+          : valueAtPath(variable.defaultValue, field.fieldPath);
+      return {
+        ...variable,
+        name:
+          field.label.length > 0 ? `${variable.name} → ${field.label.join(" → ")}` : variable.name,
+        fieldPath: field.fieldPath,
+        current: literalValue(field.type, defaultValue) ?? undefined,
+      };
+    });
   });
 
 export const isVariableInput = (value: PropertyInputValue | null): value is VariableReference =>

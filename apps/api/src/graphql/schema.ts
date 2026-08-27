@@ -228,6 +228,7 @@ export const schema = createSchema<GraphQLContext>({
       name: String!
       rank: String
       type: Type
+      defaultValue: JSON
       suggestedDimensions: SuggestedImageDimensions
     }
 
@@ -695,12 +696,12 @@ export const schema = createSchema<GraphQLContext>({
       width: Int!
       height: Int!
     }
-
     input SceneVariableInput {
       id: ID!
       name: String!
       rank: String
       type: TypeInput
+      defaultValue: JSON
       suggestedDimensions: SuggestedImageDimensionsInput
     }
 
@@ -759,9 +760,10 @@ export const schema = createSchema<GraphQLContext>({
       fieldMapping: JSON
       "The graph-owned Source field value; null clears the override."
       value: JSON
-      "The Block target for Block lifecycle commands."
+      "The Block target for Block lifecycle and variable commands."
       block: Block
       blockId: ID
+      blockVariables: JSON
       "Devices only: the code the server minted for a Device this batch created (#45)."
       pairingCode: String
       "Devices only: whether each connection is its own instance, for graph.setDevicePerConnection."
@@ -779,9 +781,10 @@ export const schema = createSchema<GraphQLContext>({
       edgeId: ID
       edge: GraphEdgeInput
       color: String
-      "Block lifecycle payloads are validated by the domain boundary."
+      "Block lifecycle and variable payloads are validated by the domain boundary."
       block: JSON
       blockId: ID
+      blockVariables: JSON
       position: PositionInput
       parentId: ID
       name: String

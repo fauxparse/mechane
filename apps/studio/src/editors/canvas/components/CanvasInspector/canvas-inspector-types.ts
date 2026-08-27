@@ -2,6 +2,7 @@ import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import type { Block, Element, SceneVariable, Shape } from "@mechane/domain";
 import type { ImageAsset } from "@mechane/graphql-schema";
 
+import type { VariableInspectorEditing } from "../../../../components/VariableInspector";
 import type { CanvasArtboardDocument } from "../../../../api/canvas";
 import type { DeviceQrImage } from "../../canvas-workspace-types";
 import type { CanvasSelection } from "../canvas-selection";
@@ -36,6 +37,7 @@ export type CanvasInspectorProps = {
   onImageUpload?(props: ImageInputOnUploadProps): void;
   inspectorPreview?: CanvasInspectorPreview | null;
   currentDimensions?: CanvasInspectorDimensions | null;
+  blockVariableEditing?: VariableInspectorEditing;
   onRenameArtboard?(artId: string, name: string): void;
   onUpdateElement?(
     canvasId: string,
@@ -52,7 +54,6 @@ export type CanvasInspectorProps = {
     }[],
   ): void;
 };
-
 export type CanvasInspectorModel = {
   focused: CanvasArtboardDocument | null;
   target: Element;
@@ -65,6 +66,7 @@ export type CanvasInspectorModel = {
   deviceQrImages: Readonly<Record<string, DeviceQrImage>>;
   onImageUpload?(props: ImageInputOnUploadProps): void;
   onRenameArtboard?(artId: string, name: string): void;
+  blockVariableEditing?: VariableInspectorEditing;
   fontFamilies: readonly string[];
   inspectorPreview: CanvasInspectorPreview | null;
   currentDimensions: CanvasInspectorDimensions | null;

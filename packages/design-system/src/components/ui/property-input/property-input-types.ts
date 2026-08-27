@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import type {
   PropertyConnection,
   PropertyValue,
@@ -55,4 +55,6 @@ export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   onConstraintToggle?: (constraint: PropertyInputConstraint, enabled: boolean) => void;
   /** Reports why a draft could not be committed, or clears the current error. */
   onValidationError?: (message: string | null) => void;
+  /** Observes Enter/Escape after PropertyInput handles the draft. */
+  onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
 };

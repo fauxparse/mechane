@@ -31,6 +31,7 @@
 
 import type {
   Block,
+  BlockVariable,
   FlowColor,
   GraphEdge,
   GraphNode,
@@ -42,7 +43,6 @@ import type {
   Type,
 } from "@mechane/domain";
 import { assertValidFlowColor, isEdgeKind, isNodeKind } from "@mechane/domain";
-import type { ShowGraphCommand } from "./graph-commands";
 import {
   addBlock,
   addEdge,
@@ -67,11 +67,13 @@ import {
   reorderSceneVariables,
   reorderShapeFields,
   reparentNode,
+  setBlockVariables,
   setDevicePairingCode,
   setDevicePerConnection,
   setFlowDefaultScene,
   setNodeColor,
   setSceneVariableType,
+  setSceneVariableDefault,
   setShapeFieldDefault,
   setShapeFieldRequired,
   setShapeFieldType,
@@ -80,6 +82,7 @@ import {
   setSourceType,
   setWiringFieldMapping,
 } from "./graph-commands";
+import type { ShowGraphCommand } from "./graph-commands";
 import type { GraphEdit } from "./graph-edits";
 
 /** An edit that named a field its `type` needs, or named nothing at all. */
@@ -110,6 +113,14 @@ export interface FlatSceneVariable {
   rank?: string | null;
   type?: FlatType | null;
   suggestedDimensions?: SuggestedImageDimensions | null;
+  defaultValue?: unknown;
+}
+export interface FlatBlockVariable {
+  id: string;
+  name: string;
+  type: FlatType;
+  required: boolean;
+  defaultValue?: unknown;
 }
 
 export interface FlatGraphNode {
@@ -184,6 +195,7 @@ export interface FlatGraphEdit {
   fieldPath?: string[] | null;
   fieldMapping?: Record<string, string> | null;
   value?: unknown;
+  blockVariables?: FlatBlockVariable[] | null;
   perConnection?: boolean | null;
   block?: Block | null;
   /** Server → client only (#111); see the header note on direction. */
@@ -305,6 +317,7 @@ export function encodeSceneVariable(variable: SceneVariable): FlatSceneVariable 
     ...(variable.rank ? { rank: variable.rank } : {}),
     type: encodeType(variable.type),
     ...(variable.suggestedDimensions ? { suggestedDimensions: variable.suggestedDimensions } : {}),
+    ...(variable.defaultValue !== undefined ? { defaultValue: variable.defaultValue } : {}),
   };
 }
 
@@ -316,15 +329,39 @@ export function decodeSceneVariable(flat: FlatSceneVariable): SceneVariable {
     ...(flat.rank ? { rank: flat.rank } : {}),
     ...(type ? { type } : {}),
     ...(flat.suggestedDimensions ? { suggestedDimensions: flat.suggestedDimensions } : {}),
+    ...(flat.defaultValue !== undefined ? { defaultValue: flat.defaultValue } : {}),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Block variables
+// ---------------------------------------------------------------------------
+function encodeBlockVariable(variable: BlockVariable): FlatBlockVariable {
+  return {
+    id: variable.id,
+    name: variable.name,
+    type: encodeType(variable.type)!,
+    required: variable.required,
+    ...(variable.defaultValue !== undefined ? { defaultValue: variable.defaultValue } : {}),
+  };
+}
+
+function decodeBlockVariable(flat: FlatBlockVariable): BlockVariable {
+  return {
+    id: flat.id,
+    name: flat.name,
+    type: decodeType(flat.type)!,
+    required: flat.required,
+    ...(flat.defaultValue !== undefined ? { defaultValue: flat.defaultValue } : {}),
   };
 }
 
 // ---------------------------------------------------------------------------
 // Nodes and edges
+// ---------------------------------------------------------------------------
 //
 // Both directions go through these, which is the whole point: a field either
 // travels or it doesn't, and it can't travel one way only.
-// ---------------------------------------------------------------------------
 
 export function encodeNode(node: GraphNode): FlatGraphNode {
   return {
@@ -797,6 +834,21 @@ export const GRAPH_EDIT_CODECS: { [T in GraphEdit["type"]]: GraphEditCodec<T> } 
       };
     },
   },
+  [GRAPH_COMMAND_TYPES.setSceneVariableDefault]: {
+    command: (edit) => setSceneVariableDefault(edit.sceneId, edit.variableId, edit.defaultValue),
+    encode: (edit) => ({
+      type: edit.type,
+      sceneId: edit.sceneId,
+      variableId: edit.variableId,
+      defaultValue: edit.defaultValue,
+    }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.setSceneVariableDefault,
+      sceneId: required(flat, "sceneId", flat.sceneId),
+      variableId: required(flat, "variableId", flat.variableId),
+      defaultValue: flat.defaultValue ?? null,
+    }),
+  },
   [GRAPH_COMMAND_TYPES.removeSceneVariable]: {
     command: (edit) => removeSceneVariable(edit.sceneId, edit.variableId),
     encode: (edit) => ({
@@ -821,6 +873,19 @@ export const GRAPH_EDIT_CODECS: { [T in GraphEdit["type"]]: GraphEditCodec<T> } 
       type: GRAPH_COMMAND_TYPES.setDevicePairingCode,
       nodeId: required(flat, "nodeId", flat.nodeId),
       pairingCode: nullable(flat.pairingCode),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.setBlockVariables]: {
+    command: (edit) => setBlockVariables(edit.blockId, edit.variables),
+    encode: (edit) => ({
+      type: edit.type,
+      blockId: edit.blockId,
+      blockVariables: edit.variables.map(encodeBlockVariable),
+    }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.setBlockVariables,
+      blockId: required(flat, "blockId", flat.blockId),
+      variables: required(flat, "blockVariables", flat.blockVariables).map(decodeBlockVariable),
     }),
   },
   [GRAPH_COMMAND_TYPES.setDevicePerConnection]: {

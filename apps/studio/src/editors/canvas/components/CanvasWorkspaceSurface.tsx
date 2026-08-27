@@ -46,13 +46,14 @@ export function CanvasWorkspaceSurface({
   onFocusArtboard,
   onUpdateElement,
   onUpdateElements,
+  onMoveElement,
   variables,
   shapes,
   blocks,
+  blockVariableEditing,
   imageAssets,
   deviceQrImages,
   onImageUpload,
-  onMoveElement,
   onMoveElementBetweenCanvases,
   onRenameArtboard,
   onSelect,
@@ -159,6 +160,7 @@ export function CanvasWorkspaceSurface({
           blocks={blocks}
           variables={variables}
           shapes={shapes}
+          blockVariableEditing={blockVariableEditing}
           deviceQrImages={deviceQrImages}
           imageAssets={imageAssets}
           onImageUpload={onImageUpload}

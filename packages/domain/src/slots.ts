@@ -198,7 +198,12 @@ export function resolveBlockCanvas(
   canvas: BlockCanvas = block.canvas,
 ): ResolvedCanvas {
   return resolveCanvasProperties(canvas, {
-    variables: block.variables.map(({ id, name, type }) => ({ id, name, type })),
+    variables: block.variables.map(({ id, name, type, defaultValue }) => ({
+      id,
+      name,
+      type,
+      defaultValue,
+    })),
     values,
     shapes,
   });

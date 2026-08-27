@@ -2,18 +2,18 @@ import type { CanvasEdit } from "@mechane/commands";
 import { applyCanvasEdits, CANVAS_COMMAND_TYPES } from "@mechane/commands";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import { Sidebar, SidebarProvider } from "@mechane/design-system";
-import { FrameElement, hasCornerRadius, SceneVariable, Shape } from "@mechane/domain";
+import { emptyBlock, FrameElement, hasCornerRadius, SceneVariable, Shape } from "@mechane/domain";
+import type { Block } from "@mechane/domain";
 import type { ImageAsset } from "@mechane/graphql-schema";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useCallback, useState } from "react";
-
 import type { CanvasArtboardDocument as ApiCanvasArtboardDocument } from "../../../../api/canvas";
+import type { VariableInspectorEditing } from "../../../../components/VariableInspector";
 import { StaticGoogleFontsProvider } from "../../google-fonts-provider";
 import type { CanvasSelection } from "../canvas-selection";
 import { CanvasInspector } from "../CanvasInspector/CanvasInspector";
 
 const CANVAS_ID = "canvas-inspector-story";
-const ART_ID = "scene-inspector-story";
 
 const variables: SceneVariable[] = [
   { id: "opacity-variable", name: "Opacity / Default", type: "number" },
@@ -21,6 +21,23 @@ const variables: SceneVariable[] = [
   { id: "copy-variable", name: "Copy / Headline", type: "text" },
   { id: "image-variable", name: "Image / Background", type: "image" },
 ];
+const blockVariables: Block["variables"] = [
+  { id: "block-title", name: "Title", type: "text", required: false, defaultValue: "Card title" },
+  { id: "block-count", name: "Count", type: "number", required: false, defaultValue: 3 },
+];
+const block: Block = {
+  ...emptyBlock("Card"),
+  variables: blockVariables,
+};
+const ART_ID = block.id;
+const blockVariableEditing: VariableInspectorEditing = {
+  addVariable: () => undefined,
+  renameVariable: () => undefined,
+  setVariableType: () => undefined,
+  setVariableDefault: () => undefined,
+  reorderVariables: () => undefined,
+  removeVariable: () => undefined,
+};
 const candidateShape: Shape = {
   id: "shape_candidate",
   name: "Candidate",
@@ -362,16 +379,20 @@ function InspectorStory({
   initialArtboard,
   initialSelection,
   storyVariables = [],
+  storyBlocks = [],
   storyShapes = [],
   storyImageAssets = [],
+  blockVariableEditing,
   onImageUpload = storyImageUpload,
   currentDimensions,
 }: {
   initialArtboard: ApiCanvasArtboardDocument;
   initialSelection: CanvasSelection;
   storyVariables?: readonly SceneVariable[];
+  storyBlocks?: readonly Block[];
   storyShapes?: readonly Shape[];
   storyImageAssets?: readonly ImageAsset[];
+  blockVariableEditing?: VariableInspectorEditing;
   onImageUpload?: (props: ImageInputOnUploadProps) => void;
   currentDimensions?: { elementId: string; width: number; height: number };
 }) {
@@ -387,7 +408,6 @@ function InspectorStory({
     ) => setCurrent((previous) => applyUpdates(previous, updates)),
     [],
   );
-
   return (
     <StaticGoogleFontsProvider fonts={[]}>
       <SidebarProvider className="min-h-screen w-full bg-background">
@@ -397,9 +417,10 @@ function InspectorStory({
             focused={current}
             artboards={[current]}
             selection={initialSelection}
+            blocks={storyBlocks}
             variables={storyVariables}
+            blockVariableEditing={blockVariableEditing}
             shapes={storyShapes}
-            imageAssets={storyImageAssets}
             onImageUpload={onImageUpload}
             currentDimensions={currentDimensions}
             onUpdateElements={onUpdateElements}
@@ -442,6 +463,8 @@ export const CanvasBlockRoot: Story = {
     <InspectorStory
       initialArtboard={artboard(absoluteRoot, "block")}
       initialSelection={{ artId: ART_ID, elementIds: [] }}
+      storyBlocks={[block]}
+      blockVariableEditing={blockVariableEditing}
     />
   ),
 };

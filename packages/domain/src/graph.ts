@@ -93,6 +93,8 @@ export interface SceneVariable {
   name: string;
   /** Stable lexicographic order key within the owning Scene. */
   rank?: string;
+  /** Optional literal default used when no graph value is supplied. */
+  defaultValue?: unknown;
   /** The value type for this Variable, when defined (#107). */
   type?: Type | null;
   /** Cover-crop defaults for image authoring; never asset identity. */

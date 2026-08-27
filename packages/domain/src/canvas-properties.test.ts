@@ -40,6 +40,32 @@ describe("resolveCanvasProperties", () => {
       fontSize: { kind: "variable", variableId: "score" },
     });
   });
+  it("uses a Variable default when no value is supplied", () => {
+    const resolved = resolveCanvasProperties(
+      {
+        ...canvas,
+        root: {
+          ...canvas.root,
+          children: [
+            {
+              id: "text",
+              type: "text",
+              content: { kind: "variable", variableId: "headline" },
+              children: [],
+            },
+          ],
+        },
+      },
+      {
+        variables: variables.map((variable) =>
+          variable.id === "headline" ? { ...variable, defaultValue: "Draft" } : variable,
+        ),
+      },
+    );
+    const text = resolved.root.children?.[0];
+
+    expect(text && "content" in text ? text.content : undefined).toBe("Draft");
+  });
 
   it("materialises an assigned image reference for the renderer", () => {
     const imageCanvas: Canvas = {

@@ -143,6 +143,7 @@ export function useCanvasInspectorModel({
   onImageUpload,
   inspectorPreview = null,
   currentDimensions = null,
+  blockVariableEditing,
   onRenameArtboard,
   onUpdateElement,
   onUpdateElements,
@@ -209,6 +210,7 @@ export function useCanvasInspectorModel({
             imageAssets,
             onImageUpload,
             onRenameArtboard,
+            blockVariableEditing,
             fontFamilies,
             inspectorPreview,
             currentDimensions,
@@ -239,6 +241,7 @@ export function useCanvasInspectorModel({
       blocks,
       variables,
       shapes,
+      blockVariableEditing,
     ],
   );
 }

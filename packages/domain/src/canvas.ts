@@ -183,7 +183,11 @@ export interface FrameElement extends CornerRadiusElement {
 
 export type SlotInputSource =
   | { readonly kind: "literal"; readonly value: unknown }
-  | { readonly kind: "variable"; readonly variableId: string; readonly fieldPath?: readonly string[] }
+  | {
+      readonly kind: "variable";
+      readonly variableId: string;
+      readonly fieldPath?: readonly string[];
+    }
   | { readonly kind: "runtimeItem"; readonly fieldPath?: readonly string[] }
   | { readonly kind: "unset" };
 
@@ -213,7 +217,6 @@ export interface Padding {
   left?: number;
 }
 
-
 export function isContainerElement(element: Element): element is FrameElement {
   return element.type === "frame";
 }
@@ -225,7 +228,13 @@ export interface AnchorPosition {
   offsetY?: number;
 }
 
-export type Element = RectElement | EllipseElement | TextElement | ImageElement | FrameElement | SlotElement;
+export type Element =
+  | RectElement
+  | EllipseElement
+  | TextElement
+  | ImageElement
+  | FrameElement
+  | SlotElement;
 export interface Canvas {
   root: FrameElement;
   kind?: "scene" | "block";

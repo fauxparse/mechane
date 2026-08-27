@@ -29,10 +29,11 @@ export function CanvasWorkspaceEditor({
   variables,
   shapes,
   blocks,
+  blockVariableEditing,
   onPlaceBlock,
-  deviceQrImages,
   onImageUpload,
   imageAssets,
+  deviceQrImages,
   onDeleteElements,
   onRenameArtboard,
   initialCamera,
@@ -229,6 +230,7 @@ export function CanvasWorkspaceEditor({
         variables={variables}
         shapes={shapes}
         blocks={blocks}
+        blockVariableEditing={blockVariableEditing}
         imageAssets={imageAssets}
         deviceQrImages={deviceQrImages}
         onImageUpload={onImageUpload}

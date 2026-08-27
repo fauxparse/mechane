@@ -33,6 +33,7 @@ import {
   reorderShapeFields,
   setDevicePerConnection,
   setNodeColor,
+  setSceneVariableDefault,
   setSceneVariableType,
   setShapeFieldDefault,
   setShapeFieldRequired,
@@ -144,6 +145,7 @@ export interface VariableEditing {
   addVariable(sceneId: string): void;
   renameVariable(sceneId: string, variableId: string, name: string): void;
   setVariableType(sceneId: string, variableId: string, type: Type): void;
+  setVariableDefault(sceneId: string, variableId: string, defaultValue: unknown): void;
   reorderVariables(sceneId: string, variableIds: readonly string[]): void;
   removeVariable(sceneId: string, variableId: string): void;
 }
@@ -173,6 +175,17 @@ export interface GraphEditing {
   moveIntoFlow(nodeIds: string[], flowId: string, origin: Position): void;
   moveOutOfFlow(nodeIds: string[], positions: Position[]): string | null;
 }
+
+export interface GraphInspectorNodeEditing {
+  setNodeColor(nodeId: string, color: FlowColor): void;
+  setDevicePerConnection(nodeId: string, perConnection: boolean): void;
+  setSourceType(
+    nodeId: string,
+    type: Type,
+    confirmedPlan?: SourceTypeChangePlan,
+  ): SourceTypeChangePlan | null;
+}
+
 export interface GraphInspectorEditing {
   graph: ShowGraph;
   commands: Pick<GraphCommands, "beginGesture">;
@@ -191,18 +204,10 @@ export interface GraphInspectorEditing {
   addVariable(sceneId: string): void;
   renameVariable(sceneId: string, variableId: string, name: string): void;
   setVariableType(sceneId: string, variableId: string, type: Type): void;
+  setVariableDefault(sceneId: string, variableId: string, defaultValue: unknown): void;
   reorderVariables(sceneId: string, variableIds: readonly string[]): void;
   removeVariable(sceneId: string, variableId: string): void;
   setSourceFieldDefault(nodeId: string, fieldPath: readonly string[], value: unknown): void;
-}
-export interface GraphInspectorNodeEditing {
-  setNodeColor(nodeId: string, color: FlowColor): void;
-  setDevicePerConnection(nodeId: string, perConnection: boolean): void;
-  setSourceType(
-    nodeId: string,
-    type: Type,
-    confirmedPlan?: SourceTypeChangePlan,
-  ): SourceTypeChangePlan | null;
 }
 
 export function graphInspectorEditing(
@@ -446,6 +451,12 @@ export function useGraphEditing(
     },
     [execute],
   );
+  const setVariableDefault = useCallback(
+    (sceneId: string, variableId: string, defaultValue: unknown) => {
+      execute(setSceneVariableDefault(sceneId, variableId, defaultValue));
+    },
+    [execute],
+  );
 
   const reorderVariables = useCallback(
     (sceneId: string, variableIds: readonly string[]) => {
@@ -646,6 +657,7 @@ export function useGraphEditing(
       addVariable,
       renameVariable,
       setVariableType,
+      setVariableDefault,
       reorderVariables,
       removeVariable,
     },

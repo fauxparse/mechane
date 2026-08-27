@@ -42,6 +42,7 @@ type ApiGraphNode = {
     name: string;
     rank?: string | null;
     type?: ApiType | null;
+    defaultValue?: unknown;
     suggestedDimensions?: { width: number; height: number } | null;
   }[];
   perConnection?: boolean;
@@ -195,6 +196,7 @@ function toNode(node: ApiGraphNode): GraphNode {
           name: variable.name,
           ...(variable.rank ? { rank: variable.rank } : {}),
           type: variable.type ? toType(variable.type as ApiType) : null,
+          ...(variable.defaultValue !== undefined ? { defaultValue: variable.defaultValue } : {}),
           ...(variable.suggestedDimensions
             ? { suggestedDimensions: variable.suggestedDimensions }
             : {}),

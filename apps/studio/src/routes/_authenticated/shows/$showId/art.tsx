@@ -1,6 +1,7 @@
 import {
   DEVICE_SOURCE_HANDLES,
   defaultSourceValues,
+  defaultValueForType,
   deviceQrImageValue,
   generateId,
   isId,
@@ -8,7 +9,14 @@ import {
   sceneVariableValues,
 } from "@mechane/domain";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
-import type { Block, ImageAssetReference, ResolvedImageValue, ShowId } from "@mechane/domain";
+import type {
+  Block,
+  BlockVariable,
+  ImageAssetReference,
+  ResolvedImageValue,
+  ShowId,
+  Type,
+} from "@mechane/domain";
 import type { CanvasArtboardDocument } from "../../../../api/canvas";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -28,6 +36,7 @@ import {
   rememberedCanvasCamera,
   rememberCanvasCamera,
 } from "../../../../editors/canvas/data/canvas-session";
+import { setBlockVariables } from "@mechane/commands";
 import { useCanvasCommands } from "../../../../editors/canvas/commands/use-canvas-commands";
 import { useGraphEditing } from "../../../../editors/show/commands/use-graph-editing";
 import { useUndoKeys } from "../../../../editors/show/keyboard/use-undo-keys";
@@ -97,11 +106,28 @@ function CanvasWorkspaceRoute() {
       const name = nodes.get(artboard.artId)?.name ?? artboard.name;
       const canvas = edited?.canvas ?? artboard.canvas;
       const owner = nodes.get(artboard.artId);
-      const variables = owner?.kind === "scene" ? owner.variables : [];
+      const block = graphEditing.command.graph.blocks?.find(
+        (candidate) => candidate.id === artboard.artId,
+      );
+      const variables =
+        owner?.kind === "scene"
+          ? owner.variables
+          : block
+            ? block.variables.map(({ id, name, type, defaultValue }) => ({
+                id,
+                name,
+                type,
+                defaultValue,
+              }))
+            : [];
       const values =
         owner?.kind === "scene"
           ? sceneVariableValues(graphEditing.command.graph, owner.id, sourceValues)
-          : undefined;
+          : block
+            ? Object.fromEntries(
+                block.variables.map((variable) => [variable.id, variable.defaultValue]),
+              )
+            : undefined;
       const renderCanvas = resolveCanvasProperties(canvas, {
         graph: graphEditing.command.graph,
         variables,
@@ -252,6 +278,74 @@ function CanvasWorkspaceRoute() {
     }
     return images;
   }, [graphEditing.command.graph]);
+  const blockVariableEditing = useMemo(() => {
+    if (!focused || focused.kind !== "block") return undefined;
+    const block = graphEditing.command.graph.blocks?.find(
+      (candidate) => candidate.id === focused.artId,
+    );
+    if (!block) return undefined;
+    const updateVariables = (variables: readonly BlockVariable[]) => {
+      graphEditing.command.commands.execute(setBlockVariables(block.id, variables));
+    };
+    return {
+      addVariable: () => {
+        const type: Type = "text";
+        updateVariables([
+          ...block.variables,
+          {
+            id: generateId("variable"),
+            name: `variable${block.variables.length + 1}`,
+            type,
+            required: false,
+            defaultValue: defaultValueForType(type, graphEditing.command.graph.shapes ?? []),
+          },
+        ]);
+      },
+      renameVariable: (variableId: string, name: string) => {
+        updateVariables(
+          block.variables.map((variable) =>
+            variable.id === variableId ? { ...variable, name } : variable,
+          ),
+        );
+      },
+      setVariableType: (variableId: string, type: Type) => {
+        updateVariables(
+          block.variables.map((variable) =>
+            variable.id === variableId
+              ? {
+                  ...variable,
+                  type,
+                  defaultValue: defaultValueForType(type, graphEditing.command.graph.shapes ?? []),
+                }
+              : variable,
+          ),
+        );
+      },
+      setVariableDefault: (variableId: string, defaultValue: unknown) => {
+        updateVariables(
+          block.variables.map((variable) => {
+            if (variable.id !== variableId) return variable;
+            const next = { ...variable };
+            if (defaultValue === null || defaultValue === undefined) delete next.defaultValue;
+            else next.defaultValue = defaultValue;
+            return next;
+          }),
+        );
+      },
+      reorderVariables: (variableIds: readonly string[]) => {
+        const byId = new Map(block.variables.map((variable) => [variable.id, variable]));
+        updateVariables(
+          variableIds.flatMap((variableId) => {
+            const variable = byId.get(variableId);
+            return variable ? [variable] : [];
+          }),
+        );
+      },
+      removeVariable: (variableId: string) => {
+        updateVariables(block.variables.filter((variable) => variable.id !== variableId));
+      },
+    };
+  }, [focused, graphEditing.command]);
   if (showId === null || show.isError || !show.data) {
     return (
       <p className="p-6" role="alert">
@@ -263,14 +357,26 @@ function CanvasWorkspaceRoute() {
     return <p className="p-6 text-muted-foreground">Loading Canvas workspace…</p>;
   }
   const focusedNode = graphEditing.command.graph.nodes.find((node) => node.id === focused?.artId);
-  const focusedVariables = focusedNode?.kind === "scene" ? focusedNode.variables : [];
+  const focusedBlock = graphEditing.command.graph.blocks?.find(
+    (block) => block.id === focused?.artId,
+  );
+  const focusedVariables =
+    focusedNode?.kind === "scene"
+      ? focusedNode.variables
+      : (focusedBlock?.variables.map(({ id, name, type, defaultValue }) => ({
+          id,
+          name,
+          type,
+          defaultValue,
+        })) ?? []);
   return (
     <CanvasWorkspaceEditor
       artboards={artboards}
       initialCamera={initialCamera}
-      onCameraChange={onCameraChange}
       focusedArtId={focused?.artId ?? null}
+      onCameraChange={onCameraChange}
       variables={focusedVariables}
+      blockVariableEditing={blockVariableEditing}
       blocks={blocks}
       onPlaceBlock={placeBlock}
       shapes={graphEditing.command.graph.shapes ?? []}

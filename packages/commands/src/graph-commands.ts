@@ -30,6 +30,7 @@
 
 import type {
   Block,
+  BlockVariable,
   DeviceNode,
   Element,
   FlowColor,
@@ -95,10 +96,12 @@ export const GRAPH_COMMAND_TYPES = {
   addSceneVariable: "graph.addSceneVariable",
   renameSceneVariable: "graph.renameSceneVariable",
   setSceneVariableType: "graph.setSceneVariableType",
+  setSceneVariableDefault: "graph.setSceneVariableDefault",
   reorderSceneVariables: "graph.reorderSceneVariables",
   removeSceneVariable: "graph.removeSceneVariable",
   setDevicePairingCode: "graph.setDevicePairingCode",
   setDevicePerConnection: "graph.setDevicePerConnection",
+  setBlockVariables: "graph.setBlockVariables",
   addBlock: "graph.addBlock",
   renameBlock: "graph.renameBlock",
   duplicateBlock: "graph.duplicateBlock",
@@ -1418,6 +1421,59 @@ function typed(
     }),
   );
 }
+/** Sets a Scene Variable's optional literal default. */
+export function setSceneVariableDefault(
+  sceneId: string,
+  variableId: string,
+  defaultValue: unknown,
+  label = "Set Variable Default",
+): ShowGraphCommand {
+  return capturing<ShowGraph, unknown, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setSceneVariableDefault,
+    label,
+    scope: "selection",
+    edits: [
+      { type: GRAPH_COMMAND_TYPES.setSceneVariableDefault, sceneId, variableId, defaultValue },
+    ],
+    restoreEdits: (captured) => [
+      {
+        type: GRAPH_COMMAND_TYPES.setSceneVariableDefault,
+        sceneId,
+        variableId,
+        defaultValue: captured,
+      },
+    ],
+    capture: (graph) => {
+      const { scene } = sceneAt(graph, sceneId);
+      const variable = scene.variables.find((candidate) => candidate.id === variableId);
+      if (!variable) throw new UnknownGraphTargetError("Variable", variableId);
+      return variable.defaultValue ?? null;
+    },
+    isEmpty: (_graph, captured) => JSON.stringify(captured) === JSON.stringify(defaultValue),
+    apply: (graph) => updateSceneVariableDefault(graph, sceneId, variableId, defaultValue),
+    restore: (graph, captured) => updateSceneVariableDefault(graph, sceneId, variableId, captured),
+  });
+}
+
+function updateSceneVariableDefault(
+  graph: ShowGraph,
+  sceneId: string,
+  variableId: string,
+  defaultValue: unknown,
+): ShowGraph {
+  const { scene } = sceneAt(graph, sceneId);
+  return withVariables(
+    graph,
+    sceneId,
+    scene.variables.map((variable) => {
+      if (variable.id !== variableId) return variable;
+      const next = { ...variable };
+      if (defaultValue === null || defaultValue === undefined) delete next.defaultValue;
+      else next.defaultValue = defaultValue;
+      return next;
+    }),
+  );
+}
 
 /** Moves Scene Variables as one undoable, persisted ordering change. */
 export function reorderSceneVariables(
@@ -1613,9 +1669,7 @@ function elementReferencesBlock(element: Element, blockId: string): boolean {
 }
 
 function blockIsReferenced(graph: ShowGraph, blockId: string): boolean {
-  return (graph.blocks ?? []).some((block) =>
-    elementReferencesBlock(block.canvas.root, blockId),
-  );
+  return (graph.blocks ?? []).some((block) => elementReferencesBlock(block.canvas.root, blockId));
 }
 
 export function addBlock(block: Block, label = "Add Block"): ShowGraphCommand {
@@ -1730,5 +1784,38 @@ export function removeBlock(blockId: string, label = "Delete Block"): ShowGraphC
       blocks.splice(Math.min(captured.index, blocks.length), 0, captured.block);
       return withBlocks(graph, blocks);
     },
+  });
+}
+export function setBlockVariables(
+  blockId: string,
+  variables: readonly BlockVariable[],
+  label = "Edit Block Variables",
+): ShowGraphCommand {
+  return capturing<ShowGraph, BlockVariable[], GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setBlockVariables,
+    label,
+    scope: "selection",
+    edits: [{ type: GRAPH_COMMAND_TYPES.setBlockVariables, blockId, variables: [...variables] }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.setBlockVariables, blockId, variables: captured },
+    ],
+    capture: (graph) =>
+      blockAt(graph, blockId).block.variables.map((variable) => ({ ...variable })),
+    isEmpty: (graph) =>
+      JSON.stringify(blockAt(graph, blockId).block.variables) === JSON.stringify(variables),
+    apply: (graph) =>
+      withBlocks(
+        graph,
+        (graph.blocks ?? []).map((block) =>
+          block.id === blockId ? { ...block, variables: [...variables] } : block,
+        ),
+      ),
+    restore: (graph, captured) =>
+      withBlocks(
+        graph,
+        (graph.blocks ?? []).map((block) =>
+          block.id === blockId ? { ...block, variables: captured } : block,
+        ),
+      ),
   });
 }
