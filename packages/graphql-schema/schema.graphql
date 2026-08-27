@@ -33,6 +33,7 @@ type PlayerSession {
   graph: ShowGraph!
   scene: SceneNode
   canvas: Canvas
+  blocks: [Block!]!
   imageAssets: [ImageAsset!]!
 }
 

@@ -43,7 +43,13 @@ function PlayerCanvas({ session }: { session: PlayerSession }) {
       className="fixed inset-0 overflow-hidden bg-black"
       aria-label={session.scene?.name ?? "Player view"}
     >
-      <CanvasRenderer canvas={canvas} className="h-full w-full" imageLoading="eager" />
+      <CanvasRenderer
+        canvas={canvas}
+        blocks={session.blocks ?? []}
+        mode="player"
+        className="h-full w-full"
+        imageLoading="eager"
+      />
     </main>
   );
 }

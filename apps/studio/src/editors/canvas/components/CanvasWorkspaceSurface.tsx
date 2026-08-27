@@ -47,6 +47,7 @@ export function CanvasWorkspaceSurface({
   onUpdateElements,
   variables,
   shapes,
+  blocks,
   imageAssets,
   deviceQrImages,
   onImageUpload,
@@ -101,6 +102,7 @@ export function CanvasWorkspaceSurface({
         setTool={setTool}
         camera={camera}
         ordered={ordered}
+        blocks={blocks}
         drag={drag}
         focused={focused}
         onBeginCreation={onBeginCreation}

@@ -179,6 +179,35 @@ export const GetPlayerSessionQuery: TadaDocumentNode<any, any> = graphql(
             }
           }
         }
+        blocks {
+          id
+          name
+          canvas {
+            id
+            kind
+            position {
+              x
+              y
+            }
+            ownerId
+            ownerName
+            root {
+              ...CanvasElementFields
+              children {
+                ...CanvasElementFields
+                children {
+                  ...CanvasElementFields
+                  children {
+                    ...CanvasElementFields
+                    children {
+                      ...CanvasElementFields
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
         imageAssets {
           id
           revision

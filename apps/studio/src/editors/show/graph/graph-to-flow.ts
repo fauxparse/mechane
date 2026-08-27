@@ -39,9 +39,6 @@ export const NODE_WIDTH = 240;
 /** One Variable row on a Scene. */
 export const VARIABLE_ROW_HEIGHT = 24;
 
-/** One Shape field row on a typed Source or Transformer. */
-export const SHAPE_FIELD_ROW_HEIGHT = 24;
-
 /** Padding below the last row. */
 const VARIABLE_LIST_PADDING = 8;
 

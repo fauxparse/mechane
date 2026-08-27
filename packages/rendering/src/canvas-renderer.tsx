@@ -11,7 +11,6 @@ import type {
   AspectRatioLock,
   AxisSize,
   CornerRadiusElement,
-  Element,
   Fill,
   FrameElement,
   LayoutAlignment,
@@ -20,6 +19,7 @@ import type {
   ResolvedElement,
   Rotation,
   SizeValue,
+  Stroke,
 } from "@mechane/domain";
 import { isPropertyConnection } from "@mechane/domain";
 import type { CanvasRendererProps } from "./canvas-render";
@@ -139,7 +139,7 @@ function fillStyles(fill: Fill | undefined): CSSProperties {
   if (fill === undefined || isPropertyConnection(fill)) return {};
   return typeof fill === "string" ? { backgroundColor: fill } : { backgroundImage: cssFill(fill) };
 }
-function strokeStyles(stroke: Element["stroke"]): CSSProperties {
+function strokeStyles(stroke: Stroke | PropertyConnection | undefined): CSSProperties {
   if (!stroke || isPropertyConnection(stroke)) return {};
   return {
     borderColor: stroke.color,
@@ -194,6 +194,7 @@ function elementStyle(element: ResolvedElement, root: boolean, sceneRoot: boolea
   const ratio = ratioFor(element);
   const physicalRatio =
     ratio && (rotation === 90 || rotation === 270) ? 1 / ratio.ratio : ratio?.ratio;
+  const paint = element.type === "slot" ? undefined : element;
   const style: CSSProperties = {
     boxSizing: "border-box",
     width: root && sceneRoot ? "100%" : dimensionFor(element, "width", rotation),
@@ -203,13 +204,12 @@ function elementStyle(element: ResolvedElement, root: boolean, sceneRoot: boolea
     minHeight: root ? undefined : constraintFor(element, "minHeight", rotation),
     maxHeight: root ? undefined : constraintFor(element, "maxHeight", rotation),
     aspectRatio: physicalRatio,
-    opacity: literal(element.opacity),
-    mixBlendMode: literal(element.blendMode),
-    ...fillStyles(literal(element.fill)),
-    // Paint and position fills beneath the border so gradients cover the stroke area too.
+    opacity: literal(paint?.opacity),
+    mixBlendMode: literal(paint?.blendMode),
+    ...fillStyles(literal(paint?.fill)),
     backgroundClip: "border-box",
     backgroundOrigin: "border-box",
-    ...strokeStyles(element.stroke),
+    ...strokeStyles(paint?.stroke),
     writingMode: writingModeFor(rotation),
     display: element.type === "image" ? "block" : undefined,
     alignSelf: element.alignSelf ? align(element.alignSelf) : undefined,
@@ -355,7 +355,6 @@ function renderElement({
   if (element.type === "slot") {
     const block = blocks?.find((candidate) => candidate.id === element.blockId);
     if (!block) {
-      if (mode === "player") return null;
       return createElement(
         "div",
         {
@@ -364,7 +363,7 @@ function renderElement({
           "data-slot-diagnostic": "missingBlock",
           style,
         },
-        "Invalid Slot",
+        mode === "player" ? undefined : "Invalid Slot",
       );
     }
     return createElement(

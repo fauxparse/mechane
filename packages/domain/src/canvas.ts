@@ -181,27 +181,13 @@ export interface FrameElement extends CornerRadiusElement {
   clip?: boolean;
 }
 
-export type SlotInputSource =
-  | { readonly kind: "literal"; readonly value: unknown }
-  | { readonly kind: "variable"; readonly variableId: string; readonly fieldPath?: readonly string[] }
-  | { readonly kind: "runtimeItem"; readonly fieldPath?: readonly string[] }
-  | { readonly kind: "unset" };
-
-export interface SlotInputAssignment {
-  readonly variableId: string;
-  readonly source: SlotInputSource;
-}
-
-export interface SlotExpansion {
-  readonly source: SlotInputSource;
-}
-
-export interface SlotElement extends Omit<FrameElement, "type"> {
+export interface SlotElement extends Omit<
+  FrameElement,
+  "type" | "cornerRadius" | "opacity" | "blendMode" | "fill" | "stroke"
+> {
   type: "slot";
   /** Stable reference to the Show-owned Block this placement instantiates. */
   blockId: string;
-  assignments?: readonly SlotInputAssignment[];
-  expansion?: SlotExpansion;
 }
 export interface Padding {
   top?: number;
@@ -285,6 +271,25 @@ function assertAxisSize(size: AxisSize | undefined, context: string): void {
 }
 
 function assertLayout(element: Element): void {
+  if (element.type === "slot") {
+    if (!element.blockId) throw new InvalidCanvasError(`${element.id} requires a Block reference.`);
+    if (element.layoutMode !== undefined && element.layoutMode !== "auto") {
+      throw new InvalidCanvasError(`${element.id} Slots must use auto layout.`);
+    }
+    if (element.autoLayout === false) {
+      throw new InvalidCanvasError(`${element.id} Slots cannot disable auto layout.`);
+    }
+    if (
+      "opacity" in element ||
+      "blendMode" in element ||
+      "fill" in element ||
+      "stroke" in element ||
+      "cornerRadius" in element
+    ) {
+      throw new InvalidCanvasError(`${element.id} Slots cannot define paint properties.`);
+    }
+    return;
+  }
   const sizing = element.sizing;
   for (const [axis, size] of [
     ["width", sizing?.width],
@@ -356,23 +361,6 @@ function assertLayout(element: Element): void {
       throw new InvalidCanvasError(
         `${element.id} gap must be auto or a finite non-negative number.`,
       );
-    }
-  }
-  if (element.type === "slot") {
-    if (!element.blockId) throw new InvalidCanvasError(`${element.id} requires a Block reference.`);
-    if (element.layoutMode !== undefined && element.layoutMode !== "auto") {
-      throw new InvalidCanvasError(`${element.id} Slots must use auto layout.`);
-    }
-    if (element.autoLayout === false) {
-      throw new InvalidCanvasError(`${element.id} Slots cannot disable auto layout.`);
-    }
-    if (
-      element.opacity !== undefined ||
-      element.blendMode !== undefined ||
-      element.fill !== undefined ||
-      element.stroke !== undefined
-    ) {
-      throw new InvalidCanvasError(`${element.id} Slots cannot define paint properties.`);
     }
   }
 }

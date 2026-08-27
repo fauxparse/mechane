@@ -205,6 +205,7 @@ export const schema = createSchema<GraphQLContext>({
       graph: ShowGraph!
       scene: SceneNode
       canvas: Canvas
+      blocks: [Block!]!
       imageAssets: [ImageAsset!]!
     }
     "The signed-in user's design-system preference (PRD.md §7)."

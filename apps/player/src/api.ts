@@ -38,6 +38,7 @@ export type PlayerSession = {
   };
   scene: Extract<GraphNode, { kind: "scene" }> | null;
   canvas: (Canvas & { ownerId: string; ownerName: string }) | null;
+  blocks: ShowGraph["blocks"];
   imageAssets: Array<{
     assetId: string;
     revision: string;
