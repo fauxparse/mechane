@@ -20,7 +20,6 @@ import type {
   Rotation,
   SizeValue,
   Stroke,
-  SlotVariableValue,
 } from "@mechane/domain";
 import {
   applyBlockState,
