@@ -1,4 +1,4 @@
-import { emptyBlock } from "@mechane/domain";
+import { BlockCycleError, emptyBlock } from "@mechane/domain";
 import type { GraphEdit } from "@mechane/commands";
 import type { ShowGraph } from "@mechane/domain";
 import { and, eq, isNull } from "drizzle-orm";
@@ -124,5 +124,38 @@ describe("Show graph lifecycle", () => {
     const published = await publishShowGraph(showId);
     expect(published.blocks?.[0]?.states).toEqual(block.states);
     expect((await readShowGraph(showId, "draft")).blocks?.[0]?.states).toEqual(block.states);
+  });
+
+  it("rejects cyclic Blocks at the persistence boundary", async () => {
+    await createShow();
+    const first = emptyBlock("First");
+    const second = emptyBlock("Second");
+    const firstWithSlot = {
+      ...first,
+      canvas: {
+        ...first.canvas,
+        root: {
+          ...first.canvas.root,
+          children: [{ id: "first-slot", type: "slot" as const, blockId: second.id }],
+        },
+      },
+    };
+    const secondWithSlot = {
+      ...second,
+      canvas: {
+        ...second.canvas,
+        root: {
+          ...second.canvas.root,
+          children: [{ id: "second-slot", type: "slot" as const, blockId: first.id }],
+        },
+      },
+    };
+
+    await expect(
+      writeShowGraph(showId, "draft", {
+        ...graph,
+        blocks: [firstWithSlot, secondWithSlot],
+      }),
+    ).rejects.toThrow(BlockCycleError);
   });
 });
