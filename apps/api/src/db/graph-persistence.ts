@@ -458,7 +458,17 @@ export async function persistGraphRows(
         target: [blocks.graphId, blocks.id],
         set: { name: block.name, metadata, updatedAt: now },
       });
-    await writeCanvasRows(tx, showId, row.id, { blockId: block.id }, block.canvas, now);
+    // A Block created from the Canvas editor chose its own Artboard position (#426); one that
+    // arrives without one keeps whatever position it already has, or gets backfilled below.
+    await writeCanvasRows(
+      tx,
+      showId,
+      row.id,
+      { blockId: block.id },
+      block.canvas,
+      now,
+      block.canvas.position,
+    );
   }
 
   // Show-level nodes first: a nested node's `parent_id` foreign key needs

@@ -250,6 +250,8 @@ export function useShowGraphEditorController({
         "delete-selection": actions.requestDelete,
         rename: renameSelected,
         "select-all": selectAll,
+        // Blocks are made from Canvas Elements, so the Show editor has nothing to do here.
+        "create-block": () => {},
         "fit-graph": () => fitView(fitViewOptions),
         "zoom-to-selection": () => {
           if (!actions.zoomToSelection()) fitView(fitViewOptions);

@@ -1,4 +1,5 @@
 import { isPropertyConnection } from "@mechane/domain";
+import type { Position } from "@mechane/domain";
 import type { CanvasArtboardDocument } from "../../../api/canvas";
 
 const SCENE_PREVIEW_SIZE = { width: 720, height: 420 };
@@ -49,6 +50,39 @@ export function canvasArtboardSize(
         ? (measuredRoot?.height ?? fallback.height)
         : (designHeight ?? fallback.height),
   };
+}
+
+/** The gap left between a newly placed Artboard and the ones already in the workspace. */
+const NEW_ARTBOARD_GAP = 80;
+
+/**
+ * Somewhere clear for an Artboard that has just been created (#426).
+ *
+ * To the right of everything, level with the topmost Artboard: the workspace grows sideways, so
+ * that is the nearest genuinely free space, and it is where the user is already looking after
+ * the editor frames it.
+ */
+export function freeArtboardPosition(
+  artboards: readonly CanvasArtboardDocument[],
+  gap = NEW_ARTBOARD_GAP,
+): Position {
+  if (artboards.length === 0) return { x: 0, y: 0 };
+  const right = Math.max(
+    ...artboards.map((artboard) => artboard.position.x + canvasArtboardSize(artboard).width),
+  );
+  const top = Math.min(...artboards.map((artboard) => artboard.position.y));
+  return { x: right + gap, y: top };
+}
+
+/** A name no existing Block has, since `graph.addBlock` refuses a duplicate. */
+export function uniqueBlockName(existing: readonly string[], preferred: string): string {
+  const taken = new Set(existing.map((name) => name.trim().toLocaleLowerCase()));
+  const base = preferred.trim() || "Block";
+  if (!taken.has(base.toLocaleLowerCase())) return base;
+  for (let suffix = 2; ; suffix += 1) {
+    const candidate = `${base} ${suffix}`;
+    if (!taken.has(candidate.toLocaleLowerCase())) return candidate;
+  }
 }
 
 export function artboardLabel(artboard: CanvasArtboardDocument): string {

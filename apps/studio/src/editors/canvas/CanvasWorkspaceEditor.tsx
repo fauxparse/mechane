@@ -1,3 +1,4 @@
+import { blockExtractionProblem } from "@mechane/commands";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CommandPalette } from "../show/commands/CommandPalette";
@@ -31,6 +32,7 @@ export function CanvasWorkspaceEditor({
   blocks,
   blockVariableEditing,
   onPlaceBlock,
+  onCreateBlockFromSelection,
   onImageUpload,
   imageAssets,
   deviceQrImages,
@@ -111,6 +113,24 @@ export function CanvasWorkspaceEditor({
       onDeleteElements?.(artboard.canvasId, selection.elementIds);
     }
   }, [onDeleteElements, ordered, selection.artId, selection.elementIds]);
+  const selectedArtboard = useMemo(
+    () => ordered.find((candidate) => candidate.artId === selection.artId) ?? null,
+    [ordered, selection.artId],
+  );
+  // Why the command is unavailable, said in the palette rather than discovered by pressing it.
+  const blockFromSelectionProblem = useMemo(() => {
+    if (!selectedArtboard || selection.elementIds.length === 0) return "select an Element first";
+    return blockExtractionProblem(selectedArtboard.canvas, selection.elementIds);
+  }, [selectedArtboard, selection.elementIds]);
+  const createBlockFromSelection = useCallback(() => {
+    if (!selectedArtboard || blockFromSelectionProblem) return;
+    onCreateBlockFromSelection?.(selectedArtboard.canvasId, selection.elementIds);
+  }, [
+    blockFromSelectionProblem,
+    onCreateBlockFromSelection,
+    selectedArtboard,
+    selection.elementIds,
+  ]);
   const selectAll = useCallback(() => {
     if (!focused) return;
     const ids = (focused.canvas.root.children ?? []).flatMap((element) => [
@@ -146,6 +166,13 @@ export function CanvasWorkspaceEditor({
       { id: "zoom-out", label: "Zoom Out", scope: "canvas", run: zoomOut },
       { id: "reset-view", label: "Reset View", scope: "canvas", run: resetCamera },
       {
+        id: "create-block-from-selection",
+        label: "Create Block from Selection",
+        scope: "selection",
+        disabledReason: blockFromSelectionProblem ?? undefined,
+        run: createBlockFromSelection,
+      },
+      {
         id: "delete-selection",
         label: "Delete Selection",
         scope: "selection",
@@ -154,7 +181,9 @@ export function CanvasWorkspaceEditor({
       },
     ],
     [
+      blockFromSelectionProblem,
       blocks,
+      createBlockFromSelection,
       deleteSelection,
       onPlaceBlock,
       resetCamera,
@@ -181,11 +210,13 @@ export function CanvasWorkspaceEditor({
         "delete-selection": deleteSelection,
         rename: () => setRenamingArtId(selection.artId),
         "select-all": selectAll,
+        "create-block": createBlockFromSelection,
         "fit-graph": resetCamera,
         "zoom-to-selection": resetCamera,
         deselect: () => setSelection({ artId: null, elementIds: [] }),
       }),
       [
+        createBlockFromSelection,
         deleteSelection,
         focused,
         resetCamera,

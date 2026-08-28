@@ -33,6 +33,7 @@ export type EditorIntent =
   | "delete-selection"
   | "rename"
   | "select-all"
+  | "create-block"
   | "fit-graph"
   | "zoom-to-selection"
   | "deselect";
@@ -56,6 +57,8 @@ export function editorIntentFor(chord: KeyChord, focus: FocusContext): EditorInt
 
   if (commandKey && key === "k" && !chord.shiftKey && !chord.altKey) return "open-palette";
   if (focus.inKeyConsumingWidget) return null;
+  // Figma's "create component" chord, for the same reason the framing bindings are borrowed.
+  if (commandKey && chord.altKey && key === "k" && !chord.shiftKey) return "create-block";
   if (chord.altKey) return null;
 
   if (commandKey) {

@@ -33,6 +33,14 @@ describe("editorIntentFor", () => {
     expect(editorIntentFor({ key: "a", ctrlKey: true }, FREE)).toBe("select-all");
   });
 
+  it("creates a Block from the selection on Mod+Alt+K", () => {
+    expect(editorIntentFor({ key: "k", metaKey: true, altKey: true }, FREE)).toBe("create-block");
+    expect(editorIntentFor({ key: "k", ctrlKey: true, altKey: true }, FREE)).toBe("create-block");
+    // Still the palette without Alt, and nothing at all while a name is being typed.
+    expect(editorIntentFor({ key: "k", metaKey: true }, FREE)).toBe("open-palette");
+    expect(editorIntentFor({ key: "k", metaKey: true, altKey: true }, TYPING)).toBeNull();
+  });
+
   // Figma's framing keys (#37). `!` and `@` are what Shift+1/2 report on a US
   // layout; the digits are what some others report.
   it("frames on Shift+1 and Shift+2, however the layout reports them", () => {

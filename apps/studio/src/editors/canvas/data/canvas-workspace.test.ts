@@ -4,9 +4,11 @@ import type { CanvasArtboardDocument } from "../../../api/canvas";
 import {
   artIdFromPath,
   canvasArtboardSize,
+  freeArtboardPosition,
   isCanvasPath,
   resolveFocusedArtboard,
   shouldFrameForeignLayer,
+  uniqueBlockName,
 } from "./canvas-workspace";
 import { rememberedCanvasCamera, rememberCanvasCamera } from "./canvas-session";
 
@@ -155,5 +157,25 @@ describe("isCanvasPath", () => {
 
   it("rejects another Show's Canvas path", () => {
     expect(isCanvasPath("/shows/other/art/c6dy7ybf", showId)).toBe(false);
+  });
+});
+
+describe("placing a new Artboard", () => {
+  it("clears every existing Artboard, level with the topmost one", () => {
+    // Both fall back to the 720x420 default size, so "b" ends at 730.
+    expect(freeArtboardPosition(artboards, 40)).toEqual({ x: 770, y: 0 });
+  });
+
+  it("starts at the origin in an empty workspace", () => {
+    expect(freeArtboardPosition([])).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe("naming a new Block", () => {
+  it("keeps the preferred name when it is free, and numbers it when it is not", () => {
+    expect(uniqueBlockName(["Card"], "Header")).toBe("Header");
+    expect(uniqueBlockName(["Card"], "card")).toBe("card 2");
+    expect(uniqueBlockName(["Card", "Card 2"], "Card")).toBe("Card 3");
+    expect(uniqueBlockName([], "  ")).toBe("Block");
   });
 });

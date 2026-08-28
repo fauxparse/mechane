@@ -1,5 +1,6 @@
 import type { Canvas, Element } from "./canvas";
 import { assertValidCanvas } from "./canvas";
+import type { Position } from "./graph";
 import { generateId } from "./id";
 import type { Shape, Type } from "./shapes";
 import { assertValidShapeType } from "./shapes";
@@ -25,8 +26,12 @@ export interface BlockState {
   readonly overrides: readonly BlockStateOverride[];
 }
 
-/** A Block Canvas has a stable identity in addition to the shared Canvas tree. */
-export type BlockCanvas = Canvas & { readonly id: string };
+/**
+ * A Block Canvas has a stable identity in addition to the shared Canvas tree, and — because a
+ * Block is created from the Canvas editor rather than backfilled by the server — the Artboard
+ * position the client chose for it.
+ */
+export type BlockCanvas = Canvas & { readonly id: string; readonly position?: Position };
 
 /** A Show-owned reusable visual resource. */
 export interface Block {

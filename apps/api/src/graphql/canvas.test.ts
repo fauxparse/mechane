@@ -1,7 +1,7 @@
+import { CANVAS_COMMAND_TYPES } from "@mechane/commands";
 import { describe, expect, it } from "vitest";
 
-import { CANVAS_COMMAND_TYPES } from "@mechane/commands";
-
+import { schema } from "./schema";
 import { parseCanvasEdit, resolveCanvasElementType } from "./canvas";
 describe("Canvas GraphQL adapter", () => {
   it.each([
@@ -37,5 +37,19 @@ describe("Canvas GraphQL adapter", () => {
       type: CANVAS_COMMAND_TYPES.moveArtboard,
       position: { x: 120.5, y: -40 },
     });
+  });
+});
+
+describe("Canvas GraphQL schema", () => {
+  it.each([
+    ["TextElement", "textAlign"],
+    ["TextElement", "value"],
+    ["ImageElement", "objectPosition"],
+    ["TextElement", "alignSelf"],
+    ["TextElement", "aspectRatio"],
+  ])("exposes %s.%s so Canvas refreshes retain it", (type, field) => {
+    const element = schema.getType(type);
+    const fields = element && "getFields" in element ? element.getFields() : undefined;
+    expect(fields?.[field]).toBeDefined();
   });
 });
