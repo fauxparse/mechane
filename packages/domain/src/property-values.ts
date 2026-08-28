@@ -12,7 +12,6 @@ export interface PropertyConnection {
 
 /** A Property is either a literal value or a Variable connection. */
 export type PropertyValue<T> = T | PropertyConnection;
-
 /** A Variable resolved for an editor control, optionally carrying its current value. */
 export type VariableReference<TSource extends ShapeValue = ShapeValue> = SceneVariable & {
   readonly current?: TSource;

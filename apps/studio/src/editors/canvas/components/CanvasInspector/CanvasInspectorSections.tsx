@@ -15,6 +15,7 @@ import {
 } from "@mechane/design-system";
 import type { ImageValue, ObjectFit, ObjectPosition, VariableReference } from "@mechane/domain";
 import { isPropertyConnection } from "@mechane/domain";
+import { VariableInspector } from "../../../../components/VariableInspector";
 import { canvasDisplayName, canvasElementDisplayName } from "../../data/canvas-names";
 import { elementIconFor } from "../utils";
 
@@ -67,6 +68,15 @@ export const InspectorHeader = () => {
         </>
       )}
     </div>
+  );
+};
+export const BlockVariablesSection = () => {
+  const { focused, target, blocks, shapes, blockVariableEditing } = useCanvasInspectorContext();
+  if (!focused || focused.kind !== "block" || target.id !== focused.canvas.root.id) return null;
+  const block = blocks.find((candidate) => candidate.id === focused.artId);
+  if (!block || !blockVariableEditing) return null;
+  return (
+    <VariableInspector variables={block.variables} editing={blockVariableEditing} shapes={shapes} />
   );
 };
 

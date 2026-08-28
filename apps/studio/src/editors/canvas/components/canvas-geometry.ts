@@ -18,6 +18,17 @@ export interface CanvasArtboardGeometry {
 }
 
 export type CanvasGeometry = ReadonlyMap<string, CanvasArtboardGeometry>;
+export interface CanvasGeometrySnapshot {
+  readonly geometry: CanvasGeometry;
+  readonly measuredZoom: number;
+}
+
+export function logicalRootSize(
+  rect: Pick<CanvasClientRect, "width" | "height">,
+  zoom: number,
+): { width: number; height: number } {
+  return { width: rect.width / zoom, height: rect.height / zoom };
+}
 
 export function clientRect(rect: Pick<DOMRect, "x" | "y" | "width" | "height">): CanvasClientRect {
   return {
@@ -82,8 +93,16 @@ export function selectedCanvasRects(
 export function useCanvasGeometry(
   workspaceRef: RefObject<HTMLElement | null>,
   invalidationKey: unknown,
-): CanvasGeometry {
-  const [geometry, setGeometry] = useState<CanvasGeometry>(new Map());
+  zoom: number,
+): CanvasGeometrySnapshot {
+  const zoomRef = useRef(zoom);
+  useLayoutEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+  const [snapshot, setSnapshot] = useState<CanvasGeometrySnapshot>({
+    geometry: new Map(),
+    measuredZoom: zoom,
+  });
   const frame = useRef<number | null>(null);
   const observerRef = useRef<ResizeObserver | null>(null);
   const scheduleRef = useRef<(() => void) | null>(null);
@@ -94,12 +113,15 @@ export function useCanvasGeometry(
   useLayoutEffect(() => {
     const workspace = workspaceRef.current;
     if (!workspace) {
-      setGeometry(new Map());
+      setSnapshot({ geometry: new Map(), measuredZoom: zoomRef.current });
       return;
     }
     const measure = () => {
       frame.current = null;
-      setGeometry(measureCanvasGeometry(workspace));
+      setSnapshot({
+        geometry: measureCanvasGeometry(workspace),
+        measuredZoom: zoomRef.current,
+      });
     };
     const observeElements = () => {
       const observer = observerRef.current;
@@ -142,5 +164,5 @@ export function useCanvasGeometry(
     };
   }, [invalidationKey, workspaceRef]);
 
-  return geometry;
+  return snapshot;
 }

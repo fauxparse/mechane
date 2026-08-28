@@ -5,6 +5,7 @@ import {
   resolveCanvasProperties,
   sceneVariableValues,
 } from "@mechane/domain";
+import type { Element } from "@mechane/domain";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -13,6 +14,7 @@ import {
   CANDIDATE_SOURCE_IDS,
   SEED_CANVASES,
   seedCanvasPosition,
+  seedBlockCanvasPosition,
   SEED_GRAPHS,
   TALLY_VARIABLE_IDS,
   votingCanvases,
@@ -56,23 +58,63 @@ describe("Voting demo seed", () => {
     for (const canvas of Object.values(canvases))
       expect(() => assertValidCanvas(canvas)).not.toThrow();
     expect(canvases.scene_vote_tally?.root.children).toHaveLength(4);
-    expect(canvases.scene_audience_vote?.root.children).toHaveLength(4);
+    expect(canvases.scene_audience_vote?.root.children).toHaveLength(6);
+    expect(
+      canvases.scene_vote_tally?.root.children
+        ?.filter((child) => child.type === "slot")
+        .map((child) => child.type === "slot" && child.blockId),
+    ).toEqual(["block_card", "block_card", "block_card"]);
+    expect(
+      canvases.scene_audience_vote?.root.children
+        ?.filter((child) => child.type === "slot")
+        .map((child) => child.type === "slot" && child.blockId),
+    ).toEqual(["block_nested", "block_repeated"]);
   });
-  it("resolves seeded Candidate field bindings from Source defaults", () => {
+
+  it("uses Tally Row Slots for every candidate", () => {
+    const tallySlots = votingCanvases().scene_vote_tally?.root.children?.filter(
+      (child) => child.type === "slot",
+    );
+    expect(tallySlots).toHaveLength(3);
+    expect(
+      tallySlots?.map((slot) =>
+        slot.type === "slot" ? slot.assignments?.map((assignment) => assignment.source) : [],
+      ),
+    ).toEqual([
+      [
+        { kind: "literal", value: "Alice" },
+        { kind: "literal", value: 12 },
+        { kind: "literal", value: "Default" },
+      ],
+      [
+        { kind: "literal", value: "Beatrix" },
+        { kind: "literal", value: 8 },
+        { kind: "literal", value: "Default" },
+      ],
+      [
+        { kind: "literal", value: "Clarissa" },
+        { kind: "literal", value: 5 },
+        { kind: "literal", value: "Default" },
+      ],
+    ]);
+  });
+
+  it("resolves seeded Audience bindings from Source defaults", () => {
     const graph = votingGraph();
     const canvases = votingCanvases();
-    const tally = graph.nodes.find((node) => node.kind === "scene" && node.name === "Vote tally");
-    if (tally?.kind !== "scene") throw new Error("Vote tally Scene is missing.");
-    const values = sceneVariableValues(graph, tally.id, defaultSourceValues(graph));
-    const resolved = resolveCanvasProperties(canvases.scene_vote_tally!, {
+    const audience = graph.nodes.find(
+      (node) => node.kind === "scene" && node.name === "Choose a candidate",
+    );
+    if (audience?.kind !== "scene") throw new Error("Audience Scene is missing.");
+    const values = sceneVariableValues(graph, audience.id, defaultSourceValues(graph));
+    const resolved = resolveCanvasProperties(canvases.scene_audience_vote!, {
       graph,
-      variables: tally.variables,
+      variables: audience.variables,
       shapes: graph.shapes,
       values,
     });
-    const firstRow = resolved.root.children?.[1];
-    expect(firstRow).toMatchObject({
-      children: [{ content: "Alice" }, { content: "12" }],
+    expect(resolved.root.children?.[1]).toMatchObject({
+      children: [{ content: "Alice" }],
     });
   });
 
@@ -97,9 +139,23 @@ describe("Voting demo seed", () => {
     });
   });
 
+  it("assigns persisted ranks to every Block sibling", () => {
+    const visit = (element: Element): void => {
+      const children = element.children ?? [];
+      const ranks = children.map((child) => child.rank);
+      expect(ranks.every((rank) => rank !== undefined && rank !== "")).toBe(true);
+      expect(new Set(ranks).size).toBe(ranks.length);
+      children.forEach(visit);
+    };
+
+    workflowBlocks().forEach((block) => visit(block.canvas.root));
+  });
+
   it("lays seeded Scene Canvases out in a non-overlapping row", () => {
     expect(seedCanvasPosition(0)).toEqual({ x: 0, y: 0 });
     expect(seedCanvasPosition(1)).toEqual({ x: 800, y: 0 });
+    expect(seedBlockCanvasPosition(0)).toEqual({ x: 0, y: 900 });
+    expect(seedBlockCanvasPosition(1)).toEqual({ x: 420, y: 900 });
   });
 
   it("registers only the Voting demo seed builders", () => {

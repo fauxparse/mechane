@@ -15,9 +15,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const INITIAL_VARIABLES: SceneVariable[] = [
-  { id: "headline", name: "Headline", type: "text" },
-  { id: "score", name: "Score", type: "number" },
-  { id: "accent", name: "Accent", type: "color" },
+  { id: "headline", name: "Headline", type: "text", defaultValue: "Welcome" },
+  { id: "score", name: "Score", type: "number", defaultValue: 42 },
+  { id: "accent", name: "Accent", type: "color", defaultValue: "#88c0d0" },
 ];
 
 const nodeFor = (variables: SceneVariable[]): SceneNode => ({
@@ -40,6 +40,12 @@ function VariablesStory() {
     setVariableType: (_sceneId: string, variableId: string, type: Type) =>
       setVariables((current) =>
         current.map((variable) => (variable.id === variableId ? { ...variable, type } : variable)),
+      ),
+    setVariableDefault: (_sceneId: string, variableId: string, defaultValue: unknown) =>
+      setVariables((current) =>
+        current.map((variable) =>
+          variable.id === variableId ? { ...variable, defaultValue } : variable,
+        ),
       ),
     reorderVariables: (_sceneId: string, variableIds: readonly string[]) =>
       setVariables((current) =>

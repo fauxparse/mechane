@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { reorderVariableIndices } from "./variable-order";
+import { reorderVariableIndices } from "../../../../components/variable-order";
 
 describe("reorderVariableIndices", () => {
   it("moves an item to the projected sortable index", () => {

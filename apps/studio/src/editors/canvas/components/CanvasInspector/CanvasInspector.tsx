@@ -3,7 +3,7 @@ import { InspectorProvider, SidebarContent, SidebarHeader } from "@mechane/desig
 
 import { AppearanceSection } from "./AppearanceSection";
 import { CanvasInspectorProvider } from "./CanvasInspectorContext";
-import { ImageSection, InspectorHeader } from "./CanvasInspectorSections";
+import { BlockVariablesSection, ImageSection, InspectorHeader } from "./CanvasInspectorSections";
 import { LayoutSection } from "./LayoutSection";
 import { PositionSection } from "./PositionSection";
 import type { CanvasInspectorProps } from "./canvas-inspector-types";
@@ -25,6 +25,7 @@ const CanvasInspectorContent = () => (
       <InspectorHeader />
     </SidebarHeader>
     <SidebarContent className="gap-0">
+      <BlockVariablesSection />
       <ImageSection />
       <PositionSection />
       <SlotInputsSection />

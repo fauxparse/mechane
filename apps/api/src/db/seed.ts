@@ -12,7 +12,12 @@ import { and, eq, sql } from "drizzle-orm";
 import { auth } from "../auth";
 import { db } from "./client";
 import { readCanvasWorkspace, writeCanvasRows } from "./canvas";
-import { SEED_CANVASES, SEED_GRAPHS, seedCanvasPosition } from "./seed-graphs";
+import {
+  SEED_CANVASES,
+  SEED_GRAPHS,
+  seedBlockCanvasPosition,
+  seedCanvasPosition,
+} from "./seed-graphs";
 import type { SeedCanvases, SeedGraph } from "./seed-graphs";
 import { showGraphs, shows, user } from "./schema";
 // `TRUNCATE ... CASCADE` on `shows` takes the graph tables with it, so they
@@ -56,17 +61,27 @@ async function assertSeedCanvases(
   const expectedSceneIds = new Set(
     graph.nodes.filter((node) => node.kind === "scene").map((node) => node.id),
   );
+  const workspace = await readCanvasWorkspace(showId, state);
   const actualSceneIds = new Set(
-    (await readCanvasWorkspace(showId, state)).canvases
-      .filter((canvas) => canvas.kind === "scene")
-      .map((canvas) => canvas.ownerId),
+    workspace.canvases.filter((canvas) => canvas.kind === "scene").map((canvas) => canvas.ownerId),
   );
-  const missing = [...expectedSceneIds].filter((sceneId) => !actualSceneIds.has(sceneId));
-  if (missing.length > 0) {
-    throw new Error(`Seeded ${state} graph is missing Canvases for Scenes: ${missing.join(", ")}`);
+  const missingScenes = [...expectedSceneIds].filter((sceneId) => !actualSceneIds.has(sceneId));
+  if (missingScenes.length > 0) {
+    throw new Error(
+      `Seeded ${state} graph is missing Canvases for Scenes: ${missingScenes.join(", ")}`,
+    );
+  }
+  const expectedBlockIds = new Set((graph.blocks ?? []).map((block) => block.id));
+  const actualBlockIds = new Set(
+    workspace.canvases.filter((canvas) => canvas.kind === "block").map((canvas) => canvas.ownerId),
+  );
+  const missingBlocks = [...expectedBlockIds].filter((blockId) => !actualBlockIds.has(blockId));
+  if (missingBlocks.length > 0) {
+    throw new Error(
+      `Seeded ${state} graph is missing Canvases for Blocks: ${missingBlocks.join(", ")}`,
+    );
   }
 }
-
 async function seedCanvases(
   showId: string,
   state: "draft" | "published",
@@ -97,6 +112,34 @@ async function seedCanvases(
   });
 }
 
+async function seedBlockCanvases(
+  showId: string,
+  state: "draft" | "published",
+  graph: SeedGraph,
+): Promise<void> {
+  const blocks = graph.blocks ?? [];
+  if (blocks.length === 0) return;
+  const [graphRow] = await db
+    .select({ id: showGraphs.id })
+    .from(showGraphs)
+    .where(and(eq(showGraphs.showId, showId), eq(showGraphs.state, state)));
+  if (!graphRow) throw new Error(`Seeded ${state} graph for Show "${showId}" was not found.`);
+  await db.transaction(async (tx) => {
+    const now = new Date();
+    for (const [index, block] of blocks.entries()) {
+      await writeCanvasRows(
+        tx,
+        showId,
+        graphRow.id,
+        { blockId: block.id },
+        block.canvas,
+        now,
+        seedBlockCanvasPosition(index),
+      );
+    }
+  });
+}
+
 async function seedDefaultShows(userId: string): Promise<void> {
   const created = await db
     .insert(shows)
@@ -110,9 +153,11 @@ async function seedDefaultShows(userId: string): Promise<void> {
     const graph = buildGraph();
     await writeShowGraph(show.id, "draft", graph);
     await seedCanvases(show.id, "draft", graph, buildCanvases());
+    await seedBlockCanvases(show.id, "draft", graph);
     await assertSeedCanvases(show.id, "draft", graph);
     await publishShowGraph(show.id);
     await seedCanvases(show.id, "published", graph, buildCanvases());
+    await seedBlockCanvases(show.id, "published", graph);
     await assertSeedCanvases(show.id, "published", graph);
   }
 }

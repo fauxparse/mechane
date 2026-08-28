@@ -78,6 +78,9 @@ describe("Canvas row drop zones", () => {
     expect(layerRowDropZone({ kind: "element", elementKind: "frame" }, 1, 32)).toBe("before");
     expect(layerRowDropZone({ kind: "element", elementKind: "rect" }, 16, 32)).toBe("after");
   });
+  it("never assigns an inside zone to a Slot row", () => {
+    expect(layerRowDropZone({ kind: "element", elementKind: "slot" }, 16, 32)).toBe("after");
+  });
 });
 
 describe("Canvas layer drop placement", () => {
@@ -116,6 +119,19 @@ describe("Canvas layer drop placement", () => {
     const placement = layerDropPlacementInCanvas(root, "group", "inside");
     expect(placement).toEqual({ parentId: "group", rank: "a~" });
   });
+  it("refuses to place an Element inside a Slot", () => {
+    const rootWithSlot: FrameElement = {
+      ...root,
+      children: [
+        ...(root.children ?? []),
+        { id: "slot", type: "slot", rank: "d", blockId: "block" },
+      ],
+    };
+
+    expect(layerDropPlacement(rootWithSlot, "back", "slot", "inside")).toBeNull();
+    expect(layerDropPlacementInCanvas(rootWithSlot, "slot", "inside")).toBeNull();
+  });
+
   it("maps inspector before/after drops to the matching rank order", () => {
     const threeChildren: FrameElement = {
       ...root,

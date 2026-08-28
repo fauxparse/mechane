@@ -23,6 +23,7 @@ const variables: VariableEditing = {
   addVariable: () => {},
   renameVariable: () => {},
   setVariableType: () => {},
+  setVariableDefault: () => {},
   reorderVariables: () => {},
   removeVariable: () => {},
 };

@@ -12,12 +12,12 @@ import type {
 } from "@mechane/domain";
 import type { ImageAsset } from "@mechane/graphql-schema";
 import type { CanvasArtboardDocument } from "../../api/canvas";
+import type { VariableInspectorEditing } from "../../components/VariableInspector";
 export type DeviceQrImage = ResolvedImageValue & Pick<ImageAssetReference, "revision">;
 import type { CanvasCamera } from "./components/canvas-camera";
 import type { CanvasSelection } from "./components/canvas-selection";
 import type { ResizeHandle } from "./commands/canvas-resize";
 import type { CanvasTool } from "./Toolbar/Toolbar";
-
 export interface CanvasWorkspaceEditorProps {
   artboards: readonly CanvasArtboardDocument[];
   focusedArtId: string | null;
@@ -65,6 +65,7 @@ export interface CanvasWorkspaceEditorProps {
   variables?: readonly SceneVariable[];
   shapes?: readonly Shape[];
   blocks?: readonly Block[];
+  blockVariableEditing?: VariableInspectorEditing;
   onPlaceBlock?(blockId: string): void;
   imageAssets?: readonly ImageAsset[];
   deviceQrImages?: Readonly<Record<string, DeviceQrImage>>;
@@ -72,14 +73,21 @@ export interface CanvasWorkspaceEditorProps {
   onDeleteElements?(canvasId: string, elementIds: readonly string[]): void;
   onRenameArtboard?(artId: string, name: string): void;
 }
+export interface CanvasArtboardDimensions {
+  readonly width: number;
+  readonly height: number;
+}
+
 export interface CanvasWorkspaceSurfaceProps {
   ordered: readonly CanvasArtboardDocument[];
   focused: CanvasArtboardDocument | null;
   camera: CanvasCamera;
   workspaceRef: RefObject<HTMLElement | null>;
+  artboardSizes: ReadonlyMap<string, CanvasArtboardDimensions>;
   blocks?: readonly Block[];
-  selection: CanvasSelection;
+  blockVariableEditing?: VariableInspectorEditing;
   tool: CanvasTool;
+  selection: CanvasSelection;
   setTool(tool: CanvasTool): void;
   renamingArtId: string | null;
   setRenamingArtId(artId: string | null): void;

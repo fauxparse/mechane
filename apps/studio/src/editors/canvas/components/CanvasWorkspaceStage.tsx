@@ -28,6 +28,7 @@ type CanvasWorkspaceStageProps = Pick<
   | "setTool"
   | "camera"
   | "ordered"
+  | "artboardSizes"
   | "blocks"
   | "shapes"
   | "drag"
@@ -75,6 +76,7 @@ export function CanvasWorkspaceStage({
   camera,
   ordered,
   blocks,
+  artboardSizes,
   shapes,
   drag,
   focused,
@@ -144,7 +146,8 @@ export function CanvasWorkspaceStage({
         }}
       >
         {ordered.map((artboard) => {
-          const size = canvasArtboardSize(artboard);
+          const measured = artboardSizes.get(artboard.artId);
+          const size = measured ?? canvasArtboardSize(artboard);
           const preview = resizePreview?.artId === artboard.artId ? resizePreview : null;
           return (
             <div
@@ -220,7 +223,8 @@ export function CanvasWorkspaceStage({
                     .elementFromPoint(event.clientX, event.clientY)
                     ?.closest<HTMLElement>("[data-element-type='text']");
                 if (
-                  textElement?.closest<HTMLElement>("[data-artboard-id]") !== event.currentTarget
+                  textElement?.closest<HTMLElement>("[data-artboard-id]") !== event.currentTarget ||
+                  textElement?.closest<HTMLElement>("[data-element-type='slot']")
                 ) {
                   return;
                 }

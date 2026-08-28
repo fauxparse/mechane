@@ -198,7 +198,12 @@ export function resolveBlockCanvas(
   canvas: BlockCanvas = block.canvas,
 ): ResolvedCanvas {
   return resolveCanvasProperties(canvas, {
-    variables: block.variables.map(({ id, name, type }) => ({ id, name, type })),
+    variables: block.variables.map(({ id, name, type, defaultValue }) => ({
+      id,
+      name,
+      type,
+      defaultValue,
+    })),
     values,
     shapes,
   });
@@ -225,6 +230,7 @@ export interface ResolvedSlotInstance {
   readonly index: number;
   readonly item: unknown;
   readonly canvas?: ResolvedCanvas;
+  readonly variables?: readonly SlotVariableValue[];
   readonly diagnostics: readonly SlotDiagnostic[];
 }
 
@@ -282,10 +288,16 @@ export function resolveSlotInstances(
         ? resolution.values[block.stateSelectorVariableId]
         : undefined;
       const selected = applyBlockState(block, resolveBlockState(block, selector));
+      const resolvedVariables = block.variables.map((variable) => ({
+        id: variable.id,
+        type: variable.type,
+        value: resolution.values[variable.id],
+      }));
       return {
         index: instance.index,
         item: instance.item,
         canvas: resolveBlockCanvas(block, resolution.values, shapes, selected),
+        variables: resolvedVariables,
         diagnostics: [],
       };
     }),

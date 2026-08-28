@@ -41,17 +41,19 @@ export function CanvasWorkspaceSurface({
   resizeCursor,
   inspectorPreview,
   currentDimensions,
+  artboardSizes,
   resizable,
   onFocusArtboard,
   onUpdateElement,
   onUpdateElements,
+  onMoveElement,
   variables,
   shapes,
   blocks,
+  blockVariableEditing,
   imageAssets,
   deviceQrImages,
   onImageUpload,
-  onMoveElement,
   onMoveElementBetweenCanvases,
   onRenameArtboard,
   onSelect,
@@ -101,6 +103,7 @@ export function CanvasWorkspaceSurface({
         tool={tool}
         setTool={setTool}
         camera={camera}
+        artboardSizes={artboardSizes}
         ordered={ordered}
         shapes={shapes}
         blocks={blocks}
@@ -157,6 +160,7 @@ export function CanvasWorkspaceSurface({
           blocks={blocks}
           variables={variables}
           shapes={shapes}
+          blockVariableEditing={blockVariableEditing}
           deviceQrImages={deviceQrImages}
           imageAssets={imageAssets}
           onImageUpload={onImageUpload}

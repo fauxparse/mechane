@@ -54,7 +54,12 @@ import { useGoogleFonts } from "../../google-fonts-provider";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { PropertyField } from "./CanvasInspectorFields";
-import { isVariableInput, variableInput, variableOptions } from "./canvas-inspector-values";
+import {
+  isVariableInput,
+  textValueForPreview,
+  variableInput,
+  variableOptions,
+} from "./canvas-inspector-values";
 
 const FontFamilyField = () => {
   const { common, fontFamilies, update } = useCanvasInspectorContext();
@@ -161,7 +166,7 @@ const FontFamilyField = () => {
 };
 
 const renderTextValue = (value: ShapeValue | null) => {
-  const text = value?.kind === "text" ? value.value : "";
+  const text = textValueForPreview(value);
   return (
     <span className="block truncate">
       {text ? (

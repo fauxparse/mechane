@@ -4,12 +4,14 @@ import { useToastManager } from "@mechane/design-system";
 
 import { canvasElementParent, findCanvasElement } from "@mechane/commands";
 import type { NewElement } from "@mechane/commands";
+import { isContainerElement } from "@mechane/domain";
 import type { Position, FrameElement } from "@mechane/domain";
 
 import type { CanvasArtboardDocument } from "../../api/canvas";
 import { useEditableArea } from "../../components/EditorLayout/editable-area";
 import {
   contentOrigin,
+  logicalRootSize,
   selectedCanvasRects,
   useCanvasGeometry,
 } from "./components/canvas-geometry";
@@ -19,11 +21,13 @@ import { useCanvasCamera } from "./components/use-canvas-camera";
 import { roundToLogicalPixel } from "./components/canvas-pixels";
 
 import {
+  authoredSelectionBoundary,
   containedSelection,
   normalizeSelection,
   rectsOverlap,
   selectionRect,
   toggleSelection,
+  topmostElementAtPoint,
   topmostPaintedElementAtPoint,
 } from "./components/canvas-selection";
 import {
@@ -49,7 +53,10 @@ import {
   unlockedAspectRatioProperties,
 } from "./commands/canvas-resize";
 import type { ResizeBox, ResizeHandle } from "./commands/canvas-resize";
-import type { CanvasWorkspaceEditorProps } from "./canvas-workspace-types";
+import type {
+  CanvasWorkspaceEditorProps,
+  CanvasArtboardDimensions,
+} from "./canvas-workspace-types";
 import { artboardLabel, canvasArtboardSize } from "./data/canvas-workspace";
 
 function measuredRect(element: HTMLElement): CanvasClientRect {
@@ -62,6 +69,23 @@ function measuredRect(element: HTMLElement): CanvasClientRect {
     right: rect.right,
     bottom: rect.bottom,
   };
+}
+
+function authoredElementForSelection(
+  element: HTMLElement | null,
+  artboard: HTMLElement,
+  root: FrameElement,
+): HTMLElement | null {
+  if (!element) return null;
+  return authoredSelectionBoundary(
+    element,
+    artboard,
+    (current) => current.parentElement,
+    (current) => {
+      const id = current.dataset.elementId;
+      return id !== undefined && findCanvasElement(root, id) !== null;
+    },
+  );
 }
 
 type DragState = {
@@ -228,14 +252,26 @@ export function useCanvasWorkspaceInteractions({
     onCameraChange,
   );
   const geometryKey = useMemo(() => [camera, ordered] as const, [camera, ordered]);
-  const geometry = useCanvasGeometry(workspaceRef, geometryKey);
+  const geometrySnapshot = useCanvasGeometry(workspaceRef, geometryKey, camera.zoom);
+  const geometry = geometrySnapshot.geometry;
+  const artboardSizes = useMemo(() => {
+    const sizes = new Map<string, CanvasArtboardDimensions>();
+    for (const artboard of ordered) {
+      const rootRect = geometry.get(artboard.artId)?.elements.get(artboard.canvas.root.id);
+      const measuredRoot = rootRect
+        ? logicalRootSize(rootRect, geometrySnapshot.measuredZoom)
+        : undefined;
+      sizes.set(artboard.artId, canvasArtboardSize(artboard, measuredRoot));
+    }
+    return sizes;
+  }, [geometry, geometrySnapshot.measuredZoom, ordered]);
   const setSelection = (next: CanvasSelection) => {
     const normalized = normalizeSelection(next);
     setLocalSelection(normalized);
     onSelectionChange?.(normalized);
   };
   const frameArtboard = (artboard: CanvasArtboardDocument) => {
-    const size = canvasArtboardSize(artboard);
+    const size = artboardSizes.get(artboard.artId) ?? canvasArtboardSize(artboard);
     frameRect(
       {
         x: artboard.position.x,
@@ -286,11 +322,17 @@ export function useCanvasWorkspaceInteractions({
     artboard: CanvasArtboardDocument,
   ): boolean => {
     if (tool !== "select" || event.button !== 0) return false;
-    const element = topmostPaintedElementAtPoint(
+    const element = authoredElementForSelection(
+      artboard.kind === "block"
+        ? topmostElementAtPoint(event.currentTarget, event.clientX, event.clientY)
+        : topmostPaintedElementAtPoint(
+            event.currentTarget,
+            event.clientX,
+            event.clientY,
+            event.altKey,
+          ),
       event.currentTarget,
-      event.clientX,
-      event.clientY,
-      event.altKey,
+      artboard.canvas.root,
     );
     const elementId = element?.dataset.elementId;
     if (!elementId) return false;
@@ -359,11 +401,24 @@ export function useCanvasWorkspaceInteractions({
       setDragPreview(null);
       return;
     }
+    const overSlot = document.elementsFromPoint(event.clientX, event.clientY).some((candidate) => {
+      if (!(candidate instanceof HTMLElement)) return false;
+      const slot = candidate.closest<HTMLElement>("[data-element-type='slot']");
+      return slot !== null && targetArtboard.contains(slot);
+    });
+    if (overSlot) {
+      dragPreviewRef.current = null;
+      setDragPreview(null);
+      return;
+    }
     const draggedNode = element;
     const frames: { node: HTMLElement; rect: CanvasClientRect }[] = [];
     for (const frame of targetArtboard.querySelectorAll<HTMLElement>(
       "[data-element-type='frame']",
     )) {
+      const frameId = frame.dataset.elementId;
+      const frameElement = frameId ? findCanvasElement(targetDocument.canvas.root, frameId) : null;
+      if (!frameElement || !isContainerElement(frameElement)) continue;
       if (draggedNode.contains(frame)) continue;
       const rect = measuredRect(frame);
       if (
@@ -585,6 +640,7 @@ export function useCanvasWorkspaceInteractions({
           ? measured.rect
           : measured.elements.get(elementId);
       if (!box) return [];
+      if (!findCanvasElement(artboard.canvas.root, elementId)) return [];
       const parentInfo = canvasElementParent(artboard.canvas.root, elementId);
       const parentElement = parentInfo
         ? findCanvasElement(artboard.canvas.root, parentInfo.parentId)
@@ -1213,11 +1269,17 @@ export function useCanvasWorkspaceInteractions({
   const selectAtPoint = (event: PointerEvent<HTMLElement>, artboard: CanvasArtboardDocument) => {
     if (event.button !== 0) return;
     event.stopPropagation();
-    const element = topmostPaintedElementAtPoint(
+    const element = authoredElementForSelection(
+      artboard.kind === "block"
+        ? topmostElementAtPoint(event.currentTarget, event.clientX, event.clientY)
+        : topmostPaintedElementAtPoint(
+            event.currentTarget,
+            event.clientX,
+            event.clientY,
+            event.altKey,
+          ),
       event.currentTarget,
-      event.clientX,
-      event.clientY,
-      event.altKey,
+      artboard.canvas.root,
     );
     onFocusArtboard(artboard.artId);
     if (!element?.dataset.elementId) {
@@ -1384,6 +1446,7 @@ export function useCanvasWorkspaceInteractions({
         }
       : null;
   return {
+    artboardSizes,
     ordered,
     focused,
     camera,

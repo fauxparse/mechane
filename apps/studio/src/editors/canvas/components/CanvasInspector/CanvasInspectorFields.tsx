@@ -245,7 +245,11 @@ const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldProps) =>
           updateSize({
             ...(sizeMixed ? {} : size),
             mode: "fixed",
-            value: { kind: "variable", variableId: next.id, fieldPath: next.fieldPath ?? [] },
+            value: {
+              kind: "variable",
+              variableId: next.id,
+              fieldPath: next.fieldPath ?? [],
+            },
           });
         } else if (next?.kind === "number") {
           updateSize({

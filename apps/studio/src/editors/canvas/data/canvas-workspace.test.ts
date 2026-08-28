@@ -66,7 +66,7 @@ describe("Canvas camera session state", () => {
 });
 
 describe("Canvas workspace artboard sizing", () => {
-  it("uses preview defaults until a Canvas root has authored dimensions", () => {
+  it("uses measured root bounds for Hug and design bounds for Fixed and Fill", () => {
     const scene = {
       ...artboards[0]!,
       canvas: {
@@ -74,7 +74,20 @@ describe("Canvas workspace artboard sizing", () => {
         root: { id: "scene-root", type: "frame" as const },
       },
     } as CanvasArtboardDocument;
-    const resizedScene = {
+    const hugRoot = {
+      ...scene,
+      canvas: {
+        ...scene.canvas,
+        root: {
+          ...scene.canvas.root,
+          sizing: {
+            width: { mode: "hug" as const },
+            height: { mode: "hug" as const },
+          },
+        },
+      },
+    } as CanvasArtboardDocument;
+    const fixedRoot = {
       ...scene,
       canvas: {
         ...scene.canvas,
@@ -87,24 +100,33 @@ describe("Canvas workspace artboard sizing", () => {
         },
       },
     } as CanvasArtboardDocument;
-    const block = {
-      ...artboards[1]!,
+    const fillRoot = {
+      ...scene,
       canvas: {
-        kind: "block" as const,
+        ...scene.canvas,
         root: {
-          id: "block-root",
-          type: "frame" as const,
+          ...scene.canvas.root,
           sizing: {
-            width: { mode: "fixed" as const, value: 480 },
-            height: { mode: "fixed" as const, value: 280 },
+            width: { mode: "fill" as const, value: 960 },
+            height: { mode: "fill" as const, value: 540 },
           },
         },
       },
     } as CanvasArtboardDocument;
 
     expect(canvasArtboardSize(scene)).toEqual({ width: 720, height: 420 });
-    expect(canvasArtboardSize(resizedScene)).toEqual({ width: 960, height: 540 });
-    expect(canvasArtboardSize(block)).toEqual({ width: 480, height: 280 });
+    expect(canvasArtboardSize(hugRoot, { width: 312, height: 56 })).toEqual({
+      width: 312,
+      height: 56,
+    });
+    expect(canvasArtboardSize(fixedRoot, { width: 1, height: 2 })).toEqual({
+      width: 960,
+      height: 540,
+    });
+    expect(canvasArtboardSize(fillRoot, { width: 1, height: 2 })).toEqual({
+      width: 960,
+      height: 540,
+    });
   });
 });
 

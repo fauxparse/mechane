@@ -205,6 +205,12 @@ const FIXTURES: { [T in GraphEdit["type"]]: Extract<GraphEdit, { type: T }> } = 
     variableId: "variable_tally",
     variableType: { kind: "array", of: { kind: "shape", shapeId: "shape_vote" } },
   },
+  "graph.setSceneVariableDefault": {
+    type: "graph.setSceneVariableDefault",
+    sceneId: "scene_lobby",
+    variableId: "variable_tally",
+    defaultValue: { total: 42 },
+  },
   "graph.removeSceneVariable": {
     type: "graph.removeSceneVariable",
     sceneId: "scene_lobby",
@@ -221,6 +227,19 @@ const FIXTURES: { [T in GraphEdit["type"]]: Extract<GraphEdit, { type: T }> } = 
     perConnection: true,
   },
   "graph.addBlock": { type: "graph.addBlock", block: emptyBlock("Banner") },
+  "graph.setBlockVariables": {
+    type: "graph.setBlockVariables",
+    blockId: "block_banner",
+    variables: [
+      {
+        id: "variable_title",
+        name: "Title",
+        type: "text",
+        required: false,
+        defaultValue: "Banner",
+      },
+    ],
+  },
   "graph.renameBlock": { type: "graph.renameBlock", blockId: "block_banner", name: "Hero" },
   "graph.duplicateBlock": {
     type: "graph.duplicateBlock",

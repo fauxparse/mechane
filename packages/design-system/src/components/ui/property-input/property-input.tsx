@@ -44,6 +44,7 @@ export const PropertyInput = <T extends ShapeValue>({
   onAutoChange,
   onConstraintToggle,
   onValidationError,
+  onKeyDown,
 }: PropertyInputProps<T> & { vibe?: Vibe }) => {
   const vibe = useVibe(vibeProp);
   const [inputActive, setInputActive] = useState(false);
@@ -129,7 +130,10 @@ export const PropertyInput = <T extends ShapeValue>({
               input.commitDraftInput();
               setInputActive(false);
             }}
-            onKeyDown={input.handleInputKeyDown}
+            onKeyDown={(event) => {
+              input.handleInputKeyDown(event);
+              onKeyDown?.(event);
+            }}
           >
             {hasInactiveValue && (
               <button

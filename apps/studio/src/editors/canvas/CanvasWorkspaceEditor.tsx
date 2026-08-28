@@ -29,10 +29,11 @@ export function CanvasWorkspaceEditor({
   variables,
   shapes,
   blocks,
+  blockVariableEditing,
   onPlaceBlock,
-  deviceQrImages,
   onImageUpload,
   imageAssets,
+  deviceQrImages,
   onDeleteElements,
   onRenameArtboard,
   initialCamera,
@@ -57,6 +58,7 @@ export function CanvasWorkspaceEditor({
     resizeCursor,
     inspectorPreview,
     currentDimensions,
+    artboardSizes,
     resizable,
     cancelCreation,
     zoomIn,
@@ -151,7 +153,16 @@ export function CanvasWorkspaceEditor({
         run: deleteSelection,
       },
     ],
-    [blocks, deleteSelection, onPlaceBlock, resetCamera, selection.elementIds.length, setTool, zoomIn, zoomOut],
+    [
+      blocks,
+      deleteSelection,
+      onPlaceBlock,
+      resetCamera,
+      selection.elementIds.length,
+      setTool,
+      zoomIn,
+      zoomOut,
+    ],
   );
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -211,6 +222,7 @@ export function CanvasWorkspaceEditor({
         resizeCursor={resizeCursor}
         inspectorPreview={inspectorPreview}
         currentDimensions={currentDimensions}
+        artboardSizes={artboardSizes}
         overlayRect={overlayRect}
         resizable={resizable}
         onFocusArtboard={onFocusArtboard}
@@ -218,6 +230,7 @@ export function CanvasWorkspaceEditor({
         variables={variables}
         shapes={shapes}
         blocks={blocks}
+        blockVariableEditing={blockVariableEditing}
         imageAssets={imageAssets}
         deviceQrImages={deviceQrImages}
         onImageUpload={onImageUpload}

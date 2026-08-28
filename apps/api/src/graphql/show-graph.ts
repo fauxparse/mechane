@@ -145,6 +145,7 @@ export function serializeGraphEdit(edit: GraphEdit) {
     value: null as unknown,
     block: null as SerializedBlock | null,
     blockId: null as string | null,
+    blockVariables: null as unknown[] | null,
     pairingCode: null as string | null,
     perConnection: null as boolean | null,
   };

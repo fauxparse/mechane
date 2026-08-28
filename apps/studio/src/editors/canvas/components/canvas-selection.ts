@@ -70,6 +70,35 @@ export function normalizeSelection(selection: CanvasSelection): CanvasSelection 
   return { artId: selection.artId, elementIds: [...new Set(selection.elementIds)] };
 }
 
+export function selectionBoundary<T>(
+  element: T,
+  artboard: T,
+  parentOf: (element: T) => T | null,
+  typeOf: (element: T) => string | undefined,
+): T {
+  const original = element;
+  let current = element;
+  while (true) {
+    const parent = parentOf(current);
+    if (!parent || parent === artboard) return original;
+    if (typeOf(parent) === "slot") return parent;
+    current = parent;
+  }
+}
+export function authoredSelectionBoundary<T>(
+  element: T,
+  artboard: T,
+  parentOf: (element: T) => T | null,
+  isAuthored: (element: T) => boolean,
+): T | null {
+  let current: T | null = element;
+  while (current && current !== artboard) {
+    if (isAuthored(current)) return current;
+    current = parentOf(current);
+  }
+  return current && isAuthored(current) ? current : null;
+}
+
 export function selectionRect(rects: readonly CanvasClientRect[]): CanvasClientRect | null {
   if (rects.length === 0) return null;
   const x = Math.min(...rects.map((rect) => rect.x));
@@ -78,16 +107,16 @@ export function selectionRect(rects: readonly CanvasClientRect[]): CanvasClientR
   const bottom = Math.max(...rects.map((rect) => rect.bottom));
   return { x, y, width: right - x, height: bottom - y, right, bottom };
 }
-export function topmostPaintedElementAtPoint(
+function topmostElementAtPointInternal(
   artboard: HTMLElement,
   x: number,
   y: number,
-  penetrate = false,
+  paintedOnly: boolean,
 ): HTMLElement | null {
   const elements = [...artboard.querySelectorAll<HTMLElement>("[data-element-id]")];
-  const painted = elements.reverse().find((element) => {
+  const candidate = elements.reverse().find((element) => {
     if (element.dataset.elementRoot === "true") return false;
-    if (element.dataset.elementPainted !== "true") return false;
+    if (paintedOnly && element.dataset.elementPainted !== "true") return false;
     const rect = element.getBoundingClientRect();
     return rectContainsPoint(
       {
@@ -102,9 +131,29 @@ export function topmostPaintedElementAtPoint(
       y,
     );
   });
-  if (!painted || !penetrate) return painted ?? null;
-  const parentId = painted.dataset.elementParentId;
-  return parentId
-    ? (elements.find((element) => element.dataset.elementId === parentId) ?? painted)
-    : painted;
+  if (!candidate) return null;
+  const selectable = selectionBoundary(
+    candidate,
+    artboard,
+    (element) => element.parentElement,
+    (element) => element.dataset.elementType,
+  );
+  return selectable;
+}
+
+export function topmostPaintedElementAtPoint(
+  artboard: HTMLElement,
+  x: number,
+  y: number,
+  _penetrate = false,
+): HTMLElement | null {
+  return topmostElementAtPointInternal(artboard, x, y, true);
+}
+
+export function topmostElementAtPoint(
+  artboard: HTMLElement,
+  x: number,
+  y: number,
+): HTMLElement | null {
+  return topmostElementAtPointInternal(artboard, x, y, false);
 }

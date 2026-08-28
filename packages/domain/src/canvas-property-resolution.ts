@@ -131,11 +131,13 @@ function resolveConnection(
   const qrValue =
     fieldPath.length === 0 ? deviceQrValueForVariable(variable.id, context.graph) : undefined;
   const supplied = qrValue ?? valueAtPath(rawValue(context.values?.[variable.id]), fieldPath);
-  const fallback = defaultAtPath(variableType, fieldPath, shapes);
+  const variableDefault =
+    variable.defaultValue === undefined ? undefined : valueAtPath(variable.defaultValue, fieldPath);
+  const fallback = variableDefault ?? defaultAtPath(variableType, fieldPath, shapes);
   const candidate = rawValue(supplied ?? fallback);
   const sourceValue = conformsToType(candidate, sourceType, shapes)
     ? candidate
-    : rawValue(fallback);
+    : rawValue(defaultAtPath(variableType, fieldPath, shapes));
   if (!conformsToType(sourceValue, sourceType, shapes)) {
     return rawValue(defaultPropertyValue(targetType));
   }
@@ -152,7 +154,10 @@ function resolveProperty(
   return targetType ? resolveConnection(value, targetType, context) : undefined;
 }
 
-function resolveElement(element: Element, context: CanvasPropertyResolutionContext): ResolvedElement {
+function resolveElement(
+  element: Element,
+  context: CanvasPropertyResolutionContext,
+): ResolvedElement {
   const next = {
     ...element,
     children: (element.children ?? []).map((child) => resolveElement(child, context)),

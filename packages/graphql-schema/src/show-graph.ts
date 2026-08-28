@@ -91,6 +91,7 @@ export const GetShowGraphQuery = graphql(
                   shapeId
                 }
               }
+              defaultValue
               suggestedDimensions {
                 width
                 height

@@ -35,6 +35,7 @@
 
 import type {
   Block,
+  BlockVariable,
   FlowColor,
   GraphEdge,
   GraphNode,
@@ -175,6 +176,12 @@ export type GraphEdit =
       readonly variableType: Type | null;
     }
   | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setSceneVariableDefault;
+      readonly sceneId: string;
+      readonly variableId: string;
+      readonly defaultValue: unknown;
+    }
+  | {
       readonly type: typeof GRAPH_COMMAND_TYPES.removeSceneVariable;
       readonly sceneId: string;
       readonly variableId: string;
@@ -197,6 +204,11 @@ export type GraphEdit =
       readonly perConnection: boolean;
     }
   | { readonly type: typeof GRAPH_COMMAND_TYPES.addBlock; readonly block: Block }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setBlockVariables;
+      readonly blockId: string;
+      readonly variables: readonly BlockVariable[];
+    }
   | {
       readonly type: typeof GRAPH_COMMAND_TYPES.renameBlock;
       readonly blockId: string;
