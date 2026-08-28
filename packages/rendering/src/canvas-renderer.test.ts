@@ -325,6 +325,25 @@ describe("CanvasRenderer", () => {
 
     expect(html).toContain("padding:4px 8px 12px 16px");
   });
+
+  it("keeps empty fill-sized text measurable in the editor", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "empty-fill-text",
+            type: "text",
+            sizing: { width: { mode: "fill" }, height: { mode: "fill" } },
+          },
+        ],
+      },
+    });
+
+    expect(html).toMatch(/data-element-id="empty-fill-text"[^>]*min-height:1em/);
+  });
   it("supports text hug sizing and clipping or ellipsis overflow", () => {
     const html = markup({
       kind: "scene",
