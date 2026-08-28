@@ -36,6 +36,7 @@ export const CanvasElementFields = graphql(`
       textDecoration
       lineHeight
       letterSpacing
+      textAlign
       textVerticalAlign
       textOverflow
       padding
