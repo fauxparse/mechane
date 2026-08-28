@@ -143,6 +143,7 @@ export function CanvasWorkspaceStage({
         style={{
           transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`,
           transformOrigin: "0 0",
+          willChange: "transform",
         }}
       >
         {ordered.map((artboard) => {
@@ -176,6 +177,7 @@ export function CanvasWorkspaceStage({
                 // An outline sits outside the box, so the border never eats into the
                 // Canvas, and it stays 1px on screen however far the camera is zoomed.
                 outline: "1px solid var(--border)",
+                contain: "layout paint",
                 outlineOffset: 0,
               }}
               onPointerDown={(event) => {

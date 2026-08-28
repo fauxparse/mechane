@@ -119,4 +119,10 @@ describe("CanvasWorkspaceStage", () => {
     expect(markup).toContain("Clarissa");
     expect(markup).toMatch(/data-element-id="candidate_slot"[^>]*display:flex/);
   });
+
+  it("isolates Artboards and promotes camera transforms", () => {
+    const markup = stageMarkup();
+    expect(markup).toContain("will-change:transform");
+    expect(markup).toContain("contain:layout paint");
+  });
 });
