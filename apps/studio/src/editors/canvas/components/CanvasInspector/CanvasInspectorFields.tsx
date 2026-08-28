@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { AxisSize, SlotInputSource } from "@mechane/domain";
+import type { AxisSize, SceneVariable, SlotElement, SlotInputSource } from "@mechane/domain";
 import { CANVAS_PROPERTY_DESCRIPTORS, canvasPropertyDescriptor } from "@mechane/domain";
 import {
   Link2Icon,
@@ -103,6 +103,24 @@ export const PropertyField = ({
   );
 };
 
+function sourceLabel(
+  target: SlotElement,
+  source: SlotInputSource | undefined,
+  variables: readonly SceneVariable[],
+): string | null {
+  if (source?.kind === "runtimeItem") {
+    const expansion = target.expansion?.source;
+    if (expansion?.kind === "variable") {
+      return variables.find((variable) => variable.id === expansion.variableId)?.name ?? null;
+    }
+    return "Current item";
+  }
+  if (source?.kind === "variable") {
+    return variables.find((variable) => variable.id === source.variableId)?.name ?? null;
+  }
+  return null;
+}
+
 export const SlotInputsSection = () => {
   const { target, blocks, variables, shapes, update } = useCanvasInspectorContext();
   if (target.type !== "slot") return null;
@@ -120,9 +138,20 @@ export const SlotInputsSection = () => {
   return (
     <Section label="Block Inputs">
       {block.variables.map((variable) => {
-        const type = inputType(variable.type);
-        if (!type) return null;
         const assignment = assignments.find((item) => item.variableId === variable.id);
+        const type = inputType(variable.type);
+        if (!type) {
+          const label = sourceLabel(target, assignment?.source, variables);
+          if (!label) return null;
+          return (
+            <SectionRow key={variable.id}>
+              <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                {variable.name}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-xs">{label}</span>
+            </SectionRow>
+          );
+        }
         const source = assignment?.source;
         const value =
           source?.kind === "variable"
