@@ -67,6 +67,7 @@ describe("canvas inspector values", () => {
       id: "candidate",
       name: "Candidate → Details → City",
       fieldPath: ["field_details", "field_city"],
+      fieldType: "text",
       current: { kind: "text", value: "" },
     });
     expect(variableOptions("text", variables, shapes).map((variable) => variable.name)).toEqual([
@@ -82,7 +83,9 @@ describe("canvas inspector values", () => {
       defaultValue: "Draft title",
     };
 
-    expect(variableInput({ kind: "variable", variableId: variable.id }, "text", [variable])).toMatchObject({
+    expect(
+      variableInput({ kind: "variable", variableId: variable.id }, "text", [variable]),
+    ).toMatchObject({
       id: variable.id,
       current: { kind: "text", value: "Draft title" },
     });

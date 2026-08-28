@@ -7,7 +7,7 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "
 import type { VariableReference } from "./property-input-types";
 import { cn } from "../../../lib/utils";
 import { getValueText } from "./use-property-input";
-import { VARIABLE_TYPE_ICONS } from "./variable-type-icons";
+import { VARIABLE_TYPE_ICONS, variableTypeKind } from "./variable-type-icons";
 import { Swatch } from "../swatch";
 
 export function VariablePicker<T extends ShapeValue>({
@@ -112,28 +112,36 @@ export function VariablePicker<T extends ShapeValue>({
         className="max-h-64 overflow-y-auto p-2"
       >
         {variables.length > 0 ? (
-          variables.map((variable, index) => (
-            <Button
-              key={`${variable.id}:${JSON.stringify(variable.fieldPath ?? [])}`}
-              type="button"
-              role="option"
-              tabIndex={-1}
-              variant="ghost"
-              size="sm"
-              aria-selected={index === activeIndex}
-              data-highlighted={index === activeIndex ? "true" : undefined}
-              ref={(element) => {
-                optionRefs.current[index] = element;
-              }}
-              className="group/option w-full justify-start gap-2 p-2 aria-selected:bg-accent aria-selected:text-accent-foreground rounded-sm"
-              onMouseEnter={() => setHighlightedIndex(index)}
-              onClick={() => onSelect(variable)}
-            >
-              <VariableIcon variable={variable} />
-              <span className="truncate">{variable.name}</span>
-              <VariableRepresentation variable={variable} className="ml-auto" />
-            </Button>
-          ))
+          variables.map((variable, index) => {
+            const selected =
+              linkedVariable !== null &&
+              linkedVariable.id === variable.id &&
+              JSON.stringify(linkedVariable.fieldPath ?? []) ===
+                JSON.stringify(variable.fieldPath ?? []);
+            return (
+              <Button
+                key={`${variable.id}:${JSON.stringify(variable.fieldPath ?? [])}`}
+                type="button"
+                role="option"
+                tabIndex={-1}
+                variant="ghost"
+                size="sm"
+                aria-selected={selected}
+                data-highlighted={index === activeIndex ? "true" : undefined}
+                data-selected={selected ? "true" : undefined}
+                ref={(element) => {
+                  optionRefs.current[index] = element;
+                }}
+                className="group/option w-full justify-start gap-2 rounded-sm p-2 data-highlighted:bg-accent data-highlighted:text-accent-foreground aria-selected:bg-accent aria-selected:text-accent-foreground"
+                onMouseEnter={() => setHighlightedIndex(index)}
+                onClick={() => onSelect(variable)}
+              >
+                <VariableIcon variable={variable} />
+                <span className="truncate">{variable.name}</span>
+                <VariableRepresentation variable={variable} className="ml-auto" />
+              </Button>
+            );
+          })
         ) : (
           <div className="flex w-full justify-center py-4 text-center text-sm text-muted-foreground">
             {totalVariables === 0 ? "No variables to connect" : "No matching variables"}
@@ -152,7 +160,10 @@ export function VariablePicker<T extends ShapeValue>({
 }
 
 const VariableIcon = <T extends ShapeValue>({ variable }: { variable: VariableReference<T> }) => {
-  const Icon = VARIABLE_TYPE_ICONS[variable.current?.kind ?? "object"];
+  const Icon =
+    VARIABLE_TYPE_ICONS[
+      variableTypeKind(variable.fieldType ?? variable.current?.kind ?? variable.type)
+    ];
   return <Icon />;
 };
 

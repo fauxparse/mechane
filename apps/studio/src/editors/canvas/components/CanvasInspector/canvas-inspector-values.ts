@@ -70,8 +70,7 @@ export const variableInput = (
       variable.defaultValue === undefined
         ? undefined
         : valueAtPath(variable.defaultValue, fieldPath);
-    const fallback =
-      variableFallback ?? (sourceType ? defaultPropertyValue(sourceType) : null);
+    const fallback = variableFallback ?? (sourceType ? defaultPropertyValue(sourceType) : null);
     const current = sourceType ? literalValue(sourceType, fallback) : null;
     return {
       ...variable,
@@ -80,6 +79,7 @@ export const variableInput = (
           ? `${variable.name} → ${field?.label.join(" → ") ?? "Unavailable"}`
           : variable.name,
       fieldPath,
+      fieldType: sourceType ?? undefined,
       current: current ?? undefined,
     };
   }
@@ -103,6 +103,7 @@ export const variableOptions = (
         name:
           field.label.length > 0 ? `${variable.name} → ${field.label.join(" → ")}` : variable.name,
         fieldPath: field.fieldPath,
+        fieldType: field.type,
         current: literalValue(field.type, defaultValue) ?? undefined,
       };
     });
