@@ -1,3 +1,4 @@
+import { generateId, isId, type ShapeInstanceId } from "./id";
 /** The primitive members of the Shape type grammar. */
 export const PRIMITIVE_TYPES = [
   "text",
@@ -88,6 +89,32 @@ export interface Shape {
   name: string;
   /** Order is meaningful and is preserved by this array. */
   fields: ShapeField[];
+}
+/**
+ * A persisted item in an array whose element Type is a Shape. The wrapper is
+ * deliberately outside the Shape value so a user field named `id` cannot
+ * collide with collection identity.
+ */
+export interface ShapeCollectionInstance<T = unknown> {
+  readonly id: ShapeInstanceId;
+  readonly value: T;
+}
+
+export function createShapeCollectionInstance<T>(
+  value: T,
+  id: ShapeInstanceId = generateId("shapeInstance"),
+): ShapeCollectionInstance<T> {
+  return { id, value };
+}
+
+export function isShapeCollectionInstance(value: unknown): value is ShapeCollectionInstance {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  const id = Reflect.get(value, "id");
+  return (
+    typeof id === "string" &&
+    isId("shapeInstance", id) &&
+    Object.prototype.hasOwnProperty.call(value, "value")
+  );
 }
 
 export class InvalidShapeError extends Error {
@@ -277,6 +304,61 @@ export function assertValidShape(shape: Shape, shapes: readonly Shape[] = [shape
 function shapeMap(shapes: readonly Shape[]): Map<string, Shape> {
   return new Map(shapes.map((shape) => [shape.id, shape]));
 }
+/**
+ * Adds identity to Shape items at the collection boundary. Existing unique
+ * ids survive edits and reorder; missing or duplicated ids are treated as new
+ * items. This is intentionally a pure normalisation step: callers persist
+ * its result rather than minting ids during rendering.
+ */
+export function normalizeShapeCollectionInstances(
+  value: unknown,
+  type: Type,
+  shapes: readonly Shape[] = [],
+): unknown {
+  if (typeof type === "string") return value;
+  if (type.kind === "array") {
+    if (!Array.isArray(value)) return value;
+    const seen = new Set<ShapeInstanceId>();
+    return value.map((item) => {
+      if (typeof type.of !== "string" && type.of.kind === "shape") {
+        const existingId = isShapeCollectionInstance(item) ? item.id : undefined;
+        const id =
+          existingId !== undefined && !seen.has(existingId)
+            ? existingId
+            : generateId("shapeInstance");
+        seen.add(id);
+        const raw = isShapeCollectionInstance(item) ? item.value : item;
+        return createShapeCollectionInstance(
+          normalizeShapeCollectionInstances(raw, type.of, shapes),
+          id,
+        );
+      }
+      return normalizeShapeCollectionInstances(item, type.of, shapes);
+    });
+  }
+  const raw = shapeCollectionInstanceValue(value);
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return value;
+  const shape = shapes.find((candidate) => candidate.id === type.shapeId);
+  if (!shape) return value;
+  const object = raw as Record<string, unknown>;
+  const result = { ...object };
+  for (const field of shape.fields) {
+    const key = Object.prototype.hasOwnProperty.call(object, field.id)
+      ? field.id
+      : Object.prototype.hasOwnProperty.call(object, field.name)
+        ? field.name
+        : undefined;
+    if (key !== undefined)
+      result[key] = normalizeShapeCollectionInstances(object[key], field.type, shapes);
+  }
+  return result;
+}
+
+/** Removes the collection envelope before a Shape item enters data mapping. */
+export function shapeCollectionInstanceValue(value: unknown): unknown {
+  return isShapeCollectionInstance(value) ? value.value : value;
+}
+
 export function isImageAssetReference(value: unknown): value is ImageAssetReference {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
   const record = value as Record<string, unknown>;
@@ -336,14 +418,18 @@ export function assertValueConformsToType(
   }
   if (type.kind === "array") {
     if (!Array.isArray(value)) throw new InvalidShapeValueError(`${path} is not an array.`);
-    value.forEach((item, index) =>
-      assertValueConformsToType(item, type.of, shapes, `${path}[${index}]`),
-    );
+    value.forEach((item, index) => {
+      const unwrapped =
+        typeof type.of !== "string" && type.of.kind === "shape"
+          ? shapeCollectionInstanceValue(item)
+          : item;
+      assertValueConformsToType(unwrapped, type.of, shapes, `${path}[${index}]`);
+    });
     return;
   }
   const shape = shapeMap(shapes).get(type.shapeId);
   if (!shape) throw new InvalidShapeValueError(`${path} references an unknown Shape.`);
-  assertValueConformsToShape(value, shape, shapes, path);
+  assertValueConformsToShape(shapeCollectionInstanceValue(value), shape, shapes, path);
 }
 
 export function conformsToShape(
@@ -367,10 +453,11 @@ export function assertValueConformsToShape(
 ): void {
   const allShapes = shapeMap(shapes);
   if (!allShapes.has(shape.id)) throw new InvalidShapeValueError(`Unknown Shape: ${shape.id}.`);
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+  const raw = shapeCollectionInstanceValue(value);
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
     throw new InvalidShapeValueError(`${path} is not a Shape value.`);
   }
-  const object = value as Record<string, unknown>;
+  const object = raw as Record<string, unknown>;
   for (const field of shape.fields) {
     const key = Object.prototype.hasOwnProperty.call(object, field.id)
       ? field.id
@@ -582,7 +669,16 @@ export function coerceValue(
   if (typeof to !== "string" && to.kind === "array") {
     const sourceType = typeof from !== "string" && from.kind === "array" ? from.of : from;
     const values = Array.isArray(value) ? value : [value];
-    return values.map((item) => coerceValue(item, sourceType, to.of, shapes));
+    return values.map((item) => {
+      const existingId =
+        typeof to.of !== "string" && to.of.kind === "shape" && isShapeCollectionInstance(item)
+          ? item.id
+          : undefined;
+      const converted = coerceValue(shapeCollectionInstanceValue(item), sourceType, to.of, shapes);
+      return typeof to.of !== "string" && to.of.kind === "shape"
+        ? createShapeCollectionInstance(converted, existingId)
+        : converted;
+    });
   }
   if (typeof from !== "string" && from.kind === "array") {
     throw new CoercionError(`Cannot convert ${typeLabel(from)} to ${typeLabel(to)}.`);
@@ -662,8 +758,12 @@ function coerceTypeValue(
     const sourceType = typeof from !== "string" && from.kind === "array" ? from.of : from;
     let lossy = false;
     const converted = values.map((item, index) => {
+      const instance =
+        typeof to.of !== "string" && to.of.kind === "shape" && isShapeCollectionInstance(item)
+          ? item
+          : undefined;
       const result = coerceTypeValue(
-        item,
+        shapeCollectionInstanceValue(item),
         sourceType,
         to.of,
         shapes,
@@ -672,7 +772,9 @@ function coerceTypeValue(
         sourceOverrides,
       );
       lossy ||= result.lossy;
-      return result.value;
+      return typeof to.of !== "string" && to.of.kind === "shape"
+        ? createShapeCollectionInstance(result.value, instance?.id)
+        : result.value;
     });
     return { value: converted, lossy };
   }

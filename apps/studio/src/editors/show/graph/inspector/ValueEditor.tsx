@@ -2,9 +2,12 @@ import type { Gesture, GraphEdit } from "@mechane/commands";
 import { setSourceFieldDefault } from "@mechane/commands";
 import { Button, PlusIcon, PropertyInput, Switch, Trash2Icon } from "@mechane/design-system";
 import {
+  createShapeCollectionInstance,
   defaultValueForType,
   formatValuePath,
+  isShapeCollectionInstance,
   setValueAtPath,
+  shapeCollectionInstanceValue,
   type ShowGraph,
   type Type,
 } from "@mechane/domain";
@@ -107,33 +110,45 @@ function ArrayValueEditor({
   const values = Array.isArray(value) ? value : [];
   return (
     <div className="flex flex-col gap-2">
-      {values.map((item, index) => (
-        <div
-          className="flex items-start gap-2"
-          key={`${formatValuePath(path.map(String))}-${index}`}
-        >
-          {renderValue({
-            type: type.of,
-            value: item,
-            shapes,
-            path: [...path, index],
-            onChange: (next) =>
-              onChange(
-                values.map((current, currentIndex) => (currentIndex === index ? next : current)),
-              ),
-            onValidityChange,
-          })}
-          <Button
-            type="button"
-            size="icon-sm"
-            variant="ghost"
-            aria-label={`Remove item ${index + 1}`}
-            onClick={() => onChange(values.filter((_, currentIndex) => currentIndex !== index))}
+      {values.map((item, index) => {
+        const itemInstance =
+          typeof type.of !== "string" && type.of.kind === "shape" && isShapeCollectionInstance(item)
+            ? item
+            : undefined;
+        const itemValue = shapeCollectionInstanceValue(item);
+        return (
+          <div
+            className="flex items-start gap-2"
+            key={`${formatValuePath(path.map(String))}-${itemInstance?.id ?? index}`}
           >
-            <Trash2Icon />
-          </Button>
-        </div>
-      ))}
+            {renderValue({
+              type: type.of,
+              value: itemValue,
+              shapes,
+              path: [...path, index],
+              onChange: (next) =>
+                onChange(
+                  values.map((current, currentIndex) => {
+                    if (currentIndex !== index) return current;
+                    return itemInstance
+                      ? createShapeCollectionInstance(next, itemInstance.id)
+                      : next;
+                  }),
+                ),
+              onValidityChange,
+            })}
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="ghost"
+              aria-label={`Remove item ${index + 1}`}
+              onClick={() => onChange(values.filter((_, currentIndex) => currentIndex !== index))}
+            >
+              <Trash2Icon />
+            </Button>
+          </div>
+        );
+      })}
       <Button
         type="button"
         variant="outline"
@@ -161,7 +176,9 @@ function ShapeValueEditor({
 }) {
   const shape = shapes.find((candidate) => candidate.id === type.shapeId);
   if (!shape) return <p className="text-sm text-destructive">Shape definition is unavailable.</p>;
-  const objectValue = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const rawValue = shapeCollectionInstanceValue(value);
+  const objectValue =
+    rawValue && typeof rawValue === "object" && !Array.isArray(rawValue) ? rawValue : {};
   return (
     <div className="flex flex-col gap-3">
       {shape.fields.map((field) => (

@@ -399,13 +399,14 @@ function renderElement({
     }
     const renderedItems: ReactNode[] = [];
     for (const instance of resolution.instances) {
+      const key = `${element.id}:${instance.id ?? instance.index}`;
       if (instance.diagnostics.length > 0) {
         if (mode === "player") continue;
         renderedItems.push(
           createElement(
             "div",
             {
-              key: `${element.id}:${instance.index}`,
+              key,
               "data-slot-diagnostic": instance.diagnostics[0]?.category,
             },
             "Invalid Slot",
@@ -416,7 +417,7 @@ function renderElement({
       if (!instance.canvas) continue;
       renderedItems.push(
         createElement(ElementRenderer, {
-          key: `${element.id}:${instance.index}`,
+          key,
           element: instance.canvas.root as ResolvedElement,
           parent: element,
           shapes,

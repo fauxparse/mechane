@@ -22,6 +22,8 @@ import {
   emptyShowGraph,
   generateId,
   isEdgeKind,
+  normalizeShapeCollectionInstances,
+  typeAtPath,
 } from "@mechane/domain";
 import { and, eq, notInArray, sql } from "drizzle-orm";
 
@@ -202,15 +204,11 @@ function blockMetadata(block: typeof blocks.$inferSelect): {
   stateSelectorVariableId: string | null;
 } {
   const metadata =
-    block.metadata !== null &&
-    typeof block.metadata === "object" &&
-    !Array.isArray(block.metadata)
+    block.metadata !== null && typeof block.metadata === "object" && !Array.isArray(block.metadata)
       ? (block.metadata as Record<string, unknown>)
       : {};
   return {
-    variables: Array.isArray(metadata.variables)
-      ? (metadata.variables as BlockVariable[])
-      : [],
+    variables: Array.isArray(metadata.variables) ? (metadata.variables as BlockVariable[]) : [],
     states: Array.isArray(metadata.states) ? (metadata.states as BlockState[]) : [],
     stateSelectorVariableId:
       typeof metadata.stateSelectorVariableId === "string"
@@ -339,6 +337,26 @@ export async function persistGraphRows(
   graph: ShowGraph,
   expectedVersion?: number,
 ): Promise<PersistedGraphWrite> {
+  const sourceNodes = new Map(
+    graph.nodes
+      .filter((node): node is Extract<GraphNode, { kind: "source" }> => node.kind === "source")
+      .map((node) => [node.id, node]),
+  );
+  graph = {
+    ...graph,
+    sourceFieldDefaults: graph.sourceFieldDefaults?.map((sourceDefault) => {
+      const source = sourceNodes.get(sourceDefault.nodeId);
+      const type = source
+        ? typeAtPath(source.type, sourceDefault.fieldPath, graph.shapes ?? [])
+        : null;
+      return type
+        ? {
+            ...sourceDefault,
+            value: normalizeShapeCollectionInstances(sourceDefault.value, type, graph.shapes ?? []),
+          }
+        : sourceDefault;
+    }),
+  };
   assertValidShowGraph(graph);
 
   const now = new Date();
@@ -423,9 +441,7 @@ export async function persistGraphRows(
   const graphBlocks = graph.blocks ?? [];
   const blockIds = graphBlocks.map((block) => block.id);
   if (blockIds.length > 0) {
-    await tx
-      .delete(blocks)
-      .where(and(eq(blocks.graphId, row.id), notInArray(blocks.id, blockIds)));
+    await tx.delete(blocks).where(and(eq(blocks.graphId, row.id), notInArray(blocks.id, blockIds)));
   } else {
     await tx.delete(blocks).where(eq(blocks.graphId, row.id));
   }
@@ -444,7 +460,6 @@ export async function persistGraphRows(
       });
     await writeCanvasRows(tx, showId, row.id, { blockId: block.id }, block.canvas, now);
   }
-
 
   // Show-level nodes first: a nested node's `parent_id` foreign key needs
   // its Flow to already exist.
