@@ -11,6 +11,7 @@ import type {
   ImageAssetReference,
   ResolvedImageValue,
   ShowId,
+  SlotVariableValue,
   Type,
 } from "@mechane/domain";
 import type { CanvasArtboardDocument } from "../../../../api/canvas";

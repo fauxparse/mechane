@@ -1,5 +1,5 @@
 import { CanvasRenderer } from "@mechane/rendering";
-import { resolveCanvasProperties } from "@mechane/domain";
+import { resolveCanvasProperties, type SlotVariableValue } from "@mechane/domain";
 import { useMemo } from "react";
 import { usePlayerSession, type PlayerSession } from "../api";
 import { sceneVariableValues } from "../player-state";
@@ -18,17 +18,24 @@ function WaitingForRun({ session }: { session: PlayerSession }) {
 }
 
 function PlayerCanvas({ session }: { session: PlayerSession }) {
-  const canvas = useMemo(() => {
+  const renderState = useMemo(() => {
     if (!session.canvas || !session.scene || !session.run) return null;
     const values = sceneVariableValues(session.graph, session.scene.id, session.run.sourceValues);
-    return resolveCanvasProperties(session.canvas, {
-      graph: session.graph,
-      variables: session.scene.variables,
-      values,
-      shapes: session.graph.shapes,
-      imageAssets: session.imageAssets,
-    });
+    const variables = session.scene.variables.flatMap((variable): SlotVariableValue[] =>
+      variable.type ? [{ id: variable.id, type: variable.type, value: values[variable.id] }] : [],
+    );
+    return {
+      canvas: resolveCanvasProperties(session.canvas, {
+        graph: session.graph,
+        variables: session.scene.variables,
+        values,
+        shapes: session.graph.shapes,
+        imageAssets: session.imageAssets,
+      }),
+      variables,
+    };
   }, [session]);
+  const canvas = renderState?.canvas;
 
   if (!canvas) {
     return (
@@ -47,6 +54,7 @@ function PlayerCanvas({ session }: { session: PlayerSession }) {
         canvas={canvas}
         shapes={session.graph.shapes}
         blocks={session.blocks ?? []}
+        variables={renderState?.variables}
         mode="player"
         className="h-full w-full"
         imageLoading="eager"

@@ -254,7 +254,8 @@ export function CanvasWorkspaceStage({
                 canvas={artboard.renderCanvas ?? artboard.canvas}
                 blocks={blocks}
                 shapes={shapes}
-                mode="studio"
+                imageAssets={artboard.renderImageAssets}
+                variables={artboard.renderVariables}
                 editingElementId={textEdit?.artId === artboard.artId ? textEdit.elementId : null}
                 onTextDoubleClick={beginTextEdit}
                 onTextKeyDown={handleTextKeyDown}

@@ -103,8 +103,8 @@ export function CanvasWorkspaceSurface({
         tool={tool}
         setTool={setTool}
         camera={camera}
-        artboardSizes={artboardSizes}
         ordered={ordered}
+        artboardSizes={artboardSizes}
         shapes={shapes}
         blocks={blocks}
         drag={drag}

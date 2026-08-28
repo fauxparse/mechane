@@ -17,6 +17,8 @@ export const CANDIDATE_IMAGE_FIELD_ID = "field_candidate_image";
 export const CANDIDATE_SOURCE_ID = "source_candidates";
 export const TALLY_VARIABLE_ID = "variable_tally_candidates";
 export const AUDIENCE_VARIABLE_ID = "variable_audience_candidates";
+export const CANDIDATE_BUTTON_VARIABLE_ID = "candidate_button_candidate";
+export const TALLY_ROW_VARIABLE_ID = "tally_row_candidate";
 
 export const AUDIENCE_FLOW_ID = "flow_audience";
 export const CANDIDATE_LIST_SCENE_ID = "scene_candidate_list";
@@ -114,6 +116,9 @@ function repeatedSlot(
     type: "slot",
     rank,
     blockId,
+    layoutMode: "auto",
+    direction: "vertical",
+    gap: 16,
     sizing: { width: { mode: "fill" }, height: { mode: "hug" } },
     expansion: { source: { kind: "variable", variableId } },
     assignments,
@@ -134,16 +139,32 @@ export function workflowBlocks(): Block[] {
         rank: "a",
         layoutMode: "auto",
         direction: "vertical",
+        gap: 12,
         padding: 20,
         alignCounter: "center",
         fill: "#2D6CDF",
         cornerRadius: 18,
-        sizing: { width: { mode: "fixed", value: 296 }, height: { mode: "fixed", value: 72 } },
+        sizing: { width: { mode: "fixed", value: 296 }, height: { mode: "fixed", value: 120 } },
         children: [
+          {
+            id: "candidate-button-image",
+            type: "image",
+            rank: "a",
+            image: {
+              kind: "variable",
+              variableId: CANDIDATE_BUTTON_VARIABLE_ID,
+              fieldPath: [CANDIDATE_IMAGE_FIELD_ID],
+            },
+            sizing: { width: { mode: "fixed", value: 56 }, height: { mode: "fixed", value: 56 } },
+          },
           text(
             "candidate-button-name",
-            "a",
-            { kind: "variable", variableId: "candidate_button_name" },
+            "b",
+            {
+              kind: "variable",
+              variableId: CANDIDATE_BUTTON_VARIABLE_ID,
+              fieldPath: [CANDIDATE_NAME_FIELD_ID],
+            },
             "Candidate name",
             26,
           ),
@@ -151,7 +172,12 @@ export function workflowBlocks(): Block[] {
       },
     },
     variables: [
-      { id: "candidate_button_name", name: "Candidate name", type: "text", required: true },
+      {
+        id: CANDIDATE_BUTTON_VARIABLE_ID,
+        name: "Candidate",
+        type: candidateType,
+        required: true,
+      },
     ],
     states: [],
   };
@@ -177,14 +203,22 @@ export function workflowBlocks(): Block[] {
           text(
             "tally-row-name",
             "a",
-            { kind: "variable", variableId: "tally_row_name" },
+            {
+              kind: "variable",
+              variableId: TALLY_ROW_VARIABLE_ID,
+              fieldPath: [CANDIDATE_NAME_FIELD_ID],
+            },
             "Candidate name",
             32,
           ),
           text(
             "tally-row-votes",
             "b",
-            { kind: "variable", variableId: "tally_row_votes" },
+            {
+              kind: "variable",
+              variableId: TALLY_ROW_VARIABLE_ID,
+              fieldPath: [CANDIDATE_VOTES_FIELD_ID],
+            },
             "Vote count",
             32,
           ),
@@ -192,8 +226,7 @@ export function workflowBlocks(): Block[] {
       },
     },
     variables: [
-      { id: "tally_row_name", name: "Candidate name", type: "text", required: true },
-      { id: "tally_row_votes", name: "Votes", type: "number", required: true },
+      { id: TALLY_ROW_VARIABLE_ID, name: "Candidate", type: candidateType, required: true },
     ],
     states: [],
   };
@@ -403,22 +436,10 @@ export function votingCanvases(): Record<string, Canvas> {
     "b",
     "block_candidate_button",
     AUDIENCE_VARIABLE_ID,
-    [
-      {
-        variableId: "candidate_button_name",
-        source: { kind: "runtimeItem", fieldPath: [CANDIDATE_NAME_FIELD_ID] },
-      },
-    ],
+    [{ variableId: CANDIDATE_BUTTON_VARIABLE_ID, source: { kind: "runtimeItem" } }],
   );
   const tallySlot = repeatedSlot("tally-row-slot", "b", "block_tally_row", TALLY_VARIABLE_ID, [
-    {
-      variableId: "tally_row_name",
-      source: { kind: "runtimeItem", fieldPath: [CANDIDATE_NAME_FIELD_ID] },
-    },
-    {
-      variableId: "tally_row_votes",
-      source: { kind: "runtimeItem", fieldPath: [CANDIDATE_VOTES_FIELD_ID] },
-    },
+    { variableId: TALLY_ROW_VARIABLE_ID, source: { kind: "runtimeItem" } },
   ]);
   return {
     [CANDIDATE_LIST_SCENE_ID]: {

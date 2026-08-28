@@ -5,7 +5,7 @@ import {
   resolveBlockState,
 } from "./blocks";
 import type { Block, BlockCanvas, BlockVariable } from "./blocks";
-import type { Shape, Type } from "./shapes";
+import type { ImageAssetReference, ResolvedImageValue, Shape, Type } from "./shapes";
 import {
   areTypesCompatible,
   coerceValue,
@@ -202,6 +202,7 @@ export function resolveBlockCanvas(
   values: Readonly<Record<string, unknown>>,
   shapes: readonly Shape[] = [],
   canvas: BlockCanvas = block.canvas,
+  imageAssets: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[] = [],
 ): ResolvedCanvas {
   return resolveCanvasProperties(canvas, {
     variables: block.variables.map(({ id, name, type, defaultValue }) => ({
@@ -212,6 +213,7 @@ export function resolveBlockCanvas(
     })),
     values,
     shapes,
+    imageAssets,
   });
 }
 
@@ -250,6 +252,7 @@ export function resolveSlotInstances(
   runtimeType?: Type,
   shapes: readonly Shape[] = [],
   allBlocks: readonly Block[] = [block],
+  imageAssets: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[] = [],
 ): {
   readonly instances: readonly ResolvedSlotInstance[];
   readonly diagnostic?: SlotDiagnostic;
@@ -316,7 +319,7 @@ export function resolveSlotInstances(
         ...identity,
         index: instance.index,
         item: instance.item,
-        canvas: resolveBlockCanvas(block, resolution.values, shapes, selected),
+        canvas: resolveBlockCanvas(block, resolution.values, shapes, selected, imageAssets),
         variables: resolvedVariables,
         diagnostics: [],
       };

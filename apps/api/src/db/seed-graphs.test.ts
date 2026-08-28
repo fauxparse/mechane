@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   AUDIENCE_VARIABLE_ID,
+  CANDIDATE_BUTTON_VARIABLE_ID,
   CANDIDATE_IMAGE_FIELD_ID,
   CANDIDATE_IMAGE_REVISION,
   CANDIDATE_LIST_SCENE_ID,
@@ -24,6 +25,7 @@ import {
   seedBlockCanvasPosition,
   seedCanvasPosition,
   SEED_GRAPHS,
+  TALLY_ROW_VARIABLE_ID,
   TALLY_SCENE_ID,
   TALLY_VARIABLE_ID,
   THANK_YOU_SCENE_ID,
@@ -142,11 +144,13 @@ describe("Voting seed", () => {
       type: "slot",
       blockId: "block_candidate_button",
       expansion: { source: { kind: "variable", variableId: AUDIENCE_VARIABLE_ID } },
+      assignments: [{ variableId: CANDIDATE_BUTTON_VARIABLE_ID, source: { kind: "runtimeItem" } }],
     });
     expect(tallySlot).toMatchObject({
       type: "slot",
       blockId: "block_tally_row",
       expansion: { source: { kind: "variable", variableId: TALLY_VARIABLE_ID } },
+      assignments: [{ variableId: TALLY_ROW_VARIABLE_ID, source: { kind: "runtimeItem" } }],
     });
   });
 
@@ -180,11 +184,104 @@ describe("Voting seed", () => {
     expect(result.instances).toHaveLength(3);
   });
 
-  it("contains only the requested reusable blocks", () => {
-    expect(workflowBlocks().map((block) => ({ id: block.id, name: block.name }))).toEqual([
-      { id: "block_candidate_button", name: "CandidateButton" },
-      { id: "block_tally_row", name: "TallyRow" },
+  it("resolves Candidate images inside repeated CandidateButtons", () => {
+    const graph = votingGraph();
+    const canvases = votingCanvases();
+    const candidateList = graph.nodes.find((node) => node.id === CANDIDATE_LIST_SCENE_ID);
+    if (candidateList?.kind !== "scene") throw new Error("Candidate list scene is missing.");
+    const candidatesVariable = candidateList.variables[0];
+    if (!candidatesVariable?.type) throw new Error("Candidate list variable type is missing.");
+    const slot = canvases[CANDIDATE_LIST_SCENE_ID]?.root.children?.[1];
+    if (slot?.type !== "slot") throw new Error("Candidate list slot is missing.");
+    const candidateButton = workflowBlocks().find((block) => block.id === "block_candidate_button");
+    if (!candidateButton) throw new Error("CandidateButton block is missing.");
+    const values = sceneVariableValues(graph, candidateList.id, defaultSourceValues(graph));
+    const result = resolveSlotInstances(
+      candidateButton,
+      slot,
+      [
+        {
+          id: AUDIENCE_VARIABLE_ID,
+          type: candidatesVariable.type,
+          value: values[AUDIENCE_VARIABLE_ID],
+        },
+      ],
+      undefined,
+      { kind: "shape", shapeId: CANDIDATE_SHAPE_ID },
+      graph.shapes,
+      workflowBlocks(),
+      [
+        {
+          assetId: "image_asset_alice",
+          revision: CANDIDATE_IMAGE_REVISION,
+          url: "/alice.png",
+          width: 128,
+          height: 128,
+          alt: "Alice",
+          mimeType: "image/png",
+          blurHash: null,
+        },
+      ],
+    );
+    const first = result.instances[0];
+    if (!first?.canvas) throw new Error("CandidateButton instance has no canvas.");
+    expect(first.canvas.root.children?.[0]).toMatchObject({
+      type: "image",
+      image: { url: "/alice.png" },
+    });
+  });
+
+  it("passes Candidate shapes into reusable Blocks", () => {
+    const [candidateButton, tallyRow] = workflowBlocks();
+    expect(candidateButton?.variables).toEqual([
+      {
+        id: CANDIDATE_BUTTON_VARIABLE_ID,
+        name: "Candidate",
+        type: { kind: "shape", shapeId: CANDIDATE_SHAPE_ID },
+        required: true,
+      },
     ]);
+    expect(tallyRow?.variables).toEqual([
+      {
+        id: TALLY_ROW_VARIABLE_ID,
+        name: "Candidate",
+        type: { kind: "shape", shapeId: CANDIDATE_SHAPE_ID },
+        required: true,
+      },
+    ]);
+    expect(candidateButton?.canvas.root.children?.[0]).toMatchObject({
+      type: "image",
+      image: {
+        kind: "variable",
+        variableId: CANDIDATE_BUTTON_VARIABLE_ID,
+        fieldPath: [CANDIDATE_IMAGE_FIELD_ID],
+      },
+    });
+    expect(candidateButton?.canvas.root.children?.[1]).toMatchObject({
+      content: {
+        kind: "variable",
+        variableId: CANDIDATE_BUTTON_VARIABLE_ID,
+        fieldPath: [CANDIDATE_NAME_FIELD_ID],
+      },
+    });
+    expect(tallyRow?.canvas.root.children).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          content: {
+            kind: "variable",
+            variableId: TALLY_ROW_VARIABLE_ID,
+            fieldPath: [CANDIDATE_NAME_FIELD_ID],
+          },
+        }),
+        expect.objectContaining({
+          content: {
+            kind: "variable",
+            variableId: TALLY_ROW_VARIABLE_ID,
+            fieldPath: [CANDIDATE_VOTES_FIELD_ID],
+          },
+        }),
+      ]),
+    );
   });
 
   it("assigns persisted ranks to every Block sibling", () => {

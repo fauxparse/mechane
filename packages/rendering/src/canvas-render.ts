@@ -6,7 +6,16 @@ import {
   type ReactNode,
 } from "react";
 
-import type { Block, Canvas, FrameElement, Shape, SlotVariableValue, Type } from "@mechane/domain";
+import type {
+  Block,
+  Canvas,
+  FrameElement,
+  ImageAssetReference,
+  ResolvedImageValue,
+  Shape,
+  SlotVariableValue,
+  Type,
+} from "@mechane/domain";
 import { CanvasRenderer } from "./canvas-renderer";
 
 export interface CanvasRendererProps {
@@ -17,6 +26,7 @@ export interface CanvasRendererProps {
   imageLoading?: "eager" | "lazy";
   blocks?: readonly Block[];
   shapes?: readonly Shape[];
+  imageAssets?: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
   variables?: readonly SlotVariableValue[];
   runtimeItem?: unknown;
   runtimeType?: Type;
