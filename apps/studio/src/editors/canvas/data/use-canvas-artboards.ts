@@ -56,6 +56,25 @@ function createdArtboards(
   });
 }
 
+export function blocksForArtboards(
+  artboards: readonly CanvasArtboardDocument[],
+  graph: ShowGraph,
+): readonly Block[] {
+  return artboards.flatMap((artboard) => {
+    if (artboard.kind !== "block") return [];
+    const block = graph.blocks?.find((candidate) => candidate.id === artboard.artId);
+    return [
+      {
+        id: artboard.artId,
+        name: artboard.name,
+        canvas: { ...artboard.canvas, id: artboard.canvasId },
+        variables: block?.variables ?? [],
+        states: block?.states ?? [],
+        stateSelectorVariableId: block?.stateSelectorVariableId ?? null,
+      },
+    ];
+  });
+}
 export function useCanvasArtboards({
   documents,
   workspace,
@@ -113,23 +132,7 @@ export function useCanvasArtboards({
     });
   }, [all, graph, imageAssets, workspace.artboards]);
 
-  const blocks = useMemo<readonly Block[]>(
-    () =>
-      artboards.flatMap((artboard) =>
-        artboard.kind === "block"
-          ? [
-              {
-                id: artboard.artId,
-                name: artboard.name,
-                canvas: { ...artboard.canvas, id: artboard.canvasId },
-                variables: [],
-                states: [],
-              },
-            ]
-          : [],
-      ),
-    [artboards],
-  );
+  const blocks = useMemo(() => blocksForArtboards(artboards, graph), [artboards, graph]);
 
   return { artboards, blocks };
 }
