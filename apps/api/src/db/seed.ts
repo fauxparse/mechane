@@ -18,6 +18,7 @@ import {
   seedBlockCanvasPosition,
   seedCanvasPosition,
 } from "./seed-graphs";
+import { SEED_IMAGE_SEEDERS } from "./seed-images";
 import type { SeedCanvases, SeedGraph } from "./seed-graphs";
 import { showGraphs, shows, user } from "./schema";
 // `TRUNCATE ... CASCADE` on `shows` takes the graph tables with it, so they
@@ -33,9 +34,9 @@ const DEFAULT_USER = {
   password: "P4$$w0rd!",
 };
 
-// New resource types should be visible in the single local demo Show rather
-// than hidden behind a collection of unrelated examples.
-const DEFAULT_SHOW_NAMES = ["Voting demo"];
+// New resource types should be visible in the single local demo Show
+// rather than hidden behind a collection of unrelated examples.
+const DEFAULT_SHOW_NAMES = ["Voting"];
 
 async function nukeDatabase(): Promise<void> {
   await db.execute(
@@ -149,8 +150,10 @@ async function seedDefaultShows(userId: string): Promise<void> {
   for (const show of created) {
     const buildGraph = SEED_GRAPHS[show.name];
     const buildCanvases = SEED_CANVASES[show.name];
-    if (!buildGraph || !buildCanvases) continue;
+    const seedImages = SEED_IMAGE_SEEDERS[show.name];
+    if (!buildGraph || !buildCanvases || !seedImages) continue;
     const graph = buildGraph();
+    await seedImages(show.id);
     await writeShowGraph(show.id, "draft", graph);
     await seedCanvases(show.id, "draft", graph, buildCanvases());
     await seedBlockCanvases(show.id, "draft", graph);

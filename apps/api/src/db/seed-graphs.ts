@@ -1,5 +1,3 @@
-// Seed data for the local Voting demo. The graph is intentionally small and
-// legible: three Candidate Sources feed a projected tally and an Audience flow.
 import type {
   Block,
   Canvas,
@@ -14,200 +12,195 @@ import type {
 export const CANDIDATE_SHAPE_ID = "shape_candidate";
 export const CANDIDATE_NAME_FIELD_ID = "field_candidate_name";
 export const CANDIDATE_VOTES_FIELD_ID = "field_candidate_votes";
-export const CANDIDATE_AVATAR_FIELD_ID = "field_candidate_avatar";
+export const CANDIDATE_IMAGE_FIELD_ID = "field_candidate_image";
 
-export const CANDIDATE_SOURCE_IDS = ["source_alice", "source_beatrix", "source_clarissa"] as const;
-export const TALLY_VARIABLE_IDS = [
-  "variable_tally_alice",
-  "variable_tally_beatrix",
-  "variable_tally_clarissa",
-] as const;
-export const AUDIENCE_VARIABLE_IDS = [
-  "variable_audience_alice",
-  "variable_audience_beatrix",
-  "variable_audience_clarissa",
-] as const;
+export const CANDIDATE_SOURCE_ID = "source_candidates";
+export const TALLY_VARIABLE_ID = "variable_tally_candidates";
+export const AUDIENCE_VARIABLE_ID = "variable_audience_candidates";
 
-const PROJECTOR_ID = "device_projector";
-const AUDIENCE_DEVICE_ID = "device_audience";
-const TALLY_SCENE_ID = "scene_vote_tally";
-const AUDIENCE_FLOW_ID = "flow_audience";
-const AUDIENCE_SCENE_ID = "scene_audience_vote";
+export const AUDIENCE_FLOW_ID = "flow_audience";
+export const CANDIDATE_LIST_SCENE_ID = "scene_candidate_list";
+export const CONFIRMATION_SCENE_ID = "scene_confirmation";
+export const THANK_YOU_SCENE_ID = "scene_thank_you";
+export const TALLY_SCENE_ID = "scene_vote_tally";
+export const PROJECTOR_ID = "device_projector";
+export const AUDIENCE_DEVICE_ID = "device_audience";
+
+export const CANDIDATE_IMAGE_REVISION = "seed-v1";
+
+export const CANDIDATES = [
+  { name: "Alice", imageAssetId: "image_asset_alice", imageFile: "alice.png" },
+  { name: "Beatrix", imageAssetId: "image_asset_beatrix", imageFile: "beatrix.png" },
+  { name: "Clarissa", imageAssetId: "image_asset_clarissa", imageFile: "clarissa.png" },
+] as const;
 
 const candidateType = { kind: "shape" as const, shapeId: CANDIDATE_SHAPE_ID };
+const candidateArrayType = { kind: "array" as const, of: candidateType };
 
-function candidateFieldDefaults(nodeId: string, name: string, votes: number) {
-  return [
-    { nodeId, fieldPath: [CANDIDATE_NAME_FIELD_ID], value: name },
-    { nodeId, fieldPath: [CANDIDATE_VOTES_FIELD_ID], value: votes },
-  ];
+function text(
+  id: string,
+  rank: string,
+  content: string | PropertyConnection,
+  name: string,
+  fontSize = 28,
+): TextElement {
+  return {
+    id,
+    type: "text",
+    rank,
+    name,
+    content,
+    fontSize,
+    sizing: { width: { mode: "fill" }, height: { mode: "hug" } },
+  };
 }
+
+function button(
+  id: string,
+  rank: string,
+  label: string | PropertyConnection,
+  name: string,
+  fill: string,
+): FrameElement {
+  return {
+    id,
+    type: "frame",
+    rank,
+    name,
+    fill,
+    cornerRadius: 18,
+    layoutMode: "auto",
+    direction: "vertical",
+    padding: 20,
+    alignCounter: "center",
+    sizing: { width: { mode: "fill" }, height: { mode: "fixed", value: 72 } },
+    children: [text(`${id}-label`, "a", label, `${name} label`, 26)],
+  };
+}
+
+function root(
+  id: string,
+  name: string,
+  width: number,
+  height: number,
+  children: readonly NonNullable<FrameElement["children"]>[number][],
+): FrameElement {
+  return {
+    id,
+    type: "frame",
+    name,
+    rank: "a",
+    layoutMode: "auto",
+    direction: "vertical",
+    gap: 24,
+    padding: 32,
+    sizing: {
+      width: { mode: "fixed", value: width },
+      height: { mode: "fixed", value: height },
+    },
+    children,
+  };
+}
+
+function repeatedSlot(
+  id: string,
+  rank: string,
+  blockId: string,
+  variableId: string,
+  assignments: SlotElement["assignments"],
+): SlotElement {
+  return {
+    id,
+    type: "slot",
+    rank,
+    blockId,
+    sizing: { width: { mode: "fill" }, height: { mode: "hug" } },
+    expansion: { source: { kind: "variable", variableId } },
+    assignments,
+  };
+}
+
 export function workflowBlocks(): Block[] {
-  const card: Block = {
-    id: "block_card",
-    name: "Tally row",
+  const candidateButton: Block = {
+    id: "block_candidate_button",
+    name: "CandidateButton",
     canvas: {
-      id: "canvas_block_card",
+      id: "canvas_block_candidate_button",
       kind: "block",
       root: {
-        id: "block_card_root",
+        id: "candidate-button-root",
         type: "frame",
+        name: "CandidateButton",
+        rank: "a",
+        layoutMode: "auto",
         direction: "vertical",
-        gap: 8,
-        padding: 16,
-        sizing: {
-          width: { mode: "fixed", value: 320 },
-          height: { mode: "hug" },
-        },
+        padding: 20,
+        alignCounter: "center",
+        fill: "#2D6CDF",
+        cornerRadius: 18,
+        sizing: { width: { mode: "fixed", value: 296 }, height: { mode: "fixed", value: 72 } },
         children: [
-          {
-            id: "block_card_title",
-            type: "text",
-            rank: "a",
-            content: { kind: "variable", variableId: "block_card_name" },
-            sizing: { width: { mode: "fill" }, height: { mode: "hug" } },
-          },
-          {
-            id: "block_card_votes",
-            type: "text",
-            rank: "b",
-            content: { kind: "variable", variableId: "block_card_count" },
-            sizing: { width: { mode: "fill" }, height: { mode: "hug" } },
-          },
+          text(
+            "candidate-button-name",
+            "a",
+            { kind: "variable", variableId: "candidate_button_name" },
+            "Candidate name",
+            26,
+          ),
         ],
       },
     },
     variables: [
-      { id: "block_card_name", name: "Name", type: "text", required: true },
-      { id: "block_card_count", name: "Votes", type: "number", required: false, defaultValue: 0 },
-      { id: "block_card_selector", name: "State", type: "text", required: false },
+      { id: "candidate_button_name", name: "Candidate name", type: "text", required: true },
     ],
-    states: [
-      {
-        id: "block_card_default",
-        name: "Default",
-        isDefault: true,
-        overrides: [],
-      },
-      {
-        id: "block_card_selected",
-        name: "Selected",
-        isDefault: false,
-        overrides: [{ elementId: "block_card_title", property: "content", value: "Selected" }],
-      },
-    ],
-    stateSelectorVariableId: "block_card_selector",
-  };
-  const nested: Block = {
-    id: "block_nested",
-    name: "Nested card",
-    canvas: {
-      id: "canvas_block_nested",
-      kind: "block",
-      root: {
-        id: "block_nested_root",
-        type: "frame",
-        layoutMode: "auto",
-        direction: "vertical",
-        gap: 12,
-        padding: 16,
-        sizing: {
-          width: { mode: "fixed", value: 340 },
-          height: { mode: "hug" },
-        },
-        children: [
-          {
-            id: "block_nested_slot",
-            type: "slot",
-            rank: "a",
-            blockId: card.id,
-            assignments: [
-              {
-                variableId: "block_card_name",
-                source: { kind: "literal", value: "Nested candidate" },
-              },
-              {
-                variableId: "block_card_count",
-                source: { kind: "literal", value: 7 },
-              },
-              {
-                variableId: "block_card_selector",
-                source: { kind: "literal", value: "Selected" },
-              },
-            ],
-          },
-        ],
-      },
-    },
-    variables: [],
     states: [],
   };
-  const repeated: Block = {
-    id: "block_repeated",
-    name: "Repeated card",
+  const tallyRow: Block = {
+    id: "block_tally_row",
+    name: "TallyRow",
     canvas: {
-      id: "canvas_block_repeated",
+      id: "canvas_block_tally_row",
       kind: "block",
       root: {
-        id: "block_repeated_root",
+        id: "tally-row-root",
         type: "frame",
+        name: "TallyRow",
+        rank: "a",
         layoutMode: "auto",
-        direction: "vertical",
-        gap: 12,
-        padding: 16,
-        sizing: {
-          width: { mode: "fixed", value: 360 },
-          height: { mode: "hug" },
-        },
+        direction: "horizontal",
+        gap: 20,
+        padding: 20,
+        fill: "#172554",
+        cornerRadius: 16,
+        sizing: { width: { mode: "fill" }, height: { mode: "fixed", value: 84 } },
         children: [
-          {
-            id: "block_repeated_slot",
-            type: "slot",
-            rank: "a",
-            blockId: card.id,
-            expansion: {
-              source: { kind: "variable", variableId: "block_repeated_items" },
-            },
-            assignments: [
-              {
-                variableId: "block_card_name",
-                source: { kind: "runtimeItem", fieldPath: [CANDIDATE_NAME_FIELD_ID] },
-              },
-              {
-                variableId: "block_card_count",
-                source: { kind: "runtimeItem", fieldPath: [CANDIDATE_VOTES_FIELD_ID] },
-              },
-              {
-                variableId: "block_card_selector",
-                source: { kind: "literal", value: "Selected" },
-              },
-            ],
-          },
+          text(
+            "tally-row-name",
+            "a",
+            { kind: "variable", variableId: "tally_row_name" },
+            "Candidate name",
+            32,
+          ),
+          text(
+            "tally-row-votes",
+            "b",
+            { kind: "variable", variableId: "tally_row_votes" },
+            "Vote count",
+            32,
+          ),
         ],
       },
     },
     variables: [
-      {
-        id: "block_repeated_items",
-        name: "Candidates",
-        type: { kind: "array", of: candidateType },
-        required: true,
-        defaultValue: [
-          { [CANDIDATE_NAME_FIELD_ID]: "Alice", [CANDIDATE_VOTES_FIELD_ID]: 12 },
-          { [CANDIDATE_NAME_FIELD_ID]: "Beatrix", [CANDIDATE_VOTES_FIELD_ID]: 8 },
-          { [CANDIDATE_NAME_FIELD_ID]: "Clarissa", [CANDIDATE_VOTES_FIELD_ID]: 5 },
-        ],
-      },
+      { id: "tally_row_name", name: "Candidate name", type: "text", required: true },
+      { id: "tally_row_votes", name: "Votes", type: "number", required: true },
     ],
     states: [],
   };
-  return [card, nested, repeated];
+  return [candidateButton, tallyRow];
 }
 
 export function votingGraph(): ShowGraph {
-  const [alice, beatrix, clarissa] = CANDIDATE_SOURCE_IDS;
-  const [tallyAlice, tallyBeatrix, tallyClarissa] = TALLY_VARIABLE_IDS;
-  const [audienceAlice, audienceBeatrix, audienceClarissa] = AUDIENCE_VARIABLE_IDS;
   const candidateShape = {
     id: CANDIDATE_SHAPE_ID,
     name: "Candidate",
@@ -227,124 +220,152 @@ export function votingGraph(): ShowGraph {
         defaultValue: 0,
       },
       {
-        id: CANDIDATE_AVATAR_FIELD_ID,
-        name: "avatar",
+        id: CANDIDATE_IMAGE_FIELD_ID,
+        name: "image",
         type: "image" as const,
         required: false,
         defaultValue: null,
       },
     ],
   };
-  const sources = [
-    {
-      id: alice,
-      name: "Alice",
-      position: { x: 0, y: 0 },
+  const candidateDefaults = CANDIDATES.map((candidate) => ({
+    [CANDIDATE_NAME_FIELD_ID]: candidate.name,
+    [CANDIDATE_VOTES_FIELD_ID]: 0,
+    [CANDIDATE_IMAGE_FIELD_ID]: {
+      assetId: candidate.imageAssetId,
+      revision: CANDIDATE_IMAGE_REVISION,
     },
-    {
-      id: beatrix,
-      name: "Beatrix",
-      position: { x: 0, y: 180 },
-    },
-    {
-      id: clarissa,
-      name: "Clarissa",
-      position: { x: 0, y: 360 },
-    },
-  ];
+  }));
   const sourceFieldDefaults = [
-    ...candidateFieldDefaults(alice, "Alice", 12),
-    ...candidateFieldDefaults(beatrix, "Beatrix", 8),
-    ...candidateFieldDefaults(clarissa, "Clarissa", 5),
+    { nodeId: CANDIDATE_SOURCE_ID, fieldPath: [], value: candidateDefaults },
   ];
-  const sourceNodes = sources.map((source) => ({
-    id: source.id,
+  const sourceNode = {
+    id: CANDIDATE_SOURCE_ID,
     kind: "source" as const,
-    name: source.name,
+    name: "Candidates",
     parentId: null,
-    position: source.position,
-    type: candidateType,
-  }));
-  const tallyVariables = [tallyAlice, tallyBeatrix, tallyClarissa].map((id, index) => ({
-    id,
-    name: ["Alice", "Beatrix", "Clarissa"][index] ?? id,
-    type: candidateType,
-  }));
-  const audienceVariables = [audienceAlice, audienceBeatrix, audienceClarissa].map((id, index) => ({
-    id,
-    name: ["Alice", "Beatrix", "Clarissa"][index] ?? id,
-    type: candidateType,
-  }));
-  const sourceEdges = sources.flatMap((source, index) => [
-    {
-      id: `edge_${source.id}_tally`,
-      kind: "wiring" as const,
-      sourceId: source.id,
-      targetId: TALLY_SCENE_ID,
-      sourcePath: [],
-      targetPath: [TALLY_VARIABLE_IDS[index] ?? tallyAlice],
-    },
-    {
-      id: `edge_${source.id}_audience`,
-      kind: "wiring" as const,
-      sourceId: source.id,
-      targetId: AUDIENCE_SCENE_ID,
-      sourcePath: [],
-      targetPath: [AUDIENCE_VARIABLE_IDS[index] ?? audienceAlice],
-    },
-  ]);
-
+    position: { x: 0, y: 0 },
+    type: candidateArrayType,
+  };
+  const tallyScene = {
+    id: TALLY_SCENE_ID,
+    kind: "scene" as const,
+    name: "Projector tally",
+    parentId: null,
+    position: { x: 520, y: 0 },
+    variables: [{ id: TALLY_VARIABLE_ID, name: "Candidates", type: candidateArrayType }],
+  };
+  const audienceFlow = {
+    id: AUDIENCE_FLOW_ID,
+    kind: "flow" as const,
+    name: "Audience",
+    parentId: null,
+    position: { x: 520, y: 460 },
+    defaultSceneId: CANDIDATE_LIST_SCENE_ID,
+  };
+  const candidateListScene = {
+    id: CANDIDATE_LIST_SCENE_ID,
+    kind: "scene" as const,
+    name: "Candidate list",
+    parentId: AUDIENCE_FLOW_ID,
+    position: { x: 24, y: 74 },
+    variables: [{ id: AUDIENCE_VARIABLE_ID, name: "Candidates", type: candidateArrayType }],
+  };
+  const confirmationScene = {
+    id: CONFIRMATION_SCENE_ID,
+    kind: "scene" as const,
+    name: "Confirmation screen",
+    parentId: AUDIENCE_FLOW_ID,
+    position: { x: 340, y: 74 },
+    variables: [],
+  };
+  const thankYouScene = {
+    id: THANK_YOU_SCENE_ID,
+    kind: "scene" as const,
+    name: "Thank you screen",
+    parentId: AUDIENCE_FLOW_ID,
+    position: { x: 656, y: 74 },
+    variables: [],
+  };
+  const projector = {
+    id: PROJECTOR_ID,
+    kind: "device" as const,
+    name: "Projector",
+    parentId: null,
+    position: { x: 920, y: 120 },
+    perConnection: false,
+    pairingCode: null,
+  };
+  const audience = {
+    id: AUDIENCE_DEVICE_ID,
+    kind: "device" as const,
+    name: "Audience",
+    parentId: null,
+    position: { x: 920, y: 560 },
+    perConnection: true,
+    pairingCode: null,
+  };
   return {
     shapes: [candidateShape],
     sourceFieldDefaults,
     blocks: workflowBlocks(),
     nodes: [
-      ...sourceNodes,
-      {
-        id: TALLY_SCENE_ID,
-        kind: "scene",
-        name: "Vote tally",
-        parentId: null,
-        position: { x: 460, y: 0 },
-        variables: tallyVariables,
-      },
-      {
-        id: AUDIENCE_FLOW_ID,
-        kind: "flow",
-        name: "Audience",
-        parentId: null,
-        position: { x: 460, y: 420 },
-        defaultSceneId: AUDIENCE_SCENE_ID,
-      },
-      {
-        id: AUDIENCE_SCENE_ID,
-        kind: "scene",
-        name: "Choose a candidate",
-        parentId: AUDIENCE_FLOW_ID,
-        position: { x: 24, y: 74 },
-        variables: audienceVariables,
-      },
-      {
-        id: PROJECTOR_ID,
-        kind: "device",
-        name: "Projector",
-        parentId: null,
-        position: { x: 900, y: 120 },
-        perConnection: false,
-        pairingCode: null,
-      },
-      {
-        id: AUDIENCE_DEVICE_ID,
-        kind: "device",
-        name: "Audience",
-        parentId: null,
-        position: { x: 900, y: 520 },
-        perConnection: true,
-        pairingCode: null,
-      },
+      sourceNode,
+      tallyScene,
+      audienceFlow,
+      candidateListScene,
+      confirmationScene,
+      thankYouScene,
+      projector,
+      audience,
     ],
     edges: [
-      ...sourceEdges,
+      {
+        id: "edge_candidates_tally",
+        kind: "wiring",
+        sourceId: CANDIDATE_SOURCE_ID,
+        targetId: TALLY_SCENE_ID,
+        sourcePath: [],
+        targetPath: [TALLY_VARIABLE_ID],
+      },
+      {
+        id: "edge_candidates_audience",
+        kind: "wiring",
+        sourceId: CANDIDATE_SOURCE_ID,
+        targetId: CANDIDATE_LIST_SCENE_ID,
+        sourcePath: [],
+        targetPath: [AUDIENCE_VARIABLE_ID],
+      },
+      {
+        id: "edge_candidate_list_confirmation",
+        kind: "navigate",
+        sourceId: CANDIDATE_LIST_SCENE_ID,
+        targetId: CONFIRMATION_SCENE_ID,
+        sourcePath: [],
+        targetPath: [],
+        cueId: null,
+        actionId: null,
+      },
+      {
+        id: "edge_confirmation_list",
+        kind: "navigate",
+        sourceId: CONFIRMATION_SCENE_ID,
+        targetId: CANDIDATE_LIST_SCENE_ID,
+        sourcePath: [],
+        targetPath: [],
+        cueId: null,
+        actionId: null,
+      },
+      {
+        id: "edge_confirmation_thank_you",
+        kind: "navigate",
+        sourceId: CONFIRMATION_SCENE_ID,
+        targetId: THANK_YOU_SCENE_ID,
+        sourcePath: [],
+        targetPath: [],
+        cueId: null,
+        actionId: null,
+      },
       {
         id: "edge_tally_projector",
         kind: "device",
@@ -364,121 +385,70 @@ export function votingGraph(): ShowGraph {
     ],
   };
 }
-const SEEDED_CANVAS_WIDTH = 720;
-const SEEDED_CANVAS_GAP = 80;
+
+const SCENE_CANVAS_WIDTH = 720;
+const SCENE_CANVAS_GAP = 80;
 
 export function seedCanvasPosition(index: number): Position {
-  return { x: index * (SEEDED_CANVAS_WIDTH + SEEDED_CANVAS_GAP), y: 0 };
+  return { x: index * (SCENE_CANVAS_WIDTH + SCENE_CANVAS_GAP), y: 0 };
 }
+
 export function seedBlockCanvasPosition(index: number): Position {
   return { x: index * 420, y: 900 };
 }
 
-function variable(variableId: string, fieldId: string): PropertyConnection {
-  return { kind: "variable", variableId, fieldPath: [fieldId] };
-}
-
-function text(
-  id: string,
-  rank: string,
-  content: string | PropertyConnection,
-  name: string,
-): TextElement {
-  return {
-    id,
-    type: "text",
-    rank,
-    name,
-    content,
-    sizing: { width: { mode: "fill" }, height: { mode: "hug" } },
-  };
-}
-
-function button(id: string, rank: string, variableId: string, label: string) {
-  return {
-    id,
-    type: "frame" as const,
-    rank,
-    name: `${label} button`,
-    fill: "#2f2f2f",
-    cornerRadius: 10,
-    sizing: { width: { mode: "fill" as const }, height: { mode: "fixed" as const, value: 72 } },
-    children: [
-      text(`${id}_label`, "a", variable(variableId, CANDIDATE_NAME_FIELD_ID), `${label} name`),
-    ],
-  };
-}
-
-function root(
-  name: string,
-  children: readonly NonNullable<FrameElement["children"]>[number][],
-): FrameElement {
-  return {
-    id: `${name.toLowerCase().replaceAll(" ", "-")}-root`,
-    type: "frame",
-    name,
-    rank: "a",
-    layoutMode: "auto",
-    direction: "vertical",
-    gap: 20,
-    padding: 32,
-    sizing: { width: { mode: "fixed", value: 720 }, height: { mode: "hug" } },
-    children,
-  };
-}
-
-function cardSlot(id: string, rank: string, name: string, votes: number): SlotElement {
-  return {
-    id,
-    type: "slot",
-    rank,
-    blockId: "block_card",
-    sizing: { width: { mode: "fill" }, height: { mode: "hug" } },
-    assignments: [
-      { variableId: "block_card_name", source: { kind: "literal", value: name } },
-      { variableId: "block_card_count", source: { kind: "literal", value: votes } },
-      { variableId: "block_card_selector", source: { kind: "literal", value: "Default" } },
-    ],
-  };
-}
-
 export function votingCanvases(): Record<string, Canvas> {
-  const tallyCards = [
-    cardSlot("tally-card-alice", "b", "Alice", 12),
-    cardSlot("tally-card-beatrix", "c", "Beatrix", 8),
-    cardSlot("tally-card-clarissa", "d", "Clarissa", 5),
-  ];
+  const candidateListSlot = repeatedSlot(
+    "candidate-list-slot",
+    "b",
+    "block_candidate_button",
+    AUDIENCE_VARIABLE_ID,
+    [
+      {
+        variableId: "candidate_button_name",
+        source: { kind: "runtimeItem", fieldPath: [CANDIDATE_NAME_FIELD_ID] },
+      },
+    ],
+  );
+  const tallySlot = repeatedSlot("tally-row-slot", "b", "block_tally_row", TALLY_VARIABLE_ID, [
+    {
+      variableId: "tally_row_name",
+      source: { kind: "runtimeItem", fieldPath: [CANDIDATE_NAME_FIELD_ID] },
+    },
+    {
+      variableId: "tally_row_votes",
+      source: { kind: "runtimeItem", fieldPath: [CANDIDATE_VOTES_FIELD_ID] },
+    },
+  ]);
   return {
+    [CANDIDATE_LIST_SCENE_ID]: {
+      kind: "scene",
+      root: root(CANDIDATE_LIST_SCENE_ID, "Candidate list", 360, 720, [
+        text("candidate-list-title", "a", "Choose a candidate", "Title", 36),
+        candidateListSlot,
+      ]),
+    },
+    [CONFIRMATION_SCENE_ID]: {
+      kind: "scene",
+      root: root(CONFIRMATION_SCENE_ID, "Confirmation screen", 360, 720, [
+        text("confirmation-title", "a", "Confirm your choice", "Title", 36),
+        text("confirmation-message", "b", "Are you sure?", "Message", 28),
+        button("confirmation-yes", "c", "Yes", "Yes", "#16A34A"),
+        button("confirmation-no", "d", "No", "No", "#DC2626"),
+      ]),
+    },
+    [THANK_YOU_SCENE_ID]: {
+      kind: "scene",
+      root: root(THANK_YOU_SCENE_ID, "Thank you screen", 360, 720, [
+        text("thank-you-title", "a", "Thanks for voting!", "Title", 36),
+        text("thank-you-message", "b", "Your vote has been counted.", "Message", 28),
+      ]),
+    },
     [TALLY_SCENE_ID]: {
       kind: "scene",
-      root: root("Vote tally", [text("tally-title", "a", "Vote tally", "Title"), ...tallyCards]),
-    },
-    [AUDIENCE_SCENE_ID]: {
-      kind: "scene",
-      root: root("Choose a candidate", [
-        text("audience-title", "a", "Choose a candidate", "Title"),
-        ...AUDIENCE_VARIABLE_IDS.map((variableId, index) =>
-          button(
-            `candidate-button-${index}`,
-            String.fromCharCode(98 + index),
-            variableId,
-            ["Alice", "Beatrix", "Clarissa"][index] ?? "Candidate",
-          ),
-        ),
-        {
-          id: "audience-nested-slot",
-          type: "slot",
-          rank: "e",
-          blockId: "block_nested",
-          sizing: { width: { mode: "fill" }, height: { mode: "hug" } },
-        },
-        {
-          id: "audience-repeated-slot",
-          type: "slot",
-          rank: "f",
-          blockId: "block_repeated",
-          sizing: { width: { mode: "fill" }, height: { mode: "hug" } },
-        },
+      root: root(TALLY_SCENE_ID, "Projector tally", 1920, 1080, [
+        text("tally-title", "a", "Vote tally", "Title", 56),
+        tallySlot,
       ]),
     },
   };
@@ -490,9 +460,9 @@ export type SeedGraphBuilder = () => SeedGraph;
 export type SeedCanvasBuilder = () => SeedCanvases;
 
 export const SEED_GRAPHS: Record<string, SeedGraphBuilder> = {
-  "Voting demo": votingGraph,
+  Voting: votingGraph,
 };
 
 export const SEED_CANVASES: Record<string, SeedCanvasBuilder> = {
-  "Voting demo": votingCanvases,
+  Voting: votingCanvases,
 };
