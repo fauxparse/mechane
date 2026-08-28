@@ -27,6 +27,7 @@ import {
   rectsOverlap,
   selectionRect,
   toggleSelection,
+  topmostElementAtPoint,
   topmostPaintedElementAtPoint,
 } from "./components/canvas-selection";
 import {
@@ -322,7 +323,14 @@ export function useCanvasWorkspaceInteractions({
   ): boolean => {
     if (tool !== "select" || event.button !== 0) return false;
     const element = authoredElementForSelection(
-      topmostPaintedElementAtPoint(event.currentTarget, event.clientX, event.clientY, event.altKey),
+      artboard.kind === "block"
+        ? topmostElementAtPoint(event.currentTarget, event.clientX, event.clientY)
+        : topmostPaintedElementAtPoint(
+            event.currentTarget,
+            event.clientX,
+            event.clientY,
+            event.altKey,
+          ),
       event.currentTarget,
       artboard.canvas.root,
     );
@@ -1262,7 +1270,14 @@ export function useCanvasWorkspaceInteractions({
     if (event.button !== 0) return;
     event.stopPropagation();
     const element = authoredElementForSelection(
-      topmostPaintedElementAtPoint(event.currentTarget, event.clientX, event.clientY, event.altKey),
+      artboard.kind === "block"
+        ? topmostElementAtPoint(event.currentTarget, event.clientX, event.clientY)
+        : topmostPaintedElementAtPoint(
+            event.currentTarget,
+            event.clientX,
+            event.clientY,
+            event.altKey,
+          ),
       event.currentTarget,
       artboard.canvas.root,
     );

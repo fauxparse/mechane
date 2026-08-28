@@ -3,6 +3,7 @@ import type { ElementProperties } from "@mechane/commands";
 import type { CanvasArtboardDocument } from "../../api/canvas";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ToastProvider, ToastViewport } from "@mechane/design-system";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { CanvasWorkspaceEditor } from "./CanvasWorkspaceEditor";
@@ -349,6 +350,7 @@ const reviewArtboards: CanvasArtboardDocument[] = [
 const storyGoogleFonts = [
   { family: "Inter", variants: ["regular", "500", "600", "700", "italic"] },
 ] satisfies readonly GoogleFont[];
+const storyQueryClient = new QueryClient();
 const noOp = () => {};
 const meta: Meta<typeof CanvasWorkspaceEditor> = {
   title: "studio/CanvasWorkspaceEditor",
@@ -359,17 +361,19 @@ const meta: Meta<typeof CanvasWorkspaceEditor> = {
   // `sidebarsOpen` on a story's parameters sets the starting state.
   decorators: [
     (Story, context) => (
-      <ToastProvider>
-        <StaticGoogleFontsProvider fonts={storyGoogleFonts}>
-          <MockEditorChrome
-            activeEditor="canvas"
-            sidebarsOpen={(context.parameters.sidebarsOpen as boolean | undefined) ?? true}
-          >
-            <Story />
-          </MockEditorChrome>
-        </StaticGoogleFontsProvider>
-        <ToastViewport />
-      </ToastProvider>
+      <QueryClientProvider client={storyQueryClient}>
+        <ToastProvider>
+          <StaticGoogleFontsProvider fonts={storyGoogleFonts}>
+            <MockEditorChrome
+              activeEditor="canvas"
+              sidebarsOpen={(context.parameters.sidebarsOpen as boolean | undefined) ?? true}
+            >
+              <Story />
+            </MockEditorChrome>
+          </StaticGoogleFontsProvider>
+          <ToastViewport />
+        </ToastProvider>
+      </QueryClientProvider>
     ),
   ],
   args: {
