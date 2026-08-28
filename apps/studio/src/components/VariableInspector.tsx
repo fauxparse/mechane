@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { defaultPreset, PointerActivationConstraints } from "@dnd-kit/dom";
 import type { DragEndEvent } from "@dnd-kit/react";
 import { DragDropProvider, PointerSensor } from "@dnd-kit/react";
@@ -23,10 +22,11 @@ import {
   Section,
   Trash2Icon,
   TypeSelect,
-  type PropertyInputValue,
   variableTypeIcon,
+  type PropertyInputValue,
 } from "@mechane/design-system";
 import type { Shape, Type } from "@mechane/domain";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { reorderVariableIndices } from "./variable-order";
 export type VariableInspectorVariable = {
   readonly id: string;
@@ -173,6 +173,7 @@ function VariableDefaultPopover({
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger
+        nativeButton={false}
         render={<span aria-hidden="true" className="absolute right-0 top-1/2 size-px" />}
       />
       <PopoverContent
