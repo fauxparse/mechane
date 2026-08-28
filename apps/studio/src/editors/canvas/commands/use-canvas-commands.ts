@@ -1,4 +1,10 @@
-import type { CanvasWorkspace, CanvasWorkspaceEdit, Gesture, NewElement } from "@mechane/commands";
+import type {
+  CanvasWorkspace,
+  CanvasWorkspaceCommand,
+  CanvasWorkspaceEdit,
+  Gesture,
+  NewElement,
+} from "@mechane/commands";
 import {
   addCanvasElement,
   CommandStack,
@@ -61,6 +67,8 @@ export interface CanvasCommands {
     }[],
   ): void;
   createElement(canvasId: string, element: NewElement, parentId: string, rank: string): void;
+  /** Applies one prepared Canvas command as one undo entry. */
+  execute(command: CanvasWorkspaceCommand): void;
   removeElements(canvasId: string, elementIds: readonly string[]): void;
   undo(): void;
   redo(): void;
@@ -117,6 +125,14 @@ export function useCanvasCommands(
   const createElement = useCallback(
     (canvasId: string, element: NewElement, parentId: string, rank: string) => {
       stack.execute(addCanvasElement(canvasId, element, parentId, rank));
+      changed();
+    },
+    [changed, stack],
+  );
+
+  const execute = useCallback(
+    (command: CanvasWorkspaceCommand) => {
+      stack.execute(command);
       changed();
     },
     [changed, stack],
@@ -248,6 +264,7 @@ export function useCanvasCommands(
     updateElement,
     updateElements,
     createElement,
+    execute,
     removeElements,
     undo,
     redo,

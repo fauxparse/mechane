@@ -19,4 +19,5 @@ export * from "./graph-edit-codec";
 export * from "./graph-edits";
 export * from "./canvas-edits";
 export * from "./canvas-commands";
+export * from "./block-extraction";
 export * from "./stack";

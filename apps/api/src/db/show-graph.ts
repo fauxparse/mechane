@@ -215,12 +215,6 @@ export async function applyShowEdits(
       throw new GraphVersionConflictError(baseVersion, current.version);
     }
     const canvasIds = [...new Set(canvasEdits.map((edit) => edit.canvasId))];
-    const currentCanvases = new Map<string, CanvasWithOwner>();
-    for (const canvasId of canvasIds) {
-      const canvas = await readCanvasById(showId, "draft", canvasId, tx);
-      if (!canvas) throw new Error(`Canvas "${canvasId}" was not found.`);
-      currentCanvases.set(canvasId, canvas);
-    }
     const nextGraph = applyGraphEdits(
       {
         shapes: current.shapes ?? [],
@@ -231,6 +225,15 @@ export async function applyShowEdits(
       },
       graphEdits,
     );
+    // The graph goes down first so a Canvas this batch created — a new Block's (#426) — is there
+    // to be read by the Canvas edits that follow it.
+    const written = await writeGraph(tx, showId, "draft", nextGraph, baseVersion);
+    const currentCanvases = new Map<string, CanvasWithOwner>();
+    for (const canvasId of canvasIds) {
+      const canvas = await readCanvasById(showId, "draft", canvasId, tx);
+      if (!canvas) throw new Error(`Canvas "${canvasId}" was not found.`);
+      currentCanvases.set(canvasId, canvas);
+    }
     const nextCanvases = new Map<string, EditableCanvas>(
       [...currentCanvases].map(([canvasId, currentCanvas]) => [
         canvasId,
@@ -251,7 +254,6 @@ export async function applyShowEdits(
         entry.canvas = applyCanvasEdits(entry.canvas, [edit.edit]);
       }
     }
-    const written = await writeGraph(tx, showId, "draft", nextGraph, baseVersion);
     const sourceEdits = graphEdits.filter(
       (edit): edit is Extract<GraphEdit, { type: "graph.setSourceFieldDefault" }> =>
         edit.type === "graph.setSourceFieldDefault",
@@ -358,10 +360,7 @@ export async function publishShowGraph(
     await tx.select({ id: shows.id }).from(shows).where(eq(shows.id, showId)).for("update");
     const draft = await readShowGraph(showId, "draft", tx);
     const draftCanvases = await readCanvasWorkspace(showId, "draft", tx);
-    assertBlockReferencesExist(
-      draft.blocks ?? [],
-      draftCanvases.canvases,
-    );
+    assertBlockReferencesExist(draft.blocks ?? [], draftCanvases.canvases);
     const publishedBefore = await readShowGraph(showId, "published", tx);
     const reconciled = await reconcileActiveRunValues(showId, publishedBefore, draft, tx);
     const published = await writeGraph(tx, showId, "published", {

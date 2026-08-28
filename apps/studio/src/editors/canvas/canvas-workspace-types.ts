@@ -67,6 +67,8 @@ export interface CanvasWorkspaceEditorProps {
   blocks?: readonly Block[];
   blockVariableEditing?: VariableInspectorEditing;
   onPlaceBlock?(blockId: string): void;
+  /** Replaces the selection with a Slot holding a new Block made from it (#426). */
+  onCreateBlockFromSelection?(canvasId: string, elementIds: readonly string[]): void;
   imageAssets?: readonly ImageAsset[];
   deviceQrImages?: Readonly<Record<string, DeviceQrImage>>;
   onImageUpload?(props: ImageInputOnUploadProps): void;

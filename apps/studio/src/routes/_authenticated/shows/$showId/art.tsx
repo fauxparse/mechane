@@ -1,24 +1,18 @@
 import {
   DEVICE_SOURCE_HANDLES,
-  defaultSourceValues,
   defaultValueForType,
   deviceQrImageValue,
   generateId,
   isId,
-  resolveCanvasProperties,
-  sceneVariableValues,
 } from "@mechane/domain";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import type {
-  Block,
   BlockVariable,
   ImageAssetReference,
   ResolvedImageValue,
-  ShowGraph,
   ShowId,
   Type,
 } from "@mechane/domain";
-import type { ImageAsset } from "@mechane/graphql-schema";
 import type { CanvasArtboardDocument } from "../../../../api/canvas";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -34,13 +28,15 @@ import {
   isCanvasPath,
   resolveFocusedArtboard,
 } from "../../../../editors/canvas/data/canvas-workspace";
+import { useCanvasArtboards } from "../../../../editors/canvas/data/use-canvas-artboards";
+import { useBlockCreation } from "../../../../editors/canvas/commands/use-block-creation";
 import {
   rememberedCanvasCamera,
   rememberCanvasCamera,
 } from "../../../../editors/canvas/data/canvas-session";
 import { setBlockVariables } from "@mechane/commands";
-import type { CanvasArtboard } from "@mechane/commands";
 import { useCanvasCommands } from "../../../../editors/canvas/commands/use-canvas-commands";
+import { UndoCoordinator } from "../../../../editors/canvas/commands/undo-coordinator";
 import {
   useGraphEditing,
   type GraphEditing,
@@ -50,56 +46,6 @@ import { useUndoKeys } from "../../../../editors/show/keyboard/use-undo-keys";
 export const Route = createFileRoute("/_authenticated/shows/$showId/art")({
   component: CanvasWorkspaceRoute,
 });
-function useCanvasArtboards(
-  workspaceData: readonly CanvasArtboardDocument[] | undefined,
-  editedArtboards: readonly CanvasArtboard[],
-  graph: ShowGraph,
-  imageAssets: readonly ImageAsset[] | undefined,
-): readonly CanvasArtboardDocument[] {
-  return useMemo(() => {
-    const current = new Map(editedArtboards.map((artboard) => [artboard.canvasId, artboard]));
-    const nodes = new Map(graph.nodes.map((node) => [node.id, node]));
-    const sourceValues = defaultSourceValues(graph);
-    return (workspaceData ?? []).map((artboard) => {
-      const edited = current.get(artboard.canvasId);
-      const name = nodes.get(artboard.artId)?.name ?? artboard.name;
-      const canvas = edited?.canvas ?? artboard.canvas;
-      const owner = nodes.get(artboard.artId);
-      const block = graph.blocks?.find((candidate) => candidate.id === artboard.artId);
-      const variables =
-        owner?.kind === "scene"
-          ? owner.variables
-          : (block?.variables.map(({ id, name, type, defaultValue }) => ({
-              id,
-              name,
-              type,
-              defaultValue,
-            })) ?? []);
-      const values =
-        owner?.kind === "scene"
-          ? sceneVariableValues(graph, owner.id, sourceValues)
-          : block
-            ? Object.fromEntries(
-                block.variables.map((variable) => [variable.id, variable.defaultValue]),
-              )
-            : undefined;
-      const renderCanvas = resolveCanvasProperties(canvas, {
-        graph,
-        variables,
-        values,
-        shapes: graph.shapes,
-        imageAssets: (imageAssets ?? []).map((asset) => ({ ...asset, assetId: asset.id })),
-      });
-      return {
-        ...artboard,
-        name,
-        canvas,
-        renderCanvas,
-        position: edited?.position ?? artboard.position,
-      };
-    });
-  }, [editedArtboards, graph, imageAssets, workspaceData]);
-}
 
 function useBlockVariableEditing(
   focused: CanvasArtboardDocument | null,
@@ -193,65 +139,33 @@ function CanvasWorkspaceRoute() {
     [showId],
   );
   const save = useShowGraphEdits(showId, draft.data?.version);
-  const lastUndoTarget = useRef<"canvas" | "graph" | null>(null);
+  // Both editors' stacks are live at once here, and one action can reach both — creating a Block
+  // moves Elements onto a new Block Canvas and adds the Block itself (#426). The coordinator
+  // remembers which stacks each action reached so one Cmd+Z reverses all of it.
+  const undoCoordinator = useRef<UndoCoordinator | null>(null);
+  undoCoordinator.current ??= new UndoCoordinator();
+  const undoHistory = undoCoordinator.current;
   const canvasCommands = useCanvasCommands(workspace.data, (edits) => {
-    lastUndoTarget.current = "canvas";
+    undoHistory.record("canvas");
     save.enqueue(edits);
   });
   const graphEditing = useGraphEditing(draft.data, (edits) => {
-    lastUndoTarget.current = "graph";
+    undoHistory.record("graph");
     save.enqueue(edits);
   });
-  const undo = useCallback(() => {
-    if (lastUndoTarget.current === "graph" && graphEditing.command.commands.canUndo) {
-      graphEditing.command.commands.undo();
-    } else if (lastUndoTarget.current === "canvas" && canvasCommands.canUndo) {
-      canvasCommands.undo();
-    } else if (graphEditing.command.commands.canUndo) {
-      graphEditing.command.commands.undo();
-    } else {
-      canvasCommands.undo();
-    }
-  }, [canvasCommands, graphEditing.command.commands]);
-  const redo = useCallback(() => {
-    if (lastUndoTarget.current === "graph" && graphEditing.command.commands.canRedo) {
-      graphEditing.command.commands.redo();
-    } else if (lastUndoTarget.current === "canvas" && canvasCommands.canRedo) {
-      canvasCommands.redo();
-    } else if (graphEditing.command.commands.canRedo) {
-      graphEditing.command.commands.redo();
-    } else {
-      canvasCommands.redo();
-    }
-  }, [canvasCommands, graphEditing.command.commands]);
+  const undoStacks = useMemo(
+    () => ({ graph: graphEditing.command.commands, canvas: canvasCommands }),
+    [canvasCommands, graphEditing.command.commands],
+  );
+  const undo = useCallback(() => undoHistory.undo(undoStacks), [undoHistory, undoStacks]);
+  const redo = useCallback(() => undoHistory.redo(undoStacks), [undoHistory, undoStacks]);
   useUndoKeys({ undo, redo });
-  const artboards = useCanvasArtboards(
-    workspace.data,
-    canvasCommands.workspace.artboards,
-    graphEditing.command.graph,
-    imageAssets.data,
-  );
-
-  const blocks = useMemo<readonly Block[]>(
-    () =>
-      artboards.reduce<Block[]>((blocks, artboard) => {
-        if (artboard.kind === "block") {
-          const metadata = graphEditing.command.graph.blocks?.find(
-            (block) => block.id === artboard.artId,
-          );
-          blocks.push({
-            id: artboard.artId,
-            name: artboard.name,
-            canvas: { ...artboard.canvas, id: artboard.canvasId },
-            variables: metadata?.variables ?? [],
-            states: metadata?.states ?? [],
-            stateSelectorVariableId: metadata?.stateSelectorVariableId ?? null,
-          });
-        }
-        return blocks;
-      }, []),
-    [artboards, graphEditing.command.graph.blocks],
-  );
+  const { artboards, blocks } = useCanvasArtboards({
+    documents: workspace.data,
+    workspace: canvasCommands.workspace,
+    graph: graphEditing.command.graph,
+    imageAssets: imageAssets.data ?? [],
+  });
 
   // An artboard's name belongs to the Scene or Block that owns the Canvas, so a rename is a
   // Show-graph gesture. The graph stack owns the live name and the same save path as every
@@ -287,6 +201,14 @@ function CanvasWorkspaceRoute() {
     },
     [canvasCommands.createElement, focused],
   );
+
+  const createBlock = useBlockCreation({
+    artboards,
+    canvasCommands,
+    graph: graphEditing.command.graph,
+    executeGraphCommand: graphEditing.command.commands.execute,
+    undoHistory,
+  });
 
   // This route stays mounted for a moment while the router transitions away
   // from it, and during that moment `pathname` is already the destination's. Bail
@@ -391,6 +313,7 @@ function CanvasWorkspaceRoute() {
       blockVariableEditing={blockVariableEditing}
       blocks={blocks}
       onPlaceBlock={placeBlock}
+      onCreateBlockFromSelection={createBlock}
       shapes={graphEditing.command.graph.shapes ?? []}
       deviceQrImages={deviceQrImages}
       imageAssets={imageAssets.data ?? []}

@@ -121,6 +121,36 @@ function inverseUpdate(
   };
 }
 
+/**
+ * Adds an Artboard to the workspace the editor is holding.
+ *
+ * Nothing goes on the wire: the only Canvas a client creates is a Block's, and that Canvas
+ * travels inside the `graph.addBlock` edit that creates the Block itself (#426). This command
+ * exists so the editor can show — and immediately edit — the Artboard the server is about to
+ * create, and so undo takes it away again.
+ */
+export function addCanvasArtboard(artboard: CanvasArtboard): CanvasWorkspaceCommand {
+  return capturing<CanvasWorkspace, null, CanvasWorkspaceEdit>({
+    type: "canvas.addArtboard",
+    label: "Add Artboard",
+    scope: "canvas",
+    capture: () => null,
+    apply: (workspace) => ({
+      ...workspace,
+      artboards: [
+        ...workspace.artboards.filter((existing) => existing.canvasId !== artboard.canvasId),
+        artboard,
+      ],
+    }),
+    restore: (workspace) => ({
+      ...workspace,
+      artboards: workspace.artboards.filter((existing) => existing.canvasId !== artboard.canvasId),
+    }),
+    edits: [],
+    restoreEdits: () => [],
+  });
+}
+
 export function addCanvasElement(
   canvasId: string,
   element: NewElement,
