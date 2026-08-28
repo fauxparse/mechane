@@ -24,14 +24,20 @@ import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { SizeFields } from "./CanvasInspectorFields";
 import { isVariableInput } from "./canvas-inspector-values";
 import { AlignmentSelector } from "./AlignmentSelector";
-import { FrameElement, isContainerElement, Padding, TextElement } from "@mechane/domain";
+import type { Element, FrameElement, Padding, SlotElement, TextElement } from "@mechane/domain";
 import { useState } from "react";
 
+type LayoutContainer = FrameElement | SlotElement;
+
+function isLayoutContainer(element: Element): element is LayoutContainer {
+  return element.type === "frame" || element.type === "slot";
+}
+
 export const LayoutSection = () => {
-  const { focused, target, selected, update, common } = useCanvasInspectorContext();
-  const isFrame = selected.length > 0 && selected.every(isContainerElement);
+  const { focused, selected, update, common } = useCanvasInspectorContext();
+  const isFrame = selected.length > 0 && selected.every(isLayoutContainer);
   const isText = selected.length > 0 && selected.every((element) => element.type === "text");
-  const frame = isFrame ? (target as FrameElement) : null;
+  const frame = selected.find(isLayoutContainer) ?? null;
   const canEditPadding = isFrame || isText;
   const layoutMode = common("layoutMode");
   const layoutModeMixed =
