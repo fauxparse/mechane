@@ -343,6 +343,8 @@ function renderElement({
   onTextKeyDown,
 }: RenderElementOptions): ReactNode {
   const parentIsAuto = parent ? isAutoLayout(parent) : false;
+  const mainAxis = parent?.direction === "horizontal" ? "width" : "height";
+  const fixedMainAxis = parentIsAuto && sizeFor(element, mainAxis)?.mode === "fixed";
   const editing = element.type === "text" && element.id === editingElementId;
   const style = {
     ...elementStyle(element, root, sceneRoot),
@@ -354,6 +356,7 @@ function renderElement({
     sizeFor(element, parent?.direction === "horizontal" ? "width" : "height")?.mode === "fill"
       ? { flexGrow: 1 }
       : {}),
+    ...(fixedMainAxis ? { flexShrink: 0 } : {}),
     ...(root ? { isolation: "isolate", ...(sceneRoot ? { overflow: "hidden" } : {}) } : {}),
   };
   const children =

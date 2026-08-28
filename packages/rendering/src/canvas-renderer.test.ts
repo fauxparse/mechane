@@ -326,6 +326,31 @@ describe("CanvasRenderer", () => {
     expect(html).toContain("padding:4px 8px 12px 16px");
   });
 
+  it("preserves fixed-size children in auto-layout", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        layoutMode: "auto",
+        direction: "horizontal",
+        children: [
+          {
+            id: "fixed-image",
+            type: "image",
+            sizing: {
+              width: { mode: "fixed", value: 56 },
+              height: { mode: "fixed", value: 56 },
+            },
+          },
+          { id: "fill-text", type: "text", sizing: { width: { mode: "fill" } } },
+        ],
+      },
+    });
+
+    expect(html).toMatch(/data-element-id="fixed-image"[^>]*flex-shrink:0/);
+  });
+
   it("keeps empty fill-sized text measurable in the editor", () => {
     const html = markup({
       kind: "scene",
