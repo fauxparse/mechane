@@ -4,6 +4,10 @@ export const LOCAL_API_URL = "http://localhost:4000";
 export function defaultApiBaseUrl(production: boolean, devProxy: boolean): string {
   return production || devProxy ? DEPLOYED_API_URL : LOCAL_API_URL;
 }
+
+export function resolveApiUrl(path: string, apiBaseUrl: string): string {
+  return new URL(path, `${apiBaseUrl}/`).toString();
+}
 export function shouldUseRealtimeSocket(production: boolean, devProxy: boolean): boolean {
   return !production || devProxy;
 }

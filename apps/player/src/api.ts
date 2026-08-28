@@ -74,7 +74,7 @@ export async function fetchPlayerSession(
   if (!result.playerSession) {
     throw new PlayerRequestError("That pairing code is not active.", 404);
   }
-  return normalizePlayerSession(result.playerSession);
+  return normalizePlayerSession(result.playerSession, API_BASE_URL);
 }
 function realtimeUrl(): string {
   const url = new URL("/api/realtime", API_BASE_URL);

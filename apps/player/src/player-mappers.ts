@@ -9,6 +9,7 @@ import type {
   Type,
 } from "@mechane/domain";
 import { PRIMITIVE_TYPES } from "@mechane/domain";
+import { resolveApiUrl } from "./api-url";
 import type { PlayerSession } from "./api";
 
 type ApiRecord = Record<string, unknown>;
@@ -201,7 +202,7 @@ function toGraph(value: unknown): PlayerSession["graph"] {
   } as unknown as PlayerSession["graph"];
 }
 
-export function normalizePlayerSession(value: unknown): PlayerSession {
+export function normalizePlayerSession(value: unknown, apiBaseUrl?: string): PlayerSession {
   const input = record(value);
   const run = input.run === null ? null : record(input.run);
   const scene = input.scene === null ? null : toNode(input.scene);
@@ -227,7 +228,7 @@ export function normalizePlayerSession(value: unknown): PlayerSession {
     imageAssets: imageAssets.map((asset) => ({
       assetId: String(asset.id),
       revision: String(asset.revision),
-      url: String(asset.url),
+      url: apiBaseUrl ? resolveApiUrl(String(asset.url), apiBaseUrl) : String(asset.url),
       width: Number(asset.width),
       height: Number(asset.height),
       alt: String(asset.alt),
