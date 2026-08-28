@@ -22,12 +22,15 @@ export const CanvasElementFields = graphql(`
     fill
     stroke
     anchor
+    alignSelf
+    aspectRatio
     ... on RectElement {
       cornerRadius
     }
     ... on TextElement {
       content
       text
+      value
       color
       fontFamily
       fontSize
@@ -45,6 +48,7 @@ export const CanvasElementFields = graphql(`
       image
       alt
       objectFit
+      objectPosition
     }
     ... on FrameElement {
       cornerRadius

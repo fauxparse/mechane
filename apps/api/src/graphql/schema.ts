@@ -542,6 +542,8 @@ export const schema = createSchema<GraphQLContext>({
       fill: JSON
       stroke: JSON
       anchor: JSON
+      alignSelf: String
+      aspectRatio: JSON
       children: [Element!]!
     }
 
@@ -559,6 +561,8 @@ export const schema = createSchema<GraphQLContext>({
       fill: JSON
       stroke: JSON
       anchor: JSON
+      alignSelf: String
+      aspectRatio: JSON
       children: [Element!]!
       cornerRadius: JSON
     }
@@ -577,6 +581,8 @@ export const schema = createSchema<GraphQLContext>({
       fill: JSON
       stroke: JSON
       anchor: JSON
+      alignSelf: String
+      aspectRatio: JSON
       children: [Element!]!
     }
 
@@ -594,9 +600,12 @@ export const schema = createSchema<GraphQLContext>({
       fill: JSON
       stroke: JSON
       anchor: JSON
+      alignSelf: String
+      aspectRatio: JSON
       children: [Element!]!
       content: JSON
       text: JSON
+      value: JSON
       color: JSON
       fontFamily: JSON
       fontSize: JSON
@@ -626,9 +635,12 @@ export const schema = createSchema<GraphQLContext>({
       stroke: JSON
       anchor: JSON
       children: [Element!]!
+      alignSelf: String
+      aspectRatio: JSON
       image: JSON
       alt: JSON
       objectFit: JSON
+      objectPosition: JSON
     }
 
     type FrameElement implements Element {
@@ -645,6 +657,8 @@ export const schema = createSchema<GraphQLContext>({
       fill: JSON
       stroke: JSON
       anchor: JSON
+      alignSelf: String
+      aspectRatio: JSON
       children: [Element!]!
       cornerRadius: JSON
       layoutMode: String
@@ -672,6 +686,8 @@ export const schema = createSchema<GraphQLContext>({
       fill: JSON
       stroke: JSON
       anchor: JSON
+      alignSelf: String
+      aspectRatio: JSON
       children: [Element!]!
       layoutMode: String
       autoLayout: Boolean

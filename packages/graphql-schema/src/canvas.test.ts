@@ -4,7 +4,10 @@ import { describe, expect, it } from "vitest";
 import { CanvasElementFields } from "./canvas";
 
 describe("Canvas GraphQL query", () => {
-  it("requests text alignment when loading Canvas Elements", () => {
-    expect(print(CanvasElementFields)).toContain("textAlign");
-  });
+  it.each(["textAlign", "objectPosition", "value", "alignSelf", "aspectRatio"])(
+    "requests %s when loading Canvas Elements",
+    (field) => {
+      expect(print(CanvasElementFields)).toContain(field);
+    },
+  );
 });

@@ -41,9 +41,15 @@ describe("Canvas GraphQL adapter", () => {
 });
 
 describe("Canvas GraphQL schema", () => {
-  it("exposes text alignment so Canvas refreshes retain it", () => {
-    const textElement = schema.getType("TextElement");
-    const fields = textElement && "getFields" in textElement ? textElement.getFields() : undefined;
-    expect(fields?.textAlign).toBeDefined();
+  it.each([
+    ["TextElement", "textAlign"],
+    ["TextElement", "value"],
+    ["ImageElement", "objectPosition"],
+    ["TextElement", "alignSelf"],
+    ["TextElement", "aspectRatio"],
+  ])("exposes %s.%s so Canvas refreshes retain it", (type, field) => {
+    const element = schema.getType(type);
+    const fields = element && "getFields" in element ? element.getFields() : undefined;
+    expect(fields?.[field]).toBeDefined();
   });
 });
