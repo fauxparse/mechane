@@ -201,20 +201,13 @@ function elementStyle(element: ResolvedElement, root: boolean, sceneRoot: boolea
   const physicalRatio =
     ratio && (rotation === 90 || rotation === 270) ? 1 / ratio.ratio : ratio?.ratio;
   const paint = element.type === "slot" ? undefined : element;
-  const emptyFillText =
-    element.type === "text" &&
-    contentFor(element) === "" &&
-    sizeFor(element, "height")?.mode === "fill";
+  const emptyText = element.type === "text" && contentFor(element) === "";
   const style: CSSProperties = {
     boxSizing: "border-box",
     width: root && sceneRoot ? "100%" : dimensionFor(element, "width", rotation),
     height: root && sceneRoot ? "100%" : dimensionFor(element, "height", rotation),
     minWidth: root ? undefined : constraintFor(element, "minWidth", rotation),
-    minHeight: emptyFillText
-      ? "1em"
-      : root
-        ? undefined
-        : constraintFor(element, "minHeight", rotation),
+    minHeight: emptyText ? "1lh" : root ? undefined : constraintFor(element, "minHeight", rotation),
     aspectRatio: physicalRatio,
     opacity: literal(paint?.opacity),
     mixBlendMode: literal(paint?.blendMode),

@@ -367,7 +367,20 @@ describe("CanvasRenderer", () => {
       },
     });
 
-    expect(html).toMatch(/data-element-id="empty-fill-text"[^>]*min-height:1em/);
+    expect(html).toMatch(/data-element-id="empty-fill-text"[^>]*min-height:1lh/);
+  });
+
+  it("gives empty hug-sized text a one-line minimum", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [{ id: "empty-hug-text", type: "text", sizing: { height: { mode: "hug" } } }],
+      },
+    });
+
+    expect(html).toMatch(/data-element-id="empty-hug-text"[^>]*min-height:1lh/);
   });
   it("supports text hug sizing and clipping or ellipsis overflow", () => {
     const html = markup({
