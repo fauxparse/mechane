@@ -96,7 +96,9 @@ export function useCanvasGeometry(
   zoom: number,
 ): CanvasGeometrySnapshot {
   const zoomRef = useRef(zoom);
-  zoomRef.current = zoom;
+  useLayoutEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
   const [snapshot, setSnapshot] = useState<CanvasGeometrySnapshot>({
     geometry: new Map(),
     measuredZoom: zoom,

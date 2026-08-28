@@ -7,13 +7,15 @@ import {
 } from "../../../../components/VariableInspector";
 import type { VariableEditing } from "../../commands/use-graph-editing";
 
+const EMPTY_SHAPES: readonly Shape[] = [];
+
 type VariablesProps = {
   node: SceneNode;
   editing: VariableEditing;
   shapes?: readonly Shape[];
 };
 
-export const Variables = ({ node, editing, shapes = [] }: VariablesProps) => {
+export const Variables = ({ node, editing, shapes }: VariablesProps) => {
   const variableEditing = useMemo<VariableInspectorEditing>(
     () => ({
       addVariable: () => editing.addVariable(node.id),
@@ -27,6 +29,11 @@ export const Variables = ({ node, editing, shapes = [] }: VariablesProps) => {
     }),
     [editing, node.id],
   );
-
-  return <VariableInspector variables={node.variables} editing={variableEditing} shapes={shapes} />;
+  return (
+    <VariableInspector
+      variables={node.variables}
+      editing={variableEditing}
+      shapes={shapes ?? EMPTY_SHAPES}
+    />
+  );
 };

@@ -421,6 +421,7 @@ function InspectorStory({
             variables={storyVariables}
             blockVariableEditing={blockVariableEditing}
             shapes={storyShapes}
+            imageAssets={storyImageAssets}
             onImageUpload={onImageUpload}
             currentDimensions={currentDimensions}
             onUpdateElements={onUpdateElements}
