@@ -68,8 +68,12 @@ export class UndoCoordinator {
         // Nothing was recorded, so there is no action to remember.
       } else if (previous) {
         // A nested link is part of the action already open, not one of its own.
+        const targets = new Set(previous);
         for (const target of step) {
-          if (!previous.includes(target)) previous.push(target);
+          if (!targets.has(target)) {
+            targets.add(target);
+            previous.push(target);
+          }
         }
       } else {
         this.done.push(step);
