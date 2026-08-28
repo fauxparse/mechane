@@ -138,13 +138,13 @@ export function workflowBlocks(): Block[] {
         name: "CandidateButton",
         rank: "a",
         layoutMode: "auto",
-        direction: "vertical",
+        direction: "horizontal",
         gap: 12,
         padding: 20,
         alignCounter: "center",
         fill: "#2D6CDF",
         cornerRadius: 18,
-        sizing: { width: { mode: "fixed", value: 296 }, height: { mode: "fixed", value: 120 } },
+        sizing: { width: { mode: "fixed", value: 296 }, height: { mode: "hug" } },
         children: [
           {
             id: "candidate-button-image",

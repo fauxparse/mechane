@@ -241,6 +241,13 @@ describe("Voting seed", () => {
         required: true,
       },
     ]);
+    expect(candidateButton?.canvas.root).toMatchObject({
+      direction: "horizontal",
+      sizing: {
+        width: { mode: "fixed", value: 296 },
+        height: { mode: "hug" },
+      },
+    });
     expect(tallyRow?.variables).toEqual([
       {
         id: TALLY_ROW_VARIABLE_ID,
