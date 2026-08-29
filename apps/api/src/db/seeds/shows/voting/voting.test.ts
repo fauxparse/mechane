@@ -301,11 +301,11 @@ describe("Voting seed", () => {
     workflowBlocks().forEach((block) => visit(block.canvas.root));
   });
 
-  it("lays seeded canvases out in a non-overlapping row", () => {
+  it("lays seeded scenes out in a row and blocks below them", () => {
     expect(seedCanvasPosition(0)).toEqual({ x: 0, y: 0 });
     expect(seedCanvasPosition(1)).toEqual({ x: 800, y: 0 });
     expect(seedBlockCanvasPosition(0)).toEqual({ x: 0, y: 900 });
-    expect(seedBlockCanvasPosition(1)).toEqual({ x: 420, y: 900 });
+    expect(seedBlockCanvasPosition(1)).toEqual({ x: 0, y: 1400 });
   });
 
   it("exports the Voting seed contract", () => {

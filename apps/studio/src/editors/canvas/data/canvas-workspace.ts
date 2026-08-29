@@ -54,24 +54,45 @@ export function canvasArtboardSize(
 
 /** The gap left between a newly placed Artboard and the ones already in the workspace. */
 const NEW_ARTBOARD_GAP = 80;
+const DEFAULT_ARTBOARD_SIZE = { width: 720, height: 420 };
+
+function overlaps(
+  position: Position,
+  size: { width: number; height: number },
+  obstacle: CanvasArtboardDocument,
+  gap: number,
+): boolean {
+  const obstacleSize = canvasArtboardSize(obstacle);
+  return (
+    position.x < obstacle.position.x + obstacleSize.width + gap &&
+    position.x + size.width + gap > obstacle.position.x &&
+    position.y < obstacle.position.y + obstacleSize.height + gap &&
+    position.y + size.height + gap > obstacle.position.y
+  );
+}
 
 /**
- * Somewhere clear for an Artboard that has just been created (#426).
+ * Somewhere clear below the Artboard the new Block came from (#441).
  *
- * To the right of everything, level with the topmost Artboard: the workspace grows sideways, so
- * that is the nearest genuinely free space, and it is where the user is already looking after
- * the editor frames it.
+ * Moving only downward preserves the source Artboard's column while checking every existing
+ * Artboard, including ones added by an earlier creation in the same workspace session.
  */
 export function freeArtboardPosition(
   artboards: readonly CanvasArtboardDocument[],
+  source: CanvasArtboardDocument,
+  size: { width: number; height: number } = DEFAULT_ARTBOARD_SIZE,
   gap = NEW_ARTBOARD_GAP,
 ): Position {
-  if (artboards.length === 0) return { x: 0, y: 0 };
-  const right = Math.max(
-    ...artboards.map((artboard) => artboard.position.x + canvasArtboardSize(artboard).width),
-  );
-  const top = Math.min(...artboards.map((artboard) => artboard.position.y));
-  return { x: right + gap, y: top };
+  let position = {
+    x: source.position.x,
+    y: source.position.y + canvasArtboardSize(source).height + gap,
+  };
+  while (true) {
+    const obstacle = artboards.find((artboard) => overlaps(position, size, artboard, gap));
+    if (!obstacle) return position;
+    const nextY = obstacle.position.y + canvasArtboardSize(obstacle).height + gap;
+    position = { x: position.x, y: Math.max(position.y, nextY) };
+  }
 }
 
 /** A name no existing Block has, since `graph.addBlock` refuses a duplicate. */

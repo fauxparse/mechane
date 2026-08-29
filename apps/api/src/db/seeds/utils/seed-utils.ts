@@ -14,14 +14,21 @@ export type SeedShow = {
 };
 
 const SEEDED_CANVAS_WIDTH = 720;
+const SEEDED_CANVAS_HEIGHT = 420;
 const SEEDED_CANVAS_GAP = 80;
+const SEEDED_BLOCK_START_Y = 900;
 
+/** Places seeded Scene Canvases in a row, matching new Scene placement. */
 export function seedCanvasPosition(index: number): Position {
   return { x: index * (SEEDED_CANVAS_WIDTH + SEEDED_CANVAS_GAP), y: 0 };
 }
 
+/** Places seeded Block Canvases in a column below the Scene row. */
 export function seedBlockCanvasPosition(index: number): Position {
-  return { x: index * 420, y: 900 };
+  return {
+    x: 0,
+    y: SEEDED_BLOCK_START_Y + index * (SEEDED_CANVAS_HEIGHT + SEEDED_CANVAS_GAP),
+  };
 }
 
 export async function assertSeedCanvases(
