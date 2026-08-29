@@ -25,8 +25,9 @@ import {
   variableTypeIcon,
   type PropertyInputValue,
 } from "@mechane/design-system";
-import type { Shape, Type } from "@mechane/domain";
+import { defaultValueForType, type Shape, type Type } from "@mechane/domain";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { SourceValueDialog } from "../editors/show/graph/inspector/SourceValueDialog";
 import { reorderVariableIndices } from "./variable-order";
 export type VariableInspectorVariable = {
   readonly id: string;
@@ -205,6 +206,49 @@ function VariableDefaultPopover({
   );
 }
 
+function isShapeType(type: Type | null | undefined): type is Extract<Type, { kind: "shape" }> {
+  return type !== null && typeof type === "object" && type.kind === "shape";
+}
+
+function VariableDefaultDialog({
+  variable,
+  shapes,
+  open,
+  onOpenChange,
+  onSetDefault,
+}: {
+  variable: VariableInspectorVariable;
+  shapes: readonly Shape[];
+  open: boolean;
+  onOpenChange(open: boolean): void;
+  onSetDefault: (variableId: string, defaultValue: unknown) => void;
+}) {
+  if (!isShapeType(variable.type)) return null;
+  const row = {
+    label: variable.name,
+    fieldPath: [],
+    type: variable.type,
+    value: variable.defaultValue ?? defaultValueForType(variable.type, shapes),
+    hasOverride: variable.defaultValue !== undefined,
+  };
+  return (
+    <SourceValueDialog
+      row={row}
+      shapes={shapes}
+      open={open}
+      onOpenChange={onOpenChange}
+      onSave={(value) => {
+        onSetDefault(variable.id, value);
+        return null;
+      }}
+      onClear={() => {
+        onSetDefault(variable.id, undefined);
+        onOpenChange(false);
+      }}
+    />
+  );
+}
+
 type VariableRowProps = {
   variable: VariableInspectorVariable;
   index: number;
@@ -284,7 +328,7 @@ function VariableRow({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem
-            disabled={defaultInputType(variable.type) === null}
+            disabled={defaultInputType(variable.type) === null && !isShapeType(variable.type)}
             onClick={() => setDefaultPopoverOpen(true)}
           >
             <span>Set default</span>
@@ -298,12 +342,22 @@ function VariableRow({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <VariableDefaultPopover
-        variable={variable}
-        open={defaultPopoverOpen}
-        onOpenChange={setDefaultPopoverOpen}
-        onSetDefault={onSetDefault}
-      />
+      {isShapeType(variable.type) ? (
+        <VariableDefaultDialog
+          variable={variable}
+          shapes={shapes}
+          open={defaultPopoverOpen}
+          onOpenChange={setDefaultPopoverOpen}
+          onSetDefault={onSetDefault}
+        />
+      ) : (
+        <VariableDefaultPopover
+          variable={variable}
+          open={defaultPopoverOpen}
+          onOpenChange={setDefaultPopoverOpen}
+          onSetDefault={onSetDefault}
+        />
+      )}
     </div>
   );
 }

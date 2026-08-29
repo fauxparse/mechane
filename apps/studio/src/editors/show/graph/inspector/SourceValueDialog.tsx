@@ -22,12 +22,14 @@ export function SourceValueDialog({
   open,
   onOpenChange,
   onSave,
+  onClear,
 }: {
   row: SourceValueRow;
   shapes: readonly Shape[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (value: unknown) => string | null;
+  onClear?: () => void;
 }) {
   const [draft, setDraft] = useState(row.value);
   const [errors, setErrors] = useState<Map<string, string>>(new Map());
@@ -83,6 +85,11 @@ export function SourceValueDialog({
           <p className="text-sm text-destructive">{[...errors.values()][0]}</p>
         ) : null}
         <DialogFooter>
+          {onClear ? (
+            <Button type="button" variant="ghost" onClick={onClear}>
+              Clear default
+            </Button>
+          ) : null}
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
