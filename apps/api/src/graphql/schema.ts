@@ -641,6 +641,7 @@ export const schema = createSchema<GraphQLContext>({
       alt: JSON
       objectFit: JSON
       objectPosition: JSON
+      cornerRadius: JSON
     }
 
     type FrameElement implements Element {

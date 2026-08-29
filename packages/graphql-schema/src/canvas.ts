@@ -1,5 +1,5 @@
-import { graphql } from "./graphql";
 import type { TadaDocumentNode } from "gql.tada";
+import { graphql } from "./graphql";
 
 /**
  * The Canvas Element interface is expanded explicitly because GraphQL
@@ -49,6 +49,7 @@ export const CanvasElementFields = graphql(`
       alt
       objectFit
       objectPosition
+      cornerRadius
     }
     ... on FrameElement {
       cornerRadius

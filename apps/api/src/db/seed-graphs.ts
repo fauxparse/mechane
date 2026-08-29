@@ -6,6 +6,7 @@ import type {
   PropertyConnection,
   ShowGraph,
   SlotElement,
+  TextAlign,
   TextElement,
 } from "@mechane/domain";
 
@@ -45,6 +46,7 @@ function text(
   content: string | PropertyConnection,
   name: string,
   fontSize = 28,
+  align: TextAlign = "left",
 ): TextElement {
   return {
     id,
@@ -54,6 +56,8 @@ function text(
     content,
     fontSize,
     sizing: { width: { mode: "fill" }, height: { mode: "hug" } },
+    textAlign: align,
+    textVerticalAlign: "center",
   };
 }
 
@@ -70,13 +74,13 @@ function button(
     rank,
     name,
     fill,
-    cornerRadius: 18,
+    cornerRadius: 16,
     layoutMode: "auto",
-    direction: "vertical",
-    padding: 20,
+    direction: "horizontal",
+    padding: 8,
     alignCounter: "center",
     sizing: { width: { mode: "fill" }, height: { mode: "fixed", value: 72 } },
-    children: [text(`${id}-label`, "a", label, `${name} label`, 26)],
+    children: [text(`${id}-label`, "a", label, `${name} label`, 26, "center")],
   };
 }
 
@@ -139,11 +143,11 @@ export function workflowBlocks(): Block[] {
         rank: "a",
         layoutMode: "auto",
         direction: "horizontal",
-        gap: 12,
-        padding: 20,
+        gap: 16,
+        padding: 8,
         alignCounter: "center",
         fill: "#2D6CDF",
-        cornerRadius: 18,
+        cornerRadius: 16,
         sizing: { width: { mode: "fixed", value: 296 }, height: { mode: "hug" } },
         children: [
           {
@@ -156,6 +160,7 @@ export function workflowBlocks(): Block[] {
               fieldPath: [CANDIDATE_IMAGE_FIELD_ID],
             },
             sizing: { width: { mode: "fixed", value: 56 }, height: { mode: "fixed", value: 56 } },
+            cornerRadius: 8,
           },
           text(
             "candidate-button-name",
