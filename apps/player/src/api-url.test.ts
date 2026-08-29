@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultApiBaseUrl, shouldUseRealtimeSocket } from "./api-url";
+import { defaultApiBaseUrl, resolveApiUrl, shouldUseRealtimeSocket } from "./api-url";
 
 describe("defaultApiBaseUrl", () => {
   it("uses the deployed API for production builds", () => {
@@ -12,6 +12,14 @@ describe("defaultApiBaseUrl", () => {
 
   it("keeps direct HTTP development available", () => {
     expect(defaultApiBaseUrl(false, false)).toBe("http://localhost:4000");
+  });
+});
+
+describe("resolveApiUrl", () => {
+  it("resolves API-relative image paths against the Player API", () => {
+    expect(resolveApiUrl("/api/images/alice/seed-v1", "https://api.mechane.dev")).toBe(
+      "https://api.mechane.dev/api/images/alice/seed-v1",
+    );
   });
 });
 

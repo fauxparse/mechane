@@ -1,6 +1,7 @@
+import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import type { ReactNode } from "react";
 
-import type { Shape, Type } from "@mechane/domain";
+import type { ImageAssetReference, ResolvedImageValue, Shape, Type } from "@mechane/domain";
 
 export type SourceValueRow = {
   label: string;
@@ -19,6 +20,8 @@ export type ValueEditorProps = {
   path: ErrorPath;
   onChange: (value: unknown) => void;
   onValidityChange: (path: ErrorPath, error: string | null) => void;
+  imageAssets?: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
 };
 
 export type ValueEditorRenderer = (props: ValueEditorProps) => ReactNode;

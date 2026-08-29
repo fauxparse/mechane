@@ -1,4 +1,12 @@
-import type { Canvas, Element, ResolvedCanvas, ShowId } from "@mechane/domain";
+import type {
+  Canvas,
+  Element,
+  ImageAssetReference,
+  ResolvedCanvas,
+  ResolvedImageValue,
+  ShowId,
+  SlotVariableValue,
+} from "@mechane/domain";
 import { GetShowCanvasesQuery, graphqlRequest } from "@mechane/graphql-schema";
 import type { ShowCanvas } from "@mechane/graphql-schema";
 import { useQuery } from "@tanstack/react-query";
@@ -12,6 +20,11 @@ export interface CanvasArtboardDocument {
   readonly name: string;
   /** Persisted values, including PropertyConnection objects, used by the Inspector. */
   readonly canvas: Canvas;
+  /** Typed values used by Slot expansion while painting this Artboard. */
+  readonly renderVariables?: readonly SlotVariableValue[];
+  /** Resolved assets used by nested Block image Elements. */
+  readonly renderImageAssets?: readonly (ResolvedImageValue &
+    Pick<ImageAssetReference, "revision">)[];
   /** Materialised values used only for painting the Canvas. */
   readonly renderCanvas?: ResolvedCanvas;
   readonly position: { x: number; y: number };

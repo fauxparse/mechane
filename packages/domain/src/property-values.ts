@@ -13,11 +13,13 @@ export interface PropertyConnection {
 /** A Property is either a literal value or a Variable connection. */
 export type PropertyValue<T> = T | PropertyConnection;
 /** A Variable resolved for an editor control, optionally carrying its current value. */
-export type VariableReference<TSource extends ShapeValue = ShapeValue> = SceneVariable & {
+export interface VariableReference<TSource extends ShapeValue = ShapeValue> extends SceneVariable {
   readonly current?: TSource;
   /** Stable Shape Field ids represented by this editor binding. */
   readonly fieldPath?: readonly string[];
-};
+  /** The resolved Type at `fieldPath`, used by field-aware controls. */
+  readonly fieldType?: Type;
+}
 
 export interface PropertyFieldPath {
   readonly fieldPath: readonly string[];

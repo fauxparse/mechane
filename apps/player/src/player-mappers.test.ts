@@ -204,4 +204,33 @@ describe("normalizePlayerSession", () => {
       states: [{ id: "default", isDefault: true }],
     });
   });
+
+  it("resolves API-relative image URLs for the Player origin", () => {
+    const session = normalizePlayerSession(
+      {
+        device: { id: "device_1", name: "Projector", perConnection: false },
+        run: null,
+        graph: { nodes: [], edges: [], shapes: [] },
+        scene: null,
+        canvas: null,
+        imageAssets: [
+          {
+            id: "asset-alice",
+            revision: "seed-v1",
+            url: "/api/images/asset-alice/seed-v1",
+            width: 128,
+            height: 128,
+            alt: "Alice",
+            mimeType: "image/png",
+            blurHash: null,
+          },
+        ],
+      },
+      "https://api.mechane.dev",
+    );
+
+    expect(session.imageAssets[0]?.url).toBe(
+      "https://api.mechane.dev/api/images/asset-alice/seed-v1",
+    );
+  });
 });

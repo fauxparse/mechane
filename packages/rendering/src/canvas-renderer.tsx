@@ -36,6 +36,7 @@ interface RenderElementOptions {
   parent?: LayoutParent;
   shapes?: CanvasRendererProps["shapes"];
   blocks?: CanvasRendererProps["blocks"];
+  imageAssets?: CanvasRendererProps["imageAssets"];
   variables?: CanvasRendererProps["variables"];
   runtimeItem?: unknown;
   runtimeType?: CanvasRendererProps["runtimeType"];
@@ -200,14 +201,13 @@ function elementStyle(element: ResolvedElement, root: boolean, sceneRoot: boolea
   const physicalRatio =
     ratio && (rotation === 90 || rotation === 270) ? 1 / ratio.ratio : ratio?.ratio;
   const paint = element.type === "slot" ? undefined : element;
+  const emptyText = element.type === "text" && contentFor(element) === "";
   const style: CSSProperties = {
     boxSizing: "border-box",
     width: root && sceneRoot ? "100%" : dimensionFor(element, "width", rotation),
     height: root && sceneRoot ? "100%" : dimensionFor(element, "height", rotation),
     minWidth: root ? undefined : constraintFor(element, "minWidth", rotation),
-    maxWidth: root ? undefined : constraintFor(element, "maxWidth", rotation),
-    minHeight: root ? undefined : constraintFor(element, "minHeight", rotation),
-    maxHeight: root ? undefined : constraintFor(element, "maxHeight", rotation),
+    minHeight: emptyText ? "1lh" : root ? undefined : constraintFor(element, "minHeight", rotation),
     aspectRatio: physicalRatio,
     opacity: literal(paint?.opacity),
     mixBlendMode: literal(paint?.blendMode),
@@ -225,8 +225,12 @@ function elementStyle(element: ResolvedElement, root: boolean, sceneRoot: boolea
   return style;
 }
 
+function isAutoLayout(element: LayoutParent): boolean {
+  return element.type === "slot" || element.layoutMode === "auto" || element.autoLayout === true;
+}
+
 function frameStyle(frame: LayoutParent): CSSProperties {
-  const auto = frame.layoutMode === "auto" || frame.autoLayout === true;
+  const auto = isAutoLayout(frame);
   if (auto) {
     const automaticGap = frame.gap === "auto";
     return {
@@ -320,6 +324,7 @@ function renderElement({
   parent,
   shapes,
   blocks,
+  imageAssets,
   variables,
   runtimeItem,
   runtimeType,
@@ -330,7 +335,9 @@ function renderElement({
   onTextDoubleClick,
   onTextKeyDown,
 }: RenderElementOptions): ReactNode {
-  const parentIsAuto = parent?.layoutMode === "auto" || parent?.autoLayout === true;
+  const parentIsAuto = parent ? isAutoLayout(parent) : false;
+  const mainAxis = parent?.direction === "horizontal" ? "width" : "height";
+  const fixedMainAxis = parentIsAuto && sizeFor(element, mainAxis)?.mode === "fixed";
   const editing = element.type === "text" && element.id === editingElementId;
   const style = {
     ...elementStyle(element, root, sceneRoot),
@@ -339,9 +346,10 @@ function renderElement({
     ...(editing ? { userSelect: "text" as const } : {}),
     ...(parent && !parentIsAuto ? { gridArea: "1 / 1", ...anchorStyles(element.anchor) } : {}),
     ...(parentIsAuto &&
-    sizeFor(element, parent.direction === "horizontal" ? "width" : "height")?.mode === "fill"
+    sizeFor(element, parent?.direction === "horizontal" ? "width" : "height")?.mode === "fill"
       ? { flexGrow: 1 }
       : {}),
+    ...(fixedMainAxis ? { flexShrink: 0 } : {}),
     ...(root ? { isolation: "isolate", ...(sceneRoot ? { overflow: "hidden" } : {}) } : {}),
   };
   const children =
@@ -353,6 +361,7 @@ function renderElement({
             parent: element,
             shapes,
             blocks,
+            imageAssets,
             variables,
             runtimeItem,
             runtimeType,
@@ -387,6 +396,7 @@ function renderElement({
       runtimeType,
       shapes,
       blocks,
+      imageAssets,
     );
     if (resolution.diagnostic) {
       if (mode === "player") return null;
@@ -422,6 +432,7 @@ function renderElement({
           parent: element,
           shapes,
           blocks,
+          imageAssets,
           variables: instance.variables ?? variables,
           runtimeItem: instance.item ?? runtimeItem,
           runtimeType,
@@ -457,6 +468,19 @@ function renderElement({
             blurHash?: string | null;
           })
         : null;
+    if (!resolved) {
+      if (mode === "player") return null;
+      return createElement("div", {
+        "data-element-id": element.id,
+        "data-element-type": element.type,
+        "data-element-parent-id": parent?.id,
+        "data-element-rank": element.rank,
+        "data-element-painted": "true",
+        "data-image-placeholder": "true",
+        hidden: element.hidden,
+        style: { ...style, outline: "1px dashed currentColor" },
+      });
+    }
     const hasFill = element.fill !== undefined;
     return createElement("img", {
       "data-element-id": element.id,
@@ -538,6 +562,7 @@ export function ElementRenderer({
   parent,
   shapes,
   blocks,
+  imageAssets,
   variables,
   runtimeItem,
   runtimeType,
@@ -553,6 +578,7 @@ export function ElementRenderer({
     parent,
     shapes,
     blocks,
+    imageAssets,
     variables,
     runtimeItem,
     runtimeType,
@@ -573,6 +599,7 @@ export const CanvasRenderer = memo(function CanvasRenderer({
   imageLoading,
   shapes,
   blocks,
+  imageAssets,
   variables,
   runtimeItem,
   runtimeType,
@@ -596,6 +623,7 @@ export const CanvasRenderer = memo(function CanvasRenderer({
       sceneRoot,
       shapes,
       blocks,
+      imageAssets,
       variables,
       runtimeItem,
       runtimeType,

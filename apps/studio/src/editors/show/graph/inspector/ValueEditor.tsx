@@ -1,10 +1,20 @@
 import type { Gesture, GraphEdit } from "@mechane/commands";
 import { setSourceFieldDefault } from "@mechane/commands";
-import { Button, PlusIcon, PropertyInput, Switch, Trash2Icon } from "@mechane/design-system";
+import {
+  Button,
+  ImageInput,
+  PlusIcon,
+  PropertyInput,
+  Switch,
+  Trash2Icon,
+  type ImageInputValue,
+} from "@mechane/design-system";
 import {
   createShapeCollectionInstance,
   defaultValueForType,
   formatValuePath,
+  isImageAssetReference,
+  isResolvedImageValue,
   isShapeCollectionInstance,
   setValueAtPath,
   shapeCollectionInstanceValue,
@@ -29,6 +39,8 @@ function SourcePrimitiveInput({
   type,
   value,
   path,
+  imageAssets: propsImageAssets,
+  onImageUpload: propsOnImageUpload,
   label,
   actions,
   onChange,
@@ -36,6 +48,44 @@ function SourcePrimitiveInput({
 }: PrimitiveInputProps) {
   const inputType = typeof type === "string" ? propertyInputType(type) : null;
   const [error, setError] = useState<string | null>(null);
+  if (type === "image") {
+    const resolvedValue = isResolvedImageValue(value)
+      ? value
+      : isImageAssetReference(value)
+        ? ((propsImageAssets ?? []).find(
+            (asset) => asset.assetId === value.assetId && asset.revision === value.revision,
+          ) ?? null)
+        : null;
+    return (
+      <ImageInput
+        value={resolvedValue}
+        imageAssets={propsImageAssets}
+        allowLink={false}
+        onUpload={propsOnImageUpload}
+        onChange={(next: ImageInputValue | null) => {
+          if (next === null) {
+            onValidityChange(path, null);
+            onChange(null);
+            return;
+          }
+          if (!isResolvedImageValue(next)) {
+            onValidityChange(path, "The selected image is not resolved.");
+            return;
+          }
+          const revision = isImageAssetReference(next)
+            ? next.revision
+            : propsImageAssets?.find((asset) => asset.assetId === next.assetId)?.revision;
+          if (!revision) {
+            onValidityChange(path, "The selected image has no revision.");
+            return;
+          }
+          onValidityChange(path, null);
+          onChange({ assetId: next.assetId, revision });
+        }}
+        onError={(error) => onValidityChange(path, error.message)}
+      />
+    );
+  }
 
   if (type === "boolean") {
     return (
@@ -99,6 +149,8 @@ function ArrayValueEditor({
   type,
   value,
   shapes,
+  imageAssets,
+  onImageUpload,
   path,
   onChange,
   onValidityChange,
@@ -125,6 +177,8 @@ function ArrayValueEditor({
               type: type.of,
               value: itemValue,
               shapes,
+              imageAssets,
+              onImageUpload,
               path: [...path, index],
               onChange: (next) =>
                 onChange(
@@ -166,6 +220,8 @@ function ShapeValueEditor({
   type,
   value,
   shapes,
+  imageAssets,
+  onImageUpload,
   path,
   onChange,
   onValidityChange,
@@ -193,6 +249,8 @@ function ShapeValueEditor({
             type: field.type,
             value: Reflect.get(objectValue, field.id),
             shapes,
+            imageAssets,
+            onImageUpload,
             path: [...path, field.id],
             onChange: (next) => onChange(setValueAtPath(objectValue, [field.id], next)),
             onValidityChange,

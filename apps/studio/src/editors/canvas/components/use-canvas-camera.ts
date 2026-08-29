@@ -5,7 +5,12 @@ import type { Position } from "@mechane/domain";
 
 import { focusContext } from "../../show/keyboard/focus-context";
 import { viewportIntentFor } from "../../show/keyboard/viewport-keys";
-import { fitCanvasCamera, panCanvasCamera, zoomCanvasCamera } from "./canvas-camera";
+import {
+  CANVAS_WHEEL_ZOOM_SENSITIVITY,
+  fitCanvasCamera,
+  panCanvasCamera,
+  zoomCanvasCamera,
+} from "./canvas-camera";
 import type { CanvasCamera, CanvasCameraRect, CanvasCameraViewport } from "./canvas-camera";
 
 interface CameraDrag {
@@ -197,7 +202,7 @@ export function useCanvasCamera(
       const bounds = workspace.getBoundingClientRect();
       if (event.metaKey || event.ctrlKey) {
         zoomPoint = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
-        zoomDelta += -event.deltaY * 0.002;
+        zoomDelta += -event.deltaY * CANVAS_WHEEL_ZOOM_SENSITIVITY;
       } else {
         panX -= event.deltaX;
         panY -= event.deltaY;

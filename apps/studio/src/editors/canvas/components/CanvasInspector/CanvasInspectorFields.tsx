@@ -24,6 +24,8 @@ import {
   sizeValueUnit,
   sizeConstraintKey,
   sizingForMode,
+  slotInputOptions,
+  slotInputReference,
   variableInput,
   variableOptions,
   type SizeConstraint,
@@ -120,25 +122,30 @@ export const SlotInputsSection = () => {
   return (
     <Section label="Block Inputs">
       {block.variables.map((variable) => {
-        const type = inputType(variable.type);
-        if (!type) return null;
         const assignment = assignments.find((item) => item.variableId === variable.id);
-        const source = assignment?.source;
+        const type = inputType(variable.type);
         const value =
-          source?.kind === "variable"
-            ? variableInput(
-                {
-                  kind: "variable",
-                  variableId: source.variableId,
-                  fieldPath: source.fieldPath ?? [],
-                },
-                variable.type,
-                variables,
-                shapes,
-              )
-            : source?.kind === "literal"
-              ? literalValue(variable.type, source.value)
-              : null;
+          type !== null
+            ? assignment?.source?.kind === "variable"
+              ? variableInput(
+                  {
+                    kind: "variable",
+                    variableId: assignment.source.variableId,
+                    fieldPath: assignment.source.fieldPath ?? [],
+                  },
+                  variable.type,
+                  variables,
+                  shapes,
+                )
+              : assignment?.source?.kind === "literal"
+                ? literalValue(variable.type, assignment.source.value)
+                : null
+            : slotInputReference(target, variable, assignment?.source, variables, shapes);
+        const options =
+          type !== null
+            ? variableOptions(variable.type, variables, shapes)
+            : slotInputOptions(target, variable, variables, shapes);
+        if (type === null && value === null && options.length === 0) return null;
         return (
           <SectionRow key={variable.id}>
             <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
@@ -146,18 +153,35 @@ export const SlotInputsSection = () => {
             </span>
             <PropertyInput
               className="min-w-0 flex-1"
-              type={type}
+              type={type ?? "text"}
               value={value}
-              variables={variableOptions(variable.type, variables, shapes)}
+              variables={options}
               onChange={(next: PropertyInputValue | null) => {
+                const runtimeReference =
+                  type === null
+                    ? slotInputReference(
+                        target,
+                        variable,
+                        { kind: "runtimeItem" },
+                        variables,
+                        shapes,
+                      )
+                    : null;
                 const nextSource: SlotInputSource = isVariableInput(next)
-                  ? {
-                      kind: "variable",
-                      variableId: next.id,
-                      fieldPath: next.fieldPath ?? [],
-                    }
+                  ? runtimeReference &&
+                    next.id === runtimeReference.id &&
+                    JSON.stringify(next.fieldPath ?? []) ===
+                      JSON.stringify(runtimeReference.fieldPath ?? [])
+                    ? { kind: "runtimeItem" }
+                    : {
+                        kind: "variable",
+                        variableId: next.id,
+                        fieldPath: next.fieldPath ?? [],
+                      }
                   : next
-                    ? { kind: "literal", value: next.value }
+                    ? type === null
+                      ? (assignment?.source ?? { kind: "unset" })
+                      : { kind: "literal", value: next.value }
                     : { kind: "unset" };
                 updateAssignment(variable.id, nextSource);
               }}

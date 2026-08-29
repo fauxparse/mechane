@@ -49,6 +49,7 @@ describe("canvas inspector values", () => {
           defaultValue: {},
         },
         { id: "field_votes", name: "Votes", type: "number", required: true, defaultValue: 0 },
+        { id: "field_image", name: "Image", type: "image", required: false, defaultValue: null },
       ],
     };
     const variables: SceneVariable[] = [
@@ -67,11 +68,29 @@ describe("canvas inspector values", () => {
       id: "candidate",
       name: "Candidate → Details → City",
       fieldPath: ["field_details", "field_city"],
+      fieldType: "text",
       current: { kind: "text", value: "" },
     });
     expect(variableOptions("text", variables, shapes).map((variable) => variable.name)).toEqual([
       "Candidate → Details → City",
       "Candidate → Votes",
+    ]);
+
+    expect(
+      variableInput(
+        { kind: "variable", variableId: "candidate", fieldPath: ["field_image"] },
+        "image",
+        variables,
+        shapes,
+      ),
+    ).toMatchObject({
+      id: "candidate",
+      name: "Candidate → Image",
+      fieldPath: ["field_image"],
+      fieldType: "image",
+    });
+    expect(variableOptions("image", variables, shapes).map((variable) => variable.name)).toEqual([
+      "Candidate → Image",
     ]);
   });
   it("shows a Variable default as the editable current value", () => {
@@ -82,7 +101,9 @@ describe("canvas inspector values", () => {
       defaultValue: "Draft title",
     };
 
-    expect(variableInput({ kind: "variable", variableId: variable.id }, "text", [variable])).toMatchObject({
+    expect(
+      variableInput({ kind: "variable", variableId: variable.id }, "text", [variable]),
+    ).toMatchObject({
       id: variable.id,
       current: { kind: "text", value: "Draft title" },
     });

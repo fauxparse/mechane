@@ -13,15 +13,22 @@ import {
   SelectValue,
   type ImageInputValue,
 } from "@mechane/design-system";
-import type { ImageValue, ObjectFit, ObjectPosition, VariableReference } from "@mechane/domain";
-import { isPropertyConnection } from "@mechane/domain";
+import {
+  isPropertyConnection,
+  type ImageAssetReference,
+  type ImageValue,
+  type ObjectFit,
+  type ObjectPosition,
+  type ResolvedImageValue,
+  type VariableReference,
+} from "@mechane/domain";
 import { VariableInspector } from "../../../../components/VariableInspector";
 import { canvasDisplayName, canvasElementDisplayName } from "../../data/canvas-names";
 import { elementIconFor } from "../utils";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { ObjectPositionSelector } from "./ObjectPositionSelector";
-import { variableInput } from "./canvas-inspector-values";
+import { variableInput, variableOptions } from "./canvas-inspector-values";
 
 export const InspectorHeader = () => {
   const { focused, elements, update, onRenameArtboard } = useCanvasInspectorContext();
@@ -71,12 +78,30 @@ export const InspectorHeader = () => {
   );
 };
 export const BlockVariablesSection = () => {
-  const { focused, target, blocks, shapes, blockVariableEditing } = useCanvasInspectorContext();
+  const { focused, target, blocks, shapes, imageAssets, onImageUpload, blockVariableEditing } =
+    useCanvasInspectorContext();
   if (!focused || focused.kind !== "block" || target.id !== focused.canvas.root.id) return null;
   const block = blocks.find((candidate) => candidate.id === focused.artId);
   if (!block || !blockVariableEditing) return null;
+  const resolvedImageAssets: readonly (ResolvedImageValue &
+    Pick<ImageAssetReference, "revision">)[] = imageAssets.map((asset) => ({
+    assetId: asset.id,
+    revision: asset.revision,
+    url: asset.url,
+    width: asset.width,
+    height: asset.height,
+    alt: asset.alt,
+    mimeType: asset.mimeType,
+    blurHash: asset.blurHash,
+  }));
   return (
-    <VariableInspector variables={block.variables} editing={blockVariableEditing} shapes={shapes} />
+    <VariableInspector
+      variables={block.variables}
+      editing={blockVariableEditing}
+      shapes={shapes}
+      imageAssets={resolvedImageAssets}
+      onImageUpload={onImageUpload}
+    />
   );
 };
 
@@ -120,8 +145,14 @@ const imageReferenceFor = (value: unknown): { assetId: string; revision: string 
   }
   return { assetId: value.assetId, revision: value.revision };
 };
-const isImageVariable = (value: ImageInputValue | null): value is VariableReference<ImageValue> =>
-  value !== null && typeof value === "object" && "id" in value && "name" in value;
+const isImageVariable = (value: unknown): value is VariableReference<ImageValue> =>
+  value !== null &&
+  typeof value === "object" &&
+  !Array.isArray(value) &&
+  "id" in value &&
+  "name" in value &&
+  "fieldType" in value &&
+  value.fieldType === "image";
 
 export const ImageSection = () => {
   const {
@@ -156,19 +187,15 @@ export const ImageSection = () => {
       )
     : undefined;
   const linkedImage = variableInput(common("image"), "image", variables, shapes);
-  const linkedVariable = isImageVariable(linkedImage as ImageInputValue | null)
-    ? (linkedImage as VariableReference<ImageValue>)
-    : null;
+  const linkedVariable = isImageVariable(linkedImage) ? linkedImage : null;
   const linkedQrAsset = linkedVariable ? deviceQrImages[linkedVariable.id] : undefined;
   const resetAsset = intrinsicAsset ?? linkedQrAsset;
-  const imageInputValue: ImageInputValue | null = isImageVariable(
-    linkedImage as ImageInputValue | null,
-  )
-    ? (linkedImage as ImageInputValue)
+  const imageInputValue: ImageInputValue | null = isImageVariable(linkedImage)
+    ? linkedImage
     : intrinsicAsset
       ? { ...intrinsicAsset, assetId: intrinsicAsset.id }
       : null;
-  const imageInputVariables = variables.filter((variable) => variable.type === "image");
+  const imageInputVariables = variableOptions("image", variables, shapes).filter(isImageVariable);
   const imageInputAssets = imageAssets.map((asset) => ({
     assetId: asset.id,
     url: asset.url,

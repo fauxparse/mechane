@@ -1,10 +1,13 @@
 import type {
   AxisSize,
+  BlockVariable,
   ElementSizing,
   SceneVariable,
   Shape,
   ShapeValue,
   SizeMode,
+  SlotElement,
+  SlotInputSource,
   Type,
   VariableReference,
 } from "@mechane/domain";
@@ -70,8 +73,7 @@ export const variableInput = (
       variable.defaultValue === undefined
         ? undefined
         : valueAtPath(variable.defaultValue, fieldPath);
-    const fallback =
-      variableFallback ?? (sourceType ? defaultPropertyValue(sourceType) : null);
+    const fallback = variableFallback ?? (sourceType ? defaultPropertyValue(sourceType) : null);
     const current = sourceType ? literalValue(sourceType, fallback) : null;
     return {
       ...variable,
@@ -80,6 +82,7 @@ export const variableInput = (
           ? `${variable.name} → ${field?.label.join(" → ") ?? "Unavailable"}`
           : variable.name,
       fieldPath,
+      fieldType: sourceType ?? undefined,
       current: current ?? undefined,
     };
   }
@@ -103,10 +106,63 @@ export const variableOptions = (
         name:
           field.label.length > 0 ? `${variable.name} → ${field.label.join(" → ")}` : variable.name,
         fieldPath: field.fieldPath,
+        fieldType: field.type,
         current: literalValue(field.type, defaultValue) ?? undefined,
       };
     });
   });
+
+export const slotInputReference = (
+  slot: SlotElement,
+  blockVariable: BlockVariable,
+  source: SlotInputSource | undefined,
+  variables: readonly SceneVariable[],
+  shapes: readonly Shape[],
+): VariableReference | null => {
+  if (source?.kind === "runtimeItem") {
+    const expansion = slot.expansion?.source;
+    if (expansion?.kind !== "variable") return null;
+    const variable = variables.find((candidate) => candidate.id === expansion.variableId);
+    if (!variable) return null;
+    return {
+      ...variable,
+      type: blockVariable.type,
+      fieldPath: [],
+      fieldType: blockVariable.type,
+    };
+  }
+  if (source?.kind === "variable") {
+    const reference = variableInput(
+      {
+        kind: "variable",
+        variableId: source.variableId,
+        fieldPath: source.fieldPath ?? [],
+      },
+      blockVariable.type,
+      variables,
+      shapes,
+    );
+    return reference && "id" in reference && "name" in reference ? reference : null;
+  }
+  return null;
+};
+
+export const slotInputOptions = (
+  slot: SlotElement,
+  blockVariable: BlockVariable,
+  variables: readonly SceneVariable[],
+  shapes: readonly Shape[],
+): readonly VariableReference[] => {
+  const options = variableOptions(blockVariable.type, variables, shapes);
+  const runtimeItem = slotInputReference(
+    slot,
+    blockVariable,
+    { kind: "runtimeItem" },
+    variables,
+    shapes,
+  );
+  return runtimeItem ? [runtimeItem, ...options] : options;
+};
 
 export const isVariableInput = (value: PropertyInputValue | null): value is VariableReference =>
   value !== null && typeof value === "object" && "id" in value && "name" in value;

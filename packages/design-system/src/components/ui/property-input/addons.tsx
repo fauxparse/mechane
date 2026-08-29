@@ -6,13 +6,8 @@ import type { PointerEventHandler, ReactNode } from "react";
 
 import { cn } from "../../../lib/utils";
 import { InputGroupAddon, InputGroupButton } from "../input-group";
-import type {
-  PropertyInputType,
-  PropertyInputUnit,
-  VariableReference,
-} from "./property-input-types";
-import { formatValueText, getColorInputValue } from "./use-property-input";
-
+import type { PropertyInputType, VariableReference } from "./property-input-types";
+import { getColorInputValue } from "./use-property-input";
 function renderIcon(icon: LucideIcon | string) {
   if (isFunction(icon) || isObject(icon)) {
     const Icon = icon as LucideIcon;
@@ -26,8 +21,6 @@ export function Addons<T extends ShapeValue>({
   inputType,
   colorText,
   linkedVariable,
-  dimension,
-  unit,
   allowLink = true,
   onScrubPointerDown,
   onScrubPointerMove,
@@ -39,8 +32,6 @@ export function Addons<T extends ShapeValue>({
   inputType: PropertyInputType;
   colorText: string;
   linkedVariable: VariableReference<T> | null;
-  dimension?: "width" | "height";
-  unit: PropertyInputUnit;
   allowLink?: boolean;
   onScrubPointerDown: PointerEventHandler<HTMLSpanElement>;
   onScrubPointerMove: PointerEventHandler<HTMLSpanElement>;
@@ -94,9 +85,9 @@ export function Addons<T extends ShapeValue>({
           <span
             className="inline-flex h-6 min-w-0 items-center truncate rounded bg-background/80 px-1.5 text-xs text-foreground ring-1 ring-border/60"
             data-slot="property-input-chip"
-            title={formatValueText(linkedVariable.current, dimension, unit) || undefined}
+            title={linkedVariable.name}
           >
-            {formatValueText(linkedVariable.current, dimension, unit) || "—"}
+            {linkedVariable.name}
           </span>
         </InputGroupAddon>
       )}

@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { defaultPreset, PointerActivationConstraints } from "@dnd-kit/dom";
 import type { DragEndEvent } from "@dnd-kit/react";
 import { DragDropProvider, PointerSensor } from "@dnd-kit/react";
@@ -9,12 +8,14 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   EllipsisIcon,
   GripVerticalIcon,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  PencilIcon,
   PlusIcon,
   Popover,
   PopoverContent,
@@ -23,10 +24,19 @@ import {
   Section,
   Trash2Icon,
   TypeSelect,
-  type PropertyInputValue,
   variableTypeIcon,
+  type ImageInputOnUploadProps,
+  type PropertyInputValue,
 } from "@mechane/design-system";
-import type { Shape, Type } from "@mechane/domain";
+import {
+  defaultValueForType,
+  type ImageAssetReference,
+  type ResolvedImageValue,
+  type Shape,
+  type Type,
+} from "@mechane/domain";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { SourceValueDialog } from "../editors/show/graph/inspector/SourceValueDialog";
 import { reorderVariableIndices } from "./variable-order";
 export type VariableInspectorVariable = {
   readonly id: string;
@@ -48,6 +58,8 @@ type VariableInspectorProps<TVariable extends VariableInspectorVariable> = {
   variables: readonly TVariable[];
   editing: VariableInspectorEditing;
   shapes?: readonly Shape[];
+  imageAssets?: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
   label?: string;
   addLabel?: string;
 };
@@ -68,6 +80,8 @@ export function VariableInspector<TVariable extends VariableInspectorVariable>({
   variables,
   editing,
   shapes = [],
+  imageAssets = [],
+  onImageUpload,
   label = "Inputs",
   addLabel = "Add Input",
 }: VariableInspectorProps<TVariable>) {
@@ -102,6 +116,8 @@ export function VariableInspector<TVariable extends VariableInspectorVariable>({
               index={index}
               group={label}
               shapes={shapes}
+              imageAssets={imageAssets}
+              onImageUpload={onImageUpload}
               onRename={editing.renameVariable}
               onChangeType={editing.setVariableType}
               onSetDefault={editing.setVariableDefault}
@@ -173,6 +189,7 @@ function VariableDefaultPopover({
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger
+        nativeButton={false}
         render={<span aria-hidden="true" className="absolute right-0 top-1/2 size-px" />}
       />
       <PopoverContent
@@ -204,11 +221,62 @@ function VariableDefaultPopover({
   );
 }
 
+function isShapeType(type: Type | null | undefined): type is Extract<Type, { kind: "shape" }> {
+  return type !== null && typeof type === "object" && type.kind === "shape";
+}
+
+function VariableDefaultDialog({
+  variable,
+  shapes,
+  imageAssets,
+  onImageUpload,
+  open,
+  onOpenChange,
+  onSetDefault,
+}: {
+  variable: VariableInspectorVariable;
+  shapes: readonly Shape[];
+  imageAssets: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
+  open: boolean;
+  onOpenChange(open: boolean): void;
+  onSetDefault: (variableId: string, defaultValue: unknown) => void;
+}) {
+  if (!isShapeType(variable.type)) return null;
+  const row = {
+    label: variable.name,
+    fieldPath: [],
+    type: variable.type,
+    value: variable.defaultValue ?? defaultValueForType(variable.type, shapes),
+    hasOverride: variable.defaultValue !== undefined,
+  };
+  return (
+    <SourceValueDialog
+      imageAssets={imageAssets}
+      onImageUpload={onImageUpload}
+      row={row}
+      shapes={shapes}
+      open={open}
+      onOpenChange={onOpenChange}
+      onSave={(value) => {
+        onSetDefault(variable.id, value);
+        return null;
+      }}
+      onClear={() => {
+        onSetDefault(variable.id, undefined);
+        onOpenChange(false);
+      }}
+    />
+  );
+}
+
 type VariableRowProps = {
   variable: VariableInspectorVariable;
   index: number;
   group: string;
   shapes: readonly Shape[];
+  imageAssets: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
   onRename: (variableId: string, name: string) => void;
   onChangeType: (variableId: string, type: Type) => void;
   onSetDefault: (variableId: string, defaultValue: unknown) => void;
@@ -220,6 +288,8 @@ function VariableRow({
   index,
   group,
   shapes,
+  imageAssets,
+  onImageUpload,
   onRename,
   onChangeType,
   onSetDefault,
@@ -281,28 +351,42 @@ function VariableRow({
         >
           <EllipsisIcon />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" className="min-w-64">
           <DropdownMenuItem
-            disabled={defaultInputType(variable.type) === null}
+            disabled={defaultInputType(variable.type) === null && !isShapeType(variable.type)}
             onClick={() => setDefaultPopoverOpen(true)}
           >
+            <PencilIcon />
             <span>Set default</span>
             <span className="ml-auto max-w-28 truncate text-muted-foreground">
               {defaultLabel(variable.defaultValue)}
             </span>
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" onClick={() => onRemove(variable.id)}>
             <Trash2Icon />
             Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <VariableDefaultPopover
-        variable={variable}
-        open={defaultPopoverOpen}
-        onOpenChange={setDefaultPopoverOpen}
-        onSetDefault={onSetDefault}
-      />
+      {isShapeType(variable.type) ? (
+        <VariableDefaultDialog
+          variable={variable}
+          shapes={shapes}
+          imageAssets={imageAssets}
+          onImageUpload={onImageUpload}
+          open={defaultPopoverOpen}
+          onOpenChange={setDefaultPopoverOpen}
+          onSetDefault={onSetDefault}
+        />
+      ) : (
+        <VariableDefaultPopover
+          variable={variable}
+          open={defaultPopoverOpen}
+          onOpenChange={setDefaultPopoverOpen}
+          onSetDefault={onSetDefault}
+        />
+      )}
     </div>
   );
 }

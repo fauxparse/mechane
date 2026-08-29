@@ -498,6 +498,7 @@ type ImageElement implements Element {
   alt: JSON
   objectFit: JSON
   objectPosition: JSON
+  cornerRadius: JSON
 }
 
 type FrameElement implements Element {

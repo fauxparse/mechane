@@ -168,6 +168,35 @@ describe("CanvasRenderer", () => {
     expect(html).toMatch(/<img[^>]*data-element-id="image"[^>]*draggable="false"/);
   });
 
+  it("shows an editor placeholder for an image without a source", () => {
+    const canvas: Canvas = {
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "missing-image",
+            type: "image",
+            cornerRadius: 12,
+            sizing: {
+              width: { mode: "fixed", value: 120 },
+              height: { mode: "fixed", value: 80 },
+            },
+          },
+        ],
+      },
+    };
+    const editorHtml = markup(canvas, { mode: "studio" });
+    const playerHtml = markup(canvas, { mode: "player" });
+
+    expect(editorHtml).toMatch(
+      /data-element-id="missing-image"[^>]*data-image-placeholder="true"[^>]*outline:1px dashed currentColor/,
+    );
+    expect(editorHtml).toContain("border-radius:12px");
+    expect(playerHtml).not.toContain('data-element-id="missing-image"');
+  });
+
   it("defaults image fitting to cover and center and serializes overrides", () => {
     const html = markup({
       kind: "scene",
@@ -324,6 +353,63 @@ describe("CanvasRenderer", () => {
     });
 
     expect(html).toContain("padding:4px 8px 12px 16px");
+  });
+
+  it("preserves fixed-size children in auto-layout", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        layoutMode: "auto",
+        direction: "horizontal",
+        children: [
+          {
+            id: "fixed-image",
+            type: "image",
+            sizing: {
+              width: { mode: "fixed", value: 56 },
+              height: { mode: "fixed", value: 56 },
+            },
+          },
+          { id: "fill-text", type: "text", sizing: { width: { mode: "fill" } } },
+        ],
+      },
+    });
+
+    expect(html).toMatch(/data-element-id="fixed-image"[^>]*flex-shrink:0/);
+  });
+
+  it("keeps empty fill-sized text measurable in the editor", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "empty-fill-text",
+            type: "text",
+            sizing: { width: { mode: "fill" }, height: { mode: "fill" } },
+          },
+        ],
+      },
+    });
+
+    expect(html).toMatch(/data-element-id="empty-fill-text"[^>]*min-height:1lh/);
+  });
+
+  it("gives empty hug-sized text a one-line minimum", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [{ id: "empty-hug-text", type: "text", sizing: { height: { mode: "hug" } } }],
+      },
+    });
+
+    expect(html).toMatch(/data-element-id="empty-hug-text"[^>]*min-height:1lh/);
   });
   it("supports text hug sizing and clipping or ellipsis overflow", () => {
     const html = markup({
