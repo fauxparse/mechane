@@ -289,31 +289,7 @@ export function useCanvasWorkspaceInteractions({
       ? ordered.find((candidate) => candidate.artId === next.artId)
       : undefined;
     if (!artboard) return;
-    const measured = geometry.get(artboard.artId);
-    const selectedIds =
-      next.elementIds.length > 0
-        ? next.elementIds
-        : measured?.rootElementId
-          ? [measured.rootElementId]
-          : [];
-    const clientTarget = measured
-      ? selectionRect(selectedCanvasRects(measured, selectedIds))
-      : null;
-    if (!clientTarget) {
-      frameArtboard(artboard);
-      return;
-    }
-    const bounds = workspaceRef.current?.getBoundingClientRect();
-    if (!bounds) return;
-    frameRect(
-      {
-        x: (clientTarget.x - bounds.x - camera.x) / camera.zoom,
-        y: (clientTarget.y - bounds.y - camera.y) / camera.zoom,
-        width: clientTarget.width / camera.zoom,
-        height: clientTarget.height / camera.zoom,
-      },
-      editableArea,
-    );
+    frameArtboard(artboard);
   };
   const frameCreatedBlock = (created: CanvasBlockCreationResult) => {
     frameRect(

@@ -1,9 +1,11 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { resolveSlotInstances } from "@mechane/domain";
 import type { Block, BlockVariable, ShowGraph } from "@mechane/domain";
 import { describe, expect, it } from "vitest";
 
 import type { CanvasArtboardDocument } from "../../../api/canvas";
-import { blocksForArtboards } from "./use-canvas-artboards";
+import { blocksForArtboards, useCanvasArtboards } from "./use-canvas-artboards";
 
 const variable = {
   id: "title",
@@ -42,6 +44,91 @@ const graph = {
   edges: [],
   blocks: [block],
 } satisfies ShowGraph;
+
+const sceneVariable = {
+  id: "candidates",
+  name: "Candidates",
+  type: { kind: "array", of: "text" },
+} as const;
+
+const sceneGraph = {
+  nodes: [
+    {
+      id: "source_candidates",
+      kind: "source",
+      name: "Candidates",
+      parentId: null,
+      position: { x: 0, y: 0 },
+      type: sceneVariable.type,
+    },
+    {
+      id: "scene_candidates",
+      kind: "scene",
+      name: "Candidate list",
+      parentId: null,
+      position: { x: 0, y: 0 },
+      variables: [sceneVariable],
+    },
+  ],
+  edges: [
+    {
+      id: "edge_candidates_scene",
+      kind: "wiring",
+      sourceId: "source_candidates",
+      targetId: "scene_candidates",
+      sourcePath: [],
+      targetPath: ["candidates"],
+    },
+  ],
+  shapes: [],
+  sourceFieldDefaults: [
+    {
+      nodeId: "source_candidates",
+      fieldPath: [],
+      value: ["Alice", "Beatrix", "Clarissa"],
+    },
+  ],
+  blocks: [],
+} satisfies ShowGraph;
+
+const sceneArtboard = {
+  canvasId: "canvas-scene",
+  artId: "scene_candidates",
+  kind: "scene",
+  name: "Candidate list",
+  canvas: {
+    kind: "scene",
+    root: { id: "scene-root", type: "frame", children: [] },
+  },
+  position: { x: 0, y: 0 },
+} satisfies CanvasArtboardDocument;
+
+function renderVariablesMarkup(): string {
+  function Probe() {
+    const { artboards } = useCanvasArtboards({
+      documents: [sceneArtboard],
+      workspace: { artboards: [] },
+      graph: sceneGraph,
+      imageAssets: [],
+    });
+    const value = artboards[0]?.renderVariables?.[0]?.value;
+    return createElement(
+      "output",
+      null,
+      ...(Array.isArray(value) ? value.map((candidate) => String(candidate)) : []),
+    );
+  }
+  return renderToStaticMarkup(createElement(Probe));
+}
+
+describe("Canvas artboard rendering inputs", () => {
+  it("passes resolved Scene Variables to repeated Slot rendering", () => {
+    const markup = renderVariablesMarkup();
+    expect(markup).toContain("Alice");
+    expect(markup).toContain("Beatrix");
+    expect(markup).toContain("Clarissa");
+  });
+});
 
 describe("Canvas artboard Block summaries", () => {
   it("preserves Block variables and metadata for inspector and Slot rendering", () => {

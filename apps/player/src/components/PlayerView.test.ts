@@ -15,7 +15,20 @@ function sessionWithRepeatedCandidate(): PlayerSession {
     id: "shape_candidate",
     name: "Candidate",
     fields: [
-      { id: "field_name", name: "name", type: "text" as const, required: true, defaultValue: "" },
+      {
+        id: "field_name",
+        name: "name",
+        type: "text" as const,
+        required: true,
+        defaultValue: "",
+      },
+      {
+        id: "field_votes",
+        name: "votes",
+        type: "number" as const,
+        required: true,
+        defaultValue: 0,
+      },
     ],
   };
   const candidateType = { kind: "shape" as const, shapeId: candidateShape.id };
@@ -23,7 +36,15 @@ function sessionWithRepeatedCandidate(): PlayerSession {
   const graph: ShowGraph = {
     shapes: [candidateShape],
     sourceFieldDefaults: [
-      { nodeId: "source_candidates", fieldPath: [], value: [{ field_name: "Alice" }] },
+      {
+        nodeId: "source_candidates",
+        fieldPath: [],
+        value: [
+          { field_name: "Alice", field_votes: 0 },
+          { field_name: "Beatrix", field_votes: 0 },
+          { field_name: "Clarissa", field_votes: 0 },
+        ],
+      },
     ],
     nodes: [
       {
@@ -76,7 +97,48 @@ function sessionWithRepeatedCandidate(): PlayerSession {
     variables: [{ id: "candidate_button_name", name: "Name", type: "text", required: true }],
     states: [],
   };
-  graph.blocks = [candidateButton];
+  const tallyRow: Block = {
+    id: "block_tally_row",
+    name: "TallyRow",
+    canvas: {
+      id: "canvas_tally_row",
+      kind: "block",
+      root: {
+        id: "tally_row_root",
+        type: "frame",
+        children: [
+          {
+            id: "tally_row_name",
+            type: "text",
+            content: {
+              kind: "variable",
+              variableId: "tally_row_candidate",
+              fieldPath: ["field_name"],
+            },
+          },
+          {
+            id: "tally_row_votes",
+            type: "text",
+            content: {
+              kind: "variable",
+              variableId: "tally_row_candidate",
+              fieldPath: ["field_votes"],
+            },
+          },
+        ],
+      },
+    },
+    variables: [
+      {
+        id: "tally_row_candidate",
+        name: "Candidate",
+        type: candidateType,
+        required: true,
+      },
+    ],
+    states: [],
+  };
+  graph.blocks = [candidateButton, tallyRow];
   const canvas: Canvas & { ownerId: string; ownerName: string } = {
     kind: "scene",
     ownerId: "scene_candidates",
@@ -97,6 +159,18 @@ function sessionWithRepeatedCandidate(): PlayerSession {
             },
           ],
         },
+        {
+          id: "tally_slot",
+          type: "slot",
+          blockId: tallyRow.id,
+          expansion: { source: { kind: "variable", variableId: "variable_candidates" } },
+          assignments: [
+            {
+              variableId: "tally_row_candidate",
+              source: { kind: "runtimeItem" },
+            },
+          ],
+        },
       ],
     },
   };
@@ -110,7 +184,13 @@ function sessionWithRepeatedCandidate(): PlayerSession {
       status: "active",
       startedAt: "2026-01-01T00:00:00.000Z",
       endedAt: null,
-      sourceValues: { source_candidates: [{ field_name: "Alice" }] },
+      sourceValues: {
+        source_candidates: [
+          { field_name: "Alice", field_votes: 0 },
+          { field_name: "Beatrix", field_votes: 0 },
+          { field_name: "Clarissa", field_votes: 0 },
+        ],
+      },
     },
     graph: {
       ...graph,
@@ -136,5 +216,18 @@ describe("PlayerView", () => {
     const html = renderToStaticMarkup(createElement(PlayerView, { code: "ABCDE" }));
 
     expect(html).toContain("Alice");
+  });
+  it("renders one TallyRow for each candidate", () => {
+    mockedUsePlayerSession.mockReturnValue({
+      status: "ready",
+      session: sessionWithRepeatedCandidate(),
+    });
+
+    const html = renderToStaticMarkup(createElement(PlayerView, { code: "ABCDE" }));
+
+    expect(html.match(/data-element-id="tally_row_root"/g) ?? []).toHaveLength(3);
+    expect(html).toContain("Alice");
+    expect(html).toContain("Beatrix");
+    expect(html).toContain("Clarissa");
   });
 });
