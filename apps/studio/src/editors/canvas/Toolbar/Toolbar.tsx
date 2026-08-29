@@ -1,6 +1,7 @@
 // The Canvas editor's toolbar. Lives in the Editor Chrome's footer slot, so it
 // floats over the bottom of the plane rather than sitting inside it.
 import {
+  CircleIcon,
   FrameIcon,
   ImageIcon,
   InputGroup,
@@ -11,19 +12,19 @@ import {
   MinusIcon,
   MousePointer2Icon,
   PlusIcon,
+  PuzzleIcon,
   RotateCcwIcon,
   Separator,
-  CircleIcon,
   SquareIcon,
   ToggleGroup,
   ToggleGroupItem,
-  TypeIcon,
   Tooltip,
-  TooltipTrigger,
   TooltipContent,
+  TooltipTrigger,
+  TypeIcon,
 } from "@mechane/design-system";
 /** The tools the Canvas editor can be in. Exactly one is active at a time. */
-export type CanvasTool = "select" | "rect" | "ellipse" | "text" | "image" | "frame";
+export type CanvasTool = "select" | "rect" | "ellipse" | "text" | "image" | "frame" | "block";
 
 const TOOLS: { value: CanvasTool; label: string; Icon: LucideIcon }[] = [
   { value: "select", label: "Select", Icon: MousePointer2Icon },
@@ -32,6 +33,7 @@ const TOOLS: { value: CanvasTool; label: string; Icon: LucideIcon }[] = [
   { value: "text", label: "Text", Icon: TypeIcon },
   { value: "image", label: "Image", Icon: ImageIcon },
   { value: "frame", label: "Frame", Icon: FrameIcon },
+  { value: "block", label: "Block", Icon: PuzzleIcon },
 ];
 
 export interface ToolbarProps {

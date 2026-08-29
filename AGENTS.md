@@ -35,7 +35,7 @@ Pre-existing findings in files you touch are not yours to fix — leave them, or
 
 Two things run this for you automatically:
 
-- **The `react-doctor` agent skill** (`.claude/skills/react-doctor/`) is vendored into the repo, so it loads for whoever is working here. It is installed by `pnpm react-doctor install`; if you re-run that, re-apply the local edit that points its commands at `pnpm react-doctor` rather than `npx`.
+- **The `react-doctor` agent skill** (`.agents/skills/react-doctor/`) is vendored into the repo, with compatibility links for agents that use `.claude/skills/` or `.omp/skills/`. It is installed by `pnpm react-doctor install`; if you re-run that, re-apply the local edit that points its commands at `pnpm react-doctor` rather than `npx`.
 - **CI** (`.github/workflows/react-doctor.yml`) scans every pull request and posts a summary comment covering only the issues that PR introduced. It is advisory for now — it will not fail your build. Read the comment anyway.
 
 There is also an optional pre-commit hook (`pnpm react-doctor install` writes it to `.git/hooks/pre-commit`) that blocks a commit on new error-severity findings in staged files. It lives outside version control, so it is per-clone and you may not have it.

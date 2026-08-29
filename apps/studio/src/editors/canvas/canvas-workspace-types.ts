@@ -14,6 +14,23 @@ import type { ImageAsset } from "@mechane/graphql-schema";
 import type { CanvasArtboardDocument } from "../../api/canvas";
 import type { VariableInspectorEditing } from "../../components/VariableInspector";
 export type DeviceQrImage = ResolvedImageValue & Pick<ImageAssetReference, "revision">;
+
+export interface CanvasBlockCreationRequest {
+  readonly sourceCanvasId: string | null;
+  readonly position: Position;
+  readonly width: number;
+  readonly height: number;
+  readonly slotParentId?: string;
+  readonly slotRank?: string;
+  readonly slotProperties?: Record<string, unknown>;
+}
+export interface CanvasBlockCreationResult {
+  readonly canvasId: string;
+  readonly position: Position;
+  readonly width: number;
+  readonly height: number;
+}
+
 import type { CanvasCamera } from "./components/canvas-camera";
 import type { CanvasSelection } from "./components/canvas-selection";
 import type { ResizeHandle } from "./commands/canvas-resize";
@@ -67,8 +84,14 @@ export interface CanvasWorkspaceEditorProps {
   blocks?: readonly Block[];
   blockVariableEditing?: VariableInspectorEditing;
   onPlaceBlock?(blockId: string): void;
+  onCreateBlockFromDrag?(
+    request: CanvasBlockCreationRequest,
+  ): CanvasBlockCreationResult | null | undefined;
   /** Replaces the selection with a Slot holding a new Block made from it (#426). */
-  onCreateBlockFromSelection?(canvasId: string, elementIds: readonly string[]): void;
+  onCreateBlockFromSelection?(
+    canvasId: string,
+    elementIds: readonly string[],
+  ): CanvasBlockCreationResult | null | undefined;
   imageAssets?: readonly ImageAsset[];
   deviceQrImages?: Readonly<Record<string, DeviceQrImage>>;
   onImageUpload?(props: ImageInputOnUploadProps): void;
@@ -129,8 +152,8 @@ export interface CanvasWorkspaceSurfaceProps {
   zoomIn(): void;
   zoomOut(): void;
   resetCamera(): void;
-  frameArtboard(artboard: CanvasArtboardDocument): void;
   onFocusArtboard(artId: string): void;
+  frameSelection(selection: CanvasSelection): void;
   onUpdateElement?(
     canvasId: string,
     elementId: string,

@@ -57,6 +57,7 @@ describe("Canvas tool shortcuts", () => {
     expect(canvasToolFor(chord("i"), { inKeyConsumingWidget: false })).toBe("image");
     expect(canvasToolFor(chord("v"), { inKeyConsumingWidget: false })).toBe("select");
     expect(canvasToolFor(chord("t"), { inKeyConsumingWidget: false })).toBe("text");
+    expect(canvasToolFor(chord("b"), { inKeyConsumingWidget: false })).toBe("block");
   });
 
   it("leaves modified keys and focused controls to their owners", () => {

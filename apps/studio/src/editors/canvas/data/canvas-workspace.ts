@@ -126,12 +126,3 @@ export function resolveFocusedArtboard(
     null
   );
 }
-/** Whether selecting a layer should bring its Artboard into view. */
-export function shouldFrameForeignLayer(
-  focusedArtId: string | null,
-  rowArtId: string,
-  rowKind: "canvas" | "element",
-  shiftKey: boolean,
-): boolean {
-  return rowKind === "element" && !shiftKey && focusedArtId !== rowArtId;
-}

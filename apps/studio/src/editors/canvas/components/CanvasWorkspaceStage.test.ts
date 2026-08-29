@@ -120,9 +120,9 @@ describe("CanvasWorkspaceStage", () => {
     expect(markup).toMatch(/data-element-id="candidate_slot"[^>]*display:flex/);
   });
 
-  it("isolates Artboards and promotes camera transforms", () => {
+  it("isolates Artboards and renders camera transforms", () => {
     const markup = stageMarkup();
-    expect(markup).toContain("will-change:transform");
+    expect(markup).not.toContain("will-change:transform");
     expect(markup).toContain("contain:layout paint");
   });
 });
