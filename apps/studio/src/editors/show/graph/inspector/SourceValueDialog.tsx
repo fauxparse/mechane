@@ -9,16 +9,18 @@ import {
   DialogTitle,
   Textarea,
 } from "@mechane/design-system";
-import type { Shape } from "@mechane/domain";
+import type { ImageInputOnUploadProps } from "@mechane/design-system";
+import type { ImageAssetReference, ResolvedImageValue, Shape } from "@mechane/domain";
 import { formatValuePath } from "@mechane/domain";
 
 import { INLINE_STRING_LIMIT } from "./source-values-helpers";
 import type { SourceValueRow } from "./source-value-types";
 import { ValueEditor } from "./ValueEditor";
-
 export function SourceValueDialog({
   row,
   shapes,
+  imageAssets,
+  onImageUpload,
   open,
   onOpenChange,
   onSave,
@@ -26,6 +28,8 @@ export function SourceValueDialog({
 }: {
   row: SourceValueRow;
   shapes: readonly Shape[];
+  imageAssets?: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (value: unknown) => string | null;
@@ -68,6 +72,8 @@ export function SourceValueDialog({
             type={row.type}
             value={draft}
             shapes={shapes}
+            imageAssets={imageAssets}
+            onImageUpload={onImageUpload}
             path={[]}
             onChange={updateDraft}
             onValidityChange={(path, error) => {

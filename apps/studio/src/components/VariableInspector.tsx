@@ -23,9 +23,16 @@ import {
   Trash2Icon,
   TypeSelect,
   variableTypeIcon,
+  type ImageInputOnUploadProps,
   type PropertyInputValue,
 } from "@mechane/design-system";
-import { defaultValueForType, type Shape, type Type } from "@mechane/domain";
+import {
+  defaultValueForType,
+  type ImageAssetReference,
+  type ResolvedImageValue,
+  type Shape,
+  type Type,
+} from "@mechane/domain";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { SourceValueDialog } from "../editors/show/graph/inspector/SourceValueDialog";
 import { reorderVariableIndices } from "./variable-order";
@@ -49,6 +56,8 @@ type VariableInspectorProps<TVariable extends VariableInspectorVariable> = {
   variables: readonly TVariable[];
   editing: VariableInspectorEditing;
   shapes?: readonly Shape[];
+  imageAssets?: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
   label?: string;
   addLabel?: string;
 };
@@ -69,6 +78,8 @@ export function VariableInspector<TVariable extends VariableInspectorVariable>({
   variables,
   editing,
   shapes = [],
+  imageAssets = [],
+  onImageUpload,
   label = "Inputs",
   addLabel = "Add Input",
 }: VariableInspectorProps<TVariable>) {
@@ -103,6 +114,8 @@ export function VariableInspector<TVariable extends VariableInspectorVariable>({
               index={index}
               group={label}
               shapes={shapes}
+              imageAssets={imageAssets}
+              onImageUpload={onImageUpload}
               onRename={editing.renameVariable}
               onChangeType={editing.setVariableType}
               onSetDefault={editing.setVariableDefault}
@@ -213,12 +226,16 @@ function isShapeType(type: Type | null | undefined): type is Extract<Type, { kin
 function VariableDefaultDialog({
   variable,
   shapes,
+  imageAssets,
+  onImageUpload,
   open,
   onOpenChange,
   onSetDefault,
 }: {
   variable: VariableInspectorVariable;
   shapes: readonly Shape[];
+  imageAssets: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
   open: boolean;
   onOpenChange(open: boolean): void;
   onSetDefault: (variableId: string, defaultValue: unknown) => void;
@@ -233,6 +250,8 @@ function VariableDefaultDialog({
   };
   return (
     <SourceValueDialog
+      imageAssets={imageAssets}
+      onImageUpload={onImageUpload}
       row={row}
       shapes={shapes}
       open={open}
@@ -254,6 +273,8 @@ type VariableRowProps = {
   index: number;
   group: string;
   shapes: readonly Shape[];
+  imageAssets: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
   onRename: (variableId: string, name: string) => void;
   onChangeType: (variableId: string, type: Type) => void;
   onSetDefault: (variableId: string, defaultValue: unknown) => void;
@@ -265,6 +286,8 @@ function VariableRow({
   index,
   group,
   shapes,
+  imageAssets,
+  onImageUpload,
   onRename,
   onChangeType,
   onSetDefault,
@@ -346,6 +369,8 @@ function VariableRow({
         <VariableDefaultDialog
           variable={variable}
           shapes={shapes}
+          imageAssets={imageAssets}
+          onImageUpload={onImageUpload}
           open={defaultPopoverOpen}
           onOpenChange={setDefaultPopoverOpen}
           onSetDefault={onSetDefault}
