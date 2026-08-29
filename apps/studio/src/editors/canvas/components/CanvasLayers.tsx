@@ -33,9 +33,9 @@ import type { LayerDropZone } from "../data/canvas-layer-drop";
 import { layerDropPlacement, layerDropPlacementInCanvas } from "../data/canvas-layer-drop";
 import type { LayerRow } from "../data/canvas-layer-tree";
 import { canvasLayerRows, expansionForSelection } from "../data/canvas-layer-tree";
-import { artboardLabel, shouldFrameForeignLayer } from "../data/canvas-workspace";
+import { artboardLabel } from "../data/canvas-workspace";
 import type { CanvasSelection } from "./canvas-selection";
-import { rangeSelection } from "./canvas-selection";
+import { normalizeSelection, rangeSelection } from "./canvas-selection";
 import { elementIconFor } from "./utils";
 
 type LayerDragData = { rowId: string; artId: string };
@@ -84,7 +84,7 @@ export interface CanvasLayersProps {
   focused: CanvasArtboardDocument | null;
   selection: CanvasSelection;
   onFocusArtboard(artId: string): void;
-  onFrameArtboard(artboard: CanvasArtboardDocument): void;
+  onFrameSelection(selection: CanvasSelection): void;
   onSelect(selection: CanvasSelection): void;
   onUpdateElement?(canvasId: string, elementId: string, properties: Record<string, unknown>): void;
   onMoveElement?(
@@ -330,7 +330,7 @@ export function CanvasLayers({
   focused,
   selection,
   onFocusArtboard,
-  onFrameArtboard,
+  onFrameSelection,
   onSelect,
   onUpdateElement,
   onMoveElement,
@@ -550,12 +550,6 @@ export function CanvasLayers({
                           renaming={renamingId === `${row.artId}:${row.id}`}
                           onToggle={() => toggle(row.id)}
                           onSelectRow={(shiftKey) => {
-                            if (
-                              shouldFrameForeignLayer(focusedArtId, row.artId, row.kind, shiftKey)
-                            ) {
-                              onFrameArtboard(artboard);
-                            }
-                            onFocusArtboard(row.artId);
                             const anchor = selectionAnchorRef.current;
                             const layerIds = visible.flatMap(
                               ({ row: candidate, artboard: candidateArtboard }) =>
@@ -575,10 +569,22 @@ export function CanvasLayers({
                                 : row.kind === "canvas"
                                   ? []
                                   : [row.id];
+                            const nextSelection = normalizeSelection({
+                              artId: row.artId,
+                              elementIds,
+                            });
+                            const selectionChanged =
+                              selection.artId !== nextSelection.artId ||
+                              selection.elementIds.length !== nextSelection.elementIds.length ||
+                              selection.elementIds.some(
+                                (elementId, index) => elementId !== nextSelection.elementIds[index],
+                              );
+                            if (selectionChanged) onFrameSelection(nextSelection);
                             if (!canExtend) {
                               selectionAnchorRef.current = { artId: row.artId, rowId: row.id };
                             }
-                            onSelect({ artId: row.artId, elementIds });
+                            onFocusArtboard(row.artId);
+                            onSelect(nextSelection);
                           }}
                           onBeginRename={() => setRenamingId(`${row.artId}:${row.id}`)}
                           onCommitRename={(name) => {

@@ -62,6 +62,7 @@ export function CanvasWorkspaceEditor({
     zoomOut,
     resetCamera,
     frameArtboard,
+    frameSelection,
     frameCreatedBlock,
     setSelection,
     beginDrag,
@@ -125,7 +126,7 @@ export function CanvasWorkspaceEditor({
         zoomIn={zoomIn}
         zoomOut={zoomOut}
         resetCamera={resetCamera}
-        frameArtboard={frameArtboard}
+        frameSelection={frameSelection}
         renamingArtId={renamingArtId}
         setRenamingArtId={setRenamingArtId}
         drag={drag}

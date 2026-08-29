@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { clientRect, contentOrigin, logicalRootSize, selectedCanvasRects } from "./canvas-geometry";
+import { selectionRect } from "./canvas-selection";
 
 describe("Canvas geometry", () => {
   it("normalizes browser rectangles for screen-space overlays", () => {
@@ -34,5 +35,25 @@ describe("Canvas geometry", () => {
         ["root"],
       ),
     ).toEqual([artboard]);
+  });
+
+  it("unions all selected Element bounds for camera framing", () => {
+    const first = clientRect({ x: 20, y: 30, width: 40, height: 50 });
+    const second = clientRect({ x: 100, y: 80, width: 60, height: 30 });
+    expect(
+      selectionRect(
+        selectedCanvasRects(
+          {
+            rect: clientRect({ x: 0, y: 0, width: 240, height: 160 }),
+            elements: new Map([
+              ["first", first],
+              ["second", second],
+            ]),
+            rootElementId: "root",
+          },
+          ["first", "second"],
+        ),
+      ),
+    ).toEqual(clientRect({ x: 20, y: 30, width: 140, height: 80 }));
   });
 });

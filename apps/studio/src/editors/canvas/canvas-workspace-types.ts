@@ -152,8 +152,8 @@ export interface CanvasWorkspaceSurfaceProps {
   zoomIn(): void;
   zoomOut(): void;
   resetCamera(): void;
-  frameArtboard(artboard: CanvasArtboardDocument): void;
   onFocusArtboard(artId: string): void;
+  frameSelection(selection: CanvasSelection): void;
   onUpdateElement?(
     canvasId: string,
     elementId: string,

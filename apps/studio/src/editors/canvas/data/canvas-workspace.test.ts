@@ -7,7 +7,6 @@ import {
   freeArtboardPosition,
   isCanvasPath,
   resolveFocusedArtboard,
-  shouldFrameForeignLayer,
   uniqueBlockName,
 } from "./canvas-workspace";
 import { rememberedCanvasCamera, rememberCanvasCamera } from "./canvas-session";
@@ -43,15 +42,6 @@ describe("Canvas workspace URL state", () => {
     expect(resolveFocusedArtboard(artboards, "canvas-b")?.artId).toBe("block-b");
     expect(resolveFocusedArtboard(artboards, "missing")?.artId).toBe("scene-a");
     expect(resolveFocusedArtboard([], "missing")).toBeNull();
-  });
-});
-
-describe("Canvas layer navigation", () => {
-  it("frames a foreign Element unless Shift is extending a selection", () => {
-    expect(shouldFrameForeignLayer("scene-a", "block-b", "element", false)).toBe(true);
-    expect(shouldFrameForeignLayer("scene-a", "block-b", "element", true)).toBe(false);
-    expect(shouldFrameForeignLayer("scene-a", "scene-a", "element", false)).toBe(false);
-    expect(shouldFrameForeignLayer("scene-a", "block-b", "canvas", false)).toBe(false);
   });
 });
 

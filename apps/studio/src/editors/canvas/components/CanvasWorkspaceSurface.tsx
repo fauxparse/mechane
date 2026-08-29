@@ -22,7 +22,7 @@ export function CanvasWorkspaceSurface({
   zoomIn,
   zoomOut,
   resetCamera,
-  frameArtboard,
+  frameSelection,
   ordered,
   focused,
   camera,
@@ -142,7 +142,7 @@ export function CanvasWorkspaceSurface({
         <CanvasLayers
           ordered={ordered}
           focused={focused}
-          onFrameArtboard={frameArtboard}
+          onFrameSelection={frameSelection}
           onFocusArtboard={onFocusArtboard}
           selection={selection}
           onSelect={onSelect}
