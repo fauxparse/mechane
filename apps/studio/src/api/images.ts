@@ -5,7 +5,6 @@ import {
   CompleteImageUploadMutation,
   FinalizeImageUploadMutation,
   ImageAssetsQuery,
-  RenameImageAssetMutation,
   graphqlRequest,
 } from "@mechane/graphql-schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -141,23 +140,6 @@ export function useImageUpload(showId: ShowId | null) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (request: ImageUploadRequest) => uploadImageFile(showId as ShowId, request),
-    onSuccess: () => {
-      if (showId) void queryClient.invalidateQueries({ queryKey: imageAssetsQueryKey(showId) });
-    },
-  });
-}
-
-export function useRenameImageAsset(showId: ShowId | null) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ assetId, name }: { assetId: string; name: string }) => {
-      if (!showId) throw new Error("Cannot rename an image without a Show.");
-      return graphqlRequest(GRAPHQL_ENDPOINT, RenameImageAssetMutation, {
-        showId,
-        assetId,
-        name,
-      });
-    },
     onSuccess: () => {
       if (showId) void queryClient.invalidateQueries({ queryKey: imageAssetsQueryKey(showId) });
     },

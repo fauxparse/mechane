@@ -143,7 +143,6 @@ export function CanvasWorkspaceStage({
         style={{
           transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`,
           transformOrigin: "0 0",
-          willChange: "transform",
         }}
       >
         {ordered.map((artboard) => {
