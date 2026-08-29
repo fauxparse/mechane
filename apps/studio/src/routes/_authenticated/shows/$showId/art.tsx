@@ -1,3 +1,11 @@
+import type { ImageInputOnUploadProps } from "@mechane/design-system";
+import type {
+  BlockVariable,
+  ImageAssetReference,
+  ResolvedImageValue,
+  ShowId,
+  Type,
+} from "@mechane/domain";
 import {
   DEVICE_SOURCE_HANDLES,
   defaultValueForType,
@@ -5,39 +13,30 @@ import {
   generateId,
   isId,
 } from "@mechane/domain";
-import type { ImageInputOnUploadProps } from "@mechane/design-system";
-import type {
-  BlockVariable,
-  ImageAssetReference,
-  ResolvedImageValue,
-  ShowId,
-  SlotVariableValue,
-  Type,
-} from "@mechane/domain";
-import type { CanvasArtboardDocument } from "../../../../api/canvas";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import type { CanvasArtboardDocument } from "../../../../api/canvas";
 
-import { resolveApiUrl } from "../../../../api/client";
+import { setBlockVariables } from "@mechane/commands";
 import { useCanvasWorkspace } from "../../../../api/canvas";
+import { resolveApiUrl } from "../../../../api/client";
 import { useImageAssets, useImageUpload } from "../../../../api/images";
-import { useShow } from "../../../../api/shows";
 import { useShowGraph, useShowGraphEdits } from "../../../../api/show-graph";
+import { useShow } from "../../../../api/shows";
 import { CanvasWorkspaceEditor } from "../../../../editors/canvas/CanvasWorkspaceEditor";
+import { UndoCoordinator } from "../../../../editors/canvas/commands/undo-coordinator";
+import { useBlockCreation } from "../../../../editors/canvas/commands/use-block-creation";
+import { useCanvasCommands } from "../../../../editors/canvas/commands/use-canvas-commands";
+import {
+  rememberCanvasCamera,
+  rememberedCanvasCamera,
+} from "../../../../editors/canvas/data/canvas-session";
 import {
   artIdFromPath,
   isCanvasPath,
   resolveFocusedArtboard,
 } from "../../../../editors/canvas/data/canvas-workspace";
 import { useCanvasArtboards } from "../../../../editors/canvas/data/use-canvas-artboards";
-import { useBlockCreation } from "../../../../editors/canvas/commands/use-block-creation";
-import {
-  rememberedCanvasCamera,
-  rememberCanvasCamera,
-} from "../../../../editors/canvas/data/canvas-session";
-import { setBlockVariables } from "@mechane/commands";
-import { useCanvasCommands } from "../../../../editors/canvas/commands/use-canvas-commands";
-import { UndoCoordinator } from "../../../../editors/canvas/commands/undo-coordinator";
 import {
   useGraphEditing,
   type GraphEditing,
