@@ -6,6 +6,11 @@ export interface CanvasCamera {
 
 export const MIN_CANVAS_ZOOM = 0.15;
 export const MAX_CANVAS_ZOOM = 4;
+/**
+ * Pinch and Mod+wheel arrive as ctrlKey/metaKey wheel events. d3-zoom (and the
+ * Show graph) use 0.002 × 10 for that case; this path is only those events.
+ */
+export const CANVAS_WHEEL_ZOOM_SENSITIVITY = 0.02;
 
 export function clampCanvasZoom(zoom: number): number {
   return Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, zoom));
