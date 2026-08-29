@@ -1,8 +1,14 @@
+import { readFile } from "node:fs/promises";
+
+import { db } from "../../../client";
+import { imageAssets, blobs } from "../../../schema";
+import { processImage } from "../../../../images";
+import { blobStore } from "../../../../storage/blob-store";
+import { seedShowData, type SeedShow } from "../../utils/seed-utils";
 import type {
   Block,
   Canvas,
   FrameElement,
-  Position,
   PropertyConnection,
   ShowGraph,
   SlotElement,
@@ -425,16 +431,7 @@ export function votingGraph(): ShowGraph {
   };
 }
 
-const SCENE_CANVAS_WIDTH = 720;
-const SCENE_CANVAS_GAP = 80;
-
-export function seedCanvasPosition(index: number): Position {
-  return { x: index * (SCENE_CANVAS_WIDTH + SCENE_CANVAS_GAP), y: 0 };
-}
-
-export function seedBlockCanvasPosition(index: number): Position {
-  return { x: index * 420, y: 900 };
-}
+export { seedBlockCanvasPosition, seedCanvasPosition } from "../../utils/seed-utils";
 
 export function votingCanvases(): Record<string, Canvas> {
   const candidateListSlot = repeatedSlot(
@@ -481,15 +478,52 @@ export function votingCanvases(): Record<string, Canvas> {
   };
 }
 
-export type SeedGraph = ShowGraph;
-export type SeedCanvases = Record<string, Canvas>;
-export type SeedGraphBuilder = () => SeedGraph;
-export type SeedCanvasBuilder = () => SeedCanvases;
+const SEED_IMAGES_DIRECTORY = new URL("./assets/", import.meta.url);
 
-export const SEED_GRAPHS: Record<string, SeedGraphBuilder> = {
-  Voting: votingGraph,
-};
+async function seedVotingImages(showId: string): Promise<void> {
+  for (const candidate of CANDIDATES) {
+    const bytes = await readFile(new URL(candidate.imageFile, SEED_IMAGES_DIRECTORY));
+    const processed = processImage(bytes, "image/png");
+    const uploadId = `seed-${candidate.imageAssetId}-${CANDIDATE_IMAGE_REVISION}`;
 
-export const SEED_CANVASES: Record<string, SeedCanvasBuilder> = {
-  Voting: votingCanvases,
-};
+    await blobStore.putUpload(uploadId, bytes);
+    try {
+      await blobStore.commitUpload(uploadId, processed);
+    } catch (error) {
+      await blobStore.deleteUpload(uploadId);
+      throw error;
+    }
+
+    await db
+      .insert(blobs)
+      .values({
+        digest: processed.digest,
+        byteLength: processed.byteLength,
+        mimeType: processed.mimeType,
+        deliveryPath: `/api/blobs/${processed.digest}`,
+      })
+      .onConflictDoNothing();
+    await db.insert(imageAssets).values({
+      id: candidate.imageAssetId,
+      showId,
+      blobDigest: processed.digest,
+      revision: CANDIDATE_IMAGE_REVISION,
+      width: processed.width,
+      height: processed.height,
+      mimeType: processed.mimeType,
+      alt: candidate.name,
+      blurHash: processed.blurHash,
+      state: "active",
+      sourceAssetId: null,
+    });
+  }
+}
+
+async function seedVoting(showId: string): Promise<void> {
+  await seedShowData(showId, votingGraph, votingCanvases, seedVotingImages);
+}
+
+export const seedShow = {
+  name: "Voting",
+  seed: seedVoting,
+} satisfies SeedShow;

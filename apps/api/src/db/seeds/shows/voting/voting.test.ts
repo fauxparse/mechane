@@ -21,10 +21,9 @@ import {
   CANDIDATE_VOTES_FIELD_ID,
   CANDIDATES,
   CONFIRMATION_SCENE_ID,
-  SEED_CANVASES,
   seedBlockCanvasPosition,
   seedCanvasPosition,
-  SEED_GRAPHS,
+  seedShow,
   TALLY_ROW_VARIABLE_ID,
   TALLY_SCENE_ID,
   TALLY_VARIABLE_ID,
@@ -32,7 +31,7 @@ import {
   votingCanvases,
   votingGraph,
   workflowBlocks,
-} from "./seed-graphs";
+} from "./voting";
 
 describe("Voting seed", () => {
   it("builds the requested valid graph", () => {
@@ -309,8 +308,8 @@ describe("Voting seed", () => {
     expect(seedBlockCanvasPosition(1)).toEqual({ x: 420, y: 900 });
   });
 
-  it("registers only the Voting seed builders", () => {
-    expect(Object.keys(SEED_GRAPHS)).toEqual(["Voting"]);
-    expect(Object.keys(SEED_CANVASES)).toEqual(["Voting"]);
+  it("exports the Voting seed contract", () => {
+    expect(seedShow.name).toBe("Voting");
+    expect(seedShow.seed).toBeTypeOf("function");
   });
 });
