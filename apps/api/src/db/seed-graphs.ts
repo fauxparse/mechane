@@ -226,6 +226,7 @@ export function workflowBlocks(): Block[] {
             },
             "Vote count",
             32,
+            "right",
           ),
         ],
       },
