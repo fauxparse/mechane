@@ -13,7 +13,11 @@ import {
 import type { ShowGraph } from "@mechane/domain";
 import { useCallback } from "react";
 import type { CanvasArtboardDocument } from "../../../api/canvas";
-import { canvasArtboardSize, freeArtboardPosition, uniqueBlockName } from "../data/canvas-workspace";
+import {
+  canvasArtboardSize,
+  freeArtboardPosition,
+  uniqueBlockName,
+} from "../data/canvas-workspace";
 import type {
   CanvasBlockCreationRequest,
   CanvasBlockCreationResult,
@@ -47,7 +51,7 @@ export function useBlockCreation({
     (canvasId: string, elementIds: readonly string[]) => {
       const artboard = artboards.find((candidate) => candidate.canvasId === canvasId);
       if (!artboard || blockExtractionProblem(artboard.canvas, elementIds)) return null;
-      const position = freeArtboardPosition(artboards);
+      const position = freeArtboardPosition(artboards, artboard);
       const created = createBlockFromSelection({
         canvasId,
         canvas: artboard.canvas,
@@ -84,9 +88,7 @@ export function useBlockCreationFromDrag({
   graph,
   executeGraphCommand,
   undoHistory,
-}: BlockCreationInput): (
-  request: CanvasBlockCreationRequest,
-) => CanvasBlockCreationResult {
+}: BlockCreationInput): (request: CanvasBlockCreationRequest) => CanvasBlockCreationResult {
   const execute = canvasCommands.execute;
   return useCallback(
     (request: CanvasBlockCreationRequest) => {

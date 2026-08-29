@@ -109,7 +109,9 @@ describe("Scene Canvas reconciliation", () => {
       id: original.id,
       root: { id: original.root.id },
     });
-
+    expect(withNewScene.find((canvas) => canvas.ownerId === "scene_two")).toMatchObject({
+      position: { x: 880, y: 40 },
+    });
     await writeShowGraph(
       showId,
       "draft",

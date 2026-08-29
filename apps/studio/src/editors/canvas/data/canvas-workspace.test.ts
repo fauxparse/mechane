@@ -151,13 +151,40 @@ describe("isCanvasPath", () => {
 });
 
 describe("placing a new Artboard", () => {
-  it("clears every existing Artboard, level with the topmost one", () => {
-    // Both fall back to the 720x420 default size, so "b" ends at 730.
-    expect(freeArtboardPosition(artboards, 40)).toEqual({ x: 770, y: 0 });
+  it("places a new Artboard below its source", () => {
+    expect(
+      freeArtboardPosition([artboards[0]!], artboards[0]!, { width: 720, height: 420 }, 40),
+    ).toEqual({
+      x: 0,
+      y: 460,
+    });
   });
 
-  it("starts at the origin in an empty workspace", () => {
-    expect(freeArtboardPosition([])).toEqual({ x: 0, y: 0 });
+  it("continues downward until the source column is clear", () => {
+    const source = artboards[0]!;
+    const occupied = [
+      source,
+      {
+        ...source,
+        canvasId: "canvas-c",
+        artId: "block-c",
+        position: { x: 0, y: 460 },
+      },
+    ] as CanvasArtboardDocument[];
+    expect(freeArtboardPosition(occupied, source, { width: 720, height: 420 }, 40)).toEqual({
+      x: 0,
+      y: 920,
+    });
+  });
+
+  it("starts below the source when another Artboard is elsewhere", () => {
+    const other = { ...artboards[1]!, position: { x: 1_000, y: 10 } };
+    expect(
+      freeArtboardPosition([artboards[0]!, other], artboards[0]!, { width: 720, height: 420 }),
+    ).toEqual({
+      x: 0,
+      y: 500,
+    });
   });
 });
 

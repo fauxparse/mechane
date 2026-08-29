@@ -87,11 +87,7 @@ export async function reconcileSceneCanvases(
     sceneIds.length === 0
       ? []
       : await tx
-          .select({
-            id: graphNodes.id,
-            positionX: graphNodes.positionX,
-            positionY: graphNodes.positionY,
-          })
+          .select({ id: graphNodes.id })
           .from(graphNodes)
           .where(
             and(
@@ -122,10 +118,28 @@ export async function reconcileSceneCanvases(
           .where(inArray(canvasElements.canvasId, existingCanvasIds));
   const fills = latestCanvasFills(existingCanvases, rootRows);
   const occupied = existingCanvases.map((canvas) => ({ x: canvas.positionX, y: canvas.positionY }));
+  const scenePositions = new Map(
+    existingCanvases
+      .filter((canvas) => canvas.sceneNodeId !== null)
+      .map((canvas) => [
+        canvas.sceneNodeId!,
+        { x: canvas.positionX, y: canvas.positionY } satisfies Position,
+      ]),
+  );
+  const sceneIndexes = new Map(sceneIds.map((sceneId, index) => [sceneId, index]));
 
   for (const scene of sceneRows) {
     if (existingSceneIds.has(scene.id)) continue;
-    const position = placeCanvasPosition({ x: scene.positionX, y: scene.positionY }, occupied);
+    const sceneIndex = sceneIndexes.get(scene.id) ?? 0;
+    const previousScene = [...sceneIndexes]
+      .filter(([, index]) => index < sceneIndex)
+      .sort(([, left], [, right]) => right - left)
+      .map(([sceneId]) => scenePositions.get(sceneId))
+      .find((position) => position);
+    const preferred = previousScene
+      ? { x: previousScene.x + 760, y: previousScene.y }
+      : { x: 0, y: 0 };
+    const position = placeCanvasPosition(preferred, occupied);
     await insertCanvas(
       tx,
       graphId,
@@ -134,6 +148,7 @@ export async function reconcileSceneCanvases(
       fills.scene ?? DEFAULT_CANVAS_FILL,
     );
     occupied.push(position);
+    scenePositions.set(scene.id, position);
     fills.scene = fills.scene ?? DEFAULT_CANVAS_FILL;
     existingSceneIds.add(scene.id);
   }

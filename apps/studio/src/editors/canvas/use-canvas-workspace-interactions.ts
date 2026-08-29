@@ -1277,7 +1277,7 @@ export function useCanvasWorkspaceInteractions({
       insertionIndex < 0 ? children.length : insertionIndex,
     );
     if (draft.tool === "block") {
-      const position = freeArtboardPosition(ordered);
+      const position = freeArtboardPosition(ordered, artboard, { width, height });
       const created = onCreateBlockFromDrag?.({
         sourceCanvasId: artboard.canvasId,
         position,
