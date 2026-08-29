@@ -54,10 +54,11 @@ import {
 } from "./commands/canvas-resize";
 import type { ResizeBox, ResizeHandle } from "./commands/canvas-resize";
 import type {
+  CanvasBlockCreationResult,
   CanvasWorkspaceEditorProps,
   CanvasArtboardDimensions,
 } from "./canvas-workspace-types";
-import { artboardLabel, canvasArtboardSize } from "./data/canvas-workspace";
+import { artboardLabel, canvasArtboardSize, freeArtboardPosition } from "./data/canvas-workspace";
 
 function measuredRect(element: HTMLElement): CanvasClientRect {
   const rect = element.getBoundingClientRect();
@@ -170,6 +171,7 @@ export function useCanvasWorkspaceInteractions({
   initialCamera,
   onCameraChange,
   onCreateElement,
+  onCreateBlockFromDrag,
   onMoveElement,
   onMoveElementBetweenCanvases,
   onUpdateElement,
@@ -278,6 +280,17 @@ export function useCanvasWorkspaceInteractions({
         y: artboard.position.y,
         width: size.width,
         height: size.height,
+      },
+      editableArea,
+    );
+  };
+  const frameCreatedBlock = (created: CanvasBlockCreationResult) => {
+    frameRect(
+      {
+        x: created.position.x,
+        y: created.position.y,
+        width: created.width,
+        height: created.height,
       },
       editableArea,
     );
@@ -1183,6 +1196,29 @@ export function useCanvasWorkspaceInteractions({
       x: event.clientX,
       y: event.clientY,
     });
+    const width = Math.max(1, roundToLogicalPixel(rect.width, camera.zoom));
+    const height = Math.max(1, roundToLogicalPixel(rect.height, camera.zoom));
+    if (draft.tool === "block" && !artId) {
+      const bounds = workspaceRef.current?.getBoundingClientRect();
+      if (!bounds) return;
+      const position = {
+        x: roundToLogicalPixel(rect.x - bounds.x - camera.x, camera.zoom),
+        y: roundToLogicalPixel(rect.y - bounds.y - camera.y, camera.zoom),
+      };
+      const created = onCreateBlockFromDrag?.({
+        sourceCanvasId: null,
+        position,
+        width,
+        height,
+      });
+      if (created) {
+        setSelection({ artId: created.canvasId, elementIds: [] });
+        frameCreatedBlock(created);
+        onFocusArtboard(created.canvasId);
+      }
+      setTool("select");
+      return;
+    }
     const artboard = ordered.find((candidate) => candidate.artId === artId);
     const canvasNode = canvasNodes.find((node) => node.dataset.artboardId === artId);
     if (!artboard || !canvasNode) {
@@ -1233,8 +1269,34 @@ export function useCanvasWorkspaceInteractions({
       children.map((child) => child.dataset.elementRank ?? ""),
       insertionIndex < 0 ? children.length : insertionIndex,
     );
-    const width = Math.max(1, roundToLogicalPixel(rect.width, camera.zoom));
-    const height = Math.max(1, roundToLogicalPixel(rect.height, camera.zoom));
+    if (draft.tool === "block") {
+      const position = freeArtboardPosition(ordered);
+      const created = onCreateBlockFromDrag?.({
+        sourceCanvasId: artboard.canvasId,
+        position,
+        width,
+        height,
+        slotParentId: parentId,
+        slotRank: rank,
+        slotProperties: parentIsAuto
+          ? undefined
+          : {
+              anchor: {
+                horizontal: "left" as const,
+                vertical: "top" as const,
+                offsetX: roundToLogicalPixel(rect.x - parentRect.x, camera.zoom),
+                offsetY: roundToLogicalPixel(rect.y - parentRect.y, camera.zoom),
+              },
+            },
+      });
+      if (created) {
+        setSelection({ artId: created.canvasId, elementIds: [] });
+        frameCreatedBlock(created);
+        onFocusArtboard(created.canvasId);
+      }
+      setTool("select");
+      return;
+    }
     const id = `element-${globalThis.crypto.randomUUID()}`;
     const element: NewElement = {
       id,
@@ -1282,6 +1344,7 @@ export function useCanvasWorkspaceInteractions({
       artboard.canvas.root,
     );
     onFocusArtboard(artboard.artId);
+    if (artboard.kind === "block") frameArtboard(artboard);
     if (!element?.dataset.elementId) {
       setSelection({ artId: artboard.artId, elementIds: [] });
       return;
@@ -1474,6 +1537,7 @@ export function useCanvasWorkspaceInteractions({
     zoomOut,
     resetCamera,
     frameArtboard,
+    frameCreatedBlock,
     setSelection,
     beginDrag,
     moveDrag,

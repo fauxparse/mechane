@@ -12,10 +12,14 @@ import {
 } from "@mechane/commands";
 import type { ShowGraph } from "@mechane/domain";
 import { useCallback } from "react";
-
 import type { CanvasArtboardDocument } from "../../../api/canvas";
+import { canvasArtboardSize, freeArtboardPosition, uniqueBlockName } from "../data/canvas-workspace";
+import type {
+  CanvasBlockCreationRequest,
+  CanvasBlockCreationResult,
+} from "../canvas-workspace-types";
 import type { CanvasCommands } from "./use-canvas-commands";
-import { freeArtboardPosition, uniqueBlockName } from "../data/canvas-workspace";
+import { createBlockFromDrag } from "./block-drag-creation";
 import type { UndoCoordinator } from "./undo-coordinator";
 
 export interface BlockCreationInput {
@@ -34,12 +38,16 @@ export function useBlockCreation({
   graph,
   executeGraphCommand,
   undoHistory,
-}: BlockCreationInput): (canvasId: string, elementIds: readonly string[]) => void {
+}: BlockCreationInput): (
+  canvasId: string,
+  elementIds: readonly string[],
+) => CanvasBlockCreationResult | null {
   const execute = canvasCommands.execute;
   return useCallback(
     (canvasId: string, elementIds: readonly string[]) => {
       const artboard = artboards.find((candidate) => candidate.canvasId === canvasId);
-      if (!artboard || blockExtractionProblem(artboard.canvas, elementIds)) return;
+      if (!artboard || blockExtractionProblem(artboard.canvas, elementIds)) return null;
+      const position = freeArtboardPosition(artboards);
       const created = createBlockFromSelection({
         canvasId,
         canvas: artboard.canvas,
@@ -48,14 +56,52 @@ export function useBlockCreation({
           (graph.blocks ?? []).map((block) => block.name),
           blockNameForSelection(artboard.canvas, elementIds),
         ),
-        position: freeArtboardPosition(artboards),
+        position,
       });
       undoHistory.link(() => {
         // The Block first: the Slot that replaces the selection references it.
         executeGraphCommand(created.graphCommand);
         execute(created.canvasCommand);
       });
+      return {
+        canvasId: created.block.canvas.id,
+        position,
+        ...canvasArtboardSize({
+          canvasId: created.block.canvas.id,
+          artId: created.block.id,
+          kind: "block",
+          name: created.block.name,
+          canvas: created.block.canvas,
+          position,
+        }),
+      };
     },
     [artboards, execute, executeGraphCommand, graph.blocks, undoHistory],
+  );
+}
+export function useBlockCreationFromDrag({
+  canvasCommands,
+  graph,
+  executeGraphCommand,
+  undoHistory,
+}: BlockCreationInput): (
+  request: CanvasBlockCreationRequest,
+) => CanvasBlockCreationResult {
+  const execute = canvasCommands.execute;
+  return useCallback(
+    (request: CanvasBlockCreationRequest) => {
+      const created = createBlockFromDrag(graph, request);
+      undoHistory.link(() => {
+        executeGraphCommand(created.graphCommand);
+        execute(created.canvasCommand);
+      });
+      return {
+        canvasId: created.block.canvas.id,
+        position: request.position,
+        width: request.width,
+        height: request.height,
+      };
+    },
+    [execute, executeGraphCommand, graph, undoHistory],
   );
 }

@@ -10,6 +10,7 @@ const TOOL_BY_KEY: Record<string, CanvasTool> = {
   i: "image",
   v: "select",
   t: "text",
+  b: "block",
 };
 
 export function canvasToolFor(

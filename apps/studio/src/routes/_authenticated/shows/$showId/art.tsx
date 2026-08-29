@@ -25,7 +25,10 @@ import { useShowGraph, useShowGraphEdits } from "../../../../api/show-graph";
 import { useShow } from "../../../../api/shows";
 import { CanvasWorkspaceEditor } from "../../../../editors/canvas/CanvasWorkspaceEditor";
 import { UndoCoordinator } from "../../../../editors/canvas/commands/undo-coordinator";
-import { useBlockCreation } from "../../../../editors/canvas/commands/use-block-creation";
+import {
+  useBlockCreation,
+  useBlockCreationFromDrag,
+} from "../../../../editors/canvas/commands/use-block-creation";
 import { useCanvasCommands } from "../../../../editors/canvas/commands/use-canvas-commands";
 import {
   rememberCanvasCamera,
@@ -210,6 +213,14 @@ function CanvasWorkspaceRoute() {
     undoHistory,
   });
 
+  const createBlockFromDrag = useBlockCreationFromDrag({
+    artboards,
+    canvasCommands,
+    graph: graphEditing.command.graph,
+    executeGraphCommand: graphEditing.command.commands.execute,
+    undoHistory,
+  });
+
   // This route stays mounted for a moment while the router transitions away
   // from it, and during that moment `pathname` is already the destination's. Bail
   // out then, or the redirect below reads "no Artboard id" as "bare /art" and
@@ -313,6 +324,7 @@ function CanvasWorkspaceRoute() {
       blockVariableEditing={blockVariableEditing}
       blocks={blocks}
       onPlaceBlock={placeBlock}
+      onCreateBlockFromDrag={createBlockFromDrag}
       onCreateBlockFromSelection={createBlock}
       shapes={graphEditing.command.graph.shapes ?? []}
       deviceQrImages={deviceQrImages}

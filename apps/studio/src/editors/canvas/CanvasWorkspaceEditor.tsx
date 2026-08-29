@@ -32,6 +32,7 @@ export function CanvasWorkspaceEditor({
   blocks,
   blockVariableEditing,
   onPlaceBlock,
+  onCreateBlockFromDrag,
   onCreateBlockFromSelection,
   onImageUpload,
   imageAssets,
@@ -67,6 +68,7 @@ export function CanvasWorkspaceEditor({
     zoomOut,
     resetCamera,
     frameArtboard,
+    frameCreatedBlock,
     setSelection,
     beginDrag,
     moveDrag,
@@ -100,12 +102,21 @@ export function CanvasWorkspaceEditor({
     onCameraChange,
     initialCamera,
     onCreateElement,
+    onCreateBlockFromDrag,
     onMoveElement,
     onMoveElementBetweenCanvases,
     onUpdateElement,
     onDeleteElements,
     onRenameArtboard,
   });
+  const focusArtboard = useCallback(
+    (artId: string) => {
+      const artboard = ordered.find((candidate) => candidate.artId === artId);
+      if (artboard?.kind === "block") frameArtboard(artboard);
+      onFocusArtboard(artId);
+    },
+    [frameArtboard, onFocusArtboard, ordered],
+  );
   const [paletteOpen, setPaletteOpen] = useState(false);
   const deleteSelection = useCallback(() => {
     const artboard = ordered.find((candidate) => candidate.artId === selection.artId);
@@ -124,12 +135,23 @@ export function CanvasWorkspaceEditor({
   }, [selectedArtboard, selection.elementIds]);
   const createBlockFromSelection = useCallback(() => {
     if (!selectedArtboard || blockFromSelectionProblem) return;
-    onCreateBlockFromSelection?.(selectedArtboard.canvasId, selection.elementIds);
+    const created = onCreateBlockFromSelection?.(
+      selectedArtboard.canvasId,
+      selection.elementIds,
+    );
+    if (created) {
+      setSelection({ artId: created.canvasId, elementIds: [] });
+      frameCreatedBlock(created);
+      onFocusArtboard(created.canvasId);
+    }
   }, [
     blockFromSelectionProblem,
+    frameCreatedBlock,
     onCreateBlockFromSelection,
+    onFocusArtboard,
     selectedArtboard,
     selection.elementIds,
+    setSelection,
   ]);
   const selectAll = useCallback(() => {
     if (!focused) return;
@@ -162,6 +184,7 @@ export function CanvasWorkspaceEditor({
         run: () => onPlaceBlock?.(block.id),
       })),
       { id: "create-frame", label: "Create Frame", scope: "canvas", run: () => setTool("frame") },
+      { id: "create-block", label: "Create Block", scope: "canvas", run: () => setTool("block") },
       { id: "zoom-in", label: "Zoom In", scope: "canvas", run: zoomIn },
       { id: "zoom-out", label: "Zoom Out", scope: "canvas", run: zoomOut },
       { id: "reset-view", label: "Reset View", scope: "canvas", run: resetCamera },
@@ -256,7 +279,7 @@ export function CanvasWorkspaceEditor({
         artboardSizes={artboardSizes}
         overlayRect={overlayRect}
         resizable={resizable}
-        onFocusArtboard={onFocusArtboard}
+        onFocusArtboard={focusArtboard}
         onUpdateElement={onUpdateElement}
         variables={variables}
         shapes={shapes}
