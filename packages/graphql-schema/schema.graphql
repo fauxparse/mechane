@@ -775,6 +775,7 @@ type ImageAsset {
   width: Int!
   height: Int!
   mimeType: String!
+  name: String!
   alt: String!
   blurHash: String
 }
@@ -822,7 +823,8 @@ type Mutation {
   startRun(showId: ID!): Run!
   beginImageUpload(showId: ID!, mimeType: String!, byteLength: Int!): ImageUploadSession!
   completeImageUpload(sessionId: ID!): ImageUploadCandidate!
-  finalizeImageUpload(sessionId: ID!, alt: String): ImageAsset!
+  finalizeImageUpload(sessionId: ID!, name: String!): ImageAsset!
+  renameImageAsset(showId: ID!, assetId: ID!, name: String!): ImageAsset!
   abortImageUpload(sessionId: ID!): Boolean!
   deleteImageAsset(showId: ID!, assetId: ID!): Boolean!
 }

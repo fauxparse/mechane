@@ -193,7 +193,7 @@ export const ImageAssetPicker = ({
                     className="aspect-video w-full object-cover"
                   />
                   <span className="block truncate px-2 py-1 text-xs text-muted-foreground">
-                    {asset.alt || "Decorative image"}
+                    {asset.name || "Unnamed image"}
                   </span>
                 </button>
               ))

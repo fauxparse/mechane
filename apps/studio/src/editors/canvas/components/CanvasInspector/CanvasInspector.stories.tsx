@@ -62,6 +62,7 @@ const imageAssets: readonly ImageAsset[] = [
     width: 320,
     height: 180,
     mimeType: "image/svg+xml",
+    name: "Stage lights",
     alt: "Stage lights",
     blurHash: null,
   },

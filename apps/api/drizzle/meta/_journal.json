@@ -162,6 +162,13 @@
       "when": 1787791000026,
       "tag": "0022_brave_big_bertha",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1787969962027,
+      "tag": "0023_minor_miek",
+      "breakpoints": true
     }
   ]
 }

@@ -9,12 +9,14 @@ import type { GraphState } from "@mechane/domain";
 import {
   assertOwnedBy,
   assertValidGraphState,
+  assertValidImageName,
   assertValidShowName,
   assertValidThemeMode,
   assertValidThemePalette,
   DEFAULT_IMAGE_UPLOAD_POLICY,
   defaultThemeSettings,
   InvalidGraphStateError,
+  InvalidImageNameError,
   InvalidShowNameError,
   InvalidThemeModeError,
   InvalidThemePaletteError,
@@ -80,6 +82,17 @@ function validShowName(name: string): string {
     return assertValidShowName(name);
   } catch (error) {
     if (error instanceof InvalidShowNameError) {
+      throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
+    }
+    throw error;
+  }
+}
+
+function validImageName(name: string): string {
+  try {
+    return assertValidImageName(name);
+  } catch (error) {
+    if (error instanceof InvalidImageNameError) {
       throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
     }
     throw error;
@@ -885,6 +898,7 @@ export const schema = createSchema<GraphQLContext>({
       width: Int!
       height: Int!
       mimeType: String!
+      name: String!
       alt: String!
       blurHash: String
     }
@@ -923,7 +937,8 @@ export const schema = createSchema<GraphQLContext>({
       startRun(showId: ID!): Run!
       beginImageUpload(showId: ID!, mimeType: String!, byteLength: Int!): ImageUploadSession!
       completeImageUpload(sessionId: ID!): ImageUploadCandidate!
-      finalizeImageUpload(sessionId: ID!, alt: String): ImageAsset!
+      finalizeImageUpload(sessionId: ID!, name: String!): ImageAsset!
+      renameImageAsset(showId: ID!, assetId: ID!, name: String!): ImageAsset!
       abortImageUpload(sessionId: ID!): Boolean!
       deleteImageAsset(showId: ID!, assetId: ID!): Boolean!
     }
@@ -1328,10 +1343,11 @@ export const schema = createSchema<GraphQLContext>({
       },
       finalizeImageUpload: async (
         _parent,
-        { sessionId, alt }: { sessionId: string; alt?: string | null },
+        { sessionId, name }: { sessionId: string; name: string },
         context,
       ) => {
         const userId = requireUserId(context);
+        const validName = validImageName(name);
         const [session] = await db
           .select()
           .from(blobUploadSessions)
@@ -1374,7 +1390,8 @@ export const schema = createSchema<GraphQLContext>({
               width: processed.width,
               height: processed.height,
               mimeType: processed.mimeType,
-              alt: alt ?? "",
+              name: validName,
+              alt: "",
               blurHash: processed.blurHash,
             })
             .returning();
@@ -1387,6 +1404,31 @@ export const schema = createSchema<GraphQLContext>({
         } catch (error) {
           return imageUploadError(error);
         }
+      },
+      renameImageAsset: async (
+        _parent,
+        { showId, assetId, name }: { showId: string; assetId: string; name: string },
+        context,
+      ) => {
+        const userId = requireUserId(context);
+        await findOwnShowOrThrow(showId, userId);
+        const [asset] = await db
+          .update(imageAssets)
+          .set({ name: validImageName(name), updatedAt: new Date() })
+          .where(
+            and(
+              eq(imageAssets.showId, showId),
+              eq(imageAssets.id, assetId),
+              eq(imageAssets.state, "active"),
+            ),
+          )
+          .returning();
+        if (!asset) {
+          throw new GraphQLError("Image asset not found.", {
+            extensions: { code: "NOT_FOUND" },
+          });
+        }
+        return toImageAsset(asset);
       },
       abortImageUpload: async (_parent, { sessionId }: { sessionId: string }, context) => {
         const userId = requireUserId(context);

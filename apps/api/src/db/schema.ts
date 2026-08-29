@@ -125,6 +125,7 @@ export const imageAssets = pgTable(
     width: integer("width").notNull(),
     height: integer("height").notNull(),
     mimeType: text("mime_type").notNull(),
+    name: text("name").notNull().default(""),
     alt: text("alt").notNull().default(""),
     blurHash: text("blur_hash"),
     state: text("state").notNull().default("active"),

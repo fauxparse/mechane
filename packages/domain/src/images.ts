@@ -3,6 +3,26 @@ import type { ImageAssetId, ShowId } from "./id";
 export const IMAGE_ASSET_STATES = ["active", "deleted"] as const;
 export type ImageAssetState = (typeof IMAGE_ASSET_STATES)[number];
 
+export const MAX_IMAGE_NAME_LENGTH = 200;
+
+export class InvalidImageNameError extends Error {
+  constructor(reason: string) {
+    super(`Invalid image name: ${reason}`);
+    this.name = "InvalidImageNameError";
+  }
+}
+
+export function assertValidImageName(name: string): string {
+  const trimmed = name.trim();
+  if (trimmed.length === 0) {
+    throw new InvalidImageNameError("name must not be empty.");
+  }
+  if (trimmed.length > MAX_IMAGE_NAME_LENGTH) {
+    throw new InvalidImageNameError(`name must be ${MAX_IMAGE_NAME_LENGTH} characters or fewer.`);
+  }
+  return trimmed;
+}
+
 export interface ImageAsset {
   id: ImageAssetId;
   showId: ShowId;
@@ -11,6 +31,7 @@ export interface ImageAsset {
   width: number;
   height: number;
   mimeType: string;
+  name: string;
   alt: string;
   blurHash: string | null;
   state: ImageAssetState;
