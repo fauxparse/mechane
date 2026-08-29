@@ -18,6 +18,7 @@ export function toImageAsset(row: ImageAssetRow): ImageAsset & { url: string } {
     width: row.width,
     height: row.height,
     mimeType: row.mimeType,
+    name: row.name,
     alt: row.alt,
     blurHash: row.blurHash,
     state: row.state as ImageAsset["state"],

@@ -511,6 +511,7 @@ async function seedVotingImages(showId: string): Promise<void> {
       width: processed.width,
       height: processed.height,
       mimeType: processed.mimeType,
+      name: candidate.name,
       alt: candidate.name,
       blurHash: processed.blurHash,
       state: "active",

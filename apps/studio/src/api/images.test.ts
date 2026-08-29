@@ -76,7 +76,8 @@ describe("uploadImageFile", () => {
                     width: 640,
                     height: 480,
                     mimeType: "image/png",
-                    alt: "photo.png",
+                    name: "photo.png",
+                    alt: "",
                     blurHash: null,
                   },
                 },
@@ -104,6 +105,7 @@ describe("uploadImageFile", () => {
     expect((uploadRequest as FakeRequest | null)?.withCredentials).toBe(true);
     expect(progress).toEqual([50, 100]);
     expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(JSON.stringify(fetchMock.mock.calls[2])).toContain('\\"name\\":\\"photo.png\\"');
   });
 
   it("aborts the server session when the PUT is cancelled", async () => {

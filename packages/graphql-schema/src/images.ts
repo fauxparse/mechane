@@ -10,6 +10,7 @@ export const ImageAssetsQuery = graphql(`
       width
       height
       mimeType
+      name
       alt
       blurHash
     }
@@ -50,14 +51,31 @@ export const CompleteImageUploadMutation = graphql(`
 `);
 
 export const FinalizeImageUploadMutation = graphql(`
-  mutation FinalizeImageUpload($sessionId: ID!, $alt: String) {
-    finalizeImageUpload(sessionId: $sessionId, alt: $alt) {
+  mutation FinalizeImageUpload($sessionId: ID!, $name: String!) {
+    finalizeImageUpload(sessionId: $sessionId, name: $name) {
       id
       revision
       url
       width
       height
       mimeType
+      name
+      alt
+      blurHash
+    }
+  }
+`);
+
+export const RenameImageAssetMutation = graphql(`
+  mutation RenameImageAsset($showId: ID!, $assetId: ID!, $name: String!) {
+    renameImageAsset(showId: $showId, assetId: $assetId, name: $name) {
+      id
+      revision
+      url
+      width
+      height
+      mimeType
+      name
       alt
       blurHash
     }
