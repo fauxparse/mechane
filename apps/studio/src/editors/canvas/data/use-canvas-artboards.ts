@@ -116,6 +116,11 @@ export function useCanvasArtboards({
                 block.variables.map((variable) => [variable.id, variable.defaultValue]),
               )
             : undefined;
+      const renderVariables = variables.flatMap((variable) =>
+        variable.type
+          ? [{ id: variable.id, type: variable.type, value: values?.[variable.id] }]
+          : [],
+      );
       return {
         ...artboard,
         name: owner?.name ?? artboard.name,
@@ -127,6 +132,8 @@ export function useCanvasArtboards({
           shapes: graph.shapes,
           imageAssets: assets,
         }),
+        renderVariables,
+        renderImageAssets: assets,
         position: edited?.position ?? artboard.position,
       };
     });

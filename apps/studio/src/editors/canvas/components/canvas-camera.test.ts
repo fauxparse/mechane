@@ -42,4 +42,13 @@ describe("Canvas camera math", () => {
     expect(next.x).toBeCloseTo(160);
     expect(next.y).toBeCloseTo(-125.33333333333333);
   });
+
+  it("caps automatic framing at 100 percent", () => {
+    const next = fitCanvasCamera(
+      { x: 0, y: 0, width: 200, height: 100 },
+      { width: 1200, height: 800, maxZoom: 1 },
+    );
+
+    expect(next.zoom).toBe(1);
+  });
 });

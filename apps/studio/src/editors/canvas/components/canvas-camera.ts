@@ -36,6 +36,8 @@ export interface CanvasCameraViewport {
     bottom: number;
     left: number;
   };
+  /** Optional upper bound for automatic framing transitions. */
+  maxZoom?: number;
 }
 
 /** Frames a world-space rectangle in the viewport's usable area with breathing room. */
@@ -52,7 +54,9 @@ export function fitCanvasCamera(
   const availableHeight = Math.max(1, editableHeight - roomY * 2);
   const width = Math.max(1, target.width);
   const height = Math.max(1, target.height);
-  const zoom = clampCanvasZoom(Math.min(availableWidth / width, availableHeight / height));
+  const zoom = clampCanvasZoom(
+    Math.min(availableWidth / width, availableHeight / height, viewport.maxZoom ?? MAX_CANVAS_ZOOM),
+  );
   const centerX = inset.left + editableWidth / 2;
   const centerY = inset.top + editableHeight / 2;
 

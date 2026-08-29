@@ -242,6 +242,7 @@ export function useCanvasCamera(
         width: bounds.width,
         height: bounds.height,
         inset,
+        maxZoom: 1,
       }),
     );
   };
