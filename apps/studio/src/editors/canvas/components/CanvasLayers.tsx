@@ -1,3 +1,7 @@
+import type { CollisionDetector } from "@dnd-kit/collision";
+import { defaultCollisionDetection } from "@dnd-kit/collision";
+import { PointerActivationConstraints, defaultPreset } from "@dnd-kit/dom";
+import type { DragEndEvent, DragStartEvent } from "@dnd-kit/react";
 import {
   DragDropProvider,
   DragOverlay,
@@ -5,10 +9,7 @@ import {
   useDraggable,
   useDroppable,
 } from "@dnd-kit/react";
-import { PointerActivationConstraints, defaultPreset } from "@dnd-kit/dom";
-import type { DragEndEvent, DragStartEvent } from "@dnd-kit/react";
-import { defaultCollisionDetection } from "@dnd-kit/collision";
-import type { CollisionDetector } from "@dnd-kit/collision";
+import { findCanvasElement } from "@mechane/commands";
 import {
   ChevronRight,
   InputGroup,
@@ -23,16 +24,15 @@ import {
   SidebarMenu,
   TvMinimalIcon,
 } from "@mechane/design-system";
-import { findCanvasElement } from "@mechane/commands";
 import { useMemo, useRef, useState } from "react";
 
 import type { Element as CanvasElement } from "@mechane/domain";
 import type { CanvasArtboardDocument } from "../../../api/canvas";
 import { fixedFillSizing } from "../commands/canvas-creation";
-import { layerDropPlacement, layerDropPlacementInCanvas } from "../data/canvas-layer-drop";
 import type { LayerDropZone } from "../data/canvas-layer-drop";
-import { canvasLayerRows, expansionForSelection } from "../data/canvas-layer-tree";
+import { layerDropPlacement, layerDropPlacementInCanvas } from "../data/canvas-layer-drop";
 import type { LayerRow } from "../data/canvas-layer-tree";
+import { canvasLayerRows, expansionForSelection } from "../data/canvas-layer-tree";
 import { artboardLabel, shouldFrameForeignLayer } from "../data/canvas-workspace";
 import type { CanvasSelection } from "./canvas-selection";
 import { rangeSelection } from "./canvas-selection";
@@ -500,7 +500,7 @@ export function CanvasLayers({
 
   return (
     <SidebarContent className="p-0">
-      <InputGroup className="h-10 bg-transparent dark:bg-transparent rounded-b-none border-0 border-b border-sidebar-border has-[[data-slot=input-group-control]:focus-visible]:border-sidebar-border has-[[data-slot=input-group-control]:focus-visible]:ring-0">
+      <InputGroup className="h-10 bg-transparent dark:bg-transparent rounded-b-none border-0 border-b border-sidebar-border has-[[data-slot=input-group-control]:focus-visible]:border-sidebar-border has-[[data-slot=input-group-control]:focus-visible]:ring-0!">
         <InputGroupAddon align="inline-start">
           <SearchIcon />
         </InputGroupAddon>
