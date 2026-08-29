@@ -168,6 +168,35 @@ describe("CanvasRenderer", () => {
     expect(html).toMatch(/<img[^>]*data-element-id="image"[^>]*draggable="false"/);
   });
 
+  it("shows an editor placeholder for an image without a source", () => {
+    const canvas: Canvas = {
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "missing-image",
+            type: "image",
+            cornerRadius: 12,
+            sizing: {
+              width: { mode: "fixed", value: 120 },
+              height: { mode: "fixed", value: 80 },
+            },
+          },
+        ],
+      },
+    };
+    const editorHtml = markup(canvas, { mode: "studio" });
+    const playerHtml = markup(canvas, { mode: "player" });
+
+    expect(editorHtml).toMatch(
+      /data-element-id="missing-image"[^>]*data-image-placeholder="true"[^>]*outline:1px dashed currentColor/,
+    );
+    expect(editorHtml).toContain("border-radius:12px");
+    expect(playerHtml).not.toContain('data-element-id="missing-image"');
+  });
+
   it("defaults image fitting to cover and center and serializes overrides", () => {
     const html = markup({
       kind: "scene",

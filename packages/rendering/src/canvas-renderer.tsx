@@ -468,6 +468,19 @@ function renderElement({
             blurHash?: string | null;
           })
         : null;
+    if (!resolved) {
+      if (mode === "player") return null;
+      return createElement("div", {
+        "data-element-id": element.id,
+        "data-element-type": element.type,
+        "data-element-parent-id": parent?.id,
+        "data-element-rank": element.rank,
+        "data-element-painted": "true",
+        "data-image-placeholder": "true",
+        hidden: element.hidden,
+        style: { ...style, outline: "1px dashed currentColor" },
+      });
+    }
     const hasFill = element.fill !== undefined;
     return createElement("img", {
       "data-element-id": element.id,
