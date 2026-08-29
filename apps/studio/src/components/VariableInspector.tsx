@@ -8,12 +8,14 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   EllipsisIcon,
   GripVerticalIcon,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  PencilIcon,
   PlusIcon,
   Popover,
   PopoverContent,
@@ -349,16 +351,18 @@ function VariableRow({
         >
           <EllipsisIcon />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" className="min-w-64">
           <DropdownMenuItem
             disabled={defaultInputType(variable.type) === null && !isShapeType(variable.type)}
             onClick={() => setDefaultPopoverOpen(true)}
           >
+            <PencilIcon />
             <span>Set default</span>
             <span className="ml-auto max-w-28 truncate text-muted-foreground">
               {defaultLabel(variable.defaultValue)}
             </span>
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" onClick={() => onRemove(variable.id)}>
             <Trash2Icon />
             Delete

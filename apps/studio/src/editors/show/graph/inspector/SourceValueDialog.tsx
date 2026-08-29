@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import {
   Button,
   Dialog,
@@ -9,12 +10,11 @@ import {
   DialogTitle,
   Textarea,
 } from "@mechane/design-system";
-import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import type { ImageAssetReference, ResolvedImageValue, Shape } from "@mechane/domain";
 import { formatValuePath } from "@mechane/domain";
 
-import { INLINE_STRING_LIMIT } from "./source-values-helpers";
 import type { SourceValueRow } from "./source-value-types";
+import { INLINE_STRING_LIMIT } from "./source-values-helpers";
 import { ValueEditor } from "./ValueEditor";
 export function SourceValueDialog({
   row,
@@ -90,26 +90,28 @@ export function SourceValueDialog({
         {errors.size > 0 ? (
           <p className="text-sm text-destructive">{[...errors.values()][0]}</p>
         ) : null}
-        <DialogFooter>
+        <DialogFooter className="justify-between">
           {onClear ? (
             <Button type="button" variant="ghost" onClick={onClear}>
               Clear default
             </Button>
           ) : null}
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            disabled={errors.size > 0}
-            onClick={() => {
-              const conflict = onSave(draft);
-              if (conflict) setErrors(new Map([["conflict", conflict]]));
-              else onOpenChange(false);
-            }}
-          >
-            Apply
-          </Button>
+          <div className="flex gap-2 items-center">
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={errors.size > 0}
+              onClick={() => {
+                const conflict = onSave(draft);
+                if (conflict) setErrors(new Map([["conflict", conflict]]));
+                else onOpenChange(false);
+              }}
+            >
+              Apply
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
