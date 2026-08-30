@@ -6,9 +6,10 @@
 // query has never seen. The command stack made it, and the server will make its own from the
 // same `graph.addBlock` edit, so until the next read the stack's copy *is* the Artboard.
 
-import { defaultSourceValues, resolveCanvasProperties, sceneVariableValues } from "@mechane/domain";
+import { defaultSourceValues } from "@mechane/domain";
 import type { Block, ShowGraph } from "@mechane/domain";
 import type { CanvasWorkspace } from "@mechane/commands";
+import { prepareCanvasPresentation } from "@mechane/rendering";
 import { useMemo } from "react";
 
 import type { ImageAsset } from "@mechane/graphql-schema";
@@ -99,41 +100,31 @@ export function useCanvasArtboards({
       const canvas = edited?.canvas ?? artboard.canvas;
       const owner = nodes.get(artboard.artId);
       const block = graph.blocks?.find((candidate) => candidate.id === artboard.artId);
-      const variables =
+      const renderPresentation =
         owner?.kind === "scene"
-          ? owner.variables
-          : (block?.variables.map(({ id, name, type, defaultValue }) => ({
-              id,
-              name,
-              type,
-              defaultValue,
-            })) ?? []);
-      const values =
-        owner?.kind === "scene"
-          ? sceneVariableValues(graph, owner.id, sourceValues)
+          ? prepareCanvasPresentation({
+              canvas,
+              graph,
+              blocks: graph.blocks ?? [],
+              imageAssets: assets,
+              owner: { kind: "scene", scene: owner, sourceValues },
+              mode: "studio",
+            })
           : block
-            ? Object.fromEntries(
-                block.variables.map((variable) => [variable.id, variable.defaultValue]),
-              )
+            ? prepareCanvasPresentation({
+                canvas,
+                graph,
+                blocks: graph.blocks ?? [],
+                imageAssets: assets,
+                owner: { kind: "block", block },
+                mode: "studio",
+              })
             : undefined;
-      const renderVariables = variables.flatMap((variable) =>
-        variable.type
-          ? [{ id: variable.id, type: variable.type, value: values?.[variable.id] }]
-          : [],
-      );
       return {
         ...artboard,
-        name: owner?.name ?? artboard.name,
+        name: owner?.name ?? block?.name ?? artboard.name,
         canvas,
-        renderCanvas: resolveCanvasProperties(canvas, {
-          graph,
-          variables,
-          values,
-          shapes: graph.shapes,
-          imageAssets: assets,
-        }),
-        renderVariables,
-        renderImageAssets: assets,
+        renderPresentation,
         position: edited?.position ?? artboard.position,
       };
     });

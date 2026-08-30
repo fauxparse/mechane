@@ -1,11 +1,5 @@
-import type {
-  Canvas,
-  ImageAssetReference,
-  ResolvedCanvas,
-  ResolvedImageValue,
-  ShowId,
-  SlotVariableValue,
-} from "@mechane/domain";
+import type { Canvas, ShowId } from "@mechane/domain";
+import type { CanvasPresentation } from "@mechane/rendering";
 import {
   decodeCanvasDocument,
   GetShowCanvasesQuery,
@@ -21,15 +15,10 @@ export interface CanvasArtboardDocument {
   readonly artId: string;
   readonly kind: "scene" | "block";
   readonly name: string;
-  /** Persisted values, including PropertyConnection objects, used by the Inspector. */
+  /** Persisted Canvas values, including PropertyConnection objects, for the Inspector. */
   readonly canvas: Canvas;
-  /** Typed values used by Slot expansion while painting this Artboard. */
-  readonly renderVariables?: readonly SlotVariableValue[];
-  /** Resolved assets used by nested Block image Elements. */
-  readonly renderImageAssets?: readonly (ResolvedImageValue &
-    Pick<ImageAssetReference, "revision">)[];
-  /** Materialised values used only for painting the Canvas. */
-  readonly renderCanvas?: ResolvedCanvas;
+  /** The prepared shared presentation consumed by CanvasRenderer. */
+  readonly renderPresentation?: CanvasPresentation;
   readonly position: { x: number; y: number };
 }
 

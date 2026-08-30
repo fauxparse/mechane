@@ -103,7 +103,7 @@ const sceneArtboard = {
   position: { x: 0, y: 0 },
 } satisfies CanvasArtboardDocument;
 
-function renderVariablesMarkup(): string {
+function renderPresentationMarkup(): string {
   function Probe() {
     const { artboards } = useCanvasArtboards({
       documents: [sceneArtboard],
@@ -111,22 +111,16 @@ function renderVariablesMarkup(): string {
       graph: sceneGraph,
       imageAssets: [],
     });
-    const value = artboards[0]?.renderVariables?.[0]?.value;
-    return createElement(
-      "output",
-      null,
-      ...(Array.isArray(value) ? value.map((candidate) => String(candidate)) : []),
-    );
+    const artboard = artboards[0];
+    if (!artboard?.renderPresentation) return null;
+    return createElement("output", null, artboard.renderPresentation.mode);
   }
   return renderToStaticMarkup(createElement(Probe));
 }
 
 describe("Canvas artboard rendering inputs", () => {
-  it("passes resolved Scene Variables to repeated Slot rendering", () => {
-    const markup = renderVariablesMarkup();
-    expect(markup).toContain("Alice");
-    expect(markup).toContain("Beatrix");
-    expect(markup).toContain("Clarissa");
+  it("prepares one shared presentation for each Scene Artboard", () => {
+    expect(renderPresentationMarkup()).toContain("studio");
   });
 });
 
@@ -148,13 +142,15 @@ describe("Canvas artboard Block summaries", () => {
     const [summary] = blocksForArtboards([artboard], graph);
     expect(summary).toBeDefined();
     if (!summary) return;
-    const resolution = resolveSlotInstances(summary, {
-      id: "slot",
-      type: "slot",
-      blockId: block.id,
-      assignments: [{ variableId: variable.id, source: { kind: "literal", value: "Hello" } }],
+    const resolution = resolveSlotInstances({
+      block: summary,
+      slot: {
+        id: "slot",
+        type: "slot",
+        blockId: block.id,
+        assignments: [{ variableId: variable.id, source: { kind: "literal", value: "Hello" } }],
+      },
     });
-
     expect(resolution.diagnostic).toBeUndefined();
     expect(resolution.instances[0]?.canvas).toBeDefined();
     expect(resolution.instances[0]?.variables).toEqual([

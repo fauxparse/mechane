@@ -3,11 +3,26 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { CanvasRenderer } from "./canvas-renderer";
-import type { CanvasRendererProps } from "./canvas-render";
-import type { Block, Canvas, SlotVariableValue } from "@mechane/domain";
+import { prepareCanvasForRender } from "./canvas-presentation";
+import type { Canvas } from "@mechane/domain";
+import type { Block, SlotVariableValue } from "@mechane/domain";
 
-function markup(canvas: Canvas, props: Omit<CanvasRendererProps, "canvas"> = {}): string {
-  return renderToStaticMarkup(createElement(CanvasRenderer, { canvas, ...props }));
+interface MarkupOptions {
+  readonly blocks?: readonly Block[];
+  readonly variables?: readonly SlotVariableValue[];
+  readonly mode?: "studio" | "player";
+}
+
+function markup(canvas: Canvas, options: MarkupOptions = {}): string {
+  const presentation = prepareCanvasForRender({
+    canvas,
+    variables: options.variables ?? [],
+    shapes: [],
+    blocks: options.blocks ?? [],
+    imageAssets: [],
+    mode: options.mode ?? "studio",
+  });
+  return renderToStaticMarkup(createElement(CanvasRenderer, { presentation }));
 }
 
 describe("CanvasRenderer", () => {
@@ -753,20 +768,26 @@ describe("CanvasRenderer", () => {
   it("makes only the active text Element editable", () => {
     const html = renderToStaticMarkup(
       createElement(CanvasRenderer, {
-        canvas: {
-          kind: "scene",
-          root: {
-            id: "root",
-            type: "frame",
-            children: [
-              { id: "active", type: "text", content: "Edit me" },
-              { id: "inactive", type: "text", content: "Leave me" },
-            ],
+        presentation: prepareCanvasForRender({
+          canvas: {
+            kind: "scene",
+            root: {
+              id: "root",
+              type: "frame",
+              children: [
+                { id: "active", type: "text", content: "Edit me" },
+                { id: "inactive", type: "text", content: "Leave me" },
+              ],
+            },
           },
-        },
+          variables: [],
+          shapes: [],
+          blocks: [],
+          imageAssets: [],
+          mode: "studio",
+        }),
         editingElementId: "active",
         onTextDoubleClick: () => {},
-        onTextKeyDown: () => {},
       }),
     );
 

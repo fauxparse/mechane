@@ -1,6 +1,7 @@
 import { createRef, createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { prepareCanvasForRender } from "@mechane/rendering";
 import type { CanvasArtboardDocument } from "../../../api/canvas";
 import type { Block, Canvas, SlotVariableValue } from "@mechane/domain";
 import { CanvasWorkspaceStage } from "./CanvasWorkspaceStage";
@@ -54,7 +55,14 @@ const artboard: CanvasArtboardDocument = {
   kind: "scene",
   name: "Candidate list",
   canvas,
-  renderVariables,
+  renderPresentation: prepareCanvasForRender({
+    canvas,
+    variables: renderVariables,
+    shapes: [],
+    blocks: [block],
+    imageAssets: [],
+    mode: "studio",
+  }),
   position: { x: 0, y: 0 },
 };
 
@@ -76,8 +84,6 @@ function stageMarkup(): string {
       camera: { x: 0, y: 0, zoom: 1 },
       ordered: [artboard],
       artboardSizes: new Map([[artboard.artId, { width: 300, height: 300 }]]),
-      blocks: [block],
-      shapes: [],
       drag: null,
       focused: artboard,
       onBeginCreation: noop,
