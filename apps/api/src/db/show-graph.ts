@@ -260,7 +260,7 @@ export async function publishShowGraph(
       "published",
       {
         shapes: draft.shapes ?? [],
-
+        sourceFieldDefaults: draft.sourceFieldDefaults ?? [],
         blocks: draft.blocks ?? [],
         nodes: draft.nodes,
         edges: draft.edges,
