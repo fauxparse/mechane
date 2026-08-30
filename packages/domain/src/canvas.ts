@@ -7,6 +7,7 @@
 import type { ImageAssetReference, ResolvedImageValue } from "./shapes";
 import { isPropertyConnection } from "./property-values";
 import type { PropertyConnection, PropertyValue } from "./property-values";
+import { assertValidElementProperties } from "./element-properties";
 export const ELEMENT_KINDS = ["rect", "ellipse", "text", "image", "frame", "slot"] as const;
 export type ElementKind = (typeof ELEMENT_KINDS)[number];
 
@@ -72,10 +73,8 @@ export interface GradientStop {
   color?: string;
   position: number;
 }
-
 export interface GradientFill {
-  kind?: "linear" | "radial";
-  type?: "linear" | "radial";
+  kind: "linear" | "radial";
   stops: readonly GradientStop[];
   angle?: number;
 }
@@ -86,7 +85,6 @@ export interface AspectRatioLock {
   ratio: number;
   driver: "width" | "height";
 }
-
 export interface ElementLayout {
   rotation?: Rotation;
   aspectRatio?: AspectRatioLock;
@@ -100,7 +98,6 @@ export interface ElementSizing {
   minHeight?: SizeValue;
   maxHeight?: SizeValue;
 }
-
 export interface ElementBase {
   id: string;
   type: ElementKind;
@@ -109,8 +106,6 @@ export interface ElementBase {
   hidden?: boolean;
   layout?: ElementLayout;
   sizing?: ElementSizing;
-  rotation?: Rotation;
-  aspectRatio?: AspectRatioLock;
   opacity?: PropertyValue<number>;
   blendMode?: BlendMode;
   alignSelf?: LayoutAlignment;
@@ -140,12 +135,9 @@ export interface RectElement extends CornerRadiusElement {
 export interface EllipseElement extends ElementBase {
   type: "ellipse";
 }
-
 export interface TextElement extends ElementBase {
   type: "text";
   content?: PropertyValue<string>;
-  text?: PropertyValue<string>;
-  value?: PropertyValue<string>;
   color?: PropertyValue<string>;
   fontFamily?: PropertyValue<string>;
   fontSize?: PropertyValue<number>;
@@ -170,14 +162,11 @@ export interface ImageElement extends CornerRadiusElement {
 export interface FrameElement extends CornerRadiusElement {
   type: "frame";
   layoutMode?: FrameLayoutMode;
-  autoLayout?: boolean;
   direction?: LayoutDirection;
   gap?: FrameGap;
   padding?: number | Padding;
   alignPrimary?: LayoutAlignment;
   alignCounter?: LayoutAlignment;
-  primaryAlign?: LayoutAlignment;
-  counterAlign?: LayoutAlignment;
   clip?: boolean;
 }
 
@@ -265,8 +254,6 @@ export class InvalidCanvasError extends Error {
   }
 }
 
-const ROTATIONS: Record<number, true> = { 0: true, 90: true, 180: true, 270: true };
-
 function assertSizeValue(value: SizeValue, context: string): void {
   if (typeof value === "number") {
     if (!Number.isFinite(value) || value < 0) {
@@ -302,9 +289,6 @@ function assertLayout(element: Element): void {
     if (element.layoutMode !== undefined && element.layoutMode !== "auto") {
       throw new InvalidCanvasError(`${element.id} Slots must use auto layout.`);
     }
-    if (element.autoLayout === false) {
-      throw new InvalidCanvasError(`${element.id} Slots cannot disable auto layout.`);
-    }
     if (
       "opacity" in element ||
       "blendMode" in element ||
@@ -331,46 +315,6 @@ function assertLayout(element: Element): void {
   ] as const) {
     if (value !== undefined) assertSizeValue(value, `${element.id} sizing.${name}`);
   }
-  const rotation = element.layout?.rotation ?? element.rotation;
-  if (rotation !== undefined && ROTATIONS[rotation] !== true) {
-    throw new InvalidCanvasError(`${element.id} has an invalid rotation.`);
-  }
-  const ratio = element.layout?.aspectRatio ?? element.aspectRatio;
-  if (ratio && (!Number.isFinite(ratio.ratio) || ratio.ratio <= 0)) {
-    throw new InvalidCanvasError(`${element.id} has an invalid aspect ratio.`);
-  }
-  if (
-    typeof element.opacity === "number" &&
-    (!Number.isFinite(element.opacity) || element.opacity < 0 || element.opacity > 1)
-  ) {
-    throw new InvalidCanvasError(`${element.id} opacity must be between 0 and 1.`);
-  }
-  if (
-    typeof element.fill !== "string" &&
-    element.fill !== undefined &&
-    !isPropertyConnection(element.fill)
-  ) {
-    const kind = element.fill.kind ?? element.fill.type;
-    if (kind !== "linear" && kind !== "radial") {
-      throw new InvalidCanvasError(`${element.id} has an unknown gradient kind.`);
-    }
-    if (element.fill.stops.length < 2) {
-      throw new InvalidCanvasError(`${element.id} gradients require at least two stops.`);
-    }
-    let previous = -Infinity;
-    for (const stop of element.fill.stops) {
-      if (
-        !stop.color ||
-        !Number.isFinite(stop.position) ||
-        stop.position < 0 ||
-        stop.position > 1 ||
-        stop.position < previous
-      ) {
-        throw new InvalidCanvasError(`${element.id} has invalid gradient stops.`);
-      }
-      previous = stop.position;
-    }
-  }
   if (element.stroke) {
     if (!Number.isFinite(element.stroke.width) || element.stroke.width < 0) {
       throw new InvalidCanvasError(`${element.id} stroke width must be finite and non-negative.`);
@@ -390,7 +334,6 @@ function assertLayout(element: Element): void {
     }
   }
 }
-
 function visit(element: Element, ids: Set<string>, root: boolean): void {
   if (!element.id) throw new InvalidCanvasError("every Element requires an id.");
   if (ids.has(element.id))
@@ -398,8 +341,14 @@ function visit(element: Element, ids: Set<string>, root: boolean): void {
   ids.add(element.id);
   if (root && element.type !== "frame")
     throw new InvalidCanvasError("the Canvas root must be a Frame.");
-  if (root && (element.rotation ?? element.layout?.rotation ?? 0) !== 0) {
+  if (root && (element.layout?.rotation ?? 0) !== 0) {
     throw new InvalidCanvasError("the Canvas root cannot rotate.");
+  }
+  try {
+    assertValidElementProperties(element);
+  } catch (error) {
+    if (error instanceof InvalidCanvasError) throw error;
+    throw new InvalidCanvasError(error instanceof Error ? error.message : String(error));
   }
   assertLayout(element);
   const children = element.children ?? [];

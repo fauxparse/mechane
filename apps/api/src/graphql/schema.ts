@@ -579,14 +579,12 @@ export const schema = createSchema<GraphQLContext>({
       hidden: Boolean!
       layout: JSON
       sizing: JSON
-      rotation: Int
       opacity: JSON
       blendMode: String
       fill: JSON
       stroke: JSON
       anchor: JSON
       alignSelf: String
-      aspectRatio: JSON
     }
 
     type RectElement implements Element {
@@ -597,14 +595,12 @@ export const schema = createSchema<GraphQLContext>({
       hidden: Boolean!
       layout: JSON
       sizing: JSON
-      rotation: Int
       opacity: JSON
       blendMode: String
       fill: JSON
       stroke: JSON
       anchor: JSON
       alignSelf: String
-      aspectRatio: JSON
       cornerRadius: JSON
     }
 
@@ -616,14 +612,12 @@ export const schema = createSchema<GraphQLContext>({
       hidden: Boolean!
       layout: JSON
       sizing: JSON
-      rotation: Int
       opacity: JSON
       blendMode: String
       fill: JSON
       stroke: JSON
       anchor: JSON
       alignSelf: String
-      aspectRatio: JSON
     }
 
     type TextElement implements Element {
@@ -634,17 +628,13 @@ export const schema = createSchema<GraphQLContext>({
       hidden: Boolean!
       layout: JSON
       sizing: JSON
-      rotation: Int
       opacity: JSON
       blendMode: String
       fill: JSON
       stroke: JSON
       anchor: JSON
       alignSelf: String
-      aspectRatio: JSON
       content: JSON
-      text: JSON
-      value: JSON
       color: JSON
       fontFamily: JSON
       fontSize: JSON
@@ -667,14 +657,12 @@ export const schema = createSchema<GraphQLContext>({
       hidden: Boolean!
       layout: JSON
       sizing: JSON
-      rotation: Int
       opacity: JSON
       blendMode: String
       fill: JSON
       stroke: JSON
       anchor: JSON
       alignSelf: String
-      aspectRatio: JSON
       image: JSON
       alt: JSON
       objectFit: JSON
@@ -690,26 +678,22 @@ export const schema = createSchema<GraphQLContext>({
       hidden: Boolean!
       layout: JSON
       sizing: JSON
-      rotation: Int
       opacity: JSON
       blendMode: String
       fill: JSON
       stroke: JSON
       anchor: JSON
       alignSelf: String
-      aspectRatio: JSON
       cornerRadius: JSON
       layoutMode: String
-      autoLayout: Boolean
       direction: String
       gap: JSON
       padding: JSON
       alignPrimary: String
       alignCounter: String
-      primaryAlign: String
-      counterAlign: String
       clip: Boolean
     }
+
     type SlotElement implements Element {
       id: ID!
       name: String
@@ -718,23 +702,18 @@ export const schema = createSchema<GraphQLContext>({
       hidden: Boolean!
       layout: JSON
       sizing: JSON
-      rotation: Int
       opacity: JSON
       blendMode: String
       fill: JSON
       stroke: JSON
       anchor: JSON
       alignSelf: String
-      aspectRatio: JSON
       layoutMode: String
-      autoLayout: Boolean
       direction: String
       gap: JSON
       padding: JSON
       alignPrimary: String
       alignCounter: String
-      primaryAlign: String
-      counterAlign: String
       clip: Boolean
       blockId: ID!
       assignments: JSON

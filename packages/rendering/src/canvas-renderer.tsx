@@ -62,11 +62,11 @@ function valueFor(
 }
 
 function rotationFor(element: ResolvedElement): Rotation {
-  return element.layout?.rotation ?? element.rotation ?? 0;
+  return element.layout?.rotation ?? 0;
 }
 
 function ratioFor(element: ResolvedElement): AspectRatioLock | undefined {
-  return element.layout?.aspectRatio ?? element.aspectRatio;
+  return element.layout?.aspectRatio;
 }
 
 function writingModeFor(rotation: Rotation): CSSProperties["writingMode"] {
@@ -130,7 +130,7 @@ function cssFill(fill: Fill | undefined): string | undefined {
       (stop) => `${stop.color ?? "transparent"} ${Math.max(0, Math.min(1, stop.position)) * 100}%`,
     )
     .join(", ");
-  const kind = fill.kind ?? fill.type ?? "linear";
+  const kind = fill.kind;
   return kind === "radial"
     ? `radial-gradient(circle, ${stops})`
     : `linear-gradient(${fill.angle ?? 0}deg, ${stops})`;
@@ -213,7 +213,7 @@ function elementStyle(element: ResolvedElement, root: boolean, sceneRoot: boolea
 }
 
 function isAutoLayout(element: LayoutParent): boolean {
-  return element.type === "slot" || element.layoutMode === "auto" || element.autoLayout === true;
+  return element.type === "slot" || element.layoutMode === "auto";
 }
 
 function frameStyle(frame: LayoutParent): CSSProperties {
@@ -225,10 +225,8 @@ function frameStyle(frame: LayoutParent): CSSProperties {
       flexDirection: (frame.direction ?? "vertical") === "horizontal" ? "row" : "column",
       gap: automaticGap ? "0px" : `${frame.gap ?? 0}px`,
       padding: paddingValue(frame.padding),
-      justifyContent: automaticGap
-        ? "space-between"
-        : justify(frame.alignPrimary ?? frame.primaryAlign),
-      alignItems: align(frame.alignCounter ?? frame.counterAlign),
+      justifyContent: automaticGap ? "space-between" : justify(frame.alignPrimary),
+      alignItems: align(frame.alignCounter),
       overflow: frame.clip ? "hidden" : "visible",
     };
   }
@@ -242,7 +240,7 @@ function frameStyle(frame: LayoutParent): CSSProperties {
 
 function contentFor(element: ResolvedElement): ReactNode {
   if (element.type !== "text") return undefined;
-  return literal(element.content) ?? literal(element.text) ?? literal(element.value) ?? "";
+  return literal(element.content) ?? "";
 }
 
 function typeStyle(element: ResolvedElement): CSSProperties {

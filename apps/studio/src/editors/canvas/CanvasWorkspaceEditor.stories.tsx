@@ -206,7 +206,7 @@ const resizeImageReviewArtboard: CanvasArtboardDocument = {
             height: { mode: "fixed", value: 124 },
           },
           objectFit: "cover",
-          aspectRatio: { ratio: 16 / 9, driver: "width" },
+          layout: { aspectRatio: { ratio: 16 / 9, driver: "width" } },
           anchor: { horizontal: "left", vertical: "top", offsetX: 120, offsetY: 120 },
         },
       ],

@@ -103,10 +103,10 @@ describe("Canvas GraphQL adapter", () => {
 describe("Canvas GraphQL schema", () => {
   it.each([
     ["TextElement", "textAlign"],
-    ["TextElement", "value"],
+    ["TextElement", "content"],
     ["ImageElement", "objectPosition"],
     ["TextElement", "alignSelf"],
-    ["TextElement", "aspectRatio"],
+    ["TextElement", "layout"],
   ])("exposes %s.%s so Canvas refreshes retain it", (type, field) => {
     const element = schema.getType(type);
     const fields = element && "getFields" in element ? element.getFields() : undefined;

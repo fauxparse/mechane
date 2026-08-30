@@ -53,7 +53,6 @@ export function createBlockFromDrag(
       type: "slot",
       blockId: createdBlock.id,
       layoutMode: "auto",
-      autoLayout: true,
       sizing: {
         width: { mode: "fixed", value: width },
         height: { mode: "fixed", value: height },

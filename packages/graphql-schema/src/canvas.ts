@@ -46,21 +46,17 @@ export const CanvasElementFields = graphql(`
     hidden
     layout
     sizing
-    rotation
     opacity
     blendMode
     fill
     stroke
     anchor
     alignSelf
-    aspectRatio
     ... on RectElement {
       cornerRadius
     }
     ... on TextElement {
       content
-      text
-      value
       color
       fontFamily
       fontSize
@@ -84,14 +80,11 @@ export const CanvasElementFields = graphql(`
     ... on FrameElement {
       cornerRadius
       layoutMode
-      autoLayout
       direction
       gap
       padding
       alignPrimary
       alignCounter
-      primaryAlign
-      counterAlign
       clip
     }
     ... on SlotElement {
@@ -99,14 +92,11 @@ export const CanvasElementFields = graphql(`
       assignments
       expansion
       layoutMode
-      autoLayout
       direction
       gap
       padding
       alignPrimary
       alignCounter
-      primaryAlign
-      counterAlign
       clip
     }
   }

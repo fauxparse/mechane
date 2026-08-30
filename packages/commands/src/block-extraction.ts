@@ -25,14 +25,11 @@ import { composite } from "./command";
 /** How a Frame arranges its children — what the new Block Canvas root inherits. */
 const LAYOUT_PROPERTIES = [
   "layoutMode",
-  "autoLayout",
   "direction",
   "gap",
   "padding",
   "alignPrimary",
   "alignCounter",
-  "primaryAlign",
-  "counterAlign",
   "clip",
 ] as const;
 
@@ -43,14 +40,7 @@ const PAINT_PROPERTIES = ["fill", "stroke", "cornerRadius", "opacity", "blendMod
  * Where an Element sat in *its parent's* layout. These belong to the Slot left behind, not to
  * the Block: the Block does not know what contains it.
  */
-const PLACEMENT_PROPERTIES = [
-  "sizing",
-  "alignSelf",
-  "anchor",
-  "rotation",
-  "layout",
-  "aspectRatio",
-] as const;
+const PLACEMENT_PROPERTIES = ["sizing", "alignSelf", "anchor", "layout"] as const;
 
 function pick(element: Element, keys: readonly string[]): Record<string, unknown> {
   const source = element as unknown as Record<string, unknown>;
@@ -63,7 +53,7 @@ function pick(element: Element, keys: readonly string[]): Record<string, unknown
 
 function isAutoLayout(element: Element): boolean {
   const frame = element as FrameElement;
-  return frame.autoLayout === true || frame.layoutMode === "auto";
+  return frame.layoutMode === "auto";
 }
 
 function inStackingOrder(elements: readonly Element[]): Element[] {
@@ -236,7 +226,6 @@ export function createBlockFromSelection(
     type: "slot",
     blockId,
     layoutMode: "auto",
-    autoLayout: true,
     ...(frame
       ? {
           ...(frame.name ? { name: frame.name } : {}),

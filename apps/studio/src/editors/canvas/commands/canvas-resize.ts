@@ -33,7 +33,7 @@ export function handleCursor(handle: ResizeHandle): string {
 
 /** The aspect ratio an Element is locked to, if any. Width over height. */
 export function lockedAspectRatio(element: Element | null | undefined): number | null {
-  const lock = element?.layout?.aspectRatio ?? element?.aspectRatio;
+  const lock = element?.layout?.aspectRatio;
   if (!lock || typeof lock.ratio !== "number" || !Number.isFinite(lock.ratio) || lock.ratio <= 0) {
     return null;
   }
@@ -73,17 +73,18 @@ export function fixedResizeProperties(
   return properties;
 }
 
-/** Removes both supported persisted locations for an Element's aspect-ratio lock. */
+/** Removes an Element's aspect-ratio lock from its canonical layout property. */
 export function unlockedAspectRatioProperties(element: Element): {
   properties: Record<string, unknown>;
   unsetProperties: readonly string[];
 } {
-  const properties: Record<string, unknown> = {};
-  if (element.layout && "aspectRatio" in element.layout) {
-    const { aspectRatio: _aspectRatio, ...layout } = element.layout;
-    properties.layout = layout;
+  if (!element.layout || !("aspectRatio" in element.layout)) {
+    return { properties: {}, unsetProperties: [] };
   }
-  return { properties, unsetProperties: ["aspectRatio"] };
+  const { aspectRatio: _aspectRatio, ...layout } = element.layout;
+  return Object.keys(layout).length > 0
+    ? { properties: { layout }, unsetProperties: [] }
+    : { properties: {}, unsetProperties: ["layout"] };
 }
 /**
  * The box a resize drag asks for. The edge opposite the handle is what stays put, which is what

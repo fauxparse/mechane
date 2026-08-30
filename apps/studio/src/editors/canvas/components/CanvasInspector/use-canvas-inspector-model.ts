@@ -111,12 +111,10 @@ function useAspectRatioLock(
     (locked: boolean) => {
       if (!target) return;
       if (!locked) {
-        if (target.layout?.aspectRatio) {
-          const { aspectRatio: _aspectRatio, ...layout } = target.layout;
-          update({ layout }, ["aspectRatio"]);
-        } else {
-          update({}, ["aspectRatio"]);
-        }
+        if (!target.layout?.aspectRatio) return;
+        const { aspectRatio: _aspectRatio, ...layout } = target.layout;
+        if (Object.keys(layout).length > 0) update({ layout });
+        else update({}, ["layout"]);
         return;
       }
 
@@ -124,7 +122,7 @@ function useAspectRatioLock(
       const height = numericSizeValue(target.sizing?.height);
       if (width === null || height === null || width <= 0 || height <= 0) return;
       const aspectRatio = { ratio: width / height, driver: "width" as const };
-      update({ layout: { ...target.layout, aspectRatio } }, ["aspectRatio"]);
+      update({ layout: { ...target.layout, aspectRatio } });
     },
     [target, update],
   );
@@ -189,10 +187,7 @@ export function useCanvasInspectorModel({
   const parentInfo = target && focused ? canvasElementParent(focused.canvas.root, target.id) : null;
   const parent =
     parentInfo && focused ? findCanvasElement(focused.canvas.root, parentInfo.parentId) : null;
-  const absolute =
-    !parent ||
-    parent.type !== "frame" ||
-    (parent.layoutMode !== "auto" && parent.autoLayout !== true);
+  const absolute = !parent || parent.type !== "frame" || parent.layoutMode !== "auto";
   const aspectRatioLock = useAspectRatioLock(selected, update);
 
   return useMemo(

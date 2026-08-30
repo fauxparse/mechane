@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { CANVAS_PROPERTY_DESCRIPTORS } from "./canvas-properties";
-import { resolveCanvasProperties } from "./canvas-property-resolution";
+import {
+  ELEMENT_PROPERTY_DESCRIPTORS,
+  assertElementPropertyConnections,
+  elementPropertyDescriptor,
+  elementPropertyType,
+  resolveCanvasProperties,
+} from "./element-properties";
+import { assertValidCanvas } from "./canvas";
 import { DEVICE_SOURCE_HANDLES } from "./graph";
 import type { Canvas } from "./canvas";
 import type { SceneVariable, ShowGraph } from "./graph";
@@ -310,7 +316,7 @@ describe("resolveCanvasProperties", () => {
   });
   it("describes inspector defaults, constraints, and opacity conversion", () => {
     const descriptor = (name: string) =>
-      CANVAS_PROPERTY_DESCRIPTORS.find((candidate) => candidate.name === name);
+      ELEMENT_PROPERTY_DESCRIPTORS.find((candidate) => candidate.name === name);
     const opacity = descriptor("opacity");
 
     expect(opacity).toMatchObject({
@@ -339,5 +345,76 @@ describe("resolveCanvasProperties", () => {
     ).toMatchObject({ current: { kind: "number", value: 42 } });
     expect(opacity?.fromInput(42)).toBe(0.42);
     expect(opacity?.toInput(null)).toBeNull();
+  });
+  it("keeps literal values and gives live values precedence over Variable defaults", () => {
+    const input: Canvas = {
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          {
+            id: "text",
+            type: "text",
+            content: "Literal",
+            fontSize: { kind: "variable", variableId: "score" },
+          },
+        ],
+      },
+    };
+    const resolved = resolveCanvasProperties(input, {
+      variables: [{ id: "score", name: "Score", type: "number", defaultValue: 7 }],
+      values: { score: 42 },
+    });
+    expect(resolved.root.children?.[0]).toMatchObject({ content: "Literal", fontSize: 42 });
+  });
+});
+
+describe("Element Property contract", () => {
+  it("has one descriptor per canonical connectable Property", () => {
+    const names = ELEMENT_PROPERTY_DESCRIPTORS.map(({ name }) => name);
+    expect(names).not.toEqual(expect.arrayContaining(["text", "value", "autoLayout"]));
+    expect(new Set(names).size).toBe(names.length);
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "content",
+        "fontWeight",
+        "fontStyle",
+        "textDecoration",
+        "image",
+        "objectFit",
+        "objectPosition",
+      ]),
+    );
+  });
+
+  it("derives target Types and valid Element kinds from descriptors", () => {
+    expect(elementPropertyType("content", "text")).toBe("text");
+    expect(elementPropertyType("fontSize", "text")).toBe("number");
+    expect(elementPropertyType("image", "image")).toBe("image");
+    expect(elementPropertyType("content", "rect")).toBeNull();
+    expect(elementPropertyDescriptor("fill", "slot")).toBeNull();
+    expect(elementPropertyDescriptor("cornerRadius", "frame")?.targetType).toBe("number");
+  });
+
+  it("rejects a connection on an Element kind that cannot own the Property", () => {
+    const invalid = {
+      kind: "scene" as const,
+      root: {
+        id: "root",
+        type: "frame" as const,
+        children: [
+          {
+            id: "rectangle",
+            type: "rect" as const,
+            content: { kind: "variable" as const, variableId: "headline" },
+          },
+        ],
+      },
+    };
+    expect(() => assertElementPropertyConnections(invalid.root.children![0]!)).toThrow(
+      /invalid Property Connection/,
+    );
+    expect(() => assertValidCanvas(invalid)).toThrow(/invalid Property Connection/);
   });
 });

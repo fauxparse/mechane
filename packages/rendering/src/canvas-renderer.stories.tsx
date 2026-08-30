@@ -56,7 +56,7 @@ const canvas: Canvas = {
         },
         anchor: { horizontal: "center", vertical: "center" },
         fill: {
-          type: "linear",
+          kind: "linear",
           angle: 90,
           stops: [
             { color: "#eb6f92", position: 0 },
@@ -87,7 +87,7 @@ const canvas: Canvas = {
             },
             padding: 8,
             fill: {
-              type: "radial",
+              kind: "radial",
               stops: [
                 { color: "#31748f", position: 0 },
                 { color: "#26233a", position: 1 },
@@ -100,7 +100,7 @@ const canvas: Canvas = {
                 content: "90°",
                 color: "#f6f1f4",
                 fontSize: 24,
-                rotation: 90,
+                layout: { rotation: 90 },
                 sizing: {
                   width: { mode: "hug" },
                   height: { mode: "hug" },
@@ -146,7 +146,7 @@ const primitiveCanvas: Canvas = {
         name: "Text with constraints",
         type: "text",
         rank: "b",
-        text: "Text can wrap, align, and use authored typography values.",
+        content: "Text can wrap, align, and use authored typography values.",
         color: "#f6f1f4",
         fontFamily: "Georgia, serif",
         fontSize: 23,
@@ -179,7 +179,7 @@ const primitiveCanvas: Canvas = {
           blurHash: null,
         },
         objectFit: "cover",
-        aspectRatio: { ratio: 16 / 9, driver: "width" },
+        layout: { aspectRatio: { ratio: 16 / 9, driver: "width" } },
         sizing: {
           width: { mode: "fixed", value: 250 },
           height: { mode: "fixed", value: 150 },
@@ -206,12 +206,12 @@ const autoLayoutCanvas: Canvas = {
   root: {
     id: "auto-layout-root",
     type: "frame",
-    autoLayout: true,
+    layoutMode: "auto",
     direction: "vertical",
     gap: 18,
     padding: { top: 28, right: 32, bottom: 28, left: 32 },
-    primaryAlign: "space-between",
-    counterAlign: "centre",
+    alignPrimary: "space-between",
+    alignCounter: "centre",
     fill: "#191724",
     children: [
       {
@@ -252,7 +252,7 @@ const autoLayoutCanvas: Canvas = {
           {
             id: "header-status",
             type: "text",
-            value: "Live",
+            content: "Live",
             fontSize: 14,
             color: "#9ccfd8",
             sizing: {
@@ -376,7 +376,6 @@ const constraintsCanvas: Canvas = {
         type: "text",
         rank: "a",
         content: "0°\nleft / top",
-        rotation: 0,
         color: "#f6c177",
         fontSize: 18,
         sizing: {
@@ -390,7 +389,7 @@ const constraintsCanvas: Canvas = {
         type: "text",
         rank: "b",
         content: "90°\nright / center",
-        rotation: 90,
+        layout: { rotation: 90 },
         color: "#9ccfd8",
         fontSize: 18,
         sizing: {
@@ -405,14 +404,13 @@ const constraintsCanvas: Canvas = {
         type: "text",
         rank: "c",
         content: "180°\ncenter / bottom",
-        rotation: 180,
+        layout: { rotation: 180, aspectRatio: { ratio: 2.5, driver: "width" } },
         color: "#c4a7e7",
         fontSize: 18,
         sizing: {
           width: { mode: "fixed", value: 160 },
           height: { mode: "fixed", value: 64 },
         },
-        aspectRatio: { ratio: 2.5, driver: "width" },
         anchor: { horizontal: "center", vertical: "bottom", offsetY: 24 },
       },
       {
@@ -420,7 +418,7 @@ const constraintsCanvas: Canvas = {
         type: "text",
         rank: "d",
         content: "270°\nleft / bottom",
-        rotation: 270,
+        layout: { rotation: 270 },
         color: "#eb6f92",
         fontSize: 18,
         sizing: {
@@ -457,7 +455,7 @@ const gradientOverflowCanvas: Canvas = {
     type: "frame",
     layoutMode: "absolute",
     fill: {
-      type: "linear",
+      kind: "linear",
       angle: 0,
       stops: [
         { color: "#191724", position: -0.2 },
@@ -598,8 +596,8 @@ const directFrame: FrameElement = {
   direction: "vertical",
   gap: 10,
   padding: 24,
-  primaryAlign: "center",
-  counterAlign: "center",
+  alignPrimary: "center",
+  alignCounter: "center",
   fill: "#393552",
   children: [
     {

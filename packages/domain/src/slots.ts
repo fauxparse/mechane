@@ -15,7 +15,7 @@ import {
 import type { ShapeInstanceId } from "./id";
 import type { ResolvedCanvas, SlotElement, SlotInputAssignment, SlotInputSource } from "./canvas";
 import { typeAtPath, valueAtPath } from "./property-values";
-import { resolveCanvasProperties } from "./canvas-property-resolution";
+import { resolveCanvasProperties } from "./element-properties";
 
 export const SLOT_DIAGNOSTIC_CATEGORIES = [
   "missingBlock",
@@ -391,12 +391,6 @@ export function diagnoseSlot(
   }
   if (slot.layoutMode !== undefined && slot.layoutMode !== "auto") {
     diagnostics.push({ category: "invalidSlotLayout", message: "Slots must use auto layout." });
-  }
-  if (slot.autoLayout === false) {
-    diagnostics.push({
-      category: "invalidSlotLayout",
-      message: "Slots cannot disable auto layout.",
-    });
   }
   const targets = new Set<string>();
   for (const assignment of slot.assignments ?? []) {

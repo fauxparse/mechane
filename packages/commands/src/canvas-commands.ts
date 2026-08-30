@@ -202,7 +202,6 @@ export function placeBlockInSlot(
     type: "slot",
     blockId,
     layoutMode: "auto",
-    autoLayout: true,
   };
   return addCanvasElement(canvasId, element, parentId, rank);
 }
