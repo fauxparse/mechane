@@ -140,9 +140,10 @@ describe("Canvas multi-selection scaling", () => {
 });
 
 describe("Canvas aspect ratio locks", () => {
-  const withRatio = (aspectRatio: unknown) => ({ id: "a", type: "rect", aspectRatio }) as Element;
+  const withRatio = (aspectRatio: unknown) =>
+    ({ id: "a", type: "rect", layout: { aspectRatio } }) as Element;
 
-  it("reads a lock from either the layout or the Element", () => {
+  it("reads the canonical layout lock", () => {
     expect(lockedAspectRatio(withRatio({ ratio: 1.5, driver: "width" }))).toBe(1.5);
     expect(
       lockedAspectRatio({
@@ -161,12 +162,11 @@ describe("Canvas aspect ratio locks", () => {
 });
 
 describe("Canvas edge resize aspect-ratio unlock", () => {
-  it("clears both legacy and layout aspect-ratio locks", () => {
+  it("clears the canonical layout aspect-ratio lock", () => {
     expect(
       unlockedAspectRatioProperties({
         id: "image",
         type: "image",
-        aspectRatio: { ratio: 16 / 9, driver: "width" },
         layout: {
           rotation: 90,
           aspectRatio: { ratio: 16 / 9, driver: "width" },
@@ -174,7 +174,7 @@ describe("Canvas edge resize aspect-ratio unlock", () => {
       } as Element),
     ).toEqual({
       properties: { layout: { rotation: 90 } },
-      unsetProperties: ["aspectRatio"],
+      unsetProperties: [],
     });
   });
 

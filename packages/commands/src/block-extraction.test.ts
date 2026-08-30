@@ -21,7 +21,6 @@ const sceneCanvas: Canvas = {
         rank: "b",
         name: "Card",
         layoutMode: "auto",
-        autoLayout: true,
         direction: "vertical",
         gap: 12,
         padding: 16,
@@ -91,7 +90,6 @@ describe("createBlockFromSelection", () => {
     expect(slot.alignSelf).toBe("start");
     // A Slot Layout Container always uses auto layout.
     expect(slot.layoutMode).toBe("auto");
-    expect(slot.autoLayout).toBe(true);
   });
 
   it("gathers ungrouped siblings into a Block sized like the box they came out of", () => {
@@ -124,7 +122,6 @@ describe("createBlockFromSelection", () => {
             type: "frame",
             rank: "a",
             layoutMode: "auto",
-            autoLayout: true,
             direction: "horizontal",
             gap: 8,
             children: [
@@ -147,7 +144,6 @@ describe("createBlockFromSelection", () => {
     const root = block.canvas.root as FrameElement;
     expect(root.direction).toBe("horizontal");
     expect(root.gap).toBe(8);
-    expect(root.autoLayout).toBe(true);
     // Inside an auto-layout parent the Slot is laid out for it; it claims no box of its own.
     expect(slot.sizing).toBeUndefined();
     expect(slot.anchor).toBeUndefined();

@@ -1,5 +1,6 @@
 import type { Canvas, Element } from "./canvas";
 import { assertValidCanvas } from "./canvas";
+import { isElementPropertyKey } from "./element-properties";
 import type { Position } from "./graph";
 import { generateId } from "./id";
 import type { Shape, Type } from "./shapes";
@@ -65,49 +66,11 @@ export class BlockCycleError extends Error {
     this.chain = chain;
   }
 }
-
 const MAX_BLOCK_NAME_LENGTH = 200;
-const PROPERTY_NAMES = new Set([
-  "layout",
-  "sizing",
-  "rotation",
-  "aspectRatio",
-  "opacity",
-  "blendMode",
-  "alignSelf",
-  "fill",
-  "stroke",
-  "anchor",
-  "cornerRadius",
-  "content",
-  "text",
-  "value",
-  "color",
-  "fontFamily",
-  "fontSize",
-  "fontWeight",
-  "fontStyle",
-  "textDecoration",
-  "lineHeight",
-  "letterSpacing",
-  "textAlign",
-  "textVerticalAlign",
-  "textOverflow",
-  "padding",
-  "image",
-  "alt",
-  "objectFit",
-  "objectPosition",
-  "layoutMode",
-  "autoLayout",
-  "direction",
-  "gap",
-  "alignPrimary",
-  "alignCounter",
-  "primaryAlign",
-  "counterAlign",
-  "clip",
-]);
+
+function isKnownPropertyName(name: string): boolean {
+  return isElementPropertyKey(name);
+}
 
 function walk(element: Element, visit: (element: Element) => void): void {
   visit(element);
@@ -190,7 +153,7 @@ export function assertValidBlock(block: Block, shapes: readonly Shape[] = []): B
           `State "${state.name}" targets a missing Property on Element "${override.elementId}".`,
         );
       }
-      if (!PROPERTY_NAMES.has(override.property)) {
+      if (!isKnownPropertyName(override.property)) {
         throw new InvalidBlockError(`State "${state.name}" targets an unknown Property.`);
       }
     }

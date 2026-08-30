@@ -52,8 +52,8 @@ export const LayoutSection = () => {
     gap === undefined &&
     selected.some((element) => Reflect.get(element, "gap") !== undefined);
   const selectionKey = `${focused?.artId ?? ""}:${selected.map((element) => element.id).join(",")}`;
-  const alignPrimary = common("alignPrimary") ?? common("primaryAlign");
-  const alignCounter = common("alignCounter") ?? common("counterAlign");
+  const alignPrimary = common("alignPrimary");
+  const alignCounter = common("alignCounter");
   const clipChildren = common("clip");
   const padding = common("padding") as PaddingValue;
   const paddingMixed =

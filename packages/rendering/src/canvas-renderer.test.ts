@@ -687,15 +687,14 @@ describe("CanvasRenderer", () => {
             id: "child",
             type: "text",
             content: "hello",
-            rotation: 90,
+            layout: { rotation: 90, aspectRatio: { ratio: 2, driver: "width" } },
             sizing: {
               width: { mode: "fixed", value: 80 },
               height: { mode: "fixed", value: 40 },
               minWidth: { value: 100, unit: "%" },
             },
-            aspectRatio: { ratio: 2, driver: "width" },
             fill: {
-              type: "linear",
+              kind: "linear",
               angle: 45,
               stops: [
                 { color: "red", position: 0 },

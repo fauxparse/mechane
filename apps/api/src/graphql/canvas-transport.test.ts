@@ -184,7 +184,7 @@ describe("Canvas GraphQL transport", () => {
               textVerticalAlign: "bottom",
               fontSize: 32,
               alignSelf: "end",
-              aspectRatio: { ratio: 2, driver: "width" },
+              layout: { aspectRatio: { ratio: 2, driver: "width" } },
             },
             parentId: "group",
             rank: "a0",
@@ -209,7 +209,7 @@ describe("Canvas GraphQL transport", () => {
       textVerticalAlign: "bottom",
       fontSize: 32,
       alignSelf: "end",
-      aspectRatio: { ratio: 2, driver: "width" },
+      layout: { aspectRatio: { ratio: 2, driver: "width" } },
     });
   });
 

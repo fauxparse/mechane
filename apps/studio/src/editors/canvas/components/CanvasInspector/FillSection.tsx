@@ -25,8 +25,7 @@ import { isVariableInput } from "./canvas-inspector-values";
 const isGradientFill = (value: unknown): value is GradientFill =>
   value !== null && typeof value === "object" && "stops" in value && Array.isArray(value.stops);
 
-const gradientKind = (fill: GradientFill): "linear" | "radial" =>
-  fill.kind ?? fill.type ?? "linear";
+const gradientKind = (fill: GradientFill): "linear" | "radial" => fill.kind;
 
 type FillMode = "none" | "solid" | "linear" | "radial";
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { AxisSize, SlotInputSource } from "@mechane/domain";
-import { CANVAS_PROPERTY_DESCRIPTORS, canvasPropertyDescriptor } from "@mechane/domain";
+import { elementPropertyDescriptor, type ElementPropertyName } from "@mechane/domain";
 import {
   Link2Icon,
   PropertyInput,
@@ -31,7 +31,7 @@ import {
   type SizeConstraint,
 } from "./canvas-inspector-values";
 type PropertyFieldProps = {
-  name: (typeof CANVAS_PROPERTY_DESCRIPTORS)[number]["name"];
+  name: ElementPropertyName;
   icon?: LucideIcon | string;
   className?: string;
   placeholder?: string;
@@ -47,9 +47,9 @@ export const PropertyField = ({
 }: PropertyFieldProps) => {
   const { target, elements, selected, variables, shapes, common, update } =
     useCanvasInspectorContext();
-  const descriptor = canvasPropertyDescriptor(name, target);
+  const descriptor = elementPropertyDescriptor(name, target);
   if (!descriptor) return null;
-  if (elements.length > 0 && !elements.every((element) => canvasPropertyDescriptor(name, element)))
+  if (elements.length > 0 && !elements.every((element) => elementPropertyDescriptor(name, element)))
     return null;
 
   const rawValue = common(name);

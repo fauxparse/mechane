@@ -26,7 +26,7 @@ function canvasDocument(elements: CanvasElementDocument[], kind = "scene") {
 }
 
 describe("Canvas GraphQL query", () => {
-  it.each(["textAlign", "objectPosition", "value", "alignSelf", "aspectRatio"])(
+  it.each(["textAlign", "objectPosition", "content", "alignSelf", "layout"])(
     "requests %s when loading Canvas Elements",
     (field) => {
       expect(print(CanvasElementFields)).toContain(field);
