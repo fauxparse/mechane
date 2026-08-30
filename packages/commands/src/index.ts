@@ -12,12 +12,15 @@
 //   ./graph-cascade  what one user-facing delete is made of (#42)
 //   ./graph-edit-codec  one descriptor per edit: its command, and how it
 //                       flattens onto the wire and back (#347)
+//   ./canvas-edit-codec the same, for Canvas content and Artboard framing
+//                       (#436)
 export * from "./command";
 export * from "./graph-cascade";
 export * from "./graph-commands";
 export * from "./graph-edit-codec";
 export * from "./graph-edits";
 export * from "./canvas-edits";
+export * from "./canvas-edit-codec";
 export * from "./canvas-commands";
 export * from "./block-extraction";
 export * from "./stack";

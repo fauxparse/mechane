@@ -7,7 +7,16 @@ export const CANVAS_COMMAND_TYPES = {
   removeElement: "canvas.removeElement",
   updateElement: "canvas.updateElement",
   reparentElement: "canvas.reparentElement",
-  moveArtboard: "canvas.moveArtboard",
+} as const;
+
+/**
+ * Artboard framing, which is not Canvas content (CONTEXT.md): an Artboard has
+ * a place on the Canvas Editor's plane, while the Canvas it presents has an
+ * Element tree. The two travel as separate workspace edit variants so a Canvas
+ * content codec can reject a framing edit outright (#436).
+ */
+export const ARTBOARD_COMMAND_TYPES = {
+  move: "artboard.move",
 } as const;
 
 export type ElementProperties = Record<string, unknown>;
@@ -39,11 +48,13 @@ export type CanvasEdit =
       readonly elementId: string;
       readonly parentId: string;
       readonly rank: string;
-    }
-  | {
-      readonly type: typeof CANVAS_COMMAND_TYPES.moveArtboard;
-      readonly position: Position;
     };
+
+/** An edit to an Artboard's framing, which no Canvas content edit can express. */
+export type ArtboardEdit = {
+  readonly type: typeof ARTBOARD_COMMAND_TYPES.move;
+  readonly position: Position;
+};
 
 export class CanvasEditError extends Error {
   constructor(message: string) {
@@ -231,8 +242,6 @@ export function applyCanvasEdits(canvas: Canvas, edits: readonly CanvasEdit[]): 
         root = sortChildren(root);
         break;
       }
-      case CANVAS_COMMAND_TYPES.moveArtboard:
-        throw new CanvasEditError("canvas.moveArtboard requires a Canvas workspace.");
     }
   }
   return { ...canvas, root: root as FrameElement };

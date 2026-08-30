@@ -29,17 +29,8 @@ export const GetShowGraphQuery = graphql(
           canvas {
             id
             kind
-            ownerId
-            ownerName
-            position {
-              x
-              y
-            }
-            root {
+            elements {
               ...CanvasElementFields
-              children {
-                ...CanvasElementFields
-              }
             }
           }
           stateSelectorVariableId
@@ -228,14 +219,6 @@ export const ApplyShowEditsMutation = graphql(`
       state
       updatedAt
       version
-      canvas {
-        id
-        kind
-        position {
-          x
-          y
-        }
-      }
       amendments {
         type
         nodeId

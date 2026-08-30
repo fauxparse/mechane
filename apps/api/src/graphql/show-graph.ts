@@ -23,6 +23,7 @@ import { sourceDefaultsFor, wiringTargetVariableId } from "@mechane/domain";
 import { GraphQLError } from "graphql";
 
 import type { StoredShowGraph } from "../db/show-graph";
+import { flattenCanvasElements } from "./canvas";
 
 interface SerializedBlock {
   id: string;
@@ -30,10 +31,7 @@ interface SerializedBlock {
   canvas: {
     id: string;
     kind: string;
-    position: { x: number; y: number };
-    ownerId: string;
-    ownerName: string;
-    root: unknown;
+    elements: unknown[];
   };
   variables: Block["variables"];
   states: Block["states"];
@@ -161,23 +159,17 @@ export function serializeGraphEdit(edit: GraphEdit) {
       : {}),
   };
 }
-function serializeBlock(block: Block): SerializedBlock {
-  const canvas = block.canvas as Block["canvas"] & {
-    kind?: string;
-    position?: { x: number; y: number };
-    ownerId?: unknown;
-    ownerName?: unknown;
-  };
+export function serializeBlock(block: Block): SerializedBlock {
+  const canvas = block.canvas;
   return {
     id: block.id,
     name: block.name,
+    // A Block's Canvas travels as content only: where its Artboard sits, and
+    // who owns it, are framing facts the Canvas workspace query carries (#436).
     canvas: {
       id: canvas.id,
       kind: canvas.kind ?? "block",
-      position: canvas.position ?? { x: 0, y: 0 },
-      ownerId: typeof canvas.ownerId === "string" ? canvas.ownerId : block.id,
-      ownerName: typeof canvas.ownerName === "string" ? canvas.ownerName : block.name,
-      root: canvas.root,
+      elements: flattenCanvasElements(canvas.root),
     },
     variables: block.variables,
     states: block.states,

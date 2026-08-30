@@ -3,8 +3,18 @@
 // owned-resource vertical slice, using `requireUserId` (./context.ts) and
 // `assertOwnedBy`/`assertValidShowName` (@mechane/domain) the same way
 // every later owned resource (Scene, Device, ...) should.
-import type { CanvasWorkspaceEdit, FlatGraphEdit, GraphEdit } from "@mechane/commands";
-import { CanvasEditError } from "@mechane/commands";
+import type {
+  CanvasWorkspaceEdit,
+  FlatCanvasEdit,
+  FlatGraphEdit,
+  GraphEdit,
+} from "@mechane/commands";
+import {
+  CanvasEditCodecError,
+  CanvasEditError,
+  decodeCanvasWorkspaceEdit,
+  isCanvasWorkspaceEditType,
+} from "@mechane/commands";
 import type { GraphState } from "@mechane/domain";
 import {
   assertOwnedBy,
@@ -42,13 +52,14 @@ import {
 } from "../db/show-graph";
 import { ImageProcessingError, processImage } from "../images";
 import { blobStore } from "../storage/blob-store";
-import { parseCanvasEdit, resolveCanvasElementType, serializeCanvas } from "./canvas";
+import { resolveCanvasElementType, serializeArtboard, serializeCanvas } from "./canvas";
 import type { GraphQLContext } from "./context";
 import { requireUserId } from "./context";
 import {
   parseGraphEdit,
   resolveGraphEdgeType,
   resolveGraphNodeType,
+  serializeBlock,
   serializeShowGraph,
 } from "./show-graph";
 
@@ -529,16 +540,35 @@ export const schema = createSchema<GraphQLContext>({
       losses: [PublishLoss!]!
     }
     """
-    A persisted Scene or Block Canvas. Element is an interface so clients can
-    select the primitive-specific content without a nullable field bag.
+    A persisted Scene or Block Canvas (ADR-0014).
+
+    Elements arrive flat, each naming its parent and its rank, because a
+    Canvas hierarchy has no authored depth limit and a recursive selection
+    always has one. Clients rebuild the tree; \`@mechane/graphql-schema\`'s
+    \`decodeCanvasDocument\` is the one decoder that does it. Element stays an
+    interface so clients can select the primitive-specific content without a
+    nullable field bag.
     """
     type Canvas {
       id: ID!
       kind: String!
-      position: Position!
+      "Exactly one Element has no parent, and it is the root Frame."
+      elements: [Element!]!
+    }
+
+    """
+    One Canvas as it is placed on the Canvas Editor's plane.
+
+    Framing, not content: an Artboard has a place and a size, while the Canvas
+    it presents has an Element tree (CONTEXT.md). Owner identity lives here for
+    the same reason — the Canvas editor works on a Canvas without knowing
+    whether a Scene or a Block owns it.
+    """
+    type Artboard {
+      canvas: Canvas!
       ownerId: ID!
       ownerName: String!
-      root: Element!
+      position: Position!
     }
 
     interface Element {
@@ -557,7 +587,6 @@ export const schema = createSchema<GraphQLContext>({
       anchor: JSON
       alignSelf: String
       aspectRatio: JSON
-      children: [Element!]!
     }
 
     type RectElement implements Element {
@@ -576,7 +605,6 @@ export const schema = createSchema<GraphQLContext>({
       anchor: JSON
       alignSelf: String
       aspectRatio: JSON
-      children: [Element!]!
       cornerRadius: JSON
     }
 
@@ -596,7 +624,6 @@ export const schema = createSchema<GraphQLContext>({
       anchor: JSON
       alignSelf: String
       aspectRatio: JSON
-      children: [Element!]!
     }
 
     type TextElement implements Element {
@@ -615,7 +642,6 @@ export const schema = createSchema<GraphQLContext>({
       anchor: JSON
       alignSelf: String
       aspectRatio: JSON
-      children: [Element!]!
       content: JSON
       text: JSON
       value: JSON
@@ -647,7 +673,6 @@ export const schema = createSchema<GraphQLContext>({
       fill: JSON
       stroke: JSON
       anchor: JSON
-      children: [Element!]!
       alignSelf: String
       aspectRatio: JSON
       image: JSON
@@ -673,7 +698,6 @@ export const schema = createSchema<GraphQLContext>({
       anchor: JSON
       alignSelf: String
       aspectRatio: JSON
-      children: [Element!]!
       cornerRadius: JSON
       layoutMode: String
       autoLayout: Boolean
@@ -702,7 +726,6 @@ export const schema = createSchema<GraphQLContext>({
       anchor: JSON
       alignSelf: String
       aspectRatio: JSON
-      children: [Element!]!
       layoutMode: String
       autoLayout: Boolean
       direction: String
@@ -858,7 +881,6 @@ export const schema = createSchema<GraphQLContext>({
       state: String!
       updatedAt: String!
       version: Int!
-      canvas: Canvas
       amendments: [GraphEdit!]!
     }
 
@@ -920,9 +942,9 @@ export const schema = createSchema<GraphQLContext>({
       "The active Run for a Show, or null when the Show is stopped."
       activeRun(showId: ID!): Run
       showGraph(showId: ID!, state: String): ShowGraph!
-      showCanvases(showId: ID!, state: String): [Canvas!]!
-      sceneCanvas(showId: ID!, sceneNodeId: ID!, state: String): Canvas
-      blockCanvas(showId: ID!, blockId: ID!, state: String): Canvas
+      showCanvases(showId: ID!, state: String): [Artboard!]!
+      sceneCanvas(showId: ID!, sceneNodeId: ID!, state: String): Artboard
+      blockCanvas(showId: ID!, blockId: ID!, state: String): Artboard
       imageAssets(showId: ID!): [ImageAsset!]!
     }
 
@@ -1070,7 +1092,13 @@ export const schema = createSchema<GraphQLContext>({
       me: (_parent, _args, context) => context.user,
       playerSession: async (_parent, { pairingCode }: { pairingCode: string }) => {
         const session = await readPlayerSession(pairingCode);
-        return session ? { ...session, graph: serializeShowGraph(session.graph) } : null;
+        if (!session) return null;
+        return {
+          ...session,
+          graph: serializeShowGraph(session.graph),
+          canvas: session.canvas ? serializeCanvas(session.canvas) : null,
+          blocks: session.blocks.map(serializeBlock),
+        };
       },
       shows: async (_parent, _args, context) => {
         const userId = requireUserId(context);
@@ -1128,7 +1156,8 @@ export const schema = createSchema<GraphQLContext>({
       ) => {
         const userId = requireUserId(context);
         await findOwnShowOrThrow(showId, userId);
-        return (await readCanvasWorkspace(showId, validGraphState(state ?? "draft"))).canvases;
+        const workspace = await readCanvasWorkspace(showId, validGraphState(state ?? "draft"));
+        return workspace.canvases.map(serializeArtboard);
       },
       sceneCanvas: async (
         _parent,
@@ -1143,7 +1172,7 @@ export const schema = createSchema<GraphQLContext>({
         await findOwnShowOrThrow(showId, userId);
         const graphState = validGraphState(state ?? "draft");
         const canvas = await readCanvas(showId, graphState, { sceneNodeId });
-        return canvas ? serializeCanvas(canvas) : null;
+        return canvas ? serializeArtboard(canvas) : null;
       },
       blockCanvas: async (
         _parent,
@@ -1154,7 +1183,7 @@ export const schema = createSchema<GraphQLContext>({
         await findOwnShowOrThrow(showId, userId);
         const graphState = validGraphState(state ?? "draft");
         const canvas = await readCanvas(showId, graphState, { blockId });
-        return canvas ? serializeCanvas(canvas) : null;
+        return canvas ? serializeArtboard(canvas) : null;
       },
       imageAssets: async (_parent, { showId }: { showId: string }, context) => {
         const userId = requireUserId(context);
@@ -1180,12 +1209,11 @@ export const schema = createSchema<GraphQLContext>({
             const record = input as Record<string, unknown>;
             const type = record.type;
             if (typeof type !== "string") throw new CanvasEditError("Show edit type is required.");
-            if (type.startsWith("canvas.")) {
-              const canvasId = record.canvasId;
-              if (typeof canvasId !== "string" || canvasId.length === 0) {
-                throw new CanvasEditError("Canvas edits require canvasId.");
-              }
-              canvasEdits.push({ canvasId, edit: parseCanvasEdit(record) });
+            // Which vocabulary an edit belongs to is the codec's to say, not a
+            // prefix test's: Canvas content and Artboard framing are separate
+            // variants with separate prefixes (#436).
+            if (isCanvasWorkspaceEditType(type)) {
+              canvasEdits.push(decodeCanvasWorkspaceEdit(record as unknown as FlatCanvasEdit));
             } else {
               graphEdits.push(parseGraphEdit(record as unknown as FlatGraphEdit));
             }
@@ -1197,7 +1225,7 @@ export const schema = createSchema<GraphQLContext>({
           if (error instanceof GraphVersionConflictError) {
             throw new GraphQLError(error.message, { extensions: { code: "CONFLICT" } });
           }
-          if (error instanceof CanvasEditError) {
+          if (error instanceof CanvasEditError || error instanceof CanvasEditCodecError) {
             throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
           }
           throw error;

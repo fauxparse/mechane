@@ -1,4 +1,4 @@
-import { CANVAS_COMMAND_TYPES, type CanvasWorkspaceEdit } from "@mechane/commands";
+import { ARTBOARD_COMMAND_TYPES, type CanvasWorkspaceEdit } from "@mechane/commands";
 import type { ShowGraph } from "@mechane/domain";
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
@@ -89,7 +89,7 @@ describe("Scene Canvas reconciliation", () => {
     if (!original) throw new Error("Initial Scene Canvas was not created.");
     const canvasEdit: CanvasWorkspaceEdit = {
       canvasId: original.id,
-      edit: { type: CANVAS_COMMAND_TYPES.moveArtboard, position: { x: 120, y: 40 } },
+      edit: { type: ARTBOARD_COMMAND_TYPES.move, position: { x: 120, y: 40 } },
     };
     const draft = await readShowGraph(showId, "draft");
     const applied = await applyShowEdits(showId, [], [canvasEdit], draft.version);

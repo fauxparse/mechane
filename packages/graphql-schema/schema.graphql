@@ -373,16 +373,36 @@ type ShowGraph {
 }
 
 """
-A persisted Scene or Block Canvas. Element is an interface so clients can
-select the primitive-specific content without a nullable field bag.
+A persisted Scene or Block Canvas (ADR-0014).
+
+Elements arrive flat, each naming its parent and its rank, because a
+Canvas hierarchy has no authored depth limit and a recursive selection
+always has one. Clients rebuild the tree; `@mechane/graphql-schema`'s
+`decodeCanvasDocument` is the one decoder that does it. Element stays an
+interface so clients can select the primitive-specific content without a
+nullable field bag.
 """
 type Canvas {
   id: ID!
   kind: String!
-  position: Position!
+
+  """Exactly one Element has no parent, and it is the root Frame."""
+  elements: [Element!]!
+}
+
+"""
+One Canvas as it is placed on the Canvas Editor's plane.
+
+Framing, not content: an Artboard has a place and a size, while the Canvas
+it presents has an Element tree (CONTEXT.md). Owner identity lives here for
+the same reason — the Canvas editor works on a Canvas without knowing
+whether a Scene or a Block owns it.
+"""
+type Artboard {
+  canvas: Canvas!
   ownerId: ID!
   ownerName: String!
-  root: Element!
+  position: Position!
 }
 
 interface Element {
@@ -401,7 +421,6 @@ interface Element {
   anchor: JSON
   alignSelf: String
   aspectRatio: JSON
-  children: [Element!]!
 }
 
 type RectElement implements Element {
@@ -420,7 +439,6 @@ type RectElement implements Element {
   anchor: JSON
   alignSelf: String
   aspectRatio: JSON
-  children: [Element!]!
   cornerRadius: JSON
 }
 
@@ -440,7 +458,6 @@ type EllipseElement implements Element {
   anchor: JSON
   alignSelf: String
   aspectRatio: JSON
-  children: [Element!]!
 }
 
 type TextElement implements Element {
@@ -459,7 +476,6 @@ type TextElement implements Element {
   anchor: JSON
   alignSelf: String
   aspectRatio: JSON
-  children: [Element!]!
   content: JSON
   text: JSON
   value: JSON
@@ -491,7 +507,6 @@ type ImageElement implements Element {
   fill: JSON
   stroke: JSON
   anchor: JSON
-  children: [Element!]!
   alignSelf: String
   aspectRatio: JSON
   image: JSON
@@ -517,7 +532,6 @@ type FrameElement implements Element {
   anchor: JSON
   alignSelf: String
   aspectRatio: JSON
-  children: [Element!]!
   cornerRadius: JSON
   layoutMode: String
   autoLayout: Boolean
@@ -547,7 +561,6 @@ type SlotElement implements Element {
   anchor: JSON
   alignSelf: String
   aspectRatio: JSON
-  children: [Element!]!
   layoutMode: String
   autoLayout: Boolean
   direction: String
@@ -735,7 +748,6 @@ type AppliedShowEdits {
   state: String!
   updatedAt: String!
   version: Int!
-  canvas: Canvas
   amendments: [GraphEdit!]!
 }
 
@@ -806,9 +818,9 @@ type Query {
   """The active Run for a Show, or null when the Show is stopped."""
   activeRun(showId: ID!): Run
   showGraph(showId: ID!, state: String): ShowGraph!
-  showCanvases(showId: ID!, state: String): [Canvas!]!
-  sceneCanvas(showId: ID!, sceneNodeId: ID!, state: String): Canvas
-  blockCanvas(showId: ID!, blockId: ID!, state: String): Canvas
+  showCanvases(showId: ID!, state: String): [Artboard!]!
+  sceneCanvas(showId: ID!, sceneNodeId: ID!, state: String): Artboard
+  blockCanvas(showId: ID!, blockId: ID!, state: String): Artboard
   imageAssets(showId: ID!): [ImageAsset!]!
 }
 

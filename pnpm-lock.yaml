@@ -66,6 +66,9 @@ importers:
         specifier: ^8.22.0
         version: 8.22.0
     devDependencies:
+      '@mechane/graphql-schema':
+        specifier: workspace:*
+        version: link:../../packages/graphql-schema
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.1
