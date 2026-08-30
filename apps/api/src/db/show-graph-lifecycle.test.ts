@@ -64,6 +64,7 @@ describe("Show graph lifecycle", () => {
     const published = await publishShowGraph(showId);
     expect(published.nodes).toEqual(expect.arrayContaining([draftDevice]));
     expect(published.version).toBe(1);
+    expect(published.sourceFieldDefaults).toEqual(graph.sourceFieldDefaults);
     expect((await readShowGraph(showId, "draft")).version).toBe(draftBeforePublish.version);
     expect(
       await db
@@ -73,7 +74,7 @@ describe("Show graph lifecycle", () => {
     ).toHaveLength(1);
 
     const run = await startRun(showId);
-    expect(run.sourceValues).toEqual({ source_score: 0 });
+    expect(run.sourceValues).toEqual({ source_score: 1 });
 
     const edit: GraphEdit = {
       type: "graph.setSourceFieldDefault",
