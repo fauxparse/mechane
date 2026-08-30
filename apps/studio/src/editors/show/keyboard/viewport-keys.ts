@@ -57,6 +57,12 @@ export interface FocusContext {
    * camera around behind the input.
    */
   inKeyConsumingWidget: boolean;
+  /** Focus is inside the Canvas editor's Layers or Properties panel. */
+  inCanvasPanel?: boolean;
+  /** Focus is inside a text-editing control. */
+  inTextInput?: boolean;
+  /** Focus is inside a menu-like widget that owns command chords. */
+  inUndoBlockingWidget?: boolean;
 }
 
 /** One arrow press. Roughly a third of a node width. */

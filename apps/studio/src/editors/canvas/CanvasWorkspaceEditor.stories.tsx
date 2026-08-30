@@ -1,5 +1,6 @@
 import { applyCanvasEdits, CANVAS_COMMAND_TYPES } from "@mechane/commands";
 import type { ElementProperties } from "@mechane/commands";
+import { prepareCanvasForRender } from "@mechane/rendering";
 import type { CanvasArtboardDocument } from "../../api/canvas";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ToastProvider, ToastViewport } from "@mechane/design-system";
@@ -215,11 +216,25 @@ const resizeImageReviewArtboard: CanvasArtboardDocument = {
   position: { x: 64, y: 96 },
 };
 
+function renderedStoryArtboard(artboard: CanvasArtboardDocument): CanvasArtboardDocument {
+  return {
+    ...artboard,
+    renderPresentation: prepareCanvasForRender({
+      canvas: artboard.canvas,
+      variables: [],
+      shapes: [],
+      blocks: [],
+      imageAssets: [],
+      mode: "studio",
+    }),
+  };
+}
+
 function StatefulImageResizeReview() {
   const [artboard, setArtboard] = useState(resizeImageReviewArtboard);
   return (
     <CanvasWorkspaceEditor
-      artboards={[artboard]}
+      artboards={[renderedStoryArtboard(artboard)]}
       focusedArtId={artboard.artId}
       selectedArtId={artboard.artId}
       selectedElementIds={["resize-image"]}
@@ -228,7 +243,6 @@ function StatefulImageResizeReview() {
       onMoveArtboard={noOp}
       onEndMoveArtboard={noOp}
       onUpdateElement={(canvasId, elementId, properties, unsetProperties) => {
-        if (canvasId !== artboard.canvasId) return;
         setArtboard((current) => ({
           ...current,
           canvas: applyCanvasEdits(current.canvas, [
@@ -325,7 +339,7 @@ function StatefulReparentReview() {
 
   return (
     <CanvasWorkspaceEditor
-      artboards={[artboard]}
+      artboards={[renderedStoryArtboard(artboard)]}
       focusedArtId={artboard.artId}
       onFocusArtboard={noOp}
       onBeginMoveArtboard={noOp}

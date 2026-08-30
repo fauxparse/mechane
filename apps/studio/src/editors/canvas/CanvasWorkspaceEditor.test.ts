@@ -2,26 +2,34 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import type * as CanvasGeometry from "./components/canvas-geometry";
-import type { CanvasWorkspaceSurfaceProps } from "./canvas-workspace-types";
-
 const mocks = vi.hoisted(() => ({
-  surfaceProps: null as CanvasWorkspaceSurfaceProps | null,
+  inspectorProps: null as { onUpdateElements?: (...args: unknown[]) => void } | null,
 }));
 
 vi.mock("@mechane/design-system", () => ({
+  Puzzle: () => null,
+  TvMinimal: () => null,
   useToastManager: () => ({ add: vi.fn() }),
 }));
 
-vi.mock("./components/CanvasWorkspaceSurface", () => ({
-  CanvasWorkspaceSurface: (props: CanvasWorkspaceSurfaceProps) => {
-    mocks.surfaceProps = props;
+vi.mock("../../components/EditorLayout/editor-slots", () => ({
+  EditorSlot: ({ children }: { children: unknown }) => children,
+}));
+
+vi.mock("./components/CanvasInspector/CanvasInspector", () => ({
+  CanvasInspector: (props: { onUpdateElements?: (...args: unknown[]) => void }) => {
+    mocks.inspectorProps = props;
     return null;
   },
 }));
 
+vi.mock("./components/CanvasLayers", () => ({ CanvasLayers: () => null }));
+vi.mock("./Toolbar/Toolbar", () => ({ Toolbar: () => null }));
 vi.mock("./components/CanvasWorkspaceEditorCommands", () => ({
   CanvasWorkspaceEditorCommands: () => null,
+}));
+vi.mock("./google-fonts-provider", () => ({
+  useGoogleFonts: () => ({ data: [] }),
 }));
 
 vi.mock("./components/use-canvas-camera", () => ({
@@ -39,17 +47,19 @@ vi.mock("./components/use-canvas-camera", () => ({
 }));
 
 vi.mock("./components/canvas-geometry", async () => {
-  const actual = await vi.importActual<typeof CanvasGeometry>("./components/canvas-geometry");
+  const actual = await vi.importActual<typeof import("./components/canvas-geometry")>(
+    "./components/canvas-geometry",
+  );
   return {
     ...actual,
-    useCanvasGeometry: () => ({ geometry: new Map(), measuredZoom: 1 }),
+    useCanvasGeometry: () => ({ geometry: new Map(), measuredZoom: 1, revision: 0 }),
   };
 });
 
 import { CanvasWorkspaceEditor } from "./CanvasWorkspaceEditor";
 
 describe("CanvasWorkspaceEditor", () => {
-  it("routes bulk Inspector updates to the drawing surface", () => {
+  it("preserves the composite Inspector update callback at the editor boundary", () => {
     const onUpdateElements = vi.fn();
 
     renderToStaticMarkup(
@@ -64,8 +74,8 @@ describe("CanvasWorkspaceEditor", () => {
       }),
     );
 
-    expect(mocks.surfaceProps?.onUpdateElements).toBe(onUpdateElements);
-    mocks.surfaceProps?.onUpdateElements?.("canvas-1", [
+    expect(mocks.inspectorProps?.onUpdateElements).toBe(onUpdateElements);
+    mocks.inspectorProps?.onUpdateElements?.("canvas-1", [
       { elementId: "element-1", properties: { width: 240 } },
     ]);
     expect(onUpdateElements).toHaveBeenCalledWith("canvas-1", [

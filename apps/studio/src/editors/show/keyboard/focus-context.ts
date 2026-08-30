@@ -17,20 +17,34 @@
  */
 const KEY_CONSUMING_SELECTOR =
   'button, input, textarea, select, [contenteditable], [role="menu"], [role="listbox"], [role="dialog"], [role="combobox"], [role="button"], [role="checkbox"], [role="radio"], [role="slider"], [role="spinbutton"], [role="tab"]';
-
+const CANVAS_PANEL_SELECTOR = '[aria-label="Layers"], [aria-label="Properties"]';
+const TEXT_INPUT_SELECTOR = "input, textarea, select, [contenteditable]";
+const UNDO_BLOCKING_SELECTOR =
+  '[role="menu"], [role="listbox"], [role="dialog"], [role="combobox"]';
 export interface DomFocusContext {
   nodeHasFocus: boolean;
   inKeyConsumingWidget: boolean;
+  inCanvasPanel: boolean;
+  inTextInput: boolean;
+  inUndoBlockingWidget: boolean;
 }
 
-/** Where focus currently sits, as the pure key modules want it described. */
 export function focusContext(): DomFocusContext {
   const active = document.activeElement;
   if (!(active instanceof HTMLElement)) {
-    return { nodeHasFocus: false, inKeyConsumingWidget: false };
+    return {
+      nodeHasFocus: false,
+      inKeyConsumingWidget: false,
+      inCanvasPanel: false,
+      inTextInput: false,
+      inUndoBlockingWidget: false,
+    };
   }
   return {
     nodeHasFocus: active.closest(".react-flow__node") !== null,
     inKeyConsumingWidget: active.closest(KEY_CONSUMING_SELECTOR) !== null,
+    inCanvasPanel: active.closest(CANVAS_PANEL_SELECTOR) !== null,
+    inTextInput: active.closest(TEXT_INPUT_SELECTOR) !== null,
+    inUndoBlockingWidget: active.closest(UNDO_BLOCKING_SELECTOR) !== null,
   };
 }

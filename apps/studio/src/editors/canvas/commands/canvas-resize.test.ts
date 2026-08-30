@@ -9,6 +9,7 @@ import {
   isCornerHandle,
   lockedAspectRatio,
   resizeBox,
+  resizeElementUpdate,
   scaleWithin,
   unlockedAspectRatioProperties,
 } from "./canvas-resize";
@@ -234,5 +235,53 @@ describe("Canvas fixed resize properties", () => {
         height: { mode: "fixed", value: 120 },
       },
     });
+  });
+});
+
+describe("resizeElementUpdate", () => {
+  const element: Element = {
+    id: "element-1",
+    type: "rect",
+    layout: { aspectRatio: { ratio: 2, driver: "width" } },
+    sizing: { width: { mode: "fixed", value: 100 }, height: { mode: "fixed", value: 50 } },
+  };
+
+  it("returns one update with a parent-relative anchor for absolute children", () => {
+    const update = resizeElementUpdate({
+      subject: {
+        elementId: "element-1",
+        start: { x: 20, y: 30, width: 100, height: 50 },
+        parent: { x: 10, y: 20, width: 300, height: 200 },
+        autoParent: false,
+      },
+      selectionStart: { x: 20, y: 30, width: 100, height: 50 },
+      requested: { x: 20, y: 30, width: 120, height: 70 },
+      element,
+      handle: "se",
+      zoom: 1,
+    });
+    expect(update.properties).toMatchObject({
+      sizing: { width: { value: 120 }, height: { value: 70 } },
+      anchor: { offsetX: 10, offsetY: 10 },
+    });
+    expect(update.unsetProperties).toEqual([]);
+  });
+
+  it("unlocks aspect ratio on edge resize and omits anchors in auto layout", () => {
+    const update = resizeElementUpdate({
+      subject: {
+        elementId: "element-1",
+        start: { x: 20, y: 30, width: 100, height: 50 },
+        parent: { x: 10, y: 20, width: 300, height: 200 },
+        autoParent: true,
+      },
+      selectionStart: { x: 20, y: 30, width: 100, height: 50 },
+      requested: { x: 20, y: 30, width: 120, height: 70 },
+      element,
+      handle: "e",
+      zoom: 1,
+    });
+    expect(update.properties).not.toHaveProperty("anchor");
+    expect(update.unsetProperties).toEqual(["layout"]);
   });
 });

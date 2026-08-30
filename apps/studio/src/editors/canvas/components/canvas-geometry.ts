@@ -21,6 +21,7 @@ export type CanvasGeometry = ReadonlyMap<string, CanvasArtboardGeometry>;
 export interface CanvasGeometrySnapshot {
   readonly geometry: CanvasGeometry;
   readonly measuredZoom: number;
+  readonly revision: number;
 }
 
 export function logicalRootSize(
@@ -102,6 +103,7 @@ export function useCanvasGeometry(
   const [snapshot, setSnapshot] = useState<CanvasGeometrySnapshot>({
     geometry: new Map(),
     measuredZoom: zoom,
+    revision: 0,
   });
   const frame = useRef<number | null>(null);
   const observerRef = useRef<ResizeObserver | null>(null);
@@ -113,15 +115,20 @@ export function useCanvasGeometry(
   useLayoutEffect(() => {
     const workspace = workspaceRef.current;
     if (!workspace) {
-      setSnapshot({ geometry: new Map(), measuredZoom: zoomRef.current });
+      setSnapshot((current) => ({
+        geometry: new Map(),
+        measuredZoom: zoomRef.current,
+        revision: current.revision + 1,
+      }));
       return;
     }
     const measure = () => {
       frame.current = null;
-      setSnapshot({
+      setSnapshot((current) => ({
         geometry: measureCanvasGeometry(workspace),
         measuredZoom: zoomRef.current,
-      });
+        revision: current.revision + 1,
+      }));
     };
     const observeElements = () => {
       const observer = observerRef.current;
