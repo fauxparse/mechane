@@ -1,14 +1,17 @@
 import type {
   Canvas,
-  Element,
   ImageAssetReference,
   ResolvedCanvas,
   ResolvedImageValue,
   ShowId,
   SlotVariableValue,
 } from "@mechane/domain";
-import { GetShowCanvasesQuery, graphqlRequest } from "@mechane/graphql-schema";
-import type { ShowCanvas } from "@mechane/graphql-schema";
+import {
+  decodeCanvasDocument,
+  GetShowCanvasesQuery,
+  graphqlRequest,
+} from "@mechane/graphql-schema";
+import type { ArtboardDocument } from "@mechane/graphql-schema";
 import { useQuery } from "@tanstack/react-query";
 
 import { GRAPHQL_ENDPOINT } from "./client";
@@ -30,49 +33,22 @@ export interface CanvasArtboardDocument {
   readonly position: { x: number; y: number };
 }
 
-type ApiElement = {
-  __typename: string;
-  children?: readonly ApiElement[];
-  [key: string]: unknown;
-};
-
-function elementType(typename: string): Element["type"] {
-  const type = typename.replace(/Element$/, "").toLowerCase();
-  if (
-    type === "rect" ||
-    type === "ellipse" ||
-    type === "text" ||
-    type === "image" ||
-    type === "frame" ||
-    type === "slot"
-  )
-    return type;
-  throw new Error(`Unknown Canvas Element type "${typename}".`);
-}
-
-function toElement(input: ApiElement): Element {
-  const { __typename, children, ...fields } = input;
-  const properties = Object.fromEntries(
-    Object.entries(fields).filter(([, value]) => value !== null),
-  );
+/**
+ * One Artboard document as the Canvas editor's artboard.
+ *
+ * The Canvas itself is `decodeCanvasDocument`'s to reconstruct (#436); what
+ * this adapter adds is the framing and owner facts the Canvas editor needs and
+ * the Player does not.
+ */
+export function toCanvasArtboard(artboard: ArtboardDocument): CanvasArtboardDocument {
+  const canvas = decodeCanvasDocument(artboard.canvas);
   return {
-    ...properties,
-    type: elementType(__typename),
-    children: children?.map(toElement) ?? [],
-  } as unknown as Element;
-}
-
-export function toCanvasArtboard(canvas: ShowCanvas): CanvasArtboardDocument {
-  return {
-    canvasId: canvas.id,
-    artId: canvas.ownerId,
-    kind: canvas.kind === "scene" ? "scene" : "block",
-    name: canvas.ownerName,
-    canvas: {
-      kind: canvas.kind === "scene" ? "scene" : "block",
-      root: toElement(canvas.root as unknown as ApiElement) as Extract<Element, { type: "frame" }>,
-    },
-    position: { ...canvas.position },
+    canvasId: String(artboard.canvas.id),
+    artId: artboard.ownerId,
+    kind: canvas.kind === "block" ? "block" : "scene",
+    name: artboard.ownerName,
+    canvas,
+    position: { ...artboard.position },
   };
 }
 

@@ -154,7 +154,7 @@ describe("Canvas workspace commands", () => {
     expect(stack.state.artboards[1]?.position).toEqual({ x: 420, y: 10 });
     expect(batches).toHaveLength(1);
     expect(batches[0]?.[0]?.edit).toMatchObject({
-      type: "canvas.moveArtboard",
+      type: "artboard.move",
       position: { x: 420, y: 10 },
     });
     stack.undo();

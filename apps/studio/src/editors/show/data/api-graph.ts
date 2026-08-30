@@ -16,14 +16,28 @@
 // from a discriminated union to one flat wire shape, per edit instead of per
 // graph. For *graph* edits that widening is not written here: it is
 // @mechane/commands' `encodeGraphEdit`, the same descriptor the server
-// decodes with (#347), so a field cannot travel one way only. What stays here
-// is the Canvas edit vocabulary, which has no server-side counterpart to
-// disagree with, and the one policy this end owns: a pairing code is not the
-// editor's to send.
-import type { CanvasWorkspaceEdit, FlatGraphEdit, GraphEdit } from "@mechane/commands";
-import { decodeGraphEdit, encodeGraphEdit, GRAPH_COMMAND_TYPES } from "@mechane/commands";
-import type { Block, Element, GraphEdge, GraphNode, Shape, ShowGraph, Type } from "@mechane/domain";
+// decodes with (#347), so a field cannot travel one way only. The Canvas half
+// is the same story a beat later (#436): Canvas content and Artboard framing
+// flatten through `encodeCanvasWorkspaceEdit`, the descriptor the server
+// decodes with, so a Canvas edit field cannot travel one way only either — and
+// the recursive Canvas decoder that used to live here is now
+// `decodeCanvasDocument`, shared with the Player. What stays is the one policy
+// this end owns: a pairing code is not the editor's to send.
+import type {
+  CanvasWorkspaceEdit,
+  FlatCanvasEdit,
+  FlatGraphEdit,
+  GraphEdit,
+} from "@mechane/commands";
+import {
+  decodeGraphEdit,
+  encodeCanvasWorkspaceEdit,
+  encodeGraphEdit,
+  GRAPH_COMMAND_TYPES,
+} from "@mechane/commands";
+import type { Block, GraphEdge, GraphNode, Shape, ShowGraph, Type } from "@mechane/domain";
 import { isFlowColor } from "@mechane/domain";
+import { decodeCanvasDocument } from "@mechane/graphql-schema";
 import type { ShowGraph as ApiShowGraph, ApplyShowEditsResult } from "@mechane/graphql-schema";
 type ApiType = ApiShowGraph["shapes"][number]["fields"][number]["type"];
 type ApiGraphNode = {
@@ -119,33 +133,11 @@ function toShape(shape: ApiShowGraph["shapes"][number]): Shape {
       })),
   };
 }
-type ApiCanvasElement = {
-  __typename: string;
-  children?: readonly ApiCanvasElement[];
-  [field: string]: unknown;
-};
-
-function toCanvasElement(input: ApiCanvasElement): Element {
-  const { __typename, children, ...fields } = input;
-  return {
-    ...Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== null)),
-    type: __typename.replace(/Element$/, "").toLowerCase(),
-    children: children?.map(toCanvasElement) ?? [],
-  } as unknown as Element;
-}
-
 function toBlock(block: ApiShowGraph["blocks"][number]): Block {
   return {
     id: block.id,
     name: block.name,
-    canvas: {
-      id: block.canvas.id,
-      kind: "block",
-      root: toCanvasElement(block.canvas.root as unknown as ApiCanvasElement) as Extract<
-        Element,
-        { type: "frame" }
-      >,
-    },
+    canvas: { ...decodeCanvasDocument(block.canvas), id: block.canvas.id },
     variables: block.variables.map((variable) => ({
       id: variable.id,
       name: variable.name,
@@ -303,53 +295,14 @@ export type StudioEdit = GraphEdit | CanvasWorkspaceEdit;
 /**
  * One Studio edit, flat, as the `ShowEditInput` mutation wants it.
  *
- * The graph half is `FlatGraphEdit` (the codec's shape, #347); the Canvas
- * half adds the Canvas id and the element fields, which travel only in this
- * direction and have no inbound counterpart to drift from.
+ * One input type carries both vocabularies, so this is the widening of both
+ * codecs' shapes (#347, #436) rather than a union of them: `type` says which
+ * fields mean anything, exactly as it does in the SDL.
  */
-export type StudioEditInput = FlatGraphEdit & {
-  canvasId?: string;
-  elementId?: string;
-  rank?: string;
-  element?: Record<string, unknown>;
-  properties?: Record<string, unknown>;
-  unsetProperties?: string[];
-};
+export type StudioEditInput = FlatGraphEdit & Partial<Omit<FlatCanvasEdit, "type">>;
 
 export function toEditInput(edit: StudioEdit): StudioEditInput {
-  if ("canvasId" in edit) {
-    const canvasEdit = edit.edit;
-    const input: StudioEditInput = { type: canvasEdit.type, canvasId: edit.canvasId };
-    switch (canvasEdit.type) {
-      case "canvas.addElement":
-        return {
-          ...input,
-          parentId: canvasEdit.parentId,
-          rank: canvasEdit.rank,
-          element: canvasEdit.element,
-        };
-      case "canvas.removeElement":
-        return { ...input, elementId: canvasEdit.elementId };
-      case "canvas.updateElement":
-        return {
-          ...input,
-          elementId: canvasEdit.elementId,
-          properties: canvasEdit.properties,
-          ...(canvasEdit.unsetProperties
-            ? { unsetProperties: [...canvasEdit.unsetProperties] }
-            : {}),
-        };
-      case "canvas.reparentElement":
-        return {
-          ...input,
-          elementId: canvasEdit.elementId,
-          parentId: canvasEdit.parentId,
-          rank: canvasEdit.rank,
-        };
-      case "canvas.moveArtboard":
-        return { ...input, position: canvasEdit.position };
-    }
-  }
+  if ("canvasId" in edit) return encodeCanvasWorkspaceEdit(edit);
 
   if (edit.type === GRAPH_COMMAND_TYPES.setDevicePairingCode) {
     throw new Error("A pairing code is the server's to mint, not the editor's to send.");

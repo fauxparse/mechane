@@ -6,7 +6,7 @@
 // resolvers authenticate, check ownership, validate through the domain, and
 // call one of the lifecycle functions below.
 import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
-import { CANVAS_COMMAND_TYPES, applyCanvasEdits, applyGraphEdits } from "@mechane/commands";
+import { ARTBOARD_COMMAND_TYPES, applyCanvasEdits, applyGraphEdits } from "@mechane/commands";
 import type { Canvas, GraphState, ShowGraph } from "@mechane/domain";
 import { assertBlockReferencesExist } from "@mechane/domain";
 import { and, eq } from "drizzle-orm";
@@ -248,7 +248,7 @@ export async function applyShowEdits(
       const currentCanvas = nextCanvases.get(edit.canvasId);
       if (!currentCanvas) throw new Error(`Canvas "${edit.canvasId}" was not found.`);
       const entry = nextCanvases.get(edit.canvasId)!;
-      if (edit.edit.type === CANVAS_COMMAND_TYPES.moveArtboard) {
+      if (edit.edit.type === ARTBOARD_COMMAND_TYPES.move) {
         entry.position = edit.edit.position;
       } else {
         entry.canvas = applyCanvasEdits(entry.canvas, [edit.edit]);

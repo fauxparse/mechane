@@ -25,6 +25,7 @@
     "pg": "^8.22.0"
   },
   "devDependencies": {
+    "@mechane/graphql-schema": "workspace:*",
     "@types/node": "^22.0.0",
     "@types/pg": "^8.20.4",
     "@vercel/node": "^5.9.5",

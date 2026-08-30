@@ -39,26 +39,24 @@ describe("normalizePlayerSession", () => {
       canvas: {
         id: "canvas_1",
         kind: "scene",
-        ownerId: "scene_1",
-        ownerName: "Lobby",
-        position: { x: 0, y: 0 },
-        root: {
-          __typename: "FrameElement",
-          id: "root",
-          name: "Root",
-          parentId: null,
-          rank: "a",
-          hidden: false,
-          fill: null,
-          children: [],
-        },
+        elements: [
+          {
+            __typename: "FrameElement",
+            id: "root",
+            name: "Root",
+            parentId: null,
+            rank: "a",
+            hidden: false,
+            fill: null,
+          },
+        ],
       },
       imageAssets: [],
     });
 
     expect(session.graph.nodes[0]).toMatchObject({ kind: "device", pairingCode: "FBPCW" });
     expect(session.graph.edges[0]).toMatchObject({ kind: "device" });
-    expect(session.canvas?.root).toMatchObject({ type: "frame", children: [] });
+    expect(session.canvas?.root).toMatchObject({ type: "frame" });
     expect("fill" in (session.canvas?.root ?? {})).toBe(false);
   });
 
@@ -170,11 +168,7 @@ describe("normalizePlayerSession", () => {
           canvas: {
             id: "canvas-card",
             kind: "block",
-            root: {
-              __typename: "FrameElement",
-              id: "root",
-              children: [],
-            },
+            elements: [{ __typename: "FrameElement", id: "root", parentId: null, rank: "a0" }],
           },
           variables: [
             {

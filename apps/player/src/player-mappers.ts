@@ -1,14 +1,6 @@
-import type {
-  Block,
-  Canvas,
-  Element,
-  GraphEdge,
-  GraphNode,
-  Shape,
-  SourceValues,
-  Type,
-} from "@mechane/domain";
+import type { Block, GraphEdge, GraphNode, Shape, SourceValues, Type } from "@mechane/domain";
 import { PRIMITIVE_TYPES } from "@mechane/domain";
+import { decodeCanvasDocument } from "@mechane/graphql-schema";
 import { resolveApiUrl } from "./api-url";
 import type { PlayerSession } from "./api";
 
@@ -123,30 +115,10 @@ function toEdge(value: unknown): GraphEdge {
   return { ...withoutNulls(fields), kind: edgeKind(__typename) } as GraphEdge;
 }
 
-function toElement(value: unknown): Element {
-  const input = record(value);
-  const { __typename, children, ...fields } = input;
-  return {
-    ...withoutNulls(fields),
-    type: String(__typename)
-      .replace(/Element$/, "")
-      .toLowerCase(),
-    children: Array.isArray(children) ? children.map(toElement) : [],
-  } as unknown as Element;
-}
-
-function toCanvas(value: unknown): Canvas {
-  const input = record(value);
-  return {
-    kind: input.kind === "block" ? "block" : "scene",
-    root: toElement(input.root) as Extract<Canvas["root"], { type: "frame" }>,
-  };
-}
-
 function toBlock(value: unknown): Block {
   const input = record(value);
   const canvasInput = record(input.canvas);
-  const canvas = toCanvas(canvasInput);
+  const canvas = decodeCanvasDocument(canvasInput);
   const variables = Array.isArray(input.variables)
     ? input.variables.map((variable) => {
         const normalized = record(variable);
@@ -206,7 +178,10 @@ export function normalizePlayerSession(value: unknown, apiBaseUrl?: string): Pla
   const input = record(value);
   const run = input.run === null ? null : record(input.run);
   const scene = input.scene === null ? null : toNode(input.scene);
-  const canvas = input.canvas === null ? null : toCanvas(input.canvas);
+  // Canvas decoding is not the Player's to reimplement (#436): a third copy of
+  // a recursive Element decoder lived here, and a Canvas deeper than the old
+  // query's cap painted the audience a truncated Scene.
+  const canvas = input.canvas === null ? null : decodeCanvasDocument(input.canvas);
   const imageAssets = Array.isArray(input.imageAssets) ? input.imageAssets.map(record) : [];
 
   return {

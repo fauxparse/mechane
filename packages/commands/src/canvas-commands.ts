@@ -1,12 +1,13 @@
 import type { Canvas, Element, Position } from "@mechane/domain";
 import { generateId } from "@mechane/domain";
 import {
+  ARTBOARD_COMMAND_TYPES,
   CANVAS_COMMAND_TYPES,
   canvasElementParent,
   findCanvasElement,
   applyCanvasEdits,
 } from "./canvas-edits";
-import type { CanvasEdit, ElementProperties, NewElement } from "./canvas-edits";
+import type { ArtboardEdit, CanvasEdit, ElementProperties, NewElement } from "./canvas-edits";
 import { capturing, composite } from "./command";
 import type { Command } from "./command";
 
@@ -22,15 +23,22 @@ export interface CanvasWorkspace {
   readonly artboards: readonly CanvasArtboard[];
 }
 
-/** A Canvas edit together with the Canvas it targets. */
+/**
+ * What one workspace edit can say: Canvas content, or the framing of the
+ * Artboard presenting it. Both name a Canvas; only the first is Canvas
+ * content, which is why the two are separate variants (#436).
+ */
+export type CanvasWorkspaceEditPayload = CanvasEdit | ArtboardEdit;
+
+/** A Canvas or Artboard edit together with the Canvas it targets. */
 export interface CanvasWorkspaceEdit {
   readonly canvasId: string;
-  readonly edit: CanvasEdit;
+  readonly edit: CanvasWorkspaceEditPayload;
 }
 
 export type CanvasWorkspaceCommand = Command<CanvasWorkspace, CanvasWorkspaceEdit>;
 
-type InverseCapture = { readonly edit: CanvasEdit };
+type InverseCapture = { readonly edit: CanvasWorkspaceEditPayload };
 
 function artboardIndex(workspace: CanvasWorkspace, canvasId: string): number {
   const index = workspace.artboards.findIndex((artboard) => artboard.canvasId === canvasId);
@@ -58,14 +66,14 @@ function applyWorkspaceEdit(
   target: CanvasWorkspaceEdit,
 ): CanvasWorkspace {
   return replaceArtboard(workspace, target.canvasId, (artboard) => {
-    if (target.edit.type === CANVAS_COMMAND_TYPES.moveArtboard) {
+    if (target.edit.type === ARTBOARD_COMMAND_TYPES.move) {
       return { ...artboard, position: { ...target.edit.position } };
     }
     return { ...artboard, canvas: applyCanvasEdits(artboard.canvas, [target.edit]) };
   });
 }
 
-function targetEdit(canvasId: string, edit: CanvasEdit): CanvasWorkspaceEdit {
+function targetEdit(canvasId: string, edit: CanvasWorkspaceEditPayload): CanvasWorkspaceEdit {
   return { canvasId, edit };
 }
 
@@ -416,15 +424,15 @@ export function moveCanvasElementBetweenCanvases(
   };
 }
 export function moveCanvasArtboard(canvasId: string, position: Position): CanvasWorkspaceCommand {
-  const edit: CanvasEdit = { type: CANVAS_COMMAND_TYPES.moveArtboard, position };
+  const edit: ArtboardEdit = { type: ARTBOARD_COMMAND_TYPES.move, position };
   return capturing<CanvasWorkspace, InverseCapture, CanvasWorkspaceEdit>({
-    type: CANVAS_COMMAND_TYPES.moveArtboard,
+    type: ARTBOARD_COMMAND_TYPES.move,
     label: "Move Artboard",
     scope: "canvas",
     coalesceKey: `canvas:artboard:${canvasId}`,
     capture: (workspace) => ({
       edit: {
-        type: CANVAS_COMMAND_TYPES.moveArtboard,
+        type: ARTBOARD_COMMAND_TYPES.move,
         position: { ...artboardFor(workspace, canvasId).position },
       },
     }),
@@ -450,7 +458,7 @@ function workspaceSetter(
   edit: CanvasWorkspaceEdit,
 ): { key: string; ids: readonly string[] } | null {
   switch (edit.edit.type) {
-    case CANVAS_COMMAND_TYPES.moveArtboard:
+    case ARTBOARD_COMMAND_TYPES.move:
       return { key: `moveArtboard:${edit.canvasId}`, ids: [] };
     case CANVAS_COMMAND_TYPES.updateElement:
       return {

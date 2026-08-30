@@ -157,26 +157,8 @@ export const GetPlayerSessionQuery: TadaDocumentNode<any, any> = graphql(
         canvas {
           id
           kind
-          ownerId
-          ownerName
-          position {
-            x
-            y
-          }
-          root {
+          elements {
             ...CanvasElementFields
-            children {
-              ...CanvasElementFields
-              children {
-                ...CanvasElementFields
-                children {
-                  ...CanvasElementFields
-                  children {
-                    ...CanvasElementFields
-                  }
-                }
-              }
-            }
           }
         }
         blocks {
@@ -185,26 +167,8 @@ export const GetPlayerSessionQuery: TadaDocumentNode<any, any> = graphql(
           canvas {
             id
             kind
-            position {
-              x
-              y
-            }
-            ownerId
-            ownerName
-            root {
+            elements {
               ...CanvasElementFields
-              children {
-                ...CanvasElementFields
-                children {
-                  ...CanvasElementFields
-                  children {
-                    ...CanvasElementFields
-                    children {
-                      ...CanvasElementFields
-                    }
-                  }
-                }
-              }
             }
           }
           variables {
