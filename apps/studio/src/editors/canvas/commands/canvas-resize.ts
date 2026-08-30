@@ -1,4 +1,19 @@
-import type { Element } from "@mechane/domain";
+import type { Element, Element as CanvasElement } from "@mechane/domain";
+import { roundToLogicalPixel } from "../components/canvas-pixels";
+
+/** One Element caught up in a resize, with everything needed to place it again afterwards. */
+export interface CanvasResizeSubject {
+  readonly elementId: string;
+  readonly start: ResizeBox;
+  readonly parent: ResizeBox | null;
+  readonly autoParent: boolean;
+}
+
+export interface CanvasElementUpdate {
+  readonly elementId: string;
+  readonly properties: Record<string, unknown>;
+  readonly unsetProperties: readonly string[];
+}
 /** Corner handles resize two axes at once; edge handles resize one. */
 export const RESIZE_HANDLES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
 export type ResizeHandle = (typeof RESIZE_HANDLES)[number];
@@ -81,10 +96,48 @@ export function unlockedAspectRatioProperties(element: Element): {
   if (!element.layout || !("aspectRatio" in element.layout)) {
     return { properties: {}, unsetProperties: [] };
   }
+
   const { aspectRatio: _aspectRatio, ...layout } = element.layout;
   return Object.keys(layout).length > 0
     ? { properties: { layout }, unsetProperties: [] }
     : { properties: {}, unsetProperties: ["layout"] };
+}
+
+export function resizeElementUpdate(input: {
+  readonly subject: CanvasResizeSubject;
+  readonly selectionStart: ResizeBox;
+  readonly requested: ResizeBox;
+  readonly element: CanvasElement | null;
+  readonly handle: ResizeHandle;
+  readonly zoom: number;
+}): CanvasElementUpdate {
+  const { subject, selectionStart, requested, element, handle, zoom } = input;
+  const next = scaleWithin(subject.start, selectionStart, requested);
+  const width = Math.max(1, roundToLogicalPixel(next.width, zoom));
+  const height = Math.max(1, roundToLogicalPixel(next.height, zoom));
+  const properties = element
+    ? fixedResizeProperties(element, width, height)
+    : {
+        sizing: {
+          width: { mode: "fixed", value: width },
+          height: { mode: "fixed", value: height },
+        },
+      };
+  const unlock = !isCornerHandle(handle)
+    ? element
+      ? unlockedAspectRatioProperties(element)
+      : { properties: {}, unsetProperties: ["aspectRatio"] }
+    : { properties: {}, unsetProperties: [] };
+  Object.assign(properties, unlock.properties);
+  if (!subject.autoParent && subject.parent) {
+    properties.anchor = {
+      horizontal: "left",
+      vertical: "top",
+      offsetX: roundToLogicalPixel(next.x - subject.parent.x, zoom),
+      offsetY: roundToLogicalPixel(next.y - subject.parent.y, zoom),
+    };
+  }
+  return { elementId: subject.elementId, properties, unsetProperties: unlock.unsetProperties };
 }
 /**
  * The box a resize drag asks for. The edge opposite the handle is what stays put, which is what

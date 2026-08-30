@@ -1,37 +1,36 @@
 import { blockExtractionProblem } from "@mechane/commands";
 import { useCallback, useEffect, useMemo, useState } from "react";
-
-import type {
-  CanvasWorkspaceEditorProps,
-  CanvasWorkspaceSurfaceProps,
-} from "../canvas-workspace-types";
-import { canvasToolFor } from "../keyboard/canvas-keyboard";
 import { CommandPalette } from "../../show/commands/CommandPalette";
 import type { PaletteCommand } from "../../show/commands/palette-commands";
 import { focusContext } from "../../show/keyboard/focus-context";
 import { useEditorKeys } from "../../show/keyboard/use-editor-keys";
-import type { CanvasBlockCreationResult } from "../canvas-workspace-types";
-import type { CanvasSelection } from "./canvas-selection";
 
-type CanvasWorkspaceEditorCommandsProps = Pick<
-  CanvasWorkspaceSurfaceProps,
-  | "ordered"
-  | "focused"
-  | "selection"
-  | "setTool"
-  | "zoomIn"
-  | "zoomOut"
-  | "resetCamera"
-  | "setRenamingArtId"
-  | "onFocusArtboard"
-> &
-  Pick<
-    CanvasWorkspaceEditorProps,
-    "blocks" | "onPlaceBlock" | "onCreateBlockFromSelection" | "onDeleteElements"
-  > & {
-    frameCreatedBlock(result: CanvasBlockCreationResult): void;
-    setSelection(selection: CanvasSelection): void;
-  };
+import type { CanvasArtboardDocument } from "../../../api/canvas";
+import type {
+  CanvasBlockCreationResult,
+  CanvasWorkspaceEditorProps,
+} from "../canvas-workspace-types";
+import type { CanvasSelection } from "./canvas-selection";
+import type { CanvasTool } from "../Toolbar/Toolbar";
+import { canvasToolFor } from "../keyboard/canvas-keyboard";
+
+interface CanvasWorkspaceEditorCommandsProps {
+  readonly ordered: readonly CanvasArtboardDocument[];
+  readonly focused: CanvasArtboardDocument | null;
+  readonly selection: CanvasSelection;
+  setTool(tool: CanvasTool): void;
+  zoomIn(): void;
+  zoomOut(): void;
+  resetCamera(): void;
+  setRenamingArtId(artId: string | null): void;
+  onFocusArtboard(artId: string): void;
+  frameCreatedBlock(result: CanvasBlockCreationResult): void;
+  setSelection(selection: CanvasSelection): void;
+  blocks?: CanvasWorkspaceEditorProps["blocks"];
+  onPlaceBlock: CanvasWorkspaceEditorProps["onPlaceBlock"];
+  onCreateBlockFromSelection: CanvasWorkspaceEditorProps["onCreateBlockFromSelection"];
+  onDeleteElements: CanvasWorkspaceEditorProps["onDeleteElements"];
+}
 
 /** Owns the Canvas editor's command palette and keyboard command wiring. */
 export function CanvasWorkspaceEditorCommands({
@@ -180,8 +179,8 @@ export function CanvasWorkspaceEditorCommands({
         setSelection,
       ],
     ),
+    { allowCanvasPanelCommands: true },
   );
-
   return (
     <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} commands={paletteCommands} />
   );

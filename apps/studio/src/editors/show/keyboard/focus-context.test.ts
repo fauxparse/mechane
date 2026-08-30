@@ -10,6 +10,14 @@ class TestHTMLElement {
   }
 }
 
+class CanvasPanelButton extends TestHTMLElement {
+  closest(selector: string): TestHTMLElement | null {
+    return selector === '[aria-label="Layers"], [aria-label="Properties"]'
+      ? this
+      : super.closest(selector);
+  }
+}
+
 const originalDocument = globalThis.document;
 const originalHTMLElement = globalThis.HTMLElement;
 
@@ -36,7 +44,13 @@ describe("focusContext", () => {
       value: TestHTMLElement,
     });
 
-    expect(focusContext()).toEqual({ nodeHasFocus: false, inKeyConsumingWidget: true });
+    expect(focusContext()).toEqual({
+      nodeHasFocus: false,
+      inKeyConsumingWidget: true,
+      inCanvasPanel: false,
+      inTextInput: false,
+      inUndoBlockingWidget: false,
+    });
   });
   it("treats plaintext-only text editing as a key-consuming widget", () => {
     const activeElement = new TestHTMLElement("[contenteditable]");
@@ -49,6 +63,31 @@ describe("focusContext", () => {
       value: TestHTMLElement,
     });
 
-    expect(focusContext()).toEqual({ nodeHasFocus: false, inKeyConsumingWidget: true });
+    expect(focusContext()).toEqual({
+      nodeHasFocus: false,
+      inKeyConsumingWidget: true,
+      inCanvasPanel: false,
+      inTextInput: true,
+      inUndoBlockingWidget: false,
+    });
+  });
+  it("marks Layers and Properties focus as canvas panel focus", () => {
+    const activeElement = new CanvasPanelButton("button");
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      value: { activeElement },
+    });
+    Object.defineProperty(globalThis, "HTMLElement", {
+      configurable: true,
+      value: CanvasPanelButton,
+    });
+
+    expect(focusContext()).toEqual({
+      nodeHasFocus: false,
+      inKeyConsumingWidget: true,
+      inCanvasPanel: true,
+      inTextInput: false,
+      inUndoBlockingWidget: false,
+    });
   });
 });

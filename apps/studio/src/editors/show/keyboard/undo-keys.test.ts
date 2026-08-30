@@ -6,6 +6,11 @@ import type { FocusContext } from "./viewport-keys";
 const FREE: FocusContext = { nodeHasFocus: false, inKeyConsumingWidget: false };
 const NODE_FOCUSED: FocusContext = { nodeHasFocus: true, inKeyConsumingWidget: false };
 const TYPING: FocusContext = { nodeHasFocus: false, inKeyConsumingWidget: true };
+const CANVAS_PANEL_FOCUSED: FocusContext = {
+  nodeHasFocus: false,
+  inKeyConsumingWidget: true,
+  inCanvasPanel: true,
+};
 
 describe("undoIntentFor", () => {
   it("undoes on Cmd+Z and Ctrl+Z", () => {
@@ -36,6 +41,13 @@ describe("undoIntentFor", () => {
   });
 
   // Unlike panning, undo has no quarrel with a focused node: React Flow
+
+  it("still undoes while a Canvas Layers or Properties control is focused", () => {
+    expect(undoIntentFor({ key: "z", metaKey: true }, CANVAS_PANEL_FOCUSED)).toBe("undo");
+    expect(undoIntentFor({ key: "z", metaKey: true, shiftKey: true }, CANVAS_PANEL_FOCUSED)).toBe(
+      "redo",
+    );
+  });
   // doesn't bind Cmd+Z, and the edit being undone may well be that node's.
   it("still undoes while a node holds focus", () => {
     expect(undoIntentFor({ key: "z", metaKey: true }, NODE_FOCUSED)).toBe("undo");

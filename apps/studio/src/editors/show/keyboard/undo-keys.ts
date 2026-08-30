@@ -32,7 +32,11 @@ export type UndoIntent = "undo" | "redo";
  * would be actively wrong, not merely surprising.
  */
 export function undoIntentFor(chord: KeyChord, focus: FocusContext): UndoIntent | null {
-  if (focus.inKeyConsumingWidget) return null;
+  if (
+    focus.inUndoBlockingWidget ||
+    (focus.inKeyConsumingWidget && (!focus.inCanvasPanel || focus.inTextInput))
+  )
+    return null;
   if (chord.altKey) return null;
   // Exactly one of the two command modifiers, so Cmd+Ctrl+Z is left alone.
   const commandKey = Boolean(chord.metaKey) !== Boolean(chord.ctrlKey);

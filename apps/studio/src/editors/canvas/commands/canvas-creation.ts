@@ -1,3 +1,4 @@
+import type { NewElement } from "@mechane/commands";
 import type { Element } from "@mechane/domain";
 import type { CanvasClientRect } from "../components/canvas-geometry";
 
@@ -18,6 +19,36 @@ export function fixedFillSizing(
     changed = true;
   }
   return changed ? { sizing } : {};
+}
+export function newElementForCanvasCreation(input: {
+  readonly id: string;
+  readonly tool: Exclude<CanvasCreationTool, "select" | "block">;
+  readonly rank: string;
+  readonly width: number;
+  readonly height: number;
+  readonly anchor: {
+    readonly horizontal: "left";
+    readonly vertical: "top";
+    readonly offsetX: number;
+    readonly offsetY: number;
+  } | null;
+}): NewElement {
+  const { id, tool, rank, width, height, anchor } = input;
+  return {
+    id,
+    type: tool,
+    rank,
+    sizing: {
+      width: { mode: "fixed", value: width },
+      height: { mode: "fixed", value: height },
+    },
+    ...(tool === "frame" ? { clip: true } : {}),
+    ...(tool === "rect" || tool === "ellipse" ? { fill: "#cbd5e1" } : {}),
+    ...(tool === "text"
+      ? { content: "Text", fontSize: 16, lineHeight: "auto", color: "#000000" }
+      : {}),
+    ...(anchor ? { anchor } : {}),
+  };
 }
 
 export type CanvasCreationTool =

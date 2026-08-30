@@ -5,6 +5,7 @@ import {
   creationPreviewShape,
   creationRect,
   fixedFillSizing,
+  newElementForCanvasCreation,
   rankForInsertion,
   showsReparentPreview,
 } from "./canvas-creation";
@@ -47,6 +48,38 @@ describe("fixedFillSizing", () => {
         height: { mode: "fixed", value: 40 },
       },
     });
+  });
+});
+
+describe("newElementForCanvasCreation", () => {
+  it("preserves type defaults and adds an anchor only for absolute parents", () => {
+    const input = {
+      id: "element-1",
+      rank: "a",
+      width: 120,
+      height: 80,
+      anchor: { horizontal: "left" as const, vertical: "top" as const, offsetX: 12, offsetY: 8 },
+    };
+    expect(newElementForCanvasCreation({ ...input, tool: "rect" })).toMatchObject({
+      type: "rect",
+      fill: "#cbd5e1",
+      anchor: input.anchor,
+      sizing: { width: { mode: "fixed", value: 120 }, height: { mode: "fixed", value: 80 } },
+    });
+    expect(newElementForCanvasCreation({ ...input, tool: "ellipse" })).toHaveProperty(
+      "fill",
+      "#cbd5e1",
+    );
+    expect(newElementForCanvasCreation({ ...input, tool: "frame" })).toHaveProperty("clip", true);
+    expect(newElementForCanvasCreation({ ...input, tool: "text" })).toMatchObject({
+      content: "Text",
+      fontSize: 16,
+      lineHeight: "auto",
+      color: "#000000",
+    });
+    expect(
+      newElementForCanvasCreation({ ...input, tool: "image", anchor: null }),
+    ).not.toHaveProperty("anchor");
   });
 });
 

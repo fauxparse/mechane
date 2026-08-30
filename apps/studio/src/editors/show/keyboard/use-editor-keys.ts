@@ -22,10 +22,24 @@ export type EditorKeyActions = {
  * On `window` for the same reason the other two are: these have to work when
  * nothing in particular is focused, which is the state the editor opens in.
  */
-export function useEditorKeys(actions: EditorKeyActions): void {
+export function useEditorKeys(
+  actions: EditorKeyActions,
+  options: { allowCanvasPanelCommands?: boolean } = {},
+): void {
+  const allowCanvasPanelCommands = options.allowCanvasPanelCommands ?? false;
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      const intent = editorIntentFor(event, focusContext());
+      const focus = focusContext();
+      const panelCommand =
+        allowCanvasPanelCommands &&
+        focus.inCanvasPanel &&
+        !focus.inTextInput &&
+        !focus.inUndoBlockingWidget &&
+        (event.metaKey || event.ctrlKey);
+      const intent = editorIntentFor(
+        event,
+        panelCommand ? { ...focus, inKeyConsumingWidget: false } : focus,
+      );
       if (!intent) return;
       // Claimed: Backspace would otherwise navigate back in some browsers, and
       // Mod+A would select the page's text rather than the graph's nodes.
@@ -35,5 +49,5 @@ export function useEditorKeys(actions: EditorKeyActions): void {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [actions]);
+  }, [actions, allowCanvasPanelCommands]);
 }
