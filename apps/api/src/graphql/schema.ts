@@ -533,7 +533,7 @@ export const schema = createSchema<GraphQLContext>({
       """
       How many times this graph has been written. An edit batch names the
       version it was composed against, and is refused if that isn't the
-      version stored — see \`applyShowGraphEdits\`.
+      version stored — see \`applyShowEdits\`.
       """
       version: Int!
       "Fields that lost data while this graph was published."

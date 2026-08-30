@@ -28,7 +28,7 @@ import {
 import { and, eq, notInArray, sql } from "drizzle-orm";
 
 import { db } from "./client";
-import { readCanvas, writeCanvasRows } from "./canvas";
+import { readBlockCanvases } from "./canvas";
 import type { StoredDevice } from "./devices";
 import { graphNodeInsertValues } from "./graph-node-values";
 import {
@@ -228,9 +228,15 @@ async function readBlocks(
     .from(blocks)
     .where(eq(blocks.graphId, graphId))
     .orderBy(blocks.id);
+  const blockCanvases = await readBlockCanvases(
+    showId,
+    state,
+    rows.map((row) => row.id),
+    executor,
+  );
   const result: Block[] = [];
   for (const row of rows) {
-    const canvas = await readCanvas(showId, state, { blockId: row.id }, executor);
+    const canvas = blockCanvases.get(row.id);
     if (!canvas) throw new Error(`Block "${row.id}" has no owned Canvas.`);
     const metadata = blockMetadata(row);
     result.push({
@@ -458,17 +464,6 @@ export async function persistGraphRows(
         target: [blocks.graphId, blocks.id],
         set: { name: block.name, metadata, updatedAt: now },
       });
-    // A Block created from the Canvas editor chose its own Artboard position (#426); one that
-    // arrives without one keeps whatever position it already has, or gets backfilled below.
-    await writeCanvasRows(
-      tx,
-      showId,
-      row.id,
-      { blockId: block.id },
-      block.canvas,
-      now,
-      block.canvas.position,
-    );
   }
 
   // Show-level nodes first: a nested node's `parent_id` foreign key needs

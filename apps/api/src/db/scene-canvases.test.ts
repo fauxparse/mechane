@@ -4,8 +4,7 @@ import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { db } from "./client";
-import { readCanvasWorkspace } from "./canvas";
-import { latestCanvasFills } from "./scene-canvases";
+import { latestCanvasFills, readCanvasWorkspace } from "./canvas";
 import { shows, user } from "./schema";
 import { applyShowEdits, readShowGraph, writeShowGraph } from "./show-graph";
 
