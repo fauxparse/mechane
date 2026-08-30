@@ -1,5 +1,5 @@
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent, RefObject } from "react";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Puzzle, TvMinimal } from "@mechane/design-system";
 import { CanvasRenderer } from "@mechane/rendering";
 import { canvasElementParent, findCanvasElement } from "@mechane/commands";
@@ -288,7 +288,6 @@ export function CanvasWorkspaceStage({
     setGestureState(next);
   }, []);
   const resizeStyles = useRef(new Map<string, { node: HTMLElement; cssText: string }>());
-  const liveGeometrySink = useRef(onLiveElementGeometry);
   const resizeCommitted = useRef(false);
   const selectedGeometry = selection.artId ? geometry.get(selection.artId) : undefined;
   const selectedIds =
@@ -307,74 +306,24 @@ export function CanvasWorkspaceStage({
   const activeElementMove = elementMove?.phase === "active" ? elementMove : null;
   const liveOffset = elementMove;
   const liveResize = resizeDraft?.actual ?? null;
-  const selectedArtboard = ordered.find((artboard) => artboard.artId === selection.artId);
-  const previewElementId =
-    selection.elementIds.length === 1 ? selection.elementIds[0] : selectedGeometry?.rootElementId;
-  const previewParentId =
-    selectedArtboard && previewElementId
-      ? canvasElementParent(selectedArtboard.canvas.root, previewElementId)?.parentId
-      : null;
-  const previewParent = previewParentId
-    ? (selectedGeometry?.elements.get(previewParentId) ?? null)
-    : null;
 
-  const inspectorPreview = useMemo<CanvasLiveElementGeometry | null>(() => {
-    if (!previewElementId) return null;
-    if (liveOffset) {
-      const elementId =
-        liveOffset.phase === "active" ? liveOffset.drag.elementId : liveOffset.elementId;
-      if (elementId === previewElementId) {
-        const current = selectedGeometry?.elements.get(elementId);
-        if (!current) return null;
-        const offset = liveOffset.offset;
-        return {
-          elementId,
-          ...(current.x !== undefined && previewParent
-            ? { x: current.x + offset.x - previewParent.x }
-            : {}),
-          ...(current.y !== undefined && previewParent
-            ? { y: current.y + offset.y - previewParent.y }
-            : {}),
-          width: current.width,
-          height: current.height,
-        };
-      }
-    }
-    if (
-      resizeDraft &&
-      resizeDraft.subjects.length === 1 &&
-      previewElementId === resizeDraft.subjects[0]?.elementId
-    ) {
-      const subject = resizeDraft.subjects[0];
-      if (!subject) return null;
-      const current = scaleWithin(subject.start, resizeDraft.start, resizeDraft.actual);
-      return {
-        elementId: subject.elementId,
-        ...(previewParent
-          ? { x: current.x - previewParent.x, y: current.y - previewParent.y }
-          : {}),
-        width: current.width,
-        height: current.height,
-      };
-    }
-    return null;
-  }, [liveOffset, previewElementId, previewParent, resizeDraft, selectedGeometry]);
-  useEffect(() => {
-    liveGeometrySink.current = onLiveElementGeometry;
-  }, [onLiveElementGeometry]);
-  useEffect(() => {
-    liveGeometrySink.current(
-      inspectorPreview
+  const reportLiveGeometry = (input: {
+    readonly elementId: string;
+    readonly box: ResizeBox;
+    readonly parent: Pick<CanvasClientRect, "x" | "y"> | null;
+  }) => {
+    onLiveElementGeometry({
+      elementId: input.elementId,
+      ...(input.parent
         ? {
-            ...inspectorPreview,
-            ...(inspectorPreview.x !== undefined ? { x: inspectorPreview.x / camera.zoom } : {}),
-            ...(inspectorPreview.y !== undefined ? { y: inspectorPreview.y / camera.zoom } : {}),
-            width: inspectorPreview.width / camera.zoom,
-            height: inspectorPreview.height / camera.zoom,
+            x: (input.box.x - input.parent.x) / camera.zoom,
+            y: (input.box.y - input.parent.y) / camera.zoom,
           }
-        : null,
-    );
-  }, [camera.zoom, inspectorPreview]);
+        : {}),
+      width: input.box.width / camera.zoom,
+      height: input.box.height / camera.zoom,
+    });
+  };
 
   const beginDrag = (event: PointerEvent<HTMLElement>, artboard: CanvasArtboardDocument) => {
     event.stopPropagation();
@@ -507,6 +456,21 @@ export function CanvasWorkspaceStage({
       ...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-id]"),
     ].find((candidate) => candidate.dataset.elementId === current.drag.elementId);
     if (!element) return;
+    const originParent = current.drag.originParentId
+      ? [...event.currentTarget.querySelectorAll<HTMLElement>("[data-element-id]")].find(
+          (candidate) => candidate.dataset.elementId === current.drag.originParentId,
+        )
+      : null;
+    reportLiveGeometry({
+      elementId: current.drag.elementId,
+      box: {
+        x: measuredRect(element).x + dx,
+        y: measuredRect(element).y + dy,
+        width: measuredRect(element).width,
+        height: measuredRect(element).height,
+      },
+      parent: originParent ? measuredRect(originParent) : null,
+    });
     const artboardsAtPoint = document
       .elementsFromPoint(event.clientX, event.clientY)
       .filter(
@@ -673,6 +637,7 @@ export function CanvasWorkspaceStage({
       });
       if (plan.kind !== "none") onIntent({ kind: "element-drop", plan });
     }
+    onLiveElementGeometry(null);
     if (event.currentTarget.hasPointerCapture(event.pointerId))
       event.currentTarget.releasePointerCapture(event.pointerId);
     if (plan.kind !== "none") {
@@ -779,6 +744,14 @@ export function CanvasWorkspaceStage({
       },
     );
     setGesture({ ...current, draft: { ...current.draft, box: requested, actual: requested } });
+    if (resizeGesture.subjects.length === 1) {
+      const subject = resizeGesture.subjects[0]!;
+      reportLiveGeometry({
+        elementId: subject.elementId,
+        box: scaleWithin(subject.start, resizeGesture.start, requested),
+        parent: subject.parent,
+      });
+    }
   };
 
   const finishResize = (event: PointerEvent<HTMLElement>, cancel = false) => {
@@ -793,6 +766,7 @@ export function CanvasWorkspaceStage({
     if (event.currentTarget.hasPointerCapture(event.pointerId))
       event.currentTarget.releasePointerCapture(event.pointerId);
     if (cancel) {
+      onLiveElementGeometry(null);
       setGesture(null);
       return;
     }
@@ -809,6 +783,7 @@ export function CanvasWorkspaceStage({
       });
     });
     onIntent({ kind: "resize", canvasId: current.gesture.canvasId, updates });
+    onLiveElementGeometry(null);
     resizeCommitted.current = true;
     setGesture({
       kind: "resize",

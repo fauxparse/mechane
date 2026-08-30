@@ -119,6 +119,7 @@ export function CanvasWorkspaceEditor({
     (next: CanvasSelection) => {
       const normalized = normalizeSelection(next);
       setLocalSelection(normalized);
+      setInspectorPreview(null);
       onSelectionChange?.(normalized);
     },
     [onSelectionChange],
