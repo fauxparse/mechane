@@ -6,20 +6,19 @@
 // resolvers authenticate, check ownership, validate through the domain, and
 // call one of the lifecycle functions below.
 import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
-import { ARTBOARD_COMMAND_TYPES, applyCanvasEdits, applyGraphEdits } from "@mechane/commands";
-import type { Canvas, GraphState, ShowGraph } from "@mechane/domain";
+import { applyGraphEdits } from "@mechane/commands";
+import type { GraphState, ShowGraph } from "@mechane/domain";
 import { assertBlockReferencesExist } from "@mechane/domain";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { runChannel } from "@mechane/realtime";
 import { realtimeProvider } from "../realtime";
-import type { CanvasWithOwner, StoredCanvas } from "./canvas";
-import { readCanvasById, readCanvasWorkspace, writeCanvasRows } from "./canvas";
+import type { StoredCanvas } from "./canvas";
+import { persistCanvases, readCanvasById, readCanvasWorkspace } from "./canvas";
 import { db } from "./client";
 import { retireUnreferencedDevices, syncDevices } from "./devices";
 import { GraphVersionConflictError, persistGraphRows, readGraphRows } from "./graph-persistence";
 import { publishPlayerUpdates, reconcileActiveRunValues, syncActiveRunSourceValues } from "./runs";
-import { reconcileSceneCanvases } from "./scene-canvases";
-import { devices, showGraphs, shows } from "./schema";
+import { devices, shows } from "./schema";
 export interface PublishLoss {
   sourceId: string;
   fieldId: string;
@@ -41,25 +40,6 @@ export interface StoredShowGraph extends ShowGraph {
   version: number;
   /** Data loss reported while publishing this graph, if applicable. */
   losses?: PublishLoss[];
-}
-
-/**
- * The answer to an edit batch (#111): what the next batch needs to know, and
- * anything the server decided along the way — *not* the graph.
- *
- * Answering a delta with the whole graph would be the same wholesale
- * replacement #103 removed, pointed the other way: the client composed these
- * edits against its own copy and applied them locally before sending, so all
- * it is missing is the version to build on and whatever it couldn't decide
- * for itself.
- */
-export interface AppliedShowGraphEdits {
-  showId: string;
-  state: GraphState;
-  updatedAt: Date;
-  version: number;
-  /** Edits the client should apply to its copy — see `amendments` below. */
-  amendments: GraphEdit[];
 }
 
 /** The transaction type the graph functions run inside. */
@@ -94,24 +74,32 @@ export async function readShowGraph(
   return readGraphRows(showId, state, deviceIdentities, executor);
 }
 
-/**
- * Coordinates graph rows with the effects that intentionally live beside
- * them: Device identity and Scene Canvas reconciliation.
- */
+interface WriteGraphOptions {
+  readonly canvasEdits?: readonly CanvasWorkspaceEdit[];
+  readonly forceBlockCanvasWrites: boolean;
+}
+
+/** Coordinates graph rows, owned Canvases, and Device identity in one write. */
 async function writeGraph(
   tx: Tx,
   showId: string,
   state: GraphState,
   graph: ShowGraph,
-  expectedVersion?: number,
+  expectedVersion: number | undefined,
+  options: WriteGraphOptions,
 ): Promise<StoredShowGraph> {
   const written = await persistGraphRows(tx, showId, state, graph, expectedVersion);
+  await persistCanvases(tx, {
+    showId,
+    state,
+    graphId: written.graphId,
+    blocks: graph.blocks ?? [],
+    sceneIds: graph.nodes.filter((node) => node.kind === "scene").map((node) => node.id),
+    edits: options.canvasEdits ?? [],
+    now: written.graph.updatedAt,
+    forceBlockWrites: options.forceBlockCanvasWrites,
+  });
   const deviceIdentities = await syncDevices(tx, showId, graph.nodes);
-  await reconcileSceneCanvases(
-    tx,
-    written.graphId,
-    graph.nodes.filter((node) => node.kind === "scene").map((node) => node.id),
-  );
   const nodes = graph.nodes.map((node) => {
     if (node.kind !== "device") return node;
     const identity = deviceIdentities.get(node.id);
@@ -123,65 +111,15 @@ async function writeGraph(
  * Replaces the Show's graph in `state`, in a transaction of its own.
  *
  * The unconditional door into `writeGraph`, used by publish and by seeding.
- * An *edit* goes through `applyShowGraphEdits` instead, which is the one
- * that has a base version to check.
  */
 export async function writeShowGraph(
   showId: string,
   state: GraphState,
   graph: ShowGraph,
 ): Promise<StoredShowGraph> {
-  return db.transaction((tx) => writeGraph(tx, showId, state, graph));
-}
-
-/**
- * Applies `edits` to the Show's draft graph and stores the result (#103).
- *
- * This is the whole point of the delta protocol landing server-side: the
- * graph the edits apply to is read *here*, under the same lock the write
- * takes, so what the client sent is a description of a change rather than a
- * claim about the whole document. A batch composed against a stale version is
- * refused whole — never partially applied, because half a cascade is a graph
- * nobody asked for.
- *
- * The edits are applied through `@mechane/commands`, which is the same code
- * that produced them in the editor. There is no second implementation of what
- * a delete does, and therefore no way for the two to disagree.
- *
- * Throws `GraphVersionConflictError` on a stale base, `UnknownGraphTargetError`
- * on an edit naming something that isn't there, and `InvalidShowGraphError` if
- * the batch as a whole leaves the graph malformed — intermediate states are
- * not validated, because a cascade legitimately passes through them.
- */
-export async function applyShowGraphEdits(
-  showId: string,
-  edits: readonly GraphEdit[],
-  baseVersion: number,
-): Promise<AppliedShowGraphEdits> {
-  return db.transaction(async (tx) => {
-    const current = await readShowGraph(showId, "draft", tx);
-    if (current.version !== baseVersion) {
-      throw new GraphVersionConflictError(baseVersion, current.version);
-    }
-    const next = applyGraphEdits(
-      {
-        shapes: current.shapes ?? [],
-        sourceFieldDefaults: current.sourceFieldDefaults ?? [],
-        blocks: current.blocks ?? [],
-        nodes: current.nodes,
-        edges: current.edges,
-      },
-      edits,
-    );
-    const written = await writeGraph(tx, showId, "draft", next, baseVersion);
-    return {
-      showId,
-      state: written.state,
-      updatedAt: written.updatedAt,
-      version: written.version,
-      amendments: amendments(next, written),
-    };
-  });
+  return db.transaction((tx) =>
+    writeGraph(tx, showId, state, graph, undefined, { forceBlockCanvasWrites: true }),
+  );
 }
 
 export interface AppliedShowEdits {
@@ -192,11 +130,6 @@ export interface AppliedShowEdits {
   amendments: GraphEdit[];
   canvas: StoredCanvas | null;
 }
-type EditableCanvas = {
-  canvas: Canvas;
-  owner: CanvasWithOwner["owner"];
-  position: StoredCanvas["position"];
-};
 
 /** Applies graph and Canvas edits against one shared Show version transaction.
  *
@@ -214,7 +147,6 @@ export async function applyShowEdits(
     if (current.version !== baseVersion) {
       throw new GraphVersionConflictError(baseVersion, current.version);
     }
-    const canvasIds = [...new Set(canvasEdits.map((edit) => edit.canvasId))];
     const nextGraph = applyGraphEdits(
       {
         shapes: current.shapes ?? [],
@@ -225,35 +157,10 @@ export async function applyShowEdits(
       },
       graphEdits,
     );
-    // The graph goes down first so a Canvas this batch created — a new Block's (#426) — is there
-    // to be read by the Canvas edits that follow it.
-    const written = await writeGraph(tx, showId, "draft", nextGraph, baseVersion);
-    const currentCanvases = new Map<string, CanvasWithOwner>();
-    for (const canvasId of canvasIds) {
-      const canvas = await readCanvasById(showId, "draft", canvasId, tx);
-      if (!canvas) throw new Error(`Canvas "${canvasId}" was not found.`);
-      currentCanvases.set(canvasId, canvas);
-    }
-    const nextCanvases = new Map<string, EditableCanvas>(
-      [...currentCanvases].map(([canvasId, currentCanvas]) => [
-        canvasId,
-        {
-          canvas: currentCanvas.canvas,
-          owner: currentCanvas.owner,
-          position: { ...currentCanvas.canvas.position },
-        },
-      ]),
-    );
-    for (const edit of canvasEdits) {
-      const currentCanvas = nextCanvases.get(edit.canvasId);
-      if (!currentCanvas) throw new Error(`Canvas "${edit.canvasId}" was not found.`);
-      const entry = nextCanvases.get(edit.canvasId)!;
-      if (edit.edit.type === ARTBOARD_COMMAND_TYPES.move) {
-        entry.position = edit.edit.position;
-      } else {
-        entry.canvas = applyCanvasEdits(entry.canvas, [edit.edit]);
-      }
-    }
+    const written = await writeGraph(tx, showId, "draft", nextGraph, baseVersion, {
+      canvasEdits,
+      forceBlockCanvasWrites: false,
+    });
     const sourceEdits = graphEdits.filter(
       (edit): edit is Extract<GraphEdit, { type: "graph.setSourceFieldDefault" }> =>
         edit.type === "graph.setSourceFieldDefault",
@@ -276,33 +183,17 @@ export async function applyShowEdits(
           },
           liveSourceEdits,
         );
-        await writeGraph(tx, showId, "published", liveGraph);
+        await writeGraph(tx, showId, "published", liveGraph, undefined, {
+          forceBlockCanvasWrites: true,
+        });
         await syncActiveRunSourceValues(showId, liveGraph, liveSourceNodeIds, tx);
         playerUpdated = true;
       }
     }
-    let storedCanvas: StoredCanvas | null = null;
-    if (nextCanvases.size > 0) {
-      const [graph] = await tx
-        .select({ id: showGraphs.id })
-        .from(showGraphs)
-        .where(and(eq(showGraphs.showId, showId), eq(showGraphs.state, "draft")));
-      if (!graph) throw new Error(`Draft graph for Show "${showId}" disappeared while editing.`);
-      for (const [canvasId, nextCanvas] of nextCanvases) {
-        await writeCanvasRows(
-          tx,
-          showId,
-          graph.id,
-          nextCanvas.owner,
-          nextCanvas.canvas,
-          written.updatedAt,
-          nextCanvas.position,
-        );
-        if (canvasId === canvasIds.at(-1)) {
-          storedCanvas = (await readCanvasById(showId, "draft", canvasId, tx))?.canvas ?? null;
-        }
-      }
-    }
+    const lastCanvasId = canvasEdits.at(-1)?.canvasId;
+    const storedCanvas = lastCanvasId
+      ? ((await readCanvasById(showId, "draft", lastCanvasId, tx))?.canvas ?? null)
+      : null;
     return {
       showId,
       state: written.state,
@@ -363,13 +254,20 @@ export async function publishShowGraph(
     assertBlockReferencesExist(draft.blocks ?? [], draftCanvases.canvases);
     const publishedBefore = await readShowGraph(showId, "published", tx);
     const reconciled = await reconcileActiveRunValues(showId, publishedBefore, draft, tx);
-    const published = await writeGraph(tx, showId, "published", {
-      shapes: draft.shapes ?? [],
+    const published = await writeGraph(
+      tx,
+      showId,
+      "published",
+      {
+        shapes: draft.shapes ?? [],
 
-      blocks: draft.blocks ?? [],
-      nodes: draft.nodes,
-      edges: draft.edges,
-    });
+        blocks: draft.blocks ?? [],
+        nodes: draft.nodes,
+        edges: draft.edges,
+      },
+      undefined,
+      { forceBlockCanvasWrites: true },
+    );
     // Publish is the only moment a Device may be retired (#45). Keeping this
     // in the same transaction preserves the all-or-nothing cutover.
     await retireUnreferencedDevices(tx, showId);

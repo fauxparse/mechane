@@ -1,4 +1,7 @@
+import type { CanvasWorkspaceEdit } from "@mechane/commands";
+import { ARTBOARD_COMMAND_TYPES, applyCanvasEdits } from "@mechane/commands";
 import type {
+  Block,
   Canvas,
   Element,
   ElementKind,
@@ -12,8 +15,10 @@ import {
   generateId,
   InvalidCanvasError as CanvasError,
 } from "@mechane/domain";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 
+import { DEFAULT_CANVAS_FILL, newCanvasRootProperties } from "./canvas-defaults";
+import { placeCanvasPosition } from "./canvas-placement";
 import { db } from "./client";
 import { blocks, canvases, canvasElements, graphNodes, showGraphs, shows } from "./schema";
 
@@ -156,6 +161,22 @@ export async function readCanvas(
   return result;
 }
 
+/** Reads the owned Canvas for each Block in a graph. */
+export async function readBlockCanvases(
+  showId: string,
+  state: GraphState,
+  blockIds: readonly string[],
+  executor: Executor = db,
+): Promise<ReadonlyMap<string, StoredCanvas>> {
+  const result = new Map<string, StoredCanvas>();
+  for (const blockId of blockIds) {
+    const canvas = await readCanvas(showId, state, { blockId }, executor);
+    if (!canvas) throw new Error(`Block "${blockId}" has no owned Canvas.`);
+    result.set(blockId, canvas);
+  }
+  return result;
+}
+
 export interface CanvasWorkspaceRead {
   readonly canvases: readonly StoredCanvas[];
 }
@@ -224,6 +245,204 @@ export async function readCanvasById(
   if (!owner) throw new CanvasError(`Canvas "${canvasId}" has no owner.`);
   const canvas = await readCanvas(showId, state, owner, executor);
   return canvas ? { canvas, owner } : null;
+}
+
+export interface CanvasFillSnapshot {
+  id: string;
+  sceneNodeId: string | null;
+  createdAt: Date;
+}
+
+export interface CanvasRootSnapshot {
+  canvasId: string;
+  parentId: string | null;
+  properties: unknown;
+}
+
+export interface CanvasFills {
+  scene: string | undefined;
+  block: string | undefined;
+}
+
+/** Finds the most recently authored root fill for each Canvas owner kind. */
+export function latestCanvasFills(
+  canvasRows: readonly CanvasFillSnapshot[],
+  rootRows: readonly CanvasRootSnapshot[],
+): CanvasFills {
+  const rootsByCanvas = new Map(rootRows.map((root) => [root.canvasId, root]));
+  const fills: CanvasFills = { scene: undefined, block: undefined };
+
+  for (const canvas of [...canvasRows].sort(
+    (left, right) => left.createdAt.getTime() - right.createdAt.getTime(),
+  )) {
+    const root = rootsByCanvas.get(canvas.id);
+    if (!root || root.parentId !== null) continue;
+    if (root.properties === null || typeof root.properties !== "object") continue;
+    if (Array.isArray(root.properties) || !("fill" in root.properties)) continue;
+    const fill = root.properties.fill;
+    if (typeof fill === "string" && fill.length > 0) {
+      fills[canvas.sceneNodeId === null ? "block" : "scene"] = fill;
+    }
+  }
+
+  return fills;
+}
+
+interface ExistingCanvas extends CanvasFillSnapshot {
+  blockId: string | null;
+  positionX: number;
+  positionY: number;
+}
+
+/**
+ * Ensures every current Scene and Block has a Canvas without rewriting an
+ * existing Canvas or its Element tree.
+ */
+export async function reconcileSceneCanvases(
+  tx: Tx,
+  graphId: string,
+  sceneIds: readonly string[],
+): Promise<void> {
+  const existingCanvases: ExistingCanvas[] = await tx
+    .select({
+      id: canvases.id,
+      sceneNodeId: canvases.sceneNodeId,
+      blockId: canvases.blockId,
+      positionX: canvases.positionX,
+      positionY: canvases.positionY,
+      createdAt: canvases.createdAt,
+    })
+    .from(canvases)
+    .where(eq(canvases.graphId, graphId));
+  const existingSceneIds = new Set(
+    existingCanvases.flatMap((canvas) => (canvas.sceneNodeId ? [canvas.sceneNodeId] : [])),
+  );
+  const existingBlockIds = new Set(
+    existingCanvases.flatMap((canvas) => (canvas.blockId ? [canvas.blockId] : [])),
+  );
+
+  const sceneRows =
+    sceneIds.length === 0
+      ? []
+      : await tx
+          .select({ id: graphNodes.id })
+          .from(graphNodes)
+          .where(
+            and(
+              eq(graphNodes.graphId, graphId),
+              eq(graphNodes.kind, "scene"),
+              inArray(graphNodes.id, [...sceneIds]),
+            ),
+          );
+  const graphBlocks = await tx
+    .select({ id: blocks.id })
+    .from(blocks)
+    .where(eq(blocks.graphId, graphId));
+  const missingScenes = sceneRows.filter((scene) => !existingSceneIds.has(scene.id));
+  const missingBlocks = graphBlocks.filter((block) => !existingBlockIds.has(block.id));
+  if (missingScenes.length === 0 && missingBlocks.length === 0) return;
+
+  const existingCanvasIds = existingCanvases.map((canvas) => canvas.id);
+  const rootRows: CanvasRootSnapshot[] =
+    existingCanvasIds.length === 0
+      ? []
+      : await tx
+          .select({
+            canvasId: canvasElements.canvasId,
+            parentId: canvasElements.parentId,
+            properties: canvasElements.properties,
+          })
+          .from(canvasElements)
+          .where(inArray(canvasElements.canvasId, existingCanvasIds));
+  const fills = latestCanvasFills(existingCanvases, rootRows);
+  const occupied = existingCanvases.map((canvas) => ({ x: canvas.positionX, y: canvas.positionY }));
+  const scenePositions = new Map(
+    existingCanvases
+      .filter((canvas) => canvas.sceneNodeId !== null)
+      .map((canvas) => [
+        canvas.sceneNodeId!,
+        { x: canvas.positionX, y: canvas.positionY } satisfies Position,
+      ]),
+  );
+  const sceneIndexes = new Map(sceneIds.map((sceneId, index) => [sceneId, index]));
+
+  for (const scene of sceneRows) {
+    if (existingSceneIds.has(scene.id)) continue;
+    const sceneIndex = sceneIndexes.get(scene.id) ?? 0;
+    const previousScene = [...sceneIndexes]
+      .filter(([, index]) => index < sceneIndex)
+      .sort(([, left], [, right]) => right - left)
+      .map(([sceneId]) => scenePositions.get(sceneId))
+      .find((position) => position);
+    const preferred = previousScene
+      ? { x: previousScene.x + 760, y: previousScene.y }
+      : { x: 0, y: 0 };
+    const position = placeCanvasPosition(preferred, occupied);
+    await insertCanvas(
+      tx,
+      graphId,
+      { sceneNodeId: scene.id },
+      position,
+      fills.scene ?? DEFAULT_CANVAS_FILL,
+    );
+    occupied.push(position);
+    scenePositions.set(scene.id, position);
+    fills.scene = fills.scene ?? DEFAULT_CANVAS_FILL;
+    existingSceneIds.add(scene.id);
+  }
+
+  for (const [index, block] of missingBlocks.entries()) {
+    const position = placeCanvasPosition({ x: 0, y: 460 + index * 460 }, occupied);
+    await insertCanvas(
+      tx,
+      graphId,
+      { blockId: block.id },
+      position,
+      fills.block ?? DEFAULT_CANVAS_FILL,
+    );
+    occupied.push(position);
+    fills.block = fills.block ?? DEFAULT_CANVAS_FILL;
+  }
+}
+
+async function insertCanvas(
+  tx: Tx,
+  graphId: string,
+  owner: { sceneNodeId: string } | { blockId: string },
+  position: Position,
+  fill: string,
+): Promise<string> {
+  const canvasId = generateId("canvas");
+  await tx.insert(canvases).values(
+    "sceneNodeId" in owner
+      ? {
+          id: canvasId,
+          graphId,
+          sceneNodeId: owner.sceneNodeId,
+          blockId: null,
+          positionX: position.x,
+          positionY: position.y,
+        }
+      : {
+          id: canvasId,
+          graphId,
+          sceneNodeId: null,
+          blockId: owner.blockId,
+          positionX: position.x,
+          positionY: position.y,
+        },
+  );
+  await tx.insert(canvasElements).values({
+    id: `${canvasId}-root`,
+    canvasId,
+    parentId: null,
+    type: "frame",
+    rank: "a",
+    name: null,
+    hidden: false,
+    properties: newCanvasRootProperties(fill),
+  });
+  return canvasId;
 }
 
 export class CanvasVersionConflictError extends Error {
@@ -348,6 +567,102 @@ export async function writeCanvasRows(
     .values(elementRows(canvasId, canonical.root, null, canonical.root.rank ?? ""));
   await tx.update(shows).set({ updatedAt: now }).where(eq(shows.id, showId));
   return canvasId;
+}
+
+interface PendingCanvas {
+  canvas: Canvas;
+  owner: CanvasOwner;
+  position: Position;
+}
+
+export interface PersistCanvasesOptions {
+  showId: string;
+  state: GraphState;
+  graphId: string;
+  blocks: readonly Block[];
+  sceneIds: readonly string[];
+  edits: readonly CanvasWorkspaceEdit[];
+  now: Date;
+  forceBlockWrites?: boolean;
+}
+
+/**
+ * Persists the Canvases owned by a graph and applies targeted workspace edits.
+ * Existing Block Canvases are untouched unless the caller is copying a graph
+ * state or an edit targets them; newly-created Blocks always get their Canvas.
+ */
+export async function persistCanvases(tx: Tx, options: PersistCanvasesOptions): Promise<void> {
+  const {
+    showId,
+    state,
+    graphId,
+    blocks: blockDefinitions,
+    sceneIds,
+    edits,
+    now,
+    forceBlockWrites = false,
+  } = options;
+  const existingCanvases = await tx
+    .select({ blockId: canvases.blockId })
+    .from(canvases)
+    .where(eq(canvases.graphId, graphId));
+  const existingBlockIds = new Set(
+    existingCanvases.flatMap((canvas) => (canvas.blockId ? [canvas.blockId] : [])),
+  );
+  const blocksByCanvasId = new Map<string, Block>(
+    blockDefinitions.map((block) => [block.canvas.id, block]),
+  );
+  const pending = new Map<string, PendingCanvas>();
+
+  for (const workspaceEdit of edits) {
+    let entry = pending.get(workspaceEdit.canvasId);
+    if (!entry) {
+      const block = blocksByCanvasId.get(workspaceEdit.canvasId);
+      if (block) {
+        entry = {
+          canvas: block.canvas,
+          owner: { blockId: block.id },
+          position: block.canvas.position ?? { x: 0, y: 0 },
+        };
+      } else {
+        const stored = await readCanvasById(showId, state, workspaceEdit.canvasId, tx);
+        if (!stored) throw new Error(`Canvas "${workspaceEdit.canvasId}" was not found.`);
+        entry = {
+          canvas: stored.canvas,
+          owner: stored.owner,
+          position: { ...stored.canvas.position },
+        };
+      }
+      pending.set(workspaceEdit.canvasId, entry);
+    }
+
+    if (workspaceEdit.edit.type === ARTBOARD_COMMAND_TYPES.move) {
+      entry.position = workspaceEdit.edit.position;
+    } else {
+      entry.canvas = applyCanvasEdits(entry.canvas, [workspaceEdit.edit]);
+    }
+  }
+
+  for (const block of blockDefinitions) {
+    const edited = pending.get(block.canvas.id);
+    if (!forceBlockWrites && existingBlockIds.has(block.id) && !edited) continue;
+    await writeCanvasRows(
+      tx,
+      showId,
+      graphId,
+      { blockId: block.id },
+      edited?.canvas ?? block.canvas,
+      now,
+      edited?.position ?? block.canvas.position,
+    );
+  }
+
+  for (const edited of pending.values()) {
+    if ("blockId" in edited.owner) continue;
+    await writeCanvasRows(tx, showId, graphId, edited.owner, edited.canvas, now, edited.position);
+  }
+
+  await reconcileSceneCanvases(tx, graphId, sceneIds);
 }
 
 async function writeCanvasInTransaction(

@@ -3,13 +3,14 @@
 // the same batch can already target it.
 import { CANVAS_COMMAND_TYPES, GRAPH_COMMAND_TYPES } from "@mechane/commands";
 import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
+import { emptyBlock } from "@mechane/domain";
 import type { ShowGraph } from "@mechane/domain";
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { db } from "./client";
 import { readCanvasWorkspace } from "./canvas";
-import { shows, user } from "./schema";
+import { canvases, shows, user } from "./schema";
 import { applyShowEdits, readShowGraph, writeShowGraph } from "./show-graph";
 
 const userId = `block-creation-test-${crypto.randomUUID()}`;
@@ -104,5 +105,38 @@ describe("creating a Block from the Canvas editor", () => {
 
     const scene = canvases.find((canvas) => canvas.ownerId === "scene_one");
     expect(scene?.root.children?.map((child) => child.id)).toContain("slot_card");
+  });
+
+  it("does not rewrite untouched Block Canvases for graph-only edits", async () => {
+    await db.insert(user).values({
+      id: userId,
+      name: "Block Canvas Ownership Test",
+      email: `${userId}@example.com`,
+      emailVerified: true,
+    });
+    await db.insert(shows).values({ id: showId, name: "Block Canvas Ownership Test", userId });
+    const block = emptyBlock("Existing");
+    await writeShowGraph(showId, "draft", { ...graph, blocks: [block] });
+
+    const stored = (await readCanvasWorkspace(showId, "draft")).canvases.find(
+      (canvas) => canvas.ownerId === block.id,
+    );
+    if (!stored) throw new Error("The existing Block Canvas was not created.");
+    const authoredAt = new Date("2026-01-01T00:00:00.000Z");
+    await db.update(canvases).set({ updatedAt: authoredAt }).where(eq(canvases.id, stored.id));
+
+    const draft = await readShowGraph(showId, "draft");
+    await applyShowEdits(
+      showId,
+      [{ type: GRAPH_COMMAND_TYPES.renameBlock, blockId: block.id, name: "Renamed" }],
+      [],
+      draft.version,
+    );
+
+    const [unchanged] = await db
+      .select({ updatedAt: canvases.updatedAt })
+      .from(canvases)
+      .where(eq(canvases.id, stored.id));
+    expect(unchanged?.updatedAt).toEqual(authoredAt);
   });
 });
