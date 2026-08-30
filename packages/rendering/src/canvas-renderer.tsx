@@ -14,43 +14,35 @@ import type {
   Fill,
   FrameElement,
   LayoutAlignment,
-  PropertyConnection,
-  ResolvedCanvasValue,
   ResolvedElement,
+  ResolvedCanvasValue,
   Rotation,
   SizeValue,
   Stroke,
 } from "@mechane/domain";
-import { isPropertyConnection, resolveSlotInstances } from "@mechane/domain";
 import type { CanvasRendererProps } from "./canvas-render";
+import type { CanvasPresentation, PreparedCanvasElement } from "./canvas-presentation";
 
 type LayoutParent = Extract<ResolvedElement, { type: "frame" | "slot" }>;
-function literal<T>(value: T | PropertyConnection | undefined): T | undefined {
-  return isPropertyConnection(value) ? undefined : (value as T | undefined);
-}
 
 interface RenderElementOptions {
-  element: ResolvedElement;
+  element: PreparedCanvasElement;
   root?: boolean;
   sceneRoot?: boolean;
   parent?: LayoutParent;
-  shapes?: CanvasRendererProps["shapes"];
-  blocks?: CanvasRendererProps["blocks"];
-  imageAssets?: CanvasRendererProps["imageAssets"];
-  variables?: CanvasRendererProps["variables"];
-  runtimeItem?: unknown;
-  runtimeType?: CanvasRendererProps["runtimeType"];
-  mode?: CanvasRendererProps["mode"];
+  mode: CanvasPresentation["mode"];
   editingElementId?: string | null;
   imageLoading?: "eager" | "lazy";
   onImageError?: (elementId: string, url: string, event: unknown) => void;
   onTextDoubleClick?: (elementId: string, event: ReactMouseEvent<HTMLDivElement>) => void;
   onTextKeyDown?: (elementId: string, event: ReactKeyboardEvent<HTMLDivElement>) => void;
 }
-function sizeValue(
-  value: ResolvedCanvasValue<SizeValue> | PropertyConnection | undefined,
-): string | undefined {
-  if (value === undefined || isPropertyConnection(value)) return undefined;
+function literal<T>(value: T | undefined): T | undefined {
+  return value;
+}
+
+function sizeValue(value: ResolvedCanvasValue<SizeValue> | undefined): string | undefined {
+  if (value === undefined) return undefined;
   if (typeof value === "number") return `${value}px`;
   return `${value.value}${value.unit}`;
 }
@@ -119,7 +111,9 @@ function paddingValue(padding: FrameElement["padding"]): string | undefined {
   }px`;
 }
 
-function cornerRadiusValue(radius: CornerRadiusElement["cornerRadius"]): string | undefined {
+function cornerRadiusValue(
+  radius: ResolvedCanvasValue<CornerRadiusElement["cornerRadius"]>,
+): string | undefined {
   const value = literal(radius);
   if (value === undefined) return undefined;
   if (typeof value === "number") return `${value}px`;
@@ -142,23 +136,16 @@ function cssFill(fill: Fill | undefined): string | undefined {
     : `linear-gradient(${fill.angle ?? 0}deg, ${stops})`;
 }
 function fillStyles(fill: Fill | undefined): CSSProperties {
-  if (fill === undefined || isPropertyConnection(fill)) return {};
+  if (fill === undefined) return {};
   return typeof fill === "string" ? { backgroundColor: fill } : { backgroundImage: cssFill(fill) };
 }
-function strokeStyles(stroke: Stroke | PropertyConnection | undefined): CSSProperties {
-  if (!stroke || isPropertyConnection(stroke)) return {};
+function strokeStyles(stroke: Stroke | undefined): CSSProperties {
+  if (!stroke) return {};
   return {
     borderColor: stroke.color,
     borderStyle: stroke.style,
     borderWidth: `${Math.max(0, stroke.width)}px`,
   };
-}
-
-function sortedChildren(
-  children: readonly ResolvedElement[] | undefined,
-): readonly ResolvedElement[] {
-  if (!children || children.length < 2) return children ?? [];
-  return [...children].sort((a, b) => (a.rank ?? "").localeCompare(b.rank ?? ""));
 }
 
 function justify(value: LayoutAlignment | undefined): CSSProperties["justifyContent"] {
@@ -318,16 +305,10 @@ function typeStyle(element: ResolvedElement): CSSProperties {
 }
 
 function renderElement({
-  element,
+  element: prepared,
   root = false,
   sceneRoot = false,
   parent,
-  shapes,
-  blocks,
-  imageAssets,
-  variables,
-  runtimeItem,
-  runtimeType,
   mode,
   editingElementId,
   imageLoading,
@@ -335,6 +316,7 @@ function renderElement({
   onTextDoubleClick,
   onTextKeyDown,
 }: RenderElementOptions): ReactNode {
+  const element = prepared.element;
   const parentIsAuto = parent ? isAutoLayout(parent) : false;
   const mainAxis = parent?.direction === "horizontal" ? "width" : "height";
   const fixedMainAxis = parentIsAuto && sizeFor(element, mainAxis)?.mode === "fixed";
@@ -354,88 +336,54 @@ function renderElement({
   };
   const children =
     element.type === "frame"
-      ? sortedChildren(element.children).map((child) =>
-          createElement(ElementRenderer, {
-            key: child.id,
-            element: child,
-            parent: element,
-            shapes,
-            blocks,
-            imageAssets,
-            variables,
-            runtimeItem,
-            runtimeType,
-            mode,
-            editingElementId,
-            imageLoading,
-            onImageError,
-            onTextDoubleClick,
-            onTextKeyDown,
-          }),
-        )
+      ? [...prepared.children]
+          .sort((a, b) => (a.element.rank ?? "").localeCompare(b.element.rank ?? ""))
+          .map((child) =>
+            createElement(ElementRenderer, {
+              key: child.element.id,
+              element: child,
+              parent: element,
+              mode,
+              editingElementId,
+              imageLoading,
+              onImageError,
+              onTextDoubleClick,
+              onTextKeyDown,
+            }),
+          )
       : undefined;
   if (element.type === "slot") {
-    const block = blocks?.find((candidate) => candidate.id === element.blockId);
-    if (!block) {
-      return createElement(
-        "div",
-        {
-          "data-element-id": element.id,
-          "data-element-type": "slot",
-          "data-slot-diagnostic": "missingBlock",
-          style,
-        },
-        mode === "player" ? undefined : "Invalid Slot",
-      );
-    }
-    const resolution = resolveSlotInstances(
-      block,
-      element,
-      variables,
-      runtimeItem,
-      runtimeType,
-      shapes,
-      blocks,
-      imageAssets,
-    );
-    if (resolution.diagnostic) {
+    const slot = prepared.slot;
+    if (!slot) return null;
+    if (slot.diagnostic) {
       if (mode === "player") return null;
       return createElement("div", {
         "data-element-id": element.id,
         "data-element-type": "slot",
-        "data-slot-diagnostic": resolution.diagnostic.category,
+        "data-slot-diagnostic": slot.diagnostic.category,
         style,
       });
     }
     const renderedItems: ReactNode[] = [];
-    for (const instance of resolution.instances) {
+    for (const instance of slot.instances) {
       const key = `${element.id}:${instance.id ?? instance.index}`;
-      if (instance.diagnostics.length > 0) {
+      if (instance.diagnostic) {
         if (mode === "player") continue;
         renderedItems.push(
           createElement(
             "div",
-            {
-              key,
-              "data-slot-diagnostic": instance.diagnostics[0]?.category,
-            },
+            { key, "data-slot-diagnostic": instance.diagnostic.category },
             "Invalid Slot",
           ),
         );
         continue;
       }
-      if (!instance.canvas) continue;
+      if (!instance.element) continue;
       renderedItems.push(
         createElement(ElementRenderer, {
           key,
-          element: instance.canvas.root as ResolvedElement,
+          element: instance.element,
           parent: element,
-          shapes,
-          blocks,
-          imageAssets,
-          variables: instance.variables ?? variables,
-          runtimeItem: instance.item ?? runtimeItem,
-          runtimeType,
           mode,
           editingElementId,
           imageLoading,
@@ -557,77 +505,32 @@ function renderElement({
   );
 }
 
-export function ElementRenderer({
-  element,
-  parent,
-  shapes,
-  blocks,
-  imageAssets,
-  variables,
-  runtimeItem,
-  runtimeType,
-  mode,
-  editingElementId,
-  imageLoading,
-  onImageError,
-  onTextDoubleClick,
-  onTextKeyDown,
-}: RenderElementOptions): ReactNode {
-  return renderElement({
-    element,
-    parent,
-    shapes,
-    blocks,
-    imageAssets,
-    variables,
-    runtimeItem,
-    runtimeType,
-    mode,
-    editingElementId,
-    imageLoading,
-    onImageError,
-    onTextDoubleClick,
-    onTextKeyDown,
-  });
+function ElementRenderer(options: RenderElementOptions): ReactNode {
+  return renderElement(options);
 }
 
 export const CanvasRenderer = memo(function CanvasRenderer({
-  canvas,
+  presentation,
   className,
   style,
   editingElementId,
   imageLoading,
-  shapes,
-  blocks,
-  imageAssets,
-  variables,
-  runtimeItem,
-  runtimeType,
-  mode,
   onImageError,
   onTextDoubleClick,
   onTextKeyDown,
 }: CanvasRendererProps): ReactNode {
-  const root = ("root" in canvas ? canvas.root : canvas) as ResolvedElement;
-  const sceneRoot = "root" in canvas && canvas.kind === "scene";
   return createElement(
     "div",
     {
       className,
       style: { position: "relative", width: "100%", height: "100%", ...style },
-      "data-canvas-root": root.id,
+      "data-canvas-root": presentation.root.element.id,
     },
     renderElement({
-      element: root,
+      element: presentation.root,
       root: true,
-      sceneRoot,
-      shapes,
-      blocks,
-      imageAssets,
-      variables,
-      runtimeItem,
-      runtimeType,
-      mode,
+      sceneRoot: presentation.sceneRoot,
+      mode: presentation.mode,
       editingElementId,
       imageLoading,
       onImageError,

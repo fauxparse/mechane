@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import type { Canvas, FrameElement } from "@mechane/domain";
+import { prepareCanvasForRender } from "./canvas-presentation";
 import { CanvasRenderer } from "./canvas-renderer";
 
 const sampleImage = `data:image/svg+xml,${encodeURIComponent(`
@@ -626,6 +627,16 @@ const directFrame: FrameElement = {
     },
   ],
 };
+function storyPresentation(canvas: Canvas | FrameElement) {
+  return prepareCanvasForRender({
+    canvas: "root" in canvas ? canvas : { root: canvas },
+    variables: [],
+    shapes: [],
+    blocks: [],
+    imageAssets: [],
+    mode: "studio",
+  });
+}
 
 const meta: Meta<typeof CanvasRenderer> = {
   title: "rendering/CanvasRenderer",
@@ -638,49 +649,49 @@ type Story = StoryObj<typeof CanvasRenderer>;
 
 export const MixedLayout: Story = {
   args: {
-    canvas,
+    presentation: storyPresentation(canvas),
     style: { width: 640, height: 360, background: "#191724" },
   },
 };
 
 export const PrimitiveElements: Story = {
   args: {
-    canvas: primitiveCanvas,
+    presentation: storyPresentation(primitiveCanvas),
     style: { width: 720, height: 420 },
   },
 };
 
 export const AutoLayout: Story = {
   args: {
-    canvas: autoLayoutCanvas,
+    presentation: storyPresentation(autoLayoutCanvas),
     style: { width: 720, height: 480 },
   },
 };
 
 export const ConstraintsAndRotations: Story = {
   args: {
-    canvas: constraintsCanvas,
+    presentation: storyPresentation(constraintsCanvas),
     style: { width: 640, height: 420 },
   },
 };
 
 export const GradientsAndOverflow: Story = {
   args: {
-    canvas: gradientOverflowCanvas,
+    presentation: storyPresentation(gradientOverflowCanvas),
     style: { width: 640, height: 420 },
   },
 };
 
 export const ImageObjectFitModes: Story = {
   args: {
-    canvas: imageCanvas,
+    presentation: storyPresentation(imageCanvas),
     style: { width: 720, height: 260 },
   },
 };
 
 export const DirectFrame: Story = {
   args: {
-    canvas: directFrame,
+    presentation: storyPresentation(directFrame),
     style: { width: 420, height: 220 },
   },
 };

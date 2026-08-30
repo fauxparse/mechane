@@ -1,8 +1,6 @@
-import { CanvasRenderer } from "@mechane/rendering";
-import { resolveCanvasProperties, type SlotVariableValue } from "@mechane/domain";
+import { CanvasRenderer, prepareCanvasPresentation } from "@mechane/rendering";
 import { useMemo } from "react";
 import { usePlayerSession, type PlayerSession } from "../api";
-import { sceneVariableValues } from "../player-state";
 import { SplashScreen } from "./join/SplashScreen";
 
 function WaitingForRun({ session }: { session: PlayerSession }) {
@@ -18,26 +16,19 @@ function WaitingForRun({ session }: { session: PlayerSession }) {
 }
 
 function PlayerCanvas({ session }: { session: PlayerSession }) {
-  const renderState = useMemo(() => {
+  const presentation = useMemo(() => {
     if (!session.canvas || !session.scene || !session.run) return null;
-    const values = sceneVariableValues(session.graph, session.scene.id, session.run.sourceValues);
-    const variables = session.scene.variables.flatMap((variable): SlotVariableValue[] =>
-      variable.type ? [{ id: variable.id, type: variable.type, value: values[variable.id] }] : [],
-    );
-    return {
-      canvas: resolveCanvasProperties(session.canvas, {
-        graph: session.graph,
-        variables: session.scene.variables,
-        values,
-        shapes: session.graph.shapes,
-        imageAssets: session.imageAssets,
-      }),
-      variables,
-    };
+    return prepareCanvasPresentation({
+      canvas: session.canvas,
+      graph: session.graph,
+      blocks: session.blocks ?? [],
+      imageAssets: session.imageAssets,
+      owner: { kind: "scene", scene: session.scene, sourceValues: session.run.sourceValues },
+      mode: "player",
+    });
   }, [session]);
-  const canvas = renderState?.canvas;
 
-  if (!canvas) {
+  if (!presentation) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-neutral-950 p-6 text-center text-white">
         <p>This Device is connected, but its published Scene is not ready.</p>
@@ -50,15 +41,7 @@ function PlayerCanvas({ session }: { session: PlayerSession }) {
       className="fixed inset-0 overflow-hidden bg-black"
       aria-label={session.scene?.name ?? "Player view"}
     >
-      <CanvasRenderer
-        canvas={canvas}
-        shapes={session.graph.shapes}
-        blocks={session.blocks ?? []}
-        variables={renderState?.variables}
-        mode="player"
-        className="h-full w-full"
-        imageLoading="eager"
-      />
+      <CanvasRenderer presentation={presentation} className="h-full w-full" imageLoading="eager" />
     </main>
   );
 }

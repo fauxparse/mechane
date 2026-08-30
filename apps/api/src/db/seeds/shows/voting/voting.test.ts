@@ -165,21 +165,20 @@ describe("Voting seed", () => {
     if (slot?.type !== "slot") throw new Error("Candidate list slot is missing.");
     const candidateButton = workflowBlocks().find((block) => block.id === "block_candidate_button");
     if (!candidateButton) throw new Error("CandidateButton block is missing.");
-    const result = resolveSlotInstances(
-      candidateButton,
+    const result = resolveSlotInstances({
+      block: candidateButton,
       slot,
-      [
+      variables: [
         {
           id: AUDIENCE_VARIABLE_ID,
           type: candidatesVariable.type,
           value: values[AUDIENCE_VARIABLE_ID],
         },
       ],
-      undefined,
-      { kind: "shape", shapeId: CANDIDATE_SHAPE_ID },
-      graph.shapes,
-      workflowBlocks(),
-    );
+      runtimeType: { kind: "shape", shapeId: CANDIDATE_SHAPE_ID },
+      shapes: graph.shapes,
+      allBlocks: workflowBlocks(),
+    });
     expect(result.instances).toHaveLength(3);
   });
 
@@ -195,21 +194,20 @@ describe("Voting seed", () => {
     const candidateButton = workflowBlocks().find((block) => block.id === "block_candidate_button");
     if (!candidateButton) throw new Error("CandidateButton block is missing.");
     const values = sceneVariableValues(graph, candidateList.id, defaultSourceValues(graph));
-    const result = resolveSlotInstances(
-      candidateButton,
+    const result = resolveSlotInstances({
+      block: candidateButton,
       slot,
-      [
+      variables: [
         {
           id: AUDIENCE_VARIABLE_ID,
           type: candidatesVariable.type,
           value: values[AUDIENCE_VARIABLE_ID],
         },
       ],
-      undefined,
-      { kind: "shape", shapeId: CANDIDATE_SHAPE_ID },
-      graph.shapes,
-      workflowBlocks(),
-      [
+      runtimeType: { kind: "shape", shapeId: CANDIDATE_SHAPE_ID },
+      shapes: graph.shapes,
+      allBlocks: workflowBlocks(),
+      imageAssets: [
         {
           assetId: "image_asset_alice",
           revision: CANDIDATE_IMAGE_REVISION,
@@ -221,7 +219,7 @@ describe("Voting seed", () => {
           blurHash: null,
         },
       ],
-    );
+    });
     const first = result.instances[0];
     if (!first?.canvas) throw new Error("CandidateButton instance has no canvas.");
     expect(first.canvas.root.children?.[0]).toMatchObject({

@@ -29,8 +29,6 @@ type CanvasWorkspaceStageProps = Pick<
   | "camera"
   | "ordered"
   | "artboardSizes"
-  | "blocks"
-  | "shapes"
   | "drag"
   | "focused"
   | "onBeginCreation"
@@ -75,9 +73,7 @@ export function CanvasWorkspaceStage({
   tool,
   camera,
   ordered,
-  blocks,
   artboardSizes,
-  shapes,
   drag,
   focused,
   onBeginCreation,
@@ -251,16 +247,14 @@ export function CanvasWorkspaceStage({
                 onFinishCreation(event, true);
               }}
             >
-              <CanvasRenderer
-                canvas={artboard.renderCanvas ?? artboard.canvas}
-                blocks={blocks}
-                shapes={shapes}
-                imageAssets={artboard.renderImageAssets}
-                variables={artboard.renderVariables}
-                editingElementId={textEdit?.artId === artboard.artId ? textEdit.elementId : null}
-                onTextDoubleClick={beginTextEdit}
-                onTextKeyDown={handleTextKeyDown}
-              />
+              {artboard.renderPresentation ? (
+                <CanvasRenderer
+                  presentation={artboard.renderPresentation}
+                  editingElementId={textEdit?.artId === artboard.artId ? textEdit.elementId : null}
+                  onTextDoubleClick={beginTextEdit}
+                  onTextKeyDown={handleTextKeyDown}
+                />
+              ) : null}
             </div>
           );
         })}

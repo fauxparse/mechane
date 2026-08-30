@@ -6,36 +6,31 @@ import {
   type ReactNode,
 } from "react";
 
-import type {
-  Block,
-  Canvas,
-  FrameElement,
-  ImageAssetReference,
-  ResolvedImageValue,
-  Shape,
-  SlotVariableValue,
-  Type,
-} from "@mechane/domain";
+import type { Canvas, FrameElement } from "@mechane/domain";
+import { prepareLegacyCanvasPresentation } from "./canvas-presentation";
 import { CanvasRenderer } from "./canvas-renderer";
-
+import type { CanvasPresentation } from "./canvas-presentation";
 export interface CanvasRendererProps {
-  canvas: Canvas | FrameElement;
+  presentation: CanvasPresentation;
   className?: string;
   style?: CSSProperties;
   editingElementId?: string | null;
   imageLoading?: "eager" | "lazy";
-  blocks?: readonly Block[];
-  shapes?: readonly Shape[];
-  imageAssets?: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
-  variables?: readonly SlotVariableValue[];
-  runtimeItem?: unknown;
-  runtimeType?: Type;
-  mode?: "studio" | "player";
   onImageError?(elementId: string, url: string, event: unknown): void;
   onTextDoubleClick?(elementId: string, event: ReactMouseEvent<HTMLDivElement>): void;
   onTextKeyDown?(elementId: string, event: ReactKeyboardEvent<HTMLDivElement>): void;
 }
 
 export function renderCanvas(canvas: Canvas | FrameElement | CanvasRendererProps): ReactNode {
-  return createElement(CanvasRenderer, "canvas" in canvas ? canvas : { canvas });
+  if ("presentation" in canvas) return createElement(CanvasRenderer, canvas);
+  const sourceCanvas = "root" in canvas ? canvas : { root: canvas };
+  return createElement(CanvasRenderer, {
+    presentation: prepareLegacyCanvasPresentation(sourceCanvas, {
+      variables: [],
+      shapes: [],
+      blocks: [],
+      imageAssets: [],
+      mode: "studio",
+    }),
+  });
 }

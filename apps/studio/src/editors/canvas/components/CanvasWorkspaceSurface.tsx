@@ -105,8 +105,6 @@ export function CanvasWorkspaceSurface({
         camera={camera}
         ordered={ordered}
         artboardSizes={artboardSizes}
-        shapes={shapes}
-        blocks={blocks}
         drag={drag}
         focused={focused}
         onBeginCreation={onBeginCreation}

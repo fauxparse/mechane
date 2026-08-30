@@ -244,16 +244,27 @@ export interface ResolvedSlotInstance {
   readonly diagnostics: readonly SlotDiagnostic[];
 }
 
-export function resolveSlotInstances(
-  block: Block,
-  slot: SlotElement,
-  variables: readonly SlotVariableValue[] = [],
-  runtimeItem?: unknown,
-  runtimeType?: Type,
-  shapes: readonly Shape[] = [],
-  allBlocks: readonly Block[] = [block],
-  imageAssets: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[] = [],
-): {
+export interface ResolveSlotInstancesInput {
+  readonly block: Block;
+  readonly slot: SlotElement;
+  readonly variables?: readonly SlotVariableValue[];
+  readonly runtimeItem?: unknown;
+  readonly runtimeType?: Type;
+  readonly shapes?: readonly Shape[];
+  readonly allBlocks?: readonly Block[];
+  readonly imageAssets?: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
+}
+
+export function resolveSlotInstances({
+  block,
+  slot,
+  variables = [],
+  runtimeItem,
+  runtimeType,
+  shapes = [],
+  allBlocks = [block],
+  imageAssets = [],
+}: ResolveSlotInstancesInput): {
   readonly instances: readonly ResolvedSlotInstance[];
   readonly diagnostic?: SlotDiagnostic;
 } {
