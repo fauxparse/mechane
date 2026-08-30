@@ -819,8 +819,6 @@ type Query {
   activeRun(showId: ID!): Run
   showGraph(showId: ID!, state: String): ShowGraph!
   showCanvases(showId: ID!, state: String): [Artboard!]!
-  sceneCanvas(showId: ID!, sceneNodeId: ID!, state: String): Artboard
-  blockCanvas(showId: ID!, blockId: ID!, state: String): Artboard
   imageAssets(showId: ID!): [ImageAsset!]!
 }
 

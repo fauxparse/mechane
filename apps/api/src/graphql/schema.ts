@@ -37,7 +37,7 @@ import { GraphQLError, GraphQLScalarType, Kind } from "graphql";
 import { createSchema } from "graphql-yoga";
 
 import { randomUUID } from "node:crypto";
-import { readCanvas, readCanvasWorkspace } from "../db/canvas";
+import { readCanvasWorkspace } from "../db/canvas";
 import { db } from "../db/client";
 import { withUniqueId } from "../db/ids";
 import { readPlayerSession } from "../player";
@@ -943,8 +943,6 @@ export const schema = createSchema<GraphQLContext>({
       activeRun(showId: ID!): Run
       showGraph(showId: ID!, state: String): ShowGraph!
       showCanvases(showId: ID!, state: String): [Artboard!]!
-      sceneCanvas(showId: ID!, sceneNodeId: ID!, state: String): Artboard
-      blockCanvas(showId: ID!, blockId: ID!, state: String): Artboard
       imageAssets(showId: ID!): [ImageAsset!]!
     }
 
@@ -1158,32 +1156,6 @@ export const schema = createSchema<GraphQLContext>({
         await findOwnShowOrThrow(showId, userId);
         const workspace = await readCanvasWorkspace(showId, validGraphState(state ?? "draft"));
         return workspace.canvases.map(serializeArtboard);
-      },
-      sceneCanvas: async (
-        _parent,
-        {
-          showId,
-          sceneNodeId,
-          state,
-        }: { showId: string; sceneNodeId: string; state?: string | null },
-        context,
-      ) => {
-        const userId = requireUserId(context);
-        await findOwnShowOrThrow(showId, userId);
-        const graphState = validGraphState(state ?? "draft");
-        const canvas = await readCanvas(showId, graphState, { sceneNodeId });
-        return canvas ? serializeArtboard(canvas) : null;
-      },
-      blockCanvas: async (
-        _parent,
-        { showId, blockId, state }: { showId: string; blockId: string; state?: string | null },
-        context,
-      ) => {
-        const userId = requireUserId(context);
-        await findOwnShowOrThrow(showId, userId);
-        const graphState = validGraphState(state ?? "draft");
-        const canvas = await readCanvas(showId, graphState, { blockId });
-        return canvas ? serializeArtboard(canvas) : null;
       },
       imageAssets: async (_parent, { showId }: { showId: string }, context) => {
         const userId = requireUserId(context);
