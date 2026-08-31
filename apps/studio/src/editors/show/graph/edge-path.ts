@@ -274,11 +274,9 @@ function clampOffset(
 export function edgeHandles(
   geometry: EdgeGeometry,
 ): { segmentIndex: number; point: Point; orientation: Orientation }[] {
-  return geometry.segments
-    .filter((segment) => segment.draggable)
-    .map((segment) => ({
-      segmentIndex: segment.index,
-      point: segment.midpoint,
-      orientation: segment.orientation,
-    }));
+  return geometry.segments.flatMap((segment) =>
+    segment.draggable
+      ? [{ segmentIndex: segment.index, point: segment.midpoint, orientation: segment.orientation }]
+      : [],
+  );
 }
