@@ -106,7 +106,11 @@ describe("submitPlayerEvent", () => {
       appliedResultingSceneId: "scene_green",
     });
     expect((await readRunDeviceState(run.id, device.id))?.activeSceneId).toBe("scene_green");
-    await expect(request(context, { input })).resolves.toMatchObject({
+    await expect(
+      request(context, {
+        input: { ...input, sceneId: "scene_green", elementId: "button_scene_green_scene_red" },
+      }),
+    ).resolves.toMatchObject({
       __typename: "PlayerEventDuplicate",
       outcome: "applied",
       duplicateResultingSceneId: "scene_green",

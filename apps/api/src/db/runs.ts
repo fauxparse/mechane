@@ -6,7 +6,7 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "./client";
 import { realtimeProvider } from "../realtime";
 import { readShowGraph } from "./show-graph";
-import { devices, runDeviceStates, runs, shows } from "./schema";
+import { devices, playerEvents, runDeviceStates, runs, shows } from "./schema";
 
 export interface RunValueLoss {
   sourceId: string;
@@ -365,6 +365,7 @@ export async function endRun(showId: string): Promise<Run | null> {
       .returning();
     if (row) {
       await tx.delete(runDeviceStates).where(eq(runDeviceStates.runId, row.id));
+      await tx.delete(playerEvents).where(eq(playerEvents.runId, row.id));
     }
     return row ? toRun(row) : null;
   });
