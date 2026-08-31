@@ -50,6 +50,14 @@ export type RouteOptions = {
    */
   obstacles?: readonly Rect[];
   /**
+   * Perpendicular displacement applied to the middle of the route, so edges
+   * sharing both handles can be told apart. Parallel Navigate edges are
+   * allowed (#20) and route identically, which without this puts them exactly
+   * on top of one another — handles included, so they cannot even be grabbed
+   * and separated by hand.
+   */
+  fan?: number;
+  /**
    * The detour side this edge chose last time. A route that flips sides
    * mid-drag both looks like a glitch and changes its shape signature, which
    * silently drops the user's handle offsets — so the flip needs hysteresis.
@@ -394,6 +402,77 @@ function perpendicular(s: Point, t: Point, towards: 1 | -1, margin: number): Poi
   return [s, { x: s.x, y }, { x: t.x, y }, t];
 }
 
+/**
+ * Steps the middle of a route aside, so that two routes between the same pair
+ * of handles are visibly two routes.
+ *
+ * With a run in the middle to move, this is exactly what dragging that run's
+ * handle does — which is the point: the fan is the route's *default* position,
+ * and any nudge the author has saved then applies on top of it. With no
+ * middle run to move, the route has to grow one: a straight line or a single
+ * corner has nowhere to put a second edge, so a jog is cut into its longest
+ * run, leaving a margin-length stub at each end of that run.
+ */
+function fanRoute(points: readonly Point[], fan: number, margin: number): Point[] {
+  if (fan === 0 || points.length < 2) return [...points];
+  const count = points.length - 1;
+
+  if (count >= 3) {
+    const index = Math.floor((count - 1) / 2);
+    return points.map((point, at) =>
+      at === index || at === index + 1 ? displace(point, points[index], points[index + 1], fan) : point,
+    );
+  }
+
+  const index = longestRun(points);
+  const from = points[index];
+  const to = points[index + 1];
+  if (!from || !to) return [...points];
+
+  const horizontal = Math.abs(from.y - to.y) < EPSILON;
+  const along = horizontal ? "x" : "y";
+  const across = horizontal ? "y" : "x";
+  const step = Math.sign(to[along] - from[along]) * margin;
+  // Too short to hold two stubs and a step between them: leave it be and let
+  // the edges overlap rather than draw a jog with no room for its corners.
+  if (Math.abs(to[along] - from[along]) < margin * 4) return [...points];
+
+  const first = { ...from, [along]: from[along] + step };
+  const last = { ...to, [along]: to[along] - step };
+  return [
+    ...points.slice(0, index + 1),
+    first,
+    { ...first, [across]: first[across] + fan },
+    { ...last, [across]: last[across] + fan },
+    last,
+    ...points.slice(index + 1),
+  ];
+}
+
+/** Moves a point perpendicular to the run from `from` to `to`. */
+function displace(point: Point, from: Point | undefined, to: Point | undefined, by: number): Point {
+  if (!from || !to) return point;
+  return Math.abs(from.y - to.y) < EPSILON
+    ? { x: point.x, y: point.y + by }
+    : { x: point.x + by, y: point.y };
+}
+
+function longestRun(points: readonly Point[]): number {
+  let best = 0;
+  let bestLength = -1;
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const from = points[i];
+    const to = points[i + 1];
+    if (!from || !to) continue;
+    const length = Math.abs(to.x - from.x) + Math.abs(to.y - from.y);
+    if (length > bestLength) {
+      bestLength = length;
+      best = i;
+    }
+  }
+  return best;
+}
+
 /** `"HVH"`, `"HVHVH"`, and so on — see `Route.signature`. */
 export function routeSignature(points: readonly Point[]): string {
   let signature = "";
@@ -433,11 +512,10 @@ export function routeSmoothStep(
     previousDetour,
   });
 
-  const points = simplify([
-    rotatedSource.point,
-    ...solved.points,
-    rotatedTarget.point,
-  ]).map((point) => rotate(point, -turns));
+  const routed = simplify([rotatedSource.point, ...solved.points, rotatedTarget.point]);
+  const points = simplify(fanRoute(routed, options.fan ?? 0, margin)).map((point) =>
+    rotate(point, -turns),
+  );
 
   return { points, detour: solved.detour, signature: routeSignature(points) };
 }

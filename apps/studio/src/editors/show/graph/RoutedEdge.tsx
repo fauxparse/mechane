@@ -61,6 +61,11 @@ export type RoutedEdgeProps = {
   margin?: number;
   maxRadius?: number;
   obstacles?: readonly Rect[];
+  /**
+   * Perpendicular displacement of this edge's default route, so edges sharing
+   * both handles are visibly separate. Any saved nudge applies on top of it.
+   */
+  fan?: number;
   /** Canvas zoom, so handles keep a constant size on screen. */
   zoom?: number;
   /** Ignores hover and selection — for stories and screenshots. */
@@ -110,6 +115,7 @@ export function RoutedEdge({
   margin = DEFAULT_MARGIN,
   maxRadius = DEFAULT_MAX_RADIUS,
   obstacles,
+  fan = 0,
   zoom = 1,
   alwaysShowHandles = false,
   strokeWidth = EDGE_STROKE_WIDTH,
@@ -127,8 +133,8 @@ export function RoutedEdge({
   const [previousDetour, setPreviousDetour] = useState<DetourSide | null>(null);
 
   const route = useMemo(
-    () => routeSmoothStep(source, target, { margin, obstacles, previousDetour }),
-    [source, target, margin, obstacles, previousDetour],
+    () => routeSmoothStep(source, target, { margin, obstacles, fan, previousDetour }),
+    [source, target, margin, obstacles, fan, previousDetour],
   );
 
   useEffect(() => {

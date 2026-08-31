@@ -34,6 +34,7 @@ import type { Connection } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "./graph/show-graph-editor.css";
 
+import { EdgeInteractionProvider } from "./graph/edge-interaction";
 import { NodeInteractionProvider } from "./graph/node-interaction";
 import { useShowGraphEditorController } from "./commands/use-show-graph-editor-controller";
 import { ShowGraphContextMenu } from "./ShowGraphContextMenu";
@@ -46,6 +47,7 @@ export function ShowGraphEditorInner(props: ShowGraphEditorProps) {
     connections,
     inspector,
     interaction,
+    edgeInteraction,
     menuPosition,
     selectedNodes,
     nodes,
@@ -76,7 +78,8 @@ export function ShowGraphEditorInner(props: ShowGraphEditorProps) {
   const { initialViewport, onViewportChange, className } = props;
 
   return (
-    <NodeInteractionProvider value={interaction}>
+    <EdgeInteractionProvider value={edgeInteraction}>
+      <NodeInteractionProvider value={interaction}>
       <div
         className={cn("mechane-show-graph relative h-full w-full bg-background", className)}
         data-flow-theme="neutral"
@@ -120,6 +123,7 @@ export function ShowGraphEditorInner(props: ShowGraphEditorProps) {
           confirmDelete={confirmDelete}
         />
       </div>
-    </NodeInteractionProvider>
+      </NodeInteractionProvider>
+    </EdgeInteractionProvider>
   );
 }

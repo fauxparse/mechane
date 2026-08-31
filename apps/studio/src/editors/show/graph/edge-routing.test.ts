@@ -210,6 +210,64 @@ describe("detour side", () => {
   });
 });
 
+describe("fanning parallel edges", () => {
+  const source = endpoint(0, 0, "right");
+
+  it("leaves a route alone when it has no rivals", () => {
+    const plain = routeSmoothStep(source, endpoint(600, 300, "left"));
+    const fanned = routeSmoothStep(source, endpoint(600, 300, "left"), { fan: 0 });
+    expect(fanned.points).toEqual(plain.points);
+  });
+
+  it("steps the middle run aside when there is one to move", () => {
+    const target = endpoint(600, 300, "left");
+    const plain = routeSmoothStep(source, target);
+    const fanned = routeSmoothStep(source, target, { fan: 16 });
+
+    expect(fanned.signature).toBe(plain.signature);
+    expect(fanned.points[1]?.x).toBe((plain.points[1]?.x ?? 0) + 16);
+    expect(fanned.points[2]?.x).toBe((plain.points[2]?.x ?? 0) + 16);
+  });
+
+  it("cuts a jog into a straight route, which has no middle run to move", () => {
+    const target = endpoint(600, 0, "left");
+    expect(routeSmoothStep(source, target).signature).toBe("H");
+
+    const fanned = routeSmoothStep(source, target, { fan: 16 });
+    expect(fanned.signature).toBe("HVHVH");
+    expect(fanned.points.at(0)).toEqual(source.point);
+    expect(fanned.points.at(-1)).toEqual(target.point);
+  });
+
+  it("separates rivals from each other rather than merely from centre", () => {
+    const target = endpoint(600, 0, "left");
+    const left = routeSmoothStep(source, target, { fan: -16 });
+    const right = routeSmoothStep(source, target, { fan: 16 });
+    expect(left.points).not.toEqual(right.points);
+  });
+
+  it("leaves a run too short to hold a jog alone", () => {
+    // Nowhere to put two stubs and a step between them, so overlapping beats
+    // a jog whose corners have no room.
+    const target = endpoint(SIZE.width + 20, 0, "left");
+    const fanned = routeSmoothStep(source, target, { fan: 16 });
+    expect(fanned.signature).toBe("H");
+  });
+
+  it("keeps every invariant a fanned route still owes", () => {
+    const target = endpoint(600, 0, "left");
+    const fanned = routeSmoothStep(source, target, { fan: 16 });
+    const parts = segments(fanned.points);
+    for (const part of parts) {
+      expect(part.length).toBeGreaterThan(0);
+      expect(crosses(part, source.rect)).toBe(false);
+      expect(crosses(part, target.rect)).toBe(false);
+    }
+    expect(parts.at(0)?.length).toBeGreaterThanOrEqual(DEFAULT_MARGIN);
+    expect(parts.at(-1)?.length).toBeGreaterThanOrEqual(DEFAULT_MARGIN);
+  });
+});
+
 describe("obstacles", () => {
   const source = endpoint(0, 0, "right");
   const target = endpoint(600, 300, "left");

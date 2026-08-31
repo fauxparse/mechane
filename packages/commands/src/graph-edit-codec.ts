@@ -32,6 +32,7 @@
 import type {
   Block,
   BlockVariable,
+  EdgeLayout,
   FlowColor,
   GraphEdge,
   GraphNode,
@@ -71,6 +72,7 @@ import {
   setDevicePairingCode,
   setDevicePerConnection,
   setFlowDefaultScene,
+  setEdgeLayout,
   setNodeColor,
   setSceneVariableType,
   setSceneVariableDefault,
@@ -144,6 +146,7 @@ export interface FlatGraphEdge {
   sourcePath?: string[] | null;
   targetPath?: string[] | null;
   fieldMapping?: Record<string, string> | null;
+  layout?: EdgeLayout | null;
   cueId?: string | null;
   actionId?: string | null;
 }
@@ -194,6 +197,7 @@ export interface FlatGraphEdit {
   shapes?: FlatShape[] | null;
   fieldPath?: string[] | null;
   fieldMapping?: Record<string, string> | null;
+  layout?: EdgeLayout | null;
   value?: unknown;
   blockVariables?: FlatBlockVariable[] | null;
   perConnection?: boolean | null;
@@ -205,6 +209,26 @@ export interface FlatGraphEdit {
 // ---------------------------------------------------------------------------
 // Envelope reads
 // ---------------------------------------------------------------------------
+
+/**
+ * A layout arrives as untyped JSON from the wire, so every level is checked:
+ * a run index that is not a number, or a nudge that is not finite, is dropped
+ * rather than trusted into the geometry, where it would render as NaN.
+ */
+function decodeEdgeLayout(value: EdgeLayout | null | undefined): EdgeLayout | null {
+  if (!value || typeof value !== "object") return null;
+  const layout: EdgeLayout = {};
+  for (const [signature, runs] of Object.entries(value)) {
+    if (!runs || typeof runs !== "object") continue;
+    const offsets: Record<string, number> = {};
+    for (const [index, offset] of Object.entries(runs)) {
+      if (!Number.isInteger(Number(index)) || !Number.isFinite(offset)) continue;
+      offsets[index] = Number(offset);
+    }
+    if (Object.keys(offsets).length > 0) layout[signature] = offsets;
+  }
+  return Object.keys(layout).length > 0 ? layout : null;
+}
 
 function required<T>(flat: FlatGraphEdit, field: string, value: T | null | undefined): T {
   if (value === null || value === undefined) {
@@ -437,6 +461,10 @@ export function encodeEdge(edge: GraphEdge): FlatGraphEdge {
     sourcePath: [...edge.sourcePath],
     targetPath: [...edge.targetPath],
     ...(edge.kind === "wiring" ? { fieldMapping: edge.fieldMapping ?? null } : {}),
+    // Authored layout travels with the edge, so undoing a delete puts the
+    // edge back where the author had dragged it rather than back on its
+    // routed default (#475).
+    layout: edge.layout ?? null,
     cueId: edge.kind === "navigate" ? edge.cueId : null,
     actionId: edge.kind === "navigate" ? edge.actionId : null,
   };
@@ -446,12 +474,14 @@ export function decodeEdge(flat: FlatGraphEdge): GraphEdge {
   if (!isEdgeKind(flat.kind)) {
     throw new GraphEditCodecError(`Unknown edge kind "${flat.kind}" on edge "${flat.id}".`);
   }
+  const layout = decodeEdgeLayout(flat.layout);
   const base = {
     id: flat.id,
     sourceId: flat.sourceId,
     targetId: flat.targetId,
     sourcePath: flat.sourcePath ?? [],
     targetPath: flat.targetPath ?? [],
+    ...(layout ? { layout } : {}),
   };
   switch (flat.kind) {
     case "wiring":
@@ -613,6 +643,18 @@ export const GRAPH_EDIT_CODECS: { [T in GraphEdit["type"]]: GraphEditCodec<T> } 
         color: decodeColor(flat.color),
       };
     },
+  },
+  [GRAPH_COMMAND_TYPES.setEdgeLayout]: {
+    command: (edit) => setEdgeLayout(edit.edgeId, edit.layout),
+    encode: (edit) => ({ type: edit.type, edgeId: edit.edgeId, layout: edit.layout }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.setEdgeLayout,
+      edgeId: required(flat, "edgeId", flat.edgeId),
+      // Absent and null mean the same thing here, unlike a node's color: an
+      // edge with no layout and an edge whose layout was cleared both route
+      // themselves, so there is nothing for the distinction to carry.
+      layout: decodeEdgeLayout(flat.layout),
+    }),
   },
   [GRAPH_COMMAND_TYPES.setShapes]: {
     command: (edit) => setShapes(edit.shapes),

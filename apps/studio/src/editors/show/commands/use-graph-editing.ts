@@ -38,10 +38,12 @@ import {
   setShapeFieldDefault,
   setShapeFieldRequired,
   setShapeFieldType,
+  setEdgeLayout,
   setSourceFieldDefault,
 } from "@mechane/commands";
 import type {
   ConnectionTargets,
+  EdgeLayout,
   FlowColor,
   GraphNode,
   NodeKind,
@@ -156,9 +158,20 @@ export interface SourceValueEditing {
   setSourceFieldDefault(nodeId: string, fieldPath: readonly string[], value: unknown): void;
 }
 
+export interface GraphEdgeEditing {
+  /**
+   * Records where an edge's runs have been dragged (#475). `committed` is
+   * false while the pointer is still down and true on release, so a drag
+   * previews live and leaves one entry on the undo stack rather than one per
+   * frame — the same shape as an inline rename.
+   */
+  moveEdge(edgeId: string, layout: EdgeLayout, options: { committed: boolean }): void;
+}
+
 export interface GraphEditing {
   command: GraphCommandEditing;
   gestures: GraphGestureEditing;
+  edges: GraphEdgeEditing;
   creation: GraphCreationEditing;
   deletion: GraphDeletionEditing;
   connections: GraphConnectionEditing;
@@ -324,6 +337,22 @@ export function useGraphEditing(
       return flow;
     },
     [execute, graph],
+  );
+
+  // Dragging an edge handle is a gesture for the same reason a rename is: the
+  // pointer emits a move every frame, and every one of those is a graph edit.
+  // Opened lazily, so an edge merely clicked never opens an empty one.
+  const edgeLayout = useRef<Gesture<ShowGraph> | null>(null);
+
+  const moveEdge = useCallback(
+    (edgeId: string, layout: EdgeLayout, { committed }: { committed: boolean }) => {
+      edgeLayout.current ??= beginGesture({ key: `edgeLayout:${edgeId}`, label: "Move edge" });
+      edgeLayout.current.update(setEdgeLayout(edgeId, layout));
+      if (!committed) return;
+      edgeLayout.current.commit();
+      edgeLayout.current = null;
+    },
+    [beginGesture],
   );
 
   // Renaming is a gesture, so N keystrokes are one undo entry (#28). The
@@ -626,6 +655,7 @@ export function useGraphEditing(
       commitRename,
       cancelRename,
     },
+    edges: { moveEdge },
     creation: {
       createNodeOfKind,
       createNodeFromConnection,

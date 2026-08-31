@@ -29,6 +29,7 @@
 // the composite correct.
 
 import type {
+  EdgeLayout,
   Block,
   BlockVariable,
   DeviceNode,
@@ -81,6 +82,7 @@ export const GRAPH_COMMAND_TYPES = {
   setFlowDefaultScene: "graph.setFlowDefaultScene",
   setSourceType: "graph.setSourceType",
   setWiringFieldMapping: "graph.setWiringFieldMapping",
+  setEdgeLayout: "graph.setEdgeLayout",
   setNodeColor: "graph.setNodeColor",
   setShapes: "graph.setShapes",
   addShape: "graph.addShape",
@@ -737,6 +739,51 @@ export function setWiringFieldMapping(
     apply: (graph) => withWiringFieldMapping(graph, edgeId, fieldMapping),
     restore: (graph, captured) => withWiringFieldMapping(graph, edgeId, captured ?? null),
   });
+}
+
+/**
+ * Records where the author has dragged an edge's runs (#475).
+ *
+ * One drag is one entry: the command coalesces on the edge, so a drag that
+ * previews as it moves and commits on release leaves a single step to undo
+ * rather than one per frame.
+ */
+export function setEdgeLayout(
+  edgeId: string,
+  layout: EdgeLayout | null,
+  label = "Move edge",
+): ShowGraphCommand {
+  return capturing<ShowGraph, EdgeLayout | undefined, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setEdgeLayout,
+    label,
+    scope: "selection",
+    coalesceKey: `${GRAPH_COMMAND_TYPES.setEdgeLayout}:${edgeId}`,
+    edits: [{ type: GRAPH_COMMAND_TYPES.setEdgeLayout, edgeId, layout }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.setEdgeLayout, edgeId, layout: captured ?? null },
+    ],
+    capture: (graph) => {
+      const edge = graph.edges[edgeIndex(graph, edgeId)] as GraphEdge;
+      return edge.layout ? structuredClone(edge.layout) : undefined;
+    },
+    isEmpty: (graph) => {
+      const edge = graph.edges[edgeIndex(graph, edgeId)] as GraphEdge;
+      return JSON.stringify(edge.layout ?? null) === JSON.stringify(layout);
+    },
+    apply: (graph) => withEdgeLayout(graph, edgeId, layout),
+    restore: (graph, captured) => withEdgeLayout(graph, edgeId, captured ?? null),
+  });
+}
+
+function withEdgeLayout(graph: ShowGraph, edgeId: string, layout: EdgeLayout | null): ShowGraph {
+  const index = edgeIndex(graph, edgeId);
+  const edge = graph.edges[index] as GraphEdge;
+  const next = { ...edge };
+  // An edge with every nudge dragged back to nothing is an edge with no
+  // layout, not one carrying an empty record around forever.
+  if (layout === null || Object.keys(layout).length === 0) delete next.layout;
+  else next.layout = structuredClone(layout);
+  return replaceEdge(graph, index, next);
 }
 
 /** Sets or clears one graph-owned Source value override. */

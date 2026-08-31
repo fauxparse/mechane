@@ -28,6 +28,7 @@ import {
   reparentNode,
   setDevicePerConnection,
   setFlowDefaultScene,
+  setEdgeLayout,
   setNodeColor,
   setSceneVariableType,
   setSourceType,
@@ -653,5 +654,37 @@ describe("dragging a node through the stack", () => {
 
     commands.undo();
     expect(commands.state).toEqual(GRAPH);
+  });
+});
+
+describe("setEdgeLayout (#475)", () => {
+  const LAYOUT = { HVH: { "1": -24 } };
+
+  it("records where the runs were dragged, and undoes back to no layout at all", () => {
+    const applied = expectExactRoundTrip(setEdgeLayout(NAVIGATE.id, LAYOUT));
+    expect(applied.state.edges.find((edge) => edge.id === NAVIGATE.id)?.layout).toEqual(LAYOUT);
+  });
+
+  it("restores the layout the edge had before, not merely the absence of one", () => {
+    const dragged = setEdgeLayout(NAVIGATE.id, LAYOUT).apply(GRAPH).state;
+    const again = setEdgeLayout(NAVIGATE.id, { HVH: { "1": 40 } }).apply(dragged);
+
+    expect(again.inverse.apply(again.state).state).toEqual(dragged);
+  });
+
+  it("drops an emptied layout rather than carrying an empty record forever", () => {
+    const dragged = setEdgeLayout(NAVIGATE.id, LAYOUT).apply(GRAPH).state;
+    const cleared = setEdgeLayout(NAVIGATE.id, {}).apply(dragged).state;
+
+    expect(cleared.edges.find((edge) => edge.id === NAVIGATE.id)).not.toHaveProperty("layout");
+  });
+
+  it("coalesces on the edge, so one drag is one undo entry", () => {
+    expect(setEdgeLayout(NAVIGATE.id, LAYOUT).coalesceKey).toBe(
+      setEdgeLayout(NAVIGATE.id, {}).coalesceKey,
+    );
+    expect(setEdgeLayout(NAVIGATE.id, LAYOUT).coalesceKey).not.toBe(
+      setEdgeLayout(TO_PHONE.id, LAYOUT).coalesceKey,
+    );
   });
 });

@@ -287,6 +287,53 @@ export const Obstacles: Story = {
 const NODE = { width: 240, height: 56 };
 
 /**
+ * Parallel edges: the domain allows several Navigate edges between one pair of
+ * Scenes, one per Cue/Action pairing (#20). Identical endpoints route
+ * identically, so each edge steps aside from the route they would otherwise
+ * share. Aligned Scenes are the hard case — a straight line has no middle run
+ * to move, so one is cut into it.
+ */
+export const ParallelEdges: Story = {
+  args: { alwaysShowHandles: false },
+  render: (args) => (
+    <div className="grid grid-cols-2 gap-3">
+      {[
+        { label: "aligned: a jog is cut in", offset: { x: 420, y: 0 } },
+        { label: "offset: the middle run steps aside", offset: { x: 420, y: 120 } },
+      ].map(({ label, offset }) => {
+        const sourceRect = { x: 0, y: 0, ...SMALL };
+        const targetRect = { x: offset.x, y: offset.y, ...SMALL };
+        const source = endpointAt(sourceRect, "right");
+        const target = endpointAt(targetRect, "left");
+        const count = 3;
+        return (
+          <figure key={label} className="rounded border border-slate-200 p-2">
+            <svg viewBox="-50 -90 620 260" className="w-full" style={{ overflow: "visible" }}>
+              <NodeBox rect={sourceRect} color={SOURCE_COLOR} />
+              <NodeBox rect={targetRect} color={TARGET_COLOR} />
+              {Array.from({ length: count }, (_, index) => (
+                <RoutedEdge
+                  key={index}
+                  source={source}
+                  target={target}
+                  sourceColor={SOURCE_COLOR}
+                  targetColor={TARGET_COLOR}
+                  fan={(index - (count - 1) / 2) * 16}
+                  margin={args.margin}
+                  maxRadius={args.maxRadius}
+                  alwaysShowHandles={args.alwaysShowHandles}
+                />
+              ))}
+            </svg>
+            <figcaption className="mt-1 text-[10px] text-slate-500">{label}</figcaption>
+          </figure>
+        );
+      })}
+    </div>
+  ),
+};
+
+/**
  * Drag the nodes, drag the handles. The readout is the shape signature the
  * handle offsets are stored against — move a node far enough that the shape
  * changes and the offsets go dormant rather than landing somewhere absurd.

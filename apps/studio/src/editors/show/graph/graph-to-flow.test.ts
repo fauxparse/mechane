@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { EdgeKind, FlowColor, GraphEdge, GraphNode, NodeKind, Type } from "@mechane/domain";
+import type {
+  EdgeKind,
+  FlowColor,
+  GraphEdge,
+  GraphNode,
+  NodeKind,
+  ShowGraph,
+  Type,
+} from "@mechane/domain";
 
 import {
   FLOW_HEADER_HEIGHT,
@@ -655,5 +663,68 @@ describe("flowSize", () => {
     const size = flowSize([node({ id: "scene_1", kind: "scene", position: { x: 300, y: 200 } })]);
     expect(size.width).toBeGreaterThan(300 + NODE_WIDTH);
     expect(size.height).toBeGreaterThan(200 + NODE_HEIGHT);
+  });
+});
+
+describe("parallel edges and authored layout (#475)", () => {
+  const scene = (id: string, x: number): GraphNode => ({
+    id,
+    kind: "scene",
+    name: id,
+    position: { x, y: 0 },
+    parentId: "flow_1",
+    variables: [],
+  });
+
+  const navigate = (id: string, cueId: string): GraphEdge => ({
+    id,
+    kind: "navigate",
+    sourceId: "scene_a",
+    targetId: "scene_b",
+    sourcePath: [],
+    targetPath: [],
+    cueId,
+    actionId: null,
+  });
+
+  const graph: ShowGraph = {
+    nodes: [
+      {
+        id: "flow_1",
+        kind: "flow",
+        name: "Flow",
+        position: { x: 0, y: 0 },
+        parentId: null,
+        defaultSceneId: null,
+      },
+      scene("scene_a", 0),
+      scene("scene_b", 400),
+    ],
+    edges: [navigate("edge_1", "cue_1"), navigate("edge_2", "cue_2"), navigate("edge_3", "cue_3")],
+  };
+
+  it("numbers each edge within the set sharing both its handles", () => {
+    const { edges } = graphToFlow(graph);
+    expect(edges.map((edge) => edge.data?.parallelIndex)).toEqual([0, 1, 2]);
+    expect(edges.map((edge) => edge.data?.parallelCount)).toEqual([3, 3, 3]);
+  });
+
+  it("leaves an edge with no rivals alone", () => {
+    const { edges } = graphToFlow({ ...graph, edges: [navigate("edge_1", "cue_1")] });
+    expect(edges[0]?.data).toMatchObject({ parallelIndex: 0, parallelCount: 1 });
+  });
+
+  it("carries an edge's authored layout through to the canvas", () => {
+    const layout = { HVH: { "1": -24 } };
+    const { edges } = graphToFlow({
+      ...graph,
+      edges: [{ ...navigate("edge_1", "cue_1"), layout }],
+    });
+    expect(edges[0]?.data?.layout).toEqual(layout);
+  });
+
+  it("says an edge has no layout rather than an empty one", () => {
+    const { edges } = graphToFlow({ ...graph, edges: [navigate("edge_1", "cue_1")] });
+    expect(edges[0]?.data?.layout).toBeNull();
   });
 });

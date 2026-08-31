@@ -9,6 +9,7 @@ import type {
   BlockState,
   BlockVariable,
   Cue,
+  EdgeLayout,
   EventBinding,
   FlowColor,
   GraphEdge,
@@ -235,6 +236,7 @@ function toEdge(row: EdgeRow): GraphEdge {
     sourcePath: row.sourcePath,
     targetPath: row.targetPath,
     ...(row.fieldMapping ? { fieldMapping: row.fieldMapping as Record<string, string> } : {}),
+    ...(row.layout ? { layout: row.layout as EdgeLayout } : {}),
   };
   switch (row.kind) {
     case "wiring":
@@ -654,6 +656,7 @@ export async function persistGraphRows(
         sourcePath: edge.sourcePath,
         targetPath: edge.targetPath,
         fieldMapping: edge.kind === "wiring" ? (edge.fieldMapping ?? null) : null,
+        layout: edge.layout ?? null,
         // `target_variable_id` is a generated column — the database
         // derives it from `target_path`, so it isn't written here.
         cueId: edge.kind === "navigate" ? edge.cueId : null,

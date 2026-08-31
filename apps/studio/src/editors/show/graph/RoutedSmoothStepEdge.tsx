@@ -7,9 +7,10 @@
 // Storybook.
 
 import { Position, useInternalNode, useStore, type EdgeProps } from "@xyflow/react";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 
-import { RoutedEdge, type OffsetsBySignature } from "./RoutedEdge";
+import { RoutedEdge } from "./RoutedEdge";
+import { useEdgeInteraction } from "./edge-interaction";
 import type { HandleOffsets } from "./edge-path";
 import type { Endpoint, Rect, Side } from "./edge-routing";
 import type { ShowFlowEdge } from "./graph-to-flow";
@@ -45,14 +46,18 @@ export function RoutedSmoothStepEdge({
   const sourceNode = useInternalNode(source);
   const targetNode = useInternalNode(target);
   const zoom = useStore((state) => state.transform[2]);
+  const { moveEdge } = useEdgeInteraction();
 
-  // Prototype-local. The destination is the domain graph, alongside node
-  // positions — a drag is an edit of the Show, not of this browser tab — but
-  // that is a schema change, and the schema is what playing with this decides.
-  const [offsets, setOffsets] = useState<OffsetsBySignature>({});
-  const onOffsetsChange = useCallback((signature: string, next: HandleOffsets) => {
-    setOffsets((current) => ({ ...current, [signature]: next }));
-  }, []);
+  // A drag goes straight into the graph, so the preview the user sees is the
+  // edit itself rather than a local copy of it that has to be reconciled
+  // afterwards. The gesture behind `moveEdge` keeps the whole drag to one
+  // undo entry (#475).
+  const onOffsetsChange = useCallback(
+    (signature: string, next: HandleOffsets, meta: { committed: boolean }) => {
+      moveEdge(id, { ...data?.layout, [signature]: asLayout(next) }, meta);
+    },
+    [moveEdge, id, data?.layout],
+  );
 
   const sourceEndpoint = endpointFor(sourceNode, { x: sourceX, y: sourceY }, sourcePosition);
   const targetEndpoint = endpointFor(targetNode, { x: targetX, y: targetY }, targetPosition);
@@ -65,8 +70,9 @@ export function RoutedSmoothStepEdge({
       target={targetEndpoint}
       sourceColor={tokenFor(data?.sourceColor)}
       targetColor={tokenFor(data?.targetColor)}
-      offsets={offsets}
+      offsets={data?.layout ?? undefined}
       onOffsetsChange={onOffsetsChange}
+      fan={fanFor(data?.parallelIndex ?? 0, data?.parallelCount ?? 1)}
       selected={selected}
       zoom={zoom}
       markerStart={markerStart}
@@ -74,6 +80,30 @@ export function RoutedSmoothStepEdge({
       label={data?.invalidReason ? "!" : data?.coercing ? "↝" : undefined}
       labelColor={data?.invalidReason ? "var(--destructive)" : undefined}
     />
+  );
+}
+
+/**
+ * How far this edge steps aside from the others sharing its handles: evenly
+ * spread about the route they would all otherwise share, so no edge in a pair
+ * sits where a lone edge would and the set stays symmetrical.
+ */
+function fanFor(index: number, count: number): number {
+  if (count <= 1) return 0;
+  return (index - (count - 1) / 2) * FAN_SPACING;
+}
+
+/** Enough to clear a handle's width, so neighbouring handles stay separable. */
+const FAN_SPACING = 16;
+
+/**
+ * Handle offsets are numbers keyed by run index in the geometry, and strings
+ * keyed the same way once they are JSON on their way to the server. The two
+ * are the same record; this is where the type says so.
+ */
+function asLayout(offsets: HandleOffsets): Record<string, number> {
+  return Object.fromEntries(
+    Object.entries(offsets).filter(([, offset]) => Number.isFinite(offset) && offset !== 0),
   );
 }
 

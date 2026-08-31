@@ -204,6 +204,20 @@ export function deviceSourceType(handle: string | null | undefined): Type | null
   return null;
 }
 
+/**
+ * Authored edge layout: how far the user has dragged each of an edge's
+ * draggable runs from where routing would have put it, in canvas units.
+ *
+ * The outer key is the *shape* of the route the nudges were placed on — a
+ * string like `"HVH"` naming each run's orientation in order — and the inner
+ * key is the index of the run within it. Keying by shape rather than by index
+ * alone is what makes the layout survive the graph moving underneath it: an
+ * index into a route of a different shape means nothing, so a route that
+ * changes shape leaves the nudges dormant rather than applying them somewhere
+ * absurd, and a route that changes back picks them up again (#475).
+ */
+export type EdgeLayout = Record<string, Record<string, number>>;
+
 interface BaseEdge {
   id: string;
   sourceId: string;
@@ -220,6 +234,11 @@ interface BaseEdge {
    * within it.
    */
   targetPath: ValuePath;
+  /**
+   * Where the author has dragged this edge's runs, if anywhere. Absent means
+   * "wherever routing puts it", which is what almost every edge says.
+   */
+  layout?: EdgeLayout;
 }
 
 /**
