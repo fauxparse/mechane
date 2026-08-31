@@ -71,9 +71,6 @@ export type RoutedEdgeProps = {
   onClick?: () => void;
 };
 
-/** Precision editing is meaningless this far out, so the handles get out of the way. */
-const MIN_HANDLE_ZOOM = 0.5;
-
 /**
  * Nodes are drawn with a 1px border, and an edge is the same kind of line as
  * the boxes it joins — so it takes the same weight rather than a heavier one
@@ -93,7 +90,7 @@ const LABEL_RADIUS = 10;
 /** How close counts as grabbing the handle rather than what's behind it. */
 const HANDLE_HIT = 26;
 
-/** Wide enough to grab the edge without hunting for it. */
+/** Wide enough to grab the edge without hunting for it, in screen pixels. */
 const INTERACTION_WIDTH = 20;
 
 /** Shared empties, so "nothing saved here" stays referentially stable across renders. */
@@ -148,8 +145,7 @@ export function RoutedEdge({
   );
 
   const handles = edgeHandles(geometry);
-  const revealed =
-    alwaysShowHandles || ((selected || hovered || dragging !== null) && zoom >= MIN_HANDLE_ZOOM);
+  const revealed = alwaysShowHandles || selected || hovered || dragging !== null;
 
   // Torn down when a drag ends, and again before any new drag starts. A
   // pointer sequence that never delivers its pointerup — a cancelled gesture,
@@ -226,12 +222,15 @@ export function RoutedEdge({
       onClick={onClick}
     >
       {/* One fat invisible run over the whole route: the hit area for hover
-          and click, and the reason reaching for a handle never dismisses it. */}
+          and click, and the reason reaching for a handle never dismisses it.
+          Counter-scaled like the handles are, so the edge stays as easy to
+          hit zoomed out as zoomed in — in canvas units it would shrink with
+          everything else, and a 1px line would need pixel-hunting. */}
       <path
         d={geometry.segments.map((segment) => segment.d).join(" ")}
         fill="none"
         stroke="transparent"
-        strokeWidth={INTERACTION_WIDTH}
+        strokeWidth={INTERACTION_WIDTH / zoom}
       />
 
       {geometry.segments.map((segment) => (

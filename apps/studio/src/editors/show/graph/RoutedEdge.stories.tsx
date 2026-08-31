@@ -437,10 +437,8 @@ export const Playground: Story = {
                 </button>
               ))}
             </span>
-            {/* Below 0.5 the handles hide themselves: precision editing that
-                far out is meaningless, and they only add clutter. */}
             <span className="mt-1 block text-slate-500">
-              handles {zoom >= 0.5 ? "shown on hover" : "hidden below 0.5×"}
+              handles and hit area hold their screen size at any zoom
             </span>
           </label>
 
