@@ -1,0 +1,284 @@
+// Turning a routed polyline into something drawable (#475).
+//
+// Everything an edge renders is defined on the *straight runs* of the route:
+// the drag handles, the label anchor, and the per-segment colors. The rounded
+// corners are decoration applied last, which is why ./edge-routing hands over
+// an unrounded polyline and this module rounds it — an arc never carries a
+// handle, a label, or a color of its own.
+
+import { DEFAULT_MARGIN, DEFAULT_MAX_RADIUS, type Point } from "./edge-routing";
+
+export type Orientation = "horizontal" | "vertical";
+
+export type Segment = {
+  index: number;
+  from: Point;
+  to: Point;
+  orientation: Orientation;
+  length: number;
+  /** The middle of the straight run, ignoring the arcs at either end. */
+  midpoint: Point;
+  /**
+   * Where this segment's midpoint falls along the whole route, 0 at the source
+   * and 1 at the target. Segment colors blend on this rather than on the index,
+   * so a long run sits where its length says it should instead of banding.
+   */
+  position: number;
+  /** The `d` attribute: the straight run, plus the arc into the next segment. */
+  d: string;
+  /**
+   * Whether this segment carries a drag handle. The first and last segments
+   * never do — they're the stubs leaving each handle, and moving them would
+   * detach the edge from the node it belongs to.
+   */
+  draggable: boolean;
+};
+
+export type EdgeGeometry = {
+  segments: Segment[];
+  /** Total length of the unrounded route. */
+  length: number;
+  /**
+   * Where the label sits. `segmentIndex` is null for routes with no interior
+   * segment at all, where the anchor falls back to the midpoint of the whole
+   * path — and where, by the same token, there is nothing to drag.
+   */
+  label: { point: Point; segmentIndex: number | null };
+};
+
+export type GeometryOptions = {
+  maxRadius?: number;
+};
+
+const EPSILON = 0.01;
+
+function orientationOf(from: Point, to: Point): Orientation {
+  return Math.abs(from.y - to.y) < EPSILON ? "horizontal" : "vertical";
+}
+
+function lengthOf(from: Point, to: Point): number {
+  return Math.abs(to.x - from.x) + Math.abs(to.y - from.y);
+}
+
+/** The unit vector a run travels along. */
+function directionOf(from: Point, to: Point): Point {
+  return { x: Math.sign(to.x - from.x), y: Math.sign(to.y - from.y) };
+}
+
+function shift(point: Point, direction: Point, distance: number): Point {
+  return { x: point.x + direction.x * distance, y: point.y + direction.y * distance };
+}
+
+function round(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function moveTo(point: Point): string {
+  return `M ${round(point.x)} ${round(point.y)}`;
+}
+
+function lineTo(point: Point): string {
+  return `L ${round(point.x)} ${round(point.y)}`;
+}
+
+function arcTo(corner: Point, point: Point): string {
+  return `Q ${round(corner.x)} ${round(corner.y)} ${round(point.x)} ${round(point.y)}`;
+}
+
+/**
+ * The corner radius at `points[index]`.
+ *
+ * A cap of `maxRadius`, and no more than half of the shorter of the two runs
+ * meeting there, computed independently per corner. Two adjacent corners on a
+ * short run therefore meet exactly in the middle of it, which is the result
+ * you want: the run is fully consumed by its own curvature and nothing
+ * overshoots. A run so short that its corners go square is honest — it is
+ * telling you the route is cramped there.
+ */
+export function cornerRadius(points: readonly Point[], index: number, maxRadius: number): number {
+  const previous = points[index - 1];
+  const corner = points[index];
+  const next = points[index + 1];
+  if (!previous || !corner || !next) return 0;
+
+  // A reversal — the route doubling back along its own axis — has no corner to
+  // round, only a hairpin. Rounding it would bulge the path sideways.
+  if (orientationOf(previous, corner) === orientationOf(corner, next)) return 0;
+
+  const shorter = Math.min(lengthOf(previous, corner), lengthOf(corner, next));
+  return Math.min(maxRadius, shorter / 2);
+}
+
+/** Derives everything drawable from a routed polyline. */
+export function edgeGeometry(
+  points: readonly Point[],
+  options: GeometryOptions = {},
+): EdgeGeometry {
+  const maxRadius = options.maxRadius ?? DEFAULT_MAX_RADIUS;
+  const count = points.length - 1;
+
+  const radii = points.map((_, index) => cornerRadius(points, index, maxRadius));
+  const lengths: number[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const from = points[i];
+    const to = points[i + 1];
+    lengths.push(from && to ? lengthOf(from, to) : 0);
+  }
+  const total = lengths.reduce((sum, length) => sum + length, 0);
+
+  const segments: Segment[] = [];
+  let travelled = 0;
+
+  for (let i = 0; i < count; i += 1) {
+    const from = points[i];
+    const to = points[i + 1];
+    const length = lengths[i];
+    if (!from || !to || length === undefined) continue;
+
+    const direction = directionOf(from, to);
+    const startRadius = radii[i] ?? 0;
+    const endRadius = radii[i + 1] ?? 0;
+    const start = shift(from, direction, startRadius);
+    const end = shift(to, direction, endRadius === 0 ? 0 : -endRadius);
+
+    let d = `${moveTo(start)} ${lineTo(end)}`;
+    const after = points[i + 2];
+    if (endRadius > 0 && after) {
+      // The arc belongs to the segment before it, so it takes that segment's
+      // color and the next segment starts cleanly on the far side of the bend.
+      d += ` ${arcTo(to, shift(to, directionOf(to, after), endRadius))}`;
+    }
+
+    segments.push({
+      index: i,
+      from,
+      to,
+      orientation: orientationOf(from, to),
+      length,
+      midpoint: { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 },
+      position: total === 0 ? 0 : (travelled + length / 2) / total,
+      d,
+      draggable: i > 0 && i < count - 1,
+    });
+    travelled += length;
+  }
+
+  return { segments, length: total, label: labelAnchor(segments, total) };
+}
+
+/**
+ * The label goes at the centre of the centremost segment, rounding down when
+ * the count is even. That index is always an interior one for any route with
+ * three or more segments; below that there is no interior segment to sit on,
+ * and the anchor falls back to the midpoint of the path by arc length. Not the
+ * corner — the eye already goes to the corner, and a label competing with it
+ * reads as clutter.
+ */
+function labelAnchor(
+  segments: readonly Segment[],
+  total: number,
+): { point: Point; segmentIndex: number | null } {
+  const count = segments.length;
+  if (count >= 3) {
+    const index = Math.floor((count - 1) / 2);
+    const segment = segments[index];
+    if (segment) return { point: segment.midpoint, segmentIndex: index };
+  }
+
+  let remaining = total / 2;
+  for (const segment of segments) {
+    if (remaining > segment.length) {
+      remaining -= segment.length;
+      continue;
+    }
+    const direction = directionOf(segment.from, segment.to);
+    return { point: shift(segment.from, direction, remaining), segmentIndex: null };
+  }
+  const only = segments[0];
+  return { point: only?.midpoint ?? { x: 0, y: 0 }, segmentIndex: null };
+}
+
+/**
+ * Perpendicular nudges the user has dragged onto a route, by segment index.
+ *
+ * These are only ever read back against a route with a matching shape
+ * signature — see `Route.signature`. An index into a route of a different
+ * shape means nothing, so a shape change leaves the offsets dormant rather
+ * than applying them somewhere absurd.
+ */
+export type HandleOffsets = Readonly<Record<number, number>>;
+
+export type OffsetOptions = {
+  /** Shortest a neighbouring run may be squeezed to by a drag. */
+  margin?: number;
+};
+
+/**
+ * Moves each offset segment perpendicular to itself, clamped so the runs on
+ * either side keep their margin and never flip direction. A handle that can be
+ * dragged into an illegal route is a handle whose illegal states you then have
+ * to write recovery code for; clamping means they never arise.
+ */
+export function applyHandleOffsets(
+  points: readonly Point[],
+  offsets: HandleOffsets,
+  options: OffsetOptions = {},
+): Point[] {
+  const margin = options.margin ?? DEFAULT_MARGIN;
+  const moved = points.map((point) => ({ ...point }));
+
+  for (const [key, requested] of Object.entries(offsets)) {
+    const index = Number(key);
+    const from = moved[index];
+    const to = moved[index + 1];
+    const before = moved[index - 1];
+    const after = moved[index + 2];
+    if (!from || !to || !before || !after || requested === 0) continue;
+
+    // A vertical run is dragged horizontally, and vice versa.
+    const axis = orientationOf(from, to) === "vertical" ? "x" : "y";
+    const delta = clampOffset(requested, before[axis] - from[axis], after[axis] - to[axis], margin);
+    from[axis] += delta;
+    to[axis] += delta;
+  }
+
+  return moved;
+}
+
+/**
+ * `incoming` and `outgoing` are the signed lengths of the neighbouring runs,
+ * measured *away* from the segment being moved. Moving by `delta` shortens
+ * whichever of them points the same way and lengthens the other, so each one
+ * contributes a single bound.
+ */
+function clampOffset(
+  delta: number,
+  incoming: number,
+  outgoing: number,
+  margin: number,
+): number {
+  let low = Number.NEGATIVE_INFINITY;
+  let high = Number.POSITIVE_INFINITY;
+
+  for (const run of [incoming, outgoing]) {
+    // `run` shrinks as the segment moves towards it: a positive run limits how
+    // far the segment may move in the positive direction, and vice versa.
+    if (run > 0) high = Math.min(high, run - margin);
+    else low = Math.max(low, run + margin);
+  }
+
+  return Math.min(high, Math.max(low, delta));
+}
+
+/** The draggable handles on a route, in segment order. */
+export function edgeHandles(
+  geometry: EdgeGeometry,
+): { segmentIndex: number; point: Point; orientation: Orientation }[] {
+  return geometry.segments
+    .filter((segment) => segment.draggable)
+    .map((segment) => ({
+      segmentIndex: segment.index,
+      point: segment.midpoint,
+      orientation: segment.orientation,
+    }));
+}
