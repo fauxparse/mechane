@@ -14,6 +14,12 @@ type FakeSocket = {
   close(): void;
 };
 
+class TestCloseEvent extends Event {
+  readonly code = 1_000;
+  readonly reason = "";
+  readonly wasClean = true;
+}
+
 class FakeWebSocket implements FakeSocket {
   static readonly OPEN = 1;
   static readonly CLOSED = 3;
@@ -43,7 +49,7 @@ class FakeWebSocket implements FakeSocket {
 
   close(): void {
     this.readyState = FakeWebSocket.CLOSED;
-    this.onclose?.(new CloseEvent("close"));
+    this.onclose?.(new TestCloseEvent("close"));
   }
 }
 
