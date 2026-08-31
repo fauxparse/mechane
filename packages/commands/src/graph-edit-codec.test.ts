@@ -52,6 +52,11 @@ const ADD_SCENE: Extract<GraphEdit, { type: "graph.addNode" }> = {
 const FIXTURES: { [T in GraphEdit["type"]]: Extract<GraphEdit, { type: T }> } = {
   "graph.addNode": ADD_SCENE,
   "graph.removeNode": { type: "graph.removeNode", nodeId: "scene_lobby" },
+  "graph.setEdgeLayout": {
+    type: "graph.setEdgeLayout",
+    edgeId: "edge_1",
+    layout: { HVH: { "1": -24 }, HVHVH: { "1": 8, "3": -16 } },
+  },
   "graph.moveNode": { type: "graph.moveNode", nodeId: "scene_lobby", position: { x: 1, y: 2 } },
   "graph.renameNode": { type: "graph.renameNode", nodeId: "scene_lobby", name: "Foyer" },
   "graph.reparentNode": {

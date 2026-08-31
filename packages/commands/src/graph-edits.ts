@@ -34,6 +34,7 @@
 //     applies what it is told; blast radius is the editor's policy (#42).
 
 import type {
+  EdgeLayout,
   Block,
   BlockVariable,
   FlowColor,
@@ -95,6 +96,11 @@ export type GraphEdit =
       readonly type: typeof GRAPH_COMMAND_TYPES.setNodeColor;
       readonly nodeId: string;
       readonly color: FlowColor | null;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setEdgeLayout;
+      readonly edgeId: string;
+      readonly layout: EdgeLayout | null;
     }
   | {
       readonly type: typeof GRAPH_COMMAND_TYPES.setShapes;
@@ -314,6 +320,8 @@ function supersedes(edit: GraphEdit): { key: string; ids: readonly string[] } | 
       };
     case GRAPH_COMMAND_TYPES.setNodeColor:
       return { key: `nodeColor:${edit.nodeId}`, ids: [edit.nodeId] };
+    case GRAPH_COMMAND_TYPES.setEdgeLayout:
+      return { key: `edgeLayout:${edit.edgeId}`, ids: [edit.edgeId] };
     case GRAPH_COMMAND_TYPES.setSceneVariableType:
       return {
         key: `variableType:${edit.sceneId}:${edit.variableId}`,

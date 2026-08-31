@@ -511,6 +511,8 @@ export const schema = createSchema<GraphQLContext>({
       targetId: ID!
       sourcePath: [String!]!
       targetPath: [String!]!
+      "Where the author has dragged this edge's runs, keyed by route shape (#475)."
+      layout: JSON
     }
 
     type WiringEdge implements GraphEdge {
@@ -519,6 +521,8 @@ export const schema = createSchema<GraphQLContext>({
       targetId: ID!
       sourcePath: [String!]!
       targetPath: [String!]!
+      "Where the author has dragged this edge's runs, keyed by route shape (#475)."
+      layout: JSON
       "Resolved stable field-id mapping."
       fieldMapping: JSON
       "The Scene Variable this edge feeds — the head of targetPath."
@@ -531,6 +535,8 @@ export const schema = createSchema<GraphQLContext>({
       targetId: ID!
       sourcePath: [String!]!
       targetPath: [String!]!
+      "Where the author has dragged this edge's runs, keyed by route shape (#475)."
+      layout: JSON
       "The Cue/Action pairing this transition represents."
       cueId: ID
       actionId: ID
@@ -542,6 +548,8 @@ export const schema = createSchema<GraphQLContext>({
       targetId: ID!
       sourcePath: [String!]!
       targetPath: [String!]!
+      "Where the author has dragged this edge's runs, keyed by route shape (#475)."
+      layout: JSON
     }
 
     type EventBinding {
@@ -819,6 +827,8 @@ export const schema = createSchema<GraphQLContext>({
       sourcePath: [String!]
       targetPath: [String!]
       fieldMapping: JSON
+      "Where the author has dragged this edge's runs, keyed by route shape (#475)."
+      layout: JSON
       cueId: ID
       actionId: ID
     }
@@ -847,6 +857,8 @@ export const schema = createSchema<GraphQLContext>({
       fieldPath: [ID!]
       "The wiring edge's stable source-field to target-field mapping."
       fieldMapping: JSON
+      "The edge layout, for graph.setEdgeLayout; null clears it."
+      layout: JSON
       "The graph-owned Source field value; null clears the override."
       value: JSON
       "The Block target for Block lifecycle and variable commands."
@@ -900,6 +912,8 @@ export const schema = createSchema<GraphQLContext>({
       fieldPath: [ID!]
       "The wiring edge's stable source-field to target-field mapping."
       fieldMapping: JSON
+      "The edge layout, for graph.setEdgeLayout; null clears it."
+      layout: JSON
       "The Source field value; null clears the override."
       value: JSON
       elementId: ID

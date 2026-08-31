@@ -36,6 +36,8 @@ const graph: ShowGraph = {
       targetId: "source_copy",
       sourcePath: [],
       targetPath: [],
+      // Where the author dragged this edge's runs, keyed by route shape (#475).
+      layout: { HVH: { "1": -24 } },
     },
   ],
 };
@@ -66,6 +68,31 @@ describe("graph row persistence", () => {
     expect(reread.nodes).toEqual(graph.nodes);
     expect(reread.edges).toEqual(graph.edges);
     expect(await db.select().from(devices).where(eq(devices.showId, showId))).toEqual([]);
+  });
+
+  it("keeps an edge's authored layout across a write and a reread", async () => {
+    await createShow();
+
+    await db.transaction((tx) => persistGraphRows(tx, showId, "draft", graph));
+    const reread = await readGraphRows(showId, "draft");
+
+    expect(reread.edges[0]).toMatchObject({
+      id: "edge_score",
+      layout: { HVH: { "1": -24 } },
+    });
+  });
+
+  it("leaves an edge that was never dragged with no layout at all", async () => {
+    await createShow();
+
+    const plain = {
+      ...graph,
+      edges: graph.edges.map(({ layout: _layout, ...edge }) => edge),
+    };
+    await db.transaction((tx) => persistGraphRows(tx, showId, "draft", plain));
+    const reread = await readGraphRows(showId, "draft");
+
+    expect(reread.edges[0]).not.toHaveProperty("layout");
   });
 
   it("rejects a stale version without changing stored graph rows", async () => {

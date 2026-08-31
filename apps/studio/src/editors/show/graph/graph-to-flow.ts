@@ -5,9 +5,15 @@
 // geometry, handles, and collapsed Flow projection. The domain fact seam owns
 // inherited colors, wired Variables, driven Devices, entry Scenes, and type
 // compatibility so other Show Editor surfaces can reuse those answers.
-import { deriveShowGraphFacts, fieldsForType, valueAtPath } from "@mechane/domain";
+import {
+  DEFAULT_FLOW_COLOR,
+  deriveShowGraphFacts,
+  fieldsForType,
+  valueAtPath,
+} from "@mechane/domain";
 import type {
   EdgeKind,
+  EdgeLayout,
   FlowColor,
   GraphEdge,
   GraphNode,
@@ -165,6 +171,25 @@ export type ShowEdgeData = {
   invalidReason: string | null;
   /** The colorway used to render this edge in the editor (#316). */
   color: FlowColor;
+  /** Where the author has dragged this edge's runs, if anywhere (#475). */
+  layout: EdgeLayout | null;
+  /**
+   * This edge's place among those sharing both its endpoints — parallel
+   * Navigate edges are allowed, one per Cue/Action pairing (#20). Identical
+   * endpoints route identically, so without fanning them apart they land on
+   * top of each other, handles included, and cannot even be grabbed to
+   * separate. `count` is 1 and `index` 0 for an edge with no rivals.
+   */
+  parallelIndex: number;
+  parallelCount: number;
+  /**
+   * The resolved colorways of the nodes at either end — resolved meaning a
+   * node's own color, or its Flow's when unset (#316). #475's edge blends
+   * between the two along the run, so it needs both rather than the one
+   * inherited color above.
+   */
+  sourceColor: FlowColor;
+  targetColor: FlowColor;
 };
 
 /**
@@ -199,6 +224,17 @@ export const PLACEHOLDER_NODE_TYPE = "showNode";
 /** The React Flow node type a Flow renders as: a sized container. */
 export const FLOW_NODE_TYPE = "showFlow";
 export const SMART_SMOOTH_STEP_EDGE_TYPE = "smartSmoothStep";
+
+/** #475's replacement: self-routing, with draggable per-segment handles. */
+export const ROUTED_SMOOTH_STEP_EDGE_TYPE = "routedSmoothStep";
+
+/**
+ * Which edge the Show canvas draws. `type` is projected here rather than
+ * stored on the graph, so swapping the two is this one constant and no
+ * migration. Both stay registered in ./show-edge-types while #475's edge is
+ * being compared against the batch-routed one it replaces.
+ */
+const EDGE_TYPE = ROUTED_SMOOTH_STEP_EDGE_TYPE;
 
 /**
  * How big a Flow has to be to hold its children. Children keep their stored
@@ -428,13 +464,14 @@ function toFlowEdge(
   edge: MappableEdge,
   graphNodes: readonly MappableNode[],
   facts: ShowGraphEdgeFacts,
+  endpointColors: { source: FlowColor; target: FlowColor },
 ): ShowFlowEdge {
   const source = graphNodes.find((node) => node.id === edge.sourceId);
   const target = graphNodes.find((node) => node.id === edge.targetId);
   const sourcePath = edge.sourcePath[0];
   return {
     id: edge.id,
-    type: SMART_SMOOTH_STEP_EDGE_TYPE,
+    type: EDGE_TYPE,
     source: edge.sourceId,
     target: edge.targetId,
     sourceHandle:
@@ -452,6 +489,13 @@ function toFlowEdge(
     data: {
       kind: edge.kind,
       color: facts.color,
+      sourceColor: endpointColors.source,
+      targetColor: endpointColors.target,
+      layout: edge.layout ?? null,
+      // Filled in once every edge is mapped: an edge cannot know how many
+      // others share its endpoints until they have all been placed.
+      parallelIndex: 0,
+      parallelCount: 1,
       targetVariableId: facts.targetVariableId,
       coercing: facts.typeCompatibility === "coercing",
       invalidReason: facts.typeCompatibility === "incompatible" ? "Incompatible types" : null,
@@ -525,8 +569,8 @@ export function graphToFlow(
       }
       return nodes;
     }, []),
-    edges: graph.edges
-      .map((edge) => {
+    edges: fanParallelEdges(
+      graph.edges.map((edge) => {
         const sourceFlow = collapsedFlowOwner(edge.sourceId, graph.nodes, collapsed);
         const targetFlow = collapsedFlowOwner(edge.targetId, graph.nodes, collapsed);
         if (sourceFlow && sourceFlow === targetFlow) return null;
@@ -540,6 +584,12 @@ export function graphToFlow(
             typeCompatibility: "unknown",
             color: "neutral",
           },
+          {
+            // An edge re-anchored onto a collapsed Flow takes that Flow's
+            // color: the box it now leaves or lands on is the Flow itself.
+            source: facts.nodes.get(sourceFlow ?? edge.sourceId)?.color ?? DEFAULT_FLOW_COLOR,
+            target: facts.nodes.get(targetFlow ?? edge.targetId)?.color ?? DEFAULT_FLOW_COLOR,
+          },
         );
         return {
           ...mapped,
@@ -548,7 +598,39 @@ export function graphToFlow(
             : {}),
           ...(targetFlow ? { target: targetFlow, targetHandle: handleFor({ kind: "input" }) } : {}),
         };
-      })
-      .filter((edge): edge is ShowFlowEdge => edge !== null),
+      }).filter((edge): edge is ShowFlowEdge => edge !== null),
+    ),
   };
+}
+
+/**
+ * Numbers each edge within the set sharing both its handles, so the edge can
+ * fan itself apart from its rivals.
+ *
+ * Counted *after* collapse re-anchoring, because that is what creates most of
+ * the collisions: several edges into a collapsed Flow all land on its single
+ * input handle, and are then as indistinguishable as parallel Navigate edges
+ * between one pair of Scenes.
+ */
+function fanParallelEdges(edges: readonly ShowFlowEdge[]): ShowFlowEdge[] {
+  const groups = new Map<string, ShowFlowEdge[]>();
+  for (const edge of edges) {
+    const key = parallelKey(edge);
+    const group = groups.get(key);
+    if (group) group.push(edge);
+    else groups.set(key, [edge]);
+  }
+
+  return edges.map((edge) => {
+    const group = groups.get(parallelKey(edge)) ?? [edge];
+    if (!edge.data || group.length === 1) return edge;
+    return {
+      ...edge,
+      data: { ...edge.data, parallelIndex: group.indexOf(edge), parallelCount: group.length },
+    };
+  });
+}
+
+function parallelKey(edge: ShowFlowEdge): string {
+  return [edge.source, edge.sourceHandle, edge.target, edge.targetHandle].join("\u0000");
 }

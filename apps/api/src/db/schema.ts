@@ -478,6 +478,11 @@ export const graphEdges = pgTable(
       .notNull()
       .default(sql`'{}'`),
     fieldMapping: jsonb("field_mapping"),
+    // Where the author has dragged this edge's runs, keyed by the shape of
+    // the route they were placed on (#475). Absent for the overwhelming
+    // majority of edges, which route themselves — hence a nullable jsonb
+    // rather than columns of its own.
+    layout: jsonb("layout"),
     // The head of `target_path` — the Scene Variable a wiring edge lands
     // on. Generated rather than written so it can't disagree with the path
     // it comes from, while still being a real column the foreign key below

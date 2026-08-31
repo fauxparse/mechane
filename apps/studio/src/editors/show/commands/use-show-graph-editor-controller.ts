@@ -27,6 +27,7 @@ import { useShowGraphEditorPalette } from "./use-show-graph-editor-palette";
 import { MESSAGE_MS } from "../show-graph-editor-constants";
 import type { ShowGraphEditorProps } from "../ShowGraphEditor";
 import type { PaletteCommand } from "./palette-commands";
+import type { EdgeInteraction } from "../graph/edge-interaction";
 import type { NodeInteraction } from "../graph/node-interaction";
 
 export interface ShowGraphEditorController {
@@ -63,6 +64,7 @@ export interface ShowGraphEditorController {
   message: string | null;
   confirmDelete: ReturnType<typeof useShowGraphEditorActions>["confirmDelete"];
   interaction: NodeInteraction;
+  edgeInteraction: EdgeInteraction;
 }
 
 export function useShowGraphEditorController({
@@ -293,6 +295,10 @@ export function useShowGraphEditorController({
     }),
     [connections, gestures, resizeFlow, toggleCollapse],
   );
+  const edgeInteraction = useMemo<EdgeInteraction>(
+    () => ({ moveEdge: editing.edges.moveEdge }),
+    [editing.edges.moveEdge],
+  );
 
   useImperativeHandle(
     ref,
@@ -336,5 +342,6 @@ export function useShowGraphEditorController({
     message,
     confirmDelete: actions.confirmDelete,
     interaction,
+    edgeInteraction,
   };
 }
