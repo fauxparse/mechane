@@ -67,3 +67,7 @@ Use the five default triage labels: `needs-triage`, `needs-info`, `ready-for-age
 ### Domain docs
 
 This is a single-context repo: read the root `CONTEXT.md` and relevant ADRs in `docs/adr/`. See `docs/agents/domain.md`.
+
+### Sample-show seeds
+
+Before creating or modifying a TypeScript module under `apps/api/src/db/seeds/shows`, read that Show directory's `SEEDS.md` completely. A new sample Show requires both the specification and its generated TypeScript seed module; `SEEDS.md` is the source of truth. Follow `.agents/skills/build-seeds/SKILL.md` for the regeneration and focused-test contract.
