@@ -102,13 +102,35 @@ describe("edgeGeometry", () => {
     }
   });
 
-  it("places segments along the route by length, not by index", () => {
-    const lopsided = edgeGeometry(polyline([0, 0], [10, 0], [10, 990], [20, 990]));
-    const positions = lopsided.segments.map((s) => s.position);
-    expect(positions[0]).toBeLessThan(0.02);
-    expect(positions[1]).toBeGreaterThan(0.4);
-    expect(positions[2]).toBeGreaterThan(0.98);
-    expect(positions).toEqual([...positions].sort((a, b) => a - b));
+  describe("blend positions", () => {
+    it("gives the runs touching each node that node's color exactly", () => {
+      expect(geometry.segments.map((s) => s.position)).toEqual([0, 0.5, 1]);
+    });
+
+    it("puts both ends on a two-segment route", () => {
+      const corner = edgeGeometry(polyline([0, 0], [100, 0], [100, 100]));
+      expect(corner.segments.map((s) => s.position)).toEqual([0, 1]);
+    });
+
+    it("takes the middle of the blend when there is only one run to color", () => {
+      expect(edgeGeometry(polyline([0, 0], [100, 0])).segments.map((s) => s.position)).toEqual([
+        0.5,
+      ]);
+    });
+
+    it("spreads the interior runs by length rather than by index", () => {
+      // Five runs, the middle one ninety times the length of its neighbours.
+      const lopsided = edgeGeometry(
+        polyline([0, 0], [10, 0], [10, 10], [910, 10], [910, 20], [920, 20]),
+      );
+      const positions = lopsided.segments.map((s) => s.position);
+      expect(positions[0]).toBe(0);
+      expect(positions[4]).toBe(1);
+      expect(positions[1]).toBeLessThan(0.02);
+      expect(positions[2]).toBeCloseTo(0.5, 2);
+      expect(positions[3]).toBeGreaterThan(0.98);
+      expect(positions).toEqual([...positions].sort((a, b) => a - b));
+    });
   });
 });
 

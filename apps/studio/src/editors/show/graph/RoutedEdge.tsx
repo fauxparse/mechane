@@ -310,6 +310,7 @@ function positionOf(segments: readonly Segment[], index: number): number {
  * the blend in CSS, so both ends stay palette tokens and follow the theme.
  */
 function blend(from: string, to: string, position: number): string {
-  if (from === to) return from;
+  if (from === to || position <= 0) return from;
+  if (position >= 1) return to;
   return `color-mix(in oklch, ${to} ${Math.round(position * 100)}%, ${from})`;
 }

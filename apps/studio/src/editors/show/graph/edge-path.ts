@@ -19,9 +19,13 @@ export type Segment = {
   /** The middle of the straight run, ignoring the arcs at either end. */
   midpoint: Point;
   /**
-   * Where this segment's midpoint falls along the whole route, 0 at the source
-   * and 1 at the target. Segment colors blend on this rather than on the index,
-   * so a long run sits where its length says it should instead of banding.
+   * How far along the blend from the source's color to the target's this
+   * segment sits. The runs touching each node take that node's color exactly —
+   * 0 for the first, 1 for the last — because a run leaving a node reads as
+   * part of it. Everything between them spreads across by arc length rather
+   * than by index, so a long run sits where its length says it should instead
+   * of banding. A route of one single run has no end to favour, so it takes
+   * the midpoint of the blend.
    */
   position: number;
   /** The `d` attribute: the straight run, plus the arc into the next segment. */
@@ -126,6 +130,12 @@ export function edgeGeometry(
   }
   const total = lengths.reduce((sum, length) => sum + length, 0);
 
+  // The blend runs between the two runs that touch the nodes, so interior
+  // runs are placed within that span rather than within the whole route.
+  const first = lengths[0] ?? 0;
+  const last = count > 1 ? (lengths[count - 1] ?? 0) : 0;
+  const interior = total - first - last;
+
   const segments: Segment[] = [];
   let travelled = 0;
 
@@ -156,7 +166,7 @@ export function edgeGeometry(
       orientation: orientationOf(from, to),
       length,
       midpoint: { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 },
-      position: total === 0 ? 0 : (travelled + length / 2) / total,
+      position: blendPosition({ index: i, count, midpoint: travelled + length / 2, first, interior }),
       d,
       draggable: i > 0 && i < count - 1,
     });
@@ -164,6 +174,27 @@ export function edgeGeometry(
   }
 
   return { segments, length: total, label: labelAnchor(segments, total) };
+}
+
+/** See `Segment.position`. */
+function blendPosition({
+  index,
+  count,
+  midpoint,
+  first,
+  interior,
+}: {
+  index: number;
+  count: number;
+  midpoint: number;
+  first: number;
+  interior: number;
+}): number {
+  if (count === 1) return 0.5;
+  if (index === 0) return 0;
+  if (index === count - 1) return 1;
+  if (interior <= 0) return 0.5;
+  return (midpoint - first) / interior;
 }
 
 /**
