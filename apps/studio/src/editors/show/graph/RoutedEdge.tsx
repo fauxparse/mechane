@@ -248,7 +248,15 @@ export function RoutedEdge({
       ))}
 
       {handles.map((handle) => {
-        const isLabel = handle.segmentIndex === geometry.label.segmentIndex;
+        // Carrying the label makes this handle a status marker as well as a
+        // grab affordance, and a marker that hides until you hover it reports
+        // the problem only to whoever already suspected one. So it stays
+        // drawn — through the zoom floor too, since scanning a whole graph
+        // zoomed out is exactly when an invalid edge needs to stand out.
+        // Only when it has something to say: with no glyph there is no marker,
+        // and the handle goes back to behaving like every other one.
+        const isMarker = handle.segmentIndex === geometry.label.segmentIndex && Boolean(label);
+        const shown = isMarker || revealed;
         return (
           <g
             key={handle.segmentIndex}
@@ -258,9 +266,9 @@ export function RoutedEdge({
               cursor: handle.orientation === "vertical" ? "ew-resize" : "ns-resize",
               // Fades in, but grabbable from the first frame: a fast reach for
               // a handle must never fall through to the canvas behind it.
-              opacity: revealed ? 1 : 0,
+              opacity: shown ? 1 : 0,
               transition: "opacity 120ms ease-out",
-              pointerEvents: revealed || alwaysShowHandles ? "auto" : "none",
+              pointerEvents: shown || alwaysShowHandles ? "auto" : "none",
             }}
           >
             {/* The grab target, well wider than the chip. A near-miss lands on
@@ -273,8 +281,14 @@ export function RoutedEdge({
               height={HANDLE_HIT}
               fill="transparent"
             />
-            {isLabel && label ? (
-              <Badge color={blend(sourceColor, targetColor, positionOf(geometry.segments, handle.segmentIndex))}>
+            {isMarker ? (
+              <Badge
+                color={blend(
+                  sourceColor,
+                  targetColor,
+                  positionOf(geometry.segments, handle.segmentIndex),
+                )}
+              >
                 <LabelGlyph color={labelColor}>{label}</LabelGlyph>
               </Badge>
             ) : (
