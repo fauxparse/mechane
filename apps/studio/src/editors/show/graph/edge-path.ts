@@ -237,7 +237,18 @@ export function applyHandleOffsets(
 
     // A vertical run is dragged horizontally, and vice versa.
     const axis = orientationOf(from, to) === "vertical" ? "x" : "y";
-    const delta = clampOffset(requested, before[axis] - from[axis], after[axis] - to[axis], margin);
+    const delta = clampOffset(
+      requested,
+      [
+        // Only the stubs have a direction worth defending: one flipping would
+        // send the edge backwards into the node it leaves. Every other run is
+        // free to turn over, which is what lets a drag take a segment past a
+        // neighbour's far end instead of stopping dead at it.
+        { run: before[axis] - from[axis], stub: index - 1 === 0 },
+        { run: after[axis] - to[axis], stub: index + 1 === points.length - 2 },
+      ],
+      margin,
+    );
     from[axis] += delta;
     to[axis] += delta;
   }
@@ -245,29 +256,59 @@ export function applyHandleOffsets(
   return moved;
 }
 
+/** A run next to the segment being moved: its signed length, and whether it's a stub. */
+type Neighbour = { run: number; stub: boolean };
+
 /**
- * `incoming` and `outgoing` are the signed lengths of the neighbouring runs,
- * measured *away* from the segment being moved. Moving by `delta` shortens
- * whichever of them points the same way and lengthens the other, so each one
- * contributes a single bound.
+ * How far a segment may actually move.
+ *
+ * `run` is a neighbour's signed length, measured *away* from the segment, so
+ * moving by `delta` takes that neighbour to `run - delta`.
+ *
+ * A stub contributes a hard bound: it must keep its margin *and* its
+ * direction. Any other neighbour only has to keep its margin, so instead of a
+ * bound it forbids a band `2 * margin` wide around the point where it would
+ * collapse. A drag crossing that band snaps through it and the run turns over
+ * — which is the whole point of a handle, and is how a segment gets past the
+ * far end of the run beside it rather than stopping short of it.
  */
-function clampOffset(
-  delta: number,
-  incoming: number,
-  outgoing: number,
-  margin: number,
-): number {
+function clampOffset(delta: number, neighbours: readonly Neighbour[], margin: number): number {
   let low = Number.NEGATIVE_INFINITY;
   let high = Number.POSITIVE_INFINITY;
+  const forbidden: [number, number][] = [];
 
-  for (const run of [incoming, outgoing]) {
-    // `run` shrinks as the segment moves towards it: a positive run limits how
-    // far the segment may move in the positive direction, and vice versa.
-    if (run > 0) high = Math.min(high, run - margin);
-    else low = Math.max(low, run + margin);
+  for (const { run, stub } of neighbours) {
+    if (!stub) {
+      forbidden.push([run - margin, run + margin]);
+    } else if (run > 0) {
+      high = Math.min(high, run - margin);
+    } else {
+      low = Math.max(low, run + margin);
+    }
   }
 
-  return Math.min(high, Math.max(low, delta));
+  const bounded = (value: number) => Math.min(high, Math.max(low, value));
+  let result = bounded(delta);
+
+  // Two neighbours at most, so two passes settle any interaction between them.
+  for (let pass = 0; pass < 2; pass += 1) {
+    for (const [from, to] of forbidden) {
+      if (result <= from || result >= to) continue;
+      const below = bounded(from);
+      const above = bounded(to);
+      const belowLegal = below <= from;
+      const aboveLegal = above >= to;
+      if (belowLegal && (!aboveLegal || Math.abs(below - result) <= Math.abs(above - result))) {
+        result = below;
+      } else if (aboveLegal) {
+        result = above;
+      } else {
+        result = below;
+      }
+    }
+  }
+
+  return result;
 }
 
 /** The draggable handles on a route, in segment order. */

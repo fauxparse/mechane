@@ -195,6 +195,41 @@ describe("applyHandleOffsets", () => {
     expect(moved[2]?.x).toBe(margin);
   });
 
+  describe("on a five-segment route, where the runs beside a handle are not stubs", () => {
+    // The shape of a left-to-right-facing pair that has to double back: out of
+    // the source, down, along the bottom, up, into the target.
+    const detour = polyline([400, 220], [350, 220], [350, 750], [1030, 750], [1030, 540], [990, 540]);
+
+    it("lets a run cross the far end of the run beside it", () => {
+      // Dragging the bottom run up between the two nodes takes it past where
+      // the run into the target ends, turning that run over. Nothing about
+      // that is illegal, and stopping the drag short of it is the bug.
+      const moved = applyHandleOffsets(detour, { 2: -350 }, { margin: 12 });
+      expect(moved[2]?.y).toBe(400);
+      expect(moved[3]?.y).toBe(400);
+    });
+
+    it("turns the neighbouring run over rather than refusing the drag", () => {
+      const before = detour[4]!.y - detour[3]!.y;
+      const after = applyHandleOffsets(detour, { 2: -350 }, { margin: 12 });
+      expect(Math.sign(after[4]!.y - after[3]!.y)).toBe(-Math.sign(before));
+    });
+
+    it("still never leaves a run shorter than the margin", () => {
+      for (const requested of [-198, -205, -210, -215, -222]) {
+        const moved = applyHandleOffsets(detour, { 2: requested }, { margin: 12 });
+        expect(Math.abs(moved[4]!.y - moved[3]!.y)).toBeGreaterThanOrEqual(12);
+        expect(Math.abs(moved[2]!.y - moved[1]!.y)).toBeGreaterThanOrEqual(12);
+      }
+    });
+
+    it("still defends the stubs, which may not flip into their own node", () => {
+      const moved = applyHandleOffsets(detour, { 1: 10_000 }, { margin: 12 });
+      // The stub out of the source keeps its direction and its margin.
+      expect(moved[1]!.x).toBe(detour[0]!.x - 12);
+    });
+  });
+
   it("keeps a real route drawable after a drag that would collapse it", () => {
     const route = routeSmoothStep(endpoint(0, 0, "right"), endpoint(600, 300, "left"));
     const moved = applyHandleOffsets(route.points, { 1: -10_000 });
