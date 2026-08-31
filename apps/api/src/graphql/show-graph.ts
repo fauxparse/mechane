@@ -199,6 +199,25 @@ export function serializeShowGraph(graph: StoredShowGraph) {
       fieldPath: fieldDefault.fieldPath,
       value: fieldDefault.value,
     })),
+    cues: (graph.cues ?? []).map((cue) => ({
+      id: cue.id,
+      name: cue.name,
+      sceneId: cue.sceneId,
+      actionIds: [...cue.actionIds],
+    })),
+    actions: (graph.actions ?? []).map((action) => ({
+      id: action.id,
+      cueId: action.cueId,
+      kind: action.kind,
+      targetSceneId: action.targetSceneId,
+    })),
+    eventBindings: (graph.eventBindings ?? []).map((binding) => ({
+      id: binding.id,
+      canvasId: binding.canvasId,
+      elementId: binding.elementId,
+      eventKind: binding.eventKind,
+      cueId: binding.cueId,
+    })),
     losses: graph.losses ?? [],
   };
 }
