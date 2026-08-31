@@ -511,6 +511,26 @@ export const schema = createSchema<GraphQLContext>({
       targetPath: [String!]!
     }
 
+    type EventBinding {
+      id: ID!
+      canvasId: ID!
+      elementId: ID!
+      eventKind: String!
+      cueId: ID!
+    }
+    type Cue {
+      id: ID!
+      name: String!
+      sceneId: ID!
+      actionIds: [ID!]!
+    }
+    type Action {
+      id: ID!
+      cueId: ID!
+      kind: String!
+      targetSceneId: ID!
+    }
+
     type PublishLoss {
       sourceId: ID!
       fieldId: ID!
@@ -527,6 +547,9 @@ export const schema = createSchema<GraphQLContext>({
       edges: [GraphEdge!]!
       shapes: [Shape!]!
       blocks: [Block!]!
+      cues: [Cue!]!
+      actions: [Action!]!
+      eventBindings: [EventBinding!]!
       "Sparse graph-owned Source values, keyed by Source node and field path."
       sourceFieldDefaults: [SourceFieldDefault!]!
       updatedAt: String!

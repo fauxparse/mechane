@@ -6,7 +6,8 @@ import { showGraphs } from "../../schema";
 import { publishShowGraph, writeShowGraph } from "../../show-graph";
 import type { Canvas, Position, ShowGraph } from "@mechane/domain";
 
-export type SeedCanvases = Record<string, Canvas>;
+export type SeedCanvas = Canvas & { id: string };
+export type SeedCanvases = Record<string, SeedCanvas>;
 
 export type SeedShow = {
   readonly name: string;
@@ -66,19 +67,20 @@ async function seedCanvases(
   state: "draft" | "published",
   graph: ShowGraph,
   canvases: SeedCanvases,
-): Promise<void> {
+): Promise<Map<string, string>> {
   const [graphRow] = await db
     .select({ id: showGraphs.id })
     .from(showGraphs)
     .where(and(eq(showGraphs.showId, showId), eq(showGraphs.state, state)));
   if (!graphRow) throw new Error(`Seeded ${state} graph for Show "${showId}" was not found.`);
-  await db.transaction(async (tx) => {
+  return db.transaction(async (tx) => {
     const now = new Date();
+    const canvasIds = new Map<string, string>();
     for (const [index, [sceneId, canvas]] of Object.entries(canvases).entries()) {
       const scene = graph.nodes.find((node) => node.id === sceneId && node.kind === "scene");
       if (!scene || scene.kind !== "scene")
         throw new Error(`Seed canvas "${sceneId}" has no Scene node.`);
-      await writeCanvasRows(
+      const canvasId = await writeCanvasRows(
         tx,
         showId,
         graphRow.id,
@@ -87,7 +89,10 @@ async function seedCanvases(
         now,
         seedCanvasPosition(index),
       );
+      canvasIds.set(sceneId, canvasId);
+      if (typeof canvas.id === "string") canvasIds.set(canvas.id, canvasId);
     }
+    return canvasIds;
   });
 }
 
@@ -126,13 +131,35 @@ export async function seedShowData(
   seedAssets?: (showId: string) => Promise<void>,
 ): Promise<void> {
   const graph = buildGraph();
+  const canvases = buildCanvases();
   await seedAssets?.(showId);
-  await writeShowGraph(showId, "draft", graph);
-  await seedCanvases(showId, "draft", graph, buildCanvases());
-  await seedBlockCanvases(showId, "draft", graph);
-  await assertSeedCanvases(showId, "draft", graph);
+  const initialGraph =
+    (graph.eventBindings?.length ?? 0) > 0 ? { ...graph, eventBindings: [] } : graph;
+  await writeShowGraph(showId, "draft", initialGraph);
+  const draftCanvasIds = await seedCanvases(showId, "draft", initialGraph, canvases);
+  const graphWithBindings =
+    (graph.eventBindings?.length ?? 0) > 0
+      ? {
+          ...graph,
+          eventBindings: (graph.eventBindings ?? []).map((binding) => ({
+            ...binding,
+            canvasId: draftCanvasIds.get(binding.canvasId) ?? binding.canvasId,
+          })),
+        }
+      : graph;
+  if (graphWithBindings.eventBindings?.length) {
+    await writeShowGraph(showId, "draft", graphWithBindings);
+  }
+  await seedBlockCanvases(showId, "draft", graphWithBindings);
+  await assertSeedCanvases(showId, "draft", graphWithBindings);
+  if (graphWithBindings.eventBindings?.length) {
+    await writeShowGraph(showId, "published", initialGraph);
+    await seedCanvases(showId, "published", initialGraph, canvases);
+  }
   await publishShowGraph(showId);
-  await seedCanvases(showId, "published", graph, buildCanvases());
-  await seedBlockCanvases(showId, "published", graph);
-  await assertSeedCanvases(showId, "published", graph);
+  if (!graphWithBindings.eventBindings?.length) {
+    await seedCanvases(showId, "published", graphWithBindings, canvases);
+  }
+  await seedBlockCanvases(showId, "published", graphWithBindings);
+  await assertSeedCanvases(showId, "published", graphWithBindings);
 }

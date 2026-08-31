@@ -594,6 +594,34 @@ export const devices = pgTable(
     ),
   ],
 );
+
+/** Mutable Scene position for one Shared Device within one active Run. */
+export const runDeviceStates = pgTable(
+  "run_device_states",
+  {
+    runId: text("run_id")
+      .notNull()
+      .references(() => runs.id, { onDelete: "cascade" }),
+    showId: text("show_id")
+      .notNull()
+      .references(() => shows.id, { onDelete: "cascade" }),
+    deviceId: text("device_id").notNull(),
+    flowId: text("flow_id").notNull(),
+    activeSceneId: text("active_scene_id"),
+    publishedGraphVersion: integer("published_graph_version").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.runId, table.deviceId] }),
+    foreignKey({
+      name: "run_device_states_device_fk",
+      columns: [table.showId, table.deviceId],
+      foreignColumns: [devices.showId, devices.id],
+    }).onDelete("cascade"),
+    index("run_device_states_show_idx").on(table.showId),
+  ],
+);
 // Blocks are Show-scoped definitions, but their structure belongs to each
 // draft/published graph just like Scene Canvases (#136). Block ids are
 // client-generated and therefore part of the composite graph key.
@@ -605,7 +633,9 @@ export const blocks = pgTable(
       .notNull()
       .references(() => showGraphs.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
+    metadata: jsonb("metadata")
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -685,6 +715,98 @@ export const canvasElements = pgTable(
       name: "canvas_elements_parent_fk",
       columns: [table.canvasId, table.parentId],
       foreignColumns: [table.canvasId, table.id],
+    }).onDelete("cascade"),
+  ],
+);
+// Interaction definitions are graph-scoped and copied with draft/published
+// graph state. Actions are normalized rows so their ownership and order are
+// visible to Postgres; Event Bindings point at Scene Canvas Elements.
+export const graphCues = pgTable(
+  "graph_cues",
+  {
+    id: text("id").notNull(),
+    graphId: text("graph_id")
+      .notNull()
+      .references(() => showGraphs.id, { onDelete: "cascade" }),
+    sceneId: text("scene_id").notNull(),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.graphId, table.id] }),
+    unique("graph_cues_scene_name_unique").on(table.graphId, table.sceneId, table.name),
+    foreignKey({
+      name: "graph_cues_scene_fk",
+      columns: [table.graphId, table.sceneId],
+      foreignColumns: [graphNodes.graphId, graphNodes.id],
+    }).onDelete("cascade"),
+  ],
+);
+
+export const graphActions = pgTable(
+  "graph_actions",
+  {
+    id: text("id").notNull(),
+    graphId: text("graph_id")
+      .notNull()
+      .references(() => showGraphs.id, { onDelete: "cascade" }),
+    cueId: text("cue_id").notNull(),
+    position: integer("position").notNull(),
+    kind: text("kind").notNull(),
+    targetSceneId: text("target_scene_id").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.graphId, table.id] }),
+    unique("graph_actions_cue_position_unique").on(table.graphId, table.cueId, table.position),
+    foreignKey({
+      name: "graph_actions_cue_fk",
+      columns: [table.graphId, table.cueId],
+      foreignColumns: [graphCues.graphId, graphCues.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "graph_actions_target_scene_fk",
+      columns: [table.graphId, table.targetSceneId],
+      foreignColumns: [graphNodes.graphId, graphNodes.id],
+    }).onDelete("cascade"),
+  ],
+);
+
+export const graphEventBindings = pgTable(
+  "graph_event_bindings",
+  {
+    id: text("id").notNull(),
+    graphId: text("graph_id")
+      .notNull()
+      .references(() => showGraphs.id, { onDelete: "cascade" }),
+    canvasId: text("canvas_id")
+      .notNull()
+      .references(() => canvases.id, { onDelete: "cascade" }),
+    elementId: text("element_id").notNull(),
+    eventKind: text("event_kind").notNull(),
+    cueId: text("cue_id").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.graphId, table.id] }),
+    unique("graph_event_bindings_element_event_unique").on(
+      table.graphId,
+      table.canvasId,
+      table.elementId,
+      table.eventKind,
+    ),
+    foreignKey({
+      name: "graph_event_bindings_cue_fk",
+      columns: [table.graphId, table.cueId],
+      foreignColumns: [graphCues.graphId, graphCues.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "graph_event_bindings_element_fk",
+      columns: [table.canvasId, table.elementId],
+      foreignColumns: [canvasElements.canvasId, canvasElements.id],
     }).onDelete("cascade"),
   ],
 );

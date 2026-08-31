@@ -27,7 +27,6 @@ import {
   TALLY_ROW_VARIABLE_ID,
   TALLY_SCENE_ID,
   TALLY_VARIABLE_ID,
-  THANK_YOU_SCENE_ID,
   votingCanvases,
   votingGraph,
   workflowBlocks,
@@ -80,17 +79,7 @@ describe("Voting seed", () => {
       variables: [{ id: AUDIENCE_VARIABLE_ID, type: { kind: "array" } }],
     });
 
-    expect(graph.edges.filter((edge) => edge.kind === "navigate")).toEqual([
-      expect.objectContaining({
-        sourceId: CANDIDATE_LIST_SCENE_ID,
-        targetId: CONFIRMATION_SCENE_ID,
-      }),
-      expect.objectContaining({
-        sourceId: CONFIRMATION_SCENE_ID,
-        targetId: CANDIDATE_LIST_SCENE_ID,
-      }),
-      expect.objectContaining({ sourceId: CONFIRMATION_SCENE_ID, targetId: THANK_YOU_SCENE_ID }),
-    ]);
+    expect(graph.edges.filter((edge) => edge.kind === "navigate")).toEqual([]);
     expect(graph.nodes.filter((node) => node.kind === "device")).toEqual([
       expect.objectContaining({ name: "Projector", perConnection: false }),
       expect.objectContaining({ name: "Audience", perConnection: true }),

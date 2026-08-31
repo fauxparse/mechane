@@ -481,6 +481,8 @@ function humanise(error: InvalidShowGraphError, kind: EdgeKind): string {
       return "The source must have a Type.";
     case "invalidNodeColor":
       return "That node color is invalid.";
+    case "invalidNavigateProjection":
+      return "Navigate edges are derived from Actions.";
   }
   const unreachable: never = error.reason;
   return unreachable;

@@ -5,7 +5,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { db } from "./client";
-import { readActiveRun, startRun } from "./runs";
+import { endRun, readActiveRun, readRunDeviceState, startRun } from "./runs";
 import { applyShowEdits, publishShowGraph, readShowGraph, writeShowGraph } from "./show-graph";
 import { devices, shows, user } from "./schema";
 
@@ -35,6 +35,51 @@ const graph: ShowGraph = {
   edges: [],
   sourceFieldDefaults: [{ nodeId: "source_score", fieldPath: [], value: 1 }],
 };
+
+function navigationGraph(
+  defaultSceneId: string,
+  sceneIds = ["scene_red", "scene_green", "scene_blue"],
+): ShowGraph {
+  return {
+    nodes: [
+      {
+        id: "flow_navigation",
+        kind: "flow",
+        name: "Navigation",
+        position: { x: 0, y: 0 },
+        parentId: null,
+        defaultSceneId,
+      },
+      ...sceneIds.map((id, index) => ({
+        id,
+        kind: "scene" as const,
+        name: id,
+        position: { x: index * 100, y: 0 },
+        parentId: "flow_navigation",
+        variables: [],
+      })),
+      {
+        id: "device_navigation",
+        kind: "device" as const,
+        name: "Navigation Device",
+        position: { x: 0, y: 100 },
+        parentId: null,
+        perConnection: false,
+        pairingCode: null,
+      },
+    ],
+    edges: [
+      {
+        id: "edge_navigation_device",
+        kind: "device",
+        sourceId: "flow_navigation",
+        targetId: "device_navigation",
+        sourcePath: [],
+        targetPath: [],
+      },
+    ],
+  };
+}
 
 async function createShow(): Promise<void> {
   await db.insert(user).values({
@@ -86,6 +131,42 @@ describe("Show graph lifecycle", () => {
     expect(applied.version).toBe(draftBeforePublish.version + 1);
     expect((await readActiveRun(showId))?.sourceValues).toEqual({ source_score: 2 });
     expect((await readShowGraph(showId, "published")).version).toBe(2);
+  });
+  it("initializes and reconciles Shared Device navigation state", async () => {
+    await createShow();
+    await writeShowGraph(showId, "draft", navigationGraph("scene_red"));
+    await publishShowGraph(showId);
+
+    const firstRun = await startRun(showId);
+    const initialState = await readRunDeviceState(firstRun.id, "device_navigation");
+    expect(initialState).toMatchObject({
+      showId,
+      deviceId: "device_navigation",
+      flowId: "flow_navigation",
+      activeSceneId: "scene_red",
+      publishedGraphVersion: 1,
+    });
+
+    await writeShowGraph(showId, "draft", navigationGraph("scene_green"));
+    await publishShowGraph(showId);
+    expect(await readRunDeviceState(firstRun.id, "device_navigation")).toMatchObject({
+      activeSceneId: "scene_red",
+      publishedGraphVersion: 2,
+    });
+
+    await writeShowGraph(
+      showId,
+      "draft",
+      navigationGraph("scene_green", ["scene_green", "scene_blue"]),
+    );
+    await publishShowGraph(showId);
+    expect(await readRunDeviceState(firstRun.id, "device_navigation")).toMatchObject({
+      activeSceneId: "scene_green",
+      publishedGraphVersion: 3,
+    });
+
+    await endRun(showId);
+    expect(await readRunDeviceState(firstRun.id, "device_navigation")).toBeNull();
   });
 
   it("persists and publishes Block State metadata", async () => {

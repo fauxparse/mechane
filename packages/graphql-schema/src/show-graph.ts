@@ -137,6 +137,25 @@ export const GetShowGraphQuery = graphql(
             actionId
           }
         }
+        cues {
+          id
+          name
+          sceneId
+          actionIds
+        }
+        actions {
+          id
+          cueId
+          kind
+          targetSceneId
+        }
+        eventBindings {
+          id
+          canvasId
+          elementId
+          eventKind
+          cueId
+        }
         shapes {
           id
           name
