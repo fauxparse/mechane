@@ -7,11 +7,14 @@ import type {
   RealtimeSubscription,
 } from "./index";
 
-interface BrowserWebSocket extends WebSocket {
+interface BrowserWebSocket {
+  readyState: number;
   onopen: ((event: Event) => void) | null;
   onmessage: ((event: MessageEvent) => void) | null;
   onclose: ((event: CloseEvent) => void) | null;
   onerror: ((event: Event) => void) | null;
+  send(data: string): void;
+  close(): void;
 }
 type WebSocketConstructor = new (url: string) => BrowserWebSocket;
 
