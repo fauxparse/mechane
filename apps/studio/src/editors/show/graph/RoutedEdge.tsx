@@ -18,6 +18,7 @@ import {
   edgeGeometry,
   edgeHandles,
   type HandleOffsets,
+  type Orientation,
   type Segment,
 } from "./edge-path";
 import {
@@ -73,10 +74,24 @@ export type RoutedEdgeProps = {
 /** Precision editing is meaningless this far out, so the handles get out of the way. */
 const MIN_HANDLE_ZOOM = 0.5;
 
-const HANDLE_RADIUS = 5;
+/**
+ * Nodes are drawn with a 1px border, and an edge is the same kind of line as
+ * the boxes it joins — so it takes the same weight rather than a heavier one
+ * of its own. Exported so the stories draw their boxes with it too, and the
+ * match is structural rather than two constants that happen to agree.
+ */
+export const EDGE_STROKE_WIDTH = 1;
+
+/** A chip lying along the path: grab it and slide it sideways. */
+const HANDLE_LENGTH = 18;
+const HANDLE_THICKNESS = 6;
+const HANDLE_CORNER = 3;
+
+/** The label's chip is a badge instead, big enough to hold a glyph. */
+const LABEL_RADIUS = 10;
 
 /** How close counts as grabbing the handle rather than what's behind it. */
-const HANDLE_HIT_RADIUS = 12;
+const HANDLE_HIT = 26;
 
 /** Wide enough to grab the edge without hunting for it. */
 const INTERACTION_WIDTH = 20;
@@ -100,7 +115,7 @@ export function RoutedEdge({
   obstacles,
   zoom = 1,
   alwaysShowHandles = false,
-  strokeWidth = 2,
+  strokeWidth = EDGE_STROKE_WIDTH,
   markerStart,
   markerEnd,
   onClick,
@@ -246,17 +261,30 @@ export function RoutedEdge({
               pointerEvents: revealed || alwaysShowHandles ? "auto" : "none",
             }}
           >
-            {/* The grab target, well wider than the dot. A near-miss on a
-                5px circle lands on whatever is behind the edge — usually one
-                of the nodes it connects, which then starts dragging. */}
-            <circle r={HANDLE_HIT_RADIUS} fill="transparent" />
-            <circle
-              r={HANDLE_RADIUS}
-              fill="var(--background, #fff)"
-              stroke={blend(sourceColor, targetColor, positionOf(geometry.segments, handle.segmentIndex))}
-              strokeWidth={2}
+            {/* The grab target, well wider than the chip. A near-miss lands on
+                whatever is behind the edge — usually one of the nodes it
+                connects, which then starts dragging instead. */}
+            <rect
+              x={-HANDLE_HIT / 2}
+              y={-HANDLE_HIT / 2}
+              width={HANDLE_HIT}
+              height={HANDLE_HIT}
+              fill="transparent"
             />
-            {isLabel && label ? <LabelGlyph color={labelColor}>{label}</LabelGlyph> : null}
+            {isLabel && label ? (
+              <Badge color={blend(sourceColor, targetColor, positionOf(geometry.segments, handle.segmentIndex))}>
+                <LabelGlyph color={labelColor}>{label}</LabelGlyph>
+              </Badge>
+            ) : (
+              <Chip
+                orientation={handle.orientation}
+                color={blend(
+                  sourceColor,
+                  targetColor,
+                  positionOf(geometry.segments, handle.segmentIndex),
+                )}
+              />
+            )}
           </g>
         );
       })}
@@ -267,11 +295,45 @@ export function RoutedEdge({
         <g
           transform={`translate(${geometry.label.point.x} ${geometry.label.point.y}) scale(${1 / zoom})`}
         >
-          <circle r={HANDLE_RADIUS + 3} fill="var(--background, #fff)" />
-          <LabelGlyph color={labelColor}>{label}</LabelGlyph>
+          <Badge color={blend(sourceColor, targetColor, 0.5)}>
+            <LabelGlyph color={labelColor}>{label}</LabelGlyph>
+          </Badge>
         </g>
       ) : null}
     </g>
+  );
+}
+
+/** The plain handle: a rounded bar lying along the run it moves. */
+function Chip({ orientation, color }: { orientation: Orientation; color: string }) {
+  const along = orientation === "vertical" ? HANDLE_THICKNESS : HANDLE_LENGTH;
+  const across = orientation === "vertical" ? HANDLE_LENGTH : HANDLE_THICKNESS;
+  return (
+    <rect
+      x={-along / 2}
+      y={-across / 2}
+      width={along}
+      height={across}
+      rx={HANDLE_CORNER}
+      fill="var(--background, #fff)"
+      stroke={color}
+      strokeWidth={EDGE_STROKE_WIDTH}
+    />
+  );
+}
+
+/** The handle that carries the label: the same treatment, sized for a glyph. */
+function Badge({ color, children }: { color: string; children: ReactNode }) {
+  return (
+    <>
+      <circle
+        r={LABEL_RADIUS}
+        fill="var(--background, #fff)"
+        stroke={color}
+        strokeWidth={EDGE_STROKE_WIDTH}
+      />
+      {children}
+    </>
   );
 }
 

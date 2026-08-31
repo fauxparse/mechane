@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useMemo, useState, type PointerEvent } from "react";
 
-import { RoutedEdge, type OffsetsBySignature } from "./RoutedEdge";
+import { EDGE_STROKE_WIDTH, RoutedEdge, type OffsetsBySignature } from "./RoutedEdge";
 import { applyHandleOffsets, edgeGeometry, type HandleOffsets } from "./edge-path";
 import {
   DEFAULT_MARGIN,
@@ -97,7 +97,7 @@ function NodeBox({ rect, color }: { rect: Rect; color: string }) {
       rx={6}
       fill={`color-mix(in oklch, ${color} 12%, white)`}
       stroke={color}
-      strokeWidth={1.5}
+      strokeWidth={EDGE_STROKE_WIDTH}
     />
   );
 }
@@ -406,13 +406,13 @@ export const Playground: Story = {
             <Readout term="signature" value={route.signature} />
             <Readout term="segments" value={String(geometry.segments.length)} />
             <Readout term="detour" value={route.detour ?? "—"} />
-            <Readout term="handles" value={String(geometry.segments.filter((s) => s.draggable).length)} />
+            <Readout
+              term="handles"
+              value={String(geometry.segments.filter((s) => s.draggable).length)}
+            />
             <Readout term="label seg" value={String(geometry.label.segmentIndex ?? "midpoint")} />
             <Readout term="commits" value={String(committed)} />
-            <Readout
-              term="stored"
-              value={Object.keys(offsets).join(" ") || "—"}
-            />
+            <Readout term="stored" value={Object.keys(offsets).join(" ") || "—"} />
           </dl>
 
           <button
@@ -432,7 +432,7 @@ function Readout({ term, value }: { term: string; value: string }) {
   return (
     <div className="flex justify-between gap-2">
       <dt className="text-slate-500">{term}</dt>
-      <dd>{value}</dd>
+      <dd className="text-slate-500">{value}</dd>
     </div>
   );
 }
@@ -449,7 +449,10 @@ export const Stress: Story = {
       const row = Math.floor(index / 10);
       return {
         source: endpointAt({ x: column * 180, y: row * 120, width: 90, height: 30 }, "right"),
-        target: endpointAt({ x: column * 180 + 110, y: row * 120 + 60, width: 90, height: 30 }, "left"),
+        target: endpointAt(
+          { x: column * 180 + 110, y: row * 120 + 60, width: 90, height: 30 },
+          "left",
+        ),
       };
     });
 
