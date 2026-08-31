@@ -36,6 +36,7 @@ interface RenderElementOptions {
   onImageError?: (elementId: string, url: string, event: unknown) => void;
   onTextDoubleClick?: (elementId: string, event: ReactMouseEvent<HTMLDivElement>) => void;
   onTextKeyDown?: (elementId: string, event: ReactKeyboardEvent<HTMLDivElement>) => void;
+  onElementTap?: (elementId: string) => void;
 }
 function literal<T>(value: T | undefined): T | undefined {
   return value;
@@ -313,6 +314,7 @@ function renderElement({
   onImageError,
   onTextDoubleClick,
   onTextKeyDown,
+  onElementTap,
 }: RenderElementOptions): ReactNode {
   const element = prepared.element;
   const parentIsAuto = parent ? isAutoLayout(parent) : false;
@@ -347,6 +349,7 @@ function renderElement({
               onImageError,
               onTextDoubleClick,
               onTextKeyDown,
+              onElementTap,
             }),
           )
       : undefined;
@@ -388,6 +391,7 @@ function renderElement({
           onImageError,
           onTextDoubleClick,
           onTextKeyDown,
+          onElementTap,
         }),
       );
     }
@@ -450,6 +454,7 @@ function renderElement({
       onError: resolved?.url
         ? (event: unknown) => onImageError?.(element.id, resolved.url, event)
         : undefined,
+      onClick: onElementTap ? () => onElementTap(element.id) : undefined,
     });
   }
   const content =
@@ -498,6 +503,7 @@ function renderElement({
         editing && onTextKeyDown
           ? (event: ReactKeyboardEvent<HTMLDivElement>) => onTextKeyDown(element.id, event)
           : undefined,
+      onClick: onElementTap ? () => onElementTap(element.id) : undefined,
     },
     content,
   );
@@ -516,6 +522,7 @@ export const CanvasRenderer = memo(function CanvasRenderer({
   onImageError,
   onTextDoubleClick,
   onTextKeyDown,
+  onElementTap,
 }: CanvasRendererProps): ReactNode {
   return createElement(
     "div",
@@ -534,6 +541,7 @@ export const CanvasRenderer = memo(function CanvasRenderer({
       onImageError,
       onTextDoubleClick,
       onTextKeyDown,
+      onElementTap,
     }),
   );
 });

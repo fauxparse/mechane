@@ -42,6 +42,12 @@ import { db } from "../db/client";
 import { withUniqueId } from "../db/ids";
 import { readPlayerSession } from "../player";
 import { commitBlob, imageDeliveryUrl, listImageAssets, toImageAsset } from "../db/images";
+import {
+  dispatchPlayerEvent,
+  PlayerDispatchConfigurationError,
+  PlayerEventInputError,
+  type PlayerEventInput,
+} from "../db/player-events";
 import { endRun, readActiveRun, startRun } from "../db/runs";
 import { blobUploadSessions, imageAssets, shows, userSettings } from "../db/schema";
 import {
@@ -54,7 +60,7 @@ import { ImageProcessingError, processImage } from "../images";
 import { blobStore } from "../storage/blob-store";
 import { resolveCanvasElementType, serializeArtboard, serializeCanvas } from "./canvas";
 import type { GraphQLContext } from "./context";
-import { requireUserId } from "./context";
+import { requirePlayerPairingCode, requireUserId } from "./context";
 import {
   parseGraphEdit,
   resolveGraphEdgeType,
@@ -222,6 +228,28 @@ export const schema = createSchema<GraphQLContext>({
       name: String!
       perConnection: Boolean!
     }
+
+    input PlayerEventInput {
+      eventId: ID!
+      sceneId: ID!
+      elementId: ID!
+      eventKind: String!
+    }
+    type PlayerEventApplied {
+      eventId: ID!
+      resultingSceneId: ID!
+    }
+    type PlayerEventDuplicate {
+      eventId: ID!
+      outcome: String!
+      resultingSceneId: ID
+      reason: String
+    }
+    type PlayerEventIgnored {
+      eventId: ID!
+      reason: String!
+    }
+    union PlayerEventResult = PlayerEventApplied | PlayerEventDuplicate | PlayerEventIgnored
 
     type PlayerSession {
       device: PlayerDevice!
@@ -931,10 +959,10 @@ export const schema = createSchema<GraphQLContext>({
       "The signed-in user, or null if the request has no valid session."
       me: User
       """
-      A public Device snapshot resolved by its pairing code. The code is the
-      Device credential; no signed-in session is required.
+      A public Device snapshot resolved by the pairing bearer credential.
+      Invalid credentials return null.
       """
-      playerSession(pairingCode: String!): PlayerSession
+      playerSession: PlayerSession
       "The signed-in user's own Shows, most recently updated first."
       shows: [Show!]!
       "A single Show owned by the signed-in user, or null if it doesn't exist or isn't theirs."
@@ -957,6 +985,7 @@ export const schema = createSchema<GraphQLContext>({
       publishShowGraph(showId: ID!): ShowGraph!
       endRun(showId: ID!): Run
       startRun(showId: ID!): Run!
+      submitPlayerEvent(input: PlayerEventInput!): PlayerEventResult!
       beginImageUpload(showId: ID!, mimeType: String!, byteLength: Int!): ImageUploadSession!
       completeImageUpload(sessionId: ID!): ImageUploadCandidate!
       finalizeImageUpload(sessionId: ID!, name: String!): ImageAsset!
@@ -1070,6 +1099,20 @@ export const schema = createSchema<GraphQLContext>({
     GraphEdge: {
       __resolveType: resolveGraphEdgeType,
     },
+    PlayerEventResult: {
+      __resolveType: (result: { kind: string }) => {
+        switch (result.kind) {
+          case "applied":
+            return "PlayerEventApplied";
+          case "duplicate":
+            return "PlayerEventDuplicate";
+          case "ignored":
+            return "PlayerEventIgnored";
+          default:
+            return null;
+        }
+      },
+    },
     Type: {
       kind: (type: string | { kind: "array" | "shape"; of?: unknown; shapeId?: string }) =>
         typeof type === "string" ? type : type.kind,
@@ -1089,9 +1132,9 @@ export const schema = createSchema<GraphQLContext>({
           : toShapeValue(field.defaultValue, field.type),
     },
     Query: {
-      me: (_parent, _args, context) => context.user,
-      playerSession: async (_parent, { pairingCode }: { pairingCode: string }) => {
-        const session = await readPlayerSession(pairingCode);
+      playerSession: async (_parent, _args, context) => {
+        if (!context.playerPairingCode) return null;
+        const session = await readPlayerSession(context.playerPairingCode);
         if (!session) return null;
         return {
           ...session,
@@ -1166,6 +1209,35 @@ export const schema = createSchema<GraphQLContext>({
       },
     },
     Mutation: {
+      submitPlayerEvent: async (
+        _parent: unknown,
+        { input }: { input: PlayerEventInput },
+        context: GraphQLContext,
+      ) => {
+        const pairingCode = requirePlayerPairingCode(context);
+        try {
+          const result = await dispatchPlayerEvent(pairingCode, input);
+          if (!result) {
+            throw new GraphQLError("Player is unavailable.", {
+              extensions: { code: "UNAUTHENTICATED" },
+            });
+          }
+          return result;
+        } catch (error) {
+          if (error instanceof GraphQLError) throw error;
+          if (error instanceof PlayerEventInputError) {
+            throw new GraphQLError(error.message, {
+              extensions: { code: "BAD_USER_INPUT" },
+            });
+          }
+          if (error instanceof PlayerDispatchConfigurationError) {
+            throw new GraphQLError("Unable to process the Player Event.", {
+              extensions: { code: "INTERNAL_SERVER_ERROR" },
+            });
+          }
+          throw error;
+        }
+      },
       applyShowEdits: async (
         _parent,
         { showId, baseVersion, edits }: { showId: string; baseVersion: number; edits: unknown[] },

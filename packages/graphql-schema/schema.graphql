@@ -27,6 +27,32 @@ type PlayerDevice {
   perConnection: Boolean!
 }
 
+input PlayerEventInput {
+  eventId: ID!
+  sceneId: ID!
+  elementId: ID!
+  eventKind: String!
+}
+
+type PlayerEventApplied {
+  eventId: ID!
+  resultingSceneId: ID!
+}
+
+type PlayerEventDuplicate {
+  eventId: ID!
+  outcome: String!
+  resultingSceneId: ID
+  reason: String
+}
+
+type PlayerEventIgnored {
+  eventId: ID!
+  reason: String!
+}
+
+union PlayerEventResult = PlayerEventApplied | PlayerEventDuplicate | PlayerEventIgnored
+
 type PlayerSession {
   device: PlayerDevice!
   run: Run
@@ -800,10 +826,10 @@ type Query {
   me: User
 
   """
-  A public Device snapshot resolved by its pairing code. The code is the
-  Device credential; no signed-in session is required.
+  A public Device snapshot resolved by the pairing bearer credential.
+  Invalid credentials return null.
   """
-  playerSession(pairingCode: String!): PlayerSession
+  playerSession: PlayerSession
 
   """The signed-in user's own Shows, most recently updated first."""
   shows: [Show!]!
@@ -834,6 +860,7 @@ type Mutation {
   publishShowGraph(showId: ID!): ShowGraph!
   endRun(showId: ID!): Run
   startRun(showId: ID!): Run!
+  submitPlayerEvent(input: PlayerEventInput!): PlayerEventResult!
   beginImageUpload(showId: ID!, mimeType: String!, byteLength: Int!): ImageUploadSession!
   completeImageUpload(sessionId: ID!): ImageUploadCandidate!
   finalizeImageUpload(sessionId: ID!, name: String!): ImageAsset!

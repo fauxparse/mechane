@@ -1,5 +1,5 @@
 import { CanvasRenderer, prepareCanvasPresentation } from "@mechane/rendering";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { usePlayerSession, type PlayerSession } from "../api";
 import { SplashScreen } from "./join/SplashScreen";
 
@@ -15,7 +15,13 @@ function WaitingForRun({ session }: { session: PlayerSession }) {
   );
 }
 
-function PlayerCanvas({ session }: { session: PlayerSession }) {
+function PlayerCanvas({
+  session,
+  onElementTap,
+}: {
+  session: PlayerSession;
+  onElementTap: (elementId: string) => void;
+}) {
   const presentation = useMemo(() => {
     if (!session.canvas || !session.scene || !session.run) return null;
     return prepareCanvasPresentation({
@@ -41,13 +47,46 @@ function PlayerCanvas({ session }: { session: PlayerSession }) {
       className="fixed inset-0 overflow-hidden bg-black"
       aria-label={session.scene?.name ?? "Player view"}
     >
-      <CanvasRenderer presentation={presentation} className="h-full w-full" imageLoading="eager" />
+      <CanvasRenderer
+        presentation={presentation}
+        className="h-full w-full"
+        imageLoading="eager"
+        onElementTap={onElementTap}
+      />
     </main>
   );
 }
 
 export function PlayerView({ code }: { code: string }) {
   const state = usePlayerSession(code);
+  const handleElementTap = useCallback(
+    (elementId: string) => {
+      if (
+        state.status !== "ready" ||
+        !state.submitEvent ||
+        !state.session.scene ||
+        !state.session.canvas
+      ) {
+        return;
+      }
+      const binding = (state.session.graph.eventBindings ?? []).find(
+        (candidate) =>
+          candidate.canvasId === state.session.canvas?.id &&
+          candidate.elementId === elementId &&
+          candidate.eventKind === "tap",
+      );
+      if (!binding) return;
+      void state
+        .submitEvent({
+          eventId: crypto.randomUUID(),
+          sceneId: state.session.scene.id,
+          elementId,
+          eventKind: "tap",
+        })
+        .catch(() => undefined);
+    },
+    [state],
+  );
 
   if (state.status === "idle" || state.status === "loading") {
     return (
@@ -76,5 +115,5 @@ export function PlayerView({ code }: { code: string }) {
   }
 
   if (!state.session.run) return <WaitingForRun session={state.session} />;
-  return <PlayerCanvas session={state.session} />;
+  return <PlayerCanvas session={state.session} onElementTap={handleElementTap} />;
 }

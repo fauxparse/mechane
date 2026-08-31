@@ -12,11 +12,23 @@ export interface GraphQLContext {
     email: string;
     emailVerified: boolean;
   } | null;
+  playerPairingCode?: string | null;
+}
+
+function bearerCredential(request: Request): string | null {
+  const header = request.headers.get("authorization");
+  if (!header?.startsWith("Bearer ")) return null;
+  const credential = header.slice("Bearer ".length).trim();
+  return credential.length > 0 ? credential : null;
 }
 
 export async function createContext(request: Request): Promise<GraphQLContext> {
   const session = await auth.api.getSession({ headers: request.headers });
-  return { userId: session?.user.id ?? null, user: session?.user ?? null };
+  return {
+    userId: session?.user.id ?? null,
+    user: session?.user ?? null,
+    playerPairingCode: bearerCredential(request),
+  };
 }
 
 /**
@@ -33,4 +45,13 @@ export function requireUserId(context: GraphQLContext): string {
     });
   }
   return context.userId;
+}
+
+export function requirePlayerPairingCode(context: GraphQLContext): string {
+  if (!context.playerPairingCode) {
+    throw new GraphQLError("Player is unavailable.", {
+      extensions: { code: "UNAUTHENTICATED" },
+    });
+  }
+  return context.playerPairingCode;
 }
