@@ -11,6 +11,8 @@ A Flow with three Scenes: Red, Green, and Blue. The Flow's default Scene is Red.
 
 The Flow is wired to one Shared Device named Navigation Proof Device. The Device is Flow-driven rather than per-connection, so every connection paired to it observes the same active Scene.
 
+Lay out the three scenes in an equilateral triangle; the flow's containing rect should have plenty of space around them. The device should be to the right of the flow.
+
 # Scenes
 
 ## Red
