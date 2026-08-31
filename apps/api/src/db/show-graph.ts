@@ -10,8 +10,6 @@ import { applyGraphEdits } from "@mechane/commands";
 import type { GraphState, ShowGraph } from "@mechane/domain";
 import { assertBlockReferencesExist } from "@mechane/domain";
 import { eq } from "drizzle-orm";
-import { runChannel } from "@mechane/realtime";
-import { realtimeProvider } from "../realtime";
 import type { StoredCanvas } from "./canvas";
 import { persistCanvases, readCanvasById, readCanvasWorkspace } from "./canvas";
 import { db } from "./client";
@@ -22,8 +20,8 @@ import {
   persistGraphRows,
   readGraphRows,
 } from "./graph-persistence";
+import { drainPlayerInvalidations, enqueuePlayerInvalidations } from "./player-invalidation-outbox";
 import {
-  publishPlayerUpdates,
   reconcileActiveRunDeviceStates,
   reconcileActiveRunValues,
   syncActiveRunSourceValues,
@@ -203,8 +201,11 @@ export async function applyShowEdits(
         await writeGraph(tx, showId, "published", liveGraph, undefined, {
           forceBlockCanvasWrites: true,
         });
-        await syncActiveRunSourceValues(showId, liveGraph, liveSourceNodeIds, tx);
-        playerUpdated = true;
+        const updated = await syncActiveRunSourceValues(showId, liveGraph, liveSourceNodeIds, tx);
+        if (updated) {
+          await enqueuePlayerInvalidations(tx, showId);
+          playerUpdated = true;
+        }
       }
     }
     const lastCanvasId = canvasEdits.at(-1)?.canvasId;
@@ -221,7 +222,13 @@ export async function applyShowEdits(
       playerUpdated,
     };
   });
-  if (result.playerUpdated) await publishPlayerUpdates(showId);
+  if (result.playerUpdated) {
+    try {
+      await drainPlayerInvalidations();
+    } catch {
+      // The worker retries the committed outbox row if the provider is down.
+    }
+  }
   return result;
 }
 
@@ -292,17 +299,14 @@ export async function publishShowGraph(
     // Publish is the only moment a Device may be retired (#45). Keeping this
     // in the same transaction preserves the all-or-nothing cutover.
     await retireUnreferencedDevices(tx, showId);
+    await enqueuePlayerInvalidations(tx, showId);
     return { published, reconciled };
   });
-
-  if (result.reconciled.runId) {
-    await realtimeProvider.channel(runChannel(result.reconciled.runId)).publish("run.cutover", {
-      graph: result.published,
-      sourceValues: result.reconciled.sourceValues,
-      losses: result.reconciled.losses,
-    });
+  try {
+    await drainPlayerInvalidations();
+  } catch {
+    // The worker retries the committed outbox row if the provider is down.
   }
-  await publishPlayerUpdates(showId);
 
   return { ...result.published, losses: result.reconciled.losses };
 }

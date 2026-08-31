@@ -22,9 +22,14 @@ type Run {
 }
 
 type PlayerDevice {
-  id: ID!
   name: String!
   perConnection: Boolean!
+}
+
+type PlayerRealtime {
+  channel: String!
+  grant: String!
+  expiresAt: String!
 }
 
 input PlayerEventInput {
@@ -55,6 +60,7 @@ union PlayerEventResult = PlayerEventApplied | PlayerEventDuplicate | PlayerEven
 
 type PlayerSession {
   device: PlayerDevice!
+  realtime: PlayerRealtime!
   run: Run
   graph: ShowGraph!
   scene: SceneNode

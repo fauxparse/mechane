@@ -1,6 +1,9 @@
 import { AblyRealtimeProvider } from "@mechane/realtime/ably";
 import { LocalRealtimeProvider, LocalRealtimeServer } from "@mechane/realtime/local";
 import type { RealtimeProvider } from "@mechane/realtime";
+import { playerChannel } from "@mechane/realtime";
+
+import { verifyRealtimeGrant } from "./realtime-grants";
 
 const providerName =
   process.env.REALTIME_PROVIDER ?? (process.env.NODE_ENV === "production" ? "ably" : "websocket");
@@ -17,4 +20,11 @@ export const realtimeProvider: RealtimeProvider =
     : new LocalRealtimeProvider();
 
 export const localRealtimeServer =
-  providerName === "websocket" ? new LocalRealtimeServer(realtimeProvider) : null;
+  providerName === "websocket"
+    ? new LocalRealtimeServer(realtimeProvider, {
+        authorize: (_request, grant) => {
+          const payload = verifyRealtimeGrant(grant);
+          return payload ? playerChannel(payload.deviceId) : null;
+        },
+      })
+    : null;

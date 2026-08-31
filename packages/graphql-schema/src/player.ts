@@ -130,9 +130,13 @@ export const GetPlayerSessionQuery: TadaDocumentNode<any, any> = graphql(
     query GetPlayerSession {
       playerSession {
         device {
-          id
           name
           perConnection
+        }
+        realtime {
+          channel
+          grant
+          expiresAt
         }
         run {
           id

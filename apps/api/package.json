@@ -9,8 +9,8 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push",
-    "db:seed": "tsx src/db/seeds.ts"
+    "db:seed": "tsx src/db/seeds.ts",
+    "realtime:worker": "tsx src/realtime-worker.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1111.0",

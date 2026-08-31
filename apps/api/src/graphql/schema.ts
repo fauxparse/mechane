@@ -224,9 +224,13 @@ export const schema = createSchema<GraphQLContext>({
       sourceValues: JSON!
     }
     type PlayerDevice {
-      id: ID!
       name: String!
       perConnection: Boolean!
+    }
+    type PlayerRealtime {
+      channel: String!
+      grant: String!
+      expiresAt: String!
     }
 
     input PlayerEventInput {
@@ -253,6 +257,7 @@ export const schema = createSchema<GraphQLContext>({
 
     type PlayerSession {
       device: PlayerDevice!
+      realtime: PlayerRealtime!
       run: Run
       graph: ShowGraph!
       scene: SceneNode

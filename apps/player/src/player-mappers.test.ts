@@ -4,8 +4,8 @@ import { normalizePlayerSession } from "./player-mappers";
 describe("normalizePlayerSession", () => {
   it("converts GraphQL discriminators and removes nullable Canvas properties", () => {
     const session = normalizePlayerSession({
-      device: { id: "device_1", name: "Audience", perConnection: true },
-      run: null,
+      device: { name: "Audience", perConnection: true },
+      realtime: { channel: "player:test", grant: "grant", expiresAt: "2026-01-01T00:01:00.000Z" },
       graph: {
         showId: "show_1",
         state: "published",
@@ -62,8 +62,8 @@ describe("normalizePlayerSession", () => {
 
   it("normalizes GraphQL Type objects before domain resolution", () => {
     const session = normalizePlayerSession({
-      device: { id: "device_1", name: "Projector", perConnection: false },
-      run: null,
+      device: { name: "Projector", perConnection: false },
+      realtime: { channel: "player:test", grant: "grant", expiresAt: "2026-01-01T00:01:00.000Z" },
       graph: {
         showId: "show_1",
         state: "published",
@@ -155,8 +155,8 @@ describe("normalizePlayerSession", () => {
   });
   it("preserves Block variables, State overrides, and selectors", () => {
     const session = normalizePlayerSession({
-      device: { id: "device_1", name: "Audience", perConnection: true },
-      run: null,
+      device: { name: "Audience", perConnection: true },
+      realtime: { channel: "player:test", grant: "grant", expiresAt: "2026-01-01T00:01:00.000Z" },
       graph: { nodes: [], edges: [], shapes: [] },
       scene: null,
       canvas: null,
@@ -202,8 +202,8 @@ describe("normalizePlayerSession", () => {
   it("resolves API-relative image URLs for the Player origin", () => {
     const session = normalizePlayerSession(
       {
-        device: { id: "device_1", name: "Projector", perConnection: false },
-        run: null,
+        device: { name: "Projector", perConnection: false },
+        realtime: { channel: "player:test", grant: "grant", expiresAt: "2026-01-01T00:01:00.000Z" },
         graph: { nodes: [], edges: [], shapes: [] },
         scene: null,
         canvas: null,

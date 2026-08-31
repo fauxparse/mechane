@@ -1,12 +1,11 @@
-import { playerChannel, runChannel } from "@mechane/realtime";
 import type { Run, RunStatus, ShowGraph, SourceValues } from "@mechane/domain";
 import { coerceShapeValue, defaultSourceValues, sourceDefaultsFor } from "@mechane/domain";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "./client";
-import { realtimeProvider } from "../realtime";
+import { drainPlayerInvalidations, enqueuePlayerInvalidations } from "./player-invalidation-outbox";
 import { readShowGraph } from "./show-graph";
-import { devices, playerEvents, runDeviceStates, runs, shows } from "./schema";
+import { playerEvents, runDeviceStates, runs, shows } from "./schema";
 
 export interface RunValueLoss {
   sourceId: string;
@@ -36,20 +35,6 @@ function toRun(row: RunRow): Run {
     sourceValues: row.sourceValues as SourceValues,
   };
 }
-
-/** Notifies every paired Player for a Show that its snapshot may have changed. */
-export async function publishPlayerUpdates(showId: string): Promise<void> {
-  const rows = await db
-    .select({ id: devices.id })
-    .from(devices)
-    .where(and(eq(devices.showId, showId), isNull(devices.retiredAt)));
-  await Promise.all(
-    rows.map(({ id }) =>
-      realtimeProvider.channel(playerChannel(id)).publish("player.updated", null),
-    ),
-  );
-}
-
 export interface RunDeviceState {
   runId: string;
   showId: string;
@@ -262,12 +247,14 @@ export async function startRun(showId: string): Promise<Run> {
       .returning();
     if (!row) throw new Error(`Failed to start a Run for Show "${showId}".`);
     await initializeRunDeviceStates(tx, row.id, showId, graph, graph.version);
+    await enqueuePlayerInvalidations(tx, showId);
     return toRun(row);
   });
-  await Promise.all([
-    realtimeProvider.channel(runChannel(run.id)).publish("run.started", run),
-    publishPlayerUpdates(showId),
-  ]);
+  try {
+    await drainPlayerInvalidations();
+  } catch {
+    // The worker retries the committed outbox row if the provider is down.
+  }
   return run;
 }
 
@@ -366,14 +353,16 @@ export async function endRun(showId: string): Promise<Run | null> {
     if (row) {
       await tx.delete(runDeviceStates).where(eq(runDeviceStates.runId, row.id));
       await tx.delete(playerEvents).where(eq(playerEvents.runId, row.id));
+      await enqueuePlayerInvalidations(tx, showId);
     }
     return row ? toRun(row) : null;
   });
   if (run) {
-    await Promise.all([
-      realtimeProvider.channel(runChannel(run.id)).publish("run.ended", run),
-      publishPlayerUpdates(showId),
-    ]);
+    try {
+      await drainPlayerInvalidations();
+    } catch {
+      // The worker retries the committed outbox row if the provider is down.
+    }
   }
   return run;
 }

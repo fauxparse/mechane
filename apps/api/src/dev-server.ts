@@ -7,6 +7,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { and, eq } from "drizzle-orm";
 import { toNodeHandler } from "better-auth/node";
+import { isRealtimeChannelName } from "@mechane/realtime";
 
 import { auth } from "./auth";
 import { db } from "./db/client";
@@ -15,7 +16,7 @@ import { blobStore } from "./storage/blob-store";
 import { yoga } from "./graphql/server";
 import { handleRealtimeAuthRoute } from "./realtime-auth";
 import { applyCorsHeaders } from "./lib/cors";
-import { localRealtimeServer } from "./realtime";
+import { localRealtimeServer, realtimeProvider } from "./realtime";
 
 const authHandler = toNodeHandler(auth);
 
@@ -24,6 +25,58 @@ async function readBody(request: IncomingMessage): Promise<Buffer> {
   for await (const chunk of request)
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   return Buffer.concat(chunks);
+}
+
+function workerSecret(): string | null {
+  return process.env.REALTIME_WORKER_SECRET ?? process.env.BETTER_AUTH_SECRET ?? null;
+}
+
+async function handleInternalRealtimePublish(
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<boolean> {
+  const url = new URL(req.url ?? "/", "http://localhost");
+  if (url.pathname !== "/api/realtime/internal/publish") return false;
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    res.statusCode = 405;
+    res.end();
+    return true;
+  }
+  const configuredSecret = workerSecret();
+  const providedSecret = req.headers["x-realtime-worker-secret"];
+  if (!configuredSecret || providedSecret !== configuredSecret) {
+    res.statusCode = 401;
+    res.end();
+    return true;
+  }
+  let body: unknown;
+  try {
+    body = JSON.parse((await readBody(req)).toString("utf8"));
+  } catch {
+    res.statusCode = 400;
+    res.end();
+    return true;
+  }
+  if (
+    body === null ||
+    typeof body !== "object" ||
+    !("channel" in body) ||
+    !("type" in body) ||
+    typeof body.channel !== "string" ||
+    !isRealtimeChannelName(body.channel) ||
+    typeof body.type !== "string"
+  ) {
+    res.statusCode = 400;
+    res.end();
+    return true;
+  }
+  await realtimeProvider
+    .channel(body.channel)
+    .publish(body.type, "payload" in body ? body.payload : null);
+  res.statusCode = 204;
+  res.end();
+  return true;
 }
 
 async function handleBinaryRoute(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
@@ -86,6 +139,7 @@ async function handleBinaryRoute(req: IncomingMessage, res: ServerResponse): Pro
 }
 
 const server = createServer(async (req, res) => {
+  if (await handleInternalRealtimePublish(req, res)) return;
   if (await handleRealtimeAuthRoute(req, res)) return;
   if (await handleBinaryRoute(req, res)) return;
   // graphql/server.ts) for /api/graphql; Better Auth's handler doesn't, so

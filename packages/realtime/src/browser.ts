@@ -1,6 +1,5 @@
 import * as Ably from "ably";
 import type {
-  RealtimeChannelName,
   RealtimeMessage,
   RealtimeMessageHandler,
   RealtimeSubscriber,
@@ -14,10 +13,11 @@ interface BrowserWebSocket extends WebSocket {
   onclose: ((event: CloseEvent) => void) | null;
   onerror: ((event: Event) => void) | null;
 }
-
 type WebSocketConstructor = new (url: string) => BrowserWebSocket;
 
-/** Browser subscriber for either the local WebSocket adapter or a proxy. */
+type RealtimeGrantProvider = () => string | null | Promise<string | null>;
+
+/** Browser subscriber for the local WebSocket adapter or a proxy. */
 export class WebSocketRealtimeSubscriber implements RealtimeSubscriber {
   private readonly handlers = new Set<RealtimeMessageHandler>();
   private socket: BrowserWebSocket;
@@ -26,7 +26,7 @@ export class WebSocketRealtimeSubscriber implements RealtimeSubscriber {
 
   constructor(
     private readonly url: string,
-    private readonly channel: RealtimeChannelName,
+    private readonly grantProvider: RealtimeGrantProvider,
     private readonly WebSocketImpl: WebSocketConstructor = WebSocket,
   ) {
     this.socket = this.connect();
@@ -54,12 +54,21 @@ export class WebSocketRealtimeSubscriber implements RealtimeSubscriber {
     this.handlers.clear();
   }
 
-  private subscribeOnSocket(): void {
-    if (this.handlers.size === 0) return;
+  private async subscribeOnSocket(): Promise<void> {
+    if (this.handlers.size === 0 || this.closed) return;
+    const grant = await this.grantProvider();
+    if (
+      !grant ||
+      this.handlers.size === 0 ||
+      this.closed ||
+      this.socket.readyState !== WebSocket.OPEN
+    ) {
+      return;
+    }
     this.socket.send(
       JSON.stringify({
         type: "subscribe",
-        channel: this.channel,
+        grant,
         ...(this.lastSequence > 0 ? { after: this.lastSequence } : {}),
       }),
     );
@@ -81,7 +90,7 @@ export class WebSocketRealtimeSubscriber implements RealtimeSubscriber {
 
   private connect(): BrowserWebSocket {
     const socket = new this.WebSocketImpl(this.url);
-    socket.onopen = () => this.subscribeOnSocket();
+    socket.onopen = () => void this.subscribeOnSocket();
     socket.onmessage = (event) => this.handleMessage(event.data);
     socket.onclose = () => {
       if (!this.closed) {
@@ -99,9 +108,42 @@ export class AblyRealtimeSubscriber implements RealtimeSubscriber {
   private readonly client: Ably.Realtime;
   private readonly channel: Ably.RealtimeChannel;
 
-  constructor(authUrl: string, channelName: RealtimeChannelName) {
-    this.client = new Ably.Realtime({ authUrl, authMethod: "GET" });
+  constructor(
+    private readonly authUrl: string,
+    channelName: string,
+    private readonly grantProvider: RealtimeGrantProvider,
+  ) {
+    this.client = new Ably.Realtime({
+      authCallback: (_params, callback) => {
+        void this.requestToken(callback);
+      },
+    });
     this.channel = this.client.channels.get(channelName);
+  }
+
+  private async requestToken(
+    callback: (
+      error: Ably.ErrorInfo | string | null,
+      tokenRequestOrDetails: Ably.TokenDetails | Ably.TokenRequest | string | null,
+    ) => void,
+  ): Promise<void> {
+    try {
+      const grant = await this.grantProvider();
+      if (!grant) {
+        callback("Realtime authorization expired.", null);
+        return;
+      }
+      const url = new URL(this.authUrl);
+      url.searchParams.set("grant", grant);
+      const response = await fetch(url);
+      if (!response.ok) {
+        callback("Realtime authorization failed.", null);
+        return;
+      }
+      callback(null, await response.json());
+    } catch {
+      callback("Realtime authorization failed.", null);
+    }
   }
 
   subscribe(

@@ -1,6 +1,14 @@
 export const RUN_CHANNEL_PREFIX = "run:";
 export const PLAYER_CHANNEL_PREFIX = "player:";
 
+function opaqueChannelSuffix(value: string): string {
+  let hash = 2_166_136_261;
+  for (const character of value) {
+    hash ^= character.codePointAt(0) ?? 0;
+    hash = Math.imul(hash, 16_777_619);
+  }
+  return (hash >>> 0).toString(36);
+}
 export type RealtimeChannelName =
   | `${typeof RUN_CHANNEL_PREFIX}${string}`
   | `${typeof PLAYER_CHANNEL_PREFIX}${string}`;
@@ -46,5 +54,12 @@ export function runChannel(runId: string): RealtimeChannelName {
   return `${RUN_CHANNEL_PREFIX}${runId}`;
 }
 export function playerChannel(deviceId: string): RealtimeChannelName {
-  return `${PLAYER_CHANNEL_PREFIX}${deviceId}`;
+  return `${PLAYER_CHANNEL_PREFIX}${opaqueChannelSuffix(deviceId)}`;
+}
+
+export function isRealtimeChannelName(value: string): value is RealtimeChannelName {
+  return (
+    (value.startsWith(RUN_CHANNEL_PREFIX) || value.startsWith(PLAYER_CHANNEL_PREFIX)) &&
+    value.length > value.indexOf(":") + 1
+  );
 }

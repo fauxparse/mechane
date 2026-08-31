@@ -45,8 +45,10 @@ describe("LocalRealtimeProvider", () => {
 
   it("delivers a subscribed message over WebSockets", async () => {
     const provider = new LocalRealtimeProvider();
-    const realtime = new LocalRealtimeServer(provider);
     const server = createServer();
+    const realtime = new LocalRealtimeServer(provider, {
+      authorize: (_request, grant) => (grant === "grant_3" ? runChannel("run_3") : null),
+    });
     server.on("upgrade", (request, socket, head) => realtime.handleUpgrade(request, socket, head));
     await new Promise<void>((resolve) => server.listen(0, resolve));
     const address = server.address();
@@ -61,7 +63,7 @@ describe("LocalRealtimeProvider", () => {
       client.once("message", (data) => resolve(data.toString()));
       client.once("error", reject);
     });
-    client.send(JSON.stringify({ type: "subscribe", channel: runChannel("run_3") }));
+    client.send(JSON.stringify({ type: "subscribe", grant: "grant_3" }));
     await provider.channel(runChannel("run_3")).publish("run.cutover", { version: 2 });
 
     expect(JSON.parse(await received)).toMatchObject({

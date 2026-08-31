@@ -7,6 +7,7 @@ import { listImageAssets } from "./db/images";
 import { readActiveRun, readRunDeviceState, type RunDeviceState } from "./db/runs";
 import { devices } from "./db/schema";
 import { readShowGraph } from "./db/show-graph";
+import { issueRealtimeGrant } from "./realtime-grants";
 
 const PAIRING_CODE_PATTERN = /^[A-HJ-KM-NP-Z1-9]{5}$/;
 
@@ -55,12 +56,21 @@ export async function readPlayerSession(pairingCode: string) {
   const canvas = scene
     ? await readCanvas(device.showId, "published", { sceneNodeId: scene.id })
     : null;
-
+  const playerGraph = {
+    ...graph,
+    nodes: graph.nodes.filter((node) => node.kind !== "device"),
+    edges: graph.edges.filter((edge) => edge.kind !== "device"),
+  };
+  const grant = issueRealtimeGrant(device.id);
   return {
     device: {
-      id: device.id,
       name: deviceNode?.name ?? device.id,
       perConnection: device.perConnection,
+    },
+    realtime: {
+      channel: grant.channel,
+      grant: grant.token,
+      expiresAt: new Date(grant.expiresAt).toISOString(),
     },
     run: run
       ? {
@@ -72,10 +82,10 @@ export async function readPlayerSession(pairingCode: string) {
           sourceValues: run.sourceValues,
         }
       : null,
-    graph,
+    graph: playerGraph,
     scene,
     canvas,
-    blocks: graph.blocks ?? [],
+    blocks: playerGraph.blocks ?? [],
     imageAssets,
   };
 }
