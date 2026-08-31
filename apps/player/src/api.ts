@@ -1,6 +1,5 @@
 import type { Canvas, GraphNode, ShowGraph, SourceValues } from "@mechane/domain";
 import type { RealtimeSubscriber, RealtimeSubscription } from "@mechane/realtime";
-import { playerChannel } from "@mechane/realtime";
 import { AblyRealtimeSubscriber, WebSocketRealtimeSubscriber } from "@mechane/realtime/browser";
 import {
   GetPlayerSessionQuery,
@@ -22,9 +21,13 @@ const USE_REALTIME_SOCKET = shouldUseRealtimeSocket(
 
 export type PlayerSession = {
   device: {
-    id: string;
     name: string;
     perConnection: boolean;
+  };
+  realtime: {
+    channel: string;
+    grant: string;
+    expiresAt: string;
   };
   run: {
     id: string;
@@ -143,8 +146,8 @@ function realtimeUrl(): string {
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   return url.toString();
 }
-function realtimeAuthUrl(pairingCode: string): string {
-  return `${API_BASE_URL}/api/realtime/auth?code=${encodeURIComponent(pairingCode)}`;
+function realtimeAuthUrl(grant: string): string {
+  return `${API_BASE_URL}/api/realtime/auth?grant=${encodeURIComponent(grant)}`;
 }
 
 type PlayerRealtimeSubscriber = RealtimeSubscriber & { close(): void };
@@ -206,7 +209,7 @@ export function usePlayerSession(code: string): PlayerState {
     const controller = new AbortController();
     let subscription: RealtimeSubscription | null = null;
     let subscriber: PlayerRealtimeSubscriber | null = null;
-    let currentDeviceId: string | null = null;
+    let currentChannel: string | null = null;
     let closed = false;
 
     const clearRealtime = () => {
@@ -216,29 +219,44 @@ export function usePlayerSession(code: string): PlayerState {
       subscriber = null;
     };
 
-    const attach = (session: PlayerSession) => {
-      if (closed) return;
-      if (session.device.id === currentDeviceId && subscriber) return;
+    const attach = (session: PlayerSession): boolean => {
+      if (closed) return false;
+      if (session.realtime.channel === currentChannel && subscriber) return false;
 
       clearRealtime();
-      currentDeviceId = session.device.id;
+      currentChannel = session.realtime.channel;
       subscriber = USE_REALTIME_SOCKET
-        ? new WebSocketRealtimeSubscriber(realtimeUrl(), playerChannel(session.device.id))
+        ? new WebSocketRealtimeSubscriber(realtimeUrl(), async () => {
+            const fresh = await load(controller.signal, false);
+            if (fresh) attach(fresh);
+            return fresh?.realtime.grant ?? null;
+          })
         : new AblyRealtimeSubscriber(
-            realtimeAuthUrl(normalizedCode),
-            playerChannel(session.device.id),
+            realtimeAuthUrl(session.realtime.grant),
+            session.realtime.channel,
+            async () => {
+              const fresh = await load(controller.signal, false);
+              if (fresh) attach(fresh);
+              return fresh?.realtime.grant ?? null;
+            },
           );
       subscription = subscriber.subscribe(() => {
-        void refresh(false);
+        void refresh(false, false);
       });
+      return true;
     };
 
-    const refresh = async (showLoading: boolean) => {
+    const refresh = async (showLoading: boolean, closeSnapshotRace: boolean) => {
       const session = await load(controller.signal, showLoading);
-      if (session) attach(session);
+      if (!session) return;
+      const attached = attach(session);
+      if (attached && closeSnapshotRace) {
+        const latest = await load(controller.signal, false);
+        if (latest) attach(latest);
+      }
     };
 
-    void refresh(true);
+    void refresh(true, true);
     return () => {
       closed = true;
       controller.abort();

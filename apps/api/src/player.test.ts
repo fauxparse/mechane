@@ -7,6 +7,7 @@ import { readRunDeviceState, startRun } from "./db/runs";
 import { publishShowGraph, readShowGraph, writeShowGraph } from "./db/show-graph";
 import { runDeviceStates, shows, user } from "./db/schema";
 import { readPlayerSession } from "./player";
+import { verifyRealtimeGrant } from "./realtime-grants";
 const userId = `player-state-test-${crypto.randomUUID()}`;
 const showId = `player-state-show-${crypto.randomUUID()}`;
 
@@ -86,7 +87,15 @@ describe("Player session runtime Scene", () => {
     const device = published.nodes.find((node) => node.kind === "device");
     if (device?.kind !== "device" || !device.pairingCode) throw new Error("Pairing code missing.");
 
-    expect((await readPlayerSession(device.pairingCode))?.scene?.id).toBe("scene_red");
+    const session = await readPlayerSession(device.pairingCode);
+    expect(session?.scene?.id).toBe("scene_red");
+    expect(session?.device).not.toHaveProperty("id");
+    expect(session?.realtime.channel).not.toContain(device.id);
+    expect(
+      session?.realtime.grant ? verifyRealtimeGrant(session.realtime.grant) : null,
+    ).toMatchObject({
+      deviceId: device.id,
+    });
     await db
       .update(runDeviceStates)
       .set({ activeSceneId: "scene_green" })

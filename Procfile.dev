@@ -3,4 +3,5 @@ proxy: docker compose up caddy dnsmasq
 studio: VITE_DEV_PROXY=true pnpm dev:studio --host 0.0.0.0 --port 5173
 player: VITE_DEV_PROXY=true pnpm dev:player --host 0.0.0.0 --port 5174
 api: PORT=4000 pnpm dev:api
+worker: pnpm --filter @mechane/api realtime:worker
 storybook: pnpm storybook

@@ -178,7 +178,8 @@ function sessionWithRepeatedCandidate(): PlayerSession {
   const scene = graph.nodes.find((node) => node.id === "scene_candidates");
   if (scene?.kind !== "scene") throw new Error("Candidate scene is missing.");
   return {
-    device: { id: "device_audience", name: "Audience", perConnection: true },
+    device: { name: "Audience", perConnection: true },
+    realtime: { channel: "player:test", grant: "grant", expiresAt: "2026-01-01T00:01:00.000Z" },
     run: {
       id: "run_1",
       showId: "show_1",

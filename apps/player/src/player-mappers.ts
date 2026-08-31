@@ -176,6 +176,7 @@ function toGraph(value: unknown): PlayerSession["graph"] {
 
 export function normalizePlayerSession(value: unknown, apiBaseUrl?: string): PlayerSession {
   const input = record(value);
+  const realtime = record(input.realtime);
   const run = input.run === null ? null : record(input.run);
   const scene = input.scene === null ? null : toNode(input.scene);
   // Canvas decoding is not the Player's to reimplement (#436): a third copy of
@@ -189,6 +190,11 @@ export function normalizePlayerSession(value: unknown, apiBaseUrl?: string): Pla
 
   return {
     device: record(input.device) as PlayerSession["device"],
+    realtime: {
+      channel: String(realtime.channel),
+      grant: String(realtime.grant),
+      expiresAt: String(realtime.expiresAt),
+    },
     run: run
       ? {
           id: String(run.id),

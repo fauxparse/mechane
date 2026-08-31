@@ -1,0 +1,2 @@
+DROP INDEX "player_invalidation_outbox_device_order_idx";--> statement-breakpoint
+CREATE INDEX "player_invalidation_outbox_device_order_idx" ON "player_invalidation_outbox" USING btree ("show_id","device_id","created_at","id");

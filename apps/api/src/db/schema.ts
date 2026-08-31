@@ -652,6 +652,44 @@ export const playerEvents = pgTable(
     }).onDelete("cascade"),
   ],
 );
+
+/** Durable, invalidation-only delivery work for paired Players. */
+export const playerInvalidationOutbox = pgTable(
+  "player_invalidation_outbox",
+  {
+    id: text("id").primaryKey(),
+    showId: text("show_id")
+      .notNull()
+      .references(() => shows.id, { onDelete: "cascade" }),
+    deviceId: text("device_id").notNull(),
+    status: text("status").notNull().default("pending"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at").notNull().defaultNow(),
+    leaseOwner: text("lease_owner"),
+    leaseExpiresAt: timestamp("lease_expires_at"),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    deliveredAt: timestamp("delivered_at"),
+  },
+  (table) => [
+    foreignKey({
+      name: "player_invalidation_outbox_device_fk",
+      columns: [table.showId, table.deviceId],
+      foreignColumns: [devices.showId, devices.id],
+    }).onDelete("cascade"),
+    index("player_invalidation_outbox_ready_idx").on(
+      table.status,
+      table.nextAttemptAt,
+      table.createdAt,
+    ),
+    index("player_invalidation_outbox_device_order_idx").on(
+      table.showId,
+      table.deviceId,
+      table.createdAt,
+      table.id,
+    ),
+  ],
+);
 // Blocks are Show-scoped definitions, but their structure belongs to each
 // draft/published graph just like Scene Canvases (#136). Block ids are
 // client-generated and therefore part of the composite graph key.

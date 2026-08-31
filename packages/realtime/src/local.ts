@@ -11,7 +11,6 @@ import type {
   RealtimeSubscribeOptions,
   RealtimeSubscription,
 } from "./index";
-import { PLAYER_CHANNEL_PREFIX, RUN_CHANNEL_PREFIX } from "./index";
 
 const MAX_HISTORY = 1_000;
 
@@ -73,28 +72,21 @@ export class LocalRealtimeProvider implements RealtimeProvider {
 
 interface SubscribeCommand {
   type: "subscribe";
-  channel: string;
+  grant: string;
   after?: number;
 }
 
 function isSubscribeCommand(value: unknown): value is SubscribeCommand {
   if (value === null || typeof value !== "object") return false;
   const command = value as Record<string, unknown>;
-  return command.type === "subscribe" && typeof command.channel === "string";
-}
-
-function isRealtimeChannel(value: string): value is RealtimeChannelName {
-  return (
-    (value.startsWith(RUN_CHANNEL_PREFIX) || value.startsWith(PLAYER_CHANNEL_PREFIX)) &&
-    value.length > value.indexOf(":") + 1
-  );
+  return command.type === "subscribe" && typeof command.grant === "string";
 }
 
 export interface LocalRealtimeServerOptions {
   authorize?: (
     request: IncomingMessage,
-    channel: RealtimeChannelName,
-  ) => boolean | Promise<boolean>;
+    grant: string,
+  ) => RealtimeChannelName | null | Promise<RealtimeChannelName | null>;
 }
 
 /** Bridges the local provider to WebSocket clients in the API dev process. */
@@ -134,14 +126,16 @@ export class LocalRealtimeServer {
         socket.send(JSON.stringify({ type: "error", payload: { reason: "Invalid JSON." } }));
         return;
       }
-      if (!isSubscribeCommand(value) || !isRealtimeChannel(value.channel)) {
+      if (!isSubscribeCommand(value)) {
         socket.send(
           JSON.stringify({ type: "error", payload: { reason: "Invalid subscribe command." } }),
         );
         return;
       }
-      const channel = value.channel;
-      if (this.options.authorize && !(await this.options.authorize(request, channel))) {
+      const channel = this.options.authorize
+        ? await this.options.authorize(request, value.grant)
+        : null;
+      if (!channel) {
         socket.send(
           JSON.stringify({ type: "error", payload: { reason: "Unauthorized channel." } }),
         );

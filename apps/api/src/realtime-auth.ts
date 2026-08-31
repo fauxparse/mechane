@@ -4,7 +4,7 @@ import { createAblyTokenRequest } from "@mechane/realtime/ably";
 import { playerChannel } from "@mechane/realtime";
 
 import { applyCorsHeaders } from "./lib/cors";
-import { readPlayerSession } from "./player";
+import { verifyRealtimeGrant } from "./realtime-grants";
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.statusCode = status;
@@ -13,7 +13,7 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
-/** Issues a narrowly-scoped Ably token after validating the pairing code. */
+/** Issues a narrowly-scoped Ably token from a short-lived realtime grant. */
 export async function handleRealtimeAuthRoute(
   req: IncomingMessage,
   res: ServerResponse,
@@ -33,9 +33,9 @@ export async function handleRealtimeAuthRoute(
     return true;
   }
 
-  const session = await readPlayerSession(url.searchParams.get("code") ?? "");
-  if (!session) {
-    sendJson(res, 401, { error: "Invalid pairing code." });
+  const grant = verifyRealtimeGrant(url.searchParams.get("grant") ?? "");
+  if (!grant) {
+    sendJson(res, 401, { error: "Realtime authorization expired." });
     return true;
   }
 
@@ -47,8 +47,8 @@ export async function handleRealtimeAuthRoute(
 
   const tokenRequest = await createAblyTokenRequest({
     key,
-    clientId: `player:${session.device.id}`,
-    capability: JSON.stringify({ [playerChannel(session.device.id)]: ["subscribe"] }),
+    clientId: `player:${grant.deviceId}`,
+    capability: JSON.stringify({ [playerChannel(grant.deviceId)]: ["subscribe"] }),
   });
   sendJson(res, 200, tokenRequest);
   return true;
