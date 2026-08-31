@@ -130,6 +130,7 @@ export async function dispatchPlayerEvent(
   if (!EVENT_ID_PATTERN.test(input.eventId)) {
     throw new PlayerEventInputError("Player Event ID must be a UUID.");
   }
+  let invalidationScope: { showId: string; deviceId: string } | null = null;
 
   return db
     .transaction(async (tx): Promise<PlayerEventResult | null> => {
@@ -267,6 +268,7 @@ export async function dispatchPlayerEvent(
         resultingSceneId: target.id,
       };
       if (target.id !== state.activeSceneId) {
+        invalidationScope = { showId: device.showId, deviceId: device.id };
         await tx
           .update(runDeviceStates)
           .set({ activeSceneId: target.id, updatedAt: new Date() })
@@ -277,9 +279,9 @@ export async function dispatchPlayerEvent(
       return result;
     })
     .then(async (result) => {
-      if (result?.kind === "applied" && result.resultingSceneId !== input.sceneId) {
+      if (result?.kind === "applied" && invalidationScope) {
         try {
-          await drainPlayerInvalidations();
+          await drainPlayerInvalidations(invalidationScope);
         } catch {
           // The worker retries the committed outbox row if the provider is down.
         }
