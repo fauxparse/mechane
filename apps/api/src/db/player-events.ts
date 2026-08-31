@@ -19,6 +19,7 @@ export interface PlayerEventInput {
 export type PlayerEventIgnoreReason =
   | "no-active-run"
   | "unsupported-device"
+  | "no-navigation-state"
   | "not-ready"
   | "stale-scene"
   | "unbound-event";
@@ -153,11 +154,35 @@ export async function dispatchPlayerEvent(
       .where(and(eq(runDeviceStates.runId, run.id), eq(runDeviceStates.deviceId, device.id)))
       .for("update");
     if (!state) {
+      const [existing] = await tx
+        .select()
+        .from(playerEvents)
+        .where(
+          and(
+            eq(playerEvents.runId, run.id),
+            eq(playerEvents.deviceId, device.id),
+            eq(playerEvents.eventId, input.eventId),
+          ),
+        );
+      if (existing) return duplicateResult(existing);
+      const graph = await readShowGraph(device.showId, "published", tx);
+      const driver = graph.edges.find(
+        (edge) => edge.kind === "device" && edge.targetId === device.id,
+      );
+      const source = driver ? graph.nodes.find((node) => node.id === driver.sourceId) : null;
+      if (source?.kind !== "flow") {
+        const result: PlayerEventResult = {
+          kind: "ignored",
+          eventId: input.eventId,
+          reason: "no-navigation-state",
+        };
+        await recordEvent(tx, run.id, device.showId, device.id, input, result);
+        return result;
+      }
       throw new PlayerDispatchConfigurationError(
         `Run "${run.id}" has no navigation state for Device "${device.id}".`,
       );
     }
-
     const [existing] = await tx
       .select()
       .from(playerEvents)
