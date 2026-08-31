@@ -157,6 +157,7 @@ export function RoutedEdge({
   // DOM node React reuses, and every later pointermove over it, hovering
   // included, would carry on rewriting the route.
   const endDrag = useRef<(() => void) | null>(null);
+  const root = useRef<SVGGElement>(null);
   useEffect(() => () => endDrag.current?.(), []);
 
   const drag = useCallback(
@@ -177,7 +178,7 @@ export function RoutedEdge({
         // The element's own screen CTM is the honest conversion in both places
         // this renders — a React Flow viewport transform and a plain viewBox
         // scale it equally — where the `zoom` prop only knows about the first.
-        const scale = screenScale(element);
+        const scale = screenScale(root.current);
         const axis = orientation === "vertical" ? "clientX" : "clientY";
         const origin = event[axis];
         const start = active[segmentIndex] ?? 0;
@@ -218,6 +219,7 @@ export function RoutedEdge({
 
   return (
     <g
+      ref={root}
       className="routed-edge"
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
@@ -353,12 +355,15 @@ function LabelGlyph({ color, children }: { color?: string; children: ReactNode }
 }
 
 /**
- * Screen pixels per canvas unit for the element's SVG, taken from its own
- * transform chain so it holds under a React Flow viewport, a plain viewBox, or
- * both at once.
+ * Screen pixels per canvas unit, read from the edge's own group.
+ *
+ * Not from the `<svg>`: anything between the two — a zoom transform on a
+ * wrapping group — scales the canvas and belongs in the conversion. Not from
+ * the handle either, which counter-scales itself and would cancel out the very
+ * factor being measured.
  */
-function screenScale(element: SVGGraphicsElement): number {
-  const matrix = element.ownerSVGElement?.getScreenCTM();
+function screenScale(element: SVGGraphicsElement | null): number {
+  const matrix = element?.getScreenCTM();
   if (!matrix) return 1;
   return Math.hypot(matrix.a, matrix.b) || 1;
 }

@@ -300,6 +300,7 @@ export const Playground: Story = {
     const [targetSide, setTargetSide] = useState<Side>("left");
     const [offsets, setOffsets] = useState<OffsetsBySignature>({});
     const [committed, setCommitted] = useState(0);
+    const [zoom, setZoom] = useState(1);
 
     const source = endpointAt(sourceRect, sourceSide);
     const target = endpointAt(targetRect, targetSide);
@@ -320,8 +321,10 @@ export const Playground: Story = {
         const element = event.currentTarget;
         element.setPointerCapture(event.pointerId);
 
-        const svg = element.ownerSVGElement?.getScreenCTM();
-        const scale = svg ? Math.hypot(svg.a, svg.b) || 1 : 1;
+        // The group's own CTM rather than the <svg>'s: the zoom transform
+        // between them scales the canvas and belongs in the conversion.
+        const ctm = element.getScreenCTM();
+        const scale = ctm ? Math.hypot(ctm.a, ctm.b) || 1 : 1;
         const origin = { x: event.clientX, y: event.clientY };
         const start = rect;
 
@@ -347,36 +350,42 @@ export const Playground: Story = {
     return (
       <div className="flex gap-4">
         <svg viewBox="0 0 900 520" className="flex-1 rounded border border-slate-200 bg-white">
-          <g onPointerDown={dragNode(sourceRect, setSourceRect)} style={{ cursor: "grab" }}>
-            <NodeBox rect={sourceRect} color={SOURCE_COLOR} />
+          {/* Zoom about the middle of the viewport, the way a canvas does.
+              Everything below is in canvas units and scales together, so the
+              stroke thickens with the zoom exactly as React Flow's does. */}
+          <g transform={`translate(450 260) scale(${zoom}) translate(-450 -260)`}>
+            <g onPointerDown={dragNode(sourceRect, setSourceRect)} style={{ cursor: "grab" }}>
+              <NodeBox rect={sourceRect} color={SOURCE_COLOR} />
+            </g>
+            <g onPointerDown={dragNode(targetRect, setTargetRect)} style={{ cursor: "grab" }}>
+              <NodeBox rect={targetRect} color={TARGET_COLOR} />
+            </g>
+            <RoutedEdge
+              source={source}
+              target={target}
+              sourceColor={SOURCE_COLOR}
+              targetColor={TARGET_COLOR}
+              offsets={offsets}
+              onOffsetsChange={(signature, next, meta) => {
+                setOffsets((current) => ({ ...current, [signature]: next }));
+                if (meta.committed) setCommitted((count) => count + 1);
+              }}
+              margin={args.margin}
+              maxRadius={args.maxRadius}
+              alwaysShowHandles={args.alwaysShowHandles}
+              zoom={zoom}
+              label="!"
+              labelColor="#b91c1c"
+            />
+            <DebugOverlay
+              source={source}
+              target={target}
+              offsets={offsets}
+              margin={args.margin}
+              showPolyline={args.showPolyline}
+              showMargins={args.showMargins}
+            />
           </g>
-          <g onPointerDown={dragNode(targetRect, setTargetRect)} style={{ cursor: "grab" }}>
-            <NodeBox rect={targetRect} color={TARGET_COLOR} />
-          </g>
-          <RoutedEdge
-            source={source}
-            target={target}
-            sourceColor={SOURCE_COLOR}
-            targetColor={TARGET_COLOR}
-            offsets={offsets}
-            onOffsetsChange={(signature, next, meta) => {
-              setOffsets((current) => ({ ...current, [signature]: next }));
-              if (meta.committed) setCommitted((count) => count + 1);
-            }}
-            margin={args.margin}
-            maxRadius={args.maxRadius}
-            alwaysShowHandles={args.alwaysShowHandles}
-            label="!"
-            labelColor="#b91c1c"
-          />
-          <DebugOverlay
-            source={source}
-            target={target}
-            offsets={offsets}
-            margin={args.margin}
-            showPolyline={args.showPolyline}
-            showMargins={args.showMargins}
-          />
         </svg>
 
         <aside className="w-56 space-y-3 text-xs">
@@ -401,6 +410,39 @@ export const Playground: Story = {
               </select>
             </label>
           ))}
+
+          <label className="block">
+            <span className="mb-1 flex justify-between font-semibold">
+              <span>zoom</span>
+              <span className="font-mono">{zoom.toFixed(2)}×</span>
+            </span>
+            <input
+              type="range"
+              className="w-full"
+              min={0.2}
+              max={2.5}
+              step={0.05}
+              value={zoom}
+              onChange={(event) => setZoom(Number(event.target.value))}
+            />
+            <span className="mt-1 flex gap-1">
+              {[0.4, 0.5, 1, 2].map((step) => (
+                <button
+                  key={step}
+                  type="button"
+                  className="flex-1 rounded border border-slate-300 py-0.5"
+                  onClick={() => setZoom(step)}
+                >
+                  {step}×
+                </button>
+              ))}
+            </span>
+            {/* Below 0.5 the handles hide themselves: precision editing that
+                far out is meaningless, and they only add clutter. */}
+            <span className="mt-1 block text-slate-500">
+              handles {zoom >= 0.5 ? "shown on hover" : "hidden below 0.5×"}
+            </span>
+          </label>
 
           <dl className="space-y-1 rounded bg-slate-50 p-2 font-mono">
             <Readout term="signature" value={route.signature} />
