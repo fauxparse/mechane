@@ -191,6 +191,20 @@ describe("detour side", () => {
     expect(flipped.detour).toBe("positive");
   });
 
+  it("reports a detour when same-facing handles have to go around", () => {
+    // Same row, so doubling back directly would run straight through the
+    // target. The detour is real geometry, not a float comparison on a point.
+    const route = routeSmoothStep(source, endpoint(300, 0, "right"));
+    expect(route.signature).toBe("HVHVH");
+    expect(route.detour).not.toBeNull();
+  });
+
+  it("reports none when same-facing handles can double back directly", () => {
+    const route = routeSmoothStep(source, endpoint(300, 300, "right"));
+    expect(route.signature).toBe("HVH");
+    expect(route.detour).toBeNull();
+  });
+
   it("reports no detour when the route did not need one", () => {
     expect(routeSmoothStep(source, endpoint(600, 300, "left")).detour).toBeNull();
   });

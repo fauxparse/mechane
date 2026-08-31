@@ -3,7 +3,15 @@
 // is what lets the whole side matrix be exercised in Storybook without a
 // canvas — and what keeps the vendor's batch router out of the picture.
 
-import { useCallback, useEffect, useMemo, useState, type PointerEvent, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
 
 import {
   applyHandleOffsets,
@@ -67,6 +75,9 @@ const MIN_HANDLE_ZOOM = 0.5;
 
 const HANDLE_RADIUS = 5;
 
+/** How close counts as grabbing the handle rather than what's behind it. */
+const HANDLE_HIT_RADIUS = 12;
+
 /** Wide enough to grab the edge without hunting for it. */
 const INTERACTION_WIDTH = 20;
 
@@ -125,44 +136,66 @@ export function RoutedEdge({
   const revealed =
     alwaysShowHandles || ((selected || hovered || dragging !== null) && zoom >= MIN_HANDLE_ZOOM);
 
+  // Torn down when a drag ends, and again before any new drag starts. A
+  // pointer sequence that never delivers its pointerup — a cancelled gesture,
+  // a capture lost to the browser — would otherwise leave live listeners on a
+  // DOM node React reuses, and every later pointermove over it, hovering
+  // included, would carry on rewriting the route.
+  const endDrag = useRef<(() => void) | null>(null);
+  useEffect(() => () => endDrag.current?.(), []);
+
   const drag = useCallback(
     (segmentIndex: number, orientation: "horizontal" | "vertical") =>
       (event: PointerEvent<SVGGElement>) => {
         if (!onOffsetsChange) return;
+        // Both matter: the node under a handle must not start dragging itself,
+        // and the browser must not treat the press as a text selection.
         event.stopPropagation();
+        event.preventDefault();
+        endDrag.current?.();
 
         const element = event.currentTarget;
         element.setPointerCapture(event.pointerId);
         setDragging(segmentIndex);
 
-        const origin = orientation === "vertical" ? event.clientX : event.clientY;
+        // Pointer deltas arrive in screen pixels; offsets are in canvas units.
+        // The element's own screen CTM is the honest conversion in both places
+        // this renders — a React Flow viewport transform and a plain viewBox
+        // scale it equally — where the `zoom` prop only knows about the first.
+        const scale = screenScale(element);
+        const axis = orientation === "vertical" ? "clientX" : "clientY";
+        const origin = event[axis];
         const start = active[segmentIndex] ?? 0;
         const signature = route.signature;
 
+        const offsetAt = (moved: globalThis.PointerEvent): HandleOffsets => ({
+          ...active,
+          [segmentIndex]: start + (moved[axis] - origin) / scale,
+        });
+
         const move = (moved: globalThis.PointerEvent) => {
-          const now = orientation === "vertical" ? moved.clientX : moved.clientY;
-          onOffsetsChange(
-            signature,
-            { ...active, [segmentIndex]: start + (now - origin) / zoom },
-            { committed: false },
-          );
+          onOffsetsChange(signature, offsetAt(moved), { committed: false });
         };
         const finish = (released: globalThis.PointerEvent) => {
-          const now = orientation === "vertical" ? released.clientX : released.clientY;
-          onOffsetsChange(
-            signature,
-            { ...active, [segmentIndex]: start + (now - origin) / zoom },
-            { committed: true },
-          );
+          onOffsetsChange(signature, offsetAt(released), { committed: true });
+          cleanup();
+        };
+        const cleanup = () => {
+          window.removeEventListener("pointermove", move);
+          window.removeEventListener("pointerup", finish);
+          window.removeEventListener("pointercancel", cleanup);
+          endDrag.current = null;
           setDragging(null);
-          element.removeEventListener("pointermove", move);
-          element.removeEventListener("pointerup", finish);
         };
 
-        element.addEventListener("pointermove", move);
-        element.addEventListener("pointerup", finish);
+        // On window rather than the element: pointer capture retargets the
+        // events here anyway, and a drag that leaves the canvas still ends.
+        window.addEventListener("pointermove", move);
+        window.addEventListener("pointerup", finish);
+        window.addEventListener("pointercancel", cleanup);
+        endDrag.current = cleanup;
       },
-    [active, onOffsetsChange, route.signature, zoom],
+    [active, onOffsetsChange, route.signature],
   );
 
   const labelSegment =
@@ -213,6 +246,10 @@ export function RoutedEdge({
               pointerEvents: revealed || alwaysShowHandles ? "auto" : "none",
             }}
           >
+            {/* The grab target, well wider than the dot. A near-miss on a
+                5px circle lands on whatever is behind the edge — usually one
+                of the nodes it connects, which then starts dragging. */}
+            <circle r={HANDLE_HIT_RADIUS} fill="transparent" />
             <circle
               r={HANDLE_RADIUS}
               fill="var(--background, #fff)"
@@ -251,6 +288,17 @@ function LabelGlyph({ color, children }: { color?: string; children: ReactNode }
       {children}
     </text>
   );
+}
+
+/**
+ * Screen pixels per canvas unit for the element's SVG, taken from its own
+ * transform chain so it holds under a React Flow viewport, a plain viewBox, or
+ * both at once.
+ */
+function screenScale(element: SVGGraphicsElement): number {
+  const matrix = element.ownerSVGElement?.getScreenCTM();
+  if (!matrix) return 1;
+  return Math.hypot(matrix.a, matrix.b) || 1;
 }
 
 function positionOf(segments: readonly Segment[], index: number): number {

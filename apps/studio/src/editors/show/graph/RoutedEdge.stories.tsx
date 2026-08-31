@@ -313,21 +313,36 @@ export const Playground: Story = {
       { maxRadius: args.maxRadius },
     );
 
-    const dragNode = (rect: Rect, set: (next: Rect) => void) => (event: PointerEvent<SVGGElement>) => {
-      const element = event.currentTarget;
-      element.setPointerCapture(event.pointerId);
-      const origin = { x: event.clientX, y: event.clientY };
-      const start = rect;
-      const move = (moved: globalThis.PointerEvent) => {
-        set({ ...start, x: start.x + (moved.clientX - origin.x), y: start.y + (moved.clientY - origin.y) });
+    const dragNode =
+      (rect: Rect, set: (next: Rect) => void) => (event: PointerEvent<SVGGElement>) => {
+        // A press the edge already claimed — a handle grab — is not a node drag.
+        if (event.defaultPrevented) return;
+        const element = event.currentTarget;
+        element.setPointerCapture(event.pointerId);
+
+        const svg = element.ownerSVGElement?.getScreenCTM();
+        const scale = svg ? Math.hypot(svg.a, svg.b) || 1 : 1;
+        const origin = { x: event.clientX, y: event.clientY };
+        const start = rect;
+
+        const move = (moved: globalThis.PointerEvent) => {
+          set({
+            ...start,
+            x: start.x + (moved.clientX - origin.x) / scale,
+            y: start.y + (moved.clientY - origin.y) / scale,
+          });
+        };
+        // pointercancel included, or a cancelled gesture leaves the node
+        // following the pointer around for the rest of the session.
+        const finish = () => {
+          window.removeEventListener("pointermove", move);
+          window.removeEventListener("pointerup", finish);
+          window.removeEventListener("pointercancel", finish);
+        };
+        window.addEventListener("pointermove", move);
+        window.addEventListener("pointerup", finish);
+        window.addEventListener("pointercancel", finish);
       };
-      const finish = () => {
-        element.removeEventListener("pointermove", move);
-        element.removeEventListener("pointerup", finish);
-      };
-      element.addEventListener("pointermove", move);
-      element.addEventListener("pointerup", finish);
-    };
 
     return (
       <div className="flex gap-4">

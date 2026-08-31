@@ -240,8 +240,8 @@ function solveFacingRight(
     };
   }
   if (relative === 0) {
-    const points = sameDirection(s, t, source, target, m, obstacles, detour);
-    return { points, detour: points.length > 4 || points[1]?.x === s.x ? detour : null };
+    const same = sameDirection(s, t, source, target, m, obstacles, detour);
+    return { points: same.points, detour: same.detoured ? detour : null };
   }
   return { points: perpendicular(s, t, relative === 1 ? 1 : -1, m), detour: null };
 }
@@ -346,7 +346,7 @@ function sameDirection(
   margin: number,
   obstacles: readonly Rect[],
   detour: DetourSide,
-): Point[] {
+): { points: Point[]; detoured: boolean } {
   const beyond = Math.max(s.x, t.x);
   const x = nudgeClear(
     beyond,
@@ -357,13 +357,14 @@ function sameDirection(
     margin,
     "x",
   );
-  const direct = [s, { x, y: s.y }, { x, y: t.y }, t];
   const cutsThrough =
     crossesRect(s, { x, y: s.y }, target.rect) || crossesRect({ x, y: t.y }, t, source.rect);
-  if (!cutsThrough) return direct;
+  if (!cutsThrough) {
+    return { points: [s, { x, y: s.y }, { x, y: t.y }, t], detoured: false };
+  }
 
   const y = detourPosition(detour, source, target, margin);
-  return [s, { x: s.x, y }, { x: t.x, y }, t];
+  return { points: [s, { x: s.x, y }, { x: t.x, y }, t], detoured: true };
 }
 
 /** Whether the axis-aligned run from `a` to `b` passes through `rect`. */
