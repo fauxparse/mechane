@@ -251,7 +251,7 @@ export async function startRun(showId: string): Promise<Run> {
     return toRun(row);
   });
   try {
-    await drainPlayerInvalidations();
+    await drainPlayerInvalidations({ showId });
   } catch {
     // The worker retries the committed outbox row if the provider is down.
   }
@@ -359,7 +359,7 @@ export async function endRun(showId: string): Promise<Run | null> {
   });
   if (run) {
     try {
-      await drainPlayerInvalidations();
+      await drainPlayerInvalidations({ showId });
     } catch {
       // The worker retries the committed outbox row if the provider is down.
     }

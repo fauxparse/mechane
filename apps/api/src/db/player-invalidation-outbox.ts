@@ -21,6 +21,8 @@ export interface OutboxDrainOptions {
   leaseMs?: number;
   workerId?: string;
   now?: Date;
+  showId?: string;
+  deviceId?: string;
   provider?: RealtimeProvider;
 }
 
@@ -96,21 +98,32 @@ export async function enqueuePlayerInvalidation(
 }
 
 async function claimBatch(
-  options: Required<Pick<OutboxDrainOptions, "batchSize" | "leaseMs" | "workerId" | "now">>,
+  options: Required<Pick<OutboxDrainOptions, "batchSize" | "leaseMs" | "workerId" | "now">> &
+    Pick<OutboxDrainOptions, "showId" | "deviceId">,
 ): Promise<OutboxRow[]> {
   return db.transaction(async (tx) => {
+    const status = or(
+      eq(playerInvalidationOutbox.status, "pending"),
+      eq(playerInvalidationOutbox.status, "leased"),
+    );
+    const scope = options.showId
+      ? options.deviceId
+        ? and(
+            eq(playerInvalidationOutbox.showId, options.showId),
+            eq(playerInvalidationOutbox.deviceId, options.deviceId),
+            status,
+          )
+        : and(eq(playerInvalidationOutbox.showId, options.showId), status)
+      : options.deviceId
+        ? and(eq(playerInvalidationOutbox.deviceId, options.deviceId), status)
+        : status;
     const deviceRows = await tx
       .selectDistinct({
         showId: playerInvalidationOutbox.showId,
         deviceId: playerInvalidationOutbox.deviceId,
       })
       .from(playerInvalidationOutbox)
-      .where(
-        or(
-          eq(playerInvalidationOutbox.status, "pending"),
-          eq(playerInvalidationOutbox.status, "leased"),
-        ),
-      );
+      .where(scope);
     const claimed: OutboxRow[] = [];
     const leaseExpiresAt = new Date(options.now.getTime() + options.leaseMs);
 
@@ -213,11 +226,14 @@ async function cleanupDelivered(now: Date): Promise<void> {
 export async function drainPlayerInvalidations(
   options: OutboxDrainOptions = {},
 ): Promise<OutboxDrainResult> {
-  const resolved = {
+  const resolved: Required<Pick<OutboxDrainOptions, "batchSize" | "leaseMs" | "workerId" | "now">> &
+    Pick<OutboxDrainOptions, "showId" | "deviceId"> = {
     batchSize: options.batchSize ?? DEFAULT_BATCH_SIZE,
     leaseMs: options.leaseMs ?? DEFAULT_LEASE_MS,
     workerId: options.workerId ?? randomUUID(),
     now: options.now ?? new Date(),
+    showId: options.showId,
+    deviceId: options.deviceId,
   };
   const provider = options.provider ?? realtimeProvider;
   const rows = await claimBatch(resolved);

@@ -224,7 +224,7 @@ export async function applyShowEdits(
   });
   if (result.playerUpdated) {
     try {
-      await drainPlayerInvalidations();
+      await drainPlayerInvalidations({ showId });
     } catch {
       // The worker retries the committed outbox row if the provider is down.
     }
@@ -303,7 +303,7 @@ export async function publishShowGraph(
     return { published, reconciled };
   });
   try {
-    await drainPlayerInvalidations();
+    await drainPlayerInvalidations({ showId });
   } catch {
     // The worker retries the committed outbox row if the provider is down.
   }

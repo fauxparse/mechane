@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: postgres://mechane:mechane@localhost:5433/mechane_test
+      BETTER_AUTH_SECRET: test-only-secret
     services:
       postgres:
         image: postgres:18.6
