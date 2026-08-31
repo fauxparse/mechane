@@ -5,7 +5,12 @@
 // geometry, handles, and collapsed Flow projection. The domain fact seam owns
 // inherited colors, wired Variables, driven Devices, entry Scenes, and type
 // compatibility so other Show Editor surfaces can reuse those answers.
-import { deriveShowGraphFacts, fieldsForType, valueAtPath } from "@mechane/domain";
+import {
+  DEFAULT_FLOW_COLOR,
+  deriveShowGraphFacts,
+  fieldsForType,
+  valueAtPath,
+} from "@mechane/domain";
 import type {
   EdgeKind,
   FlowColor,
@@ -165,6 +170,14 @@ export type ShowEdgeData = {
   invalidReason: string | null;
   /** The colorway used to render this edge in the editor (#316). */
   color: FlowColor;
+  /**
+   * The resolved colorways of the nodes at either end — resolved meaning a
+   * node's own color, or its Flow's when unset (#316). #475's edge blends
+   * between the two along the run, so it needs both rather than the one
+   * inherited color above.
+   */
+  sourceColor: FlowColor;
+  targetColor: FlowColor;
 };
 
 /**
@@ -199,6 +212,17 @@ export const PLACEHOLDER_NODE_TYPE = "showNode";
 /** The React Flow node type a Flow renders as: a sized container. */
 export const FLOW_NODE_TYPE = "showFlow";
 export const SMART_SMOOTH_STEP_EDGE_TYPE = "smartSmoothStep";
+
+/** #475's replacement: self-routing, with draggable per-segment handles. */
+export const ROUTED_SMOOTH_STEP_EDGE_TYPE = "routedSmoothStep";
+
+/**
+ * Which edge the Show canvas draws. `type` is projected here rather than
+ * stored on the graph, so swapping the two is this one constant and no
+ * migration. Both stay registered in ./show-edge-types while #475's edge is
+ * being compared against the batch-routed one it replaces.
+ */
+const EDGE_TYPE = ROUTED_SMOOTH_STEP_EDGE_TYPE;
 
 /**
  * How big a Flow has to be to hold its children. Children keep their stored
@@ -428,13 +452,14 @@ function toFlowEdge(
   edge: MappableEdge,
   graphNodes: readonly MappableNode[],
   facts: ShowGraphEdgeFacts,
+  endpointColors: { source: FlowColor; target: FlowColor },
 ): ShowFlowEdge {
   const source = graphNodes.find((node) => node.id === edge.sourceId);
   const target = graphNodes.find((node) => node.id === edge.targetId);
   const sourcePath = edge.sourcePath[0];
   return {
     id: edge.id,
-    type: SMART_SMOOTH_STEP_EDGE_TYPE,
+    type: EDGE_TYPE,
     source: edge.sourceId,
     target: edge.targetId,
     sourceHandle:
@@ -452,6 +477,8 @@ function toFlowEdge(
     data: {
       kind: edge.kind,
       color: facts.color,
+      sourceColor: endpointColors.source,
+      targetColor: endpointColors.target,
       targetVariableId: facts.targetVariableId,
       coercing: facts.typeCompatibility === "coercing",
       invalidReason: facts.typeCompatibility === "incompatible" ? "Incompatible types" : null,
@@ -539,6 +566,12 @@ export function graphToFlow(
             targetType: null,
             typeCompatibility: "unknown",
             color: "neutral",
+          },
+          {
+            // An edge re-anchored onto a collapsed Flow takes that Flow's
+            // color: the box it now leaves or lands on is the Flow itself.
+            source: facts.nodes.get(sourceFlow ?? edge.sourceId)?.color ?? DEFAULT_FLOW_COLOR,
+            target: facts.nodes.get(targetFlow ?? edge.targetId)?.color ?? DEFAULT_FLOW_COLOR,
           },
         );
         return {

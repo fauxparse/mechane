@@ -109,6 +109,8 @@ describe("reconcileEdges", () => {
           coercing: false,
           invalidReason: "old",
           color: "neutral",
+          sourceColor: "neutral",
+          targetColor: "neutral",
         },
         selected: true,
       },
