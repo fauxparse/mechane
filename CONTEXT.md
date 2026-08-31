@@ -11,7 +11,7 @@ _Avoid_: Project, production
 
 ### Run
 
-A discrete live instance of a Show. Starting a Run resets all live data (the values held by Sources) to their defaults; Devices connect to a Run, not directly to the Show, when a performance is underway. A Show has zero or more Runs, but at most one Run is active at a time.
+A discrete live instance of a Show. Starting a Run resets all live data (the values held by Sources) to their defaults and initializes each Flow-driven Shared Device's runtime Scene from the published Flow default; Devices connect to a Run, not directly to the Show, when a performance is underway. A Show has zero or more Runs, but at most one Run is active at a time.
 _Avoid_: Session, performance, instance
 
 ### Scene
@@ -26,12 +26,12 @@ _Avoid_: Element tree, layer tree, stage
 
 ### Device
 
-A named physical endpoint in the venue — a projector, laptop, or audience phone — that displays Scenes and can emit events. Devices are active participants, not passive displays.
+A named physical endpoint in the venue — a projector, laptop, or audience phone — that displays Scenes and can emit Events. A Shared Device represents one logical runtime instance whose state is shared by all its connections; a per-connection Device represents one logical instance per connection. Devices are active participants, not passive displays.
 _Avoid_: Display, screen, endpoint
 
 ### Flow
 
-A named group of Scenes that behaves as a state machine, always with one active Scene. Navigate Actions transition the Flow from one Scene to another.
+A named group of Scenes that behaves as a state machine. Its optional default Scene initializes Flow-driven Device runtime state for a Run; the active runtime Scene belongs to the Run-scoped Device instance. Navigate Actions transition that instance from one Scene to another.
 _Avoid_: Sequence, section, route
 
 ### Variable
@@ -173,19 +173,22 @@ A distinguished text Variable on a Block that a Slot may populate through its or
 
 The one explicitly designated State used when a Block's State Selector has no usable match. Its State Overrides apply over the base Canvas like any other State; a Block with no named States renders its base Canvas directly.
 
-### Event
-
-A user interaction emitted by a Device — a tap, click, or keypress. Events originate either from a user interacting with an Element in the displayed Scene, or from a physical peripheral (Bluetooth keyboard, buzzer) connected to the Device. Events are connected to Cues.
+A runtime user interaction emitted by a Device — a tap, click, or keypress. Events originate either from a user interacting with an Element in the displayed Scene, or from a physical peripheral connected to the Device. A runtime Event is transient; authored configuration uses an Event Binding.
 _Avoid_: Trigger, signal
+
+### Event Binding
+
+Authored configuration connecting an Element's Event kind to one Cue owned by that Element's Scene. An Element has at most one Event Binding for each Event kind; multiple Elements may bind to the same Cue. `tap` is the first supported Event kind.
+_Avoid_: Event handler
 
 ### Cue
 
-A named trigger that lives on a Scene or Block and fires one or more Actions when a connected Event or direct nested Block Cue occurs. Events can originate from Elements within the Scene or from the Device displaying it. A Cue can have conditions that gate whether it fires.
+A named trigger that lives on a Scene or Block and owns an ordered, non-empty list of Actions. A Cue can be connected to multiple Events. The first runtime slice supports unconditional Scene Cues with one Navigate Action; conditions and Block Cue dispatch remain future behavior.
 _Avoid_: Interaction (code term), trigger, event handler
 
 ### Action
 
-An individual operation within a Cue — for example, navigating to a Scene, evaluating an expression, or incrementing a value. A Cue may contain multiple Actions that fire in order.
+An individual ordered operation within a Cue — for example, navigating to a Scene, evaluating an expression, or incrementing a value. A Cue's Actions execute in their declared order.
 _Avoid_: Step, command
 
 ### Type
@@ -218,18 +221,19 @@ _Avoid_: Binding (acceptable as a synonym), linking
 - A **Show** contains one or more **Scenes**, **Devices**, **Flows**, **Sources**, and **Transformers**, and zero or more **Blocks**
 - A **Scene** belongs to one **Show** and has zero or more **Variables**
 - A **Canvas** belongs to one **Scene** or **Block** and contains that owner's hierarchy of **Elements**
-- A **Flow** groups one or more **Scenes** and tracks a current active **Scene**
+- A **Flow** groups one or more **Scenes** and has an optional design-time default **Scene**; active runtime Scene state belongs to a Run-scoped Device instance
 - A **Device** displays one **Scene** at a time
 - A **Source** or **Transformer** is wired to a **Variable** via the Show graph
 - A **Variable** can be connected to one or more **Element** properties within a **Scene** or **Block**
-- A **Scene** owns a **Canvas** that contains a hierarchy of **Elements**
+- An **Element** can have at most one **Event Binding** for each Event kind; multiple Elements may bind to one **Cue**
 - An **Element** can be a **Slot**, which instantiates a **Block**
+- A **Scene** owns a **Canvas** that contains a hierarchy of **Elements**
 - A **Block** belongs to one **Show**, owns one **Canvas**, and has zero or more **Variables**, **States**, and **Cues**
 - A **Block** is referenced by stable identity independent of its user-facing name
 - A **Slot** references one **Block** and stores that placement's configuration
 - **Events** are emitted either by **Elements** within a **Scene** (user taps, clicks) or by the **Device** displaying the **Scene** (peripheral keypresses, buzzers)
-- A **Cue** lives on a **Scene** or **Block** and fires its **Actions** when a connected **Event** or direct nested **Block** **Cue** occurs
-- A **Cue** contains one or more **Actions**
+- An **Event Binding** connects an Element's Event kind to one Cue owned by the Element's Scene
+- A **Cue** lives on a **Scene** or **Block** and owns one or more ordered **Actions**
 - A **Slot** maps parent **Variables** or runtime context into child **Block** **Variables**
 - A **Slot** has at most one **Slot Input Assignment** for each child **Block Variable**; an assignment may be literal, sourced from a parent Variable, sourced from runtime context, or unset
 - A **Slot Input Assignment** may select a nested value through an **Input Field Path** and uses the shared Type compatibility and coercion contract

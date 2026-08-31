@@ -21,13 +21,14 @@
 //   - Positions are free-form stored data; no auto-layout (#25).
 //   - A Show with zero Flows is valid and unremarkable (#25).
 
+import type { Action, Cue, EventBinding, InteractionCollections } from "./interactions";
+import { assertValidInteractions, projectNavigateEdges } from "./interactions";
 import type { EntityName } from "./id";
 import type { Shape, Type } from "./shapes";
 import { areTypesCompatible, assertValidShapes, InvalidShapeError } from "./shapes";
 import { typeAtPath } from "./property-values";
 import { assertValidBlocks } from "./blocks";
 import type { Block } from "./blocks";
-/** The kinds of node that render on the Show canvas. Nothing else does. */
 export const NODE_KINDS = ["scene", "flow", "source", "transformer", "device"] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
 /** Colorways available to every Show node's editor chrome (#316). */
@@ -281,12 +282,14 @@ export function formatValuePath(path: ValuePath): string {
   return path.join(".");
 }
 
-/** A whole Show graph in one state (draft or published). */
+/** A graph-owned sparse Source default. */
 export interface SourceFieldDefault {
   nodeId: string;
   fieldPath: string[];
   value: unknown;
 }
+
+/** A whole Show graph in one state (draft or published). */
 export interface ShowGraph {
   /** Show-scoped type definitions, independent of the canvas node graph. */
   shapes?: Shape[];
@@ -294,12 +297,17 @@ export interface ShowGraph {
   sourceFieldDefaults?: SourceFieldDefault[];
   /** Show-owned reusable Block definitions, separate from graph nodes. */
   blocks?: Block[];
+  /** Graph-scoped authored interaction definitions. */
+  cues?: readonly Cue[];
+  actions?: readonly Action[];
+  eventBindings?: readonly EventBinding[];
   nodes: GraphNode[];
   edges: GraphEdge[];
 }
+
 /** The empty graph a Show starts life with. Valid — zero Flows is fine (#25). */
 export function emptyShowGraph(): ShowGraph {
-  return { shapes: [], nodes: [], edges: [] };
+  return { shapes: [], nodes: [], edges: [], cues: [], actions: [], eventBindings: [] };
 }
 
 export type GraphViolation =
@@ -335,7 +343,8 @@ export type GraphViolation =
   | "deviceHasDriver"
   | "wiringCycle"
   | "missingSourceType"
-  | "invalidNodeColor";
+  | "invalidNodeColor"
+  | "invalidNavigateProjection";
 
 export class InvalidShowGraphError extends Error {
   readonly reason: GraphViolation;
@@ -810,6 +819,30 @@ function assertNoWiringCycles(edges: GraphEdge[]): void {
   for (const nodeId of outgoing.keys()) visit(nodeId);
 }
 
+function assertNavigateProjection(graph: ShowGraph, interactions: InteractionCollections): void {
+  if (interactions.actions.length === 0) return;
+  const expected = projectNavigateEdges(graph);
+  const actual = graph.edges.filter((edge) => edge.kind === "navigate");
+  if (
+    actual.length !== expected.length ||
+    expected.some((edge) => {
+      const candidate = actual.find((current) => current.id === edge.id);
+      return (
+        candidate === undefined ||
+        candidate.sourceId !== edge.sourceId ||
+        candidate.targetId !== edge.targetId ||
+        candidate.cueId !== edge.cueId ||
+        candidate.actionId !== edge.actionId
+      );
+    })
+  ) {
+    throw new InvalidShowGraphError(
+      "invalidNavigateProjection",
+      "Navigate edges must be the materialized projection of the interaction Actions.",
+    );
+  }
+}
+
 /**
  * Throws `InvalidShowGraphError` unless `graph` is structurally well-formed:
  * ids unique, nesting legal, every edge endpoint of the right kind and in
@@ -869,6 +902,8 @@ export function assertValidShowGraph(graph: ShowGraph): ShowGraph {
       for (const variable of node.variables) assertImageVariableMetadata(variable, node.id);
     }
   }
+  const interactions = assertValidInteractions(graph);
+  assertNavigateProjection(graph, interactions);
 
   for (const edge of graph.edges) {
     assertValidPathSegments(edge);

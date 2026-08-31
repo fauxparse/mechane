@@ -4,13 +4,17 @@
 // lock. Canvas reconciliation, Device identity, publication, and live Run
 // effects are coordinated by show-graph.ts around this seam.
 import type {
+  Action,
   Block,
   BlockState,
   BlockVariable,
+  Cue,
+  EventBinding,
   FlowColor,
   GraphEdge,
   GraphNode,
   GraphState,
+  InteractionCollections,
   SceneVariable,
   Shape,
   ShapeField,
@@ -23,6 +27,7 @@ import {
   generateId,
   isEdgeKind,
   normalizeShapeCollectionInstances,
+  projectNavigateEdges,
   typeAtPath,
 } from "@mechane/domain";
 import { and, eq, notInArray, sql } from "drizzle-orm";
@@ -33,7 +38,11 @@ import type { StoredDevice } from "./devices";
 import { graphNodeInsertValues } from "./graph-node-values";
 import {
   blocks,
+  canvases,
+  graphActions as graphActionsTable,
+  graphCues as graphCuesTable,
   graphEdges,
+  graphEventBindings,
   graphNodeVariables,
   graphNodes,
   shapeFieldRefs,
@@ -60,6 +69,63 @@ export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /** Anything a graph read can run on: the pool or an enclosing transaction. */
 export type Executor = Tx | typeof db;
+type CueRow = typeof graphCuesTable.$inferSelect;
+type ActionRow = typeof graphActionsTable.$inferSelect;
+type EventBindingRow = typeof graphEventBindings.$inferSelect;
+
+function toAction(row: ActionRow): Action {
+  if (row.kind !== "navigate") {
+    throw new Error(`Stored Action "${row.id}" has unknown kind "${row.kind}".`);
+  }
+  return {
+    id: row.id,
+    cueId: row.cueId,
+    kind: "navigate",
+    targetSceneId: row.targetSceneId,
+  };
+}
+
+function toCue(row: CueRow, actionRows: readonly ActionRow[]): Cue {
+  const actionIds = actionRows
+    .filter((action) => action.cueId === row.id)
+    .sort((left, right) => left.position - right.position)
+    .map((action) => action.id);
+  const [firstActionId, ...remainingActionIds] = actionIds;
+  if (firstActionId === undefined) {
+    throw new Error(`Stored Cue "${row.id}" has no Actions.`);
+  }
+  return {
+    id: row.id,
+    name: row.name,
+    sceneId: row.sceneId,
+    actionIds: [firstActionId, ...remainingActionIds],
+  };
+}
+
+function toEventBinding(row: EventBindingRow): EventBinding {
+  if (row.eventKind !== "tap") {
+    throw new Error(`Stored Event Binding "${row.id}" has unknown kind "${row.eventKind}".`);
+  }
+  return {
+    id: row.id,
+    canvasId: row.canvasId,
+    elementId: row.elementId,
+    eventKind: "tap",
+    cueId: row.cueId,
+  };
+}
+
+function readInteractions(
+  cueRows: readonly CueRow[],
+  actionRows: readonly ActionRow[],
+  bindingRows: readonly EventBindingRow[],
+): InteractionCollections {
+  return {
+    cues: cueRows.map((row) => toCue(row, actionRows)),
+    actions: actionRows.map(toAction),
+    eventBindings: bindingRows.map(toEventBinding),
+  };
+}
 
 type NodeRow = typeof graphNodes.$inferSelect;
 type VariableRow = typeof graphNodeVariables.$inferSelect;
@@ -178,6 +244,8 @@ function toEdge(row: EdgeRow): GraphEdge {
     case "device":
       return { ...base, kind: "device" };
   }
+  const unreachable: never = row.kind;
+  throw new Error(`Stored graph edge "${row.id}" has unknown kind "${unreachable}".`);
 }
 
 function groupVariables(rows: VariableRow[]): Map<string, SceneVariable[]> {
@@ -311,6 +379,22 @@ export async function readGraphRows(
     .from(graphEdges)
     .where(eq(graphEdges.graphId, row.id))
     .orderBy(graphEdges.id);
+  const cueRows = await executor
+    .select()
+    .from(graphCuesTable)
+    .where(eq(graphCuesTable.graphId, row.id))
+    .orderBy(graphCuesTable.id);
+  const actionRows = await executor
+    .select()
+    .from(graphActionsTable)
+    .where(eq(graphActionsTable.graphId, row.id))
+    .orderBy(graphActionsTable.cueId, graphActionsTable.position);
+  const bindingRows = await executor
+    .select()
+    .from(graphEventBindings)
+    .where(eq(graphEventBindings.graphId, row.id))
+    .orderBy(graphEventBindings.id);
+  const interactions = readInteractions(cueRows, actionRows, bindingRows);
   const blockValues = await readBlocks(showId, state, row.id, executor);
   const variablesByScene = groupVariables(variableRows);
   return {
@@ -325,6 +409,7 @@ export async function readGraphRows(
       value: sourceDefault.value,
     })),
     blocks: blockValues,
+    ...interactions,
     nodes: nodeRows.map((node) => toNode(node, variablesByScene, deviceIdentities)),
     edges: edgeRows.map(toEdge),
   };
@@ -348,8 +433,13 @@ export async function persistGraphRows(
       .filter((node): node is Extract<GraphNode, { kind: "source" }> => node.kind === "source")
       .map((node) => [node.id, node]),
   );
+  const projectedNavigateEdges = projectNavigateEdges(graph);
   graph = {
     ...graph,
+    cues: graph.cues ?? [],
+    actions: graph.actions ?? [],
+    eventBindings: graph.eventBindings ?? [],
+    edges: [...graph.edges.filter((edge) => edge.kind !== "navigate"), ...projectedNavigateEdges],
     sourceFieldDefaults: graph.sourceFieldDefaults?.map((sourceDefault) => {
       const source = sourceNodes.get(sourceDefault.nodeId);
       const type = source
@@ -398,6 +488,8 @@ export async function persistGraphRows(
   await tx.delete(graphEdges).where(eq(graphEdges.graphId, row.id));
   await tx.delete(graphNodeVariables).where(eq(graphNodeVariables.graphId, row.id));
   await tx.delete(sourceFieldDefaults).where(eq(sourceFieldDefaults.graphId, row.id));
+  await tx.delete(graphEventBindings).where(eq(graphEventBindings.graphId, row.id));
+  await tx.delete(graphCuesTable).where(eq(graphCuesTable.graphId, row.id));
   const nodeIds = graph.nodes.map((node) => node.id);
   if (nodeIds.length > 0) {
     await tx
@@ -494,6 +586,36 @@ export async function persistGraphRows(
   };
   await upsertNodes(topLevel);
   await upsertNodes(nested);
+  const graphCues = graph.cues ?? [];
+  if (graphCues.length > 0) {
+    await tx.insert(graphCuesTable).values(
+      graphCues.map((cue) => ({
+        id: cue.id,
+        graphId: row.id,
+        sceneId: cue.sceneId,
+        name: cue.name,
+      })),
+    );
+  }
+  const graphActions = graph.actions ?? [];
+  if (graphActions.length > 0) {
+    const cuePositions = new Map(
+      graphCues.map((cue) => [
+        cue.id,
+        new Map(cue.actionIds.map((actionId, position) => [actionId, position])),
+      ]),
+    );
+    await tx.insert(graphActionsTable).values(
+      graphActions.map((action) => ({
+        id: action.id,
+        graphId: row.id,
+        cueId: action.cueId,
+        position: cuePositions.get(action.cueId)?.get(action.id) ?? 0,
+        kind: action.kind,
+        targetSceneId: action.targetSceneId,
+      })),
+    );
+  }
 
   const variables = graph.nodes.flatMap((node) =>
     node.kind === "scene"
@@ -518,6 +640,7 @@ export async function persistGraphRows(
     fieldPath: fieldDefault.fieldPath,
     value: fieldDefault.value,
   }));
+
   if (sourceDefaults.length > 0) await tx.insert(sourceFieldDefaults).values(sourceDefaults);
 
   if (graph.edges.length > 0) {
@@ -543,4 +666,68 @@ export async function persistGraphRows(
     graphId: row.id,
     graph: { ...graph, showId, state, updatedAt: now, version },
   };
+}
+async function resolveBindingCanvas(
+  tx: Tx,
+  graphId: string,
+  binding: EventBinding,
+): Promise<EventBinding> {
+  const [target] = await tx
+    .select({ id: canvases.id, sceneNodeId: canvases.sceneNodeId })
+    .from(canvases)
+    .where(and(eq(canvases.id, binding.canvasId), eq(canvases.graphId, graphId)));
+  const sceneNodeId = target?.sceneNodeId;
+  if (target && !sceneNodeId) {
+    throw new Error(`Event Binding "${binding.id}" must target a Scene Canvas.`);
+  }
+  if (!target) {
+    const [source] = await tx
+      .select({ sceneNodeId: canvases.sceneNodeId })
+      .from(canvases)
+      .where(eq(canvases.id, binding.canvasId));
+    if (!source?.sceneNodeId) {
+      throw new Error(`Event Binding "${binding.id}" references an unknown Scene Canvas.`);
+    }
+    const [mapped] = await tx
+      .select({ id: canvases.id, sceneNodeId: canvases.sceneNodeId })
+      .from(canvases)
+      .where(and(eq(canvases.graphId, graphId), eq(canvases.sceneNodeId, source.sceneNodeId)));
+    if (!mapped) {
+      throw new Error(`Event Binding "${binding.id}" has no Canvas in graph "${graphId}".`);
+    }
+    if (!mapped.sceneNodeId) {
+      throw new Error(`Event Binding "${binding.id}" must target a Scene Canvas.`);
+    }
+    return resolveBindingCanvas(tx, graphId, { ...binding, canvasId: mapped.id });
+  }
+  const [cue] = await tx
+    .select({ sceneId: graphCuesTable.sceneId })
+    .from(graphCuesTable)
+    .where(and(eq(graphCuesTable.graphId, graphId), eq(graphCuesTable.id, binding.cueId)));
+  if (cue?.sceneId !== sceneNodeId) {
+    throw new Error(`Event Binding "${binding.id}" must target a Cue owned by its Scene.`);
+  }
+  return binding;
+}
+
+export async function persistEventBindings(
+  tx: Tx,
+  graphId: string,
+  bindings: readonly EventBinding[],
+): Promise<EventBinding[]> {
+  await tx.delete(graphEventBindings).where(eq(graphEventBindings.graphId, graphId));
+  const normalized: EventBinding[] = [];
+  for (const binding of bindings) normalized.push(await resolveBindingCanvas(tx, graphId, binding));
+  if (normalized.length === 0) return normalized;
+  await tx.insert(graphEventBindings).values(
+    normalized.map((binding) => ({
+      id: binding.id,
+      graphId,
+      canvasId: binding.canvasId,
+      elementId: binding.elementId,
+      eventKind: binding.eventKind,
+      cueId: binding.cueId,
+    })),
+  );
+  return normalized;
 }

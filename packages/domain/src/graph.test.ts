@@ -186,7 +186,14 @@ function fullShowGraph(): ShowGraph {
 
 describe("assertValidShowGraph", () => {
   it("accepts the empty graph — a Show with no Flows is valid", () => {
-    expect(assertValidShowGraph(emptyShowGraph())).toEqual({ shapes: [], nodes: [], edges: [] });
+    expect(assertValidShowGraph(emptyShowGraph())).toEqual({
+      shapes: [],
+      nodes: [],
+      edges: [],
+      cues: [],
+      actions: [],
+      eventBindings: [],
+    });
   });
 
   it("accepts a graph with all five node kinds and all three edge kinds", () => {

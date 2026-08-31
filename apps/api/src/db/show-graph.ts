@@ -16,8 +16,18 @@ import type { StoredCanvas } from "./canvas";
 import { persistCanvases, readCanvasById, readCanvasWorkspace } from "./canvas";
 import { db } from "./client";
 import { retireUnreferencedDevices, syncDevices } from "./devices";
-import { GraphVersionConflictError, persistGraphRows, readGraphRows } from "./graph-persistence";
-import { publishPlayerUpdates, reconcileActiveRunValues, syncActiveRunSourceValues } from "./runs";
+import {
+  GraphVersionConflictError,
+  persistEventBindings,
+  persistGraphRows,
+  readGraphRows,
+} from "./graph-persistence";
+import {
+  publishPlayerUpdates,
+  reconcileActiveRunDeviceStates,
+  reconcileActiveRunValues,
+  syncActiveRunSourceValues,
+} from "./runs";
 import { devices, shows } from "./schema";
 export interface PublishLoss {
   sourceId: string;
@@ -99,13 +109,14 @@ async function writeGraph(
     now: written.graph.updatedAt,
     forceBlockWrites: options.forceBlockCanvasWrites,
   });
+  const eventBindings = await persistEventBindings(tx, written.graphId, graph.eventBindings ?? []);
   const deviceIdentities = await syncDevices(tx, showId, graph.nodes);
   const nodes = graph.nodes.map((node) => {
     if (node.kind !== "device") return node;
     const identity = deviceIdentities.get(node.id);
     return identity ? { ...node, ...identity } : node;
   });
-  return { ...written.graph, nodes };
+  return { ...written.graph, eventBindings, nodes };
 }
 /**
  * Replaces the Show's graph in `state`, in a transaction of its own.
@@ -152,6 +163,9 @@ export async function applyShowEdits(
         shapes: current.shapes ?? [],
         sourceFieldDefaults: current.sourceFieldDefaults ?? [],
         blocks: current.blocks ?? [],
+        cues: current.cues ?? [],
+        actions: current.actions ?? [],
+        eventBindings: current.eventBindings ?? [],
         nodes: current.nodes,
         edges: current.edges,
       },
@@ -178,6 +192,9 @@ export async function applyShowEdits(
             shapes: published.shapes ?? [],
             sourceFieldDefaults: published.sourceFieldDefaults ?? [],
             blocks: published.blocks ?? [],
+            cues: published.cues ?? [],
+            actions: published.actions ?? [],
+            eventBindings: published.eventBindings ?? [],
             nodes: published.nodes,
             edges: published.edges,
           },
@@ -262,12 +279,16 @@ export async function publishShowGraph(
         shapes: draft.shapes ?? [],
         sourceFieldDefaults: draft.sourceFieldDefaults ?? [],
         blocks: draft.blocks ?? [],
+        cues: draft.cues ?? [],
+        actions: draft.actions ?? [],
+        eventBindings: draft.eventBindings ?? [],
         nodes: draft.nodes,
         edges: draft.edges,
       },
       undefined,
       { forceBlockCanvasWrites: true },
     );
+    await reconcileActiveRunDeviceStates(showId, published, published.version, tx);
     // Publish is the only moment a Device may be retired (#45). Keeping this
     // in the same transaction preserves the all-or-nothing cutover.
     await retireUnreferencedDevices(tx, showId);

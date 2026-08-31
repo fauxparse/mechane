@@ -6,7 +6,7 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "./client";
 import { realtimeProvider } from "../realtime";
 import { readShowGraph } from "./show-graph";
-import { devices, runs, shows } from "./schema";
+import { devices, runDeviceStates, runs, shows } from "./schema";
 
 export interface RunValueLoss {
   sourceId: string;
@@ -48,6 +48,143 @@ export async function publishPlayerUpdates(showId: string): Promise<void> {
       realtimeProvider.channel(playerChannel(id)).publish("player.updated", null),
     ),
   );
+}
+
+export interface RunDeviceState {
+  runId: string;
+  showId: string;
+  deviceId: string;
+  flowId: string;
+  activeSceneId: string | null;
+  publishedGraphVersion: number;
+}
+
+function toRunDeviceState(row: typeof runDeviceStates.$inferSelect): RunDeviceState {
+  return {
+    runId: row.runId,
+    showId: row.showId,
+    deviceId: row.deviceId,
+    flowId: row.flowId,
+    activeSceneId: row.activeSceneId,
+    publishedGraphVersion: row.publishedGraphVersion,
+  };
+}
+
+export async function readRunDeviceState(
+  runId: string,
+  deviceId: string,
+  executor: Executor = db,
+): Promise<RunDeviceState | null> {
+  const [row] = await executor
+    .select()
+    .from(runDeviceStates)
+    .where(and(eq(runDeviceStates.runId, runId), eq(runDeviceStates.deviceId, deviceId)));
+  return row ? toRunDeviceState(row) : null;
+}
+
+interface FlowDeviceDriver {
+  deviceId: string;
+  flowId: string;
+  defaultSceneId: string | null;
+}
+
+function flowDeviceDrivers(graph: ShowGraph): FlowDeviceDriver[] {
+  const nodesById = new Map(graph.nodes.map((node) => [node.id, node]));
+  return graph.edges.flatMap((edge) => {
+    if (edge.kind !== "device") return [];
+    const device = nodesById.get(edge.targetId);
+    const flow = nodesById.get(edge.sourceId);
+    if (device?.kind !== "device" || device.perConnection || flow?.kind !== "flow") return [];
+    return [{ deviceId: device.id, flowId: flow.id, defaultSceneId: flow.defaultSceneId }];
+  });
+}
+
+export async function initializeRunDeviceStates(
+  tx: Tx,
+  runId: string,
+  showId: string,
+  graph: ShowGraph,
+  publishedGraphVersion: number,
+): Promise<void> {
+  const drivers = flowDeviceDrivers(graph);
+  if (drivers.length === 0) return;
+  await tx.insert(runDeviceStates).values(
+    drivers.map((driver) => ({
+      runId,
+      showId,
+      deviceId: driver.deviceId,
+      flowId: driver.flowId,
+      activeSceneId: driver.defaultSceneId,
+      publishedGraphVersion,
+    })),
+  );
+}
+
+export async function reconcileActiveRunDeviceStates(
+  showId: string,
+  graph: ShowGraph,
+  publishedGraphVersion: number,
+  executor: Executor = db,
+): Promise<void> {
+  const [run] = await executor
+    .select()
+    .from(runs)
+    .where(and(eq(runs.showId, showId), eq(runs.status, "active")))
+    .orderBy(desc(runs.startedAt))
+    .limit(1)
+    .for("update");
+  if (!run) return;
+
+  const states = await executor
+    .select()
+    .from(runDeviceStates)
+    .where(eq(runDeviceStates.runId, run.id))
+    .for("update");
+  const drivers = new Map(flowDeviceDrivers(graph).map((driver) => [driver.deviceId, driver]));
+  const scenes = new Map(
+    graph.nodes.filter((node) => node.kind === "scene").map((scene) => [scene.id, scene]),
+  );
+  const seen = new Set<string>();
+
+  for (const state of states) {
+    const driver = drivers.get(state.deviceId);
+    if (!driver) {
+      await executor
+        .delete(runDeviceStates)
+        .where(
+          and(eq(runDeviceStates.runId, run.id), eq(runDeviceStates.deviceId, state.deviceId)),
+        );
+      continue;
+    }
+    seen.add(driver.deviceId);
+    const preserve =
+      state.flowId === driver.flowId &&
+      state.activeSceneId !== null &&
+      scenes.get(state.activeSceneId)?.parentId === driver.flowId;
+    await executor
+      .update(runDeviceStates)
+      .set({
+        flowId: driver.flowId,
+        activeSceneId: preserve ? state.activeSceneId : driver.defaultSceneId,
+        publishedGraphVersion,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(runDeviceStates.runId, run.id), eq(runDeviceStates.deviceId, state.deviceId)));
+  }
+
+  const missing = [...drivers.values()].filter((driver) => !seen.has(driver.deviceId));
+  if (missing.length > 0) {
+    await executor.insert(runDeviceStates).values(
+      missing.map((driver) => ({
+        runId: run.id,
+        showId,
+        deviceId: driver.deviceId,
+        flowId: driver.flowId,
+        activeSceneId: driver.defaultSceneId,
+        publishedGraphVersion,
+      })),
+    );
+  }
 }
 
 /** Replaces the live values for Sources edited in the director. */
@@ -124,6 +261,7 @@ export async function startRun(showId: string): Promise<Run> {
       })
       .returning();
     if (!row) throw new Error(`Failed to start a Run for Show "${showId}".`);
+    await initializeRunDeviceStates(tx, row.id, showId, graph, graph.version);
     return toRun(row);
   });
   await Promise.all([
@@ -225,6 +363,9 @@ export async function endRun(showId: string): Promise<Run | null> {
       .set({ status: "ended", endedAt: now, updatedAt: now })
       .where(and(eq(runs.showId, showId), eq(runs.status, "active")))
       .returning();
+    if (row) {
+      await tx.delete(runDeviceStates).where(eq(runDeviceStates.runId, row.id));
+    }
     return row ? toRun(row) : null;
   });
   if (run) {

@@ -76,7 +76,7 @@ Two distinct write paths — see [ADR-0002](./docs/adr/0002-draft-publish-vs-liv
 
 Ably provides pub/sub for pushing Scene navigation, Cue/Action results, and live data changes to connected Devices — ordered, guaranteed delivery, presence, reconnection catch-up. All application code calls a small internal `RealtimeChannel`-style interface, never the Ably SDK directly, so the implementation is swappable. See [ADR-0003](./docs/adr/0003-ably-behind-realtime-abstraction.md).
 
-Flow: a mutation (Cue firing an Action, a Source value changing) writes to Postgres, then publishes to the Ably channel for that Run; connected Devices are subscribers.
+Flow: a mutation (Cue firing an Action, a Source value changing) writes to Postgres and inserts a durable Player invalidation outbox row in the same transaction. A best-effort inline drain reduces latency, while a protected Vercel Function invoked by Cron drains missed or failed rows. Connected Devices receive invalidation-only messages and refetch authoritative state. See [ADR-0015](./docs/adr/0015-transactional-player-invalidation-delivery.md).
 
 ### 4.5 Transformers
 

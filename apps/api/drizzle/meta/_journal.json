@@ -169,6 +169,20 @@
       "when": 1787969962027,
       "tag": "0023_minor_miek",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1788150734956,
+      "tag": "0024_tidy_starfox",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1788151080530,
+      "tag": "0025_free_agent_brand",
+      "breakpoints": true
     }
   ]
 }

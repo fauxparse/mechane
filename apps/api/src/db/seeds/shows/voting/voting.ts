@@ -4,10 +4,9 @@ import { db } from "../../../client";
 import { imageAssets, blobs } from "../../../schema";
 import { processImage } from "../../../../images";
 import { blobStore } from "../../../../storage/blob-store";
-import { seedShowData, type SeedShow } from "../../utils/seed-utils";
+import { seedShowData, type SeedCanvases, type SeedShow } from "../../utils/seed-utils";
 import type {
   Block,
-  Canvas,
   FrameElement,
   PropertyConnection,
   ShowGraph,
@@ -382,36 +381,6 @@ export function votingGraph(): ShowGraph {
         targetPath: [AUDIENCE_VARIABLE_ID],
       },
       {
-        id: "edge_candidate_list_confirmation",
-        kind: "navigate",
-        sourceId: CANDIDATE_LIST_SCENE_ID,
-        targetId: CONFIRMATION_SCENE_ID,
-        sourcePath: [],
-        targetPath: [],
-        cueId: null,
-        actionId: null,
-      },
-      {
-        id: "edge_confirmation_list",
-        kind: "navigate",
-        sourceId: CONFIRMATION_SCENE_ID,
-        targetId: CANDIDATE_LIST_SCENE_ID,
-        sourcePath: [],
-        targetPath: [],
-        cueId: null,
-        actionId: null,
-      },
-      {
-        id: "edge_confirmation_thank_you",
-        kind: "navigate",
-        sourceId: CONFIRMATION_SCENE_ID,
-        targetId: THANK_YOU_SCENE_ID,
-        sourcePath: [],
-        targetPath: [],
-        cueId: null,
-        actionId: null,
-      },
-      {
         id: "edge_tally_projector",
         kind: "device",
         sourceId: TALLY_SCENE_ID,
@@ -433,7 +402,7 @@ export function votingGraph(): ShowGraph {
 
 export { seedBlockCanvasPosition, seedCanvasPosition } from "../../utils/seed-utils";
 
-export function votingCanvases(): Record<string, Canvas> {
+export function votingCanvases(): SeedCanvases {
   const candidateListSlot = repeatedSlot(
     "candidate-list-slot",
     "b",
@@ -446,6 +415,7 @@ export function votingCanvases(): Record<string, Canvas> {
   ]);
   return {
     [CANDIDATE_LIST_SCENE_ID]: {
+      id: "canvas_voting_candidate_list",
       kind: "scene",
       root: root(CANDIDATE_LIST_SCENE_ID, "Candidate list", 360, 720, [
         text("candidate-list-title", "a", "Choose a candidate", "Title", 36),
@@ -453,6 +423,7 @@ export function votingCanvases(): Record<string, Canvas> {
       ]),
     },
     [CONFIRMATION_SCENE_ID]: {
+      id: "canvas_voting_confirmation",
       kind: "scene",
       root: root(CONFIRMATION_SCENE_ID, "Confirmation screen", 360, 720, [
         text("confirmation-title", "a", "Confirm your choice", "Title", 36),
@@ -462,6 +433,7 @@ export function votingCanvases(): Record<string, Canvas> {
       ]),
     },
     [THANK_YOU_SCENE_ID]: {
+      id: "canvas_voting_thank_you",
       kind: "scene",
       root: root(THANK_YOU_SCENE_ID, "Thank you screen", 360, 720, [
         text("thank-you-title", "a", "Thanks for voting!", "Title", 36),
@@ -469,6 +441,7 @@ export function votingCanvases(): Record<string, Canvas> {
       ]),
     },
     [TALLY_SCENE_ID]: {
+      id: "canvas_voting_tally",
       kind: "scene",
       root: root(TALLY_SCENE_ID, "Projector tally", 1920, 1080, [
         text("tally-title", "a", "Vote tally", "Title", 56),
