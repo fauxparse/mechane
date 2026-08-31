@@ -332,6 +332,11 @@ interface GraphEdge {
   targetId: ID!
   sourcePath: [String!]!
   targetPath: [String!]!
+
+  """
+  Where the author has dragged this edge's runs, keyed by route shape (#475).
+  """
+  layout: JSON
 }
 
 type WiringEdge implements GraphEdge {
@@ -340,6 +345,11 @@ type WiringEdge implements GraphEdge {
   targetId: ID!
   sourcePath: [String!]!
   targetPath: [String!]!
+
+  """
+  Where the author has dragged this edge's runs, keyed by route shape (#475).
+  """
+  layout: JSON
 
   """Resolved stable field-id mapping."""
   fieldMapping: JSON
@@ -355,6 +365,11 @@ type NavigateEdge implements GraphEdge {
   sourcePath: [String!]!
   targetPath: [String!]!
 
+  """
+  Where the author has dragged this edge's runs, keyed by route shape (#475).
+  """
+  layout: JSON
+
   """The Cue/Action pairing this transition represents."""
   cueId: ID
   actionId: ID
@@ -366,6 +381,11 @@ type DeviceEdge implements GraphEdge {
   targetId: ID!
   sourcePath: [String!]!
   targetPath: [String!]!
+
+  """
+  Where the author has dragged this edge's runs, keyed by route shape (#475).
+  """
+  layout: JSON
 }
 
 type EventBinding {
@@ -657,6 +677,11 @@ input GraphEdgeInput {
   sourcePath: [String!]
   targetPath: [String!]
   fieldMapping: JSON
+
+  """
+  Where the author has dragged this edge's runs, keyed by route shape (#475).
+  """
+  layout: JSON
   cueId: ID
   actionId: ID
 }
@@ -692,6 +717,9 @@ type GraphEdit {
 
   """The wiring edge's stable source-field to target-field mapping."""
   fieldMapping: JSON
+
+  """The edge layout, for graph.setEdgeLayout; null clears it."""
+  layout: JSON
 
   """The graph-owned Source field value; null clears the override."""
   value: JSON
@@ -763,6 +791,9 @@ input ShowEditInput {
 
   """The wiring edge's stable source-field to target-field mapping."""
   fieldMapping: JSON
+
+  """The edge layout, for graph.setEdgeLayout; null clears it."""
+  layout: JSON
 
   """The Source field value; null clears the override."""
   value: JSON

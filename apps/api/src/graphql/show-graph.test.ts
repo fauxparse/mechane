@@ -6,6 +6,10 @@ import { GRAPH_COMMAND_TYPES, type FlatGraphEdit } from "@mechane/commands";
 import { GraphQLError } from "graphql";
 import { describe, expect, it } from "vitest";
 
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { buildSchema, GraphQLInputObjectType } from "graphql";
+
 import {
   parseGraphEdit,
   resolveGraphEdgeType,
@@ -300,5 +304,51 @@ describe("pairing codes are the server's (#45, #111)", () => {
       name: null,
       node: null,
     });
+  });
+});
+
+/**
+ * The transport is the layer with no type system spanning it: an edit's fields
+ * are typed on the way out of the editor and on the way into the command
+ * layer, but between the two they are JSON passing through a hand-written SDL.
+ * A field added at both ends and forgotten in the middle type-checks
+ * everywhere and fails at runtime, with an error naming the whole argument
+ * rather than the field that was missing. So the SDL is checked against the
+ * codec's own output instead of against a reading of it.
+ */
+describe("ShowEditInput carries every field an edit can encode", () => {
+  const schema = buildSchema(
+    readFileSync(
+      fileURLToPath(new URL("../../../../packages/graphql-schema/schema.graphql", import.meta.url)),
+      "utf8",
+    ),
+  );
+  const input = schema.getType("ShowEditInput");
+  if (!(input instanceof GraphQLInputObjectType)) throw new Error("ShowEditInput is not an input");
+  const fields = new Set(Object.keys(input.getFields()));
+
+  const EDITS: FlatGraphEdit[] = [
+    { type: GRAPH_COMMAND_TYPES.setEdgeLayout, edgeId: "edge_1", layout: { HVH: { "1": -24 } } },
+    { type: GRAPH_COMMAND_TYPES.setNodeColor, nodeId: "scene_lobby", color: "purple" },
+    { type: GRAPH_COMMAND_TYPES.moveNode, nodeId: "scene_lobby", position: { x: 1, y: 2 } },
+    { type: GRAPH_COMMAND_TYPES.setWiringFieldMapping, edgeId: "edge_1", fieldMapping: {} },
+  ];
+
+  it.each(EDITS)("accepts every field of $type", (edit) => {
+    expect(Object.keys(edit).filter((field) => !fields.has(field))).toEqual([]);
+  });
+
+  it("round-trips an edge layout through the boundary", () => {
+    const edit = parseGraphEdit({
+      type: GRAPH_COMMAND_TYPES.setEdgeLayout,
+      edgeId: "edge_1",
+      layout: { HVH: { "1": -24 } },
+    });
+    expect(edit).toEqual({
+      type: GRAPH_COMMAND_TYPES.setEdgeLayout,
+      edgeId: "edge_1",
+      layout: { HVH: { "1": -24 } },
+    });
+    expect(serializeGraphEdit(edit)).toMatchObject({ layout: { HVH: { "1": -24 } } });
   });
 });

@@ -35,7 +35,15 @@ import {
   encodeGraphEdit,
   GRAPH_COMMAND_TYPES,
 } from "@mechane/commands";
-import type { Block, GraphEdge, GraphNode, Shape, ShowGraph, Type } from "@mechane/domain";
+import type {
+  Block,
+  EdgeLayout,
+  GraphEdge,
+  GraphNode,
+  Shape,
+  ShowGraph,
+  Type,
+} from "@mechane/domain";
 import { isFlowColor } from "@mechane/domain";
 import { decodeCanvasDocument } from "@mechane/graphql-schema";
 import type { ShowGraph as ApiShowGraph, ApplyShowEditsResult } from "@mechane/graphql-schema";
@@ -83,6 +91,7 @@ type ApiGraphEdge = {
   sourcePath?: string[] | null;
   targetPath?: string[] | null;
   fieldMapping?: unknown;
+  layout?: unknown;
   targetVariableId?: string | null;
   cueId?: string | null;
   actionId?: string | null;
@@ -248,6 +257,9 @@ function toEdge(edge: ApiGraphEdge): GraphEdge {
     ...(edge.__typename === "WiringEdge" && edge.fieldMapping
       ? { fieldMapping: { ...(edge.fieldMapping as Record<string, string>) } }
       : {}),
+    // Where the author dragged this edge's runs (#475). On every edge kind,
+    // not just wiring — anything with a route can be dragged off it.
+    ...(edge.layout ? { layout: edge.layout as EdgeLayout } : {}),
   };
   switch (edge.__typename) {
     case "NavigateEdge":

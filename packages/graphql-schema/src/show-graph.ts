@@ -128,6 +128,7 @@ export const GetShowGraphQuery = graphql(
           targetId
           sourcePath
           targetPath
+          layout
           ... on WiringEdge {
             fieldMapping
             targetVariableId
