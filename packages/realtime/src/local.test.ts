@@ -33,14 +33,17 @@ describe("LocalRealtimeProvider", () => {
     expect(received).toEqual(["snapshot-required"]);
   });
 
-  it("supports stable Player channels independently of Run channels", async () => {
+  it("broadcasts invalidations to every Player tab on a Shared Device", async () => {
     const channel = new LocalRealtimeProvider().channel(playerChannel("device_1"));
-    const received: string[] = [];
-    channel.subscribe((message) => received.push(message.type));
+    const firstTab: string[] = [];
+    const secondTab: string[] = [];
+    channel.subscribe((message) => firstTab.push(message.type));
+    channel.subscribe((message) => secondTab.push(message.type));
 
     await channel.publish("player.updated", null);
 
-    expect(received).toEqual(["player.updated"]);
+    expect(firstTab).toEqual(["player.updated"]);
+    expect(secondTab).toEqual(["player.updated"]);
   });
 
   it("delivers a subscribed message over WebSockets", async () => {
