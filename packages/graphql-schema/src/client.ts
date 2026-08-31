@@ -25,7 +25,7 @@ export class GraphQLRequestError extends Error {
   }
 }
 
-export type GraphQLRequestOptions = Pick<RequestInit, "signal">;
+export type GraphQLRequestOptions = Pick<RequestInit, "signal" | "headers">;
 
 /**
  * Sends a GraphQL request to `endpoint`, including credentials so the
@@ -58,12 +58,13 @@ export async function graphqlRequest<TResult, TVariables extends Record<string, 
   variables?: TVariables,
   options?: GraphQLRequestOptions,
 ): Promise<TResult> {
+  const { headers, ...requestOptions } = options ?? {};
   const response = await fetch(endpoint, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    ...requestOptions,
+    headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify({ query: print(document), variables }),
-    ...options,
   });
 
   if (!response.ok) {

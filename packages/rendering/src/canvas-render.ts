@@ -19,6 +19,7 @@ export interface CanvasRendererProps {
   onImageError?(elementId: string, url: string, event: unknown): void;
   onTextDoubleClick?(elementId: string, event: ReactMouseEvent<HTMLDivElement>): void;
   onTextKeyDown?(elementId: string, event: ReactKeyboardEvent<HTMLDivElement>): void;
+  onElementTap?(elementId: string): void;
 }
 
 export function renderCanvas(canvas: Canvas | FrameElement | CanvasRendererProps): ReactNode {

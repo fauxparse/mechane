@@ -2,7 +2,11 @@ import type { Canvas, GraphNode, ShowGraph, SourceValues } from "@mechane/domain
 import type { RealtimeSubscriber, RealtimeSubscription } from "@mechane/realtime";
 import { playerChannel } from "@mechane/realtime";
 import { AblyRealtimeSubscriber, WebSocketRealtimeSubscriber } from "@mechane/realtime/browser";
-import { GetPlayerSessionQuery, graphqlRequest } from "@mechane/graphql-schema";
+import {
+  GetPlayerSessionQuery,
+  SubmitPlayerEventMutation,
+  graphqlRequest,
+} from "@mechane/graphql-schema";
 import { useCallback, useEffect, useState } from "react";
 import { defaultApiBaseUrl, shouldUseRealtimeSocket } from "./api-url";
 import { normalizePlayerSession } from "./player-mappers";
@@ -37,7 +41,7 @@ export type PlayerSession = {
     version: number;
   };
   scene: Extract<GraphNode, { kind: "scene" }> | null;
-  canvas: (Canvas & { ownerId: string; ownerName: string }) | null;
+  canvas: (Canvas & { id: string; ownerId: string; ownerName: string }) | null;
   blocks: ShowGraph["blocks"];
   imageAssets: Array<{
     assetId: string;
@@ -68,13 +72,71 @@ export async function fetchPlayerSession(
   const result = await graphqlRequest(
     GRAPHQL_ENDPOINT,
     GetPlayerSessionQuery,
-    { pairingCode: code },
-    { signal },
+    {},
+    { signal, headers: { Authorization: `Bearer ${code.trim().toUpperCase()}` } },
   );
   if (!result.playerSession) {
     throw new PlayerRequestError("That pairing code is not active.", 404);
   }
   return normalizePlayerSession(result.playerSession, API_BASE_URL);
+}
+
+export interface PlayerEventInput {
+  eventId: string;
+  sceneId: string;
+  elementId: string;
+  eventKind: "tap";
+}
+
+export type PlayerEventResult =
+  | { kind: "applied"; eventId: string; resultingSceneId: string }
+  | {
+      kind: "duplicate";
+      eventId: string;
+      outcome: "applied" | "ignored";
+      resultingSceneId: string | null;
+      reason: string | null;
+    }
+  | { kind: "ignored"; eventId: string; reason: string };
+
+export async function submitPlayerEvent(
+  code: string,
+  input: PlayerEventInput,
+): Promise<PlayerEventResult> {
+  const result = await graphqlRequest(
+    GRAPHQL_ENDPOINT,
+    SubmitPlayerEventMutation,
+    { input },
+    { headers: { Authorization: `Bearer ${code.trim().toUpperCase()}` } },
+  );
+  const event = result.submitPlayerEvent;
+  if (!event) throw new PlayerRequestError("Unable to process that Event.", 500);
+  if (event.__typename === "PlayerEventApplied") {
+    return {
+      kind: "applied",
+      eventId: String(event.eventId),
+      resultingSceneId: String(event.appliedResultingSceneId),
+    };
+  }
+  if (event.__typename === "PlayerEventDuplicate") {
+    return {
+      kind: "duplicate",
+      eventId: String(event.eventId),
+      outcome: event.outcome === "applied" ? "applied" : "ignored",
+      resultingSceneId: event.duplicateResultingSceneId
+        ? String(event.duplicateResultingSceneId)
+        : null,
+      reason: event.duplicateReason ? String(event.duplicateReason) : null,
+    };
+  }
+  if (event.__typename === "PlayerEventIgnored") {
+    return {
+      kind: "ignored",
+      eventId: String(event.eventId),
+      reason: String(event.ignoredReason),
+    };
+  }
+  throw new PlayerRequestError("Unable to process that Event.", 500);
 }
 function realtimeUrl(): string {
   const url = new URL("/api/realtime", API_BASE_URL);
@@ -87,13 +149,18 @@ function realtimeAuthUrl(pairingCode: string): string {
 
 type PlayerRealtimeSubscriber = RealtimeSubscriber & { close(): void };
 
-type PlayerState =
+type PlayerEventSubmitter = (input: PlayerEventInput) => Promise<PlayerEventResult>;
+
+type PlayerState = {
+  submitEvent?: PlayerEventSubmitter;
+} & (
   | { status: "idle" }
   | { status: "loading"; session: PlayerSession | null }
   | { status: "ready"; session: PlayerSession }
-  | { status: "error"; message: string; notFound: boolean };
+  | { status: "error"; message: string; notFound: boolean }
+);
 
-export function usePlayerSession(code: string) {
+export function usePlayerSession(code: string): PlayerState {
   const normalizedCode = code.trim().toUpperCase();
   const [state, setState] = useState<PlayerState>({ status: "idle" });
 
@@ -118,6 +185,17 @@ export function usePlayerSession(code: string) {
         });
         return null;
       }
+    },
+    [normalizedCode],
+  );
+  const submitEvent = useCallback<PlayerEventSubmitter>(
+    async (input) => {
+      const result = await submitPlayerEvent(normalizedCode, input);
+      if (result.kind === "applied") {
+        const session = await fetchPlayerSession(normalizedCode);
+        setState({ status: "ready", session });
+      }
+      return result;
     },
     [normalizedCode],
   );
@@ -169,5 +247,5 @@ export function usePlayerSession(code: string) {
     };
   }, [load, normalizedCode]);
 
-  return state;
+  return { ...state, submitEvent };
 }

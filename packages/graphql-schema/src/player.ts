@@ -7,6 +7,25 @@ const PlayerGraphFields = graphql(`
     state
     updatedAt
     version
+    cues {
+      id
+      name
+      sceneId
+      actionIds
+    }
+    actions {
+      id
+      cueId
+      kind
+      targetSceneId
+    }
+    eventBindings {
+      id
+      canvasId
+      elementId
+      eventKind
+      cueId
+    }
     sourceFieldDefaults {
       nodeId
       fieldPath
@@ -108,8 +127,8 @@ const PlayerGraphFields = graphql(`
 
 export const GetPlayerSessionQuery: TadaDocumentNode<any, any> = graphql(
   `
-    query GetPlayerSession($pairingCode: String!) {
-      playerSession(pairingCode: $pairingCode) {
+    query GetPlayerSession {
+      playerSession {
         device {
           id
           name
@@ -212,3 +231,25 @@ export const GetPlayerSessionQuery: TadaDocumentNode<any, any> = graphql(
   `,
   [PlayerGraphFields, CanvasElementFields],
 );
+
+export const SubmitPlayerEventMutation: TadaDocumentNode<any, any> = graphql(`
+  mutation SubmitPlayerEvent($input: PlayerEventInput!) {
+    submitPlayerEvent(input: $input) {
+      __typename
+      ... on PlayerEventApplied {
+        eventId
+        appliedResultingSceneId: resultingSceneId
+      }
+      ... on PlayerEventDuplicate {
+        eventId
+        outcome
+        duplicateResultingSceneId: resultingSceneId
+        duplicateReason: reason
+      }
+      ... on PlayerEventIgnored {
+        eventId
+        ignoredReason: reason
+      }
+    }
+  }
+`);

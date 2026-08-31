@@ -181,7 +181,10 @@ export function normalizePlayerSession(value: unknown, apiBaseUrl?: string): Pla
   // Canvas decoding is not the Player's to reimplement (#436): a third copy of
   // a recursive Element decoder lived here, and a Canvas deeper than the old
   // query's cap painted the audience a truncated Scene.
-  const canvas = input.canvas === null ? null : decodeCanvasDocument(input.canvas);
+  const canvas =
+    input.canvas === null
+      ? null
+      : { ...decodeCanvasDocument(input.canvas), id: String(record(input.canvas).id) };
   const imageAssets = Array.isArray(input.imageAssets) ? input.imageAssets.map(record) : [];
 
   return {

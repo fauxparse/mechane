@@ -622,6 +622,36 @@ export const runDeviceStates = pgTable(
     index("run_device_states_show_idx").on(table.showId),
   ],
 );
+
+/** Idempotent outcomes for authenticated Player Events within a Run. */
+export const playerEvents = pgTable(
+  "player_events",
+  {
+    runId: text("run_id")
+      .notNull()
+      .references(() => runs.id, { onDelete: "cascade" }),
+    showId: text("show_id")
+      .notNull()
+      .references(() => shows.id, { onDelete: "cascade" }),
+    deviceId: text("device_id").notNull(),
+    eventId: text("event_id").notNull(),
+    observedSceneId: text("observed_scene_id").notNull(),
+    elementId: text("element_id").notNull(),
+    eventKind: text("event_kind").notNull(),
+    outcome: text("outcome").notNull(),
+    reason: text("reason"),
+    resultingSceneId: text("resulting_scene_id"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.runId, table.deviceId, table.eventId] }),
+    foreignKey({
+      name: "player_events_device_fk",
+      columns: [table.showId, table.deviceId],
+      foreignColumns: [devices.showId, devices.id],
+    }).onDelete("cascade"),
+  ],
+);
 // Blocks are Show-scoped definitions, but their structure belongs to each
 // draft/published graph just like Scene Canvases (#136). Block ids are
 // client-generated and therefore part of the composite graph key.

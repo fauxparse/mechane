@@ -139,7 +139,8 @@ function sessionWithRepeatedCandidate(): PlayerSession {
     states: [],
   };
   graph.blocks = [candidateButton, tallyRow];
-  const canvas: Canvas & { ownerId: string; ownerName: string } = {
+  const canvas: Canvas & { id: string; ownerId: string; ownerName: string } = {
+    id: "canvas_scene_candidates",
     kind: "scene",
     ownerId: "scene_candidates",
     ownerName: "Candidates",
