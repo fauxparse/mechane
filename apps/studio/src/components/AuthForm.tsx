@@ -112,11 +112,11 @@ export function AuthForm({
     <Card
       size="lg"
       className={cn(
-        "auth-form-card rounded-lg bg-muted/30 p-1 shadow-xl gap-0 backdrop-blur-lg",
+        "auth-form-card rounded-xl bg-muted/30 p-2 shadow-xl gap-0 backdrop-blur-lg",
         className,
       )}
     >
-      <CardContent className="flex flex-col gap-5 bg-muted/30 rounded-md shadow-md pb-(--card-spacing)">
+      <CardContent className="flex flex-col gap-5 bg-muted/30 rounded-md shadow-md inset-shadow-[0_1px_0_0_rgba(255,255,255,0.15)] pb-(--card-spacing)">
         <CardHeader className="px-0 pt-(--card-spacing)">
           <CardTitle className="auth-form-title text-xl">
             <span>{copy.title}</span>
@@ -150,8 +150,8 @@ export function AuthForm({
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           {mode === "sign-up" ? (
             <InputGroup size="lg" className="auth-form-name-field">
-              <InputGroupAddon>
-                <UserRoundIcon className="size-6 text-muted-foreground" />
+              <InputGroupAddon className="w-8">
+                <UserRoundIcon className="size-5 text-muted-foreground" />
               </InputGroupAddon>
               <InputGroupInput
                 id={`${formId}-name`}
@@ -167,8 +167,8 @@ export function AuthForm({
           ) : null}
 
           <InputGroup size="lg" className="auth-form-email-field">
-            <InputGroupAddon>
-              <MailIcon className="size-6 text-muted-foreground" />
+            <InputGroupAddon className="w-8">
+              <MailIcon className="size-5 text-muted-foreground" />
             </InputGroupAddon>
             <InputGroupInput
               id={`${formId}-email`}
@@ -185,8 +185,8 @@ export function AuthForm({
           </InputGroup>
 
           <InputGroup size="lg" className="auth-form-password-field">
-            <InputGroupAddon>
-              <LockIcon className="size-6 text-muted-foreground" />
+            <InputGroupAddon className="w-8">
+              <LockIcon className="size-5 text-muted-foreground" />
             </InputGroupAddon>
             <InputGroupInput
               id={`${formId}-password`}

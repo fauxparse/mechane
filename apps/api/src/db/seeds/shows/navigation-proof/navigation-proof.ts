@@ -29,6 +29,11 @@ const CANVAS_IDS = {
   scene_green: "canvas_navigation_green",
   scene_blue: "canvas_navigation_blue",
 } as const;
+const SCENE_POSITIONS = {
+  scene_red: { x: 240, y: 120 },
+  scene_green: { x: 1040, y: 120 },
+  scene_blue: { x: 640, y: 813 },
+} as const;
 
 type NavigationSceneId = (typeof NAVIGATION_SCENE_IDS)[number];
 type NavigationColor = (typeof SCENE_COLORS)[NavigationSceneId];
@@ -39,7 +44,13 @@ const destinationsByScene: Record<NavigationSceneId, readonly NavigationSceneId[
   scene_blue: ["scene_red", "scene_green"],
 };
 
-function text(id: string, content: string, name: string, fontSize: number): TextElement {
+function text(
+  id: string,
+  content: string,
+  name: string,
+  fontSize: number,
+  color: string,
+): TextElement {
   return {
     id,
     type: "text",
@@ -50,6 +61,7 @@ function text(id: string, content: string, name: string, fontSize: number): Text
     textAlign: "center",
     textVerticalAlign: "center",
     sizing: { width: { mode: "fill" }, height: { mode: "hug" } },
+    color,
   };
 }
 
@@ -72,6 +84,7 @@ function button(sceneId: NavigationSceneId, destinationId: NavigationSceneId): F
         `Go to ${destination}`,
         `${destination} button label`,
         28,
+        SCENE_COLORS[destinationId],
       ),
     ],
   };
@@ -97,7 +110,10 @@ function canvas(sceneId: NavigationSceneId): Canvas & { id: string } {
       padding: 48,
       fill: `#${SCENE_COLORS[sceneId] === "red" ? "7f1d1d" : SCENE_COLORS[sceneId] === "green" ? "14532d" : "1e3a8a"}`,
       sizing: { width: { mode: "fixed", value: 720 }, height: { mode: "fixed", value: 480 } },
-      children: [text(`${sceneId}_title`, sceneName, `${sceneName} title`, 56), ...children],
+      children: [
+        text(`${sceneId}_title`, sceneName, `${sceneName} title`, 56, "white"),
+        ...children,
+      ],
     },
   };
 }
@@ -131,12 +147,12 @@ function binding(sceneId: NavigationSceneId, destinationId: NavigationSceneId): 
 }
 
 export function navigationProofGraph(): ShowGraph {
-  const scenes = NAVIGATION_SCENE_IDS.map((sceneId, index) => ({
+  const scenes = NAVIGATION_SCENE_IDS.map((sceneId) => ({
     id: sceneId,
     kind: "scene" as const,
     name: SCENE_NAMES[sceneId],
     parentId: NAVIGATION_FLOW_ID,
-    position: { x: index * 800, y: 0 },
+    position: SCENE_POSITIONS[sceneId],
     color: SCENE_COLORS[sceneId] satisfies NavigationColor,
     variables: [],
   }));
@@ -164,7 +180,7 @@ export function navigationProofGraph(): ShowGraph {
       kind: "device" as const,
       name: "Navigation Proof Device",
       parentId: null,
-      position: { x: 0, y: 600 },
+      position: { x: 1840, y: 466 },
       perConnection: false,
       pairingCode: null,
     },

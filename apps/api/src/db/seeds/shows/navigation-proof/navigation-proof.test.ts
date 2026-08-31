@@ -33,6 +33,17 @@ describe("Navigation Proof seed", () => {
     expect(scenes).toHaveLength(3);
     expect(scenes.map((scene) => scene.name)).toEqual(["Red", "Green", "Blue"]);
     expect(scenes.map((scene) => scene.color)).toEqual(["red", "green", "blue"]);
+    expect(scenes.map((scene) => scene.position)).toEqual([
+      { x: 240, y: 120 },
+      { x: 1040, y: 120 },
+      { x: 640, y: 813 },
+    ]);
+    expect(graph.nodes.find((node) => node.id === NAVIGATION_FLOW_ID)).toMatchObject({
+      position: { x: 0, y: 0 },
+    });
+    expect(graph.nodes.find((node) => node.id === NAVIGATION_DEVICE_ID)).toMatchObject({
+      position: { x: 1840, y: 466 },
+    });
     expect(graph.nodes.find((node) => node.id === NAVIGATION_FLOW_ID)).toMatchObject({
       kind: "flow",
       defaultSceneId: "scene_red",
@@ -62,6 +73,9 @@ describe("Navigation Proof seed", () => {
       const children = canvases[sceneId]?.root.children ?? [];
       expect(children.filter((child) => child.type === "frame")).toHaveLength(2);
     }
+    expect(canvases.scene_red?.root).toMatchObject({ fill: "#7f1d1d" });
+    expect(canvases.scene_green?.root).toMatchObject({ fill: "#14532d" });
+    expect(canvases.scene_blue?.root).toMatchObject({ fill: "#1e3a8a" });
   });
   it("persists the proof graph and starts the Shared Device at Red", async () => {
     await db.insert(user).values({
