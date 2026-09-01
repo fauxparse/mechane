@@ -176,14 +176,18 @@ The one explicitly designated State used when a Block's State Selector has no us
 A runtime user interaction emitted by a Device — a tap, click, or keypress. Events originate either from a user interacting with an Element in the displayed Scene, or from a physical peripheral connected to the Device. A runtime Event is transient; authored configuration uses an Event Binding.
 _Avoid_: Trigger, signal
 
+### Interaction Owner
+
+The Scene or Block to which an authored interaction belongs. An Event Binding derives its owner from the Canvas containing its Element; a Cue belongs directly to one owner, and its Actions belong to that Cue.
+
 ### Event Binding
 
-Authored configuration connecting an Element's Event kind to one Cue owned by that Element's Scene. An Element has at most one Event Binding for each Event kind; multiple Elements may bind to the same Cue. `tap` is the first supported Event kind.
+Authored configuration connecting an Element's Event kind to one Cue owned by that Element's Canvas owner. An Element has at most one Event Binding for each Event kind; multiple Elements may bind to the same Cue. `tap` is the first supported Event kind.
 _Avoid_: Event handler
 
 ### Cue
 
-A named trigger that lives on a Scene or Block and owns an ordered, non-empty list of Actions. A Cue can be connected to multiple Events. The first runtime slice supports unconditional Scene Cues with one Navigate Action; conditions and Block Cue dispatch remain future behavior.
+A named trigger owned by a Scene or Block with an ordered list of Actions, which may be empty. A Cue can be connected to multiple Events. Scene-owned Cues support the current runtime behavior; a Cue with no Actions is valid but has no special effect. Block-owned interactions can be authored and persisted before Block dispatch exists, but have no Player effect until that behavior is defined.
 _Avoid_: Interaction (code term), trigger, event handler
 
 ### Action
