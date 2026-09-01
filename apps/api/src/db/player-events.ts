@@ -1,4 +1,4 @@
-import { resolveRuntimeEvent, type ShowGraph } from "@mechane/domain";
+import { resolveRuntimeEvent } from "@mechane/domain";
 import { and, desc, eq, isNull } from "drizzle-orm";
 
 import { readCanvas } from "./canvas";
