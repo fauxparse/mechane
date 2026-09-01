@@ -79,6 +79,7 @@ export function PlayerView({ code }: { code: string }) {
       void state
         .submitEvent({
           eventId: crypto.randomUUID(),
+          publishedGraphVersion: state.session.graph.version,
           sceneId: state.session.scene.id,
           elementId,
           eventKind: "tap",

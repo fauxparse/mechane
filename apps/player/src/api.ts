@@ -94,6 +94,7 @@ export async function fetchPlayerSession(
 
 export interface PlayerEventInput {
   eventId: string;
+  publishedGraphVersion: number;
   sceneId: string;
   elementId: string;
   eventKind: "tap";
@@ -104,11 +105,13 @@ export type PlayerEventResult =
   | {
       kind: "duplicate";
       eventId: string;
-      outcome: "applied" | "ignored";
+      outcome: "applied" | "ignored" | "accepted" | "rejected";
       resultingSceneId: string | null;
       reason: string | null;
     }
-  | { kind: "ignored"; eventId: string; reason: string };
+  | { kind: "ignored"; eventId: string; reason: string }
+  | { kind: "accepted"; eventId: string }
+  | { kind: "rejected"; eventId: string; reason: string };
 
 export async function submitPlayerEvent(
   code: string,
@@ -145,6 +148,16 @@ export async function submitPlayerEvent(
       kind: "ignored",
       eventId: String(event.eventId),
       reason: String(event.ignoredReason),
+    };
+  }
+  if (event.__typename === "PlayerEventAccepted") {
+    return { kind: "accepted", eventId: String(event.eventId) };
+  }
+  if (event.__typename === "PlayerEventRejected") {
+    return {
+      kind: "rejected",
+      eventId: String(event.eventId),
+      reason: String(event.rejectedReason),
     };
   }
   throw new PlayerRequestError("Unable to process that Event.", 500);

@@ -300,6 +300,13 @@ export const SubmitPlayerEventMutation: TadaDocumentNode<any, any> = graphql(`
         eventId
         ignoredReason: reason
       }
+      ... on PlayerEventAccepted {
+        eventId
+      }
+      ... on PlayerEventRejected {
+        eventId
+        rejectedReason: reason
+      }
     }
   }
 `);

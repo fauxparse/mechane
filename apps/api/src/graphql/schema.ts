@@ -235,6 +235,7 @@ export const schema = createSchema<GraphQLContext>({
 
     input PlayerEventInput {
       eventId: ID!
+      publishedGraphVersion: Int!
       sceneId: ID!
       elementId: ID!
       eventKind: String!
@@ -253,7 +254,19 @@ export const schema = createSchema<GraphQLContext>({
       eventId: ID!
       reason: String!
     }
-    union PlayerEventResult = PlayerEventApplied | PlayerEventDuplicate | PlayerEventIgnored
+    type PlayerEventAccepted {
+      eventId: ID!
+    }
+    type PlayerEventRejected {
+      eventId: ID!
+      reason: String!
+    }
+    union PlayerEventResult =
+      PlayerEventApplied
+      | PlayerEventDuplicate
+      | PlayerEventIgnored
+      | PlayerEventAccepted
+      | PlayerEventRejected
 
     type PlayerFlowScene {
       scene: SceneNode!
@@ -1137,6 +1150,10 @@ export const schema = createSchema<GraphQLContext>({
             return "PlayerEventDuplicate";
           case "ignored":
             return "PlayerEventIgnored";
+          case "accepted":
+            return "PlayerEventAccepted";
+          case "rejected":
+            return "PlayerEventRejected";
           default:
             return null;
         }

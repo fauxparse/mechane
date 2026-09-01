@@ -6,7 +6,7 @@ import { db } from "./client";
 import { dispatchPlayerEvent, PlayerDispatchConfigurationError } from "./player-events";
 import { endRun, readRunDeviceState, startRun } from "./runs";
 import { publishShowGraph, readShowGraph, writeShowGraph } from "./show-graph";
-import { playerEvents, runDeviceStates, shows, user } from "./schema";
+import { playerEvents, playerInvalidationOutbox, runDeviceStates, shows, user } from "./schema";
 import { seedShow } from "./seeds/shows/navigation-proof/navigation-proof";
 
 const userId = `player-events-db-test-${crypto.randomUUID()}`;
@@ -34,6 +34,7 @@ async function proofDevice(): Promise<{ id: string; pairingCode: string }> {
 function event(eventId: string, sceneId: string, destinationId: string) {
   return {
     eventId,
+    publishedGraphVersion: 1,
     sceneId,
     elementId: `button_${sceneId}_${destinationId}`,
     eventKind: "tap",
@@ -115,6 +116,7 @@ describe("dispatchPlayerEvent", () => {
     await expect(
       dispatchPlayerEvent(device.pairingCode, {
         eventId: crypto.randomUUID(),
+        publishedGraphVersion: 1,
         sceneId: "scene_red",
         elementId: "missing_element",
         eventKind: "tap",
@@ -173,6 +175,7 @@ describe("dispatchPlayerEvent", () => {
     await expect(
       dispatchPlayerEvent(device.pairingCode, {
         eventId: crypto.randomUUID(),
+        publishedGraphVersion: 1,
         sceneId: "scene_red",
         elementId: "button_scene_red_scene_green",
         eventKind: "tap",
@@ -198,4 +201,49 @@ describe("dispatchPlayerEvent", () => {
       ),
     ).rejects.toBeInstanceOf(PlayerDispatchConfigurationError);
   });
+  it("accepts per-connection Events without server navigation state", async () => {
+    await createShow();
+    const draft = await readShowGraph(showId, "draft");
+    const audienceGraph: ShowGraph = {
+      ...draft,
+      nodes: draft.nodes.map((node) =>
+        node.kind === "device" ? { ...node, perConnection: true } : node,
+      ),
+    };
+    await writeShowGraph(showId, "draft", audienceGraph);
+    await publishShowGraph(showId);
+    const run = await startRun(showId);
+    const published = await readShowGraph(showId, "published");
+    const device = published.nodes.find((node) => node.kind === "device");
+    if (device?.kind !== "device" || !device.pairingCode) throw new Error("Audience Device is incomplete.");
+    const beforeOutbox = await db
+      .select()
+      .from(playerInvalidationOutbox)
+      .where(eq(playerInvalidationOutbox.showId, showId));
+    const input = event(crypto.randomUUID(), "scene_red", "scene_green");
+    const result = await dispatchPlayerEvent(device.pairingCode, {
+      ...input,
+      publishedGraphVersion: published.version,
+    });
+
+    expect(result).toEqual({ kind: "accepted", eventId: input.eventId });
+    expect(await readRunDeviceState("missing", device.id)).toBeNull();
+    expect(await readRunDeviceState(run.id, device.id)).toBeNull();
+    const rows = await db
+      .select()
+      .from(playerEvents)
+      .where(eq(playerEvents.runId, run.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      outcome: "accepted",
+      resultingSceneId: "scene_green",
+      publishedGraphVersion: published.version,
+    });
+    expect(
+      await db
+        .select()
+        .from(playerInvalidationOutbox)
+        .where(eq(playerInvalidationOutbox.showId, showId)),
+    ).toHaveLength(beforeOutbox.length);
+});
 });
