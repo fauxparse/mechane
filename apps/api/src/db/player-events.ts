@@ -1,9 +1,4 @@
-import {
-  InvalidInteractionError,
-  resolveRuntimeEvent,
-  type RuntimeEventPlan,
-  type ShowGraph,
-} from "@mechane/domain";
+import { InvalidInteractionError, resolveRuntimeEvent, type RuntimeEventPlan } from "@mechane/domain";
 import { and, desc, eq, isNull } from "drizzle-orm";
 
 import { readCanvas } from "./canvas";
