@@ -42,6 +42,65 @@ export function interactionCollections(
     eventBindings: graph.eventBindings ?? [],
   };
 }
+export interface RuntimeEventObservation {
+  sceneId: string;
+  canvasId: string;
+  elementId: string;
+  eventKind: string;
+}
+
+export type RuntimeEventPlan =
+  | { kind: "unbound"; reason: "stale-scene" | "unbound-event" }
+  | { kind: "planned"; sceneId: string; cue: Cue; actions: readonly Action[] };
+
+/**
+ * Resolves an observed runtime Event into the complete authored Action plan.
+ * Expected stale or unbound observations are returned as data; an invalid
+ * trusted interaction aggregate still throws through assertValidInteractions.
+ */
+export function resolveRuntimeEvent(
+  graph: {
+    nodes: readonly { id: string; kind: string; parentId: string | null }[];
+    cues?: readonly Cue[];
+    actions?: readonly Action[];
+    eventBindings?: readonly EventBinding[];
+  },
+  observation: RuntimeEventObservation,
+): RuntimeEventPlan {
+  const interactions = assertValidInteractions(graph);
+  const scene = graph.nodes.find(
+    (node) => node.id === observation.sceneId && node.kind === "scene",
+  );
+  if (!scene || scene.parentId === null) {
+    return { kind: "unbound", reason: "stale-scene" };
+  }
+  const binding = interactions.eventBindings.find(
+    (candidate) =>
+      candidate.canvasId === observation.canvasId &&
+      candidate.elementId === observation.elementId &&
+      candidate.eventKind === observation.eventKind,
+  );
+  if (!binding) return { kind: "unbound", reason: "unbound-event" };
+  const cue = interactions.cues.find((candidate) => candidate.id === binding.cueId);
+  if (!cue || cue.sceneId !== scene.id) {
+    throw new InvalidInteractionError(
+      "bindingScene",
+      `Event Binding "${binding.id}" does not belong to Scene "${scene.id}".`,
+    );
+  }
+  const actions = cue.actionIds.map((actionId) => {
+    const action = interactions.actions.find((candidate) => candidate.id === actionId);
+    if (!action) {
+      throw new InvalidInteractionError(
+        "missingAction",
+        `Cue "${cue.id}" references missing Action "${actionId}".`,
+      );
+    }
+    return action;
+  });
+  return { kind: "planned", sceneId: scene.id, cue, actions };
+}
+
 
 export function navigateEdgeId(actionId: string): string {
   return `navigate:${actionId}`;
@@ -100,7 +159,8 @@ export type InteractionViolation =
   | "navigateSceneFlow"
   | "invalidCurrentActionCount"
   | "duplicateEventBinding"
-  | "emptyElementReference";
+  | "emptyElementReference"
+  | "bindingScene";
 
 export class InvalidInteractionError extends Error {
   constructor(

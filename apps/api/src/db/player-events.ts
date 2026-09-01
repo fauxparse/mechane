@@ -1,4 +1,4 @@
-import type { EventBinding, ShowGraph } from "@mechane/domain";
+import { resolveRuntimeEvent, type ShowGraph } from "@mechane/domain";
 import { and, desc, eq, isNull } from "drizzle-orm";
 
 import { readCanvas } from "./canvas";
@@ -78,20 +78,6 @@ function duplicateResult(row: PlayerEventRow): PlayerEventResult {
   };
 }
 
-function bindingFor(
-  graph: ShowGraph,
-  canvasId: string,
-  input: PlayerEventInput,
-): EventBinding | null {
-  return (
-    (graph.eventBindings ?? []).find(
-      (binding) =>
-        binding.canvasId === canvasId &&
-        binding.elementId === input.elementId &&
-        binding.eventKind === input.eventKind,
-    ) ?? null
-  );
-}
 
 async function recordEvent(
   tx: Tx,
@@ -229,36 +215,36 @@ export async function dispatchPlayerEvent(
           `Published Scene "${state.activeSceneId}" has no Canvas.`,
         );
       }
-      const binding = bindingFor(graph, canvas.id, input);
-      if (!binding) {
+      const plan = resolveRuntimeEvent(graph, {
+        sceneId: state.activeSceneId,
+        canvasId: canvas.id,
+        elementId: input.elementId,
+        eventKind: input.eventKind,
+      });
+      if (plan.kind === "unbound") {
         const result: PlayerEventResult = {
           kind: "ignored",
           eventId: input.eventId,
-          reason: "unbound-event",
+          reason: plan.reason === "stale-scene" ? "stale-scene" : "unbound-event",
         };
         await recordEvent(tx, run.id, device.showId, device.id, input, result);
         return result;
       }
-      const cue = (graph.cues ?? []).find((candidate) => candidate.id === binding.cueId);
-      const actionId = cue?.actionIds.length === 1 ? cue.actionIds[0] : undefined;
-      const action = actionId
-        ? (graph.actions ?? []).find((candidate) => candidate.id === actionId)
-        : undefined;
+      const action = plan.actions[0];
       const target =
         action?.kind === "navigate"
           ? graph.nodes.find((node) => node.id === action.targetSceneId)
           : undefined;
       if (
-        !cue ||
-        cue.sceneId !== state.activeSceneId ||
         !action ||
-        action.cueId !== cue.id ||
+        action.kind !== "navigate" ||
+        action.cueId !== plan.cue.id ||
         !target ||
         target.kind !== "scene" ||
         target.parentId !== state.flowId
       ) {
         throw new PlayerDispatchConfigurationError(
-          `Event Binding "${binding.id}" does not resolve to a valid Navigate Action.`,
+          `Scene "${state.activeSceneId}" does not resolve to a valid Navigate Action.`,
         );
       }
 
