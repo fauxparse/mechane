@@ -1,0 +1,1 @@
+ALTER TABLE "player_events" ADD COLUMN "published_graph_version" integer NOT NULL;

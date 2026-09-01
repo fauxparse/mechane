@@ -1,4 +1,4 @@
-import { resolveRuntimeEvent } from "@mechane/domain";
+import { InvalidInteractionError, resolveRuntimeEvent, type RuntimeEventPlan } from "@mechane/domain";
 import { and, desc, eq, isNull } from "drizzle-orm";
 
 import { readCanvas } from "./canvas";
@@ -12,6 +12,7 @@ const EVENT_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export interface PlayerEventInput {
   eventId: string;
+  publishedGraphVersion: number;
   sceneId: string;
   elementId: string;
   eventKind: string;
@@ -24,17 +25,22 @@ export type PlayerEventIgnoreReason =
   | "not-ready"
   | "stale-scene"
   | "unbound-event";
-
 export type PlayerEventResult =
   | { kind: "applied"; eventId: string; resultingSceneId: string }
   | {
       kind: "duplicate";
       eventId: string;
-      outcome: "applied" | "ignored";
+      outcome: "applied" | "ignored" | "accepted" | "rejected";
       resultingSceneId: string | null;
       reason: string | null;
     }
-  | { kind: "ignored"; eventId: string; reason: PlayerEventIgnoreReason };
+  | { kind: "ignored"; eventId: string; reason: PlayerEventIgnoreReason }
+  | { kind: "accepted"; eventId: string }
+  | {
+      kind: "rejected";
+      eventId: string;
+      reason: "no-active-run" | "stale-publication" | "invalid-event";
+    };
 
 export class PlayerEventInputError extends Error {
   constructor(message: string) {
@@ -69,6 +75,15 @@ function duplicateResult(row: PlayerEventRow): PlayerEventResult {
       reason: null,
     };
   }
+  if (row.outcome === "accepted" || row.outcome === "rejected") {
+    return {
+      kind: "duplicate",
+      eventId: row.eventId,
+      outcome: row.outcome,
+      resultingSceneId: row.resultingSceneId,
+      reason: row.reason,
+    };
+  }
   return {
     kind: "duplicate",
     eventId: row.eventId,
@@ -86,26 +101,148 @@ async function recordEvent(
   deviceId: string,
   input: PlayerEventInput,
   result: PlayerEventResult,
+  resultingSceneId?: string | null,
 ): Promise<void> {
-  const outcome = result.kind === "applied" ? "applied" : "ignored";
+  const outcome =
+    result.kind === "applied" || result.kind === "accepted"
+      ? result.kind
+      : result.kind === "rejected"
+        ? "rejected"
+        : "ignored";
   await tx.insert(playerEvents).values({
     runId,
     showId,
     deviceId,
     eventId: input.eventId,
+    publishedGraphVersion: input.publishedGraphVersion,
     observedSceneId: input.sceneId,
     elementId: input.elementId,
     eventKind: input.eventKind,
     outcome,
-    reason: result.kind === "ignored" ? result.reason : null,
+    reason: result.kind === "ignored" || result.kind === "rejected" ? result.reason : null,
     resultingSceneId:
       result.kind === "applied"
         ? result.resultingSceneId
-        : result.kind === "duplicate"
-          ? result.resultingSceneId
+        : result.kind === "accepted"
+          ? (resultingSceneId ?? null)
           : null,
   });
 }
+
+type DeviceRow = typeof devices.$inferSelect;
+
+async function dispatchPerConnectionEvent(
+  tx: Tx,
+  device: DeviceRow,
+  input: PlayerEventInput,
+): Promise<PlayerEventResult> {
+  const [run] = await tx
+    .select()
+    .from(runs)
+    .where(and(eq(runs.showId, device.showId), eq(runs.status, "active")))
+    .orderBy(desc(runs.startedAt))
+    .limit(1);
+  if (!run) return { kind: "rejected", eventId: input.eventId, reason: "no-active-run" };
+
+  const [existing] = await tx
+    .select()
+    .from(playerEvents)
+    .where(
+      and(
+        eq(playerEvents.runId, run.id),
+        eq(playerEvents.deviceId, device.id),
+        eq(playerEvents.eventId, input.eventId),
+      ),
+    );
+  if (existing) return duplicateResult(existing);
+
+  const graph = await readShowGraph(device.showId, "published", tx);
+  if (input.publishedGraphVersion !== graph.version) {
+    const result: PlayerEventResult = {
+      kind: "rejected",
+      eventId: input.eventId,
+      reason: "stale-publication",
+    };
+    await recordEvent(tx, run.id, device.showId, device.id, input, result);
+    return result;
+  }
+  const driver = graph.edges.find(
+    (edge) => edge.kind === "device" && edge.targetId === device.id,
+  );
+  const flow = driver
+    ? graph.nodes.find((node) => node.id === driver.sourceId && node.kind === "flow")
+    : undefined;
+  if (!flow || flow.kind !== "flow") {
+    throw new PlayerDispatchConfigurationError(
+      `Per-connection Device "${device.id}" does not drive a Flow.`,
+    );
+  }
+  const observedScene = graph.nodes.find(
+    (node) => node.id === input.sceneId && node.kind === "scene",
+  );
+  if (!observedScene || observedScene.kind !== "scene" || observedScene.parentId !== flow.id) {
+    const result: PlayerEventResult = {
+      kind: "rejected",
+      eventId: input.eventId,
+      reason: "invalid-event",
+    };
+    await recordEvent(tx, run.id, device.showId, device.id, input, result);
+    return result;
+  }
+  const canvas = await readCanvas(
+    device.showId,
+    "published",
+    { sceneNodeId: observedScene.id },
+    tx,
+  );
+  if (!canvas) {
+    throw new PlayerDispatchConfigurationError(
+      `Published Scene "${observedScene.id}" has no Canvas.`,
+    );
+  }
+  let plan: RuntimeEventPlan;
+  try {
+    plan = resolveRuntimeEvent(graph, {
+      sceneId: observedScene.id,
+      canvasId: canvas.id,
+      elementId: input.elementId,
+      eventKind: input.eventKind,
+    });
+  } catch (error) {
+    if (error instanceof InvalidInteractionError) {
+      throw new PlayerDispatchConfigurationError("Published interactions are invalid.");
+    }
+    throw error;
+  }
+  if (plan.kind === "unbound") {
+    const result: PlayerEventResult = {
+      kind: "rejected",
+      eventId: input.eventId,
+      reason: "invalid-event",
+    };
+    await recordEvent(tx, run.id, device.showId, device.id, input, result);
+    return result;
+  }
+  const action = plan.actions[0];
+  const target =
+    action?.kind === "navigate"
+      ? graph.nodes.find((node) => node.id === action.targetSceneId)
+      : undefined;
+  if (
+    !action ||
+    action.kind !== "navigate" ||
+    action.cueId !== plan.cue.id ||
+    !target ||
+    target.kind !== "scene" ||
+    target.parentId !== flow.id
+  ) {
+    throw new PlayerDispatchConfigurationError("Published interactions are invalid.");
+  }
+  const result: PlayerEventResult = { kind: "accepted", eventId: input.eventId };
+  await recordEvent(tx, run.id, device.showId, device.id, input, result, target.id);
+  return result;
+}
+
 
 export async function dispatchPlayerEvent(
   pairingCode: string,
@@ -125,6 +262,7 @@ export async function dispatchPlayerEvent(
         .from(devices)
         .where(and(eq(devices.pairingCode, normalizedCode), isNull(devices.retiredAt)));
       if (!device) return null;
+      if (device.perConnection) return dispatchPerConnectionEvent(tx, device, input);
 
       const [run] = await tx
         .select()

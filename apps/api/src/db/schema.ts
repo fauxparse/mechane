@@ -640,6 +640,7 @@ export const playerEvents = pgTable(
       .references(() => shows.id, { onDelete: "cascade" }),
     deviceId: text("device_id").notNull(),
     eventId: text("event_id").notNull(),
+    publishedGraphVersion: integer("published_graph_version").notNull(),
     observedSceneId: text("observed_scene_id").notNull(),
     elementId: text("element_id").notNull(),
     eventKind: text("event_kind").notNull(),

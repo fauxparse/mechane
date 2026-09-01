@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { seedShow } from "../db/seeds/shows/navigation-proof/navigation-proof";
 import { db } from "../db/client";
 import { readRunDeviceState, startRun } from "../db/runs";
-import { readShowGraph } from "../db/show-graph";
+import { publishShowGraph, readShowGraph, writeShowGraph } from "../db/show-graph";
 import { shows, user } from "../db/schema";
 import { schema } from "./schema";
 
@@ -27,6 +27,13 @@ const SUBMIT_PLAYER_EVENT = /* GraphQL */ `
       ... on PlayerEventIgnored {
         eventId
         ignoredReason: reason
+      }
+      ... on PlayerEventAccepted {
+        eventId
+      }
+      ... on PlayerEventRejected {
+        eventId
+        rejectedReason: reason
       }
     }
   }
@@ -96,6 +103,7 @@ describe("submitPlayerEvent", () => {
     };
     const input = {
       eventId: crypto.randomUUID(),
+      publishedGraphVersion: published.version,
       sceneId: "scene_red",
       elementId: binding.elementId,
       eventKind: "tap",
@@ -120,5 +128,43 @@ describe("submitPlayerEvent", () => {
         input: { ...input, eventId: crypto.randomUUID() },
       }),
     ).resolves.toMatchObject({ __typename: "PlayerEventIgnored", ignoredReason: "stale-scene" });
+  });
+  it("accepts an anonymous per-connection Event without mutating Run navigation", async () => {
+    await createShow();
+    await seedShow.seed(showId);
+    const draft = await readShowGraph(showId, "draft");
+    await writeShowGraph(showId, "draft", {
+      ...draft,
+      nodes: draft.nodes.map((node) =>
+        node.kind === "device" ? { ...node, perConnection: true } : node,
+      ),
+    });
+    await publishShowGraph(showId);
+    await startRun(showId);
+    const published = await readShowGraph(showId, "published");
+    const device = published.nodes.find((node) => node.kind === "device");
+    const binding = published.eventBindings?.find(
+      (candidate) => candidate.elementId === "button_scene_red_scene_green",
+    );
+    if (device?.kind !== "device" || !device.pairingCode || !binding) {
+      throw new Error("Audience Event fixture is incomplete.");
+    }
+    const context: GraphQLContext = {
+      userId: null,
+      user: null,
+      playerPairingCode: device.pairingCode,
+    };
+
+    await expect(
+      request(context, {
+        input: {
+          eventId: crypto.randomUUID(),
+          publishedGraphVersion: published.version,
+          sceneId: "scene_red",
+          elementId: binding.elementId,
+          eventKind: "tap",
+        },
+      }),
+    ).resolves.toMatchObject({ __typename: "PlayerEventAccepted" });
   });
 });
