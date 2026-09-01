@@ -2,6 +2,7 @@ import { resolveRuntimeEvent } from "@mechane/domain";
 import { useCallback, useEffect, useState } from "react";
 import type { PlayerSession, PlayerState } from "./api";
 import {
+  clearPlayerDeviceState,
   openPlayerStateStore,
   playerRunScope,
   reconcilePlayerRunState,
@@ -35,11 +36,12 @@ export function usePlayerNavigation(
       setRuntime({ status: "inactive", session: null });
       return;
     }
-    if (!session.device.perConnection) {
-      setRuntime({ status: "inactive", session });
+    if (!session.run) {
+      clearPlayerDeviceState(pairingCode);
+      setRuntime({ status: "loading", session });
       return;
     }
-    if (!session.run || !session.flow) {
+    if (!session.flow) {
       setRuntime({ status: "loading", session });
       return;
     }

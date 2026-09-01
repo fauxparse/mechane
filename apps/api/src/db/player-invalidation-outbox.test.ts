@@ -77,7 +77,7 @@ describe.sequential("player invalidation outbox", () => {
 
     await db.transaction((tx) => enqueuePlayerInvalidations(tx, showId));
     expect(await db.transaction((tx) => enqueuePlayerInvalidations(tx, showId))).toBe(0);
-    expect(await outboxRows()).toHaveLength(1);
+    expect(await outboxRows()).toHaveLength(2);
   });
 
   it("keeps a new row behind an actively leased row", async () => {
@@ -95,7 +95,7 @@ describe.sequential("player invalidation outbox", () => {
       .where(eq(playerInvalidationOutbox.id, row.id));
 
     expect(await db.transaction((tx) => enqueuePlayerInvalidations(tx, showId))).toBe(1);
-    expect(await outboxRows()).toHaveLength(2);
+    expect(await outboxRows()).toHaveLength(3);
   });
 
   it("delivers one FIFO row per Device and acknowledges after provider acceptance", async () => {
@@ -117,20 +117,20 @@ describe.sequential("player invalidation outbox", () => {
     });
 
     expect(await drainPlayerInvalidations({ batchSize: 10, provider })).toMatchObject({
-      claimed: 1,
-      delivered: 1,
+      claimed: 2,
+      delivered: 2,
       failed: 0,
     });
-    expect(messages).toHaveLength(1);
+    expect(messages).toHaveLength(2);
     expect(messages[0]).toMatchObject({ type: "player.updated", payload: null });
-    expect((await outboxRows()).filter((row) => row.status === "delivered")).toHaveLength(1);
+    expect((await outboxRows()).filter((row) => row.status === "delivered")).toHaveLength(2);
 
     expect(await drainPlayerInvalidations({ batchSize: 10, provider })).toMatchObject({
       claimed: 1,
       delivered: 1,
       failed: 0,
     });
-    expect(messages).toHaveLength(2);
+    expect(messages).toHaveLength(3);
   });
 
   it("reschedules provider failures and reclaims expired leases", async () => {
@@ -140,9 +140,9 @@ describe.sequential("player invalidation outbox", () => {
       throw new Error("provider unavailable");
     });
     expect(await drainPlayerInvalidations({ provider: failing })).toMatchObject({
-      claimed: 1,
+      claimed: 2,
       delivered: 0,
-      failed: 1,
+      failed: 2,
     });
     const [failed] = await outboxRows();
     if (!failed) throw new Error("Failed outbox row was not persisted.");
@@ -171,8 +171,8 @@ describe.sequential("player invalidation outbox", () => {
       })
       .where(eq(playerInvalidationOutbox.id, leased.id));
     expect(await drainPlayerInvalidations({ provider: successful })).toMatchObject({
-      claimed: 1,
-      delivered: 1,
+      claimed: 2,
+      delivered: 2,
       failed: 0,
     });
   });

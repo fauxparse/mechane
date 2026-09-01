@@ -285,10 +285,11 @@ export function cleanupPlayerRunState(
   }
 }
 
-export function clearPlayerRunState(
-  scope: PlayerRunScope,
+export function clearPlayerDeviceState(
+  pairingCode: string,
   environment: PlayerStateEnvironment = browserEnvironment(),
 ): void {
+  const scope = playerRunScope(pairingCode, "cleanup");
   const storage = environment.storage;
   if (!storage) return;
   try {
