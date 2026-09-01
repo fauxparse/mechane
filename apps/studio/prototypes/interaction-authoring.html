@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Prototype: Interaction authoring</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #111318;
+        --panel: #1a1d24;
+        --panel-2: #222630;
+        --panel-3: #2b303c;
+        --line: #383f4c;
+        --text: #f1f3f7;
+        --muted: #9aa3b2;
+        --accent: #8fb7ff;
+        --accent-2: #d7e5ff;
+        --green: #76d6aa;
+        --yellow: #f3ca76;
+        --red: #f28e9b;
+        --shadow: 0 24px 70px #0008;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: radial-gradient(circle at 18% 0%, #252b39 0, var(--bg) 38rem); color: var(--text); min-height: 100vh; }
+      button, select, input { font: inherit; }
+      button { border: 0; color: inherit; cursor: pointer; }
+      .prototype-shell { min-height: 100vh; padding: 32px 32px 110px; }
+      .prototype-label { position: fixed; z-index: 20; top: 14px; left: 50%; transform: translateX(-50%); color: #111318; background: var(--yellow); border-radius: 999px; padding: 5px 12px; font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; text-transform: uppercase; box-shadow: 0 5px 20px #0006; }
+      .app-frame { max-width: 1240px; min-height: 680px; margin: 0 auto; display: grid; grid-template-columns: 188px minmax(480px, 1fr) 360px; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: #15181f; box-shadow: var(--shadow); }
+      .rail { padding: 22px 15px; border-right: 1px solid var(--line); background: #171a21; }
+      .rail h1 { margin: 0 0 28px; font-size: 14px; letter-spacing: .02em; }
+      .rail p { margin: 0 0 24px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+      .rail-item { display: flex; align-items: center; gap: 9px; width: 100%; margin: 5px 0; padding: 9px 10px; border-radius: 8px; color: var(--muted); text-align: left; background: transparent; }
+      .rail-item.active { color: var(--text); background: var(--panel-3); }
+      .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+      .active .dot { background: var(--accent); box-shadow: 0 0 0 3px #8fb7ff22; }
+      .canvas { position: relative; padding: 24px; background: linear-gradient(135deg, #20242e, #171a20 70%); overflow: hidden; }
+      .canvas-header { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 12px; }
+      .canvas-header strong { color: var(--text); font-size: 13px; }
+      .scene { position: relative; width: min(100%, 580px); aspect-ratio: 1.5; margin: 68px auto 0; border: 1px solid #566071; border-radius: 8px; background: #d8dde6; box-shadow: 0 16px 30px #0004; }
+      .scene:before { content: "SCENE • Voting"; position: absolute; left: 14px; top: 12px; color: #788191; font: 700 9px/1 ui-monospace, monospace; letter-spacing: .08em; }
+      .shape { position: absolute; display: grid; place-items: center; border-radius: 7px; color: #f9fbff; background: #496fae; font-size: 13px; box-shadow: 0 6px 10px #18223633; }
+      .shape.title { left: 13%; top: 29%; width: 42%; height: 15%; background: #46505f; }
+      .shape.button { left: 23%; bottom: 21%; width: 27%; height: 15%; background: #3d8a72; outline: 3px solid var(--accent); outline-offset: 4px; }
+      .hit-badge { position: absolute; left: calc(50% + 112px); bottom: calc(21% + 34px); display: flex; align-items: center; gap: 5px; border: 1px solid #bcd3ff; border-radius: 999px; padding: 5px 8px; color: #1b3157; background: var(--accent-2); font-size: 10px; font-weight: 800; box-shadow: 0 5px 16px #0003; }
+      .hit-badge .dot { background: #3b78d1; }
+      .inspector { min-width: 0; border-left: 1px solid var(--line); background: var(--panel); }
+      .inspector-head { display: flex; align-items: flex-start; justify-content: space-between; padding: 20px 20px 16px; border-bottom: 1px solid var(--line); }
+      .eyebrow { color: var(--muted); font: 700 10px/1 ui-monospace, monospace; letter-spacing: .09em; text-transform: uppercase; }
+      .inspector h2 { margin: 7px 0 0; font-size: 16px; }
+      .close { width: 26px; height: 26px; border-radius: 7px; color: var(--muted); background: transparent; }
+      .close:hover, .icon:hover { color: var(--text); background: var(--panel-3); }
+      .inspector-body { padding: 16px 20px; }
+      .section { border-bottom: 1px solid var(--line); padding: 0 0 15px; margin: 0 0 15px; }
+      .section-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-weight: 700; font-size: 12px; }
+      .section-title span { color: var(--muted); font-size: 11px; font-weight: 500; }
+      .field-label { display: block; margin: 12px 0 6px; color: var(--muted); font-size: 11px; }
+      select, input { width: 100%; border: 1px solid var(--line); border-radius: 7px; padding: 9px 10px; color: var(--text); background: var(--panel-2); outline: none; }
+      select:focus, input:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .status { display: flex; align-items: center; gap: 7px; border-radius: 8px; padding: 9px 10px; color: var(--green); background: #76d6aa14; font-size: 11px; }
+      .status.warn { color: var(--yellow); background: #f3ca7614; }
+      .status.off { color: var(--muted); background: var(--panel-2); }
+      .status .dot { flex: 0 0 auto; background: currentColor; }
+      .row { display: flex; align-items: center; gap: 8px; }
+      .row > *:first-child { flex: 1; }
+      .icon, .quiet, .primary, .danger { border-radius: 7px; padding: 8px 10px; font-size: 11px; font-weight: 700; }
+      .icon { padding: 7px 9px; color: var(--muted); background: transparent; }
+      .quiet { color: var(--accent-2); background: #8fb7ff18; }
+      .primary { color: #17253c; background: var(--accent); }
+      .danger { color: var(--red); background: #f28e9b15; }
+      .action-list { display: grid; gap: 7px; }
+      .action-card { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 9px; background: var(--panel-2); }
+      .action-num { display: grid; place-items: center; width: 21px; height: 21px; border-radius: 5px; color: var(--accent-2); background: #8fb7ff22; font: 700 10px ui-monospace, monospace; }
+      .action-card strong { display: block; font-size: 11px; }
+      .action-card small { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; }
+      .hint { margin: 10px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+      .state { position: absolute; left: 24px; bottom: 24px; max-width: 300px; border: 1px solid #566071; border-radius: 8px; padding: 10px 12px; color: #4e5968; background: #eef1f6; font: 10px/1.45 ui-monospace, monospace; }
+      .state b { color: #293445; }
+      .variant-b .app-frame { grid-template-columns: 188px minmax(480px, 1fr) 410px; }
+      .variant-b .inspector-body { padding: 0; }
+      .stepper { display: flex; border-bottom: 1px solid var(--line); }
+      .stepper button { flex: 1; padding: 12px 7px; color: var(--muted); background: transparent; font-size: 10px; }
+      .stepper button.active { color: var(--accent-2); box-shadow: inset 0 -2px var(--accent); }
+      .variant-b .flow-card { margin: 20px; border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: var(--panel-2); }
+      .variant-b .flow-card .big-status { margin: 12px 0 20px; border-radius: 8px; padding: 13px; background: #76d6aa14; color: var(--green); font-size: 12px; font-weight: 700; }
+      .variant-b .flow-card .big-status small { display: block; margin-top: 5px; color: var(--muted); font-size: 10px; font-weight: 500; }
+      .variant-b .flow-card .action-card { margin: 8px 0; }
+      .variant-c .app-frame { grid-template-columns: 188px minmax(480px, 1fr) 380px; }
+      .variant-c .inspector-head { padding-bottom: 11px; }
+      .variant-c .interaction-summary { display: flex; gap: 10px; align-items: center; padding: 13px 20px; border-bottom: 1px solid var(--line); background: #8fb7ff0c; }
+      .interaction-summary .mark { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; color: #17253c; background: var(--accent); font-weight: 900; }
+      .interaction-summary strong { display: block; font-size: 12px; }
+      .interaction-summary small { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; }
+      .variant-c .timeline { position: relative; display: grid; gap: 0; margin: 12px 20px 18px; }
+      .variant-c .timeline:before { content: ""; position: absolute; top: 16px; bottom: 16px; left: 15px; border-left: 1px dashed #566071; }
+      .variant-c .timeline-row { position: relative; display: grid; grid-template-columns: 31px 1fr; gap: 9px; padding: 7px 0; }
+      .timeline-node { z-index: 1; display: grid; place-items: center; width: 31px; height: 31px; border: 1px solid var(--line); border-radius: 50%; color: var(--accent-2); background: var(--panel-2); font-size: 10px; font-weight: 800; }
+      .timeline-copy { border: 1px solid var(--line); border-radius: 8px; padding: 9px; background: var(--panel-2); }
+      .timeline-copy strong { display: block; font-size: 11px; }
+      .timeline-copy small { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; }
+      .variant-c .event-row { margin: 0 20px 13px; border: 1px dashed #566071; border-radius: 8px; padding: 10px; color: var(--muted); font-size: 10px; }
+      .switcher { position: fixed; z-index: 30; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 9px; border: 1px solid #5c6574; border-radius: 999px; padding: 7px 9px; background: #202630ee; box-shadow: 0 10px 30px #0008; }
+      .switcher button { width: 29px; height: 29px; border-radius: 50%; color: var(--accent-2); background: #8fb7ff1a; font-size: 16px; }
+      .switcher button:hover { background: #8fb7ff35; }
+      .switcher-label { min-width: 160px; color: var(--text); text-align: center; font: 11px ui-monospace, monospace; }
+      .switcher-label span { color: var(--muted); }
+      @media (max-width: 980px) {
+        .prototype-shell { padding: 22px 12px 100px; }
+        .app-frame { grid-template-columns: 1fr; }
+        .rail { display: none; }
+        .canvas { min-height: 520px; }
+        .inspector { border-top: 1px solid var(--line); border-left: 0; }
+        .state { bottom: 18px; left: 18px; }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Prototype question: which Canvas Inspector hierarchy best supports configuring an Element Event Binding, Cue, and ordered Navigate Actions? -->
+    <div class="prototype-label">Prototype · throwaway</div>
+    <main id="app" class="prototype-shell"></main>
+    <script>
+      const variants = [
+        { key: "A", name: "Inspector section" },
+        { key: "B", name: "Three-step rail" },
+        { key: "C", name: "Interaction timeline" },
+      ];
+      const state = {
+        variant: new URLSearchParams(location.search).get("variant")?.toUpperCase() || "A",
+        binding: true,
+        cue: "Submit vote",
+        target: "Results",
+        actions: ["Navigate to Results"],
+        message: "Selected Element: Vote button",
+        owner: "Scene · Voting",
+      };
+      if (!variants.some((item) => item.key === state.variant)) state.variant = "A";
+
+      function setVariant(key) {
+        state.variant = key;
+        const url = new URL(location.href);
+        url.searchParams.set("variant", key);
+        history.replaceState(null, "", url);
+        render();
+      }
+      function cycle(delta) {
+        const index = variants.findIndex((item) => item.key === state.variant);
+        setVariant(variants[(index + delta + variants.length) % variants.length].key);
+      }
+      function runAction(action) {
+        if (action === "toggle-binding") {
+          state.binding = !state.binding;
+          state.message = state.binding ? "Tap binding restored" : "Draft binding removed";
+        }
+        if (action === "new-cue") {
+          state.cue = "New cue";
+          state.message = "Cue draft created; focus stays in Cue name";
+        }
+        if (action === "add-action") {
+          state.actions.push("Navigate to Confirmation");
+          state.message = "Second ordered Action added";
+        }
+        if (action === "remove-action" && state.actions.length > 1) {
+          state.actions.pop();
+          state.message = "Last Action removed; Cue still has one Action";
+        }
+        if (action === "take-block") {
+          state.owner = "Block · VoteCard";
+          state.message = "Block record selected: runtime unavailable diagnostic shown";
+        }
+        render();
+      }
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char]));
+      }
+      function actionCards() {
+        return state.actions.map((action, index) => `
+          <div class="action-card">
+            <div class="action-num">${index + 1}</div>
+            <div><strong>${escapeHtml(action)}</strong><small>Navigate Action · ordered</small></div>
+            ${index === state.actions.length - 1 && state.actions.length > 1 ? '<button class="icon" data-action="remove-action" aria-label="Remove last Action">×</button>' : '<span></span>'}
+          </div>`).join("");
+      }
+      function status() {
+        if (!state.binding) return '<div class="status off"><i class="dot"></i>No Event Binding</div>';
+        if (state.owner.startsWith("Block")) return '<div class="status warn"><i class="dot"></i>Authored · unavailable in Player</div>';
+        return '<div class="status"><i class="dot"></i>Tap binding active</div>';
+      }
+      function commonHeader(label) {
+        return `<div class="inspector-head"><div><div class="eyebrow">${label}</div><h2>Vote button</h2></div><button class="close" aria-label="Close inspector">×</button></div>`;
+      }
+      function variantA() {
+        return `<section class="inspector">${commonHeader("Selected Element")}
+          <div class="inspector-body">
+            <div class="section"><div class="section-title">Appearance <span>⌄</span></div><div class="status off"><i class="dot"></i>Rectangle · 240 × 56</div></div>
+            <div class="section"><div class="section-title">Interaction <span>${state.owner}</span></div>${status()}
+              <label class="field-label" for="cue-a">Cue</label><div class="row"><select id="cue-a"><option>${escapeHtml(state.cue)}</option><option>Create a new Cue…</option></select><button class="quiet" data-action="new-cue">New</button></div>
+              <label class="field-label" for="target-a">Navigate target</label><select id="target-a"><option>${escapeHtml(state.target)}</option><option>Waiting</option><option>Voting</option></select>
+              <div class="row" style="margin-top:12px"><button class="primary" data-action="add-action">Add Action</button><button class="danger" data-action="toggle-binding">${state.binding ? "Remove binding" : "Bind tap"}</button></div>
+            </div>
+            <div class="section"><div class="section-title">Actions <span>${state.actions.length} ordered</span></div><div class="action-list">${actionCards()}</div><p class="hint">Drag handles reorder the list. The generated Navigate edge is read-only.</p></div>
+            <p class="hint"><b>Keyboard:</b> focus enters Interaction, Cue, target, Actions, then Remove. Escape leaves the section without changing the draft.</p>
+          </div></section>`;
+      }
+      function variantB() {
+        return `<section class="inspector variant-b">${commonHeader("Interaction editor")}
+          <nav class="stepper"><button class="active">1 · Event</button><button>2 · Cue</button><button>3 · Actions</button></nav>
+          <div class="inspector-body"><div class="flow-card"><div class="eyebrow">Step 1 of 3</div><h2 style="margin-top:8px">When this Element is tapped</h2><div class="big-status">${state.binding ? "Tap binding active" : "No binding"}<small>One Event kind per Element. Owner: ${escapeHtml(state.owner)}</small></div><button class="primary" data-action="toggle-binding">${state.binding ? "Remove tap binding" : "Create tap binding"}</button><p class="hint">The next step chooses the Cue. New Cues stay in the same owner scope.</p></div>
+          <div class="flow-card"><div class="eyebrow">Step 2 · Cue</div><div class="row" style="margin-top:10px"><input aria-label="Cue name" value="${escapeHtml(state.cue)}" /><button class="quiet" data-action="new-cue">New</button></div></div>
+          <div class="flow-card"><div class="eyebrow">Step 3 · Actions</div>${actionCards()}<div class="row" style="margin-top:10px"><button class="quiet" data-action="add-action">Add ordered Action</button><span class="hint">Navigate only</span></div></div></div></section>`;
+      }
+      function variantC() {
+        return `<section class="inspector variant-c">${commonHeader("Interaction timeline")}
+          <div class="interaction-summary"><div class="mark">⌁</div><div><strong>${state.binding ? "Tap → " + escapeHtml(state.cue) : "Unbound Element"}</strong><small>${escapeHtml(state.owner)} · generated edge read-only</small></div></div>
+          <div class="inspector-body"><div class="event-row"><b>Event</b><br />tap · Vote button <button class="danger" style="float:right;padding:5px 7px" data-action="toggle-binding">${state.binding ? "Unbind" : "Bind"}</button></div>
+            <div class="timeline">${state.actions.map((action, index) => `<div class="timeline-row"><div class="timeline-node">${index + 1}</div><div class="timeline-copy"><strong>${escapeHtml(action)}</strong><small>Drag to reorder · target: ${escapeHtml(state.target)}</small></div></div>`).join("")}</div>
+            <div class="row" style="margin:0 20px 14px"><button class="primary" data-action="add-action">Add next Action</button><button class="quiet" data-action="new-cue">Rename Cue</button></div>
+            <div class="section" style="margin:0 20px"><div class="section-title">Owner <span>${escapeHtml(state.owner)}</span></div><p class="hint">${state.owner.startsWith("Block") ? "This authored record is saved, but Player dispatch is not available yet." : "The Canvas determines the owner; the Binding does not duplicate it."}</p><button class="quiet" data-action="take-block">Preview Block state</button></div>
+          </div></section>`;
+      }
+      function statePanel() {
+        return `<div class="state"><b>Live prototype state</b><br />binding=${state.binding} · cue=${escapeHtml(state.cue)}<br />actions=${state.actions.length} · owner=${escapeHtml(state.owner)}<br />last=${escapeHtml(state.message)}</div>`;
+      }
+      function render() {
+        const variant = variants.find((item) => item.key === state.variant);
+        const inspector = state.variant === "A" ? variantA() : state.variant === "B" ? variantB() : variantC();
+        document.querySelector("#app").innerHTML = `<div class="app-frame variant-${state.variant.toLowerCase()}">
+          <aside class="rail"><h1>Mechanē</h1><p>Show / Navigation Proof</p><button class="rail-item"><i class="dot"></i>Show graph</button><button class="rail-item active"><i class="dot"></i>Canvas</button><button class="rail-item"><i class="dot"></i>Runs</button><div style="height:22px"></div><div class="eyebrow">Artboards</div><button class="rail-item active" style="margin-top:10px"><i class="dot"></i>Voting</button><button class="rail-item"><i class="dot"></i>Results</button></aside>
+          <section class="canvas"><div class="canvas-header"><div><strong>Canvas workspace</strong><br /><span>Voting · Scene Canvas</span></div><span>100%</span></div><div class="scene"><div class="shape title">Cast your vote</div><div class="shape button">Vote</div><div class="hit-badge"><i class="dot"></i>tap</div></div>${statePanel()}</section>${inspector}</div>
+          <div class="switcher"><button data-cycle="-1" aria-label="Previous variant">‹</button><div class="switcher-label">${variant.key} · ${variant.name}<br /><span>← / → to compare</span></div><button data-cycle="1" aria-label="Next variant">›</button></div>`;
+        document.querySelectorAll("[data-action]").forEach((button) => button.addEventListener("click", () => runAction(button.dataset.action)));
+        document.querySelectorAll("[data-cycle]").forEach((button) => button.addEventListener("click", () => cycle(Number(button.dataset.cycle))));
+        document.querySelectorAll("select").forEach((select) => select.addEventListener("change", (event) => { state.target = event.target.value; state.message = "Navigate target changed"; render(); }));
+      }
+      document.addEventListener("keydown", (event) => {
+        const tag = document.activeElement?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || document.activeElement?.isContentEditable) return;
+        if (event.key === "ArrowLeft") { event.preventDefault(); cycle(-1); }
+        if (event.key === "ArrowRight") { event.preventDefault(); cycle(1); }
+      });
+      render();
+    </script>
+  </body>
+</html>
