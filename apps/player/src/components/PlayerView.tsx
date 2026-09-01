@@ -61,8 +61,12 @@ function SupersededScreen({ onTakeOver }: { onTakeOver: () => void }) {
   return (
     <SplashScreen>
       <div className="flex max-w-sm flex-col items-center gap-3 rounded-xl bg-white/25 p-7 text-center shadow-xl inset-shadow-[0_1px_0_0_white]">
-        <p className="text-sm font-medium uppercase tracking-[0.2em] text-neutral-700">Already open</p>
-        <h1 className="text-2xl font-semibold text-neutral-950">This Device is open in another tab</h1>
+        <p className="text-sm font-medium uppercase tracking-[0.2em] text-neutral-700">
+          Already open
+        </p>
+        <h1 className="text-2xl font-semibold text-neutral-950">
+          This Device is open in another tab
+        </h1>
         <button
           className="rounded-lg bg-neutral-950 px-4 py-2 font-medium text-white"
           type="button"

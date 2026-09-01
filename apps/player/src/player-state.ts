@@ -48,11 +48,10 @@ export interface PlayerRunState {
   readonly flowSourceValues: SourceValues;
 }
 
-export type PlayerStoreStatus =
-  | {
-      readonly durability: "persistent" | "memory";
-      readonly ownership: "unclaimed" | "active" | "superseded" | "closed";
-    };
+export type PlayerStoreStatus = {
+  readonly durability: "persistent" | "memory";
+  readonly ownership: "unclaimed" | "active" | "superseded" | "closed";
+};
 
 export interface PlayerStorageAdapter {
   readonly length: number;
@@ -96,7 +95,11 @@ export type PlayerDriver =
   | { readonly kind: "unwired" };
 
 export type PlayerReconciliation =
-  | { readonly kind: "preserve"; readonly state: PlayerRunState; readonly reason: "same-scene" | "not-ready" }
+  | {
+      readonly kind: "preserve";
+      readonly state: PlayerRunState;
+      readonly reason: "same-scene" | "not-ready";
+    }
   | {
       readonly kind: "reset";
       readonly state: PlayerRunState;
@@ -240,7 +243,8 @@ function browserEnvironment(): PlayerStateEnvironment {
   return {
     storage,
     subscribeStorage: (listener) => {
-      const onStorage = (event: StorageEvent) => listener({ key: event.key, newValue: event.newValue });
+      const onStorage = (event: StorageEvent) =>
+        listener({ key: event.key, newValue: event.newValue });
       window.addEventListener("storage", onStorage);
       return () => window.removeEventListener("storage", onStorage);
     },
@@ -248,7 +252,11 @@ function browserEnvironment(): PlayerStateEnvironment {
   };
 }
 
-function removeDeviceRecords(storage: PlayerStorageAdapter, scope: PlayerRunScope, keepRun: boolean): void {
+function removeDeviceRecords(
+  storage: PlayerStorageAdapter,
+  scope: PlayerRunScope,
+  keepRun: boolean,
+): void {
   const statePrefix = `${STORAGE_PREFIX}${encodeKeyPart(scope.deviceIdentity)}:`;
   const claimPrefix = `${CLAIM_PREFIX}${encodeKeyPart(scope.deviceIdentity)}:`;
   const state = stateKey(scope);

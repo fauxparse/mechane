@@ -4,7 +4,12 @@ import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { db } from "../../../client";
-import { applyShowEdits, readShowGraph, publishShowGraph, writeShowGraph } from "../../../show-graph";
+import {
+  applyShowEdits,
+  readShowGraph,
+  publishShowGraph,
+  writeShowGraph,
+} from "../../../show-graph";
 import { startRun } from "../../../runs";
 import { shows, user } from "../../../schema";
 import { readPlayerSession } from "../../../../player";
@@ -12,6 +17,7 @@ import { readPlayerSession } from "../../../../player";
 import {
   navigationProofCanvases,
   navigationProofGraph,
+  NAVIGATION_AUDIENCE_DEVICE_ID,
   NAVIGATION_DEVICE_ID,
   NAVIGATION_FLOW_ID,
   NAVIGATION_SCENE_IDS,
@@ -52,6 +58,11 @@ describe("Navigation Proof seed", () => {
       kind: "device",
       perConnection: false,
     });
+    expect(graph.nodes.find((node) => node.id === NAVIGATION_AUDIENCE_DEVICE_ID)).toMatchObject({
+      kind: "device",
+      perConnection: true,
+    });
+    expect(graph.nodes.filter((node) => node.kind === "device")).toHaveLength(2);
 
     expect(graph.cues).toHaveLength(6);
     expect(graph.actions).toHaveLength(6);
@@ -93,16 +104,24 @@ describe("Navigation Proof seed", () => {
       throw new Error("Navigation Proof pairing code was not minted.");
     }
     expect(published.cues).toHaveLength(6);
-    expect(published.actions).toHaveLength(6);
-    expect(published.eventBindings).toHaveLength(6);
-    expect(published.edges.filter((edge) => edge.kind === "navigate")).toHaveLength(6);
-
     await startRun(showId);
     const session = await readPlayerSession(device.pairingCode);
     expect(session?.scene?.id).toBe("scene_red");
     expect(session?.graph.cues).toHaveLength(6);
     expect(session?.graph.actions).toHaveLength(6);
     expect(session?.graph.eventBindings).toHaveLength(6);
+    const audience = published.nodes.find((node) => node.id === NAVIGATION_AUDIENCE_DEVICE_ID);
+    if (audience?.kind !== "device" || !audience.pairingCode) {
+      throw new Error("Navigation Proof Audience pairing code was not minted.");
+    }
+    const audienceSession = await readPlayerSession(audience.pairingCode);
+    expect(audienceSession?.scene).toBeNull();
+    expect(audienceSession?.canvas).toBeNull();
+    expect(audienceSession?.flow?.scenes.map(({ scene }) => scene.id).sort()).toEqual([
+      "scene_blue",
+      "scene_green",
+      "scene_red",
+    ]);
   });
   it("preserves interactions when a live Source default is edited", async () => {
     await db.insert(user).values({

@@ -13,6 +13,7 @@ import { seedShowData, type SeedCanvases, type SeedShow } from "../../utils/seed
 export const NAVIGATION_FLOW_ID = "flow_navigation";
 export const NAVIGATION_SCENE_IDS = ["scene_red", "scene_green", "scene_blue"] as const;
 export const NAVIGATION_DEVICE_ID = "device_navigation";
+export const NAVIGATION_AUDIENCE_DEVICE_ID = "device_navigation_audience";
 
 const SCENE_NAMES = {
   scene_red: "Red",
@@ -184,6 +185,15 @@ export function navigationProofGraph(): ShowGraph {
       perConnection: false,
       pairingCode: null,
     },
+    {
+      id: NAVIGATION_AUDIENCE_DEVICE_ID,
+      kind: "device" as const,
+      name: "Navigation Proof Audience",
+      parentId: null,
+      position: { x: 1840, y: 760 },
+      perConnection: true,
+      pairingCode: null,
+    },
   ];
   const navigateEdges = projectNavigateEdges({ nodes, cues, actions });
   return {
@@ -194,6 +204,14 @@ export function navigationProofGraph(): ShowGraph {
         kind: "device",
         sourceId: NAVIGATION_FLOW_ID,
         targetId: NAVIGATION_DEVICE_ID,
+        sourcePath: [],
+        targetPath: [],
+      },
+      {
+        id: "edge_navigation_audience",
+        kind: "device",
+        sourceId: NAVIGATION_FLOW_ID,
+        targetId: NAVIGATION_AUDIENCE_DEVICE_ID,
         sourcePath: [],
         targetPath: [],
       },

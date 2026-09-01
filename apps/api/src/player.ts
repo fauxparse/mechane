@@ -42,9 +42,7 @@ async function flowBundleForDevice(
   perConnection: boolean,
 ) {
   if (!perConnection) return null;
-  const driver = graph.edges.find(
-    (edge) => edge.kind === "device" && edge.targetId === deviceId,
-  );
+  const driver = graph.edges.find((edge) => edge.kind === "device" && edge.targetId === deviceId);
   const flow = driver
     ? graph.nodes.find((node) => node.id === driver.sourceId && node.kind === "flow")
     : undefined;

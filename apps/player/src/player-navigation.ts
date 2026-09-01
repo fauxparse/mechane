@@ -73,7 +73,11 @@ export function usePlayerNavigation(
     });
     const unsubscribe = store.subscribe(() => {
       if (store.getStatus().ownership === "superseded") {
-        setRuntime({ status: "superseded", session: sessionForState(session, reconciliation.state), store });
+        setRuntime({
+          status: "superseded",
+          session: sessionForState(session, reconciliation.state),
+          store,
+        });
       }
     });
     return () => {
@@ -105,7 +109,9 @@ export function usePlayerNavigation(
       if (plan.kind !== "planned") return;
       const action = plan.actions[0];
       if (!action || action.kind !== "navigate") return;
-      const target = runtime.session.flow?.scenes.find(({ scene }) => scene.id === action.targetSceneId);
+      const target = runtime.session.flow?.scenes.find(
+        ({ scene }) => scene.id === action.targetSceneId,
+      );
       const currentState = runtime.store.read();
       if (!target || !currentState) return;
       const nextState: PlayerRunState = {
@@ -122,13 +128,15 @@ export function usePlayerNavigation(
         session: sessionForState(runtime.session, nextState),
         store: runtime.store,
       });
-      void baseState.submitEvent?.({
-        eventId: crypto.randomUUID(),
-        publishedGraphVersion: runtime.session.graph.version,
-        sceneId: plan.sceneId,
-        elementId,
-        eventKind: "tap",
-      }).catch(() => undefined);
+      void baseState
+        .submitEvent?.({
+          eventId: crypto.randomUUID(),
+          publishedGraphVersion: runtime.session.graph.version,
+          sceneId: plan.sceneId,
+          elementId,
+          eventKind: "tap",
+        })
+        .catch(() => undefined);
     },
     [baseState, runtime],
   );

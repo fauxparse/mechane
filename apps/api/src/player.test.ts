@@ -139,7 +139,9 @@ describe("Player session runtime Scene", () => {
     expect(session?.canvas).toBeNull();
     expect(session?.flow?.flowId).toBe("flow_navigation");
     expect(session?.flow?.defaultSceneId).toBe("scene_red");
-    expect(session?.flow?.scenes.map(({ scene, canvas }) => [scene.id, canvas.ownerId]).sort()).toEqual([
+    expect(
+      session?.flow?.scenes.map(({ scene, canvas }) => [scene.id, canvas.ownerId]).sort(),
+    ).toEqual([
       ["scene_green", "scene_green"],
       ["scene_red", "scene_red"],
     ]);
