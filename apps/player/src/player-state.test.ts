@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
-
 import type { ShowGraph } from "@mechane/domain";
+
+import type { PlayerDriver, PlayerRunState, PlayerStorageAdapter } from "./player-state";
 import { sceneVariableValues } from "./player-state";
+import {
+  openPlayerStateStore,
+  playerRunScope,
+  playerTransitionCoordinator,
+  reconcilePlayerRunState,
+} from "./player-state";
 
 const graph: ShowGraph = {
   shapes: [
@@ -269,5 +276,116 @@ describe("sceneVariableValues", () => {
       assetId: "device-qr:device_audience",
       revision: "PAIR5",
     });
+  });
+});
+class MemoryStorage implements PlayerStorageAdapter {
+  private readonly values = new Map<string, string>();
+
+  get length(): number {
+    return this.values.size;
+  }
+
+  getItem(key: string): string | null {
+    return this.values.get(key) ?? null;
+  }
+
+  key(index: number): string | null {
+    return [...this.values.keys()][index] ?? null;
+  }
+
+  removeItem(key: string): void {
+    this.values.delete(key);
+  }
+
+  setItem(key: string, value: string): void {
+    this.values.set(key, value);
+  }
+}
+
+const storedState: PlayerRunState = {
+  schemaVersion: 1,
+  publishedGraphVersion: 2,
+  flowId: "flow_navigation",
+  navigation: { kind: "scene", sceneId: "scene_green" },
+  flowSourceValues: {},
+};
+
+describe("per-connection Player state", () => {
+  it("persists one scoped aggregate and supersedes an older tab", () => {
+    const storage = new MemoryStorage();
+    const storageListeners: Array<(change: { key: string | null; newValue: string | null }) => void> = [];
+    const environment = {
+      storage,
+      randomToken: (() => {
+        let next = 0;
+        return () => `tab-${++next}`;
+      })(),
+      subscribeStorage: (listener: (change: { key: string | null; newValue: string | null }) => void) => {
+        storageListeners.push(listener);
+        return () => undefined;
+      },
+    };
+    const scope = playerRunScope("PAR25", "run-1");
+    const first = openPlayerStateStore(scope, environment);
+    expect(first.claim()).toBe(true);
+    expect(first.replace(storedState)).toBe(true);
+
+    const second = openPlayerStateStore(scope, environment);
+    expect(second.read()).toEqual(storedState);
+    expect(second.claim()).toBe(true);
+    let claimKey: string | null = null;
+    for (let index = 0; index < storage.length; index += 1) {
+      const key = storage.key(index);
+      if (key?.startsWith("mechane.player-claim:")) claimKey = key;
+    }
+    if (!claimKey) throw new Error("Claim key was not written.");
+    storageListeners.forEach((listener) =>
+      listener({ key: claimKey, newValue: storage.getItem(claimKey) }),
+    );
+
+    expect(first.getStatus()).toMatchObject({ ownership: "superseded" });
+    expect(first.replace({ ...storedState, navigation: { kind: "scene", sceneId: "scene_blue" } })).toBe(false);
+    expect(second.replace({ ...storedState, navigation: { kind: "scene", sceneId: "scene_blue" } })).toBe(true);
+    expect(second.read()).toMatchObject({ navigation: { sceneId: "scene_blue" } });
+  });
+
+  it("reconciles valid, changed, and discarded drivers", () => {
+    const driver = {
+      kind: "flow",
+      flowId: "flow_navigation",
+      defaultSceneId: "scene_red",
+      sceneIds: new Set(["scene_red", "scene_green", "scene_blue"]),
+      publishedGraphVersion: 3,
+    } satisfies PlayerDriver;
+    expect(reconcilePlayerRunState(storedState, driver)).toMatchObject({
+      kind: "preserve",
+      state: { navigation: { sceneId: "scene_green" }, publishedGraphVersion: 3 },
+    });
+    expect(
+      reconcilePlayerRunState(
+        { ...storedState, navigation: { kind: "scene", sceneId: "scene_removed" } },
+        driver,
+      ),
+    ).toMatchObject({ kind: "reset", reason: "scene-invalid", state: { navigation: { sceneId: "scene_red" } } });
+    expect(reconcilePlayerRunState(storedState, { kind: "scene" })).toEqual({
+      kind: "discard",
+      reason: "driver-not-flow",
+    });
+  });
+
+  it("serializes transition operations after rejected work", async () => {
+    const coordinator = playerTransitionCoordinator();
+    const order: string[] = [];
+    const first = coordinator.run(async () => {
+      order.push("first");
+      throw new Error("expected");
+    });
+    const second = coordinator.run(() => {
+      order.push("second");
+      return "done";
+    });
+    await expect(first).rejects.toThrow("expected");
+    await expect(second).resolves.toBe("done");
+    expect(order).toEqual(["first", "second"]);
   });
 });
