@@ -127,6 +127,7 @@ const PlayerGraphFields = graphql(`
 
 const PlayerFlowSceneFields = graphql(`
   fragment PlayerFlowSceneFields on SceneNode {
+    __typename
     id
     name
     parentId

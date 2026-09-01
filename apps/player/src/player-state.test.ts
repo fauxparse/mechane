@@ -313,14 +313,18 @@ const storedState: PlayerRunState = {
 describe("per-connection Player state", () => {
   it("persists one scoped aggregate and supersedes an older tab", () => {
     const storage = new MemoryStorage();
-    const storageListeners: Array<(change: { key: string | null; newValue: string | null }) => void> = [];
+    const storageListeners: Array<
+      (change: { key: string | null; newValue: string | null }) => void
+    > = [];
     const environment = {
       storage,
       randomToken: (() => {
         let next = 0;
         return () => `tab-${++next}`;
       })(),
-      subscribeStorage: (listener: (change: { key: string | null; newValue: string | null }) => void) => {
+      subscribeStorage: (
+        listener: (change: { key: string | null; newValue: string | null }) => void,
+      ) => {
         storageListeners.push(listener);
         return () => undefined;
       },
@@ -344,8 +348,12 @@ describe("per-connection Player state", () => {
     );
 
     expect(first.getStatus()).toMatchObject({ ownership: "superseded" });
-    expect(first.replace({ ...storedState, navigation: { kind: "scene", sceneId: "scene_blue" } })).toBe(false);
-    expect(second.replace({ ...storedState, navigation: { kind: "scene", sceneId: "scene_blue" } })).toBe(true);
+    expect(
+      first.replace({ ...storedState, navigation: { kind: "scene", sceneId: "scene_blue" } }),
+    ).toBe(false);
+    expect(
+      second.replace({ ...storedState, navigation: { kind: "scene", sceneId: "scene_blue" } }),
+    ).toBe(true);
     expect(second.read()).toMatchObject({ navigation: { sceneId: "scene_blue" } });
   });
 
@@ -366,7 +374,11 @@ describe("per-connection Player state", () => {
         { ...storedState, navigation: { kind: "scene", sceneId: "scene_removed" } },
         driver,
       ),
-    ).toMatchObject({ kind: "reset", reason: "scene-invalid", state: { navigation: { sceneId: "scene_red" } } });
+    ).toMatchObject({
+      kind: "reset",
+      reason: "scene-invalid",
+      state: { navigation: { sceneId: "scene_red" } },
+    });
     expect(reconcilePlayerRunState(storedState, { kind: "scene" })).toEqual({
       kind: "discard",
       reason: "driver-not-flow",

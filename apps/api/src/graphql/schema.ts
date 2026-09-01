@@ -262,7 +262,7 @@ export const schema = createSchema<GraphQLContext>({
       reason: String!
     }
     union PlayerEventResult =
-      PlayerEventApplied
+      | PlayerEventApplied
       | PlayerEventDuplicate
       | PlayerEventIgnored
       | PlayerEventAccepted

@@ -17,6 +17,8 @@ Local development runs the drain as a persistent worker process so the manual sm
 
 Delivery is at-least-once. Vercel Cron delivery is best effort: scheduled invocations may be missed or duplicated, failed invocations are not retried automatically, and overlapping invocations are possible. The outbox therefore retries indefinitely with exponential backoff, reclaims expired leases, and treats duplicate `player.updated` messages as safe invalidations. Players refetch authoritative GraphQL state after bootstrap, reconnect, and invalidation.
 
+This ADR applies to server-visible Player state changes. A per-connection Navigate changes only the browser-local Player aggregate, so its anonymous Event ledger write creates no invalidation outbox row or realtime message. If a future Action changes shared Show state, that mutation and its Player invalidation remain one transaction.
+
 A separate always-on worker is not required for production correctness, but remains an optional operational replacement if lower latency or higher throughput later justifies another runtime service.
 
 ## Consequences

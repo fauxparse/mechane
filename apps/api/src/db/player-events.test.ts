@@ -215,7 +215,8 @@ describe("dispatchPlayerEvent", () => {
     const run = await startRun(showId);
     const published = await readShowGraph(showId, "published");
     const device = published.nodes.find((node) => node.kind === "device");
-    if (device?.kind !== "device" || !device.pairingCode) throw new Error("Audience Device is incomplete.");
+    if (device?.kind !== "device" || !device.pairingCode)
+      throw new Error("Audience Device is incomplete.");
     const beforeOutbox = await db
       .select()
       .from(playerInvalidationOutbox)
@@ -229,10 +230,7 @@ describe("dispatchPlayerEvent", () => {
     expect(result).toEqual({ kind: "accepted", eventId: input.eventId });
     expect(await readRunDeviceState("missing", device.id)).toBeNull();
     expect(await readRunDeviceState(run.id, device.id)).toBeNull();
-    const rows = await db
-      .select()
-      .from(playerEvents)
-      .where(eq(playerEvents.runId, run.id));
+    const rows = await db.select().from(playerEvents).where(eq(playerEvents.runId, run.id));
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       outcome: "accepted",
@@ -245,5 +243,5 @@ describe("dispatchPlayerEvent", () => {
         .from(playerInvalidationOutbox)
         .where(eq(playerInvalidationOutbox.showId, showId)),
     ).toHaveLength(beforeOutbox.length);
-});
+  });
 });

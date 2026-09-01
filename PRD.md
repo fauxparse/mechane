@@ -74,9 +74,11 @@ Two distinct write paths — see [ADR-0002](./docs/adr/0002-draft-publish-vs-liv
 
 ### 4.4 Realtime layer
 
-Ably provides pub/sub for pushing Scene navigation, Cue/Action results, and live data changes to connected Devices — ordered, guaranteed delivery, presence, reconnection catch-up. All application code calls a small internal `RealtimeChannel`-style interface, never the Ably SDK directly, so the implementation is swappable. See [ADR-0003](./docs/adr/0003-ably-behind-realtime-abstraction.md).
+Ably provides pub/sub for invalidating Player snapshots and delivering live shared-data changes. All application code calls a small internal `RealtimeChannel`-style interface, never the Ably SDK directly, so the implementation is swappable. See [ADR-0003](./docs/adr/0003-ably-behind-realtime-abstraction.md).
 
-Flow: a mutation (Cue firing an Action, a Source value changing) writes to Postgres and inserts a durable Player invalidation outbox row in the same transaction. A best-effort inline drain reduces latency, while a protected Vercel Function invoked by Cron drains missed or failed rows. Connected Devices receive invalidation-only messages and refetch authoritative state. See [ADR-0015](./docs/adr/0015-transactional-player-invalidation-delivery.md).
+Server-visible mutations write Postgres state and a durable Player invalidation outbox row in the same transaction. A best-effort inline drain reduces latency, while a protected Vercel Function invoked by Cron drains missed or failed rows. Connected Devices receive invalidation-only messages and refetch complete authoritative snapshots. See [ADR-0015](./docs/adr/0015-transactional-player-invalidation-delivery.md).
+
+Per-connection Navigate Actions are the exception: the Player owns the active Scene in browser-profile-local state and navigates from its complete published Flow bundle without a network request. The server may validate and record an anonymous Event fact, but that ledger-only write does not create a Player invalidation or reconstruct the per-connection Scene. Future Actions that mutate shared Show state remain transactional server mutations.
 
 ### 4.5 Transformers
 

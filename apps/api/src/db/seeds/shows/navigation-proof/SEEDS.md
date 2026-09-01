@@ -1,6 +1,6 @@
 ---
 name: Navigation Proof
-description: A three-scene Shared Device demonstration of Event to Cue to Navigate Action transitions
+description: A three-scene navigation demonstration comparing Shared and per-connection Devices
 ---
 
 # Flow
@@ -8,10 +8,9 @@ description: A three-scene Shared Device demonstration of Event to Cue to Naviga
 ## Navigation
 
 A Flow with three Scenes: Red, Green, and Blue. The Flow's default Scene is Red. Each Scene belongs to this Flow and uses its matching color: `red`, `green`, or `blue`.
+The Flow is wired to one Shared Device and one per-connection Audience Device. Shared connections observe one server-owned active Scene; each Audience connection navigates its own client-owned Flow state.
 
-The Flow is wired to one Shared Device named Navigation Proof Device. The Device is Flow-driven rather than per-connection, so every connection paired to it observes the same active Scene.
-
-Lay out the three scenes in an equilateral triangle; the flow's containing rect should have plenty of space around them. The device should be to the right of the flow.
+Lay out the three scenes in an equilateral triangle; place both devices to the right of the flow.
 
 # Scenes
 

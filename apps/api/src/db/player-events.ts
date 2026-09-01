@@ -93,7 +93,6 @@ function duplicateResult(row: PlayerEventRow): PlayerEventResult {
   };
 }
 
-
 async function recordEvent(
   tx: Tx,
   runId: string,
@@ -166,9 +165,7 @@ async function dispatchPerConnectionEvent(
     await recordEvent(tx, run.id, device.showId, device.id, input, result);
     return result;
   }
-  const driver = graph.edges.find(
-    (edge) => edge.kind === "device" && edge.targetId === device.id,
-  );
+  const driver = graph.edges.find((edge) => edge.kind === "device" && edge.targetId === device.id);
   const flow = driver
     ? graph.nodes.find((node) => node.id === driver.sourceId && node.kind === "flow")
     : undefined;
@@ -242,7 +239,6 @@ async function dispatchPerConnectionEvent(
   await recordEvent(tx, run.id, device.showId, device.id, input, result, target.id);
   return result;
 }
-
 
 export async function dispatchPlayerEvent(
   pairingCode: string,

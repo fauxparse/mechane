@@ -170,7 +170,8 @@ function toFlowBundle(value: unknown): PlayerSession["flow"] {
     ? input.scenes.map((entry) => {
         const item = record(entry);
         const scene = toNode(item.scene);
-        if (scene.kind !== "scene") throw new Error("Player Flow bundle contains a non-Scene node.");
+        if (scene.kind !== "scene")
+          throw new Error("Player Flow bundle contains a non-Scene node.");
         if (item.canvas === null || item.canvas === undefined) {
           throw new Error(`Player Scene "${scene.id}" has no Canvas.`);
         }
