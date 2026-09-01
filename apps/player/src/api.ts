@@ -1,4 +1,4 @@
-import type { Canvas, GraphNode, ShowGraph, SourceValues } from "@mechane/domain";
+import type { Canvas, GraphNode, SceneNode, ShowGraph, SourceValues } from "@mechane/domain";
 import type { RealtimeSubscriber, RealtimeSubscription } from "@mechane/realtime";
 import { AblyRealtimeSubscriber, WebSocketRealtimeSubscriber } from "@mechane/realtime/browser";
 import {
@@ -43,6 +43,14 @@ export type PlayerSession = {
     updatedAt: string;
     version: number;
   };
+  flow: {
+    flowId: string;
+    defaultSceneId: string | null;
+    scenes: Array<{
+      scene: SceneNode;
+      canvas: Canvas & { id: string; ownerId: string; ownerName: string };
+    }>;
+  } | null;
   scene: Extract<GraphNode, { kind: "scene" }> | null;
   canvas: (Canvas & { id: string; ownerId: string; ownerName: string }) | null;
   blocks: ShowGraph["blocks"];

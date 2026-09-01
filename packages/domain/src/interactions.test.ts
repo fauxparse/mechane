@@ -5,6 +5,7 @@ import {
   InvalidInteractionError,
   navigateEdgeId,
   projectNavigateEdges,
+  resolveRuntimeEvent,
   type Action,
   type Cue,
   type EventBinding,
@@ -135,6 +136,63 @@ describe("interaction aggregate", () => {
         actions: [redGreenAction],
         eventBindings: [redGreenBinding, { ...redGreenBinding, id: "binding_duplicate" }],
       }),
+    ).toThrowError(InvalidInteractionError);
+  });
+  it("resolves an observed Event into the authored Action plan", () => {
+    const graph = { nodes, cues, actions, eventBindings };
+
+    expect(
+      resolveRuntimeEvent(graph, {
+        sceneId: "scene_red",
+        canvasId: "canvas_red",
+        elementId: "button_green",
+        eventKind: "tap",
+      }),
+    ).toEqual({
+      kind: "planned",
+      sceneId: "scene_red",
+      cue: redGreenCue,
+      actions: [redGreenAction],
+    });
+  });
+
+  it("returns data for stale and unbound runtime observations", () => {
+    const graph = { nodes, cues, actions, eventBindings };
+
+    expect(
+      resolveRuntimeEvent(graph, {
+        sceneId: "scene_missing",
+        canvasId: "canvas_red",
+        elementId: "button_green",
+        eventKind: "tap",
+      }),
+    ).toEqual({ kind: "unbound", reason: "stale-scene" });
+    expect(
+      resolveRuntimeEvent(graph, {
+        sceneId: "scene_red",
+        canvasId: "canvas_red",
+        elementId: "button_missing",
+        eventKind: "tap",
+      }),
+    ).toEqual({ kind: "unbound", reason: "unbound-event" });
+  });
+
+  it("rejects a binding whose Cue belongs to another Scene", () => {
+    expect(() =>
+      resolveRuntimeEvent(
+        {
+          nodes,
+          cues: [redGreenCue],
+          actions: [redGreenAction],
+          eventBindings: [redGreenBinding],
+        },
+        {
+          sceneId: "scene_green",
+          canvasId: "canvas_red",
+          elementId: "button_green",
+          eventKind: "tap",
+        },
+      ),
     ).toThrowError(InvalidInteractionError);
   });
 });
