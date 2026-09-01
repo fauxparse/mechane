@@ -173,9 +173,9 @@ function realtimeAuthUrl(grant: string): string {
 
 type PlayerRealtimeSubscriber = RealtimeSubscriber & { close(): void };
 
-type PlayerEventSubmitter = (input: PlayerEventInput) => Promise<PlayerEventResult>;
+export type PlayerEventSubmitter = (input: PlayerEventInput) => Promise<PlayerEventResult>;
 
-type PlayerState = {
+export type PlayerState = {
   submitEvent?: PlayerEventSubmitter;
 } & (
   | { status: "idle" }
