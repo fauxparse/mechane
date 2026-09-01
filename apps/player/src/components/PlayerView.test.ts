@@ -201,6 +201,7 @@ function sessionWithRepeatedCandidate(): PlayerSession {
       updatedAt: "2026-01-01T00:00:00.000Z",
       version: 1,
     },
+    flow: null,
     scene,
     canvas,
     blocks: graph.blocks,

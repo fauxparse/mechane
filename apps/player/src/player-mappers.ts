@@ -163,6 +163,36 @@ function toBlock(value: unknown): Block {
   };
 }
 
+function toFlowBundle(value: unknown): PlayerSession["flow"] {
+  if (value === null || value === undefined) return null;
+  const input = record(value);
+  const scenes = Array.isArray(input.scenes)
+    ? input.scenes.map((entry) => {
+        const item = record(entry);
+        const scene = toNode(item.scene);
+        if (scene.kind !== "scene") throw new Error("Player Flow bundle contains a non-Scene node.");
+        if (item.canvas === null || item.canvas === undefined) {
+          throw new Error(`Player Scene "${scene.id}" has no Canvas.`);
+        }
+        const canvasInput = record(item.canvas);
+        return {
+          scene,
+          canvas: {
+            ...decodeCanvasDocument(canvasInput),
+            id: String(canvasInput.id),
+            ownerId: scene.id,
+            ownerName: scene.name,
+          },
+        };
+      })
+    : [];
+  return {
+    flowId: String(input.flowId),
+    defaultSceneId: input.defaultSceneId === null ? null : String(input.defaultSceneId),
+    scenes,
+  };
+}
+
 function toGraph(value: unknown): PlayerSession["graph"] {
   const input = record(value);
   return {
@@ -179,14 +209,13 @@ export function normalizePlayerSession(value: unknown, apiBaseUrl?: string): Pla
   const realtime = record(input.realtime);
   const run = input.run === null ? null : record(input.run);
   const scene = input.scene === null ? null : toNode(input.scene);
-  // Canvas decoding is not the Player's to reimplement (#436): a third copy of
-  // a recursive Element decoder lived here, and a Canvas deeper than the old
   // query's cap painted the audience a truncated Scene.
   const canvas =
     input.canvas === null
       ? null
       : { ...decodeCanvasDocument(input.canvas), id: String(record(input.canvas).id) };
   const imageAssets = Array.isArray(input.imageAssets) ? input.imageAssets.map(record) : [];
+  const flow = toFlowBundle(input.flow);
 
   return {
     device: record(input.device) as PlayerSession["device"],
@@ -205,6 +234,7 @@ export function normalizePlayerSession(value: unknown, apiBaseUrl?: string): Pla
           sourceValues: run.sourceValues as SourceValues,
         }
       : null,
+    flow,
     graph: toGraph(input.graph),
     scene: scene as PlayerSession["scene"],
     canvas: canvas as PlayerSession["canvas"],

@@ -125,6 +125,36 @@ const PlayerGraphFields = graphql(`
   }
 `);
 
+const PlayerFlowSceneFields = graphql(`
+  fragment PlayerFlowSceneFields on SceneNode {
+    id
+    name
+    parentId
+    position {
+      x
+      y
+    }
+    color
+    variables {
+      id
+      name
+      rank
+      type {
+        kind
+        shapeId
+        of {
+          kind
+          shapeId
+        }
+      }
+      suggestedDimensions {
+        width
+        height
+      }
+    }
+  }
+`);
+
 export const GetPlayerSessionQuery: TadaDocumentNode<any, any> = graphql(
   `
     query GetPlayerSession {
@@ -148,6 +178,22 @@ export const GetPlayerSessionQuery: TadaDocumentNode<any, any> = graphql(
         }
         graph {
           ...PlayerGraphFields
+        }
+        flow {
+          flowId
+          defaultSceneId
+          scenes {
+            scene {
+              ...PlayerFlowSceneFields
+            }
+            canvas {
+              id
+              kind
+              elements {
+                ...CanvasElementFields
+              }
+            }
+          }
         }
         scene {
           __typename
@@ -233,7 +279,7 @@ export const GetPlayerSessionQuery: TadaDocumentNode<any, any> = graphql(
       }
     }
   `,
-  [PlayerGraphFields, CanvasElementFields],
+  [PlayerGraphFields, PlayerFlowSceneFields, CanvasElementFields],
 );
 
 export const SubmitPlayerEventMutation: TadaDocumentNode<any, any> = graphql(`

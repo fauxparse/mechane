@@ -119,4 +119,29 @@ describe("Player session runtime Scene", () => {
     if (device?.kind !== "device" || !device.pairingCode) throw new Error("Pairing code missing.");
     expect((await readPlayerSession(device.pairingCode))?.scene).toBeNull();
   });
+  it("loads the complete published Flow bundle for a per-connection Device", async () => {
+    await createShow();
+    const audienceGraph: ShowGraph = {
+      ...graph,
+      nodes: graph.nodes.map((node) =>
+        node.kind === "device" ? { ...node, perConnection: true } : node,
+      ),
+    };
+    await writeShowGraph(showId, "draft", audienceGraph);
+    await publishShowGraph(showId);
+    await startRun(showId);
+    const published = await readShowGraph(showId, "published");
+    const device = published.nodes.find((node) => node.kind === "device");
+    if (device?.kind !== "device" || !device.pairingCode) throw new Error("Pairing code missing.");
+
+    const session = await readPlayerSession(device.pairingCode);
+    expect(session?.scene).toBeNull();
+    expect(session?.canvas).toBeNull();
+    expect(session?.flow?.flowId).toBe("flow_navigation");
+    expect(session?.flow?.defaultSceneId).toBe("scene_red");
+    expect(session?.flow?.scenes.map(({ scene, canvas }) => [scene.id, canvas.ownerId]).sort()).toEqual([
+      ["scene_green", "scene_green"],
+      ["scene_red", "scene_red"],
+    ]);
+  });
 });

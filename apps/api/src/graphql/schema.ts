@@ -255,11 +255,21 @@ export const schema = createSchema<GraphQLContext>({
     }
     union PlayerEventResult = PlayerEventApplied | PlayerEventDuplicate | PlayerEventIgnored
 
+    type PlayerFlowScene {
+      scene: SceneNode!
+      canvas: Canvas!
+    }
+    type PlayerFlowBundle {
+      flowId: ID!
+      defaultSceneId: ID
+      scenes: [PlayerFlowScene!]!
+    }
     type PlayerSession {
       device: PlayerDevice!
       realtime: PlayerRealtime!
       run: Run
       graph: ShowGraph!
+      flow: PlayerFlowBundle
       scene: SceneNode
       canvas: Canvas
       blocks: [Block!]!
@@ -1151,13 +1161,21 @@ export const schema = createSchema<GraphQLContext>({
           : toShapeValue(field.defaultValue, field.type),
     },
     Query: {
-      me: (_parent, _args, context) => context.user,
       playerSession: async (_parent, _args, context) => {
         if (!context.playerPairingCode) return null;
         const session = await readPlayerSession(context.playerPairingCode);
         if (!session) return null;
         return {
           ...session,
+          flow: session.flow
+            ? {
+                ...session.flow,
+                scenes: session.flow.scenes.map(({ scene, canvas }) => ({
+                  scene,
+                  canvas: serializeCanvas(canvas),
+                })),
+              }
+            : null,
           graph: serializeShowGraph(session.graph),
           canvas: session.canvas ? serializeCanvas(session.canvas) : null,
           blocks: session.blocks.map(serializeBlock),

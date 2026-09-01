@@ -34,6 +34,36 @@ function sceneForDevice(
   const scene = graph.nodes.find((node) => node.id === sceneId);
   return scene?.kind === "scene" && scene.parentId === source.id ? scene : null;
 }
+
+async function flowBundleForDevice(
+  showId: string,
+  graph: ShowGraph,
+  deviceId: string,
+  perConnection: boolean,
+) {
+  if (!perConnection) return null;
+  const driver = graph.edges.find(
+    (edge) => edge.kind === "device" && edge.targetId === deviceId,
+  );
+  const flow = driver
+    ? graph.nodes.find((node) => node.id === driver.sourceId && node.kind === "flow")
+    : undefined;
+  if (!flow || flow.kind !== "flow") return null;
+  const scenes = graph.nodes.filter(
+    (node): node is Extract<GraphNode, { kind: "scene" }> =>
+      node.kind === "scene" && node.parentId === flow.id,
+  );
+  const sceneCanvases = await Promise.all(
+    scenes.map(async (scene) => {
+      const canvas = await readCanvas(showId, "published", { sceneNodeId: scene.id });
+      if (!canvas) {
+        throw new Error(`Published Scene "${scene.id}" has no Canvas.`);
+      }
+      return { scene, canvas };
+    }),
+  );
+  return { flowId: flow.id, defaultSceneId: flow.defaultSceneId, scenes: sceneCanvases };
+}
 /** Returns the authoritative snapshot a paired Player needs to render. */
 export async function readPlayerSession(pairingCode: string) {
   const normalizedCode = pairingCode.trim().toUpperCase();
@@ -52,7 +82,8 @@ export async function readPlayerSession(pairingCode: string) {
   ]);
   const deviceNode = graph.nodes.find((node) => node.id === device.id);
   const state = run ? await readRunDeviceState(run.id, device.id) : null;
-  const scene = sceneForDevice(graph, device.id, state);
+  const flow = await flowBundleForDevice(device.showId, graph, device.id, device.perConnection);
+  const scene = device.perConnection ? null : sceneForDevice(graph, device.id, state);
   const canvas = scene
     ? await readCanvas(device.showId, "published", { sceneNodeId: scene.id })
     : null;
@@ -82,6 +113,7 @@ export async function readPlayerSession(pairingCode: string) {
           sourceValues: run.sourceValues,
         }
       : null,
+    flow,
     graph: playerGraph,
     scene,
     canvas,
