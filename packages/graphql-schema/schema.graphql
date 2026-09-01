@@ -58,11 +58,23 @@ type PlayerEventIgnored {
 
 union PlayerEventResult = PlayerEventApplied | PlayerEventDuplicate | PlayerEventIgnored
 
+type PlayerFlowScene {
+  scene: SceneNode!
+  canvas: Canvas!
+}
+
+type PlayerFlowBundle {
+  flowId: ID!
+  defaultSceneId: ID
+  scenes: [PlayerFlowScene!]!
+}
+
 type PlayerSession {
   device: PlayerDevice!
   realtime: PlayerRealtime!
   run: Run
   graph: ShowGraph!
+  flow: PlayerFlowBundle
   scene: SceneNode
   canvas: Canvas
   blocks: [Block!]!
