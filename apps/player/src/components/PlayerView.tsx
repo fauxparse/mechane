@@ -134,6 +134,7 @@ export function PlayerView({ code }: { code: string }) {
       </SplashScreen>
     );
   }
+  if (!state.session.run) return <WaitingForRun session={state.session} />;
 
   if (state.session.device.perConnection) {
     if (navigation.status === "inactive" && state.session.scene && state.session.canvas) {
