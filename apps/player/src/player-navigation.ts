@@ -42,10 +42,9 @@ export function usePlayerNavigation(
       return;
     }
     if (!session.flow) {
-      setRuntime({ status: "loading", session });
+      setRuntime({ status: "unwired", session, store: null });
       return;
     }
-
     const scope = playerRunScope(pairingCode, session.run.id);
     const store = openPlayerStateStore(scope);
     const driver = {
