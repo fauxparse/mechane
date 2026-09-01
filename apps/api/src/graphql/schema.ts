@@ -1161,6 +1161,7 @@ export const schema = createSchema<GraphQLContext>({
           : toShapeValue(field.defaultValue, field.type),
     },
     Query: {
+      me: (_parent, _args, context) => context.user,
       playerSession: async (_parent, _args, context) => {
         if (!context.playerPairingCode) return null;
         const session = await readPlayerSession(context.playerPairingCode);
