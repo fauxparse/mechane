@@ -53,6 +53,7 @@ export type CanvasInspectorProps = {
   onSetEventBindingCue?(bindingId: string, cueId: string): void;
   onCreateEventBinding?(binding: EventBinding): void;
   onRemoveEventBinding?(bindingId: string): void;
+  onReorderEventBindings?(bindingIds: readonly string[]): void;
   inspectorPreview?: CanvasInspectorPreview | null;
   currentDimensions?: CanvasInspectorDimensions | null;
   blockVariableEditing?: VariableInspectorEditing;
@@ -92,6 +93,7 @@ export type CanvasInspectorModel = {
   onSetEventBindingCue?(bindingId: string, cueId: string): void;
   onCreateEventBinding?(binding: EventBinding): void;
   onRemoveEventBinding?(bindingId: string): void;
+  onReorderEventBindings?(bindingIds: readonly string[]): void;
   onRenameArtboard?(artId: string, name: string): void;
   blockVariableEditing?: VariableInspectorEditing;
   fontFamilies: readonly string[];

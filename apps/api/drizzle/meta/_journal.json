@@ -225,6 +225,13 @@
       "when": 1788302844624,
       "tag": "0031_needy_matthew_murdock",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1788324763141,
+      "tag": "0032_short_the_initiative",
+      "breakpoints": true
     }
   ]
 }

@@ -11,6 +11,8 @@ export interface EventBinding {
   elementId: string;
   eventKind: EventKind;
   cueId: string;
+  /** Evaluation priority among bindings for this Element and Event kind. */
+  position: number;
 }
 
 export interface Cue {
@@ -77,12 +79,20 @@ export function resolveRuntimeEvent(
   if (!scene || scene.parentId === null) {
     return { kind: "unbound", reason: "stale-scene" };
   }
-  const binding = interactions.eventBindings.find(
-    (candidate) =>
-      candidate.canvasId === observation.canvasId &&
-      candidate.elementId === observation.elementId &&
-      candidate.eventKind === observation.eventKind,
-  );
+  let binding: EventBinding | undefined;
+  for (const candidate of interactions.eventBindings) {
+    if (
+      candidate.canvasId !== observation.canvasId ||
+      candidate.elementId !== observation.elementId ||
+      candidate.eventKind !== observation.eventKind ||
+      (binding &&
+        (candidate.position > binding.position ||
+          (candidate.position === binding.position && candidate.id >= binding.id)))
+    ) {
+      continue;
+    }
+    binding = candidate;
+  }
   if (!binding) return { kind: "unbound", reason: "unbound-event" };
   const cue = interactions.cues.find((candidate) => candidate.id === binding.cueId);
   if (!cue || cue.owner.kind !== "scene" || cue.owner.sceneId !== scene.id) {
@@ -161,7 +171,8 @@ export type InteractionViolation =
   | "missingBlock"
   | "navigateSceneFlow"
   | "invalidCurrentActionCount"
-  | "duplicateEventBinding"
+  | "invalidEventBindingPosition"
+  | "duplicateEventBindingPosition"
   | "emptyElementReference"
   | "bindingScene";
 
@@ -297,7 +308,7 @@ export function assertValidInteractions(graph: {
     }
   }
 
-  const bindingKeys = new Set<string>();
+  const bindingPositions = new Map<string, Set<number>>();
   for (const binding of interactions.eventBindings) {
     if (binding.eventKind !== "tap") {
       throw new InvalidInteractionError(
@@ -311,14 +322,22 @@ export function assertValidInteractions(graph: {
         `Event Binding "${binding.id}" has an empty Element reference.`,
       );
     }
-    const key = `${binding.canvasId}:${binding.elementId}:${binding.eventKind}`;
-    if (bindingKeys.has(key)) {
+    if (!Number.isInteger(binding.position) || binding.position < 0) {
       throw new InvalidInteractionError(
-        "duplicateEventBinding",
-        `duplicate Event Binding for "${key}".`,
+        "invalidEventBindingPosition",
+        `Event Binding "${binding.id}" has an invalid position.`,
       );
     }
-    bindingKeys.add(key);
+    const key = `${binding.canvasId}:${binding.elementId}`;
+    const positions = bindingPositions.get(key) ?? new Set<number>();
+    if (positions.has(binding.position)) {
+      throw new InvalidInteractionError(
+        "duplicateEventBindingPosition",
+        `duplicate Event Binding position ${binding.position} for "${key}".`,
+      );
+    }
+    positions.add(binding.position);
+    bindingPositions.set(key, positions);
     if (!cuesById.has(binding.cueId)) {
       throw new InvalidInteractionError(
         "missingCue",

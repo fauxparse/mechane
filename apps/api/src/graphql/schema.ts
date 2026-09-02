@@ -582,6 +582,7 @@ export const schema = createSchema<GraphQLContext>({
       elementId: ID!
       eventKind: String!
       cueId: ID!
+      position: Int!
     }
     type Cue {
       id: ID!
@@ -878,6 +879,7 @@ export const schema = createSchema<GraphQLContext>({
       elementId: ID!
       eventKind: String!
       cueId: ID!
+      position: Int!
     }
 
     type GraphEdit {
@@ -920,6 +922,7 @@ export const schema = createSchema<GraphQLContext>({
       cueId: ID
       actionId: ID
       bindingId: ID
+      bindingIds: [ID!]
       actionIds: [ID!]
       targetSceneId: ID
       "Devices only: the code the server minted for a Device this batch created (#45)."
@@ -978,6 +981,7 @@ export const schema = createSchema<GraphQLContext>({
       cueId: ID
       actionId: ID
       bindingId: ID
+      bindingIds: [ID!]
       actionIds: [ID!]
       targetSceneId: ID
       elementId: ID

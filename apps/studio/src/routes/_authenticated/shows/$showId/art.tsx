@@ -5,6 +5,7 @@ import {
   removeEventBinding,
   setBlockVariables,
   setEventBindingCue,
+  setEventBindingOrder,
 } from "@mechane/commands";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import type {
@@ -133,6 +134,8 @@ function useBlockVariableEditing(
   }, [focused, graphEditing]);
 }
 
+// This route intentionally coordinates the graph, Canvas, persistence, and inspector lifecycles.
+// react-doctor-disable-next-line no-giant-component
 function CanvasWorkspaceRoute() {
   const params = Route.useParams();
   const showId: ShowId | null = isId("show", params.showId) ? params.showId : null;
@@ -199,6 +202,12 @@ function CanvasWorkspaceRoute() {
   const removeBinding = useCallback(
     (bindingId: string) => {
       graphEditing.command.commands.execute(removeEventBinding(bindingId));
+    },
+    [graphEditing.command.commands],
+  );
+  const reorderBindings = useCallback(
+    (bindingIds: readonly string[]) => {
+      graphEditing.command.commands.execute(setEventBindingOrder(bindingIds));
     },
     [graphEditing.command.commands],
   );
@@ -403,6 +412,7 @@ function CanvasWorkspaceRoute() {
       onSetEventBindingCue={changeBindingCue}
       onCreateEventBinding={createBinding}
       onRemoveEventBinding={removeBinding}
+      onReorderEventBindings={reorderBindings}
       shapes={graphEditing.command.graph.shapes ?? []}
       deviceQrImages={deviceQrImages}
       imageAssets={imageAssets.data ?? []}

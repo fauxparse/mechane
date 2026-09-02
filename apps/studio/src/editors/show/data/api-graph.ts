@@ -328,6 +328,7 @@ function toEventBinding(binding: ApiShowGraph["eventBindings"][number]): EventBi
     elementId: binding.elementId,
     eventKind: "tap",
     cueId: binding.cueId,
+    position: binding.position,
   };
 }
 

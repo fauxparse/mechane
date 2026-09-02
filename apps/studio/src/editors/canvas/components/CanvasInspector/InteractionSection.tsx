@@ -1,6 +1,7 @@
 import {
   Button,
   ChevronDownIcon,
+  ChevronUpIcon,
   CopyIcon,
   DropdownMenu,
   DropdownMenuContent,
@@ -63,6 +64,7 @@ export function InteractionSection() {
     onSetEventBindingCue,
     onCreateEventBinding,
     onRemoveEventBinding,
+    onReorderEventBindings,
   } = useCanvasInspectorContext();
 
   const owner = useMemo<InteractionOwner | null>(() => {
@@ -88,22 +90,22 @@ export function InteractionSection() {
 
   const bindings = useMemo(() => {
     if (!focused || selected.length !== 1) return [];
-    return eventBindings.filter(
-      (candidate) => candidate.canvasId === focused.canvasId && candidate.elementId === target.id,
-    );
+    return eventBindings
+      .filter(
+        (candidate) => candidate.canvasId === focused.canvasId && candidate.elementId === target.id,
+      )
+      .slice()
+      .sort((left, right) => left.position - right.position || left.id.localeCompare(right.id));
   }, [eventBindings, focused, selected.length, target.id]);
 
   if (!focused || selected.length !== 1 || !owner) return null;
-  const duplicateEventKind = EVENT_KINDS.find(
-    (kind) => !bindings.some((binding) => binding.eventKind === kind),
-  );
-
   const duplicateBinding = (binding: (typeof bindings)[number]) => {
-    if (!duplicateEventKind) return;
+    const position =
+      bindings.reduce((highest, candidate) => Math.max(highest, candidate.position), -1) + 1;
     onCreateEventBinding?.({
       ...binding,
       id: generateId("eventBinding"),
-      eventKind: duplicateEventKind,
+      position,
     });
   };
 
@@ -115,23 +117,30 @@ export function InteractionSection() {
       onCreateCue?.(owner);
       return;
     }
-    if (bindings.some((binding) => binding.eventKind === eventKind)) return;
+    const position =
+      bindings.reduce((highest, binding) => Math.max(highest, binding.position), -1) + 1;
     onCreateEventBinding?.({
       id: generateId("eventBinding"),
       canvasId,
       elementId: target.id,
       eventKind,
       cueId: cue.id,
+      position,
     });
+  };
+  const moveBinding = (bindingId: string, offset: -1 | 1) => {
+    const index = bindings.findIndex((binding) => binding.id === bindingId);
+    const nextIndex = index + offset;
+    if (index < 0 || nextIndex < 0 || nextIndex >= bindings.length) return;
+    const nextOrder = bindings.map((binding) => binding.id);
+    [nextOrder[index], nextOrder[nextIndex]] = [nextOrder[nextIndex]!, nextOrder[index]!];
+    onReorderEventBindings?.(nextOrder);
   };
 
   return (
     <Section label="Interactions">
-      {bindings.map((binding) => (
-        <div
-          key={binding.id}
-          className="col-span-full grid grid-cols-subgrid *:[button]:col-start-3"
-        >
+      {bindings.map((binding, index) => (
+        <div key={binding.id} className="col-span-full grid grid-cols-subgrid">
           <dl className="col-span-2 row-span-2 grid grid-cols-[auto_1fr] grid-rows-subgrid items-center gap-x-2 gap-y-1 *:[dt]:label *:[dt]:col-start-1 *:[dd]:col-start-2">
             <dt>On</dt>
             <dd className="flex items-center gap-2">
@@ -181,31 +190,50 @@ export function InteractionSection() {
               </Select>
             </dd>
           </dl>
-          <Button
-            className="-row-3"
-            type="button"
-            size="icon-sm"
-            variant="ghost"
-            aria-label={`Duplicate ${INTERACTION_TITLES[binding.eventKind]} interaction`}
-            title={
-              duplicateEventKind ? "Duplicate interaction" : "No unused event kind is available"
-            }
-            disabled={!duplicateEventKind}
-            onClick={() => duplicateBinding(binding)}
-          >
-            <CopyIcon />
-          </Button>
-          <Button
-            className="-row-2"
-            type="button"
-            size="icon-sm"
-            variant="ghost"
-            aria-label={`Delete ${INTERACTION_TITLES[binding.eventKind]} interaction`}
-            title="Delete interaction"
-            onClick={() => onRemoveEventBinding?.(binding.id)}
-          >
-            <Trash2Icon />
-          </Button>
+          <div className="col-start-3 row-span-2 flex flex-col gap-1">
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="ghost"
+              aria-label={`Move ${INTERACTION_TITLES[binding.eventKind]} interaction earlier`}
+              title="Move interaction earlier"
+              disabled={index === 0}
+              onClick={() => moveBinding(binding.id, -1)}
+            >
+              <ChevronUpIcon />
+            </Button>
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="ghost"
+              aria-label={`Move ${INTERACTION_TITLES[binding.eventKind]} interaction later`}
+              title="Move interaction later"
+              disabled={index === bindings.length - 1}
+              onClick={() => moveBinding(binding.id, 1)}
+            >
+              <ChevronDownIcon />
+            </Button>
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="ghost"
+              aria-label={`Duplicate ${INTERACTION_TITLES[binding.eventKind]} interaction`}
+              title="Duplicate interaction"
+              onClick={() => duplicateBinding(binding)}
+            >
+              <CopyIcon />
+            </Button>
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="ghost"
+              aria-label={`Delete ${INTERACTION_TITLES[binding.eventKind]} interaction`}
+              title="Delete interaction"
+              onClick={() => onRemoveEventBinding?.(binding.id)}
+            >
+              <Trash2Icon />
+            </Button>
+          </div>
         </div>
       ))}
       <SectionRow>
@@ -225,7 +253,6 @@ export function InteractionSection() {
             {EVENT_KINDS.map((kind) => (
               <DropdownMenuItem
                 key={kind}
-                disabled={bindings.some((binding) => binding.eventKind === kind)}
                 onClick={() => addInteraction(kind)}
                 className="grid grid-cols-[auto_1fr] items-center line-height-normal gap-x-2 gap-y-0"
               >

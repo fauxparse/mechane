@@ -97,6 +97,7 @@ import {
   renameCue,
   setCueActionOrder,
   setEventBindingCue,
+  setEventBindingOrder,
   setNavigateTarget,
 } from "./interaction-commands";
 import type { ShowGraphCommand } from "./graph-commands";
@@ -203,6 +204,7 @@ export interface FlatEventBinding {
   elementId: string;
   eventKind: string;
   cueId: string;
+  position: number;
 }
 
 /** One edit as a flat record: the shape both adapters exchange. */
@@ -245,6 +247,7 @@ export interface FlatGraphEdit {
   binding?: FlatEventBinding | null;
   actionId?: string | null;
   bindingId?: string | null;
+  bindingIds?: string[] | null;
   cueId?: string | null;
   targetSceneId?: string | null;
   actionIds?: string[] | null;
@@ -591,6 +594,7 @@ function encodeEventBinding(binding: EventBinding): FlatEventBinding {
     elementId: binding.elementId,
     eventKind: binding.eventKind,
     cueId: binding.cueId,
+    position: binding.position,
   };
 }
 
@@ -601,9 +605,13 @@ function decodeEventBinding(flat: FlatEventBinding): EventBinding {
     typeof flat.canvasId !== "string" ||
     typeof flat.elementId !== "string" ||
     flat.eventKind !== "tap" ||
-    typeof flat.cueId !== "string"
+    typeof flat.cueId !== "string" ||
+    !Number.isInteger(flat.position) ||
+    flat.position < 0
   ) {
-    throw new GraphEditCodecError("An Event Binding edit needs a valid tap Binding.");
+    throw new GraphEditCodecError(
+      "An Event Binding edit needs a valid tap Binding with a position.",
+    );
   }
   return {
     id: flat.id,
@@ -611,7 +619,19 @@ function decodeEventBinding(flat: FlatEventBinding): EventBinding {
     elementId: flat.elementId,
     eventKind: "tap",
     cueId: flat.cueId,
+    position: flat.position,
   };
+}
+
+function decodeEventBindingOrder(flat: FlatGraphEdit): string[] {
+  if (
+    !Array.isArray(flat.bindingIds) ||
+    flat.bindingIds.length === 0 ||
+    flat.bindingIds.some((bindingId) => typeof bindingId !== "string" || bindingId.length === 0)
+  ) {
+    throw new GraphEditCodecError("An Event Binding order edit needs binding IDs.");
+  }
+  return [...flat.bindingIds];
 }
 
 export function decodeEdge(flat: FlatGraphEdge): GraphEdge {
@@ -1198,6 +1218,14 @@ export const GRAPH_EDIT_CODECS: { [T in GraphEdit["type"]]: GraphEditCodec<T> } 
       type: GRAPH_COMMAND_TYPES.setEventBindingCue,
       bindingId: required(flat, "bindingId", flat.bindingId),
       cueId: required(flat, "cueId", flat.cueId),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.setEventBindingOrder]: {
+    command: (edit) => setEventBindingOrder(edit.bindingIds),
+    encode: (edit) => ({ type: edit.type, bindingIds: [...edit.bindingIds] }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.setEventBindingOrder,
+      bindingIds: decodeEventBindingOrder(flat),
     }),
   },
   [GRAPH_COMMAND_TYPES.removeEventBinding]: {

@@ -25,6 +25,7 @@ const PlayerGraphFields = graphql(`
       elementId
       eventKind
       cueId
+      position
     }
     sourceFieldDefaults {
       nodeId

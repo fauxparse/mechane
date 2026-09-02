@@ -61,6 +61,7 @@ export function CanvasWorkspaceEditor({
   onSetEventBindingCue,
   onCreateEventBinding,
   onRemoveEventBinding,
+  onReorderEventBindings,
   blockVariableEditing,
   onPlaceBlock,
   onCreateBlockFromDrag,
@@ -412,6 +413,7 @@ export function CanvasWorkspaceEditor({
           selection={selection}
           blocks={blocks}
           variables={variables}
+          shapes={shapes}
           cues={cues}
           actions={actions}
           eventBindings={eventBindings}
@@ -420,7 +422,7 @@ export function CanvasWorkspaceEditor({
           onSetEventBindingCue={onSetEventBindingCue}
           onCreateEventBinding={onCreateEventBinding}
           onRemoveEventBinding={onRemoveEventBinding}
-          shapes={shapes}
+          onReorderEventBindings={onReorderEventBindings}
           blockVariableEditing={blockVariableEditing}
           deviceQrImages={deviceQrImages}
           imageAssets={imageAssets}

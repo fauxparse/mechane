@@ -158,6 +158,7 @@ export const GetShowGraphQuery = graphql(
           elementId
           eventKind
           cueId
+          position
         }
         shapes {
           id

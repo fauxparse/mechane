@@ -41,6 +41,7 @@ const model: CanvasInspectorModel = {
       elementId: "button-vote",
       eventKind: "tap",
       cueId: "cue-vote",
+      position: 0,
     },
   ],
   imageAssets: [],

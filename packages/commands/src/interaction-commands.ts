@@ -48,6 +48,41 @@ function actionOrThrow(graph: ShowGraph, actionId: string): Action {
   if (!action) throw new Error(`Show graph has no Action "${actionId}".`);
   return action;
 }
+function bindingScope(binding: EventBinding): string {
+  return `${binding.canvasId}:${binding.elementId}`;
+}
+
+function bindingIdsInScopeOrder(graph: ShowGraph, bindingIds: readonly string[]): string[] {
+  const current = interactions(graph).eventBindings;
+  const firstId = bindingIds[0];
+  if (!firstId || new Set(bindingIds).size !== bindingIds.length) {
+    throw new Error("Event Binding order needs unique binding IDs.");
+  }
+  const first = current.find((binding) => binding.id === firstId);
+  if (!first) throw new Error(`Show graph has no Event Binding "${firstId}".`);
+  const scope = bindingScope(first);
+  const scoped = current.filter((binding) => bindingScope(binding) === scope);
+  const requested = new Set(bindingIds);
+  if (scoped.length !== bindingIds.length || scoped.some((binding) => !requested.has(binding.id))) {
+    throw new Error("Event Binding order must include every binding for one Element.");
+  }
+  return scoped
+    .slice()
+    .sort((left, right) => left.position - right.position || left.id.localeCompare(right.id))
+    .map((binding) => binding.id);
+}
+
+function applyBindingOrder(graph: ShowGraph, bindingIds: readonly string[]): ShowGraph {
+  bindingIdsInScopeOrder(graph, bindingIds);
+  const positions = new Map(bindingIds.map((bindingId, position) => [bindingId, position]));
+  return withInteractions(graph, {
+    ...interactions(graph),
+    eventBindings: (graph.eventBindings ?? []).map((binding) => {
+      const position = positions.get(binding.id);
+      return position === undefined ? binding : { ...binding, position };
+    }),
+  });
+}
 
 export function addCue(cue: Cue, label = "Create Cue"): ShowGraphCommand {
   return capturing<ShowGraph, null, GraphEdit>({
@@ -365,6 +400,23 @@ export function setEventBindingCue(
     edits: [{ type: GRAPH_COMMAND_TYPES.setEventBindingCue, bindingId, cueId }],
     restoreEdits: (previousCueId) => [
       { type: GRAPH_COMMAND_TYPES.setEventBindingCue, bindingId, cueId: previousCueId },
+    ],
+  });
+}
+export function setEventBindingOrder(
+  bindingIds: readonly string[],
+  label = "Reorder Event Bindings",
+): ShowGraphCommand {
+  return capturing<ShowGraph, readonly string[], GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setEventBindingOrder,
+    label,
+    scope: "selection",
+    capture: (graph) => bindingIdsInScopeOrder(graph, bindingIds),
+    apply: (graph) => applyBindingOrder(graph, bindingIds),
+    restore: (graph, previousOrder) => applyBindingOrder(graph, previousOrder),
+    edits: [{ type: GRAPH_COMMAND_TYPES.setEventBindingOrder, bindingIds: [...bindingIds] }],
+    restoreEdits: (previousOrder) => [
+      { type: GRAPH_COMMAND_TYPES.setEventBindingOrder, bindingIds: [...previousOrder] },
     ],
   });
 }

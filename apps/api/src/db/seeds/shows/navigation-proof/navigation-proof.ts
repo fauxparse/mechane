@@ -144,6 +144,7 @@ function binding(sceneId: NavigationSceneId, destinationId: NavigationSceneId): 
     elementId: `button_${sceneId}_${destinationId}`,
     eventKind: "tap",
     cueId: `cue_${sceneId}_${destinationId}`,
+    position: 0,
   };
 }
 

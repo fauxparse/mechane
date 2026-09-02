@@ -116,6 +116,7 @@ function toEventBinding(row: EventBindingRow): EventBinding {
     elementId: row.elementId,
     eventKind: "tap",
     cueId: row.cueId,
+    position: row.position,
   };
 }
 
@@ -398,7 +399,12 @@ export async function readGraphRows(
     .select()
     .from(graphEventBindings)
     .where(eq(graphEventBindings.graphId, row.id))
-    .orderBy(graphEventBindings.id);
+    .orderBy(
+      graphEventBindings.canvasId,
+      graphEventBindings.elementId,
+      graphEventBindings.position,
+      graphEventBindings.id,
+    );
   const interactions = readInteractions(cueRows, actionRows, bindingRows);
   const blockValues = await readBlocks(showId, state, row.id, executor);
   const variablesByScene = groupVariables(variableRows);
@@ -734,6 +740,7 @@ export async function persistEventBindings(
       elementId: binding.elementId,
       eventKind: binding.eventKind,
       cueId: binding.cueId,
+      position: binding.position,
     })),
   );
   return normalized;

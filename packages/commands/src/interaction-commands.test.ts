@@ -7,6 +7,7 @@ import {
   addCue,
   removeCue,
   setCueActionOrder,
+  setEventBindingOrder,
 } from "./interaction-commands";
 import { deleteGraphElements } from "./graph-cascade";
 
@@ -61,6 +62,7 @@ const binding = {
   elementId: "button-green",
   eventKind: "tap" as const,
   cueId: cue.id,
+  position: 0,
 };
 
 describe("interaction commands", () => {
@@ -86,6 +88,19 @@ describe("interaction commands", () => {
     ]);
   });
 
+  it("reorders bindings for one Element without changing their identities", () => {
+    const secondBinding = { ...binding, id: "binding-red-green-fallback", position: 1 };
+    const graph = addEventBinding(secondBinding).apply(
+      addEventBinding(binding).apply(baseGraph).state,
+    ).state;
+    const applied = setEventBindingOrder([secondBinding.id, binding.id]).apply(graph);
+
+    expect(applied.state.eventBindings).toEqual([
+      { ...binding, position: 1 },
+      { ...secondBinding, position: 0 },
+    ]);
+    expect(applied.inverse.apply(applied.state).state.eventBindings).toEqual(graph.eventBindings);
+  });
   it("removes a Cue with its Bindings and Actions as one undoable operation", () => {
     const graph = addEventBinding(binding).apply(
       addNavigateAction(action).apply(addCue(cue).apply(baseGraph).state).state,

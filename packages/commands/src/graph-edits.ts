@@ -256,6 +256,10 @@ export type GraphEdit =
       readonly bindingId: string;
       readonly cueId: string;
     }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setEventBindingOrder;
+      readonly bindingIds: readonly string[];
+    }
   | { readonly type: typeof GRAPH_COMMAND_TYPES.removeEventBinding; readonly bindingId: string };
 
 /** An edit naming something the graph doesn't contain, or a type nothing knows. */
@@ -378,6 +382,11 @@ function supersedes(edit: GraphEdit): { key: string; ids: readonly string[] } | 
       return { key: `navigateTarget:${edit.actionId}`, ids: [edit.actionId, edit.targetSceneId] };
     case GRAPH_COMMAND_TYPES.setEventBindingCue:
       return { key: `eventBindingCue:${edit.bindingId}`, ids: [edit.bindingId, edit.cueId] };
+    case GRAPH_COMMAND_TYPES.setEventBindingOrder:
+      return {
+        key: `eventBindingOrder:${edit.bindingIds.join(",")}`,
+        ids: [...edit.bindingIds],
+      };
 
     case GRAPH_COMMAND_TYPES.setDevicePerConnection:
       return { key: `perConnection:${edit.nodeId}`, ids: [edit.nodeId] };

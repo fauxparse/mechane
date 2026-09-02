@@ -105,6 +105,7 @@ export interface CanvasWorkspaceEditorProps {
   onSetEventBindingCue?(bindingId: string, cueId: string): void;
   onCreateEventBinding?(binding: EventBinding): void;
   onRemoveEventBinding?(bindingId: string): void;
+  onReorderEventBindings?(bindingIds: readonly string[]): void;
   onRenameArtboard?(artId: string, name: string): void;
 }
 export interface CanvasArtboardDimensions {

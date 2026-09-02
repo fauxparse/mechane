@@ -416,6 +416,7 @@ type EventBinding {
   elementId: ID!
   eventKind: String!
   cueId: ID!
+  position: Int!
 }
 
 type Cue {
@@ -732,6 +733,7 @@ input EventBindingInput {
   elementId: ID!
   eventKind: String!
   cueId: ID!
+  position: Int!
 }
 
 type GraphEdit {
@@ -784,6 +786,7 @@ type GraphEdit {
   cueId: ID
   actionId: ID
   bindingId: ID
+  bindingIds: [ID!]
   actionIds: [ID!]
   targetSceneId: ID
 
@@ -860,6 +863,7 @@ input ShowEditInput {
   cueId: ID
   actionId: ID
   bindingId: ID
+  bindingIds: [ID!]
   actionIds: [ID!]
   targetSceneId: ID
   elementId: ID

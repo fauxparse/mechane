@@ -702,6 +702,7 @@ export const InteractionAuthoring: Story = {
           elementId: "headline",
           eventKind: "tap",
           cueId: "cue-submit",
+          position: 0,
         },
       ]}
     />

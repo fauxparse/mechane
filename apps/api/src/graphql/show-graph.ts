@@ -219,6 +219,7 @@ export function serializeShowGraph(graph: StoredShowGraph) {
       elementId: binding.elementId,
       eventKind: binding.eventKind,
       cueId: binding.cueId,
+      position: binding.position,
     })),
     losses: graph.losses ?? [],
   };

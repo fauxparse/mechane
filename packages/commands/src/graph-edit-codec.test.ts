@@ -290,12 +290,17 @@ const FIXTURES: { [T in GraphEdit["type"]]: Extract<GraphEdit, { type: T }> } = 
       elementId: "button_open",
       eventKind: "tap",
       cueId: "cue_lobby",
+      position: 0,
     },
   },
   "graph.setEventBindingCue": {
     type: "graph.setEventBindingCue",
     bindingId: "binding_lobby",
     cueId: "cue_lobby",
+  },
+  "graph.setEventBindingOrder": {
+    type: "graph.setEventBindingOrder",
+    bindingIds: ["binding_lobby"],
   },
   "graph.removeEventBinding": {
     type: "graph.removeEventBinding",

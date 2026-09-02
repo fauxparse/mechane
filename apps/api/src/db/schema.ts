@@ -872,16 +872,17 @@ export const graphEventBindings = pgTable(
     elementId: text("element_id").notNull(),
     eventKind: text("event_kind").notNull(),
     cueId: text("cue_id").notNull(),
+    position: integer("position").notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => [
     primaryKey({ columns: [table.graphId, table.id] }),
-    unique("graph_event_bindings_element_event_unique").on(
+    unique("graph_event_bindings_element_position_unique").on(
       table.graphId,
       table.canvasId,
       table.elementId,
-      table.eventKind,
+      table.position,
     ),
     foreignKey({
       name: "graph_event_bindings_cue_fk",
