@@ -29,8 +29,13 @@ export interface NodeInteraction {
   targets: ConnectionTargets | null;
   /** Toggles a Flow's local collapsed view state; not an edit command. */
   toggleCollapse(flowId: string): void;
-  /** Updates a Flow's local view dimensions after mouse resizing. */
-  resizeFlow(flowId: string, dimensions: FlowDimensions): void;
+  /**
+   * Resizes a Flow. `committed` is false while the pointer is still down and
+   * true on release, the same shape as an inline rename — the size itself is
+   * view state, but shrinking a Flow past its contents moves the children,
+   * and that is a graph edit worth exactly one undo entry (#508).
+   */
+  resizeFlow(flowId: string, dimensions: FlowDimensions, options: { committed: boolean }): void;
 }
 
 const IDLE: NodeInteraction = {

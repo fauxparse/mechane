@@ -11,6 +11,7 @@ import {
 } from "./graph/graph-to-flow";
 import type { ShowFlowNode } from "./graph/graph-to-flow";
 import {
+  childrenPushedInside,
   clampIntoFlow,
   clearOfFlows,
   effectiveFlowDimensions,
@@ -91,8 +92,37 @@ describe("clampIntoFlow", () => {
 
   it("never inverts the box when the Flow is too small for the node", () => {
     const tiny = flowNode("flow_tiny", { x: 0, y: 0 }, { width: 80, height: 80 });
-    const box = flowContentBox(tiny);
+    const box = flowContentBox({ width: 80, height: 80 });
     expect(clampIntoFlow(tiny, { x: 500, y: 500 }, size)).toEqual({ x: box.left, y: box.top });
+  });
+});
+
+describe("childrenPushedInside", () => {
+  const size = { width: 400, height: 300 };
+
+  it("leaves children a shrunk Flow still contains alone", () => {
+    const child = childNode("scene_1", FLOW.id, { x: 24, y: 74 });
+    expect(childrenPushedInside(size, [child])).toEqual([]);
+  });
+
+  // #508: the box wins and the children move to suit. Refusing to shrink
+  // instead is a resize handle that stops working.
+  it("names the children a shrunk Flow no longer holds, and where they go", () => {
+    const inside = childNode("scene_1", FLOW.id, { x: 24, y: 74 });
+    const crowded = childNode("scene_2", FLOW.id, { x: 500, y: 260 });
+    expect(childrenPushedInside(size, [inside, crowded])).toEqual([
+      {
+        id: "scene_2",
+        position: { x: 400 - FLOW_PADDING - NODE_WIDTH, y: 300 - FLOW_PADDING - NODE_HEIGHT },
+      },
+    ]);
+  });
+
+  it("stops at the content origin rather than inverting a too-small box", () => {
+    const child = childNode("scene_1", FLOW.id, { x: 500, y: 500 });
+    expect(childrenPushedInside({ width: 80, height: 80 }, [child])).toEqual([
+      { id: "scene_1", position: { x: FLOW_PADDING, y: FLOW_HEADER_HEIGHT + FLOW_PADDING } },
+    ]);
   });
 });
 

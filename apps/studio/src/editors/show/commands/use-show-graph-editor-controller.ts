@@ -1,3 +1,4 @@
+import { composite, moveNode } from "@mechane/commands";
 import type { DeletionScope } from "@mechane/commands";
 import { defaultSourceValues, type GraphNode, type Position } from "@mechane/domain";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
@@ -23,7 +24,7 @@ import { useUndoKeys } from "../keyboard/use-undo-keys";
 import { useViewportKeys } from "../keyboard/use-viewport-keys";
 import { useShowGraphEditorActions } from "./use-show-graph-editor-actions";
 import { useFitViewOptions, useInitialFrame } from "../graph/use-fit-view-options";
-import { effectiveFlowDimensions, fitFlows } from "../show-graph-layout";
+import { childrenPushedInside, effectiveFlowDimensions, fitFlows } from "../show-graph-layout";
 import type { FittedFlow } from "../show-graph-layout";
 import { useShowGraphEditorPalette } from "./use-show-graph-editor-palette";
 import { MESSAGE_MS } from "../show-graph-editor-constants";
@@ -110,18 +111,6 @@ export function useShowGraphEditorController({
       return next;
     });
   }, []);
-  const resizeFlow = useCallback((flowId: string, dimensions: FlowDimensions) => {
-    setManualFlowDimensions((current) => {
-      const previous = current.get(flowId);
-      if (previous?.width === dimensions.width && previous.height === dimensions.height)
-        return current;
-      const next = new Map(current);
-      // Only the two fields, copied out: React Flow's resize params also carry
-      // `x`/`y`, and this map is handed to the node as its `style`.
-      next.set(flowId, { width: dimensions.width, height: dimensions.height });
-      return next;
-    });
-  }, []);
   const dragging = useRef(false);
   const selectOnArrival = useRef<string | null>(null);
   const focusOnArrival = useRef<string | null>(null);
@@ -138,6 +127,47 @@ export function useShowGraphEditorController({
   );
   const displayEdges = useMemo(() => reconcileEdges(drawn.edges, edges), [drawn.edges, edges]);
   const { fitView, getNodes, getZoom, setCenter, screenToFlowPosition } = useReactFlow();
+
+  // A resize that shrinks a Flow past its contents moves the children, which
+  // is a graph edit rather than view state. It runs as a gesture for the same
+  // reason a drag does: the handle emits a size every frame, and the whole
+  // resize is one undo entry (#28, #508).
+  const resizeGesture = useRef<ReturnType<typeof commands.beginGesture> | null>(null);
+  const resizeFlow = useCallback(
+    (flowId: string, dimensions: FlowDimensions, { committed }: { committed: boolean }) => {
+      const size = { width: dimensions.width, height: dimensions.height };
+      setManualFlowDimensions((current) => {
+        const previous = current.get(flowId);
+        if (previous?.width === size.width && previous.height === size.height) return current;
+        const next = new Map(current);
+        // Only the two fields, copied out: React Flow's resize params also
+        // carry `x`/`y`, and this map is handed to the node as its `style`.
+        next.set(flowId, size);
+        return next;
+      });
+
+      const children = (getNodes() as ShowFlowNode[]).filter((node) => node.parentId === flowId);
+      const moves = childrenPushedInside(size, children);
+      if (moves.length > 0) {
+        // Opened lazily, so a resize that never crowds a child leaves no
+        // entry behind at all.
+        resizeGesture.current ??= commands.beginGesture({
+          key: `resizeFlow:${flowId}`,
+          label: "Resize Flow",
+        });
+        resizeGesture.current.update(
+          composite({
+            label: "Resize Flow",
+            commands: moves.map((move) => moveNode(move.id, move.position)),
+          }),
+        );
+      }
+      if (!committed) return;
+      resizeGesture.current?.commit();
+      resizeGesture.current = null;
+    },
+    [commands, getNodes],
+  );
   const fitViewOptions = useFitViewOptions();
   // The graph arrives after the editor mounts; fit only after its nodes are measured.
   const nodesInitialized = useNodesInitialized();

@@ -119,14 +119,24 @@ export function flowAtPoint(
     );
 }
 
-/** The area inside a Flow its children may occupy, in Flow-relative coordinates. */
-export function flowContentBox(flow: ShowFlowNode): Rectangle {
-  const { width, height } = sizeOf(flow);
+/**
+ * The area inside a Flow of this size that its children may occupy, in
+ * Flow-relative coordinates.
+ */
+export function flowContentBox(flow: Size): Rectangle {
   return {
     left: FLOW_PADDING,
     top: FLOW_HEADER_HEIGHT + FLOW_PADDING,
-    right: Math.max(FLOW_PADDING, width - FLOW_PADDING),
-    bottom: Math.max(FLOW_HEADER_HEIGHT + FLOW_PADDING, height - FLOW_PADDING),
+    right: Math.max(FLOW_PADDING, flow.width - FLOW_PADDING),
+    bottom: Math.max(FLOW_HEADER_HEIGHT + FLOW_PADDING, flow.height - FLOW_PADDING),
+  };
+}
+
+/** `preferred` pulled back inside `box`, for a node of `size`. */
+export function clampIntoBox(box: Rectangle, preferred: Position, size: Size): Position {
+  return {
+    x: clamp(preferred.x, box.left, Math.max(box.left, box.right - size.width)),
+    y: clamp(preferred.y, box.top, Math.max(box.top, box.bottom - size.height)),
   };
 }
 
@@ -135,11 +145,31 @@ export function flowContentBox(flow: ShowFlowNode): Rectangle {
  * node the director dropped half-out of its Flow lands wholly inside it.
  */
 export function clampIntoFlow(flow: ShowFlowNode, preferred: Position, size: Size): Position {
-  const box = flowContentBox(flow);
-  return {
-    x: clamp(preferred.x, box.left, Math.max(box.left, box.right - size.width)),
-    y: clamp(preferred.y, box.top, Math.max(box.top, box.bottom - size.height)),
-  };
+  return clampIntoBox(flowContentBox(sizeOf(flow)), preferred, size);
+}
+
+/**
+ * The children a Flow resized to `dimensions` would no longer contain, at the
+ * positions that put them back inside — empty when the box still holds them.
+ *
+ * Resizing is view state, but *this* is a graph edit: the children's stored
+ * positions change, so it lands as a command and undoes with the rest (#25,
+ * #28). Shrinking a Flow past its contents is a legitimate thing to want —
+ * the alternative, refusing to shrink, is a resize handle that stops working
+ * — so the box wins and the children move to suit.
+ */
+export function childrenPushedInside(
+  dimensions: FlowDimensions,
+  children: readonly ShowFlowNode[],
+): { id: string; position: Position }[] {
+  const box = flowContentBox(dimensions);
+  return children.reduce<{ id: string; position: Position }[]>((moves, child) => {
+    const position = clampIntoBox(box, child.position, sizeOf(child));
+    if (position.x !== child.position.x || position.y !== child.position.y) {
+      moves.push({ id: child.id, position });
+    }
+    return moves;
+  }, []);
 }
 
 /** `point` expressed relative to `flow`, which is where a child's position lives (#29). */
@@ -162,7 +192,7 @@ export function nextChildPosition(
   children: readonly ShowFlowNode[],
   size: Size = { width: NODE_WIDTH, height: NODE_HEIGHT },
 ): Position {
-  const box = flowContentBox(flow);
+  const box = flowContentBox(sizeOf(flow));
   const below = children.reduce(
     (bottom, child) => Math.max(bottom, child.position.y + sizeOf(child).height + STACK_GAP),
     box.top,
