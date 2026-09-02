@@ -227,7 +227,6 @@ export const PLACEHOLDER_NODE_TYPE = "showNode";
 
 /** The React Flow node type a Flow renders as: a sized container. */
 export const FLOW_NODE_TYPE = "showFlow";
-export const SMART_SMOOTH_STEP_EDGE_TYPE = "smartSmoothStep";
 
 /** #475's replacement: self-routing, with draggable per-segment handles. */
 export const ROUTED_SMOOTH_STEP_EDGE_TYPE = "routedSmoothStep";

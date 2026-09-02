@@ -48,9 +48,10 @@ export function InteractionSection() {
   );
   const cue = binding ? ownedCues.find((candidate) => candidate.id === binding.cueId) : undefined;
   const cueActions = cue
-    ? cue.actionIds
-        .map((actionId) => actions.find((action) => action.id === actionId))
-        .filter(Boolean)
+    ? cue.actionIds.flatMap((actionId) => {
+        const action = actions.find((candidate) => candidate.id === actionId);
+        return action ? [action] : [];
+      })
     : [];
 
   return (
