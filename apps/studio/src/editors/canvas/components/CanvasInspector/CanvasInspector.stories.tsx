@@ -404,6 +404,7 @@ function InspectorStory({
   currentDimensions?: { elementId: string; width: number; height: number };
 }) {
   const [current, setCurrent] = useState(initialArtboard);
+  const [currentEventBindings, setCurrentEventBindings] = useState(storyEventBindings);
   const onUpdateElements = useCallback(
     (
       _canvasId: string,
@@ -428,7 +429,18 @@ function InspectorStory({
             variables={storyVariables}
             cues={storyCues}
             actions={storyActions}
-            eventBindings={storyEventBindings}
+            eventBindings={currentEventBindings}
+            onReorderEventBindings={(bindingIds) =>
+              setCurrentEventBindings((currentBindings) => {
+                const bindingsById = new Map(
+                  currentBindings.map((binding) => [binding.id, binding]),
+                );
+                return bindingIds.flatMap((bindingId) => {
+                  const binding = bindingsById.get(bindingId);
+                  return binding ? [binding] : [];
+                });
+              })
+            }
             blockVariableEditing={blockVariableEditing}
             shapes={storyShapes}
             imageAssets={storyImageAssets}
@@ -686,6 +698,12 @@ export const InteractionAuthoring: Story = {
           owner: { kind: "scene", sceneId: ART_ID },
           actionIds: ["action-results"],
         },
+        {
+          id: "cue-fallback",
+          name: "Fallback",
+          owner: { kind: "scene", sceneId: ART_ID },
+          actionIds: [],
+        },
       ]}
       storyActions={[
         {
@@ -703,6 +721,14 @@ export const InteractionAuthoring: Story = {
           eventKind: "tap",
           cueId: "cue-submit",
           position: 0,
+        },
+        {
+          id: "binding-fallback",
+          canvasId: CANVAS_ID,
+          elementId: "headline",
+          eventKind: "tap",
+          cueId: "cue-fallback",
+          position: 1,
         },
       ]}
     />
