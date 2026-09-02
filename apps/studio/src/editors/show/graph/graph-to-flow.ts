@@ -12,6 +12,7 @@ import {
   valueAtPath,
 } from "@mechane/domain";
 import type {
+  Cue,
   EdgeKind,
   EdgeLayout,
   FlowColor,
@@ -62,6 +63,7 @@ export const FLOW_CONTENT_ORIGIN: Position = {
 
 type ShowNodeField = { id: string; name: string; type: Type; value: unknown };
 type ShowNodeVariable = { id: string; name: string; type?: Type | null };
+type ShowNodeCue = { id: string; name: string; actionCount: number };
 
 type ShowNodeDataBase = {
   /** The node colorway, or its Flow colorway when unset (#316). */
@@ -73,6 +75,8 @@ type ShowNodeDataBase = {
   fields: ShowNodeField[];
   /** Scene Variables, in graph order. Empty for every other kind. */
   variables: ShowNodeVariable[];
+  /** Scene or Block interaction Cues owned by this node. */
+  cues: ShowNodeCue[];
   /**
    * Variables with a producer wired into them. #35's dangling-input marker
    * is the complement: a Variable *not* in here has nothing feeding it.
@@ -247,10 +251,14 @@ const EDGE_TYPE = ROUTED_SMOOTH_STEP_EDGE_TYPE;
 /**
  * How tall a node is. Every kind is one header tall except nodes with rows.
  */
-export function nodeHeight(node: MappableNode, shapes: readonly Shape[] = []): number {
+export function nodeHeight(
+  node: MappableNode,
+  shapes: readonly Shape[] = [],
+  cueCount = 0,
+): number {
   const rowCount =
     node.kind === "scene"
-      ? node.variables.length
+      ? node.variables.length + cueCount
       : node.kind === "source" || node.kind === "transformer"
         ? fieldsForType(node.type, shapes).length
         : 0;
@@ -268,10 +276,17 @@ export function flowSize(
   children: readonly MappableNode[],
   minimum?: FlowDimensions,
   shapes: readonly Shape[] = [],
+  cues: readonly Cue[] = [],
 ): FlowDimensions {
+  const cueCounts = new Map<string, number>();
+  for (const cue of cues) {
+    if (cue.owner.kind !== "scene") continue;
+    cueCounts.set(cue.owner.sceneId, (cueCounts.get(cue.owner.sceneId) ?? 0) + 1);
+  }
   const right = children.reduce((max, child) => Math.max(max, child.position.x + NODE_WIDTH), 0);
   const bottom = children.reduce(
-    (max, child) => Math.max(max, child.position.y + nodeHeight(child, shapes)),
+    (max, child) =>
+      Math.max(max, child.position.y + nodeHeight(child, shapes, cueCounts.get(child.id) ?? 0)),
     0,
   );
   return {
@@ -303,6 +318,7 @@ function nodeData({
   shapes,
   fields,
   variables,
+  cues,
   childCount,
   collapsed,
 }: {
@@ -311,6 +327,7 @@ function nodeData({
   shapes: readonly Shape[] | undefined;
   fields: ShowNodeField[];
   variables: ShowNodeVariable[];
+  cues: ShowNodeCue[];
   childCount: number;
   collapsed: boolean;
 }): ShowNodeData {
@@ -326,6 +343,7 @@ function nodeData({
         ...shared,
         kind: "flow",
         type: null,
+        cues: [],
         fields: [],
         variables: [],
         defaultSceneId: node.defaultSceneId,
@@ -343,6 +361,7 @@ function nodeData({
         kind: "scene",
         type: null,
         fields: [],
+        cues,
         variables,
         defaultSceneId: null,
         isDefaultScene: facts.isDefaultScene,
@@ -358,6 +377,7 @@ function nodeData({
         kind: "source",
         type,
         fields,
+        cues: [],
         variables: [],
         defaultSceneId: null,
         wiredVariableIds: [],
@@ -374,6 +394,7 @@ function nodeData({
         type,
         fields,
         variables: [],
+        cues: [],
         defaultSceneId: null,
         wiredVariableIds: [],
         isDefaultScene: false,
@@ -390,6 +411,7 @@ function nodeData({
         fields: [],
         variables: [],
         defaultSceneId: null,
+        cues: [],
         wiredVariableIds: [],
         isDefaultScene: false,
         childCount: 0,
@@ -399,7 +421,6 @@ function nodeData({
       };
   }
 }
-
 function toFlowNode(
   node: MappableNode,
   children: readonly MappableNode[],
@@ -408,11 +429,16 @@ function toFlowNode(
   minimumDimensions: FlowDimensions | undefined,
   shapes: readonly Shape[] | undefined,
   value: unknown,
+  cues: readonly Cue[],
 ): ShowFlowNode {
   const kind = node.kind;
   const isFlow = kind === "flow";
   const resolvedShapes = shapes ?? [];
-  const minimumHeight = nodeHeight(node, resolvedShapes);
+  const ownedCues =
+    node.kind === "scene"
+      ? cues.filter((cue) => cue.owner.kind === "scene" && cue.owner.sceneId === node.id)
+      : [];
+  const minimumHeight = nodeHeight(node, resolvedShapes, ownedCues.length);
   const variables =
     node.kind === "scene"
       ? node.variables.map((variable) => ({
@@ -431,26 +457,31 @@ function toFlowNode(
     initialHeight: isFlow
       ? collapsed
         ? FLOW_HEADER_HEIGHT
-        : flowSize(children, minimumDimensions, resolvedShapes).height
+        : flowSize(children, minimumDimensions, resolvedShapes, cues).height
       : minimumHeight,
     ...(isFlow
       ? {
           width: collapsed
             ? NODE_WIDTH
-            : flowSize(children, minimumDimensions, resolvedShapes).width,
+            : flowSize(children, minimumDimensions, resolvedShapes, cues).width,
           height: collapsed
             ? FLOW_HEADER_HEIGHT
-            : flowSize(children, minimumDimensions, resolvedShapes).height,
+            : flowSize(children, minimumDimensions, resolvedShapes, cues).height,
         }
       : {}),
     style: isFlow
       ? collapsed
         ? { width: NODE_WIDTH, height: FLOW_HEADER_HEIGHT }
-        : flowSize(children, minimumDimensions, resolvedShapes)
+        : flowSize(children, minimumDimensions, resolvedShapes, cues)
       : { width: NODE_WIDTH, minHeight: minimumHeight },
     data: nodeData({
       node,
       facts,
+      cues: ownedCues.map((cue) => ({
+        id: cue.id,
+        name: cue.name,
+        actionCount: cue.actionIds.length,
+      })),
       shapes,
       fields,
       variables,
@@ -465,6 +496,7 @@ function toFlowEdge(
   graphNodes: readonly MappableNode[],
   facts: ShowGraphEdgeFacts,
   endpointColors: { source: FlowColor; target: FlowColor },
+  cueIds: ReadonlySet<string>,
 ): ShowFlowEdge {
   const source = graphNodes.find((node) => node.id === edge.sourceId);
   const target = graphNodes.find((node) => node.id === edge.targetId);
@@ -475,11 +507,13 @@ function toFlowEdge(
     source: edge.sourceId,
     target: edge.targetId,
     sourceHandle:
-      source?.kind === "device" && sourcePath
-        ? handleFor({ kind: "deviceSource", name: sourcePath })
-        : sourcePath
-          ? handleFor({ kind: "field", id: sourcePath })
-          : handleFor({ kind: "output" }),
+      edge.kind === "navigate" && edge.cueId && cueIds.has(edge.cueId)
+        ? handleFor({ kind: "cue", id: edge.cueId })
+        : source?.kind === "device" && sourcePath
+          ? handleFor({ kind: "deviceSource", name: sourcePath })
+          : sourcePath
+            ? handleFor({ kind: "field", id: sourcePath })
+            : handleFor({ kind: "output" }),
     targetHandle:
       edge.kind === "wiring" && target?.kind === "scene" && facts.targetVariableId
         ? handleFor({ kind: "variable", id: facts.targetVariableId })
@@ -547,6 +581,7 @@ export function graphToFlow(
     (node.kind === "flow" ? flows : rest).push(node);
   }
 
+  const cueIds = new Set((graph.cues ?? []).map((cue) => cue.id));
   return {
     nodes: [...flows, ...rest].reduce<ShowFlowNode[]>((nodes, node) => {
       if (!node.parentId || !collapsed.has(node.parentId)) {
@@ -564,41 +599,47 @@ export function graphToFlow(
             flowDimensions.get(node.id),
             graph.shapes,
             options.sourceValues?.[node.id],
+            graph.cues ?? [],
           ),
         );
       }
       return nodes;
     }, []),
     edges: fanParallelEdges(
-      graph.edges.map((edge) => {
-        const sourceFlow = collapsedFlowOwner(edge.sourceId, graph.nodes, collapsed);
-        const targetFlow = collapsedFlowOwner(edge.targetId, graph.nodes, collapsed);
-        if (sourceFlow && sourceFlow === targetFlow) return null;
-        const mapped = toFlowEdge(
-          edge,
-          graph.nodes,
-          facts.edges.get(edge.id) ?? {
-            targetVariableId: null,
-            sourceType: null,
-            targetType: null,
-            typeCompatibility: "unknown",
-            color: "neutral",
-          },
-          {
-            // An edge re-anchored onto a collapsed Flow takes that Flow's
-            // color: the box it now leaves or lands on is the Flow itself.
-            source: facts.nodes.get(sourceFlow ?? edge.sourceId)?.color ?? DEFAULT_FLOW_COLOR,
-            target: facts.nodes.get(targetFlow ?? edge.targetId)?.color ?? DEFAULT_FLOW_COLOR,
-          },
-        );
-        return {
-          ...mapped,
-          ...(sourceFlow
-            ? { source: sourceFlow, sourceHandle: handleFor({ kind: "output" }) }
-            : {}),
-          ...(targetFlow ? { target: targetFlow, targetHandle: handleFor({ kind: "input" }) } : {}),
-        };
-      }).filter((edge): edge is ShowFlowEdge => edge !== null),
+      graph.edges
+        .map((edge) => {
+          const sourceFlow = collapsedFlowOwner(edge.sourceId, graph.nodes, collapsed);
+          const targetFlow = collapsedFlowOwner(edge.targetId, graph.nodes, collapsed);
+          if (sourceFlow && sourceFlow === targetFlow) return null;
+          const mapped = toFlowEdge(
+            edge,
+            graph.nodes,
+            facts.edges.get(edge.id) ?? {
+              targetVariableId: null,
+              sourceType: null,
+              targetType: null,
+              typeCompatibility: "unknown",
+              color: "neutral",
+            },
+            {
+              // An edge re-anchored onto a collapsed Flow takes that Flow's
+              // color: the box it now leaves or lands on is the Flow itself.
+              source: facts.nodes.get(sourceFlow ?? edge.sourceId)?.color ?? DEFAULT_FLOW_COLOR,
+              target: facts.nodes.get(targetFlow ?? edge.targetId)?.color ?? DEFAULT_FLOW_COLOR,
+            },
+            cueIds,
+          );
+          return {
+            ...mapped,
+            ...(sourceFlow
+              ? { source: sourceFlow, sourceHandle: handleFor({ kind: "output" }) }
+              : {}),
+            ...(targetFlow
+              ? { target: targetFlow, targetHandle: handleFor({ kind: "input" }) }
+              : {}),
+          };
+        })
+        .filter((edge): edge is ShowFlowEdge => edge !== null),
     ),
   };
 }

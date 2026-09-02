@@ -34,7 +34,10 @@
 //     applies what it is told; blast radius is the editor's policy (#42).
 
 import type {
+  Action,
+  Cue,
   EdgeLayout,
+  EventBinding,
   Block,
   BlockVariable,
   FlowColor,
@@ -221,7 +224,39 @@ export type GraphEdit =
       readonly name: string;
     }
   | { readonly type: typeof GRAPH_COMMAND_TYPES.duplicateBlock; readonly block: Block }
-  | { readonly type: typeof GRAPH_COMMAND_TYPES.removeBlock; readonly blockId: string };
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.removeBlock; readonly blockId: string }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.addCue; readonly cue: Cue }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.renameCue;
+      readonly cueId: string;
+      readonly name: string;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setCueActionOrder;
+      readonly cueId: string;
+      readonly actionIds: readonly string[];
+    }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.removeCue; readonly cueId: string }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.addNavigateAction;
+      readonly action: Extract<Action, { kind: "navigate" }>;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setNavigateTarget;
+      readonly actionId: string;
+      readonly targetSceneId: string;
+    }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.removeAction; readonly actionId: string }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.addEventBinding;
+      readonly binding: EventBinding;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setEventBindingCue;
+      readonly bindingId: string;
+      readonly cueId: string;
+    }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.removeEventBinding; readonly bindingId: string };
 
 /** An edit naming something the graph doesn't contain, or a type nothing knows. */
 export class UnknownGraphEditError extends Error {
@@ -332,6 +367,18 @@ function supersedes(edit: GraphEdit): { key: string; ids: readonly string[] } | 
         key: `variableOrder:${edit.sceneId}`,
         ids: [edit.sceneId, ...edit.variableIds],
       };
+    case GRAPH_COMMAND_TYPES.renameCue:
+      return { key: `renameCue:${edit.cueId}`, ids: [edit.cueId] };
+    case GRAPH_COMMAND_TYPES.setCueActionOrder:
+      return {
+        key: `cueActionOrder:${edit.cueId}`,
+        ids: [edit.cueId, ...edit.actionIds],
+      };
+    case GRAPH_COMMAND_TYPES.setNavigateTarget:
+      return { key: `navigateTarget:${edit.actionId}`, ids: [edit.actionId, edit.targetSceneId] };
+    case GRAPH_COMMAND_TYPES.setEventBindingCue:
+      return { key: `eventBindingCue:${edit.bindingId}`, ids: [edit.bindingId, edit.cueId] };
+
     case GRAPH_COMMAND_TYPES.setDevicePerConnection:
       return { key: `perConnection:${edit.nodeId}`, ids: [edit.nodeId] };
     default:
@@ -359,6 +406,19 @@ function structuralIds(edit: GraphEdit): readonly string[] {
       return [edit.variable.id];
     case GRAPH_COMMAND_TYPES.removeSceneVariable:
       return [edit.variableId];
+    case GRAPH_COMMAND_TYPES.addCue:
+      return [edit.cue.id];
+    case GRAPH_COMMAND_TYPES.removeCue:
+      return [edit.cueId];
+    case GRAPH_COMMAND_TYPES.addNavigateAction:
+      return [edit.action.id];
+    case GRAPH_COMMAND_TYPES.removeAction:
+      return [edit.actionId];
+    case GRAPH_COMMAND_TYPES.addEventBinding:
+      return [edit.binding.id];
+    case GRAPH_COMMAND_TYPES.removeEventBinding:
+      return [edit.bindingId];
+
     default:
       return [];
   }

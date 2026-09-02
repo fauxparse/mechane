@@ -10,6 +10,8 @@
 // everything reaches the server by the same path an undo does (ADR-0005).
 import type { DeletionScope, Gesture, GraphEdit } from "@mechane/commands";
 import {
+  addCue,
+  addNavigateAction,
   addNode,
   addSceneVariable,
   addShape,
@@ -25,20 +27,22 @@ import {
   removeSceneVariable,
   removeShape,
   removeShapeField,
+  renameCue as renameCueCommand,
   renameNode,
   renameSceneVariable,
   renameShape,
   renameShapeField,
   reorderSceneVariables,
   reorderShapeFields,
+  setCueActionOrder,
   setDevicePerConnection,
+  setEdgeLayout,
   setNodeColor,
   setSceneVariableDefault,
   setSceneVariableType,
   setShapeFieldDefault,
   setShapeFieldRequired,
   setShapeFieldType,
-  setEdgeLayout,
   setSourceFieldDefault,
 } from "@mechane/commands";
 import type {
@@ -46,6 +50,7 @@ import type {
   EdgeLayout,
   FlowColor,
   GraphNode,
+  InteractionOwner,
   NodeKind,
   Position,
   Shape,
@@ -167,6 +172,10 @@ export interface GraphEdgeEditing {
    */
   moveEdge(edgeId: string, layout: EdgeLayout, options: { committed: boolean }): void;
 }
+export interface InteractionEditing {
+  addCue(owner: InteractionOwner): void;
+  renameCue(cueId: string, name: string): void;
+}
 
 export interface GraphEditing {
   command: GraphCommandEditing;
@@ -178,6 +187,7 @@ export interface GraphEditing {
   shapes: ShapeEditing;
   variables: VariableEditing;
   sourceValues: SourceValueEditing;
+  interaction: InteractionEditing;
   setNodeColor(nodeId: string, color: FlowColor): void;
   setDevicePerConnection(nodeId: string, perConnection: boolean): void;
   setSourceType(
@@ -221,6 +231,8 @@ export interface GraphInspectorEditing {
   reorderVariables(sceneId: string, variableIds: readonly string[]): void;
   removeVariable(sceneId: string, variableId: string): void;
   setSourceFieldDefault(nodeId: string, fieldPath: readonly string[], value: unknown): void;
+  addCue(owner: InteractionOwner): void;
+  renameCue(cueId: string, name: string): void;
 }
 
 export function graphInspectorEditing(
@@ -229,6 +241,7 @@ export function graphInspectorEditing(
   variables: VariableEditing,
   sourceValues: SourceValueEditing,
   nodeEditing: GraphInspectorNodeEditing,
+  interaction: InteractionEditing,
 ): GraphInspectorEditing {
   return {
     graph,
@@ -237,6 +250,7 @@ export function graphInspectorEditing(
     ...variables,
     setSourceFieldDefault: sourceValues.setSourceFieldDefault,
     ...nodeEditing,
+    ...interaction,
   };
 }
 
@@ -261,22 +275,15 @@ export function useGraphEditing(
     nodeId: string;
     sourceHandle: string | null;
   } | null>(null);
-  // Computed once when the drag starts, not per hover: the answer is about the
-  // whole graph (#35's affordance dims every non-target), and recomputing it on
-  // pointer move would be the same answer at a cost.
-  const targets = useMemo(
-    () =>
-      connectingFrom
-        ? connectionTargets(
-            graph,
-            connectingFrom.nodeId,
-            domainHandle(
-              connectingFrom.sourceHandle ? readHandle(connectingFrom.sourceHandle) : null,
-            ),
-          )
-        : null,
-    [connectingFrom, graph],
-  );
+  const targets = useMemo(() => {
+    if (!connectingFrom) return null;
+    const sourceHandle = connectingFrom.sourceHandle
+      ? readHandle(connectingFrom.sourceHandle)
+      : null;
+    return sourceHandle?.kind === "cue"
+      ? cueConnectionTargets(graph, sourceHandle.id)
+      : connectionTargets(graph, connectingFrom.nodeId, domainHandle(sourceHandle));
+  }, [connectingFrom, graph]);
   const createNodeOfKind = useCallback(
     (
       kind: NodeKind,
@@ -425,12 +432,42 @@ export function useGraphEditing(
   }, []);
 
   const canDrop = useCallback(
-    (attempt: ConnectionAttempt) => connectionError(graph, requestOf(attempt)) === null,
+    (attempt: ConnectionAttempt) => {
+      const sourceHandle = attempt.sourceHandle ? readHandle(attempt.sourceHandle) : null;
+      return sourceHandle?.kind === "cue"
+        ? cueConnectionError(graph, attempt) === null
+        : connectionError(graph, requestOf(attempt)) === null;
+    },
     [graph, requestOf],
   );
 
   const connect = useCallback(
     (attempt: ConnectionAttempt) => {
+      const sourceHandle = attempt.sourceHandle ? readHandle(attempt.sourceHandle) : null;
+      if (sourceHandle?.kind === "cue") {
+        const error = cueConnectionError(graph, attempt);
+        if (error) return error;
+        const target = graph.nodes.find((node) => node.id === attempt.target);
+        if (!target || target.kind !== "scene") return "A Navigate Action must connect to a Scene.";
+        const cue = (graph.cues ?? []).find((candidate) => candidate.id === sourceHandle.id);
+        if (!cue) return "That Cue no longer exists.";
+        const action = {
+          id: generateId("action"),
+          cueId: cue.id,
+          kind: "navigate" as const,
+          targetSceneId: target.id,
+        };
+        execute(
+          composite({
+            label: "Add Navigate Action",
+            commands: [
+              addNavigateAction(action),
+              setCueActionOrder(cue.id, [...cue.actionIds, action.id]),
+            ],
+          }),
+        );
+        return null;
+      }
       const request = requestOf(attempt);
       const plan = planConnection(graph, request, {
         edgeId: generateId("edge"),
@@ -625,6 +662,27 @@ export function useGraphEditing(
     [execute],
   );
 
+  const addInteractionCue = useCallback(
+    (owner: InteractionOwner) => {
+      execute(
+        addCue({
+          id: generateId("cue"),
+          name: "New Cue",
+          owner,
+          actionIds: [],
+        }),
+      );
+    },
+    [execute],
+  );
+
+  const renameInteractionCue = useCallback(
+    (cueId: string, name: string) => {
+      execute(renameCueCommand(cueId, name));
+    },
+    [execute],
+  );
+
   const moveIntoFlow = useCallback(
     (nodeIds: string[], flowId: string, origin: Position) => {
       execute(moveNodesIntoFlow(graph, nodeIds, flowId, origin));
@@ -696,6 +754,7 @@ export function useGraphEditing(
       commands: { beginGesture: commands.beginGesture },
       setSourceFieldDefault: changeSourceFieldDefault,
     },
+    interaction: { addCue: addInteractionCue, renameCue: renameInteractionCue },
     setNodeColor: changeNodeColor,
     setDevicePerConnection: changeDevicePerConnection,
     setSourceType: changeSourceType,
@@ -703,6 +762,40 @@ export function useGraphEditing(
     moveOutOfFlow,
   };
 }
+function cueConnectionTargets(graph: ShowGraph, cueId: string): ConnectionTargets {
+  const cue = (graph.cues ?? []).find((candidate) => candidate.id === cueId);
+  const nodeIds = new Set<string>();
+  if (cue?.owner.kind === "scene") {
+    const ownerSceneId = cue.owner.sceneId;
+    const scene = graph.nodes.find((node) => node.kind === "scene" && node.id === ownerSceneId);
+    if (scene?.parentId) {
+      graph.nodes.forEach((node) => {
+        if (node.kind === "scene" && node.parentId === scene.parentId) nodeIds.add(node.id);
+      });
+    }
+  }
+  return { nodeIds, variableIds: new Set<string>(), fieldIds: new Set<string>() };
+}
+
+function cueConnectionError(graph: ShowGraph, attempt: ConnectionAttempt): string | null {
+  const sourceHandle = attempt.sourceHandle ? readHandle(attempt.sourceHandle) : null;
+  if (sourceHandle?.kind !== "cue") return null;
+  const cue = (graph.cues ?? []).find((candidate) => candidate.id === sourceHandle.id);
+  if (!cue) return "That Cue no longer exists.";
+  const owner = cue.owner;
+  if (owner.kind !== "scene") return "Block Cues cannot connect to runtime targets yet.";
+  const target = graph.nodes.find((node) => node.id === attempt.target);
+  const targetHandle = attempt.targetHandle ? readHandle(attempt.targetHandle) : null;
+  if (!target || target.kind !== "scene" || targetHandle?.kind !== "input") {
+    return "A Navigate Action must connect to a Scene.";
+  }
+  const source = graph.nodes.find((node) => node.kind === "scene" && node.id === owner.sceneId);
+  if (!source?.parentId || source.parentId !== target.parentId) {
+    return "Navigate targets must stay in the Cue's Flow.";
+  }
+  return null;
+}
+
 function domainHandle(handle: HandleId | null): string | null {
   if (!handle) return null;
   switch (handle.kind) {
@@ -712,6 +805,8 @@ function domainHandle(handle: HandleId | null): string | null {
     case "variable":
     case "field":
       return handle.id;
+    case "cue":
+      return null;
     case "deviceSource":
       return handle.name;
   }

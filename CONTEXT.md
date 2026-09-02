@@ -235,9 +235,9 @@ _Avoid_: Binding (acceptable as a synonym), linking
 - A **Block** belongs to one **Show**, owns one **Canvas**, and has zero or more **Variables**, **States**, and **Cues**
 - A **Block** is referenced by stable identity independent of its user-facing name
 - A **Slot** references one **Block** and stores that placement's configuration
-- **Events** are emitted either by **Elements** within a **Scene** (user taps, clicks) or by the **Device** displaying the **Scene** (peripheral keypresses, buzzers)
-- An **Event Binding** connects an Element's Event kind to one Cue owned by the Element's Scene
-- A **Cue** lives on a **Scene** or **Block** and owns one or more ordered **Actions**
+- **Events** are emitted either by **Elements** within a displayed **Scene**, including Elements inherited from **Blocks** through **Slots**, or by the **Device** displaying the **Scene** (peripheral keypresses, buzzers)
+- An **Event Binding** connects an Element's Event kind to one Cue owned by the Element's Canvas owner
+- A **Cue** lives on a **Scene** or **Block** and owns an ordered list of **Actions**, which may be empty
 - A **Slot** maps parent **Variables** or runtime context into child **Block** **Variables**
 - A **Slot** has at most one **Slot Input Assignment** for each child **Block Variable**; an assignment may be literal, sourced from a parent Variable, sourced from runtime context, or unset
 - A **Slot Input Assignment** may select a nested value through an **Input Field Path** and uses the shared Type compatibility and coercion contract

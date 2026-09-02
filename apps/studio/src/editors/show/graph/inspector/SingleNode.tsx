@@ -1,5 +1,7 @@
 import {
+  Button,
   CopyButton,
+  Input,
   Section,
   SectionHelperText,
   SectionRow,
@@ -8,11 +10,62 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@mechane/design-system";
-import { FLOW_COLORS, FlowColor, type GraphNode } from "@mechane/domain";
+import { FLOW_COLORS, type Cue, type FlowColor, type GraphNode } from "@mechane/domain";
+import { useEffect, useState } from "react";
+
 import type { GraphInspectorEditing } from "../../commands/use-graph-editing";
 import { SourceValues } from "./SourceValues";
 import { SourceTypeSection } from "./SourceTypeSection";
 import { Variables } from "./Variables";
+
+function CueRow({ cue, editing }: { cue: Cue; editing: GraphInspectorEditing }) {
+  const [name, setName] = useState(cue.name);
+  useEffect(() => setName(cue.name), [cue.name]);
+  return (
+    <SectionRow className="grid-cols-[1fr_auto] items-center">
+      <Input
+        aria-label={`Cue name for ${cue.name}`}
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+        onBlur={() => {
+          if (name !== cue.name) editing.renameCue(cue.id, name);
+        }}
+      />
+      <span className="text-xs text-muted-foreground">
+        {cue.actionIds.length} {cue.actionIds.length === 1 ? "Action" : "Actions"}
+      </span>
+    </SectionRow>
+  );
+}
+
+function CueSection({ node, editing }: { node: GraphNode; editing: GraphInspectorEditing }) {
+  if (node.kind !== "scene") return null;
+  const cues = (editing.graph.cues ?? []).filter(
+    (cue) => cue.owner.kind === "scene" && cue.owner.sceneId === node.id,
+  );
+  return (
+    <Section
+      label="Cues"
+      buttons={
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => editing.addCue({ kind: "scene", sceneId: node.id })}
+        >
+          New
+        </Button>
+      }
+    >
+      {cues.length === 0 ? (
+        <SectionHelperText>
+          No Cues yet. Add one to give an Element a tap behavior.
+        </SectionHelperText>
+      ) : (
+        cues.map((cue) => <CueRow key={cue.id} cue={cue} editing={editing} />)
+      )}
+    </Section>
+  );
+}
 
 export function SingleNode({ node, editing }: { node: GraphNode; editing: GraphInspectorEditing }) {
   return (
@@ -90,6 +143,7 @@ export function SingleNode({ node, editing }: { node: GraphNode; editing: GraphI
       {node.kind === "scene" ? (
         <Variables node={node} editing={editing} shapes={editing.graph.shapes ?? []} />
       ) : null}
+      <CueSection node={node} editing={editing} />
       {node.kind === "source" ? (
         <>
           <SourceTypeSection node={node} editing={editing} />

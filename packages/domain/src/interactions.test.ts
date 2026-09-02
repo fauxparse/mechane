@@ -22,13 +22,13 @@ const cues: Cue[] = [
   {
     id: "cue_red_green",
     name: "Go to Green",
-    sceneId: "scene_red",
+    owner: { kind: "scene", sceneId: "scene_red" },
     actionIds: ["action_red_green"],
   },
   {
     id: "cue_red_blue",
     name: "Go to Blue",
-    sceneId: "scene_red",
+    owner: { kind: "scene", sceneId: "scene_red" },
     actionIds: ["action_red_blue"],
   },
 ];
@@ -97,6 +97,31 @@ describe("interaction aggregate", () => {
     ]);
   });
 
+  it("accepts empty Scene and Block Cues as no-op configuration", () => {
+    expect(
+      assertValidInteractions({
+        nodes,
+        blocks: [{ id: "block_card" }],
+        cues: [
+          {
+            id: "cue_empty_scene",
+            name: "No-op Scene",
+            owner: { kind: "scene", sceneId: "scene_red" },
+            actionIds: [],
+          },
+          {
+            id: "cue_empty_block",
+            name: "No-op Block",
+            owner: { kind: "block", blockId: "block_card" },
+            actionIds: [],
+          },
+        ],
+        actions: [],
+        eventBindings: [],
+      }),
+    ).toMatchObject({ cues: expect.any(Array), actions: [], eventBindings: [] });
+  });
+
   it("rejects a Cue that references a missing Action", () => {
     expect(() =>
       assertValidInteractions({
@@ -113,7 +138,12 @@ describe("interaction aggregate", () => {
       assertValidInteractions({
         nodes: [...nodes, { id: "scene_other", kind: "scene", parentId: "other_flow" }],
         cues: [
-          { id: "cue_cross", name: "Cross", sceneId: "scene_red", actionIds: ["action_cross"] },
+          {
+            id: "cue_cross",
+            name: "Cross",
+            owner: { kind: "scene", sceneId: "scene_red" },
+            actionIds: ["action_cross"],
+          },
         ],
         actions: [
           {

@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { InspectorProvider, SidebarContent, SidebarHeader } from "@mechane/design-system";
 
+import { InteractionSection } from "./InteractionSection";
 import { AppearanceSection } from "./AppearanceSection";
 import { CanvasInspectorProvider } from "./CanvasInspectorContext";
 import { BlockVariablesSection, ImageSection, InspectorHeader } from "./CanvasInspectorSections";
@@ -25,6 +26,7 @@ const CanvasInspectorContent = () => (
       <InspectorHeader />
     </SidebarHeader>
     <SidebarContent className="gap-0">
+      <InteractionSection />
       <BlockVariablesSection />
       <ImageSection />
       <PositionSection />

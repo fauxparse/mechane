@@ -1,12 +1,14 @@
+import { emptyBlock } from "@mechane/domain";
 import type { ShowGraph } from "@mechane/domain";
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { db } from "./client";
 import { GraphVersionConflictError, persistGraphRows, readGraphRows } from "./graph-persistence";
-import { devices, shows, user } from "./schema";
+import { canvasElements, canvases, devices, shows, user } from "./schema";
 
 const userId = `graph-persistence-test-${crypto.randomUUID()}`;
+const block = { ...emptyBlock("Card"), id: "block_card" };
 const showId = `graph-persistence-show-${crypto.randomUUID()}`;
 const graph: ShowGraph = {
   shapes: [],
@@ -106,6 +108,85 @@ describe("graph row persistence", () => {
     const reread = await readGraphRows(showId, "draft");
     expect(reread.version).toBe(1);
     expect(reread.edges).toEqual(graph.edges);
+  });
+
+  it("persists an empty Cue as a valid no-op", async () => {
+    await createShow();
+    const interactionGraph: ShowGraph = {
+      ...graph,
+      blocks: [block],
+      nodes: [
+        ...graph.nodes,
+        {
+          id: "flow_interaction",
+          kind: "flow",
+          name: "Interaction Flow",
+          position: { x: 0, y: 0 },
+          parentId: null,
+          defaultSceneId: "scene_interaction",
+        },
+        {
+          id: "scene_interaction",
+          kind: "scene",
+          name: "Interaction Scene",
+          position: { x: 0, y: 0 },
+          parentId: "flow_interaction",
+          variables: [],
+        },
+      ],
+      cues: [
+        {
+          id: "cue_empty",
+          name: "No-op",
+          owner: { kind: "scene", sceneId: "scene_interaction" },
+          actionIds: [],
+        },
+        {
+          id: "cue_block",
+          name: "Block Cue",
+          owner: { kind: "block", blockId: block.id },
+          actionIds: [],
+        },
+      ],
+      actions: [],
+      eventBindings: [],
+    };
+    await db.transaction(async (tx) => {
+      const written = await persistGraphRows(tx, showId, "draft", interactionGraph);
+      await tx.insert(canvases).values({
+        id: "canvas_interaction",
+        graphId: written.graphId,
+        sceneNodeId: "scene_interaction",
+        positionX: 0,
+        positionY: 0,
+      });
+      await tx.insert(canvasElements).values({
+        id: "root_interaction",
+        canvasId: "canvas_interaction",
+        type: "frame",
+        rank: "a",
+        name: "Root",
+      });
+      await tx.insert(canvases).values({
+        id: "canvas_block",
+        graphId: written.graphId,
+        blockId: block.id,
+        positionX: 0,
+        positionY: 0,
+      });
+      await tx.insert(canvasElements).values({
+        id: "root_block",
+        canvasId: "canvas_block",
+        type: "frame",
+        rank: "a",
+        name: "Root",
+      });
+    });
+    const reread = await readGraphRows(showId, "draft");
+    expect(reread.cues).toHaveLength(2);
+    expect(reread.cues).toEqual(expect.arrayContaining([...(interactionGraph.cues ?? [])]));
+    expect(reread.actions).toEqual([]);
+    expect(reread.edges.filter((edge) => edge.kind === "navigate")).toEqual([]);
   });
 
   it("maps supplied Device identity without reading or writing the devices table", async () => {

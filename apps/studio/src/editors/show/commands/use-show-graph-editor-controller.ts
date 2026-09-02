@@ -317,11 +317,18 @@ export function useShowGraphEditorController({
     creation,
     deletion,
     connections,
-    inspector: graphInspectorEditing(command.graph, gestures, variables, editing.sourceValues, {
-      setNodeColor: editing.setNodeColor,
-      setDevicePerConnection: editing.setDevicePerConnection,
-      setSourceType: editing.setSourceType,
-    }),
+    inspector: graphInspectorEditing(
+      command.graph,
+      gestures,
+      variables,
+      editing.sourceValues,
+      {
+        setNodeColor: editing.setNodeColor,
+        setDevicePerConnection: editing.setDevicePerConnection,
+        setSourceType: editing.setSourceType,
+      },
+      editing.interaction,
+    ),
     menuPosition,
     selectedNodes,
     fitView,

@@ -91,15 +91,18 @@ function toCue(row: CueRow, actionRows: readonly ActionRow[]): Cue {
     .filter((action) => action.cueId === row.id)
     .sort((left, right) => left.position - right.position)
     .map((action) => action.id);
-  const [firstActionId, ...remainingActionIds] = actionIds;
-  if (firstActionId === undefined) {
-    throw new Error(`Stored Cue "${row.id}" has no Actions.`);
-  }
+  const owner =
+    row.sceneId !== null
+      ? { kind: "scene" as const, sceneId: row.sceneId }
+      : row.blockId !== null
+        ? { kind: "block" as const, blockId: row.blockId }
+        : null;
+  if (!owner) throw new Error(`Stored Cue "${row.id}" has no owner.`);
   return {
     id: row.id,
     name: row.name,
-    sceneId: row.sceneId,
-    actionIds: [firstActionId, ...remainingActionIds],
+    owner,
+    actionIds,
   };
 }
 
@@ -594,7 +597,8 @@ export async function persistGraphRows(
       graphCues.map((cue) => ({
         id: cue.id,
         graphId: row.id,
-        sceneId: cue.sceneId,
+        sceneId: cue.owner.kind === "scene" ? cue.owner.sceneId : null,
+        blockId: cue.owner.kind === "block" ? cue.owner.blockId : null,
         name: cue.name,
       })),
     );
@@ -675,40 +679,40 @@ async function resolveBindingCanvas(
   graphId: string,
   binding: EventBinding,
 ): Promise<EventBinding> {
+  const ownerColumns = { sceneNodeId: canvases.sceneNodeId, blockId: canvases.blockId };
   const [target] = await tx
-    .select({ id: canvases.id, sceneNodeId: canvases.sceneNodeId })
+    .select({ id: canvases.id, ...ownerColumns })
     .from(canvases)
     .where(and(eq(canvases.id, binding.canvasId), eq(canvases.graphId, graphId)));
-  const sceneNodeId = target?.sceneNodeId;
-  if (target && !sceneNodeId) {
-    throw new Error(`Event Binding "${binding.id}" must target a Scene Canvas.`);
-  }
   if (!target) {
     const [source] = await tx
-      .select({ sceneNodeId: canvases.sceneNodeId })
+      .select(ownerColumns)
       .from(canvases)
       .where(eq(canvases.id, binding.canvasId));
-    if (!source?.sceneNodeId) {
-      throw new Error(`Event Binding "${binding.id}" references an unknown Scene Canvas.`);
+    if (!source || (!source.sceneNodeId && !source.blockId)) {
+      throw new Error(`Event Binding "${binding.id}" references an unknown Canvas.`);
     }
+    const owner = source.sceneNodeId
+      ? eq(canvases.sceneNodeId, source.sceneNodeId)
+      : source.blockId
+        ? eq(canvases.blockId, source.blockId)
+        : null;
+    if (!owner) throw new Error(`Event Binding "${binding.id}" references an unknown Canvas.`);
     const [mapped] = await tx
-      .select({ id: canvases.id, sceneNodeId: canvases.sceneNodeId })
+      .select({ id: canvases.id, ...ownerColumns })
       .from(canvases)
-      .where(and(eq(canvases.graphId, graphId), eq(canvases.sceneNodeId, source.sceneNodeId)));
+      .where(and(eq(canvases.graphId, graphId), owner));
     if (!mapped) {
       throw new Error(`Event Binding "${binding.id}" has no Canvas in graph "${graphId}".`);
-    }
-    if (!mapped.sceneNodeId) {
-      throw new Error(`Event Binding "${binding.id}" must target a Scene Canvas.`);
     }
     return resolveBindingCanvas(tx, graphId, { ...binding, canvasId: mapped.id });
   }
   const [cue] = await tx
-    .select({ sceneId: graphCuesTable.sceneId })
+    .select({ sceneId: graphCuesTable.sceneId, blockId: graphCuesTable.blockId })
     .from(graphCuesTable)
     .where(and(eq(graphCuesTable.graphId, graphId), eq(graphCuesTable.id, binding.cueId)));
-  if (cue?.sceneId !== sceneNodeId) {
-    throw new Error(`Event Binding "${binding.id}" must target a Cue owned by its Scene.`);
+  if (!cue || cue.sceneId !== target.sceneNodeId || cue.blockId !== target.blockId) {
+    throw new Error(`Event Binding "${binding.id}" must target a Cue owned by its Canvas.`);
   }
   return binding;
 }

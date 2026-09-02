@@ -36,8 +36,11 @@ import {
   GRAPH_COMMAND_TYPES,
 } from "@mechane/commands";
 import type {
+  Action,
   Block,
+  Cue,
   EdgeLayout,
+  EventBinding,
   GraphEdge,
   GraphNode,
   Shape,
@@ -103,6 +106,9 @@ export type ApiGraph = {
   edges: ApiGraphEdge[];
   shapes?: ApiShowGraph["shapes"];
   blocks?: ApiShowGraph["blocks"];
+  cues?: ApiShowGraph["cues"];
+  actions?: ApiShowGraph["actions"];
+  eventBindings?: ApiShowGraph["eventBindings"];
   sourceFieldDefaults?: { nodeId: string; fieldPath: string[]; value: unknown }[];
 };
 
@@ -280,6 +286,51 @@ function toEdge(edge: ApiGraphEdge): GraphEdge {
   }
 }
 
+function toCue(cue: ApiShowGraph["cues"][number]): Cue {
+  if (cue.ownerKind === "scene" && cue.sceneId) {
+    return {
+      id: cue.id,
+      name: cue.name,
+      owner: { kind: "scene", sceneId: cue.sceneId },
+      actionIds: [...cue.actionIds],
+    };
+  }
+  if (cue.ownerKind === "block" && cue.blockId) {
+    return {
+      id: cue.id,
+      name: cue.name,
+      owner: { kind: "block", blockId: cue.blockId },
+      actionIds: [...cue.actionIds],
+    };
+  }
+  throw new Error(`Cue "${cue.id}" has an invalid owner.`);
+}
+
+function toAction(action: ApiShowGraph["actions"][number]): Action {
+  if (action.kind !== "navigate" || !action.targetSceneId) {
+    throw new Error(`Action "${action.id}" has an unsupported kind.`);
+  }
+  return {
+    id: action.id,
+    cueId: action.cueId,
+    kind: "navigate",
+    targetSceneId: action.targetSceneId,
+  };
+}
+
+function toEventBinding(binding: ApiShowGraph["eventBindings"][number]): EventBinding {
+  if (binding.eventKind !== "tap") {
+    throw new Error(`Event Binding "${binding.id}" has an unsupported kind.`);
+  }
+  return {
+    id: binding.id,
+    canvasId: binding.canvasId,
+    elementId: binding.elementId,
+    eventKind: "tap",
+    cueId: binding.cueId,
+  };
+}
+
 export function toShowGraph(graph: ApiGraph | null | undefined): ShowGraph {
   if (!graph) return { shapes: [], nodes: [], edges: [] };
   return {
@@ -291,6 +342,9 @@ export function toShowGraph(graph: ApiGraph | null | undefined): ShowGraph {
     })),
     nodes: graph.nodes.map(toNode),
     ...(graph.blocks ? { blocks: graph.blocks.map(toBlock) } : {}),
+    cues: (graph.cues ?? []).map(toCue),
+    actions: (graph.actions ?? []).map(toAction),
+    eventBindings: (graph.eventBindings ?? []).map(toEventBinding),
     edges: graph.edges.map(toEdge),
   };
 }

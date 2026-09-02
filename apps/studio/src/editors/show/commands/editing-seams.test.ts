@@ -43,11 +43,21 @@ const nodeEditing: GraphInspectorNodeEditing = {
   setDevicePerConnection: () => {},
   setSourceType: () => null,
 };
+const interaction = {
+  addCue: () => {},
+  renameCue: () => {},
+};
 
 describe("Show Editor editing seams", () => {
   it("assembles inspector capabilities without connection or shape routes", () => {
-    const inspector = graphInspectorEditing(graph, gestures, variables, sourceValues, nodeEditing);
-
+    const inspector = graphInspectorEditing(
+      graph,
+      gestures,
+      variables,
+      sourceValues,
+      nodeEditing,
+      interaction,
+    );
     expect(inspector).toMatchObject({
       graph,
       renaming: null,

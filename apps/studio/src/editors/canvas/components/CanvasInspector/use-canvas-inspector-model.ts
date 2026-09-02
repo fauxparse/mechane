@@ -28,6 +28,9 @@ const EMPTY_IMAGE_ASSETS = [] as const;
 const EMPTY_DEVICE_QR_IMAGES = {} as const;
 const EMPTY_BLOCKS = [] as const;
 const EMPTY_SHAPES = [] as const;
+const EMPTY_CUES = [] as const;
+const EMPTY_ACTIONS = [] as const;
+const EMPTY_EVENT_BINDINGS = [] as const;
 
 function sameValue(left: unknown, right: unknown): boolean {
   if (Object.is(left, right)) return true;
@@ -133,6 +136,14 @@ export function useCanvasInspectorModel({
   focused,
   artboards,
   selection,
+  cues = EMPTY_CUES,
+  actions = EMPTY_ACTIONS,
+  eventBindings = EMPTY_EVENT_BINDINGS,
+  onCreateCue,
+  onFocusCue,
+  onSetEventBindingCue,
+  onCreateEventBinding,
+  onRemoveEventBinding,
   variables = EMPTY_VARIABLES,
   blocks = EMPTY_BLOCKS,
   shapes = EMPTY_SHAPES,
@@ -201,6 +212,14 @@ export function useCanvasInspectorModel({
             blocks,
             variables,
             shapes,
+            cues,
+            actions,
+            eventBindings,
+            onCreateCue,
+            onFocusCue,
+            onSetEventBindingCue,
+            onCreateEventBinding,
+            onRemoveEventBinding,
             deviceQrImages,
             imageAssets,
             onImageUpload,
@@ -236,6 +255,14 @@ export function useCanvasInspectorModel({
       blocks,
       variables,
       shapes,
+      cues,
+      actions,
+      eventBindings,
+      onCreateCue,
+      onFocusCue,
+      onSetEventBindingCue,
+      onCreateEventBinding,
+      onRemoveEventBinding,
       blockVariableEditing,
     ],
   );

@@ -1,0 +1,411 @@
+import type { Action, Cue, EventBinding, GraphEdge, ShowGraph } from "@mechane/domain";
+import { projectNavigateEdges } from "@mechane/domain";
+
+import { capturing, composite } from "./command";
+import type { ShowGraphCommand } from "./graph-commands";
+import { GRAPH_COMMAND_TYPES } from "./graph-commands";
+import type { GraphEdit } from "./graph-edits";
+
+type InteractionState = Pick<ShowGraph, "cues" | "actions" | "eventBindings">;
+
+type RequiredInteractionState = {
+  cues: readonly Cue[];
+  actions: readonly Action[];
+  eventBindings: readonly EventBinding[];
+};
+
+function interactions(graph: ShowGraph): RequiredInteractionState {
+  return {
+    cues: graph.cues ?? [],
+    actions: graph.actions ?? [],
+    eventBindings: graph.eventBindings ?? [],
+  };
+}
+
+function withInteractions(graph: ShowGraph, next: InteractionState): ShowGraph {
+  const projected = projectNavigateEdges({ ...graph, cues: next.cues, actions: next.actions });
+  const edges: GraphEdge[] = [
+    ...graph.edges.filter((edge) => edge.kind !== "navigate"),
+    ...projected,
+  ];
+  return {
+    ...graph,
+    cues: next.cues ?? [],
+    actions: next.actions ?? [],
+    eventBindings: next.eventBindings ?? [],
+    edges,
+  };
+}
+
+function cueOrThrow(graph: ShowGraph, cueId: string): Cue {
+  const cue = (graph.cues ?? []).find((candidate) => candidate.id === cueId);
+  if (!cue) throw new Error(`Show graph has no Cue "${cueId}".`);
+  return cue;
+}
+
+function actionOrThrow(graph: ShowGraph, actionId: string): Action {
+  const action = (graph.actions ?? []).find((candidate) => candidate.id === actionId);
+  if (!action) throw new Error(`Show graph has no Action "${actionId}".`);
+  return action;
+}
+
+export function addCue(cue: Cue, label = "Create Cue"): ShowGraphCommand {
+  return capturing<ShowGraph, null, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.addCue,
+    label,
+    scope: "selection",
+    capture: () => null,
+    apply: (graph) =>
+      withInteractions(graph, { ...interactions(graph), cues: [...(graph.cues ?? []), cue] }),
+    restore: (graph) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        cues: (graph.cues ?? []).filter((item) => item.id !== cue.id),
+      }),
+    edits: [{ type: GRAPH_COMMAND_TYPES.addCue, cue }],
+    restoreEdits: () => [{ type: GRAPH_COMMAND_TYPES.removeCue, cueId: cue.id }],
+  });
+}
+
+export function renameCue(cueId: string, name: string, label = "Rename Cue"): ShowGraphCommand {
+  return capturing<ShowGraph, string, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.renameCue,
+    label,
+    scope: "selection",
+    capture: (graph) => cueOrThrow(graph, cueId).name,
+    apply: (graph) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        cues: (graph.cues ?? []).map((cue) => (cue.id === cueId ? { ...cue, name } : cue)),
+      }),
+    restore: (graph, previousName) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        cues: (graph.cues ?? []).map((cue) =>
+          cue.id === cueId ? { ...cue, name: previousName } : cue,
+        ),
+      }),
+    edits: [{ type: GRAPH_COMMAND_TYPES.renameCue, cueId, name }],
+    restoreEdits: (previousName) => [
+      { type: GRAPH_COMMAND_TYPES.renameCue, cueId, name: previousName },
+    ],
+  });
+}
+
+export function setCueActionOrder(
+  cueId: string,
+  actionIds: readonly string[],
+  label = "Reorder Cue Actions",
+): ShowGraphCommand {
+  return capturing<ShowGraph, readonly string[], GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setCueActionOrder,
+    label,
+    scope: "selection",
+    capture: (graph) => [...cueOrThrow(graph, cueId).actionIds],
+    apply: (graph) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        cues: (graph.cues ?? []).map((cue) =>
+          cue.id === cueId ? { ...cue, actionIds: [...actionIds] } : cue,
+        ),
+      }),
+    restore: (graph, previousOrder) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        cues: (graph.cues ?? []).map((cue) =>
+          cue.id === cueId ? { ...cue, actionIds: [...previousOrder] } : cue,
+        ),
+      }),
+    edits: [{ type: GRAPH_COMMAND_TYPES.setCueActionOrder, cueId, actionIds: [...actionIds] }],
+    restoreEdits: (previousOrder) => [
+      { type: GRAPH_COMMAND_TYPES.setCueActionOrder, cueId, actionIds: [...previousOrder] },
+    ],
+  });
+}
+
+type RemovedCue = {
+  cue: Cue;
+  cueIndex: number;
+  actions: { value: Action; index: number }[];
+  eventBindings: { value: EventBinding; index: number }[];
+};
+
+function insertAt<T>(values: readonly T[], value: T, index: number): T[] {
+  const next = [...values];
+  next.splice(Math.min(Math.max(index, 0), next.length), 0, value);
+  return next;
+}
+
+export function removeCue(cueId: string, label = "Delete Cue"): ShowGraphCommand {
+  return capturing<ShowGraph, RemovedCue, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.removeCue,
+    label,
+    scope: "selection",
+    capture: (graph) => {
+      const current = interactions(graph);
+      const cue = cueOrThrow(graph, cueId);
+      return {
+        cue,
+        cueIndex: current.cues.findIndex((candidate) => candidate.id === cueId),
+        actions: current.actions.flatMap((value, index) =>
+          value.cueId === cueId ? [{ value, index }] : [],
+        ),
+        eventBindings: current.eventBindings.flatMap((value, index) =>
+          value.cueId === cueId ? [{ value, index }] : [],
+        ),
+      };
+    },
+    apply: (graph) => {
+      const current = interactions(graph);
+      return withInteractions(graph, {
+        cues: current.cues.filter((cue) => cue.id !== cueId),
+        actions: current.actions.filter((action) => action.cueId !== cueId),
+        eventBindings: current.eventBindings.filter((binding) => binding.cueId !== cueId),
+      });
+    },
+    restore: (graph, removed) => {
+      let current: RequiredInteractionState = interactions(graph);
+      current = {
+        cues: insertAt(current.cues, removed.cue, removed.cueIndex),
+        actions: current.actions,
+        eventBindings: current.eventBindings,
+      };
+      for (const item of removed.actions)
+        current.actions = insertAt(current.actions, item.value, item.index);
+      for (const item of removed.eventBindings) {
+        current.eventBindings = insertAt(current.eventBindings, item.value, item.index);
+      }
+      return withInteractions(graph, current);
+    },
+    edits: [{ type: GRAPH_COMMAND_TYPES.removeCue, cueId }],
+    restoreEdits: (removed) => [
+      { type: GRAPH_COMMAND_TYPES.addCue, cue: removed.cue },
+      ...removed.actions.map((item) => ({
+        type: GRAPH_COMMAND_TYPES.addNavigateAction,
+        action: item.value,
+      })),
+      ...removed.eventBindings.map((item) => ({
+        type: GRAPH_COMMAND_TYPES.addEventBinding,
+        binding: item.value,
+      })),
+    ],
+  });
+}
+
+export function addNavigateAction(
+  action: Extract<Action, { kind: "navigate" }>,
+  label = "Add Navigate Action",
+): ShowGraphCommand {
+  return capturing<ShowGraph, null, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.addNavigateAction,
+    label,
+    scope: "selection",
+    capture: () => null,
+    apply: (graph) => {
+      cueOrThrow(graph, action.cueId);
+      return withInteractions(graph, {
+        ...interactions(graph),
+        actions: [...(graph.actions ?? []), action],
+      });
+    },
+    restore: (graph) => {
+      const current = interactions(graph);
+      return withInteractions(graph, {
+        ...current,
+        cues: current.cues.map((cue) =>
+          cue.id === action.cueId
+            ? { ...cue, actionIds: cue.actionIds.filter((id) => id !== action.id) }
+            : cue,
+        ),
+        actions: current.actions.filter((item) => item.id !== action.id),
+      });
+    },
+    edits: [{ type: GRAPH_COMMAND_TYPES.addNavigateAction, action }],
+    restoreEdits: () => [{ type: GRAPH_COMMAND_TYPES.removeAction, actionId: action.id }],
+  });
+}
+
+export function setNavigateTarget(
+  actionId: string,
+  targetSceneId: string,
+  label = "Change Navigate Target",
+): ShowGraphCommand {
+  return capturing<ShowGraph, string, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setNavigateTarget,
+    label,
+    scope: "selection",
+    capture: (graph) => {
+      const action = actionOrThrow(graph, actionId);
+      if (action.kind !== "navigate") throw new Error(`Action "${actionId}" is not navigable.`);
+      return action.targetSceneId;
+    },
+    apply: (graph) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        actions: (graph.actions ?? []).map((action) =>
+          action.id === actionId && action.kind === "navigate"
+            ? { ...action, targetSceneId }
+            : action,
+        ),
+      }),
+    restore: (graph, previousTarget) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        actions: (graph.actions ?? []).map((action) =>
+          action.id === actionId && action.kind === "navigate"
+            ? { ...action, targetSceneId: previousTarget }
+            : action,
+        ),
+      }),
+    edits: [{ type: GRAPH_COMMAND_TYPES.setNavigateTarget, actionId, targetSceneId }],
+    restoreEdits: (previousTarget) => [
+      { type: GRAPH_COMMAND_TYPES.setNavigateTarget, actionId, targetSceneId: previousTarget },
+    ],
+  });
+}
+
+export function removeAction(actionId: string, label = "Delete Action"): ShowGraphCommand {
+  return capturing<ShowGraph, { action: Action; cue: Cue; position: number }, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.removeAction,
+    label,
+    scope: "selection",
+    capture: (graph) => {
+      const action = actionOrThrow(graph, actionId);
+      const cue = cueOrThrow(graph, action.cueId);
+      const position = cue.actionIds.indexOf(actionId);
+      if (position < 0) throw new Error(`Cue "${cue.id}" does not own Action "${actionId}".`);
+      return { action, cue, position };
+    },
+    apply: (graph) => {
+      const current = interactions(graph);
+      return withInteractions(graph, {
+        ...current,
+        cues: current.cues.map((cue) =>
+          cue.id === current.actions.find((action) => action.id === actionId)?.cueId
+            ? { ...cue, actionIds: cue.actionIds.filter((id) => id !== actionId) }
+            : cue,
+        ),
+        actions: current.actions.filter((action) => action.id !== actionId),
+      });
+    },
+    restore: (graph, removed) => {
+      const current = interactions(graph);
+      return withInteractions(graph, {
+        ...current,
+        cues: current.cues.map((cue) =>
+          cue.id === removed.cue.id
+            ? { ...cue, actionIds: insertAt(cue.actionIds, removed.action.id, removed.position) }
+            : cue,
+        ),
+        actions: [...current.actions, removed.action],
+      });
+    },
+    edits: [{ type: GRAPH_COMMAND_TYPES.removeAction, actionId }],
+    restoreEdits: (removed) => [
+      { type: GRAPH_COMMAND_TYPES.addNavigateAction, action: removed.action },
+      {
+        type: GRAPH_COMMAND_TYPES.setCueActionOrder,
+        cueId: removed.cue.id,
+        actionIds: [...removed.cue.actionIds],
+      },
+    ],
+  });
+}
+
+export function addEventBinding(binding: EventBinding, label = "Bind Event"): ShowGraphCommand {
+  return capturing<ShowGraph, null, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.addEventBinding,
+    label,
+    scope: "selection",
+    capture: () => null,
+    apply: (graph) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        eventBindings: [...(graph.eventBindings ?? []), binding],
+      }),
+    restore: (graph) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        eventBindings: (graph.eventBindings ?? []).filter((item) => item.id !== binding.id),
+      }),
+    edits: [{ type: GRAPH_COMMAND_TYPES.addEventBinding, binding }],
+    restoreEdits: () => [{ type: GRAPH_COMMAND_TYPES.removeEventBinding, bindingId: binding.id }],
+  });
+}
+
+export function setEventBindingCue(
+  bindingId: string,
+  cueId: string,
+  label = "Change Event Cue",
+): ShowGraphCommand {
+  return capturing<ShowGraph, string, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setEventBindingCue,
+    label,
+    scope: "selection",
+    capture: (graph) => {
+      const binding = (graph.eventBindings ?? []).find((candidate) => candidate.id === bindingId);
+      if (!binding) throw new Error(`Show graph has no Event Binding "${bindingId}".`);
+      cueOrThrow(graph, cueId);
+      return binding.cueId;
+    },
+    apply: (graph) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        eventBindings: (graph.eventBindings ?? []).map((binding) =>
+          binding.id === bindingId ? { ...binding, cueId } : binding,
+        ),
+      }),
+    restore: (graph, previousCueId) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        eventBindings: (graph.eventBindings ?? []).map((binding) =>
+          binding.id === bindingId ? { ...binding, cueId: previousCueId } : binding,
+        ),
+      }),
+    edits: [{ type: GRAPH_COMMAND_TYPES.setEventBindingCue, bindingId, cueId }],
+    restoreEdits: (previousCueId) => [
+      { type: GRAPH_COMMAND_TYPES.setEventBindingCue, bindingId, cueId: previousCueId },
+    ],
+  });
+}
+
+export function removeEventBinding(
+  bindingId: string,
+  label = "Remove Event Binding",
+): ShowGraphCommand {
+  return capturing<ShowGraph, EventBinding, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.removeEventBinding,
+    label,
+    scope: "selection",
+    capture: (graph) => {
+      const binding = (graph.eventBindings ?? []).find((candidate) => candidate.id === bindingId);
+      if (!binding) throw new Error(`Show graph has no Event Binding "${bindingId}".`);
+      return binding;
+    },
+    apply: (graph) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        eventBindings: (graph.eventBindings ?? []).filter((binding) => binding.id !== bindingId),
+      }),
+    restore: (graph, binding) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        eventBindings: [...(graph.eventBindings ?? []), binding],
+      }),
+    edits: [{ type: GRAPH_COMMAND_TYPES.removeEventBinding, bindingId }],
+    restoreEdits: (binding) => [{ type: GRAPH_COMMAND_TYPES.addEventBinding, binding }],
+  });
+}
+
+export function createBindingWithCue(
+  binding: EventBinding,
+  cue: Cue,
+  action: Extract<Action, { kind: "navigate" }>,
+): ShowGraphCommand {
+  return composite({
+    type: "graph.createInteraction",
+    label: "Create Interaction",
+    scope: "selection",
+    commands: [addCue(cue), addNavigateAction(action), addEventBinding(binding)],
+  });
+}

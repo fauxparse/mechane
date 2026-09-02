@@ -110,6 +110,16 @@ export const GRAPH_COMMAND_TYPES = {
   renameBlock: "graph.renameBlock",
   duplicateBlock: "graph.duplicateBlock",
   removeBlock: "graph.removeBlock",
+  addCue: "graph.addCue",
+  renameCue: "graph.renameCue",
+  setCueActionOrder: "graph.setCueActionOrder",
+  removeCue: "graph.removeCue",
+  addNavigateAction: "graph.addNavigateAction",
+  setNavigateTarget: "graph.setNavigateTarget",
+  removeAction: "graph.removeAction",
+  addEventBinding: "graph.addEventBinding",
+  setEventBindingCue: "graph.setEventBindingCue",
+  removeEventBinding: "graph.removeEventBinding",
 } as const;
 
 export class UnknownGraphTargetError extends Error {
@@ -409,6 +419,12 @@ interface Placement {
   position: Position;
 }
 
+function hasNavigateEdge(graph: ShowGraph, nodeId: string): boolean {
+  return graph.edges.some(
+    (edge) => edge.kind === "navigate" && (edge.sourceId === nodeId || edge.targetId === nodeId),
+  );
+}
+
 /**
  * Moves a node into a Flow or out to Show level — the membership half of
  * moving into and out of a Flow (#42). Position moves with it, because a Flow-local
@@ -449,6 +465,11 @@ export function reparentNode(
       if (node.kind === "flow" || node.kind === "device") {
         throw new InvalidReparentError(
           `${node.kind === "flow" ? "Flows" : "Devices"} cannot be nested.`,
+        );
+      }
+      if (node.kind === "scene" && node.parentId !== parentId && hasNavigateEdge(graph, nodeId)) {
+        throw new InvalidReparentError(
+          `Scene "${node.name}" cannot move while it has Navigate behavior attached.`,
         );
       }
       if (parentId !== null) {
@@ -580,6 +601,9 @@ export function moveNodesOutOfFlow(
     }
     return node;
   });
+  if (nodes.some((node) => node.kind === "scene" && hasNavigateEdge(graph, node.id))) {
+    throw new InvalidReparentError("A Scene with Navigate behavior cannot move out of its Flow.");
+  }
 
   const selected = new Set(nodeIds);
   const parts: ShowGraphCommand[] = graph.edges
