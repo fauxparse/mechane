@@ -10,6 +10,7 @@ const FLOW: FlowNode = {
   parentId: null,
   position: { x: 0, y: 0 },
   defaultSceneId: null,
+  size: { width: 640, height: 480 },
   color: "purple",
 };
 
@@ -24,11 +25,12 @@ const SCENE: SceneNode = {
 };
 
 describe("graphNodeInsertValues", () => {
-  it("includes a Flow color in the row written for reload", () => {
+  it("includes a Flow color and authored size in the row written for reload", () => {
     expect(graphNodeInsertValues(FLOW, "graph_draft")).toMatchObject({
       graphId: "graph_draft",
       id: "flow_vote",
       color: "purple",
+      size: { width: 640, height: 480 },
     });
   });
 

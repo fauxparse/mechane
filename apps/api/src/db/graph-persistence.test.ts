@@ -76,6 +76,32 @@ describe("graph row persistence", () => {
     expect(reread.edges).toEqual(graph.edges);
     expect(await db.select().from(devices).where(eq(devices.showId, showId))).toEqual([]);
   });
+  it("persists and reads an authored Flow size", async () => {
+    await createShow();
+    const sizedGraph: ShowGraph = {
+      ...graph,
+      nodes: [
+        ...graph.nodes,
+        {
+          id: "flow_sized",
+          kind: "flow",
+          name: "Sized Flow",
+          position: { x: 0, y: 0 },
+          parentId: null,
+          defaultSceneId: null,
+          size: { width: 640, height: 480 },
+        },
+      ],
+    };
+
+    await db.transaction((tx) => persistGraphRows(tx, showId, "draft", sizedGraph));
+    const reread = await readGraphRows(showId, "draft");
+
+    expect(reread.nodes.find((node) => node.id === "flow_sized")).toMatchObject({
+      kind: "flow",
+      size: { width: 640, height: 480 },
+    });
+  });
   it("persists and reads Event Binding priority order", async () => {
     await createShow();
     const interactionGraph: ShowGraph = {

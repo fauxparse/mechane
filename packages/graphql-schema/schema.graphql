@@ -303,6 +303,7 @@ type FlowNode implements GraphNode {
   parentId: ID
   color: String
   position: Position!
+  size: JSON
 
   """The Flow's design-time entry Scene, if one is set."""
   defaultSceneId: ID
@@ -685,6 +686,7 @@ input GraphNodeInput {
   type: TypeInput
   position: PositionInput!
   variables: [SceneVariableInput!]
+  size: JSON
 
   """
   Device nodes only: whether each connection is its own instance.
@@ -771,6 +773,9 @@ type GraphEdit {
   """The edge layout, for graph.setEdgeLayout; null clears it."""
   layout: JSON
 
+  """The authored Flow size for graph.setFlowSize; null clears it."""
+  size: JSON
+
   """The graph-owned Source field value; null clears the override."""
   value: JSON
 
@@ -855,6 +860,9 @@ input ShowEditInput {
 
   """The edge layout, for graph.setEdgeLayout; null clears it."""
   layout: JSON
+
+  """The authored Flow size for graph.setFlowSize; null clears it."""
+  size: JSON
 
   """The interaction payloads selected by type."""
   cue: CueInput

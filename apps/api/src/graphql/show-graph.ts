@@ -146,6 +146,7 @@ export function serializeGraphEdit(edit: GraphEdit) {
     blockVariables: null as unknown[] | null,
     pairingCode: null as string | null,
     perConnection: null as boolean | null,
+    size: null as { width: number; height: number } | null,
   };
   const encoded = encodeGraphEdit(edit);
   return {
@@ -241,6 +242,7 @@ function serializeNode(node: GraphNode, graph?: Pick<StoredShowGraph, "sourceFie
     parentId: node.parentId,
     color: node.color ?? null,
     position: node.position,
+    size: node.kind === "flow" ? (node.size ?? null) : null,
     variables:
       node.kind === "scene"
         ? node.variables.map((variable) => ({ ...variable, type: variable.type ?? null }))

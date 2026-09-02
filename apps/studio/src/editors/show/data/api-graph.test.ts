@@ -60,6 +60,7 @@ const GRAPH: ApiGraph = {
       kind: "flow",
       name: "Vote",
       defaultSceneId: "scene_voting",
+      size: { width: 640, height: 480 },
       color: "blue",
     }),
     apiNode({
@@ -117,9 +118,10 @@ describe("toShowGraph", () => {
     expect(voting.color).toBe("aqua");
   });
 
-  it("keeps a Flow's default Scene", () => {
+  it("keeps a Flow's default Scene and authored size", () => {
     const flow = toShowGraph(GRAPH).nodes.find((node) => node.id === "flow_vote") as FlowNode;
     expect(flow.defaultSceneId).toBe("scene_voting");
+    expect(flow.size).toEqual({ width: 640, height: 480 });
     expect(flow.color).toBe("blue");
   });
 
@@ -195,6 +197,7 @@ describe("toEditInput", () => {
         color: null,
         type: null,
         position: { x: 3, y: 4 },
+        size: null,
         variables: [{ id: "variable_prompt", name: "prompt", type: null }],
         perConnection: false,
       },
@@ -205,6 +208,17 @@ describe("toEditInput", () => {
     expect(toEditInput({ type: "graph.removeNode", nodeId: "scene_lobby" })).toEqual({
       type: "graph.removeNode",
       nodeId: "scene_lobby",
+    });
+    expect(
+      toEditInput({
+        type: "graph.setFlowSize",
+        flowId: "flow_vote",
+        size: { width: 640, height: 480 },
+      }),
+    ).toEqual({
+      type: "graph.setFlowSize",
+      flowId: "flow_vote",
+      size: { width: 640, height: 480 },
     });
     expect(
       toEditInput({
