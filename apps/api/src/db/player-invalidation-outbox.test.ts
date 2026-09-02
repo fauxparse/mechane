@@ -126,7 +126,9 @@ describe.sequential("player invalidation outbox", () => {
     expect((await outboxRows()).filter((row) => row.status === "delivered")).toHaveLength(2);
 
     const pendingBeforeSecondDrain = await outboxRows();
-    const secondDrainCount = pendingBeforeSecondDrain.filter((row) => row.status === "pending").length;
+    const secondDrainCount = pendingBeforeSecondDrain.filter(
+      (row) => row.status === "pending",
+    ).length;
     expect(await drainPlayerInvalidations({ batchSize: 10, provider })).toMatchObject({
       claimed: secondDrainCount,
       delivered: secondDrainCount,

@@ -166,7 +166,13 @@ export function edgeGeometry(
       orientation: orientationOf(from, to),
       length,
       midpoint: { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 },
-      position: blendPosition({ index: i, count, midpoint: travelled + length / 2, first, interior }),
+      position: blendPosition({
+        index: i,
+        count,
+        midpoint: travelled + length / 2,
+        first,
+        interior,
+      }),
       d,
       draggable: i > 0 && i < count - 1,
     });

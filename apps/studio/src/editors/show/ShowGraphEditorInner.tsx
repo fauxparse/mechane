@@ -80,49 +80,49 @@ export function ShowGraphEditorInner(props: ShowGraphEditorProps) {
   return (
     <EdgeInteractionProvider value={edgeInteraction}>
       <NodeInteractionProvider value={interaction}>
-      <div
-        className={cn("mechane-show-graph relative h-full w-full bg-background", className)}
-        data-flow-theme="neutral"
-      >
-        <ShowGraphContextMenu
-          menuPosition={menuPosition}
-          selectedNodes={selectedNodes}
-          screenToFlowPosition={screenToFlowPosition}
-          create={create}
-          fitView={fitView}
-          fitViewOptions={fitViewOptions}
-          initialViewport={initialViewport}
-          onViewportChange={onViewportChange}
-          selectedNodeIds={selectedNodeIds}
-          selectedEdgeIds={selectedEdgeIds}
-          requestDelete={requestDelete}
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          beginDrag={beginDrag}
-          dragTo={dragTo}
-          endDrag={endDrag}
-          creation={creation}
-          connections={connections}
-          setNodeColor={inspector.setNodeColor}
-          onConnect={onConnect}
-          isValidConnection={(connection) => isValidConnection(connection as Connection)}
-          jumpToMinimapPoint={jumpToMinimapPoint}
-        />
+        <div
+          className={cn("mechane-show-graph relative h-full w-full bg-background", className)}
+          data-flow-theme="neutral"
+        >
+          <ShowGraphContextMenu
+            menuPosition={menuPosition}
+            selectedNodes={selectedNodes}
+            screenToFlowPosition={screenToFlowPosition}
+            create={create}
+            fitView={fitView}
+            fitViewOptions={fitViewOptions}
+            initialViewport={initialViewport}
+            onViewportChange={onViewportChange}
+            selectedNodeIds={selectedNodeIds}
+            selectedEdgeIds={selectedEdgeIds}
+            requestDelete={requestDelete}
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            beginDrag={beginDrag}
+            dragTo={dragTo}
+            endDrag={endDrag}
+            creation={creation}
+            connections={connections}
+            setNodeColor={inspector.setNodeColor}
+            onConnect={onConnect}
+            isValidConnection={(connection) => isValidConnection(connection as Connection)}
+            jumpToMinimapPoint={jumpToMinimapPoint}
+          />
 
-        <ShowGraphEditorOverlays
-          selectedNodes={selectedNodes}
-          inspector={inspector}
-          message={message}
-          paletteOpen={paletteOpen}
-          setPaletteOpen={setPaletteOpen}
-          paletteCommands={paletteCommands}
-          pendingDelete={pendingDelete}
-          setPendingDelete={setPendingDelete}
-          confirmDelete={confirmDelete}
-        />
-      </div>
+          <ShowGraphEditorOverlays
+            selectedNodes={selectedNodes}
+            inspector={inspector}
+            message={message}
+            paletteOpen={paletteOpen}
+            setPaletteOpen={setPaletteOpen}
+            paletteCommands={paletteCommands}
+            pendingDelete={pendingDelete}
+            setPendingDelete={setPendingDelete}
+            confirmDelete={confirmDelete}
+          />
+        </div>
       </NodeInteractionProvider>
     </EdgeInteractionProvider>
   );

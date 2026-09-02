@@ -220,7 +220,14 @@ describe("applyHandleOffsets", () => {
   describe("on a five-segment route, where the runs beside a handle are not stubs", () => {
     // The shape of a left-to-right-facing pair that has to double back: out of
     // the source, down, along the bottom, up, into the target.
-    const detour = polyline([400, 220], [350, 220], [350, 750], [1030, 750], [1030, 540], [990, 540]);
+    const detour = polyline(
+      [400, 220],
+      [350, 220],
+      [350, 750],
+      [1030, 750],
+      [1030, 540],
+      [990, 540],
+    );
 
     it("lets a run cross the far end of the run beside it", () => {
       // Dragging the bottom run up between the two nodes takes it past where
