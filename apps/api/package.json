@@ -10,6 +10,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/db/seeds.ts",
+    "db:reset": "pnpm db:migrate && pnpm db:seed",
     "realtime:worker": "tsx src/realtime-worker.ts"
   },
   "dependencies": {
