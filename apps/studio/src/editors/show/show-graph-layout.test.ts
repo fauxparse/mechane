@@ -1,4 +1,3 @@
-import type { ShowGraph } from "@mechane/domain";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -21,6 +20,7 @@ import {
   moveOutPositions,
   nextChildPosition,
   relativeToFlow,
+  sizeOf,
 } from "./show-graph-layout";
 
 function flowNode(
@@ -37,13 +37,23 @@ function flowNode(
   };
 }
 
-function childNode(id: string, parentId: string, position: { x: number; y: number }): ShowFlowNode {
+function childNode(
+  id: string,
+  parentId: string,
+  position: { x: number; y: number },
+  measuredHeight?: number,
+): ShowFlowNode {
   return {
     id,
     type: PLACEHOLDER_NODE_TYPE,
     position,
     parentId,
+    // What the projection emits for a Scene: a width, and a *minimum* height
+    // the rows grow past. React Flow fills in `measured`.
     style: { width: NODE_WIDTH, minHeight: NODE_HEIGHT },
+    ...(measuredHeight === undefined
+      ? {}
+      : { measured: { width: NODE_WIDTH, height: measuredHeight } }),
     data: { kind: "scene", name: id } as ShowFlowNode["data"],
   };
 }
@@ -97,6 +107,18 @@ describe("clampIntoFlow", () => {
   });
 });
 
+describe("sizeOf", () => {
+  // A Scene's rows make it taller than the one-header minimum the projection
+  // gives it, and only `measured` knows by how much.
+  it("prefers the measured height over the projected minimum", () => {
+    expect(sizeOf(childNode("scene_1", FLOW.id, { x: 0, y: 0 }, 190)).height).toBe(190);
+  });
+
+  it("falls back to the projected minimum before a node is measured", () => {
+    expect(sizeOf(childNode("scene_1", FLOW.id, { x: 0, y: 0 })).height).toBe(NODE_HEIGHT);
+  });
+});
+
 describe("childrenPushedInside", () => {
   const size = { width: 400, height: 300 };
 
@@ -115,6 +137,15 @@ describe("childrenPushedInside", () => {
         id: "scene_2",
         position: { x: 400 - FLOW_PADDING - NODE_WIDTH, y: 300 - FLOW_PADDING - NODE_HEIGHT },
       },
+    ]);
+  });
+
+  // Clamping a tall Scene by the 56px default lands its *top* inside the box
+  // and leaves its Cue rows hanging out the bottom.
+  it("clamps a Scene by its measured height, rows included", () => {
+    const tall = childNode("scene_1", FLOW.id, { x: 24, y: 200 }, 190);
+    expect(childrenPushedInside(size, [tall])).toEqual([
+      { id: "scene_1", position: { x: 24, y: 300 - FLOW_PADDING - 190 } },
     ]);
   });
 
@@ -186,50 +217,46 @@ describe("moveOutPositions", () => {
 });
 
 describe("fitFlows", () => {
-  function graphWith(children: { id: string; parentId: string; y: number }[]): ShowGraph {
-    return {
-      nodes: [
-        {
-          id: "flow_1",
-          kind: "flow",
-          name: "Flow",
-          position: { x: 0, y: 0 },
-          parentId: null,
-          defaultSceneId: null,
-        },
-        ...children.map((child) => ({
-          id: child.id,
-          kind: "scene" as const,
-          name: child.id,
-          position: { x: 24, y: child.y },
-          parentId: child.parentId,
-          variables: [],
-        })),
-      ],
-      edges: [],
-    };
-  }
+  const flow = flowNode("flow_1", { x: 0, y: 0 }, { width: 400, height: 300 });
 
   it("fits a Flow around the children it has", () => {
-    const fitted = fitFlows(graphWith([{ id: "scene_1", parentId: "flow_1", y: 400 }]), new Map());
+    const fitted = fitFlows([flow, childNode("scene_1", flow.id, { x: 24, y: 400 })], new Map());
     expect(fitted.get("flow_1")?.dimensions.height).toBeGreaterThan(400);
+  });
+
+  // The projection estimates a Scene at one header tall until the DOM says
+  // otherwise; a Scene with Cue rows is a good deal taller than that.
+  it("fits around a child's measured height, not the projected minimum", () => {
+    const tall = childNode("scene_1", flow.id, { x: 24, y: 74 }, 190);
+    expect(
+      fitFlows([flow, tall], new Map()).get("flow_1")?.dimensions.height,
+    ).toBeGreaterThanOrEqual(74 + 190);
   });
 
   // The whole point of #508: the box must not chase a child around.
   it("holds the size when only a child's position changes", () => {
-    const before = fitFlows(graphWith([{ id: "scene_1", parentId: "flow_1", y: 74 }]), new Map());
-    const after = fitFlows(graphWith([{ id: "scene_1", parentId: "flow_1", y: 900 }]), before);
+    const before = fitFlows([flow, childNode("scene_1", flow.id, { x: 24, y: 74 })], new Map());
+    const after = fitFlows([flow, childNode("scene_1", flow.id, { x: 24, y: 90 })], before);
     expect(after).toBe(before);
-    expect(after.get("flow_1")?.dimensions).toEqual(before.get("flow_1")?.dimensions);
+  });
+
+  // Measurement arrives a frame after the node does, and the fit has to catch
+  // up or the child it was fitted around hangs out of the box.
+  it("re-fits when a child turns out taller than it was fitted for", () => {
+    const before = fitFlows([flow, childNode("scene_1", flow.id, { x: 24, y: 74 })], new Map());
+    const after = fitFlows([flow, childNode("scene_1", flow.id, { x: 24, y: 74 }, 190)], before);
+    expect(after).not.toBe(before);
+    expect(after.get("flow_1")?.dimensions.height).toBeGreaterThanOrEqual(74 + 190);
   });
 
   it("re-fits when membership changes", () => {
-    const before = fitFlows(graphWith([{ id: "scene_1", parentId: "flow_1", y: 74 }]), new Map());
+    const before = fitFlows([flow, childNode("scene_1", flow.id, { x: 24, y: 74 })], new Map());
     const after = fitFlows(
-      graphWith([
-        { id: "scene_1", parentId: "flow_1", y: 74 },
-        { id: "scene_2", parentId: "flow_1", y: 600 },
-      ]),
+      [
+        flow,
+        childNode("scene_1", flow.id, { x: 24, y: 74 }),
+        childNode("scene_2", flow.id, { x: 24, y: 600 }),
+      ],
       before,
     );
     expect(after.get("flow_1")?.dimensions.height).toBeGreaterThan(600);

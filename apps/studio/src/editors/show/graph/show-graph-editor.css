@@ -212,3 +212,15 @@
   opacity: 0;
   pointer-events: none;
 }
+
+/*
+ * While a Flow is being resized, the cursor is the resize control's, not
+ * whatever the pointer has wandered over (#508). `!important` and the
+ * descendant selector are both load-bearing: every node, handle and edge sets
+ * a cursor of its own, and any of them would otherwise win once the pointer
+ * left the few pixels of the control. See ./use-resize-cursor.
+ */
+body[data-mechane-resizing],
+body[data-mechane-resizing] * {
+  cursor: var(--mechane-resize-cursor, default) !important;
+}

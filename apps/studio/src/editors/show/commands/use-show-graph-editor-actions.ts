@@ -18,6 +18,7 @@ import {
   flowAtPoint,
   nextChildPosition,
   relativeToFlow,
+  sizeOf,
 } from "../show-graph-layout";
 import type { CreationSite, Size } from "../show-graph-layout";
 import { useCallback, useMemo, useRef } from "react";
@@ -49,13 +50,6 @@ function reparentableDrag(
   const currentFlowId = dragged.parentId ?? null;
   if (moved.some((node) => (node.parentId ?? null) !== currentFlowId)) return null;
   return { nodeIds: moved.map((node) => node.id), currentFlowId };
-}
-
-function sizeOfDragged(node: ShowFlowNode): Size {
-  return {
-    width: Number(node.measured?.width ?? node.style?.width ?? NODE_WIDTH),
-    height: Number(node.measured?.height ?? node.style?.minHeight ?? NODE_HEIGHT),
-  };
 }
 
 /**
@@ -225,7 +219,7 @@ export function useShowGraphEditorActions({
               position: clampIntoFlow(
                 targetFlow,
                 relativeToFlow(at, targetFlow, byId),
-                node ? sizeOfDragged(node) : sizeOfDragged(dragged),
+                sizeOf(node ?? dragged),
               ),
             };
           });

@@ -16,14 +16,13 @@
 //
 // Everything here is pure and works on rendered React Flow nodes, so the
 // rules are testable without a canvas.
-import type { GraphNode, Position, ShowGraph } from "@mechane/domain";
+import type { Position } from "@mechane/domain";
 
 import {
   absolutePosition,
   FLOW_HEADER_HEIGHT,
   FLOW_NODE_TYPE,
   FLOW_PADDING,
-  flowSize,
   NODE_HEIGHT,
   NODE_WIDTH,
 } from "./graph/graph-to-flow";
@@ -57,11 +56,25 @@ export interface Rectangle {
   bottom: number;
 }
 
-/** The size React Flow is drawing a node at, falling back to the defaults. */
+/**
+ * The size React Flow is drawing a node at.
+ *
+ * `measured` first, because it is the only entry that knows how tall a node
+ * actually turned out: a Scene's height depends on its Variable and Cue rows,
+ * so the projection gives it a `minHeight` and lets the DOM decide the rest
+ * (../graph/graph-to-flow). Reading `style.height` alone would call every
+ * Scene one header tall and clamp its top edge while its rows hung out.
+ */
 export function sizeOf(node: ShowFlowNode): Size {
   return {
-    width: Number(node.style?.width ?? node.width ?? NODE_WIDTH),
-    height: Number(node.style?.height ?? node.height ?? NODE_HEIGHT),
+    width: Number(node.measured?.width ?? node.style?.width ?? node.width ?? NODE_WIDTH),
+    height: Number(
+      node.measured?.height ??
+        node.style?.height ??
+        node.height ??
+        node.style?.minHeight ??
+        NODE_HEIGHT,
+    ),
   };
 }
 
@@ -272,41 +285,77 @@ export function moveOutPositions(nodeIds: string[], rendered: ShowFlowNode[]): P
  * hand this straight to `setState` without looping.
  */
 export interface FittedFlow {
-  /** The child set this size was fitted to, as a stable key. */
+  /** What this size was fitted to — see `keyOf`. */
   childKey: string;
   dimensions: FlowDimensions;
 }
 
+/**
+ * What a Flow re-fits for: which children it has, and how big each one is.
+ *
+ * Pointedly *not* where they are. A position change is a child being dragged
+ * around inside the box, and having the box follow it is the thing #508
+ * removed. A size change is the DOM measuring a Scene taller than the
+ * projection estimated, which the box does have to catch up with, or a Scene
+ * with Cue rows hangs out the bottom.
+ */
+function keyOf(children: readonly ShowFlowNode[]): string {
+  return children
+    .map((child) => {
+      const { width, height } = sizeOf(child);
+      return `${child.id}:${width}x${height}`;
+    })
+    .join(" ");
+}
+
 export function fitFlows(
-  graph: ShowGraph,
+  rendered: readonly ShowFlowNode[],
   current: ReadonlyMap<string, FittedFlow>,
 ): Map<string, FittedFlow> {
-  const childrenByFlow = new Map<string, GraphNode[]>();
-  for (const node of graph.nodes) {
+  const childrenByFlow = new Map<string, ShowFlowNode[]>();
+  for (const node of rendered) {
     if (!node.parentId) continue;
     const siblings = childrenByFlow.get(node.parentId);
     if (siblings) siblings.push(node);
     else childrenByFlow.set(node.parentId, [node]);
   }
-  const flows = graph.nodes.filter((node) => node.kind === "flow");
+  const flows = flowsAmong(rendered);
 
   let changed = current.size !== flows.length;
   const next = new Map<string, FittedFlow>();
   for (const flow of flows) {
     const children = childrenByFlow.get(flow.id) ?? [];
-    const childKey = children.map((child) => child.id).join(" ");
+    const childKey = keyOf(children);
     const existing = current.get(flow.id);
     if (existing && existing.childKey === childKey) {
       next.set(flow.id, existing);
       continue;
     }
     changed = true;
-    next.set(flow.id, {
-      childKey,
-      dimensions: flowSize(children, undefined, graph.shapes ?? [], graph.cues ?? []),
-    });
+    next.set(flow.id, { childKey, dimensions: fitAround(children) });
   }
   return changed ? next : (current as Map<string, FittedFlow>);
+}
+
+/**
+ * The smallest box holding `children`, measured rather than estimated. The
+ * projection's `flowSize` guesses a Scene's height from its row count before
+ * anything is rendered; once the DOM has an answer, this is the one to use —
+ * a Cue row is a good deal taller than the estimate allows for.
+ */
+function fitAround(children: readonly ShowFlowNode[]): FlowDimensions {
+  const right = children.reduce(
+    (edge, child) => Math.max(edge, child.position.x + sizeOf(child).width),
+    0,
+  );
+  const bottom = children.reduce(
+    (edge, child) => Math.max(edge, child.position.y + sizeOf(child).height),
+    0,
+  );
+  return {
+    width: Math.max(NODE_WIDTH, right) + FLOW_PADDING,
+    height: Math.max(FLOW_HEADER_HEIGHT + NODE_HEIGHT, bottom) + FLOW_PADDING,
+  };
 }
 
 /**

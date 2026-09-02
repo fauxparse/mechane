@@ -83,17 +83,11 @@ export function useShowGraphEditorController({
   // A Flow's size has two inputs, kept apart on purpose (#508). `fitted` is
   // the fit around its children, recomputed only when its membership changes,
   // so dragging a child never moves the box. `manual` is what the director
-  // dragged the resize handle to. The drawn size is the larger of the two:
-  // a Flow may be roomier than its contents, never smaller than them.
+  // dragged the resize handle to, and wins outright when it is there.
   const [fittedFlows, setFittedFlows] = useState<Map<string, FittedFlow>>(() => new Map());
   const [manualFlowDimensions, setManualFlowDimensions] = useState<Map<string, FlowDimensions>>(
     () => new Map(),
   );
-  useEffect(() => {
-    // `fitFlows` returns the map it was handed when nothing needs re-fitting,
-    // so this settles rather than looping on every graph edit.
-    setFittedFlows((current) => fitFlows(command.graph, current));
-  }, [command.graph]);
   const flowDimensions = useMemo(
     () => effectiveFlowDimensions(fittedFlows, manualFlowDimensions),
     [fittedFlows, manualFlowDimensions],
@@ -115,6 +109,14 @@ export function useShowGraphEditorController({
   const selectOnArrival = useRef<string | null>(null);
   const focusOnArrival = useRef<string | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState(drawn.nodes);
+  useEffect(() => {
+    // Fitted from the *rendered* nodes, because only the DOM knows how tall a
+    // Scene's rows made it — the projection's estimate is short enough that a
+    // Scene with Cues would hang out of its Flow. `fitFlows` returns the map
+    // it was handed when nothing needs re-fitting, so this settles rather
+    // than looping as measurements arrive.
+    setFittedFlows((current) => fitFlows(nodes, current));
+  }, [nodes]);
   const [edges, setEdges, onEdgesChange] = useEdgesState(drawn.edges);
   const manualFlowIds = useMemo(() => new Set(manualFlowDimensions.keys()), [manualFlowDimensions]);
   const displayNodes = useMemo(
