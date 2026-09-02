@@ -42,28 +42,6 @@ describe("reconcileNodes", () => {
     expect(reconcileNodes(drawn, live)[0]?.parentId).toBeUndefined();
   });
 
-  it("keeps a manually resized Flow's live position while redrawing its size", () => {
-    const drawn = [
-      flowNode("flow", false, {
-        position: { x: 200, y: 300 },
-        style: { width: 640, height: 480 },
-      }),
-    ];
-    const live = [
-      flowNode("flow", false, {
-        position: { x: 20, y: 30 },
-        style: { width: 320, height: 240 },
-      }),
-    ];
-
-    expect(reconcileNodes(drawn, live, { manualFlowIds: new Set(["flow"]) })).toEqual([
-      expect.objectContaining({
-        position: { x: 20, y: 30 },
-        style: { width: 640, height: 480 },
-      }),
-    ]);
-  });
-
   it("clears measured dimensions when a Flow collapses or expands", () => {
     const drawn = [flowNode("flow", true)];
     const live = [flowNode("flow", false, { measured: { width: 320, height: 240 } })];

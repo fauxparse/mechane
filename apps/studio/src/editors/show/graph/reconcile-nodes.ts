@@ -3,7 +3,6 @@ import type { ShowFlowEdge, ShowFlowNode } from "./graph-to-flow";
 
 export interface ReconcileNodesOptions {
   dragging?: boolean;
-  manualFlowIds?: ReadonlySet<string>;
   selectOnArrival?: string | null;
 }
 
@@ -30,9 +29,7 @@ export function reconcileNodes(
       node.type === FLOW_NODE_TYPE &&
       existing.type === FLOW_NODE_TYPE &&
       existing.data.collapsed !== node.data.collapsed;
-    const preservePosition =
-      options.dragging === true ||
-      (node.type === FLOW_NODE_TYPE && options.manualFlowIds?.has(node.id) === true);
+    const preservePosition = options.dragging === true;
 
     return {
       ...existing,

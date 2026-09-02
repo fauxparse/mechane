@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type {
   EdgeKind,
+  FlowSize,
   FlowColor,
   GraphEdge,
   GraphNode,
@@ -30,6 +31,7 @@ type ShowGraphNode = {
   name: string;
   parentId: string | null;
   defaultSceneId: string | null;
+  size?: FlowSize;
   color?: FlowColor | null;
   position: { x: number; y: number };
   variables: { id: string; name: string; type?: Type | null }[];
@@ -55,6 +57,7 @@ function node(overrides: Partial<ShowGraphNode> & Pick<ShowGraphNode, "id" | "ki
         kind: "flow",
         parentId: null,
         defaultSceneId: overrides.defaultSceneId ?? null,
+        ...(overrides.size ? { size: overrides.size } : {}),
       };
     case "source":
       return { ...base, kind: "source", type: overrides.type ?? "text" };
@@ -559,6 +562,22 @@ describe("graphToFlow", () => {
 
       expect(at({ x: 40, y: 80 })).toEqual(given);
       expect(at({ x: 1200, y: 1000 })).toEqual(given);
+    });
+    it("uses a Flow's authored size without an editor override", () => {
+      const size = { width: 640, height: 480 };
+      const { nodes } = graphToFlow({
+        nodes: [
+          node({ id: "flow_1", kind: "flow", size }),
+          node({
+            id: "scene_1",
+            kind: "scene",
+            parentId: "flow_1",
+            position: { x: 1200, y: 1000 },
+          }),
+        ],
+        edges: [],
+      });
+      expect(nodes.find((candidate) => candidate.id === "flow_1")?.style).toEqual(size);
     });
 
     it("falls back to the fit around its children when given no size", () => {

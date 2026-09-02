@@ -41,6 +41,7 @@ import type {
   Cue,
   EdgeLayout,
   EventBinding,
+  FlowSize,
   GraphEdge,
   GraphNode,
   Shape,
@@ -58,6 +59,7 @@ type ApiGraphNode = {
   parentId: string | null;
   position: { x: number; y: number };
   defaultSceneId?: string | null;
+  size?: unknown;
   color?: unknown;
   sourceType?: ApiType;
   transformerType?: ApiType | null;
@@ -219,6 +221,7 @@ function toNode(node: ApiGraphNode): GraphNode {
         kind: "flow",
         parentId: null,
         defaultSceneId: node.defaultSceneId ?? null,
+        ...(node.size ? { size: node.size as FlowSize } : {}),
       };
     case "DeviceNode":
       return {

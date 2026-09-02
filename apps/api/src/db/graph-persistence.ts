@@ -12,6 +12,7 @@ import type {
   EdgeLayout,
   EventBinding,
   FlowColor,
+  FlowSize,
   GraphEdge,
   GraphNode,
   GraphState,
@@ -175,6 +176,7 @@ function toNode(
         kind: "flow",
         parentId: null,
         defaultSceneId: row.defaultSceneId,
+        ...(row.size ? { size: row.size as FlowSize } : {}),
       };
     case "source":
       return {
@@ -587,6 +589,7 @@ export async function persistGraphRows(
           name: sql.raw("excluded.name"),
           parentId: sql.raw("excluded.parent_id"),
           defaultSceneId: sql.raw("excluded.default_scene_id"),
+          size: sql.raw("excluded.size"),
           color: sql.raw("excluded.color"),
           type: sql.raw("excluded.type"),
           positionX: sql.raw("excluded.position_x"),

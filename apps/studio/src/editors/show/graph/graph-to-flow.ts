@@ -439,14 +439,13 @@ function toFlowNode(
       ? cues.filter((cue) => cue.owner.kind === "scene" && cue.owner.sceneId === node.id)
       : [];
   const minimumHeight = nodeHeight(node, resolvedShapes, ownedCues.length);
-  // A Flow the editor has sized is that size, full stop. Deriving it from
-  // where the children happen to be is what made the box chase them around
-  // mid-drag (#508); the editor re-fits it when membership changes instead.
+  // An authored Flow size wins over both measured dimensions and the fit
+  // around its children. An absent size preserves the fit fallback.
   const dimensions: FlowDimensions = !isFlow
     ? { width: NODE_WIDTH, height: minimumHeight }
     : collapsed
       ? { width: NODE_WIDTH, height: FLOW_HEADER_HEIGHT }
-      : (minimumDimensions ?? flowSize(children, undefined, resolvedShapes, cues));
+      : (node.size ?? minimumDimensions ?? flowSize(children, undefined, resolvedShapes, cues));
   const variables =
     node.kind === "scene"
       ? node.variables.map((variable) => ({

@@ -1,4 +1,4 @@
-import { composite, moveNode } from "@mechane/commands";
+import { composite, moveNode, setFlowSize } from "@mechane/commands";
 import type { DeletionScope } from "@mechane/commands";
 import { defaultSourceValues, type GraphNode, type Position } from "@mechane/domain";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
@@ -80,17 +80,13 @@ export function useShowGraphEditorController({
   const { command, gestures, creation, deletion, connections, variables } = editing;
   const { commands } = command;
   const [collapsedFlowIds, setCollapsedFlowIds] = useState<Set<string>>(() => new Set());
-  // A Flow's size has two inputs, kept apart on purpose (#508). `fitted` is
-  // the fit around its children, recomputed only when its membership changes,
-  // so dragging a child never moves the box. `manual` is what the director
-  // dragged the resize handle to, and wins outright when it is there.
+  // A Flow's authored size is stored on the graph. `fitted` is the fallback
+  // around its children, recomputed only when membership or measured child
+  // dimensions change, so dragging a child never moves the box.
   const [fittedFlows, setFittedFlows] = useState<Map<string, FittedFlow>>(() => new Map());
-  const [manualFlowDimensions, setManualFlowDimensions] = useState<Map<string, FlowDimensions>>(
-    () => new Map(),
-  );
   const flowDimensions = useMemo(
-    () => effectiveFlowDimensions(fittedFlows, manualFlowDimensions),
-    [fittedFlows, manualFlowDimensions],
+    () => effectiveFlowDimensions(fittedFlows, new Map()),
+    [fittedFlows],
   );
   const sourceValues = useMemo(() => defaultSourceValues(command.graph), [command.graph]);
   const drawn = useMemo(
@@ -118,14 +114,12 @@ export function useShowGraphEditorController({
     setFittedFlows((current) => fitFlows(nodes, current));
   }, [nodes]);
   const [edges, setEdges, onEdgesChange] = useEdgesState(drawn.edges);
-  const manualFlowIds = useMemo(() => new Set(manualFlowDimensions.keys()), [manualFlowDimensions]);
   const displayNodes = useMemo(
     () =>
       reconcileNodes(drawn.nodes, nodes, {
         dragging: dragging.current,
-        manualFlowIds,
       }),
-    [drawn.nodes, manualFlowIds, nodes],
+    [drawn.nodes, nodes],
   );
   const displayEdges = useMemo(() => reconcileEdges(drawn.edges, edges), [drawn.edges, edges]);
   const { fitView, getNodes, getZoom, setCenter, screenToFlowPosition } = useReactFlow();
@@ -138,34 +132,20 @@ export function useShowGraphEditorController({
   const resizeFlow = useCallback(
     (flowId: string, dimensions: FlowDimensions, { committed }: { committed: boolean }) => {
       const size = { width: dimensions.width, height: dimensions.height };
-      setManualFlowDimensions((current) => {
-        const previous = current.get(flowId);
-        if (previous?.width === size.width && previous.height === size.height) return current;
-        const next = new Map(current);
-        // Only the two fields, copied out: React Flow's resize params also
-        // carry `x`/`y`, and this map is handed to the node as its `style`.
-        next.set(flowId, size);
-        return next;
-      });
-
       const children = (getNodes() as ShowFlowNode[]).filter((node) => node.parentId === flowId);
       const moves = childrenPushedInside(size, children);
-      if (moves.length > 0) {
-        // Opened lazily, so a resize that never crowds a child leaves no
-        // entry behind at all.
-        resizeGesture.current ??= commands.beginGesture({
-          key: `resizeFlow:${flowId}`,
+      resizeGesture.current ??= commands.beginGesture({
+        key: `resizeFlow:${flowId}`,
+        label: "Resize Flow",
+      });
+      resizeGesture.current.update(
+        composite({
           label: "Resize Flow",
-        });
-        resizeGesture.current.update(
-          composite({
-            label: "Resize Flow",
-            commands: moves.map((move) => moveNode(move.id, move.position)),
-          }),
-        );
-      }
+          commands: [setFlowSize(flowId, size), ...moves.map((move) => moveNode(move.id, move.position))],
+        }),
+      );
       if (!committed) return;
-      resizeGesture.current?.commit();
+      resizeGesture.current.commit();
       resizeGesture.current = null;
     },
     [commands, getNodes],
@@ -224,12 +204,10 @@ export function useShowGraphEditorController({
     setNodes((previous) =>
       reconcileNodes(drawn.nodes, previous, {
         dragging: dragging.current,
-        manualFlowIds,
         selectOnArrival: arriving,
       }),
     );
-    setEdges((previous) => reconcileEdges(drawn.edges, previous));
-  }, [drawn, getNodes, getZoom, manualFlowIds, setCenter, setEdges, setNodes]);
+  }, [drawn, getNodes, getZoom, setCenter, setEdges, setNodes]);
 
   const say = useCallback((text: string) => {
     setMessage(text);
