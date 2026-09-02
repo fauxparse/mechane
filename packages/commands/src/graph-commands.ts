@@ -30,6 +30,7 @@
 
 import type {
   EdgeLayout,
+  FlowSize,
   Block,
   BlockVariable,
   DeviceNode,
@@ -80,6 +81,7 @@ export const GRAPH_COMMAND_TYPES = {
   addEdge: "graph.addEdge",
   removeEdge: "graph.removeEdge",
   setFlowDefaultScene: "graph.setFlowDefaultScene",
+  setFlowSize: "graph.setFlowSize",
   setSourceType: "graph.setSourceType",
   setWiringFieldMapping: "graph.setWiringFieldMapping",
   setEdgeLayout: "graph.setEdgeLayout",
@@ -476,6 +478,53 @@ export function reparentNode(
 }
 
 /**
+ * Sets (or clears) a Flow's authored size. An absent size fits around its
+ * children; setting one persists the editor's resize-handle result.
+ */
+export function setFlowSize(
+  flowId: string,
+  size: FlowSize | null,
+  label = "Resize Flow",
+): ShowGraphCommand {
+  return capturing<ShowGraph, FlowSize | undefined, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setFlowSize,
+    label,
+    scope: "selection",
+    coalesceKey: `${GRAPH_COMMAND_TYPES.setFlowSize}:${flowId}`,
+    edits: [{ type: GRAPH_COMMAND_TYPES.setFlowSize, flowId, size }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.setFlowSize, flowId, size: captured ?? null },
+    ],
+    capture: (graph) => {
+      const node = graph.nodes[nodeIndex(graph, flowId)] as GraphNode;
+      if (node.kind !== "flow") throw new UnknownGraphTargetError("Flow", flowId);
+      return node.size ? { ...node.size } : undefined;
+    },
+    isEmpty: (graph) => {
+      const node = graph.nodes[nodeIndex(graph, flowId)] as GraphNode;
+      if (node.kind !== "flow") throw new UnknownGraphTargetError("Flow", flowId);
+      return (
+        node.size?.width === size?.width &&
+        node.size?.height === size?.height &&
+        (node.size !== undefined) === (size !== null)
+      );
+    },
+    apply: (graph) => withFlowSize(graph, flowId, size),
+    restore: (graph, captured) => withFlowSize(graph, flowId, captured ?? null),
+  });
+}
+
+function withFlowSize(graph: ShowGraph, flowId: string, size: FlowSize | null): ShowGraph {
+  const index = nodeIndex(graph, flowId);
+  const node = graph.nodes[index] as GraphNode;
+  if (node.kind !== "flow") throw new UnknownGraphTargetError("Flow", flowId);
+  const next = { ...node };
+  if (size === null) delete next.size;
+  else next.size = { ...size };
+  return replaceNode(graph, index, next);
+}
+
+/**
  * Sets (or clears) a Flow's design-time entry Scene (#23). Small on its own;
  * its reason for existing is composition — moving a node into an empty Flow
  * auto-assigns the default Scene, and that assignment must undo together
@@ -486,34 +535,6 @@ export function setFlowDefaultScene(
   sceneId: string | null,
   label = "Set default Scene",
 ): ShowGraphCommand {
-  return capturing<ShowGraph, string | null, GraphEdit>({
-    type: GRAPH_COMMAND_TYPES.setFlowDefaultScene,
-    label,
-    scope: "selection",
-    coalesceKey: `${GRAPH_COMMAND_TYPES.setFlowDefaultScene}:${flowId}`,
-    edits: [{ type: GRAPH_COMMAND_TYPES.setFlowDefaultScene, flowId, sceneId }],
-    restoreEdits: (captured) => [
-      { type: GRAPH_COMMAND_TYPES.setFlowDefaultScene, flowId, sceneId: captured },
-    ],
-    capture: (graph) => {
-      const node = graph.nodes[nodeIndex(graph, flowId)] as GraphNode;
-      if (node.kind !== "flow") {
-        throw new UnknownGraphTargetError("Flow", flowId);
-      }
-      return node.defaultSceneId;
-    },
-    isEmpty: (_graph, captured) => captured === sceneId,
-    apply: (graph) => withFlowDefaultScene(graph, flowId, sceneId),
-    restore: (graph, captured) => withFlowDefaultScene(graph, flowId, captured),
-  });
-}
-
-function withFlowDefaultScene(graph: ShowGraph, flowId: string, sceneId: string | null): ShowGraph {
-  const index = nodeIndex(graph, flowId);
-  const node = graph.nodes[index] as GraphNode;
-  if (node.kind !== "flow") throw new UnknownGraphTargetError("Flow", flowId);
-  return replaceNode(graph, index, { ...node, defaultSceneId: sceneId });
-}
 
 /** Sets any Show node's editor colorway (#316). */
 export function setNodeColor(

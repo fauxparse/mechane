@@ -82,6 +82,12 @@ export interface Position {
   y: number;
 }
 
+/** Authored Flow dimensions; absent means fit the Flow around its children. */
+export interface FlowSize {
+  width: number;
+  height: number;
+}
+
 /** Optional authoring defaults for Image Variables (#296). */
 export interface SuggestedImageDimensions {
   width: number;
@@ -127,6 +133,8 @@ export interface FlowNode extends BaseNode {
   parentId: null;
   /** The Flow's design-time entry Scene, if one has been chosen (#23). */
   defaultSceneId: string | null;
+  /** The authored size; absent means fit around the Flow's children. */
+  size?: FlowSize;
 }
 
 export interface SourceNode extends BaseNode {
