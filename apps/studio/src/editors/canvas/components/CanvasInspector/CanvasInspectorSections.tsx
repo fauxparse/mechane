@@ -1,8 +1,6 @@
 import {
   Button,
-  EditableName,
   ImageInput,
-  InputGroupAddon,
   RotateCcwIcon,
   Section,
   SectionRow,
@@ -23,60 +21,11 @@ import {
   type VariableReference,
 } from "@mechane/domain";
 import { VariableInspector } from "../../../../components/VariableInspector";
-import { canvasDisplayName, canvasElementDisplayName } from "../../data/canvas-names";
-import { elementIconFor } from "../utils";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { ObjectPositionSelector } from "./ObjectPositionSelector";
 import { variableInput, variableOptions } from "./canvas-inspector-values";
 
-export const InspectorHeader = () => {
-  const { focused, elements, update, onRenameArtboard } = useCanvasInspectorContext();
-  const Icon = elementIconFor(elements.map((element) => element.type));
-  const selectedElement = elements.length === 1 ? elements[0] : null;
-  const selectedCanvas = elements.length === 0 ? focused : null;
-  const editable = selectedElement ?? selectedCanvas;
-  const label =
-    elements.length > 1
-      ? `${elements.length} Elements`
-      : selectedElement
-        ? canvasElementDisplayName(selectedElement)
-        : focused
-          ? canvasDisplayName(focused)
-          : "Selection";
-
-  const commitName = (name: string) => {
-    const next = name.trim();
-    if (selectedElement) {
-      if (next !== (selectedElement.name ?? "")) update({ name: next });
-    } else if (selectedCanvas && next && next !== selectedCanvas.name) {
-      onRenameArtboard?.(selectedCanvas.artId, next);
-    }
-  };
-
-  return (
-    <div className="flex items-center gap-2">
-      {editable ? (
-        <EditableName
-          key={selectedElement?.id ?? selectedCanvas?.artId}
-          value={editable.name ?? ""}
-          placeholder={label}
-          ariaLabel="Name"
-          onCommit={commitName}
-        >
-          <InputGroupAddon align="inline-start" className="px-1 mr-0">
-            <Icon className="size-4 shrink-0" />
-          </InputGroupAddon>
-        </EditableName>
-      ) : (
-        <>
-          <span className="truncate grow">{label}</span>
-          <Icon className="size-4 shrink-0" />
-        </>
-      )}
-    </div>
-  );
-};
 export const BlockVariablesSection = () => {
   const { focused, target, blocks, shapes, imageAssets, onImageUpload, blockVariableEditing } =
     useCanvasInspectorContext();
@@ -131,6 +80,7 @@ const positionValue = (value: unknown): Exclude<ObjectPosition, "center"> => {
   if (value === "center") return "center center";
   return OBJECT_POSITION_OPTIONS.find((option) => option.value === value)?.value ?? "center center";
 };
+
 const imageReferenceFor = (value: unknown): { assetId: string; revision: string } | null => {
   if (
     !value ||
@@ -145,6 +95,7 @@ const imageReferenceFor = (value: unknown): { assetId: string; revision: string 
   }
   return { assetId: value.assetId, revision: value.revision };
 };
+
 const isImageVariable = (value: unknown): value is VariableReference<ImageValue> =>
   value !== null &&
   typeof value === "object" &&

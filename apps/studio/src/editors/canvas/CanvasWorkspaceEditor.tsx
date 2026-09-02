@@ -53,6 +53,15 @@ export function CanvasWorkspaceEditor({
   variables,
   shapes,
   blocks,
+  cues,
+  actions,
+  eventBindings,
+  onCreateCue,
+  onFocusCue,
+  onSetEventBindingCue,
+  onCreateEventBinding,
+  onRemoveEventBinding,
+  onReorderEventBindings,
   blockVariableEditing,
   onPlaceBlock,
   onCreateBlockFromDrag,
@@ -405,6 +414,15 @@ export function CanvasWorkspaceEditor({
           blocks={blocks}
           variables={variables}
           shapes={shapes}
+          cues={cues}
+          actions={actions}
+          eventBindings={eventBindings}
+          onCreateCue={onCreateCue}
+          onFocusCue={onFocusCue}
+          onSetEventBindingCue={onSetEventBindingCue}
+          onCreateEventBinding={onCreateEventBinding}
+          onRemoveEventBinding={onRemoveEventBinding}
+          onReorderEventBindings={onReorderEventBindings}
           blockVariableEditing={blockVariableEditing}
           deviceQrImages={deviceQrImages}
           imageAssets={imageAssets}

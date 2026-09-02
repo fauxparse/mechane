@@ -27,6 +27,7 @@ import {
   defaultThemeSettings,
   InvalidGraphStateError,
   InvalidImageNameError,
+  InvalidInteractionError,
   InvalidShowNameError,
   InvalidThemeModeError,
   InvalidThemePaletteError,
@@ -581,11 +582,14 @@ export const schema = createSchema<GraphQLContext>({
       elementId: ID!
       eventKind: String!
       cueId: ID!
+      position: Int!
     }
     type Cue {
       id: ID!
       name: String!
-      sceneId: ID!
+      ownerKind: String!
+      sceneId: ID
+      blockId: ID
       actionIds: [ID!]!
     }
     type Action {
@@ -855,6 +859,29 @@ export const schema = createSchema<GraphQLContext>({
       cueId: ID
       actionId: ID
     }
+    input CueInput {
+      id: ID!
+      name: String!
+      ownerKind: String!
+      sceneId: ID
+      blockId: ID
+      actionIds: [ID!]!
+    }
+    input ActionInput {
+      id: ID!
+      cueId: ID!
+      kind: String!
+      targetSceneId: ID
+    }
+    input EventBindingInput {
+      id: ID!
+      canvasId: ID!
+      elementId: ID!
+      eventKind: String!
+      cueId: ID!
+      position: Int!
+    }
+
     type GraphEdit {
       type: String!
       nodeId: ID
@@ -888,6 +915,16 @@ export const schema = createSchema<GraphQLContext>({
       block: Block
       blockId: ID
       blockVariables: JSON
+      "Interaction command payloads."
+      cue: Cue
+      action: Action
+      binding: EventBinding
+      cueId: ID
+      actionId: ID
+      bindingId: ID
+      bindingIds: [ID!]
+      actionIds: [ID!]
+      targetSceneId: ID
       "Devices only: the code the server minted for a Device this batch created (#45)."
       pairingCode: String
       "Devices only: whether each connection is its own instance, for graph.setDevicePerConnection."
@@ -937,8 +974,16 @@ export const schema = createSchema<GraphQLContext>({
       fieldMapping: JSON
       "The edge layout, for graph.setEdgeLayout; null clears it."
       layout: JSON
-      "The Source field value; null clears the override."
-      value: JSON
+      "The interaction payloads selected by type."
+      cue: CueInput
+      action: ActionInput
+      binding: EventBindingInput
+      cueId: ID
+      actionId: ID
+      bindingId: ID
+      bindingIds: [ID!]
+      actionIds: [ID!]
+      targetSceneId: ID
       elementId: ID
       rank: String
       element: JSON
@@ -1326,6 +1371,11 @@ export const schema = createSchema<GraphQLContext>({
         } catch (error) {
           if (error instanceof GraphVersionConflictError) {
             throw new GraphQLError(error.message, { extensions: { code: "CONFLICT" } });
+          }
+          if (error instanceof InvalidInteractionError) {
+            throw new GraphQLError(error.message, {
+              extensions: { code: "BAD_USER_INPUT", reason: error.reason },
+            });
           }
           if (error instanceof CanvasEditError || error instanceof CanvasEditCodecError) {
             throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });

@@ -142,6 +142,7 @@ describe("graphToFlow", () => {
       kind: "scene",
       name: "Cast your vote",
       type: null,
+      cues: [],
       fields: [],
       variables: [{ id: "variable_1", name: "prompt", type: null }],
       defaultSceneId: null,
@@ -156,6 +157,41 @@ describe("graphToFlow", () => {
       driven: false,
     });
   });
+  it("renders Scene Cues as outgoing handle rows", () => {
+    const { nodes, edges } = graphToFlow({
+      nodes: [
+        node({ id: "flow_1", kind: "flow" }),
+        node({ id: "scene_1", kind: "scene", parentId: "flow_1" }),
+        node({ id: "scene_2", kind: "scene", parentId: "flow_1" }),
+      ],
+      cues: [
+        {
+          id: "cue_1",
+          name: "Go to Green",
+          owner: { kind: "scene", sceneId: "scene_1" },
+          actionIds: ["action_1"],
+        },
+      ],
+      actions: [{ id: "action_1", cueId: "cue_1", kind: "navigate", targetSceneId: "scene_2" }],
+      edges: [
+        {
+          id: "navigate:action_1",
+          kind: "navigate",
+          sourceId: "scene_1",
+          targetId: "scene_2",
+          sourcePath: [],
+          targetPath: [],
+          cueId: "cue_1",
+          actionId: "action_1",
+        },
+      ],
+    });
+    const scene = nodes.find((candidate) => candidate.id === "scene_1");
+    if (!scene || scene.data.kind !== "scene") throw new Error("Expected Scene node.");
+    expect(scene.data.cues).toEqual([{ id: "cue_1", name: "Go to Green", actionCount: 1 }]);
+    expect(edges[0]?.sourceHandle).toBe(handleFor({ kind: "cue", id: "cue_1" }));
+  });
+
   it("narrows rendered data by node kind", () => {
     const { nodes } = graphToFlow({
       nodes: [

@@ -23,10 +23,10 @@
 // out of composing rather than needing its own mechanism.
 
 import { composite } from "./command";
+import { removeAction, removeCue } from "./interaction-commands";
 import { removeEdge, removeNode } from "./graph-commands";
 import type { ShowGraphCommand } from "./graph-commands";
 import type { GraphNode, ShowGraph } from "@mechane/domain";
-
 /**
  * Everything a delete of `nodeIds` would destroy — the whole point being that
  * a director can be told the blast radius *before* it happens, since #27
@@ -138,8 +138,29 @@ export function deleteGraphElements(
   edgeIds: Iterable<string> = [],
 ): ShowGraphCommand {
   const scope = deletionScope(graph, nodeIds, edgeIds);
+  const doomed = new Set(scope.nodes.map((node) => node.id));
+  const cueIds = (graph.cues ?? [])
+    .filter((cue) => cue.owner.kind === "scene" && doomed.has(cue.owner.sceneId))
+    .map((cue) => cue.id);
+  const actionIds = (graph.actions ?? [])
+    .filter(
+      (action) =>
+        action.kind === "navigate" &&
+        doomed.has(action.targetSceneId) &&
+        !cueIds.includes(action.cueId),
+    )
+    .map((action) => action.id);
+  const edgeIdsToRemove = scope.edgeIds.filter((edgeId) => {
+    const edge = graph.edges.find((candidate) => candidate.id === edgeId);
+    return (
+      edge?.kind !== "navigate" ||
+      (!cueIds.includes(edge.cueId ?? "") && !actionIds.includes(edge.actionId ?? ""))
+    );
+  });
   const commands: ShowGraphCommand[] = [
-    ...scope.edgeIds.map((id) => removeEdge(id)),
+    ...edgeIdsToRemove.map((id) => removeEdge(id)),
+    ...cueIds.map((id) => removeCue(id)),
+    ...actionIds.map((id) => removeAction(id)),
     // Deepest first: a nested Scene is removed before the Flow that holds it.
     ...[...scope.nodes]
       .sort((a, b) => depth(graph, b) - depth(graph, a))

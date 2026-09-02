@@ -364,8 +364,10 @@ describe("composed commands", () => {
     });
   });
 
-  it("transmits a move out of a Flow with the edges it discarded", () => {
-    expectEditsReproduce(moveNodesOutOfFlow(GRAPH, [RESULTS.id], [{ x: 900, y: 0 }]));
+  it("refuses a move out of a Flow when navigation is attached", () => {
+    expect(() => moveNodesOutOfFlow(GRAPH, [RESULTS.id], [{ x: 900, y: 0 }])).toThrow(
+      /Navigate behavior/,
+    );
   });
 });
 

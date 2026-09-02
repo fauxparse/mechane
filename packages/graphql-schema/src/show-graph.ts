@@ -141,7 +141,9 @@ export const GetShowGraphQuery = graphql(
         cues {
           id
           name
+          ownerKind
           sceneId
+          blockId
           actionIds
         }
         actions {
@@ -156,6 +158,7 @@ export const GetShowGraphQuery = graphql(
           elementId
           eventKind
           cueId
+          position
         }
         shapes {
           id

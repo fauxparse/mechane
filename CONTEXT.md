@@ -176,14 +176,18 @@ The one explicitly designated State used when a Block's State Selector has no us
 A runtime user interaction emitted by a Device — a tap, click, or keypress. Events originate either from a user interacting with an Element in the displayed Scene, or from a physical peripheral connected to the Device. A runtime Event is transient; authored configuration uses an Event Binding.
 _Avoid_: Trigger, signal
 
+### Interaction Owner
+
+The Scene or Block to which an authored interaction belongs. An Event Binding derives its owner from the Canvas containing its Element; a Cue belongs directly to one owner, and its Actions belong to that Cue.
+
 ### Event Binding
 
-Authored configuration connecting an Element's Event kind to one Cue owned by that Element's Scene. An Element has at most one Event Binding for each Event kind; multiple Elements may bind to the same Cue. `tap` is the first supported Event kind.
+Authored configuration connecting an Element's Event kind to one or more Cues owned by that Element's Canvas owner. Event Bindings have an explicit order; runtime evaluation considers matching bindings in order and uses the first one whose conditions match. `tap` is the first supported Event kind.
 _Avoid_: Event handler
 
 ### Cue
 
-A named trigger that lives on a Scene or Block and owns an ordered, non-empty list of Actions. A Cue can be connected to multiple Events. The first runtime slice supports unconditional Scene Cues with one Navigate Action; conditions and Block Cue dispatch remain future behavior.
+A named trigger owned by a Scene or Block with an ordered list of Actions, which may be empty. A Cue can be connected to multiple Events. Scene-owned Cues support the current runtime behavior; a Cue with no Actions is valid but has no special effect. Block-owned interactions can be authored and persisted before Block dispatch exists, but have no Player effect until that behavior is defined.
 _Avoid_: Interaction (code term), trigger, event handler
 
 ### Action
@@ -225,15 +229,15 @@ _Avoid_: Binding (acceptable as a synonym), linking
 - A **Device** displays one **Scene** at a time
 - A **Source** or **Transformer** is wired to a **Variable** via the Show graph
 - A **Variable** can be connected to one or more **Element** properties within a **Scene** or **Block**
-- An **Element** can have at most one **Event Binding** for each Event kind; multiple Elements may bind to one **Cue**
+- An **Element** can have one or more ordered **Event Bindings** for each Event kind; multiple Elements may bind to the same **Cue**
 - An **Element** can be a **Slot**, which instantiates a **Block**
 - A **Scene** owns a **Canvas** that contains a hierarchy of **Elements**
 - A **Block** belongs to one **Show**, owns one **Canvas**, and has zero or more **Variables**, **States**, and **Cues**
 - A **Block** is referenced by stable identity independent of its user-facing name
 - A **Slot** references one **Block** and stores that placement's configuration
-- **Events** are emitted either by **Elements** within a **Scene** (user taps, clicks) or by the **Device** displaying the **Scene** (peripheral keypresses, buzzers)
-- An **Event Binding** connects an Element's Event kind to one Cue owned by the Element's Scene
-- A **Cue** lives on a **Scene** or **Block** and owns one or more ordered **Actions**
+- **Events** are emitted either by **Elements** within a displayed **Scene**, including Elements inherited from **Blocks** through **Slots**, or by the **Device** displaying the **Scene** (peripheral keypresses, buzzers)
+- An **Event Binding** connects an Element's Event kind to a Cue owned by the Element's Canvas owner; matching bindings are evaluated in order
+- A **Cue** lives on a **Scene** or **Block** and owns an ordered list of **Actions**, which may be empty
 - A **Slot** maps parent **Variables** or runtime context into child **Block** **Variables**
 - A **Slot** has at most one **Slot Input Assignment** for each child **Block Variable**; an assignment may be literal, sourced from a parent Variable, sourced from runtime context, or unset
 - A **Slot Input Assignment** may select a nested value through an **Input Field Path** and uses the shared Type compatibility and coercion contract

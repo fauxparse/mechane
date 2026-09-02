@@ -3,6 +3,7 @@ export type HandleId =
   | { kind: "output" }
   | { kind: "variable"; id: string }
   | { kind: "field"; id: string }
+  | { kind: "cue"; id: string }
   | { kind: "deviceSource"; name: string };
 
 const INPUT_HANDLE = "in";
@@ -23,6 +24,8 @@ export function handleFor(handle: HandleId): string {
       return encoded("variable", handle.id);
     case "field":
       return encoded("field", handle.id);
+    case "cue":
+      return encoded("cue", handle.id);
     case "deviceSource":
       return encoded("device", handle.name);
   }
@@ -47,6 +50,8 @@ export function readHandle(id: string): HandleId | null {
 
   const variable = decoded(id, "variable");
   if (variable !== null) return { kind: "variable", id: variable };
+  const cue = decoded(id, "cue");
+  if (cue !== null) return { kind: "cue", id: cue };
   const field = decoded(id, "field");
   if (field !== null) return { kind: "field", id: field };
   const deviceSource = decoded(id, "device");

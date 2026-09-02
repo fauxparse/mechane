@@ -1,7 +1,9 @@
 export const EVENT_KINDS = ["tap"] as const;
 export type EventKind = (typeof EVENT_KINDS)[number];
 
-export type NonEmpty<T> = readonly [T, ...T[]];
+export type InteractionOwner =
+  | { readonly kind: "scene"; readonly sceneId: string }
+  | { readonly kind: "block"; readonly blockId: string };
 
 export interface EventBinding {
   id: string;
@@ -9,13 +11,15 @@ export interface EventBinding {
   elementId: string;
   eventKind: EventKind;
   cueId: string;
+  /** Evaluation priority among bindings for this Element and Event kind. */
+  position: number;
 }
 
 export interface Cue {
   id: string;
   name: string;
-  sceneId: string;
-  actionIds: NonEmpty<string>;
+  owner: InteractionOwner;
+  actionIds: readonly string[];
 }
 
 export interface NavigateAction {
@@ -42,6 +46,7 @@ export function interactionCollections(
     eventBindings: graph.eventBindings ?? [],
   };
 }
+
 export interface RuntimeEventObservation {
   sceneId: string;
   canvasId: string;
@@ -74,15 +79,23 @@ export function resolveRuntimeEvent(
   if (!scene || scene.parentId === null) {
     return { kind: "unbound", reason: "stale-scene" };
   }
-  const binding = interactions.eventBindings.find(
-    (candidate) =>
-      candidate.canvasId === observation.canvasId &&
-      candidate.elementId === observation.elementId &&
-      candidate.eventKind === observation.eventKind,
-  );
+  let binding: EventBinding | undefined;
+  for (const candidate of interactions.eventBindings) {
+    if (
+      candidate.canvasId !== observation.canvasId ||
+      candidate.elementId !== observation.elementId ||
+      candidate.eventKind !== observation.eventKind ||
+      (binding &&
+        (candidate.position > binding.position ||
+          (candidate.position === binding.position && candidate.id >= binding.id)))
+    ) {
+      continue;
+    }
+    binding = candidate;
+  }
   if (!binding) return { kind: "unbound", reason: "unbound-event" };
   const cue = interactions.cues.find((candidate) => candidate.id === binding.cueId);
-  if (!cue || cue.sceneId !== scene.id) {
+  if (!cue || cue.owner.kind !== "scene" || cue.owner.sceneId !== scene.id) {
     throw new InvalidInteractionError(
       "bindingScene",
       `Event Binding "${binding.id}" does not belong to Scene "${scene.id}".`,
@@ -100,7 +113,6 @@ export function resolveRuntimeEvent(
   });
   return { kind: "planned", sceneId: scene.id, cue, actions };
 }
-
 
 export function navigateEdgeId(actionId: string): string {
   return `navigate:${actionId}`;
@@ -127,7 +139,7 @@ export function projectNavigateEdges(graph: {
   const cuesById = new Map(cues.map((cue) => [cue.id, cue]));
   return actions.flatMap((action) => {
     const cue = cuesById.get(action.cueId);
-    const source = cue ? scenes.get(cue.sceneId) : undefined;
+    const source = cue?.owner.kind === "scene" ? scenes.get(cue.owner.sceneId) : undefined;
     const target = scenes.get(action.targetSceneId);
     if (!cue || !source || !target) return [];
     return [
@@ -156,9 +168,11 @@ export type InteractionViolation =
   | "emptyActionList"
   | "unsupportedAction"
   | "missingScene"
+  | "missingBlock"
   | "navigateSceneFlow"
   | "invalidCurrentActionCount"
-  | "duplicateEventBinding"
+  | "invalidEventBindingPosition"
+  | "duplicateEventBindingPosition"
   | "emptyElementReference"
   | "bindingScene";
 
@@ -195,6 +209,7 @@ function duplicate<T>(values: readonly T[]): T | undefined {
 
 export function assertValidInteractions(graph: {
   nodes: readonly { id: string; kind: string; parentId: string | null }[];
+  blocks?: readonly { id: string }[];
   cues?: readonly Cue[];
   actions?: readonly Action[];
   eventBindings?: readonly EventBinding[];
@@ -203,6 +218,7 @@ export function assertValidInteractions(graph: {
   const scenes = new Map(
     graph.nodes.filter((node) => node.kind === "scene").map((node) => [node.id, node]),
   );
+  const blockIds = new Set((graph.blocks ?? []).map((block) => block.id));
   const ids = [
     ...interactions.cues.map((cue) => cue.id),
     ...interactions.actions.map((action) => action.id),
@@ -223,25 +239,24 @@ export function assertValidInteractions(graph: {
     if (cue.name.trim().length === 0) {
       throw new InvalidInteractionError("emptyCueName", `Cue "${cue.id}" has an empty name.`);
     }
-    const scene = requireScene(scenes, cue.sceneId, `Cue "${cue.id}"`);
-    const names = cueNames.get(scene.id) ?? new Set<string>();
+    const ownerKey =
+      cue.owner.kind === "scene" ? `scene:${cue.owner.sceneId}` : `block:${cue.owner.blockId}`;
+    if (cue.owner.kind === "scene") requireScene(scenes, cue.owner.sceneId, `Cue "${cue.id}"`);
+    else if (!blockIds.has(cue.owner.blockId) && graph.blocks) {
+      throw new InvalidInteractionError(
+        "missingBlock",
+        `Cue "${cue.id}" references Block "${cue.owner.blockId}".`,
+      );
+    }
+    const names = cueNames.get(ownerKey) ?? new Set<string>();
     if (names.has(cue.name)) {
       throw new InvalidInteractionError(
         "duplicateCueName",
-        `Scene "${scene.id}" has duplicate Cue name "${cue.name}".`,
+        `Owner "${ownerKey}" has duplicate Cue name "${cue.name}".`,
       );
     }
     names.add(cue.name);
-    cueNames.set(scene.id, names);
-    if (cue.actionIds.length === 0) {
-      throw new InvalidInteractionError("emptyActionList", `Cue "${cue.id}" has no Actions.`);
-    }
-    if (cue.actionIds.length !== 1) {
-      throw new InvalidInteractionError(
-        "invalidCurrentActionCount",
-        `Cue "${cue.id}" must contain exactly one Navigate Action in the current runtime slice.`,
-      );
-    }
+    cueNames.set(ownerKey, names);
     for (const actionId of cue.actionIds) {
       const action = actionsById.get(actionId);
       if (!action) {
@@ -279,17 +294,21 @@ export function assertValidInteractions(graph: {
         `Action "${action.id}" is not included in Cue "${cue.id}"'s ordered Actions.`,
       );
     }
-    const source = requireScene(scenes, cue.sceneId, `Action "${action.id}"`);
-    const target = requireScene(scenes, action.targetSceneId, `Action "${action.id}"`);
-    if (source.parentId === null || source.parentId !== target.parentId) {
-      throw new InvalidInteractionError(
-        "navigateSceneFlow",
-        `Navigate Action "${action.id}" must target a Scene in the same Flow as its Cue.`,
-      );
+    if (cue.owner.kind === "scene") {
+      const source = requireScene(scenes, cue.owner.sceneId, `Action "${action.id}"`);
+      const target = requireScene(scenes, action.targetSceneId, `Action "${action.id}"`);
+      if (source.parentId === null || source.parentId !== target.parentId) {
+        throw new InvalidInteractionError(
+          "navigateSceneFlow",
+          `Navigate Action "${action.id}" must target a Scene in the same Flow as its Cue.`,
+        );
+      }
+    } else {
+      requireScene(scenes, action.targetSceneId, `Action "${action.id}"`);
     }
   }
 
-  const bindingKeys = new Set<string>();
+  const bindingPositions = new Map<string, Set<number>>();
   for (const binding of interactions.eventBindings) {
     if (binding.eventKind !== "tap") {
       throw new InvalidInteractionError(
@@ -303,14 +322,22 @@ export function assertValidInteractions(graph: {
         `Event Binding "${binding.id}" has an empty Element reference.`,
       );
     }
-    const key = `${binding.canvasId}:${binding.elementId}:${binding.eventKind}`;
-    if (bindingKeys.has(key)) {
+    if (!Number.isInteger(binding.position) || binding.position < 0) {
       throw new InvalidInteractionError(
-        "duplicateEventBinding",
-        `duplicate Event Binding for "${key}".`,
+        "invalidEventBindingPosition",
+        `Event Binding "${binding.id}" has an invalid position.`,
       );
     }
-    bindingKeys.add(key);
+    const key = `${binding.canvasId}:${binding.elementId}`;
+    const positions = bindingPositions.get(key) ?? new Set<number>();
+    if (positions.has(binding.position)) {
+      throw new InvalidInteractionError(
+        "duplicateEventBindingPosition",
+        `duplicate Event Binding position ${binding.position} for "${key}".`,
+      );
+    }
+    positions.add(binding.position);
+    bindingPositions.set(key, positions);
     if (!cuesById.has(binding.cueId)) {
       throw new InvalidInteractionError(
         "missingCue",

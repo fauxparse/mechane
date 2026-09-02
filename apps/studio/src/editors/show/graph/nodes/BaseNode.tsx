@@ -227,6 +227,33 @@ export const BaseNode = ({
           })}
         </div>
       ) : null}
+      {data.cues.length > 0 ? (
+        <div className="border-t border-(--flow-border)/50">
+          {data.cues.map((cue) => (
+            <div
+              key={cue.id}
+              className="relative flex items-center justify-between gap-2 px-3 py-2"
+            >
+              <div className="min-w-0">
+                <div className="truncate text-xs font-medium">{cue.name}</div>
+                <div className="text-[10px] text-(--flow-muted-foreground)">
+                  {cue.actionCount} {cue.actionCount === 1 ? "Action" : "Actions"}
+                </div>
+              </div>
+              <HandleComponent
+                id={handleFor({ kind: "cue", id: cue.id })}
+                type="source"
+                position={Position.Right}
+                className={HANDLE_CLASS}
+                data-connected={
+                  connectedHandleIds?.has(handleFor({ kind: "cue", id: cue.id })) ?? false
+                }
+                isConnectableEnd={false}
+              />
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 };

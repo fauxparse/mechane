@@ -123,7 +123,7 @@ function cue(sceneId: NavigationSceneId, destinationId: NavigationSceneId): Cue 
   return {
     id: `cue_${sceneId}_${destinationId}`,
     name: `Go to ${SCENE_NAMES[destinationId]}`,
-    sceneId,
+    owner: { kind: "scene", sceneId },
     actionIds: [`action_${sceneId}_${destinationId}`],
   };
 }
@@ -144,6 +144,7 @@ function binding(sceneId: NavigationSceneId, destinationId: NavigationSceneId): 
     elementId: `button_${sceneId}_${destinationId}`,
     eventKind: "tap",
     cueId: `cue_${sceneId}_${destinationId}`,
+    position: 0,
   };
 }
 

@@ -310,7 +310,10 @@ describe("reparentNode", () => {
   });
 
   it("moves a node back out to Show level", () => {
-    expectExactRoundTrip(reparentNode(RESULTS.id, null, { x: 500, y: 500 }));
+    const graph = { ...GRAPH, edges: [WIRE, TO_PHONE] };
+    const applied = reparentNode(VOTING.id, null, { x: 500, y: 500 }).apply(graph);
+    expect(applied.state.nodes.find((node) => node.id === VOTING.id)?.parentId).toBe(null);
+    expect(applied.inverse.apply(applied.state).state).toEqual(graph);
   });
 
   it("labels itself by direction", () => {
@@ -378,11 +381,8 @@ describe("moveNodeIntoFlow / moveNodeOutOfFlow", () => {
     expect(applied.inverse.apply(applied.state).state).toEqual(graph);
   });
 
-  it("removes Navigate edges when extracting a Scene", () => {
-    const result = moveNodeOutOfFlow(GRAPH, VOTING.id, { x: 0, y: 0 }).apply(GRAPH);
-    expect(result.state.nodes.find((node) => node.id === VOTING.id)?.parentId).toBe(null);
-    expect(result.state.edges.map((edge) => edge.id)).not.toContain(NAVIGATE.id);
-    expect(result.inverse.apply(result.state).state).toEqual(GRAPH);
+  it("refuses extracting a Scene with Navigate behavior", () => {
+    expect(() => moveNodeOutOfFlow(GRAPH, VOTING.id, { x: 0, y: 0 })).toThrow("Navigate behavior");
   });
 
   it("moves out and drops wiring, while restoring both on undo", () => {

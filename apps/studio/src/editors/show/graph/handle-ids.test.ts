@@ -7,6 +7,7 @@ const handles: HandleId[] = [
   { kind: "output" },
   { kind: "variable", id: "variable:prompt" },
   { kind: "field", id: "field/headline" },
+  { kind: "cue", id: "cue/submit" },
   { kind: "deviceSource", name: "qr-code" },
 ];
 

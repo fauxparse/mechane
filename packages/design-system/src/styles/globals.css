@@ -38,3 +38,14 @@
     @apply font-sans;
   }
 }
+
+@utility label {
+  @apply text-xs uppercase text-muted-foreground tracking-wider;
+}
+
+@utility grippy {
+  background-image: radial-gradient(circle at 50% 50%, currentcolor 1px, transparent 0);
+  background-size: 4px 4px;
+  background-repeat: repeat;
+  opacity: 0.25;
+}

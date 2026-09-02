@@ -3,7 +3,7 @@ import { applyCanvasEdits, CANVAS_COMMAND_TYPES } from "@mechane/commands";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import { Sidebar, SidebarProvider } from "@mechane/design-system";
 import { emptyBlock, FrameElement, hasCornerRadius, SceneVariable, Shape } from "@mechane/domain";
-import type { Block } from "@mechane/domain";
+import type { Action, Block, Cue, EventBinding } from "@mechane/domain";
 import type { ImageAsset } from "@mechane/graphql-schema";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useCallback, useState } from "react";
@@ -382,6 +382,9 @@ function InspectorStory({
   storyVariables = [],
   storyBlocks = [],
   storyShapes = [],
+  storyCues = [],
+  storyActions = [],
+  storyEventBindings = [],
   storyImageAssets = [],
   blockVariableEditing,
   onImageUpload = storyImageUpload,
@@ -392,12 +395,16 @@ function InspectorStory({
   storyVariables?: readonly SceneVariable[];
   storyBlocks?: readonly Block[];
   storyShapes?: readonly Shape[];
+  storyCues?: readonly Cue[];
+  storyActions?: readonly Action[];
+  storyEventBindings?: readonly EventBinding[];
   storyImageAssets?: readonly ImageAsset[];
   blockVariableEditing?: VariableInspectorEditing;
   onImageUpload?: (props: ImageInputOnUploadProps) => void;
   currentDimensions?: { elementId: string; width: number; height: number };
 }) {
   const [current, setCurrent] = useState(initialArtboard);
+  const [currentEventBindings, setCurrentEventBindings] = useState(storyEventBindings);
   const onUpdateElements = useCallback(
     (
       _canvasId: string,
@@ -420,6 +427,20 @@ function InspectorStory({
             selection={initialSelection}
             blocks={storyBlocks}
             variables={storyVariables}
+            cues={storyCues}
+            actions={storyActions}
+            eventBindings={currentEventBindings}
+            onReorderEventBindings={(bindingIds) =>
+              setCurrentEventBindings((currentBindings) => {
+                const bindingsById = new Map(
+                  currentBindings.map((binding) => [binding.id, binding]),
+                );
+                return bindingIds.flatMap((bindingId) => {
+                  const binding = bindingsById.get(bindingId);
+                  return binding ? [binding] : [];
+                });
+              })
+            }
             blockVariableEditing={blockVariableEditing}
             shapes={storyShapes}
             imageAssets={storyImageAssets}
@@ -662,6 +683,54 @@ export const UnsetOpacityDefaultsTo100Percent: Story = {
     <InspectorStory
       initialArtboard={artboard(absoluteRoot)}
       initialSelection={{ artId: ART_ID, elementIds: ["headline"] }}
+    />
+  ),
+};
+export const InteractionAuthoring: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(absoluteRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: ["headline"] }}
+      storyCues={[
+        {
+          id: "cue-submit",
+          name: "Submit vote",
+          owner: { kind: "scene", sceneId: ART_ID },
+          actionIds: ["action-results"],
+        },
+        {
+          id: "cue-fallback",
+          name: "Fallback",
+          owner: { kind: "scene", sceneId: ART_ID },
+          actionIds: [],
+        },
+      ]}
+      storyActions={[
+        {
+          id: "action-results",
+          cueId: "cue-submit",
+          kind: "navigate",
+          targetSceneId: "scene-results",
+        },
+      ]}
+      storyEventBindings={[
+        {
+          id: "binding-submit",
+          canvasId: CANVAS_ID,
+          elementId: "headline",
+          eventKind: "tap",
+          cueId: "cue-submit",
+          position: 0,
+        },
+        {
+          id: "binding-fallback",
+          canvasId: CANVAS_ID,
+          elementId: "headline",
+          eventKind: "tap",
+          cueId: "cue-fallback",
+          position: 1,
+        },
+      ]}
     />
   ),
 };

@@ -251,8 +251,62 @@ const FIXTURES: { [T in GraphEdit["type"]]: Extract<GraphEdit, { type: T }> } = 
     block: emptyBlock("Banner copy"),
   },
   "graph.removeBlock": { type: "graph.removeBlock", blockId: "block_banner" },
+  "graph.addCue": {
+    type: "graph.addCue",
+    cue: {
+      id: "cue_lobby",
+      name: "Open Foyer",
+      owner: { kind: "scene", sceneId: "scene_lobby" },
+      actionIds: ["action_open"],
+    },
+  },
+  "graph.renameCue": { type: "graph.renameCue", cueId: "cue_lobby", name: "Open Entrance" },
+  "graph.setCueActionOrder": {
+    type: "graph.setCueActionOrder",
+    cueId: "cue_lobby",
+    actionIds: ["action_open"],
+  },
+  "graph.removeCue": { type: "graph.removeCue", cueId: "cue_lobby" },
+  "graph.addNavigateAction": {
+    type: "graph.addNavigateAction",
+    action: {
+      id: "action_open",
+      cueId: "cue_lobby",
+      kind: "navigate",
+      targetSceneId: "scene_lobby",
+    },
+  },
+  "graph.setNavigateTarget": {
+    type: "graph.setNavigateTarget",
+    actionId: "action_open",
+    targetSceneId: "scene_lobby",
+  },
+  "graph.removeAction": { type: "graph.removeAction", actionId: "action_open" },
+  "graph.addEventBinding": {
+    type: "graph.addEventBinding",
+    binding: {
+      id: "binding_lobby",
+      canvasId: "canvas_lobby",
+      elementId: "button_open",
+      eventKind: "tap",
+      cueId: "cue_lobby",
+      position: 0,
+    },
+  },
+  "graph.setEventBindingCue": {
+    type: "graph.setEventBindingCue",
+    bindingId: "binding_lobby",
+    cueId: "cue_lobby",
+  },
+  "graph.setEventBindingOrder": {
+    type: "graph.setEventBindingOrder",
+    bindingIds: ["binding_lobby"],
+  },
+  "graph.removeEventBinding": {
+    type: "graph.removeEventBinding",
+    bindingId: "binding_lobby",
+  },
 };
-
 describe("graph edit codec", () => {
   it("has a descriptor for every edit type", () => {
     expect(Object.keys(GRAPH_EDIT_CODECS).sort()).toEqual(Object.keys(FIXTURES).sort());

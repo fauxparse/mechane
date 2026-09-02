@@ -1,12 +1,19 @@
+import { emptyBlock } from "@mechane/domain";
 import type { ShowGraph } from "@mechane/domain";
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { db } from "./client";
-import { GraphVersionConflictError, persistGraphRows, readGraphRows } from "./graph-persistence";
-import { devices, shows, user } from "./schema";
+import {
+  GraphVersionConflictError,
+  persistEventBindings,
+  persistGraphRows,
+  readGraphRows,
+} from "./graph-persistence";
+import { canvasElements, canvases, devices, shows, user } from "./schema";
 
 const userId = `graph-persistence-test-${crypto.randomUUID()}`;
+const block = { ...emptyBlock("Card"), id: "block_card" };
 const showId = `graph-persistence-show-${crypto.randomUUID()}`;
 const graph: ShowGraph = {
   shapes: [],
@@ -69,6 +76,98 @@ describe("graph row persistence", () => {
     expect(reread.edges).toEqual(graph.edges);
     expect(await db.select().from(devices).where(eq(devices.showId, showId))).toEqual([]);
   });
+  it("persists and reads Event Binding priority order", async () => {
+    await createShow();
+    const interactionGraph: ShowGraph = {
+      shapes: [],
+      nodes: [
+        {
+          id: "flow_ordered",
+          kind: "flow",
+          name: "Ordered Flow",
+          position: { x: 0, y: 0 },
+          parentId: null,
+          defaultSceneId: "scene_ordered",
+        },
+        {
+          id: "scene_ordered",
+          kind: "scene",
+          name: "Ordered Scene",
+          position: { x: 0, y: 0 },
+          parentId: "flow_ordered",
+          variables: [],
+        },
+      ],
+      edges: [],
+      cues: [
+        {
+          id: "cue_first",
+          name: "First",
+          owner: { kind: "scene", sceneId: "scene_ordered" },
+          actionIds: [],
+        },
+        {
+          id: "cue_second",
+          name: "Second",
+          owner: { kind: "scene", sceneId: "scene_ordered" },
+          actionIds: [],
+        },
+      ],
+      actions: [],
+      eventBindings: [],
+    };
+    await db.transaction(async (tx) => {
+      const written = await persistGraphRows(tx, showId, "draft", interactionGraph);
+      await tx.insert(canvases).values({
+        id: "canvas_ordered",
+        graphId: written.graphId,
+        sceneNodeId: "scene_ordered",
+        positionX: 0,
+        positionY: 0,
+      });
+      await tx.insert(canvasElements).values([
+        {
+          id: "root_ordered",
+          canvasId: "canvas_ordered",
+          type: "frame",
+          rank: "a",
+          name: "Root",
+        },
+        {
+          id: "button_ordered",
+          canvasId: "canvas_ordered",
+          parentId: "root_ordered",
+          type: "rect",
+          rank: "a",
+          name: "Button",
+        },
+      ]);
+    });
+    const first = {
+      id: "binding_first",
+      canvasId: "canvas_ordered",
+      elementId: "button_ordered",
+      eventKind: "tap" as const,
+      cueId: "cue_first",
+      position: 0,
+    };
+    const second = {
+      ...first,
+      id: "binding_second",
+      cueId: "cue_second",
+      position: 1,
+    };
+    await db.transaction(async (tx) => {
+      const written = await persistGraphRows(tx, showId, "draft", {
+        ...interactionGraph,
+        eventBindings: [second, first],
+      });
+      await persistEventBindings(tx, written.graphId, [second, first]);
+    });
+
+    const reread = await readGraphRows(showId, "draft");
+    expect(reread.eventBindings).toEqual([first, second]);
+  });
 
   it("keeps an edge's authored layout across a write and a reread", async () => {
     await createShow();
@@ -106,6 +205,85 @@ describe("graph row persistence", () => {
     const reread = await readGraphRows(showId, "draft");
     expect(reread.version).toBe(1);
     expect(reread.edges).toEqual(graph.edges);
+  });
+
+  it("persists an empty Cue as a valid no-op", async () => {
+    await createShow();
+    const interactionGraph: ShowGraph = {
+      ...graph,
+      blocks: [block],
+      nodes: [
+        ...graph.nodes,
+        {
+          id: "flow_interaction",
+          kind: "flow",
+          name: "Interaction Flow",
+          position: { x: 0, y: 0 },
+          parentId: null,
+          defaultSceneId: "scene_interaction",
+        },
+        {
+          id: "scene_interaction",
+          kind: "scene",
+          name: "Interaction Scene",
+          position: { x: 0, y: 0 },
+          parentId: "flow_interaction",
+          variables: [],
+        },
+      ],
+      cues: [
+        {
+          id: "cue_empty",
+          name: "No-op",
+          owner: { kind: "scene", sceneId: "scene_interaction" },
+          actionIds: [],
+        },
+        {
+          id: "cue_block",
+          name: "Block Cue",
+          owner: { kind: "block", blockId: block.id },
+          actionIds: [],
+        },
+      ],
+      actions: [],
+      eventBindings: [],
+    };
+    await db.transaction(async (tx) => {
+      const written = await persistGraphRows(tx, showId, "draft", interactionGraph);
+      await tx.insert(canvases).values({
+        id: "canvas_interaction",
+        graphId: written.graphId,
+        sceneNodeId: "scene_interaction",
+        positionX: 0,
+        positionY: 0,
+      });
+      await tx.insert(canvasElements).values({
+        id: "root_interaction",
+        canvasId: "canvas_interaction",
+        type: "frame",
+        rank: "a",
+        name: "Root",
+      });
+      await tx.insert(canvases).values({
+        id: "canvas_block",
+        graphId: written.graphId,
+        blockId: block.id,
+        positionX: 0,
+        positionY: 0,
+      });
+      await tx.insert(canvasElements).values({
+        id: "root_block",
+        canvasId: "canvas_block",
+        type: "frame",
+        rank: "a",
+        name: "Root",
+      });
+    });
+    const reread = await readGraphRows(showId, "draft");
+    expect(reread.cues).toHaveLength(2);
+    expect(reread.cues).toEqual(expect.arrayContaining([...(interactionGraph.cues ?? [])]));
+    expect(reread.actions).toEqual([]);
+    expect(reread.edges.filter((edge) => edge.kind === "navigate")).toEqual([]);
   });
 
   it("maps supplied Device identity without reading or writing the devices table", async () => {

@@ -22,13 +22,13 @@ const cues: Cue[] = [
   {
     id: "cue_red_green",
     name: "Go to Green",
-    sceneId: "scene_red",
+    owner: { kind: "scene", sceneId: "scene_red" },
     actionIds: ["action_red_green"],
   },
   {
     id: "cue_red_blue",
     name: "Go to Blue",
-    sceneId: "scene_red",
+    owner: { kind: "scene", sceneId: "scene_red" },
     actionIds: ["action_red_blue"],
   },
 ];
@@ -55,6 +55,7 @@ const eventBindings: EventBinding[] = [
     elementId: "button_green",
     eventKind: "tap",
     cueId: "cue_red_green",
+    position: 0,
   },
   {
     id: "binding_red_blue",
@@ -62,6 +63,7 @@ const eventBindings: EventBinding[] = [
     elementId: "button_blue",
     eventKind: "tap",
     cueId: "cue_red_blue",
+    position: 0,
   },
 ];
 const redGreenCue = cues[0];
@@ -96,6 +98,50 @@ describe("interaction aggregate", () => {
       },
     ]);
   });
+  it("resolves the first matching binding by position", () => {
+    const fallback = {
+      ...redGreenBinding,
+      id: "binding_red_green_fallback",
+      cueId: "cue_red_blue",
+      position: 1,
+    };
+    expect(
+      resolveRuntimeEvent(
+        { nodes, cues, actions, eventBindings: [fallback, redGreenBinding] },
+        {
+          sceneId: "scene_red",
+          canvasId: "canvas_red",
+          elementId: "button_green",
+          eventKind: "tap",
+        },
+      ),
+    ).toMatchObject({ kind: "planned", cue: { id: "cue_red_green" } });
+  });
+
+  it("accepts empty Scene and Block Cues as no-op configuration", () => {
+    expect(
+      assertValidInteractions({
+        nodes,
+        blocks: [{ id: "block_card" }],
+        cues: [
+          {
+            id: "cue_empty_scene",
+            name: "No-op Scene",
+            owner: { kind: "scene", sceneId: "scene_red" },
+            actionIds: [],
+          },
+          {
+            id: "cue_empty_block",
+            name: "No-op Block",
+            owner: { kind: "block", blockId: "block_card" },
+            actionIds: [],
+          },
+        ],
+        actions: [],
+        eventBindings: [],
+      }),
+    ).toMatchObject({ cues: expect.any(Array), actions: [], eventBindings: [] });
+  });
 
   it("rejects a Cue that references a missing Action", () => {
     expect(() =>
@@ -113,7 +159,12 @@ describe("interaction aggregate", () => {
       assertValidInteractions({
         nodes: [...nodes, { id: "scene_other", kind: "scene", parentId: "other_flow" }],
         cues: [
-          { id: "cue_cross", name: "Cross", sceneId: "scene_red", actionIds: ["action_cross"] },
+          {
+            id: "cue_cross",
+            name: "Cross",
+            owner: { kind: "scene", sceneId: "scene_red" },
+            actionIds: ["action_cross"],
+          },
         ],
         actions: [
           {
@@ -128,7 +179,24 @@ describe("interaction aggregate", () => {
     ).toThrowError(InvalidInteractionError);
   });
 
-  it("rejects duplicate bindings for an Element and Event kind", () => {
+  it("accepts multiple ordered bindings for an Element and Event kind", () => {
+    const secondBinding = {
+      ...redGreenBinding,
+      id: "binding_red_green_fallback",
+      cueId: "cue_red_blue",
+      position: 1,
+    };
+    expect(
+      assertValidInteractions({
+        nodes,
+        cues,
+        actions,
+        eventBindings: [redGreenBinding, secondBinding],
+      }).eventBindings,
+    ).toEqual([redGreenBinding, secondBinding]);
+  });
+
+  it("rejects duplicate binding positions for an Element", () => {
     expect(() =>
       assertValidInteractions({
         nodes,

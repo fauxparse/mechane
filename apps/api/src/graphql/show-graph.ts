@@ -202,7 +202,9 @@ export function serializeShowGraph(graph: StoredShowGraph) {
     cues: (graph.cues ?? []).map((cue) => ({
       id: cue.id,
       name: cue.name,
-      sceneId: cue.sceneId,
+      ownerKind: cue.owner.kind,
+      sceneId: cue.owner.kind === "scene" ? cue.owner.sceneId : null,
+      blockId: cue.owner.kind === "block" ? cue.owner.blockId : null,
       actionIds: [...cue.actionIds],
     })),
     actions: (graph.actions ?? []).map((action) => ({
@@ -217,6 +219,7 @@ export function serializeShowGraph(graph: StoredShowGraph) {
       elementId: binding.elementId,
       eventKind: binding.eventKind,
       cueId: binding.cueId,
+      position: binding.position,
     })),
     losses: graph.losses ?? [],
   };

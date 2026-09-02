@@ -1,7 +1,18 @@
+import {
+  addCue,
+  addEventBinding,
+  composite,
+  removeEventBinding,
+  setBlockVariables,
+  setEventBindingCue,
+  setEventBindingOrder,
+} from "@mechane/commands";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import type {
   BlockVariable,
+  EventBinding,
   ImageAssetReference,
+  InteractionOwner,
   ResolvedImageValue,
   ShowId,
   Type,
@@ -15,9 +26,8 @@ import {
 } from "@mechane/domain";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import type { CanvasArtboardDocument } from "../../../../api/canvas";
 
-import { setBlockVariables } from "@mechane/commands";
+import type { CanvasArtboardDocument } from "../../../../api/canvas";
 import { useCanvasWorkspace } from "../../../../api/canvas";
 import { resolveApiUrl } from "../../../../api/client";
 import { useImageAssets, useImageUpload } from "../../../../api/images";
@@ -124,6 +134,8 @@ function useBlockVariableEditing(
   }, [focused, graphEditing]);
 }
 
+// This route intentionally coordinates the graph, Canvas, persistence, and inspector lifecycles.
+// react-doctor-disable-next-line no-giant-component
 function CanvasWorkspaceRoute() {
   const params = Route.useParams();
   const showId: ShowId | null = isId("show", params.showId) ? params.showId : null;
@@ -156,6 +168,72 @@ function CanvasWorkspaceRoute() {
     undoHistory.record("graph");
     save.enqueue(edits);
   });
+  const createCue = useCallback(
+    (owner: InteractionOwner) => {
+      graphEditing.command.commands.execute(
+        addCue({
+          id: generateId("cue"),
+          name: "New cue",
+          owner,
+          actionIds: [],
+        }),
+      );
+    },
+    [graphEditing.command.commands],
+  );
+  const focusCue = useCallback(
+    (_cueId: string) => {
+      if (showId) void navigate({ to: "/shows/$showId", params: { showId } });
+    },
+    [navigate, showId],
+  );
+  const createBinding = useCallback(
+    (binding: EventBinding) => {
+      graphEditing.command.commands.execute(addEventBinding(binding));
+    },
+    [graphEditing.command.commands],
+  );
+  const changeBindingCue = useCallback(
+    (bindingId: string, cueId: string) => {
+      graphEditing.command.commands.execute(setEventBindingCue(bindingId, cueId));
+    },
+    [graphEditing.command.commands],
+  );
+  const removeBinding = useCallback(
+    (bindingId: string) => {
+      graphEditing.command.commands.execute(removeEventBinding(bindingId));
+    },
+    [graphEditing.command.commands],
+  );
+  const reorderBindings = useCallback(
+    (bindingIds: readonly string[]) => {
+      graphEditing.command.commands.execute(setEventBindingOrder(bindingIds));
+    },
+    [graphEditing.command.commands],
+  );
+  const removeElements = useCallback(
+    (canvasId: string, elementIds: readonly string[]) => {
+      const selectedElementIds = new Set(elementIds);
+      const bindingIds: string[] = [];
+      for (const binding of graphEditing.command.graph.eventBindings ?? []) {
+        if (binding.canvasId === canvasId && selectedElementIds.has(binding.elementId)) {
+          bindingIds.push(binding.id);
+        }
+      }
+      undoHistory.link(() => {
+        if (bindingIds.length > 0) {
+          graphEditing.command.commands.execute(
+            composite({
+              label: "Remove Element interactions",
+              commands: bindingIds.map((bindingId) => removeEventBinding(bindingId)),
+            }),
+          );
+        }
+        canvasCommands.removeElements(canvasId, elementIds);
+      });
+    },
+    [canvasCommands, graphEditing.command.commands, graphEditing.command.graph, undoHistory],
+  );
   const undoStacks = useMemo(
     () => ({ graph: graphEditing.command.commands, canvas: canvasCommands }),
     [canvasCommands, graphEditing.command.commands],
@@ -326,6 +404,15 @@ function CanvasWorkspaceRoute() {
       onPlaceBlock={placeBlock}
       onCreateBlockFromDrag={createBlockFromDrag}
       onCreateBlockFromSelection={createBlock}
+      cues={graphEditing.command.graph.cues ?? []}
+      actions={graphEditing.command.graph.actions ?? []}
+      eventBindings={graphEditing.command.graph.eventBindings ?? []}
+      onCreateCue={createCue}
+      onFocusCue={focusCue}
+      onSetEventBindingCue={changeBindingCue}
+      onCreateEventBinding={createBinding}
+      onRemoveEventBinding={removeBinding}
+      onReorderEventBindings={reorderBindings}
       shapes={graphEditing.command.graph.shapes ?? []}
       deviceQrImages={deviceQrImages}
       imageAssets={imageAssets.data ?? []}
@@ -345,7 +432,7 @@ function CanvasWorkspaceRoute() {
       onMoveElementBetweenCanvases={canvasCommands.moveElementBetweenCanvases}
       onUpdateElement={canvasCommands.updateElement}
       onUpdateElements={canvasCommands.updateElements}
-      onDeleteElements={canvasCommands.removeElements}
+      onDeleteElements={removeElements}
       onRenameArtboard={renameArtboard}
     />
   );

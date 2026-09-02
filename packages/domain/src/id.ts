@@ -45,8 +45,10 @@ export const ID_PREFIXES = {
   edge: "e",
   run: "n",
   shapeInstance: "x",
+  cue: "q",
+  action: "j",
+  eventBinding: "k",
 } as const;
-
 export type EntityName = keyof typeof ID_PREFIXES;
 export type IdPrefix = (typeof ID_PREFIXES)[EntityName];
 
@@ -68,8 +70,10 @@ const ENTITY_BY_PREFIX = {
   e: "edge",
   n: "run",
   x: "shapeInstance",
+  q: "cue",
+  j: "action",
+  k: "eventBinding",
 } as const satisfies Record<IdPrefix, EntityName>;
-
 // ...and this asserts the other direction: every entity is reachable from
 // some prefix. Together the two make `ID_PREFIXES` a proven bijection.
 type _EveryEntityHasItsOwnPrefix = (typeof ENTITY_BY_PREFIX)[IdPrefix] extends EntityName
@@ -100,6 +104,9 @@ export type ShapeInstanceId = Id<"shapeInstance">;
 export type DeviceId = Id<"device">;
 export type VariableId = Id<"variable">;
 export type EdgeId = Id<"edge">;
+export type CueId = Id<"cue">;
+export type ActionId = Id<"action">;
+export type EventBindingId = Id<"eventBinding">;
 
 export class InvalidIdError extends Error {
   constructor(entity: EntityName, reason: string) {

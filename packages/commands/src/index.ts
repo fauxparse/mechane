@@ -24,3 +24,4 @@ export * from "./canvas-edit-codec";
 export * from "./canvas-commands";
 export * from "./block-extraction";
 export * from "./stack";
+export * from "./interaction-commands";

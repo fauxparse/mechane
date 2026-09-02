@@ -794,7 +794,7 @@ export const canvasElements = pgTable(
 );
 // Interaction definitions are graph-scoped and copied with draft/published
 // graph state. Actions are normalized rows so their ownership and order are
-// visible to Postgres; Event Bindings point at Scene Canvas Elements.
+// visible to Postgres; Event Bindings point at Canvas Elements.
 export const graphCues = pgTable(
   "graph_cues",
   {
@@ -802,7 +802,8 @@ export const graphCues = pgTable(
     graphId: text("graph_id")
       .notNull()
       .references(() => showGraphs.id, { onDelete: "cascade" }),
-    sceneId: text("scene_id").notNull(),
+    sceneId: text("scene_id"),
+    blockId: text("block_id"),
     name: text("name").notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -810,11 +811,21 @@ export const graphCues = pgTable(
   (table) => [
     primaryKey({ columns: [table.graphId, table.id] }),
     unique("graph_cues_scene_name_unique").on(table.graphId, table.sceneId, table.name),
+    unique("graph_cues_block_name_unique").on(table.graphId, table.blockId, table.name),
     foreignKey({
       name: "graph_cues_scene_fk",
       columns: [table.graphId, table.sceneId],
       foreignColumns: [graphNodes.graphId, graphNodes.id],
     }).onDelete("cascade"),
+    foreignKey({
+      name: "graph_cues_block_fk",
+      columns: [table.graphId, table.blockId],
+      foreignColumns: [blocks.graphId, blocks.id],
+    }).onDelete("cascade"),
+    check(
+      "graph_cues_exactly_one_owner",
+      sql`(${table.sceneId} is not null) <> (${table.blockId} is not null)`,
+    ),
   ],
 );
 
@@ -861,16 +872,17 @@ export const graphEventBindings = pgTable(
     elementId: text("element_id").notNull(),
     eventKind: text("event_kind").notNull(),
     cueId: text("cue_id").notNull(),
+    position: integer("position").notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => [
     primaryKey({ columns: [table.graphId, table.id] }),
-    unique("graph_event_bindings_element_event_unique").on(
+    unique("graph_event_bindings_element_position_unique").on(
       table.graphId,
       table.canvasId,
       table.elementId,
-      table.eventKind,
+      table.position,
     ),
     foreignKey({
       name: "graph_event_bindings_cue_fk",

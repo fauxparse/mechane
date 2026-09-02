@@ -2,8 +2,12 @@ import type { ImageInputOnUploadProps } from "@mechane/design-system";
 
 import type { NewElement } from "@mechane/commands";
 import type {
+  Action,
   Block,
+  Cue,
+  EventBinding,
   ImageAssetReference,
+  InteractionOwner,
   Position,
   ResolvedImageValue,
   SceneVariable,
@@ -93,6 +97,15 @@ export interface CanvasWorkspaceEditorProps {
   deviceQrImages?: Readonly<Record<string, DeviceQrImage>>;
   onImageUpload?(props: ImageInputOnUploadProps): void;
   onDeleteElements?(canvasId: string, elementIds: readonly string[]): void;
+  cues?: readonly Cue[];
+  actions?: readonly Action[];
+  eventBindings?: readonly EventBinding[];
+  onCreateCue?(owner: InteractionOwner): void;
+  onFocusCue?(cueId: string): void;
+  onSetEventBindingCue?(bindingId: string, cueId: string): void;
+  onCreateEventBinding?(binding: EventBinding): void;
+  onRemoveEventBinding?(bindingId: string): void;
+  onReorderEventBindings?(bindingIds: readonly string[]): void;
   onRenameArtboard?(artId: string, name: string): void;
 }
 export interface CanvasArtboardDimensions {

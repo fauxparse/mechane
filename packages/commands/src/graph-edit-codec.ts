@@ -30,9 +30,12 @@
 //     a `BAD_USER_INPUT` GraphQLError; nothing here imports GraphQL.
 
 import type {
+  Action,
   Block,
   BlockVariable,
+  Cue,
   EdgeLayout,
+  EventBinding,
   FlowColor,
   GraphEdge,
   GraphNode,
@@ -84,6 +87,19 @@ import {
   setSourceType,
   setWiringFieldMapping,
 } from "./graph-commands";
+import {
+  addCue,
+  addEventBinding,
+  addNavigateAction,
+  removeAction,
+  removeCue,
+  removeEventBinding,
+  renameCue,
+  setCueActionOrder,
+  setEventBindingCue,
+  setEventBindingOrder,
+  setNavigateTarget,
+} from "./interaction-commands";
 import type { ShowGraphCommand } from "./graph-commands";
 import type { GraphEdit } from "./graph-edits";
 
@@ -166,6 +182,30 @@ export interface FlatShape {
   name: string;
   fields: FlatShapeField[];
 }
+export interface FlatCue {
+  id: string;
+  name: string;
+  ownerKind: string;
+  sceneId?: string | null;
+  blockId?: string | null;
+  actionIds: string[];
+}
+
+export interface FlatAction {
+  id: string;
+  cueId: string;
+  kind: string;
+  targetSceneId?: string | null;
+}
+
+export interface FlatEventBinding {
+  id: string;
+  canvasId: string;
+  elementId: string;
+  eventKind: string;
+  cueId: string;
+  position: number;
+}
 
 /** One edit as a flat record: the shape both adapters exchange. */
 export interface FlatGraphEdit {
@@ -202,6 +242,15 @@ export interface FlatGraphEdit {
   blockVariables?: FlatBlockVariable[] | null;
   perConnection?: boolean | null;
   block?: Block | null;
+  cue?: FlatCue | null;
+  action?: FlatAction | null;
+  binding?: FlatEventBinding | null;
+  actionId?: string | null;
+  bindingId?: string | null;
+  bindingIds?: string[] | null;
+  cueId?: string | null;
+  targetSceneId?: string | null;
+  actionIds?: string[] | null;
   /** Server → client only (#111); see the header note on direction. */
   pairingCode?: string | null;
 }
@@ -468,6 +517,121 @@ export function encodeEdge(edge: GraphEdge): FlatGraphEdge {
     cueId: edge.kind === "navigate" ? edge.cueId : null,
     actionId: edge.kind === "navigate" ? edge.actionId : null,
   };
+}
+function encodeCue(cue: Cue): FlatCue {
+  return {
+    id: cue.id,
+    name: cue.name,
+    ownerKind: cue.owner.kind,
+    ...(cue.owner.kind === "scene"
+      ? { sceneId: cue.owner.sceneId, blockId: null }
+      : { sceneId: null, blockId: cue.owner.blockId }),
+    actionIds: [...cue.actionIds],
+  };
+}
+
+function decodeCue(flat: FlatCue): Cue {
+  if (
+    !flat ||
+    typeof flat.id !== "string" ||
+    typeof flat.name !== "string" ||
+    !Array.isArray(flat.actionIds) ||
+    flat.actionIds.some((id) => typeof id !== "string")
+  ) {
+    throw new GraphEditCodecError("A Cue edit needs a valid cue.");
+  }
+  if (flat.ownerKind === "scene" && typeof flat.sceneId === "string" && flat.sceneId.length > 0) {
+    return {
+      id: flat.id,
+      name: flat.name,
+      owner: { kind: "scene", sceneId: flat.sceneId },
+      actionIds: [...flat.actionIds],
+    };
+  }
+  if (flat.ownerKind === "block" && typeof flat.blockId === "string" && flat.blockId.length > 0) {
+    return {
+      id: flat.id,
+      name: flat.name,
+      owner: { kind: "block", blockId: flat.blockId },
+      actionIds: [...flat.actionIds],
+    };
+  }
+  throw new GraphEditCodecError(`Cue "${flat.id}" needs exactly one valid owner.`);
+}
+
+function encodeAction(action: Action): FlatAction {
+  return {
+    id: action.id,
+    cueId: action.cueId,
+    kind: action.kind,
+    targetSceneId: action.targetSceneId,
+  };
+}
+
+function decodeAction(flat: FlatAction): Action {
+  if (
+    !flat ||
+    flat.kind !== "navigate" ||
+    typeof flat.id !== "string" ||
+    typeof flat.cueId !== "string" ||
+    typeof flat.targetSceneId !== "string" ||
+    flat.targetSceneId.length === 0
+  ) {
+    throw new GraphEditCodecError("An Action edit needs a valid Navigate Action.");
+  }
+  return {
+    id: flat.id,
+    cueId: flat.cueId,
+    kind: "navigate",
+    targetSceneId: flat.targetSceneId,
+  };
+}
+
+function encodeEventBinding(binding: EventBinding): FlatEventBinding {
+  return {
+    id: binding.id,
+    canvasId: binding.canvasId,
+    elementId: binding.elementId,
+    eventKind: binding.eventKind,
+    cueId: binding.cueId,
+    position: binding.position,
+  };
+}
+
+function decodeEventBinding(flat: FlatEventBinding): EventBinding {
+  if (
+    !flat ||
+    typeof flat.id !== "string" ||
+    typeof flat.canvasId !== "string" ||
+    typeof flat.elementId !== "string" ||
+    flat.eventKind !== "tap" ||
+    typeof flat.cueId !== "string" ||
+    !Number.isInteger(flat.position) ||
+    flat.position < 0
+  ) {
+    throw new GraphEditCodecError(
+      "An Event Binding edit needs a valid tap Binding with a position.",
+    );
+  }
+  return {
+    id: flat.id,
+    canvasId: flat.canvasId,
+    elementId: flat.elementId,
+    eventKind: "tap",
+    cueId: flat.cueId,
+    position: flat.position,
+  };
+}
+
+function decodeEventBindingOrder(flat: FlatGraphEdit): string[] {
+  if (
+    !Array.isArray(flat.bindingIds) ||
+    flat.bindingIds.length === 0 ||
+    flat.bindingIds.some((bindingId) => typeof bindingId !== "string" || bindingId.length === 0)
+  ) {
+    throw new GraphEditCodecError("An Event Binding order edit needs binding IDs.");
+  }
+  return [...flat.bindingIds];
 }
 
 export function decodeEdge(flat: FlatGraphEdge): GraphEdge {
@@ -974,6 +1138,102 @@ export const GRAPH_EDIT_CODECS: { [T in GraphEdit["type"]]: GraphEditCodec<T> } 
     decode: (flat) => ({
       type: GRAPH_COMMAND_TYPES.removeBlock,
       blockId: required(flat, "blockId", flat.blockId),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.addCue]: {
+    command: (edit) => addCue(edit.cue),
+    encode: (edit) => ({ type: edit.type, cue: encodeCue(edit.cue) }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.addCue,
+      cue: decodeCue(required(flat, "cue", flat.cue)),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.renameCue]: {
+    command: (edit) => renameCue(edit.cueId, edit.name),
+    encode: (edit) => ({ type: edit.type, cueId: edit.cueId, name: edit.name }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.renameCue,
+      cueId: required(flat, "cueId", flat.cueId),
+      name: required(flat, "name", flat.name),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.setCueActionOrder]: {
+    command: (edit) => setCueActionOrder(edit.cueId, edit.actionIds),
+    encode: (edit) => ({ type: edit.type, cueId: edit.cueId, actionIds: [...edit.actionIds] }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.setCueActionOrder,
+      cueId: required(flat, "cueId", flat.cueId),
+      actionIds: required(flat, "actionIds", flat.actionIds),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.removeCue]: {
+    command: (edit) => removeCue(edit.cueId),
+    encode: (edit) => ({ type: edit.type, cueId: edit.cueId }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.removeCue,
+      cueId: required(flat, "cueId", flat.cueId),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.addNavigateAction]: {
+    command: (edit) => addNavigateAction(edit.action),
+    encode: (edit) => ({ type: edit.type, action: encodeAction(edit.action) }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.addNavigateAction,
+      action: decodeAction(required(flat, "action", flat.action)),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.setNavigateTarget]: {
+    command: (edit) => setNavigateTarget(edit.actionId, edit.targetSceneId),
+    encode: (edit) => ({
+      type: edit.type,
+      actionId: edit.actionId,
+      targetSceneId: edit.targetSceneId,
+    }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.setNavigateTarget,
+      actionId: required(flat, "actionId", flat.actionId),
+      targetSceneId: required(flat, "targetSceneId", flat.targetSceneId),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.removeAction]: {
+    command: (edit) => removeAction(edit.actionId),
+    encode: (edit) => ({ type: edit.type, actionId: edit.actionId }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.removeAction,
+      actionId: required(flat, "actionId", flat.actionId),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.addEventBinding]: {
+    command: (edit) => addEventBinding(edit.binding),
+    encode: (edit) => ({ type: edit.type, binding: encodeEventBinding(edit.binding) }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.addEventBinding,
+      binding: decodeEventBinding(required(flat, "binding", flat.binding)),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.setEventBindingCue]: {
+    command: (edit) => setEventBindingCue(edit.bindingId, edit.cueId),
+    encode: (edit) => ({ type: edit.type, bindingId: edit.bindingId, cueId: edit.cueId }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.setEventBindingCue,
+      bindingId: required(flat, "bindingId", flat.bindingId),
+      cueId: required(flat, "cueId", flat.cueId),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.setEventBindingOrder]: {
+    command: (edit) => setEventBindingOrder(edit.bindingIds),
+    encode: (edit) => ({ type: edit.type, bindingIds: [...edit.bindingIds] }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.setEventBindingOrder,
+      bindingIds: decodeEventBindingOrder(flat),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.removeEventBinding]: {
+    command: (edit) => removeEventBinding(edit.bindingId),
+    encode: (edit) => ({ type: edit.type, bindingId: edit.bindingId }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.removeEventBinding,
+      bindingId: required(flat, "bindingId", flat.bindingId),
     }),
   },
 };

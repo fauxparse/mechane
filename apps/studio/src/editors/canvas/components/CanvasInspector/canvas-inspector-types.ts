@@ -1,11 +1,21 @@
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
-import type { Block, Element, SceneVariable, Shape } from "@mechane/domain";
+import type {
+  Action,
+  Block,
+  Cue,
+  Element,
+  EventBinding,
+  InteractionOwner,
+  SceneVariable,
+  Shape,
+} from "@mechane/domain";
 import type { ImageAsset } from "@mechane/graphql-schema";
 
-import type { VariableInspectorEditing } from "../../../../components/VariableInspector";
 import type { CanvasArtboardDocument } from "../../../../api/canvas";
+import type { VariableInspectorEditing } from "../../../../components/VariableInspector";
 import type { DeviceQrImage } from "../../canvas-workspace-types";
 import type { CanvasSelection } from "../canvas-selection";
+
 export type CanvasInspectorPreview = {
   elementId: string;
   x?: number;
@@ -32,9 +42,18 @@ export type CanvasInspectorProps = {
   variables?: readonly SceneVariable[];
   blocks?: readonly Block[];
   shapes?: readonly Shape[];
+  cues?: readonly Cue[];
+  actions?: readonly Action[];
+  eventBindings?: readonly EventBinding[];
   imageAssets?: readonly ImageAsset[];
   deviceQrImages?: Readonly<Record<string, DeviceQrImage>>;
   onImageUpload?(props: ImageInputOnUploadProps): void;
+  onCreateCue?(owner: InteractionOwner): void;
+  onFocusCue?(cueId: string): void;
+  onSetEventBindingCue?(bindingId: string, cueId: string): void;
+  onCreateEventBinding?(binding: EventBinding): void;
+  onRemoveEventBinding?(bindingId: string): void;
+  onReorderEventBindings?(bindingIds: readonly string[]): void;
   inspectorPreview?: CanvasInspectorPreview | null;
   currentDimensions?: CanvasInspectorDimensions | null;
   blockVariableEditing?: VariableInspectorEditing;
@@ -54,6 +73,7 @@ export type CanvasInspectorProps = {
     }[],
   ): void;
 };
+
 export type CanvasInspectorModel = {
   focused: CanvasArtboardDocument | null;
   target: Element;
@@ -62,9 +82,18 @@ export type CanvasInspectorModel = {
   blocks: readonly Block[];
   variables: readonly SceneVariable[];
   shapes: readonly Shape[];
-  imageAssets: readonly ImageAsset[];
+  cues?: readonly Cue[];
+  actions?: readonly Action[];
+  eventBindings?: readonly EventBinding[];
   deviceQrImages: Readonly<Record<string, DeviceQrImage>>;
+  imageAssets: readonly ImageAsset[];
   onImageUpload?(props: ImageInputOnUploadProps): void;
+  onCreateCue?(owner: InteractionOwner): void;
+  onFocusCue?(cueId: string): void;
+  onSetEventBindingCue?(bindingId: string, cueId: string): void;
+  onCreateEventBinding?(binding: EventBinding): void;
+  onRemoveEventBinding?(bindingId: string): void;
+  onReorderEventBindings?(bindingIds: readonly string[]): void;
   onRenameArtboard?(artId: string, name: string): void;
   blockVariableEditing?: VariableInspectorEditing;
   fontFamilies: readonly string[];
