@@ -67,8 +67,14 @@ function segments(points: readonly Point[]): Segment[] {
 
 /** Whether an axis-aligned segment passes through the interior of `rect`. */
 function crosses(segment: Segment, rect: Rect): boolean {
-  const low = { x: Math.min(segment.from.x, segment.to.x), y: Math.min(segment.from.y, segment.to.y) };
-  const high = { x: Math.max(segment.from.x, segment.to.x), y: Math.max(segment.from.y, segment.to.y) };
+  const low = {
+    x: Math.min(segment.from.x, segment.to.x),
+    y: Math.min(segment.from.y, segment.to.y),
+  };
+  const high = {
+    x: Math.max(segment.from.x, segment.to.x),
+    y: Math.max(segment.from.y, segment.to.y),
+  };
   return (
     high.x > rect.x + 0.01 &&
     low.x < rect.x + rect.width - 0.01 &&

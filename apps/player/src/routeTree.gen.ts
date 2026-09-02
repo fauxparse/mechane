@@ -8,70 +8,70 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as SCodeRouteImport } from './routes/s/$code'
+import { Route as rootRouteImport } from "./routes/__root";
+import { Route as IndexRouteImport } from "./routes/index";
+import { Route as SCodeRouteImport } from "./routes/s/$code";
 
 const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const SCodeRoute = SCodeRouteImport.update({
-  id: '/s/$code',
-  path: '/s/$code',
+  id: "/s/$code",
+  path: "/s/$code",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/s/$code': typeof SCodeRoute
+  "/": typeof IndexRoute;
+  "/s/$code": typeof SCodeRoute;
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/s/$code': typeof SCodeRoute
+  "/": typeof IndexRoute;
+  "/s/$code": typeof SCodeRoute;
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/s/$code': typeof SCodeRoute
+  __root__: typeof rootRouteImport;
+  "/": typeof IndexRoute;
+  "/s/$code": typeof SCodeRoute;
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/s/$code'
-  fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/s/$code'
-  id: '__root__' | '/' | '/s/$code'
-  fileRoutesById: FileRoutesById
+  fileRoutesByFullPath: FileRoutesByFullPath;
+  fullPaths: "/" | "/s/$code";
+  fileRoutesByTo: FileRoutesByTo;
+  to: "/" | "/s/$code";
+  id: "__root__" | "/" | "/s/$code";
+  fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  SCodeRoute: typeof SCodeRoute
+  IndexRoute: typeof IndexRoute;
+  SCodeRoute: typeof SCodeRoute;
 }
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/s/$code': {
-      id: '/s/$code'
-      path: '/s/$code'
-      fullPath: '/s/$code'
-      preLoaderRoute: typeof SCodeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+    "/": {
+      id: "/";
+      path: "/";
+      fullPath: "/";
+      preLoaderRoute: typeof IndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/s/$code": {
+      id: "/s/$code";
+      path: "/s/$code";
+      fullPath: "/s/$code";
+      preLoaderRoute: typeof SCodeRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SCodeRoute: SCodeRoute,
-}
+};
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();

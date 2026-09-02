@@ -231,8 +231,7 @@ function solveFacingRight(
   const { margin, obstacles, previousDetour } = options;
 
   const sourceRight = source.rect.x + source.rect.width;
-  const gap =
-    relative === 2 ? target.rect.x - sourceRight : Number.POSITIVE_INFINITY;
+  const gap = relative === 2 ? target.rect.x - sourceRight : Number.POSITIVE_INFINITY;
   const m = effectiveMargin(gap, margin);
 
   const s: Point = { x: source.point.x + m, y: source.point.y };
@@ -280,15 +279,7 @@ function opposing(
 ): Point[] {
   if (t.x - s.x >= -EPSILON) {
     const midpoint = (s.x + t.x) / 2;
-    const x = nudgeClear(
-      midpoint,
-      s.y,
-      t.y,
-      obstacles,
-      { lower: s.x, upper: t.x },
-      margin,
-      "x",
-    );
+    const x = nudgeClear(midpoint, s.y, t.y, obstacles, { lower: s.x, upper: t.x }, margin, "x");
     return [s, { x, y: s.y }, { x, y: t.y }, t];
   }
 
@@ -420,7 +411,9 @@ function fanRoute(points: readonly Point[], fan: number, margin: number): Point[
   if (count >= 3) {
     const index = Math.floor((count - 1) / 2);
     return points.map((point, at) =>
-      at === index || at === index + 1 ? displace(point, points[index], points[index + 1], fan) : point,
+      at === index || at === index + 1
+        ? displace(point, points[index], points[index + 1], fan)
+        : point,
     );
   }
 

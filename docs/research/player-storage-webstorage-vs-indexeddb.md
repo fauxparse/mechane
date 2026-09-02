@@ -9,38 +9,38 @@ Which browser storage mechanism should back Mechanē's per-connection Player sta
 
 ## Headline recommendation
 
-**Web Storage (`localStorage`), one JSON record per connection, behind the storage-module interface #480 defines.** The deciding platform fact is that persistence, eviction, quota-bucket, private-mode, and partitioning semantics are **the same for both APIs by specification** — they are registered endpoints of the same origin-keyed storage bucket. IndexedDB's extra machinery (connections, upgrade transactions, version negotiation) buys atomic multi-record writes and huge/blob values, neither of which this record needs. Everything that argues for IndexedDB is a *growth* condition, not a current requirement; #480's interface keeps the swap cheap.
+**Web Storage (`localStorage`), one JSON record per connection, behind the storage-module interface #480 defines.** The deciding platform fact is that persistence, eviction, quota-bucket, private-mode, and partitioning semantics are **the same for both APIs by specification** — they are registered endpoints of the same origin-keyed storage bucket. IndexedDB's extra machinery (connections, upgrade transactions, version negotiation) buys atomic multi-record writes and huge/blob values, neither of which this record needs. Everything that argues for IndexedDB is a _growth_ condition, not a current requirement; #480's interface keeps the swap cheap.
 
 ## The decisive platform fact: one bucket, shared fate
 
 The WHATWG [Storage Standard](https://storage.spec.whatwg.org/) registers both APIs as endpoints of the **same** origin-keyed shelf and bucket:
 
-| Identifier           | Type      | Quota                            |
-| -------------------- | --------- | -------------------------------- |
-| `indexedDB`          | « local » | null (bound by shelf quota)      |
-| `localStorage`       | « local » | 5 × 2²⁰ (i.e., 5 mebibytes)      |
+| Identifier     | Type      | Quota                       |
+| -------------- | --------- | --------------------------- |
+| `indexedDB`    | « local » | null (bound by shelf quota) |
+| `localStorage` | « local » | 5 × 2²⁰ (i.e., 5 mebibytes) |
 
 - Both default to a bucket whose "mode … is `'best-effort'` or `'persistent'`. It is initially `'best-effort'`" ([Storage Standard §4.5](https://storage.spec.whatwg.org/#buckets)).
 - Eviction is all-or-nothing per origin, hitting both APIs together: "Whenever a storage bucket is cleared by the user agent, it must be cleared in its entirety" ([§7 Management](https://storage.spec.whatwg.org/#management)); "when an origin's data is evicted by the browser, all of its data, not parts of it, is deleted at the same time. If the origin had stored data by using IndexedDB and the Cache API for example, then both types of data are deleted" ([MDN](https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria)).
 - Under storage pressure, LRU evicts best-effort origins whole ([Storage Standard §7.1](https://storage.spec.whatwg.org/#storage-pressure); [WebKit: "the data of an origin will be deleted as a whole … least-recently-used policy"](https://webkit.org/blog/14403/updates-to-storage-policy/)). Chrome's team reports data "is very rarely cleared automatically by Chrome. It is far more common for users to manually clear storage" ([web.dev](https://web.dev/articles/persistent-storage)).
-- `navigator.storage.persist()` upgrades the *whole bucket* and protects "DOM Storage (Local Storage)" and IndexedDB alike ([web.dev](https://web.dev/articles/persistent-storage)); granted by heuristic in Chrome (installed/bookmarked/engagement), by user prompt in Firefox, and in WebKit "based on heuristics like whether the website is opened as a Home Screen Web App" ([WebKit](https://webkit.org/blog/14403/updates-to-storage-policy/)).
+- `navigator.storage.persist()` upgrades the _whole bucket_ and protects "DOM Storage (Local Storage)" and IndexedDB alike ([web.dev](https://web.dev/articles/persistent-storage)); granted by heuristic in Chrome (installed/bookmarked/engagement), by user prompt in Firefox, and in WebKit "based on heuristics like whether the website is opened as a Home Screen Web App" ([WebKit](https://webkit.org/blog/14403/updates-to-storage-policy/)).
 
 So **choosing IndexedDB buys zero extra durability for Player state**, and choosing localStorage loses none. The differences that remain are API-shape differences: quota ceiling, value types, transactionality, sync/async.
 
 ## Comparison
 
-| Dimension | Web Storage (`localStorage`) | IndexedDB |
-| --- | --- | --- |
-| Persistence & eviction | Best-effort bucket; LRU eviction per origin; Safari ITP 7-day cap | Identical bucket semantics; same cap |
-| Quota | 5 MiB/origin (spec-recommended); UTF-16 code units | ~60% of disk (Chrome, Safari 17+ browser apps), ~10%/10 GiB (Firefox best-effort) |
-| Value shape | `DOMString` only; JSON-encode | Any structured-clone value incl. `Blob`, `File`, `Date`, binary keys |
-| Atomicity | Per-key atomic; no multi-key transaction; spec warns "no locking mechanism" | Transactions are "an atomic and durable set of data access and data mutation operations" |
-| Cross-tab | `storage` event to other same-origin documents; last-write-wins | Transactions with overlapping scope serialize; version upgrades can `block` on open tabs |
-| Bootstrap | Synchronous `getItem` at first render; no schema ceremony | Async `open()` + `upgradeneeded` version negotiation before any read |
-| Failure mode | Synchronous `QuotaExceededError` throw at `setItem` | Async transaction abort (`QuotaExceededError`/`UnknownError`) |
-| Private mode | In-memory, cleared at session end (per-tab ephemeral in Safari) | Identical |
-| Available in workers | No (`[Exposed=Window]`) | Yes |
-| Test cost (this repo) | Trivial fake; Playwright seeds via base `storageState` | Needs `fake-indexeddb` or injection; Playwright snapshot opt-in (v1.51+) |
+| Dimension              | Web Storage (`localStorage`)                                                | IndexedDB                                                                                |
+| ---------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Persistence & eviction | Best-effort bucket; LRU eviction per origin; Safari ITP 7-day cap           | Identical bucket semantics; same cap                                                     |
+| Quota                  | 5 MiB/origin (spec-recommended); UTF-16 code units                          | ~60% of disk (Chrome, Safari 17+ browser apps), ~10%/10 GiB (Firefox best-effort)        |
+| Value shape            | `DOMString` only; JSON-encode                                               | Any structured-clone value incl. `Blob`, `File`, `Date`, binary keys                     |
+| Atomicity              | Per-key atomic; no multi-key transaction; spec warns "no locking mechanism" | Transactions are "an atomic and durable set of data access and data mutation operations" |
+| Cross-tab              | `storage` event to other same-origin documents; last-write-wins             | Transactions with overlapping scope serialize; version upgrades can `block` on open tabs |
+| Bootstrap              | Synchronous `getItem` at first render; no schema ceremony                   | Async `open()` + `upgradeneeded` version negotiation before any read                     |
+| Failure mode           | Synchronous `QuotaExceededError` throw at `setItem`                         | Async transaction abort (`QuotaExceededError`/`UnknownError`)                            |
+| Private mode           | In-memory, cleared at session end (per-tab ephemeral in Safari)             | Identical                                                                                |
+| Available in workers   | No (`[Exposed=Window]`)                                                     | Yes                                                                                      |
+| Test cost (this repo)  | Trivial fake; Playwright seeds via base `storageState`                      | Needs `fake-indexeddb` or injection; Playwright snapshot opt-in (v1.51+)                 |
 
 ## Evidence by dimension
 
@@ -54,7 +54,7 @@ Both APIs are origin-scoped and shared across all same-origin tabs within one br
 
 Cross-tab, the two differ in kind:
 
-- `localStorage` mutations "dispatch a `storage` event on `Window` objects holding an equivalent `Storage` object" — i.e., every same-origin tab *except* the writer, with `key`/`oldValue`/`newValue` ([HTML §12.2](https://html.spec.whatwg.org/multipage/webstorage.html#the-storage-interface)). This is a ready-made change-notification channel for the Player key.
+- `localStorage` mutations "dispatch a `storage` event on `Window` objects holding an equivalent `Storage` object" — i.e., every same-origin tab _except_ the writer, with `key`/`oldValue`/`newValue` ([HTML §12.2](https://html.spec.whatwg.org/multipage/webstorage.html#the-storage-interface)). This is a ready-made change-notification channel for the Player key.
 - IndexedDB has no change events; instead, cross-tab interactions surface during **version upgrades**: `open()` with a higher version fires `versionchange` at other connections and "will be blocked until they all close" ([IndexedDB 3.0 §4.3](https://w3c.github.io/IndexedDB/#dom-idbfactory-open)). A stale tab that ignores `onversionchange` wedges the upgrade mid-show — a failure mode `localStorage` simply does not have.
 
 ### Atomicity and concurrency
@@ -62,7 +62,7 @@ Cross-tab, the two differ in kind:
 - Web Storage: each `setItem` is atomic for one key (single map-set step in the [spec algorithm](https://html.spec.whatwg.org/multipage/webstorage.html#the-storage-interface)), and identical writes are no-ops. But there is explicitly no multi-key or cross-agent transactionality: "This specification does not define the interaction with other agent clusters in a multiprocess user agent, and authors are encouraged to assume that there is no locking mechanism," illustrated by the spec's own read-increment-write race across two windows ([HTML §12.1](https://html.spec.whatwg.org/multipage/webstorage.html#introduction-16)). Consequence: a read-modify-write of the record across tabs is last-write-wins.
 - IndexedDB: "A transaction represents an atomic and durable set of data access and data mutation operations," and at commit the implementation "must atomically write any changes … either all of the changes must be written, or if an error occurs … the changes are aborted" ([IndexedDB 3.0 §2.7, §2.7.1](https://w3c.github.io/IndexedDB/#transaction-concept)). Transactions with overlapping store scope serialize (3.0 tightened scheduling — [changes](https://w3c.github.io/IndexedDB/#changes)), so get→modify→put inside one `readwrite` transaction is safe even against another tab. Durability hints (`strict`/`relaxed`/`default`) exist per transaction.
 
-This is the one axis where IndexedDB is *stronger* — and it only matters if multiple same-profile tabs concurrently mutate the **same** record. A single-writer-per-connection model (or the `storage` event as a same-tab coordination signal) removes the need.
+This is the one axis where IndexedDB is _stronger_ — and it only matters if multiple same-profile tabs concurrently mutate the **same** record. A single-writer-per-connection model (or the `storage` event as a same-tab coordination signal) removes the need.
 
 ### Supported value shapes
 
@@ -79,7 +79,7 @@ Mechanē's record is navigation state plus Flow-local Source values, which the d
 
 ### Quota and failure behavior
 
-- Web Storage: spec-recommended quota is 5 MiB per origin ([Storage Standard §4.1 table](https://storage.spec.whatwg.org/#storage-endpoints)); "Once this limit is reached, browsers throw a `QuotaExceededError` exception" ([MDN](https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria)). Failure is a synchronous throw at the write site: "If *value* cannot be stored, then throw a `QuotaExceededError`" — covering quota, disabled storage, and policy refusal in one catchable path ([HTML §12.2.1](https://html.spec.whatwg.org/multipage/webstorage.html#the-storage-interface)).
+- Web Storage: spec-recommended quota is 5 MiB per origin ([Storage Standard §4.1 table](https://storage.spec.whatwg.org/#storage-endpoints)); "Once this limit is reached, browsers throw a `QuotaExceededError` exception" ([MDN](https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria)). Failure is a synchronous throw at the write site: "If _value_ cannot be stored, then throw a `QuotaExceededError`" — covering quota, disabled storage, and policy refusal in one catchable path ([HTML §12.2.1](https://html.spec.whatwg.org/multipage/webstorage.html#the-storage-interface)).
 - IndexedDB: shelf-level quota (Chrome ≈60% of disk; Safari 17+ browser apps ≈60%, embedded WebKit apps ≈15%; Firefox ≈10%/10 GiB best-effort — [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria), [WebKit](https://webkit.org/blog/14403/updates-to-storage-policy/)). Quota failures surface asynchronously as transaction aborts "for example a `QuotaExceededError` or an `'UnknownError'` `DOMException`" ([IndexedDB 3.0 commit steps](https://w3c.github.io/IndexedDB/#transaction-concept)).
 - Both APIs can also be unavailable outright: the `localStorage` getter "throws a `SecurityError` … if the `Document`'s origin is an opaque origin or if the request violates a policy decision (e.g., if the user agent is configured to not allow the page to persist data)" ([HTML §12.2.3](https://html.spec.whatwg.org/multipage/webstorage.html#the-localstorage-attribute)); "if the user blocks cookies, browsers will probably interpret this as an instruction to prevent the page from persisting data" ([MDN](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage)).
 
