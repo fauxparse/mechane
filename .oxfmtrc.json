@@ -6,6 +6,7 @@
     "coverage",
     "apps/api/drizzle/**",
     "apps/studio/src/routeTree.gen.ts",
+    "apps/player/src/routeTree.gen.ts",
     "packages/graphql-schema/src/graphql-env.d.ts",
     "packages/graphql-schema/schema.graphql"
   ]
