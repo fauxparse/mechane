@@ -475,6 +475,19 @@ describe("graphToFlow", () => {
       expect(nodes.find((n) => n.id === "flow_1")?.parentId).toBeUndefined();
     });
 
+    // The key has to be *present* and undefined, not missing: ../reconcile-nodes
+    // merges drawn nodes over live ones, so an omitted key would leave a node
+    // that has just left a Flow still pointing at it.
+    it("states a Show-level node's absent parent rather than omitting it", () => {
+      const { nodes } = graphToFlow({
+        nodes: [node({ id: "scene_1", kind: "scene", parentId: null })],
+        edges: [],
+      });
+      const scene = nodes.find((candidate) => candidate.id === "scene_1");
+      expect(scene && "parentId" in scene).toBe(true);
+      expect(scene?.parentId).toBeUndefined();
+    });
+
     // React Flow v11 drops a child whose parent it hasn't seen yet.
     it("orders every Flow ahead of its children", () => {
       const { nodes } = graphToFlow({
@@ -527,40 +540,38 @@ describe("graphToFlow", () => {
       expect(flow?.height).toBe(FLOW_HEADER_HEIGHT);
     });
 
-    it("keeps manual Flow dimensions while expanding for moved children", () => {
-      const manual = { width: 1000, height: 900 };
-      const { nodes } = graphToFlow(
-        {
-          nodes: [
-            node({ id: "flow_1", kind: "flow" }),
-            node({ id: "scene_1", kind: "scene", parentId: "flow_1", position: { x: 40, y: 80 } }),
-          ],
-          edges: [],
-        },
-        { flowDimensions: new Map([["flow_1", manual]]) },
-      );
+    // #508: the box used to grow around whatever position a child had, which
+    // meant it followed the child around mid-drag. The editor now decides the
+    // size and re-fits only when membership changes.
+    it("draws a Flow at the size it is given, wherever the children are", () => {
+      const given = { width: 1000, height: 900 };
+      const at = (position: { x: number; y: number }) =>
+        graphToFlow(
+          {
+            nodes: [
+              node({ id: "flow_1", kind: "flow" }),
+              node({ id: "scene_1", kind: "scene", parentId: "flow_1", position }),
+            ],
+            edges: [],
+          },
+          { flowDimensions: new Map([["flow_1", given]]) },
+        ).nodes.find((candidate) => candidate.id === "flow_1")?.style;
 
-      expect(nodes.find((n) => n.id === "flow_1")?.style).toEqual(manual);
+      expect(at({ x: 40, y: 80 })).toEqual(given);
+      expect(at({ x: 1200, y: 1000 })).toEqual(given);
+    });
 
-      const moved = graphToFlow(
-        {
-          nodes: [
-            node({ id: "flow_1", kind: "flow" }),
-            node({
-              id: "scene_1",
-              kind: "scene",
-              parentId: "flow_1",
-              position: { x: 1200, y: 1000 },
-            }),
-          ],
-          edges: [],
-        },
-        { flowDimensions: new Map([["flow_1", manual]]) },
-      );
-
-      const expanded = moved.nodes.find((n) => n.id === "flow_1")?.style;
-      expect(expanded?.width).toBeGreaterThan(manual.width);
-      expect(expanded?.height).toBeGreaterThan(manual.height);
+    it("falls back to the fit around its children when given no size", () => {
+      const { nodes } = graphToFlow({
+        nodes: [
+          node({ id: "flow_1", kind: "flow" }),
+          node({ id: "scene_1", kind: "scene", parentId: "flow_1", position: { x: 400, y: 300 } }),
+        ],
+        edges: [],
+      });
+      const flow = nodes.find((candidate) => candidate.id === "flow_1");
+      expect(Number(flow?.style?.width)).toBeGreaterThan(400 + NODE_WIDTH);
+      expect(Number(flow?.style?.height)).toBeGreaterThan(300);
     });
   });
 

@@ -32,6 +32,16 @@ describe("reconcileNodes", () => {
     ]);
   });
 
+  // A node whose drawn `parentId` is undefined has left its Flow. Merging
+  // drawn over live must say so, or React Flow keeps dragging it around with
+  // the Flow it is no longer in, and the next drag tries to extract it again.
+  it("clears the parent of a node that has moved out of its Flow", () => {
+    const drawn = [node("scene", { parentId: undefined, position: { x: 900, y: 40 } })];
+    const live = [node("scene", { parentId: "flow", position: { x: 24, y: 74 } })];
+
+    expect(reconcileNodes(drawn, live)[0]?.parentId).toBeUndefined();
+  });
+
   it("keeps a manually resized Flow's live position while redrawing its size", () => {
     const drawn = [
       flowNode("flow", false, {

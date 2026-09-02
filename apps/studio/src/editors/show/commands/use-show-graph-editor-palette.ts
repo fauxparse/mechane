@@ -11,13 +11,13 @@ import { moveIntoFlowDisabledReason, moveOutOfFlowDisabledReason } from "../show
 import { FLOW_CONTENT_ORIGIN } from "../graph/graph-to-flow";
 import type { ShowFlowNode } from "../graph/graph-to-flow";
 import { moveOutPositions } from "../show-graph-layout";
+import type { CreationSite } from "../show-graph-layout";
 
 export interface ShowGraphEditorPaletteOptions {
   commands: GraphCommands;
   selectedNodes: GraphNode[];
   selectedEdgeIds: string[];
-  create(creatable: CreatableNode, at: Position): unknown;
-  centreOfView(): Position;
+  create(creatable: CreatableNode, site: CreationSite): unknown;
   selectAll(): void;
   fitView(options: FitViewOptions): void;
   fitViewOptions: FitViewOptions;
@@ -36,7 +36,6 @@ export function useShowGraphEditorPalette({
   selectedNodes,
   selectedEdgeIds,
   create,
-  centreOfView,
   selectAll,
   fitView,
   fitViewOptions,
@@ -80,7 +79,9 @@ export function useShowGraphEditorPalette({
         label: `Create ${creatable.label}`,
         scope: "canvas" as const,
         icon: creatable.icon,
-        run: () => create(creatable, centreOfView()),
+        // The palette has no pointer, so the selection decides where this
+        // lands: inside the selected Flow, or clear of every Flow (#508).
+        run: () => create(creatable, { from: "selection" }),
       })),
       {
         id: "select-all",
@@ -123,7 +124,7 @@ export function useShowGraphEditorPalette({
         run: () => {
           const flow = selectedNodes.find((node) => node.kind === "flow");
           const nodeIds = selectedNodes.reduce<string[]>((ids, node) => {
-            if (node.kind !== "flow") ids.push(node.id);
+            if (node.kind !== "flow" && node.parentId !== flow?.id) ids.push(node.id);
             return ids;
           }, []);
           if (flow && nodeIds.length > 0)
@@ -161,7 +162,6 @@ export function useShowGraphEditorPalette({
       },
     ];
   }, [
-    centreOfView,
     commands.canRedo,
     commands.canUndo,
     commands.redo,

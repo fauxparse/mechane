@@ -23,6 +23,8 @@ import { useUndoKeys } from "../keyboard/use-undo-keys";
 import { useViewportKeys } from "../keyboard/use-viewport-keys";
 import { useShowGraphEditorActions } from "./use-show-graph-editor-actions";
 import { useFitViewOptions, useInitialFrame } from "../graph/use-fit-view-options";
+import { effectiveFlowDimensions, fitFlows } from "../show-graph-layout";
+import type { FittedFlow } from "../show-graph-layout";
 import { useShowGraphEditorPalette } from "./use-show-graph-editor-palette";
 import { MESSAGE_MS } from "../show-graph-editor-constants";
 import type { ShowGraphEditorProps } from "../ShowGraphEditor";
@@ -77,8 +79,23 @@ export function useShowGraphEditorController({
   const { command, gestures, creation, deletion, connections, variables } = editing;
   const { commands } = command;
   const [collapsedFlowIds, setCollapsedFlowIds] = useState<Set<string>>(() => new Set());
-  const [flowDimensions, setFlowDimensions] = useState<Map<string, FlowDimensions>>(
+  // A Flow's size has two inputs, kept apart on purpose (#508). `fitted` is
+  // the fit around its children, recomputed only when its membership changes,
+  // so dragging a child never moves the box. `manual` is what the director
+  // dragged the resize handle to. The drawn size is the larger of the two:
+  // a Flow may be roomier than its contents, never smaller than them.
+  const [fittedFlows, setFittedFlows] = useState<Map<string, FittedFlow>>(() => new Map());
+  const [manualFlowDimensions, setManualFlowDimensions] = useState<Map<string, FlowDimensions>>(
     () => new Map(),
+  );
+  useEffect(() => {
+    // `fitFlows` returns the map it was handed when nothing needs re-fitting,
+    // so this settles rather than looping on every graph edit.
+    setFittedFlows((current) => fitFlows(command.graph, current));
+  }, [command.graph]);
+  const flowDimensions = useMemo(
+    () => effectiveFlowDimensions(fittedFlows, manualFlowDimensions),
+    [fittedFlows, manualFlowDimensions],
   );
   const sourceValues = useMemo(() => defaultSourceValues(command.graph), [command.graph]);
   const drawn = useMemo(
@@ -94,12 +111,14 @@ export function useShowGraphEditorController({
     });
   }, []);
   const resizeFlow = useCallback((flowId: string, dimensions: FlowDimensions) => {
-    setFlowDimensions((current) => {
+    setManualFlowDimensions((current) => {
       const previous = current.get(flowId);
       if (previous?.width === dimensions.width && previous.height === dimensions.height)
         return current;
       const next = new Map(current);
-      next.set(flowId, dimensions);
+      // Only the two fields, copied out: React Flow's resize params also carry
+      // `x`/`y`, and this map is handed to the node as its `style`.
+      next.set(flowId, { width: dimensions.width, height: dimensions.height });
       return next;
     });
   }, []);
@@ -108,7 +127,7 @@ export function useShowGraphEditorController({
   const focusOnArrival = useRef<string | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState(drawn.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(drawn.edges);
-  const manualFlowIds = useMemo(() => new Set(flowDimensions.keys()), [flowDimensions]);
+  const manualFlowIds = useMemo(() => new Set(manualFlowDimensions.keys()), [manualFlowDimensions]);
   const displayNodes = useMemo(
     () =>
       reconcileNodes(drawn.nodes, nodes, {
@@ -268,7 +287,6 @@ export function useShowGraphEditorController({
     selectedNodes,
     selectedEdgeIds,
     create: actions.create,
-    centreOfView: actions.centreOfView,
     selectAll,
     fitView,
     fitViewOptions,
