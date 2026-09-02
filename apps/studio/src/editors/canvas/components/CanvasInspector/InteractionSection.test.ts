@@ -59,14 +59,18 @@ const model: CanvasInspectorModel = {
 };
 
 describe("InteractionSection", () => {
-  it("exposes a keyboard-addressable Cue selector and owner", () => {
+  it("renders the binding controls and add interaction affordance", () => {
     const html = renderToStaticMarkup(
       createElement(CanvasInspectorProvider, { value: model }, createElement(InteractionSection)),
     );
 
+    expect(html).toContain('aria-label="Interaction Event"');
     expect(html).toContain('aria-label="Interaction Cue"');
-    expect(html).toContain("Scene owner · Voting");
+    expect(html).toContain('aria-label="Duplicate Tap interaction"');
+    expect(html).toContain('aria-label="Delete Tap interaction"');
+    expect(html).toContain("Tap");
     expect(html).toContain("Submit vote");
+    expect(html).toContain("Add interaction");
   });
 
   it("does not render for a multi-selection", () => {

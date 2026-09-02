@@ -66,13 +66,13 @@ import {
   sourceTypeAtHandle,
 } from "@mechane/domain";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { sourceLabelFor } from "../graph/source-label";
 import type { SourceTypeChangePlan } from "../graph/inspector/source-type-change";
 import {
   planSourceTypeChange,
   sourceTypeChangeHasImpact,
   sourceTypeChangeSignature,
 } from "../graph/inspector/source-type-change";
+import { sourceLabelFor } from "../graph/source-label";
 
 import type { ApiGraph } from "../data/api-graph";
 import { handleFor, readHandle, type HandleId } from "../graph/handle-ids";
@@ -667,7 +667,7 @@ export function useGraphEditing(
       execute(
         addCue({
           id: generateId("cue"),
-          name: "New Cue",
+          name: "New cue",
           owner,
           actionIds: [],
         }),

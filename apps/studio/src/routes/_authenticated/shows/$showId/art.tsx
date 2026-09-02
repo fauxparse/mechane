@@ -1,3 +1,11 @@
+import {
+  addCue,
+  addEventBinding,
+  composite,
+  removeEventBinding,
+  setBlockVariables,
+  setEventBindingCue,
+} from "@mechane/commands";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import type {
   BlockVariable,
@@ -17,14 +25,6 @@ import {
 } from "@mechane/domain";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import {
-  addCue,
-  addEventBinding,
-  composite,
-  removeEventBinding,
-  setEventBindingCue,
-  setBlockVariables,
-} from "@mechane/commands";
 
 import type { CanvasArtboardDocument } from "../../../../api/canvas";
 import { useCanvasWorkspace } from "../../../../api/canvas";
@@ -170,7 +170,7 @@ function CanvasWorkspaceRoute() {
       graphEditing.command.commands.execute(
         addCue({
           id: generateId("cue"),
-          name: "New Cue",
+          name: "New cue",
           owner,
           actionIds: [],
         }),

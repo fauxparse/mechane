@@ -38,3 +38,7 @@
     @apply font-sans;
   }
 }
+
+@utility label {
+  @apply text-xs uppercase text-muted-foreground tracking-wider;
+}

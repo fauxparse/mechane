@@ -1,6 +1,14 @@
 import {
-  AlertTriangleIcon,
   Button,
+  ChevronDownIcon,
+  CopyIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  LucideIcon,
+  PlusIcon,
+  PointerIcon,
   Section,
   SectionRow,
   Select,
@@ -8,15 +16,41 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Trash2Icon,
+  ZapIcon,
 } from "@mechane/design-system";
-import { generateId } from "@mechane/domain";
-import type { InteractionOwner } from "@mechane/domain";
+import {
+  EVENT_KINDS,
+  generateId,
+  type Cue,
+  type EventKind,
+  type InteractionOwner,
+} from "@mechane/domain";
 
+import { sortBy } from "es-toolkit";
+import { useMemo } from "react";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 
 function ownerKey(owner: InteractionOwner): string {
   return owner.kind === "scene" ? `scene:${owner.sceneId}` : `block:${owner.blockId}`;
 }
+
+const INTERACTION_ICONS: Record<EventKind, LucideIcon> = {
+  tap: PointerIcon,
+};
+
+const INTERACTION_TITLES: Record<EventKind, string> = {
+  tap: "Tap",
+};
+
+const INTERACTION_DESCRIPTIONS: Record<EventKind, string> = {
+  tap: "User taps or clicks on this",
+};
+
+const InteractionIcon = ({ kind, className }: { kind: EventKind; className?: string }) => {
+  const Icon = INTERACTION_ICONS[kind];
+  return <Icon className={className} />;
+};
 
 export function InteractionSection() {
   const {
@@ -24,120 +58,187 @@ export function InteractionSection() {
     target,
     selected,
     cues = [],
-    actions = [],
     eventBindings = [],
     onCreateCue,
-    onFocusCue,
     onSetEventBindingCue,
     onCreateEventBinding,
     onRemoveEventBinding,
   } = useCanvasInspectorContext();
 
-  if (!focused || selected.length !== 1) return null;
-
-  const owner: InteractionOwner =
-    focused.kind === "scene"
+  const owner = useMemo<InteractionOwner | null>(() => {
+    if (!focused) return null;
+    return focused.kind === "scene"
       ? { kind: "scene", sceneId: focused.artId }
       : { kind: "block", blockId: focused.artId };
-  const ownedCues = cues.filter((cue) => ownerKey(cue.owner) === ownerKey(owner));
-  const binding = eventBindings.find(
-    (candidate) =>
-      candidate.canvasId === focused.canvasId &&
-      candidate.elementId === target.id &&
-      candidate.eventKind === "tap",
+  }, [focused]);
+
+  const cuesById = useMemo(() => {
+    if (!owner) return new Map<string, Cue>();
+    return cues.reduce((acc, cue) => {
+      if (ownerKey(cue.owner) === ownerKey(owner)) {
+        acc.set(cue.id, cue);
+      }
+      return acc;
+    }, new Map<string, Cue>());
+  }, [cues, owner]);
+
+  const ownedCues = useMemo(() => {
+    return sortBy(Array.from(cuesById.values()), [(cue) => cue.name]);
+  }, [cuesById]);
+
+  const bindings = useMemo(() => {
+    if (!focused || selected.length !== 1) return [];
+    return eventBindings.filter(
+      (candidate) => candidate.canvasId === focused.canvasId && candidate.elementId === target.id,
+    );
+  }, [eventBindings, focused, selected.length, target.id]);
+
+  if (!focused || selected.length !== 1 || !owner) return null;
+  const duplicateEventKind = EVENT_KINDS.find(
+    (kind) => !bindings.some((binding) => binding.eventKind === kind),
   );
-  const cue = binding ? ownedCues.find((candidate) => candidate.id === binding.cueId) : undefined;
-  const cueActions = cue
-    ? cue.actionIds.flatMap((actionId) => {
-        const action = actions.find((candidate) => candidate.id === actionId);
-        return action ? [action] : [];
-      })
-    : [];
+
+  const duplicateBinding = (binding: (typeof bindings)[number]) => {
+    if (!duplicateEventKind) return;
+    onCreateEventBinding?.({
+      ...binding,
+      id: generateId("eventBinding"),
+      eventKind: duplicateEventKind,
+    });
+  };
+
+  const { canvasId } = focused;
+
+  const addInteraction = (eventKind: EventKind) => {
+    const cue = ownedCues[0];
+    if (!cue) {
+      onCreateCue?.(owner);
+      return;
+    }
+    if (bindings.some((binding) => binding.eventKind === eventKind)) return;
+    onCreateEventBinding?.({
+      id: generateId("eventBinding"),
+      canvasId,
+      elementId: target.id,
+      eventKind,
+      cueId: cue.id,
+    });
+  };
 
   return (
-    <Section label="Interaction">
-      <SectionRow className="grid-cols-[1fr_auto] items-center">
-        <div className="min-w-0">
-          <div className="truncate text-xs font-medium">
-            {binding ? "Tap binding" : "No tap binding"}
-          </div>
-          <div className="truncate text-[11px] text-muted-foreground">
-            {owner.kind === "scene" ? "Scene" : "Block"} owner · {focused.name}
-          </div>
-        </div>
-        {binding ? <span className="text-[11px] text-muted-foreground">tap</span> : null}
-      </SectionRow>
-      {ownedCues.length > 0 ? (
-        <SectionRow className="grid-cols-[1fr_auto] items-center">
-          <Select
-            value={binding?.cueId ?? ""}
-            onValueChange={(value) => {
-              if (!value) return;
-              if (binding) onSetEventBindingCue?.(binding.id, value);
-              else
-                onCreateEventBinding?.({
-                  id: generateId("eventBinding"),
-                  canvasId: focused.canvasId,
-                  elementId: target.id,
-                  eventKind: "tap",
-                  cueId: value,
-                });
-            }}
-            items={ownedCues.map((candidate) => ({ value: candidate.id, label: candidate.name }))}
-          >
-            <SelectTrigger aria-label="Interaction Cue">
-              <SelectValue placeholder="Choose a Cue" />
-            </SelectTrigger>
-            <SelectContent>
-              {ownedCues.map((candidate) => (
-                <SelectItem key={candidate.id} value={candidate.id}>
-                  {candidate.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+    <Section label="Interactions">
+      {bindings.map((binding) => (
+        <div
+          key={binding.id}
+          className="col-span-full grid grid-cols-subgrid *:[button]:col-start-3"
+        >
+          <dl className="col-span-2 row-span-2 grid grid-cols-[auto_1fr] grid-rows-subgrid items-center gap-x-2 gap-y-1 *:[dt]:label *:[dt]:col-start-1 *:[dd]:col-start-2">
+            <dt>On</dt>
+            <dd className="flex items-center gap-2">
+              <Select value={binding.eventKind}>
+                <SelectTrigger aria-label="Interaction Event">
+                  <SelectValue placeholder="Choose an event">
+                    <div className="flex items-center gap-2">
+                      <InteractionIcon kind={binding.eventKind} className="size-4" />
+                      {INTERACTION_TITLES[binding.eventKind]}
+                    </div>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="w-(--anchor-width)">
+                  {EVENT_KINDS.map((kind) => (
+                    <SelectItem key={kind} value={kind}>
+                      <InteractionIcon kind={kind} className="size-4" />
+                      <span>{INTERACTION_TITLES[kind]}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </dd>
+            <dt>Then</dt>
+            <dd>
+              <Select
+                value={binding.cueId}
+                onValueChange={(value) => {
+                  if (value) onSetEventBindingCue?.(binding.id, value);
+                }}
+              >
+                <SelectTrigger aria-label="Interaction Cue">
+                  <SelectValue placeholder="Choose a Cue" className="">
+                    <div className="flex items-center gap-2">
+                      <ZapIcon className="size-4" />
+                      {cuesById.get(binding.cueId)?.name ?? "Unknown"}
+                    </div>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {ownedCues.map((cue) => (
+                    <SelectItem key={cue.id} value={cue.id}>
+                      <ZapIcon className="size-4" />
+                      {cue.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </dd>
+          </dl>
           <Button
+            className="-row-3"
             type="button"
-            size="sm"
+            size="icon-sm"
             variant="ghost"
-            onClick={() => (binding ? onRemoveEventBinding?.(binding.id) : onCreateCue?.(owner))}
+            aria-label={`Duplicate ${INTERACTION_TITLES[binding.eventKind]} interaction`}
+            title={
+              duplicateEventKind ? "Duplicate interaction" : "No unused event kind is available"
+            }
+            disabled={!duplicateEventKind}
+            onClick={() => duplicateBinding(binding)}
           >
-            {binding ? "Unbind" : "New Cue"}
+            <CopyIcon />
           </Button>
-        </SectionRow>
-      ) : (
-        <SectionRow>
-          <Button type="button" size="sm" variant="outline" onClick={() => onCreateCue?.(owner)}>
-            Create Cue
+          <Button
+            className="-row-2"
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            aria-label={`Delete ${INTERACTION_TITLES[binding.eventKind]} interaction`}
+            title="Delete interaction"
+            onClick={() => onRemoveEventBinding?.(binding.id)}
+          >
+            <Trash2Icon />
           </Button>
-        </SectionRow>
-      )}
-      {cue ? (
-        <SectionRow>
-          <div className="w-full rounded-md border border-border/60 bg-muted/20 px-2.5 py-2 text-[11px]">
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-medium">{cue.name}</span>
-              <Button type="button" size="sm" variant="ghost" onClick={() => onFocusCue?.(cue.id)}>
-                Focus in graph
+        </div>
+      ))}
+      <SectionRow>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button variant="outline" size="sm" className="col-span-2">
+                <div className="flex items-center justify-center gap-2 grow">
+                  <PlusIcon />
+                  Add interaction
+                </div>
+                <ChevronDownIcon />
               </Button>
-            </div>
-            <div className="mt-1 text-muted-foreground">
-              {cueActions.length} {cueActions.length === 1 ? "Action" : "Actions"} owned by this Cue
-            </div>
-          </div>
-        </SectionRow>
-      ) : null}
-      {focused.kind === "block" ? (
-        <SectionRow>
-          <div className="flex items-start gap-2 text-[11px] text-amber-700 dark:text-amber-300">
-            <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
-            <span>
-              Block interactions are authored here and inherited by Slots; Player dispatch is not
-              available yet.
-            </span>
-          </div>
-        </SectionRow>
-      ) : null}
+            }
+          ></DropdownMenuTrigger>
+          <DropdownMenuContent className="w-(--anchor-width)">
+            {EVENT_KINDS.map((kind) => (
+              <DropdownMenuItem
+                key={kind}
+                disabled={bindings.some((binding) => binding.eventKind === kind)}
+                onClick={() => addInteraction(kind)}
+                className="grid grid-cols-[auto_1fr] items-center line-height-normal gap-x-2 gap-y-0"
+              >
+                <InteractionIcon kind={kind} className="row-span-2" />
+                <span>{INTERACTION_TITLES[kind]}</span>
+                <span className="text-xs text-muted-foreground">
+                  {INTERACTION_DESCRIPTIONS[kind]}
+                </span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SectionRow>
     </Section>
   );
 }
