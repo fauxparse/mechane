@@ -22,8 +22,6 @@ import {
   addShapeField,
   duplicateShape,
   moveNode,
-  moveNodesIntoFlow,
-  moveNodesOutOfFlow,
   removeEdge,
   removeNode,
   removeSceneVariable,
@@ -46,6 +44,7 @@ import {
   setWiringFieldMapping,
   setShapes,
 } from "./graph-commands";
+import { moveNodesIntoFlow, moveNodesOutOfFlow } from "./graph-reparent";
 import type { GraphEdit } from "./graph-edits";
 import {
   applyGraphEdits,
@@ -364,10 +363,11 @@ describe("composed commands", () => {
     });
   });
 
-  it("refuses a move out of a Flow when navigation is attached", () => {
-    expect(() => moveNodesOutOfFlow(GRAPH, [RESULTS.id], [{ x: 900, y: 0 }])).toThrow(
-      /Navigate behavior/,
+  it("transmits a move out of a Flow with the Navigate edge it cut (#508)", () => {
+    const applied = expectEditsReproduce(
+      moveNodesOutOfFlow(GRAPH, [RESULTS.id], [{ x: 900, y: 0 }]),
     );
+    expect(applied.state.edges.map((edge) => edge.id)).not.toContain(NAVIGATE.id);
   });
 });
 

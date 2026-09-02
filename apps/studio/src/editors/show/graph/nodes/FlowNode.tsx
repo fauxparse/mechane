@@ -6,6 +6,7 @@ import { useNodeInteraction } from "../node-interaction";
 import { NODE_KIND_META } from "../node-kinds";
 import { useConnectedHandleIds } from "../use-connected-handle-ids";
 import { useDragState } from "../use-drag-state";
+import { useResizeCursor } from "../use-resize-cursor";
 import { NodeHeader } from "./NodeHeader";
 
 /**
@@ -24,6 +25,7 @@ export function FlowNode({ id, data, selected }: NodeProps<ShowFlowNode>) {
     toggleCollapse,
     resizeFlow,
   } = useNodeInteraction();
+  const holdResizeCursor = useResizeCursor();
   const childLabel = `${data.childCount} ${data.childCount === 1 ? "node" : "nodes"}`;
 
   return (
@@ -35,6 +37,7 @@ export function FlowNode({ id, data, selected }: NodeProps<ShowFlowNode>) {
       data-flow-theme={data.color}
       data-selected={selected ?? undefined}
       data-targetable={targetable || undefined}
+      onPointerDownCapture={holdResizeCursor}
       onDoubleClick={(event) => {
         if (event.target instanceof Element && event.target.closest("button,input")) return;
         beginRename(id);
@@ -48,8 +51,8 @@ export function FlowNode({ id, data, selected }: NodeProps<ShowFlowNode>) {
         color="var(--flow-border)"
         handleClassName="opacity-0"
         lineClassName="opacity-0"
-        onResize={(_, dimensions) => resizeFlow(id, dimensions)}
-        onResizeEnd={(_, dimensions) => resizeFlow(id, dimensions)}
+        onResize={(_, dimensions) => resizeFlow(id, dimensions, { committed: false })}
+        onResizeEnd={(_, dimensions) => resizeFlow(id, dimensions, { committed: true })}
       />
       <NodeHeader
         className="bg-transparent border-0"

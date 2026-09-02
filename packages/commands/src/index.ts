@@ -10,6 +10,7 @@
 //   ./stack          the undo/redo stack, including open gestures
 //   ./graph-commands the primitive Show-graph commands built on both
 //   ./graph-cascade  what one user-facing delete is made of (#42)
+//   ./graph-reparent what one user-facing move between Flows is made of (#508)
 //   ./graph-edit-codec  one descriptor per edit: its command, and how it
 //                       flattens onto the wire and back (#347)
 //   ./canvas-edit-codec the same, for Canvas content and Artboard framing
@@ -17,6 +18,7 @@
 export * from "./command";
 export * from "./graph-cascade";
 export * from "./graph-commands";
+export * from "./graph-reparent";
 export * from "./graph-edit-codec";
 export * from "./graph-edits";
 export * from "./canvas-edits";

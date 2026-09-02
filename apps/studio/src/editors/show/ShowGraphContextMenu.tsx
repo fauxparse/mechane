@@ -36,6 +36,7 @@ import type {
 import type { MutableRefObject } from "react";
 
 import type { GraphConnectionEditing, GraphCreationEditing } from "./commands/use-graph-editing";
+import type { CreationSite } from "./show-graph-layout";
 import { FLOW_NODE_TYPE, PLACEHOLDER_NODE_TYPE } from "./graph/graph-to-flow";
 import type { ShowFlowEdge, ShowFlowNode } from "./graph/graph-to-flow";
 import { ShowEdgeRoutingProvider } from "./graph/ShowEdgeRoutingProvider";
@@ -55,7 +56,7 @@ export interface ShowGraphContextMenuProps {
   menuPosition: MutableRefObject<Position>;
   screenToFlowPosition(position: XYPosition): XYPosition;
   selectedNodes: GraphNode[];
-  create(creatable: CreatableNode, at: Position): unknown;
+  create(creatable: CreatableNode, site: CreationSite): unknown;
   fitView(options: FitViewOptions): void;
   fitViewOptions: FitViewOptions;
   initialViewport?: { x: number; y: number; zoom: number };
@@ -108,7 +109,7 @@ export function ShowGraphContextMenu({
   const selectedNode = selectedNodes.length === 1 ? (selectedNodes[0] ?? null) : null;
 
   return (
-    <ContextMenu disabled>
+    <ContextMenu>
       <ContextMenuTrigger
         className="h-full w-full"
         onContextMenu={(event) => {
@@ -192,7 +193,9 @@ export function ShowGraphContextMenu({
               return (
                 <ContextMenuItem
                   key={creatable.id}
-                  onClick={() => create(creatable, menuPosition.current)}
+                  // Right-clicking inside a Flow creates in that Flow;
+                  // right-clicking the canvas creates on the canvas (#508).
+                  onClick={() => create(creatable, { from: "point", at: menuPosition.current })}
                 >
                   <Icon /> {creatable.label}
                 </ContextMenuItem>

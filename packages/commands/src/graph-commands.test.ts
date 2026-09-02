@@ -15,12 +15,7 @@ import { composite } from "./command";
 import {
   addEdge,
   addNode,
-  createFlowWithNodes,
   moveNode,
-  moveNodeIntoFlow,
-  moveNodeOutOfFlow,
-  moveNodesIntoFlow,
-  moveNodesOutOfFlow,
   removeEdge,
   removeNode,
   renameNode,
@@ -35,6 +30,13 @@ import {
   setWiringFieldMapping,
   UnknownGraphTargetError,
 } from "./graph-commands";
+import {
+  createFlowWithNodes,
+  moveNodeIntoFlow,
+  moveNodeOutOfFlow,
+  moveNodesIntoFlow,
+  moveNodesOutOfFlow,
+} from "./graph-reparent";
 import { applyGraphEdits } from "./graph-edits";
 import { CommandStack } from "./stack";
 
@@ -381,13 +383,32 @@ describe("moveNodeIntoFlow / moveNodeOutOfFlow", () => {
     expect(applied.inverse.apply(applied.state).state).toEqual(graph);
   });
 
-  it("refuses extracting a Scene with Navigate behavior", () => {
-    expect(() => moveNodeOutOfFlow(GRAPH, VOTING.id, { x: 0, y: 0 })).toThrow("Navigate behavior");
+  // #508: extraction used to refuse a Scene with Navigate behavior, which
+  // left a director unable to get it out without dismantling its Cues first.
+  it("cuts the Navigate behavior a Scene leaves behind rather than refusing", () => {
+    const result = moveNodeOutOfFlow(GRAPH, VOTING.id, { x: 500, y: 500 }).apply(GRAPH);
+    expect(result.state.edges.map((edge) => edge.id)).toEqual([WIRE.id, TO_PHONE.id]);
+    expect(result.state.nodes.find((node) => node.id === VOTING.id)?.parentId).toBe(null);
+    expect(result.inverse.apply(result.state).state).toEqual(GRAPH);
   });
 
-  it("moves out and drops wiring, while restoring both on undo", () => {
-    // Use a scene without Navigate edges for the move-out case.
+  // Scope is what makes an edge legal: a *top-level* producer may feed
+  // anything, so promoting its consumer strands nothing.
+  it("keeps wiring fed by a top-level producer", () => {
     const graph = { ...GRAPH, edges: [WIRE, TO_PHONE] };
+    const result = moveNodeOutOfFlow(graph, VOTING.id, { x: 500, y: 500 }).apply(graph);
+    expect(result.state.edges.map((edge) => edge.id)).toEqual([WIRE.id, TO_PHONE.id]);
+    expect(result.inverse.apply(result.state).state).toEqual(graph);
+  });
+
+  it("drops wiring whose Flow-local producer stays behind", () => {
+    const local: SourceNode = { ...TALLY, id: "source_local", parentId: VOTE_FLOW.id };
+    const internal: WiringEdge = { ...WIRE, id: "edge_internal", sourceId: local.id };
+    const graph = {
+      ...GRAPH,
+      nodes: [...GRAPH.nodes, local],
+      edges: [internal, TO_PHONE],
+    };
     const result = moveNodeOutOfFlow(graph, VOTING.id, { x: 500, y: 500 }).apply(graph);
     expect(result.state.edges.map((edge) => edge.id)).toEqual([TO_PHONE.id]);
     expect(result.inverse.apply(result.state).state).toEqual(graph);
@@ -432,7 +453,7 @@ describe("moveNodeIntoFlow / moveNodeOutOfFlow", () => {
     expect(
       (result.state.nodes.find((node) => node.id === VOTE_FLOW.id) as FlowNode).defaultSceneId,
     ).toBe(null);
-    expect(result.state.edges.map((edge) => edge.id)).toEqual([TO_PHONE.id]);
+    expect(result.state.edges.map((edge) => edge.id)).toEqual([WIRE.id, TO_PHONE.id]);
     expect(result.inverse.apply(result.state).state).toEqual(graph);
   });
 });

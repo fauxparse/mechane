@@ -7,11 +7,20 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import {
   absolutePosition,
   FLOW_CONTENT_ORIGIN,
-  FLOW_NODE_TYPE,
+  NODE_HEIGHT,
   NODE_WIDTH,
 } from "../graph/graph-to-flow";
 import type { ShowFlowNode } from "../graph/graph-to-flow";
 import type { CreatableNode } from "../graph/node-kinds";
+import {
+  clampIntoFlow,
+  clearOfFlows,
+  flowAtPoint,
+  nextChildPosition,
+  relativeToFlow,
+  sizeOf,
+} from "../show-graph-layout";
+import type { CreationSite, Size } from "../show-graph-layout";
 import { useCallback, useMemo, useRef } from "react";
 import type { DeletionScope } from "@mechane/commands";
 
@@ -22,6 +31,53 @@ function moveComposite(moved: { id: string; position: Position }[]) {
     // how the domain stores it (#29) — no conversion needed.
     commands: moved.map((node) => moveNode(node.id, node.position)),
   });
+}
+
+/**
+ * The nodes a finished drag may reparent, or null when it may not.
+ *
+ * Flows and Devices are always Show-level peers (#23, #26), so dragging one
+ * over a Flow means nothing. A mixed-scope selection is refused for the same
+ * reason `dragTo` refuses it: React Flow pins nested children to their Flow,
+ * so the selection was never moving as one thing to begin with.
+ */
+function reparentableDrag(
+  dragged: ShowFlowNode,
+  moved: readonly ShowFlowNode[],
+): { nodeIds: string[]; currentFlowId: string | null } | null {
+  if (moved.length === 0) return null;
+  if (moved.some((node) => node.data.kind === "flow" || node.data.kind === "device")) return null;
+  const currentFlowId = dragged.parentId ?? null;
+  if (moved.some((node) => (node.parentId ?? null) !== currentFlowId)) return null;
+  return { nodeIds: moved.map((node) => node.id), currentFlowId };
+}
+
+/**
+ * The Flow a create command should put its node in, and where inside it.
+ *
+ * A point knows exactly where it landed, so it keeps that spot. The palette
+ * has only the selection: a selected Flow means "in there", and a selected
+ * node means "beside it, in whatever holds it".
+ */
+function hostFlowFor(
+  site: CreationSite,
+  rendered: readonly ShowFlowNode[],
+  byId: ReadonlyMap<string, ShowFlowNode>,
+  selectedNodes: readonly GraphNode[],
+): { flow: ShowFlowNode; preferred?: Position } | null {
+  if (site.from === "point") {
+    const flow = flowAtPoint(site.at, rendered);
+    return flow ? { flow, preferred: relativeToFlow(site.at, flow, byId) } : null;
+  }
+  const selectedFlow = selectedNodes.find((node) => node.kind === "flow");
+  if (selectedFlow) {
+    const flow = byId.get(selectedFlow.id);
+    return flow ? { flow } : null;
+  }
+  const parentIds = new Set(selectedNodes.map((node) => node.parentId));
+  const [only] = [...parentIds];
+  const flow = parentIds.size === 1 && only ? byId.get(only) : undefined;
+  return flow ? { flow } : null;
 }
 
 import type {
@@ -82,21 +138,11 @@ export function useShowGraphEditorActions({
     [connections, creation, deletion, graph],
   );
   const { beginGesture } = commands;
-  const flowAt = useCallback(
-    (point: Position): ShowFlowNode | null =>
-      (getNodes() as ShowFlowNode[]).find((node) => {
-        if (node.type !== FLOW_NODE_TYPE) return false;
-        const width = Number(node.style?.width ?? NODE_WIDTH);
-        const height = Number(node.style?.height ?? 0);
-        return (
-          point.x >= node.position.x &&
-          point.x <= node.position.x + width &&
-          point.y >= node.position.y &&
-          point.y <= node.position.y + height
-        );
-      }) ?? null,
-    [getNodes],
-  );
+  /** The rendered graph, and the lookup every geometry helper here needs. */
+  const renderedGraph = useCallback(() => {
+    const rendered = getNodes() as ShowFlowNode[];
+    return { rendered, byId: new Map(rendered.map((node) => [node.id, node])) };
+  }, [getNodes]);
 
   // ---------------------------------------------------------------------------
   // Moving
@@ -126,103 +172,90 @@ export function useShowGraphEditorActions({
     [dragGesture],
   );
 
+  /**
+   * A drag ends by deciding where the dragged nodes now live (#508).
+   *
+   * The Flow under the *dragged* node's box is the answer — the selection
+   * travels with it, because `dragTo` has already refused a mixed-scope drag.
+   * Landing in a different Flow is one move, not an extraction the director
+   * has to do first, and anything that lands in a Flow is clamped inside its
+   * box: containment is placement (#29), so a node half outside its Flow
+   * would be lying about where it belongs.
+   */
   const endDrag: OnNodeDrag<ShowFlowNode> = useCallback(
-    (_event, _node, moved: ShowFlowNode[]) => {
+    (_event, dragged, moved: ShowFlowNode[]) => {
       dragTo(moved);
       const gesture = dragGesture.current;
-      const node = moved.length === 1 ? moved[0] : undefined;
-      const rendered = getNodes() as ShowFlowNode[];
-      const byId = new Map(rendered.map((renderedNode) => [renderedNode.id, renderedNode]));
-      if (gesture && node?.data.kind === "scene") {
-        const absolute = absolutePosition(node, byId);
-        const targetFlow = flowAt(absolute);
-        const currentFlowId = node.parentId ?? null;
-        const targetFlowId = targetFlow?.id ?? null;
-
-        if (targetFlow && targetFlowId !== currentFlowId) {
-          if (currentFlowId !== null) {
-            gesture.abort();
-            say("Move the Scene out of its Flow before moving it into another.");
-          } else {
-            const flowPosition = absolutePosition(targetFlow, byId);
-            gesture.update(
-              moveNodesIntoFlow(editing.graph, [node.id], targetFlow.id, {
-                x: absolute.x - flowPosition.x,
-                y: absolute.y - flowPosition.y,
-              }),
-            );
-            gesture.commit();
-          }
-          dragging.current = false;
-          dragGesture.current = null;
-          return;
-        }
-
-        if (currentFlowId !== null && targetFlowId === null) {
-          try {
-            gesture.update(moveNodesOutOfFlow(editing.graph, [node.id], [absolute]));
-            gesture.commit();
-          } catch (error) {
-            gesture.abort();
-            say(
-              error instanceof Error
-                ? error.message
-                : "Those nodes cannot be moved out of their Flow.",
-            );
-          }
-          dragging.current = false;
-          dragGesture.current = null;
-          return;
-        }
-      }
       dragging.current = false;
-      gesture?.commit();
       dragGesture.current = null;
+      if (!gesture) return;
+
+      const { rendered, byId: renderedById } = renderedGraph();
+      // `moved` carries the positions the drag actually finished at; the
+      // rendered map supplies everything else, the parent Flows included.
+      const byId = new Map(renderedById);
+      for (const node of moved) byId.set(node.id, node);
+      const reparenting = reparentableDrag(dragged, moved);
+      if (!reparenting) {
+        gesture.commit();
+        return;
+      }
+
+      const { nodeIds, currentFlowId } = reparenting;
+      const anchor = absolutePosition(dragged, byId);
+      const targetFlow = flowAtPoint(anchor, rendered, new Set(nodeIds));
+      const targetFlowId = targetFlow?.id ?? null;
+
+      try {
+        if (targetFlow) {
+          // Every node lands inside the box, including the ones that came
+          // along for the ride — the gesture's last update is the whole move,
+          // so it has to name all of them.
+          const inside = nodeIds.map((nodeId) => {
+            const node = byId.get(nodeId);
+            const at = node ? absolutePosition(node, byId) : anchor;
+            return {
+              id: nodeId,
+              position: clampIntoFlow(
+                targetFlow,
+                relativeToFlow(at, targetFlow, byId),
+                sizeOf(node ?? dragged),
+              ),
+            };
+          });
+          const origin =
+            inside.find((placed) => placed.id === dragged.id)?.position ?? inside[0]!.position;
+          gesture.update(
+            targetFlowId === currentFlowId
+              ? moveComposite(inside)
+              : moveNodesIntoFlow(editing.graph, nodeIds, targetFlow.id, origin),
+          );
+        } else if (currentFlowId !== null) {
+          gesture.update(
+            moveNodesOutOfFlow(
+              editing.graph,
+              nodeIds,
+              nodeIds.map((nodeId) => {
+                const node = byId.get(nodeId);
+                return node ? absolutePosition(node, byId) : anchor;
+              }),
+            ),
+          );
+        }
+        gesture.commit();
+      } catch (error) {
+        gesture.abort();
+        say(
+          error instanceof Error ? error.message : "Those nodes cannot be moved out of their Flow.",
+        );
+      }
     },
-    [dragTo, dragGesture, dragging, editing, flowAt, getNodes, say],
+    [dragTo, dragGesture, dragging, editing, renderedGraph, say],
   );
 
   // ---------------------------------------------------------------------------
   // Creating
   // ---------------------------------------------------------------------------
-
-  /**
-   * The Flow a point lands inside, if any — so a node created by right-clicking
-   * within a Flow's boundary belongs to that Flow. Containment *is* placement
-   * (#29), so this is the whole of "created inside a Flow".
-   */
-  const create = useCallback(
-    (creatable: CreatableNode, at: Position) => {
-      const { kind } = creatable;
-      // Creating a Flow over the current selection is one command: create the
-      // container, then move eligible top-level content into it.
-      if (kind === "flow") {
-        const nodeIds = selectedNodes.reduce<string[]>((ids, node) => {
-          if (node.parentId === null && node.kind !== "device" && node.kind !== "flow") {
-            ids.push(node.id);
-          }
-          return ids;
-        }, []);
-        const node = editing.createFlowWithNodes(nodeIds, at, FLOW_CONTENT_ORIGIN);
-        selectOnArrival.current = node.id;
-        focusOnArrival.current = node.id;
-        return node;
-      }
-      const flow = kind === "device" ? null : flowAt(at);
-      // A nested node's position is relative to its Flow (#29), which is
-      // exactly how React Flow reads it too.
-      const position = flow ? { x: at.x - flow.position.x, y: at.y - flow.position.y } : at;
-      // A freshly created node becomes the selection, so the inspector opens on
-      // it and F2 renames it without a click first.
-      const node = editing.createNodeOfKind(kind, position, flow?.id ?? null, {
-        perConnection: creatable.perConnection,
-        defaultName: creatable.defaultName,
-      });
-      selectOnArrival.current = node.id;
-      return node;
-    },
-    [editing, flowAt, focusOnArrival, selectOnArrival, selectedNodes],
-  );
 
   /** Where a palette-created node goes: near the selection, else viewport centre (#27). */
   const centreOfView = useCallback((): Position => {
@@ -242,6 +275,65 @@ export function useShowGraphEditorActions({
       y: bounds.top + bounds.height / 2,
     });
   }, [getNodes, screenToFlowPosition]);
+
+  /**
+   * Where a new node goes, decided by how the create command was invoked
+   * (#508). A right-click knows a point, so it joins the Flow under that
+   * point; the palette knows only the selection, so it joins the selected
+   * Flow — or the one holding the selection — and lands in a free row.
+   *
+   * The two rules underneath are absolute: a Flow-owned node is inside its
+   * Flow's box, and a Show-level node is inside nobody's. Flows and Devices
+   * are always Show-level peers (#23, #26), so they are only ever placed
+   * clear of every Flow, however the command was invoked.
+   */
+  const create = useCallback(
+    (creatable: CreatableNode, site: CreationSite) => {
+      const { kind } = creatable;
+      const { rendered, byId } = renderedGraph();
+      const size: Size = { width: NODE_WIDTH, height: NODE_HEIGHT };
+      const pointOf = (): Position => (site.from === "point" ? site.at : centreOfView());
+
+      // Creating a Flow over the current selection is one command: create the
+      // container, then move eligible top-level content into it.
+      if (kind === "flow") {
+        const nodeIds = selectedNodes.reduce<string[]>((ids, node) => {
+          if (node.parentId === null && node.kind !== "device" && node.kind !== "flow") {
+            ids.push(node.id);
+          }
+          return ids;
+        }, []);
+        const node = editing.createFlowWithNodes(
+          nodeIds,
+          clearOfFlows(pointOf(), size, rendered),
+          FLOW_CONTENT_ORIGIN,
+        );
+        selectOnArrival.current = node.id;
+        focusOnArrival.current = node.id;
+        return node;
+      }
+
+      const host = kind === "device" ? null : hostFlowFor(site, rendered, byId, selectedNodes);
+      const position = host
+        ? host.preferred
+          ? clampIntoFlow(host.flow, host.preferred, size)
+          : nextChildPosition(
+              host.flow,
+              rendered.filter((node) => node.parentId === host.flow.id),
+              size,
+            )
+        : clearOfFlows(pointOf(), size, rendered);
+      // A freshly created node becomes the selection, so the inspector opens on
+      // it and F2 renames it without a click first.
+      const node = editing.createNodeOfKind(kind, position, host?.flow.id ?? null, {
+        perConnection: creatable.perConnection,
+        defaultName: creatable.defaultName,
+      });
+      selectOnArrival.current = node.id;
+      return node;
+    },
+    [centreOfView, editing, focusOnArrival, renderedGraph, selectOnArrival, selectedNodes],
+  );
 
   // ---------------------------------------------------------------------------
   // Deleting

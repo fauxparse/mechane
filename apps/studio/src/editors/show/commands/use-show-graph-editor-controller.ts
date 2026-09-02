@@ -1,3 +1,4 @@
+import { composite, moveNode } from "@mechane/commands";
 import type { DeletionScope } from "@mechane/commands";
 import { defaultSourceValues, type GraphNode, type Position } from "@mechane/domain";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
@@ -23,6 +24,8 @@ import { useUndoKeys } from "../keyboard/use-undo-keys";
 import { useViewportKeys } from "../keyboard/use-viewport-keys";
 import { useShowGraphEditorActions } from "./use-show-graph-editor-actions";
 import { useFitViewOptions, useInitialFrame } from "../graph/use-fit-view-options";
+import { childrenPushedInside, effectiveFlowDimensions, fitFlows } from "../show-graph-layout";
+import type { FittedFlow } from "../show-graph-layout";
 import { useShowGraphEditorPalette } from "./use-show-graph-editor-palette";
 import { MESSAGE_MS } from "../show-graph-editor-constants";
 import type { ShowGraphEditorProps } from "../ShowGraphEditor";
@@ -77,8 +80,17 @@ export function useShowGraphEditorController({
   const { command, gestures, creation, deletion, connections, variables } = editing;
   const { commands } = command;
   const [collapsedFlowIds, setCollapsedFlowIds] = useState<Set<string>>(() => new Set());
-  const [flowDimensions, setFlowDimensions] = useState<Map<string, FlowDimensions>>(
+  // A Flow's size has two inputs, kept apart on purpose (#508). `fitted` is
+  // the fit around its children, recomputed only when its membership changes,
+  // so dragging a child never moves the box. `manual` is what the director
+  // dragged the resize handle to, and wins outright when it is there.
+  const [fittedFlows, setFittedFlows] = useState<Map<string, FittedFlow>>(() => new Map());
+  const [manualFlowDimensions, setManualFlowDimensions] = useState<Map<string, FlowDimensions>>(
     () => new Map(),
+  );
+  const flowDimensions = useMemo(
+    () => effectiveFlowDimensions(fittedFlows, manualFlowDimensions),
+    [fittedFlows, manualFlowDimensions],
   );
   const sourceValues = useMemo(() => defaultSourceValues(command.graph), [command.graph]);
   const drawn = useMemo(
@@ -93,22 +105,20 @@ export function useShowGraphEditorController({
       return next;
     });
   }, []);
-  const resizeFlow = useCallback((flowId: string, dimensions: FlowDimensions) => {
-    setFlowDimensions((current) => {
-      const previous = current.get(flowId);
-      if (previous?.width === dimensions.width && previous.height === dimensions.height)
-        return current;
-      const next = new Map(current);
-      next.set(flowId, dimensions);
-      return next;
-    });
-  }, []);
   const dragging = useRef(false);
   const selectOnArrival = useRef<string | null>(null);
   const focusOnArrival = useRef<string | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState(drawn.nodes);
+  useEffect(() => {
+    // Fitted from the *rendered* nodes, because only the DOM knows how tall a
+    // Scene's rows made it — the projection's estimate is short enough that a
+    // Scene with Cues would hang out of its Flow. `fitFlows` returns the map
+    // it was handed when nothing needs re-fitting, so this settles rather
+    // than looping as measurements arrive.
+    setFittedFlows((current) => fitFlows(nodes, current));
+  }, [nodes]);
   const [edges, setEdges, onEdgesChange] = useEdgesState(drawn.edges);
-  const manualFlowIds = useMemo(() => new Set(flowDimensions.keys()), [flowDimensions]);
+  const manualFlowIds = useMemo(() => new Set(manualFlowDimensions.keys()), [manualFlowDimensions]);
   const displayNodes = useMemo(
     () =>
       reconcileNodes(drawn.nodes, nodes, {
@@ -119,6 +129,47 @@ export function useShowGraphEditorController({
   );
   const displayEdges = useMemo(() => reconcileEdges(drawn.edges, edges), [drawn.edges, edges]);
   const { fitView, getNodes, getZoom, setCenter, screenToFlowPosition } = useReactFlow();
+
+  // A resize that shrinks a Flow past its contents moves the children, which
+  // is a graph edit rather than view state. It runs as a gesture for the same
+  // reason a drag does: the handle emits a size every frame, and the whole
+  // resize is one undo entry (#28, #508).
+  const resizeGesture = useRef<ReturnType<typeof commands.beginGesture> | null>(null);
+  const resizeFlow = useCallback(
+    (flowId: string, dimensions: FlowDimensions, { committed }: { committed: boolean }) => {
+      const size = { width: dimensions.width, height: dimensions.height };
+      setManualFlowDimensions((current) => {
+        const previous = current.get(flowId);
+        if (previous?.width === size.width && previous.height === size.height) return current;
+        const next = new Map(current);
+        // Only the two fields, copied out: React Flow's resize params also
+        // carry `x`/`y`, and this map is handed to the node as its `style`.
+        next.set(flowId, size);
+        return next;
+      });
+
+      const children = (getNodes() as ShowFlowNode[]).filter((node) => node.parentId === flowId);
+      const moves = childrenPushedInside(size, children);
+      if (moves.length > 0) {
+        // Opened lazily, so a resize that never crowds a child leaves no
+        // entry behind at all.
+        resizeGesture.current ??= commands.beginGesture({
+          key: `resizeFlow:${flowId}`,
+          label: "Resize Flow",
+        });
+        resizeGesture.current.update(
+          composite({
+            label: "Resize Flow",
+            commands: moves.map((move) => moveNode(move.id, move.position)),
+          }),
+        );
+      }
+      if (!committed) return;
+      resizeGesture.current?.commit();
+      resizeGesture.current = null;
+    },
+    [commands, getNodes],
+  );
   const fitViewOptions = useFitViewOptions();
   // The graph arrives after the editor mounts; fit only after its nodes are measured.
   const nodesInitialized = useNodesInitialized();
@@ -268,7 +319,6 @@ export function useShowGraphEditorController({
     selectedNodes,
     selectedEdgeIds,
     create: actions.create,
-    centreOfView: actions.centreOfView,
     selectAll,
     fitView,
     fitViewOptions,

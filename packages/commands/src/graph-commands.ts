@@ -62,7 +62,7 @@ import {
 } from "@mechane/domain";
 
 import type { Command } from "./command";
-import { capturing, composite } from "./command";
+import { capturing } from "./command";
 import type { GraphEdit } from "./graph-edits";
 /** A command over the Show graph and its serialisable edit vocabulary. */
 export type ShowGraphCommand = Command<ShowGraph, GraphEdit>;
@@ -222,22 +222,6 @@ export function addNode(node: GraphNode, label = `Add ${node.kind}`): ShowGraphC
       nodes: graph.nodes.filter((existing) => existing.id !== node.id),
     }),
   });
-}
-
-/** Creates a Flow and optionally puts eligible existing nodes inside it. */
-export function createFlowWithNodes(
-  graph: ShowGraph,
-  flow: GraphNode,
-  nodeIds: string[],
-  childOrigin: Position,
-): ShowGraphCommand {
-  if (flow.kind !== "flow") throw new InvalidReparentError("Only a Flow can contain nodes.");
-  const graphWithFlow = { ...graph, nodes: [...graph.nodes, flow] };
-  const commands: ShowGraphCommand[] = [addNode(flow, "Create Flow")];
-  if (nodeIds.length > 0) {
-    commands.push(moveNodesIntoFlow(graphWithFlow, nodeIds, flow.id, childOrigin));
-  }
-  return composite({ label: "Create Flow", commands });
 }
 
 /** Everything one node's removal destroyed, captured as it happened (#28). */
@@ -420,21 +404,16 @@ interface Placement {
   position: Position;
 }
 
-function hasNavigateEdge(graph: ShowGraph, nodeId: string): boolean {
-  return graph.edges.some(
-    (edge) => edge.kind === "navigate" && (edge.sourceId === nodeId || edge.targetId === nodeId),
-  );
-}
-
 /**
  * Moves a node into a Flow or out to Show level — the membership half of
  * moving into and out of a Flow (#42). Position moves with it, because a Flow-local
  * node's position is relative to its Flow (#29) and keeping the old
  * coordinates would fling the node somewhere arbitrary.
  *
- * The *side effects* of moving into a Flow (auto-assigning the Flow's default Scene
- * when it was empty) are separate commands, composed with this one into a
- * single entry — see `setFlowDefaultScene` and #28.
+ * This is the atom, not the policy: the *side effects* of a move — a Flow
+ * auto-assigning its default Scene, and the edges a change of scope strands —
+ * are separate commands composed with this one into a single entry. See
+ * ./graph-reparent, `setFlowDefaultScene`, and #28.
  */
 export function reparentNode(
   nodeId: string,
@@ -468,20 +447,10 @@ export function reparentNode(
           `${node.kind === "flow" ? "Flows" : "Devices"} cannot be nested.`,
         );
       }
-      if (node.kind === "scene" && node.parentId !== parentId && hasNavigateEdge(graph, nodeId)) {
-        throw new InvalidReparentError(
-          `Scene "${node.name}" cannot move while it has Navigate behavior attached.`,
-        );
-      }
       if (parentId !== null) {
         const parent = graph.nodes.find((candidate) => candidate.id === parentId);
         if (!parent || parent.kind !== "flow") {
           throw new InvalidReparentError("A node can only be placed inside a Flow.");
-        }
-        if (node.parentId !== null && node.parentId !== parentId) {
-          throw new InvalidReparentError(
-            "Move the Scene out of its Flow before moving it into another.",
-          );
         }
       }
       // Cast: only Scenes, Sources, and Transformers are ever reparented
@@ -504,130 +473,6 @@ export function reparentNode(
       } as GraphNode);
     },
   });
-}
-
-/**
- * Moves a top-level node into an empty or populated Flow. The default Scene
- * assignment is welded to membership, so one undo reverses both effects.
- */
-export function moveNodeIntoFlow(
-  graph: ShowGraph,
-  nodeId: string,
-  flowId: string,
-  position: Position,
-): ShowGraphCommand {
-  return moveNodesIntoFlow(graph, [nodeId], flowId, position);
-}
-
-/**
- * Moves several top-level nodes into a Flow as one command. Nodes are placed in a
- * column below the Flow's existing children, starting at `origin`; this keeps
- * the operation deterministic and prevents either existing or newly moved
- * nodes from overlapping.
- */
-export function moveNodesIntoFlow(
-  graph: ShowGraph,
-  nodeIds: string[],
-  flowId: string,
-  origin: Position,
-): ShowGraphCommand {
-  const flow = graph.nodes.find((candidate) => candidate.id === flowId);
-  if (!flow || flow.kind !== "flow") throw new UnknownGraphTargetError("Flow", flowId);
-
-  const nodes = nodeIds.map((nodeId) => {
-    const node = graph.nodes.find((candidate) => candidate.id === nodeId);
-    if (!node) throw new UnknownGraphTargetError("node", nodeId);
-    if (node.kind === "flow" || node.kind === "device") {
-      throw new InvalidReparentError("Devices cannot be moved into a Flow.");
-    }
-    if (node.parentId !== null) {
-      throw new InvalidReparentError("Move the node out of its Flow first.");
-    }
-    return node;
-  });
-  if (nodes.length === 0)
-    throw new InvalidReparentError("Select at least one node to move into a Flow.");
-
-  const children = graph.nodes.filter((node) => node.parentId === flowId);
-  // A single drag target must stay under the pointer. Bulk moves retain the
-  // non-overlapping column placement used by palette and create-flow actions.
-  let y =
-    nodes.length === 1
-      ? origin.y
-      : Math.max(origin.y, ...children.map((node) => node.position.y + nodeHeight(node) + 24));
-  const parts: ShowGraphCommand[] = [];
-  for (const node of nodes) {
-    parts.push(reparentNode(node.id, flowId, { x: origin.x, y }, "Move into Flow"));
-    y += nodeHeight(node) + 24;
-  }
-  if (flow.defaultSceneId === null) {
-    const firstScene = nodes.find((node) => node.kind === "scene");
-    if (firstScene) parts.push(setFlowDefaultScene(flowId, firstScene.id));
-  }
-  return composite({ label: "Move into Flow", commands: parts });
-}
-
-function nodeHeight(node: GraphNode): number {
-  return node.kind === "scene" ? 56 + node.variables.length * 24 + 8 : 56;
-}
-
-/**
- * Moves a node to Show level. Navigate edges are removed because top-level
- * Scenes cannot participate in the Flow-local state machine. Wiring edges to
- * unselected nodes are disposable; wiring between moved nodes is preserved.
- */
-export function moveNodeOutOfFlow(
-  graph: ShowGraph,
-  nodeId: string,
-  position: Position,
-): ShowGraphCommand {
-  return moveNodesOutOfFlow(graph, [nodeId], [position]);
-}
-
-/** Moves several Flow-local nodes out of a Flow as one command. */
-export function moveNodesOutOfFlow(
-  graph: ShowGraph,
-  nodeIds: string[],
-  positions: readonly Position[],
-): ShowGraphCommand {
-  if (nodeIds.length === 0 || nodeIds.length !== positions.length) {
-    throw new InvalidReparentError("Select at least one Flow-local node to move out.");
-  }
-
-  const nodes = nodeIds.map((nodeId) => {
-    const node = graph.nodes.find((candidate) => candidate.id === nodeId);
-    if (!node) throw new UnknownGraphTargetError("node", nodeId);
-    if (node.parentId === null) {
-      throw new InvalidReparentError("Only Flow-local nodes can be moved out.");
-    }
-    return node;
-  });
-  if (nodes.some((node) => node.kind === "scene" && hasNavigateEdge(graph, node.id))) {
-    throw new InvalidReparentError("A Scene with Navigate behavior cannot move out of its Flow.");
-  }
-
-  const selected = new Set(nodeIds);
-  const parts: ShowGraphCommand[] = graph.edges
-    .filter((edge) => {
-      const touchesSelected = selected.has(edge.sourceId) || selected.has(edge.targetId);
-      if (!touchesSelected) return false;
-      if (edge.kind === "navigate") return true;
-      // Wiring between moved nodes remains valid after both nodes change scope;
-      // only wiring crossing the extraction boundary is discarded.
-      return selected.has(edge.sourceId) !== selected.has(edge.targetId);
-    })
-    .map((edge) =>
-      removeEdge(edge.id, edge.kind === "navigate" ? "Remove Navigate" : "Remove wiring"),
-    );
-  const defaultOwners = graph.nodes.filter(
-    (node) =>
-      node.kind === "flow" && node.defaultSceneId !== null && selected.has(node.defaultSceneId),
-  );
-  for (const owner of defaultOwners) parts.push(setFlowDefaultScene(owner.id, null));
-  nodes.forEach((node, index) => {
-    parts.push(reparentNode(node.id, null, positions[index]!, "Move out of Flow"));
-  });
-  return composite({ label: "Move out of Flow", commands: parts });
 }
 
 /**

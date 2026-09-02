@@ -35,8 +35,8 @@ export type MappableEdge = GraphEdge;
 
 /**
  * Node geometry. React Flow measures rendered nodes itself, but the initial
- * dimensions must be known before first paint. Flows can be resized locally;
- * their dimensions remain a minimum and grow when children need more room.
+ * dimensions must be known before first paint. A Flow's size is the editor's
+ * to decide — see `flowDimensions` below and ../show-graph-layout.
  */
 /** A node with no rows: the header alone. */
 export const NODE_HEIGHT = 56;
@@ -50,7 +50,7 @@ export const VARIABLE_ROW_HEIGHT = 24;
 const VARIABLE_LIST_PADDING = 8;
 
 /** Breathing room between a Flow's boundary and the nodes inside it. */
-const FLOW_PADDING = 24;
+export const FLOW_PADDING = 24;
 
 /** Height of the shared Flow header, above the area its children sit in. */
 export const FLOW_HEADER_HEIGHT = 50;
@@ -240,9 +240,10 @@ export const ROUTED_SMOOTH_STEP_EDGE_TYPE = "routedSmoothStep";
 const EDGE_TYPE = ROUTED_SMOOTH_STEP_EDGE_TYPE;
 
 /**
- * How big a Flow has to be to hold its children. Children keep their stored
- * positions (free-form, #25) — the container grows around them rather than
- * the positions being adjusted to fit a container.
+ * How big a Flow has to be to hold its children — the *fit*, not the size it
+ * is drawn at. The editor computes this when a Flow's membership changes and
+ * then holds the answer (../show-graph-layout), so the box does not follow a
+ * child being dragged around inside it (#508).
  *
  * A childless Flow still gets one node's worth of room, so an empty Flow
  * reads as an empty container rather than as a collapsed sliver.
@@ -438,6 +439,14 @@ function toFlowNode(
       ? cues.filter((cue) => cue.owner.kind === "scene" && cue.owner.sceneId === node.id)
       : [];
   const minimumHeight = nodeHeight(node, resolvedShapes, ownedCues.length);
+  // A Flow the editor has sized is that size, full stop. Deriving it from
+  // where the children happen to be is what made the box chase them around
+  // mid-drag (#508); the editor re-fits it when membership changes instead.
+  const dimensions: FlowDimensions = !isFlow
+    ? { width: NODE_WIDTH, height: minimumHeight }
+    : collapsed
+      ? { width: NODE_WIDTH, height: FLOW_HEADER_HEIGHT }
+      : (minimumDimensions ?? flowSize(children, undefined, resolvedShapes, cues));
   const variables =
     node.kind === "scene"
       ? node.variables.map((variable) => ({
@@ -451,28 +460,16 @@ function toFlowNode(
     id: node.id,
     type: isFlow ? FLOW_NODE_TYPE : PLACEHOLDER_NODE_TYPE,
     position: { x: node.position.x, y: node.position.y },
-    ...(node.parentId ? { parentId: node.parentId } : {}),
+    // Always emitted, `undefined` included: ../reconcile-nodes merges drawn
+    // nodes over live ones, and an *omitted* key leaves the live value in
+    // place — which after a move out of a Flow is the Flow the node just
+    // left. React Flow would go on treating it as a child (dragging the Flow
+    // would drag it too) and the next drag would try to extract it again.
+    parentId: node.parentId ?? undefined,
     initialWidth: NODE_WIDTH,
-    initialHeight: isFlow
-      ? collapsed
-        ? FLOW_HEADER_HEIGHT
-        : flowSize(children, minimumDimensions, resolvedShapes, cues).height
-      : minimumHeight,
-    ...(isFlow
-      ? {
-          width: collapsed
-            ? NODE_WIDTH
-            : flowSize(children, minimumDimensions, resolvedShapes, cues).width,
-          height: collapsed
-            ? FLOW_HEADER_HEIGHT
-            : flowSize(children, minimumDimensions, resolvedShapes, cues).height,
-        }
-      : {}),
-    style: isFlow
-      ? collapsed
-        ? { width: NODE_WIDTH, height: FLOW_HEADER_HEIGHT }
-        : flowSize(children, minimumDimensions, resolvedShapes, cues)
-      : { width: NODE_WIDTH, minHeight: minimumHeight },
+    initialHeight: isFlow ? dimensions.height : minimumHeight,
+    ...(isFlow ? { width: dimensions.width, height: dimensions.height } : {}),
+    style: isFlow ? dimensions : { width: NODE_WIDTH, minHeight: minimumHeight },
     data: nodeData({
       node,
       facts,
@@ -554,6 +551,7 @@ export function graphToFlow(
   graph: ShowGraph | null | undefined,
   options: {
     collapsedFlowIds?: ReadonlySet<string>;
+    /** The size to draw each Flow at, overriding the fit to its children. */
     flowDimensions?: ReadonlyMap<string, FlowDimensions>;
     sourceValues?: Readonly<Record<string, unknown>>;
   } = {},
