@@ -232,6 +232,13 @@
       "when": 1788324763141,
       "tag": "0032_short_the_initiative",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1788393854644,
+      "tag": "0033_complete_blue_shield",
+      "breakpoints": true
     }
   ]
 }

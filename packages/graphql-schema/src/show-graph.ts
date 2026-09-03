@@ -157,6 +157,7 @@ export const GetShowGraphQuery = graphql(
           canvasId
           elementId
           eventKind
+          params
           cueId
           position
         }

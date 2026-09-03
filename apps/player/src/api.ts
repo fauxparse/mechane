@@ -92,13 +92,13 @@ export async function fetchPlayerSession(
   return normalizePlayerSession(result.playerSession, API_BASE_URL);
 }
 
-export interface PlayerEventInput {
+export type PlayerEventInput = {
   eventId: string;
   publishedGraphVersion: number;
   sceneId: string;
+  /** For a keypress this is the Canvas root, which is what Canvas scope means. */
   elementId: string;
-  eventKind: "tap";
-}
+} & ({ eventKind: "tap" } | { eventKind: "keypress"; params: { key: string } });
 
 export type PlayerEventResult =
   | { kind: "applied"; eventId: string; resultingSceneId: string }

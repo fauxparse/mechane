@@ -30,7 +30,7 @@ describe("Navigation Audience seed", () => {
     ]);
     expect(graph.cues).toHaveLength(6);
     expect(graph.actions).toHaveLength(6);
-    expect(graph.eventBindings).toHaveLength(6);
+    expect(graph.eventBindings).toHaveLength(12);
     expect(graph.edges.filter((edge) => edge.kind === "navigate")).toHaveLength(6);
     expect(graph.edges.filter((edge) => edge.kind === "device")).toEqual([
       expect.objectContaining({

@@ -46,7 +46,13 @@ import type {
   SuggestedImageDimensions,
   Type,
 } from "@mechane/domain";
-import { assertValidFlowColor, isEdgeKind, isNodeKind } from "@mechane/domain";
+import {
+  assertValidFlowColor,
+  decodeEventBinding as decodeBinding,
+  InvalidInteractionError,
+  isEdgeKind,
+  isNodeKind,
+} from "@mechane/domain";
 import {
   addBlock,
   addEdge,
@@ -97,6 +103,7 @@ import {
   renameCue,
   setCueActionOrder,
   setEventBindingCue,
+  setEventBindingKey,
   setEventBindingOrder,
   setNavigateTarget,
 } from "./interaction-commands";
@@ -205,6 +212,8 @@ export interface FlatEventBinding {
   eventKind: string;
   cueId: string;
   position: number;
+  /** Per-kind payload; absent for kinds that take no parameters. */
+  params?: Record<string, unknown> | null;
 }
 
 /** One edit as a flat record: the shape both adapters exchange. */
@@ -245,6 +254,7 @@ export interface FlatGraphEdit {
   cue?: FlatCue | null;
   action?: FlatAction | null;
   binding?: FlatEventBinding | null;
+  key?: string | null;
   actionId?: string | null;
   bindingId?: string | null;
   bindingIds?: string[] | null;
@@ -595,32 +605,32 @@ function encodeEventBinding(binding: EventBinding): FlatEventBinding {
     eventKind: binding.eventKind,
     cueId: binding.cueId,
     position: binding.position,
+    params: binding.eventKind === "keypress" ? { ...binding.params } : null,
   };
 }
 
 function decodeEventBinding(flat: FlatEventBinding): EventBinding {
-  if (
-    !flat ||
-    typeof flat.id !== "string" ||
-    typeof flat.canvasId !== "string" ||
-    typeof flat.elementId !== "string" ||
-    flat.eventKind !== "tap" ||
-    typeof flat.cueId !== "string" ||
-    !Number.isInteger(flat.position) ||
-    flat.position < 0
-  ) {
-    throw new GraphEditCodecError(
-      "An Event Binding edit needs a valid tap Binding with a position.",
-    );
+  if (!flat) throw new GraphEditCodecError("An Event Binding edit needs a Binding.");
+  try {
+    return decodeBinding(flat);
+  } catch (error) {
+    // The domain owns what a valid Binding is; this layer owns how a bad edit
+    // is reported — the same split graph.ts uses when it rewraps
+    // InvalidShapeError into InvalidShowGraphError.
+    if (error instanceof InvalidInteractionError) {
+      throw new GraphEditCodecError(`An Event Binding edit is invalid: ${error.message}`);
+    }
+    throw error;
   }
-  return {
-    id: flat.id,
-    canvasId: flat.canvasId,
-    elementId: flat.elementId,
-    eventKind: "tap",
-    cueId: flat.cueId,
-    position: flat.position,
-  };
+}
+
+function decodeEventBindingKey(flat: FlatGraphEdit): string | null {
+  const { key } = flat;
+  if (key === undefined || key === null) return null;
+  if (typeof key !== "string") {
+    throw new GraphEditCodecError("An Event Binding key edit needs a string key or null.");
+  }
+  return key;
 }
 
 function decodeEventBindingOrder(flat: FlatGraphEdit): string[] {
@@ -1218,6 +1228,15 @@ export const GRAPH_EDIT_CODECS: { [T in GraphEdit["type"]]: GraphEditCodec<T> } 
       type: GRAPH_COMMAND_TYPES.setEventBindingCue,
       bindingId: required(flat, "bindingId", flat.bindingId),
       cueId: required(flat, "cueId", flat.cueId),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.setEventBindingKey]: {
+    command: (edit) => setEventBindingKey(edit.bindingId, edit.key),
+    encode: (edit) => ({ type: edit.type, bindingId: edit.bindingId, key: edit.key }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.setEventBindingKey,
+      bindingId: required(flat, "bindingId", flat.bindingId),
+      key: decodeEventBindingKey(flat),
     }),
   },
   [GRAPH_COMMAND_TYPES.setEventBindingOrder]: {

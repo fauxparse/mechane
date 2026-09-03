@@ -24,8 +24,10 @@ import type {
 } from "@mechane/domain";
 import {
   assertValidShowGraph,
+  decodeEventBinding,
   emptyShowGraph,
   generateId,
+  InvalidInteractionError,
   isEdgeKind,
   normalizeShapeCollectionInstances,
   projectNavigateEdges,
@@ -107,17 +109,16 @@ function toCue(row: CueRow, actionRows: readonly ActionRow[]): Cue {
 }
 
 function toEventBinding(row: EventBindingRow): EventBinding {
-  if (row.eventKind !== "tap") {
-    throw new Error(`Stored Event Binding "${row.id}" has unknown kind "${row.eventKind}".`);
+  try {
+    return decodeEventBinding(row);
+  } catch (error) {
+    // Stored rows are trusted-ish, so a bad one is a data problem rather than
+    // a caller problem; report it as this layer's error, not the domain's.
+    if (error instanceof InvalidInteractionError) {
+      throw new Error(`Stored Event Binding "${row.id}" is invalid: ${error.message}`);
+    }
+    throw error;
   }
-  return {
-    id: row.id,
-    canvasId: row.canvasId,
-    elementId: row.elementId,
-    eventKind: "tap",
-    cueId: row.cueId,
-    position: row.position,
-  };
 }
 
 function readInteractions(
@@ -739,6 +740,7 @@ export async function persistEventBindings(
       canvasId: binding.canvasId,
       elementId: binding.elementId,
       eventKind: binding.eventKind,
+      params: binding.eventKind === "keypress" ? binding.params : {},
       cueId: binding.cueId,
       position: binding.position,
     })),

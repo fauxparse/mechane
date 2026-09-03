@@ -59,6 +59,7 @@ export function CanvasWorkspaceEditor({
   onCreateCue,
   onFocusCue,
   onSetEventBindingCue,
+  onSetEventBindingKey,
   onCreateEventBinding,
   onRemoveEventBinding,
   onReorderEventBindings,
@@ -420,6 +421,7 @@ export function CanvasWorkspaceEditor({
           onCreateCue={onCreateCue}
           onFocusCue={onFocusCue}
           onSetEventBindingCue={onSetEventBindingCue}
+          onSetEventBindingKey={onSetEventBindingKey}
           onCreateEventBinding={onCreateEventBinding}
           onRemoveEventBinding={onRemoveEventBinding}
           onReorderEventBindings={onReorderEventBindings}

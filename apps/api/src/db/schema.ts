@@ -644,6 +644,9 @@ export const playerEvents = pgTable(
     observedSceneId: text("observed_scene_id").notNull(),
     elementId: text("element_id").notNull(),
     eventKind: text("event_kind").notNull(),
+    // What was observed, not what matched — this is the audit trail (#459),
+    // and which key fired cannot be reconstructed after the fact.
+    params: jsonb("params"),
     outcome: text("outcome").notNull(),
     reason: text("reason"),
     resultingSceneId: text("resulting_scene_id"),
@@ -871,6 +874,12 @@ export const graphEventBindings = pgTable(
       .references(() => canvases.id, { onDelete: "cascade" }),
     elementId: text("element_id").notNull(),
     eventKind: text("event_kind").notNull(),
+    // Per-kind payload. JSONB for the same reason canvas_elements.properties
+    // is: a new Event kind's parameters must not be a schema migration. The
+    // domain owns what a valid payload is, so there is no CHECK here.
+    params: jsonb("params")
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     cueId: text("cue_id").notNull(),
     position: integer("position").notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),

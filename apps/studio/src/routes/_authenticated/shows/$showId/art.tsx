@@ -5,6 +5,7 @@ import {
   removeEventBinding,
   setBlockVariables,
   setEventBindingCue,
+  setEventBindingKey,
   setEventBindingOrder,
 } from "@mechane/commands";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
@@ -196,6 +197,12 @@ function CanvasWorkspaceRoute() {
   const changeBindingCue = useCallback(
     (bindingId: string, cueId: string) => {
       graphEditing.command.commands.execute(setEventBindingCue(bindingId, cueId));
+    },
+    [graphEditing.command.commands],
+  );
+  const changeBindingKey = useCallback(
+    (bindingId: string, key: string | null) => {
+      graphEditing.command.commands.execute(setEventBindingKey(bindingId, key));
     },
     [graphEditing.command.commands],
   );
@@ -410,6 +417,7 @@ function CanvasWorkspaceRoute() {
       onCreateCue={createCue}
       onFocusCue={focusCue}
       onSetEventBindingCue={changeBindingCue}
+      onSetEventBindingKey={changeBindingKey}
       onCreateEventBinding={createBinding}
       onRemoveEventBinding={removeBinding}
       onReorderEventBindings={reorderBindings}

@@ -148,6 +148,28 @@ function binding(sceneId: NavigationSceneId, destinationId: NavigationSceneId): 
   };
 }
 
+/**
+ * The destination's first letter, bound to the Cue its button already uses —
+ * the point being that one Cue answers to both a tap and a keypress.
+ *
+ * On the Canvas root, because that is how a Canvas-scoped Event is spelled. No
+ * Scene binds its own letter: there is no Cue that navigates to where you are.
+ */
+function keypressBinding(
+  sceneId: NavigationSceneId,
+  destinationId: NavigationSceneId,
+): EventBinding {
+  return {
+    id: `binding_key_${sceneId}_${destinationId}`,
+    canvasId: CANVAS_IDS[sceneId],
+    elementId: `${sceneId}_root`,
+    eventKind: "keypress",
+    params: { key: SCENE_NAMES[destinationId].charAt(0).toLowerCase() },
+    cueId: `cue_${sceneId}_${destinationId}`,
+    position: destinationsByScene[sceneId].indexOf(destinationId),
+  };
+}
+
 export function navigationProofGraph(): ShowGraph {
   const scenes = NAVIGATION_SCENE_IDS.map((sceneId) => ({
     id: sceneId,
@@ -165,7 +187,10 @@ export function navigationProofGraph(): ShowGraph {
     destinationsByScene[sceneId].map((destinationId) => action(sceneId, destinationId)),
   );
   const eventBindings = NAVIGATION_SCENE_IDS.flatMap((sceneId) =>
-    destinationsByScene[sceneId].map((destinationId) => binding(sceneId, destinationId)),
+    destinationsByScene[sceneId].flatMap((destinationId) => [
+      binding(sceneId, destinationId),
+      keypressBinding(sceneId, destinationId),
+    ]),
   );
   const nodes = [
     {

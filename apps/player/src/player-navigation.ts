@@ -1,4 +1,4 @@
-import { resolveRuntimeEvent } from "@mechane/domain";
+import { resolveRuntimeEvent, type RuntimeEventObservation } from "@mechane/domain";
 import { useCallback, useEffect, useState } from "react";
 import type { PlayerSession, PlayerState } from "./api";
 import {
@@ -26,6 +26,7 @@ export function usePlayerNavigation(
   pairingCode: string,
 ): NavigationRuntime & {
   onElementTap: (elementId: string) => void;
+  onKeyPress: (key: string) => boolean;
   onTakeOver: () => void;
 } {
   const [runtime, setRuntime] = useState<NavigationRuntime>({ status: "inactive", session: null });
@@ -87,34 +88,32 @@ export function usePlayerNavigation(
     };
   }, [pairingCode, session]);
 
-  const onElementTap = useCallback(
-    (elementId: string) => {
+  // One local resolver for both kinds: a keypress differs only in what it
+  // observes, never in how the resolved plan is applied.
+  const navigateFor = useCallback(
+    (observe: (sceneId: string, canvasId: string) => RuntimeEventObservation): boolean => {
       if (
         runtime.status !== "playing" ||
         !runtime.store ||
         !runtime.session.scene ||
         !runtime.session.canvas
       ) {
-        return;
+        return false;
       }
       if (runtime.store.getStatus().ownership !== "active") {
         setRuntime({ status: "superseded", session: runtime.session, store: runtime.store });
-        return;
+        return false;
       }
-      const plan = resolveRuntimeEvent(runtime.session.graph, {
-        sceneId: runtime.session.scene.id,
-        canvasId: runtime.session.canvas.id,
-        elementId,
-        eventKind: "tap",
-      });
-      if (plan.kind !== "planned") return;
+      const observation = observe(runtime.session.scene.id, runtime.session.canvas.id);
+      const plan = resolveRuntimeEvent(runtime.session.graph, observation);
+      if (plan.kind !== "planned") return false;
       const action = plan.actions[0];
-      if (!action || action.kind !== "navigate") return;
+      if (!action || action.kind !== "navigate") return false;
       const target = runtime.session.flow?.scenes.find(
         ({ scene }) => scene.id === action.targetSceneId,
       );
       const currentState = runtime.store.read();
-      if (!target || !currentState) return;
+      if (!target || !currentState) return false;
       const nextState: PlayerRunState = {
         ...currentState,
         publishedGraphVersion: runtime.session.graph.version,
@@ -122,7 +121,7 @@ export function usePlayerNavigation(
       };
       if (!runtime.store.replace(nextState)) {
         setRuntime({ status: "superseded", session: runtime.session, store: runtime.store });
-        return;
+        return false;
       }
       setRuntime({
         status: "playing",
@@ -131,15 +130,40 @@ export function usePlayerNavigation(
       });
       void baseState
         .submitEvent?.({
+          ...observation,
           eventId: crypto.randomUUID(),
           publishedGraphVersion: runtime.session.graph.version,
           sceneId: plan.sceneId,
-          elementId,
-          eventKind: "tap",
         })
         .catch(() => undefined);
+      return true;
     },
     [baseState, runtime],
+  );
+
+  const onElementTap = useCallback(
+    (elementId: string) => {
+      navigateFor((sceneId, canvasId) => ({
+        sceneId,
+        canvasId,
+        elementId,
+        eventKind: "tap",
+      }));
+    },
+    [navigateFor],
+  );
+
+  /** Keypress binds to the Canvas root — that is how Canvas scope is spelled. */
+  const onKeyPress = useCallback(
+    (key: string) =>
+      navigateFor((sceneId, canvasId) => ({
+        sceneId,
+        canvasId,
+        elementId: runtime.session?.canvas?.root.id ?? "",
+        eventKind: "keypress",
+        params: { key },
+      })),
+    [navigateFor, runtime],
   );
 
   const onTakeOver = useCallback(() => {
@@ -154,7 +178,7 @@ export function usePlayerNavigation(
     });
   }, [runtime]);
 
-  return { ...runtime, onElementTap, onTakeOver };
+  return { ...runtime, onElementTap, onKeyPress, onTakeOver };
 }
 
 function sessionForState(session: PlayerSession, state: PlayerRunState): PlayerSession {

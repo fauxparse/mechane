@@ -1,19 +1,48 @@
-export const EVENT_KINDS = ["tap"] as const;
+import { isBindableKey } from "./keys";
+
+export const EVENT_KINDS = ["tap", "keypress"] as const;
 export type EventKind = (typeof EVENT_KINDS)[number];
 
 export type InteractionOwner =
   | { readonly kind: "scene"; readonly sceneId: string }
   | { readonly kind: "block"; readonly blockId: string };
 
-export interface EventBinding {
+/** Fields every Event Binding carries, whatever its kind. */
+export interface EventBindingBase {
   id: string;
   canvasId: string;
   elementId: string;
-  eventKind: EventKind;
   cueId: string;
   /** Evaluation priority among bindings for this Element and Event kind. */
   position: number;
 }
+
+/**
+ * The key a `keypress` Binding waits for, in the stored form `./keys` defines.
+ * `null` while the author has added the Binding but not yet captured a key —
+ * valid and silent, like a Cue with no Actions, and never matched at dispatch.
+ */
+export interface KeypressParams {
+  key: string | null;
+}
+
+/**
+ * An authored Event Binding.
+ *
+ * A union rather than a `params` field on every kind, so that `tap` — which
+ * genuinely has no parameters — carries no `params` key at all, and a third
+ * unparameterised kind costs nothing.
+ *
+ * A `keypress` Binding is only *meaningful* on the root Element of a
+ * Scene-owned Canvas, because that is what Canvas-level scope means here. It
+ * is not enforced: `ShowGraph` carries no Canvas data, so this module cannot
+ * see whether an `elementId` is a root. A keypress bound elsewhere is inert —
+ * the authoring UI never offers it and the Player only ever observes keypress
+ * against the root, so it can never fire.
+ */
+export type EventBinding =
+  | (EventBindingBase & { eventKind: "tap" })
+  | (EventBindingBase & { eventKind: "keypress"; params: KeypressParams });
 
 export interface Cue {
   id: string;
@@ -47,16 +76,39 @@ export function interactionCollections(
   };
 }
 
-export interface RuntimeEventObservation {
+interface RuntimeEventObservationBase {
   sceneId: string;
   canvasId: string;
   elementId: string;
-  eventKind: string;
 }
+
+/**
+ * One Event as the Player saw it. Mirrors `EventBinding` so that resolution
+ * compares two values of the same shape, and so a new kind cannot be added
+ * without the compiler naming every site that must handle it.
+ */
+export type RuntimeEventObservation =
+  | (RuntimeEventObservationBase & { eventKind: "tap" })
+  | (RuntimeEventObservationBase & { eventKind: "keypress"; params: { key: string } });
 
 export type RuntimeEventPlan =
   | { kind: "unbound"; reason: "stale-scene" | "unbound-event" }
   | { kind: "planned"; sceneId: string; cue: Cue; actions: readonly Action[] };
+
+/**
+ * Whether a Binding answers an observation: same kind, and — for kinds that
+ * carry parameters — the same payload. `position` stays a tiebreak *among
+ * equal matches*, so two keypress Bindings for different keys never compete.
+ *
+ * An unset key matches nothing, which is what makes a half-authored Binding
+ * inert rather than a Binding that fires on every key.
+ */
+function matchesObservation(binding: EventBinding, observation: RuntimeEventObservation): boolean {
+  if (binding.eventKind !== observation.eventKind) return false;
+  if (binding.eventKind === "tap") return true;
+  const observed = observation as Extract<RuntimeEventObservation, { eventKind: "keypress" }>;
+  return binding.params.key !== null && binding.params.key === observed.params.key;
+}
 
 /**
  * Resolves an observed runtime Event into the complete authored Action plan.
@@ -84,7 +136,7 @@ export function resolveRuntimeEvent(
     if (
       candidate.canvasId !== observation.canvasId ||
       candidate.elementId !== observation.elementId ||
-      candidate.eventKind !== observation.eventKind ||
+      !matchesObservation(candidate, observation) ||
       (binding &&
         (candidate.position > binding.position ||
           (candidate.position === binding.position && candidate.id >= binding.id)))
@@ -160,17 +212,16 @@ export function projectNavigateEdges(graph: {
 export type InteractionViolation =
   | "duplicateInteractionId"
   | "invalidEventKind"
+  | "invalidEventParams"
   | "emptyCueName"
   | "duplicateCueName"
   | "missingCue"
   | "missingAction"
   | "actionOwnership"
-  | "emptyActionList"
   | "unsupportedAction"
   | "missingScene"
   | "missingBlock"
   | "navigateSceneFlow"
-  | "invalidCurrentActionCount"
   | "invalidEventBindingPosition"
   | "duplicateEventBindingPosition"
   | "emptyElementReference"
@@ -196,6 +247,98 @@ function requireScene(
     throw new InvalidInteractionError("missingScene", `${role} references Scene "${sceneId}".`);
   }
   return scene;
+}
+
+/**
+ * The per-kind payload rule. Shape only — whether a key is *bindable* is
+ * `./keys`, which both this and the Studio capture control consult so the two
+ * cannot drift.
+ */
+function assertValidEventParams(binding: EventBinding): void {
+  if (binding.eventKind === "tap") {
+    if ("params" in binding) {
+      throw new InvalidInteractionError(
+        "invalidEventParams",
+        `Event Binding "${binding.id}" is a tap and must carry no params.`,
+      );
+    }
+    return;
+  }
+  const params: unknown = binding.params;
+  if (typeof params !== "object" || params === null) {
+    throw new InvalidInteractionError(
+      "invalidEventParams",
+      `Event Binding "${binding.id}" is a keypress and must carry params.`,
+    );
+  }
+  const { key } = params as { key?: unknown };
+  if (key === null) return;
+  if (typeof key !== "string" || !isBindableKey(key)) {
+    throw new InvalidInteractionError(
+      "invalidEventParams",
+      `Event Binding "${binding.id}" has an unbindable key.`,
+    );
+  }
+}
+
+/**
+ * Proves an Event Binding arriving from outside this process — the edit codec,
+ * the database, the Studio's GraphQL client — and returns it typed.
+ *
+ * One decoder rather than one per boundary: each of those layers used to carry
+ * its own two-line `kind !== "tap"` check, which was fine while there was one
+ * kind and no payload. Four copies of a per-kind payload parser is how the
+ * boundaries end up disagreeing about what a valid Binding is.
+ *
+ * Throws `InvalidInteractionError`; callers rewrap it in whatever error their
+ * layer already speaks, the way `assertValidShowGraph` rewraps InvalidShapeError.
+ */
+export function decodeEventBinding(input: {
+  id: unknown;
+  canvasId: unknown;
+  elementId: unknown;
+  eventKind: unknown;
+  cueId: unknown;
+  position: unknown;
+  params?: unknown;
+}): EventBinding {
+  const { id, canvasId, elementId, eventKind, cueId, position } = input;
+  if (
+    typeof id !== "string" ||
+    typeof canvasId !== "string" ||
+    typeof elementId !== "string" ||
+    typeof cueId !== "string" ||
+    !Number.isInteger(position) ||
+    (position as number) < 0
+  ) {
+    throw new InvalidInteractionError(
+      "emptyElementReference",
+      `Event Binding "${String(id)}" is missing required fields.`,
+    );
+  }
+  const base: EventBindingBase = {
+    id,
+    canvasId,
+    elementId,
+    cueId,
+    position: position as number,
+  };
+  if (eventKind === "tap") {
+    const binding: EventBinding = { ...base, eventKind: "tap" };
+    assertValidEventParams(binding);
+    return binding;
+  }
+  if (eventKind === "keypress") {
+    const params = (input.params ?? {}) as { key?: unknown };
+    const key = params.key === undefined ? null : params.key;
+    const binding = { ...base, eventKind: "keypress" as const, params: { key } } as EventBinding;
+    assertValidEventParams(binding);
+    return binding;
+  }
+  throw new InvalidInteractionError(
+    "invalidEventKind",
+    `Event Binding "${id}" has an unsupported Event kind.`,
+  );
 }
 
 function duplicate<T>(values: readonly T[]): T | undefined {
@@ -310,12 +453,13 @@ export function assertValidInteractions(graph: {
 
   const bindingPositions = new Map<string, Set<number>>();
   for (const binding of interactions.eventBindings) {
-    if (binding.eventKind !== "tap") {
+    if (!EVENT_KINDS.includes(binding.eventKind)) {
       throw new InvalidInteractionError(
         "invalidEventKind",
         `Event Binding "${binding.id}" has an unsupported Event kind.`,
       );
     }
+    assertValidEventParams(binding);
     if (binding.elementId.trim().length === 0 || binding.canvasId.trim().length === 0) {
       throw new InvalidInteractionError(
         "emptyElementReference",

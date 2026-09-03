@@ -1,5 +1,5 @@
 import type { Action, Cue, EventBinding, GraphEdge, ShowGraph } from "@mechane/domain";
-import { projectNavigateEdges } from "@mechane/domain";
+import { isBindableKey, projectNavigateEdges } from "@mechane/domain";
 
 import { capturing, composite } from "./command";
 import type { ShowGraphCommand } from "./graph-commands";
@@ -81,6 +81,17 @@ function applyBindingOrder(graph: ShowGraph, bindingIds: readonly string[]): Sho
       const position = positions.get(binding.id);
       return position === undefined ? binding : { ...binding, position };
     }),
+  });
+}
+
+function withBindingKey(graph: ShowGraph, bindingId: string, key: string | null): ShowGraph {
+  return withInteractions(graph, {
+    ...interactions(graph),
+    eventBindings: (graph.eventBindings ?? []).map((binding) =>
+      binding.id === bindingId && binding.eventKind === "keypress"
+        ? { ...binding, params: { ...binding.params, key } }
+        : binding,
+    ),
   });
 }
 
@@ -403,6 +414,43 @@ export function setEventBindingCue(
     ],
   });
 }
+/**
+ * Assigns the key a `keypress` Binding waits for.
+ *
+ * Separate from `addEventBinding` because a Binding is created before its key
+ * is captured: the author picks Keypress from a menu, the row appears, and the
+ * capture control takes the next keystroke. An unset key is valid and inert
+ * (#517), so the intermediate state needs no special handling.
+ */
+export function setEventBindingKey(
+  bindingId: string,
+  key: string | null,
+  label = "Set Event Key",
+): ShowGraphCommand {
+  return capturing<ShowGraph, string | null, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setEventBindingKey,
+    label,
+    scope: "selection",
+    capture: (graph) => {
+      const binding = (graph.eventBindings ?? []).find((candidate) => candidate.id === bindingId);
+      if (!binding) throw new Error(`Show graph has no Event Binding "${bindingId}".`);
+      if (binding.eventKind !== "keypress") {
+        throw new Error(`Event Binding "${bindingId}" is not a keypress.`);
+      }
+      if (key !== null && !isBindableKey(key)) {
+        throw new Error(`"${key}" is not a bindable key.`);
+      }
+      return binding.params.key;
+    },
+    apply: (graph) => withBindingKey(graph, bindingId, key),
+    restore: (graph, previousKey) => withBindingKey(graph, bindingId, previousKey),
+    edits: [{ type: GRAPH_COMMAND_TYPES.setEventBindingKey, bindingId, key }],
+    restoreEdits: (previousKey) => [
+      { type: GRAPH_COMMAND_TYPES.setEventBindingKey, bindingId, key: previousKey },
+    ],
+  });
+}
+
 export function setEventBindingOrder(
   bindingIds: readonly string[],
   label = "Reorder Event Bindings",
