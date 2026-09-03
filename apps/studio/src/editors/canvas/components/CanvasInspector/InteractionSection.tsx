@@ -43,6 +43,7 @@ import {
 import { sortBy } from "es-toolkit";
 import { useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
+import { keypressUnavailableReason } from "./keypress-availability";
 
 function ownerKey(owner: InteractionOwner): string {
   return owner.kind === "scene" ? `scene:${owner.sceneId}` : `block:${owner.blockId}`;
@@ -62,24 +63,6 @@ const INTERACTION_DESCRIPTIONS: Record<EventKind, string> = {
   tap: "User taps or clicks on this",
   keypress: "Audience presses a key on this Scene",
 };
-
-/**
- * Why a Keypress can't be added here, or null when it can.
- *
- * Canvas-level scope is a root-Element binding, so a Keypress anywhere else is
- * inert — it would never fire. The domain can't reject it (ShowGraph carries
- * no Canvas data), so this is the only place an author finds out. Disabled
- * with the reason rather than hidden, because "keypress lives on the Scene
- * background" is otherwise undiscoverable.
- */
-export function keypressUnavailableReason(
-  ownerKind: InteractionOwner["kind"],
-  isCanvasRoot: boolean,
-): string | null {
-  if (ownerKind === "block") return "Only Scenes can listen for keypresses";
-  if (!isCanvasRoot) return "Select the Scene background to add a Keypress";
-  return null;
-}
 
 /**
  * The key capture control: a *mode*, not a focus state.

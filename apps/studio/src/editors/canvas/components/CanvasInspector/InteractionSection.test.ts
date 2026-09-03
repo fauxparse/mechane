@@ -5,7 +5,8 @@ import type { CanvasArtboardDocument } from "../../../../api/canvas";
 
 import type { CanvasInspectorModel } from "./canvas-inspector-types";
 import { CanvasInspectorProvider } from "./CanvasInspectorContext";
-import { InteractionSection, keypressUnavailableReason } from "./InteractionSection";
+import { InteractionSection } from "./InteractionSection";
+import { keypressUnavailableReason } from "./keypress-availability";
 
 const element = { id: "button-vote", type: "rect" as const, name: "Vote" };
 const focused: CanvasArtboardDocument = {
