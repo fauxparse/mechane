@@ -96,14 +96,16 @@ export function keypressUnavailableReason(
  */
 function KeyCaptureControl({
   binding,
-  autoCapture,
+  capturing,
+  onCapturingChange,
   onSetKey,
 }: {
   binding: Extract<EventBinding, { eventKind: "keypress" }>;
-  autoCapture: boolean;
+  capturing: boolean;
+  onCapturingChange: (bindingId: string | null) => void;
   onSetKey?: (bindingId: string, key: string | null) => void;
 }) {
-  const [capturing, setCapturing] = useState(autoCapture);
+  const setCapturing = (next: boolean) => onCapturingChange(next ? binding.id : null);
 
   const { key } = binding.params;
   const label = capturing ? "Press a key…" : key === null ? "Not set" : keyDisplayName(key);
@@ -135,7 +137,7 @@ function KeyCaptureControl({
       </InputGroupAddon>
       <InputGroupButton
         type="button"
-        autoFocus={autoCapture}
+        autoFocus={capturing}
         className="min-w-0 flex-1 justify-start"
         aria-label={accessibleName}
         aria-keyshortcuts={key ?? undefined}
@@ -177,7 +179,8 @@ type InteractionBindingRowProps = {
   index: number;
   cuesById: ReadonlyMap<string, Cue>;
   ownedCues: readonly Cue[];
-  autoCaptureBindingId: string | null;
+  capturingBindingId: string | null;
+  onCapturingChange: (bindingId: string | null) => void;
   onSetEventBindingKey?: (bindingId: string, key: string | null) => void;
   onSetEventBindingCue?: (bindingId: string, cueId: string) => void;
   onDuplicate(binding: EventBinding): void;
@@ -189,7 +192,8 @@ function InteractionBindingRow({
   index,
   cuesById,
   ownedCues,
-  autoCaptureBindingId,
+  capturingBindingId,
+  onCapturingChange,
   onSetEventBindingKey,
   onSetEventBindingCue,
   onDuplicate,
@@ -226,7 +230,8 @@ function InteractionBindingRow({
           {binding.eventKind === "keypress" ? (
             <KeyCaptureControl
               binding={binding}
-              autoCapture={autoCaptureBindingId === binding.id}
+              capturing={capturingBindingId === binding.id}
+              onCapturingChange={onCapturingChange}
               onSetKey={onSetEventBindingKey}
             />
           ) : (
@@ -304,10 +309,11 @@ export function InteractionSection() {
     onSetEventBindingKey,
   } = useCanvasInspectorContext();
 
-  // Which Binding should open already listening: the one just added from the
-  // menu. The author picked "Keypress" — the next thing they want is to press
-  // a key.
-  const [autoCaptureBindingId, setAutoCaptureBindingId] = useState<string | null>(null);
+  // Which Binding is listening for a keystroke. Owned here rather than per
+  // row because "at most one control is capturing" is a fact about the
+  // section — and a row's capture state would otherwise be a prop copied into
+  // state, which stops tracking the prop the moment it changes.
+  const [capturingBindingId, setCapturingBindingId] = useState<string | null>(null);
 
   const owner = useMemo<InteractionOwner | null>(() => {
     if (!focused) return null;
@@ -365,11 +371,13 @@ export function InteractionSection() {
       // Created before a key is captured: an unset key is valid and inert
       // (#517), so the row can exist while the author decides.
       onCreateEventBinding?.({ ...base, eventKind: "keypress", params: { key: null } });
-      setAutoCaptureBindingId(id);
+      // The author just picked "Keypress"; the next thing they want is to
+      // press a key.
+      setCapturingBindingId(id);
       return;
     }
     onCreateEventBinding?.({ ...base, eventKind: "tap" });
-    setAutoCaptureBindingId(null);
+    setCapturingBindingId(null);
   };
   const finishDrag = (event: DragEndEvent) => {
     if (event.canceled) return;
@@ -406,7 +414,8 @@ export function InteractionSection() {
               index={index}
               cuesById={cuesById}
               ownedCues={ownedCues}
-              autoCaptureBindingId={autoCaptureBindingId}
+              capturingBindingId={capturingBindingId}
+              onCapturingChange={setCapturingBindingId}
               onSetEventBindingKey={onSetEventBindingKey}
               onSetEventBindingCue={onSetEventBindingCue}
               onDuplicate={duplicateBinding}
