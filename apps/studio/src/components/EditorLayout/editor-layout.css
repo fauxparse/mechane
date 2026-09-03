@@ -1,0 +1,142 @@
+@media (prefers-reduced-motion: no-preference) {
+  .editor-transition-content {
+    view-transition-name: editor-transition-content;
+  }
+
+  .editor-chrome-header-left {
+    view-transition-name: editor-chrome-header-left;
+  }
+
+  .editor-chrome-header-tabs {
+    view-transition-name: editor-chrome-header-tabs;
+  }
+
+  .editor-chrome-header-right {
+    view-transition-name: editor-chrome-header-right;
+  }
+
+  .editor-chrome-sidebar-left {
+    view-transition-name: editor-chrome-sidebar-left;
+  }
+
+  .editor-chrome-sidebar-right {
+    view-transition-name: editor-chrome-sidebar-right;
+  }
+
+  html:active-view-transition-type(studio-editor)::view-transition-old(root),
+  html:active-view-transition-type(studio-editor)::view-transition-new(root) {
+    animation: none;
+  }
+
+  html:active-view-transition-type(studio-editor)::view-transition-group(editor-chrome-header-left),
+  html:active-view-transition-type(studio-editor)::view-transition-group(editor-chrome-header-tabs),
+  html:active-view-transition-type(
+      studio-editor
+    )::view-transition-group(editor-chrome-header-right),
+  html:active-view-transition-type(
+      studio-editor
+    )::view-transition-group(editor-chrome-sidebar-left),
+  html:active-view-transition-type(
+      studio-editor
+    )::view-transition-group(editor-chrome-sidebar-right) {
+    animation-duration: 320ms;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  html:active-view-transition-type(studio-editor)::view-transition-old(editor-chrome-header-left),
+  html:active-view-transition-type(studio-editor)::view-transition-new(editor-chrome-header-left),
+  html:active-view-transition-type(studio-editor)::view-transition-old(editor-chrome-header-tabs),
+  html:active-view-transition-type(studio-editor)::view-transition-new(editor-chrome-header-tabs),
+  html:active-view-transition-type(studio-editor)::view-transition-old(editor-chrome-header-right),
+  html:active-view-transition-type(studio-editor)::view-transition-new(editor-chrome-header-right),
+  html:active-view-transition-type(studio-editor)::view-transition-old(editor-chrome-sidebar-right),
+  html:active-view-transition-type(
+      studio-editor
+    )::view-transition-new(editor-chrome-sidebar-right) {
+    animation: none;
+  }
+
+  html:active-view-transition-type(studio-editor)::view-transition-old(editor-chrome-sidebar-left) {
+    animation: editor-sidebar-left-out 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  html:active-view-transition-type(studio-editor)::view-transition-new(editor-chrome-sidebar-left) {
+    animation: editor-sidebar-left-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  html:active-view-transition-type(
+      studio-editor
+    )::view-transition-image-pair(editor-chrome-header-left),
+  html:active-view-transition-type(
+      studio-editor
+    )::view-transition-image-pair(editor-chrome-header-tabs),
+  html:active-view-transition-type(
+      studio-editor
+    )::view-transition-image-pair(editor-chrome-header-right),
+  html:active-view-transition-type(
+      studio-editor
+    )::view-transition-image-pair(editor-chrome-sidebar-left),
+  html:active-view-transition-type(
+      studio-editor
+    )::view-transition-image-pair(editor-chrome-sidebar-right),
+  html:active-view-transition-type(
+      studio-editor
+    )::view-transition-image-pair(editor-transition-content) {
+    mix-blend-mode: normal;
+  }
+
+  html:active-view-transition-type(
+      studio-editor
+    )::view-transition-group(editor-transition-content) {
+    animation-duration: 320ms;
+    animation-timing-function: ease;
+  }
+
+  html:active-view-transition-type(studio-editor)::view-transition-old(editor-transition-content) {
+    animation: studio-editor-content-out 140ms ease both;
+  }
+
+  html:active-view-transition-type(studio-editor)::view-transition-new(editor-transition-content) {
+    animation: studio-editor-content-in 180ms ease 140ms both;
+  }
+
+  @keyframes editor-sidebar-left-out {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(-100%);
+    }
+  }
+
+  @keyframes editor-sidebar-left-in {
+    from {
+      opacity: 0;
+      transform: translateX(-100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes studio-editor-content-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes studio-editor-content-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}

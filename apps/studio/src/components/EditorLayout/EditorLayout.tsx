@@ -15,6 +15,7 @@ import type { CSSProperties, PropsWithChildren, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Header } from "../Header/Header";
+import "./editor-layout.css";
 import type { HeaderProps } from "../Header/Header";
 import { EditableAreaProvider } from "./EditableAreaProvider";
 import { EditorSlotsProvider, useEditorSlotRef, useFilledEditorSlots } from "./editor-slots";
@@ -101,7 +102,7 @@ function EditorChrome({
       >
         {/* The editor: full-bleed, beneath the Chrome. The toolbar lives in this
             layer so its backdrop filter samples the editor pixels. */}
-        <div className="absolute inset-0">
+        <div className="editor-transition-content absolute inset-0">
           {children}
           <div
             ref={footerRef}
@@ -112,7 +113,12 @@ function EditorChrome({
         </div>
 
         {hasLeft ? (
-          <Sidebar variant="floating" collapsible="offcanvas" aria-label="Layers">
+          <Sidebar
+            variant="floating"
+            collapsible="offcanvas"
+            aria-label="Layers"
+            className="editor-chrome-sidebar-left"
+          >
             <div ref={leftRef} className="flex min-h-0 flex-1 flex-col" />
           </Sidebar>
         ) : null}
@@ -133,7 +139,13 @@ function EditorChrome({
         </SidebarInset>
 
         {hasRight ? (
-          <Sidebar variant="floating" side="right" collapsible="offcanvas" aria-label="Properties">
+          <Sidebar
+            variant="floating"
+            side="right"
+            collapsible="offcanvas"
+            aria-label="Properties"
+            className="editor-chrome-sidebar-right"
+          >
             <div ref={rightRef} className="flex min-h-0 flex-1 flex-col" />
           </Sidebar>
         ) : null}
