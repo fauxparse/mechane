@@ -1,25 +1,30 @@
 @media (prefers-reduced-motion: no-preference) {
-  .editor-transition-content {
+  /* A `view-transition-name` makes the element a backdrop root, so any
+     `backdrop-filter` inside it samples nothing but that element's own
+     (transparent) pixels. Naming these only while the transition is running
+     keeps the chrome's blur intact the rest of the time — the selector applies
+     before the old state is captured, so the snapshots still get their names. */
+  html:active-view-transition-type(studio-editor) .editor-transition-content {
     view-transition-name: editor-transition-content;
   }
 
-  .editor-chrome-header-left {
+  html:active-view-transition-type(studio-editor) .editor-chrome-header-left {
     view-transition-name: editor-chrome-header-left;
   }
 
-  .editor-chrome-header-tabs {
+  html:active-view-transition-type(studio-editor) .editor-chrome-header-tabs {
     view-transition-name: editor-chrome-header-tabs;
   }
 
-  .editor-chrome-header-right {
+  html:active-view-transition-type(studio-editor) .editor-chrome-header-right {
     view-transition-name: editor-chrome-header-right;
   }
 
-  .editor-chrome-sidebar-left {
+  html:active-view-transition-type(studio-editor) .editor-chrome-sidebar-left {
     view-transition-name: editor-chrome-sidebar-left;
   }
 
-  .editor-chrome-sidebar-right {
+  html:active-view-transition-type(studio-editor) .editor-chrome-sidebar-right {
     view-transition-name: editor-chrome-sidebar-right;
   }
 
