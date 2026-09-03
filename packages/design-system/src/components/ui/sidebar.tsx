@@ -160,7 +160,7 @@ export function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className="flex size-full flex-col bg-sidebar/75 backdrop-blur-sm group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-lg group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-border"
+          className="flex size-full flex-col bg-sidebar/95 backdrop-blur-sm group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-lg group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-border"
         >
           {children}
         </div>
@@ -234,7 +234,7 @@ export function SidebarGroupLabel({ className, ...props }: ComponentProps<"div">
     <div
       data-slot="sidebar-group-label"
       className={cn(
-        "flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground outline-none",
+        "flex h-8 shrink-0 items-center rounded-md px-2 label outline-none",
         "group-data-[state=collapsed]/sidebar:hidden",
         className,
       )}

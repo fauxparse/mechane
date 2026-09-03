@@ -18,13 +18,13 @@ import {
   LucideIcon,
   PlusIcon,
   PointerIcon,
+  Section,
+  SectionRow,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Section,
-  SectionRow,
   Trash2Icon,
   ZapIcon,
 } from "@mechane/design-system";
@@ -41,7 +41,7 @@ import {
 } from "@mechane/domain";
 
 import { sortBy } from "es-toolkit";
-import { useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { keypressUnavailableReason } from "./keypress-availability";
 
@@ -88,8 +88,13 @@ function KeyCaptureControl({
   onCapturingChange: (bindingId: string | null) => void;
   onSetKey?: (bindingId: string, key: string | null) => void;
 }) {
-  const setCapturing = (next: boolean) => onCapturingChange(next ? binding.id : null);
-
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const setCapturing = (next: boolean) => {
+    onCapturingChange(next ? binding.id : null);
+    if (!next) {
+      buttonRef.current?.blur();
+    }
+  };
   const { key } = binding.params;
   const label = capturing ? "Press a key…" : key === null ? "Not set" : keyDisplayName(key);
   const accessibleName = `Keypress: ${key === null ? "not set" : keyAccessibleName(key)}`;
@@ -111,7 +116,7 @@ function KeyCaptureControl({
   };
 
   return (
-    <InputGroup className="w-full min-w-0">
+    <InputGroup className="w-full min-w-0 gap-2 hover:bg-muted/50 dark:hover:bg-input/25 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 **:focus-visible:border-0 **:focus-visible:ring-0">
       <InputGroupAddon onClick={() => setCapturing(true)}>
         <KeyboardIcon
           className="size-4"
@@ -119,9 +124,10 @@ function KeyCaptureControl({
         />
       </InputGroupAddon>
       <InputGroupButton
+        ref={buttonRef}
         type="button"
         autoFocus={capturing}
-        className="min-w-0 flex-1 justify-start"
+        className="min-w-0 flex-1 justify-start bg:transparent hover:bg-transparent dark:hover:bg-transparent"
         aria-label={accessibleName}
         aria-keyshortcuts={key ?? undefined}
         onClick={() => setCapturing(true)}
@@ -207,9 +213,6 @@ function InteractionBindingRow({
       <dl className="col-span-2 row-span-2 pl-5 grid min-w-0 grid-cols-[auto_minmax(0,1fr)] grid-rows-subgrid items-center gap-2 *:[dt]:label *:[dt]:col-start-1 *:[dd]:col-start-2">
         <dt>On</dt>
         <dd className="flex min-w-0 items-center gap-2">
-          {/* A Binding's kind is fixed at creation (#517), so this is a
-              readout for tap and a key control for keypress — never a picker.
-              Changing your mind means delete and re-add. */}
           {binding.eventKind === "keypress" ? (
             <KeyCaptureControl
               binding={binding}
@@ -235,7 +238,7 @@ function InteractionBindingRow({
             <SelectTrigger aria-label="Interaction Cue" className="w-full min-w-0">
               <SelectValue placeholder="Choose a Cue" className="min-w-0">
                 <div className="flex min-w-0 items-center gap-2">
-                  <ZapIcon className="size-4 shrink-0" />
+                  <ZapIcon className="size-4 shrink-0 text-muted-foreground" />
                   <span className="truncate">{cuesById.get(binding.cueId)?.name ?? "Unknown"}</span>
                 </div>
               </SelectValue>
@@ -243,7 +246,7 @@ function InteractionBindingRow({
             <SelectContent>
               {ownedCues.map((cue) => (
                 <SelectItem key={cue.id} value={cue.id}>
-                  <ZapIcon className="size-4" />
+                  <ZapIcon className="size-4 text-muted-foreground" />
                   {cue.name}
                 </SelectItem>
               ))}
@@ -251,7 +254,7 @@ function InteractionBindingRow({
           </Select>
         </dd>
       </dl>
-      <div className="col-start-3 -row-start-3 row-span-2 grid grid-rows-subgrid grid-cols-subgrid [display:none]">
+      <div className="col-start-3 -row-start-3 row-span-2 grid grid-rows-subgrid grid-cols-subgrid">
         <Button
           type="button"
           size="icon-sm"
@@ -389,7 +392,7 @@ export function InteractionSection() {
   return (
     <Section label="Interactions">
       <DragDropProvider sensors={bindingSensors} onDragEnd={finishDrag}>
-        <div className="grid grid-cols-subgrid gap-y-4 gap-x-2 col-span-full">
+        <div className="grid grid-cols-subgrid gap-y-4 gap-x-2 py-2 col-span-full">
           {bindings.map((binding, index) => (
             <InteractionBindingRow
               key={binding.id}
