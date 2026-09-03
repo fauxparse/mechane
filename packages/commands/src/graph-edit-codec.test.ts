@@ -303,6 +303,11 @@ const FIXTURES: { [T in GraphEdit["type"]]: Extract<GraphEdit, { type: T }> } = 
     bindingId: "binding_lobby",
     cueId: "cue_lobby",
   },
+  "graph.setEventBindingKey": {
+    type: "graph.setEventBindingKey",
+    bindingId: "binding_shortcut",
+    key: "r",
+  },
   "graph.setEventBindingOrder": {
     type: "graph.setEventBindingOrder",
     bindingIds: ["binding_lobby"],

@@ -51,6 +51,7 @@ export type CanvasInspectorProps = {
   onCreateCue?(owner: InteractionOwner): void;
   onFocusCue?(cueId: string): void;
   onSetEventBindingCue?(bindingId: string, cueId: string): void;
+  onSetEventBindingKey?(bindingId: string, key: string | null): void;
   onCreateEventBinding?(binding: EventBinding): void;
   onRemoveEventBinding?(bindingId: string): void;
   onReorderEventBindings?(bindingIds: readonly string[]): void;
@@ -91,6 +92,7 @@ export type CanvasInspectorModel = {
   onCreateCue?(owner: InteractionOwner): void;
   onFocusCue?(cueId: string): void;
   onSetEventBindingCue?(bindingId: string, cueId: string): void;
+  onSetEventBindingKey?(bindingId: string, key: string | null): void;
   onCreateEventBinding?(binding: EventBinding): void;
   onRemoveEventBinding?(bindingId: string): void;
   onReorderEventBindings?(bindingIds: readonly string[]): void;

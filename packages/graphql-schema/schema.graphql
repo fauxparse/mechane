@@ -38,6 +38,9 @@ input PlayerEventInput {
   sceneId: ID!
   elementId: ID!
   eventKind: String!
+
+  """Per-kind payload as observed; a keypress carries { key }."""
+  params: JSON
 }
 
 type PlayerEventApplied {
@@ -416,6 +419,9 @@ type EventBinding {
   canvasId: ID!
   elementId: ID!
   eventKind: String!
+
+  """Per-kind payload. Null for kinds that take no parameters."""
+  params: JSON
   cueId: ID!
   position: Int!
 }
@@ -734,6 +740,7 @@ input EventBindingInput {
   canvasId: ID!
   elementId: ID!
   eventKind: String!
+  params: JSON
   cueId: ID!
   position: Int!
 }
@@ -788,6 +795,9 @@ type GraphEdit {
   cue: Cue
   action: Action
   binding: EventBinding
+
+  """Event Binding key payloads: graph.setEventBindingKey."""
+  key: String
   cueId: ID
   actionId: ID
   bindingId: ID
@@ -868,6 +878,9 @@ input ShowEditInput {
   cue: CueInput
   action: ActionInput
   binding: EventBindingInput
+
+  """Event Binding key payloads: graph.setEventBindingKey."""
+  key: String
   cueId: ID
   actionId: ID
   bindingId: ID

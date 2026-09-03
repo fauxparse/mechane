@@ -24,6 +24,7 @@ const PlayerGraphFields = graphql(`
       canvasId
       elementId
       eventKind
+      params
       cueId
       position
     }

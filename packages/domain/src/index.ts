@@ -22,3 +22,4 @@ export * from "./theme-settings";
 export * from "./blocks";
 export * from "./slots";
 export * from "./images";
+export * from "./keys";

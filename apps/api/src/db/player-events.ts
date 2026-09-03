@@ -1,6 +1,7 @@
 import {
   InvalidInteractionError,
   resolveRuntimeEvent,
+  type RuntimeEventObservation,
   type RuntimeEventPlan,
 } from "@mechane/domain";
 import { and, desc, eq, isNull } from "drizzle-orm";
@@ -20,6 +21,32 @@ export interface PlayerEventInput {
   sceneId: string;
   elementId: string;
   eventKind: string;
+  /** Per-kind payload as the Player observed it; `keypress` carries `{ key }`. */
+  params?: Record<string, unknown> | null;
+}
+
+/**
+ * The observation a submitted Event stands for, or `null` when the input names
+ * no kind this server understands.
+ *
+ * Deliberately lenient about the payload: an out-of-catalogue key simply
+ * matches no Binding and lands on the existing `unbound-event` outcome. A
+ * second error path distinguishing "key you can't bind" from "key nobody
+ * bound" would tell a hostile client something and a legitimate one nothing.
+ */
+function observationFor(
+  input: PlayerEventInput,
+  sceneId: string,
+  canvasId: string,
+): RuntimeEventObservation | null {
+  const base = { sceneId, canvasId, elementId: input.elementId };
+  if (input.eventKind === "tap") return { ...base, eventKind: "tap" };
+  if (input.eventKind === "keypress") {
+    const key = (input.params as { key?: unknown } | null | undefined)?.key;
+    if (typeof key !== "string") return null;
+    return { ...base, eventKind: "keypress", params: { key } };
+  }
+  return null;
 }
 
 export type PlayerEventIgnoreReason =
@@ -121,6 +148,7 @@ async function recordEvent(
     observedSceneId: input.sceneId,
     elementId: input.elementId,
     eventKind: input.eventKind,
+    params: input.params ?? null,
     outcome,
     reason: result.kind === "ignored" || result.kind === "rejected" ? result.reason : null,
     resultingSceneId:
@@ -201,14 +229,13 @@ async function dispatchPerConnectionEvent(
       `Published Scene "${observedScene.id}" has no Canvas.`,
     );
   }
+  const observation = observationFor(input, observedScene.id, canvas.id);
+  if (!observation) {
+    return { kind: "rejected", eventId: input.eventId, reason: "invalid-event" };
+  }
   let plan: RuntimeEventPlan;
   try {
-    plan = resolveRuntimeEvent(graph, {
-      sceneId: observedScene.id,
-      canvasId: canvas.id,
-      elementId: input.elementId,
-      eventKind: input.eventKind,
-    });
+    plan = resolveRuntimeEvent(graph, observation);
   } catch (error) {
     if (error instanceof InvalidInteractionError) {
       throw new PlayerDispatchConfigurationError("Published interactions are invalid.");
@@ -353,12 +380,17 @@ export async function dispatchPlayerEvent(
           `Published Scene "${state.activeSceneId}" has no Canvas.`,
         );
       }
-      const plan = resolveRuntimeEvent(graph, {
-        sceneId: state.activeSceneId,
-        canvasId: canvas.id,
-        elementId: input.elementId,
-        eventKind: input.eventKind,
-      });
+      const observation = observationFor(input, state.activeSceneId, canvas.id);
+      if (!observation) {
+        const result: PlayerEventResult = {
+          kind: "rejected",
+          eventId: input.eventId,
+          reason: "invalid-event",
+        };
+        await recordEvent(tx, run.id, device.showId, device.id, input, result);
+        return result;
+      }
+      const plan = resolveRuntimeEvent(graph, observation);
       if (plan.kind === "unbound") {
         const result: PlayerEventResult = {
           kind: "ignored",

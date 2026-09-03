@@ -48,7 +48,7 @@ import type {
   ShowGraph,
   Type,
 } from "@mechane/domain";
-import { isFlowColor } from "@mechane/domain";
+import { decodeEventBinding, InvalidInteractionError, isFlowColor } from "@mechane/domain";
 import { decodeCanvasDocument } from "@mechane/graphql-schema";
 import type { ShowGraph as ApiShowGraph, ApplyShowEditsResult } from "@mechane/graphql-schema";
 type ApiType = ApiShowGraph["shapes"][number]["fields"][number]["type"];
@@ -322,17 +322,14 @@ function toAction(action: ApiShowGraph["actions"][number]): Action {
 }
 
 function toEventBinding(binding: ApiShowGraph["eventBindings"][number]): EventBinding {
-  if (binding.eventKind !== "tap") {
-    throw new Error(`Event Binding "${binding.id}" has an unsupported kind.`);
+  try {
+    return decodeEventBinding(binding);
+  } catch (error) {
+    if (error instanceof InvalidInteractionError) {
+      throw new Error(`Event Binding "${binding.id}" is invalid: ${error.message}`);
+    }
+    throw error;
   }
-  return {
-    id: binding.id,
-    canvasId: binding.canvasId,
-    elementId: binding.elementId,
-    eventKind: "tap",
-    cueId: binding.cueId,
-    position: binding.position,
-  };
 }
 
 export function toShowGraph(graph: ApiGraph | null | undefined): ShowGraph {

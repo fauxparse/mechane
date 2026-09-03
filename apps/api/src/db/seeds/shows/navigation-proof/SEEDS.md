@@ -39,6 +39,10 @@ Seed all six transitions:
 - Blue → Red
 - Blue → Green
 
+Each Scene also listens for the first letter of each destination's colour, so pressing `R` goes to Red, `G` to Green, and `B` to Blue. These are `keypress` Event Bindings on the Scene's root Element — a Canvas-scoped Event is bound to the root, since there is no Element under a keyboard — and each one resolves to the _same_ Cue as the matching button, so one Cue answers to both a tap and a keypress.
+
+No Scene binds its own letter: it owns no Cue that navigates to where it already is. Each Scene therefore has two tap bindings and two keypress bindings, and four Cues in total are shared between them.
+
 The Navigate graph edges are projected from the Cue and Navigate Action definitions. Do not seed standalone or null-paired Navigate edges.
 
 # Unsupported functionality

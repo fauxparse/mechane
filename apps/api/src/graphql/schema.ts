@@ -240,6 +240,8 @@ export const schema = createSchema<GraphQLContext>({
       sceneId: ID!
       elementId: ID!
       eventKind: String!
+      "Per-kind payload as observed; a keypress carries { key }."
+      params: JSON
     }
     type PlayerEventApplied {
       eventId: ID!
@@ -582,6 +584,8 @@ export const schema = createSchema<GraphQLContext>({
       canvasId: ID!
       elementId: ID!
       eventKind: String!
+      "Per-kind payload. Null for kinds that take no parameters."
+      params: JSON
       cueId: ID!
       position: Int!
     }
@@ -880,6 +884,7 @@ export const schema = createSchema<GraphQLContext>({
       canvasId: ID!
       elementId: ID!
       eventKind: String!
+      params: JSON
       cueId: ID!
       position: Int!
     }
@@ -923,6 +928,8 @@ export const schema = createSchema<GraphQLContext>({
       cue: Cue
       action: Action
       binding: EventBinding
+      "Event Binding key payloads: graph.setEventBindingKey."
+      key: String
       cueId: ID
       actionId: ID
       bindingId: ID
@@ -984,6 +991,8 @@ export const schema = createSchema<GraphQLContext>({
       cue: CueInput
       action: ActionInput
       binding: EventBindingInput
+      "Event Binding key payloads: graph.setEventBindingKey."
+      key: String
       cueId: ID
       actionId: ID
       bindingId: ID

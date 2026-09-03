@@ -264,3 +264,113 @@ describe("interaction aggregate", () => {
     ).toThrowError(InvalidInteractionError);
   });
 });
+
+const keypress = (
+  id: string,
+  key: string | null,
+  cueId: string,
+  position: number,
+): EventBinding => ({
+  id,
+  canvasId: "canvas_red",
+  elementId: "scene_red_root",
+  eventKind: "keypress",
+  params: { key },
+  cueId,
+  position,
+});
+
+const keypressGraph = (bindings: EventBinding[]) => ({
+  nodes,
+  cues,
+  actions,
+  eventBindings: bindings,
+});
+
+const observeKey = (key: string) => ({
+  sceneId: "scene_red",
+  canvasId: "canvas_red",
+  elementId: "scene_red_root",
+  eventKind: "keypress" as const,
+  params: { key },
+});
+
+describe("keypress resolution", () => {
+  it("matches on the key, not on position order", () => {
+    // Two keypresses on one Element never compete: they are different keys, so
+    // position is only ever a tiebreak among *equal* matches.
+    const graph = keypressGraph([
+      keypress("binding_g", "g", "cue_red_green", 0),
+      keypress("binding_b", "b", "cue_red_blue", 1),
+    ]);
+
+    const plan = resolveRuntimeEvent(graph, observeKey("b"));
+
+    expect(plan.kind).toBe("planned");
+    expect(plan.kind === "planned" && plan.cue.id).toBe("cue_red_blue");
+  });
+
+  it("falls through by position when two Bindings share a key", () => {
+    const graph = keypressGraph([
+      keypress("binding_second", "g", "cue_red_blue", 1),
+      keypress("binding_first", "g", "cue_red_green", 0),
+    ]);
+
+    const plan = resolveRuntimeEvent(graph, observeKey("g"));
+
+    expect(plan.kind === "planned" && plan.cue.id).toBe("cue_red_green");
+  });
+
+  it("never matches an unset key, so a half-authored Binding is inert", () => {
+    const graph = keypressGraph([keypress("binding_unset", null, "cue_red_green", 0)]);
+
+    expect(resolveRuntimeEvent(graph, observeKey("g")).kind).toBe("unbound");
+  });
+
+  it("does not let a tap answer a keypress on the same Element", () => {
+    const graph = keypressGraph([
+      {
+        id: "binding_tap",
+        canvasId: "canvas_red",
+        elementId: "scene_red_root",
+        eventKind: "tap",
+        cueId: "cue_red_green",
+        position: 0,
+      },
+    ]);
+
+    expect(resolveRuntimeEvent(graph, observeKey("g")).kind).toBe("unbound");
+  });
+});
+
+describe("Event params validation", () => {
+  it("accepts an unset key as a valid, silent state", () => {
+    expect(() =>
+      assertValidInteractions(keypressGraph([keypress("binding_unset", null, "cue_red_green", 0)])),
+    ).not.toThrow();
+  });
+
+  it("rejects a key outside the catalogue", () => {
+    // The domain can see the catalogue (unlike Canvas roots), so it enforces
+    // it — imported or hand-edited data is caught here.
+    expect(() =>
+      assertValidInteractions(keypressGraph([keypress("binding_f5", "F5", "cue_red_green", 0)])),
+    ).toThrow(InvalidInteractionError);
+  });
+
+  it("rejects params on a tap, which takes none", () => {
+    const binding = {
+      id: "binding_tap",
+      canvasId: "canvas_red",
+      elementId: "scene_red_root",
+      eventKind: "tap",
+      params: { key: "r" },
+      cueId: "cue_red_green",
+      position: 0,
+    } as unknown as EventBinding;
+
+    expect(() => assertValidInteractions(keypressGraph([binding]))).toThrow(
+      InvalidInteractionError,
+    );
+  });
+});

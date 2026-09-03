@@ -66,7 +66,22 @@ describe("Navigation Proof seed", () => {
 
     expect(graph.cues).toHaveLength(6);
     expect(graph.actions).toHaveLength(6);
-    expect(graph.eventBindings).toHaveLength(6);
+    // Six taps plus six keypresses: each Scene binds the first letter of both
+    // destinations to the same Cue its buttons use.
+    expect(graph.eventBindings).toHaveLength(12);
+    const shortcuts = (graph.eventBindings ?? []).filter((b) => b.eventKind === "keypress");
+    expect(shortcuts).toHaveLength(6);
+    expect(shortcuts.every((b) => b.elementId.endsWith("_root"))).toBe(true);
+    expect(new Set(shortcuts.map((b) => b.eventKind === "keypress" && b.params.key))).toEqual(
+      new Set(["r", "g", "b"]),
+    );
+    // No Scene binds its own letter — it owns no Cue that navigates to itself.
+    expect(
+      shortcuts.some(
+        (b) =>
+          b.eventKind === "keypress" && b.elementId.startsWith(`scene_${String(b.params.key)}`),
+      ),
+    ).toBe(false);
     expect(graph.edges.filter((edge) => edge.kind === "navigate")).toHaveLength(6);
     expect(
       graph.edges
@@ -109,7 +124,7 @@ describe("Navigation Proof seed", () => {
     expect(session?.scene?.id).toBe("scene_red");
     expect(session?.graph.cues).toHaveLength(6);
     expect(session?.graph.actions).toHaveLength(6);
-    expect(session?.graph.eventBindings).toHaveLength(6);
+    expect(session?.graph.eventBindings).toHaveLength(12);
     const audience = published.nodes.find((node) => node.id === NAVIGATION_AUDIENCE_DEVICE_ID);
     if (audience?.kind !== "device" || !audience.pairingCode) {
       throw new Error("Navigation Proof Audience pairing code was not minted.");
@@ -167,6 +182,6 @@ describe("Navigation Proof seed", () => {
     const published = await readShowGraph(showId, "published");
     expect(published.cues).toHaveLength(6);
     expect(published.actions).toHaveLength(6);
-    expect(published.eventBindings).toHaveLength(6);
+    expect(published.eventBindings).toHaveLength(12);
   });
 });

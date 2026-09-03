@@ -11,22 +11,29 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  KeyboardIcon,
   LucideIcon,
   PlusIcon,
   PointerIcon,
-  Section,
-  SectionRow,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Section,
+  SectionRow,
   Trash2Icon,
   ZapIcon,
 } from "@mechane/design-system";
 import {
+  bindableKeyFor,
   EVENT_KINDS,
   generateId,
+  keyAccessibleName,
+  keyDisplayName,
   type Cue,
   type EventBinding,
   type EventKind,
@@ -34,8 +41,9 @@ import {
 } from "@mechane/domain";
 
 import { sortBy } from "es-toolkit";
-import { useMemo } from "react";
+import { useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
+import { keypressUnavailableReason } from "./keypress-availability";
 
 function ownerKey(owner: InteractionOwner): string {
   return owner.kind === "scene" ? `scene:${owner.sceneId}` : `block:${owner.blockId}`;
@@ -43,15 +51,93 @@ function ownerKey(owner: InteractionOwner): string {
 
 const INTERACTION_ICONS: Record<EventKind, LucideIcon> = {
   tap: PointerIcon,
+  keypress: KeyboardIcon,
 };
 
 const INTERACTION_TITLES: Record<EventKind, string> = {
   tap: "Tap",
+  keypress: "Keypress",
 };
 
 const INTERACTION_DESCRIPTIONS: Record<EventKind, string> = {
   tap: "User taps or clicks on this",
+  keypress: "Audience presses a key on this Scene",
 };
+
+/**
+ * The key capture control: a *mode*, not a focus state.
+ *
+ * Activating it listens for exactly one keydown, then assigns or cancels and
+ * exits. A persistent focus-to-capture input would swallow Tab for as long as
+ * focus was held, which costs a keyboard-only author their Tab key — and Tab
+ * is itself bindable.
+ *
+ * The listener is local rather than on the document because a focused button
+ * already sets `inKeyConsumingWidget` in the editor's focus-context, so the
+ * window-level shortcut hooks defer to it. A second document listener would be
+ * a competing answer to "is the user typing?".
+ */
+function KeyCaptureControl({
+  binding,
+  capturing,
+  onCapturingChange,
+  onSetKey,
+}: {
+  binding: Extract<EventBinding, { eventKind: "keypress" }>;
+  capturing: boolean;
+  onCapturingChange: (bindingId: string | null) => void;
+  onSetKey?: (bindingId: string, key: string | null) => void;
+}) {
+  const setCapturing = (next: boolean) => onCapturingChange(next ? binding.id : null);
+
+  const { key } = binding.params;
+  const label = capturing ? "Press a key…" : key === null ? "Not set" : keyDisplayName(key);
+  const accessibleName = `Keypress: ${key === null ? "not set" : keyAccessibleName(key)}`;
+
+  const capture = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (!capturing) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setCapturing(false);
+      return;
+    }
+    // Space and Enter would otherwise re-activate the button; every other
+    // bindable key is claimed for the duration of the one-keystroke window.
+    event.preventDefault();
+    const captured = bindableKeyFor(event.nativeEvent);
+    if (captured === null) return;
+    setCapturing(false);
+    onSetKey?.(binding.id, captured);
+  };
+
+  return (
+    <InputGroup className="w-full min-w-0">
+      <InputGroupAddon onClick={() => setCapturing(true)}>
+        <KeyboardIcon
+          className="size-4"
+          aria-label="Keys are matched by the character they produce, so a binding may not be reachable on a different keyboard layout."
+        />
+      </InputGroupAddon>
+      <InputGroupButton
+        type="button"
+        autoFocus={capturing}
+        className="min-w-0 flex-1 justify-start"
+        aria-label={accessibleName}
+        aria-keyshortcuts={key ?? undefined}
+        onClick={() => setCapturing(true)}
+        onKeyDown={capture}
+        onBlur={() => setCapturing(false)}
+      >
+        <span className={cn("truncate", key === null && !capturing && "text-muted-foreground")}>
+          {label}
+        </span>
+      </InputGroupButton>
+      <span aria-live="polite" className="sr-only">
+        {capturing ? "Press a key" : ""}
+      </span>
+    </InputGroup>
+  );
+}
 
 const InteractionIcon = ({ kind, className }: { kind: EventKind; className?: string }) => {
   const Icon = INTERACTION_ICONS[kind];
@@ -76,6 +162,9 @@ type InteractionBindingRowProps = {
   index: number;
   cuesById: ReadonlyMap<string, Cue>;
   ownedCues: readonly Cue[];
+  capturingBindingId: string | null;
+  onCapturingChange: (bindingId: string | null) => void;
+  onSetEventBindingKey?: (bindingId: string, key: string | null) => void;
   onSetEventBindingCue?: (bindingId: string, cueId: string) => void;
   onDuplicate(binding: EventBinding): void;
   onRemoveEventBinding?: (bindingId: string) => void;
@@ -86,6 +175,9 @@ function InteractionBindingRow({
   index,
   cuesById,
   ownedCues,
+  capturingBindingId,
+  onCapturingChange,
+  onSetEventBindingKey,
   onSetEventBindingCue,
   onDuplicate,
   onRemoveEventBinding,
@@ -115,24 +207,22 @@ function InteractionBindingRow({
       <dl className="col-span-2 row-span-2 pl-5 grid min-w-0 grid-cols-[auto_minmax(0,1fr)] grid-rows-subgrid items-center gap-2 *:[dt]:label *:[dt]:col-start-1 *:[dd]:col-start-2">
         <dt>On</dt>
         <dd className="flex min-w-0 items-center gap-2">
-          <Select value={binding.eventKind}>
-            <SelectTrigger aria-label="Interaction Event" className="w-full min-w-0">
-              <SelectValue placeholder="Choose an event" className="min-w-0">
-                <div className="flex min-w-0 items-center gap-2">
-                  <InteractionIcon kind={binding.eventKind} className="size-4" />
-                  <span className="truncate">{INTERACTION_TITLES[binding.eventKind]}</span>
-                </div>
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent className="w-(--anchor-width)">
-              {EVENT_KINDS.map((kind) => (
-                <SelectItem key={kind} value={kind}>
-                  <InteractionIcon kind={kind} className="size-4" />
-                  <span>{INTERACTION_TITLES[kind]}</span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* A Binding's kind is fixed at creation (#517), so this is a
+              readout for tap and a key control for keypress — never a picker.
+              Changing your mind means delete and re-add. */}
+          {binding.eventKind === "keypress" ? (
+            <KeyCaptureControl
+              binding={binding}
+              capturing={capturingBindingId === binding.id}
+              onCapturingChange={onCapturingChange}
+              onSetKey={onSetEventBindingKey}
+            />
+          ) : (
+            <div className="flex min-w-0 items-center gap-2">
+              <InteractionIcon kind={binding.eventKind} className="size-4" />
+              <span className="truncate">{INTERACTION_TITLES[binding.eventKind]}</span>
+            </div>
+          )}
         </dd>
         <dt>Then</dt>
         <dd className="min-w-0">
@@ -199,7 +289,14 @@ export function InteractionSection() {
     onCreateEventBinding,
     onRemoveEventBinding,
     onReorderEventBindings,
+    onSetEventBindingKey,
   } = useCanvasInspectorContext();
+
+  // Which Binding is listening for a keystroke. Owned here rather than per
+  // row because "at most one control is capturing" is a fact about the
+  // section — and a row's capture state would otherwise be a prop copied into
+  // state, which stops tracking the prop the moment it changes.
+  const [capturingBindingId, setCapturingBindingId] = useState<string | null>(null);
 
   const owner = useMemo<InteractionOwner | null>(() => {
     if (!focused) return null;
@@ -236,11 +333,9 @@ export function InteractionSection() {
   const duplicateBinding = (binding: (typeof bindings)[number]) => {
     const position =
       bindings.reduce((highest, candidate) => Math.max(highest, candidate.position), -1) + 1;
-    onCreateEventBinding?.({
-      ...binding,
-      id: generateId("eventBinding"),
-      position,
-    });
+    // Duplicate means duplicate: a copied keypress keeps its key, and
+    // re-capturing is the intended way to author two keys onto one Cue.
+    onCreateEventBinding?.({ ...binding, id: generateId("eventBinding"), position });
   };
 
   const { canvasId } = focused;
@@ -253,14 +348,19 @@ export function InteractionSection() {
     }
     const position =
       bindings.reduce((highest, binding) => Math.max(highest, binding.position), -1) + 1;
-    onCreateEventBinding?.({
-      id: generateId("eventBinding"),
-      canvasId,
-      elementId: target.id,
-      eventKind,
-      cueId: cue.id,
-      position,
-    });
+    const id = generateId("eventBinding");
+    const base = { id, canvasId, elementId: target.id, cueId: cue.id, position };
+    if (eventKind === "keypress") {
+      // Created before a key is captured: an unset key is valid and inert
+      // (#517), so the row can exist while the author decides.
+      onCreateEventBinding?.({ ...base, eventKind: "keypress", params: { key: null } });
+      // The author just picked "Keypress"; the next thing they want is to
+      // press a key.
+      setCapturingBindingId(id);
+      return;
+    }
+    onCreateEventBinding?.({ ...base, eventKind: "tap" });
+    setCapturingBindingId(null);
   };
   const finishDrag = (event: DragEndEvent) => {
     if (event.canceled) return;
@@ -297,6 +397,9 @@ export function InteractionSection() {
               index={index}
               cuesById={cuesById}
               ownedCues={ownedCues}
+              capturingBindingId={capturingBindingId}
+              onCapturingChange={setCapturingBindingId}
+              onSetEventBindingKey={onSetEventBindingKey}
               onSetEventBindingCue={onSetEventBindingCue}
               onDuplicate={duplicateBinding}
               onRemoveEventBinding={onRemoveEventBinding}
@@ -318,19 +421,28 @@ export function InteractionSection() {
             }
           ></DropdownMenuTrigger>
           <DropdownMenuContent className="w-(--anchor-width)">
-            {EVENT_KINDS.map((kind) => (
-              <DropdownMenuItem
-                key={kind}
-                onClick={() => addInteraction(kind)}
-                className="grid grid-cols-[auto_1fr] items-center line-height-normal gap-x-2 gap-y-0"
-              >
-                <InteractionIcon kind={kind} className="row-span-2" />
-                <span>{INTERACTION_TITLES[kind]}</span>
-                <span className="text-xs text-muted-foreground">
-                  {INTERACTION_DESCRIPTIONS[kind]}
-                </span>
-              </DropdownMenuItem>
-            ))}
+            {EVENT_KINDS.map((kind) => {
+              const unavailable =
+                kind === "keypress"
+                  ? keypressUnavailableReason(owner.kind, target.id === focused.canvas.root.id)
+                  : null;
+              return (
+                <DropdownMenuItem
+                  key={kind}
+                  disabled={unavailable !== null}
+                  onClick={() => {
+                    if (!unavailable) addInteraction(kind);
+                  }}
+                  className="grid grid-cols-[auto_1fr] items-center line-height-normal gap-x-2 gap-y-0"
+                >
+                  <InteractionIcon kind={kind} className="row-span-2" />
+                  <span>{INTERACTION_TITLES[kind]}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {unavailable ?? INTERACTION_DESCRIPTIONS[kind]}
+                  </span>
+                </DropdownMenuItem>
+              );
+            })}
           </DropdownMenuContent>
         </DropdownMenu>
       </SectionRow>

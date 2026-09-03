@@ -7,6 +7,7 @@ import {
   addCue,
   removeCue,
   setCueActionOrder,
+  setEventBindingKey,
   setEventBindingOrder,
 } from "./interaction-commands";
 import { deleteGraphElements } from "./graph-cascade";
@@ -142,5 +143,81 @@ describe("interaction commands", () => {
     expect(applied.state.actions).toEqual([]);
     expect(applied.state.eventBindings).toEqual([binding]);
     expect(applied.inverse.apply(applied.state).state).toEqual(graph);
+  });
+});
+
+describe("setEventBindingKey", () => {
+  const keypressGraph = (key: string | null): ShowGraph => ({
+    nodes: [
+      {
+        id: "flow",
+        kind: "flow",
+        name: "Flow",
+        parentId: null,
+        position: { x: 0, y: 0 },
+        defaultSceneId: "scene_red",
+      },
+      {
+        id: "scene_red",
+        kind: "scene",
+        name: "Red",
+        parentId: "flow",
+        position: { x: 0, y: 0 },
+        variables: [],
+      },
+    ],
+    edges: [],
+    cues: [
+      { id: "cue", name: "Go", owner: { kind: "scene", sceneId: "scene_red" }, actionIds: [] },
+    ],
+    actions: [],
+    eventBindings: [
+      {
+        id: "binding",
+        canvasId: "canvas",
+        elementId: "root",
+        eventKind: "keypress",
+        params: { key },
+        cueId: "cue",
+        position: 0,
+      },
+    ],
+  });
+
+  const keyOf = (graph: ShowGraph) => {
+    const binding = graph.eventBindings?.[0];
+    return binding?.eventKind === "keypress" ? binding.params.key : undefined;
+  };
+
+  it("assigns a key and restores the previous one on undo", () => {
+    const result = setEventBindingKey("binding", "r").apply(keypressGraph(null));
+    expect(keyOf(result.state)).toBe("r");
+
+    // An unset key is a real prior state, so undo must return to it rather
+    // than to some default.
+    expect(keyOf(result.inverse.apply(result.state).state)).toBeNull();
+  });
+
+  it("refuses a key outside the catalogue", () => {
+    expect(() => setEventBindingKey("binding", "F5").apply(keypressGraph(null))).toThrow();
+  });
+
+  it("refuses a Binding that is not a keypress", () => {
+    const graph = keypressGraph(null);
+    const tapGraph: ShowGraph = {
+      ...graph,
+      eventBindings: [
+        {
+          id: "binding",
+          canvasId: "canvas",
+          elementId: "root",
+          eventKind: "tap",
+          cueId: "cue",
+          position: 0,
+        },
+      ],
+    };
+
+    expect(() => setEventBindingKey("binding", "r").apply(tapGraph)).toThrow();
   });
 });

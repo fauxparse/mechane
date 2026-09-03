@@ -121,6 +121,7 @@ export const GRAPH_COMMAND_TYPES = {
   removeAction: "graph.removeAction",
   addEventBinding: "graph.addEventBinding",
   setEventBindingCue: "graph.setEventBindingCue",
+  setEventBindingKey: "graph.setEventBindingKey",
   setEventBindingOrder: "graph.setEventBindingOrder",
   removeEventBinding: "graph.removeEventBinding",
 } as const;

@@ -141,7 +141,10 @@ export function useShowGraphEditorController({
       resizeGesture.current.update(
         composite({
           label: "Resize Flow",
-          commands: [setFlowSize(flowId, size), ...moves.map((move) => moveNode(move.id, move.position))],
+          commands: [
+            setFlowSize(flowId, size),
+            ...moves.map((move) => moveNode(move.id, move.position)),
+          ],
         }),
       );
       if (!committed) return;

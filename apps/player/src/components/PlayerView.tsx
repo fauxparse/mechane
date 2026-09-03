@@ -1,6 +1,7 @@
 import { CanvasRenderer, prepareCanvasPresentation } from "@mechane/rendering";
 import { useCallback, useMemo } from "react";
 import { usePlayerSession, type PlayerSession } from "../api";
+import { usePlayerKeypress } from "../player-keypress";
 import { usePlayerNavigation } from "../player-navigation";
 import { SplashScreen } from "./join/SplashScreen";
 function WaitingForRun({ session }: { session: PlayerSession }) {
@@ -111,6 +112,49 @@ export function PlayerView({ code }: { code: string }) {
         .catch(() => undefined);
     },
     [state],
+  );
+
+  // The Shared path's client-side pre-check, now matching kind *and* key:
+  // unbound keystrokes never become a server round-trip with a persisted row.
+  const handleKeyPress = useCallback(
+    (key: string) => {
+      if (
+        state.status !== "ready" ||
+        state.session.device.perConnection ||
+        !state.submitEvent ||
+        !state.session.scene ||
+        !state.session.canvas
+      ) {
+        return false;
+      }
+      const rootId = state.session.canvas.root.id;
+      const binding = (state.session.graph.eventBindings ?? []).find(
+        (candidate) =>
+          candidate.canvasId === state.session.canvas?.id &&
+          candidate.elementId === rootId &&
+          candidate.eventKind === "keypress" &&
+          candidate.params.key === key,
+      );
+      if (!binding) return false;
+      void state
+        .submitEvent({
+          eventId: crypto.randomUUID(),
+          publishedGraphVersion: state.session.graph.version,
+          sceneId: state.session.scene.id,
+          elementId: rootId,
+          eventKind: "keypress",
+          params: { key },
+        })
+        .catch(() => undefined);
+      return true;
+    },
+    [state],
+  );
+
+  const perConnection = state.status === "ready" && state.session.device.perConnection;
+  usePlayerKeypress(
+    state.status === "ready" && Boolean(state.session.run),
+    perConnection ? navigation.onKeyPress : handleKeyPress,
   );
 
   if (state.status === "idle" || state.status === "loading") {
