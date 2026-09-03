@@ -1,3 +1,4 @@
+import { resolveRuntimeEvent } from "@mechane/domain";
 import { describe, expect, it } from "vitest";
 import { normalizePlayerSession } from "./player-mappers";
 
@@ -226,5 +227,86 @@ describe("normalizePlayerSession", () => {
     expect(session.imageAssets[0]?.url).toBe(
       "https://api.mechane.dev/api/images/asset-alice/seed-v1",
     );
+  });
+  it("normalizes interaction records for local audience navigation", () => {
+    const session = normalizePlayerSession({
+      device: { name: "Audience", perConnection: true },
+      realtime: { channel: "player:test", grant: "grant", expiresAt: "2026-01-01T00:01:00.000Z" },
+      graph: {
+        showId: "show_1",
+        state: "published",
+        updatedAt: "2026-08-22T00:00:00.000Z",
+        version: 1,
+        nodes: [
+          {
+            __typename: "FlowNode",
+            id: "flow_1",
+            name: "Flow",
+            parentId: null,
+            position: { x: 0, y: 0 },
+            defaultSceneId: "scene_red",
+          },
+          {
+            __typename: "SceneNode",
+            id: "scene_red",
+            name: "Red",
+            parentId: "flow_1",
+            position: { x: 0, y: 0 },
+            variables: [],
+          },
+          {
+            __typename: "SceneNode",
+            id: "scene_green",
+            name: "Green",
+            parentId: "flow_1",
+            position: { x: 1, y: 0 },
+            variables: [],
+          },
+        ],
+        edges: [],
+        cues: [
+          {
+            id: "cue_red_green",
+            name: "Go to Green",
+            ownerKind: "scene",
+            sceneId: "scene_red",
+            blockId: null,
+            actionIds: ["action_red_green"],
+          },
+        ],
+        actions: [
+          {
+            id: "action_red_green",
+            cueId: "cue_red_green",
+            kind: "navigate",
+            targetSceneId: "scene_green",
+          },
+        ],
+        eventBindings: [
+          {
+            id: "binding_red_green",
+            canvasId: "canvas_red",
+            elementId: "button_red_green",
+            eventKind: "tap",
+            params: null,
+            cueId: "cue_red_green",
+            position: 0,
+          },
+        ],
+        shapes: [],
+      },
+      scene: null,
+      canvas: null,
+      imageAssets: [],
+    });
+
+    expect(
+      resolveRuntimeEvent(session.graph, {
+        sceneId: "scene_red",
+        canvasId: "canvas_red",
+        elementId: "button_red_green",
+        eventKind: "tap",
+      }),
+    ).toMatchObject({ kind: "planned", actions: [{ targetSceneId: "scene_green" }] });
   });
 });

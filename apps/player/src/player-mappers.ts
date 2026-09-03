@@ -1,4 +1,14 @@
-import type { Block, GraphEdge, GraphNode, Shape, SourceValues, Type } from "@mechane/domain";
+import {
+  decodeEventBinding,
+  type Action,
+  type Block,
+  type Cue,
+  type GraphEdge,
+  type GraphNode,
+  type Shape,
+  type SourceValues,
+  type Type,
+} from "@mechane/domain";
 import { PRIMITIVE_TYPES } from "@mechane/domain";
 import { decodeCanvasDocument } from "@mechane/graphql-schema";
 import { resolveApiUrl } from "./api-url";
@@ -194,6 +204,30 @@ function toFlowBundle(value: unknown): PlayerSession["flow"] {
   };
 }
 
+function toCue(value: unknown): Cue {
+  const input = record(value);
+  const owner =
+    input.ownerKind === "scene"
+      ? { kind: "scene" as const, sceneId: String(input.sceneId) }
+      : { kind: "block" as const, blockId: String(input.blockId) };
+  return {
+    id: String(input.id),
+    name: String(input.name),
+    owner,
+    actionIds: Array.isArray(input.actionIds) ? input.actionIds.map(String) : [],
+  };
+}
+
+function toAction(value: unknown): Action {
+  const input = record(value);
+  return {
+    id: String(input.id),
+    cueId: String(input.cueId),
+    kind: "navigate",
+    targetSceneId: String(input.targetSceneId),
+  };
+}
+
 function toGraph(value: unknown): PlayerSession["graph"] {
   const input = record(value);
   return {
@@ -202,6 +236,13 @@ function toGraph(value: unknown): PlayerSession["graph"] {
     edges: Array.isArray(input.edges) ? input.edges.map(toEdge) : [],
     shapes: Array.isArray(input.shapes) ? input.shapes.map(toShape) : [],
     blocks: Array.isArray(input.blocks) ? input.blocks.map(toBlock) : [],
+    cues: Array.isArray(input.cues) ? input.cues.map(toCue) : [],
+    actions: Array.isArray(input.actions) ? input.actions.map(toAction) : [],
+    eventBindings: Array.isArray(input.eventBindings)
+      ? input.eventBindings.map((item) =>
+          decodeEventBinding(record(item) as Parameters<typeof decodeEventBinding>[0]),
+        )
+      : [],
   } as unknown as PlayerSession["graph"];
 }
 

@@ -10,7 +10,9 @@ const PlayerGraphFields = graphql(`
     cues {
       id
       name
+      ownerKind
       sceneId
+      blockId
       actionIds
     }
     actions {
