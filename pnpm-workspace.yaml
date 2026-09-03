@@ -8,3 +8,6 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - tsx@4.23.8
   - "@dicebear/styles@10.5.0"
+  - framer-motion@13.2.0
+  - motion-dom@13.2.0
+  - motion@13.2.0

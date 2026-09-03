@@ -329,6 +329,7 @@ describe("ShowEditInput carries every field an edit can encode", () => {
 
   const EDITS: FlatGraphEdit[] = [
     { type: GRAPH_COMMAND_TYPES.setEdgeLayout, edgeId: "edge_1", layout: { HVH: { "1": -24 } } },
+    { type: GRAPH_COMMAND_TYPES.setFlowSize, flowId: "flow_1", size: { width: 640, height: 480 } },
     { type: GRAPH_COMMAND_TYPES.setNodeColor, nodeId: "scene_lobby", color: "purple" },
     { type: GRAPH_COMMAND_TYPES.moveNode, nodeId: "scene_lobby", position: { x: 1, y: 2 } },
     { type: GRAPH_COMMAND_TYPES.setWiringFieldMapping, edgeId: "edge_1", fieldMapping: {} },
@@ -350,5 +351,17 @@ describe("ShowEditInput carries every field an edit can encode", () => {
       layout: { HVH: { "1": -24 } },
     });
     expect(serializeGraphEdit(edit)).toMatchObject({ layout: { HVH: { "1": -24 } } });
+  });
+  it("round-trips an authored Flow size through the boundary", () => {
+    const edit = parseGraphEdit({
+      type: GRAPH_COMMAND_TYPES.setFlowSize,
+      flowId: "flow_1",
+      size: { width: 640, height: 480 },
+    });
+    expect(serializeGraphEdit(edit)).toMatchObject({
+      type: GRAPH_COMMAND_TYPES.setFlowSize,
+      flowId: "flow_1",
+      size: { width: 640, height: 480 },
+    });
   });
 });

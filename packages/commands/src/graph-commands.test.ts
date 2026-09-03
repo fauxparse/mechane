@@ -23,6 +23,7 @@ import {
   reparentNode,
   setDevicePerConnection,
   setFlowDefaultScene,
+  setFlowSize,
   setEdgeLayout,
   setNodeColor,
   setSceneVariableType,
@@ -470,6 +471,23 @@ describe("setFlowDefaultScene", () => {
   it("refuses a node that isn't a Flow", () => {
     expect(() => setFlowDefaultScene(VOTING.id, RESULTS.id).apply(GRAPH)).toThrow(
       UnknownGraphTargetError,
+    );
+  });
+});
+describe("setFlowSize", () => {
+  it("sets and inverts an authored Flow size", () => {
+    const applied = expectExactRoundTrip(setFlowSize(VOTE_FLOW.id, { width: 640, height: 480 }));
+    expect(applied.state.nodes.find((node) => node.id === VOTE_FLOW.id)).toMatchObject({
+      size: { width: 640, height: 480 },
+    });
+  });
+
+  it("coalesces on the Flow, so one resize is one undo entry", () => {
+    expect(setFlowSize(VOTE_FLOW.id, { width: 640, height: 480 }).coalesceKey).toBe(
+      setFlowSize(VOTE_FLOW.id, { width: 720, height: 540 }).coalesceKey,
+    );
+    expect(setFlowSize(VOTE_FLOW.id, { width: 640, height: 480 }).coalesceKey).not.toBe(
+      setFlowSize(RESULTS.id, { width: 720, height: 540 }).coalesceKey,
     );
   });
 });

@@ -91,6 +91,7 @@ export const GetShowGraphQuery = graphql(
           }
           ... on FlowNode {
             defaultSceneId
+            size
           }
           ... on SourceNode {
             sourceType: type {

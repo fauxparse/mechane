@@ -10,12 +10,12 @@ Date: 2026-09-03. All claims cited to primary sources (W3C UI Events and UI Even
 ## Headline findings
 
 1. **`keypress` genuinely cannot serve this feature.** The spec is unambiguous: it fires "if and only if that key normally produces a character value", which excludes Tab and the arrow keys, and it "MUST NOT be fired when using an input method editor". `keydown` is the only option. #514's premise holds.
-2. **Bind on `key`, not `code`.** `key` is the layout-aware *meaning* — which is exactly what "press `R` to go to Red" means. `code` is the physical position and would break the demo on any non-QWERTY layout.
-3. **`key` is not a stable identity across layouts.** The same binding string means "whatever key produces this glyph on the player's keyboard". That is the right semantics for this feature, but it means a Show authored on a US layout and played on an AZERTY layout binds a *different physical key*, and a shift-reachable special may not be reachable at all.
-4. **Shift is a *glyph* modifier on every platform**: Shift+2 arrives as `key: "@"` (US) or `"\""` (UK), with `shiftKey: true`. So "shift-reachable specials are okay" costs nothing extra — but the modifier guard must **allow** `shiftKey`, and must allow `CapsLock` too.
+2. **Bind on `key`, not `code`.** `key` is the layout-aware _meaning_ — which is exactly what "press `R` to go to Red" means. `code` is the physical position and would break the demo on any non-QWERTY layout.
+3. **`key` is not a stable identity across layouts.** The same binding string means "whatever key produces this glyph on the player's keyboard". That is the right semantics for this feature, but it means a Show authored on a US layout and played on an AZERTY layout binds a _different physical key_, and a shift-reachable special may not be reachable at all.
+4. **Shift is a _glyph_ modifier on every platform**: Shift+2 arrives as `key: "@"` (US) or `"\""` (UK), with `shiftKey: true`. So "shift-reachable specials are okay" costs nothing extra — but the modifier guard must **allow** `shiftKey`, and must allow `CapsLock` too.
 5. **macOS Option is also a glyph modifier**, treated as AltGr by both WebKit and Chromium: Option+G arrives as `key: "©"` with `altKey: true`. Windows/Linux plain `Alt` is not. Recommendation: reject `altKey` at capture time.
 6. **Three `key` values must never be stored**: `"Dead"`, `"Process"` (Firefox's IME sentinel), and `"Unidentified"`. Guard with `isComposing` and `keyCode === 229` as well.
-7. **Case-insensitivity must be implemented by casefolding single-character keys**, because both Shift *and* CapsLock flip the reported case.
+7. **Case-insensitivity must be implemented by casefolding single-character keys**, because both Shift _and_ CapsLock flip the reported case.
 
 ---
 
@@ -23,16 +23,16 @@ Date: 2026-09-03. All claims cited to primary sources (W3C UI Events and UI Even
 
 ### Named (non-printing) keys
 
-| Key | `KeyboardEvent.key` |
-| --- | --- |
-| Enter / Return | `"Enter"` |
-| Tab | `"Tab"` |
-| Space bar | `" "` (U+0020) |
-| Left arrow | `"ArrowLeft"` |
-| Right arrow | `"ArrowRight"` |
-| Up arrow | `"ArrowUp"` |
-| Down arrow | `"ArrowDown"` |
-| Escape | `"Escape"` (excluded by #514) |
+| Key            | `KeyboardEvent.key`           |
+| -------------- | ----------------------------- |
+| Enter / Return | `"Enter"`                     |
+| Tab            | `"Tab"`                       |
+| Space bar      | `" "` (U+0020)                |
+| Left arrow     | `"ArrowLeft"`                 |
+| Right arrow    | `"ArrowRight"`                |
+| Up arrow       | `"ArrowUp"`                   |
+| Down arrow     | `"ArrowDown"`                 |
+| Escape         | `"Escape"` (excluded by #514) |
 
 Source: [MDN, Key Values for Keyboard Events](https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values); [UI Events KeyboardEvent key values](https://w3c.github.io/uievents-key/), which defines Enter as "The `Enter` or `↵` key, to activate current selection or accept current input" and Tab as "The Horizontal Tabulation `Tab` key."
 
@@ -46,11 +46,11 @@ The spec defines the character case as: "A key string that corresponds to the ch
 
 UI Events gives the concrete illustration for the single-quote key ([§4.2.3 code Examples](https://w3c.github.io/uievents/#code-examples)):
 
-| Layout | `key` | `code` |
-| --- | --- | --- |
-| US | `"'"` | `"Quote"` |
-| Japanese | `":"` | `"Quote"` |
-| US Intl | `"Dead"` | `"Quote"` |
+| Layout   | `key`    | `code`    |
+| -------- | -------- | --------- |
+| US       | `"'"`    | `"Quote"` |
+| Japanese | `":"`    | `"Quote"` |
+| US Intl  | `"Dead"` | `"Quote"` |
 
 …and for a letter key with a non-Latin layout ([§4.3.1](https://w3c.github.io/uievents/#keys-modifiers)): the same physical key reports `key: "v"` on a US layout and `key: "ر"` (Arabic Letter Reh) on an Arabic layout. The spec's own conclusion: "The value in the keydown and keyup events varies based on the current keyboard layout in effect when the key is pressed… To identify these events as coming from the same physical key, you will need to make use of the `code` attribute."
 
@@ -61,16 +61,16 @@ That trade-off is the crux of the design decision for #519:
 
 ([UI Events §4.2.2, The Relationship Between `key` and `code`](https://w3c.github.io/uievents/#code-key-relationship).)
 
-The navigation demo in #514 binds "the first letter of a colour". That is a *meaning*, so `key` is correct. The cost is accepted, not avoided: a binding is portable as a glyph, not as a physical position.
+The navigation demo in #514 binds "the first letter of a colour". That is a _meaning_, so `key` is correct. The cost is accepted, not avoided: a binding is portable as a glyph, not as a physical position.
 
 ### Shift-reachable specials
 
-Shift *is* applied before `key` is computed, on every platform. UI Events §4.3.1 gives the event table for Shift+Q on a US layout: `keydown` `key: "Shift"`, then `keydown` `key: "Q"` with `shiftKey` true. MDN puts it plainly for a non-letter: "the `key` property value for the event is set to the string `@` for the U.S keyboard type and `"` for the UK keyboard type, because of the active modifier `shift` key" ([MDN, `KeyboardEvent.key`](https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key)).
+Shift _is_ applied before `key` is computed, on every platform. UI Events §4.3.1 gives the event table for Shift+Q on a US layout: `keydown` `key: "Shift"`, then `keydown` `key: "Q"` with `shiftKey` true. MDN puts it plainly for a non-letter: "the `key` property value for the event is set to the string `@` for the U.S keyboard type and `"` for the UK keyboard type, because of the active modifier `shift` key" ([MDN, `KeyboardEvent.key`](https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key)).
 
 So `@`, `?`, `!` etc. arrive as themselves. Two consequences:
 
 - The "no modifiers" rule in #514 must be read as **no `ctrlKey`, no `metaKey`** — `shiftKey` has to be permitted, or every shift-reachable special is unbindable.
-- There is a **release-order artefact**: if Shift is released before the character key, the `keyup` reports the *unshifted* value. UI Events §4.3.1 tabulates exactly this: `keydown "Q"` … `keyup "Shift"` … `keyup "q"`. Capture on `keydown` only and this never bites.
+- There is a **release-order artefact**: if Shift is released before the character key, the `keyup` reports the _unshifted_ value. UI Events §4.3.1 tabulates exactly this: `keydown "Q"` … `keyup "Shift"` … `keyup "q"`. Capture on `keydown` only and this never bites.
 
 Microsoft's style guide independently documents why shifted glyphs are not layout-portable, and it is the sharpest statement of the constraint found anywhere: "For example, the `?` and `/` characters aren't shifted keys on every keyboard" ([Microsoft Writing Style Guide, Keys and keyboard shortcuts](https://learn.microsoft.com/en-us/style-guide/a-z-word-list-term-collections/term-collections/keys-keyboard-shortcuts)).
 
@@ -92,18 +92,18 @@ The normative text ([UI Events §8.3.1.1, `keypress`](https://w3c.github.io/uiev
 
 Contrast `keydown` ([§3.5.6.2 note](https://w3c.github.io/uievents/#event-type-keyup)): "The `keydown` and `keyup` events are traditionally associated with detecting **any** key, not just those which produce a character value."
 
-MDN concurs: "the `keypress` event is fired when a letter, number, punctuation, or symbol key is pressed, or else when the Enter key is pressed… Otherwise, when a modifier key such as the Alt, Shift, Ctrl, Meta, Esc, or Option key is pressed in isolation, the `keypress` event is *not* fired." Warning: "Since this event has been deprecated, you should use `beforeinput` or `keydown` instead." ([MDN, `keypress` event](https://developer.mozilla.org/en-US/docs/Web/API/Element/keypress_event).)
+MDN concurs: "the `keypress` event is fired when a letter, number, punctuation, or symbol key is pressed, or else when the Enter key is pressed… Otherwise, when a modifier key such as the Alt, Shift, Ctrl, Meta, Esc, or Option key is pressed in isolation, the `keypress` event is _not_ fired." Warning: "Since this event has been deprecated, you should use `beforeinput` or `keydown` instead." ([MDN, `keypress` event](https://developer.mozilla.org/en-US/docs/Web/API/Element/keypress_event).)
 
 **Reachable on `keydown`, unreachable on `keypress`, from #514's requested set:**
 
-| Key | `keypress`? | Why |
-| --- | --- | --- |
-| `ArrowLeft` / `ArrowRight` / `ArrowUp` / `ArrowDown` | ✗ | produce no character value |
-| `Tab` | ✗ | produces no character value (its default action is a focus shift, not text) |
-| `Escape` | ✗ | produces no character value (excluded by #514 anyway) |
-| `Enter` | ✓ | historically dispatched, and MDN documents it as an explicit exception |
-| `" "` (Space) | ✓ | produces U+0020 |
-| alphanumerics, shift-reachable specials | ✓ | produce character values |
+| Key                                                  | `keypress`? | Why                                                                         |
+| ---------------------------------------------------- | ----------- | --------------------------------------------------------------------------- |
+| `ArrowLeft` / `ArrowRight` / `ArrowUp` / `ArrowDown` | ✗           | produce no character value                                                  |
+| `Tab`                                                | ✗           | produces no character value (its default action is a focus shift, not text) |
+| `Escape`                                             | ✗           | produces no character value (excluded by #514 anyway)                       |
+| `Enter`                                              | ✓           | historically dispatched, and MDN documents it as an explicit exception      |
+| `" "` (Space)                                        | ✓           | produces U+0020                                                             |
+| alphanumerics, shift-reachable specials              | ✓           | produce character values                                                    |
 
 Three of the four categories #514 names outright (arrows, Tab) are impossible on `keypress`. The premise is confirmed, and it is a spec-level impossibility, not a browser quirk.
 
@@ -132,16 +132,16 @@ The full model ([UI Events §4.3.2, Dead keys](https://w3c.github.io/uievents/#k
 
 The spec's worked sequence for typing `ê` on a French layout:
 
-| # | Event | `key` | `isComposing` | `data` |
-| --- | --- | --- | --- | --- |
-| 1 | `keydown` | `"Dead"` | `false` | — |
-| 2 | `compositionstart` | — | — | `""` |
-| 3 | `compositionupdate` | — | — | U+0302 |
-| 4 | `keyup` | `"Dead"` | `true` | — |
-| 5 | `keydown` | `"ê"` | `true` | — |
-| 6 | `compositionupdate` | — | — | `"ê"` |
-| 7 | `compositionend` | — | — | `"ê"` |
-| 8 | `keyup` | `"e"` | `false` | — |
+| #   | Event               | `key`    | `isComposing` | `data` |
+| --- | ------------------- | -------- | ------------- | ------ |
+| 1   | `keydown`           | `"Dead"` | `false`       | —      |
+| 2   | `compositionstart`  | —        | —             | `""`   |
+| 3   | `compositionupdate` | —        | —             | U+0302 |
+| 4   | `keyup`             | `"Dead"` | `true`        | —      |
+| 5   | `keydown`           | `"ê"`    | `true`        | —      |
+| 6   | `compositionupdate` | —        | —             | `"ê"`  |
+| 7   | `compositionend`    | —        | —             | `"ê"`  |
+| 8   | `keyup`             | `"e"`    | `false`       | —      |
 
 Note step 5: the spec warns "the key value (assuming the event is not suppressed) will **not** be `"e"`… because the value delivered to the user agent will already be modified by the dead key operation."
 
@@ -166,7 +166,7 @@ The 229 sentinel is normative, in the legacy-key algorithm ([UI Events §7.3.1, 
 
 229 is `0xE5` = `VK_PROCESSKEY`, documented by Microsoft as "IME PROCESS key" ([Virtual-Key Codes, Winuser.h](https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes)).
 
-**Browsers disagree about what `key` says during composition, and this matters.** Gecko substitutes a sentinel key *name* as well as the keyCode ([`widget/cocoa/TextInputHandler.mm`](https://github.com/mozilla/gecko-dev/blob/master/widget/cocoa/TextInputHandler.mm)):
+**Browsers disagree about what `key` says during composition, and this matters.** Gecko substitutes a sentinel key _name_ as well as the keyCode ([`widget/cocoa/TextInputHandler.mm`](https://github.com/mozilla/gecko-dev/blob/master/widget/cocoa/TextInputHandler.mm)):
 
 ```objc
 aKeyEvent.mKeyCode = isProcessedByIME ? NS_VK_PROCESSKEY : ComputeGeckoKeyCode(...);
@@ -178,7 +178,7 @@ if (isProcessedByIME) {
 
 `Process` is a real UI Events key name ([`dom/events/KeyNameList.h`](https://github.com/mozilla/gecko-dev/blob/master/dom/events/KeyNameList.h)), so **Firefox can deliver `key: "Process"`** where Chromium delivers the underlying character with `keyCode` 229. Both must be rejected.
 
-There is also precedent for browsers *fabricating* keydowns around composition. Firefox bug [1529467](https://bugzilla.mozilla.org/show_bug.cgi?id=1529467) — arrow-key `keydown` not firing during Hangul composition on macOS — was fixed by dispatching synthetic `keydown` events after composition ends, with the explicit rationale: "Dispatching a fake `keydown` event for this purpose does not conform to UI Events… However, Chrome dispatches fake `keydown` events intentionally. Therefore, we should follow this hacky behavior."
+There is also precedent for browsers _fabricating_ keydowns around composition. Firefox bug [1529467](https://bugzilla.mozilla.org/show_bug.cgi?id=1529467) — arrow-key `keydown` not firing during Hangul composition on macOS — was fixed by dispatching synthetic `keydown` events after composition ends, with the explicit rationale: "Dispatching a fake `keydown` event for this purpose does not conform to UI Events… However, Chrome dispatches fake `keydown` events intentionally. Therefore, we should follow this hacky behavior."
 
 **Guard, at both capture and dispatch:**
 
@@ -207,7 +207,7 @@ And the definition that everything hangs on:
 
 > A **glyph modifier key** is any of the following modifier keys: `Shift`, `CapsLock` or `AltGr`.
 
-So Shift and CapsLock *change* `key`; Control and Meta do not (step 4 strips them and re-derives the unmodified glyph — which is why Ctrl+V reports `key: "v"`, as UI Events §4.3.1 tabulates).
+So Shift and CapsLock _change_ `key`; Control and Meta do not (step 4 strips them and re-derives the unmodified glyph — which is why Ctrl+V reports `key: "v"`, as UI Events §4.3.1 tabulates).
 
 ### macOS: Option is AltGr
 
@@ -224,7 +224,7 @@ constexpr int kGlyphModifiers = NSEventModifierFlagShift |
                                 NSEventModifierFlagOption;
 ```
 
-WebKit reaches the same place from the other direction: it uses AppKit's `characters` (which *has* Option applied) unless Control is held, in which case it falls back to `charactersIgnoringModifiers` ([`PlatformEventFactoryMac.mm`](https://github.com/WebKit/WebKit/blob/main/Source/WebCore/platform/mac/PlatformEventFactoryMac.mm)):
+WebKit reaches the same place from the other direction: it uses AppKit's `characters` (which _has_ Option applied) unless Control is held, in which case it falls back to `charactersIgnoringModifiers` ([`PlatformEventFactoryMac.mm`](https://github.com/WebKit/WebKit/blob/main/Source/WebCore/platform/mac/PlatformEventFactoryMac.mm)):
 
 ```objc
 bool isControlDown = ([event modifierFlags] & NSEventModifierFlagControl);
@@ -241,7 +241,7 @@ The complication ([UI Events §4.3.1, Modifier keys](https://w3c.github.io/uieve
 
 > Some operating systems simulate the `AltGraph` modifier key with the combination of the `Alt` and `Control` modifier keys. Implementations are encouraged to use the `AltGraph` modifier key.
 
-So on some Windows configurations an AltGr-produced glyph arrives with **both `ctrlKey` and `altKey` true**. A naive `if (event.ctrlKey) return;` guard silently makes a chunk of the AltGr layer unbindable for those users. This is a known cost, not a bug to fix — it is unavoidable without `getModifierState("AltGraph")`, which is available and *is* the spec's preferred signal.
+So on some Windows configurations an AltGr-produced glyph arrives with **both `ctrlKey` and `altKey` true**. A naive `if (event.ctrlKey) return;` guard silently makes a chunk of the AltGr layer unbindable for those users. This is a known cost, not a bug to fix — it is unavoidable without `getModifierState("AltGraph")`, which is available and _is_ the spec's preferred signal.
 
 The same section also documents the left/right asymmetry that makes `key`-based Alt detection layout-dependent: on a French layout the right-hand Alt key reports `key: "AltGraph"`, `code: "AltRight"`, while on US it reports `key: "Alt"`, `code: "AltRight"`.
 
@@ -249,16 +249,13 @@ The same section also documents the left/right asymmetry that makes `key`-based 
 
 ```ts
 const isBindable = (event: KeyboardEvent) =>
-  !event.ctrlKey &&
-  !event.metaKey &&
-  !event.altKey &&
-  !event.getModifierState("AltGraph");
-  // shiftKey and CapsLock deliberately permitted — they are glyph modifiers
+  !event.ctrlKey && !event.metaKey && !event.altKey && !event.getModifierState("AltGraph");
+// shiftKey and CapsLock deliberately permitted — they are glyph modifiers
 ```
 
 Rejecting `altKey` is the recommendation, on the grounds that on macOS it produces glyphs the user cannot predict or re-find, and on Windows it either does nothing to `key` (making `Alt+R` and `R` indistinguishable in storage) or is AltGr in disguise. #514 only excludes Cmd and Ctrl explicitly; this is the gap that needs a ruling.
 
-Also note that a modifier key pressed *by itself* generates its own `keydown` with `key: "Shift"` / `"Control"` / `"Alt"` / `"Meta"` / `"CapsLock"`. These must be skipped rather than captured, so the capture input can sit through `Shift`-then-`2` and only commit on the `2`.
+Also note that a modifier key pressed _by itself_ generates its own `keydown` with `key: "Shift"` / `"Control"` / `"Alt"` / `"Meta"` / `"CapsLock"`. These must be skipped rather than captured, so the capture input can sit through `Shift`-then-`2` and only commit on the `2`.
 
 ---
 
@@ -286,11 +283,11 @@ The APG adds the discoverability principle ([Developing a Keyboard Interface](ht
 From the [Microsoft Writing Style Guide](https://learn.microsoft.com/en-us/style-guide/a-z-word-list-term-collections/term-collections/keys-keyboard-shortcuts):
 
 - "In general, use sentence capitalization for key names… Capitalize letter keys in general references. **Example** the K key."
-- Arrow keys: "Arrow keys are labeled only with an arrow… Use sentence capitalization to refer to a specific arrow key: *the Left arrow key, the Right arrow key, the Up arrow key,* or *the Down arrow key*." And: "Don't use *direction keys, directional keys,* or *movement keys*."
-- Space: "**Spacebar** — Capitalize. Use to refer to the *Spacebar*."
-- Tab: "**Tab** — Capitalize. Use to refer to the *Tab key*."
-- Enter: "**Enter** — Capitalize. Use to refer to the *Enter key*. On the Mac, use only when functionality requires it." (On Mac: "**Return** — Capitalize. Use to refer to the *Return key* on the Mac keyboard.")
-- Escape: "Always use *Esc,* not *Escape*."
+- Arrow keys: "Arrow keys are labeled only with an arrow… Use sentence capitalization to refer to a specific arrow key: _the Left arrow key, the Right arrow key, the Up arrow key,_ or _the Down arrow key_." And: "Don't use _direction keys, directional keys,_ or _movement keys_."
+- Space: "**Spacebar** — Capitalize. Use to refer to the _Spacebar_."
+- Tab: "**Tab** — Capitalize. Use to refer to the _Tab key_."
+- Enter: "**Enter** — Capitalize. Use to refer to the _Enter key_. On the Mac, use only when functionality requires it." (On Mac: "**Return** — Capitalize. Use to refer to the _Return key_ on the Mac keyboard.")
+- Escape: "Always use _Esc,_ not _Escape_."
 
 So Microsoft would render #514's example set as **K**, **Left arrow**, **Spacebar**, **Tab**, **Enter** — never a bare glyph.
 
@@ -300,23 +297,23 @@ Apple's [Mac keyboard shortcuts](https://support.apple.com/en-us/102650) referen
 
 ### Authoring tools
 
-VS Code accepts lowercase names in `keybindings.json` — `left`, `up`, `right`, `down`, `pageup`, `pagedown`, `end`, `home`, `tab`, `enter`, `escape`, `space`, `backspace`, `delete` — and renders shortcuts "in the UI using the current system's keyboard layout", so the *displayed* form follows the OS convention (⌘⇧⇥ on macOS, `Ctrl+Shift+Tab` on Windows) rather than the stored name ([VS Code, Key Bindings](https://code.visualstudio.com/docs/configure/keybindings)). This is the same split #514 needs: a stable stored value plus a platform-shaped rendering.
+VS Code accepts lowercase names in `keybindings.json` — `left`, `up`, `right`, `down`, `pageup`, `pagedown`, `end`, `home`, `tab`, `enter`, `escape`, `space`, `backspace`, `delete` — and renders shortcuts "in the UI using the current system's keyboard layout", so the _displayed_ form follows the OS convention (⌘⇧⇥ on macOS, `Ctrl+Shift+Tab` on Windows) rather than the stored name ([VS Code, Key Bindings](https://code.visualstudio.com/docs/configure/keybindings)). This is the same split #514 needs: a stable stored value plus a platform-shaped rendering.
 
 ### Recommended display mapping for the inspector
 
 #514 already picks the shape (alphanumerics uppercased, specials spelled out or shown as a single glyph). Reconciling the three conventions above:
 
-| `key` | Suggested display | Rationale |
-| --- | --- | --- |
-| `"a"`…`"z"` | `A`…`Z` | Microsoft: "Capitalize letter keys in general references" |
-| `"0"`…`"9"`, `"@"`, `"?"` … | the glyph itself | matches what is printed on the key |
-| `" "` | `Space` | ARIA's name; Apple's "Space bar"; avoids rendering an invisible label |
-| `"Tab"` | `Tab` | universal |
-| `"Enter"` | `Enter` (`Return` on macOS) | Microsoft explicitly platform-splits this |
-| `"ArrowLeft"` | `←` (U+2190) | Apple convention; #514's stated preference |
-| `"ArrowRight"` | `→` (U+2192) | |
-| `"ArrowUp"` | `↑` (U+2191) | |
-| `"ArrowDown"` | `↓` (U+2193) | |
+| `key`                       | Suggested display           | Rationale                                                             |
+| --------------------------- | --------------------------- | --------------------------------------------------------------------- |
+| `"a"`…`"z"`                 | `A`…`Z`                     | Microsoft: "Capitalize letter keys in general references"             |
+| `"0"`…`"9"`, `"@"`, `"?"` … | the glyph itself            | matches what is printed on the key                                    |
+| `" "`                       | `Space`                     | ARIA's name; Apple's "Space bar"; avoids rendering an invisible label |
+| `"Tab"`                     | `Tab`                       | universal                                                             |
+| `"Enter"`                   | `Enter` (`Return` on macOS) | Microsoft explicitly platform-splits this                             |
+| `"ArrowLeft"`               | `←` (U+2190)                | Apple convention; #514's stated preference                            |
+| `"ArrowRight"`              | `→` (U+2192)                |                                                                       |
+| `"ArrowUp"`                 | `↑` (U+2191)                |                                                                       |
+| `"ArrowDown"`               | `↓` (U+2193)                |                                                                       |
 
 The arrow glyphs need an accessible text alternative, since `←` alone reads poorly to a screen reader. Microsoft's names — "Left arrow", "Right arrow", "Up arrow", "Down arrow" — are the established wording for that alternative. Same for `Space`, where the visible label is a word but the value is a space.
 

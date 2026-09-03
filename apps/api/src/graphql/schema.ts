@@ -490,6 +490,7 @@ export const schema = createSchema<GraphQLContext>({
       parentId: ID
       color: String
       position: Position!
+      size: JSON
       "The Flow's design-time entry Scene, if one is set."
       defaultSceneId: ID
     }
@@ -843,6 +844,7 @@ export const schema = createSchema<GraphQLContext>({
       type: TypeInput
       position: PositionInput!
       variables: [SceneVariableInput!]
+      size: JSON
       """
       Device nodes only: whether each connection is its own instance.
       Defaults to false for a new Device. There is no pairingCode input:
@@ -914,6 +916,8 @@ export const schema = createSchema<GraphQLContext>({
       fieldMapping: JSON
       "The edge layout, for graph.setEdgeLayout; null clears it."
       layout: JSON
+      "The authored Flow size for graph.setFlowSize; null clears it."
+      size: JSON
       "The graph-owned Source field value; null clears the override."
       value: JSON
       "The Block target for Block lifecycle and variable commands."
@@ -981,6 +985,8 @@ export const schema = createSchema<GraphQLContext>({
       fieldMapping: JSON
       "The edge layout, for graph.setEdgeLayout; null clears it."
       layout: JSON
+      "The authored Flow size for graph.setFlowSize; null clears it."
+      size: JSON
       "The interaction payloads selected by type."
       cue: CueInput
       action: ActionInput

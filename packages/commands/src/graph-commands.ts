@@ -30,6 +30,7 @@
 
 import type {
   EdgeLayout,
+  FlowSize,
   Block,
   BlockVariable,
   DeviceNode,
@@ -80,6 +81,7 @@ export const GRAPH_COMMAND_TYPES = {
   addEdge: "graph.addEdge",
   removeEdge: "graph.removeEdge",
   setFlowDefaultScene: "graph.setFlowDefaultScene",
+  setFlowSize: "graph.setFlowSize",
   setSourceType: "graph.setSourceType",
   setWiringFieldMapping: "graph.setWiringFieldMapping",
   setEdgeLayout: "graph.setEdgeLayout",
@@ -514,6 +516,52 @@ function withFlowDefaultScene(graph: ShowGraph, flowId: string, sceneId: string 
   const node = graph.nodes[index] as GraphNode;
   if (node.kind !== "flow") throw new UnknownGraphTargetError("Flow", flowId);
   return replaceNode(graph, index, { ...node, defaultSceneId: sceneId });
+}
+/**
+ * Sets (or clears) a Flow's authored size. An absent size fits around its
+ * children; setting one persists the editor's resize-handle result.
+ */
+export function setFlowSize(
+  flowId: string,
+  size: FlowSize | null,
+  label = "Resize Flow",
+): ShowGraphCommand {
+  return capturing<ShowGraph, FlowSize | undefined, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setFlowSize,
+    label,
+    scope: "selection",
+    coalesceKey: `${GRAPH_COMMAND_TYPES.setFlowSize}:${flowId}`,
+    edits: [{ type: GRAPH_COMMAND_TYPES.setFlowSize, flowId, size }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.setFlowSize, flowId, size: captured ?? null },
+    ],
+    capture: (graph) => {
+      const node = graph.nodes[nodeIndex(graph, flowId)] as GraphNode;
+      if (node.kind !== "flow") throw new UnknownGraphTargetError("Flow", flowId);
+      return node.size ? { ...node.size } : undefined;
+    },
+    isEmpty: (graph) => {
+      const node = graph.nodes[nodeIndex(graph, flowId)] as GraphNode;
+      if (node.kind !== "flow") throw new UnknownGraphTargetError("Flow", flowId);
+      return (
+        node.size?.width === size?.width &&
+        node.size?.height === size?.height &&
+        (node.size !== undefined) === (size !== null)
+      );
+    },
+    apply: (graph) => withFlowSize(graph, flowId, size),
+    restore: (graph, captured) => withFlowSize(graph, flowId, captured ?? null),
+  });
+}
+
+function withFlowSize(graph: ShowGraph, flowId: string, size: FlowSize | null): ShowGraph {
+  const index = nodeIndex(graph, flowId);
+  const node = graph.nodes[index] as GraphNode;
+  if (node.kind !== "flow") throw new UnknownGraphTargetError("Flow", flowId);
+  const next = { ...node };
+  if (size === null) delete next.size;
+  else next.size = { ...size };
+  return replaceNode(graph, index, next);
 }
 
 /** Sets any Show node's editor colorway (#316). */

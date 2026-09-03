@@ -37,6 +37,7 @@ import type {
   EdgeLayout,
   EventBinding,
   FlowColor,
+  FlowSize,
   GraphEdge,
   GraphNode,
   Position,
@@ -81,6 +82,7 @@ import {
   setDevicePairingCode,
   setDevicePerConnection,
   setFlowDefaultScene,
+  setFlowSize,
   setEdgeLayout,
   setNodeColor,
   setSceneVariableType,
@@ -158,6 +160,7 @@ export interface FlatGraphNode {
   type?: FlatType | null;
   position: Position;
   variables?: FlatSceneVariable[] | null;
+  size?: FlowSize | null;
   perConnection?: boolean | null;
 }
 
@@ -247,6 +250,7 @@ export interface FlatGraphEdit {
   fieldPath?: string[] | null;
   fieldMapping?: Record<string, string> | null;
   layout?: EdgeLayout | null;
+  size?: FlowSize | null;
   value?: unknown;
   blockVariables?: FlatBlockVariable[] | null;
   perConnection?: boolean | null;
@@ -287,6 +291,18 @@ function decodeEdgeLayout(value: EdgeLayout | null | undefined): EdgeLayout | nu
     if (Object.keys(offsets).length > 0) layout[signature] = offsets;
   }
   return Object.keys(layout).length > 0 ? layout : null;
+}
+function decodeFlowSize(value: FlowSize | null | undefined): FlowSize | null {
+  if (value === null || value === undefined) return null;
+  if (
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    !Number.isFinite(value.width) ||
+    !Number.isFinite(value.height)
+  ) {
+    throw new GraphEditCodecError("A Flow size needs finite width and height.");
+  }
+  return { width: value.width, height: value.height };
 }
 
 function required<T>(flat: FlatGraphEdit, field: string, value: T | null | undefined): T {
@@ -457,6 +473,7 @@ export function encodeNode(node: GraphNode): FlatGraphNode {
     type: node.kind === "source" || node.kind === "transformer" ? encodeType(node.type) : null,
     position: { x: node.position.x, y: node.position.y },
     variables: node.kind === "scene" ? node.variables.map(encodeSceneVariable) : [],
+    size: node.kind === "flow" ? (node.size ?? null) : null,
     perConnection: node.kind === "device" ? node.perConnection : false,
   };
 }
@@ -482,13 +499,21 @@ export function decodeNode(flat: FlatGraphNode): GraphNode {
         parentId,
         variables: (flat.variables ?? []).map(decodeSceneVariable),
       };
-    case "flow":
+    case "flow": {
       if (parentId !== null) {
         throw new GraphEditCodecError(
           `Flow "${flat.id}" was given a parentId; Flows are never nested.`,
         );
       }
-      return { ...base, kind: "flow", parentId: null, defaultSceneId: flat.defaultSceneId ?? null };
+      const size = decodeFlowSize(flat.size);
+      return {
+        ...base,
+        kind: "flow",
+        parentId: null,
+        defaultSceneId: flat.defaultSceneId ?? null,
+        ...(size ? { size } : {}),
+      };
+    }
     case "source":
       if (!type) throw new GraphEditCodecError(`Source "${flat.id}" must have a Type.`);
       return { ...base, kind: "source", parentId, type };
@@ -799,6 +824,15 @@ export const GRAPH_EDIT_CODECS: { [T in GraphEdit["type"]]: GraphEditCodec<T> } 
       flowId: required(flat, "flowId", flat.flowId),
       // Also meaningfully null: a Flow can be left without an entry Scene.
       sceneId: nullable(flat.sceneId),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.setFlowSize]: {
+    command: (edit) => setFlowSize(edit.flowId, edit.size),
+    encode: (edit) => ({ type: edit.type, flowId: edit.flowId, size: edit.size }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.setFlowSize,
+      flowId: required(flat, "flowId", flat.flowId),
+      size: decodeFlowSize(flat.size),
     }),
   },
   [GRAPH_COMMAND_TYPES.setNodeColor]: {

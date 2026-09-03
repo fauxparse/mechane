@@ -17,6 +17,7 @@
     "db:migrate": "pnpm --filter @mechane/api db:migrate",
     "db:test:migrate": "DATABASE_URL=postgres://mechane:mechane@localhost:5433/mechane_test pnpm --filter @mechane/api db:migrate",
     "db:push": "pnpm --filter @mechane/api db:push",
+    "db:reset": "pnpm --filter @mechane/api db:reset",
     "storybook": "pnpm --filter @mechane/storybook storybook",
     "build-storybook": "pnpm --filter @mechane/storybook build-storybook",
     "build": "pnpm -r build",

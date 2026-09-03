@@ -347,11 +347,13 @@ export const graphNodes = pgTable(
     name: text("name").notNull(),
     // The containing Flow, or null for a Show-level node.
     parentId: text("parent_id"),
+    // Flow nodes only: the authored editor size; null means fit to children.
+    size: jsonb("size"),
     // Flow nodes only: the design-time entry Scene (#23). Deliberately not
     // a foreign key: the only available composite-FK delete behaviours are
     // cascade (a Flow shouldn't die with its default Scene) and no action
-    // (which would block deleting that Scene) — neither is the rule, which
-    // is "the Flow survives with no default". @mechane/domain's
+    // (which would block deleting that Scene) — neither is the rule, which is
+    // "the Flow survives with no default". @mechane/domain's
     // `assertValidShowGraph` is what keeps this pointing at a Scene of
     // this Flow.
     defaultSceneId: text("default_scene_id"),

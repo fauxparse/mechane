@@ -38,6 +38,7 @@ import type {
   Cue,
   EdgeLayout,
   EventBinding,
+  FlowSize,
   Block,
   BlockVariable,
   FlowColor,
@@ -94,6 +95,11 @@ export type GraphEdit =
       readonly type: typeof GRAPH_COMMAND_TYPES.setFlowDefaultScene;
       readonly flowId: string;
       readonly sceneId: string | null;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setFlowSize;
+      readonly flowId: string;
+      readonly size: FlowSize | null;
     }
   | {
       readonly type: typeof GRAPH_COMMAND_TYPES.setNodeColor;
@@ -362,6 +368,8 @@ function supersedes(edit: GraphEdit): { key: string; ids: readonly string[] } | 
         key: `defaultScene:${edit.flowId}`,
         ids: edit.sceneId === null ? [edit.flowId] : [edit.flowId, edit.sceneId],
       };
+    case GRAPH_COMMAND_TYPES.setFlowSize:
+      return { key: `flowSize:${edit.flowId}`, ids: [edit.flowId] };
     case GRAPH_COMMAND_TYPES.setNodeColor:
       return { key: `nodeColor:${edit.nodeId}`, ids: [edit.nodeId] };
     case GRAPH_COMMAND_TYPES.setEdgeLayout:

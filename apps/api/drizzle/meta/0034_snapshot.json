@@ -1,6 +1,6 @@
 {
-  "id": "98c61d57-c5f9-441b-83ed-9066a583a64e",
-  "prevId": "bac67db8-8d1a-451d-8da1-3ba7580efee5",
+  "id": "9ff9be56-a230-43e1-9978-287cb1d3ff80",
+  "prevId": "98c61d57-c5f9-441b-83ed-9066a583a64e",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1371,6 +1371,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "params": {
+          "name": "params",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
         "cue_id": {
           "name": "cue_id",
           "type": "text",
@@ -2010,6 +2017,12 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "params": {
+          "name": "params",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
         },
         "outcome": {
           "name": "outcome",
