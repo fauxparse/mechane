@@ -172,7 +172,7 @@ export const Header = ({
         className,
       )}
     >
-      <div className="flex items-start gap-2">
+      <div className="editor-chrome-header-left flex w-fit items-start justify-self-start gap-2">
         {draftName === null ? (
           <div className="pointer-events-auto flex w-fit items-center gap-1 rounded-full bg-muted/50 backdrop-blur-[2px] pl-1">
             <Logo className="size-6" />
@@ -239,7 +239,7 @@ export const Header = ({
         ) : null}
       </div>
 
-      <Tabs value={activeEditor}>
+      <Tabs className="editor-chrome-header-tabs w-fit justify-self-center" value={activeEditor}>
         <TabsList className="pointer-events-auto rounded-[100vw] bg-muted/50 backdrop-blur-sm">
           <TabsTrigger
             value="show"
@@ -266,7 +266,7 @@ export const Header = ({
         </TabsList>
       </Tabs>
 
-      <div className="pointer-events-auto flex items-center justify-end gap-2">
+      <div className="editor-chrome-header-right pointer-events-auto flex w-fit items-center justify-self-end gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
