@@ -31,6 +31,9 @@ import type { FlowDimensions, ShowFlowNode } from "./graph/graph-to-flow";
 /** Vertical gap between nodes this module places in a column. */
 const STACK_GAP = 32;
 
+/** Horizontal gap between the two Scenes in a compact navigation pair. */
+const PAIR_GAP = 32;
+
 /** How far each ring of the free-space search steps out. */
 const SEARCH_STEP = 32;
 
@@ -278,9 +281,7 @@ export function moveOutPositions(nodeIds: string[], rendered: ShowFlowNode[]): P
  * consulted by graph projection, so membership and measured child dimensions
  * cannot resize an existing Flow behind the director's back.
  */
-export function flowDimensionsForChildren(
-  children: readonly ShowFlowNode[],
-): FlowDimensions {
+export function flowDimensionsForChildren(children: readonly ShowFlowNode[]): FlowDimensions {
   const right = children.reduce(
     (edge, child) => Math.max(edge, child.position.x + sizeOf(child).width),
     0,
@@ -293,6 +294,98 @@ export function flowDimensionsForChildren(
     width: Math.max(NODE_WIDTH, right) + FLOW_PADDING,
     height: Math.max(FLOW_HEADER_HEIGHT + NODE_HEIGHT, bottom) + FLOW_PADDING,
   };
+}
+
+export interface CompactScenePair {
+  flowPosition: Position;
+  sourcePosition: Position;
+  destinationPosition: Position;
+  dimensions: FlowDimensions;
+}
+
+/**
+ * Places two root-level Scenes side by side in a new Flow.
+ *
+ * `intent` is either the original drag midpoint or the empty-drop point.
+ * Every rendered node and Flow except the pair is an obstacle; the search
+ * therefore moves only the new Flow and never unrelated content.
+ */
+export function compactRootScenePair(
+  source: ShowFlowNode,
+  destination: ShowFlowNode,
+  intent: Position,
+  rendered: readonly ShowFlowNode[],
+): CompactScenePair {
+  return compactPair(
+    sizeOf(source),
+    sizeOf(destination),
+    intent,
+    rendered,
+    source.id,
+    destination.id,
+    false,
+  );
+}
+
+/** The same layout for a newly-created destination whose top-left is the drop. */
+export function compactRootSceneAtDrop(
+  source: ShowFlowNode,
+  drop: Position,
+  rendered: readonly ShowFlowNode[],
+): CompactScenePair {
+  return compactPair(
+    sizeOf(source),
+    { width: NODE_WIDTH, height: NODE_HEIGHT },
+    drop,
+    rendered,
+    source.id,
+    null,
+    true,
+  );
+}
+
+function compactPair(
+  sourceSize: Size,
+  destinationSize: Size,
+  intent: Position,
+  rendered: readonly ShowFlowNode[],
+  sourceId: string,
+  destinationId: string | null,
+  destinationAtIntent: boolean,
+): CompactScenePair {
+  const sourcePosition = {
+    x: FLOW_PADDING,
+    y: FLOW_HEADER_HEIGHT + FLOW_PADDING,
+  };
+  const destinationPosition = destinationAtIntent
+    ? { x: FLOW_PADDING + sourceSize.width + PAIR_GAP, y: sourcePosition.y }
+    : { x: FLOW_PADDING + sourceSize.width + PAIR_GAP, y: sourcePosition.y };
+  const dimensions = {
+    width: Math.max(NODE_WIDTH, destinationPosition.x + destinationSize.width) + FLOW_PADDING,
+    height:
+      Math.max(
+        FLOW_HEADER_HEIGHT + NODE_HEIGHT,
+        Math.max(
+          sourcePosition.y + sourceSize.height,
+          destinationPosition.y + destinationSize.height,
+        ),
+      ) + FLOW_PADDING,
+  };
+  const byId = new Map(rendered.map((node) => [node.id, node]));
+  const obstacles = rendered.reduce<Rectangle[]>((result, node) => {
+    if (node.id !== sourceId && node.id !== destinationId) {
+      result.push(nodeRectangle(node, byId));
+    }
+    return result;
+  }, []);
+  const origin = destinationAtIntent
+    ? { x: intent.x - destinationPosition.x, y: intent.y - destinationPosition.y }
+    : { x: intent.x - dimensions.width / 2, y: intent.y - dimensions.height / 2 };
+  const flowPosition = searchAnchor(origin, (anchor) => {
+    const flow = rectangleAt(anchor, dimensions);
+    return !obstacles.some((obstacle) => overlaps(flow, obstacle));
+  });
+  return { flowPosition, sourcePosition, destinationPosition, dimensions };
 }
 
 /** The first anchor at or spiralling out from `origin` where `isFree` holds. */

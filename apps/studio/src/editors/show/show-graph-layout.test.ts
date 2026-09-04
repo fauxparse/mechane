@@ -13,7 +13,9 @@ import {
   childrenPushedInside,
   clampIntoFlow,
   clearOfFlows,
+  compactRootSceneAtDrop,
   flowDimensionsForChildren,
+  compactRootScenePair,
   flowAtPoint,
   flowContentBox,
   moveOutPositions,
@@ -233,5 +235,25 @@ describe("flowDimensionsForChildren", () => {
       height: 680,
     });
     expect(flow.style).toEqual({ width: 400, height: 300 });
+  });
+});
+
+describe("compact scene navigation layout", () => {
+  it("lays the destination to the right and sizes the new Flow", () => {
+    const source = childNode("scene_source", "root", { x: 100, y: 100 });
+    const destination = childNode("scene_destination", "root", { x: 500, y: 100 });
+    const pair = compactRootScenePair(source, destination, { x: 400, y: 150 }, [
+      source,
+      destination,
+    ]);
+    expect(pair.destinationPosition.x).toBeGreaterThan(pair.sourcePosition.x);
+    expect(pair.dimensions).toEqual({ width: 560, height: 154 });
+  });
+
+  it("moves the new Flow off an existing obstacle", () => {
+    const source = childNode("scene_source", "root", { x: 100, y: 100 });
+    const obstacle = flowNode("flow_obstacle", { x: 0, y: 0 }, { width: 560, height: 130 });
+    const pair = compactRootSceneAtDrop(source, { x: 100, y: 20 }, [source, obstacle]);
+    expect(pair.flowPosition).not.toEqual({ x: 100 - 296, y: 20 - 74 });
   });
 });
