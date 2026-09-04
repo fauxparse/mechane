@@ -669,6 +669,57 @@ export const playerEvents = pgTable(
   ],
 );
 
+// The Run error log (#459): configuration failures a live Show hit, written
+// for the operator rather than for us. See @mechane/domain's `run-errors`
+// module for the closed category set and the prose each one renders.
+//
+// Three shapes here are deliberate, and each is a decision the ticket asked
+// for rather than an omission:
+//
+//   * `run_id` is nullable. A Flow-driven Device can be misconfigured before
+//     anyone goes live — `readPlayerSession` hits exactly that — and a failure
+//     nobody can see because no Run had started yet is the failure most worth
+//     seeing.
+//   * No message column. Every row is a category plus identifiers, so the
+//     rendered sentence stays in one place and no captured exception text or
+//     request payload can reach storage.
+//   * The identifier columns carry no foreign keys, unlike every other
+//     Run-scoped table above. They record what was named at the time, and an
+//     audit trail that deleted itself when a Device was retired or a Scene
+//     removed would erase the evidence of the very edit that broke the show.
+//     Only the owning Show (and Run) cascades.
+//
+// Retention deliberately differs from the Event ledger: `endRun` drops
+// `player_events` with the Run's live state, while these rows outlive the Run
+// so the post-mortem is possible after the curtain comes down.
+export const runErrors = pgTable(
+  "run_errors",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateId("runError")),
+    showId: text("show_id")
+      .notNull()
+      .references(() => shows.id, { onDelete: "cascade" }),
+    runId: text("run_id").references(() => runs.id, { onDelete: "cascade" }),
+    category: text("category").notNull(),
+    deviceId: text("device_id"),
+    sceneId: text("scene_id"),
+    elementId: text("element_id"),
+    cueId: text("cue_id"),
+    actionId: text("action_id"),
+    eventId: text("event_id"),
+    publishedGraphVersion: integer("published_graph_version"),
+    occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+  },
+  (table) => [
+    // Newest-first for one Show, which is how the log is read, and the same
+    // index serves the category filter as a scan of the Show's slice.
+    index("run_errors_show_occurred_idx").on(table.showId, table.occurredAt),
+    index("run_errors_run_occurred_idx").on(table.runId, table.occurredAt),
+  ],
+);
+
 /** Durable, invalidation-only delivery work for paired Players. */
 export const playerInvalidationOutbox = pgTable(
   "player_invalidation_outbox",

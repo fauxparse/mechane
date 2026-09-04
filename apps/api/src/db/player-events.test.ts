@@ -1,9 +1,11 @@
 import type { ShowGraph } from "@mechane/domain";
+import { describeRunError } from "@mechane/domain";
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { db } from "./client";
-import { dispatchPlayerEvent, PlayerDispatchConfigurationError } from "./player-events";
+import { dispatchPlayerEvent } from "./player-events";
+import { listRunErrors, RunConfigurationError } from "./run-errors";
 import { endRun, readRunDeviceState, startRun } from "./runs";
 import { publishShowGraph, readShowGraph, writeShowGraph } from "./show-graph";
 import { playerEvents, playerInvalidationOutbox, runDeviceStates, shows, user } from "./schema";
@@ -199,7 +201,24 @@ describe("dispatchPlayerEvent", () => {
         device.pairingCode,
         event(crypto.randomUUID(), "scene_red", "scene_green"),
       ),
-    ).rejects.toBeInstanceOf(PlayerDispatchConfigurationError);
+    ).rejects.toBeInstanceOf(RunConfigurationError);
+
+    // The dispatch transaction rolled back, so the Event ledger records
+    // nothing at all — which is exactly why the failure has to be written
+    // somewhere else for whoever is running the show.
+    expect(await db.select().from(playerEvents).where(eq(playerEvents.runId, run.id))).toHaveLength(
+      0,
+    );
+    const logged = await listRunErrors(showId);
+    expect(logged).toHaveLength(1);
+    expect(logged[0]).toMatchObject({
+      showId,
+      runId: run.id,
+      category: "invalidNavigateAction",
+      deviceId: device.id,
+      sceneId: "scene_red",
+    });
+    expect(describeRunError(logged[0]!)).toContain("Navigate Action");
   });
   it("accepts per-connection Events without server navigation state", async () => {
     await createShow();
