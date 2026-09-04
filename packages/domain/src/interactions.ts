@@ -70,6 +70,15 @@ export interface NavigateAction {
   layout?: EdgeLayout;
 }
 
+/**
+ * Every Action type that projects an edge must keep that edge's authored
+ * layout on the Action, then have its projection copy the layout onto the
+ * materialized edge. Do not add layout only to a projected edge: graph writes
+ * rebuild projected edges from Actions, and the edge-only value will vanish.
+ * Also update the Action codec, its persistence row, and the GraphQL serializer
+ * when adding the next Action type. See `NavigateAction.layout` for the
+ * complete pattern.
+ */
 export type Action = NavigateAction;
 
 export interface InteractionCollections {
