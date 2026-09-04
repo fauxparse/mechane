@@ -6,6 +6,8 @@
 // an unrounded polyline and this module rounds it — an arc never carries a
 // handle, a label, or a color of its own.
 
+import { edgeLayoutKey } from "@mechane/domain";
+
 import { DEFAULT_MARGIN, DEFAULT_MAX_RADIUS, simplify, type Point } from "./edge-routing";
 
 export type Orientation = "horizontal" | "vertical";
@@ -364,7 +366,7 @@ export function dragRoute(
     if (!from || !to || !start || !end) continue;
     if (!handleFits(lengthOf(from, to), index, count, margin)) continue;
 
-    const requested = flattenOffset(offsets[`${index}`] ?? 0, flattenWithin);
+    const requested = flattenOffset(offsets[edgeLayoutKey(index)] ?? 0, flattenWithin);
     if (requested === 0) continue;
 
     // A vertical run is dragged horizontally, and vice versa.
@@ -388,8 +390,8 @@ export function dragRoute(
 
   const headDelta = deltas[0] ?? 0;
   const tailDelta = deltas[count - 1] ?? 0;
-  const headKey = "0.head";
-  const tailKey = `${count - 1}.tail`;
+  const headKey = edgeLayoutKey(0, "head");
+  const tailKey = edgeLayoutKey(count - 1, "tail");
 
   const headAxis = orientationOf(head, nextToHead) === "vertical" ? "x" : "y";
   const tailAxis = orientationOf(tail, nextToTail) === "vertical" ? "x" : "y";
@@ -460,7 +462,7 @@ export function dragRoute(
     if (lengthOf(start, end) < EPSILON) continue;
 
     handles.push({
-      key: `${index}`,
+      key: edgeLayoutKey(index),
       point: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 },
       orientation,
       drawnIndex: drawnRun(drawn.sources, index + shifted),

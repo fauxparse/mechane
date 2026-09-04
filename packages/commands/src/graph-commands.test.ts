@@ -718,6 +718,20 @@ describe("setEdgeLayout (#475)", () => {
     expect(cleared.edges.find((edge) => edge.id === NAVIGATE.id)).not.toHaveProperty("layout");
   });
 
+  // A drag released back on the routed shape has changed nothing, and the
+  // editor says so by clearing the layout rather than storing an empty one.
+  // An empty record is not the absence of a record, so it would report itself
+  // a change and leave an undo entry that undoes nothing.
+  it("changes nothing when an undragged edge is cleared", () => {
+    expect(setEdgeLayout(NAVIGATE.id, null).apply(GRAPH).inverse.isEmpty).toBe(true);
+    // An empty layout is not the absence of one, so it reads as a change and
+    // lands an entry — which is why the editor stores null rather than `{}`.
+    expect(setEdgeLayout(NAVIGATE.id, {}).apply(GRAPH).inverse.isEmpty).toBe(false);
+
+    const dragged = setEdgeLayout(NAVIGATE.id, LAYOUT).apply(GRAPH).state;
+    expect(setEdgeLayout(NAVIGATE.id, null).apply(dragged).inverse.isEmpty).toBe(false);
+  });
+
   it("coalesces on the edge, so one drag is one undo entry", () => {
     expect(setEdgeLayout(NAVIGATE.id, LAYOUT).coalesceKey).toBe(
       setEdgeLayout(NAVIGATE.id, {}).coalesceKey,

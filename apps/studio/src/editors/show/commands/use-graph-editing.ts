@@ -185,12 +185,17 @@ export interface SourceValueEditing {
 
 export interface GraphEdgeEditing {
   /**
-   * Records where an edge's runs have been dragged (#475). `committed` is
-   * false while the pointer is still down and true on release, so a drag
-   * previews live and leaves one entry on the undo stack rather than one per
-   * frame — the same shape as an inline rename.
+   * Records what has been dragged on an edge (#475). `committed` is false
+   * while the pointer is still down and true on release, so a drag previews
+   * live and leaves one entry on the undo stack rather than one per frame —
+   * the same shape as an inline rename.
+   *
+   * `null` is an edge with nothing dragged on it, which is what a drag
+   * released back on its routed shape leaves behind. It has to be null rather
+   * than an empty layout, or the command cannot tell that the gesture changed
+   * nothing and leaves an undo entry that undoes nothing.
    */
-  moveEdge(edgeId: string, layout: EdgeLayout, options: { committed: boolean }): void;
+  moveEdge(edgeId: string, layout: EdgeLayout | null, options: { committed: boolean }): void;
 }
 export interface InteractionEditing {
   addCue(owner: InteractionOwner): void;
@@ -434,7 +439,7 @@ export function useGraphEditing(
   const edgeLayout = useRef<Gesture<ShowGraph> | null>(null);
 
   const moveEdge = useCallback(
-    (edgeId: string, layout: EdgeLayout, { committed }: { committed: boolean }) => {
+    (edgeId: string, layout: EdgeLayout | null, { committed }: { committed: boolean }) => {
       edgeLayout.current ??= beginGesture({ key: `edgeLayout:${edgeId}`, label: "Move edge" });
       edgeLayout.current.update(setEdgeLayout(edgeId, layout));
       if (!committed) return;

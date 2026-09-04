@@ -43,8 +43,11 @@ const graph: ShowGraph = {
       targetId: "source_copy",
       sourcePath: [],
       targetPath: [],
-      // Where the author dragged this edge's runs, keyed by route shape (#475).
-      layout: { HVH: { "1": -24 } },
+      // What the author dragged on this edge, keyed by route shape then by
+      // handle: a run dragged across itself, and a jog cut into an end run
+      // (#475). The jog keys are here because they are the ones a layer
+      // between the editor and this column can misread as a run index.
+      layout: { HVH: { "1": -24, "0.head": 36, "2.tail": -18 } },
     },
   ],
 };
@@ -241,7 +244,7 @@ describe("graph row persistence", () => {
 
     expect(reread.edges[0]).toMatchObject({
       id: "edge_score",
-      layout: { HVH: { "1": -24 } },
+      layout: { HVH: { "1": -24, "0.head": 36, "2.tail": -18 } },
     });
   });
 
