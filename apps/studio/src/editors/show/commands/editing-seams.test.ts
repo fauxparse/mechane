@@ -14,6 +14,7 @@ const graph: ShowGraph = { nodes: [], edges: [] };
 const gestures: GraphGestureEditing = {
   renaming: null,
   beginRename: () => {},
+  beginCreationRename: () => {},
   renameTo: () => {},
   commitRename: () => {},
   cancelRename: () => {},

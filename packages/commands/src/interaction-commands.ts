@@ -3,7 +3,7 @@ import { isBindableKey, projectNavigateEdges } from "@mechane/domain";
 
 import { capturing, composite } from "./command";
 import type { ShowGraphCommand } from "./graph-commands";
-import { GRAPH_COMMAND_TYPES } from "./graph-commands";
+import { GRAPH_COMMAND_TYPES, renameNode } from "./graph-commands";
 import type { GraphEdit } from "./graph-edits";
 
 type InteractionState = Pick<ShowGraph, "cues" | "actions" | "eventBindings">;
@@ -135,6 +135,19 @@ export function renameCue(cueId: string, name: string, label = "Rename Cue"): Sh
     restoreEdits: (previousName) => [
       { type: GRAPH_COMMAND_TYPES.renameCue, cueId, name: previousName },
     ],
+  });
+}
+
+/** Renames a newly-created Scene and its generated navigation Cue together. */
+export function renameSceneAndCue(
+  sceneId: string,
+  cueId: string,
+  sceneName: string,
+  label = "Rename Scene and Cue",
+): ShowGraphCommand {
+  return composite({
+    label,
+    commands: [renameNode(sceneId, sceneName), renameCue(cueId, `Go to ${sceneName}`)],
   });
 }
 
