@@ -40,15 +40,15 @@ describe("Navigation Proof seed", () => {
     expect(scenes.map((scene) => scene.name)).toEqual(["Red", "Green", "Blue"]);
     expect(scenes.map((scene) => scene.color)).toEqual(["red", "green", "blue"]);
     expect(scenes.map((scene) => scene.position)).toEqual([
-      { x: 240, y: 120 },
-      { x: 1040, y: 120 },
-      { x: 640, y: 813 },
+      { x: 24, y: 74 },
+      { x: 340, y: 74 },
+      { x: 656, y: 74 },
     ]);
     expect(graph.nodes.find((node) => node.id === NAVIGATION_FLOW_ID)).toMatchObject({
       position: { x: 0, y: 0 },
     });
     expect(graph.nodes.find((node) => node.id === NAVIGATION_DEVICE_ID)).toMatchObject({
-      position: { x: 1840, y: 466 },
+      position: { x: 996, y: 74 },
     });
     expect(graph.nodes.find((node) => node.id === NAVIGATION_FLOW_ID)).toMatchObject({
       kind: "flow",
