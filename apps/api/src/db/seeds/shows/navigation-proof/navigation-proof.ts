@@ -31,9 +31,9 @@ const CANVAS_IDS = {
   scene_blue: "canvas_navigation_blue",
 } as const;
 const SCENE_POSITIONS = {
-  scene_red: { x: 240, y: 120 },
-  scene_green: { x: 1040, y: 120 },
-  scene_blue: { x: 640, y: 813 },
+  scene_red: { x: 24, y: 74 },
+  scene_green: { x: 340, y: 74 },
+  scene_blue: { x: 656, y: 74 },
 } as const;
 
 type NavigationSceneId = (typeof NAVIGATION_SCENE_IDS)[number];
@@ -200,7 +200,7 @@ export function navigationProofGraph(): ShowGraph {
       parentId: null,
       position: { x: 0, y: 0 },
       defaultSceneId: "scene_red",
-      size: { width: 1304, height: 893 },
+      size: { width: 920, height: 260 },
     },
     ...scenes,
     {
@@ -208,7 +208,7 @@ export function navigationProofGraph(): ShowGraph {
       kind: "device" as const,
       name: "Navigation Proof Device",
       parentId: null,
-      position: { x: 1840, y: 466 },
+      position: { x: 996, y: 74 },
       perConnection: false,
       pairingCode: null,
     },
@@ -217,7 +217,7 @@ export function navigationProofGraph(): ShowGraph {
       kind: "device" as const,
       name: "Navigation Proof Audience",
       parentId: null,
-      position: { x: 1840, y: 760 },
+      position: { x: 996, y: 369 },
       perConnection: true,
       pairingCode: null,
     },

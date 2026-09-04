@@ -10,7 +10,7 @@ description: A three-scene navigation demonstration comparing Shared and per-con
 A Flow with three Scenes: Red, Green, and Blue. The Flow's default Scene is Red. Each Scene belongs to this Flow and uses its matching color: `red`, `green`, or `blue`.
 The Flow is wired to one Shared Device and one per-connection Audience Device. Shared connections observe one server-owned active Scene; each Audience connection navigates its own client-owned Flow state.
 
-Lay out the three scenes in an equilateral triangle; place both devices to the right of the flow.
+Lay out the three scenes evenly spaced in a single row inside the Flow; place both devices to the right of the flow.
 
 # Scenes
 
