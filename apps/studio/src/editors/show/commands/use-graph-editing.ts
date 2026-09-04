@@ -34,9 +34,12 @@ import {
   renameShapeField,
   reorderSceneVariables,
   reorderShapeFields,
+  reparentNode,
   setCueActionOrder,
   setDevicePerConnection,
   setEdgeLayout,
+  setFlowDefaultScene,
+  setFlowSize,
   setNodeColor,
   setSceneVariableDefault,
   setSceneVariableType,
@@ -49,6 +52,7 @@ import type {
   ConnectionTargets,
   EdgeLayout,
   FlowColor,
+  FlowSize,
   GraphNode,
   InteractionOwner,
   NodeKind,
@@ -88,6 +92,14 @@ export interface ConnectionAttempt {
   sourceHandle?: string | null;
   /** The encoded handle dropped on the target. */
   targetHandle?: string | null;
+}
+
+export interface RootNavigationPlan {
+  flow?: Extract<GraphNode, { kind: "flow" }>;
+  destination?: Extract<GraphNode, { kind: "scene" }>;
+  sourcePosition?: Position;
+  destinationPosition?: Position;
+  flowSize?: FlowSize;
 }
 
 export interface GraphCommandEditing {
@@ -131,7 +143,7 @@ export interface GraphConnectionEditing {
   beginConnect(sourceId: string, sourceHandle?: string | null): void;
   endConnect(): void;
   canDrop(attempt: ConnectionAttempt): boolean;
-  connect(attempt: ConnectionAttempt): string | null;
+  connect(attempt: ConnectionAttempt, plan?: RootNavigationPlan): string | null;
 }
 
 export interface ShapeEditing {
@@ -434,6 +446,17 @@ export function useGraphEditing(
   const canDrop = useCallback(
     (attempt: ConnectionAttempt) => {
       const sourceHandle = attempt.sourceHandle ? readHandle(attempt.sourceHandle) : null;
+      const targetHandle = attempt.targetHandle ? readHandle(attempt.targetHandle) : null;
+      const source = graph.nodes.find((node) => node.id === attempt.source);
+      const target = graph.nodes.find((node) => node.id === attempt.target);
+      if (
+        source?.kind === "scene" &&
+        target?.kind === "scene" &&
+        sourceHandle?.kind === "output" &&
+        targetHandle?.kind === "input"
+      ) {
+        return source.id !== target.id && source.parentId === target.parentId;
+      }
       return sourceHandle?.kind === "cue"
         ? cueConnectionError(graph, attempt) === null
         : connectionError(graph, requestOf(attempt)) === null;
@@ -442,7 +465,7 @@ export function useGraphEditing(
   );
 
   const connect = useCallback(
-    (attempt: ConnectionAttempt) => {
+    (attempt: ConnectionAttempt, rootPlan?: RootNavigationPlan) => {
       const sourceHandle = attempt.sourceHandle ? readHandle(attempt.sourceHandle) : null;
       if (sourceHandle?.kind === "cue") {
         const error = cueConnectionError(graph, attempt);
@@ -468,6 +491,65 @@ export function useGraphEditing(
         );
         return null;
       }
+
+      if (rootPlan) {
+        const source = graph.nodes.find((node) => node.id === attempt.source);
+        const target = graph.nodes.find((node) => node.id === attempt.target);
+        const targetHandle = attempt.targetHandle ? readHandle(attempt.targetHandle) : null;
+        if (
+          source?.kind !== "scene" ||
+          target?.kind !== "scene" ||
+          sourceHandle?.kind !== "output" ||
+          targetHandle?.kind !== "input"
+        ) {
+          return "Scene navigation uses root header handles.";
+        }
+        if (source.id === target.id) return "A Scene cannot navigate to itself.";
+        if (source.parentId !== target.parentId) {
+          return "Navigate targets must share a Flow.";
+        }
+        if (source.parentId === null && !rootPlan.flow) {
+          return "Root Scenes must be placed in a Flow before they can navigate.";
+        }
+        if (
+          rootPlan.flow &&
+          (!rootPlan.sourcePosition || !rootPlan.destinationPosition || !rootPlan.flowSize)
+        ) {
+          return "Scene navigation has incomplete Flow geometry.";
+        }
+        if (source.parentId !== null && rootPlan.flow) {
+          return "Scenes already in a Flow cannot be wrapped in another Flow.";
+        }
+        const cue = {
+          id: generateId("cue"),
+          name: `Go to ${target.name}`,
+          owner: { kind: "scene" as const, sceneId: source.id },
+          actionIds: [] as string[],
+        };
+        const action = {
+          id: generateId("action"),
+          cueId: cue.id,
+          kind: "navigate" as const,
+          targetSceneId: target.id,
+        };
+        const commands = rootPlan.flow
+          ? [
+              addNode(rootPlan.flow, "Create Flow"),
+              reparentNode(source.id, rootPlan.flow.id, rootPlan.sourcePosition!),
+              reparentNode(target.id, rootPlan.flow.id, rootPlan.destinationPosition!),
+              setFlowDefaultScene(rootPlan.flow.id, source.id),
+              setFlowSize(rootPlan.flow.id, rootPlan.flowSize!),
+            ]
+          : [];
+        commands.push(
+          addCue(cue),
+          addNavigateAction(action),
+          setCueActionOrder(cue.id, [action.id]),
+        );
+        execute(composite({ label: "Create Scene Navigation", commands }));
+        return null;
+      }
+
       const request = requestOf(attempt);
       const plan = planConnection(graph, request, {
         edgeId: generateId("edge"),

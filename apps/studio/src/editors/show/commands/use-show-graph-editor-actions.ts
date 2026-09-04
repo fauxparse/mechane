@@ -11,18 +11,21 @@ import {
   NODE_WIDTH,
 } from "../graph/graph-to-flow";
 import type { ShowFlowNode } from "../graph/graph-to-flow";
-import type { CreatableNode } from "../graph/node-kinds";
 import {
   clampIntoFlow,
   clearOfFlows,
+  compactRootScenePair,
   flowAtPoint,
   nextChildPosition,
   relativeToFlow,
   sizeOf,
+  type CreationSite,
+  type Size,
 } from "../show-graph-layout";
-import type { CreationSite, Size } from "../show-graph-layout";
-import { useCallback, useMemo, useRef } from "react";
+import { createNode, type CreatableNode } from "../graph/node-kinds";
 import type { DeletionScope } from "@mechane/commands";
+import { readHandle } from "../graph/handle-ids";
+import { useCallback, useMemo, useRef } from "react";
 
 function moveComposite(moved: { id: string; position: Position }[]) {
   return composite({
@@ -364,15 +367,71 @@ export function useShowGraphEditorActions({
   const onConnect = useCallback(
     (connection: Connection) => {
       if (!connection.source || !connection.target) return;
-      const reason = editing.connect({
+      const attempt = {
         source: connection.source,
         target: connection.target,
         sourceHandle: connection.sourceHandle,
         targetHandle: connection.targetHandle,
-      });
+      };
+      const sourceHandle = connection.sourceHandle ? readHandle(connection.sourceHandle) : null;
+      const targetHandle = connection.targetHandle ? readHandle(connection.targetHandle) : null;
+      const source = graph.nodes.find((node) => node.id === connection.source);
+      const target = graph.nodes.find((node) => node.id === connection.target);
+      let rootPlan:
+        | {
+            flow: Extract<GraphNode, { kind: "flow" }>;
+            sourcePosition: Position;
+            destinationPosition: Position;
+            flowSize: { width: number; height: number };
+          }
+        | Record<string, never>
+        | undefined;
+      if (
+        source?.kind === "scene" &&
+        target?.kind === "scene" &&
+        sourceHandle?.kind === "output" &&
+        targetHandle?.kind === "input"
+      ) {
+        const rendered = getNodes() as ShowFlowNode[];
+        const byId = new Map(rendered.map((node) => [node.id, node]));
+        const renderedSource = byId.get(source.id);
+        const renderedTarget = byId.get(target.id);
+        if (!renderedSource || !renderedTarget) {
+          say("Scene navigation is not ready yet.");
+          return;
+        }
+        if (source.parentId === null && target.parentId === null) {
+          const sourcePosition = absolutePosition(renderedSource, byId);
+          const targetPosition = absolutePosition(renderedTarget, byId);
+          const midpoint = {
+            x:
+              (sourcePosition.x +
+                sizeOf(renderedSource).width / 2 +
+                targetPosition.x +
+                sizeOf(renderedTarget).width / 2) /
+              2,
+            y:
+              (sourcePosition.y +
+                sizeOf(renderedSource).height / 2 +
+                targetPosition.y +
+                sizeOf(renderedTarget).height / 2) /
+              2,
+          };
+          const pair = compactRootScenePair(renderedSource, renderedTarget, midpoint, rendered);
+          rootPlan = {
+            flow: createNode("flow", pair.flowPosition) as Extract<GraphNode, { kind: "flow" }>,
+            sourcePosition: pair.sourcePosition,
+            destinationPosition: pair.destinationPosition,
+            flowSize: pair.dimensions,
+          };
+        } else {
+          rootPlan = {};
+        }
+      }
+      const reason = editing.connect(attempt, rootPlan);
       if (reason) say(reason);
     },
-    [editing, say],
+    [editing, getNodes, graph.nodes, say],
   );
 
   const isValidConnection = useCallback(
