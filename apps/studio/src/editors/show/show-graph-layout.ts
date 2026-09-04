@@ -372,9 +372,12 @@ function compactPair(
       ) + FLOW_PADDING,
   };
   const byId = new Map(rendered.map((node) => [node.id, node]));
-  const obstacles = rendered
-    .filter((node) => node.id !== sourceId && node.id !== destinationId)
-    .map((node) => nodeRectangle(node, byId));
+  const obstacles = rendered.reduce<Rectangle[]>((result, node) => {
+    if (node.id !== sourceId && node.id !== destinationId) {
+      result.push(nodeRectangle(node, byId));
+    }
+    return result;
+  }, []);
   const origin = destinationAtIntent
     ? { x: intent.x - destinationPosition.x, y: intent.y - destinationPosition.y }
     : { x: intent.x - dimensions.width / 2, y: intent.y - dimensions.height / 2 };
