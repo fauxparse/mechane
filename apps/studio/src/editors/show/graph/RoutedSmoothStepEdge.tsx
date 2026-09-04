@@ -100,9 +100,10 @@ function fanFor(index: number, count: number): number {
 const FAN_SPACING = 16;
 
 /**
- * Handle offsets are numbers keyed by run index in the geometry, and strings
- * keyed the same way once they are JSON on their way to the server. The two
- * are the same record; this is where the type says so.
+ * Handle offsets on their way to the server: the same record, minus the keys
+ * that say nothing. A zero is a handle sitting where routing put it and an
+ * infinity is a drag that went through a zero scale, and persisting either
+ * only gives the next reader something to have to ignore.
  */
 function asLayout(offsets: HandleOffsets): Record<string, number> {
   return Object.fromEntries(

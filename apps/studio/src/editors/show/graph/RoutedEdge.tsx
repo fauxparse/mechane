@@ -14,9 +14,9 @@ import {
 } from "react";
 
 import {
-  applyHandleOffsets,
+  dragRoute,
   edgeGeometry,
-  edgeHandles,
+  flattenOffset,
   type HandleOffsets,
   type Orientation,
   type Segment,
@@ -107,6 +107,13 @@ const HANDLE_HIT = 26;
 /** Wide enough to grab the edge without hunting for it, in screen pixels. */
 const INTERACTION_WIDTH = 20;
 
+/**
+ * How far off the line a drag has to be before the jog it cut is worth
+ * drawing, in screen pixels — so flattening a route by hand takes the same
+ * gesture zoomed in as zoomed out. See `flattenOffset`.
+ */
+const FLATTEN_WITHIN = 5;
+
 /** Shared empties, so "nothing saved here" stays referentially stable across renders. */
 const EMPTY_OFFSETS: HandleOffsets = {};
 const NO_OFFSETS: OffsetsBySignature = {};
@@ -134,7 +141,7 @@ export function RoutedEdge({
   onClick,
 }: RoutedEdgeProps) {
   const [hovered, setHovered] = useState(false);
-  const [dragging, setDragging] = useState<number | null>(null);
+  const [dragging, setDragging] = useState<string | null>(null);
 
   // The detour a route took last time. Feeding it back is what stops an edge
   // flipping from one side of the nodes to the other mid-drag. It is state
@@ -155,12 +162,19 @@ export function RoutedEdge({
     () => offsets[route.signature] ?? EMPTY_OFFSETS,
     [offsets, route.signature],
   );
+  // The flatten band is a screen distance: a drag reads as back in line when
+  // it looks back in line, at whatever zoom it was made at.
+  const flattenWithin = FLATTEN_WITHIN / zoom;
+  const dragged = useMemo(
+    () => dragRoute(route.points, active, { margin, flattenWithin }),
+    [route.points, active, margin, flattenWithin],
+  );
   const geometry = useMemo(
-    () => edgeGeometry(applyHandleOffsets(route.points, active, { margin }), { maxRadius }),
-    [route.points, active, margin, maxRadius],
+    () => edgeGeometry(dragged.points, { maxRadius }),
+    [dragged.points, maxRadius],
   );
 
-  const handles = edgeHandles(geometry);
+  const handles = dragged.handles;
   const revealed = alwaysShowHandles || selected || hovered || dragging !== null;
 
   // Torn down when a drag ends, and again before any new drag starts. A
@@ -173,57 +187,61 @@ export function RoutedEdge({
   useEffect(() => () => endDrag.current?.(), []);
 
   const drag = useCallback(
-    (segmentIndex: number, orientation: "horizontal" | "vertical") =>
-      (event: PointerEvent<SVGGElement>) => {
-        if (!onOffsetsChange) return;
-        // Both matter: the node under a handle must not start dragging itself,
-        // and the browser must not treat the press as a text selection.
-        event.stopPropagation();
-        event.preventDefault();
-        endDrag.current?.();
+    (key: string, orientation: "horizontal" | "vertical") => (event: PointerEvent<SVGGElement>) => {
+      if (!onOffsetsChange) return;
+      // Both matter: the node under a handle must not start dragging itself,
+      // and the browser must not treat the press as a text selection.
+      event.stopPropagation();
+      event.preventDefault();
+      endDrag.current?.();
 
-        const element = event.currentTarget;
-        element.setPointerCapture(event.pointerId);
-        setDragging(segmentIndex);
+      const element = event.currentTarget;
+      element.setPointerCapture(event.pointerId);
+      setDragging(key);
 
-        // Pointer deltas arrive in screen pixels; offsets are in canvas units.
-        // The element's own screen CTM is the honest conversion in both places
-        // this renders — a React Flow viewport transform and a plain viewBox
-        // scale it equally — where the `zoom` prop only knows about the first.
-        const scale = screenScale(root.current);
-        const axis = orientation === "vertical" ? "clientX" : "clientY";
-        const origin = event[axis];
-        const start = active[segmentIndex] ?? 0;
-        const signature = route.signature;
+      // Pointer deltas arrive in screen pixels; offsets are in canvas units.
+      // The element's own screen CTM is the honest conversion in both places
+      // this renders — a React Flow viewport transform and a plain viewBox
+      // scale it equally — where the `zoom` prop only knows about the first.
+      const scale = screenScale(root.current);
+      const axis = orientation === "vertical" ? "clientX" : "clientY";
+      const origin = event[axis];
+      const start = active[key] ?? 0;
+      const signature = route.signature;
 
-        const offsetAt = (moved: globalThis.PointerEvent): HandleOffsets => ({
-          ...active,
-          [segmentIndex]: start + (moved[axis] - origin) / scale,
-        });
+      const offsetAt = (moved: globalThis.PointerEvent, snap: boolean): HandleOffsets => {
+        const raw = start + (moved[axis] - origin) / scale;
+        return { ...active, [key]: snap ? flattenOffset(raw, flattenWithin) : raw };
+      };
 
-        const move = (moved: globalThis.PointerEvent) => {
-          onOffsetsChange(signature, offsetAt(moved), { committed: false });
-        };
-        const finish = (released: globalThis.PointerEvent) => {
-          onOffsetsChange(signature, offsetAt(released), { committed: true });
-          cleanup();
-        };
-        const cleanup = () => {
-          window.removeEventListener("pointermove", move);
-          window.removeEventListener("pointerup", finish);
-          window.removeEventListener("pointercancel", cleanup);
-          endDrag.current = null;
-          setDragging(null);
-        };
+      const move = (moved: globalThis.PointerEvent) => {
+        // Raw while the pointer is down: the drawing flattens itself inside
+        // the band, and keeping the raw value is what lets a drag carry on
+        // through the flat shape and bend the route the other way.
+        onOffsetsChange(signature, offsetAt(moved, false), { committed: false });
+      };
+      const finish = (released: globalThis.PointerEvent) => {
+        // Released inside the band: store the flat route, not a jog too
+        // small to see that would come back on the next reload.
+        onOffsetsChange(signature, offsetAt(released, true), { committed: true });
+        cleanup();
+      };
+      const cleanup = () => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", finish);
+        window.removeEventListener("pointercancel", cleanup);
+        endDrag.current = null;
+        setDragging(null);
+      };
 
-        // On window rather than the element: pointer capture retargets the
-        // events here anyway, and a drag that leaves the canvas still ends.
-        window.addEventListener("pointermove", move);
-        window.addEventListener("pointerup", finish);
-        window.addEventListener("pointercancel", cleanup);
-        endDrag.current = cleanup;
-      },
-    [active, onOffsetsChange, route.signature],
+      // On window rather than the element: pointer capture retargets the
+      // events here anyway, and a drag that leaves the canvas still ends.
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", finish);
+      window.addEventListener("pointercancel", cleanup);
+      endDrag.current = cleanup;
+    },
+    [active, flattenWithin, onOffsetsChange, route.signature],
   );
 
   const labelSegment =
@@ -270,13 +288,13 @@ export function RoutedEdge({
         // zoomed out is exactly when an invalid edge needs to stand out.
         // Only when it has something to say: with no glyph there is no marker,
         // and the handle goes back to behaving like every other one.
-        const isMarker = handle.segmentIndex === geometry.label.segmentIndex && Boolean(label);
+        const isMarker = handle.drawnIndex === geometry.label.segmentIndex && Boolean(label);
         const shown = isMarker || revealed;
         return (
           <g
-            key={handle.segmentIndex}
+            key={handle.key}
             transform={`translate(${handle.point.x} ${handle.point.y}) scale(${1 / zoom})`}
-            onPointerDown={drag(handle.segmentIndex, handle.orientation)}
+            onPointerDown={drag(handle.key, handle.orientation)}
             style={{
               cursor: handle.orientation === "vertical" ? "ew-resize" : "ns-resize",
               // Fades in, but grabbable from the first frame: a fast reach for
@@ -301,7 +319,7 @@ export function RoutedEdge({
                 color={blend(
                   sourceColor,
                   targetColor,
-                  positionOf(geometry.segments, handle.segmentIndex),
+                  positionOf(geometry.segments, handle.drawnIndex),
                 )}
                 title={labelTitle}
               >
@@ -313,7 +331,7 @@ export function RoutedEdge({
                 color={blend(
                   sourceColor,
                   targetColor,
-                  positionOf(geometry.segments, handle.segmentIndex),
+                  positionOf(geometry.segments, handle.drawnIndex),
                 )}
               />
             )}

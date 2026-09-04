@@ -214,16 +214,22 @@ export function deviceSourceType(handle: string | null | undefined): Type | null
 }
 
 /**
- * Authored edge layout: how far the user has dragged each of an edge's
- * draggable runs from where routing would have put it, in canvas units.
+ * Authored edge layout: what the user has dragged on an edge, in canvas
+ * units, against the shape of the route they dragged it on.
  *
- * The outer key is the *shape* of the route the nudges were placed on — a
- * string like `"HVH"` naming each run's orientation in order — and the inner
- * key is the index of the run within it. Keying by shape rather than by index
- * alone is what makes the layout survive the graph moving underneath it: an
- * index into a route of a different shape means nothing, so a route that
- * changes shape leaves the nudges dormant rather than applying them somewhere
- * absurd, and a route that changes back picks them up again (#475).
+ * The outer key is that *shape* — a string like `"HVH"` naming each run's
+ * orientation in order. Keying by shape rather than by index alone is what
+ * makes the layout survive the graph moving underneath it: an index into a
+ * route of a different shape means nothing, so a route that changes shape
+ * leaves the nudges dormant rather than applying them somewhere absurd, and a
+ * route that changes back picks them up again (#475).
+ *
+ * The inner key names one handle. `"1"` is how far run 1 was dragged across
+ * itself. `"0.head"` and `"2.tail"` are how far along its run a *jog* cuts —
+ * the extra pair of segments a run that ends at a node grows when it is
+ * dragged, since it cannot take the node's handle with it. The editor's
+ * `dragRoute` owns that grammar; nothing between here and the database reads
+ * it, so a key it no longer understands is inert rather than wrong.
  */
 export type EdgeLayout = Record<string, Record<string, number>>;
 

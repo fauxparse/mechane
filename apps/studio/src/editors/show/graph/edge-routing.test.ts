@@ -103,18 +103,15 @@ describe("routeSmoothStep", () => {
       expect(route.points.at(-1)).toEqual(target.point);
     });
 
-    it("is made only of axis-aligned segments, none of them redundant", () => {
+    it("is made only of axis-aligned segments, alternating and none redundant", () => {
       expect(parts.length).toBeGreaterThan(0);
       for (const [index, part] of parts.entries()) {
         expect(part.length).toBeGreaterThan(0);
         const next = parts[index + 1];
         if (!next) continue;
-        // Consecutive segments on the same axis are only legal as a reversal:
-        // two same-side handles on one row force the route to double back.
-        if (part.horizontal !== next.horizontal) continue;
-        const forward = part.horizontal ? part.to.x > part.from.x : part.to.y > part.from.y;
-        const nextForward = next.horizontal ? next.to.x > next.from.x : next.to.y > next.from.y;
-        expect(forward).not.toBe(nextForward);
+        // Runs alternate, always: two runs on one axis are one run, and a
+        // route that doubled back along its own axis has simply overshot.
+        expect(part.horizontal).not.toBe(next.horizontal);
       }
     });
 
@@ -213,6 +210,15 @@ describe("detour side", () => {
 
   it("reports no detour when the route did not need one", () => {
     expect(routeSmoothStep(source, endpoint(600, 300, "left")).detour).toBeNull();
+  });
+
+  // The one shape that used to double back along its own axis: two handles in
+  // the same place. There is no run between them to draw, and drawing the
+  // stub out and back was a line over its own return leg.
+  it("has nothing to draw between two handles in the same place", () => {
+    const route = routeSmoothStep(source, endpoint(0, 0, "right"));
+    expect(route.points).toEqual([source.point]);
+    expect(route.signature).toBe("");
   });
 });
 

@@ -131,10 +131,24 @@ function shiftSide(side: Side, turns: number): Side {
   return shifted;
 }
 
-/** Drops repeated points and merges runs that carry straight on. */
-function simplify(points: readonly Point[]): Point[] {
+/**
+ * Drops repeated points and merges runs on the same axis, so a route always
+ * alternates H and V.
+ *
+ * Two runs on one axis are one run, whichever way the second half goes. A
+ * route that doubles back along its own axis has *overshot*: the ground it
+ * covers is the run, and the return leg is not a second one. Keeping the pair
+ * leaves an `HH` in the middle of a signature, a corner with nothing to
+ * round, and a handle hanging off the end of the line it is supposed to drag.
+ *
+ * `sources[i]` is the index, in the input, of the point that ended up at
+ * `points[i]`. Callers that hung something off a run — a drag handle — need it
+ * to find where that run went once a merge swallowed it.
+ */
+export function simplify(points: readonly Point[]): { points: Point[]; sources: number[] } {
   const kept: Point[] = [];
-  for (const point of points) {
+  const sources: number[] = [];
+  for (const [index, point] of points.entries()) {
     const last = kept[kept.length - 1];
     if (last && Math.abs(last.x - point.x) < EPSILON && Math.abs(last.y - point.y) < EPSILON) {
       continue;
@@ -143,20 +157,23 @@ function simplify(points: readonly Point[]): Point[] {
     if (last && previous) {
       const wasHorizontal = Math.abs(previous.y - last.y) < EPSILON;
       const isHorizontal = Math.abs(last.y - point.y) < EPSILON;
-      const wentForward = wasHorizontal ? last.x > previous.x : last.y > previous.y;
-      const goesForward = isHorizontal ? point.x > last.x : point.y > last.y;
-      // Same axis *and* same direction is one run split in two. Same axis in
-      // opposite directions is a genuine reversal — a route doubling back on
-      // itself, which two same-side handles on the same row force — and
-      // merging those two segments would erase the return leg entirely.
-      if (wasHorizontal === isHorizontal && wentForward === goesForward) {
+      if (wasHorizontal === isHorizontal) {
         kept[kept.length - 1] = point;
+        sources[sources.length - 1] = index;
+        // A return leg can cancel the outward one exactly, and then there is
+        // no run left at all — two handles in the same place, or a drag that
+        // took a run back to where it started.
+        if (Math.abs(previous.x - point.x) < EPSILON && Math.abs(previous.y - point.y) < EPSILON) {
+          kept.pop();
+          sources.pop();
+        }
         continue;
       }
     }
     kept.push(point);
+    sources.push(index);
   }
-  return kept;
+  return { points: kept, sources };
 }
 
 /**
@@ -505,8 +522,8 @@ export function routeSmoothStep(
     previousDetour,
   });
 
-  const routed = simplify([rotatedSource.point, ...solved.points, rotatedTarget.point]);
-  const points = simplify(fanRoute(routed, options.fan ?? 0, margin)).map((point) =>
+  const routed = simplify([rotatedSource.point, ...solved.points, rotatedTarget.point]).points;
+  const points = simplify(fanRoute(routed, options.fan ?? 0, margin)).points.map((point) =>
     rotate(point, -turns),
   );
 
