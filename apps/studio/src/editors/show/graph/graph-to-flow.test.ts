@@ -85,6 +85,7 @@ type ShowGraphEdge = {
   cueId?: string | null;
   actionId?: string | null;
   fieldMapping?: Record<string, string>;
+  conversion?: "firstItem";
 };
 
 function edge(overrides: Partial<ShowGraphEdge> & Pick<ShowGraphEdge, "id" | "kind">): GraphEdge {
@@ -101,6 +102,7 @@ function edge(overrides: Partial<ShowGraphEdge> & Pick<ShowGraphEdge, "id" | "ki
         ...base,
         kind: "wiring",
         ...(overrides.fieldMapping ? { fieldMapping: overrides.fieldMapping } : {}),
+        ...(overrides.conversion ? { conversion: overrides.conversion } : {}),
       };
     case "navigate":
       return {
@@ -346,6 +348,41 @@ describe("graphToFlow", () => {
     );
     expect(byId.get("edge_wire")?.sourceHandle).toBe(handleFor({ kind: "output" }));
     expect(byId.get("edge_nav")?.targetHandle).toBe(handleFor({ kind: "input" }));
+  });
+
+  // The conversion changes what the Variable receives, so it stays on the
+  // edge for as long as the edge does, alongside a live report of whether it
+  // is currently finding anything (#532).
+  it("carries a first-item conversion and its live diagnostic onto the drawn edge", () => {
+    const graph: ShowGraph = {
+      nodes: [
+        node({ id: "source_1", kind: "source", type: { kind: "array", of: "text" } }),
+        node({
+          id: "scene_1",
+          kind: "scene",
+          variables: [{ id: "variable_1", name: "prompt", type: "text" }],
+        }),
+      ],
+      edges: [
+        edge({
+          id: "edge_first",
+          kind: "wiring",
+          sourceId: "source_1",
+          targetId: "scene_1",
+          targetPath: ["variable_1"],
+          conversion: "firstItem",
+        }),
+      ],
+    };
+
+    const filled = graphToFlow(graph, { sourceValues: { source_1: ["Alice"] } });
+    expect(filled.edges[0]?.data?.conversion).toBe("firstItem");
+    expect(filled.edges[0]?.data?.invalidReason).toBeNull();
+    expect(filled.edges[0]?.data?.warningReason).toBeNull();
+
+    const empty = graphToFlow(graph, { sourceValues: { source_1: [] } });
+    expect(empty.edges[0]?.data?.conversion).toBe("firstItem");
+    expect(empty.edges[0]?.data?.warningReason).toMatch(/empty/);
   });
 
   it("uses the Flow color within a Flow and neutral across scopes", () => {

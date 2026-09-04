@@ -1,7 +1,6 @@
 import type { GraphEdit } from "@mechane/commands";
 import { GRAPH_COMMAND_TYPES } from "@mechane/commands";
 import {
-  areTypesCompatible,
   coerceShapeValue,
   coerceValue,
   fieldsForType,
@@ -10,6 +9,7 @@ import {
   sourceDefaultsFor,
   typeAtPath,
   wiringTargetVariableId,
+  wiringTypesCompatible,
 } from "@mechane/domain";
 import type { GraphEdge, Shape, ShowGraph, SourceNode, Type } from "@mechane/domain";
 
@@ -181,11 +181,14 @@ export function planSourceTypeChange(
       ? typeAtPath(nextType, edge.targetPath, shapes)
       : targetTypeAtPath(candidate, edge);
     const invalidPath = isOutgoing ? nextSourceType === null : nextTargetType === null;
+    // The edge keeps whatever conversion it declares, so a retype that leaves
+    // a first-item edge still able to select a compatible item leaves the edge
+    // alone rather than removing it (#532).
     const incompatible =
       !invalidPath &&
       nextSourceType !== null &&
       nextTargetType !== null &&
-      !areTypesCompatible(nextSourceType, nextTargetType, shapes);
+      !wiringTypesCompatible(nextSourceType, nextTargetType, edge.conversion, shapes);
     if (invalidPath || incompatible) {
       edgeRemovals.push({
         edge,

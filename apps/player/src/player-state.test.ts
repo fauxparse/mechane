@@ -220,11 +220,6 @@ const deviceGraph: ShowGraph = {
 };
 
 describe("sceneVariableValues", () => {
-  it("falls back to design-time Source values for legacy primitive defaults", () => {
-    expect(sceneVariableValues(graph, "scene_vote", { source_votes: { count: 0 } })).toEqual({
-      variable_total: { value: 7 },
-    });
-  });
   it("projects live source fields onto nested scene variable paths", () => {
     expect(
       sceneVariableValues(graph, "scene_vote", {
@@ -239,7 +234,14 @@ describe("sceneVariableValues", () => {
       }),
     ).toEqual({ variable_total: { value: 42 } });
   });
-  it("does not treat an editor value equal to the type baseline as legacy", () => {
+  // The Current Source Value is complete Run state: a value the operator set
+  // to what the Type's baseline happens to be is still the value they set,
+  // whatever the authored default says.
+  it("uses a live value that coincides with the type baseline", () => {
+    expect(sceneVariableValues(graph, "scene_vote", { source_votes: { count: 0 } })).toEqual({
+      variable_total: { value: 0 },
+    });
+
     const graphWithPublishedEdit: ShowGraph = {
       ...graph,
       sourceFieldDefaults: [{ nodeId: "source_votes", fieldPath: ["count"], value: 0 }],

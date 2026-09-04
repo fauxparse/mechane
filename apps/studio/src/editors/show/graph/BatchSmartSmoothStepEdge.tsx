@@ -2,6 +2,9 @@ import { BaseEdge, SmoothStepEdge, type EdgeProps } from "@xyflow/react";
 import { useSmartEdgeRoute } from "@tisoap/react-flow-smart-edge";
 import type { CSSProperties } from "react";
 
+import { edgeStatus } from "./edge-status";
+import type { ShowEdgeData } from "./graph-to-flow";
+
 function edgeStyle(props: EdgeProps): CSSProperties {
   const color = props.data?.color ?? "neutral";
   return {
@@ -15,7 +18,7 @@ export function BatchSmartSmoothStepEdge(props: EdgeProps) {
   const routed = useSmartEdgeRoute(props);
   const style = edgeStyle(props);
   if (!routed) return <SmoothStepEdge {...props} style={style} />;
-  const label = props.data?.invalidReason ? "!" : props.data?.coercing ? "↝" : undefined;
+  const status = edgeStatus(props.data as ShowEdgeData | undefined);
   return (
     <BaseEdge
       id={props.id}
@@ -25,11 +28,8 @@ export function BatchSmartSmoothStepEdge(props: EdgeProps) {
       markerStart={props.markerStart}
       markerEnd={props.markerEnd}
       style={style}
-      label={label}
-      labelStyle={{
-        fill: props.data?.invalidReason ? "var(--destructive)" : undefined,
-        fontWeight: 700,
-      }}
+      label={status.glyph}
+      labelStyle={{ fill: status.color, fontWeight: 700 }}
     />
   );
 }

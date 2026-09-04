@@ -3,6 +3,7 @@ import { useMemo, useState, type PointerEvent } from "react";
 
 import { EDGE_STROKE_WIDTH, RoutedEdge, type OffsetsBySignature } from "./RoutedEdge";
 import { applyHandleOffsets, edgeGeometry, type HandleOffsets } from "./edge-path";
+import { edgeStatus } from "./edge-status";
 import {
   DEFAULT_MARGIN,
   DEFAULT_MAX_RADIUS,
@@ -112,6 +113,8 @@ function Tile({
   offsets,
   onOffsetsChange,
   label,
+  labelColor,
+  labelTitle,
   padding = 44,
   ...debug
 }: DebugProps & {
@@ -123,6 +126,8 @@ function Tile({
   offsets?: OffsetsBySignature;
   onOffsetsChange?: (signature: string, next: HandleOffsets) => void;
   label?: string;
+  labelColor?: string;
+  labelTitle?: string;
   padding?: number;
 }) {
   const source = endpointAt(sourceRect, sourceSide);
@@ -158,6 +163,8 @@ function Tile({
         obstacles={obstacles}
         alwaysShowHandles={debug.alwaysShowHandles}
         label={label}
+        labelColor={labelColor}
+        labelTitle={labelTitle}
       />
       <DebugOverlay
         source={source}
@@ -233,6 +240,66 @@ export const SideMatrix: Story = {
           </div>
         </section>
       ))}
+    </div>
+  ),
+};
+
+/**
+ * Every status an edge can wear, drawn by the same `edgeStatus` the editor
+ * uses — so a badge that changes here has changed on the canvas too. Hover a
+ * badge for the tooltip that carries the meaning the glyph can only hint at.
+ */
+export const StatusBadges: Story = {
+  args: { alwaysShowHandles: true },
+  render: (args) => (
+    <div className="grid grid-cols-2 gap-3">
+      {(
+        [
+          ["nothing to report", {}],
+          ["coercing", { coercing: true }],
+          ["first item", { conversion: "firstItem" }],
+          [
+            "first item, empty list",
+            {
+              conversion: "firstItem",
+              warningReason:
+                "This connection takes the first item of a list that is empty, so nothing is fed.",
+            },
+          ],
+          ["incompatible", { invalidReason: "Incompatible types" }],
+        ] as const
+      ).map(([caption, overrides]) => {
+        const status = edgeStatus({
+          kind: "wiring",
+          targetVariableId: null,
+          coercing: false,
+          conversion: null,
+          invalidReason: null,
+          warningReason: null,
+          color: "neutral",
+          sourceColor: "neutral",
+          targetColor: "neutral",
+          layout: null,
+          parallelIndex: 0,
+          parallelCount: 1,
+          ...overrides,
+        });
+        return (
+          <figure key={caption} className="rounded border border-slate-200 p-2">
+            <Tile
+              {...args}
+              sourceRect={{ x: 0, y: 0, ...SMALL }}
+              targetRect={{ x: 220, y: 96, ...SMALL }}
+              sourceSide="right"
+              targetSide="left"
+              label={status.glyph}
+              labelColor={status.color}
+              labelTitle={status.title}
+            />
+            <figcaption className="mt-1 text-[10px] text-slate-500">{caption}</figcaption>
+          </figure>
+        );
+      })}
     </div>
   ),
 };

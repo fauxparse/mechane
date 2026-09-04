@@ -145,6 +145,33 @@ describe("toShowGraph", () => {
     expect(graph.edges.map((edge) => edge.kind)).toEqual(["wiring", "navigate", "device"]);
   });
 
+  it("keeps a wiring edge's conversion, and drops one it doesn't recognise (#532)", () => {
+    const withConversions = {
+      ...GRAPH,
+      edges: [
+        apiEdge({
+          id: "edge_first",
+          kind: "wiring",
+          sourceId: "source_prompt",
+          targetId: "scene_lobby",
+          targetPath: ["variable_prompt"],
+          conversion: "firstItem",
+        }),
+        apiEdge({
+          id: "edge_future",
+          kind: "wiring",
+          sourceId: "source_prompt",
+          targetId: "scene_lobby",
+          targetPath: ["variable_prompt"],
+          conversion: "lastItem",
+        }),
+      ],
+    };
+    const edges = toShowGraph(withConversions).edges as WiringEdge[];
+    expect(edges[0]?.conversion).toBe("firstItem");
+    expect(edges[1]?.conversion).toBeUndefined();
+  });
+
   it("produces a graph the domain accepts", () => {
     // The fixture's Navigate edge is a self-loop, which is structurally legal;
     // what matters is that nothing about the conversion invents a violation.

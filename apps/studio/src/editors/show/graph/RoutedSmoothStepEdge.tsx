@@ -10,6 +10,7 @@ import { Position, useInternalNode, useStore, type EdgeProps } from "@xyflow/rea
 import { useCallback } from "react";
 
 import { RoutedEdge } from "./RoutedEdge";
+import { edgeStatus } from "./edge-status";
 import { useEdgeInteraction } from "./edge-interaction";
 import type { HandleOffsets } from "./edge-path";
 import type { Endpoint, Rect, Side } from "./edge-routing";
@@ -59,6 +60,7 @@ export function RoutedSmoothStepEdge({
     [moveEdge, id, data?.layout],
   );
 
+  const status = edgeStatus(data);
   const sourceEndpoint = endpointFor(sourceNode, { x: sourceX, y: sourceY }, sourcePosition);
   const targetEndpoint = endpointFor(targetNode, { x: targetX, y: targetY }, targetPosition);
   if (!sourceEndpoint || !targetEndpoint) return null;
@@ -77,8 +79,9 @@ export function RoutedSmoothStepEdge({
       zoom={zoom}
       markerStart={markerStart}
       markerEnd={markerEnd}
-      label={data?.invalidReason ? "!" : data?.coercing ? "↝" : undefined}
-      labelColor={data?.invalidReason ? "var(--destructive)" : undefined}
+      label={status.glyph}
+      labelColor={status.color}
+      labelTitle={status.title}
     />
   );
 }

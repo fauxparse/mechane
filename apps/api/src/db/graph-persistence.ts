@@ -30,6 +30,7 @@ import {
   generateId,
   InvalidInteractionError,
   isEdgeKind,
+  isWiringConversion,
   normalizeShapeCollectionInstances,
   projectNavigateEdges,
   typeAtPath,
@@ -247,7 +248,16 @@ function toEdge(row: EdgeRow): GraphEdge {
   };
   switch (row.kind) {
     case "wiring":
-      return { ...base, kind: "wiring" };
+      return {
+        ...base,
+        kind: "wiring",
+        // An unrecognised stored conversion is dropped rather than carried:
+        // the edge then fails the ordinary type rules and says so, instead of
+        // claiming a conversion nothing can perform.
+        ...(row.conversion && isWiringConversion(row.conversion)
+          ? { conversion: row.conversion }
+          : {}),
+      };
     case "navigate":
       return { ...base, kind: "navigate", cueId: row.cueId, actionId: row.actionId };
     case "device":
@@ -670,6 +680,7 @@ export async function persistGraphRows(
         sourcePath: edge.sourcePath,
         targetPath: edge.targetPath,
         fieldMapping: edge.kind === "wiring" ? (edge.fieldMapping ?? null) : null,
+        conversion: edge.kind === "wiring" ? (edge.conversion ?? null) : null,
         layout: edge.layout ?? null,
         // `target_variable_id` is a generated column — the database
         // derives it from `target_path`, so it isn't written here.

@@ -480,6 +480,11 @@ export const graphEdges = pgTable(
       .notNull()
       .default(sql`'{}'`),
     fieldMapping: jsonb("field_mapping"),
+    // The value conversion a wiring edge declares — `first_item` positional
+    // array-to-single selection (#532). Stored rather than derived from the
+    // endpoint types, so a published graph and a Run snapshot carry the
+    // author's decision instead of re-deriving one that could differ.
+    conversion: text("conversion"),
     // Where the author has dragged this edge's runs, keyed by the shape of
     // the route they were placed on (#475). Absent for the overwhelming
     // majority of edges, which route themselves — hence a nullable jsonb

@@ -2,7 +2,9 @@ import type { FlowColor, GraphEdge, GraphNode, ShowGraph, WiringEdge } from "./g
 import { DEFAULT_FLOW_COLOR, deviceSourceType, wiringTargetVariableId } from "./graph";
 import { typeAtPath } from "./property-values";
 import type { PrimitiveType, Type } from "./shapes";
-import { areTypesCompatible, findCoercion, PRIMITIVE_TYPES } from "./shapes";
+import { findCoercion, PRIMITIVE_TYPES } from "./shapes";
+import { convertedSourceType, wiringTypesCompatible } from "./wiring-conversion";
+import type { WiringConversion } from "./wiring-conversion";
 
 function isPrimitiveType(value: Type): value is PrimitiveType {
   return typeof value === "string" && PRIMITIVE_TYPES.includes(value);
@@ -30,6 +32,11 @@ export interface ShowGraphEdgeFacts {
   targetType: Type | null;
   /** The domain's answer for whether the edge can carry its value. */
   typeCompatibility: TypeCompatibility;
+  /**
+   * The conversion the edge declares before its types are compared — the
+   * positional `array<T>` → `T` selection of #532, when it has one.
+   */
+  conversion: WiringConversion | null;
   /** The color inherited by an edge within one Flow. */
   color: FlowColor;
 }
@@ -122,18 +129,44 @@ function targetType(
     : variable.type;
 }
 
+/**
+ * The resolved types at both ends of a wiring edge.
+ *
+ * Exported so the connection planner can ask about a *candidate* edge with
+ * the same code that reports on a stored one — "what types does this edge
+ * join?" has to have one answer.
+ */
+export function wiringEdgeTypes(
+  graph: ShowGraph,
+  edge: WiringEdge,
+): { source: Type | null; target: Type | null } {
+  const nodes = nodeById(graph);
+  const target = nodes.get(edge.targetId);
+  const targetVariableId =
+    target?.kind === "scene" && edge.targetPath.length > 0 ? wiringTargetVariableId(edge) : null;
+  return {
+    source: sourceType(edge, nodes.get(edge.sourceId), graph.shapes),
+    target: targetType(edge, target, targetVariableId, graph.shapes),
+  };
+}
+
 function compatibility(
   source: Type | null,
   target: Type | null,
+  conversion: WiringConversion | null,
   shapes: ShowGraph["shapes"],
 ): TypeCompatibility {
   if (!source || !target) return "unknown";
-  if (!areTypesCompatible(source, target, shapes ?? [])) return "incompatible";
+  if (!wiringTypesCompatible(source, target, conversion, shapes ?? [])) return "incompatible";
+  // A conversion compares the element it selects with the target, not the
+  // array it selects from, so the coercion question is asked about the item.
+  const element = convertedSourceType(source, conversion);
   if (
-    isPrimitiveType(source) &&
+    element !== null &&
+    isPrimitiveType(element) &&
     isPrimitiveType(target) &&
-    source !== target &&
-    findCoercion(source, target) !== undefined
+    element !== target &&
+    findCoercion(element, target) !== undefined
   ) {
     return "coercing";
   }
@@ -153,13 +186,15 @@ function edgeFacts(
   const sourceTypeValue = edge.kind === "wiring" ? sourceType(edge, source, shapes) : null;
   const targetTypeValue =
     edge.kind === "wiring" ? targetType(edge, target, targetVariableId, shapes) : null;
+  const conversion = (edge.kind === "wiring" ? edge.conversion : undefined) ?? null;
   const sourceParentId = source?.parentId ?? null;
   const targetParentId = target?.parentId ?? null;
   return {
     targetVariableId,
     sourceType: sourceTypeValue,
     targetType: targetTypeValue,
-    typeCompatibility: compatibility(sourceTypeValue, targetTypeValue, shapes),
+    conversion,
+    typeCompatibility: compatibility(sourceTypeValue, targetTypeValue, conversion, shapes),
     color:
       sourceParentId !== null && sourceParentId === targetParentId
         ? (colors.get(sourceParentId) ?? DEFAULT_FLOW_COLOR)

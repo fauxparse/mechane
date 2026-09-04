@@ -40,8 +40,22 @@ A typed, named value on a Scene or Block. Every Variable has a Type; an untyped 
 
 ### Source
 
-A node in the Show graph that holds or produces data — a raw value, object, or array. Sources are wired to Scene Variables or Transformers.
+A node in the Show graph that holds or produces typed data. A Source has an
+authored Source Default and, during a Run, a separate Current Source Value.
+Sources are wired to Scene Variables or Transformers.
 _Avoid_: Source node, value, data source
+
+### Source Default
+
+The authored Structured Value Template or simple value used to initialize a
+Source when a Run starts and to service an explicit reset. It follows the
+Show's draft/publish lifecycle; editing it never implicitly changes live data.
+
+### Current Source Value
+
+The complete, conforming value a Source holds in one active Run. Actions and
+explicit Studio live editing change it immediately without changing the
+Source Default. Runtime reads never merge it with authored defaults.
 
 ### Transformer
 
@@ -146,15 +160,29 @@ A sequence of Shape Field names used to select a nested value for a Slot Input A
 
 The Slot behavior that renders one Block instance for each item in a compatible source value. An actual array preserves its order; a scalar is treated as one item, and an empty array renders no instances.
 
+### Structured Value Instance
+
+An identity-bearing live value whose Type is a Shape or an array. Every nested
+Shape and array is its own Structured Value Instance. Passing a complete
+instance through wiring, Variable or Slot input, or an Action preserves its
+identity; updates through any alias are observed by every holder. Creating,
+constructing, or cloning an instance is explicit, never an incidental
+consequence of crossing a graph boundary. Simple typed values retain value
+semantics.
+
+### Structured Value Template
+
+An immutable authored Shape or array value used as a Source default, Action
+literal, or other design-time value. Materializing a template creates live
+Structured Value Instances; the live Run never mutates the template.
+
 ### Shape Collection Instance
 
-An item in an array whose element Type is a Shape. Each instance carries a
-show-wide generated ID outside the Shape value. The ID is minted when a new
-item enters persisted Source data, survives value edits, reorder, graph
-persistence, publication, and Run snapshots, and is not derived from content
-or position. Inserting an item or duplicating an existing item mints a new ID;
-reordering preserves existing IDs. Slot rendering and React reconciliation use
-this ID; array indices remain positional diagnostics only.
+A Structured Value Instance whose reference appears as an item in an array.
+It has no separate collection-only identity or value envelope. A Slot uses the
+instance's identity, plus occurrence when the same reference appears more than
+once, to reconcile repeated Block instances; simple array items retain
+positional identity.
 
 ### State
 
@@ -178,21 +206,46 @@ _Avoid_: Trigger, signal
 
 ### Interaction Owner
 
-The Scene or Block to which an authored interaction belongs. An Event Binding derives its owner from the Canvas containing its Element; a Cue belongs directly to one owner, and its Actions belong to that Cue.
+The Scene or Block to which an authored interaction belongs. An Event Binding
+derives its owner from the Canvas containing its Element, and a Cue belongs
+directly to one owner. Only a Scene-owned Cue owns Actions; a Block-owned Cue
+is an actionless event output exposed by each Slot that contains the Block.
 
 ### Event Binding
 
-Authored configuration connecting an Element's Event kind to one or more Cues owned by that Element's Canvas owner. Event Bindings have an explicit order; runtime evaluation considers matching bindings in order and uses the first one whose conditions match. `tap` is the first supported Event kind.
+Authored configuration connecting an Element's Event kind to one or more Cues
+owned by that Element's Canvas owner. Event Bindings have an explicit order;
+runtime evaluation considers matching bindings in order and uses the first one
+whose conditions match. `tap` is the first supported Event kind.
 _Avoid_: Event handler
 
 ### Cue
 
-A named trigger owned by a Scene or Block with an ordered list of Actions, which may be empty. A Cue can be connected to multiple Events. Scene-owned Cues support the current runtime behavior; a Cue with no Actions is valid but has no special effect. Block-owned interactions can be authored and persisted before Block dispatch exists, but have no Player effect until that behavior is defined.
+A named, typed trigger owned by a Scene or Block. A Scene-owned Cue has an
+ordered list of Actions, which may be empty. A Block-owned Cue has no Actions:
+it is exposed as an Event on every Slot containing that Block and may be
+relayed through containing Blocks until a Scene-owned Cue handles it.
 _Avoid_: Interaction (code term), trigger, event handler
+
+### Cue Parameter
+
+A typed, named value carried by a Cue invocation. Bindings map values into Cue
+Parameters explicitly; a Scene-owned Cue's Actions may read its Parameters.
+Structured values retain their reference identity through every relay.
+
+### Slot Event Binding
+
+Authored configuration connecting a Cue exposed by a Slot's contained Block
+to a Cue owned by the Slot's Canvas owner. It maps emitted Cue Parameters into
+the target Cue's Parameters, and participates in the same ordered,
+first-matching conditional fall-through model as Element Event Bindings.
 
 ### Action
 
-An individual ordered operation within a Cue — for example, navigating to a Scene, evaluating an expression, or incrementing a value. A Cue's Actions execute in their declared order.
+An individual ordered operation within a Scene-owned Cue — for example,
+navigating to a Scene, evaluating an expression, or updating a Source. A
+Scene-owned Cue's Actions execute in their declared order; Block-owned Cues
+never own Actions.
 _Avoid_: Step, command
 
 ### Type
@@ -215,6 +268,17 @@ _Avoid_: Property (element term), attribute, column, key
 The act of connecting a Source or Transformer to a Scene Variable via a directed edge in the Show graph. "Wiring" and "connecting" are interchangeable; "wiring" is more precise in technical contexts.
 _Avoid_: Patching, routing, mapping
 
+### Wiring Conversion
+
+An explicit, recorded transformation a Wiring edge applies to the producer's
+value before the ordinary Type compatibility and coercion rules apply. The
+only Conversion is positional first-item selection, which lets an array Source
+feed a single-valued target by taking position zero; reordering the array
+changes which item travels, and an empty array delivers typed absence with a
+diagnostic rather than a substitute item. A Conversion is stored on the edge
+and validated at the graph boundary, never inferred from the endpoints.
+_Avoid_: Adapter, cast, implicit conversion
+
 ### Connecting (at Scene level)
 
 Connecting a Variable to an Element property so that the property value updates dynamically. Uses the same conceptual model as wiring at the Show level.
@@ -228,6 +292,8 @@ _Avoid_: Binding (acceptable as a synonym), linking
 - A **Flow** groups one or more **Scenes** and has an optional design-time default **Scene**; active runtime Scene state belongs to a Run-scoped Device instance
 - A **Device** displays one **Scene** at a time
 - A **Source** or **Transformer** is wired to a **Variable** via the Show graph
+- A **Wiring** edge has at most one **Wiring Conversion**; without one, the producer and consumer **Types** must be directly compatible
+- A **Run** materializes each published **Source Default** into a separate **Current Source Value**; live Actions and Studio edits change the current value immediately, while default edits follow draft/publish
 - A **Variable** can be connected to one or more **Element** properties within a **Scene** or **Block**
 - An **Element** can have one or more ordered **Event Bindings** for each Event kind; multiple Elements may bind to the same **Cue**
 - An **Element** can be a **Slot**, which instantiates a **Block**
@@ -237,12 +303,15 @@ _Avoid_: Binding (acceptable as a synonym), linking
 - A **Slot** references one **Block** and stores that placement's configuration
 - **Events** are emitted either by **Elements** within a displayed **Scene**, including Elements inherited from **Blocks** through **Slots**, or by the **Device** displaying the **Scene** (peripheral keypresses, buzzers)
 - An **Event Binding** connects an Element's Event kind to a Cue owned by the Element's Canvas owner; matching bindings are evaluated in order
-- A **Cue** lives on a **Scene** or **Block** and owns an ordered list of **Actions**, which may be empty
+- A **Scene-owned Cue** owns ordered **Actions**; a **Block-owned Cue** is an actionless event output
+  relayed by **Slot Event Bindings** until a Scene-owned Cue handles it
+- Every binding supplies the target Cue's typed **Cue Parameters** explicitly; structured Parameters preserve reference identity
 - A **Slot** maps parent **Variables** or runtime context into child **Block** **Variables**
 - A **Slot** has at most one **Slot Input Assignment** for each child **Block Variable**; an assignment may be literal, sourced from a parent Variable, sourced from runtime context, or unset
 - A **Slot Input Assignment** may select a nested value through an **Input Field Path** and uses the shared Type compatibility and coercion contract
 - A **Slot** may use **Array Expansion** to render one Block instance per source item; a scalar source produces one instance and an empty array produces none
-- **Shape collection items carry stable IDs** outside their Shape values; Slots use those IDs for repeated Shape instances while preserving source order and positional indices for diagnostics
+- A structured array item uses its **Structured Value Instance** identity for Slot reconciliation; repeated references add occurrence identity, while simple items retain positional identity
+- Complete Shape and array values are **Structured Value Instances**: wiring, Variable and Slot input, and Actions preserve their reference identity; simple values retain value semantics
 - Invalid source data invalidates the Slot, while an invalid individual item is omitted and does not prevent valid sibling instances from rendering
 - Each repeated instance resolves its State independently and passes its current item as runtime context to nested Slots
 - A **Slot** instantiates a **Nested Block** in its position; nested rendering is depth-first in Canvas and source order
