@@ -55,6 +55,7 @@ import {
   isEdgeKind,
   isNodeKind,
   isWiringConversion,
+  pruneEdgeLayout,
 } from "@mechane/domain";
 import {
   addBlock,
@@ -210,6 +211,8 @@ export interface FlatAction {
   cueId: string;
   kind: string;
   targetSceneId?: string | null;
+  /** Where the edge this Action projects has been dragged, if anywhere. */
+  layout?: EdgeLayout | null;
 }
 
 export interface FlatEventBinding {
@@ -278,23 +281,18 @@ export interface FlatGraphEdit {
 // ---------------------------------------------------------------------------
 
 /**
- * A layout arrives as untyped JSON from the wire, so every level is checked:
- * a run index that is not a number, or a nudge that is not finite, is dropped
- * rather than trusted into the geometry, where it would render as NaN.
+ * A layout arrives as untyped JSON from the wire, so it is checked against
+ * what a layout may say: `pruneEdgeLayout` drops handles that name nothing and
+ * offsets that would render as `NaN`, rather than trusting either into the
+ * geometry.
+ *
+ * This used to read a key as a run index and require an integer, which threw
+ * away every jog a user had dragged — `Number("0.head")` is `NaN` — so the
+ * grammar lives with `EdgeLayout` now and both ends of the wire read it there.
  */
 function decodeEdgeLayout(value: EdgeLayout | null | undefined): EdgeLayout | null {
   if (!value || typeof value !== "object") return null;
-  const layout: EdgeLayout = {};
-  for (const [signature, runs] of Object.entries(value)) {
-    if (!runs || typeof runs !== "object") continue;
-    const offsets: Record<string, number> = {};
-    for (const [index, offset] of Object.entries(runs)) {
-      if (!Number.isInteger(Number(index)) || !Number.isFinite(offset)) continue;
-      offsets[index] = Number(offset);
-    }
-    if (Object.keys(offsets).length > 0) layout[signature] = offsets;
-  }
-  return Object.keys(layout).length > 0 ? layout : null;
+  return pruneEdgeLayout(value);
 }
 function decodeFlowSize(value: FlowSize | null | undefined): FlowSize | null {
   if (value === null || value === undefined) return null;
@@ -606,6 +604,9 @@ function encodeAction(action: Action): FlatAction {
     cueId: action.cueId,
     kind: action.kind,
     targetSceneId: action.targetSceneId,
+    // A drag on a navigate edge is stored on its Action, so an Action that
+    // travels without its layout is a drag that does not survive the trip.
+    layout: action.layout ?? null,
   };
 }
 
@@ -620,11 +621,13 @@ function decodeAction(flat: FlatAction): Action {
   ) {
     throw new GraphEditCodecError("An Action edit needs a valid Navigate Action.");
   }
+  const layout = decodeEdgeLayout(flat.layout);
   return {
     id: flat.id,
     cueId: flat.cueId,
     kind: "navigate",
     targetSceneId: flat.targetSceneId,
+    ...(layout ? { layout } : {}),
   };
 }
 

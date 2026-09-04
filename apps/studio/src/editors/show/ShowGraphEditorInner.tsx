@@ -50,6 +50,7 @@ export function ShowGraphEditorInner(props: ShowGraphEditorProps) {
     edgeInteraction,
     menuPosition,
     selectedNodes,
+    selectedEdges,
     nodes,
     edges,
     onNodesChange,
@@ -115,6 +116,7 @@ export function ShowGraphEditorInner(props: ShowGraphEditorProps) {
 
           <ShowGraphEditorOverlays
             selectedNodes={selectedNodes}
+            selectedEdges={selectedEdges}
             inspector={inspector}
             message={message}
             paletteOpen={paletteOpen}

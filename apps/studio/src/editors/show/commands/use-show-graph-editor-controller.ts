@@ -1,6 +1,11 @@
 import { composite, moveNode, setFlowSize } from "@mechane/commands";
 import type { DeletionScope } from "@mechane/commands";
-import { defaultSourceValues, type GraphNode, type Position } from "@mechane/domain";
+import {
+  defaultSourceValues,
+  type GraphEdge,
+  type GraphNode,
+  type Position,
+} from "@mechane/domain";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useEdgesState, useNodesInitialized, useNodesState, useReactFlow } from "@xyflow/react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
@@ -44,6 +49,7 @@ export interface ShowGraphEditorController {
   inspector: GraphInspectorEditing;
   menuPosition: MutableRefObject<Position>;
   selectedNodes: GraphNode[];
+  selectedEdges: GraphEdge[];
   nodes: ShowFlowNode[];
   edges: ShowFlowEdge[];
   onNodesChange: OnNodesChange<ShowFlowNode>;
@@ -197,6 +203,12 @@ export function useShowGraphEditorController({
         selectOnArrival: arriving,
       }),
     );
+    // The same for edges, and load-bearing rather than symmetry: React Flow
+    // applies its own select/deselect changes to *this* list, so an edge
+    // missing from it can never become selected. The list is seeded at mount,
+    // and in the app the graph arrives from the server afterwards — so without
+    // this every edge the server sent was unselectable.
+    setEdges((previous) => reconcileEdges(drawn.edges, previous));
   }, [drawn, getNodes, getZoom, setCenter, setEdges, setNodes]);
 
   const say = useCallback((text: string) => {
@@ -220,6 +232,11 @@ export function useShowGraphEditorController({
     }
     return ids;
   }, [edges]);
+  const selectedEdgeIdSet = useMemo(() => new Set(selectedEdgeIds), [selectedEdgeIds]);
+  const selectedEdges = useMemo(
+    () => command.graph.edges.filter((edge) => selectedEdgeIdSet.has(edge.id)),
+    [command.graph.edges, selectedEdgeIdSet],
+  );
   const selectedNodeIdSet = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds]);
   const selectedNodes = useMemo(
     () => command.graph.nodes.filter((node) => selectedNodeIdSet.has(node.id)),
@@ -350,6 +367,7 @@ export function useShowGraphEditorController({
     ),
     menuPosition,
     selectedNodes,
+    selectedEdges,
     fitView,
     fitViewOptions,
     nodes: displayNodes,

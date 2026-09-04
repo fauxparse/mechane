@@ -22,6 +22,7 @@
 //   - A Show with zero Flows is valid and unremarkable (#25).
 
 import type { Action, Cue, EventBinding, InteractionCollections } from "./interactions";
+import type { EdgeLayout } from "./edge-layout";
 import { assertValidInteractions, projectNavigateEdges } from "./interactions";
 import type { EntityName } from "./id";
 import type { Shape, Type } from "./shapes";
@@ -214,18 +215,11 @@ export function deviceSourceType(handle: string | null | undefined): Type | null
 }
 
 /**
- * Authored edge layout: how far the user has dragged each of an edge's
- * draggable runs from where routing would have put it, in canvas units.
- *
- * The outer key is the *shape* of the route the nudges were placed on — a
- * string like `"HVH"` naming each run's orientation in order — and the inner
- * key is the index of the run within it. Keying by shape rather than by index
- * alone is what makes the layout survive the graph moving underneath it: an
- * index into a route of a different shape means nothing, so a route that
- * changes shape leaves the nudges dormant rather than applying them somewhere
- * absurd, and a route that changes back picks them up again (#475).
+ * Authored edge layout lives in ./edge-layout, because a Navigate Action needs
+ * it too — see `NavigateAction.layout` — and this module already depends on
+ * the one that declares it.
  */
-export type EdgeLayout = Record<string, Record<string, number>>;
+export type { EdgeLayout } from "./edge-layout";
 
 interface BaseEdge {
   id: string;
@@ -886,7 +880,10 @@ function assertNavigateProjection(graph: ShowGraph, interactions: InteractionCol
         candidate.sourceId !== edge.sourceId ||
         candidate.targetId !== edge.targetId ||
         candidate.cueId !== edge.cueId ||
-        candidate.actionId !== edge.actionId
+        candidate.actionId !== edge.actionId ||
+        // The layout is projected too, from the Action that keeps it. An edge
+        // carrying one its Action doesn't is a drag about to be thrown away.
+        JSON.stringify(candidate.layout ?? null) !== JSON.stringify(edge.layout ?? null)
       );
     })
   ) {

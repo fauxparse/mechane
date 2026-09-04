@@ -14,11 +14,12 @@ import { EditorSlot } from "../../components/EditorLayout/editor-slots";
 import { CommandPalette } from "./commands/CommandPalette";
 import type { PaletteCommand } from "./commands/palette-commands";
 import { GraphInspector } from "./graph/inspector/GraphInspector";
-import type { GraphNode } from "@mechane/domain";
+import type { GraphEdge, GraphNode } from "@mechane/domain";
 import type { GraphInspectorEditing } from "./commands/use-graph-editing";
 
 export interface ShowGraphEditorOverlaysProps {
   selectedNodes: GraphNode[];
+  selectedEdges: GraphEdge[];
   inspector: GraphInspectorEditing;
   message: string | null;
   paletteOpen: boolean;
@@ -31,6 +32,7 @@ export interface ShowGraphEditorOverlaysProps {
 
 export function ShowGraphEditorOverlays({
   selectedNodes,
+  selectedEdges,
   inspector,
   message,
   paletteOpen,
@@ -43,7 +45,11 @@ export function ShowGraphEditorOverlays({
   return (
     <>
       <EditorSlot name="right">
-        <GraphInspector selected={selectedNodes} editing={inspector} />
+        <GraphInspector
+          selected={selectedNodes}
+          selectedEdges={selectedEdges}
+          editing={inspector}
+        />
       </EditorSlot>
 
       {message ? (

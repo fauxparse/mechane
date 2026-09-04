@@ -7,6 +7,7 @@
 // Storybook.
 
 import { Position, useInternalNode, useStore, type EdgeProps } from "@xyflow/react";
+import { pruneEdgeLayout } from "@mechane/domain";
 import { useCallback } from "react";
 
 import { RoutedEdge } from "./RoutedEdge";
@@ -53,9 +54,13 @@ export function RoutedSmoothStepEdge({
   // edit itself rather than a local copy of it that has to be reconciled
   // afterwards. The gesture behind `moveEdge` keeps the whole drag to one
   // undo entry (#475).
+  //
+  // Pruned on the way, so an edge dragged back to its routed shape stops
+  // carrying a layout instead of keeping an empty husk of one under the
+  // signature it was dragged on.
   const onOffsetsChange = useCallback(
     (signature: string, next: HandleOffsets, meta: { committed: boolean }) => {
-      moveEdge(id, { ...data?.layout, [signature]: asLayout(next) }, meta);
+      moveEdge(id, pruneEdgeLayout({ ...data?.layout, [signature]: next }), meta);
     },
     [moveEdge, id, data?.layout],
   );
@@ -98,17 +103,6 @@ function fanFor(index: number, count: number): number {
 
 /** Enough to clear a handle's width, so neighbouring handles stay separable. */
 const FAN_SPACING = 16;
-
-/**
- * Handle offsets are numbers keyed by run index in the geometry, and strings
- * keyed the same way once they are JSON on their way to the server. The two
- * are the same record; this is where the type says so.
- */
-function asLayout(offsets: HandleOffsets): Record<string, number> {
-  return Object.fromEntries(
-    Object.entries(offsets).filter(([, offset]) => Number.isFinite(offset) && offset !== 0),
-  );
-}
 
 /**
  * A node's box in absolute coordinates. React Flow keeps a Flow-local node's

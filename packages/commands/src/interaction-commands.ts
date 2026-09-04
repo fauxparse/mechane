@@ -1,41 +1,12 @@
-import type { Action, Cue, EventBinding, GraphEdge, ShowGraph } from "@mechane/domain";
-import { isBindableKey, projectNavigateEdges } from "@mechane/domain";
+import type { Action, Cue, EventBinding, ShowGraph } from "@mechane/domain";
+import { isBindableKey } from "@mechane/domain";
 
 import { capturing, composite } from "./command";
 import type { ShowGraphCommand } from "./graph-commands";
 import { GRAPH_COMMAND_TYPES, renameNode } from "./graph-commands";
 import type { GraphEdit } from "./graph-edits";
-
-type InteractionState = Pick<ShowGraph, "cues" | "actions" | "eventBindings">;
-
-type RequiredInteractionState = {
-  cues: readonly Cue[];
-  actions: readonly Action[];
-  eventBindings: readonly EventBinding[];
-};
-
-function interactions(graph: ShowGraph): RequiredInteractionState {
-  return {
-    cues: graph.cues ?? [],
-    actions: graph.actions ?? [],
-    eventBindings: graph.eventBindings ?? [],
-  };
-}
-
-function withInteractions(graph: ShowGraph, next: InteractionState): ShowGraph {
-  const projected = projectNavigateEdges({ ...graph, cues: next.cues, actions: next.actions });
-  const edges: GraphEdge[] = [
-    ...graph.edges.filter((edge) => edge.kind !== "navigate"),
-    ...projected,
-  ];
-  return {
-    ...graph,
-    cues: next.cues ?? [],
-    actions: next.actions ?? [],
-    eventBindings: next.eventBindings ?? [],
-    edges,
-  };
-}
+import type { RequiredInteractionState } from "./interaction-projection";
+import { interactionsOf as interactions, withInteractions } from "./interaction-projection";
 
 function cueOrThrow(graph: ShowGraph, cueId: string): Cue {
   const cue = (graph.cues ?? []).find((candidate) => candidate.id === cueId);

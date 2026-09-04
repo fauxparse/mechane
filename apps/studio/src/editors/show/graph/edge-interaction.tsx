@@ -9,11 +9,15 @@ import type { EdgeLayout } from "@mechane/domain";
 
 export interface EdgeInteraction {
   /**
-   * Records where an edge's runs have been dragged. `committed` is false
-   * while the pointer is still down and true on release, so a drag previews
-   * live and leaves one entry on the undo stack rather than one per frame.
+   * Records what has been dragged on an edge. `committed` is false while the
+   * pointer is still down and true on release, so a drag previews live and
+   * leaves one entry on the undo stack rather than one per frame.
+   *
+   * `null` clears it: an edge dragged back to its routed shape has nothing
+   * authored on it, and storing an empty layout instead would leave an undo
+   * entry that undoes nothing.
    */
-  moveEdge(edgeId: string, layout: EdgeLayout, options: { committed: boolean }): void;
+  moveEdge(edgeId: string, layout: EdgeLayout | null, options: { committed: boolean }): void;
 }
 
 const IDLE: EdgeInteraction = { moveEdge: () => {} };

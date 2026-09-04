@@ -2,11 +2,12 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useMemo, useState, type PointerEvent } from "react";
 
 import { EDGE_STROKE_WIDTH, RoutedEdge, type OffsetsBySignature } from "./RoutedEdge";
-import { applyHandleOffsets, edgeGeometry, type HandleOffsets } from "./edge-path";
+import { dragRoute, edgeGeometry, type HandleOffsets } from "./edge-path";
 import { edgeStatus } from "./edge-status";
 import {
   DEFAULT_MARGIN,
   DEFAULT_MAX_RADIUS,
+  routeSignature,
   routeSmoothStep,
   type Endpoint,
   type Rect,
@@ -56,7 +57,7 @@ function DebugOverlay({
   showMargins: boolean;
 }) {
   const route = routeSmoothStep(source, target, { margin, obstacles });
-  const points = applyHandleOffsets(route.points, offsets[route.signature] ?? {}, { margin });
+  const { points } = dragRoute(route.points, offsets[route.signature] ?? {}, { margin });
 
   return (
     <g pointerEvents="none">
@@ -400,33 +401,109 @@ export const ParallelEdges: Story = {
   ),
 };
 
+type JogCase = { label: string; target: { x: number; y: number }; offsets: HandleOffsets };
+
+const JOG_CASES: JogCase[] = [
+  { label: "HVH: nothing dragged", target: { x: 420, y: 160 }, offsets: {} },
+  {
+    label: "HVH → HVHVH: first run pulled up",
+    target: { x: 420, y: 160 },
+    offsets: { 0: -90 },
+  },
+  {
+    label: "HVH → HVHVH: last run pushed down",
+    target: { x: 420, y: 160 },
+    offsets: { 2: 90 },
+  },
+  { label: "both ends dragged", target: { x: 420, y: 160 }, offsets: { 0: -90, 2: 90 } },
+  { label: "H: one handle in the middle", target: { x: 420, y: 0 }, offsets: {} },
+  { label: "H → HVHVH: jogged at both ends", target: { x: 420, y: 0 }, offsets: { 0: -80 } },
+];
+
 /**
- * Drag the nodes, drag the handles. The readout is the shape signature the
- * handle offsets are stored against — move a node far enough that the shape
- * changes and the offsets go dormant rather than landing somewhere absurd.
+ * Jogs: what a drag on a run that touches a node does.
+ *
+ * The run can't tow the node's handle with it, so it cuts two extra segments
+ * in instead — a stub stays put and the rest steps aside. This is the only
+ * shape change a drag can make, and the reason an HVH route can get around
+ * something parked between its ends. A straight route jogs at both ends at
+ * once, because both of its ends are a node; it has to, since an HVH between
+ * two handles on the same line would need a V of no length at all.
+ *
+ * These are drawn from saved offsets rather than dragged, so the shapes are
+ * the ones the geometry produces, not ones a mouse happened to find.
+ */
+export const EndRunJogs: Story = {
+  args: { alwaysShowHandles: true, showPolyline: true },
+  render: (args) => (
+    <div className="grid grid-cols-2 gap-3">
+      {JOG_CASES.map(({ label, target, offsets }) => {
+        const sourceRect = { x: 0, y: 0, ...SMALL };
+        const targetRect = { ...target, ...SMALL };
+        // The offsets are filed under the shape the router produced, which is
+        // the whole point of the signature: look it up rather than guess it.
+        const signature = routeSmoothStep(
+          endpointAt(sourceRect, "right"),
+          endpointAt(targetRect, "left"),
+          { margin: args.margin },
+        ).signature;
+        return (
+          <figure key={label} className="rounded border border-slate-200 p-2">
+            <Tile
+              {...args}
+              sourceRect={sourceRect}
+              targetRect={targetRect}
+              sourceSide="right"
+              targetSide="left"
+              offsets={{ [signature]: offsets }}
+              padding={110}
+            />
+            <figcaption className="mt-1 text-[10px] text-slate-500">{label}</figcaption>
+          </figure>
+        );
+      })}
+    </div>
+  ),
+};
+
+/**
+ * Drag the nodes, drag the obstacle, drag the handles.
+ *
+ * Every run that touches a node carries a handle too, and dragging one cuts a
+ * **jog** into the route instead of towing the node's handle with it: HVH
+ * becomes HVHVH, which is how an edge gets around the box parked between its
+ * two ends. Park the obstacle on the route and pull the first run clear of it.
+ *
+ * The readouts are the two shapes that matter. `stored` is the signature the
+ * offsets are filed under — the *routed* shape, before any drag — and `drawn`
+ * is what the drag made of it. Drag a handle back onto its line and `drawn`
+ * flattens again while the pointer is still down: what you see there is what
+ * releasing commits.
  */
 export const Playground: Story = {
   args: { alwaysShowHandles: false, showMargins: true, showPolyline: true },
   render: function Render(args) {
     const [sourceRect, setSourceRect] = useState<Rect>({ x: 60, y: 60, ...NODE });
     const [targetRect, setTargetRect] = useState<Rect>({ x: 520, y: 300, ...NODE });
+    const [obstacleRect, setObstacleRect] = useState<Rect>({ x: 320, y: 160, ...NODE });
     const [sourceSide, setSourceSide] = useState<Side>("right");
     const [targetSide, setTargetSide] = useState<Side>("left");
     const [offsets, setOffsets] = useState<OffsetsBySignature>({});
     const [committed, setCommitted] = useState(0);
     const [zoom, setZoom] = useState(1);
+    const [avoiding, setAvoiding] = useState(true);
 
     const source = endpointAt(sourceRect, sourceSide);
     const target = endpointAt(targetRect, targetSide);
+    const obstacles = useMemo(() => (avoiding ? [obstacleRect] : []), [avoiding, obstacleRect]);
 
     const route = useMemo(
-      () => routeSmoothStep(source, target, { margin: args.margin }),
-      [source, target, args.margin],
+      () => routeSmoothStep(source, target, { margin: args.margin, obstacles }),
+      [source, target, args.margin, obstacles],
     );
-    const geometry = edgeGeometry(
-      applyHandleOffsets(route.points, offsets[route.signature] ?? {}, { margin: args.margin }),
-      { maxRadius: args.maxRadius },
-    );
+    const active = offsets[route.signature] ?? {};
+    const dragged = dragRoute(route.points, active, { margin: args.margin });
+    const geometry = edgeGeometry(dragged.points, { maxRadius: args.maxRadius });
 
     const dragNode =
       (rect: Rect, set: (next: Rect) => void) => (event: PointerEvent<SVGGElement>) => {
@@ -474,6 +551,17 @@ export const Playground: Story = {
             <g onPointerDown={dragNode(targetRect, setTargetRect)} style={{ cursor: "grab" }}>
               <NodeBox rect={targetRect} color={TARGET_COLOR} />
             </g>
+            {/* The box in the way. The router may only slide a run past it,
+                never bend one around it — going around is the jog's job. */}
+            <g onPointerDown={dragNode(obstacleRect, setObstacleRect)} style={{ cursor: "grab" }}>
+              <rect
+                {...obstacleRect}
+                rx={6}
+                fill={avoiding ? "#f1f5f9" : "#fff"}
+                stroke="#cbd5e1"
+                strokeDasharray="4 3"
+              />
+            </g>
             <RoutedEdge
               source={source}
               target={target}
@@ -484,6 +572,7 @@ export const Playground: Story = {
                 setOffsets((current) => ({ ...current, [signature]: next }));
                 if (meta.committed) setCommitted((count) => count + 1);
               }}
+              obstacles={obstacles}
               margin={args.margin}
               maxRadius={args.maxRadius}
               alwaysShowHandles={args.alwaysShowHandles}
@@ -498,6 +587,7 @@ export const Playground: Story = {
               margin={args.margin}
               showPolyline={args.showPolyline}
               showMargins={args.showMargins}
+              obstacles={obstacles}
             />
           </g>
         </svg>
@@ -556,26 +646,70 @@ export const Playground: Story = {
             </span>
           </label>
 
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={avoiding}
+              onChange={(event) => setAvoiding(event.target.checked)}
+            />
+            <span>route avoids the grey box</span>
+          </label>
+
           <dl className="space-y-1 rounded bg-slate-50 p-2 font-mono">
-            <Readout term="signature" value={route.signature} />
+            <Readout term="routed" value={route.signature} />
+            <Readout term="drawn" value={routeSignature(dragged.points)} />
             <Readout term="segments" value={String(geometry.segments.length)} />
             <Readout term="detour" value={route.detour ?? "—"} />
             <Readout
               term="handles"
-              value={String(geometry.segments.filter((s) => s.draggable).length)}
+              value={dragged.handles.map((handle) => handle.key).join(" ") || "none"}
+            />
+            <Readout
+              term="dragged"
+              value={
+                Object.entries(active)
+                  .filter(([, value]) => value !== 0)
+                  .map(([index, value]) => `${index}:${Math.round(value)}`)
+                  .join(" ") || "—"
+              }
             />
             <Readout term="label seg" value={String(geometry.label.segmentIndex ?? "midpoint")} />
             <Readout term="commits" value={String(committed)} />
             <Readout term="stored" value={Object.keys(offsets).join(" ") || "—"} />
           </dl>
 
-          <button
-            type="button"
-            className="w-full rounded border border-slate-300 p-1"
-            onClick={() => setOffsets({})}
-          >
-            Clear handle offsets
-          </button>
+          <div className="space-y-1">
+            {(
+              [
+                ["node in the way", { x: 60, y: 60 }, { x: 620, y: 60 }, { x: 340, y: 40 }],
+                ["exact straight line", { x: 60, y: 200 }, { x: 620, y: 200 }, { x: 340, y: 400 }],
+                ["step down", { x: 60, y: 60 }, { x: 520, y: 300 }, { x: 320, y: 400 }],
+              ] as const
+            ).map(([name, from, to, box]) => (
+              <button
+                key={name}
+                type="button"
+                className="w-full rounded border border-slate-300 p-1"
+                onClick={() => {
+                  setSourceRect({ ...from, ...NODE });
+                  setTargetRect({ ...to, ...NODE });
+                  setObstacleRect({ ...box, ...NODE });
+                  setSourceSide("right");
+                  setTargetSide("left");
+                  setOffsets({});
+                }}
+              >
+                {name}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="w-full rounded border border-slate-300 p-1"
+              onClick={() => setOffsets({})}
+            >
+              Clear handle offsets
+            </button>
+          </div>
         </aside>
       </div>
     );

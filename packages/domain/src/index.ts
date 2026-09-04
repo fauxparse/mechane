@@ -3,6 +3,7 @@
 // Property, Block, Slot, Event, Cue, Action, Shape, Run, Wiring.
 export * from "./connect";
 export * from "./canvas";
+export * from "./edge-layout";
 export * from "./graph";
 export * from "./graph-facts";
 export * from "./interactions";

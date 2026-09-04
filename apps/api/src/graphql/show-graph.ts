@@ -213,6 +213,7 @@ export function serializeShowGraph(graph: StoredShowGraph) {
       cueId: action.cueId,
       kind: action.kind,
       targetSceneId: action.targetSceneId,
+      layout: action.layout ?? null,
     })),
     eventBindings: (graph.eventBindings ?? []).map((binding) => ({
       id: binding.id,
@@ -263,6 +264,7 @@ function serializeEdge(edge: GraphEdge) {
     targetId: edge.targetId,
     sourcePath: edge.sourcePath,
     targetPath: edge.targetPath,
+    layout: edge.layout ?? null,
     fieldMapping: edge.kind === "wiring" ? (edge.fieldMapping ?? null) : null,
     conversion: edge.kind === "wiring" ? (edge.conversion ?? null) : null,
     // Derived, not stored input: the head of a wiring edge's target path

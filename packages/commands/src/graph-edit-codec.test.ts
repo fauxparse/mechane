@@ -55,7 +55,14 @@ const FIXTURES: { [T in GraphEdit["type"]]: Extract<GraphEdit, { type: T }> } = 
   "graph.setEdgeLayout": {
     type: "graph.setEdgeLayout",
     edgeId: "edge_1",
-    layout: { HVH: { "1": -24 }, HVHVH: { "1": 8, "3": -16 } },
+    // Every key shape a layout can carry: a run dragged across itself, and a
+    // jog at either end of one. The jogs are the reason this fixture is worth
+    // reading — the codec used to require an integer key and silently threw
+    // them away.
+    layout: {
+      HVH: { "1": -24, "0.head": 60 },
+      HVHVH: { "1": 8, "3": -16, "0.head": 18, "4.tail": -18 },
+    },
   },
   "graph.moveNode": { type: "graph.moveNode", nodeId: "scene_lobby", position: { x: 1, y: 2 } },
   "graph.renameNode": { type: "graph.renameNode", nodeId: "scene_lobby", name: "Foyer" },
@@ -75,6 +82,9 @@ const FIXTURES: { [T in GraphEdit["type"]]: Extract<GraphEdit, { type: T }> } = 
       sourcePath: ["count"],
       targetPath: ["variable_tally"],
       fieldMapping: { count: "total" },
+      // An edge carries its layout, which is what puts a deleted edge back
+      // where the author had dragged it rather than on its routed default.
+      layout: { HVH: { "1": -24, "0.head": 60, "2.tail": -30 } },
     },
   },
   "graph.removeEdge": { type: "graph.removeEdge", edgeId: "edge_tally" },

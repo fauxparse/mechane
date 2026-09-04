@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type {
   EdgeKind,
+  EdgeLayout,
   FlowSize,
   FlowColor,
   GraphEdge,
@@ -87,6 +88,7 @@ type ShowGraphEdge = {
   actionId?: string | null;
   fieldMapping?: Record<string, string>;
   conversion?: "firstItem";
+  layout?: EdgeLayout;
 };
 
 function edge(overrides: Partial<ShowGraphEdge> & Pick<ShowGraphEdge, "id" | "kind">): GraphEdge {
@@ -96,6 +98,7 @@ function edge(overrides: Partial<ShowGraphEdge> & Pick<ShowGraphEdge, "id" | "ki
     targetId: overrides.targetId ?? "b",
     sourcePath: overrides.sourcePath ?? [],
     targetPath: overrides.targetPath ?? [],
+    ...(overrides.layout ? { layout: overrides.layout } : {}),
   };
   switch (overrides.kind) {
     case "wiring":
@@ -561,7 +564,12 @@ describe("graphToFlow", () => {
       const { nodes } = graphToFlow({
         nodes: [
           node({ id: "flow_1", kind: "flow", size }),
-          node({ id: "scene_1", kind: "scene", parentId: "flow_1", position: { x: 1200, y: 1000 } }),
+          node({
+            id: "scene_1",
+            kind: "scene",
+            parentId: "flow_1",
+            position: { x: 1200, y: 1000 },
+          }),
         ],
         edges: [],
       });
@@ -586,7 +594,6 @@ describe("graphToFlow", () => {
       expect(flow?.width).toBe(NODE_WIDTH);
       expect(flow?.height).toBe(FLOW_HEADER_HEIGHT);
     });
-
   });
 
   describe("edges", () => {
@@ -601,6 +608,21 @@ describe("graphToFlow", () => {
         target: "scene_2",
         data: { kind: "navigate", targetVariableId: null },
       });
+    });
+
+    // The last link in the chain that carries a drag back from the database:
+    // an edge's stored layout has to reach the drawn edge for the geometry to
+    // read it back, jog keys and all.
+    it("carries an authored layout through to the drawn edge", () => {
+      const layout = { HVH: { "1": -24, "0.head": 36 } };
+      const { edges } = graphToFlow({
+        nodes: [node({ id: "scene_1", kind: "scene" }), node({ id: "scene_2", kind: "scene" })],
+        edges: [
+          edge({ id: "e1", kind: "navigate", sourceId: "scene_1", targetId: "scene_2", layout }),
+        ],
+      });
+
+      expect(edges[0]?.data?.layout).toEqual(layout);
     });
 
     it("maps a virtual Device source path to its handle", () => {
