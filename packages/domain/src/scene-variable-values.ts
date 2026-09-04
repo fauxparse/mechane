@@ -3,11 +3,10 @@ import {
   deviceSourceType,
   type DeviceNode,
   type ShowGraph,
-  type SourceNode,
   type WiringEdge,
 } from "./graph";
 import { typeAtPath } from "./property-values";
-import { defaultSourceValues, defaultValueForType, type SourceValues } from "./source-defaults";
+import { defaultSourceValues, type SourceValues } from "./source-defaults";
 import { deviceQrImageValue } from "./device-qr";
 import { resolveShapeFieldMapping } from "./shapes";
 import { applyWiringConversion, convertedSourceType } from "./wiring-conversion";
@@ -168,25 +167,6 @@ function deviceValue(node: DeviceNode, sourcePath: readonly string[]): unknown {
 }
 
 /**
- * Runs created before Source defaults were materialized contain the generic Type defaults.
- * Treat that exact snapshot as uninitialized so a deployment does not blank an existing Run.
- */
-function isLegacyDefault(
-  source: SourceNode | undefined,
-  designValue: unknown,
-  runtimeValue: unknown,
-  shapes: ShowGraph["shapes"],
-): boolean {
-  if (!source || runtimeValue === undefined) return false;
-  const baseline = defaultValueForType(source.type, shapes ?? []);
-  const runtimeJson = JSON.stringify(runtimeValue);
-  return (
-    runtimeJson !== undefined &&
-    runtimeJson === JSON.stringify(baseline) &&
-    runtimeJson !== JSON.stringify(designValue)
-  );
-}
-/**
  * One pass of graph value resolution, shared by every reader.
  *
  * `resolveValue` memoizes each Source as it goes, so asking for the same
@@ -205,11 +185,10 @@ function resolveGraph(
   const resolvedSourceValues: SourceValues = {};
   for (const node of graph.nodes) {
     if (node.kind !== "source") continue;
-    const designValue = designTimeSourceValues[node.id];
-    const runtimeValue = sourceValues[node.id];
-    resolvedSourceValues[node.id] = isLegacyDefault(node, designValue, runtimeValue, graph.shapes)
-      ? designValue
-      : mergeRuntimeValue(designValue, runtimeValue);
+    resolvedSourceValues[node.id] = mergeRuntimeValue(
+      designTimeSourceValues[node.id],
+      sourceValues[node.id],
+    );
   }
 
   const wiringEdges = graph.edges.filter((edge): edge is WiringEdge => edge.kind === "wiring");

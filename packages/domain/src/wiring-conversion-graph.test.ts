@@ -197,6 +197,13 @@ describe("resolving values through a conversion", () => {
     ]);
   });
 
+  it("reports absence when a Run empties the list, rather than the authored default", () => {
+    const graph = votingGraph([alice, beatrix]);
+    const resolution = sceneVariableResolution(graph, "scene", { source_candidates: [] });
+    expect(resolution.values).toEqual({});
+    expect(resolution.diagnostics).toHaveLength(1);
+  });
+
   it("never falls back to a later item, whatever else the list holds", () => {
     const graph = votingGraph([alice, beatrix]);
     // The conversion is position zero and nothing else: an item that would
