@@ -245,6 +245,7 @@ export function useShowGraphEditorController({
     dragging,
     selectOnArrival,
     focusOnArrival,
+    beginCreationRename: gestures.beginCreationRename,
   });
 
   const selectAll = useCallback(() => {

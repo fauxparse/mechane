@@ -29,6 +29,7 @@ import {
   removeShapeField,
   renameCue as renameCueCommand,
   renameNode,
+  renameSceneAndCue,
   renameSceneVariable,
   renameShape,
   renameShapeField,
@@ -100,6 +101,7 @@ export interface RootNavigationPlan {
   sourcePosition?: Position;
   destinationPosition?: Position;
   flowSize?: FlowSize;
+  cueId?: string;
 }
 
 export interface GraphCommandEditing {
@@ -111,6 +113,7 @@ export interface GraphCommandEditing {
 export interface GraphGestureEditing {
   renaming: string | null;
   beginRename(nodeId: string): void;
+  beginCreationRename(nodeId: string, cueId: string): void;
   renameTo(name: string): void;
   commitRename(): void;
   cancelRename(): void;
@@ -287,6 +290,7 @@ export function useGraphEditing(
   const { graph, execute, beginGesture } = commands;
   const [renaming, setRenaming] = useState<string | null>(null);
   const renamingNode = useRef<string | null>(null);
+  const creationRename = useRef<{ cueId: string; linked: boolean } | null>(null);
   const rename = useRef<Gesture<ShowGraph, GraphEdit> | null>(null);
   const [connectingFrom, setConnectingFrom] = useState<{
     nodeId: string;
@@ -377,7 +381,7 @@ export function useGraphEditing(
         return "A new Scene must be created inside the source Scene's Flow.";
       }
       const cue = {
-        id: generateId("cue"),
+        id: rootPlan.cueId ?? generateId("cue"),
         name: `Go to ${destination.name}`,
         owner: { kind: "scene" as const, sceneId: source.id },
         actionIds: [] as string[],
@@ -446,6 +450,14 @@ export function useGraphEditing(
   // better of.
   const beginRename = useCallback((nodeId: string) => {
     rename.current = null;
+    creationRename.current = null;
+    renamingNode.current = nodeId;
+    setRenaming(nodeId);
+  }, []);
+
+  const beginCreationRename = useCallback((nodeId: string, cueId: string) => {
+    rename.current = null;
+    creationRename.current = { cueId, linked: true };
     renamingNode.current = nodeId;
     setRenaming(nodeId);
   }, []);
@@ -454,8 +466,13 @@ export function useGraphEditing(
     (name: string) => {
       const nodeId = renamingNode.current;
       if (!nodeId) return;
+      const link = creationRename.current;
+      const edit =
+        link?.linked === true
+          ? renameSceneAndCue(nodeId, link.cueId, name)
+          : renameNode(nodeId, name);
       rename.current ??= beginGesture({ key: `rename:${nodeId}`, label: "Rename" });
-      rename.current.update(renameNode(nodeId, name));
+      rename.current.update(edit);
     },
     [beginGesture],
   );
@@ -463,16 +480,17 @@ export function useGraphEditing(
   const commitRename = useCallback(() => {
     rename.current?.commit();
     rename.current = null;
+    creationRename.current = null;
     renamingNode.current = null;
     setRenaming(null);
   }, []);
 
-  // Escape abandons the gesture, which rolls the name back to what it was —
-  // the same mechanism a cancelled drag uses, rather than a remembered
-  // "original name" this hook would have to keep in step.
+  // Escape abandons the gesture, restoring the names captured by its first
+  // command while leaving the newly-created graph objects intact.
   const cancelRename = useCallback(() => {
     rename.current?.abort();
     rename.current = null;
+    creationRename.current = null;
     renamingNode.current = null;
     setRenaming(null);
   }, []);
@@ -826,6 +844,7 @@ export function useGraphEditing(
 
   const renameInteractionCue = useCallback(
     (cueId: string, name: string) => {
+      if (creationRename.current?.cueId === cueId) creationRename.current.linked = false;
       execute(renameCueCommand(cueId, name));
     },
     [execute],
@@ -857,6 +876,7 @@ export function useGraphEditing(
     gestures: {
       renaming,
       beginRename,
+      beginCreationRename,
       renameTo,
       commitRename,
       cancelRename,

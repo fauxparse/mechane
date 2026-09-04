@@ -6,6 +6,7 @@ import {
   addNavigateAction,
   addCue,
   removeCue,
+  renameSceneAndCue,
   setCueActionOrder,
   setEventBindingKey,
   setEventBindingOrder,
@@ -87,6 +88,15 @@ describe("interaction commands", () => {
         actionId: action.id,
       },
     ]);
+  });
+
+  it("renames a newly-created Scene and generated Cue together", () => {
+    const graph = addNavigateAction(action).apply(addCue(cue).apply(baseGraph).state).state;
+    const applied = renameSceneAndCue("red", cue.id, "Lobby").apply(graph);
+
+    expect(applied.state.nodes.find((node) => node.id === "red")?.name).toBe("Lobby");
+    expect(applied.state.cues?.find((item) => item.id === cue.id)?.name).toBe("Go to Lobby");
+    expect(applied.inverse.apply(applied.state).state).toEqual(graph);
   });
 
   it("reorders bindings for one Element without changing their identities", () => {

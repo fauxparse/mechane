@@ -1,5 +1,5 @@
 import { composite, moveNode, moveNodesIntoFlow, moveNodesOutOfFlow } from "@mechane/commands";
-import type { GraphNode, Position, ShowGraph } from "@mechane/domain";
+import { generateId, type GraphNode, type Position, type ShowGraph } from "@mechane/domain";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { Connection, FitViewOptions, OnNodeDrag, XYPosition } from "@xyflow/react";
 import type { MouseEvent as ReactMouseEvent } from "react";
@@ -124,6 +124,7 @@ interface Options {
   dragging: MutableRefObject<boolean>;
   selectOnArrival: MutableRefObject<string | null>;
   focusOnArrival: MutableRefObject<string | null>;
+  beginCreationRename(nodeId: string, cueId: string): void;
 }
 
 export function useShowGraphEditorActions({
@@ -146,6 +147,7 @@ export function useShowGraphEditorActions({
   dragging,
   selectOnArrival,
   focusOnArrival,
+  beginCreationRename,
 }: Options) {
   const editing = useMemo(
     () => ({ graph, ...creation, ...deletion, ...connections }),
@@ -368,6 +370,7 @@ export function useShowGraphEditorActions({
       });
       if (occupied) return;
 
+      const cueId = generateId("cue");
       if (source.parentId === null) {
         const pair = compactRootSceneAtDrop(sourceRendered, position, rendered);
         const flow = createNode("flow", pair.flowPosition) as Extract<GraphNode, { kind: "flow" }>;
@@ -381,20 +384,26 @@ export function useShowGraphEditorActions({
           sourcePosition: pair.sourcePosition,
           destinationPosition: pair.destinationPosition,
           flowSize: pair.dimensions,
+          cueId,
         });
         if (reason) say(reason);
+        else {
+          selectOnArrival.current = destination.id;
+          beginCreationRename(destination.id, cueId);
+        }
         return;
       }
 
       const flow = byId.get(source.parentId);
       if (!flow || flowAtPoint(position, rendered)?.id !== flow.id) return;
       const preferred = relativeToFlow(position, flow, byId);
+      const clamped = clampIntoFlow(flow, preferred, { width: NODE_WIDTH, height: NODE_HEIGHT });
       const destinationPosition = {
         x: Math.max(
-          preferred.x,
+          clamped.x,
           sourceRendered.position.x + sizeOf(sourceRendered).width + SCENE_NAVIGATION_GAP,
         ),
-        y: preferred.y,
+        y: clamped.y,
       };
       const destination = createNode("scene", destinationPosition, flow.id) as Extract<
         GraphNode,
@@ -415,10 +424,15 @@ export function useShowGraphEditorActions({
           width: Math.max(current.width, fitted.width),
           height: Math.max(current.height, fitted.height),
         },
+        cueId,
       });
       if (reason) say(reason);
+      else {
+        selectOnArrival.current = destination.id;
+        beginCreationRename(destination.id, cueId);
+      }
     },
-    [creation, graph.nodes, renderedGraph, say],
+    [beginCreationRename, creation, graph.nodes, renderedGraph, say],
   );
 
   // ---------------------------------------------------------------------------
