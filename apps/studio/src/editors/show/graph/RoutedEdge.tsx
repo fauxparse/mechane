@@ -86,6 +86,13 @@ export type RoutedEdgeProps = {
  */
 export const EDGE_STROKE_WIDTH = 1;
 
+/**
+ * A selected edge is the same line drawn heavier. Selection is the one state
+ * an edge can be in that has to read at any zoom, and weight survives being
+ * scaled down where a hue on a 1px line does not.
+ */
+export const SELECTED_EDGE_STROKE_WIDTH = 2;
+
 /** A chip lying along the path: grab it and slide it sideways. */
 const HANDLE_LENGTH = 18;
 const HANDLE_THICKNESS = 6;
@@ -121,7 +128,7 @@ export function RoutedEdge({
   fan = 0,
   zoom = 1,
   alwaysShowHandles = false,
-  strokeWidth = EDGE_STROKE_WIDTH,
+  strokeWidth = selected ? SELECTED_EDGE_STROKE_WIDTH : EDGE_STROKE_WIDTH,
   markerStart,
   markerEnd,
   onClick,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { FLOW_NODE_TYPE } from "./graph-to-flow";
-import { reconcileEdges, reconcileNodes } from "./reconcile-nodes";
+import { reconcileEdges, reconcileNodes, SELECTED_EDGE_Z } from "./reconcile-nodes";
 import type { ShowFlowEdge, ShowFlowNode } from "./graph-to-flow";
 
 function node(id: string, overrides: Partial<ShowFlowNode> = {}): ShowFlowNode {
@@ -112,5 +112,24 @@ describe("reconcileEdges", () => {
     expect(reconcileEdges(drawn, live)).toEqual([
       expect.objectContaining({ data: drawnEdge.data, selected: true }),
     ]);
+  });
+
+  // React Flow paints the node layer after the edge layer and lifts a selected
+  // node to 1000, so an edge that stays below that is drawn behind the nodes it
+  // runs between — exactly when the author most needs to see where it goes.
+  it("lifts a selected edge above every node", () => {
+    const edge = { id: "edge", source: "source", target: "target" } as ShowFlowEdge;
+
+    expect(reconcileEdges([edge], [{ ...edge, selected: true }])[0]?.zIndex).toBe(SELECTED_EDGE_Z);
+    expect(SELECTED_EDGE_Z).toBeGreaterThan(1000);
+  });
+
+  // Deselecting has to put the edge back: a stale 2000 would keep it in front
+  // of everything for the rest of the session.
+  it("drops the elevation when an edge is deselected", () => {
+    const edge = { id: "edge", source: "source", target: "target" } as ShowFlowEdge;
+    const live = [{ ...edge, selected: false, zIndex: SELECTED_EDGE_Z }];
+
+    expect(reconcileEdges([edge], live)[0]?.zIndex).toBeUndefined();
   });
 });

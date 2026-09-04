@@ -1,4 +1,5 @@
 import {
+  CableIcon,
   cn,
   EditableName,
   InputGroupAddon,
@@ -6,15 +7,21 @@ import {
   SidebarHeader,
   SquareDashedIcon,
 } from "@mechane/design-system";
-import type { GraphNode } from "@mechane/domain";
+import type { EdgeKind, GraphEdge, GraphNode } from "@mechane/domain";
 import type { GraphInspectorEditing } from "@show-editor/commands/use-graph-editing";
 import { pluralize } from "../../../../utils/pluralize";
 import { NODE_KIND_META, nodeIcon } from "../node-kinds";
+import { SingleEdge } from "./SingleEdge";
 import { SingleNode } from "./SingleNode";
 
 export interface GraphInspectorProps {
   /** The selected nodes, in graph order. */
   selected: GraphNode[];
+  /**
+   * The selected edges, in graph order. Nodes win when both are selected:
+   * a node carries editable properties and an edge currently does not.
+   */
+  selectedEdges: GraphEdge[];
   editing: GraphInspectorEditing;
   className?: string;
 }
@@ -105,10 +112,45 @@ function MultiSelection({ selected }: { selected: GraphNode[] }) {
   );
 }
 
-export function GraphInspector({ selected, editing, className }: GraphInspectorProps) {
-  if (selected.length === 0) return null;
+/** The edge counterpart of `InspectorHeader`: edges have no name to edit. */
+function EdgeHeader({ count }: { count: number }) {
+  return (
+    <SidebarHeader>
+      <div className="flex items-center gap-2">
+        <CableIcon className="size-4 shrink-0" />
+        <span className="truncate grow">{pluralize("edge", count)}</span>
+      </div>
+    </SidebarHeader>
+  );
+}
+
+function MultiEdgeSelection({ selected }: { selected: GraphEdge[] }) {
+  const counts: Partial<Record<EdgeKind, number>> = {};
+  for (const edge of selected) counts[edge.kind] = (counts[edge.kind] ?? 0) + 1;
+
+  return (
+    <div className="flex flex-col gap-2 p-4">
+      <h2 className="text-sm font-medium">{selected.length} selected</h2>
+      <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
+        {Object.entries(counts).map(([kind, count]) => (
+          <li key={kind}>
+            {count} {kind}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export function GraphInspector({
+  selected,
+  selectedEdges,
+  editing,
+  className,
+}: GraphInspectorProps) {
   const [node] = selected;
-  if (!node) return null;
+  const [edge] = selectedEdges;
+  if (!node && !edge) return null;
 
   return (
     <InspectorProvider>
@@ -118,11 +160,24 @@ export function GraphInspector({ selected, editing, className }: GraphInspectorP
         className={cn("nokey display-contents pointer-events-auto", className)}
         aria-label="Inspector"
       >
-        <InspectorHeader selected={selected} editing={editing} />
-        {selected.length > 1 ? (
-          <MultiSelection selected={selected} />
+        {node ? (
+          <>
+            <InspectorHeader selected={selected} editing={editing} />
+            {selected.length > 1 ? (
+              <MultiSelection selected={selected} />
+            ) : (
+              <SingleNode node={node} editing={editing} />
+            )}
+          </>
         ) : (
-          <SingleNode node={node} editing={editing} />
+          <>
+            <EdgeHeader count={selectedEdges.length} />
+            {selectedEdges.length > 1 || !edge ? (
+              <MultiEdgeSelection selected={selectedEdges} />
+            ) : (
+              <SingleEdge edge={edge} graph={editing.graph} />
+            )}
+          </>
         )}
       </aside>
     </InspectorProvider>
