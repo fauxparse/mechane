@@ -22,7 +22,10 @@ import type {
 } from "./use-graph-editing";
 import { useUndoKeys } from "../keyboard/use-undo-keys";
 import { useViewportKeys } from "../keyboard/use-viewport-keys";
-import { useShowGraphEditorActions } from "./use-show-graph-editor-actions";
+import {
+  useShowGraphEditorActions,
+  type ConnectionDropCreator,
+} from "./use-show-graph-editor-actions";
 import { useFitViewOptions, useInitialFrame } from "../graph/use-fit-view-options";
 import { childrenPushedInside } from "../show-graph-layout";
 import { useShowGraphEditorPalette } from "./use-show-graph-editor-palette";
@@ -51,6 +54,7 @@ export interface ShowGraphEditorController {
   dragTo: ReturnType<typeof useShowGraphEditorActions>["dragTo"];
   endDrag: ReturnType<typeof useShowGraphEditorActions>["endDrag"];
   create: ReturnType<typeof useShowGraphEditorActions>["create"];
+  createFromConnection: ConnectionDropCreator;
   requestDelete: ReturnType<typeof useShowGraphEditorActions>["requestDelete"];
   fitView: ReturnType<typeof useReactFlow>["fitView"];
   fitViewOptions: ReturnType<typeof useFitViewOptions>;
