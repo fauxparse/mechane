@@ -306,6 +306,7 @@ export function votingGraph(): ShowGraph {
     parentId: null,
     position: { x: 520, y: 460 },
     defaultSceneId: CANDIDATE_LIST_SCENE_ID,
+    size: { width: 920, height: 186 },
   };
   const candidateListScene = {
     id: CANDIDATE_LIST_SCENE_ID,

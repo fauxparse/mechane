@@ -29,7 +29,7 @@ import type {
   Type,
 } from "@mechane/domain";
 import { generateId, NODE_ID_ENTITIES } from "@mechane/domain";
-import { ShowNodeData } from "./graph-to-flow";
+import { DEFAULT_FLOW_DIMENSIONS, type ShowNodeData } from "./graph-to-flow";
 
 export interface NodeKindMeta {
   kind: NodeKind;
@@ -175,8 +175,14 @@ export function createNode(
     case "flow":
       // A Flow is always a Show-level peer (#23), and starts with no entry
       // Scene because it starts with no Scenes — moving one into it assigns
-      // the default (#44).
-      return { ...base, kind: "flow", parentId: null, defaultSceneId: null };
+      // the default (#44). Its size is authored from its first paint.
+      return {
+        ...base,
+        kind: "flow",
+        parentId: null,
+        defaultSceneId: null,
+        size: { ...DEFAULT_FLOW_DIMENSIONS },
+      };
     case "device":
       // The code is the server's to mint, so a new Device has none yet.
       return {

@@ -38,8 +38,7 @@ export type MappableEdge = GraphEdge;
 
 /**
  * Node geometry. React Flow measures rendered nodes itself, but the initial
- * dimensions must be known before first paint. A Flow's size is the editor's
- * to decide — see `flowDimensions` below and ../show-graph-layout.
+ * dimensions must be known before first paint.
  */
 /** A node with no rows: the header alone. */
 export const NODE_HEIGHT = 56;
@@ -62,6 +61,12 @@ export const FLOW_HEADER_HEIGHT = 50;
 export const FLOW_CONTENT_ORIGIN: Position = {
   x: FLOW_PADDING,
   y: FLOW_HEADER_HEIGHT + FLOW_PADDING,
+};
+
+/** Minimum explicit size for an empty Flow. */
+export const DEFAULT_FLOW_DIMENSIONS: FlowDimensions = {
+  width: NODE_WIDTH + FLOW_PADDING,
+  height: FLOW_HEADER_HEIGHT + NODE_HEIGHT + FLOW_PADDING,
 };
 
 type ShowNodeField = { id: string; name: string; type: Type; value: unknown };
@@ -250,20 +255,10 @@ export const ROUTED_SMOOTH_STEP_EDGE_TYPE = "routedSmoothStep";
 /**
  * Which edge the Show canvas draws. `type` is projected here rather than
  * stored on the graph, so swapping the two is this one constant and no
- * migration. Both stay registered in ./show-edge-types while #475's edge is
- * being compared against the batch-routed one it replaces.
+ * caller has to know React Flow's registry.
  */
 const EDGE_TYPE = ROUTED_SMOOTH_STEP_EDGE_TYPE;
 
-/**
- * How big a Flow has to be to hold its children — the *fit*, not the size it
- * is drawn at. The editor computes this when a Flow's membership changes and
- * then holds the answer (../show-graph-layout), so the box does not follow a
- * child being dragged around inside it (#508).
- *
- * A childless Flow still gets one node's worth of room, so an empty Flow
- * reads as an empty container rather than as a collapsed sliver.
- */
 /**
  * How tall a node is. Every kind is one header tall except nodes with rows.
  */
@@ -288,6 +283,7 @@ export interface FlowDimensions {
   height: number;
 }
 
+/** Calculates an authored Flow size from its graph-level child bounds. */
 export function flowSize(
   children: readonly MappableNode[],
   minimum?: FlowDimensions,
@@ -442,7 +438,6 @@ function toFlowNode(
   children: readonly MappableNode[],
   facts: ShowGraphNodeFacts,
   collapsed: boolean,
-  minimumDimensions: FlowDimensions | undefined,
   shapes: readonly Shape[] | undefined,
   value: unknown,
   cues: readonly Cue[],
@@ -455,13 +450,11 @@ function toFlowNode(
       ? cues.filter((cue) => cue.owner.kind === "scene" && cue.owner.sceneId === node.id)
       : [];
   const minimumHeight = nodeHeight(node, resolvedShapes, ownedCues.length);
-  // An authored Flow size wins over both measured dimensions and the fit
-  // around its children. An absent size preserves the fit fallback.
   const dimensions: FlowDimensions = !isFlow
     ? { width: NODE_WIDTH, height: minimumHeight }
     : collapsed
       ? { width: NODE_WIDTH, height: FLOW_HEADER_HEIGHT }
-      : (node.size ?? minimumDimensions ?? flowSize(children, undefined, resolvedShapes, cues));
+      : (node.size ?? DEFAULT_FLOW_DIMENSIONS);
   const variables =
     node.kind === "scene"
       ? node.variables.map((variable) => ({
@@ -501,7 +494,6 @@ function toFlowNode(
     }),
   };
 }
-
 function toFlowEdge(
   edge: MappableEdge,
   graphNodes: readonly MappableNode[],
@@ -569,8 +561,6 @@ export function graphToFlow(
   graph: ShowGraph | null | undefined,
   options: {
     collapsedFlowIds?: ReadonlySet<string>;
-    /** The size to draw each Flow at, overriding the fit to its children. */
-    flowDimensions?: ReadonlyMap<string, FlowDimensions>;
     sourceValues?: Readonly<Record<string, unknown>>;
   } = {},
 ): {
@@ -581,7 +571,6 @@ export function graphToFlow(
 
   const facts = deriveShowGraphFacts(graph);
   const collapsed = options.collapsedFlowIds ?? new Set<string>();
-  const flowDimensions = options.flowDimensions ?? new Map<string, FlowDimensions>();
   const childrenByParent = new Map<string, MappableNode[]>();
   for (const node of graph.nodes) {
     if (!node.parentId) continue;
@@ -619,7 +608,6 @@ export function graphToFlow(
               driven: false,
             },
             collapsed.has(node.id),
-            flowDimensions.get(node.id),
             graph.shapes,
             options.sourceValues?.[node.id],
             graph.cues ?? [],

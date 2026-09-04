@@ -11,6 +11,7 @@ import type {
 } from "@mechane/domain";
 
 import {
+  DEFAULT_FLOW_DIMENSIONS,
   FLOW_HEADER_HEIGHT,
   FLOW_NODE_TYPE,
   fieldRows,
@@ -543,7 +544,7 @@ describe("graphToFlow", () => {
       );
     });
 
-    it("sizes a Flow around the children it holds", () => {
+    it("uses authored dimensions instead of fitting around children", () => {
       const { nodes } = graphToFlow({
         nodes: [
           node({ id: "flow_1", kind: "flow" }),
@@ -552,12 +553,19 @@ describe("graphToFlow", () => {
         ],
         edges: [],
       });
-      expect(nodes.find((n) => n.id === "flow_1")?.style).toEqual(
-        flowSize([
-          node({ id: "scene_1", kind: "scene", position: { x: 40, y: 80 } }),
-          node({ id: "scene_2", kind: "scene", position: { x: 300, y: 80 } }),
-        ]),
-      );
+      expect(nodes.find((n) => n.id === "flow_1")?.style).toEqual(DEFAULT_FLOW_DIMENSIONS);
+    });
+
+    it("uses explicit dimensions wherever the children are", () => {
+      const size = { width: 1000, height: 900 };
+      const { nodes } = graphToFlow({
+        nodes: [
+          node({ id: "flow_1", kind: "flow", size }),
+          node({ id: "scene_1", kind: "scene", parentId: "flow_1", position: { x: 1200, y: 1000 } }),
+        ],
+        edges: [],
+      });
+      expect(nodes.find((candidate) => candidate.id === "flow_1")?.style).toEqual(size);
     });
 
     it("uses compact dimensions while a Flow is collapsed", () => {
@@ -571,7 +579,6 @@ describe("graphToFlow", () => {
         },
         {
           collapsedFlowIds: new Set(["flow_1"]),
-          flowDimensions: new Map([["flow_1", { width: 900, height: 700 }]]),
         },
       );
       const flow = nodes.find((candidate) => candidate.id === "flow_1");
@@ -580,55 +587,6 @@ describe("graphToFlow", () => {
       expect(flow?.height).toBe(FLOW_HEADER_HEIGHT);
     });
 
-    // #508: the box used to grow around whatever position a child had, which
-    // meant it followed the child around mid-drag. The editor now decides the
-    // size and re-fits only when membership changes.
-    it("draws a Flow at the size it is given, wherever the children are", () => {
-      const given = { width: 1000, height: 900 };
-      const at = (position: { x: number; y: number }) =>
-        graphToFlow(
-          {
-            nodes: [
-              node({ id: "flow_1", kind: "flow" }),
-              node({ id: "scene_1", kind: "scene", parentId: "flow_1", position }),
-            ],
-            edges: [],
-          },
-          { flowDimensions: new Map([["flow_1", given]]) },
-        ).nodes.find((candidate) => candidate.id === "flow_1")?.style;
-
-      expect(at({ x: 40, y: 80 })).toEqual(given);
-      expect(at({ x: 1200, y: 1000 })).toEqual(given);
-    });
-    it("uses a Flow's authored size without an editor override", () => {
-      const size = { width: 640, height: 480 };
-      const { nodes } = graphToFlow({
-        nodes: [
-          node({ id: "flow_1", kind: "flow", size }),
-          node({
-            id: "scene_1",
-            kind: "scene",
-            parentId: "flow_1",
-            position: { x: 1200, y: 1000 },
-          }),
-        ],
-        edges: [],
-      });
-      expect(nodes.find((candidate) => candidate.id === "flow_1")?.style).toEqual(size);
-    });
-
-    it("falls back to the fit around its children when given no size", () => {
-      const { nodes } = graphToFlow({
-        nodes: [
-          node({ id: "flow_1", kind: "flow" }),
-          node({ id: "scene_1", kind: "scene", parentId: "flow_1", position: { x: 400, y: 300 } }),
-        ],
-        edges: [],
-      });
-      const flow = nodes.find((candidate) => candidate.id === "flow_1");
-      expect(Number(flow?.style?.width)).toBeGreaterThan(400 + NODE_WIDTH);
-      expect(Number(flow?.style?.height)).toBeGreaterThan(300);
-    });
   });
 
   describe("edges", () => {
