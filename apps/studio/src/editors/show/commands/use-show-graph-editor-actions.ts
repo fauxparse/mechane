@@ -432,7 +432,7 @@ export function useShowGraphEditorActions({
         beginCreationRename(destination.id, cueId);
       }
     },
-    [beginCreationRename, creation, graph.nodes, renderedGraph, say],
+    [beginCreationRename, creation, graph.nodes, renderedGraph, say, selectOnArrival],
   );
 
   // ---------------------------------------------------------------------------
