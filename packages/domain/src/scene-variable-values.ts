@@ -10,6 +10,7 @@ import { typeAtPath } from "./property-values";
 import { defaultSourceValues, defaultValueForType, type SourceValues } from "./source-defaults";
 import { deviceQrImageValue } from "./device-qr";
 import { resolveShapeFieldMapping } from "./shapes";
+import { applyWiringConversion, convertedSourceType } from "./wiring-conversion";
 
 function valueAtPath(value: unknown, path: readonly string[]): unknown {
   let current = value;
@@ -92,11 +93,66 @@ function targetType(graph: ShowGraph, edge: WiringEdge) {
 
 function fieldMappingFor(graph: ShowGraph, edge: WiringEdge): Record<string, string> | undefined {
   if (edge.fieldMapping && Object.keys(edge.fieldMapping).length > 0) return edge.fieldMapping;
-  const from = producerType(graph, edge);
+  const producer = producerType(graph, edge);
+  // A conversion edge maps the fields of the item it selects, not of the
+  // array it selects from (#532).
+  const from = producer ? convertedSourceType(producer, edge.conversion) : null;
   const to = targetType(graph, edge);
   if (!from || !to) return undefined;
   const mapping = resolveShapeFieldMapping(from, to, graph.shapes ?? []);
   return Object.keys(mapping).length > 0 ? mapping : undefined;
+}
+
+/** What can go wrong carrying a value down a wiring edge, for an operator. */
+export const WIRING_DIAGNOSTIC_CATEGORIES = [
+  "emptyConversionSource",
+  "invalidConversionSource",
+] as const;
+
+export type WiringDiagnosticCategory = (typeof WIRING_DIAGNOSTIC_CATEGORIES)[number];
+
+/**
+ * A structured explanation of a wiring edge that carried nothing.
+ *
+ * Absence on its own is indistinguishable from "nothing is wired here", so a
+ * conversion that finds no item says so rather than letting the target quietly
+ * fall back to its own default (#532).
+ */
+export interface WiringDiagnostic {
+  readonly category: WiringDiagnosticCategory;
+  readonly edgeId: string;
+  readonly message: string;
+}
+
+export interface SceneVariableResolution {
+  readonly values: Record<string, unknown>;
+  readonly diagnostics: readonly WiringDiagnostic[];
+}
+
+/**
+ * The value this edge delivers, or `undefined` for typed absence — pushing a
+ * diagnostic when a declared conversion is the reason nothing arrived.
+ */
+function carriedValue(
+  graph: ShowGraph,
+  edge: WiringEdge,
+  value: unknown,
+  diagnostics: WiringDiagnostic[],
+): unknown {
+  if (!edge.conversion) return value;
+  const result = applyWiringConversion(value, edge.conversion);
+  if (!result.ok) {
+    diagnostics.push({
+      category: result.failure === "empty" ? "emptyConversionSource" : "invalidConversionSource",
+      edgeId: edge.id,
+      message:
+        result.failure === "empty"
+          ? "This connection takes the first item of a list that is empty, so nothing is fed."
+          : "This connection takes the first item of a value that is not a list, so nothing is fed.",
+    });
+    return undefined;
+  }
+  return result.value;
 }
 
 function deviceValue(node: DeviceNode, sourcePath: readonly string[]): unknown {
@@ -130,12 +186,21 @@ function isLegacyDefault(
     runtimeJson !== JSON.stringify(designValue)
   );
 }
-/** Resolves graph values onto one Scene's Variables through wiring. */
-export function sceneVariableValues(
+/**
+ * One pass of graph value resolution, shared by every reader.
+ *
+ * `resolveValue` memoizes each Source as it goes, so asking for the same
+ * node twice costs nothing and its incoming edges are diagnosed once.
+ */
+function resolveGraph(
   graph: ShowGraph,
-  sceneId: string,
   sourceValues: SourceValues,
-): Record<string, unknown> {
+): {
+  wiringEdges: readonly WiringEdge[];
+  diagnostics: WiringDiagnostic[];
+  resolveValue: (nodeId: string, sourcePath?: readonly string[]) => unknown;
+} {
+  const diagnostics: WiringDiagnostic[] = [];
   const designTimeSourceValues = defaultSourceValues(graph);
   const resolvedSourceValues: SourceValues = {};
   for (const node of graph.nodes) {
@@ -164,7 +229,9 @@ export function sceneVariableValues(
       typeof node.type !== "string" && node.type.kind === "array" && incomingEdges.length > 0;
     let value = assemblesArray ? [] : resolvedSourceValues[nodeId];
     for (const edge of incomingEdges) {
-      const sourceValue = resolveValue(edge.sourceId, edge.sourcePath);
+      const producedValue = resolveValue(edge.sourceId, edge.sourcePath);
+      if (producedValue === undefined) continue;
+      const sourceValue = carriedValue(graph, edge, producedValue, diagnostics);
       if (sourceValue === undefined) continue;
       const incomingValue = remapFields(sourceValue, fieldMappingFor(graph, edge));
       value = assemblesArray
@@ -177,13 +244,48 @@ export function sceneVariableValues(
     return valueAtPath(value, sourcePath);
   };
 
+  return { wiringEdges, diagnostics, resolveValue };
+}
+
+/** One entry per edge: the same edge cannot fail two different ways at once. */
+function byEdge(diagnostics: readonly WiringDiagnostic[]): WiringDiagnostic[] {
+  const seen = new Map<string, WiringDiagnostic>();
+  for (const diagnostic of diagnostics) {
+    if (!seen.has(diagnostic.edgeId)) seen.set(diagnostic.edgeId, diagnostic);
+  }
+  return [...seen.values()];
+}
+
+/** Resolves graph values onto one Scene's Variables through wiring. */
+export function sceneVariableValues(
+  graph: ShowGraph,
+  sceneId: string,
+  sourceValues: SourceValues,
+): Record<string, unknown> {
+  return sceneVariableResolution(graph, sceneId, sourceValues).values;
+}
+
+/**
+ * The same resolution, plus the diagnostics raised on the way to this Scene.
+ *
+ * The renderer only wants the values, which is what `sceneVariableValues`
+ * above returns; a surface that reports on wiring wants both.
+ */
+export function sceneVariableResolution(
+  graph: ShowGraph,
+  sceneId: string,
+  sourceValues: SourceValues,
+): SceneVariableResolution {
+  const { wiringEdges, diagnostics, resolveValue } = resolveGraph(graph, sourceValues);
   const values: Record<string, unknown> = {};
   for (const edge of wiringEdges) {
     if (edge.targetId !== sceneId) continue;
     const [variableId, ...variablePath] = edge.targetPath;
     if (!variableId) continue;
 
-    const sourceValue = resolveValue(edge.sourceId, edge.sourcePath);
+    const producedValue = resolveValue(edge.sourceId, edge.sourcePath);
+    if (producedValue === undefined) continue;
+    const sourceValue = carriedValue(graph, edge, producedValue, diagnostics);
     if (sourceValue === undefined) continue;
     values[variableId] = assignAtPath(
       values[variableId],
@@ -191,5 +293,25 @@ export function sceneVariableValues(
       remapFields(sourceValue, fieldMappingFor(graph, edge)),
     );
   }
-  return values;
+  return { values, diagnostics: byEdge(diagnostics) };
+}
+
+/**
+ * Every wiring edge in the graph that carries nothing, and why.
+ *
+ * The Show Editor draws the whole graph rather than one Scene, so it asks
+ * about every edge at once — including edges between Sources, which no single
+ * Scene's resolution necessarily reaches.
+ */
+export function wiringDiagnostics(
+  graph: ShowGraph,
+  sourceValues: SourceValues,
+): readonly WiringDiagnostic[] {
+  const { wiringEdges, diagnostics, resolveValue } = resolveGraph(graph, sourceValues);
+  for (const edge of wiringEdges) {
+    const producedValue = resolveValue(edge.sourceId, edge.sourcePath);
+    if (producedValue === undefined) continue;
+    carriedValue(graph, edge, producedValue, diagnostics);
+  }
+  return byEdge(diagnostics);
 }

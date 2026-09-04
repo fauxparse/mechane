@@ -48,7 +48,12 @@ import type {
   ShowGraph,
   Type,
 } from "@mechane/domain";
-import { decodeEventBinding, InvalidInteractionError, isFlowColor } from "@mechane/domain";
+import {
+  decodeEventBinding,
+  InvalidInteractionError,
+  isFlowColor,
+  isWiringConversion,
+} from "@mechane/domain";
 import { decodeCanvasDocument } from "@mechane/graphql-schema";
 import type { ShowGraph as ApiShowGraph, ApplyShowEditsResult } from "@mechane/graphql-schema";
 type ApiType = ApiShowGraph["shapes"][number]["fields"][number]["type"];
@@ -96,6 +101,7 @@ type ApiGraphEdge = {
   sourcePath?: string[] | null;
   targetPath?: string[] | null;
   fieldMapping?: unknown;
+  conversion?: string | null;
   layout?: unknown;
   targetVariableId?: string | null;
   cueId?: string | null;
@@ -281,7 +287,16 @@ function toEdge(edge: ApiGraphEdge): GraphEdge {
     case "DeviceEdge":
       return { ...base, kind: "device" };
     case "WiringEdge":
-      return { ...base, kind: "wiring" };
+      return {
+        ...base,
+        kind: "wiring",
+        // A conversion the client doesn't recognise is dropped, not carried:
+        // the edge then reads as plainly mistyped rather than as doing
+        // something this build can't describe (#532).
+        ...(edge.conversion && isWiringConversion(edge.conversion)
+          ? { conversion: edge.conversion }
+          : {}),
+      };
     default:
       throw new Error(
         `Unknown Show graph edge typename "${edge.__typename}" on edge "${edge.id}".`,

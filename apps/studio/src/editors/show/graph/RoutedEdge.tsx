@@ -57,6 +57,8 @@ export type RoutedEdgeProps = {
   /** The status glyph, drawn in the label slot. */
   label?: ReactNode;
   labelColor?: string;
+  /** What the glyph means, as a tooltip on the badge that carries it. */
+  labelTitle?: string;
   selected?: boolean;
   margin?: number;
   maxRadius?: number;
@@ -111,6 +113,7 @@ export function RoutedEdge({
   onOffsetsChange,
   label,
   labelColor,
+  labelTitle,
   selected = false,
   margin = DEFAULT_MARGIN,
   maxRadius = DEFAULT_MAX_RADIUS,
@@ -293,6 +296,7 @@ export function RoutedEdge({
                   targetColor,
                   positionOf(geometry.segments, handle.segmentIndex),
                 )}
+                title={labelTitle}
               >
                 <LabelGlyph color={labelColor}>{label}</LabelGlyph>
               </Badge>
@@ -316,7 +320,7 @@ export function RoutedEdge({
         <g
           transform={`translate(${geometry.label.point.x} ${geometry.label.point.y}) scale(${1 / zoom})`}
         >
-          <Badge color={blend(sourceColor, targetColor, 0.5)}>
+          <Badge color={blend(sourceColor, targetColor, 0.5)} title={labelTitle}>
             <LabelGlyph color={labelColor}>{label}</LabelGlyph>
           </Badge>
         </g>
@@ -344,9 +348,12 @@ function Chip({ orientation, color }: { orientation: Orientation; color: string 
 }
 
 /** The handle that carries the label: the same treatment, sized for a glyph. */
-function Badge({ color, children }: { color: string; children: ReactNode }) {
+function Badge({ color, title, children }: { color: string; title?: string; children: ReactNode }) {
   return (
     <>
+      {/* A glyph small enough to fit a 20px badge can only ever hint at what
+          it means; the tooltip is where it says so. */}
+      {title ? <title>{title}</title> : null}
       <circle
         r={LABEL_RADIUS}
         fill="var(--background, #fff)"

@@ -10,6 +10,7 @@ import {
   deriveShowGraphFacts,
   fieldsForType,
   valueAtPath,
+  wiringDiagnostics,
 } from "@mechane/domain";
 import type {
   Cue,
@@ -24,6 +25,8 @@ import type {
   ShowGraphEdgeFacts,
   ShowGraphNodeFacts,
   Type,
+  WiringConversion,
+  WiringDiagnostic,
 } from "@mechane/domain";
 import type { Edge, Node } from "@xyflow/react";
 
@@ -172,7 +175,20 @@ export type ShowEdgeData = {
   /** The Scene Variable a wiring edge feeds — the head of its target path. */
   targetVariableId: string | null;
   coercing: boolean;
+  /**
+   * The conversion this edge declares, when it has one. `"firstItem"` is the
+   * positional array-to-single selection of #532, and stays visible on the
+   * edge for as long as the edge does: it changes what the target receives,
+   * so it is not a detail an author should have to go looking for.
+   */
+  conversion: WiringConversion | null;
   invalidReason: string | null;
+  /**
+   * A live problem with what this edge is carrying — an empty list under a
+   * first-item conversion, say. Distinct from `invalidReason`, which is about
+   * the edge's *types*: this one is about its current value.
+   */
+  warningReason: string | null;
   /** The colorway used to render this edge in the editor (#316). */
   color: FlowColor;
   /** Where the author has dragged this edge's runs, if anywhere (#475). */
@@ -492,6 +508,7 @@ function toFlowEdge(
   facts: ShowGraphEdgeFacts,
   endpointColors: { source: FlowColor; target: FlowColor },
   cueIds: ReadonlySet<string>,
+  diagnostic: WiringDiagnostic | undefined,
 ): ShowFlowEdge {
   const source = graphNodes.find((node) => node.id === edge.sourceId);
   const target = graphNodes.find((node) => node.id === edge.targetId);
@@ -527,7 +544,9 @@ function toFlowEdge(
       parallelCount: 1,
       targetVariableId: facts.targetVariableId,
       coercing: facts.typeCompatibility === "coercing",
+      conversion: facts.conversion,
       invalidReason: facts.typeCompatibility === "incompatible" ? "Incompatible types" : null,
+      warningReason: diagnostic?.message ?? null,
     },
   };
 }
@@ -578,6 +597,14 @@ export function graphToFlow(
   }
 
   const cueIds = new Set((graph.cues ?? []).map((cue) => cue.id));
+  // Authored Source values are what the Show Editor draws, so a conversion
+  // that would find nothing is reported here rather than only once a Run is
+  // under way and nobody is looking at this screen (#532).
+  const diagnostics = new Map(
+    wiringDiagnostics(graph, options.sourceValues ?? {}).map(
+      (diagnostic) => [diagnostic.edgeId, diagnostic] as const,
+    ),
+  );
   return {
     nodes: [...flows, ...rest].reduce<ShowFlowNode[]>((nodes, node) => {
       if (!node.parentId || !collapsed.has(node.parentId)) {
@@ -615,6 +642,7 @@ export function graphToFlow(
               sourceType: null,
               targetType: null,
               typeCompatibility: "unknown",
+              conversion: null,
               color: "neutral",
             },
             {
@@ -624,6 +652,7 @@ export function graphToFlow(
               target: facts.nodes.get(targetFlow ?? edge.targetId)?.color ?? DEFAULT_FLOW_COLOR,
             },
             cueIds,
+            diagnostics.get(edge.id),
           );
           return {
             ...mapped,

@@ -1,0 +1,1 @@
+ALTER TABLE "graph_edges" ADD COLUMN "conversion" text;

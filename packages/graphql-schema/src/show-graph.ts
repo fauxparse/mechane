@@ -132,6 +132,7 @@ export const GetShowGraphQuery = graphql(
           layout
           ... on WiringEdge {
             fieldMapping
+            conversion
             targetVariableId
           }
           ... on NavigateEdge {

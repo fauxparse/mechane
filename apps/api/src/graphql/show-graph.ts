@@ -264,6 +264,7 @@ function serializeEdge(edge: GraphEdge) {
     sourcePath: edge.sourcePath,
     targetPath: edge.targetPath,
     fieldMapping: edge.kind === "wiring" ? (edge.fieldMapping ?? null) : null,
+    conversion: edge.kind === "wiring" ? (edge.conversion ?? null) : null,
     // Derived, not stored input: the head of a wiring edge's target path
     // is the Variable it lands on, and a client that only cares which
     // Variable is fed shouldn't have to know that.

@@ -552,6 +552,8 @@ export const schema = createSchema<GraphQLContext>({
       layout: JSON
       "Resolved stable field-id mapping."
       fieldMapping: JSON
+      "The value conversion this edge declares before its types are compared (#532)."
+      conversion: String
       "The Scene Variable this edge feeds — the head of targetPath."
       targetVariableId: ID
     }
@@ -860,6 +862,8 @@ export const schema = createSchema<GraphQLContext>({
       sourcePath: [String!]
       targetPath: [String!]
       fieldMapping: JSON
+      "The value conversion this edge declares before its types are compared (#532)."
+      conversion: String
       "Where the author has dragged this edge's runs, keyed by route shape (#475)."
       layout: JSON
       cueId: ID

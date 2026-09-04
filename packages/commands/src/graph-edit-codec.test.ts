@@ -398,6 +398,21 @@ describe("graph edit codec", () => {
       ).toThrow(GraphEditCodecError);
     });
 
+    it("carries a wiring edge's conversion both ways (#532)", () => {
+      const edit = {
+        ...FIXTURES["graph.addEdge"],
+        edge: { ...FIXTURES["graph.addEdge"].edge, conversion: "firstItem" as const },
+      };
+      expect(decodeGraphEdit(encodeGraphEdit(edit))).toEqual(edit);
+    });
+
+    it("refuses a conversion nothing can perform", () => {
+      const encoded = encodeGraphEdit(FIXTURES["graph.addEdge"]);
+      expect(() =>
+        decodeGraphEdit({ ...encoded, edge: { ...encoded.edge!, conversion: "lastItem" } }),
+      ).toThrow(GraphEditCodecError);
+    });
+
     it("restores Shape Field order from the position it travelled with", () => {
       const encoded = encodeGraphEdit(FIXTURES["graph.setShapes"]);
       const shuffled = {

@@ -18,10 +18,12 @@
 // on the same seam.
 
 import { assertValidShowGraph, deviceSourceType, findNode, InvalidShowGraphError } from "./graph";
+import { wiringEdgeTypes } from "./graph-facts";
+import { requiredWiringConversion } from "./wiring-conversion";
 import { fieldsForType, resolveShapeFieldMapping, type Type } from "./shapes";
 import { defaultSourceValues } from "./source-defaults";
 import { typeAtPath, valueAtPath } from "./property-values";
-import type { EdgeKind, GraphEdge, GraphNode, SceneVariable, ShowGraph } from "./graph";
+import type { EdgeKind, GraphEdge, GraphNode, SceneVariable, ShowGraph, WiringEdge } from "./graph";
 /** A drag from one node's handle to another's, as the editor reports it. */
 export interface ConnectionRequest {
   sourceId: string;
@@ -129,10 +131,10 @@ export function connectionEdge(
       if (consumer?.kind === "transformer") {
         const targetPath =
           request.targetHandle && request.targetHandle !== "in" ? [request.targetHandle] : [];
-        return { ...base, kind: "wiring", targetPath };
+        return withConversion(graph, { ...base, kind: "wiring", targetPath });
       }
       if (consumer?.kind === "source") {
-        return { ...base, kind: "wiring", targetPath: [] };
+        return withConversion(graph, { ...base, kind: "wiring", targetPath: [] });
       }
       const variableId = request.targetVariableId;
       if (!variableId) return null;
@@ -145,12 +147,12 @@ export function connectionEdge(
         producerType && target?.type
           ? resolveShapeFieldMapping(producerType, target.type, graph.shapes ?? [])
           : undefined;
-      return {
+      return withConversion(graph, {
         ...base,
         kind: "wiring",
         targetPath: [variableId],
         ...(fieldMapping && Object.keys(fieldMapping).length > 0 ? { fieldMapping } : {}),
-      };
+      });
     }
     case "navigate":
       // Cues and Actions aren't modelled yet (#20), so a hand-drawn Navigate
@@ -160,6 +162,21 @@ export function connectionEdge(
     case "device":
       return { ...base, kind: "device", targetPath: [] };
   }
+}
+
+/**
+ * Records the conversion a wiring edge needs, if any, so the edge says what
+ * it does rather than leaving each reader to work it out (#532).
+ *
+ * Only a drag that would otherwise be refused picks one up: a pair of types
+ * that already fit gets no conversion, and a pair no conversion can join gets
+ * none either and stays invalid at the graph boundary.
+ */
+function withConversion(graph: ShowGraph, edge: WiringEdge): WiringEdge {
+  const { source, target } = wiringEdgeTypes(graph, edge);
+  if (!source || !target) return edge;
+  const conversion = requiredWiringConversion(source, target, graph.shapes ?? []);
+  return conversion ? { ...edge, conversion } : edge;
 }
 
 /** React Flow's node-level input handle creates a new Scene Variable. */
@@ -455,6 +472,8 @@ function humanise(error: InvalidShowGraphError, kind: EdgeKind): string {
       return "That Scene Variable no longer exists.";
     case "incompatibleTypes":
       return "Those values have incompatible types.";
+    case "invalidWiringConversion":
+      return "That connection can't convert the value it carries.";
     case "flowLocalEscape":
       return "A Source inside a Flow can only feed nodes in that Flow.";
     case "invalidNavigateEndpoints":

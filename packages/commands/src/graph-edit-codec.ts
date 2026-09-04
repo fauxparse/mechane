@@ -46,6 +46,7 @@ import type {
   ShapeField,
   SuggestedImageDimensions,
   Type,
+  WiringConversion,
 } from "@mechane/domain";
 import {
   assertValidFlowColor,
@@ -53,6 +54,7 @@ import {
   InvalidInteractionError,
   isEdgeKind,
   isNodeKind,
+  isWiringConversion,
 } from "@mechane/domain";
 import {
   addBlock,
@@ -172,6 +174,8 @@ export interface FlatGraphEdge {
   sourcePath?: string[] | null;
   targetPath?: string[] | null;
   fieldMapping?: Record<string, string> | null;
+  /** The value conversion a wiring edge declares, e.g. `"firstItem"` (#532). */
+  conversion?: string | null;
   layout?: EdgeLayout | null;
   cueId?: string | null;
   actionId?: string | null;
@@ -544,7 +548,9 @@ export function encodeEdge(edge: GraphEdge): FlatGraphEdge {
     targetId: edge.targetId,
     sourcePath: [...edge.sourcePath],
     targetPath: [...edge.targetPath],
-    ...(edge.kind === "wiring" ? { fieldMapping: edge.fieldMapping ?? null } : {}),
+    ...(edge.kind === "wiring"
+      ? { fieldMapping: edge.fieldMapping ?? null, conversion: edge.conversion ?? null }
+      : {}),
     // Authored layout travels with the edge, so undoing a delete puts the
     // edge back where the author had dragged it rather than back on its
     // routed default (#475).
@@ -669,6 +675,17 @@ function decodeEventBindingOrder(flat: FlatGraphEdit): string[] {
   return [...flat.bindingIds];
 }
 
+/** An unknown conversion is refused here rather than persisted (#532). */
+function decodeConversion(flat: FlatGraphEdge): WiringConversion | undefined {
+  if (flat.conversion === null || flat.conversion === undefined) return undefined;
+  if (!isWiringConversion(flat.conversion)) {
+    throw new GraphEditCodecError(
+      `Unknown wiring conversion "${flat.conversion}" on edge "${flat.id}".`,
+    );
+  }
+  return flat.conversion;
+}
+
 export function decodeEdge(flat: FlatGraphEdge): GraphEdge {
   if (!isEdgeKind(flat.kind)) {
     throw new GraphEditCodecError(`Unknown edge kind "${flat.kind}" on edge "${flat.id}".`);
@@ -684,7 +701,12 @@ export function decodeEdge(flat: FlatGraphEdge): GraphEdge {
   };
   switch (flat.kind) {
     case "wiring":
-      return { ...base, kind: "wiring", fieldMapping: flat.fieldMapping ?? undefined };
+      return {
+        ...base,
+        kind: "wiring",
+        fieldMapping: flat.fieldMapping ?? undefined,
+        conversion: decodeConversion(flat),
+      };
     case "navigate":
       return {
         ...base,

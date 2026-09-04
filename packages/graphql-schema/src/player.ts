@@ -99,6 +99,7 @@ const PlayerGraphFields = graphql(`
       targetPath
       ... on WiringEdge {
         fieldMapping
+        conversion
         targetVariableId
       }
       ... on NavigateEdge {

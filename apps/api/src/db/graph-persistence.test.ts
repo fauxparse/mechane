@@ -76,6 +76,44 @@ describe("graph row persistence", () => {
     expect(reread.edges).toEqual(graph.edges);
     expect(await db.select().from(devices).where(eq(devices.showId, showId))).toEqual([]);
   });
+  it("persists a wiring edge's conversion, so a published graph carries it (#532)", async () => {
+    await createShow();
+    const convertingGraph: ShowGraph = {
+      ...graph,
+      nodes: [
+        ...graph.nodes,
+        {
+          id: "source_scores",
+          kind: "source",
+          name: "Scores",
+          position: { x: 0, y: 0 },
+          parentId: null,
+          type: { kind: "array", of: "number" },
+        },
+      ],
+      edges: [
+        {
+          id: "edge_first_score",
+          kind: "wiring",
+          sourceId: "source_scores",
+          targetId: "source_copy",
+          sourcePath: [],
+          targetPath: [],
+          conversion: "firstItem",
+        },
+      ],
+    };
+
+    await db.transaction((tx) => persistGraphRows(tx, showId, "draft", convertingGraph));
+    // Publishing writes the draft's own edges into the published state, which
+    // is where a Run then reads them from.
+    const draft = await readGraphRows(showId, "draft");
+    expect(draft.edges).toEqual(convertingGraph.edges);
+
+    await db.transaction((tx) => persistGraphRows(tx, showId, "published", draft));
+    expect((await readGraphRows(showId, "published")).edges).toEqual(convertingGraph.edges);
+  });
+
   it("persists and reads an authored Flow size", async () => {
     await createShow();
     const sizedGraph: ShowGraph = {

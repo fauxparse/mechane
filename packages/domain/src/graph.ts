@@ -25,7 +25,9 @@ import type { Action, Cue, EventBinding, InteractionCollections } from "./intera
 import { assertValidInteractions, projectNavigateEdges } from "./interactions";
 import type { EntityName } from "./id";
 import type { Shape, Type } from "./shapes";
-import { areTypesCompatible, assertValidShapes, InvalidShapeError } from "./shapes";
+import { assertValidShapes, InvalidShapeError } from "./shapes";
+import { isWiringConversion, wiringTypesCompatible } from "./wiring-conversion";
+import type { WiringConversion } from "./wiring-conversion";
 import { typeAtPath } from "./property-values";
 import { assertValidBlocks } from "./blocks";
 import type { Block } from "./blocks";
@@ -257,6 +259,17 @@ export interface WiringEdge extends BaseEdge {
   kind: "wiring";
   /** Stable source-field id → target-field id mapping resolved at connection time. */
   fieldMapping?: Record<string, string>;
+  /**
+   * The conversion this edge performs on the producer value before the
+   * ordinary compatibility and coercion rules apply — `"firstItem"` for the
+   * positional array-to-single wiring of #532.
+   *
+   * Recorded on the edge rather than inferred at each end, so every reader
+   * (validation, the editor's affordances, the runtime, a published graph, a
+   * Run snapshot) sees the same declared conversion instead of re-deriving
+   * one and possibly disagreeing.
+   */
+  conversion?: WiringConversion;
 }
 
 /**
@@ -358,6 +371,7 @@ export type GraphViolation =
   | "sourceInputPath"
   | "missingVariable"
   | "incompatibleTypes"
+  | "invalidWiringConversion"
   | "flowLocalEscape"
   | "invalidNavigateEndpoints"
   | "crossFlowNavigate"
@@ -675,10 +689,24 @@ function assertValidWiringEdge(
     }
     targetType = variable.type ? typeAtPath(variable.type, edge.targetPath.slice(1), shapes) : null;
   }
-  if (sourceType && targetType && !areTypesCompatible(sourceType, targetType, shapes)) {
+  if (edge.conversion !== undefined && !isWiringConversion(edge.conversion)) {
     throw new InvalidShowGraphError(
-      "incompatibleTypes",
-      `wiring edge "${edge.id}" connects incompatible types; no supported coercion exists.`,
+      "invalidWiringConversion",
+      `wiring edge "${edge.id}" declares an unknown conversion "${String(edge.conversion)}".`,
+    );
+  }
+  if (
+    sourceType &&
+    targetType &&
+    !wiringTypesCompatible(sourceType, targetType, edge.conversion, shapes)
+  ) {
+    // A declared conversion that doesn't apply is its own violation: the edge
+    // is not merely mistyped, it is claiming to do something it can't.
+    throw new InvalidShowGraphError(
+      edge.conversion ? "invalidWiringConversion" : "incompatibleTypes",
+      edge.conversion
+        ? `wiring edge "${edge.id}" declares a ${edge.conversion} conversion that does not apply to its endpoints.`
+        : `wiring edge "${edge.id}" connects incompatible types; no supported coercion exists.`,
     );
   }
   if (producer.parentId !== null && producer.parentId !== consumer.parentId) {
