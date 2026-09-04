@@ -32,7 +32,7 @@ import type { FlowDimensions, ShowFlowNode } from "./graph/graph-to-flow";
 const STACK_GAP = 32;
 
 /** Horizontal gap between the two Scenes in a compact navigation pair. */
-const PAIR_GAP = 32;
+export const SCENE_NAVIGATION_GAP = 32;
 
 /** How far each ring of the free-space search steps out. */
 const SEARCH_STEP = 32;
@@ -357,9 +357,10 @@ function compactPair(
     x: FLOW_PADDING,
     y: FLOW_HEADER_HEIGHT + FLOW_PADDING,
   };
-  const destinationPosition = destinationAtIntent
-    ? { x: FLOW_PADDING + sourceSize.width + PAIR_GAP, y: sourcePosition.y }
-    : { x: FLOW_PADDING + sourceSize.width + PAIR_GAP, y: sourcePosition.y };
+  const destinationPosition = {
+    x: FLOW_PADDING + sourceSize.width + SCENE_NAVIGATION_GAP,
+    y: sourcePosition.y,
+  };
   const dimensions = {
     width: Math.max(NODE_WIDTH, destinationPosition.x + destinationSize.width) + FLOW_PADDING,
     height:

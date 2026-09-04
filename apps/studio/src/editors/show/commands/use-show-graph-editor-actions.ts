@@ -7,6 +7,7 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import {
   absolutePosition,
   FLOW_CONTENT_ORIGIN,
+  FLOW_NODE_TYPE,
   NODE_HEIGHT,
   NODE_WIDTH,
 } from "../graph/graph-to-flow";
@@ -14,10 +15,15 @@ import type { ShowFlowNode } from "../graph/graph-to-flow";
 import {
   clampIntoFlow,
   clearOfFlows,
+  compactRootSceneAtDrop,
   compactRootScenePair,
+  contains,
   flowAtPoint,
+  flowDimensionsForChildren,
   nextChildPosition,
+  nodeRectangle,
   relativeToFlow,
+  SCENE_NAVIGATION_GAP,
   sizeOf,
   type CreationSite,
   type Size,
@@ -90,6 +96,11 @@ import type {
 } from "./use-graph-editing";
 import type { GraphCommands } from "./use-graph-commands";
 
+export type ConnectionDropCreator = (
+  sourceId: string,
+  sourceHandle: string,
+  position: Position,
+) => void;
 interface Options {
   graph: ShowGraph;
   commands: GraphCommands;
@@ -337,6 +348,78 @@ export function useShowGraphEditorActions({
     },
     [centreOfView, editing, focusOnArrival, renderedGraph, selectOnArrival, selectedNodes],
   );
+  const createFromConnection = useCallback(
+    (sourceId: string, sourceHandle: string, position: Position) => {
+      const decodedSource = readHandle(sourceHandle);
+      const source = graph.nodes.find((node) => node.id === sourceId);
+      if (source?.kind !== "scene" || decodedSource?.kind !== "output") {
+        creation.createNodeFromConnection(sourceId, sourceHandle, position);
+        return;
+      }
+      const { rendered, byId } = renderedGraph();
+      const sourceRendered = byId.get(source.id);
+      if (!sourceRendered) {
+        say("Scene navigation is not ready yet.");
+        return;
+      }
+      const occupied = rendered.some((node) => {
+        if (source.parentId && node.type === FLOW_NODE_TYPE) return false;
+        return contains(nodeRectangle(node, byId), position);
+      });
+      if (occupied) return;
+
+      if (source.parentId === null) {
+        const pair = compactRootSceneAtDrop(sourceRendered, position, rendered);
+        const flow = createNode("flow", pair.flowPosition) as Extract<GraphNode, { kind: "flow" }>;
+        const destination = createNode("scene", pair.destinationPosition, flow.id) as Extract<
+          GraphNode,
+          { kind: "scene" }
+        >;
+        const reason = creation.createSceneFromConnection(source.id, sourceHandle, {
+          flow,
+          destination,
+          sourcePosition: pair.sourcePosition,
+          destinationPosition: pair.destinationPosition,
+          flowSize: pair.dimensions,
+        });
+        if (reason) say(reason);
+        return;
+      }
+
+      const flow = byId.get(source.parentId);
+      if (!flow || flowAtPoint(position, rendered)?.id !== flow.id) return;
+      const preferred = relativeToFlow(position, flow, byId);
+      const destinationPosition = {
+        x: Math.max(
+          preferred.x,
+          sourceRendered.position.x + sizeOf(sourceRendered).width + SCENE_NAVIGATION_GAP,
+        ),
+        y: preferred.y,
+      };
+      const destination = createNode("scene", destinationPosition, flow.id) as Extract<
+        GraphNode,
+        { kind: "scene" }
+      >;
+      const renderedDestination: ShowFlowNode = {
+        ...sourceRendered,
+        id: destination.id,
+        position: destinationPosition,
+        parentId: flow.id,
+      };
+      const children = rendered.filter((node) => node.parentId === flow.id);
+      const fitted = flowDimensionsForChildren([...children, renderedDestination]);
+      const current = sizeOf(flow);
+      const reason = creation.createSceneFromConnection(source.id, sourceHandle, {
+        destination,
+        flowSize: {
+          width: Math.max(current.width, fitted.width),
+          height: Math.max(current.height, fitted.height),
+        },
+      });
+      if (reason) say(reason);
+    },
+    [creation, graph.nodes, renderedGraph, say],
+  );
 
   // ---------------------------------------------------------------------------
   // Deleting
@@ -490,7 +573,7 @@ export function useShowGraphEditorActions({
     dragTo,
     endDrag,
     create,
-    centreOfView,
+    createFromConnection,
     requestDelete,
     confirmDelete,
     onConnect,

@@ -60,6 +60,7 @@ export function ShowGraphEditorInner(props: ShowGraphEditorProps) {
     dragTo,
     endDrag,
     create,
+    createFromConnection,
     requestDelete,
     fitView,
     fitViewOptions,
@@ -106,6 +107,7 @@ export function ShowGraphEditorInner(props: ShowGraphEditorProps) {
             creation={creation}
             connections={connections}
             setNodeColor={inspector.setNodeColor}
+            createFromConnection={createFromConnection}
             onConnect={onConnect}
             isValidConnection={(connection) => isValidConnection(connection as Connection)}
             jumpToMinimapPoint={jumpToMinimapPoint}

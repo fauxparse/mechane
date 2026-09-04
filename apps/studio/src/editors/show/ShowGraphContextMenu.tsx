@@ -75,6 +75,7 @@ export interface ShowGraphContextMenuProps {
   connections: GraphConnectionEditing;
   setNodeColor(nodeId: string, color: FlowColor): void;
   onConnect(connection: Connection): void;
+  createFromConnection(sourceId: string, sourceHandle: string, position: Position): void;
   isValidConnection(connection: Connection | ShowFlowEdge): boolean;
   jumpToMinimapPoint(event: React.MouseEvent, position: XYPosition): void;
 }
@@ -101,6 +102,7 @@ export function ShowGraphContextMenu({
   creation,
   connections,
   setNodeColor,
+  createFromConnection,
   onConnect,
   isValidConnection,
   jumpToMinimapPoint,
@@ -141,7 +143,7 @@ export function ShowGraphContextMenu({
               }
               const point = "changedTouches" in event ? event.changedTouches[0] : event;
               if (!point) return;
-              editing.createNodeFromConnection(
+              createFromConnection(
                 connectionState.fromNode.id,
                 connectionState.fromHandle.id ?? "",
                 screenToFlowPosition({ x: point.clientX, y: point.clientY }),

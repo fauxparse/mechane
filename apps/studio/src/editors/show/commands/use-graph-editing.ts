@@ -130,6 +130,11 @@ export interface GraphCreationEditing {
   ): GraphNode;
   createFlowWithNodes(nodeIds: string[], position: Position, childOrigin: Position): GraphNode;
   createNodeFromConnection(sourceId: string, sourceHandle: string, position: Position): void;
+  createSceneFromConnection(
+    sourceId: string,
+    sourceHandle: string,
+    plan: RootNavigationPlan,
+  ): string | null;
 }
 
 export interface GraphDeletionEditing {
@@ -345,6 +350,67 @@ export function useGraphEditing(
           commands: plan.edits.map((edit) => commandForEdit(edit)),
         }),
       );
+    },
+    [execute, graph],
+  );
+  const createSceneFromConnection = useCallback(
+    (sourceId: string, sourceHandle: string, rootPlan: RootNavigationPlan) => {
+      const source = graph.nodes.find((node) => node.id === sourceId);
+      const decodedSource = readHandle(sourceHandle);
+      const destination = rootPlan.destination;
+      if (source?.kind !== "scene" || decodedSource?.kind !== "output" || !destination) {
+        return "Scene creation uses a root header handle.";
+      }
+      if (source.id === destination.id) return "A Scene cannot navigate to itself.";
+      if (rootPlan.flow) {
+        if (
+          source.parentId !== null ||
+          rootPlan.flow.parentId !== null ||
+          !rootPlan.sourcePosition ||
+          !rootPlan.destinationPosition ||
+          !rootPlan.flowSize ||
+          destination.parentId !== rootPlan.flow.id
+        ) {
+          return "Scene creation has invalid Flow geometry.";
+        }
+      } else if (!source.parentId || destination.parentId !== source.parentId) {
+        return "A new Scene must be created inside the source Scene's Flow.";
+      }
+      const cue = {
+        id: generateId("cue"),
+        name: `Go to ${destination.name}`,
+        owner: { kind: "scene" as const, sceneId: source.id },
+        actionIds: [] as string[],
+      };
+      const action = {
+        id: generateId("action"),
+        cueId: cue.id,
+        kind: "navigate" as const,
+        targetSceneId: destination.id,
+      };
+      const flowCommands = rootPlan.flow
+        ? [
+            addNode(rootPlan.flow, "Create Flow"),
+            reparentNode(source.id, rootPlan.flow.id, rootPlan.sourcePosition!),
+            setFlowDefaultScene(rootPlan.flow.id, source.id),
+            setFlowSize(rootPlan.flow.id, rootPlan.flowSize!),
+          ]
+        : rootPlan.flowSize && source.parentId
+          ? [setFlowSize(source.parentId, rootPlan.flowSize)]
+          : [];
+      execute(
+        composite({
+          label: "Create Scene Navigation",
+          commands: [
+            ...flowCommands,
+            addNode(destination, "Create Scene"),
+            addCue(cue),
+            addNavigateAction(action),
+            setCueActionOrder(cue.id, [action.id]),
+          ],
+        }),
+      );
+      return null;
     },
     [execute, graph],
   );
@@ -800,6 +866,7 @@ export function useGraphEditing(
       createNodeOfKind,
       createNodeFromConnection,
       createFlowWithNodes: createFlowWithSelection,
+      createSceneFromConnection,
     },
     deletion: { deleteElements, scopeOf },
     connections: {
