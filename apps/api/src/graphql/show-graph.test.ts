@@ -252,29 +252,40 @@ describe("parseGraphEdit", () => {
 });
 
 describe("Show graph serialization", () => {
-  it("resolves Source defaults from the graph-level collection", () => {
+  it("serializes edge layouts, including layouts projected from Actions", () => {
+    const layout = { HVH: { "0": -119, "0.head": 24 } };
     const serialized = serializeShowGraph({
       showId: "show_a",
       state: "draft",
       updatedAt: new Date("2026-01-01T00:00:00.000Z"),
       version: 1,
-      nodes: [
+      nodes: [],
+      edges: [
         {
-          id: "source_a",
-          kind: "source",
-          name: "Source",
-          parentId: null,
-          position: { x: 0, y: 0 },
-          type: "text",
+          id: "navigate:action_go",
+          kind: "navigate",
+          sourceId: "scene_red",
+          targetId: "scene_blue",
+          sourcePath: [],
+          targetPath: [],
+          cueId: "cue_go",
+          actionId: "action_go",
+          layout,
         },
       ],
-      edges: [],
-      sourceFieldDefaults: [{ nodeId: "source_a", fieldPath: [], value: "Edited" }],
+      actions: [
+        {
+          id: "action_go",
+          cueId: "cue_go",
+          kind: "navigate",
+          targetSceneId: "scene_blue",
+          layout,
+        },
+      ],
     });
 
-    expect(serialized.nodes[0]?.fieldDefaults).toEqual([
-      { nodeId: "source_a", fieldPath: [], value: "Edited" },
-    ]);
+    expect(serialized.edges[0]?.layout).toEqual(layout);
+    expect(serialized.actions[0]?.layout).toEqual(layout);
   });
 });
 
