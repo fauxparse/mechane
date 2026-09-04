@@ -24,8 +24,7 @@ import { useUndoKeys } from "../keyboard/use-undo-keys";
 import { useViewportKeys } from "../keyboard/use-viewport-keys";
 import { useShowGraphEditorActions } from "./use-show-graph-editor-actions";
 import { useFitViewOptions, useInitialFrame } from "../graph/use-fit-view-options";
-import { childrenPushedInside, effectiveFlowDimensions, fitFlows } from "../show-graph-layout";
-import type { FittedFlow } from "../show-graph-layout";
+import { childrenPushedInside } from "../show-graph-layout";
 import { useShowGraphEditorPalette } from "./use-show-graph-editor-palette";
 import { MESSAGE_MS } from "../show-graph-editor-constants";
 import type { ShowGraphEditorProps } from "../ShowGraphEditor";
@@ -80,18 +79,10 @@ export function useShowGraphEditorController({
   const { command, gestures, creation, deletion, connections, variables } = editing;
   const { commands } = command;
   const [collapsedFlowIds, setCollapsedFlowIds] = useState<Set<string>>(() => new Set());
-  // A Flow's authored size is stored on the graph. `fitted` is the fallback
-  // around its children, recomputed only when membership or measured child
-  // dimensions change, so dragging a child never moves the box.
-  const [fittedFlows, setFittedFlows] = useState<Map<string, FittedFlow>>(() => new Map());
-  const flowDimensions = useMemo(
-    () => effectiveFlowDimensions(fittedFlows, new Map()),
-    [fittedFlows],
-  );
   const sourceValues = useMemo(() => defaultSourceValues(command.graph), [command.graph]);
   const drawn = useMemo(
-    () => graphToFlow(command.graph, { collapsedFlowIds, flowDimensions, sourceValues }),
-    [collapsedFlowIds, command.graph, flowDimensions, sourceValues],
+    () => graphToFlow(command.graph, { collapsedFlowIds, sourceValues }),
+    [collapsedFlowIds, command.graph, sourceValues],
   );
   const toggleCollapse = useCallback((flowId: string) => {
     setCollapsedFlowIds((current) => {
@@ -105,14 +96,6 @@ export function useShowGraphEditorController({
   const selectOnArrival = useRef<string | null>(null);
   const focusOnArrival = useRef<string | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState(drawn.nodes);
-  useEffect(() => {
-    // Fitted from the *rendered* nodes, because only the DOM knows how tall a
-    // Scene's rows made it — the projection's estimate is short enough that a
-    // Scene with Cues would hang out of its Flow. `fitFlows` returns the map
-    // it was handed when nothing needs re-fitting, so this settles rather
-    // than looping as measurements arrive.
-    setFittedFlows((current) => fitFlows(nodes, current));
-  }, [nodes]);
   const [edges, setEdges, onEdgesChange] = useEdgesState(drawn.edges);
   const displayNodes = useMemo(
     () =>

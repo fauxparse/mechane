@@ -272,78 +272,15 @@ export function moveOutPositions(nodeIds: string[], rendered: ShowFlowNode[]): P
 }
 
 /**
- * The size each Flow should be drawn at, given the last set of sizes and the
- * children it has now.
+ * The explicit Flow size required to contain rendered children.
  *
- * A Flow re-fits when its *membership* changes and at no other time: growing
- * it to chase a child being dragged around inside it makes the box jitter
- * under the pointer, and shrinking it when the child comes back is worse
- * (#508). Positions are therefore deliberately not an input — the child set
- * is, and `clampIntoFlow` is what keeps the children inside the result.
- *
- * Returns `current` unchanged when nothing needs re-fitting, so a caller can
- * hand this straight to `setState` without looping.
+ * Callers use this while planning a create or resize command. It is never
+ * consulted by graph projection, so membership and measured child dimensions
+ * cannot resize an existing Flow behind the director's back.
  */
-export interface FittedFlow {
-  /** What this size was fitted to — see `keyOf`. */
-  childKey: string;
-  dimensions: FlowDimensions;
-}
-
-/**
- * What a Flow re-fits for: which children it has, and how big each one is.
- *
- * Pointedly *not* where they are. A position change is a child being dragged
- * around inside the box, and having the box follow it is the thing #508
- * removed. A size change is the DOM measuring a Scene taller than the
- * projection estimated, which the box does have to catch up with, or a Scene
- * with Cue rows hangs out the bottom.
- */
-function keyOf(children: readonly ShowFlowNode[]): string {
-  return children
-    .map((child) => {
-      const { width, height } = sizeOf(child);
-      return `${child.id}:${width}x${height}`;
-    })
-    .join(" ");
-}
-
-export function fitFlows(
-  rendered: readonly ShowFlowNode[],
-  current: ReadonlyMap<string, FittedFlow>,
-): Map<string, FittedFlow> {
-  const childrenByFlow = new Map<string, ShowFlowNode[]>();
-  for (const node of rendered) {
-    if (!node.parentId) continue;
-    const siblings = childrenByFlow.get(node.parentId);
-    if (siblings) siblings.push(node);
-    else childrenByFlow.set(node.parentId, [node]);
-  }
-  const flows = flowsAmong(rendered);
-
-  let changed = current.size !== flows.length;
-  const next = new Map<string, FittedFlow>();
-  for (const flow of flows) {
-    const children = childrenByFlow.get(flow.id) ?? [];
-    const childKey = keyOf(children);
-    const existing = current.get(flow.id);
-    if (existing && existing.childKey === childKey) {
-      next.set(flow.id, existing);
-      continue;
-    }
-    changed = true;
-    next.set(flow.id, { childKey, dimensions: fitAround(children) });
-  }
-  return changed ? next : (current as Map<string, FittedFlow>);
-}
-
-/**
- * The smallest box holding `children`, measured rather than estimated. The
- * projection's `flowSize` guesses a Scene's height from its row count before
- * anything is rendered; once the DOM has an answer, this is the one to use —
- * a Cue row is a good deal taller than the estimate allows for.
- */
-function fitAround(children: readonly ShowFlowNode[]): FlowDimensions {
+export function flowDimensionsForChildren(
+  children: readonly ShowFlowNode[],
+): FlowDimensions {
   const right = children.reduce(
     (edge, child) => Math.max(edge, child.position.x + sizeOf(child).width),
     0,
@@ -356,27 +293,6 @@ function fitAround(children: readonly ShowFlowNode[]): FlowDimensions {
     width: Math.max(NODE_WIDTH, right) + FLOW_PADDING,
     height: Math.max(FLOW_HEADER_HEIGHT + NODE_HEIGHT, bottom) + FLOW_PADDING,
   };
-}
-
-/**
- * The size each Flow is drawn at: what the director dragged it to, or the fit
- * around its children until they do.
- *
- * A manual size wins outright, shrinking included. Flooring it at the fit
- * seems safer — the children would always be inside — but the fit tracks the
- * children's own extents, so it sits right against the box and pins every
- * inward drag: the resize handle stops working. Keeping the children inside
- * is `clampIntoFlow`'s job at the two moments a child can move, which leaves
- * the handle free to do exactly what it looks like it does.
- */
-export function effectiveFlowDimensions(
-  fitted: ReadonlyMap<string, FittedFlow>,
-  manual: ReadonlyMap<string, FlowDimensions>,
-): Map<string, FlowDimensions> {
-  const dimensions = new Map<string, FlowDimensions>();
-  for (const [flowId, flow] of fitted) dimensions.set(flowId, flow.dimensions);
-  for (const [flowId, size] of manual) dimensions.set(flowId, size);
-  return dimensions;
 }
 
 /** The first anchor at or spiralling out from `origin` where `isFree` holds. */

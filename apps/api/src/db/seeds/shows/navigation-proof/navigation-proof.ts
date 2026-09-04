@@ -200,6 +200,7 @@ export function navigationProofGraph(): ShowGraph {
       parentId: null,
       position: { x: 0, y: 0 },
       defaultSceneId: "scene_red",
+      size: { width: 1304, height: 893 },
     },
     ...scenes,
     {

@@ -41,11 +41,12 @@ describe("createNode", () => {
     expect(createNode("device", { x: 0, y: 0 }, "flow_1").parentId).toBeNull();
   });
 
-  it("starts a Scene with no Variables and a Flow with no default Scene", () => {
+  it("starts a Scene with no Variables and a Flow with explicit dimensions", () => {
     const scene = createNode("scene", { x: 0, y: 0 });
     expect(scene.kind === "scene" && scene.variables).toEqual([]);
     const flow = createNode("flow", { x: 0, y: 0 });
     expect(flow.kind === "flow" && flow.defaultSceneId).toBeNull();
+    expect(flow.kind === "flow" && flow.size).toEqual({ width: 264, height: 130 });
   });
 
   it("produces nodes the domain accepts, including nested ones", () => {

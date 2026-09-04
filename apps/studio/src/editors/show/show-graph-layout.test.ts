@@ -13,8 +13,7 @@ import {
   childrenPushedInside,
   clampIntoFlow,
   clearOfFlows,
-  effectiveFlowDimensions,
-  fitFlows,
+  flowDimensionsForChildren,
   flowAtPoint,
   flowContentBox,
   moveOutPositions,
@@ -216,70 +215,23 @@ describe("moveOutPositions", () => {
   });
 });
 
-describe("fitFlows", () => {
-  const flow = flowNode("flow_1", { x: 0, y: 0 }, { width: 400, height: 300 });
-
-  it("fits a Flow around the children it has", () => {
-    const fitted = fitFlows([flow, childNode("scene_1", flow.id, { x: 24, y: 400 })], new Map());
-    expect(fitted.get("flow_1")?.dimensions.height).toBeGreaterThan(400);
-  });
-
-  // The projection estimates a Scene at one header tall until the DOM says
-  // otherwise; a Scene with Cue rows is a good deal taller than that.
-  it("fits around a child's measured height, not the projected minimum", () => {
-    const tall = childNode("scene_1", flow.id, { x: 24, y: 74 }, 190);
-    expect(
-      fitFlows([flow, tall], new Map()).get("flow_1")?.dimensions.height,
-    ).toBeGreaterThanOrEqual(74 + 190);
-  });
-
-  // The whole point of #508: the box must not chase a child around.
-  it("holds the size when only a child's position changes", () => {
-    const before = fitFlows([flow, childNode("scene_1", flow.id, { x: 24, y: 74 })], new Map());
-    const after = fitFlows([flow, childNode("scene_1", flow.id, { x: 24, y: 90 })], before);
-    expect(after).toBe(before);
-  });
-
-  // Measurement arrives a frame after the node does, and the fit has to catch
-  // up or the child it was fitted around hangs out of the box.
-  it("re-fits when a child turns out taller than it was fitted for", () => {
-    const before = fitFlows([flow, childNode("scene_1", flow.id, { x: 24, y: 74 })], new Map());
-    const after = fitFlows([flow, childNode("scene_1", flow.id, { x: 24, y: 74 }, 190)], before);
-    expect(after).not.toBe(before);
-    expect(after.get("flow_1")?.dimensions.height).toBeGreaterThanOrEqual(74 + 190);
-  });
-
-  it("re-fits when membership changes", () => {
-    const before = fitFlows([flow, childNode("scene_1", flow.id, { x: 24, y: 74 })], new Map());
-    const after = fitFlows(
-      [
-        flow,
-        childNode("scene_1", flow.id, { x: 24, y: 74 }),
-        childNode("scene_2", flow.id, { x: 24, y: 600 }),
-      ],
-      before,
-    );
-    expect(after.get("flow_1")?.dimensions.height).toBeGreaterThan(600);
-  });
-});
-
-describe("effectiveFlowDimensions", () => {
-  const fitted = new Map([["flow_1", { childKey: "", dimensions: { width: 400, height: 300 } }]]);
-
-  it("uses the fit when the director has not resized anything", () => {
-    expect(effectiveFlowDimensions(fitted, new Map()).get("flow_1")).toEqual({
-      width: 400,
-      height: 300,
+describe("flowDimensionsForChildren", () => {
+  it("calculates explicit dimensions from rendered child bounds", () => {
+    const flow = flowNode("flow_1", { x: 0, y: 0 }, { width: 400, height: 300 });
+    const child = childNode("scene_1", flow.id, { x: 24, y: 74 }, 190);
+    expect(flowDimensionsForChildren([child])).toEqual({
+      width: 288,
+      height: 288,
     });
   });
 
-  // Flooring a manual size at the fit pins every inward drag, because the fit
-  // sits right against the children — the resize handle stops working.
-  it("lets a manual resize shrink the box as well as grow it", () => {
-    const manual = new Map([["flow_1", { width: 900, height: 200 }]]);
-    expect(effectiveFlowDimensions(fitted, manual).get("flow_1")).toEqual({
-      width: 900,
-      height: 200,
+  it("does not change an existing Flow when child membership moves", () => {
+    const flow = flowNode("flow_1", { x: 0, y: 0 }, { width: 400, height: 300 });
+    expect(flow.style).toEqual({ width: 400, height: 300 });
+    expect(flowDimensionsForChildren([childNode("scene_1", flow.id, { x: 600, y: 600 })])).toEqual({
+      width: 864,
+      height: 680,
     });
+    expect(flow.style).toEqual({ width: 400, height: 300 });
   });
 });
