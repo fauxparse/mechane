@@ -14,6 +14,11 @@ _Avoid_: Project, production
 A discrete live instance of a Show. Starting a Run resets all live data (the values held by Sources) to their defaults and initializes each Flow-driven Shared Device's runtime Scene from the published Flow default; Devices connect to a Run, not directly to the Show, when a performance is underway. A Show has zero or more Runs, but at most one Run is active at a time.
 _Avoid_: Session, performance, instance
 
+### Run Error
+
+One recorded configuration failure a live Show hit, written for the person running it. A Run Error has a stable category, the time it happened, and the identifiers of the Device, Scene, Element, Cue, Action or Event it concerns — and nothing else, so its prose is rendered from those facts rather than captured from an exception. It belongs to a Show first and a Run second: a failure reached before anyone went live is still recorded, with no Run attached. Run Errors outlive the Run they happened in; the Event ledger does not.
+_Avoid_: Log entry, exception, crash report, diagnostic (a Slot Diagnostic is a design-time explanation, not a runtime record)
+
 ### Scene
 
 A named visual unit designed to be displayed on a Device. A Scene has a Canvas, plus Variables that can be connected to Sources in the Show graph and Cues that respond to Events.
@@ -329,6 +334,7 @@ _Avoid_: Binding (acceptable as a synonym), linking
 - A **Shape** may be reused by any number of **Sources**, **Variables** and **Transformers** within its **Show**
 - Audience members connect their phones to a **Device** by scanning a QR code or entering an alphanumeric code; their individual sessions are not tracked — interactions are aggregated
 - A **Show** has zero or more **Runs**; starting a **Run** resets live data to defaults, and **Devices** connect to the active **Run**
+- A **Show** has zero or more **Run Errors**; each names the **Run** it happened in, or none when it preceded one, and outlives that Run
 - An **Artboard** presents exactly one **Canvas**; the **Canvas Editor** shows one or more **Artboards** on its infinite plane
 - The **Editor Chrome** wraps exactly one editor at a time — either the **Show Editor** or the **Canvas Editor** — and the tabs in it switch between the two
 - The **Editor Chrome** bounds the **Editable Area**; collapsing a sidebar grows the **Editable Area** without moving what either editor is already showing

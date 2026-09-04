@@ -4,9 +4,10 @@ import { and, eq, isNull } from "drizzle-orm";
 import { readCanvas } from "./db/canvas";
 import { db } from "./db/client";
 import { listImageAssets } from "./db/images";
+import { RunConfigurationError, withRunErrorLog } from "./db/run-errors";
 import { readActiveRun, readRunDeviceState, type RunDeviceState } from "./db/runs";
 import { devices } from "./db/schema";
-import { readShowGraph } from "./db/show-graph";
+import { readShowGraph, type StoredShowGraph } from "./db/show-graph";
 import { issueRealtimeGrant } from "./realtime-grants";
 
 const PAIRING_CODE_PATTERN = /^[A-HJ-KM-NP-Z1-9]{5}$/;
@@ -37,7 +38,8 @@ function sceneForDevice(
 
 async function flowBundleForDevice(
   showId: string,
-  graph: ShowGraph,
+  runId: string | null,
+  graph: StoredShowGraph,
   deviceId: string,
   perConnection: boolean,
 ) {
@@ -55,7 +57,14 @@ async function flowBundleForDevice(
     scenes.map(async (scene) => {
       const canvas = await readCanvas(showId, "published", { sceneNodeId: scene.id });
       if (!canvas) {
-        throw new Error(`Published Scene "${scene.id}" has no Canvas.`);
+        throw new RunConfigurationError({
+          showId,
+          runId,
+          category: "missingSceneCanvas",
+          deviceId,
+          sceneId: scene.id,
+          publishedGraphVersion: graph.version,
+        });
       }
       return { scene, canvas };
     }),
@@ -80,7 +89,12 @@ export async function readPlayerSession(pairingCode: string) {
   ]);
   const deviceNode = graph.nodes.find((node) => node.id === device.id);
   const state = run ? await readRunDeviceState(run.id, device.id) : null;
-  const flow = await flowBundleForDevice(device.showId, graph, device.id, device.perConnection);
+  // A per-connection Device carries its whole Flow, so this is where an
+  // unrenderable Scene surfaces — and it surfaces whether or not a Run has
+  // started, which is exactly the pre-Run failure the log has to cover.
+  const flow = await withRunErrorLog(() =>
+    flowBundleForDevice(device.showId, run?.id ?? null, graph, device.id, device.perConnection),
+  );
   const scene = device.perConnection ? null : sceneForDevice(graph, device.id, state);
   const canvas = scene
     ? await readCanvas(device.showId, "published", { sceneNodeId: scene.id })

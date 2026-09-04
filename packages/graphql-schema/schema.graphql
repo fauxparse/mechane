@@ -21,6 +21,33 @@ type Run {
   sourceValues: JSON!
 }
 
+"""
+One configuration failure a live Show hit, recorded for its operator.
+
+A Run Error is not an Event ledger entry and not crash telemetry: it names
+something in this Show that cannot be executed, in terms the person running
+the show can act on. `category` is the stable discriminator to filter and
+group by; `message` is that category rendered for a human. Identifiers are
+present when the category names them, and nothing else is recorded, so the
+log carries no request payloads or credentials.
+"""
+type RunError {
+  id: ID!
+
+  """The Run underway when this happened, or null if none was."""
+  runId: ID
+  category: String!
+  message: String!
+  occurredAt: String!
+  deviceId: ID
+  sceneId: ID
+  elementId: ID
+  cueId: ID
+  actionId: ID
+  eventId: ID
+  publishedGraphVersion: Int
+}
+
 type PlayerDevice {
   name: String!
   perConnection: Boolean!
@@ -986,6 +1013,13 @@ type Query {
   showGraph(showId: ID!, state: String): ShowGraph!
   showCanvases(showId: ID!, state: String): [Artboard!]!
   imageAssets(showId: ID!): [ImageAsset!]!
+
+  """
+  A Show's Run error log, newest first. Covers failures from every Run and
+  from before any Run started; `runId` narrows it to one Run and `category`
+  to one kind of failure.
+  """
+  runErrors(showId: ID!, runId: ID, category: String, limit: Int): [RunError!]!
 }
 
 type Mutation {

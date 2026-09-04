@@ -15,7 +15,7 @@ import {
   decodeCanvasWorkspaceEdit,
   isCanvasWorkspaceEditType,
 } from "@mechane/commands";
-import type { GraphState } from "@mechane/domain";
+import type { GraphState, RunError, RunErrorCategory } from "@mechane/domain";
 import {
   assertOwnedBy,
   assertValidGraphState,
@@ -25,6 +25,7 @@ import {
   assertValidThemePalette,
   DEFAULT_IMAGE_UPLOAD_POLICY,
   defaultThemeSettings,
+  describeRunError,
   InvalidGraphStateError,
   InvalidImageNameError,
   InvalidInteractionError,
@@ -32,6 +33,7 @@ import {
   InvalidThemeModeError,
   InvalidThemePaletteError,
   isId,
+  isRunErrorCategory,
 } from "@mechane/domain";
 import { and, eq } from "drizzle-orm";
 import { GraphQLError, GraphQLScalarType, Kind } from "graphql";
@@ -45,10 +47,10 @@ import { readPlayerSession } from "../player";
 import { commitBlob, imageDeliveryUrl, listImageAssets, toImageAsset } from "../db/images";
 import {
   dispatchPlayerEvent,
-  PlayerDispatchConfigurationError,
   PlayerEventInputError,
   type PlayerEventInput,
 } from "../db/player-events";
+import { listRunErrors, RunConfigurationError } from "../db/run-errors";
 import { endRun, readActiveRun, startRun } from "../db/runs";
 import { blobUploadSessions, imageAssets, shows, userSettings } from "../db/schema";
 import {
@@ -79,6 +81,36 @@ function serializeRun(run: Awaited<ReturnType<typeof startRun>>) {
     endedAt: run.endedAt?.toISOString() ?? null,
     sourceValues: run.sourceValues,
   };
+}
+
+function serializeRunError(error: RunError) {
+  return {
+    id: error.id,
+    runId: error.runId,
+    category: error.category,
+    // Rendered here rather than stored, so the log carries only the category
+    // and the identifiers it names — see @mechane/domain's `run-errors`.
+    message: describeRunError(error),
+    occurredAt: error.occurredAt.toISOString(),
+    deviceId: error.deviceId ?? null,
+    sceneId: error.sceneId ?? null,
+    elementId: error.elementId ?? null,
+    cueId: error.cueId ?? null,
+    actionId: error.actionId ?? null,
+    eventId: error.eventId ?? null,
+    publishedGraphVersion: error.publishedGraphVersion ?? null,
+  };
+}
+
+// Mirrors `validGraphState` below: an unknown category is a client mistake
+// worth naming, not an empty result set the caller has to puzzle over.
+function validRunErrorCategory(value: string): RunErrorCategory {
+  if (!isRunErrorCategory(value)) {
+    throw new GraphQLError(`Unknown Run error category: "${value}".`, {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+  return value;
 }
 
 // graphql-yoga masks any thrown error that isn't a GraphQLError as a generic
@@ -223,6 +255,32 @@ export const schema = createSchema<GraphQLContext>({
       startedAt: String!
       endedAt: String
       sourceValues: JSON!
+    }
+
+    """
+    One configuration failure a live Show hit, recorded for its operator.
+
+    A Run Error is not an Event ledger entry and not crash telemetry: it names
+    something in this Show that cannot be executed, in terms the person running
+    the show can act on. \`category\` is the stable discriminator to filter and
+    group by; \`message\` is that category rendered for a human. Identifiers are
+    present when the category names them, and nothing else is recorded, so the
+    log carries no request payloads or credentials.
+    """
+    type RunError {
+      id: ID!
+      "The Run underway when this happened, or null if none was."
+      runId: ID
+      category: String!
+      message: String!
+      occurredAt: String!
+      deviceId: ID
+      sceneId: ID
+      elementId: ID
+      cueId: ID
+      actionId: ID
+      eventId: ID
+      publishedGraphVersion: Int
     }
     type PlayerDevice {
       name: String!
@@ -1080,6 +1138,12 @@ export const schema = createSchema<GraphQLContext>({
       showGraph(showId: ID!, state: String): ShowGraph!
       showCanvases(showId: ID!, state: String): [Artboard!]!
       imageAssets(showId: ID!): [ImageAsset!]!
+      """
+      A Show's Run error log, newest first. Covers failures from every Run and
+      from before any Run started; \`runId\` narrows it to one Run and \`category\`
+      to one kind of failure.
+      """
+      runErrors(showId: ID!, runId: ID, category: String, limit: Int): [RunError!]!
     }
 
     type Mutation {
@@ -1327,6 +1391,36 @@ export const schema = createSchema<GraphQLContext>({
         await findOwnShowOrThrow(showId, userId);
         return listImageAssets(showId);
       },
+      runErrors: async (
+        _parent,
+        {
+          showId,
+          runId,
+          category,
+          limit,
+        }: {
+          showId: string;
+          runId?: string | null;
+          category?: string | null;
+          limit?: number | null;
+        },
+        context,
+      ) => {
+        const userId = requireUserId(context);
+        // Ownership first, like every other Show-scoped read: the log names a
+        // Show's Devices and Scenes, so only its owner may read it. Players
+        // authenticate with a pairing code and never reach this query.
+        await findOwnShowOrThrow(showId, userId);
+        const errors = await listRunErrors(showId, {
+          runId: runId ?? undefined,
+          category:
+            category === null || category === undefined
+              ? undefined
+              : validRunErrorCategory(category),
+          limit: limit ?? undefined,
+        });
+        return errors.map(serializeRunError);
+      },
     },
     Mutation: {
       submitPlayerEvent: async (
@@ -1350,7 +1444,7 @@ export const schema = createSchema<GraphQLContext>({
               extensions: { code: "BAD_USER_INPUT" },
             });
           }
-          if (error instanceof PlayerDispatchConfigurationError) {
+          if (error instanceof RunConfigurationError) {
             throw new GraphQLError("Unable to process the Player Event.", {
               extensions: { code: "INTERNAL_SERVER_ERROR" },
             });

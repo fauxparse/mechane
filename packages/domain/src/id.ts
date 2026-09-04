@@ -48,6 +48,7 @@ export const ID_PREFIXES = {
   cue: "q",
   action: "j",
   eventBinding: "k",
+  runError: "z",
 } as const;
 export type EntityName = keyof typeof ID_PREFIXES;
 export type IdPrefix = (typeof ID_PREFIXES)[EntityName];
@@ -73,6 +74,7 @@ const ENTITY_BY_PREFIX = {
   q: "cue",
   j: "action",
   k: "eventBinding",
+  z: "runError",
 } as const satisfies Record<IdPrefix, EntityName>;
 // ...and this asserts the other direction: every entity is reachable from
 // some prefix. Together the two make `ID_PREFIXES` a proven bijection.
@@ -107,6 +109,7 @@ export type EdgeId = Id<"edge">;
 export type CueId = Id<"cue">;
 export type ActionId = Id<"action">;
 export type EventBindingId = Id<"eventBinding">;
+export type RunErrorId = Id<"runError">;
 
 export class InvalidIdError extends Error {
   constructor(entity: EntityName, reason: string) {

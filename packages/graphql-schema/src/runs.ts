@@ -38,3 +38,22 @@ export const EndRunMutation = graphql(`
     }
   }
 `);
+
+export const GetRunErrorsQuery = graphql(`
+  query GetRunErrors($showId: ID!, $runId: ID, $category: String, $limit: Int) {
+    runErrors(showId: $showId, runId: $runId, category: $category, limit: $limit) {
+      id
+      runId
+      category
+      message
+      occurredAt
+      deviceId
+      sceneId
+      elementId
+      cueId
+      actionId
+      eventId
+      publishedGraphVersion
+    }
+  }
+`);

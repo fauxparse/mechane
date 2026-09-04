@@ -13,6 +13,7 @@ export * from "./show";
 export * from "./source-defaults";
 export * from "./scene-variable-values";
 export * from "./runs";
+export * from "./run-errors";
 export * from "./shapes";
 export * from "./device-qr";
 export * from "./property-values";
