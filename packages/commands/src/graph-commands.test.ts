@@ -8,10 +8,11 @@ import type {
   SourceNode,
   WiringEdge,
 } from "@mechane/domain";
-import { assertValidShowGraph } from "@mechane/domain";
+import { assertValidShowGraph, navigateEdgeId, projectNavigateEdges } from "@mechane/domain";
 import { describe, expect, it } from "vitest";
 
 import { composite } from "./command";
+import { addCue, addNavigateAction } from "./interaction-commands";
 import {
   addEdge,
   addNode,
@@ -739,5 +740,63 @@ describe("setEdgeLayout (#475)", () => {
     expect(setEdgeLayout(NAVIGATE.id, LAYOUT).coalesceKey).not.toBe(
       setEdgeLayout(TO_PHONE.id, LAYOUT).coalesceKey,
     );
+  });
+
+  // The bug the seeded navigation demo showed: a navigate edge from a Cue is
+  // the projection of an Action, and every write rebuilds the projection. A
+  // drag stored on the edge alone was thrown away by the next write — the
+  // author saw the shape, the reload didn't.
+  describe("on a navigate edge projected from an Action", () => {
+    const CUE = {
+      id: "cue_go",
+      name: "Go",
+      owner: { kind: "scene" as const, sceneId: VOTING.id },
+      actionIds: ["action_go"],
+    };
+    const ACTION = {
+      id: "action_go",
+      cueId: CUE.id,
+      kind: "navigate" as const,
+      targetSceneId: RESULTS.id,
+    };
+    const base: ShowGraph = { ...GRAPH, edges: [WIRE, TO_PHONE] };
+    const navigating = addNavigateAction(ACTION).apply(addCue(CUE).apply(base).state).state;
+    const projectedId = navigateEdgeId(ACTION.id);
+
+    it("stores the drag on the Action, where a reprojection cannot lose it", () => {
+      const dragged = setEdgeLayout(projectedId, LAYOUT).apply(navigating).state;
+
+      expect(dragged.actions?.find((action) => action.id === ACTION.id)?.layout).toEqual(LAYOUT);
+      // And projected straight back onto the edge, so the editor reads one
+      // layout however the edge is stored.
+      expect(dragged.edges.find((edge) => edge.id === projectedId)?.layout).toEqual(LAYOUT);
+      expect(() => assertValidShowGraph(dragged)).not.toThrow();
+    });
+
+    it("survives the projection being rebuilt", () => {
+      const dragged = setEdgeLayout(projectedId, LAYOUT).apply(navigating).state;
+      // What storing a graph does to it: navigate edges thrown away and made
+      // again from the Actions.
+      const reprojected = {
+        ...dragged,
+        edges: [
+          ...dragged.edges.filter((edge) => edge.kind !== "navigate"),
+          ...projectNavigateEdges(dragged),
+        ],
+      };
+
+      expect(reprojected.edges.find((edge) => edge.id === projectedId)?.layout).toEqual(LAYOUT);
+    });
+
+    it("undoes back to an Action with no layout at all", () => {
+      const applied = setEdgeLayout(projectedId, LAYOUT).apply(navigating);
+      expect(applied.inverse.apply(applied.state).state).toEqual(navigating);
+    });
+
+    it("refuses an edge that isn't there, projected or otherwise", () => {
+      expect(() => setEdgeLayout(navigateEdgeId("action_gone"), LAYOUT).apply(navigating)).toThrow(
+        /no edge/,
+      );
+    });
   });
 });

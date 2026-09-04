@@ -211,6 +211,8 @@ export interface FlatAction {
   cueId: string;
   kind: string;
   targetSceneId?: string | null;
+  /** Where the edge this Action projects has been dragged, if anywhere. */
+  layout?: EdgeLayout | null;
 }
 
 export interface FlatEventBinding {
@@ -602,6 +604,9 @@ function encodeAction(action: Action): FlatAction {
     cueId: action.cueId,
     kind: action.kind,
     targetSceneId: action.targetSceneId,
+    // A drag on a navigate edge is stored on its Action, so an Action that
+    // travels without its layout is a drag that does not survive the trip.
+    layout: action.layout ?? null,
   };
 }
 
@@ -616,11 +621,13 @@ function decodeAction(flat: FlatAction): Action {
   ) {
     throw new GraphEditCodecError("An Action edit needs a valid Navigate Action.");
   }
+  const layout = decodeEdgeLayout(flat.layout);
   return {
     id: flat.id,
     cueId: flat.cueId,
     kind: "navigate",
     targetSceneId: flat.targetSceneId,
+    ...(layout ? { layout } : {}),
   };
 }
 

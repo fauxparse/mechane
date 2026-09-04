@@ -1,4 +1,5 @@
 import { isBindableKey } from "./keys";
+import type { EdgeLayout } from "./edge-layout";
 
 export const EVENT_KINDS = ["tap", "keypress"] as const;
 export type EventKind = (typeof EVENT_KINDS)[number];
@@ -56,6 +57,17 @@ export interface NavigateAction {
   cueId: string;
   kind: "navigate";
   targetSceneId: string;
+  /**
+   * Where the author has dragged the edge this Action projects, if anywhere.
+   *
+   * It lives on the Action rather than on the edge because the edge does not
+   * outlive a write: navigate edges are the materialized projection of the
+   * Actions (`projectNavigateEdges`), rebuilt from them every time a graph is
+   * stored, so anything hung on the edge alone is thrown away. The Action is
+   * the durable half of the same fact, and a deleted Action takes its edge's
+   * layout with it, which is what should happen.
+   */
+  layout?: EdgeLayout;
 }
 
 export type Action = NavigateAction;
@@ -166,8 +178,21 @@ export function resolveRuntimeEvent(
   return { kind: "planned", sceneId: scene.id, cue, actions };
 }
 
+/** The id of the edge an Action projects as. */
 export function navigateEdgeId(actionId: string): string {
   return `navigate:${actionId}`;
+}
+
+/**
+ * The Action an edge id names, or null when the id names a stored edge.
+ *
+ * An edit addressed to a projected edge has to reach the Action instead: the
+ * edge itself is rebuilt from the Actions on every write, so anything written
+ * to it alone lasts until the next one.
+ */
+export function navigateEdgeActionId(edgeId: string): string | null {
+  const actionId = edgeId.startsWith("navigate:") ? edgeId.slice("navigate:".length) : "";
+  return actionId.length > 0 ? actionId : null;
 }
 
 export function projectNavigateEdges(graph: {
@@ -183,6 +208,7 @@ export function projectNavigateEdges(graph: {
   targetPath: string[];
   cueId: string;
   actionId: string;
+  layout?: EdgeLayout;
 }[] {
   const { cues, actions } = interactionCollections(graph);
   const scenes = new Map(
@@ -204,6 +230,8 @@ export function projectNavigateEdges(graph: {
         targetPath: [],
         cueId: cue.id,
         actionId: action.id,
+        // The Action is where a drag on this edge is kept; see its `layout`.
+        ...(action.layout ? { layout: action.layout } : {}),
       },
     ];
   });

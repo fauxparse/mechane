@@ -261,6 +261,78 @@ describe("graph row persistence", () => {
     expect(reread.edges[0]).not.toHaveProperty("layout");
   });
 
+  // The case the seeded navigation demo exposed: this edge is not stored at
+  // all, it is rebuilt from its Action on the way in — so the drag has to be
+  // on the Action or the write throws it away.
+  it("keeps a drag on a navigate edge projected from an Action", async () => {
+    await createShow();
+    const layout = { HVH: { "0": -119, "0.head": 24 } };
+    const navigating: ShowGraph = {
+      shapes: [],
+      nodes: [
+        {
+          id: "flow_show",
+          kind: "flow",
+          name: "Show",
+          position: { x: 0, y: 0 },
+          parentId: null,
+          defaultSceneId: "scene_red",
+        },
+        {
+          id: "scene_red",
+          kind: "scene",
+          name: "Red",
+          position: { x: 0, y: 0 },
+          parentId: "flow_show",
+          variables: [],
+        },
+        {
+          id: "scene_blue",
+          kind: "scene",
+          name: "Blue",
+          position: { x: 400, y: 0 },
+          parentId: "flow_show",
+          variables: [],
+        },
+      ],
+      edges: [],
+      cues: [
+        {
+          id: "cue_go",
+          name: "Go",
+          owner: { kind: "scene", sceneId: "scene_red" },
+          actionIds: ["action_go"],
+        },
+      ],
+      actions: [
+        { id: "action_go", cueId: "cue_go", kind: "navigate", targetSceneId: "scene_blue", layout },
+      ],
+      eventBindings: [],
+    };
+
+    await db.transaction(async (tx) => {
+      const written = await persistGraphRows(tx, showId, "draft", navigating);
+      // Every Scene needs a Canvas, checked when the transaction commits.
+      for (const sceneNodeId of ["scene_red", "scene_blue"]) {
+        await tx
+          .insert(canvases)
+          .values({ id: `canvas_${sceneNodeId}`, graphId: written.graphId, sceneNodeId });
+        await tx.insert(canvasElements).values({
+          id: `root_${sceneNodeId}`,
+          canvasId: `canvas_${sceneNodeId}`,
+          type: "frame",
+          rank: "a",
+          name: "Root",
+        });
+      }
+    });
+    const reread = await readGraphRows(showId, "draft");
+
+    expect(reread.actions?.[0]).toMatchObject({ id: "action_go", layout });
+    // And projected back onto the edge, which is what the editor reads.
+    expect(reread.edges.find((edge) => edge.id === "navigate:action_go")).toMatchObject({ layout });
+  });
+
   it("rejects a stale version without changing stored graph rows", async () => {
     await createShow();
     await db.transaction((tx) => persistGraphRows(tx, showId, "draft", graph));

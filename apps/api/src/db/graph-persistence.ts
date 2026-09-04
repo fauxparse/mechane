@@ -33,6 +33,7 @@ import {
   isWiringConversion,
   normalizeShapeCollectionInstances,
   projectNavigateEdges,
+  pruneEdgeLayout,
   typeAtPath,
 } from "@mechane/domain";
 import { and, eq, notInArray, sql } from "drizzle-orm";
@@ -82,11 +83,16 @@ function toAction(row: ActionRow): Action {
   if (row.kind !== "navigate") {
     throw new Error(`Stored Action "${row.id}" has unknown kind "${row.kind}".`);
   }
+  // Pruned on the way out as well as in: a column is a wider door than the
+  // edit vocabulary, and a layout written by a newer editor than this one
+  // should read as no layout rather than reach the geometry.
+  const layout = row.layout ? pruneEdgeLayout(row.layout as EdgeLayout) : null;
   return {
     id: row.id,
     cueId: row.cueId,
     kind: "navigate",
     targetSceneId: row.targetSceneId,
+    ...(layout ? { layout } : {}),
   };
 }
 
@@ -639,6 +645,7 @@ export async function persistGraphRows(
         position: cuePositions.get(action.cueId)?.get(action.id) ?? 0,
         kind: action.kind,
         targetSceneId: action.targetSceneId,
+        layout: action.layout ?? null,
       })),
     );
   }

@@ -57,6 +57,7 @@ import {
   assertValidShapes,
   duplicateBlock as duplicateBlockResource,
   normalizeShapeCollectionInstances,
+  navigateEdgeActionId,
   renameBlock as renameBlockResource,
   shapeReferencesShape,
   typeAtPath,
@@ -65,6 +66,7 @@ import {
 import type { Command } from "./command";
 import { capturing } from "./command";
 import type { GraphEdit } from "./graph-edits";
+import { interactionsOf, withInteractions } from "./interaction-projection";
 /** A command over the Show graph and its serialisable edit vocabulary. */
 export type ShowGraphCommand = Command<ShowGraph, GraphEdit>;
 
@@ -661,11 +663,16 @@ export function setWiringFieldMapping(
 }
 
 /**
- * Records where the author has dragged an edge's runs (#475).
+ * Records what the author has dragged on an edge (#475).
  *
  * One drag is one entry: the command coalesces on the edge, so a drag that
  * previews as it moves and commits on release leaves a single step to undo
  * rather than one per frame.
+ *
+ * A navigate edge is the projection of an Action, and the projection is
+ * rebuilt from the Actions on every write — so a drag on one is stored on the
+ * Action it came from. Reading is the same either way, because the layout is
+ * projected back onto the edge.
  */
 export function setEdgeLayout(
   edgeId: string,
@@ -695,14 +702,46 @@ export function setEdgeLayout(
 }
 
 function withEdgeLayout(graph: ShowGraph, edgeId: string, layout: EdgeLayout | null): ShowGraph {
+  const actionId = navigateEdgeActionId(edgeId);
+  if (actionId !== null) return withActionLayout(graph, actionId, layout);
+
   const index = edgeIndex(graph, edgeId);
   const edge = graph.edges[index] as GraphEdge;
-  const next = { ...edge };
-  // An edge with every nudge dragged back to nothing is an edge with no
-  // layout, not one carrying an empty record around forever.
+  return replaceEdge(graph, index, withLayout(edge, layout));
+}
+
+/**
+ * The Action's layout, and the navigate edges projected again so the edge the
+ * author is dragging shows it. Writing the edge alone would draw correctly
+ * and then vanish, because storing a graph reprojects every navigate edge.
+ */
+function withActionLayout(
+  graph: ShowGraph,
+  actionId: string,
+  layout: EdgeLayout | null,
+): ShowGraph {
+  const state = interactionsOf(graph);
+  if (!state.actions.some((action) => action.id === actionId)) {
+    throw new Error(`Show graph has no Action "${actionId}".`);
+  }
+  return withInteractions(graph, {
+    ...state,
+    actions: state.actions.map((action) =>
+      action.id === actionId ? withLayout(action, layout) : action,
+    ),
+  });
+}
+
+/**
+ * Whatever carries a layout, carrying this one. Something with every nudge
+ * dragged back to nothing has no layout, rather than an empty record it keeps
+ * around forever.
+ */
+function withLayout<T extends { layout?: EdgeLayout }>(subject: T, layout: EdgeLayout | null): T {
+  const next = { ...subject };
   if (layout === null || Object.keys(layout).length === 0) delete next.layout;
   else next.layout = structuredClone(layout);
-  return replaceEdge(graph, index, next);
+  return next;
 }
 
 /** Sets or clears one graph-owned Source value override. */

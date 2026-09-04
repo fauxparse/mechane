@@ -901,6 +901,10 @@ export const graphActions = pgTable(
     position: integer("position").notNull(),
     kind: text("kind").notNull(),
     targetSceneId: text("target_scene_id").notNull(),
+    // Where the author has dragged the edge this Action projects (#475). It
+    // hangs off the Action because the edge does not outlive a write: navigate
+    // edges are rebuilt from these rows every time a graph is stored.
+    layout: jsonb("layout"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

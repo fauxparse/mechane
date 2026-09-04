@@ -1,0 +1,1 @@
+ALTER TABLE "graph_actions" ADD COLUMN "layout" jsonb;
