@@ -274,6 +274,13 @@
       "when": 1788582573446,
       "tag": "0038_romantic_thunderbird",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1788583969648,
+      "tag": "0039_mixed_hercules",
+      "breakpoints": true
     }
   ]
 }

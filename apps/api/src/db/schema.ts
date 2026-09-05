@@ -678,6 +678,9 @@ export const playerEvents = pgTable(
     // What was observed, not what matched — this is the audit trail (#459),
     // and which key fired cannot be reconstructed after the fact.
     params: jsonb("params"),
+    slotInstancePath: jsonb("slot_instance_path")
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     outcome: text("outcome").notNull(),
     reason: text("reason"),
     resultingSceneId: text("resulting_scene_id"),
@@ -914,6 +917,32 @@ export const graphCues = pgTable(
   ],
 );
 
+export const graphCueParameters = pgTable(
+  "graph_cue_parameters",
+  {
+    id: text("id").notNull(),
+    graphId: text("graph_id")
+      .notNull()
+      .references(() => showGraphs.id, { onDelete: "cascade" }),
+    cueId: text("cue_id").notNull(),
+    name: text("name").notNull(),
+    type: jsonb("type").notNull(),
+    position: integer("position").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.graphId, table.id] }),
+    unique("graph_cue_parameters_name_unique").on(table.graphId, table.cueId, table.name),
+    unique("graph_cue_parameters_position_unique").on(table.graphId, table.cueId, table.position),
+    foreignKey({
+      name: "graph_cue_parameters_cue_fk",
+      columns: [table.graphId, table.cueId],
+      foreignColumns: [graphCues.graphId, graphCues.id],
+    }).onDelete("cascade"),
+  ],
+);
+
 export const graphActions = pgTable(
   "graph_actions",
   {
@@ -988,6 +1017,43 @@ export const graphEventBindings = pgTable(
       name: "graph_event_bindings_element_fk",
       columns: [table.canvasId, table.elementId],
       foreignColumns: [canvasElements.canvasId, canvasElements.id],
+    }).onDelete("cascade"),
+  ],
+);
+
+export const graphSlotEventBindings = pgTable(
+  "graph_slot_event_bindings",
+  {
+    id: text("id").notNull(),
+    graphId: text("graph_id")
+      .notNull()
+      .references(() => showGraphs.id, { onDelete: "cascade" }),
+    slotElementId: text("slot_element_id").notNull(),
+    sourceCueId: text("source_cue_id").notNull(),
+    targetCueId: text("target_cue_id").notNull(),
+    position: integer("position").notNull(),
+    parameterMappings: jsonb("parameter_mappings")
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.graphId, table.id] }),
+    unique("graph_slot_event_bindings_position_unique").on(
+      table.graphId,
+      table.slotElementId,
+      table.position,
+    ),
+    foreignKey({
+      name: "graph_slot_event_bindings_source_cue_fk",
+      columns: [table.graphId, table.sourceCueId],
+      foreignColumns: [graphCues.graphId, graphCues.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "graph_slot_event_bindings_target_cue_fk",
+      columns: [table.graphId, table.targetCueId],
+      foreignColumns: [graphCues.graphId, graphCues.id],
     }).onDelete("cascade"),
   ],
 );

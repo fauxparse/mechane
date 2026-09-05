@@ -100,12 +100,19 @@ export async function fetchPlayerSession(
   return normalizePlayerSession(result.playerSession, API_BASE_URL);
 }
 
+export type BlockInstancePathSegment = {
+  slotElementId: string;
+  index: number;
+};
+
 export type PlayerEventInput = {
   eventId: string;
   publishedGraphVersion: number;
   sceneId: string;
   /** For a keypress this is the Canvas root, which is what Canvas scope means. */
   elementId: string;
+  /** Root-to-leaf Slot instance indices; the server re-resolves them. */
+  slotInstancePath?: readonly BlockInstancePathSegment[];
 } & ({ eventKind: "tap" } | { eventKind: "keypress"; params: { key: string } });
 
 export type PlayerEventResult =

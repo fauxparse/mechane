@@ -147,6 +147,12 @@ export const GetShowGraphQuery = graphql(
           sceneId
           blockId
           actionIds
+          parameters {
+            id
+            name
+            type
+            position
+          }
         }
         actions {
           id
@@ -162,6 +168,14 @@ export const GetShowGraphQuery = graphql(
           params
           cueId
           position
+        }
+        slotEventBindings {
+          id
+          slotElementId
+          sourceCueId
+          targetCueId
+          position
+          parameterMappings
         }
         shapes {
           id

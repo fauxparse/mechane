@@ -420,7 +420,11 @@ describe("graph row persistence", () => {
     });
     const reread = await readGraphRows(showId, "draft");
     expect(reread.cues).toHaveLength(2);
-    expect(reread.cues).toEqual(expect.arrayContaining([...(interactionGraph.cues ?? [])]));
+    expect(reread.cues).toEqual(
+      expect.arrayContaining(
+        (interactionGraph.cues ?? []).map((cue) => ({ ...cue, parameters: [] })),
+      ),
+    );
     expect(reread.actions).toEqual([]);
     expect(reread.edges.filter((edge) => edge.kind === "navigate")).toEqual([]);
   });

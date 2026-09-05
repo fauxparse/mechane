@@ -9,6 +9,7 @@ import type {
   BlockState,
   BlockVariable,
   Cue,
+  CueParameter,
   EdgeLayout,
   EventBinding,
   FlowColor,
@@ -21,6 +22,7 @@ import type {
   Shape,
   ShapeField,
   ShowGraph,
+  SlotEventBinding,
   Type,
 } from "@mechane/domain";
 import {
@@ -46,9 +48,11 @@ import {
   blocks,
   canvases,
   graphActions as graphActionsTable,
+  graphCueParameters,
   graphCues as graphCuesTable,
   graphEdges,
   graphEventBindings,
+  graphSlotEventBindings,
   graphNodeVariables,
   graphNodes,
   shapeFieldRefs,
@@ -72,20 +76,18 @@ export interface PersistedGraphWrite {
 
 /** The transaction type every graph-row operation runs inside. */
 export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
 /** Anything a graph read can run on: the pool or an enclosing transaction. */
 export type Executor = Tx | typeof db;
 type CueRow = typeof graphCuesTable.$inferSelect;
+type CueParameterRow = typeof graphCueParameters.$inferSelect;
 type ActionRow = typeof graphActionsTable.$inferSelect;
 type EventBindingRow = typeof graphEventBindings.$inferSelect;
+type SlotEventBindingRow = typeof graphSlotEventBindings.$inferSelect;
 
 function toAction(row: ActionRow): Action {
   if (row.kind !== "navigate") {
     throw new Error(`Stored Action "${row.id}" has unknown kind "${row.kind}".`);
   }
-  // Pruned on the way out as well as in: a column is a wider door than the
-  // edit vocabulary, and a layout written by a newer editor than this one
-  // should read as no layout rather than reach the geometry.
   const layout = row.layout ? pruneEdgeLayout(row.layout as EdgeLayout) : null;
   return {
     id: row.id,
@@ -96,7 +98,11 @@ function toAction(row: ActionRow): Action {
   };
 }
 
-function toCue(row: CueRow, actionRows: readonly ActionRow[]): Cue {
+function toCue(
+  row: CueRow,
+  parameterRows: readonly CueParameterRow[],
+  actionRows: readonly ActionRow[],
+): Cue {
   const actionIds = actionRows
     .filter((action) => action.cueId === row.id)
     .sort((left, right) => left.position - right.position)
@@ -108,20 +114,22 @@ function toCue(row: CueRow, actionRows: readonly ActionRow[]): Cue {
         ? { kind: "block" as const, blockId: row.blockId }
         : null;
   if (!owner) throw new Error(`Stored Cue "${row.id}" has no owner.`);
-  return {
-    id: row.id,
-    name: row.name,
-    owner,
-    actionIds,
-  };
+  const parameters = parameterRows
+    .filter((parameter) => parameter.cueId === row.id)
+    .sort((left, right) => left.position - right.position)
+    .map((parameter): CueParameter => ({
+      id: parameter.id,
+      name: parameter.name,
+      type: parameter.type as Type,
+      position: parameter.position,
+    }));
+  return { id: row.id, name: row.name, owner, actionIds, parameters };
 }
 
 function toEventBinding(row: EventBindingRow): EventBinding {
   try {
     return decodeEventBinding(row);
   } catch (error) {
-    // Stored rows are trusted-ish, so a bad one is a data problem rather than
-    // a caller problem; report it as this layer's error, not the domain's.
     if (error instanceof InvalidInteractionError) {
       throw new Error(`Stored Event Binding "${row.id}" is invalid: ${error.message}`);
     }
@@ -131,13 +139,23 @@ function toEventBinding(row: EventBindingRow): EventBinding {
 
 function readInteractions(
   cueRows: readonly CueRow[],
+  parameterRows: readonly CueParameterRow[],
   actionRows: readonly ActionRow[],
   bindingRows: readonly EventBindingRow[],
+  slotBindingRows: readonly SlotEventBindingRow[],
 ): InteractionCollections {
   return {
-    cues: cueRows.map((row) => toCue(row, actionRows)),
+    cues: cueRows.map((row) => toCue(row, parameterRows, actionRows)),
     actions: actionRows.map(toAction),
     eventBindings: bindingRows.map(toEventBinding),
+    slotEventBindings: slotBindingRows.map((row) => ({
+      id: row.id,
+      slotElementId: row.slotElementId,
+      sourceCueId: row.sourceCueId,
+      targetCueId: row.targetCueId,
+      position: row.position,
+      parameterMappings: row.parameterMappings as SlotEventBinding["parameterMappings"],
+    })),
   };
 }
 
@@ -409,6 +427,11 @@ export async function readGraphRows(
     .from(graphCuesTable)
     .where(eq(graphCuesTable.graphId, row.id))
     .orderBy(graphCuesTable.id);
+  const cueParameterRows = await executor
+    .select()
+    .from(graphCueParameters)
+    .where(eq(graphCueParameters.graphId, row.id))
+    .orderBy(graphCueParameters.cueId, graphCueParameters.position);
   const actionRows = await executor
     .select()
     .from(graphActionsTable)
@@ -424,7 +447,18 @@ export async function readGraphRows(
       graphEventBindings.position,
       graphEventBindings.id,
     );
-  const interactions = readInteractions(cueRows, actionRows, bindingRows);
+  const slotBindingRows = await executor
+    .select()
+    .from(graphSlotEventBindings)
+    .where(eq(graphSlotEventBindings.graphId, row.id))
+    .orderBy(graphSlotEventBindings.slotElementId, graphSlotEventBindings.position);
+  const interactions = readInteractions(
+    cueRows,
+    cueParameterRows,
+    actionRows,
+    bindingRows,
+    slotBindingRows,
+  );
   const blockValues = await readBlocks(showId, state, row.id, executor);
   const variablesByScene = groupVariables(variableRows);
   return {
@@ -507,9 +541,6 @@ export async function persistGraphRows(
     })
     .returning();
   if (!row) {
-    // `onConflictDoUpdate ... returning()` always yields the row it
-    // inserted or updated; this is here so the rest of the transaction
-    // can talk about `row.id` without a non-null assertion.
     throw new Error(`Failed to upsert the ${state} graph row for Show "${showId}".`);
   }
 
@@ -518,6 +549,8 @@ export async function persistGraphRows(
   await tx.delete(graphEdges).where(eq(graphEdges.graphId, row.id));
   await tx.delete(graphNodeVariables).where(eq(graphNodeVariables.graphId, row.id));
   await tx.delete(sourceFieldDefaults).where(eq(sourceFieldDefaults.graphId, row.id));
+  await tx.delete(graphSlotEventBindings).where(eq(graphSlotEventBindings.graphId, row.id));
+  await tx.delete(graphCueParameters).where(eq(graphCueParameters.graphId, row.id));
   await tx.delete(graphEventBindings).where(eq(graphEventBindings.graphId, row.id));
   await tx.delete(graphCuesTable).where(eq(graphCuesTable.graphId, row.id));
   const nodeIds = graph.nodes.map((node) => node.id);
@@ -628,6 +661,29 @@ export async function persistGraphRows(
         name: cue.name,
       })),
     );
+  }
+  const cueParameters = graphCues.flatMap((cue) =>
+    (cue.parameters ?? []).map((parameter, position) => ({
+      id: parameter.id,
+      graphId: row.id,
+      cueId: cue.id,
+      name: parameter.name,
+      type: parameter.type,
+      position: parameter.position ?? position,
+    })),
+  );
+  if (cueParameters.length > 0) await tx.insert(graphCueParameters).values(cueParameters);
+  const slotBindings = (graph.slotEventBindings ?? []).map((binding) => ({
+    id: binding.id,
+    graphId: row.id,
+    slotElementId: binding.slotElementId,
+    sourceCueId: binding.sourceCueId,
+    targetCueId: binding.targetCueId,
+    position: binding.position,
+    parameterMappings: binding.parameterMappings,
+  }));
+  if (slotBindings.length > 0) {
+    await tx.insert(graphSlotEventBindings).values(slotBindings);
   }
   const graphActions = graph.actions ?? [];
   if (graphActions.length > 0) {
