@@ -682,7 +682,9 @@ export const playerEvents = pgTable(
       .notNull()
       .default(sql`'[]'::jsonb`),
     outcome: text("outcome").notNull(),
+    changed: boolean("changed").notNull().default(false),
     reason: text("reason"),
+    failingActionId: text("failing_action_id"),
     resultingSceneId: text("resulting_scene_id"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
