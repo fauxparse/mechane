@@ -285,6 +285,13 @@ function toEdge(edge: ApiGraphEdge): GraphEdge {
         cueId: edge.cueId ?? null,
         actionId: edge.actionId ?? null,
       };
+    case "UpdateEdge":
+      return {
+        ...base,
+        kind: "update",
+        cueId: edge.cueId ?? "",
+        actionId: edge.actionId ?? "",
+      };
     case "DeviceEdge":
       return { ...base, kind: "device" };
     case "WiringEdge":
@@ -340,15 +347,28 @@ function toCue(cue: ApiShowGraph["cues"][number]): Cue {
   throw new Error(`Cue "${cue.id}" has an invalid owner.`);
 }
 function toAction(action: ApiShowGraph["actions"][number]): Action {
-  if (action.kind !== "navigate" || !action.targetSceneId) {
-    throw new Error(`Action "${action.id}" has an unsupported kind.`);
+  if ("targetSceneId" in action && action.targetSceneId) {
+    return {
+      id: action.id,
+      cueId: action.cueId,
+      kind: "navigate",
+      targetSceneId: action.targetSceneId,
+    };
   }
-  return {
-    id: action.id,
-    cueId: action.cueId,
-    kind: "navigate",
-    targetSceneId: action.targetSceneId,
-  };
+  if ("targetSourceId" in action && action.targetSourceId && "params" in action) {
+    const params = action.params as { fieldPath?: unknown; operation?: unknown };
+    if (!Array.isArray(params.fieldPath) || !params.operation) {
+      throw new Error(`Action "${action.id}" has invalid Update params.`);
+    }
+    return {
+      id: action.id,
+      cueId: action.cueId,
+      kind: "update",
+      target: { sourceId: action.targetSourceId, fieldPath: params.fieldPath },
+      operation: params.operation as Extract<Action, { kind: "update" }>["operation"],
+    };
+  }
+  throw new Error(`Action "${action.id}" has an unsupported kind.`);
 }
 type ApiEventBinding = {
   id: string;

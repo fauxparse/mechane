@@ -102,6 +102,7 @@ import {
   addCue,
   addEventBinding,
   addNavigateAction,
+  addUpdateAction,
   removeAction,
   removeCue,
   removeEventBinding,
@@ -111,6 +112,9 @@ import {
   setEventBindingKey,
   setEventBindingOrder,
   setNavigateTarget,
+  setUpdateOperand,
+  setUpdateOperation,
+  setUpdateTarget,
 } from "./interaction-commands";
 import type { ShowGraphCommand } from "./graph-commands";
 import type { GraphEdit } from "./graph-edits";
@@ -211,6 +215,8 @@ export interface FlatAction {
   cueId: string;
   kind: string;
   targetSceneId?: string | null;
+  targetSourceId?: string | null;
+  params?: unknown;
   /** Where the edge this Action projects has been dragged, if anywhere. */
   layout?: EdgeLayout | null;
 }
@@ -259,6 +265,10 @@ export interface FlatGraphEdit {
   layout?: EdgeLayout | null;
   size?: FlowSize | null;
   value?: unknown;
+  targetSourceId?: string | null;
+  target?: { sourceId: string; fieldPath: readonly string[] } | null;
+  operation?: unknown;
+  operand?: unknown;
   blockVariables?: FlatBlockVariable[] | null;
   perConnection?: boolean | null;
   block?: Block | null;
@@ -598,19 +608,17 @@ function decodeCue(flat: FlatCue): Cue {
   throw new GraphEditCodecError(`Cue "${flat.id}" needs exactly one valid owner.`);
 }
 
-function encodeAction(action: Action): FlatAction {
+function encodeAction(action: Extract<Action, { kind: "navigate" }>): FlatAction {
   return {
     id: action.id,
     cueId: action.cueId,
     kind: action.kind,
     targetSceneId: action.targetSceneId,
-    // A drag on a navigate edge is stored on its Action, so an Action that
-    // travels without its layout is a drag that does not survive the trip.
     layout: action.layout ?? null,
   };
 }
 
-function decodeAction(flat: FlatAction): Action {
+function decodeAction(flat: FlatAction): Extract<Action, { kind: "navigate" }> {
   if (
     !flat ||
     flat.kind !== "navigate" ||
@@ -619,14 +627,54 @@ function decodeAction(flat: FlatAction): Action {
     typeof flat.targetSceneId !== "string" ||
     flat.targetSceneId.length === 0
   ) {
-    throw new GraphEditCodecError("An Action edit needs a valid Navigate Action.");
+    throw new GraphEditCodecError("A Navigate Action edit needs a valid action.");
   }
-  const layout = decodeEdgeLayout(flat.layout);
+  const layout = flat.layout ? pruneEdgeLayout(flat.layout) : null;
   return {
     id: flat.id,
     cueId: flat.cueId,
     kind: "navigate",
     targetSceneId: flat.targetSceneId,
+    ...(layout ? { layout } : {}),
+  };
+}
+function encodeUpdateAction(action: Extract<Action, { kind: "update" }>): FlatAction {
+  return {
+    id: action.id,
+    cueId: action.cueId,
+    kind: action.kind,
+    targetSourceId: action.target.sourceId,
+    params: { fieldPath: action.target.fieldPath, operation: action.operation },
+    layout: action.layout ?? null,
+  };
+}
+function decodeUpdateAction(flat: FlatAction): Extract<Action, { kind: "update" }> {
+  if (
+    flat.kind !== "update" ||
+    typeof flat.id !== "string" ||
+    typeof flat.cueId !== "string" ||
+    typeof flat.targetSourceId !== "string" ||
+    !flat.params ||
+    typeof flat.params !== "object"
+  ) {
+    throw new GraphEditCodecError("An Update Action edit needs a valid action.");
+  }
+  const params = flat.params as { fieldPath?: unknown; operation?: unknown };
+  if (
+    !Array.isArray(params.fieldPath) ||
+    !params.fieldPath.every((segment) => typeof segment === "string") ||
+    !params.operation ||
+    typeof params.operation !== "object"
+  ) {
+    throw new GraphEditCodecError("An Update Action edit needs a target and operation.");
+  }
+  const layout = flat.layout ? pruneEdgeLayout(flat.layout) : null;
+  return {
+    id: flat.id,
+    cueId: flat.cueId,
+    kind: "update",
+    target: { sourceId: flat.targetSourceId, fieldPath: params.fieldPath },
+    operation: params.operation as Extract<Action, { kind: "update" }>["operation"],
     ...(layout ? { layout } : {}),
   };
 }
@@ -716,6 +764,21 @@ export function decodeEdge(flat: FlatGraphEdge): GraphEdge {
         kind: "navigate",
         cueId: flat.cueId ?? null,
         actionId: flat.actionId ?? null,
+      };
+    case "update":
+      if (
+        flat.cueId === null ||
+        flat.cueId === undefined ||
+        flat.actionId === null ||
+        flat.actionId === undefined
+      ) {
+        throw new GraphEditCodecError(`Update edge "${flat.id}" needs Cue and Action ids.`);
+      }
+      return {
+        ...base,
+        kind: "update",
+        cueId: flat.cueId,
+        actionId: flat.actionId,
       };
     case "device":
       return { ...base, kind: "device" };
@@ -1249,6 +1312,47 @@ export const GRAPH_EDIT_CODECS: { [T in GraphEdit["type"]]: GraphEditCodec<T> } 
     decode: (flat) => ({
       type: GRAPH_COMMAND_TYPES.addNavigateAction,
       action: decodeAction(required(flat, "action", flat.action)),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.addUpdateAction]: {
+    command: (edit) => addUpdateAction(edit.action),
+    encode: (edit) => ({ type: edit.type, action: encodeUpdateAction(edit.action) }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.addUpdateAction,
+      action: decodeUpdateAction(required(flat, "action", flat.action)),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.setUpdateTarget]: {
+    command: (edit) => setUpdateTarget(edit.actionId, edit.target),
+    encode: (edit) => ({ type: edit.type, actionId: edit.actionId, target: edit.target }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.setUpdateTarget,
+      actionId: required(flat, "actionId", flat.actionId),
+      target: required(flat, "target", flat.target),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.setUpdateOperation]: {
+    command: (edit) => setUpdateOperation(edit.actionId, edit.operation),
+    encode: (edit) => ({ type: edit.type, actionId: edit.actionId, operation: edit.operation }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.setUpdateOperation,
+      actionId: required(flat, "actionId", flat.actionId),
+      operation: required(flat, "operation", flat.operation) as Extract<
+        Action,
+        { kind: "update" }
+      >["operation"],
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.setUpdateOperand]: {
+    command: (edit) => setUpdateOperand(edit.actionId, edit.operand),
+    encode: (edit) => ({ type: edit.type, actionId: edit.actionId, operand: edit.operand }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.setUpdateOperand,
+      actionId: required(flat, "actionId", flat.actionId),
+      operand: required(flat, "operand", flat.operand) as Extract<
+        Extract<Action, { kind: "update" }>["operation"],
+        { kind: "set" | "adjust" }
+      >["operand"],
     }),
   },
   [GRAPH_COMMAND_TYPES.setNavigateTarget]: {

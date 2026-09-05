@@ -11,6 +11,7 @@ import type { EdgeKind, GraphEdge, ShowGraph, ValuePath } from "@mechane/domain"
 const KIND_LABEL: Record<EdgeKind, string> = {
   wiring: "Wiring",
   navigate: "Navigate",
+  update: "Update",
   device: "Device",
 };
 

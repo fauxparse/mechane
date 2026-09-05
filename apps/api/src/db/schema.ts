@@ -953,10 +953,10 @@ export const graphActions = pgTable(
     cueId: text("cue_id").notNull(),
     position: integer("position").notNull(),
     kind: text("kind").notNull(),
-    targetSceneId: text("target_scene_id").notNull(),
-    // Where the author has dragged the edge this Action projects (#475). It
-    // hangs off the Action because the edge does not outlive a write: navigate
-    // edges are rebuilt from these rows every time a graph is stored.
+    targetSceneId: text("target_scene_id"),
+    targetSourceId: text("target_source_id"),
+    params: jsonb("params"),
+    // Where the author has dragged this Action's projected edge.
     layout: jsonb("layout"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -974,6 +974,16 @@ export const graphActions = pgTable(
       columns: [table.graphId, table.targetSceneId],
       foreignColumns: [graphNodes.graphId, graphNodes.id],
     }).onDelete("cascade"),
+    foreignKey({
+      name: "graph_actions_target_source_fk",
+      columns: [table.graphId, table.targetSourceId],
+      foreignColumns: [graphNodes.graphId, graphNodes.id],
+    }).onDelete("cascade"),
+    check(
+      "graph_actions_target_by_kind",
+      sql`(${table.kind} = 'navigate' and ${table.targetSceneId} is not null and ${table.targetSourceId} is null)
+        or (${table.kind} = 'update' and ${table.targetSceneId} is null and ${table.targetSourceId} is not null)`,
+    ),
   ],
 );
 

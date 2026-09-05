@@ -67,6 +67,8 @@ export function resolveGraphEdgeType(edge: Pick<GraphEdge, "kind">): string {
       return "WiringEdge";
     case "navigate":
       return "NavigateEdge";
+    case "update":
+      return "UpdateEdge";
     case "device":
       return "DeviceEdge";
     default:
@@ -218,7 +220,12 @@ export function serializeShowGraph(graph: StoredShowGraph) {
       id: action.id,
       cueId: action.cueId,
       kind: action.kind,
-      targetSceneId: action.targetSceneId,
+      targetSceneId: action.kind === "navigate" ? action.targetSceneId : null,
+      targetSourceId: action.kind === "update" ? action.target.sourceId : null,
+      params:
+        action.kind === "update"
+          ? { fieldPath: action.target.fieldPath, operation: action.operation }
+          : null,
       layout: action.layout ?? null,
     })),
     eventBindings: (graph.eventBindings ?? []).map((binding) => ({
@@ -286,7 +293,7 @@ function serializeEdge(edge: GraphEdge) {
     // Variable is fed shouldn't have to know that.
     targetVariableId:
       edge.kind === "wiring" && edge.targetPath.length > 0 ? wiringTargetVariableId(edge) : null,
-    cueId: edge.kind === "navigate" ? edge.cueId : null,
-    actionId: edge.kind === "navigate" ? edge.actionId : null,
+    cueId: edge.kind === "navigate" || edge.kind === "update" ? edge.cueId : null,
+    actionId: edge.kind === "navigate" || edge.kind === "update" ? edge.actionId : null,
   };
 }

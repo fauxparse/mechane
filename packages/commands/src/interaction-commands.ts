@@ -1,4 +1,11 @@
-import type { Action, Cue, EventBinding, ShowGraph } from "@mechane/domain";
+import type {
+  Action,
+  Cue,
+  EventBinding,
+  ShowGraph,
+  UpdateOperand,
+  UpdateOperation,
+} from "@mechane/domain";
 import { isBindableKey } from "@mechane/domain";
 
 import { capturing, composite } from "./command";
@@ -207,13 +214,13 @@ export function removeCue(cueId: string, label = "Delete Cue"): ShowGraphCommand
       }
       return withInteractions(graph, current);
     },
-    edits: [{ type: GRAPH_COMMAND_TYPES.removeCue, cueId }],
-    restoreEdits: (removed) => [
+    restoreEdits: (removed): GraphEdit[] => [
       { type: GRAPH_COMMAND_TYPES.addCue, cue: removed.cue },
-      ...removed.actions.map((item) => ({
-        type: GRAPH_COMMAND_TYPES.addNavigateAction,
-        action: item.value,
-      })),
+      ...removed.actions.flatMap((item): GraphEdit[] =>
+        item.value.kind === "navigate"
+          ? [{ type: GRAPH_COMMAND_TYPES.addNavigateAction, action: item.value }]
+          : [{ type: GRAPH_COMMAND_TYPES.addUpdateAction, action: item.value }],
+      ),
       ...removed.eventBindings.map((item) => ({
         type: GRAPH_COMMAND_TYPES.addEventBinding,
         binding: item.value,
@@ -252,6 +259,139 @@ export function addNavigateAction(
     },
     edits: [{ type: GRAPH_COMMAND_TYPES.addNavigateAction, action }],
     restoreEdits: () => [{ type: GRAPH_COMMAND_TYPES.removeAction, actionId: action.id }],
+  });
+}
+
+export function addUpdateAction(
+  action: Extract<Action, { kind: "update" }>,
+  label = "Add Update Action",
+): ShowGraphCommand {
+  return capturing<ShowGraph, null, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.addUpdateAction,
+    label,
+    scope: "selection",
+    capture: () => null,
+    apply: (graph) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        actions: [...interactions(graph).actions, action],
+      }),
+    restore: (graph) => graph,
+    edits: [{ type: GRAPH_COMMAND_TYPES.addUpdateAction, action }],
+    restoreEdits: () => [{ type: GRAPH_COMMAND_TYPES.removeAction, actionId: action.id }],
+  });
+}
+
+export function setUpdateTarget(
+  actionId: string,
+  target: Extract<Action, { kind: "update" }>["target"],
+): ShowGraphCommand {
+  return capturing<ShowGraph, Extract<Action, { kind: "update" }>["target"], GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setUpdateTarget,
+    label: "Change Update Target",
+    scope: "selection",
+    capture: (graph) => {
+      const action = actionOrThrow(graph, actionId);
+      if (action.kind !== "update") throw new Error(`Action "${actionId}" is not an Update.`);
+      return action.target;
+    },
+    apply: (graph) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        actions: interactions(graph).actions.map((action) =>
+          action.id === actionId && action.kind === "update" ? { ...action, target } : action,
+        ),
+      }),
+    restore: (graph, previous) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        actions: interactions(graph).actions.map((action) =>
+          action.id === actionId && action.kind === "update"
+            ? { ...action, target: previous }
+            : action,
+        ),
+      }),
+    edits: [{ type: GRAPH_COMMAND_TYPES.setUpdateTarget, actionId, target }],
+    restoreEdits: (previous) => [
+      { type: GRAPH_COMMAND_TYPES.setUpdateTarget, actionId, target: previous },
+    ],
+  });
+}
+
+export function setUpdateOperation(actionId: string, operation: UpdateOperation): ShowGraphCommand {
+  return capturing<ShowGraph, UpdateOperation, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setUpdateOperation,
+    label: "Change Update Operation",
+    scope: "selection",
+    capture: (graph) => {
+      const action = actionOrThrow(graph, actionId);
+      if (action.kind !== "update") throw new Error(`Action "${actionId}" is not an Update.`);
+      return action.operation;
+    },
+    apply: (graph) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        actions: interactions(graph).actions.map((action) =>
+          action.id === actionId && action.kind === "update" ? { ...action, operation } : action,
+        ),
+      }),
+    restore: (graph, previous) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        actions: interactions(graph).actions.map((action) =>
+          action.id === actionId && action.kind === "update"
+            ? { ...action, operation: previous }
+            : action,
+        ),
+      }),
+    edits: [{ type: GRAPH_COMMAND_TYPES.setUpdateOperation, actionId, operation }],
+    restoreEdits: (previous) => [
+      { type: GRAPH_COMMAND_TYPES.setUpdateOperation, actionId, operation: previous },
+    ],
+  });
+}
+export function setUpdateOperand(actionId: string, operand: UpdateOperand): ShowGraphCommand {
+  return capturing<ShowGraph, UpdateOperation, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setUpdateOperand,
+    label: "Change Update Operand",
+    scope: "selection",
+    capture: (graph) => {
+      const action = actionOrThrow(graph, actionId);
+      if (action.kind !== "update" || action.operation.kind === "reset") {
+        throw new Error(`Action "${actionId}" has no Update operand.`);
+      }
+      return action.operation;
+    },
+    apply: (graph) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        actions: interactions(graph).actions.map((action) => {
+          if (
+            action.id !== actionId ||
+            action.kind !== "update" ||
+            action.operation.kind === "reset"
+          ) {
+            return action;
+          }
+          return {
+            ...action,
+            operation: { ...action.operation, operand },
+          };
+        }),
+      }),
+    restore: (graph, previous) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        actions: interactions(graph).actions.map((action) =>
+          action.id === actionId && action.kind === "update"
+            ? { ...action, operation: previous }
+            : action,
+        ),
+      }),
+    edits: [{ type: GRAPH_COMMAND_TYPES.setUpdateOperand, actionId, operand }],
+    restoreEdits: (previous) => [
+      { type: GRAPH_COMMAND_TYPES.setUpdateOperation, actionId, operation: previous },
+    ],
   });
 }
 
@@ -331,8 +471,10 @@ export function removeAction(actionId: string, label = "Delete Action"): ShowGra
       });
     },
     edits: [{ type: GRAPH_COMMAND_TYPES.removeAction, actionId }],
-    restoreEdits: (removed) => [
-      { type: GRAPH_COMMAND_TYPES.addNavigateAction, action: removed.action },
+    restoreEdits: (removed): GraphEdit[] => [
+      removed.action.kind === "navigate"
+        ? { type: GRAPH_COMMAND_TYPES.addNavigateAction, action: removed.action }
+        : { type: GRAPH_COMMAND_TYPES.addUpdateAction, action: removed.action },
       {
         type: GRAPH_COMMAND_TYPES.setCueActionOrder,
         cueId: removed.cue.id,

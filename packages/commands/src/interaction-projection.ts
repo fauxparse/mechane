@@ -8,7 +8,7 @@
 // changes an Action.
 
 import type { Action, Cue, EventBinding, GraphEdge, ShowGraph } from "@mechane/domain";
-import { projectNavigateEdges } from "@mechane/domain";
+import { projectNavigateEdges, projectUpdateEdges } from "@mechane/domain";
 
 export type InteractionState = Pick<ShowGraph, "cues" | "actions" | "eventBindings">;
 
@@ -29,9 +29,12 @@ export function interactionsOf(graph: ShowGraph): RequiredInteractionState {
 
 /** The graph with `next` in it, and its navigate edges projected afresh. */
 export function withInteractions(graph: ShowGraph, next: InteractionState): ShowGraph {
-  const projected = projectNavigateEdges({ ...graph, cues: next.cues, actions: next.actions });
+  const projected = [
+    ...projectNavigateEdges({ ...graph, cues: next.cues, actions: next.actions }),
+    ...projectUpdateEdges({ ...graph, cues: next.cues, actions: next.actions }),
+  ];
   const edges: GraphEdge[] = [
-    ...graph.edges.filter((edge) => edge.kind !== "navigate"),
+    ...graph.edges.filter((edge) => edge.kind !== "navigate" && edge.kind !== "update"),
     ...projected,
   ];
   return {

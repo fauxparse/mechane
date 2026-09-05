@@ -29,7 +29,7 @@ import type {
   SlotEventBinding,
 } from "./interactions";
 import type { EdgeLayout } from "./edge-layout";
-import { assertValidInteractions, projectNavigateEdges } from "./interactions";
+import { assertValidInteractions, projectNavigateEdges, projectUpdateEdges } from "./interactions";
 import type { EntityName } from "./id";
 import type { Shape, Type } from "./shapes";
 import { assertValidShapes, InvalidShapeError } from "./shapes";
@@ -73,8 +73,8 @@ export function assertValidFlowColor(value: string): FlowColor {
   return value;
 }
 
-/** The kinds of edge. All three run producer → consumer. */
-export const EDGE_KINDS = ["wiring", "navigate", "device"] as const;
+/** The kinds of edge. All run producer → consumer. */
+export const EDGE_KINDS = ["wiring", "navigate", "update", "device"] as const;
 export type EdgeKind = (typeof EDGE_KINDS)[number];
 
 /**
@@ -284,21 +284,19 @@ export interface NavigateEdge extends BaseEdge {
   actionId: string | null;
 }
 
-/**
- * Flow | top-level Scene → Device: "this Device displays whatever's here."
- *
- * The consumer's `perConnection` decides how many times what's at the
- * producer end is instantiated: a shared Device drives one instance of
- * that Flow, a per-connection Device drives one per connected phone (#45).
- * Nothing here enforces that — it's the reading #29 will build Flow-local
- * Source scoping on, recorded so that ticket inherits the meaning rather
- * than re-deciding it.
- */
 export interface DeviceEdge extends BaseEdge {
   kind: "device";
 }
 
-export type GraphEdge = WiringEdge | NavigateEdge | DeviceEdge;
+export interface UpdateEdge extends BaseEdge {
+  kind: "update";
+  sourcePath: string[];
+  targetPath: string[];
+  cueId: string;
+  actionId: string;
+}
+
+export type GraphEdge = WiringEdge | NavigateEdge | UpdateEdge | DeviceEdge;
 
 /**
  * The Scene Variable a wiring edge lands on — the head of its target path.
@@ -385,7 +383,8 @@ export type GraphViolation =
   | "wiringCycle"
   | "missingSourceType"
   | "invalidNodeColor"
-  | "invalidNavigateProjection";
+  | "invalidNavigateProjection"
+  | "invalidUpdateEndpoints";
 
 export class InvalidShowGraphError extends Error {
   readonly reason: GraphViolation;
@@ -737,6 +736,17 @@ function assertValidNavigateEdge(edge: NavigateEdge, nodes: Map<string, GraphNod
   }
 }
 
+function assertValidUpdateEdge(edge: UpdateEdge, nodes: Map<string, GraphNode>): void {
+  const source = requireNode(nodes, edge.sourceId, `Update edge "${edge.id}"`);
+  const target = requireNode(nodes, edge.targetId, `Update edge "${edge.id}"`);
+  if (source.kind !== "scene" || target.kind !== "source") {
+    throw new InvalidShowGraphError(
+      "invalidUpdateEndpoints",
+      `Update edge "${edge.id}" must run from a Scene to a Source.`,
+    );
+  }
+}
+
 function assertValidDeviceEdge(edge: DeviceEdge, nodes: Map<string, GraphNode>): void {
   const producer = requireNode(nodes, edge.sourceId, `Device edge "${edge.id}"`);
   if (producer.kind === "flow") {
@@ -876,8 +886,8 @@ function assertNoWiringCycles(edges: GraphEdge[]): void {
 
 function assertNavigateProjection(graph: ShowGraph, interactions: InteractionCollections): void {
   if (interactions.actions.length === 0) return;
-  const expected = projectNavigateEdges(graph);
-  const actual = graph.edges.filter((edge) => edge.kind === "navigate");
+  const expected = [...projectNavigateEdges(graph), ...projectUpdateEdges(graph)];
+  const actual = graph.edges.filter((edge) => edge.kind === "navigate" || edge.kind === "update");
   if (
     actual.length !== expected.length ||
     expected.some((edge) => {
@@ -888,15 +898,13 @@ function assertNavigateProjection(graph: ShowGraph, interactions: InteractionCol
         candidate.targetId !== edge.targetId ||
         candidate.cueId !== edge.cueId ||
         candidate.actionId !== edge.actionId ||
-        // The layout is projected too, from the Action that keeps it. An edge
-        // carrying one its Action doesn't is a drag about to be thrown away.
         JSON.stringify(candidate.layout ?? null) !== JSON.stringify(edge.layout ?? null)
       );
     })
   ) {
     throw new InvalidShowGraphError(
       "invalidNavigateProjection",
-      "Navigate edges must be the materialized projection of the interaction Actions.",
+      "Interaction edges must be the materialized projection of interaction Actions.",
     );
   }
 }
@@ -972,6 +980,9 @@ export function assertValidShowGraph(graph: ShowGraph): ShowGraph {
       case "navigate":
         assertNoPaths(edge);
         assertValidNavigateEdge(edge, nodes);
+        break;
+      case "update":
+        assertValidUpdateEdge(edge, nodes);
         break;
       case "device":
         assertNoPaths(edge);
