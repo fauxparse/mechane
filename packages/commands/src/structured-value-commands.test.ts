@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Shape, ShowGraph } from "@mechane/domain";
-import { isShapeCollectionInstance } from "@mechane/domain";
+import { isArrayStructuredValueTemplate, isShapeStructuredValueTemplate } from "@mechane/domain";
 import { applyGraphEdits } from "./graph-edits";
 import { setSourceFieldDefault } from "./graph-commands";
 
@@ -25,19 +25,19 @@ const graph: ShowGraph = {
   edges: [],
 };
 
-describe("Shape collection command boundary", () => {
+describe("Structured Value command boundary", () => {
   it("mints IDs once and keeps them in the undoable graph value", () => {
     const value = [{ name: "Ada" }, { name: "Grace" }];
     const applied = setSourceFieldDefault("source_people", [], value).apply(graph).state;
     const first = applied.sourceFieldDefaults?.[0]?.value;
-    if (!Array.isArray(first) || !isShapeCollectionInstance(first[0])) {
-      throw new Error("Expected normalized Shape collection instances.");
+    if (!isArrayStructuredValueTemplate(first)) {
+      throw new Error("Expected a normalized array template.");
     }
-    const ids = first.map((item) => {
-      if (!isShapeCollectionInstance(item)) throw new Error("Expected Shape collection instance.");
+    const ids = first.items.map((item) => {
+      if (!isShapeStructuredValueTemplate(item)) throw new Error("Expected a Shape template.");
       return item.id;
     });
-    expect(new Set(ids).size).toBe(2);
+    expect(new Set([first.id, ...ids]).size).toBe(3);
     expect(
       applyGraphEdits(applied, [
         {

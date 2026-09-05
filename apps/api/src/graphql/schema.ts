@@ -80,6 +80,7 @@ function serializeRun(run: Awaited<ReturnType<typeof startRun>>) {
     startedAt: run.startedAt.toISOString(),
     endedAt: run.endedAt?.toISOString() ?? null,
     sourceValues: run.sourceValues,
+    structuredValues: run.structuredValues,
   };
 }
 
@@ -255,6 +256,7 @@ export const schema = createSchema<GraphQLContext>({
       startedAt: String!
       endedAt: String
       sourceValues: JSON!
+      structuredValues: JSON!
     }
 
     """

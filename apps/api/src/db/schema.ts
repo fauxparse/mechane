@@ -95,6 +95,7 @@ export const shows = pgTable("shows", {
     .references(() => user.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  stateSequence: integer("state_sequence").notNull().default(0),
 });
 
 /** Provider-neutral durable binary identity and lifecycle. */
@@ -189,16 +190,39 @@ export const runs = pgTable(
     status: text("status").notNull().default("active"),
     startedAt: timestamp("started_at").notNull().defaultNow(),
     endedAt: timestamp("ended_at"),
-    // A Run owns the live values for its Sources. This starts as a snapshot of
-    // the published graph's defaults; explicit Source value edits in the
-    // director are synchronized into the active Run immediately.
-    sourceValues: jsonb("source_values")
-      .notNull()
-      .default(sql`'{}'::jsonb`),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => [index("runs_show_status_idx").on(table.showId, table.status)],
+);
+
+export const runSourceValues = pgTable(
+  "run_source_values",
+  {
+    runId: text("run_id")
+      .notNull()
+      .references(() => runs.id, { onDelete: "cascade" }),
+    sourceId: text("source_id").notNull(),
+    value: jsonb("value").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.runId, table.sourceId] })],
+);
+
+export const runStructuredValues = pgTable(
+  "run_structured_values",
+  {
+    runId: text("run_id")
+      .notNull()
+      .references(() => runs.id, { onDelete: "cascade" }),
+    structuredValueId: text("structured_value_id").notNull(),
+    kind: text("kind").notNull(),
+    type: jsonb("type").notNull(),
+    payload: jsonb("payload").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.runId, table.structuredValueId] }),
+    check("run_structured_values_kind", sql`${table.kind} in ('shape', 'array')`),
+  ],
 );
 
 export const userSettings = pgTable("user_settings", {

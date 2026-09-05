@@ -31,7 +31,7 @@ import {
   InvalidInteractionError,
   isEdgeKind,
   isWiringConversion,
-  normalizeShapeCollectionInstances,
+  normalizeStructuredValueTemplate,
   projectNavigateEdges,
   pruneEdgeLayout,
   typeAtPath,
@@ -478,7 +478,7 @@ export async function persistGraphRows(
       return type
         ? {
             ...sourceDefault,
-            value: normalizeShapeCollectionInstances(sourceDefault.value, type, graph.shapes ?? []),
+            value: normalizeStructuredValueTemplate(sourceDefault.value, type, graph.shapes ?? []),
           }
         : sourceDefault;
     }),

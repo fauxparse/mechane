@@ -181,6 +181,7 @@ export const GetPlayerSessionQuery: TadaDocumentNode<any, any> = graphql(
           startedAt
           endedAt
           sourceValues
+          structuredValues
         }
         graph {
           ...PlayerGraphFields

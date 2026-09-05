@@ -44,7 +44,7 @@ export const ID_PREFIXES = {
   variable: "v",
   edge: "e",
   run: "n",
-  shapeInstance: "x",
+  structuredValue: "x",
   cue: "q",
   action: "j",
   eventBinding: "k",
@@ -70,7 +70,7 @@ const ENTITY_BY_PREFIX = {
   v: "variable",
   e: "edge",
   n: "run",
-  x: "shapeInstance",
+  x: "structuredValue",
   q: "cue",
   j: "action",
   k: "eventBinding",
@@ -102,7 +102,7 @@ export type FlowId = Id<"flow">;
 export type SourceId = Id<"source">;
 export type RunId = Id<"run">;
 export type TransformerId = Id<"transformer">;
-export type ShapeInstanceId = Id<"shapeInstance">;
+export type StructuredValueId = Id<"structuredValue">;
 export type DeviceId = Id<"device">;
 export type VariableId = Id<"variable">;
 export type EdgeId = Id<"edge">;

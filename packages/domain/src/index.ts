@@ -16,6 +16,7 @@ export * from "./scene-variable-values";
 export * from "./runs";
 export * from "./run-errors";
 export * from "./shapes";
+export * from "./structured-values";
 export * from "./device-qr";
 export * from "./property-values";
 export * from "./element-properties";

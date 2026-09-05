@@ -56,7 +56,7 @@ import {
   assertValidShapeType,
   assertValidShapes,
   duplicateBlock as duplicateBlockResource,
-  normalizeShapeCollectionInstances,
+  normalizeStructuredValueTemplate,
   navigateEdgeActionId,
   renameBlock as renameBlockResource,
   shapeReferencesShape,
@@ -799,7 +799,7 @@ function withSourceFieldDefault(
   const normalizedValue =
     value === null || sourceType === null || sourceType === undefined
       ? value
-      : normalizeShapeCollectionInstances(value, sourceType, graph.shapes ?? []);
+      : normalizeStructuredValueTemplate(value, sourceType, graph.shapes ?? []);
   const next =
     normalizedValue === null
       ? remaining

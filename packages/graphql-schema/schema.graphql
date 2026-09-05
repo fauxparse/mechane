@@ -19,6 +19,7 @@ type Run {
   startedAt: String!
   endedAt: String
   sourceValues: JSON!
+  structuredValues: JSON!
 }
 
 """

@@ -123,6 +123,7 @@ export async function readPlayerSession(pairingCode: string) {
           startedAt: run.startedAt.toISOString(),
           endedAt: run.endedAt?.toISOString() ?? null,
           sourceValues: run.sourceValues,
+          structuredValues: run.structuredValues,
         }
       : null,
     flow,

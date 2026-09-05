@@ -30,7 +30,12 @@ function PlayerCanvas({
       graph: session.graph,
       blocks: session.blocks ?? [],
       imageAssets: session.imageAssets,
-      owner: { kind: "scene", scene: session.scene, sourceValues: session.run.sourceValues },
+      owner: {
+        kind: "scene",
+        scene: session.scene,
+        sourceValues: session.run.sourceValues,
+        structuredValues: session.run.structuredValues,
+      },
       mode: "player",
     });
   }, [session]);

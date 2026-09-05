@@ -9,6 +9,7 @@ export const GetActiveRunQuery = graphql(`
       startedAt
       endedAt
       sourceValues
+      structuredValues
     }
   }
 `);
@@ -22,6 +23,7 @@ export const StartRunMutation = graphql(`
       startedAt
       endedAt
       sourceValues
+      structuredValues
     }
   }
 `);
@@ -35,6 +37,7 @@ export const EndRunMutation = graphql(`
       startedAt
       endedAt
       sourceValues
+      structuredValues
     }
   }
 `);
