@@ -257,6 +257,24 @@ _Avoid_: Step, command
 
 What kind of value something holds. Every Source, Variable and Transformer output has a Type — there is one type system across the whole Show, not a separate one per concept. A Type is either simple (text, number, boolean, image, color, date, datetime), a list of some other Type, or a Shape.
 _Avoid_: Kind (used for the varieties of graph node), data type
+### Blob
+
+Immutable normalized binary content identified by its verified content identity. A Blob can be referenced by one or more Show-owned assets, but it is not itself visible in a Show's gallery or value graph.
+
+_Avoid_: file, upload, object
+
+### Image Asset
+
+A reusable, Show-owned image record that references a Blob and carries image metadata, including intrinsic dimensions and asset-wide alt text. Its bytes and delivery identity are immutable; its gallery state and alt metadata may change without changing the Blob.
+
+_Avoid_: Image Value, image file, upload
+
+### Image Value
+
+A read-only reference to an Image Asset that can flow through Sources, Variables, Transformers, and Element properties. It exposes the asset's delivery information and descriptive metadata to consumers without exposing storage or processing internals; an absent image has no Image Value rather than an empty URL.
+
+_Avoid_: Image Asset, image URL
+
 
 ### Shape
 
@@ -332,6 +350,13 @@ _Avoid_: Binding (acceptable as a synonym), linking
 - A **Source**, a **Variable** and a **Transformer**'s output each have a **Type**
 - A **Shape** is a **Type**, made of an ordered list of **Fields**, each of which has its own **Type**
 - A **Shape** may be reused by any number of **Sources**, **Variables** and **Transformers** within its **Show**
+- A **Blob** may be referenced by one or more **Image Assets** and is purgeable only when no retained reference remains
+- An **Image Asset** remains gallery-visible independently of graph references until it is soft-deleted
+- A soft-deleted **Image Asset** continues resolving for existing **Element**, **Variable**, and **Run** references during retention
+- Asset metadata used by a draft, published Show, or active **Run** follows that owner's snapshot boundary
+- A **Show** owns zero or more **Image Assets**, which may be reused by its **Image Values**
+- An **Image Value** references one **Image Asset** and can flow through **Sources**, **Variables**, and **Transformers**
+- An **Image Variable** may carry authoring guidance for suggested dimensions without changing the identity of its **Image Asset**
 - Audience members connect their phones to a **Device** by scanning a QR code or entering an alphanumeric code; their individual sessions are not tracked — interactions are aggregated
 - A **Show** has zero or more **Runs**; starting a **Run** resets live data to defaults, and **Devices** connect to the active **Run**
 - A **Show** has zero or more **Run Errors**; each names the **Run** it happened in, or none when it preceded one, and outlives that Run
