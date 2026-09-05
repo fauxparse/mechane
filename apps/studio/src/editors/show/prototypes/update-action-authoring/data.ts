@@ -2,7 +2,7 @@
  * PROTOTYPE — throwaway. Not production code.
  *
  * Mock scenario for the Update Action authoring prototype, mirroring the
- * seeded Hamlet audience-vote show. The route being authored is:
+ * seeded Voting show. The route being authored is:
  *
  *   Candidate Block: Element tap
  *     -> Block Cue `selected(candidate)`        (actionless, typed output)

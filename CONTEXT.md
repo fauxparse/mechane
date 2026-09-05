@@ -233,6 +233,14 @@ A typed, named value carried by a Cue invocation. Bindings map values into Cue
 Parameters explicitly; a Scene-owned Cue's Actions may read its Parameters.
 Structured values retain their reference identity through every relay.
 
+### Cue Invocation
+
+One runtime attempt to execute a Scene-owned Cue with concrete Parameter
+values. A Cue Invocation is atomic: its Actions execute in order against one
+transactional view, later Actions observe earlier writes, and any failed
+Action rolls back the whole invocation. A successful invocation may make no
+state change.
+
 ### Slot Event Binding
 
 Authored configuration connecting a Cue exposed by a Slot's contained Block
@@ -247,6 +255,42 @@ navigating to a Scene, evaluating an expression, or updating a Source. A
 Scene-owned Cue's Actions execute in their declared order; Block-owned Cues
 never own Actions.
 _Avoid_: Step, command
+
+### Update Action
+
+An Action that sets, resets, or numerically adjusts a Current Source Value.
+Assigning a Source root rebinds it; assigning through a Structured Value
+reference mutates the canonical instance. Update Actions never change a Source
+Default.
+
+### Player Invalidation
+
+A content-free signal telling one Device that the state it is displaying is
+stale. It carries no values; the Device responds by refetching an authoritative
+snapshot. A Device receives one at most once per Cue Invocation, however many
+Actions that invocation ran.
+
+### Device Read Set
+
+The Sources a Device can currently observe: those reachable through wiring from
+what it is displaying. A Shared Device's read set comes from its current Scene;
+an Audience Device's is the union across every Scene in its driving Flow,
+because the Device navigates independently of the server. A Device displaying no
+Scene has an empty read set.
+
+### Changed Source Set
+
+The Sources a single Cue Invocation altered, including every Source that reaches
+a mutated Structured Value Instance through aliases. A Device is invalidated
+when its Device Read Set intersects the Changed Source Set, or when its own
+navigation changed.
+
+### Show State Sequence
+
+A monotonically increasing marker of a Show's observable state, spanning both
+its published graph and its active Run. Every snapshot, and every Player
+Invalidation, carries the Sequence it describes, so a Device can tell whether a
+signal concerns state it already holds.
 
 ### Type
 
@@ -291,6 +335,8 @@ _Avoid_: Binding (acceptable as a synonym), linking
 - A **Canvas** belongs to one **Scene** or **Block** and contains that owner's hierarchy of **Elements**
 - A **Flow** groups one or more **Scenes** and has an optional design-time default **Scene**; active runtime Scene state belongs to a Run-scoped Device instance
 - A **Device** displays one **Scene** at a time
+- A **Device** is invalidated when its **Device Read Set** intersects a **Cue Invocation**'s **Changed Source Set**, or when its own navigation changed; publishing and starting or ending a **Run** invalidate every **Device**
+- A **Cue Invocation** that changes no state, or that fails and rolls back, invalidates no **Device**
 - A **Source** or **Transformer** is wired to a **Variable** via the Show graph
 - A **Wiring** edge has at most one **Wiring Conversion**; without one, the producer and consumer **Types** must be directly compatible
 - A **Run** materializes each published **Source Default** into a separate **Current Source Value**; live Actions and Studio edits change the current value immediately, while default edits follow draft/publish
