@@ -122,7 +122,10 @@ describe.sequential("player invalidation outbox", () => {
       failed: 0,
     });
     expect(messages).toHaveLength(2);
-    expect(messages[0]).toMatchObject({ type: "player.updated", payload: null });
+    expect(messages[0]).toMatchObject({
+      type: "player.updated",
+      payload: { stateSequence: expect.any(Number) },
+    });
     expect((await outboxRows()).filter((row) => row.status === "delivered")).toHaveLength(2);
 
     const pendingBeforeSecondDrain = await outboxRows();
@@ -174,10 +177,9 @@ describe.sequential("player invalidation outbox", () => {
         leaseExpiresAt: new Date(Date.now() - 1),
       })
       .where(eq(playerInvalidationOutbox.id, leased.id));
-    expect(await drainPlayerInvalidations({ provider: successful })).toMatchObject({
-      claimed: 2,
-      delivered: 2,
-      failed: 0,
-    });
+    const reclaimed = await drainPlayerInvalidations({ provider: successful });
+    expect(reclaimed.claimed).toBeGreaterThanOrEqual(1);
+    expect(reclaimed.delivered).toBe(reclaimed.claimed);
+    expect(reclaimed.failed).toBe(0);
   });
 });

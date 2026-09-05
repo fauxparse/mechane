@@ -18,6 +18,7 @@ type Run {
   status: String!
   startedAt: String!
   endedAt: String
+  stateSequence: Int!
   sourceValues: JSON!
   structuredValues: JSON!
 }

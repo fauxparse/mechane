@@ -761,6 +761,7 @@ export const playerInvalidationOutbox = pgTable(
     status: text("status").notNull().default("pending"),
     attemptCount: integer("attempt_count").notNull().default(0),
     nextAttemptAt: timestamp("next_attempt_at").notNull().defaultNow(),
+    stateSequence: integer("state_sequence").notNull().default(0),
     leaseOwner: text("lease_owner"),
     leaseExpiresAt: timestamp("lease_expires_at"),
     lastError: text("last_error"),

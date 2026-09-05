@@ -274,6 +274,7 @@ export function normalizePlayerSession(value: unknown, apiBaseUrl?: string): Pla
           status: String(run.status),
           startedAt: String(run.startedAt),
           endedAt: run.endedAt === null ? null : String(run.endedAt),
+          stateSequence: Number(run.stateSequence),
           sourceValues: run.sourceValues as SourceValues,
           structuredValues: run.structuredValues as StructuredValues,
         }

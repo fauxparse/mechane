@@ -122,6 +122,7 @@ export async function readPlayerSession(pairingCode: string) {
           status: run.status,
           startedAt: run.startedAt.toISOString(),
           endedAt: run.endedAt?.toISOString() ?? null,
+          stateSequence: run.stateSequence,
           sourceValues: run.sourceValues,
           structuredValues: run.structuredValues,
         }

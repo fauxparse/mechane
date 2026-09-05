@@ -180,6 +180,7 @@ export const GetPlayerSessionQuery: TadaDocumentNode<any, any> = graphql(
           status
           startedAt
           endedAt
+          stateSequence
           sourceValues
           structuredValues
         }

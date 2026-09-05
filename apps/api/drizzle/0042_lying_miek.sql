@@ -1,0 +1,1 @@
+ALTER TABLE "player_invalidation_outbox" ADD COLUMN "state_sequence" integer DEFAULT 0 NOT NULL;

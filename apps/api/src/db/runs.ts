@@ -79,12 +79,17 @@ async function readRunState(runId: string, executor: Executor): Promise<RunState
 }
 
 async function toRun(row: RunRow, executor: Executor): Promise<Run> {
+  const [show] = await executor
+    .select({ stateSequence: shows.stateSequence })
+    .from(shows)
+    .where(eq(shows.id, row.showId));
   return {
     id: row.id as Run["id"],
     showId: row.showId as Run["showId"],
     status: row.status as RunStatus,
     startedAt: row.startedAt,
     endedAt: row.endedAt,
+    stateSequence: show?.stateSequence ?? 0,
     ...(await readRunState(row.id, executor)),
   };
 }
