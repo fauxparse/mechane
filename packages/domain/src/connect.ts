@@ -161,6 +161,8 @@ export function connectionEdge(
       return { ...base, kind: "navigate", targetPath: [], cueId: null, actionId: null };
     case "device":
       return { ...base, kind: "device", targetPath: [] };
+    case "update":
+      return null;
   }
 }
 
@@ -502,6 +504,8 @@ function humanise(error: InvalidShowGraphError, kind: EdgeKind): string {
       return "That node color is invalid.";
     case "invalidNavigateProjection":
       return "Navigate edges are derived from Actions.";
+    case "invalidUpdateEndpoints":
+      return "Update edges must target a Source.";
   }
   const unreachable: never = error.reason;
   return unreachable;

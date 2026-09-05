@@ -115,6 +115,13 @@ function edge(overrides: Partial<ShowGraphEdge> & Pick<ShowGraphEdge, "id" | "ki
         cueId: overrides.cueId ?? null,
         actionId: overrides.actionId ?? null,
       };
+    case "update":
+      return {
+        ...base,
+        kind: "update",
+        cueId: overrides.cueId ?? "",
+        actionId: overrides.actionId ?? "",
+      };
     case "device":
       return { ...base, kind: "device" };
   }

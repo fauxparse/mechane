@@ -1,6 +1,7 @@
 import { isBindableKey } from "./keys";
 import type { EdgeLayout } from "./edge-layout";
 import type { Type } from "./shapes";
+import type { ShapeValue } from "./shapes";
 
 export const EVENT_KINDS = ["tap", "keypress"] as const;
 export type EventKind = (typeof EVENT_KINDS)[number];
@@ -101,15 +102,33 @@ export interface NavigateAction {
 }
 
 /**
- * Every Action type that projects an edge must keep that edge's authored
- * layout on the Action, then have its projection copy the layout onto the
- * materialized edge. Do not add layout only to a projected edge: graph writes
- * rebuild projected edges from Actions, and the edge-only value will vanish.
- * Also update the Action codec, its persistence row, and the GraphQL serializer
- * when adding the next Action type. See `NavigateAction.layout` for the
- * complete pattern.
+ * Every Action type that projects an edge must keep its authored layout on the
+ * Action, then have its projection copy the layout onto the materialized edge.
  */
-export type Action = NavigateAction;
+export type UpdateOperand =
+  | { kind: "literal"; value: ShapeValue }
+  | {
+      kind: "variable";
+      variableId: string;
+      fieldPath: readonly string[];
+      fieldMapping?: Readonly<Record<string, string>>;
+    };
+
+export type UpdateOperation =
+  | { kind: "set"; operand: UpdateOperand }
+  | { kind: "reset" }
+  | { kind: "adjust"; operand: UpdateOperand };
+
+export interface UpdateAction {
+  id: string;
+  cueId: string;
+  kind: "update";
+  target: { sourceId: string; fieldPath: readonly string[] };
+  operation: UpdateOperation;
+  layout?: EdgeLayout;
+}
+
+export type Action = NavigateAction | UpdateAction;
 
 export interface InteractionCollections {
   cues: readonly Cue[];
@@ -252,11 +271,13 @@ export function projectNavigateEdges(graph: {
   layout?: EdgeLayout;
 }[] {
   const { cues, actions } = interactionCollections(graph);
+
   const scenes = new Map(
     graph.nodes.filter((node) => node.kind === "scene").map((node) => [node.id, node]),
   );
   const cuesById = new Map(cues.map((cue) => [cue.id, cue]));
   return actions.flatMap((action) => {
+    if (action.kind !== "navigate") return [];
     const cue = cuesById.get(action.cueId);
     const source = cue?.owner.kind === "scene" ? scenes.get(cue.owner.sceneId) : undefined;
     const target = scenes.get(action.targetSceneId);
@@ -271,7 +292,50 @@ export function projectNavigateEdges(graph: {
         targetPath: [],
         cueId: cue.id,
         actionId: action.id,
-        // The Action is where a drag on this edge is kept; see its `layout`.
+        ...(action.layout ? { layout: action.layout } : {}),
+      },
+    ];
+  });
+}
+export function updateEdgeId(actionId: string): string {
+  return `update:${actionId}`;
+}
+
+export function projectUpdateEdges(graph: {
+  nodes: readonly { id: string; kind: string; parentId: string | null }[];
+  cues?: readonly Cue[];
+  actions?: readonly Action[];
+}): readonly {
+  id: string;
+  kind: "update";
+  sourceId: string;
+  targetId: string;
+  sourcePath: string[];
+  targetPath: string[];
+  cueId: string;
+  actionId: string;
+  layout?: EdgeLayout;
+}[] {
+  const { cues, actions } = interactionCollections(graph);
+  const nodes = new Map(graph.nodes.map((node) => [node.id, node]));
+  return actions.flatMap((action) => {
+    if (action.kind !== "update") return [];
+    const cue = cues.find((candidate) => candidate.id === action.cueId);
+    const source = cue?.owner.kind === "scene" ? nodes.get(cue.owner.sceneId) : undefined;
+    const target = nodes.get(action.target.sourceId);
+    if (!cue || !source || source.kind !== "scene" || !target || target.kind !== "source") {
+      return [];
+    }
+    return [
+      {
+        id: updateEdgeId(action.id),
+        kind: "update" as const,
+        sourceId: source.id,
+        targetId: target.id,
+        sourcePath: [],
+        targetPath: [...action.target.fieldPath],
+        cueId: cue.id,
+        actionId: action.id,
         ...(action.layout ? { layout: action.layout } : {}),
       },
     ];
@@ -296,6 +360,8 @@ export type InteractionViolation =
   | "invalidSlotEventBindingPosition"
   | "duplicateSlotEventBindingPosition"
   | "invalidBlockCue"
+  | "invalidUpdateTarget"
+  | "invalidUpdateOperation"
   | "emptyElementReference"
   | "bindingScene";
 
@@ -491,12 +557,6 @@ export function assertValidInteractions(graph: {
   }
 
   for (const action of interactions.actions) {
-    if (action.kind !== "navigate") {
-      throw new InvalidInteractionError(
-        "unsupportedAction",
-        `Action "${action.id}" has unsupported kind.`,
-      );
-    }
     const cue = cuesById.get(action.cueId);
     if (!cue) {
       throw new InvalidInteractionError(
@@ -510,17 +570,43 @@ export function assertValidInteractions(graph: {
         `Action "${action.id}" is not included in Cue "${cue.id}"'s ordered Actions.`,
       );
     }
-    if (cue.owner.kind === "scene") {
-      const source = requireScene(scenes, cue.owner.sceneId, `Action "${action.id}"`);
-      const target = requireScene(scenes, action.targetSceneId, `Action "${action.id}"`);
-      if (source.parentId === null || source.parentId !== target.parentId) {
+    if (action.kind === "navigate") {
+      if (cue.owner.kind === "scene") {
+        const source = requireScene(scenes, cue.owner.sceneId, `Action "${action.id}"`);
+        const target = requireScene(scenes, action.targetSceneId, `Action "${action.id}"`);
+        if (source.parentId === null || source.parentId !== target.parentId) {
+          throw new InvalidInteractionError(
+            "navigateSceneFlow",
+            `Navigate Action "${action.id}" must target a Scene in the same Flow as its Cue.`,
+          );
+        }
+      } else {
+        requireScene(scenes, action.targetSceneId, `Action "${action.id}"`);
+      }
+      continue;
+    }
+    const target = graph.nodes.find(
+      (node) => node.kind === "source" && node.id === action.target.sourceId,
+    );
+    if (!target || action.target.fieldPath.some((segment) => segment.length === 0)) {
+      throw new InvalidInteractionError(
+        "invalidUpdateTarget",
+        `Update Action "${action.id}" has an invalid Source target.`,
+      );
+    }
+    if (action.operation.kind === "adjust" && action.operation.operand.kind === "literal") {
+      const value = action.operation.operand.value;
+      if (
+        typeof value !== "object" ||
+        value === null ||
+        value.kind !== "number" ||
+        !Number.isFinite(value.value)
+      ) {
         throw new InvalidInteractionError(
-          "navigateSceneFlow",
-          `Navigate Action "${action.id}" must target a Scene in the same Flow as its Cue.`,
+          "invalidUpdateOperation",
+          `Update Action "${action.id}" has a non-numeric adjustment literal.`,
         );
       }
-    } else {
-      requireScene(scenes, action.targetSceneId, `Action "${action.id}"`);
     }
   }
 

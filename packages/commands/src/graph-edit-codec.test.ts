@@ -291,6 +291,34 @@ const FIXTURES: { [T in GraphEdit["type"]]: Extract<GraphEdit, { type: T }> } = 
       targetSceneId: "scene_lobby",
     },
   },
+  "graph.addUpdateAction": {
+    type: "graph.addUpdateAction",
+    action: {
+      id: "action_update",
+      cueId: "cue_lobby",
+      kind: "update",
+      target: { sourceId: "source_title", fieldPath: [] },
+      operation: {
+        kind: "set",
+        operand: { kind: "literal", value: { kind: "text", value: "Hi" } },
+      },
+    },
+  },
+  "graph.setUpdateTarget": {
+    type: "graph.setUpdateTarget",
+    actionId: "action_update",
+    target: { sourceId: "source_title", fieldPath: [] },
+  },
+  "graph.setUpdateOperation": {
+    type: "graph.setUpdateOperation",
+    actionId: "action_update",
+    operation: { kind: "reset" },
+  },
+  "graph.setUpdateOperand": {
+    type: "graph.setUpdateOperand",
+    actionId: "action_update",
+    operand: { kind: "literal", value: { kind: "text", value: "Hi" } },
+  },
   "graph.setNavigateTarget": {
     type: "graph.setNavigateTarget",
     actionId: "action_open",

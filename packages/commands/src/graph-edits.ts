@@ -248,6 +248,28 @@ export type GraphEdit =
       readonly action: Extract<Action, { kind: "navigate" }>;
     }
   | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.addUpdateAction;
+      readonly action: Extract<Action, { kind: "update" }>;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setUpdateTarget;
+      readonly actionId: string;
+      readonly target: Extract<Action, { kind: "update" }>["target"];
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setUpdateOperation;
+      readonly actionId: string;
+      readonly operation: Extract<Action, { kind: "update" }>["operation"];
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setUpdateOperand;
+      readonly actionId: string;
+      readonly operand: Extract<
+        Extract<Action, { kind: "update" }>["operation"],
+        { kind: "set" | "adjust" }
+      >["operand"];
+    }
+  | {
       readonly type: typeof GRAPH_COMMAND_TYPES.setNavigateTarget;
       readonly actionId: string;
       readonly targetSceneId: string;

@@ -440,6 +440,17 @@ type NavigateEdge implements GraphEdge {
   actionId: ID
 }
 
+type UpdateEdge implements GraphEdge {
+  id: ID!
+  sourceId: ID!
+  targetId: ID!
+  sourcePath: [String!]!
+  targetPath: [String!]!
+  layout: JSON
+  cueId: ID
+  actionId: ID
+}
+
 type DeviceEdge implements GraphEdge {
   id: ID!
   sourceId: ID!
@@ -491,11 +502,34 @@ type SlotEventBinding {
   parameterMappings: JSON!
 }
 
-type Action {
+interface Action {
+  id: ID!
+  cueId: ID!
+  kind: String!
+  targetSceneId: ID
+  targetSourceId: ID
+  params: JSON
+  layout: JSON
+}
+
+type NavigateAction implements Action {
   id: ID!
   cueId: ID!
   kind: String!
   targetSceneId: ID!
+  targetSourceId: ID
+  params: JSON
+  layout: JSON
+}
+
+type UpdateAction implements Action {
+  id: ID!
+  cueId: ID!
+  kind: String!
+  targetSceneId: ID
+  targetSourceId: ID!
+  params: JSON!
+  layout: JSON
 }
 
 type PublishLoss {

@@ -139,6 +139,10 @@ export const GetShowGraphQuery = graphql(
             cueId
             actionId
           }
+          ... on UpdateEdge {
+            cueId
+            actionId
+          }
         }
         cues {
           id
@@ -155,10 +159,22 @@ export const GetShowGraphQuery = graphql(
           }
         }
         actions {
-          id
-          cueId
-          kind
-          targetSceneId
+          __typename
+          ... on NavigateAction {
+            id
+            cueId
+            kind
+            targetSceneId
+            layout
+          }
+          ... on UpdateAction {
+            id
+            cueId
+            kind
+            targetSourceId
+            params
+            layout
+          }
         }
         eventBindings {
           id

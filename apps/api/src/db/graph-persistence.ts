@@ -24,6 +24,7 @@ import type {
   ShowGraph,
   SlotEventBinding,
   Type,
+  UpdateOperation,
 } from "@mechane/domain";
 import {
   assertValidShowGraph,
@@ -35,6 +36,7 @@ import {
   isWiringConversion,
   normalizeStructuredValueTemplate,
   projectNavigateEdges,
+  projectUpdateEdges,
   pruneEdgeLayout,
   typeAtPath,
 } from "@mechane/domain";
@@ -85,17 +87,31 @@ type EventBindingRow = typeof graphEventBindings.$inferSelect;
 type SlotEventBindingRow = typeof graphSlotEventBindings.$inferSelect;
 
 function toAction(row: ActionRow): Action {
-  if (row.kind !== "navigate") {
-    throw new Error(`Stored Action "${row.id}" has unknown kind "${row.kind}".`);
-  }
   const layout = row.layout ? pruneEdgeLayout(row.layout as EdgeLayout) : null;
-  return {
-    id: row.id,
-    cueId: row.cueId,
-    kind: "navigate",
-    targetSceneId: row.targetSceneId,
-    ...(layout ? { layout } : {}),
-  };
+  if (row.kind === "navigate" && row.targetSceneId) {
+    return {
+      id: row.id,
+      cueId: row.cueId,
+      kind: "navigate",
+      targetSceneId: row.targetSceneId,
+      ...(layout ? { layout } : {}),
+    };
+  }
+  if (row.kind === "update" && row.targetSourceId && row.params) {
+    const params = row.params as { operation?: UpdateOperation; fieldPath?: string[] };
+    if (!params.operation || !Array.isArray(params.fieldPath)) {
+      throw new Error(`Stored Update Action "${row.id}" has invalid params.`);
+    }
+    return {
+      id: row.id,
+      cueId: row.cueId,
+      kind: "update",
+      target: { sourceId: row.targetSourceId, fieldPath: params.fieldPath },
+      operation: params.operation,
+      ...(layout ? { layout } : {}),
+    };
+  }
+  throw new Error(`Stored Action "${row.id}" has unknown kind "${row.kind}".`);
 }
 
 function toCue(
@@ -284,6 +300,8 @@ function toEdge(row: EdgeRow): GraphEdge {
       };
     case "navigate":
       return { ...base, kind: "navigate", cueId: row.cueId, actionId: row.actionId };
+    case "update":
+      return { ...base, kind: "update", cueId: row.cueId ?? "", actionId: row.actionId ?? "" };
     case "device":
       return { ...base, kind: "device" };
   }
@@ -475,7 +493,13 @@ export async function readGraphRows(
     blocks: blockValues,
     ...interactions,
     nodes: nodeRows.map((node) => toNode(node, variablesByScene, deviceIdentities)),
-    edges: edgeRows.map(toEdge),
+    edges: [
+      ...edgeRows.map(toEdge),
+      ...projectUpdateEdges({
+        ...interactions,
+        nodes: nodeRows.map((node) => toNode(node, variablesByScene, deviceIdentities)),
+      }),
+    ],
   };
 }
 /**
@@ -497,13 +521,16 @@ export async function persistGraphRows(
       .filter((node): node is Extract<GraphNode, { kind: "source" }> => node.kind === "source")
       .map((node) => [node.id, node]),
   );
-  const projectedNavigateEdges = projectNavigateEdges(graph);
   graph = {
     ...graph,
     cues: graph.cues ?? [],
     actions: graph.actions ?? [],
     eventBindings: graph.eventBindings ?? [],
-    edges: [...graph.edges.filter((edge) => edge.kind !== "navigate"), ...projectedNavigateEdges],
+    edges: [
+      ...graph.edges.filter((edge) => edge.kind !== "navigate" && edge.kind !== "update"),
+      ...projectNavigateEdges(graph),
+      ...projectUpdateEdges(graph),
+    ],
     sourceFieldDefaults: graph.sourceFieldDefaults?.map((sourceDefault) => {
       const source = sourceNodes.get(sourceDefault.nodeId);
       const type = source
@@ -700,7 +727,12 @@ export async function persistGraphRows(
         cueId: action.cueId,
         position: cuePositions.get(action.cueId)?.get(action.id) ?? 0,
         kind: action.kind,
-        targetSceneId: action.targetSceneId,
+        targetSceneId: action.kind === "navigate" ? action.targetSceneId : null,
+        targetSourceId: action.kind === "update" ? action.target.sourceId : null,
+        params:
+          action.kind === "update"
+            ? { fieldPath: action.target.fieldPath, operation: action.operation }
+            : null,
         layout: action.layout ?? null,
       })),
     );
@@ -722,19 +754,17 @@ export async function persistGraphRows(
   if (variables.length > 0) {
     await tx.insert(graphNodeVariables).values(variables);
   }
-
   const sourceDefaults = (graph.sourceFieldDefaults ?? []).map((fieldDefault) => ({
     graphId: row.id,
     nodeId: fieldDefault.nodeId,
     fieldPath: fieldDefault.fieldPath,
     value: fieldDefault.value,
   }));
-
   if (sourceDefaults.length > 0) await tx.insert(sourceFieldDefaults).values(sourceDefaults);
-
-  if (graph.edges.length > 0) {
+  const persistedEdges = graph.edges.filter((edge) => edge.kind !== "update");
+  if (persistedEdges.length > 0) {
     await tx.insert(graphEdges).values(
-      graph.edges.map((edge) => ({
+      persistedEdges.map((edge) => ({
         id: edge.id,
         graphId: row.id,
         kind: edge.kind,
@@ -745,8 +775,6 @@ export async function persistGraphRows(
         fieldMapping: edge.kind === "wiring" ? (edge.fieldMapping ?? null) : null,
         conversion: edge.kind === "wiring" ? (edge.conversion ?? null) : null,
         layout: edge.layout ?? null,
-        // `target_variable_id` is a generated column — the database
-        // derives it from `target_path`, so it isn't written here.
         cueId: edge.kind === "navigate" ? edge.cueId : null,
         actionId: edge.kind === "navigate" ? edge.actionId : null,
       })),

@@ -21,11 +21,7 @@ import {
   readGraphRows,
 } from "./graph-persistence";
 import { drainPlayerInvalidations, enqueuePlayerInvalidations } from "./player-invalidation-outbox";
-import {
-  reconcileActiveRunDeviceStates,
-  reconcileActiveRunValues,
-  syncActiveRunSourceValues,
-} from "./runs";
+import { reconcileActiveRunDeviceStates, reconcileActiveRunValues } from "./runs";
 import { devices, shows } from "./schema";
 export interface PublishLoss {
   sourceId: string;
@@ -173,41 +169,7 @@ export async function applyShowEdits(
       canvasEdits,
       forceBlockCanvasWrites: false,
     });
-    const sourceEdits = graphEdits.filter(
-      (edit): edit is Extract<GraphEdit, { type: "graph.setSourceFieldDefault" }> =>
-        edit.type === "graph.setSourceFieldDefault",
-    );
     let playerUpdated = false;
-    if (sourceEdits.length > 0) {
-      const published = await readShowGraph(showId, "published", tx);
-      const liveSourceEdits = sourceEdits.filter((edit) =>
-        published.nodes.some((node) => node.kind === "source" && node.id === edit.nodeId),
-      );
-      if (liveSourceEdits.length > 0) {
-        const liveSourceNodeIds = new Set(liveSourceEdits.map((edit) => edit.nodeId));
-        const liveGraph = applyGraphEdits(
-          {
-            shapes: published.shapes ?? [],
-            sourceFieldDefaults: published.sourceFieldDefaults ?? [],
-            blocks: published.blocks ?? [],
-            cues: published.cues ?? [],
-            actions: published.actions ?? [],
-            eventBindings: published.eventBindings ?? [],
-            nodes: published.nodes,
-            edges: published.edges,
-          },
-          liveSourceEdits,
-        );
-        await writeGraph(tx, showId, "published", liveGraph, undefined, {
-          forceBlockCanvasWrites: true,
-        });
-        const updated = await syncActiveRunSourceValues(showId, liveGraph, liveSourceNodeIds, tx);
-        if (updated) {
-          await enqueuePlayerInvalidations(tx, showId);
-          playerUpdated = true;
-        }
-      }
-    }
     const lastCanvasId = canvasEdits.at(-1)?.canvasId;
     const storedCanvas = lastCanvasId
       ? ((await readCanvasById(showId, "draft", lastCanvasId, tx))?.canvas ?? null)

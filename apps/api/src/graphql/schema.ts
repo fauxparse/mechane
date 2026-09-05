@@ -636,6 +636,16 @@ export const schema = createSchema<GraphQLContext>({
       actionId: ID
     }
 
+    type UpdateEdge implements GraphEdge {
+      id: ID!
+      sourceId: ID!
+      targetId: ID!
+      sourcePath: [String!]!
+      targetPath: [String!]!
+      layout: JSON
+      cueId: ID
+      actionId: ID
+    }
     type DeviceEdge implements GraphEdge {
       id: ID!
       sourceId: ID!
@@ -679,11 +689,32 @@ export const schema = createSchema<GraphQLContext>({
       position: Int!
       parameterMappings: JSON!
     }
-    type Action {
+    interface Action {
+      id: ID!
+      cueId: ID!
+      kind: String!
+      targetSceneId: ID
+      targetSourceId: ID
+      params: JSON
+      layout: JSON
+    }
+    type NavigateAction implements Action {
       id: ID!
       cueId: ID!
       kind: String!
       targetSceneId: ID!
+      targetSourceId: ID
+      params: JSON
+      layout: JSON
+    }
+    type UpdateAction implements Action {
+      id: ID!
+      cueId: ID!
+      kind: String!
+      targetSceneId: ID
+      targetSourceId: ID!
+      params: JSON!
+      layout: JSON
     }
 
     type PublishLoss {
@@ -1188,6 +1219,10 @@ export const schema = createSchema<GraphQLContext>({
     }
   `,
   resolvers: {
+    Action: {
+      __resolveType: (value: { kind: string }) =>
+        value.kind === "update" ? "UpdateAction" : "NavigateAction",
+    },
     JSON: new GraphQLScalarType({
       name: "JSON",
       serialize: (value) => value,
