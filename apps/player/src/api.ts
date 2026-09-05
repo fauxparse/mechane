@@ -42,6 +42,7 @@ export type PlayerSession = {
     status: string;
     startedAt: string;
     endedAt: string | null;
+    stateSequence: number;
     sourceValues: SourceValues;
     structuredValues: StructuredValues;
   } | null;

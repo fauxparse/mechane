@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 
-import { and, asc, eq, isNull, lt, or } from "drizzle-orm";
+import { and, asc, eq, isNull, lt, or, sql } from "drizzle-orm";
 import type { RealtimeProvider } from "@mechane/realtime";
 import { playerChannel } from "@mechane/realtime";
 
 import { realtimeProvider } from "../realtime";
 import { db } from "./client";
-import { devices, playerInvalidationOutbox } from "./schema";
+import { devices, playerInvalidationOutbox, shows } from "./schema";
 
 const DEFAULT_BATCH_SIZE = 100;
 const DEFAULT_LEASE_MS = 30_000;
@@ -46,6 +46,12 @@ export async function enqueuePlayerInvalidations(
   showId: string,
   deviceIds?: readonly string[],
 ): Promise<number> {
+  const [show] = await tx
+    .update(shows)
+    .set({ stateSequence: sql`${shows.stateSequence} + 1`, updatedAt: new Date() })
+    .where(eq(shows.id, showId))
+    .returning({ stateSequence: shows.stateSequence });
+  if (!show) return 0;
   const ids =
     deviceIds ??
     (
@@ -75,7 +81,15 @@ export async function enqueuePlayerInvalidations(
       .orderBy(asc(playerInvalidationOutbox.createdAt), asc(playerInvalidationOutbox.id))
       .limit(1)
       .for("update");
-    if (pending) continue;
+    if (pending) {
+      await tx
+        .update(playerInvalidationOutbox)
+        .set({
+          stateSequence: sql`greatest(${playerInvalidationOutbox.stateSequence}, ${show.stateSequence})`,
+        })
+        .where(eq(playerInvalidationOutbox.id, pending.id));
+      continue;
+    }
 
     await tx.insert(playerInvalidationOutbox).values({
       id: randomUUID(),
@@ -83,6 +97,7 @@ export async function enqueuePlayerInvalidations(
       deviceId,
       status: "pending",
       nextAttemptAt: now,
+      stateSequence: show.stateSequence,
     });
     inserted += 1;
   }
@@ -242,7 +257,9 @@ export async function drainPlayerInvalidations(
 
   for (const row of rows) {
     try {
-      await provider.channel(playerChannel(row.deviceId)).publish("player.updated", null);
+      await provider
+        .channel(playerChannel(row.deviceId))
+        .publish("player.updated", { stateSequence: row.stateSequence });
       if (await acknowledge(row, resolved.workerId, new Date())) delivered += 1;
     } catch (error) {
       if (await reschedule(row, resolved.workerId, new Date(), error)) failed += 1;

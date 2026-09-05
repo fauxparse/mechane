@@ -193,6 +193,7 @@ function sessionWithRepeatedCandidate(): PlayerSession {
       status: "active",
       startedAt: "2026-01-01T00:00:00.000Z",
       endedAt: null,
+      stateSequence: 0,
       ...runState,
     },
     graph: {

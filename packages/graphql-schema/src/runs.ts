@@ -8,6 +8,7 @@ export const GetActiveRunQuery = graphql(`
       status
       startedAt
       endedAt
+      stateSequence
       sourceValues
       structuredValues
     }
@@ -22,6 +23,7 @@ export const StartRunMutation = graphql(`
       status
       startedAt
       endedAt
+      stateSequence
       sourceValues
       structuredValues
     }
@@ -36,6 +38,7 @@ export const EndRunMutation = graphql(`
       status
       startedAt
       endedAt
+      stateSequence
       sourceValues
       structuredValues
     }

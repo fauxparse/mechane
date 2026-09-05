@@ -12,6 +12,7 @@ export interface Run {
   endedAt: Date | null;
   sourceValues: SourceValues;
   structuredValues: StructuredValues;
+  stateSequence: number;
 }
 
 export function isRunStatus(value: string): value is RunStatus {
