@@ -116,7 +116,8 @@ export type ApiGraph = {
   blocks?: ApiShowGraph["blocks"];
   cues?: ApiShowGraph["cues"];
   actions?: ApiShowGraph["actions"];
-  eventBindings?: ApiShowGraph["eventBindings"];
+  eventBindings?: unknown;
+  slotEventBindings?: unknown;
   sourceFieldDefaults?: { nodeId: string; fieldPath: string[]; value: unknown }[];
 };
 
@@ -305,12 +306,26 @@ function toEdge(edge: ApiGraphEdge): GraphEdge {
 }
 
 function toCue(cue: ApiShowGraph["cues"][number]): Cue {
+  const parameters = (
+    cue.parameters as Array<{
+      id: string;
+      name: string;
+      type: Type;
+      position: number;
+    }>
+  ).map((parameter) => ({
+    id: parameter.id,
+    name: parameter.name,
+    type: parameter.type,
+    position: parameter.position,
+  }));
   if (cue.ownerKind === "scene" && cue.sceneId) {
     return {
       id: cue.id,
       name: cue.name,
       owner: { kind: "scene", sceneId: cue.sceneId },
       actionIds: [...cue.actionIds],
+      parameters,
     };
   }
   if (cue.ownerKind === "block" && cue.blockId) {
@@ -319,11 +334,11 @@ function toCue(cue: ApiShowGraph["cues"][number]): Cue {
       name: cue.name,
       owner: { kind: "block", blockId: cue.blockId },
       actionIds: [...cue.actionIds],
+      parameters,
     };
   }
   throw new Error(`Cue "${cue.id}" has an invalid owner.`);
 }
-
 function toAction(action: ApiShowGraph["actions"][number]): Action {
   if (action.kind !== "navigate" || !action.targetSceneId) {
     throw new Error(`Action "${action.id}" has an unsupported kind.`);
@@ -335,8 +350,17 @@ function toAction(action: ApiShowGraph["actions"][number]): Action {
     targetSceneId: action.targetSceneId,
   };
 }
+type ApiEventBinding = {
+  id: string;
+  canvasId: string;
+  elementId: string;
+  eventKind: string;
+  cueId: string;
+  position: number;
+  params?: unknown;
+};
 
-function toEventBinding(binding: ApiShowGraph["eventBindings"][number]): EventBinding {
+function toEventBinding(binding: ApiEventBinding): EventBinding {
   try {
     return decodeEventBinding(binding);
   } catch (error) {
@@ -346,10 +370,32 @@ function toEventBinding(binding: ApiShowGraph["eventBindings"][number]): EventBi
     throw error;
   }
 }
+type ApiSlotEventBinding = {
+  id: string;
+  slotElementId: string;
+  sourceCueId: string;
+  targetCueId: string;
+  position: number;
+  parameterMappings: unknown;
+};
 
 export function toShowGraph(graph: ApiGraph | null | undefined): ShowGraph {
   if (!graph) return { shapes: [], nodes: [], edges: [] };
+  const slotEventBindings = Array.isArray(graph.slotEventBindings)
+    ? (graph.slotEventBindings as ApiSlotEventBinding[])
+    : [];
+  const eventBindings = Array.isArray(graph.eventBindings)
+    ? (graph.eventBindings as ApiEventBinding[])
+    : [];
   return {
+    slotEventBindings: slotEventBindings.map((binding) => ({
+      id: binding.id,
+      slotElementId: binding.slotElementId,
+      sourceCueId: binding.sourceCueId,
+      targetCueId: binding.targetCueId,
+      position: binding.position,
+      parameterMappings: Array.isArray(binding.parameterMappings) ? binding.parameterMappings : [],
+    })),
     shapes: (graph.shapes ?? []).map(toShape),
     sourceFieldDefaults: (graph.sourceFieldDefaults ?? []).map((fieldDefault) => ({
       nodeId: fieldDefault.nodeId,
@@ -360,7 +406,7 @@ export function toShowGraph(graph: ApiGraph | null | undefined): ShowGraph {
     ...(graph.blocks ? { blocks: graph.blocks.map(toBlock) } : {}),
     cues: (graph.cues ?? []).map(toCue),
     actions: (graph.actions ?? []).map(toAction),
-    eventBindings: (graph.eventBindings ?? []).map(toEventBinding),
+    eventBindings: eventBindings.map(toEventBinding),
     edges: graph.edges.map(toEdge),
   };
 }

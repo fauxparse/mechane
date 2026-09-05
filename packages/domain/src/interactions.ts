@@ -1,5 +1,6 @@
 import { isBindableKey } from "./keys";
 import type { EdgeLayout } from "./edge-layout";
+import type { Type } from "./shapes";
 
 export const EVENT_KINDS = ["tap", "keypress"] as const;
 export type EventKind = (typeof EVENT_KINDS)[number];
@@ -45,11 +46,40 @@ export type EventBinding =
   | (EventBindingBase & { eventKind: "tap" })
   | (EventBindingBase & { eventKind: "keypress"; params: KeypressParams });
 
+export interface CueParameter {
+  id: string;
+  name: string;
+  type: Type;
+  position: number;
+}
+
 export interface Cue {
   id: string;
   name: string;
   owner: InteractionOwner;
+  /** Block Cues remain actionless; Scene Cues own their ordered Actions. */
   actionIds: readonly string[];
+  parameters?: readonly CueParameter[];
+}
+
+export interface ParameterMapping {
+  sourceParameterId: string;
+  targetParameterId: string;
+  sourceFieldPath?: readonly string[];
+}
+
+export interface SlotEventBinding {
+  id: string;
+  slotElementId: string;
+  sourceCueId: string;
+  targetCueId: string;
+  parameterMappings: readonly ParameterMapping[];
+  position: number;
+}
+
+export interface BlockInstancePathSegment {
+  slotElementId: string;
+  index: number;
 }
 
 export interface NavigateAction {
@@ -85,6 +115,7 @@ export interface InteractionCollections {
   cues: readonly Cue[];
   actions: readonly Action[];
   eventBindings: readonly EventBinding[];
+  slotEventBindings: readonly SlotEventBinding[];
 }
 
 export function interactionCollections(
@@ -94,6 +125,7 @@ export function interactionCollections(
     cues: graph.cues ?? [],
     actions: graph.actions ?? [],
     eventBindings: graph.eventBindings ?? [],
+    slotEventBindings: graph.slotEventBindings ?? [],
   };
 }
 
@@ -261,6 +293,9 @@ export type InteractionViolation =
   | "navigateSceneFlow"
   | "invalidEventBindingPosition"
   | "duplicateEventBindingPosition"
+  | "invalidSlotEventBindingPosition"
+  | "duplicateSlotEventBindingPosition"
+  | "invalidBlockCue"
   | "emptyElementReference"
   | "bindingScene";
 
@@ -374,7 +409,7 @@ export function decodeEventBinding(input: {
   }
   throw new InvalidInteractionError(
     "invalidEventKind",
-    `Event Binding "${id}" has an unsupported Event kind.`,
+    `Event Binding "${String(id)}" has an unsupported Event kind.`,
   );
 }
 
@@ -393,6 +428,7 @@ export function assertValidInteractions(graph: {
   cues?: readonly Cue[];
   actions?: readonly Action[];
   eventBindings?: readonly EventBinding[];
+  slotEventBindings?: readonly SlotEventBinding[];
 }): InteractionCollections {
   const interactions = interactionCollections(graph);
   const scenes = new Map(
@@ -525,6 +561,39 @@ export function assertValidInteractions(graph: {
         `Event Binding "${binding.id}" references missing Cue "${binding.cueId}".`,
       );
     }
+  }
+
+  const slotBindingPositions = new Map<string, Set<number>>();
+  for (const binding of interactions.slotEventBindings) {
+    const source = cuesById.get(binding.sourceCueId);
+    const target = cuesById.get(binding.targetCueId);
+    if (!source || !target) {
+      throw new InvalidInteractionError(
+        "missingCue",
+        `Slot Event Binding "${binding.id}" references a missing Cue.`,
+      );
+    }
+    if (source.owner.kind !== "block" || source.actionIds.length > 0) {
+      throw new InvalidInteractionError(
+        "invalidBlockCue",
+        `Slot Event Binding "${binding.id}" must emit from an actionless Block Cue.`,
+      );
+    }
+    if (!Number.isInteger(binding.position) || binding.position < 0) {
+      throw new InvalidInteractionError(
+        "invalidSlotEventBindingPosition",
+        `Slot Event Binding "${binding.id}" has an invalid position.`,
+      );
+    }
+    const positions = slotBindingPositions.get(binding.slotElementId) ?? new Set<number>();
+    if (positions.has(binding.position)) {
+      throw new InvalidInteractionError(
+        "duplicateSlotEventBindingPosition",
+        `duplicate Slot Event Binding position ${binding.position}.`,
+      );
+    }
+    positions.add(binding.position);
+    slotBindingPositions.set(binding.slotElementId, positions);
   }
 
   return interactions;

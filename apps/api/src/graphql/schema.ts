@@ -294,12 +294,17 @@ export const schema = createSchema<GraphQLContext>({
       expiresAt: String!
     }
 
+    input BlockInstancePathInput {
+      slotElementId: ID!
+      index: Int!
+    }
     input PlayerEventInput {
       eventId: ID!
       publishedGraphVersion: Int!
       sceneId: ID!
       elementId: ID!
       eventKind: String!
+      slotInstancePath: [BlockInstancePathInput!]
       "Per-kind payload as observed; a keypress carries { key }."
       params: JSON
     }
@@ -651,6 +656,12 @@ export const schema = createSchema<GraphQLContext>({
       cueId: ID!
       position: Int!
     }
+    type CueParameter {
+      id: ID!
+      name: String!
+      type: JSON!
+      position: Int!
+    }
     type Cue {
       id: ID!
       name: String!
@@ -658,6 +669,15 @@ export const schema = createSchema<GraphQLContext>({
       sceneId: ID
       blockId: ID
       actionIds: [ID!]!
+      parameters: [CueParameter!]!
+    }
+    type SlotEventBinding {
+      id: ID!
+      slotElementId: ID!
+      sourceCueId: ID!
+      targetCueId: ID!
+      position: Int!
+      parameterMappings: JSON!
     }
     type Action {
       id: ID!
@@ -685,6 +705,7 @@ export const schema = createSchema<GraphQLContext>({
       cues: [Cue!]!
       actions: [Action!]!
       eventBindings: [EventBinding!]!
+      slotEventBindings: [SlotEventBinding!]!
       "Sparse graph-owned Source values, keyed by Source node and field path."
       sourceFieldDefaults: [SourceFieldDefault!]!
       updatedAt: String!

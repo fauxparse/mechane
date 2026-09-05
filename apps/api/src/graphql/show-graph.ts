@@ -207,6 +207,12 @@ export function serializeShowGraph(graph: StoredShowGraph) {
       sceneId: cue.owner.kind === "scene" ? cue.owner.sceneId : null,
       blockId: cue.owner.kind === "block" ? cue.owner.blockId : null,
       actionIds: [...cue.actionIds],
+      parameters: (cue.parameters ?? []).map((parameter) => ({
+        id: parameter.id,
+        name: parameter.name,
+        type: parameter.type,
+        position: parameter.position,
+      })),
     })),
     actions: (graph.actions ?? []).map((action) => ({
       id: action.id,
@@ -223,6 +229,14 @@ export function serializeShowGraph(graph: StoredShowGraph) {
       params: binding.eventKind === "keypress" ? binding.params : null,
       cueId: binding.cueId,
       position: binding.position,
+    })),
+    slotEventBindings: (graph.slotEventBindings ?? []).map((binding) => ({
+      id: binding.id,
+      slotElementId: binding.slotElementId,
+      sourceCueId: binding.sourceCueId,
+      targetCueId: binding.targetCueId,
+      position: binding.position,
+      parameterMappings: binding.parameterMappings,
     })),
     losses: graph.losses ?? [],
   };

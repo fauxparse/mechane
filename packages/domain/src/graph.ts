@@ -21,7 +21,13 @@
 //   - Positions are free-form stored data; no auto-layout (#25).
 //   - A Show with zero Flows is valid and unremarkable (#25).
 
-import type { Action, Cue, EventBinding, InteractionCollections } from "./interactions";
+import type {
+  Action,
+  Cue,
+  EventBinding,
+  InteractionCollections,
+  SlotEventBinding,
+} from "./interactions";
 import type { EdgeLayout } from "./edge-layout";
 import { assertValidInteractions, projectNavigateEdges } from "./interactions";
 import type { EntityName } from "./id";
@@ -331,10 +337,11 @@ export interface ShowGraph {
   /** Show-owned reusable Block definitions, separate from graph nodes. */
   blocks?: Block[];
   /** Graph-scoped authored interaction definitions. */
+  nodes: GraphNode[];
   cues?: readonly Cue[];
   actions?: readonly Action[];
   eventBindings?: readonly EventBinding[];
-  nodes: GraphNode[];
+  slotEventBindings?: readonly SlotEventBinding[];
   edges: GraphEdge[];
 }
 

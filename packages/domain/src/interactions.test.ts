@@ -74,7 +74,12 @@ if (!redGreenCue || !redGreenAction || !redGreenBinding) throw new Error("Fixtur
 describe("interaction aggregate", () => {
   it("accepts owned ordered interactions and projects Navigate edges", () => {
     const graph = { nodes, cues, actions, eventBindings };
-    expect(assertValidInteractions(graph)).toEqual({ cues, actions, eventBindings });
+    expect(assertValidInteractions(graph)).toEqual({
+      cues,
+      actions,
+      eventBindings,
+      slotEventBindings: [],
+    });
     expect(projectNavigateEdges(graph)).toEqual([
       {
         id: navigateEdgeId("action_red_green"),
@@ -263,6 +268,46 @@ describe("interaction aggregate", () => {
       ),
     ).toThrowError(InvalidInteractionError);
   });
+});
+it("accepts typed parameters and ordered actionless Block Cue relays", () => {
+  const blockCue: Cue = {
+    id: "cue_block_selected",
+    name: "Selected",
+    owner: { kind: "block", blockId: "block_candidate" },
+    actionIds: [],
+    parameters: [{ id: "candidate", name: "Candidate", type: "text", position: 0 }],
+  };
+  const sceneCue: Cue = {
+    id: "cue_scene_selected",
+    name: "Selected",
+    owner: { kind: "scene", sceneId: "scene_red" },
+    actionIds: [],
+    parameters: [{ id: "candidate", name: "Candidate", type: "text", position: 0 }],
+  };
+  expect(
+    assertValidInteractions({
+      nodes,
+      blocks: [{ id: "block_candidate" }],
+      cues: [blockCue, sceneCue],
+      actions: [],
+      eventBindings: [],
+      slotEventBindings: [
+        {
+          id: "slot_binding_selected",
+          slotElementId: "slot_candidates",
+          sourceCueId: blockCue.id,
+          targetCueId: sceneCue.id,
+          position: 0,
+          parameterMappings: [
+            {
+              sourceParameterId: "candidate",
+              targetParameterId: "candidate",
+            },
+          ],
+        },
+      ],
+    }).slotEventBindings,
+  ).toHaveLength(1);
 });
 
 const keypress = (

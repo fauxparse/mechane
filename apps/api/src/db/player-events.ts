@@ -1,6 +1,7 @@
 import {
   InvalidInteractionError,
   resolveRuntimeEvent,
+  type BlockInstancePathSegment,
   type RuntimeEventObservation,
   type RuntimeEventPlan,
 } from "@mechane/domain";
@@ -22,6 +23,8 @@ export interface PlayerEventInput {
   sceneId: string;
   elementId: string;
   eventKind: string;
+  /** The observed root-to-leaf Slot instance path; the server re-resolves it. */
+  slotInstancePath?: readonly BlockInstancePathSegment[];
   /** Per-kind payload as the Player observed it; `keypress` carries `{ key }`. */
   params?: Record<string, unknown> | null;
 }
@@ -56,7 +59,8 @@ export type PlayerEventIgnoreReason =
   | "no-navigation-state"
   | "not-ready"
   | "stale-scene"
-  | "unbound-event";
+  | "unbound-event"
+  | "invalid-slot-path";
 export type PlayerEventResult =
   | { kind: "applied"; eventId: string; resultingSceneId: string }
   | {
@@ -79,6 +83,19 @@ export class PlayerEventInputError extends Error {
     super(message);
     this.name = "PlayerEventInputError";
   }
+}
+
+function validSlotInstancePath(path: readonly BlockInstancePathSegment[] | undefined): boolean {
+  return (
+    path === undefined ||
+    path.every(
+      (segment) =>
+        typeof segment.slotElementId === "string" &&
+        segment.slotElementId.length > 0 &&
+        Number.isInteger(segment.index) &&
+        segment.index >= 0,
+    )
+  );
 }
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -148,6 +165,7 @@ async function recordEvent(
     elementId: input.elementId,
     eventKind: input.eventKind,
     params: input.params ?? null,
+    slotInstancePath: input.slotInstancePath ?? [],
     outcome,
     reason: result.kind === "ignored" || result.kind === "rejected" ? result.reason : null,
     resultingSceneId:
@@ -185,6 +203,15 @@ async function dispatchPerConnectionEvent(
       ),
     );
   if (existing) return duplicateResult(existing);
+  if (!validSlotInstancePath(input.slotInstancePath)) {
+    const result: PlayerEventResult = {
+      kind: "ignored",
+      eventId: input.eventId,
+      reason: "invalid-slot-path",
+    };
+    await recordEvent(tx, run.id, device.showId, device.id, input, result);
+    return result;
+  }
 
   const graph = await readShowGraph(device.showId, "published", tx);
   if (input.publishedGraphVersion !== graph.version) {
@@ -382,6 +409,15 @@ export async function dispatchPlayerEvent(
             ),
           );
         if (existing) return duplicateResult(existing);
+        if (!validSlotInstancePath(input.slotInstancePath)) {
+          const result: PlayerEventResult = {
+            kind: "ignored",
+            eventId: input.eventId,
+            reason: "invalid-slot-path",
+          };
+          await recordEvent(tx, run.id, device.showId, device.id, input, result);
+          return result;
+        }
 
         if (state.activeSceneId === null) {
           const result: PlayerEventResult = {
