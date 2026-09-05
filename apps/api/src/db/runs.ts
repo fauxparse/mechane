@@ -1,11 +1,38 @@
-import type { Run, RunStatus, ShowGraph, SourceValues } from "@mechane/domain";
-import { coerceShapeValue, defaultSourceValues, sourceDefaultsFor } from "@mechane/domain";
+import type {
+  Run,
+  RunStatus,
+  RunState,
+  ShowGraph,
+  SourceValues,
+  StructuredValueRecord,
+  StructuredValueTemplate,
+  StructuredValues,
+} from "@mechane/domain";
+import {
+  assertValidRunState,
+  coerceShapeValue,
+  defaultSourceValueTemplates,
+  materializeRunState,
+  materializeStructuredValue,
+  normalizeStructuredValueTemplate,
+  preserveStructuredValueTemplateIds,
+  resolveRuntimeValue,
+  resolveStructuredValueTemplate,
+  sourceDefaultsFor,
+} from "@mechane/domain";
 import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "./client";
 import { drainPlayerInvalidations, enqueuePlayerInvalidations } from "./player-invalidation-outbox";
 import { readShowGraph } from "./show-graph";
-import { playerEvents, runDeviceStates, runs, shows } from "./schema";
+import {
+  playerEvents,
+  runDeviceStates,
+  runs,
+  runSourceValues,
+  runStructuredValues,
+  shows,
+} from "./schema";
 
 export interface RunValueLoss {
   sourceId: string;
@@ -15,9 +42,8 @@ export interface RunValueLoss {
   reason: string;
 }
 
-export interface ReconciledRunValues {
+export interface ReconciledRunValues extends RunState {
   runId?: string;
-  sourceValues: SourceValues;
   losses: RunValueLoss[];
 }
 
@@ -25,15 +51,71 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type Executor = Tx | typeof db;
 type RunRow = typeof runs.$inferSelect;
 
-function toRun(row: RunRow): Run {
+async function readRunState(runId: string, executor: Executor): Promise<RunState> {
+  const [sourceRows, structuredRows] = await Promise.all([
+    executor.select().from(runSourceValues).where(eq(runSourceValues.runId, runId)),
+    executor.select().from(runStructuredValues).where(eq(runStructuredValues.runId, runId)),
+  ]);
+  const structuredValues: StructuredValues = Object.fromEntries(
+    structuredRows.map((row) => {
+      const base = {
+        id: row.structuredValueId,
+        kind: row.kind,
+        type: row.type,
+      };
+      const record =
+        row.kind === "array"
+          ? { ...base, kind: "array" as const, items: row.payload }
+          : { ...base, kind: "shape" as const, fields: row.payload };
+      return [row.structuredValueId, record as StructuredValueRecord];
+    }),
+  );
+  return {
+    sourceValues: Object.fromEntries(
+      sourceRows.map((row) => [row.sourceId, row.value]),
+    ) as SourceValues,
+    structuredValues,
+  };
+}
+
+async function toRun(row: RunRow, executor: Executor): Promise<Run> {
   return {
     id: row.id as Run["id"],
     showId: row.showId as Run["showId"],
     status: row.status as RunStatus,
     startedAt: row.startedAt,
     endedAt: row.endedAt,
-    sourceValues: row.sourceValues as SourceValues,
+    ...(await readRunState(row.id, executor)),
   };
+}
+
+async function replaceRunState(
+  executor: Executor,
+  runId: string,
+  graph: ShowGraph,
+  state: RunState,
+): Promise<void> {
+  assertValidRunState(state, graph);
+  await executor.delete(runSourceValues).where(eq(runSourceValues.runId, runId));
+  await executor.delete(runStructuredValues).where(eq(runStructuredValues.runId, runId));
+  const sourceEntries = Object.entries(state.sourceValues);
+  if (sourceEntries.length > 0) {
+    await executor
+      .insert(runSourceValues)
+      .values(sourceEntries.map(([sourceId, value]) => ({ runId, sourceId, value })));
+  }
+  const structuredEntries = Object.values(state.structuredValues);
+  if (structuredEntries.length > 0) {
+    await executor.insert(runStructuredValues).values(
+      structuredEntries.map((record) => ({
+        runId,
+        structuredValueId: record.id,
+        kind: record.kind,
+        type: record.type,
+        payload: record.kind === "array" ? record.items : record.fields,
+      })),
+    );
+  }
 }
 export interface RunDeviceState {
   runId: string;
@@ -173,17 +255,31 @@ export async function reconcileActiveRunDeviceStates(
 }
 
 /** Replaces the live values for Sources edited in the director. */
-export function sourceValuesForEditedSources(
-  current: SourceValues,
+export function runStateForEditedSources(
+  current: RunState,
   graph: ShowGraph,
   sourceNodeIds: ReadonlySet<string>,
-): SourceValues {
-  const defaults = defaultSourceValues(graph);
-  const next = { ...current };
+): RunState {
+  const templates = defaultSourceValueTemplates(graph);
+  const next: RunState = {
+    sourceValues: { ...current.sourceValues },
+    structuredValues: { ...current.structuredValues },
+  };
   for (const sourceNodeId of sourceNodeIds) {
-    if (sourceNodeId in defaults) next[sourceNodeId] = defaults[sourceNodeId];
-    else delete next[sourceNodeId];
+    const source = graph.nodes.find((node) => node.kind === "source" && node.id === sourceNodeId);
+    if (!source || source.kind !== "source") {
+      delete next.sourceValues[sourceNodeId];
+      continue;
+    }
+    const materialized = materializeStructuredValue(
+      templates[sourceNodeId] ?? null,
+      source.type,
+      graph.shapes ?? [],
+    );
+    next.sourceValues[sourceNodeId] = materialized.value;
+    Object.assign(next.structuredValues, materialized.structuredValues);
   }
+  assertValidRunState(next, graph);
   return next;
 }
 
@@ -194,23 +290,24 @@ export async function syncActiveRunSourceValues(
   executor: Executor = db,
 ): Promise<boolean> {
   if (sourceNodeIds.size === 0) return false;
-  const [run] = await executor
+  if (executor === db) {
+    return db.transaction((tx) => syncActiveRunSourceValues(showId, graph, sourceNodeIds, tx));
+  }
+  const [row] = await executor
     .select()
     .from(runs)
     .where(and(eq(runs.showId, showId), eq(runs.status, "active")))
     .orderBy(desc(runs.startedAt))
     .limit(1)
     .for("update");
-  if (!run) return false;
-  const sourceValues = sourceValuesForEditedSources(
-    run.sourceValues as SourceValues,
+  if (!row) return false;
+  const current = await readRunState(row.id, executor);
+  await replaceRunState(
+    executor,
+    row.id,
     graph,
-    sourceNodeIds,
+    runStateForEditedSources(current, graph, sourceNodeIds),
   );
-  await executor
-    .update(runs)
-    .set({ sourceValues, updatedAt: new Date() })
-    .where(eq(runs.id, run.id));
   return true;
 }
 
@@ -221,7 +318,7 @@ export async function readActiveRun(showId: string, executor: Executor = db): Pr
     .where(and(eq(runs.showId, showId), eq(runs.status, "active")))
     .orderBy(desc(runs.startedAt))
     .limit(1);
-  return row ? toRun(row) : null;
+  return row ? toRun(row, executor) : null;
 }
 
 /** Starts a Run atomically, ending the previous active Run first. */
@@ -242,13 +339,14 @@ export async function startRun(showId: string): Promise<Run> {
         showId,
         status: "active",
         startedAt: now,
-        sourceValues: defaultSourceValues(graph),
       })
       .returning();
     if (!row) throw new Error(`Failed to start a Run for Show "${showId}".`);
+    const state = materializeRunState(graph, defaultSourceValueTemplates(graph));
+    await replaceRunState(tx, row.id, graph, state);
     await initializeRunDeviceStates(tx, row.id, showId, graph, graph.version);
     await enqueuePlayerInvalidations(tx, showId);
-    return toRun(row);
+    return toRun(row, tx);
   });
   try {
     await drainPlayerInvalidations({ showId });
@@ -268,76 +366,99 @@ export async function reconcileActiveRunValues(
   newGraph: ShowGraph,
   executor: Executor = db,
 ): Promise<ReconciledRunValues> {
-  const [run] = await executor
+  if (executor === db) {
+    return db.transaction((tx) => reconcileActiveRunValues(showId, oldGraph, newGraph, tx));
+  }
+  const [row] = await executor
     .select()
     .from(runs)
     .where(and(eq(runs.showId, showId), eq(runs.status, "active")))
     .orderBy(desc(runs.startedAt))
     .limit(1)
     .for("update");
-  if (!run) return { sourceValues: {}, losses: [] };
+  if (!row) return { sourceValues: {}, structuredValues: {}, losses: [] };
 
+  const current = await readRunState(row.id, executor);
   const oldSources = new Map(
     oldGraph.nodes.filter((node) => node.kind === "source").map((node) => [node.id, node]),
   );
-  const newSources = newGraph.nodes.filter((node) => node.kind === "source");
-  const liveValues = run.sourceValues as SourceValues;
-  const defaults = defaultSourceValues(newGraph);
-  const sourceValues: SourceValues = {};
+  const templates = defaultSourceValueTemplates(newGraph);
+  const next: RunState = {
+    sourceValues: {},
+    structuredValues: { ...current.structuredValues },
+  };
   const losses: RunValueLoss[] = [];
 
-  for (const source of newSources) {
+  for (const source of newGraph.nodes) {
+    if (source.kind !== "source") continue;
     const previous = oldSources.get(source.id);
-    const previousType = previous?.type;
-    const nextType = source.type;
-    const current = liveValues[source.id];
+    const currentValue = current.sourceValues[source.id];
     if (
-      !previous ||
-      typeof previousType !== "object" ||
-      previousType.kind !== "shape" ||
-      typeof nextType !== "object" ||
-      nextType.kind !== "shape"
+      previous?.kind === "source" &&
+      currentValue !== undefined &&
+      (typeof source.type === "string" || source.type.kind === "array") &&
+      JSON.stringify(previous.type) === JSON.stringify(source.type)
     ) {
-      sourceValues[source.id] = current === undefined ? defaults[source.id] : current;
+      next.sourceValues[source.id] = currentValue;
       continue;
     }
 
-    const oldShape = oldGraph.shapes?.find((shape) => shape.id === previousType.shapeId);
-    const newShape = newGraph.shapes?.find((shape) => shape.id === nextType.shapeId);
-    if (!oldShape || !newShape) {
-      sourceValues[source.id] = defaults[source.id];
-      continue;
+    let template: StructuredValueTemplate = templates[source.id] ?? null;
+    const previousType = previous?.kind === "source" ? previous.type : null;
+    const sourceType = source.type;
+    if (
+      previousType !== null &&
+      typeof previousType === "object" &&
+      previousType.kind === "shape" &&
+      typeof sourceType === "object" &&
+      sourceType.kind === "shape" &&
+      currentValue !== undefined
+    ) {
+      const oldShapeId = previousType.shapeId;
+      const newShapeId = sourceType.shapeId;
+      const oldShape = oldGraph.shapes?.find((shape) => shape.id === oldShapeId);
+      const newShape = newGraph.shapes?.find((shape) => shape.id === newShapeId);
+      if (oldShape && newShape) {
+        const overrides = Object.fromEntries(
+          sourceDefaultsFor(newGraph, source.id)
+            .filter((override) => override.fieldPath.length === 1)
+            .map((override) => [
+              override.fieldPath[0],
+              resolveStructuredValueTemplate(override.value as StructuredValueTemplate),
+            ]),
+        );
+        const result = coerceShapeValue(
+          resolveRuntimeValue(currentValue, current.structuredValues),
+          oldShape,
+          newShape,
+          [...(oldGraph.shapes ?? []), ...(newGraph.shapes ?? [])],
+          overrides,
+        );
+        template = preserveStructuredValueTemplateIds(
+          normalizeStructuredValueTemplate(result.value, source.type, newGraph.shapes ?? []),
+          source.type,
+          currentValue,
+          current.structuredValues,
+          newGraph.shapes ?? [],
+        );
+        losses.push(
+          ...result.losses.map((loss) => ({
+            sourceId: source.id,
+            fieldId: loss.fieldId,
+            fieldName: loss.fieldName,
+            path: loss.path,
+            reason: loss.reason,
+          })),
+        );
+      }
     }
-
-    const overrides = Object.fromEntries(
-      sourceDefaultsFor(newGraph, source.id)
-        .filter((override) => override.fieldPath.length === 1)
-        .map((override) => [override.fieldPath[0], override.value]),
-    );
-    const result = coerceShapeValue(
-      current,
-      oldShape,
-      newShape,
-      [...(oldGraph.shapes ?? []), ...(newGraph.shapes ?? [])],
-      overrides,
-    );
-    sourceValues[source.id] = result.value;
-    losses.push(
-      ...result.losses.map((loss) => ({
-        sourceId: source.id,
-        fieldId: loss.fieldId,
-        fieldName: loss.fieldName,
-        path: loss.path,
-        reason: loss.reason,
-      })),
-    );
+    const materialized = materializeStructuredValue(template, source.type, newGraph.shapes ?? []);
+    next.sourceValues[source.id] = materialized.value;
+    Object.assign(next.structuredValues, materialized.structuredValues);
   }
 
-  await executor
-    .update(runs)
-    .set({ sourceValues, updatedAt: new Date() })
-    .where(eq(runs.id, run.id));
-  return { runId: run.id, sourceValues, losses };
+  await replaceRunState(executor, row.id, newGraph, next);
+  return { runId: row.id, ...next, losses };
 }
 
 /** Ends the active Run, if there is one, and returns the ended Run. */
@@ -355,7 +476,7 @@ export async function endRun(showId: string): Promise<Run | null> {
       await tx.delete(playerEvents).where(eq(playerEvents.runId, row.id));
       await enqueuePlayerInvalidations(tx, showId);
     }
-    return row ? toRun(row) : null;
+    return row ? toRun(row, tx) : null;
   });
   if (run) {
     try {

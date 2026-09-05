@@ -1,4 +1,11 @@
-import type { Canvas, GraphNode, SceneNode, ShowGraph, SourceValues } from "@mechane/domain";
+import type {
+  Canvas,
+  GraphNode,
+  SceneNode,
+  ShowGraph,
+  SourceValues,
+  StructuredValues,
+} from "@mechane/domain";
 import type { RealtimeSubscriber, RealtimeSubscription } from "@mechane/realtime";
 import { AblyRealtimeSubscriber, WebSocketRealtimeSubscriber } from "@mechane/realtime/browser";
 import {
@@ -36,6 +43,7 @@ export type PlayerSession = {
     startedAt: string;
     endedAt: string | null;
     sourceValues: SourceValues;
+    structuredValues: StructuredValues;
   } | null;
   graph: ShowGraph & {
     showId: string;

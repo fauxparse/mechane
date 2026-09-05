@@ -6,13 +6,13 @@ import {
 } from "./blocks";
 import type { Block, BlockCanvas, BlockVariable } from "./blocks";
 import type { ImageAssetReference, ResolvedImageValue, Shape, Type } from "./shapes";
+import { areTypesCompatible, coerceValue } from "./shapes";
+import type { StructuredValueId } from "./id";
 import {
-  areTypesCompatible,
-  coerceValue,
-  isShapeCollectionInstance,
-  shapeCollectionInstanceValue,
-} from "./shapes";
-import type { ShapeInstanceId } from "./id";
+  isStructuredValueReference,
+  resolveRuntimeValue,
+  type StructuredValueRecord,
+} from "./structured-values";
 import type { ResolvedCanvas, SlotElement, SlotInputAssignment, SlotInputSource } from "./canvas";
 import { typeAtPath, valueAtPath } from "./property-values";
 import { resolveCanvasProperties } from "./element-properties";
@@ -235,8 +235,8 @@ export function expandSlotSource(source: unknown): {
 }
 
 export interface ResolvedSlotInstance {
-  /** Stable only for persisted Shape collection items; scalar arrays retain index identity. */
-  readonly id?: ShapeInstanceId;
+  /** Stable identity of a structured array item, when present. */
+  readonly id?: StructuredValueId;
   readonly index: number;
   readonly item: unknown;
   readonly canvas?: ResolvedCanvas;
@@ -250,6 +250,7 @@ export interface ResolveSlotInstancesInput {
   readonly variables?: readonly SlotVariableValue[];
   readonly runtimeItem?: unknown;
   readonly runtimeType?: Type;
+  readonly structuredValues?: Readonly<Record<string, StructuredValueRecord>>;
   readonly shapes?: readonly Shape[];
   readonly allBlocks?: readonly Block[];
   readonly imageAssets?: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
@@ -264,6 +265,7 @@ export function resolveSlotInstances({
   shapes = [],
   allBlocks = [block],
   imageAssets = [],
+  structuredValues = {},
 }: ResolveSlotInstancesInput): {
   readonly instances: readonly ResolvedSlotInstance[];
   readonly diagnostic?: SlotDiagnostic;
@@ -283,10 +285,13 @@ export function resolveSlotInstances({
     );
   }
   const expanded = expansion
-    ? expandSlotInstances(expansionValue, (item) =>
-        item === null || item === undefined
-          ? { category: "invalidExpansionItem", message: "Slot expansion item is missing." }
-          : undefined,
+    ? expandSlotInstances(
+        expansionValue,
+        (item) =>
+          item === null || item === undefined
+            ? { category: "invalidExpansionItem", message: "Slot expansion item is missing." }
+            : undefined,
+        structuredValues,
       )
     : { instances: [{ index: 0, item: undefined }] };
   if (expanded.diagnostic) return { instances: [], diagnostic: expanded.diagnostic };
@@ -339,8 +344,8 @@ export function resolveSlotInstances({
 }
 
 export interface SlotInstance {
-  /** Stable identity carried by a Shape collection item, when present. */
-  readonly id?: ShapeInstanceId;
+  /** Stable identity carried by a structured item, when present. */
+  readonly id?: StructuredValueId;
   readonly index: number;
   readonly item: unknown;
   readonly diagnostic?: SlotDiagnostic;
@@ -349,16 +354,20 @@ export interface SlotInstance {
 export function expandSlotInstances(
   source: unknown,
   validateItem?: (item: unknown, index: number) => SlotDiagnostic | undefined,
+  structuredValues: Readonly<Record<string, StructuredValueRecord>> = {},
 ): {
   readonly instances: readonly SlotInstance[];
   readonly diagnostic?: SlotDiagnostic;
 } {
-  const expanded = expandSlotSource(source);
+  const rootRecord = isStructuredValueReference(source) ? structuredValues[source.ref] : undefined;
+  const expanded = expandSlotSource(rootRecord?.kind === "array" ? rootRecord.items : source);
   if (expanded.diagnostic) return { instances: [], diagnostic: expanded.diagnostic };
   return {
     instances: expanded.items.map((candidate, index) => {
-      const id = isShapeCollectionInstance(candidate) ? candidate.id : undefined;
-      const item = shapeCollectionInstanceValue(candidate);
+      const id = isStructuredValueReference(candidate) ? candidate.ref : undefined;
+      const item = isStructuredValueReference(candidate)
+        ? resolveRuntimeValue(candidate, structuredValues)
+        : candidate;
       const diagnostic = validateItem?.(item, index);
       return {
         ...(id ? { id } : {}),

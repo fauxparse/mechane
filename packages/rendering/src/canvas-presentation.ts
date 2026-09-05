@@ -1,6 +1,7 @@
 import {
   resolveCanvasProperties,
   resolveSlotInstances,
+  resolveSourceValues,
   sceneVariableValues,
 } from "@mechane/domain";
 import type {
@@ -12,10 +13,10 @@ import type {
   ResolvedElement,
   ResolvedImageValue,
   Shape,
-  ShapeInstanceId,
   SlotDiagnostic,
   SlotVariableValue,
-  SourceValues,
+  StructuredValueId,
+  StructuredValues,
   Type,
 } from "@mechane/domain";
 import type { ShowGraph } from "@mechane/domain";
@@ -27,7 +28,8 @@ export type CanvasPresentationOwner =
   | {
       readonly kind: "scene";
       readonly scene: SceneNode;
-      readonly sourceValues: SourceValues;
+      readonly sourceValues: Readonly<Record<string, unknown>>;
+      readonly structuredValues?: StructuredValues;
     }
   | { readonly kind: "block"; readonly block: Block };
 
@@ -40,7 +42,7 @@ export interface CanvasPresentationInput {
   readonly mode: CanvasPresentationMode;
 }
 export interface PreparedSlotInstance {
-  readonly id?: ShapeInstanceId;
+  readonly id?: StructuredValueId;
   readonly index: number;
   readonly diagnostic?: SlotDiagnostic;
   readonly element?: PreparedCanvasElement;
@@ -162,9 +164,18 @@ export function prepareCanvasForRender(input: PrepareCanvasInput): CanvasPresent
 
 export function prepareCanvasPresentation(input: CanvasPresentationInput): CanvasPresentation {
   const { owner } = input;
+  const sourceValues =
+    owner.kind === "scene" && owner.structuredValues
+      ? resolveSourceValues({
+          sourceValues: owner.sourceValues as never,
+          structuredValues: owner.structuredValues,
+        })
+      : owner.kind === "scene"
+        ? owner.sourceValues
+        : {};
   const values =
     owner.kind === "scene"
-      ? sceneVariableValues(input.graph, owner.scene.id, owner.sourceValues)
+      ? sceneVariableValues(input.graph, owner.scene.id, sourceValues)
       : Object.fromEntries(
           owner.block.variables.map((variable) => [variable.id, variable.defaultValue]),
         );

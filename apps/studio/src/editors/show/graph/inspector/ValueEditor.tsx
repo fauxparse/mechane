@@ -10,14 +10,14 @@ import {
   type ImageInputValue,
 } from "@mechane/design-system";
 import {
-  createShapeCollectionInstance,
   defaultValueForType,
   formatValuePath,
+  isArrayStructuredValueTemplate,
   isImageAssetReference,
   isResolvedImageValue,
-  isShapeCollectionInstance,
+  isShapeStructuredValueTemplate,
+  normalizeStructuredValueTemplate,
   setValueAtPath,
-  shapeCollectionInstanceValue,
   type ShowGraph,
   type Type,
 } from "@mechane/domain";
@@ -159,35 +159,36 @@ function ArrayValueEditor({
   type: Extract<Type, { kind: "array" }>;
   renderValue: ValueEditorRenderer;
 }) {
-  const values = Array.isArray(value) ? value : [];
+  const normalized = normalizeStructuredValueTemplate(value, type, shapes);
+  if (!isArrayStructuredValueTemplate(normalized)) return null;
+  const values = normalized.items;
+  const updateItems = (items: typeof values) => onChange({ ...normalized, items });
   return (
     <div className="flex flex-col gap-2">
       {values.map((item, index) => {
-        const itemInstance =
-          typeof type.of !== "string" && type.of.kind === "shape" && isShapeCollectionInstance(item)
-            ? item
+        const itemId =
+          isShapeStructuredValueTemplate(item) || isArrayStructuredValueTemplate(item)
+            ? item.id
             : undefined;
-        const itemValue = shapeCollectionInstanceValue(item);
         return (
           <div
             className="flex items-start gap-2"
-            key={`${formatValuePath(path.map(String))}-${itemInstance?.id ?? index}`}
+            key={`${formatValuePath(path.map(String))}-${itemId ?? index}`}
           >
             {renderValue({
               type: type.of,
-              value: itemValue,
+              value: item,
               shapes,
               imageAssets,
               onImageUpload,
               path: [...path, index],
               onChange: (next) =>
-                onChange(
-                  values.map((current, currentIndex) => {
-                    if (currentIndex !== index) return current;
-                    return itemInstance
-                      ? createShapeCollectionInstance(next, itemInstance.id)
-                      : next;
-                  }),
+                updateItems(
+                  values.map((current, currentIndex) =>
+                    currentIndex === index
+                      ? normalizeStructuredValueTemplate(next, type.of, shapes)
+                      : current,
+                  ),
                 ),
               onValidityChange,
             })}
@@ -196,7 +197,9 @@ function ArrayValueEditor({
               size="icon-sm"
               variant="ghost"
               aria-label={`Remove item ${index + 1}`}
-              onClick={() => onChange(values.filter((_, currentIndex) => currentIndex !== index))}
+              onClick={() =>
+                updateItems(values.filter((_, currentIndex) => currentIndex !== index))
+              }
             >
               <Trash2Icon />
             </Button>
@@ -207,7 +210,12 @@ function ArrayValueEditor({
         type="button"
         variant="outline"
         className="self-start"
-        onClick={() => onChange([...values, defaultValueForType(type.of, shapes)])}
+        onClick={() =>
+          updateItems([
+            ...values,
+            normalizeStructuredValueTemplate(defaultValueForType(type.of, shapes), type.of, shapes),
+          ])
+        }
       >
         <PlusIcon />
         Add item
@@ -232,9 +240,9 @@ function ShapeValueEditor({
 }) {
   const shape = shapes.find((candidate) => candidate.id === type.shapeId);
   if (!shape) return <p className="text-sm text-destructive">Shape definition is unavailable.</p>;
-  const rawValue = shapeCollectionInstanceValue(value);
-  const objectValue =
-    rawValue && typeof rawValue === "object" && !Array.isArray(rawValue) ? rawValue : {};
+  const normalized = normalizeStructuredValueTemplate(value, type, shapes);
+  if (!isShapeStructuredValueTemplate(normalized)) return null;
+  const objectValue = normalized.fields;
   return (
     <div className="flex flex-col gap-3">
       {shape.fields.map((field) => (
@@ -252,7 +260,7 @@ function ShapeValueEditor({
             imageAssets,
             onImageUpload,
             path: [...path, field.id],
-            onChange: (next) => onChange(setValueAtPath(objectValue, [field.id], next)),
+            onChange: (next) => onChange(setValueAtPath(normalized, [field.id], next)),
             onValidityChange,
           })}
         </div>

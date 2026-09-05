@@ -7,6 +7,7 @@ import {
   type GraphNode,
   type Shape,
   type SourceValues,
+  type StructuredValues,
   type Type,
 } from "@mechane/domain";
 import { PRIMITIVE_TYPES } from "@mechane/domain";
@@ -274,6 +275,7 @@ export function normalizePlayerSession(value: unknown, apiBaseUrl?: string): Pla
           startedAt: String(run.startedAt),
           endedAt: run.endedAt === null ? null : String(run.endedAt),
           sourceValues: run.sourceValues as SourceValues,
+          structuredValues: run.structuredValues as StructuredValues,
         }
       : null,
     flow,

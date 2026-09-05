@@ -17,7 +17,7 @@
 // travels exactly as it would down a direct edge from an element-typed
 // producer — including the Property Coercion that consumes it downstream.
 
-import { areTypesCompatible, shapeCollectionInstanceValue } from "./shapes";
+import { areTypesCompatible } from "./shapes";
 import type { Shape, Type } from "./shapes";
 
 /**
@@ -115,8 +115,5 @@ export function applyWiringConversion(
     return { ok: false, failure: "notAnArray" };
   }
   if (value.length === 0) return { ok: false, failure: "empty" };
-  // The collection envelope is collection identity, not part of the value a
-  // single-valued consumer reads. Reconciling repeated Block instances is the
-  // array's business; a `T` target wants a `T`.
-  return { ok: true, value: shapeCollectionInstanceValue(value[0]) };
+  return { ok: true, value: value[0] };
 }

@@ -2,7 +2,6 @@ import {
   assertValidCanvas,
   assertValidShowGraph,
   defaultSourceValues,
-  isShapeCollectionInstance,
   resolveSlotInstances,
   sceneVariableValues,
 } from "@mechane/domain";
@@ -92,10 +91,7 @@ describe("Voting seed", () => {
     if (!Array.isArray(values))
       throw new Error("Candidate source did not materialize as an array.");
     expect(values).toHaveLength(3);
-    const votes = values.map((item) => {
-      if (!isShapeCollectionInstance(item))
-        throw new Error("Candidate source item is not normalized.");
-      const value = item.value;
+    const votes = values.map((value) => {
       if (value === null || typeof value !== "object" || Array.isArray(value))
         throw new Error("Candidate source item has no shape value.");
       if (!(CANDIDATE_VOTES_FIELD_ID in value))

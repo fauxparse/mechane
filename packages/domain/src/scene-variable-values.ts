@@ -6,7 +6,7 @@ import {
   type WiringEdge,
 } from "./graph";
 import { typeAtPath } from "./property-values";
-import { defaultSourceValues, type SourceValues } from "./source-defaults";
+import { defaultSourceValues } from "./source-defaults";
 import { deviceQrImageValue } from "./device-qr";
 import { resolveShapeFieldMapping } from "./shapes";
 import { applyWiringConversion, convertedSourceType } from "./wiring-conversion";
@@ -174,7 +174,7 @@ function deviceValue(node: DeviceNode, sourcePath: readonly string[]): unknown {
  */
 function resolveGraph(
   graph: ShowGraph,
-  sourceValues: SourceValues,
+  sourceValues: Readonly<Record<string, unknown>>,
 ): {
   wiringEdges: readonly WiringEdge[];
   diagnostics: WiringDiagnostic[];
@@ -182,7 +182,7 @@ function resolveGraph(
 } {
   const diagnostics: WiringDiagnostic[] = [];
   const designTimeSourceValues = defaultSourceValues(graph);
-  const resolvedSourceValues: SourceValues = {};
+  const resolvedSourceValues: Record<string, unknown> = {};
   for (const node of graph.nodes) {
     if (node.kind !== "source") continue;
     resolvedSourceValues[node.id] = mergeRuntimeValue(
@@ -239,7 +239,7 @@ function byEdge(diagnostics: readonly WiringDiagnostic[]): WiringDiagnostic[] {
 export function sceneVariableValues(
   graph: ShowGraph,
   sceneId: string,
-  sourceValues: SourceValues,
+  sourceValues: Readonly<Record<string, unknown>>,
 ): Record<string, unknown> {
   return sceneVariableResolution(graph, sceneId, sourceValues).values;
 }
@@ -253,7 +253,7 @@ export function sceneVariableValues(
 export function sceneVariableResolution(
   graph: ShowGraph,
   sceneId: string,
-  sourceValues: SourceValues,
+  sourceValues: Readonly<Record<string, unknown>>,
 ): SceneVariableResolution {
   const { wiringEdges, diagnostics, resolveValue } = resolveGraph(graph, sourceValues);
   const values: Record<string, unknown> = {};
@@ -284,7 +284,7 @@ export function sceneVariableResolution(
  */
 export function wiringDiagnostics(
   graph: ShowGraph,
-  sourceValues: SourceValues,
+  sourceValues: Readonly<Record<string, unknown>>,
 ): readonly WiringDiagnostic[] {
   const { wiringEdges, diagnostics, resolveValue } = resolveGraph(graph, sourceValues);
   for (const edge of wiringEdges) {

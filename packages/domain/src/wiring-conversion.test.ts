@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import type { Shape, Type } from "./shapes";
-import { createShapeCollectionInstance } from "./shapes";
 import {
   applyWiringConversion,
   convertedSourceType,
@@ -94,7 +93,7 @@ describe("applyWiringConversion", () => {
 
   it("unwraps the collection envelope so a Shape target receives a Shape", () => {
     const value = { field_name: "Alice", field_votes: 3 };
-    expect(applyWiringConversion([createShapeCollectionInstance(value)], "firstItem")).toEqual({
+    expect(applyWiringConversion([value], "firstItem")).toEqual({
       ok: true,
       value,
     });

@@ -1,7 +1,12 @@
-import type { ShowGraph } from "@mechane/domain";
+import {
+  defaultSourceValueTemplates,
+  materializeRunState,
+  resolveRuntimeValue,
+  type ShowGraph,
+} from "@mechane/domain";
 import { describe, expect, it } from "vitest";
 
-import { sourceValuesForEditedSources } from "./runs";
+import { runStateForEditedSources } from "./runs";
 
 const graph: ShowGraph = {
   shapes: [
@@ -43,20 +48,15 @@ const graph: ShowGraph = {
   ],
 };
 
-describe("sourceValuesForEditedSources", () => {
+describe("runStateForEditedSources", () => {
   it("updates edited sources while leaving other live values untouched", () => {
-    expect(
-      sourceValuesForEditedSources(
-        {
-          source_profile: { headline: "Old live value" },
-          source_other: "Keep this live value",
-        },
-        graph,
-        new Set(["source_profile"]),
-      ),
-    ).toEqual({
-      source_profile: { headline: "Edited headline" },
-      source_other: "Keep this live value",
+    const current = materializeRunState(graph, defaultSourceValueTemplates(graph));
+    current.sourceValues.source_other = "Keep this live value";
+    const next = runStateForEditedSources(current, graph, new Set(["source_profile"]));
+
+    expect(resolveRuntimeValue(next.sourceValues.source_profile!, next.structuredValues)).toEqual({
+      headline: "Edited headline",
     });
+    expect(next.sourceValues.source_other).toBe("Keep this live value");
   });
 });

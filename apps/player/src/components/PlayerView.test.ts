@@ -1,7 +1,13 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { Block, Canvas, ShowGraph } from "@mechane/domain";
+import {
+  defaultSourceValueTemplates,
+  materializeRunState,
+  type Block,
+  type Canvas,
+  type ShowGraph,
+} from "@mechane/domain";
 
 import { usePlayerSession, type PlayerSession } from "../api";
 import { PlayerView } from "./PlayerView";
@@ -177,6 +183,7 @@ function sessionWithRepeatedCandidate(): PlayerSession {
   };
   const scene = graph.nodes.find((node) => node.id === "scene_candidates");
   if (scene?.kind !== "scene") throw new Error("Candidate scene is missing.");
+  const runState = materializeRunState(graph, defaultSourceValueTemplates(graph));
   return {
     device: { name: "Audience", perConnection: true },
     realtime: { channel: "player:test", grant: "grant", expiresAt: "2026-01-01T00:01:00.000Z" },
@@ -186,13 +193,7 @@ function sessionWithRepeatedCandidate(): PlayerSession {
       status: "active",
       startedAt: "2026-01-01T00:00:00.000Z",
       endedAt: null,
-      sourceValues: {
-        source_candidates: [
-          { field_name: "Alice", field_votes: 0 },
-          { field_name: "Beatrix", field_votes: 0 },
-          { field_name: "Clarissa", field_votes: 0 },
-        ],
-      },
+      ...runState,
     },
     graph: {
       ...graph,
