@@ -288,6 +288,13 @@
       "when": 1788586362240,
       "tag": "0040_lively_blue_marvel",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1788587079515,
+      "tag": "0041_opposite_loki",
+      "breakpoints": true
     }
   ]
 }

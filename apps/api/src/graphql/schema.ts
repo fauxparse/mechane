@@ -311,15 +311,22 @@ export const schema = createSchema<GraphQLContext>({
     type PlayerEventApplied {
       eventId: ID!
       resultingSceneId: ID!
+      changed: Boolean!
     }
     type PlayerEventDuplicate {
       eventId: ID!
       outcome: String!
+      changed: Boolean!
       resultingSceneId: ID
       reason: String
     }
     type PlayerEventIgnored {
       eventId: ID!
+      reason: String!
+    }
+    type PlayerEventFailed {
+      eventId: ID!
+      actionId: ID!
       reason: String!
     }
     type PlayerEventAccepted {
@@ -333,6 +340,7 @@ export const schema = createSchema<GraphQLContext>({
       | PlayerEventApplied
       | PlayerEventDuplicate
       | PlayerEventIgnored
+      | PlayerEventFailed
       | PlayerEventAccepted
       | PlayerEventRejected
 
@@ -1336,6 +1344,8 @@ export const schema = createSchema<GraphQLContext>({
             return "PlayerEventDuplicate";
           case "ignored":
             return "PlayerEventIgnored";
+          case "failed":
+            return "PlayerEventFailed";
           case "accepted":
             return "PlayerEventAccepted";
           case "rejected":

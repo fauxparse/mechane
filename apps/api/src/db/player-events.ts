@@ -62,15 +62,17 @@ export type PlayerEventIgnoreReason =
   | "unbound-event"
   | "invalid-slot-path";
 export type PlayerEventResult =
-  | { kind: "applied"; eventId: string; resultingSceneId: string }
+  | { kind: "applied"; eventId: string; resultingSceneId: string; changed: boolean }
   | {
       kind: "duplicate";
       eventId: string;
-      outcome: "applied" | "ignored" | "accepted" | "rejected";
+      outcome: "applied" | "ignored" | "failed" | "accepted" | "rejected";
+      changed: boolean;
       resultingSceneId: string | null;
       reason: string | null;
     }
   | { kind: "ignored"; eventId: string; reason: PlayerEventIgnoreReason }
+  | { kind: "failed"; eventId: string; actionId: string; reason: string }
   | { kind: "accepted"; eventId: string }
   | {
       kind: "rejected";
@@ -99,10 +101,19 @@ function validSlotInstancePath(path: readonly BlockInstancePathSegment[] | undef
 }
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
 type PlayerEventRow = typeof playerEvents.$inferSelect;
 
 function duplicateResult(row: PlayerEventRow): PlayerEventResult {
+  if (row.outcome === "failed") {
+    return {
+      kind: "duplicate",
+      eventId: row.eventId,
+      outcome: "failed",
+      changed: row.changed,
+      resultingSceneId: row.resultingSceneId,
+      reason: row.reason,
+    };
+  }
   if (row.outcome === "applied") {
     if (!row.resultingSceneId) {
       throw new RunConfigurationError({
@@ -118,28 +129,20 @@ function duplicateResult(row: PlayerEventRow): PlayerEventResult {
       kind: "duplicate",
       eventId: row.eventId,
       outcome: "applied",
+      changed: row.changed,
       resultingSceneId: row.resultingSceneId,
       reason: null,
-    };
-  }
-  if (row.outcome === "accepted" || row.outcome === "rejected") {
-    return {
-      kind: "duplicate",
-      eventId: row.eventId,
-      outcome: row.outcome,
-      resultingSceneId: row.resultingSceneId,
-      reason: row.reason,
     };
   }
   return {
     kind: "duplicate",
     eventId: row.eventId,
-    outcome: "ignored",
+    outcome: row.outcome as "ignored" | "accepted" | "rejected",
+    changed: row.changed,
     resultingSceneId: row.resultingSceneId,
     reason: row.reason,
   };
 }
-
 async function recordEvent(
   tx: Tx,
   runId: string,
@@ -152,9 +155,11 @@ async function recordEvent(
   const outcome =
     result.kind === "applied" || result.kind === "accepted"
       ? result.kind
-      : result.kind === "rejected"
-        ? "rejected"
-        : "ignored";
+      : result.kind === "failed"
+        ? "failed"
+        : result.kind === "rejected"
+          ? "rejected"
+          : "ignored";
   await tx.insert(playerEvents).values({
     runId,
     showId,
@@ -167,7 +172,12 @@ async function recordEvent(
     params: input.params ?? null,
     slotInstancePath: input.slotInstancePath ?? [],
     outcome,
-    reason: result.kind === "ignored" || result.kind === "rejected" ? result.reason : null,
+    changed: result.kind === "applied" ? result.changed : false,
+    reason:
+      result.kind === "ignored" || result.kind === "rejected" || result.kind === "failed"
+        ? result.reason
+        : null,
+    failingActionId: result.kind === "failed" ? result.actionId : null,
     resultingSceneId:
       result.kind === "applied"
         ? result.resultingSceneId
@@ -495,10 +505,29 @@ export async function dispatchPlayerEvent(
           return result;
         }
         const action = plan.actions[0];
-        const target =
-          action?.kind === "navigate"
-            ? graph.nodes.find((node) => node.id === action.targetSceneId)
-            : undefined;
+        if (!action) {
+          throw new RunConfigurationError({
+            showId: device.showId,
+            runId: run.id,
+            category: "invalidNavigateAction",
+            deviceId: device.id,
+            sceneId: state.activeSceneId,
+            elementId: input.elementId,
+            cueId: plan.cue.id,
+            publishedGraphVersion: graph.version,
+          });
+        }
+        if (action.kind !== "navigate") {
+          const result: PlayerEventResult = {
+            kind: "failed",
+            eventId: input.eventId,
+            actionId: action.id,
+            reason: "update-action-dispatch-not-supported",
+          };
+          await recordEvent(tx, run.id, device.showId, device.id, input, result);
+          return result;
+        }
+        const target = graph.nodes.find((node) => node.id === action.targetSceneId);
         if (
           !action ||
           action.kind !== "navigate" ||
@@ -524,6 +553,7 @@ export async function dispatchPlayerEvent(
           kind: "applied",
           eventId: input.eventId,
           resultingSceneId: target.id,
+          changed: target.id !== state.activeSceneId,
         };
         if (target.id !== state.activeSceneId) {
           invalidationScope = { showId: device.showId, deviceId: device.id };

@@ -80,17 +80,25 @@ input PlayerEventInput {
 type PlayerEventApplied {
   eventId: ID!
   resultingSceneId: ID!
+  changed: Boolean!
 }
 
 type PlayerEventDuplicate {
   eventId: ID!
   outcome: String!
+  changed: Boolean!
   resultingSceneId: ID
   reason: String
 }
 
 type PlayerEventIgnored {
   eventId: ID!
+  reason: String!
+}
+
+type PlayerEventFailed {
+  eventId: ID!
+  actionId: ID!
   reason: String!
 }
 
@@ -103,7 +111,7 @@ type PlayerEventRejected {
   reason: String!
 }
 
-union PlayerEventResult = PlayerEventApplied | PlayerEventDuplicate | PlayerEventIgnored | PlayerEventAccepted | PlayerEventRejected
+union PlayerEventResult = PlayerEventApplied | PlayerEventDuplicate | PlayerEventIgnored | PlayerEventFailed | PlayerEventAccepted | PlayerEventRejected
 
 type PlayerFlowScene {
   scene: SceneNode!

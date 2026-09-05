@@ -296,16 +296,23 @@ export const SubmitPlayerEventMutation: TadaDocumentNode<any, any> = graphql(`
       ... on PlayerEventApplied {
         eventId
         appliedResultingSceneId: resultingSceneId
+        changed
       }
       ... on PlayerEventDuplicate {
         eventId
         outcome
+        changed
         duplicateResultingSceneId: resultingSceneId
         duplicateReason: reason
       }
       ... on PlayerEventIgnored {
         eventId
         ignoredReason: reason
+      }
+      ... on PlayerEventFailed {
+        eventId
+        actionId
+        failedReason: reason
       }
       ... on PlayerEventAccepted {
         eventId

@@ -116,15 +116,17 @@ export type PlayerEventInput = {
 } & ({ eventKind: "tap" } | { eventKind: "keypress"; params: { key: string } });
 
 export type PlayerEventResult =
-  | { kind: "applied"; eventId: string; resultingSceneId: string }
+  | { kind: "applied"; eventId: string; resultingSceneId: string; changed: boolean }
   | {
       kind: "duplicate";
       eventId: string;
-      outcome: "applied" | "ignored" | "accepted" | "rejected";
+      outcome: "applied" | "ignored" | "failed" | "accepted" | "rejected";
+      changed: boolean;
       resultingSceneId: string | null;
       reason: string | null;
     }
   | { kind: "ignored"; eventId: string; reason: string }
+  | { kind: "failed"; eventId: string; actionId: string; reason: string }
   | { kind: "accepted"; eventId: string }
   | { kind: "rejected"; eventId: string; reason: string };
 
@@ -145,13 +147,15 @@ export async function submitPlayerEvent(
       kind: "applied",
       eventId: String(event.eventId),
       resultingSceneId: String(event.appliedResultingSceneId),
+      changed: event.changed,
     };
   }
   if (event.__typename === "PlayerEventDuplicate") {
     return {
       kind: "duplicate",
       eventId: String(event.eventId),
-      outcome: event.outcome === "applied" ? "applied" : "ignored",
+      outcome: event.outcome as "applied" | "ignored" | "failed" | "accepted" | "rejected",
+      changed: event.changed,
       resultingSceneId: event.duplicateResultingSceneId
         ? String(event.duplicateResultingSceneId)
         : null,
@@ -163,6 +167,14 @@ export async function submitPlayerEvent(
       kind: "ignored",
       eventId: String(event.eventId),
       reason: String(event.ignoredReason),
+    };
+  }
+  if (event.__typename === "PlayerEventFailed") {
+    return {
+      kind: "failed",
+      eventId: String(event.eventId),
+      actionId: String(event.actionId),
+      reason: String(event.failedReason),
     };
   }
   if (event.__typename === "PlayerEventAccepted") {
