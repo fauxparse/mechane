@@ -14,6 +14,7 @@ import {
   addNavigateAction,
   addNode,
   addSceneVariable,
+  addUpdateAction,
   addShape,
   addShapeField,
   commandForEdit,
@@ -560,9 +561,33 @@ export function useGraphEditing(
         const error = cueConnectionError(graph, attempt);
         if (error) return error;
         const target = graph.nodes.find((node) => node.id === attempt.target);
-        if (!target || target.kind !== "scene") return "A Navigate Action must connect to a Scene.";
+        if (!target) return "The Update target no longer exists.";
+        const targetHandle = attempt.targetHandle ? readHandle(attempt.targetHandle) : null;
         const cue = (graph.cues ?? []).find((candidate) => candidate.id === sourceHandle.id);
         if (!cue) return "That Cue no longer exists.";
+        if (target.kind === "source" && targetHandle?.kind === "field") {
+          const action = {
+            id: generateId("action"),
+            cueId: cue.id,
+            kind: "update" as const,
+            target: { sourceId: target.id, fieldPath: [targetHandle.id] },
+            operation: {
+              kind: "set" as const,
+              operand: { kind: "literal" as const, value: { kind: "text" as const, value: "" } },
+            },
+          };
+          execute(
+            composite({
+              label: "Add Update Action",
+              commands: [
+                addUpdateAction(action),
+                setCueActionOrder(cue.id, [...cue.actionIds, action.id]),
+              ],
+            }),
+          );
+          return null;
+        }
+        if (target.kind !== "scene") return "A Navigate Action must connect to a Scene.";
         const action = {
           id: generateId("action"),
           cueId: cue.id,
@@ -902,6 +927,14 @@ export function useGraphEditing(
       canDrop,
       connect,
     },
+    variables: {
+      addVariable,
+      renameVariable,
+      setVariableType,
+      setVariableDefault,
+      reorderVariables,
+      removeVariable,
+    },
     shapes: {
       addShape: changeShape,
       renameShape: changeShapeName,
@@ -914,14 +947,6 @@ export function useGraphEditing(
       setShapeFieldDefault: changeShapeFieldDefault,
       reorderShapeFields: changeShapeFieldOrder,
       removeShapeField: changeShapeFieldRemoval,
-    },
-    variables: {
-      addVariable,
-      renameVariable,
-      setVariableType,
-      setVariableDefault,
-      reorderVariables,
-      removeVariable,
     },
     sourceValues: {
       graph,
@@ -939,16 +964,24 @@ export function useGraphEditing(
 function cueConnectionTargets(graph: ShowGraph, cueId: string): ConnectionTargets {
   const cue = (graph.cues ?? []).find((candidate) => candidate.id === cueId);
   const nodeIds = new Set<string>();
-  if (cue?.owner.kind === "scene") {
-    const ownerSceneId = cue.owner.sceneId;
-    const scene = graph.nodes.find((node) => node.kind === "scene" && node.id === ownerSceneId);
-    if (scene?.parentId) {
-      graph.nodes.forEach((node) => {
-        if (node.kind === "scene" && node.parentId === scene.parentId) nodeIds.add(node.id);
-      });
-    }
+  const fieldIds = new Set<string>();
+  if (!cue || cue.owner.kind !== "scene") {
+    return { nodeIds, variableIds: new Set<string>(), fieldIds };
   }
-  return { nodeIds, variableIds: new Set<string>(), fieldIds: new Set<string>() };
+  const ownerSceneId = cue.owner.sceneId;
+  const scene = graph.nodes.find((node) => node.kind === "scene" && node.id === ownerSceneId);
+  graph.nodes.forEach((node) => {
+    if (node.kind === "source" && (node.parentId === null || node.parentId === scene?.parentId)) {
+      nodeIds.add(node.id);
+      const sourceType = node.type;
+      if (typeof sourceType !== "string" && sourceType.kind === "shape") {
+        const shape = (graph.shapes ?? []).find((candidate) => candidate.id === sourceType.shapeId);
+        shape?.fields.forEach((field) => fieldIds.add(field.id));
+      }
+    }
+    if (node.kind === "scene" && node.parentId === scene?.parentId) nodeIds.add(node.id);
+  });
+  return { nodeIds, variableIds: new Set<string>(), fieldIds };
 }
 
 function cueConnectionError(graph: ShowGraph, attempt: ConnectionAttempt): string | null {
@@ -956,15 +989,22 @@ function cueConnectionError(graph: ShowGraph, attempt: ConnectionAttempt): strin
   if (sourceHandle?.kind !== "cue") return null;
   const cue = (graph.cues ?? []).find((candidate) => candidate.id === sourceHandle.id);
   if (!cue) return "That Cue no longer exists.";
-  const owner = cue.owner;
-  if (owner.kind !== "scene") return "Block Cues cannot connect to runtime targets yet.";
+  if (cue.owner.kind !== "scene") return "Block Cues cannot connect to runtime targets yet.";
+  const ownerSceneId = cue.owner.sceneId;
+  const ownerScene = graph.nodes.find((node) => node.kind === "scene" && node.id === ownerSceneId);
   const target = graph.nodes.find((node) => node.id === attempt.target);
   const targetHandle = attempt.targetHandle ? readHandle(attempt.targetHandle) : null;
-  if (!target || target.kind !== "scene" || targetHandle?.kind !== "input") {
-    return "A Navigate Action must connect to a Scene.";
+  if (
+    target?.kind === "source" &&
+    targetHandle?.kind === "field" &&
+    (target.parentId === null || target.parentId === ownerScene?.parentId)
+  ) {
+    return null;
   }
-  const source = graph.nodes.find((node) => node.kind === "scene" && node.id === owner.sceneId);
-  if (!source?.parentId || source.parentId !== target.parentId) {
+  if (!target || target.kind !== "scene" || targetHandle?.kind !== "input") {
+    return "An Update must target a Source field or a Scene.";
+  }
+  if (!ownerScene?.parentId || ownerScene.parentId !== target.parentId) {
     return "Navigate targets must stay in the Cue's Flow.";
   }
   return null;
