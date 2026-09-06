@@ -15,6 +15,8 @@ import {
   addNode,
   addSceneVariable,
   addUpdateAction,
+  setUpdateOperation,
+  setUpdateOperand,
   addShape,
   addShapeField,
   commandForEdit,
@@ -63,6 +65,8 @@ import type {
   ShapeField,
   ShowGraph,
   Type,
+  UpdateOperation,
+  UpdateOperand,
 } from "@mechane/domain";
 import {
   connectionError,
@@ -217,6 +221,8 @@ export interface GraphEditing {
   setNodeColor(nodeId: string, color: FlowColor): void;
   setDevicePerConnection(nodeId: string, perConnection: boolean): void;
   setFlowDefaultScene(flowId: string, sceneId: string | null): void;
+  setUpdateOperation(actionId: string, operation: UpdateOperation): void;
+  setUpdateOperand(actionId: string, operand: UpdateOperand): void;
   setSourceType(
     nodeId: string,
     type: Type,
@@ -225,11 +231,12 @@ export interface GraphEditing {
   moveIntoFlow(nodeIds: string[], flowId: string, origin: Position): void;
   moveOutOfFlow(nodeIds: string[], positions: Position[]): string | null;
 }
-
 export interface GraphInspectorNodeEditing {
   setNodeColor(nodeId: string, color: FlowColor): void;
   setDevicePerConnection(nodeId: string, perConnection: boolean): void;
   setFlowDefaultScene(flowId: string, sceneId: string | null): void;
+  setUpdateOperation(actionId: string, operation: UpdateOperation): void;
+  setUpdateOperand(actionId: string, operand: UpdateOperand): void;
   setSourceType(
     nodeId: string,
     type: Type,
@@ -247,6 +254,8 @@ export interface GraphInspectorEditing {
   setNodeColor(nodeId: string, color: FlowColor): void;
   setDevicePerConnection(nodeId: string, perConnection: boolean): void;
   setFlowDefaultScene(flowId: string, sceneId: string | null): void;
+  setUpdateOperation(actionId: string, operation: UpdateOperation): void;
+  setUpdateOperand(actionId: string, operand: UpdateOperand): void;
   setSourceType(
     nodeId: string,
     type: Type,
@@ -873,6 +882,19 @@ export function useGraphEditing(
     },
     [execute],
   );
+  const changeUpdateOperation = useCallback(
+    (actionId: string, operation: UpdateOperation) => {
+      execute(setUpdateOperation(actionId, operation));
+    },
+    [execute],
+  );
+
+  const changeUpdateOperand = useCallback(
+    (actionId: string, operand: UpdateOperand) => {
+      execute(setUpdateOperand(actionId, operand));
+    },
+    [execute],
+  );
 
   const addInteractionCue = useCallback(
     (owner: InteractionOwner) => {
@@ -973,6 +995,8 @@ export function useGraphEditing(
     setNodeColor: changeNodeColor,
     setDevicePerConnection: changeDevicePerConnection,
     setFlowDefaultScene: changeFlowDefaultScene,
+    setUpdateOperation: changeUpdateOperation,
+    setUpdateOperand: changeUpdateOperand,
     setSourceType: changeSourceType,
     moveIntoFlow,
     moveOutOfFlow,

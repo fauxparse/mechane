@@ -243,7 +243,7 @@ export function usePlayerSession(code: string): PlayerState {
   const submitEvent = useCallback<PlayerEventSubmitter>(
     async (input) => {
       const result = await submitPlayerEvent(normalizedCode, input);
-      if (result.kind === "applied") {
+      if (result.kind === "applied" || result.kind === "accepted") {
         const session = await fetchPlayerSession(normalizedCode);
         setState({ status: "ready", session });
       }

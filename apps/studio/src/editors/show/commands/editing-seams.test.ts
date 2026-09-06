@@ -43,6 +43,8 @@ const nodeEditing: GraphInspectorNodeEditing = {
   setNodeColor: () => {},
   setDevicePerConnection: () => {},
   setFlowDefaultScene: () => {},
+  setUpdateOperation: () => {},
+  setUpdateOperand: () => {},
   setSourceType: () => null,
 };
 const interaction = {

@@ -175,7 +175,7 @@ export function GraphInspector({
             {selectedEdges.length > 1 || !edge ? (
               <MultiEdgeSelection selected={selectedEdges} />
             ) : (
-              <SingleEdge edge={edge} graph={editing.graph} />
+              <SingleEdge edge={edge} graph={editing.graph} editing={editing} />
             )}
           </>
         )}
