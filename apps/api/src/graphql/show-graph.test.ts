@@ -3,6 +3,7 @@
 // what this boundary decides — whether the *graph* accepts it is the command
 // layer's answer, given when the batch is applied.
 import { GRAPH_COMMAND_TYPES, type FlatGraphEdit } from "@mechane/commands";
+import type { FlowNode } from "@mechane/domain";
 import { GraphQLError } from "graphql";
 import { describe, expect, it } from "vitest";
 
@@ -286,6 +287,29 @@ describe("Show graph serialization", () => {
 
     expect(serialized.edges[0]?.layout).toEqual(layout);
     expect(serialized.actions[0]?.layout).toEqual(layout);
+  });
+  it("serializes a Flow's default Scene", () => {
+    const flow: FlowNode = {
+      id: "flow_navigation",
+      kind: "flow",
+      name: "Navigation",
+      position: { x: 0, y: 0 },
+      parentId: null,
+      defaultSceneId: "scene_red",
+    };
+    const serialized = serializeShowGraph({
+      showId: "show_a",
+      state: "draft",
+      updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+      version: 1,
+      nodes: [flow],
+      edges: [],
+    });
+
+    expect(serialized.nodes[0]).toMatchObject({
+      kind: "flow",
+      defaultSceneId: "scene_red",
+    });
   });
 });
 

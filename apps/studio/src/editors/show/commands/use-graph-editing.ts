@@ -216,6 +216,7 @@ export interface GraphEditing {
   interaction: InteractionEditing;
   setNodeColor(nodeId: string, color: FlowColor): void;
   setDevicePerConnection(nodeId: string, perConnection: boolean): void;
+  setFlowDefaultScene(flowId: string, sceneId: string | null): void;
   setSourceType(
     nodeId: string,
     type: Type,
@@ -228,13 +229,13 @@ export interface GraphEditing {
 export interface GraphInspectorNodeEditing {
   setNodeColor(nodeId: string, color: FlowColor): void;
   setDevicePerConnection(nodeId: string, perConnection: boolean): void;
+  setFlowDefaultScene(flowId: string, sceneId: string | null): void;
   setSourceType(
     nodeId: string,
     type: Type,
     confirmedPlan?: SourceTypeChangePlan,
   ): SourceTypeChangePlan | null;
 }
-
 export interface GraphInspectorEditing {
   graph: ShowGraph;
   commands: Pick<GraphCommands, "beginGesture">;
@@ -245,6 +246,7 @@ export interface GraphInspectorEditing {
   cancelRename(): void;
   setNodeColor(nodeId: string, color: FlowColor): void;
   setDevicePerConnection(nodeId: string, perConnection: boolean): void;
+  setFlowDefaultScene(flowId: string, sceneId: string | null): void;
   setSourceType(
     nodeId: string,
     type: Type,
@@ -709,6 +711,7 @@ export function useGraphEditing(
     (sceneId: string, variableId: string, name: string) => {
       const gesture = beginGesture({ key: `rename:${variableId}`, label: "Rename Variable" });
       gesture.update(renameSceneVariable(sceneId, variableId, name));
+      gesture.commit();
     },
     [beginGesture],
   );
@@ -864,6 +867,13 @@ export function useGraphEditing(
     [execute],
   );
 
+  const changeFlowDefaultScene = useCallback(
+    (flowId: string, sceneId: string | null) => {
+      execute(setFlowDefaultScene(flowId, sceneId));
+    },
+    [execute],
+  );
+
   const addInteractionCue = useCallback(
     (owner: InteractionOwner) => {
       execute(
@@ -962,6 +972,7 @@ export function useGraphEditing(
     interaction: { addCue: addInteractionCue, renameCue: renameInteractionCue },
     setNodeColor: changeNodeColor,
     setDevicePerConnection: changeDevicePerConnection,
+    setFlowDefaultScene: changeFlowDefaultScene,
     setSourceType: changeSourceType,
     moveIntoFlow,
     moveOutOfFlow,

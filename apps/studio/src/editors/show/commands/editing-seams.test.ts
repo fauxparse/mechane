@@ -42,6 +42,7 @@ const sourceValues = {
 const nodeEditing: GraphInspectorNodeEditing = {
   setNodeColor: () => {},
   setDevicePerConnection: () => {},
+  setFlowDefaultScene: () => {},
   setSourceType: () => null,
 };
 const interaction = {

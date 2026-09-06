@@ -20,6 +20,7 @@ import {
   removeEdge,
   removeNode,
   renameNode,
+  renameSceneVariable,
   reorderSceneVariables,
   reparentNode,
   setDevicePerConnection,
@@ -142,6 +143,30 @@ describe("addNode / removeNode", () => {
     expect(applied.state.nodes).toHaveLength(GRAPH.nodes.length + 1);
   });
 
+  it("makes the first Scene added to a Flow its default", () => {
+    const flow: FlowNode = { ...VOTE_FLOW, id: "flow_empty", defaultSceneId: null };
+    const graph = { ...GRAPH, nodes: [...GRAPH.nodes, flow] };
+    const created = scene("scene_first", flow.id);
+    const applied = addNode(created).apply(graph);
+    expect(applied.state.nodes.find((node) => node.id === flow.id)).toMatchObject({
+      defaultSceneId: created.id,
+    });
+    expect(applied.inverse.apply(applied.state).state).toEqual(graph);
+    expect(
+      applyGraphEdits(graph, [{ type: "graph.addNode", node: created }]).nodes.find(
+        (node) => node.id === flow.id,
+      ),
+    ).toMatchObject({ defaultSceneId: created.id });
+  });
+
+  it("preserves an existing Flow default when adding another Scene", () => {
+    const created = scene("scene_new", VOTE_FLOW.id);
+    const applied = addNode(created).apply(GRAPH);
+    expect(applied.state.nodes.find((node) => node.id === VOTE_FLOW.id)).toMatchObject({
+      defaultSceneId: VOTING.id,
+    });
+  });
+
   it("removes a node with every edge that touched it, in one command", () => {
     const applied = removeNode(VOTING.id, "Delete Scene").apply(GRAPH);
     expect(applied.state.nodes.map((node) => node.id)).not.toContain(VOTING.id);
@@ -182,19 +207,39 @@ describe("addNode / removeNode", () => {
   it("restores the node, its position, and its edges exactly", () => {
     expectExactRoundTrip(removeNode(VOTING.id));
   });
-
-  // A side effect of the delete itself, captured with it (#28): the Flow
-  // loses its entry Scene, and one undo brings back both.
-  it("clears and then restores a Flow's default Scene reference", () => {
+  // A side effect of the delete itself (#28): the Flow selects the first
+  // remaining Scene, and one undo brings back both the Scene and its pointer.
+  it("replaces a deleted Flow default with a remaining Scene", () => {
     const applied = removeNode(VOTING.id).apply(GRAPH);
     const flow = applied.state.nodes.find((node) => node.id === VOTE_FLOW.id) as FlowNode;
-    expect(flow.defaultSceneId).toBeNull();
+    expect(flow.defaultSceneId).toBe(RESULTS.id);
     expect(() => assertValidShowGraph(applied.state)).not.toThrow();
 
     const undone = applied.inverse.apply(applied.state).state;
     expect((undone.nodes.find((node) => node.id === VOTE_FLOW.id) as FlowNode).defaultSceneId).toBe(
       VOTING.id,
     );
+  });
+  it("preserves an existing Flow default when deleting another Scene", () => {
+    const applied = removeNode(RESULTS.id).apply(GRAPH);
+    expect(
+      (applied.state.nodes.find((node) => node.id === VOTE_FLOW.id) as FlowNode).defaultSceneId,
+    ).toBe(VOTING.id);
+  });
+
+  it("clears a Flow default when its last Scene is deleted", () => {
+    const graph = {
+      ...GRAPH,
+      nodes: GRAPH.nodes.filter((node) => node.id !== RESULTS.id),
+      edges: GRAPH.edges.filter(
+        (edge) => edge.sourceId !== RESULTS.id && edge.targetId !== RESULTS.id,
+      ),
+    };
+    const applied = removeNode(VOTING.id).apply(graph);
+    expect(
+      (applied.state.nodes.find((node) => node.id === VOTE_FLOW.id) as FlowNode).defaultSceneId,
+    ).toBe(null);
+    expect(applied.inverse.apply(applied.state).state).toEqual(graph);
   });
 
   it("is redoable", () => {
@@ -236,6 +281,14 @@ describe("renameNode", () => {
 
   it("changes nothing when the name is unchanged", () => {
     expect(renameNode(TALLY.id, TALLY.name).apply(GRAPH).inverse.isEmpty).toBe(true);
+  });
+});
+describe("renameSceneVariable", () => {
+  it("renames a Variable and restores its old name", () => {
+    const applied = renameSceneVariable(VOTING.id, "variable_prompt", "question").apply(GRAPH);
+    const voting = applied.state.nodes.find((node) => node.id === VOTING.id) as SceneNode;
+    expect(voting.variables[0]?.name).toBe("question");
+    expect(applied.inverse.apply(applied.state).state).toEqual(GRAPH);
   });
 });
 

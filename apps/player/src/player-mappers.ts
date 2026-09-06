@@ -1,4 +1,5 @@
 import {
+  PRIMITIVE_TYPES,
   decodeEventBinding,
   type Action,
   type Block,
@@ -9,8 +10,8 @@ import {
   type SourceValues,
   type StructuredValues,
   type Type,
+  type UpdateOperation,
 } from "@mechane/domain";
-import { PRIMITIVE_TYPES } from "@mechane/domain";
 import { decodeCanvasDocument } from "@mechane/graphql-schema";
 import { resolveApiUrl } from "./api-url";
 import type { PlayerSession } from "./api";
@@ -87,6 +88,8 @@ function edgeKind(typename: unknown): GraphEdge["kind"] {
       return "wiring";
     case "NavigateEdge":
       return "navigate";
+    case "UpdateEdge":
+      return "update";
     case "DeviceEdge":
       return "device";
     default:
@@ -218,15 +221,35 @@ function toCue(value: unknown): Cue {
     actionIds: Array.isArray(input.actionIds) ? input.actionIds.map(String) : [],
   };
 }
-
 function toAction(value: unknown): Action {
   const input = record(value);
-  return {
-    id: String(input.id),
-    cueId: String(input.cueId),
-    kind: "navigate",
-    targetSceneId: String(input.targetSceneId),
-  };
+  const id = String(input.id);
+  const cueId = String(input.cueId);
+  if (input.kind === "navigate") {
+    return {
+      id,
+      cueId,
+      kind: "navigate",
+      targetSceneId: String(input.targetSceneId),
+    };
+  }
+  if (input.kind === "update") {
+    const params = record(input.params);
+    if (typeof input.targetSourceId !== "string" || !Array.isArray(params.fieldPath)) {
+      throw new Error(`Player Update Action "${id}" is missing its target.`);
+    }
+    return {
+      id,
+      cueId,
+      kind: "update",
+      target: {
+        sourceId: input.targetSourceId,
+        fieldPath: params.fieldPath.map(String),
+      },
+      operation: params.operation as UpdateOperation,
+    };
+  }
+  throw new Error(`Unknown Player action kind: ${String(input.kind)}.`);
 }
 
 function toGraph(value: unknown): PlayerSession["graph"] {

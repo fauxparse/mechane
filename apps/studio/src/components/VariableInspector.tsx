@@ -300,7 +300,20 @@ function VariableRow({
     index,
     group,
   });
+  const [name, setName] = useState(variable.name);
   const [defaultPopoverOpen, setDefaultPopoverOpen] = useState(false);
+  const cancelBlur = useRef(false);
+
+  useEffect(() => setName(variable.name), [variable.name]);
+
+  const commitName = () => {
+    if (cancelBlur.current) {
+      cancelBlur.current = false;
+      return;
+    }
+    if (name !== variable.name) onRename(variable.id, name);
+  };
+
   return (
     <div
       ref={ref}
@@ -334,8 +347,20 @@ function VariableRow({
           />
         </InputGroupAddon>
         <InputGroupInput
-          value={variable.name}
-          onChange={(event) => onRename(variable.id, event.target.value)}
+          aria-label={`Variable name for ${variable.name}`}
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          onBlur={commitName}
+          onKeyDown={(event) => {
+            event.stopPropagation();
+            if (event.key === "Enter") {
+              event.currentTarget.blur();
+            } else if (event.key === "Escape") {
+              cancelBlur.current = true;
+              setName(variable.name);
+              event.currentTarget.blur();
+            }
+          }}
         />
       </InputGroup>
       <DropdownMenu>

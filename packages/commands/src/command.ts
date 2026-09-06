@@ -181,7 +181,7 @@ export interface CapturingSpec<S, C, E = unknown> {
    */
   capture(state: S): C;
   /** The forward change. Must not mutate `state`. */
-  apply(state: S): S;
+  apply(state: S, captured: C): S;
   /** Puts `captured` back. Must not mutate `state`. */
   restore(state: S, captured: C): S;
   /**
@@ -238,7 +238,7 @@ export function capturing<S, C, E = unknown>(spec: CapturingSpec<S, C, E>): Comm
         return { state, inverse: noop(spec.label, spec.scope), edits: [] };
       }
       return {
-        state: spec.apply(state),
+        state: spec.apply(state, captured),
         inverse: restoring(spec, captured),
         edits: spec.edits ?? [],
       };
