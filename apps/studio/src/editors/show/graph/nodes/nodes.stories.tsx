@@ -11,7 +11,7 @@ type BaseNodeStoryArgs = ComponentProps<typeof BaseNode> & {
 };
 
 const meta: Meta<BaseNodeStoryArgs> = {
-  title: "studio/graph/nodes",
+  title: "studio/Editors/Show/Graph/Nodes",
   component: BaseNode,
   args: {
     id: "1",

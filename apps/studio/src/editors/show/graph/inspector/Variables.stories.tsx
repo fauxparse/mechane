@@ -7,7 +7,7 @@ import type { VariableEditing } from "../../commands/use-graph-editing";
 import { Variables } from "./Variables";
 
 const meta = {
-  title: "studio/Variables",
+  title: "studio/Editors/Show/Graph/Inspector/Variables",
   parameters: { layout: "centered" },
 } satisfies Meta;
 

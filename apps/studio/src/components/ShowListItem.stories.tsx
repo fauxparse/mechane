@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ShowListItem } from "./ShowListItem";
 
 const meta: Meta<typeof ShowListItem> = {
-  title: "studio/ShowListItem",
+  title: "studio/Components/ShowListItem",
   component: ShowListItem,
   args: {
     name: "Hamlet",

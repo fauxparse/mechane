@@ -47,7 +47,7 @@ const editing = {
 } as unknown as ShapeEditing;
 
 const meta = {
-  title: "studio/ShapeWorkspace",
+  title: "studio/Editors/Show/Shapes/ShapeWorkspace",
   component: ShapeWorkspace,
   parameters: { layout: "fullscreen" },
   args: {

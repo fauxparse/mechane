@@ -44,7 +44,7 @@ function ToolbarStandIn() {
 }
 
 const meta: Meta<typeof EditorLayout> = {
-  title: "studio/EditorLayout",
+  title: "studio/Components/EditorLayout",
   component: EditorLayout,
   parameters: { layout: "fullscreen" },
   args: { header: MOCK_HEADER },

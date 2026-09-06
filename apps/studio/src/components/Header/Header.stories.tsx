@@ -16,7 +16,7 @@ storyQueryClient.setQueryData(userSettingsQueryKey, { themeMode: "dark" });
 // The sidebar trigger only renders inside a SidebarProvider, so it is absent
 // here by design — see EditorLayout.stories.tsx for the Header in its Chrome.
 const meta: Meta<typeof Header> = {
-  title: "studio/Header",
+  title: "studio/Components/Header/Header",
   component: Header,
   render: (args) => {
     const [, updateGlobals] = useGlobals();
