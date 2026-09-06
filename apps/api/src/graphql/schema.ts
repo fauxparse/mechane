@@ -1127,6 +1127,10 @@ export const schema = createSchema<GraphQLContext>({
       bindingId: ID
       bindingIds: [ID!]
       actionIds: [ID!]
+      "Update Action target and operation payloads."
+      target: JSON
+      operation: JSON
+      operand: JSON
       targetSceneId: ID
       elementId: ID
       rank: String

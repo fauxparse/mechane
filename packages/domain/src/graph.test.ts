@@ -25,6 +25,7 @@ import type {
   GraphNode,
   GraphViolation,
   NavigateEdge,
+  UpdateEdge,
   SceneNode,
   ShowGraph,
   SourceNode,
@@ -114,6 +115,18 @@ function navigate(
 
 function deviceEdge(id: string, sourceId: string, targetId: string): DeviceEdge {
   return { id, kind: "device", sourceId, targetId, sourcePath: [], targetPath: [] };
+}
+function updateEdge(id: string, actionId: string): UpdateEdge {
+  return {
+    id,
+    kind: "update",
+    sourceId: "c1",
+    targetId: "r1",
+    sourcePath: [],
+    targetPath: [],
+    cueId: "cue",
+    actionId,
+  };
 }
 function graph(nodes: GraphNode[], edges: GraphEdge[] = [], shapes: Shape[] = []): ShowGraph {
   return { nodes, edges, shapes };
@@ -372,6 +385,14 @@ describe("assertValidShowGraph", () => {
         [wiring("e1", "r1", "c1", ["v1"], ["tally", ""])],
       );
       expectViolation(() => assertValidShowGraph(showGraph), "emptyPathSegment");
+    });
+
+    it("allows separate Update Actions targeting the same Source", () => {
+      const showGraph = graph(
+        [source("r1"), scene("c1", null, [])],
+        [updateEdge("u1", "action-a"), updateEdge("u2", "action-b")],
+      );
+      expect(() => assertValidShowGraph(showGraph)).not.toThrow();
     });
 
     it("rejects a duplicate wiring edge", () => {

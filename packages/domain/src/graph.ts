@@ -782,7 +782,7 @@ function assertNoDuplicateEdges(edges: GraphEdge[]): void {
   const seen = new Set<string>();
   for (const edge of edges) {
     const discriminator =
-      edge.kind === "navigate"
+      edge.kind === "navigate" || edge.kind === "update"
         ? `${edge.cueId ?? ""}${edge.actionId ?? ""}`
         : // Two wiring edges between the same pair of nodes are distinct if
           // they move different fields: feeding a Scene Variable's `name`
@@ -793,8 +793,8 @@ function assertNoDuplicateEdges(edges: GraphEdge[]): void {
     if (seen.has(key)) {
       throw new InvalidShowGraphError(
         "duplicateEdge",
-        edge.kind === "navigate"
-          ? `duplicate Navigate edge between "${edge.sourceId}" and "${edge.targetId}" for the same Cue/Action pairing.`
+        edge.kind === "navigate" || edge.kind === "update"
+          ? `duplicate ${edge.kind} edge between "${edge.sourceId}" and "${edge.targetId}" for the same Cue/Action pairing.`
           : `duplicate ${edge.kind} edge between "${edge.sourceId}" and "${edge.targetId}".`,
       );
     }
