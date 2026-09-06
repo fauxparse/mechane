@@ -181,7 +181,7 @@ function Tile({
 }
 
 const meta: Meta<DebugProps> = {
-  title: "studio/Show graph/Routed edge",
+  title: "studio/Editors/Show/Graph/RoutedEdge",
   parameters: { layout: "padded" },
   args: {
     margin: DEFAULT_MARGIN,

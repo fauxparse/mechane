@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { AuthForm } from "./AuthForm";
 
 const meta: Meta<typeof AuthForm> = {
-  title: "studio/AuthForm",
+  title: "studio/Components/AuthForm",
   component: AuthForm,
   args: {
     mode: "sign-in",

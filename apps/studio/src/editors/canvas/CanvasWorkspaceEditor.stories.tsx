@@ -367,7 +367,7 @@ const storyGoogleFonts = [
 const storyQueryClient = new QueryClient();
 const noOp = () => {};
 const meta: Meta<typeof CanvasWorkspaceEditor> = {
-  title: "studio/CanvasWorkspaceEditor",
+  title: "studio/Editors/Canvas/CanvasWorkspaceEditor",
   component: CanvasWorkspaceEditor,
   parameters: { layout: "fullscreen" },
   // The editor contributes its Layers panel, Properties panel and toolbar to the

@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Toolbar } from "./Toolbar";
 
 const meta: Meta<typeof Toolbar> = {
-  title: "studio/Toolbar",
+  title: "studio/Editors/Canvas/Toolbar",
   component: Toolbar,
   parameters: { layout: "fullscreen" },
   args: {},

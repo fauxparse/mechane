@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Logo } from "./Logo";
 
 const meta: Meta<typeof Logo> = {
-  title: "studio/Logo",
+  title: "studio/Components/Header/Logo",
   component: Logo,
   args: {
     className: "size-20",

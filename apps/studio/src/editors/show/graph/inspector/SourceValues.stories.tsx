@@ -48,7 +48,7 @@ const initialGraph: ShowGraph = {
 };
 
 const meta = {
-  title: "studio/SourceValues",
+  title: "studio/Editors/Show/Graph/Inspector/SourceValues",
   parameters: { layout: "fullscreen" },
 } satisfies Meta;
 

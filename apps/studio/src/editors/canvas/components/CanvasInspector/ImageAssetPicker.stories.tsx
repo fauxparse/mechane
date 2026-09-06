@@ -29,7 +29,7 @@ const assets = [
   },
 ] as const;
 
-const meta = { title: "studio/ImageAssetPicker", component: ImageAssetPicker } satisfies Meta<
+const meta = { title: "studio/Editors/Canvas/Components/CanvasInspector/ImageAssetPicker", component: ImageAssetPicker } satisfies Meta<
   typeof ImageAssetPicker
 >;
 export default meta;

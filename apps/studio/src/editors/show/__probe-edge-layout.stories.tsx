@@ -9,7 +9,7 @@ import { SAMPLE_GRAPH } from "./data/sample-graph";
 import type { GraphEdit } from "@mechane/commands";
 
 const meta: Meta = {
-  title: "studio/__probe/EdgeLayoutPayload",
+  title: "studio/Editors/Show/Probe/EdgeLayoutPayload",
   parameters: { layout: "fullscreen" },
 };
 

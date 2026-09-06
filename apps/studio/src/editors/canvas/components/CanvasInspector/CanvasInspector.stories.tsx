@@ -455,7 +455,7 @@ function InspectorStory({
 }
 
 const meta: Meta<typeof CanvasInspector> = {
-  title: "studio/CanvasInspector",
+  title: "studio/Editors/Canvas/Components/CanvasInspector",
   component: CanvasInspector,
   parameters: { layout: "fullscreen" },
 };

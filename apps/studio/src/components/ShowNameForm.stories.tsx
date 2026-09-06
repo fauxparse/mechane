@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ShowNameForm } from "./ShowNameForm";
 
 const meta: Meta<typeof ShowNameForm> = {
-  title: "studio/ShowNameForm",
+  title: "studio/Components/ShowNameForm",
   component: ShowNameForm,
   args: {
     submitLabel: "Create Show",

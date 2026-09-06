@@ -4,7 +4,7 @@ import { AlignmentSelector } from "./AlignmentSelector";
 import { useArgs } from "storybook/preview-api";
 
 const meta: Meta<typeof AlignmentSelector> = {
-  title: "studio/CanvasInspector/AlignmentSelector",
+  title: "studio/Editors/Canvas/Components/CanvasInspector/AlignmentSelector",
   component: AlignmentSelector,
   args: {
     alignPrimary: "start",
