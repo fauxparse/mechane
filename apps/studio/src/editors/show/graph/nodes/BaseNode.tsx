@@ -166,8 +166,9 @@ export const BaseNode = ({
                   data-connected={
                     connectedHandleIds?.has(handleFor({ kind: "field", id: field.id })) ?? false
                   }
-                  isConnectableStart={false}
-                  isConnectable={data.kind === "transformer"}
+                  isConnectable={
+                    data.kind === "transformer" || data.kind === "source"
+                  }
                 />
                 <Icon className="size-4 shrink-0 justify-self-center ml-2 text-(--flow-muted-foreground)" />
                 <div className="flex min-w-0 items-baseline justify-between gap-2 pr-4">
