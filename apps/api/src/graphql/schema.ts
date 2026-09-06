@@ -1004,6 +1004,9 @@ export const schema = createSchema<GraphQLContext>({
       cueId: ID!
       kind: String!
       targetSceneId: ID
+      targetSourceId: ID
+      params: JSON
+      layout: JSON
     }
     input EventBindingInput {
       id: ID!

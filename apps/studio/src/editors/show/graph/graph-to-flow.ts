@@ -511,7 +511,9 @@ function toFlowEdge(
     source: edge.sourceId,
     target: edge.targetId,
     sourceHandle:
-      edge.kind === "navigate" && edge.cueId && cueIds.has(edge.cueId)
+      (edge.kind === "navigate" || edge.kind === "update") &&
+      edge.cueId &&
+      cueIds.has(edge.cueId)
         ? handleFor({ kind: "cue", id: edge.cueId })
         : source?.kind === "device" && sourcePath
           ? handleFor({ kind: "deviceSource", name: sourcePath })
@@ -523,7 +525,9 @@ function toFlowEdge(
         ? handleFor({ kind: "variable", id: facts.targetVariableId })
         : edge.kind === "wiring" && target?.kind === "transformer" && edge.targetPath[0]
           ? handleFor({ kind: "field", id: edge.targetPath[0] })
-          : handleFor({ kind: "input" }),
+          : edge.kind === "update" && target?.kind === "source" && edge.targetPath[0]
+            ? handleFor({ kind: "field", id: edge.targetPath[0] })
+            : handleFor({ kind: "input" }),
     data: {
       kind: edge.kind,
       color: facts.color,

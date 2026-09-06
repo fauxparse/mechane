@@ -207,6 +207,51 @@ describe("graphToFlow", () => {
     expect(scene.data.cues).toEqual([{ id: "cue_1", name: "Go to Green", actionCount: 1 }]);
     expect(edges[0]?.sourceHandle).toBe(handleFor({ kind: "cue", id: "cue_1" }));
   });
+  it("anchors Update edges to their Cue and Source input", () => {
+    const { edges } = graphToFlow({
+      nodes: [
+        node({ id: "scene_1", kind: "scene", parentId: "flow_1" }),
+        node({ id: "source_1", kind: "source", type: "number" }),
+      ],
+      cues: [
+        {
+          id: "cue_1",
+          name: "Set counter",
+          owner: { kind: "scene", sceneId: "scene_1" },
+          actionIds: ["action_1"],
+        },
+      ],
+      actions: [
+        {
+          id: "action_1",
+          cueId: "cue_1",
+          kind: "update",
+          target: { sourceId: "source_1", fieldPath: [] },
+          operation: {
+            kind: "set",
+            operand: { kind: "literal", value: { kind: "number", value: 1 } },
+          },
+        },
+      ],
+      edges: [
+        {
+          id: "update:action_1",
+          kind: "update",
+          sourceId: "scene_1",
+          targetId: "source_1",
+          sourcePath: [],
+          targetPath: [],
+          cueId: "cue_1",
+          actionId: "action_1",
+        },
+      ],
+    });
+
+    expect(edges[0]).toMatchObject({
+      sourceHandle: handleFor({ kind: "cue", id: "cue_1" }),
+      targetHandle: handleFor({ kind: "input" }),
+    });
+  });
 
   it("narrows rendered data by node kind", () => {
     const { nodes } = graphToFlow({

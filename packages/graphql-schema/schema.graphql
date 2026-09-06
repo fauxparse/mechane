@@ -838,6 +838,9 @@ input ActionInput {
   cueId: ID!
   kind: String!
   targetSceneId: ID
+  targetSourceId: ID
+  params: JSON
+  layout: JSON
 }
 
 input EventBindingInput {

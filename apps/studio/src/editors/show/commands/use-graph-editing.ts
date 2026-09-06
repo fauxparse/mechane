@@ -565,12 +565,18 @@ export function useGraphEditing(
         const targetHandle = attempt.targetHandle ? readHandle(attempt.targetHandle) : null;
         const cue = (graph.cues ?? []).find((candidate) => candidate.id === sourceHandle.id);
         if (!cue) return "That Cue no longer exists.";
-        if (target.kind === "source" && targetHandle?.kind === "field") {
+        if (
+          target.kind === "source" &&
+          (targetHandle?.kind === "input" || targetHandle?.kind === "field")
+        ) {
           const action = {
             id: generateId("action"),
             cueId: cue.id,
             kind: "update" as const,
-            target: { sourceId: target.id, fieldPath: [targetHandle.id] },
+            target: {
+              sourceId: target.id,
+              fieldPath: targetHandle.kind === "field" ? [targetHandle.id] : [],
+            },
             operation: {
               kind: "set" as const,
               operand: { kind: "literal" as const, value: { kind: "text" as const, value: "" } },
@@ -996,7 +1002,7 @@ function cueConnectionError(graph: ShowGraph, attempt: ConnectionAttempt): strin
   const targetHandle = attempt.targetHandle ? readHandle(attempt.targetHandle) : null;
   if (
     target?.kind === "source" &&
-    targetHandle?.kind === "field" &&
+    (targetHandle?.kind === "input" || targetHandle?.kind === "field") &&
     (target.parentId === null || target.parentId === ownerScene?.parentId)
   ) {
     return null;
