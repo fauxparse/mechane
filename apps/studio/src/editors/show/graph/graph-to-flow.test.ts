@@ -19,8 +19,8 @@ import {
   flowSize,
   graphToFlow,
   NODE_HEIGHT,
+  NODE_TYPE_BY_KIND,
   NODE_WIDTH,
-  PLACEHOLDER_NODE_TYPE,
   VARIABLE_ROW_HEIGHT,
 } from "./graph-to-flow";
 import { handleFor } from "./handle-ids";
@@ -469,19 +469,23 @@ describe("graphToFlow", () => {
     expect(edges.find((edge) => edge.id === "outside")?.data?.color).toBe("neutral");
   });
 
-  it("renders Flows as containers and everything else as placeholders", () => {
+  it("renders each graph kind with its own React Flow node type", () => {
     const { nodes } = graphToFlow({
       nodes: [
         node({ id: "flow_1", kind: "flow" }),
-        node({ id: "device_1", kind: "device" }),
+        node({ id: "scene_1", kind: "scene" }),
+        node({ id: "source_1", kind: "source" }),
         node({ id: "transformer_1", kind: "transformer" }),
+        node({ id: "device_1", kind: "device" }),
       ],
       edges: [],
     });
     const types = new Map(nodes.map((n) => [n.id, n.type]));
     expect(types.get("flow_1")).toBe(FLOW_NODE_TYPE);
-    expect(types.get("device_1")).toBe(PLACEHOLDER_NODE_TYPE);
-    expect(types.get("transformer_1")).toBe(PLACEHOLDER_NODE_TYPE);
+    expect(types.get("scene_1")).toBe(NODE_TYPE_BY_KIND.scene);
+    expect(types.get("source_1")).toBe(NODE_TYPE_BY_KIND.source);
+    expect(types.get("transformer_1")).toBe(NODE_TYPE_BY_KIND.transformer);
+    expect(types.get("device_1")).toBe(NODE_TYPE_BY_KIND.device);
   });
 
   it("uses each node color, inheriting its Flow color when unset", () => {

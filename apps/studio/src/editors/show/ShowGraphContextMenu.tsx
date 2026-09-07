@@ -37,19 +37,25 @@ import type { MutableRefObject } from "react";
 
 import type { GraphConnectionEditing, GraphCreationEditing } from "./commands/use-graph-editing";
 import type { CreationSite } from "./show-graph-layout";
-import { FLOW_NODE_TYPE, PLACEHOLDER_NODE_TYPE } from "./graph/graph-to-flow";
+import { FLOW_NODE_TYPE, NODE_TYPE_BY_KIND } from "./graph/graph-to-flow";
 import type { ShowFlowEdge, ShowFlowNode } from "./graph/graph-to-flow";
 import { ShowEdgeRoutingProvider } from "./graph/ShowEdgeRoutingProvider";
 import { showEdgeTypes } from "./graph/show-edge-types";
 import type { CreatableNode } from "./graph/node-kinds";
 import { CREATABLE_NODES } from "./graph/node-kinds";
+import { DeviceNode } from "./graph/nodes/DeviceNode";
 import { FlowNode } from "./graph/nodes/FlowNode";
-import { ReactFlowBaseNode } from "./graph/nodes/ReactFlowBaseNode";
+import { SceneNode } from "./graph/nodes/SceneNode";
+import { SourceNode } from "./graph/nodes/SourceNode";
+import { TransformerNode } from "./graph/nodes/TransformerNode";
 import { MIN_ZOOM, MAX_ZOOM } from "./show-graph-editor-constants";
 
 const nodeTypes = {
-  [PLACEHOLDER_NODE_TYPE]: ReactFlowBaseNode,
+  [NODE_TYPE_BY_KIND.device]: DeviceNode,
   [FLOW_NODE_TYPE]: FlowNode,
+  [NODE_TYPE_BY_KIND.scene]: SceneNode,
+  [NODE_TYPE_BY_KIND.source]: SourceNode,
+  [NODE_TYPE_BY_KIND.transformer]: TransformerNode,
 };
 
 export interface ShowGraphContextMenuProps {
