@@ -629,7 +629,14 @@ export async function persistCanvases(tx: Tx, options: PersistCanvasesOptions): 
         };
       } else {
         const stored = await readCanvasById(showId, state, workspaceEdit.canvasId, tx);
-        if (!stored) throw new Error(`Canvas "${workspaceEdit.canvasId}" was not found.`);
+        // The owning Scene or Block can be removed in the same edit batch as
+        // a change to its Canvas — a drag queued just before the delete, say
+        // (#594). Graph edits land before Canvas edits (./show-graph.ts
+        // writeGraph), so by the time this runs the owner and its Canvas
+        // are already gone via cascade. The edit now targets nothing: skip
+        // it rather than failing the whole batch over a subject the same
+        // request just destroyed.
+        if (!stored) continue;
         entry = {
           canvas: stored.canvas,
           owner: stored.owner,
