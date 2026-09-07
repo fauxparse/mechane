@@ -51,7 +51,7 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type Executor = Tx | typeof db;
 type RunRow = typeof runs.$inferSelect;
 
-async function readRunState(runId: string, executor: Executor): Promise<RunState> {
+export async function readRunState(runId: string, executor: Executor): Promise<RunState> {
   const [sourceRows, structuredRows] = await Promise.all([
     executor.select().from(runSourceValues).where(eq(runSourceValues.runId, runId)),
     executor.select().from(runStructuredValues).where(eq(runStructuredValues.runId, runId)),
@@ -94,7 +94,7 @@ async function toRun(row: RunRow, executor: Executor): Promise<Run> {
   };
 }
 
-async function replaceRunState(
+export async function replaceRunState(
   executor: Executor,
   runId: string,
   graph: ShowGraph,

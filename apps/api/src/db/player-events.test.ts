@@ -4,9 +4,10 @@ import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { db } from "./client";
+import { readCanvas } from "./canvas";
 import { dispatchPlayerEvent } from "./player-events";
 import { listRunErrors, RunConfigurationError } from "./run-errors";
-import { endRun, readRunDeviceState, startRun } from "./runs";
+import { endRun, readActiveRun, readRunDeviceState, startRun } from "./runs";
 import { publishShowGraph, readShowGraph, writeShowGraph } from "./show-graph";
 import { playerEvents, playerInvalidationOutbox, runDeviceStates, shows, user } from "./schema";
 import { seedShow } from "./seeds/shows/navigation-proof/navigation-proof";
@@ -77,6 +78,77 @@ describe("dispatchPlayerEvent", () => {
     expect(await db.select().from(playerEvents).where(eq(playerEvents.runId, run.id))).toHaveLength(
       0,
     );
+  });
+  it("dispatches Adjust Update Actions and updates the Run value", async () => {
+    await createShow();
+    const draft = await readShowGraph(showId, "draft");
+    const redCanvas = await readCanvas(showId, "draft", { sceneNodeId: "scene_red" });
+    if (!redCanvas) throw new Error("Red Scene Canvas is missing.");
+    const sourceId = "source_counter";
+    const cueId = "cue_counter";
+    const actionId = "action_counter";
+    await writeShowGraph(showId, "draft", {
+      ...draft,
+      nodes: [
+        ...draft.nodes,
+        {
+          id: sourceId,
+          kind: "source",
+          name: "Counter",
+          position: { x: 0, y: 0 },
+          parentId: null,
+          type: "number",
+        },
+      ],
+      cues: [
+        ...(draft.cues ?? []),
+        {
+          id: cueId,
+          name: "Increment",
+          owner: { kind: "scene", sceneId: "scene_red" },
+          actionIds: [actionId],
+        },
+      ],
+      actions: [
+        ...(draft.actions ?? []),
+        {
+          id: actionId,
+          cueId,
+          kind: "update",
+          target: { sourceId, fieldPath: [] },
+          operation: {
+            kind: "adjust",
+            operand: { kind: "literal", value: { kind: "number", value: 1 } },
+          },
+        },
+      ],
+      eventBindings: [
+        ...(draft.eventBindings ?? []),
+        {
+          id: "binding_counter",
+          canvasId: redCanvas.id,
+          elementId: "scene_red_root",
+          eventKind: "tap",
+          cueId,
+          position: 5,
+        },
+      ],
+    });
+    const published = await publishShowGraph(showId);
+    const run = await startRun(showId);
+    const device = await proofDevice();
+
+    const result = await dispatchPlayerEvent(device.pairingCode, {
+      eventId: crypto.randomUUID(),
+      publishedGraphVersion: published.version,
+      sceneId: "scene_red",
+      elementId: "scene_red_root",
+      eventKind: "tap",
+    });
+
+    expect(result).toMatchObject({ kind: "accepted" });
+    expect((await readActiveRun(showId))?.sourceValues[sourceId]).toBe(1);
+    expect((await readRunDeviceState(run.id, device.id))?.activeSceneId).toBe("scene_red");
   });
   it("ignores Events when there is no active Run", async () => {
     await createShow();

@@ -5,9 +5,10 @@ import { and, eq, isNull } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { db } from "./client";
+import { readCanvas } from "./canvas";
 import { endRun, readActiveRun, readRunDeviceState, startRun } from "./runs";
 import { applyShowEdits, publishShowGraph, readShowGraph, writeShowGraph } from "./show-graph";
-import { devices, shows, user } from "./schema";
+import { canvasElements, devices, shows, user } from "./schema";
 
 const userId = `show-lifecycle-test-${crypto.randomUUID()}`;
 const showId = `show-lifecycle-${crypto.randomUUID()}`;
@@ -131,6 +132,101 @@ describe("Show graph lifecycle", () => {
     expect(applied.version).toBe(draftBeforePublish.version + 1);
     expect((await readActiveRun(showId))?.sourceValues).toEqual({ source_score: 1 });
     expect((await readShowGraph(showId, "published")).version).toBe(1);
+  });
+  it("copies Scene Canvas Elements before persisting Event Bindings", async () => {
+    await createShow();
+    const base = navigationGraph("scene_red");
+    await writeShowGraph(showId, "draft", base);
+    const draftCanvas = await readCanvas(showId, "draft", { sceneNodeId: "scene_red" });
+    if (!draftCanvas) throw new Error("Draft Scene Canvas was not created.");
+
+    await db.insert(canvasElements).values({
+      id: "button_red",
+      canvasId: draftCanvas.id,
+      parentId: draftCanvas.root.id,
+      type: "rect",
+      rank: "a",
+      name: "Button",
+    });
+    const cue = {
+      id: "cue_red",
+      name: "Go",
+      owner: { kind: "scene" as const, sceneId: "scene_red" },
+      actionIds: [],
+    };
+    await writeShowGraph(showId, "draft", {
+      ...base,
+      cues: [cue],
+      eventBindings: [
+        {
+          id: "binding_red",
+          canvasId: draftCanvas.id,
+          elementId: "button_red",
+          eventKind: "tap",
+          cueId: cue.id,
+          position: 0,
+        },
+      ],
+    });
+
+    const published = await publishShowGraph(showId);
+    const publishedCanvas = await readCanvas(showId, "published", { sceneNodeId: "scene_red" });
+    expect(publishedCanvas?.root.children?.some((element) => element.id === "button_red")).toBe(
+      true,
+    );
+    expect(published.eventBindings).toEqual([
+      expect.objectContaining({ canvasId: publishedCanvas?.id, elementId: "button_red" }),
+    ]);
+  });
+  it("persists a Flow default Scene edit", async () => {
+    await createShow();
+    await writeShowGraph(showId, "draft", navigationGraph("scene_red"));
+    const before = await readShowGraph(showId, "draft");
+
+    await applyShowEdits(
+      showId,
+      [{ type: "graph.setFlowDefaultScene", flowId: "flow_navigation", sceneId: "scene_green" }],
+      [],
+      before.version,
+    );
+
+    const flow = (await readShowGraph(showId, "draft")).nodes.find(
+      (node) => node.id === "flow_navigation",
+    );
+    expect(flow).toMatchObject({ kind: "flow", defaultSceneId: "scene_green" });
+  });
+  it("persists a Scene Variable rename", async () => {
+    await createShow();
+    const graphWithVariable = navigationGraph("scene_red");
+    graphWithVariable.nodes = graphWithVariable.nodes.map((node) =>
+      node.id === "scene_red" && node.kind === "scene"
+        ? { ...node, variables: [{ id: "variable_label", name: "Old name" }] }
+        : node,
+    );
+    await writeShowGraph(showId, "draft", graphWithVariable);
+    const before = await readShowGraph(showId, "draft");
+
+    await applyShowEdits(
+      showId,
+      [
+        {
+          type: "graph.renameSceneVariable",
+          sceneId: "scene_red",
+          variableId: "variable_label",
+          name: "New name",
+        },
+      ],
+      [],
+      before.version,
+    );
+
+    const scene = (await readShowGraph(showId, "draft")).nodes.find(
+      (node) => node.id === "scene_red",
+    );
+    expect(scene).toMatchObject({
+      kind: "scene",
+      variables: [{ id: "variable_label", name: "New name" }],
+    });
   });
   it("initializes and reconciles Shared Device navigation state", async () => {
     await createShow();

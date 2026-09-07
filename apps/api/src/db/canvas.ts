@@ -582,6 +582,8 @@ export interface PersistCanvasesOptions {
   blocks: readonly Block[];
   sceneIds: readonly string[];
   edits: readonly CanvasWorkspaceEdit[];
+  /** Draft Scene Canvases copied during publication, including Elements. */
+  sceneCanvases?: readonly StoredCanvas[];
   now: Date;
   forceBlockWrites?: boolean;
 }
@@ -599,6 +601,7 @@ export async function persistCanvases(tx: Tx, options: PersistCanvasesOptions): 
     blocks: blockDefinitions,
     sceneIds,
     edits,
+    sceneCanvases,
     now,
     forceBlockWrites = false,
   } = options;
@@ -657,6 +660,17 @@ export async function persistCanvases(tx: Tx, options: PersistCanvasesOptions): 
     );
   }
 
+  for (const canvas of sceneCanvases ?? []) {
+    await writeCanvasRows(
+      tx,
+      showId,
+      graphId,
+      { sceneNodeId: canvas.ownerId },
+      canvas,
+      now,
+      canvas.position,
+    );
+  }
   for (const edited of pending.values()) {
     if ("blockId" in edited.owner) continue;
     await writeCanvasRows(tx, showId, graphId, edited.owner, edited.canvas, now, edited.position);

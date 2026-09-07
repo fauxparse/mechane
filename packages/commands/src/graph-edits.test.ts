@@ -207,12 +207,12 @@ describe("every primitive command's edits reproduce it", () => {
   });
 
   it("removeNode of a Flow's default Scene", () => {
-    // The awkward one: the removal clears the Flow's `defaultSceneId` as a
-    // side effect, so the undo has to transmit the Scene *and* the pointer
-    // back to it — the small case of a snapshot-carrying delete (#28).
+    // The awkward one: the removal replaces the Flow's `defaultSceneId` with
+    // a remaining Scene, so the undo has to transmit the Scene and pointer
+    // snapshot — the small case of #28.
     const applied = expectEditsReproduce(removeNode(VOTING.id));
     const flow = applied.state.nodes.find((node) => node.id === VOTE_FLOW.id);
-    expect(flow).toMatchObject({ kind: "flow", defaultSceneId: null });
+    expect(flow).toMatchObject({ kind: "flow", defaultSceneId: RESULTS.id });
   });
 
   it("moveNode", () => {

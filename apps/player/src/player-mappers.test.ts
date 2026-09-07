@@ -309,4 +309,40 @@ describe("normalizePlayerSession", () => {
       }),
     ).toMatchObject({ kind: "planned", actions: [{ targetSceneId: "scene_green" }] });
   });
+  it("normalizes Update edges and actions", () => {
+    const session = normalizePlayerSession({
+      device: { name: "Projector", perConnection: false },
+      realtime: { channel: "player:test", grant: "grant", expiresAt: "2026-01-01T00:01:00.000Z" },
+      graph: {
+        nodes: [],
+        edges: [
+          {
+            __typename: "UpdateEdge",
+            id: "edge_update",
+            sourceId: "scene_red",
+            targetId: "source_score",
+            sourcePath: [],
+            targetPath: [],
+          },
+        ],
+        actions: [
+          {
+            id: "action_update",
+            cueId: "cue_update",
+            kind: "update",
+            targetSourceId: "source_score",
+            params: { fieldPath: [], operation: { kind: "reset" } },
+          },
+        ],
+        shapes: [],
+      },
+      scene: null,
+      canvas: null,
+      imageAssets: [],
+    });
+    expect(session.graph.actions?.[0]).toMatchObject({
+      kind: "update",
+      target: { sourceId: "source_score", fieldPath: [] },
+    });
+  });
 });

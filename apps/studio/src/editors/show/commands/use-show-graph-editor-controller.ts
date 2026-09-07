@@ -361,6 +361,9 @@ export function useShowGraphEditorController({
       {
         setNodeColor: editing.setNodeColor,
         setDevicePerConnection: editing.setDevicePerConnection,
+        setFlowDefaultScene: editing.setFlowDefaultScene,
+        setUpdateOperation: editing.setUpdateOperation,
+        setUpdateOperand: editing.setUpdateOperand,
         setSourceType: editing.setSourceType,
       },
       editing.interaction,

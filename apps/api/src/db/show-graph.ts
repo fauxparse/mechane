@@ -80,6 +80,8 @@ export async function readShowGraph(
 
 interface WriteGraphOptions {
   readonly canvasEdits?: readonly CanvasWorkspaceEdit[];
+  /** Scene Canvases to copy with their Element trees, during publication. */
+  readonly sceneCanvases?: readonly StoredCanvas[];
   readonly forceBlockCanvasWrites: boolean;
 }
 
@@ -100,6 +102,7 @@ async function writeGraph(
     blocks: graph.blocks ?? [],
     sceneIds: graph.nodes.filter((node) => node.kind === "scene").map((node) => node.id),
     edits: options.canvasEdits ?? [],
+    sceneCanvases: options.sceneCanvases,
     now: written.graph.updatedAt,
     forceBlockWrites: options.forceBlockCanvasWrites,
   });
@@ -255,7 +258,10 @@ export async function publishShowGraph(
         edges: draft.edges,
       },
       undefined,
-      { forceBlockCanvasWrites: true },
+      {
+        sceneCanvases: draftCanvases.canvases.filter((canvas) => canvas.kind === "scene"),
+        forceBlockCanvasWrites: true,
+      },
     );
     await reconcileActiveRunDeviceStates(showId, published, published.version, tx);
     // Publish is the only moment a Device may be retired (#45). Keeping this

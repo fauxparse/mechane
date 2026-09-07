@@ -5,6 +5,11 @@ import {
   Section,
   SectionHelperText,
   SectionRow,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   SidebarContent,
   Switch,
   ToggleGroup,
@@ -66,6 +71,44 @@ function CueSection({ node, editing }: { node: GraphNode; editing: GraphInspecto
     </Section>
   );
 }
+function FlowDefaultSceneSection({
+  node,
+  editing,
+}: {
+  node: Extract<GraphNode, { kind: "flow" }>;
+  editing: GraphInspectorEditing;
+}) {
+  const scenes = editing.graph.nodes.filter(
+    (candidate): candidate is Extract<GraphNode, { kind: "scene" }> =>
+      candidate.kind === "scene" && candidate.parentId === node.id,
+  );
+  const selectedScene = scenes.find((scene) => scene.id === node.defaultSceneId);
+  return (
+    <Section label="Entry Scene">
+      <SectionRow>
+        <Select
+          value={node.defaultSceneId}
+          disabled={scenes.length === 0}
+          onValueChange={(value) => editing.setFlowDefaultScene(node.id, value)}
+        >
+          <SelectTrigger aria-label="Entry Scene">
+            <SelectValue placeholder={scenes.length === 0 ? "No Scenes" : "Choose a Scene"}>
+              {selectedScene?.name}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {scenes.map((scene) => (
+              <SelectItem key={scene.id} value={scene.id}>
+                {scene.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </SectionRow>
+      <SectionHelperText>The Scene shown when this Flow starts on a Device.</SectionHelperText>
+    </Section>
+  );
+}
 
 export function SingleNode({ node, editing }: { node: GraphNode; editing: GraphInspectorEditing }) {
   return (
@@ -97,6 +140,7 @@ export function SingleNode({ node, editing }: { node: GraphNode; editing: GraphI
           </ToggleGroup>
         </SectionRow>
       </Section>
+      {node.kind === "flow" ? <FlowDefaultSceneSection node={node} editing={editing} /> : null}
 
       {node.kind === "device" && (
         <>

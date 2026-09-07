@@ -20,6 +20,9 @@ const PlayerGraphFields = graphql(`
       cueId
       kind
       targetSceneId
+      targetSourceId
+      params
+      layout
     }
     eventBindings {
       id

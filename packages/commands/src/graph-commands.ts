@@ -211,24 +211,69 @@ function insertEdge(graph: ShowGraph, index: number, edge: GraphEdge): ShowGraph
 // ---------------------------------------------------------------------------
 
 /**
- * Adds `node` to the graph. Trivially invertible — the inverse is the
- * removal of that node (#28) — so the interesting case is the other
- * direction, below.
+ * Adds `node` to the graph. A Scene added inside a Flow becomes that Flow's
+ * default when it has no entry Scene yet. The rule lives in this atom so
+ * client commands and server edit replay agree (#23, #44).
  */
+interface AddedNode {
+  flowId: string | null;
+  previousDefaultSceneId: string | null;
+}
+
 export function addNode(node: GraphNode, label = `Add ${node.kind}`): ShowGraphCommand {
-  return capturing<ShowGraph, null, GraphEdit>({
+  return capturing<ShowGraph, AddedNode, GraphEdit>({
     type: GRAPH_COMMAND_TYPES.addNode,
     label,
     // Creation needs the canvas, not a selection: it comes from a
     // right-click on empty space or a palette entry (#37, #42).
     scope: "canvas",
     edits: [{ type: GRAPH_COMMAND_TYPES.addNode, node }],
-    restoreEdits: () => [{ type: GRAPH_COMMAND_TYPES.removeNode, nodeId: node.id }],
-    capture: () => null,
-    apply: (graph) => ({ ...graph, nodes: [...graph.nodes, node] }),
-    restore: (graph) => ({
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.removeNode, nodeId: node.id },
+      ...(captured.flowId
+        ? [
+            {
+              type: GRAPH_COMMAND_TYPES.setFlowDefaultScene,
+              flowId: captured.flowId,
+              sceneId: captured.previousDefaultSceneId,
+            } as const,
+          ]
+        : []),
+    ],
+    capture: (graph) => {
+      const flow =
+        node.kind === "scene" && node.parentId
+          ? graph.nodes.find(
+              (candidate): candidate is Extract<GraphNode, { kind: "flow" }> =>
+                candidate.kind === "flow" && candidate.id === node.parentId,
+            )
+          : undefined;
+      return {
+        flowId: flow?.id ?? null,
+        previousDefaultSceneId: flow?.defaultSceneId ?? null,
+      };
+    },
+    apply: (graph, captured) => ({
       ...graph,
-      nodes: graph.nodes.filter((existing) => existing.id !== node.id),
+      nodes: graph.nodes
+        .map((existing) =>
+          existing.kind === "flow" &&
+          existing.id === captured.flowId &&
+          captured.previousDefaultSceneId === null
+            ? { ...existing, defaultSceneId: node.id }
+            : existing,
+        )
+        .concat(node),
+    }),
+    restore: (graph, captured) => ({
+      ...graph,
+      nodes: graph.nodes
+        .filter((existing) => existing.id !== node.id)
+        .map((existing) =>
+          existing.kind === "flow" && existing.id === captured.flowId
+            ? { ...existing, defaultSceneId: captured.previousDefaultSceneId }
+            : existing,
+        ),
     }),
   });
 }
@@ -241,20 +286,18 @@ interface RemovedNode {
   edges: { index: number; edge: GraphEdge }[];
   /** Source defaults owned by this node, with their original positions. */
   sourceFieldDefaults: { index: number; value: SourceFieldDefault }[];
-  /** Flows whose `defaultSceneId` pointed at this node and had to be cleared. */
-  defaultSceneFlowIds: string[];
+  /** Flow defaults changed while choosing a replacement Scene. */
+  defaultSceneFlowValues: { flowId: string; defaultSceneId: string | null }[];
 }
 
 /**
  * Removes one node, the edges that touched it, its Source defaults, and any
- * Flow's reference to it as a default Scene — capturing all four, so the
- * inverse rebuilds it exactly (#28).
+ * Flow default that needs a replacement Scene — capturing all side effects so
+ * the inverse rebuilds it exactly (#28).
  *
- * The default-Scene clearing is the small case of #28's "side effects live
- * inside the snapshot": deleting a Flow's entry Scene has to leave the Flow
- * without one, and one undo has to bring back both the Scene and the Flow's
- * pointer to it. Source defaults follow the same rule; leaving one behind
- * would make the graph invalid at the persistence boundary.
+ * Deleting a Scene from a Flow selects the first remaining Scene when the
+ * deleted Scene was the entry Scene or the Flow had no entry Scene. An empty
+ * Flow is the only valid case with no default.
  *
  * This removes *one* node. Nested Scenes inside a deleted Flow are the
  * cascade policy in #42 — composed from several of these, which is what
@@ -274,14 +317,16 @@ export function removeNode(nodeId: string, label?: string): ShowGraphCommand {
     restoreEdits: (captured) => [
       { type: GRAPH_COMMAND_TYPES.addNode, node: captured.node },
       ...captured.edges.map(({ edge }) => ({ type: GRAPH_COMMAND_TYPES.addEdge, edge }) as const),
-      ...captured.defaultSceneFlowIds.map(
-        (flowId) =>
-          ({ type: GRAPH_COMMAND_TYPES.setFlowDefaultScene, flowId, sceneId: nodeId }) as const,
-      ),
+      ...captured.defaultSceneFlowValues.map(({ flowId, defaultSceneId }) => ({
+        type: GRAPH_COMMAND_TYPES.setFlowDefaultScene,
+        flowId,
+        sceneId: defaultSceneId,
+      })),
     ],
     capture: (graph) => {
       const index = nodeIndex(graph, nodeId);
       const node = graph.nodes[index] as GraphNode;
+      const affectedFlowId = node.kind === "scene" ? node.parentId : null;
       return {
         index,
         node,
@@ -291,24 +336,37 @@ export function removeNode(nodeId: string, label?: string): ShowGraphCommand {
         sourceFieldDefaults: (graph.sourceFieldDefaults ?? [])
           .map((value, defaultIdx) => ({ index: defaultIdx, value }))
           .filter(({ value }) => value.nodeId === nodeId),
-        defaultSceneFlowIds: graph.nodes
-          .filter((other) => other.kind === "flow" && other.defaultSceneId === nodeId)
-          .map((other) => other.id),
+        defaultSceneFlowValues: graph.nodes
+          .filter(
+            (other): other is Extract<GraphNode, { kind: "flow" }> =>
+              other.kind === "flow" &&
+              (other.defaultSceneId === nodeId || other.id === affectedFlowId),
+          )
+          .map((flow) => ({ flowId: flow.id, defaultSceneId: flow.defaultSceneId })),
       };
     },
-    apply: (graph) => {
+    apply: (graph, captured) => {
       const sourceFieldDefaults = (graph.sourceFieldDefaults ?? []).filter(
         (value) => value.nodeId !== nodeId,
       );
+      const affectedFlowIds = new Set(captured.defaultSceneFlowValues.map(({ flowId }) => flowId));
+      const remainingNodes = graph.nodes.filter((node) => node.id !== nodeId);
       return {
         ...graph,
-        nodes: graph.nodes
-          .filter((node) => node.id !== nodeId)
-          .map((node) =>
-            node.kind === "flow" && node.defaultSceneId === nodeId
-              ? { ...node, defaultSceneId: null }
-              : node,
-          ),
+        nodes: remainingNodes.map((node) => {
+          if (node.kind !== "flow" || !affectedFlowIds.has(node.id)) return node;
+          const defaultStillExists = remainingNodes.some(
+            (candidate) =>
+              candidate.kind === "scene" &&
+              candidate.parentId === node.id &&
+              candidate.id === node.defaultSceneId,
+          );
+          if (defaultStillExists) return node;
+          const fallback = remainingNodes.find(
+            (candidate) => candidate.kind === "scene" && candidate.parentId === node.id,
+          );
+          return { ...node, defaultSceneId: fallback?.id ?? null };
+        }),
         edges: graph.edges.filter((edge) => edge.sourceId !== nodeId && edge.targetId !== nodeId),
         ...(sourceFieldDefaults.length > 0
           ? { sourceFieldDefaults }
@@ -329,16 +387,20 @@ export function removeNode(nodeId: string, label?: string): ShowGraphCommand {
         }
         next = { ...next, sourceFieldDefaults };
       }
-      const flows = new Set(captured.defaultSceneFlowIds);
-      if (flows.size > 0) {
-        next = {
-          ...next,
-          nodes: next.nodes.map((node) =>
-            node.kind === "flow" && flows.has(node.id) ? { ...node, defaultSceneId: nodeId } : node,
-          ),
-        };
-      }
-      return next;
+      const defaults = new Map(
+        captured.defaultSceneFlowValues.map(({ flowId, defaultSceneId }) => [
+          flowId,
+          defaultSceneId,
+        ]),
+      );
+      return {
+        ...next,
+        nodes: next.nodes.map((node) =>
+          node.kind === "flow" && defaults.has(node.id)
+            ? { ...node, defaultSceneId: defaults.get(node.id) ?? null }
+            : node,
+        ),
+      };
     },
   });
 }

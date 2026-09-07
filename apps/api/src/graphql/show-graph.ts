@@ -266,6 +266,7 @@ function serializeNode(node: GraphNode, graph?: Pick<StoredShowGraph, "sourceFie
     color: node.color ?? null,
     position: node.position,
     size: node.kind === "flow" ? (node.size ?? null) : null,
+    defaultSceneId: node.kind === "flow" ? node.defaultSceneId : null,
     variables:
       node.kind === "scene"
         ? node.variables.map((variable) => ({ ...variable, type: variable.type ?? null }))

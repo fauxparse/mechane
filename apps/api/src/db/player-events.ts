@@ -1,9 +1,21 @@
 import {
+  defaultSourceValues,
   InvalidInteractionError,
+  materializeStructuredValue,
+  normalizeStructuredValueTemplate,
+  resolveSourceValues,
   resolveRuntimeEvent,
+  sceneVariableValues,
+  setValueAtPath,
+  valueAtPath,
+  type Action,
   type BlockInstancePathSegment,
+  type RunState,
   type RuntimeEventObservation,
   type RuntimeEventPlan,
+  type ShapeValue,
+  type ShowGraph,
+  type UpdateOperand,
 } from "@mechane/domain";
 import { and, desc, eq, isNull } from "drizzle-orm";
 
@@ -12,6 +24,7 @@ import { db } from "./client";
 import { drainPlayerInvalidations, enqueuePlayerInvalidation } from "./player-invalidation-outbox";
 import { RunConfigurationError, withRunErrorLog } from "./run-errors";
 import { readShowGraph } from "./show-graph";
+import { readRunState, replaceRunState } from "./runs";
 import { devices, playerEvents, runDeviceStates, runs } from "./schema";
 
 const PAIRING_CODE_PATTERN = /^[A-HJ-KM-NP-Z1-9]{5}$/;
@@ -98,6 +111,87 @@ function validSlotInstancePath(path: readonly BlockInstancePathSegment[] | undef
         segment.index >= 0,
     )
   );
+}
+
+type UpdateApplication = { state: RunState; changed: boolean } | { error: string };
+
+function rawShapeValue(value: ShapeValue): unknown {
+  return value.kind === "array" ? value.value.map(rawShapeValue) : value.value;
+}
+
+function resolveUpdateOperand(
+  graph: ShowGraph,
+  sceneId: string,
+  sourceValues: Readonly<Record<string, unknown>>,
+  operand: UpdateOperand,
+): unknown {
+  if (operand.kind === "literal") return rawShapeValue(operand.value);
+  let value = valueAtPath(sceneVariableValues(graph, sceneId, sourceValues), [
+    operand.variableId,
+    ...(operand.fieldPath ?? []),
+  ]);
+  if (
+    operand.fieldMapping &&
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value)
+  ) {
+    value = Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).flatMap(([fieldId, fieldValue]) => {
+        const targetFieldId = operand.fieldMapping?.[fieldId];
+        return targetFieldId ? [[targetFieldId, fieldValue]] : [];
+      }),
+    );
+  }
+  return value;
+}
+
+function applyUpdateAction(
+  graph: ShowGraph,
+  current: RunState,
+  sceneId: string,
+  action: Extract<Action, { kind: "update" }>,
+): UpdateApplication {
+  const source = graph.nodes.find((node) => node.id === action.target.sourceId);
+  if (!source || source.kind !== "source") return { error: "missing-update-source" };
+  const resolved = resolveSourceValues(current);
+  const defaults = defaultSourceValues(graph);
+  const sourceValue = resolved[source.id] ?? defaults[source.id];
+  const currentValue = valueAtPath(sourceValue, action.target.fieldPath);
+  let nextValue: unknown;
+  if (action.operation.kind === "reset") {
+    nextValue = valueAtPath(defaults[source.id], action.target.fieldPath);
+  } else {
+    const operand = resolveUpdateOperand(graph, sceneId, resolved, action.operation.operand);
+    if (operand === undefined) return { error: "missing-update-operand" };
+    if (action.operation.kind === "adjust") {
+      if (typeof currentValue !== "number" || !Number.isFinite(currentValue)) {
+        return { error: "update-current-value-not-numeric" };
+      }
+      if (typeof operand !== "number" || !Number.isFinite(operand)) {
+        return { error: "update-operand-not-numeric" };
+      }
+      nextValue = currentValue + operand;
+    } else {
+      nextValue = operand;
+    }
+  }
+  if (nextValue === undefined) return { error: "missing-update-default" };
+  const nextSourceValue = setValueAtPath(sourceValue, action.target.fieldPath, nextValue);
+  const changed = JSON.stringify(nextSourceValue) !== JSON.stringify(sourceValue);
+  const template = normalizeStructuredValueTemplate(
+    nextSourceValue,
+    source.type,
+    graph.shapes ?? [],
+  );
+  const materialized = materializeStructuredValue(template, source.type, graph.shapes ?? []);
+  return {
+    changed,
+    state: {
+      sourceValues: { ...current.sourceValues, [source.id]: materialized.value },
+      structuredValues: { ...current.structuredValues, ...materialized.structuredValues },
+    },
+  };
 }
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -188,6 +282,32 @@ async function recordEvent(
 }
 
 type DeviceRow = typeof devices.$inferSelect;
+async function dispatchUpdateAction(
+  tx: Tx,
+  device: DeviceRow,
+  run: typeof runs.$inferSelect,
+  graph: ShowGraph,
+  sceneId: string,
+  action: Extract<Action, { kind: "update" }>,
+  input: PlayerEventInput,
+): Promise<{ result: PlayerEventResult; changed: boolean }> {
+  const current = await readRunState(run.id, tx);
+  const applied = applyUpdateAction(graph, current, sceneId, action);
+  if ("error" in applied) {
+    const result: PlayerEventResult = {
+      kind: "failed",
+      eventId: input.eventId,
+      actionId: action.id,
+      reason: applied.error,
+    };
+    await recordEvent(tx, run.id, device.showId, device.id, input, result);
+    return { result, changed: false };
+  }
+  await replaceRunState(tx, run.id, graph, applied.state);
+  const result: PlayerEventResult = { kind: "accepted", eventId: input.eventId };
+  await recordEvent(tx, run.id, device.showId, device.id, input, result);
+  return { result, changed: applied.changed };
+}
 
 async function dispatchPerConnectionEvent(
   tx: Tx,
@@ -305,6 +425,19 @@ async function dispatchPerConnectionEvent(
     return result;
   }
   const action = plan.actions[0];
+  if (action?.kind === "update") {
+    const update = await dispatchUpdateAction(
+      tx,
+      device,
+      run,
+      graph,
+      observedScene.id,
+      action,
+      input,
+    );
+    if (update.changed) await enqueuePlayerInvalidation(tx, device.showId, device.id);
+    return update.result;
+  }
   const target =
     action?.kind === "navigate"
       ? graph.nodes.find((node) => node.id === action.targetSceneId)
@@ -517,15 +650,18 @@ export async function dispatchPlayerEvent(
             publishedGraphVersion: graph.version,
           });
         }
-        if (action.kind !== "navigate") {
-          const result: PlayerEventResult = {
-            kind: "failed",
-            eventId: input.eventId,
-            actionId: action.id,
-            reason: "update-action-dispatch-not-supported",
-          };
-          await recordEvent(tx, run.id, device.showId, device.id, input, result);
-          return result;
+        if (action.kind === "update") {
+          const update = await dispatchUpdateAction(
+            tx,
+            device,
+            run,
+            graph,
+            state.activeSceneId,
+            action,
+            input,
+          );
+          if (update.changed) invalidationScope = { showId: device.showId, deviceId: device.id };
+          return update.result;
         }
         const target = graph.nodes.find((node) => node.id === action.targetSceneId);
         if (
@@ -567,7 +703,7 @@ export async function dispatchPlayerEvent(
         return result;
       })
       .then(async (result) => {
-        if (result?.kind === "applied" && invalidationScope) {
+        if ((result?.kind === "applied" || result?.kind === "accepted") && invalidationScope) {
           try {
             await drainPlayerInvalidations(invalidationScope);
           } catch {

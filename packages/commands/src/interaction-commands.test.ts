@@ -5,11 +5,13 @@ import {
   addEventBinding,
   addNavigateAction,
   addCue,
+  addUpdateAction,
   removeCue,
   renameSceneAndCue,
   setCueActionOrder,
   setEventBindingKey,
   setEventBindingOrder,
+  setUpdateOperation,
 } from "./interaction-commands";
 import { deleteGraphElements } from "./graph-cascade";
 
@@ -152,6 +154,36 @@ describe("interaction commands", () => {
     expect(applied.state.cues).toEqual([{ ...cue, actionIds: [] }]);
     expect(applied.state.actions).toEqual([]);
     expect(applied.state.eventBindings).toEqual([binding]);
+    expect(applied.inverse.apply(applied.state).state).toEqual(graph);
+  });
+});
+describe("Update operation commands", () => {
+  it("changes an Update Action operation and restores it", () => {
+    const updateCue = {
+      id: "cue-update",
+      name: "Update",
+      owner: { kind: "scene" as const, sceneId: "red" },
+      actionIds: ["action-update"],
+    };
+    const updateAction = {
+      id: "action-update",
+      cueId: updateCue.id,
+      kind: "update" as const,
+      target: { sourceId: "source-score", fieldPath: [] },
+      operation: {
+        kind: "set" as const,
+        operand: { kind: "literal" as const, value: { kind: "number" as const, value: 1 } },
+      },
+    };
+    const graph = addUpdateAction(updateAction).apply(
+      addCue(updateCue).apply(baseGraph).state,
+    ).state;
+    const applied = setUpdateOperation(updateAction.id, { kind: "reset" }).apply(graph);
+
+    expect(applied.state.actions?.[0]).toMatchObject({
+      kind: "update",
+      operation: { kind: "reset" },
+    });
     expect(applied.inverse.apply(applied.state).state).toEqual(graph);
   });
 });
