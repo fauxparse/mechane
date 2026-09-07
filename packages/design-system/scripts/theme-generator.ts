@@ -502,6 +502,12 @@ function semanticValues(
   // full-page surface.
   return {
     background: neutral(dark ? 800 : 50),
+    // One step below `background`: the page surface that floating surfaces
+    // (card/popover) are read against. `background` sits at 800 in dark mode
+    // and 50 in light, so a single step in the darker direction is 900 and
+    // 100 respectively — enough separation to group a page into regions
+    // without introducing a third surface lightness next to `card`.
+    sunken: neutral(dark ? 900 : 100),
     foreground: neutral(dark ? 100 : 900),
     card: surface,
     "card-foreground": foreground,
@@ -518,7 +524,23 @@ function semanticValues(
     destructive: hue("red", 500),
     "destructive-foreground": foreground,
     success: hue("green", 500),
-    "success-foreground": foreground,
+    // green-50, not `foreground`: `foreground` is neutral-100 in dark mode but
+    // neutral-900 in light, so pairing it with a saturated green-500 fill put
+    // near-black text on green in light mode. Step 50 is the light end of the
+    // scale in both modes, which is what `primary-foreground` already relies
+    // on. `destructive-foreground` still has this flaw, but it is consumed by
+    // shipped components (Alert, the editor Header) and retuning it is a
+    // visual change beyond this fix.
+    "success-foreground": hue("green", 50),
+    // A Show with a Run up is *on air*, not dangerous: `destructive` means
+    // "this will delete or break something", so borrowing it for a live
+    // indicator misreports the state. Green for go, on the same 500 step every
+    // other semantic hue uses. `live-foreground` takes green-50 rather than
+    // `foreground` because step 50 is the light end of the scale in both
+    // modes, so the badge stays light-on-green instead of flipping to
+    // near-black text in light mode the way `destructive-foreground` does.
+    live: hue("green", 500),
+    "live-foreground": hue("green", 50),
     border: neutral(dark ? 600 : 300),
     input: neutral(dark ? 500 : 400),
     ring: primaryValue,
@@ -623,6 +645,8 @@ function cssThemeBlock(theme: GeneratedTheme, defaultPalette: string): string {
   const surface = neutral(dark ? 700 : 100);
   const appValues: Record<string, string> = {
     background: neutral(dark ? 800 : 50),
+    // One step below `background`; see semanticValues() for why 900/100.
+    sunken: neutral(dark ? 900 : 100),
     foreground: neutral(dark ? 100 : 900),
     card: surface,
     "card-foreground": foreground,
@@ -639,7 +663,12 @@ function cssThemeBlock(theme: GeneratedTheme, defaultPalette: string): string {
     destructive: hue("red", 500),
     "destructive-foreground": foreground,
     success: hue("green", 500),
-    "success-foreground": foreground,
+    // green-50, not `foreground`; see semanticValues() for why.
+    "success-foreground": hue("green", 50),
+    // On air, not dangerous; see semanticValues() for why green and why the
+    // foreground is green-50 rather than `foreground`.
+    live: hue("green", 500),
+    "live-foreground": hue("green", 50),
     border: neutral(dark ? 600 : 300),
     input: neutral(dark ? 500 : 400),
     ring: hue(primary, 500),
@@ -661,6 +690,7 @@ function themeAliases(): string {
   const lines = ["@theme inline {"];
   const aliases: Record<string, string> = {
     background: "background",
+    sunken: "sunken",
     foreground: "foreground",
     card: "card",
     "card-foreground": "card-foreground",
@@ -676,6 +706,14 @@ function themeAliases(): string {
     "accent-foreground": "accent-foreground",
     destructive: "destructive",
     "destructive-foreground": "destructive-foreground",
+    // `success`/`success-foreground` were defined as CSS variables but never
+    // aliased into `@theme`, so `bg-success` and `text-success-foreground`
+    // silently did nothing while `text-success-500` (a shade token, which was
+    // aliased) worked. Both halves of a semantic pair belong here.
+    success: "success",
+    "success-foreground": "success-foreground",
+    live: "live",
+    "live-foreground": "live-foreground",
     border: "border",
     input: "input",
     ring: "ring",

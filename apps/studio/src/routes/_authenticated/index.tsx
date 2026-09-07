@@ -1,18 +1,21 @@
-// The post-login home base ("/", issue #13) — replaces the old bare
-// ShowsListRoute with a proper layout: a header (wordmark, Settings, sign
-// out) around the same Show list/create flow from issue #3. Signed-out
-// visitors never reach this component — the parent `_authenticated`
-// layout's `beforeLoad` (_authenticated/route.tsx, issue #30) redirects
-// them to /sign-in before it renders.
+// The post-login home base ("/", issues #13 and #604). Signed-out visitors
+// never reach this component — the parent `_authenticated` layout's
+// `beforeLoad` (_authenticated/route.tsx, issue #30) redirects them to
+// /sign-in before it renders.
+//
+// Like the editor's `shows/$showId.tsx`, this route is the wiring and nothing
+// else: it reads the Shows and the signed-in user, and hands Dashboard plain
+// data and callbacks. What it deliberately does not own are the per-Show reads
+// behind each card's preview, which belong to the components that display them
+// (components/Dashboard/use-show-dossier.ts).
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import type { ShowId } from "@mechane/domain";
 import { GraphQLRequestError } from "@mechane/graphql-schema";
-import { Button, buttonVariants } from "@mechane/design-system";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Settings } from "@mechane/design-system";
 
 import { useSignOut } from "../../api/auth";
+import { useMe } from "../../api/me";
 import { useCreateShow, useDeleteShow, useShows } from "../../api/shows";
-import { ShowListItem } from "../../components/ShowListItem";
-import { ShowNameForm } from "../../components/ShowNameForm";
+import { Dashboard } from "../../components/Dashboard/Dashboard";
 
 export const Route = createFileRoute("/_authenticated/")({
   component: DashboardRoute,
@@ -20,75 +23,39 @@ export const Route = createFileRoute("/_authenticated/")({
 
 function DashboardRoute() {
   const navigate = useNavigate();
+  const me = useMe();
   const shows = useShows();
   const createShow = useCreateShow();
   const deleteShow = useDeleteShow();
   const signOut = useSignOut();
 
+  const openShow = (showId: ShowId) => void navigate({ to: "/shows/$showId", params: { showId } });
+
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b border-border px-6 py-4">
-        <span className="text-lg font-semibold tracking-tight">Mechanē</span>
-        <nav className="flex items-center gap-2">
-          <Link to="/settings" className={buttonVariants({ variant: "ghost", size: "sm" })}>
-            <Settings /> Settings
-          </Link>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => signOut.mutate()}
-            disabled={signOut.isPending}
-          >
-            {signOut.isPending ? "Signing out…" : "Sign out"}
-          </Button>
-        </nav>
-      </header>
-
-      <main className="mx-auto flex max-w-2xl flex-col gap-8 p-6 py-12">
-        <div>
-          <h1 className="text-2xl font-semibold">Your Shows</h1>
-          <p className="text-muted-foreground">
-            Pick up where you left off, or start something new.
-          </p>
-        </div>
-
-        <ShowNameForm
-          key={createShow.isSuccess ? createShow.data.id : "new"}
-          submitLabel="Create Show"
-          pending={createShow.isPending}
-          error={
-            createShow.error instanceof GraphQLRequestError ? createShow.error.message : undefined
-          }
-          onSubmit={(name) =>
-            createShow.mutate(name, {
-              onSuccess: (show) => navigate({ to: "/shows/$showId", params: { showId: show.id } }),
-            })
-          }
-        />
-
-        {shows.isPending ? <p className="text-muted-foreground">Loading Shows…</p> : null}
-        {shows.isError ? <p role="alert">Couldn't load Shows: {shows.error.message}</p> : null}
-
-        {shows.data && shows.data.length === 0 ? (
-          <p className="text-muted-foreground">No Shows yet — create one above.</p>
-        ) : null}
-
-        {shows.data && shows.data.length > 0 ? (
-          <ul className="flex flex-col">
-            {shows.data.map((show) => (
-              <ShowListItem
-                key={show.id}
-                name={show.name}
-                updatedAt={show.updatedAt}
-                onOpen={() => navigate({ to: "/shows/$showId", params: { showId: show.id } })}
-                onDelete={() => deleteShow.mutate(show.id)}
-                deleting={deleteShow.isPending && deleteShow.variables === show.id}
-              />
-            ))}
-          </ul>
-        ) : null}
-      </main>
-    </div>
+    <Dashboard
+      shows={shows.data ?? []}
+      pending={shows.isPending}
+      loadError={shows.isError ? shows.error.message : undefined}
+      user={{
+        id: me.data?.id ?? "unknown",
+        name: me.data?.name,
+        email: me.data?.email ?? "",
+        avatarUrl: null,
+      }}
+      onLogOut={() => signOut.mutate()}
+      onOpenShow={openShow}
+      onOpenScene={(showId, artId) =>
+        void navigate({ to: "/shows/$showId/art/$artId", params: { showId, artId } })
+      }
+      onCreateShow={(name) => createShow.mutate(name, { onSuccess: (show) => openShow(show.id) })}
+      creating={createShow.isPending}
+      // Only a validation failure is worth showing in the dialog; anything
+      // else is not something renaming the Show would fix.
+      createError={
+        createShow.error instanceof GraphQLRequestError ? createShow.error.message : undefined
+      }
+      onDeleteShow={(showId) => deleteShow.mutate(showId)}
+      deletingId={deleteShow.isPending ? (deleteShow.variables ?? null) : null}
+    />
   );
 }

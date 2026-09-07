@@ -1,7 +1,7 @@
 // The sign-in/sign-up form (issue #13) — one component for both modes since
 // they're the same shape (email/password, an optional name field, a
 // Google button) with different copy and a mode toggle, rather than two
-// near-duplicate screens. Presentational, like ShowNameForm: the route
+// near-duplicate screens. Presentational, like the Dashboard: the route
 // (SignInRoute) wires onSubmit/onGoogleSignIn to Better Auth's client and
 // supplies pending/error state. Built entirely from
 // @mechane/design-system primitives — no raw <input>/<button>.

@@ -1,6 +1,6 @@
 // Applies the active mode/palette to the DOM (PRD.md §7). Deliberately
-// network-free — like ShowListItem/ShowNameForm in studio, this takes
-// already-resolved data as props rather than fetching anything itself.
+// network-free — it takes already-resolved data as props rather than fetching
+// anything itself.
 // Persisting a user's choice (the GraphQL mutation) is the consuming app's
 // job: see apps/studio's api/settings.ts + SettingsRoute, which reads
 // @mechane/graphql-schema's userSettings query/mutation and passes the

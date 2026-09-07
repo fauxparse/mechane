@@ -3,7 +3,7 @@
 // data + mutation callbacks, never the transport. Better Auth's client
 // methods resolve to `{ data, error }` rather than throwing, so each
 // mutationFn throws the error itself to fit the rest of the app's
-// "mutation.error" handling (e.g. ShowNameForm's `error` prop).
+// "mutation.error" handling (e.g. the new-Show dialog's `error` prop).
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
