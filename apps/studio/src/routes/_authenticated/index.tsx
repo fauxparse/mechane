@@ -60,7 +60,11 @@ function DashboardRoute() {
           error={
             createShow.error instanceof GraphQLRequestError ? createShow.error.message : undefined
           }
-          onSubmit={(name) => createShow.mutate(name)}
+          onSubmit={(name) =>
+            createShow.mutate(name, {
+              onSuccess: (show) => navigate({ to: "/shows/$showId", params: { showId: show.id } }),
+            })
+          }
         />
 
         {shows.isPending ? <p className="text-muted-foreground">Loading Shows…</p> : null}
