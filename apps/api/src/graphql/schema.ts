@@ -1236,6 +1236,12 @@ export const schema = createSchema<GraphQLContext>({
     }
   `,
   resolvers: {
+    Show: {
+      createdAt: (show: Pick<typeof shows.$inferSelect, "createdAt">) =>
+        show.createdAt.toISOString(),
+      updatedAt: (show: Pick<typeof shows.$inferSelect, "updatedAt">) =>
+        show.updatedAt.toISOString(),
+    },
     Action: {
       __resolveType: (value: { kind: string }) =>
         value.kind === "update" ? "UpdateAction" : "NavigateAction",

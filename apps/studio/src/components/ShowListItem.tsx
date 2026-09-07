@@ -14,6 +14,8 @@ export interface ShowListItemProps {
 }
 
 export function ShowListItem({ name, updatedAt, onOpen, onDelete, deleting }: ShowListItemProps) {
+  const formattedUpdatedAt = new Date(updatedAt).toLocaleDateString();
+
   return (
     <li className="flex items-center gap-3 border-b border-border py-3 last:border-b-0">
       <Button
@@ -24,9 +26,7 @@ export function ShowListItem({ name, updatedAt, onOpen, onDelete, deleting }: Sh
       >
         {name}
       </Button>
-      <span className="text-sm text-muted-foreground">
-        Updated {new Date(updatedAt).toLocaleDateString()}
-      </span>
+      <span className="text-sm text-muted-foreground">Updated {formattedUpdatedAt}</span>
       <Button
         type="button"
         variant="ghost"

@@ -12,6 +12,8 @@ const CREATE_SHOW = /* GraphQL */ `
     createShow(name: $name) {
       id
       name
+      createdAt
+      updatedAt
     }
   }
 `;
@@ -21,6 +23,8 @@ const SHOW = /* GraphQL */ `
     show(id: $id) {
       id
       name
+      createdAt
+      updatedAt
     }
   }
 `;
@@ -30,6 +34,8 @@ const RENAME_SHOW = /* GraphQL */ `
     renameShow(id: $id, name: $name) {
       id
       name
+      createdAt
+      updatedAt
     }
   }
 `;
@@ -39,6 +45,8 @@ const SHOWS = /* GraphQL */ `
     shows {
       id
       name
+      createdAt
+      updatedAt
     }
   }
 `;
@@ -135,30 +143,33 @@ afterEach(async () => {
 describe("GraphQL persistence", () => {
   it("persists the Show lifecycle across API requests", async () => {
     const context = contextFor(testUser);
-    const created = await request<{ createShow: { id: string; name: string } }>(
-      CREATE_SHOW,
-      context,
-      { name: "  Rehearsal  " },
-    );
+    const created = await request<{
+      createShow: { id: string; name: string; createdAt: string; updatedAt: string };
+    }>(CREATE_SHOW, context, { name: "  Rehearsal  " });
 
     expect(created.createShow.name).toBe("Rehearsal");
+    expect(created.createShow.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/);
+    expect(created.createShow.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/);
 
-    const reread = await request<{ show: { id: string; name: string } | null }>(SHOW, context, {
-      id: created.createShow.id,
-    });
+    const reread = await request<{
+      show: { id: string; name: string; createdAt: string; updatedAt: string } | null;
+    }>(SHOW, context, { id: created.createShow.id });
     expect(reread.show).toEqual(created.createShow);
 
-    const renamed = await request<{ renameShow: { id: string; name: string } }>(
-      RENAME_SHOW,
-      context,
-      {
-        id: created.createShow.id,
-        name: "Opening Night",
-      },
-    );
-    expect(renamed.renameShow).toEqual({ id: created.createShow.id, name: "Opening Night" });
+    const renamed = await request<{
+      renameShow: { id: string; name: string; createdAt: string; updatedAt: string };
+    }>(RENAME_SHOW, context, {
+      id: created.createShow.id,
+      name: "Opening Night",
+    });
+    expect(renamed.renameShow.id).toBe(created.createShow.id);
+    expect(renamed.renameShow.name).toBe("Opening Night");
+    expect(renamed.renameShow.createdAt).toBe(created.createShow.createdAt);
+    expect(renamed.renameShow.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/);
 
-    const listed = await request<{ shows: Array<{ id: string; name: string }> }>(SHOWS, context);
+    const listed = await request<{
+      shows: Array<{ id: string; name: string; createdAt: string; updatedAt: string }>;
+    }>(SHOWS, context);
     expect(listed.shows).toContainEqual(renamed.renameShow);
 
     await request<{ deleteShow: boolean }>(DELETE_SHOW, context, { id: created.createShow.id });

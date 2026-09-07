@@ -258,6 +258,10 @@ _Avoid_: Step, command
 What kind of value something holds. Every Source, Variable and Transformer output has a Type — there is one type system across the whole Show, not a separate one per concept. A Type is either simple (text, number, boolean, image, color, date, datetime), a list of some other Type, or a Shape.
 _Avoid_: Kind (used for the varieties of graph node), data type
 
+### Date/time values
+
+Date/time values use ISO 8601 strings when they cross a transport boundary, including GraphQL. Code that needs date/time operations may parse those strings at the boundary; do not pass database `Date` objects through an API or store locale-formatted strings in domain data. Use Temporal objects for in-memory date/time values when Temporal support is available.
+
 ### Shape
 
 A named, show-scoped Type describing a structured object: an ordered list of Fields, reusable across as many Sources, Variables and Transformers as need it. A Shape's Field may itself be a Shape, but a Shape can never contain itself, directly or through another Shape.
