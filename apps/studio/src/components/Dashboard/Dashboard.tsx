@@ -24,10 +24,10 @@ import {
 import type { ShowId } from "@mechane/domain";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
+import type { DashboardShow } from "./dashboard-shows";
+import { byLiveThenRecency, isFiltering, matchesShowFilter } from "./dashboard-shows";
 import type { DashboardHeaderUser } from "./DashboardHeader";
 import { DashboardHeader } from "./DashboardHeader";
-import { byLiveThenRecency, isFiltering, matchesShowFilter } from "./dashboard-shows";
-import type { DashboardShow } from "./dashboard-shows";
 import { NewShowCard } from "./NewShowCard";
 import { NoShowsFound } from "./NoShowsFound";
 import { ShowCard } from "./ShowCard";
@@ -120,7 +120,7 @@ export function Dashboard({
         ) : null}
       </div>
 
-      <main className="mx-auto flex w-full max-w-[92rem] flex-col gap-6 px-6 pb-16 pt-6">
+      <main className="mx-auto flex w-full max-w-368 flex-col gap-6 px-6 pb-16 pt-6">
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             {filtering ? `${matching.length} of ${ordered.length} Shows` : "All Shows"}
@@ -135,13 +135,13 @@ export function Dashboard({
             {/* Sized by a wrapper: InputGroup's own `w-full` is baked into its
                 cva base, which a `className` cannot reliably outrank. */}
             <div className="w-60">
-              <InputGroup>
+              <InputGroup className="rounded-full bg-muted/50 border-0">
                 <InputGroupAddon>
                   <SearchIcon />
                 </InputGroupAddon>
                 <InputGroupInput
-                  aria-label="Search Shows"
-                  placeholder="Search Shows"
+                  aria-label="Search shows"
+                  placeholder="Search shows"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                 />
@@ -156,6 +156,7 @@ export function Dashboard({
             </div>
 
             <ToggleGroup
+              className="rounded-full bg-muted/50 h-8 p-0.5 *:rounded-full *:h-7"
               value={[liveOnly ? "live" : "all"]}
               onValueChange={(value) => setLiveOnly(value[0] === "live")}
             >
@@ -180,7 +181,7 @@ export function Dashboard({
               error={createError}
             />
           ) : (
-            <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(15rem,1fr))]">
+            <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]">
               {/* First cell, always: reachable without scrolling past every Show. */}
               <NewShowCard onCreate={onCreateShow} creating={creating} error={createError} />
               {matching.map((show) => (

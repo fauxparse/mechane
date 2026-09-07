@@ -61,11 +61,11 @@ export function ShowCard({ show, live, onOpen, onDelete, deleting, className }: 
             type="button"
             onClick={onOpen}
             aria-label={`Open ${show.name}`}
-            className="block w-full cursor-pointer rounded-t-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="block p-2 w-full cursor-pointer rounded-t-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             <ShowPreview
               scene={dossier.hero}
-              className="aspect-[16/10] rounded-t-xl border-b border-border"
+              className="aspect-16/10 rounded-sm border-b border-border"
               fallback={
                 dossier.pending ? null : (
                   <span className="flex flex-col items-center gap-1.5 text-[0.7rem] text-muted-foreground">
