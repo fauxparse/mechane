@@ -1,6 +1,6 @@
 // The theme switcher UI (PRD.md §7): mode (light/dark) and palette (which
 // built-in theme) are independent choices, each rendered as a small group
-// of toggle Buttons. Presentational — like ShowListItem/ShowNameForm, the
+// of toggle Buttons. Presentational — like every component here, the
 // consumer (apps/studio's SettingsRoute) supplies the current
 // mode/palette and the change callbacks, wiring them to the
 // userSettings GraphQL mutation.
