@@ -243,8 +243,13 @@ export function absolutePosition(
   return { x: parent.position.x + node.position.x, y: parent.position.y + node.position.y };
 }
 
-/** The React Flow node type every kind currently renders as. */
-export const PLACEHOLDER_NODE_TYPE = "showNode";
+/** React Flow node types for the graph's non-container kinds. */
+export const NODE_TYPE_BY_KIND = {
+  scene: "showScene",
+  source: "showSource",
+  transformer: "showTransformer",
+  device: "showDevice",
+} as const;
 
 /** The React Flow node type a Flow renders as: a sized container. */
 export const FLOW_NODE_TYPE = "showFlow";
@@ -477,7 +482,7 @@ function toFlowNode(
   const fields = fieldRows(node, value, resolvedShapes);
   return {
     id: node.id,
-    type: isFlow ? FLOW_NODE_TYPE : PLACEHOLDER_NODE_TYPE,
+    type: kind === "flow" ? FLOW_NODE_TYPE : NODE_TYPE_BY_KIND[kind],
     position: { x: node.position.x, y: node.position.y },
     // Always emitted, `undefined` included: ../reconcile-nodes merges drawn
     // nodes over live ones, and an *omitted* key leaves the live value in
@@ -522,9 +527,7 @@ function toFlowEdge(
     source: edge.sourceId,
     target: edge.targetId,
     sourceHandle:
-      (edge.kind === "navigate" || edge.kind === "update") &&
-      edge.cueId &&
-      cueIds.has(edge.cueId)
+      (edge.kind === "navigate" || edge.kind === "update") && edge.cueId && cueIds.has(edge.cueId)
         ? handleFor({ kind: "cue", id: edge.cueId })
         : source?.kind === "device" && sourcePath
           ? handleFor({ kind: "deviceSource", name: sourcePath })

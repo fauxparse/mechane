@@ -5,8 +5,8 @@ import {
   FLOW_NODE_TYPE,
   FLOW_PADDING,
   NODE_HEIGHT,
+  NODE_TYPE_BY_KIND,
   NODE_WIDTH,
-  PLACEHOLDER_NODE_TYPE,
 } from "./graph/graph-to-flow";
 import type { ShowFlowNode } from "./graph/graph-to-flow";
 import {
@@ -46,7 +46,7 @@ function childNode(
 ): ShowFlowNode {
   return {
     id,
-    type: PLACEHOLDER_NODE_TYPE,
+    type: NODE_TYPE_BY_KIND.scene,
     position,
     parentId,
     // What the projection emits for a Scene: a width, and a *minimum* height

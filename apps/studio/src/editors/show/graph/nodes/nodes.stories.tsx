@@ -3,7 +3,7 @@ import { FLOW_COLORS, type FlowColor } from "@mechane/domain";
 import { ComponentProps } from "react";
 
 import { BaseNode } from "./BaseNode";
-
+import { NodeCueList, NodeVariableList } from "./NodeContent";
 import "../show-graph-editor.css";
 
 type BaseNodeStoryArgs = ComponentProps<typeof BaseNode> & {
@@ -41,11 +41,18 @@ const meta: Meta<BaseNodeStoryArgs> = {
     },
     data: { control: false },
   },
-  render: ({ color, data, ...args }: BaseNodeStoryArgs) => (
-    <div className="mechane-show-graph" data-flow-theme="neutral">
-      <BaseNode {...args} data={{ ...data, color }} />
-    </div>
-  ),
+  render: ({ color, data, ...args }: BaseNodeStoryArgs) => {
+    const wiredVariableIds = new Set(data.wiredVariableIds);
+    const warning = data.variables.some((variable) => !wiredVariableIds.has(variable.id));
+    return (
+      <div className="mechane-show-graph" data-flow-theme="neutral">
+        <BaseNode {...args} data={{ ...data, color }} warning={warning}>
+          <NodeVariableList variables={data.variables} />
+          <NodeCueList cues={data.cues} />
+        </BaseNode>
+      </div>
+    );
+  },
 };
 
 export default meta;

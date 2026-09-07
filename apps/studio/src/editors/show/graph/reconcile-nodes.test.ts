@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { FLOW_NODE_TYPE } from "./graph-to-flow";
+import { FLOW_NODE_TYPE, NODE_TYPE_BY_KIND } from "./graph-to-flow";
 import { reconcileEdges, reconcileNodes, SELECTED_EDGE_Z } from "./reconcile-nodes";
 import type { ShowFlowEdge, ShowFlowNode } from "./graph-to-flow";
 
 function node(id: string, overrides: Partial<ShowFlowNode> = {}): ShowFlowNode {
   return {
     id,
-    type: "showNode",
+    type: NODE_TYPE_BY_KIND.source,
     position: { x: 0, y: 0 },
     data: {} as ShowFlowNode["data"],
     ...overrides,
