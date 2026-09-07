@@ -145,6 +145,37 @@ describe("toShowGraph", () => {
     expect(graph.edges.map((edge) => edge.kind)).toEqual(["wiring", "navigate", "device"]);
   });
 
+  it("keeps an Action's layout, the durable half a Navigate edge's drag lives on (#475, #597)", () => {
+    const withAction = {
+      ...GRAPH,
+      actions: [
+        {
+          __typename: "NavigateAction" as const,
+          id: "action_red_green",
+          cueId: "cue_red",
+          kind: "navigate",
+          targetSceneId: "scene_voting",
+          layout: { HVH: { "1": -24 } },
+        },
+        {
+          __typename: "NavigateAction" as const,
+          id: "action_untouched",
+          cueId: "cue_blue",
+          kind: "navigate",
+          targetSceneId: "scene_voting",
+          layout: null,
+        },
+      ],
+    };
+    const actions = toShowGraph(withAction).actions ?? [];
+    expect(actions.find((action) => action.id === "action_red_green")?.layout).toEqual({
+      HVH: { "1": -24 },
+    });
+    expect(actions.find((action) => action.id === "action_untouched")).not.toHaveProperty(
+      "layout",
+    );
+  });
+
   it("keeps a wiring edge's conversion, and drops one it doesn't recognise (#532)", () => {
     const withConversions = {
       ...GRAPH,

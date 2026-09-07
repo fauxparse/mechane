@@ -12,7 +12,7 @@ import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { OnEdgesChange, OnNodesChange } from "@xyflow/react";
 
 import { absolutePosition, graphToFlow, NODE_HEIGHT, NODE_WIDTH } from "../graph/graph-to-flow";
-import type { FlowDimensions, ShowFlowEdge, ShowFlowNode } from "../graph/graph-to-flow";
+import type { FlowResizeParams, ShowFlowEdge, ShowFlowNode } from "../graph/graph-to-flow";
 import { reconcileEdges, reconcileNodes } from "../graph/reconcile-nodes";
 import { useEditorKeys } from "../keyboard/use-editor-keys";
 import { useGraphEditing } from "./use-graph-editing";
@@ -123,8 +123,9 @@ export function useShowGraphEditorController({
   // resize is one undo entry (#28, #508).
   const resizeGesture = useRef<ReturnType<typeof commands.beginGesture> | null>(null);
   const resizeFlow = useCallback(
-    (flowId: string, dimensions: FlowDimensions, { committed }: { committed: boolean }) => {
+    (flowId: string, dimensions: FlowResizeParams, { committed }: { committed: boolean }) => {
       const size = { width: dimensions.width, height: dimensions.height };
+      const flow = (getNodes() as ShowFlowNode[]).find((node) => node.id === flowId);
       const children = (getNodes() as ShowFlowNode[]).filter((node) => node.parentId === flowId);
       const moves = childrenPushedInside(size, children);
       resizeGesture.current ??= commands.beginGesture({
@@ -136,6 +137,13 @@ export function useShowGraphEditorController({
           label: "Resize Flow",
           commands: [
             setFlowSize(flowId, size),
+            // Dragging the right or bottom edge holds the Flow's top-left in
+            // place; dragging the left or top edge moves it by the same
+            // amount the box grew or shrank, which is what keeps the edge
+            // under the pointer the one that moves (#593).
+            ...(flow && (flow.position.x !== dimensions.x || flow.position.y !== dimensions.y)
+              ? [moveNode(flowId, { x: dimensions.x, y: dimensions.y })]
+              : []),
             ...moves.map((move) => moveNode(move.id, move.position)),
           ],
         }),

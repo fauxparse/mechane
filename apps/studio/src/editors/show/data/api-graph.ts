@@ -353,6 +353,10 @@ function toAction(action: ApiShowGraph["actions"][number]): Action {
       cueId: action.cueId,
       kind: "navigate",
       targetSceneId: action.targetSceneId,
+      // Where the author has dragged this Action's projected edge (#475,
+      // #597) — the edge itself does not outlive a write, so this is the
+      // durable half read back on load.
+      ...(action.layout ? { layout: action.layout as EdgeLayout } : {}),
     };
   }
   if ("targetSourceId" in action && action.targetSourceId && "params" in action) {
@@ -366,6 +370,10 @@ function toAction(action: ApiShowGraph["actions"][number]): Action {
       kind: "update",
       target: { sourceId: action.targetSourceId, fieldPath: params.fieldPath },
       operation: params.operation as Extract<Action, { kind: "update" }>["operation"],
+      // Where the author has dragged this Action's projected edge (#475,
+      // #597) — the edge itself does not outlive a write, so this is the
+      // durable half read back on load.
+      ...(action.layout ? { layout: action.layout as EdgeLayout } : {}),
     };
   }
   throw new Error(`Action "${action.id}" has an unsupported kind.`);

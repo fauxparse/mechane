@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { buildSchema, GraphQLInputObjectType } from "graphql";
+import { buildSchema, GraphQLInputObjectType, GraphQLInterfaceType } from "graphql";
 
 import {
   parseGraphEdit,
@@ -310,6 +310,24 @@ describe("Show graph serialization", () => {
       kind: "flow",
       defaultSceneId: "scene_red",
     });
+  });
+
+  // The serializer producing `layout` (above) is only reachable if the SDL
+  // also declares the field — one client field selection can't ask for
+  // something the schema never named, so a query can silently get back
+  // everything except the geometry it just saved (#597).
+  it("declares Action.layout in the SDL, not just the serializer", () => {
+    const schema = buildSchema(
+      readFileSync(
+        fileURLToPath(
+          new URL("../../../../packages/graphql-schema/schema.graphql", import.meta.url),
+        ),
+        "utf8",
+      ),
+    );
+    const action = schema.getType("Action");
+    if (!(action instanceof GraphQLInterfaceType)) throw new Error("Action is not an interface");
+    expect(Object.keys(action.getFields())).toContain("layout");
   });
 });
 

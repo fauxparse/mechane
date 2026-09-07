@@ -283,6 +283,17 @@ export interface FlowDimensions {
   height: number;
 }
 
+/**
+ * What a live resize gesture reports (#593): the box's new size, and its new
+ * top-left. Right/bottom handles hold the top-left fixed; left/top handles
+ * move it by the same amount they shrink or grow the opposite dimension, so
+ * the edge under the pointer is the one that moves.
+ */
+export interface FlowResizeParams extends FlowDimensions {
+  x: number;
+  y: number;
+}
+
 /** Calculates an authored Flow size from its graph-level child bounds. */
 export function flowSize(
   children: readonly MappableNode[],
