@@ -10,7 +10,7 @@
 import { createContext, useContext } from "react";
 import type { ConnectionTargets } from "@mechane/domain";
 
-import type { FlowDimensions } from "./graph-to-flow";
+import type { FlowResizeParams } from "./graph-to-flow";
 
 export interface NodeInteraction {
   /** The node whose name is being edited inline, if any. */
@@ -35,7 +35,7 @@ export interface NodeInteraction {
    * view state, but shrinking a Flow past its contents moves the children,
    * and that is a graph edit worth exactly one undo entry (#508).
    */
-  resizeFlow(flowId: string, dimensions: FlowDimensions, options: { committed: boolean }): void;
+  resizeFlow(flowId: string, dimensions: FlowResizeParams, options: { committed: boolean }): void;
 }
 
 const IDLE: NodeInteraction = {
