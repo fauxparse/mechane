@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.json --noEmit",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/db/seeds.ts",
     "db:reset": "pnpm db:migrate && pnpm db:seed",
