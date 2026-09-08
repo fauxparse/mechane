@@ -43,6 +43,7 @@ import {
 import { sortBy } from "es-toolkit";
 import { useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
+import { addInteraction } from "./interaction-actions";
 import { keypressUnavailableReason } from "./keypress-availability";
 
 function ownerKey(owner: InteractionOwner): string {
@@ -343,27 +344,18 @@ export function InteractionSection() {
 
   const { canvasId } = focused;
 
-  const addInteraction = (eventKind: EventKind) => {
-    const cue = ownedCues[0];
-    if (!cue) {
-      onCreateCue?.(owner);
-      return;
-    }
-    const position =
-      bindings.reduce((highest, binding) => Math.max(highest, binding.position), -1) + 1;
-    const id = generateId("eventBinding");
-    const base = { id, canvasId, elementId: target.id, cueId: cue.id, position };
-    if (eventKind === "keypress") {
-      // Created before a key is captured: an unset key is valid and inert
-      // (#517), so the row can exist while the author decides.
-      onCreateEventBinding?.({ ...base, eventKind: "keypress", params: { key: null } });
-      // The author just picked "Keypress"; the next thing they want is to
-      // press a key.
-      setCapturingBindingId(id);
-      return;
-    }
-    onCreateEventBinding?.({ ...base, eventKind: "tap" });
-    setCapturingBindingId(null);
+  const handleAddInteraction = (eventKind: EventKind) => {
+    addInteraction({
+      eventKind,
+      owner,
+      canvasId,
+      elementId: target.id,
+      bindings,
+      ownedCues,
+      onCreateCue,
+      onCreateEventBinding,
+      onCapturingChange: setCapturingBindingId,
+    });
   };
   const finishDrag = (event: DragEndEvent) => {
     if (event.canceled) return;
@@ -434,7 +426,7 @@ export function InteractionSection() {
                   key={kind}
                   disabled={unavailable !== null}
                   onClick={() => {
-                    if (!unavailable) addInteraction(kind);
+                    if (!unavailable) handleAddInteraction(kind);
                   }}
                   className="grid grid-cols-[auto_1fr] items-center line-height-normal gap-x-2 gap-y-0"
                 >
