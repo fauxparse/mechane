@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { db } from "./client";
 import {
@@ -9,21 +9,15 @@ import {
   withRunErrorLog,
 } from "./run-errors";
 import { endRun, startRun } from "./runs";
-import { playerEvents, runErrors, shows, user } from "./schema";
+import { playerEvents, runErrors } from "./schema";
+import { setupPostgresTest } from "./test-helpers";
 import { readShowGraph } from "./show-graph";
 import { seedShow } from "./seeds/shows/navigation-proof/navigation-proof";
 
-const userId = `run-errors-db-test-${crypto.randomUUID()}`;
-const showId = `run-errors-db-show-${crypto.randomUUID()}`;
+const { showId, createShow: createUserAndShow } = setupPostgresTest("run-errors-db-test");
 
 async function createShow(): Promise<void> {
-  await db.insert(user).values({
-    id: userId,
-    name: "Run Errors DB Test",
-    email: `${userId}@example.test`,
-    emailVerified: true,
-  });
-  await db.insert(shows).values({ id: showId, name: "Run Errors DB Test", userId });
+  await createUserAndShow("Run Errors DB Test");
   await seedShow.seed(showId);
 }
 
@@ -39,10 +33,6 @@ async function proofDevice(): Promise<{ id: string; pairingCode: string }> {
 async function backdate(id: string, occurredAt: Date): Promise<void> {
   await db.update(runErrors).set({ occurredAt }).where(eq(runErrors.id, id));
 }
-
-afterEach(async () => {
-  await db.delete(user).where(eq(user.id, userId));
-});
 
 describe("the Run error log", () => {
   it("records failures that happened before any Run existed", async () => {

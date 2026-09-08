@@ -1,24 +1,17 @@
 import { assertValidShowGraph } from "@mechane/domain";
-import { eq } from "drizzle-orm";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { db } from "../../../client";
 import { readPlayerSession } from "../../../../player";
 import { readShowGraph, publishShowGraph } from "../../../show-graph";
 import { startRun } from "../../../runs";
-import { shows, user } from "../../../schema";
+import { setupPostgresTest } from "../../../test-helpers";
 import {
   navigationAudienceGraph,
   NAVIGATION_AUDIENCE_DEVICE_ID,
   seedShow,
 } from "./navigation-audience";
 
-const userId = `navigation-audience-test-${crypto.randomUUID()}`;
-const showId = `navigation-audience-show-${crypto.randomUUID()}`;
-
-afterEach(async () => {
-  await db.delete(user).where(eq(user.id, userId));
-});
+const { showId, createShow } = setupPostgresTest("navigation-audience-test");
 
 describe("Navigation Audience seed", () => {
   it("copies the Navigation Proof topology with one per-connection Device", () => {
@@ -41,13 +34,7 @@ describe("Navigation Audience seed", () => {
   });
 
   it("persists the Audience Device and its complete Flow bundle", async () => {
-    await db.insert(user).values({
-      id: userId,
-      name: "Navigation Audience Test",
-      email: `${userId}@example.com`,
-      emailVerified: true,
-    });
-    await db.insert(shows).values({ id: showId, name: "Navigation Audience", userId });
+    await createShow("Navigation Audience Test");
     await seedShow.seed(showId);
     await publishShowGraph(showId);
     await startRun(showId);

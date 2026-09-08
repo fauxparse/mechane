@@ -1,15 +1,12 @@
 import { ARTBOARD_COMMAND_TYPES, type CanvasWorkspaceEdit } from "@mechane/commands";
 import type { ShowGraph } from "@mechane/domain";
-import { eq } from "drizzle-orm";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { db } from "./client";
 import { latestCanvasFills, readCanvasWorkspace } from "./canvas";
-import { shows, user } from "./schema";
+import { setupPostgresTest } from "./test-helpers";
 import { applyShowEdits, readShowGraph, writeShowGraph } from "./show-graph";
 
-const userId = `scene-canvas-test-${crypto.randomUUID()}`;
-const showId = `scene-canvas-show-${crypto.randomUUID()}`;
+const { showId, createShow } = setupPostgresTest("scene-canvas-test");
 
 function graphWithScenes(...scenes: { id: string; name: string; x: number }[]): ShowGraph {
   return {
@@ -69,18 +66,8 @@ describe("latestCanvasFills", () => {
 });
 
 describe("Scene Canvas reconciliation", () => {
-  afterEach(async () => {
-    await db.delete(user).where(eq(user.id, userId));
-  });
   it("preserves an existing Canvas tree, adds new Scenes, and removes deleted Scenes", async () => {
-    await db.insert(user).values({
-      id: userId,
-      name: "Scene Canvas Test",
-      email: `${userId}@example.com`,
-      emailVerified: true,
-    });
-    await db.insert(shows).values({ id: showId, name: "Scene Canvas Test", userId });
-
+    await createShow("Scene Canvas Test");
     await writeShowGraph(showId, "draft", graphWithScenes({ id: "scene_one", name: "One", x: 0 }));
     const initial = (await readCanvasWorkspace(showId, "draft")).canvases;
     expect(initial).toHaveLength(1);

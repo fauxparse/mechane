@@ -1,7 +1,7 @@
 import { emptyBlock } from "@mechane/domain";
 import type { ShowGraph } from "@mechane/domain";
 import { eq } from "drizzle-orm";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { db } from "./client";
 import {
@@ -10,11 +10,11 @@ import {
   persistGraphRows,
   readGraphRows,
 } from "./graph-persistence";
-import { canvasElements, canvases, devices, shows, user } from "./schema";
+import { canvasElements, canvases, devices } from "./schema";
+import { setupPostgresTest } from "./test-helpers";
 
-const userId = `graph-persistence-test-${crypto.randomUUID()}`;
+const { showId, createShow } = setupPostgresTest("graph-persistence-test");
 const block = { ...emptyBlock("Card"), id: "block_card" };
-const showId = `graph-persistence-show-${crypto.randomUUID()}`;
 const graph: ShowGraph = {
   shapes: [],
   nodes: [
@@ -51,20 +51,6 @@ const graph: ShowGraph = {
     },
   ],
 };
-
-async function createShow(): Promise<void> {
-  await db.insert(user).values({
-    id: userId,
-    name: "Graph Persistence Test",
-    email: `${userId}@example.com`,
-    emailVerified: true,
-  });
-  await db.insert(shows).values({ id: showId, name: "Graph Persistence", userId });
-}
-
-afterEach(async () => {
-  await db.delete(user).where(eq(user.id, userId));
-});
 
 describe("graph row persistence", () => {
   it("writes and reads graph rows without lifecycle side effects", async () => {

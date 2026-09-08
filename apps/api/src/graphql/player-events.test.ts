@@ -1,13 +1,11 @@
 import type { GraphQLContext } from "./context";
 import { createYoga } from "graphql-yoga";
-import { eq } from "drizzle-orm";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { seedShow } from "../db/seeds/shows/navigation-proof/navigation-proof";
-import { db } from "../db/client";
 import { readRunDeviceState, startRun } from "../db/runs";
 import { publishShowGraph, readShowGraph, writeShowGraph } from "../db/show-graph";
-import { shows, user } from "../db/schema";
+import { setupPostgresTest } from "../db/test-helpers";
 import { schema } from "./schema";
 
 const SUBMIT_PLAYER_EVENT = /* GraphQL */ `
@@ -39,8 +37,7 @@ const SUBMIT_PLAYER_EVENT = /* GraphQL */ `
   }
 `;
 
-const userId = `player-event-test-${crypto.randomUUID()}`;
-const showId = `player-event-show-${crypto.randomUUID()}`;
+const { userId, showId, createShow: createUserAndShow } = setupPostgresTest("player-event-test");
 
 function yoga(context: GraphQLContext) {
   return createYoga<GraphQLContext>({
@@ -70,18 +67,8 @@ async function request(
 }
 
 async function createShow(): Promise<void> {
-  await db.insert(user).values({
-    id: userId,
-    name: "Player Event Test",
-    email: `${userId}@example.com`,
-    emailVerified: true,
-  });
-  await db.insert(shows).values({ id: showId, name: "Player Event Test", userId });
+  await createUserAndShow("Player Event Test");
 }
-
-afterEach(async () => {
-  await db.delete(user).where(eq(user.id, userId));
-});
 
 describe("submitPlayerEvent", () => {
   it("applies, deduplicates, and rejects stale Player taps", async () => {

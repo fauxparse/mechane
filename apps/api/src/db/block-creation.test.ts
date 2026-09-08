@@ -6,15 +6,15 @@ import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
 import { emptyBlock } from "@mechane/domain";
 import type { ShowGraph } from "@mechane/domain";
 import { eq } from "drizzle-orm";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { db } from "./client";
 import { readCanvasWorkspace } from "./canvas";
-import { canvases, shows, user } from "./schema";
+import { canvases } from "./schema";
+import { setupPostgresTest } from "./test-helpers";
 import { applyShowEdits, readShowGraph, writeShowGraph } from "./show-graph";
 
-const userId = `block-creation-test-${crypto.randomUUID()}`;
-const showId = `block-creation-show-${crypto.randomUUID()}`;
+const { showId, createShow } = setupPostgresTest("block-creation-test");
 
 const graph: ShowGraph = {
   nodes: [
@@ -52,18 +52,8 @@ const addBlock: GraphEdit = {
 };
 
 describe("creating a Block from the Canvas editor", () => {
-  afterEach(async () => {
-    await db.delete(user).where(eq(user.id, userId));
-  });
-
   it("places the new Block Canvas where the client asked, and accepts edits to it in the same batch", async () => {
-    await db.insert(user).values({
-      id: userId,
-      name: "Block Creation Test",
-      email: `${userId}@example.com`,
-      emailVerified: true,
-    });
-    await db.insert(shows).values({ id: showId, name: "Block Creation Test", userId });
+    await createShow("Block Creation Test");
     await writeShowGraph(showId, "draft", graph);
 
     const sceneCanvas = (await readCanvasWorkspace(showId, "draft")).canvases[0];
@@ -108,13 +98,7 @@ describe("creating a Block from the Canvas editor", () => {
   });
 
   it("does not rewrite untouched Block Canvases for graph-only edits", async () => {
-    await db.insert(user).values({
-      id: userId,
-      name: "Block Canvas Ownership Test",
-      email: `${userId}@example.com`,
-      emailVerified: true,
-    });
-    await db.insert(shows).values({ id: showId, name: "Block Canvas Ownership Test", userId });
+    await createShow("Block Canvas Ownership Test");
     const block = emptyBlock("Existing");
     await writeShowGraph(showId, "draft", { ...graph, blocks: [block] });
 
