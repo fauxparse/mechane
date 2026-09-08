@@ -2,24 +2,18 @@ import { randomUUID } from "node:crypto";
 
 import type { RealtimeChannel, RealtimeMessage, RealtimeProvider } from "@mechane/realtime";
 import { eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { db } from "./client";
 import { drainPlayerInvalidations, enqueuePlayerInvalidations } from "./player-invalidation-outbox";
-import { playerInvalidationOutbox, shows, user } from "./schema";
+import { playerInvalidationOutbox } from "./schema";
+import { setupPostgresTest } from "./test-helpers";
 import { seedShow } from "./seeds/shows/navigation-proof/navigation-proof";
 
-const userId = `outbox-test-${randomUUID()}`;
-const showId = `outbox-show-${randomUUID()}`;
+const { showId, createShow: createUserAndShow } = setupPostgresTest("outbox-test");
 
 async function createShow(): Promise<void> {
-  await db.insert(user).values({
-    id: userId,
-    name: "Outbox Test",
-    email: `${userId}@example.com`,
-    emailVerified: true,
-  });
-  await db.insert(shows).values({ id: showId, name: "Outbox Test", userId });
+  await createUserAndShow("Outbox Test");
   await seedShow.seed(showId);
   await db.delete(playerInvalidationOutbox).where(eq(playerInvalidationOutbox.showId, showId));
 }
@@ -56,11 +50,6 @@ async function outboxRows() {
 
 beforeEach(async () => {
   await db.delete(playerInvalidationOutbox).where(eq(playerInvalidationOutbox.showId, showId));
-  await db.delete(user).where(eq(user.id, userId));
-});
-
-afterEach(async () => {
-  await db.delete(user).where(eq(user.id, userId));
 });
 
 describe.sequential("player invalidation outbox", () => {

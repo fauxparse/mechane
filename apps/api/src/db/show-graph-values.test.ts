@@ -1,14 +1,11 @@
 import type { GraphEdit } from "@mechane/commands";
 import type { ShowGraph } from "@mechane/domain";
-import { eq } from "drizzle-orm";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { db } from "./client";
-import { shows, user } from "./schema";
 import { applyShowEdits, readShowGraph, writeShowGraph } from "./show-graph";
+import { setupPostgresTest } from "./test-helpers";
 
-const userId = `shape-value-test-${crypto.randomUUID()}`;
-const showId = `shape-value-show-${crypto.randomUUID()}`;
+const { showId, createShow } = setupPostgresTest("shape-value-test");
 
 const graph: ShowGraph = {
   shapes: [
@@ -40,19 +37,9 @@ const graph: ShowGraph = {
   sourceFieldDefaults: [{ nodeId: "source_profile", fieldPath: ["headline"], value: "Before" }],
 };
 
-afterEach(async () => {
-  await db.delete(user).where(eq(user.id, userId));
-});
-
 describe("shape source value persistence", () => {
   it("keeps a field value after the draft is reread", async () => {
-    await db.insert(user).values({
-      id: userId,
-      name: "Shape Value Test",
-      email: `${userId}@example.com`,
-      emailVerified: true,
-    });
-    await db.insert(shows).values({ id: showId, name: "Shape Value Test", userId });
+    await createShow("Shape Value Test");
     await writeShowGraph(showId, "draft", graph);
 
     const draft = await readShowGraph(showId, "draft");
@@ -70,13 +57,7 @@ describe("shape source value persistence", () => {
     ]);
   });
   it("deletes a field-derived source without invalidating sibling wiring", async () => {
-    await db.insert(user).values({
-      id: userId,
-      name: "Shape Value Test",
-      email: `${userId}@example.com`,
-      emailVerified: true,
-    });
-    await db.insert(shows).values({ id: showId, name: "Shape Value Test", userId });
+    await createShow("Shape Value Test");
     const sourceGraph: ShowGraph = {
       ...graph,
       nodes: [

@@ -2,16 +2,16 @@ import { BlockCycleError, emptyBlock } from "@mechane/domain";
 import type { GraphEdit } from "@mechane/commands";
 import type { ShowGraph } from "@mechane/domain";
 import { and, eq, isNull } from "drizzle-orm";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { db } from "./client";
 import { readCanvas } from "./canvas";
 import { endRun, readActiveRun, readRunDeviceState, startRun } from "./runs";
 import { applyShowEdits, publishShowGraph, readShowGraph, writeShowGraph } from "./show-graph";
-import { canvasElements, devices, shows, user } from "./schema";
+import { canvasElements, devices } from "./schema";
+import { setupPostgresTest } from "./test-helpers";
 
-const userId = `show-lifecycle-test-${crypto.randomUUID()}`;
-const showId = `show-lifecycle-${crypto.randomUUID()}`;
+const { showId, createShow: createUserAndShow } = setupPostgresTest("show-lifecycle-test");
 
 const graph: ShowGraph = {
   nodes: [
@@ -83,18 +83,8 @@ function navigationGraph(
 }
 
 async function createShow(): Promise<void> {
-  await db.insert(user).values({
-    id: userId,
-    name: "Show Lifecycle Test",
-    email: `${userId}@example.com`,
-    emailVerified: true,
-  });
-  await db.insert(shows).values({ id: showId, name: "Show Lifecycle", userId });
+  await createUserAndShow("Show Lifecycle Test");
 }
-
-afterEach(async () => {
-  await db.delete(user).where(eq(user.id, userId));
-});
 
 describe("Show graph lifecycle", () => {
   it("publishes structure, preserves Device identity, and updates the active Run", async () => {

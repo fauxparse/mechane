@@ -8,16 +8,13 @@
 import { CANVAS_COMMAND_TYPES, GRAPH_COMMAND_TYPES } from "@mechane/commands";
 import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
 import type { ShowGraph } from "@mechane/domain";
-import { eq } from "drizzle-orm";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { db } from "./client";
 import { readCanvasWorkspace } from "./canvas";
-import { shows, user } from "./schema";
+import { setupPostgresTest } from "./test-helpers";
 import { applyShowEdits, readShowGraph, writeShowGraph } from "./show-graph";
 
-const userId = `graph-canvas-delete-order-test-${crypto.randomUUID()}`;
-const showId = `graph-canvas-delete-order-show-${crypto.randomUUID()}`;
+const { showId, createShow } = setupPostgresTest("graph-canvas-delete-order-test");
 
 const graph: ShowGraph = {
   nodes: [
@@ -34,18 +31,8 @@ const graph: ShowGraph = {
 };
 
 describe("a Canvas edit batched with the deletion of its own owner (#594)", () => {
-  afterEach(async () => {
-    await db.delete(user).where(eq(user.id, userId));
-  });
-
   it("drops the orphaned Canvas edit instead of failing the whole batch", async () => {
-    await db.insert(user).values({
-      id: userId,
-      name: "Delete Order Test",
-      email: `${userId}@example.com`,
-      emailVerified: true,
-    });
-    await db.insert(shows).values({ id: showId, name: "Delete Order Test", userId });
+    await createShow("Delete Order Test");
     await writeShowGraph(showId, "draft", graph);
 
     const sceneCanvas = (await readCanvasWorkspace(showId, "draft")).canvases[0];

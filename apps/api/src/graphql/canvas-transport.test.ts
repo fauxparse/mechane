@@ -7,22 +7,18 @@
 // expects the Canvas that went in.
 import { CANVAS_COMMAND_TYPES, type CanvasWorkspaceEdit } from "@mechane/commands";
 import type { Element, FrameElement, ShowGraph } from "@mechane/domain";
-import { generateId } from "@mechane/domain";
 import { decodeCanvasDocument, GetShowCanvasesQuery } from "@mechane/graphql-schema";
-import { eq } from "drizzle-orm";
 import { print } from "graphql";
 import { createYoga } from "graphql-yoga";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
-import { db } from "../db/client";
 import { readCanvasWorkspace } from "../db/canvas";
-import { shows, user } from "../db/schema";
 import { applyShowEdits, readShowGraph, writeShowGraph } from "../db/show-graph";
+import { setupPostgresTest } from "../db/test-helpers";
 import type { GraphQLContext } from "./context";
 import { schema } from "./schema";
 
-const userId = `canvas-transport-${crypto.randomUUID()}`;
-const showId = generateId("show");
+const { userId, showId, createShow } = setupPostgresTest("canvas-transport");
 
 const SCENE_GRAPH: ShowGraph = {
   nodes: [
@@ -89,18 +85,8 @@ function deepCanvasEdits(canvasId: string, rootId: string, depth: number): Canva
 
 describe("Canvas GraphQL transport", () => {
   beforeEach(async () => {
-    await db.insert(user).values({
-      id: userId,
-      name: "Canvas Transport Test",
-      email: `${userId}@example.com`,
-      emailVerified: true,
-    });
-    await db.insert(shows).values({ id: showId, name: "Canvas Transport Test", userId });
+    await createShow("Canvas Transport Test");
     await writeShowGraph(showId, "draft", SCENE_GRAPH);
-  });
-
-  afterEach(async () => {
-    await db.delete(user).where(eq(user.id, userId));
   });
 
   it("delivers a Canvas deeper than any recursive selection could have reached", async () => {

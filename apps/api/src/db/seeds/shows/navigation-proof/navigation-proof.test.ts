@@ -1,9 +1,7 @@
 import { assertValidCanvas, assertValidShowGraph } from "@mechane/domain";
 import type { GraphEdit } from "@mechane/commands";
-import { eq } from "drizzle-orm";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { db } from "../../../client";
 import {
   applyShowEdits,
   readShowGraph,
@@ -11,7 +9,7 @@ import {
   writeShowGraph,
 } from "../../../show-graph";
 import { startRun } from "../../../runs";
-import { shows, user } from "../../../schema";
+import { setupPostgresTest } from "../../../test-helpers";
 import { readPlayerSession } from "../../../../player";
 
 import {
@@ -23,12 +21,7 @@ import {
   NAVIGATION_SCENE_IDS,
   seedShow,
 } from "./navigation-proof";
-const userId = `navigation-proof-test-${crypto.randomUUID()}`;
-const showId = `navigation-proof-show-${crypto.randomUUID()}`;
-
-afterEach(async () => {
-  await db.delete(user).where(eq(user.id, userId));
-});
+const { showId, createShow } = setupPostgresTest("navigation-proof-test");
 
 describe("Navigation Proof seed", () => {
   it("builds a complete three-scene interaction graph", () => {
@@ -104,14 +97,7 @@ describe("Navigation Proof seed", () => {
     expect(canvases.scene_blue?.root).toMatchObject({ fill: "#1e3a8a" });
   });
   it("persists the proof graph and starts the Shared Device at Red", async () => {
-    await db.insert(user).values({
-      id: userId,
-      name: "Navigation Proof Test",
-      email: `${userId}@example.com`,
-      emailVerified: true,
-    });
-    await db.insert(shows).values({ id: showId, name: "Navigation Proof", userId });
-
+    await createShow("Navigation Proof Test");
     await seedShow.seed(showId);
     const published = await readShowGraph(showId, "published");
     const device = published.nodes.find((node) => node.id === NAVIGATION_DEVICE_ID);
@@ -139,13 +125,7 @@ describe("Navigation Proof seed", () => {
     ]);
   });
   it("preserves interactions when a live Source default is edited", async () => {
-    await db.insert(user).values({
-      id: userId,
-      name: "Navigation Proof Test",
-      email: `${userId}@example.com`,
-      emailVerified: true,
-    });
-    await db.insert(shows).values({ id: showId, name: "Navigation Proof", userId });
+    await createShow("Navigation Proof Test");
     await seedShow.seed(showId);
 
     const draft = await readShowGraph(showId, "draft");

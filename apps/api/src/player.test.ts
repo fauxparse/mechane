@@ -1,15 +1,15 @@
 import type { ShowGraph } from "@mechane/domain";
 import { and, eq } from "drizzle-orm";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { db } from "./db/client";
 import { readRunDeviceState, startRun } from "./db/runs";
 import { publishShowGraph, readShowGraph, writeShowGraph } from "./db/show-graph";
-import { runDeviceStates, shows, user } from "./db/schema";
+import { runDeviceStates } from "./db/schema";
+import { setupPostgresTest } from "./db/test-helpers";
 import { readPlayerSession } from "./player";
 import { verifyRealtimeGrant } from "./realtime-grants";
-const userId = `player-state-test-${crypto.randomUUID()}`;
-const showId = `player-state-show-${crypto.randomUUID()}`;
+const { showId, createShow } = setupPostgresTest("player-state-test");
 
 const graph: ShowGraph = {
   nodes: [
@@ -58,24 +58,6 @@ const graph: ShowGraph = {
     },
   ],
 };
-
-async function createShow(): Promise<void> {
-  await db.insert(user).values({
-    id: userId,
-    name: "Player State Test",
-    email: `${userId}@example.com`,
-    emailVerified: true,
-  });
-  await db.insert(shows).values({
-    id: showId,
-    name: "Player State Test",
-    userId,
-  });
-}
-
-afterEach(async () => {
-  await db.delete(user).where(eq(user.id, userId));
-});
 
 describe("Player session runtime Scene", () => {
   it("reads Flow-driven Shared Device Scene from Run state", async () => {

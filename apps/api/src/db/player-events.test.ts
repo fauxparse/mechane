@@ -1,7 +1,7 @@
 import type { ShowGraph } from "@mechane/domain";
 import { describeRunError } from "@mechane/domain";
 import { eq } from "drizzle-orm";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { db } from "./client";
 import { readCanvas } from "./canvas";
@@ -9,20 +9,14 @@ import { dispatchPlayerEvent } from "./player-events";
 import { listRunErrors, RunConfigurationError } from "./run-errors";
 import { endRun, readActiveRun, readRunDeviceState, startRun } from "./runs";
 import { publishShowGraph, readShowGraph, writeShowGraph } from "./show-graph";
-import { playerEvents, playerInvalidationOutbox, runDeviceStates, shows, user } from "./schema";
+import { playerEvents, playerInvalidationOutbox, runDeviceStates } from "./schema";
+import { setupPostgresTest } from "./test-helpers";
 import { seedShow } from "./seeds/shows/navigation-proof/navigation-proof";
 
-const userId = `player-events-db-test-${crypto.randomUUID()}`;
-const showId = `player-events-db-show-${crypto.randomUUID()}`;
+const { showId, createShow: createUserAndShow } = setupPostgresTest("player-events-db-test");
 
 async function createShow(): Promise<void> {
-  await db.insert(user).values({
-    id: userId,
-    name: "Player Events DB Test",
-    email: `${userId}@example.com`,
-    emailVerified: true,
-  });
-  await db.insert(shows).values({ id: showId, name: "Player Events DB Test", userId });
+  await createUserAndShow("Player Events DB Test");
   await seedShow.seed(showId);
 }
 
@@ -43,10 +37,6 @@ function event(eventId: string, sceneId: string, destinationId: string) {
     eventKind: "tap",
   } as const;
 }
-
-afterEach(async () => {
-  await db.delete(user).where(eq(user.id, userId));
-});
 
 describe("dispatchPlayerEvent", () => {
   it("applies all six Navigation Proof transitions", async () => {
