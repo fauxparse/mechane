@@ -24,16 +24,13 @@ export function NewShowCard({ onCreate, creating, error, className }: NewShowCar
         type="button"
         onClick={() => setNaming(true)}
         className={cn(
-          // Alpha-on-foreground rather than `border-border`, which resolves to
-          // very nearly the colour `bg-sunken` uses — the dashed edge would
-          // disappear against the surface this card actually sits on.
-          "grid min-h-48 cursor-pointer place-items-center rounded-lg border-2 border-dashed border-foreground/25 text-muted-foreground transition-colors hover:border-foreground/40 hover:bg-foreground/5 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+          "grid min-h-48 cursor-pointer place-items-center rounded-lg border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-foreground/40 hover:bg-foreground/5 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
           className,
         )}
       >
         <span className="flex flex-col items-center gap-2">
           <PlusIcon className="size-6" />
-          <span className="text-sm font-medium">New Show</span>
+          <span className="text-base font-medium">New show</span>
         </span>
       </button>
 

@@ -13,7 +13,6 @@ import type { ShowCounts as Counts } from "./use-show-dossier";
 
 export interface ShowCountsProps {
   counts: Counts;
-  /** Renders placeholders rather than a row of zeroes while the graph loads. */
   pending?: boolean;
   size?: "sm" | "md";
   className?: string;
@@ -28,16 +27,23 @@ const COUNTED_KINDS = [
 
 export function ShowCounts({ counts, pending, size = "sm", className }: ShowCountsProps) {
   return (
-    <ul className={cn("flex items-center", size === "sm" ? "gap-2.5" : "gap-3.5", className)}>
+    <ul
+      className={cn(
+        "flex items-center",
+        size === "sm" ? "gap-3 text-xs" : "gap-4 text-sm",
+        className,
+      )}
+      data-size={size}
+    >
       {COUNTED_KINDS.map(([field, kind]) => {
         const meta = NODE_KIND_META[kind];
         const Icon = meta.icon;
         const value = counts[field];
         const label = value === 1 ? meta.label : `${meta.label}s`;
-        return (
+        return value === 0 ? null : (
           <li
             key={field}
-            className="flex items-center gap-1 text-muted-foreground"
+            className="flex items-center gap-2 text-muted-foreground"
             title={`${value} ${label}`}
           >
             <Icon className={size === "sm" ? "size-3.5" : "size-4"} aria-hidden="true" />

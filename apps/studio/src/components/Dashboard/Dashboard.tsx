@@ -103,13 +103,13 @@ export function Dashboard({
         <DashboardHeader user={user} onLogOut={onLogOut} />
 
         {loadError ? (
-          <p role="alert" className="mx-auto w-full max-w-[92rem] px-6 pb-6 text-destructive">
+          <p role="alert" className="mx-auto w-full max-w-368 px-6 pb-6 text-destructive">
             Couldn't load Shows: {loadError}
           </p>
         ) : null}
 
         {featured ? (
-          <div className="mx-auto w-full max-w-[92rem] px-6 pb-8">
+          <div className="mx-auto w-full max-w-368 px-6">
             <SpotlightBand
               show={featured}
               live={featuredRun}
@@ -120,10 +120,10 @@ export function Dashboard({
         ) : null}
       </div>
 
-      <main className="mx-auto flex w-full max-w-368 flex-col gap-6 px-6 pb-16 pt-6">
+      <main className="mx-auto flex w-full max-w-368 flex-col gap-6 px-6 pb-16 pt-6 lg:pt-8">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            {filtering ? `${matching.length} of ${ordered.length} Shows` : "All Shows"}
+          <h2 className="text-lg font-semibold text-muted-foreground">
+            {filtering ? `${matching.length} of ${ordered.length} shows` : "All shows"}
           </h2>
           {/* Beside the count rather than in place of the grid: the New Show
               card should not vanish and reflow while the list arrives. */}
@@ -146,8 +146,12 @@ export function Dashboard({
                   onChange={(event) => setQuery(event.target.value)}
                 />
                 {query ? (
-                  <InputGroupAddon align="inline-end">
-                    <InputGroupButton aria-label="Clear search" onClick={() => setQuery("")}>
+                  <InputGroupAddon align="inline-end" className="size-8 p-1 mr-0!">
+                    <InputGroupButton
+                      className="rounded-full size-6"
+                      aria-label="Clear search"
+                      onClick={() => setQuery("")}
+                    >
                       <XIcon />
                     </InputGroupButton>
                   </InputGroupAddon>
@@ -156,7 +160,7 @@ export function Dashboard({
             </div>
 
             <ToggleGroup
-              className="rounded-full bg-muted/50 h-8 p-0.5 *:rounded-full *:h-7"
+              className="rounded-full bg-muted/50 h-8 p-0.5 gap-0 *:rounded-full *:h-7 *:px-3"
               value={[liveOnly ? "live" : "all"]}
               onValueChange={(value) => setLiveOnly(value[0] === "live")}
             >
@@ -181,7 +185,7 @@ export function Dashboard({
               error={createError}
             />
           ) : (
-            <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]">
+            <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(12rem,1fr))]">
               {/* First cell, always: reachable without scrolling past every Show. */}
               <NewShowCard onCreate={onCreateShow} creating={creating} error={createError} />
               {matching.map((show) => (

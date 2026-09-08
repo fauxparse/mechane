@@ -83,9 +83,9 @@ export function ShowCard({ show, live, onOpen, onDelete, deleting, className }: 
 
         <CardHeader className="gap-1.5 pt-2.5">
           <CardTitle className="truncate text-sm">{show.name}</CardTitle>
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex flex-col gap-2 items-start text-xs">
             <ShowCounts counts={dossier.counts} pending={dossier.pending} />
-            <span className="truncate text-muted-foreground">{relativeTime(show.updatedAt)}</span>
+            <div className="truncate text-muted-foreground">{relativeTime(show.updatedAt)}</div>
           </div>
           <CardAction>
             <DropdownMenu>

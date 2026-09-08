@@ -47,10 +47,7 @@ export const ImageUploadIcon = ({
 
   return (
     <div
-      className={cn(
-        "group/icon size-16 grid items-center justify-center user-select-none",
-        className,
-      )}
+      className={cn("group/icon size-16 grid items-center justify-center select-none", className)}
       data-state={state}
     >
       <svg
