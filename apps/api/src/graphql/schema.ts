@@ -1110,6 +1110,8 @@ export const schema = createSchema<GraphQLContext>({
       sourceType: TypeInput
       "The Source field path, for graph.setSourceFieldDefault."
       fieldPath: [ID!]
+      "The Source field default value, for graph.setSourceFieldDefault."
+      value: JSON
       "The wiring edge's stable source-field to target-field mapping."
       fieldMapping: JSON
       "The edge layout, for graph.setEdgeLayout; null clears it."
