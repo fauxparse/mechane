@@ -15,14 +15,18 @@ const meta: Meta<typeof ToggleGroup> = {
   title: "design-system/ToggleGroup",
   component: ToggleGroup,
   parameters: { layout: "padded" },
+  argTypes: {
+    multiple: { control: "boolean" },
+  },
 };
 
 export default meta;
 type Story = StoryObj<typeof ToggleGroup>;
 
 export const Default: Story = {
-  render: () => (
-    <ToggleGroup multiple defaultValue={["bold"]}>
+  args: { multiple: true },
+  render: (args) => (
+    <ToggleGroup {...args} defaultValue={["bold"]}>
       <ToggleGroupItem value="bold" aria-label="Toggle bold">
         <Bold />
       </ToggleGroupItem>
@@ -37,8 +41,9 @@ export const Default: Story = {
 };
 
 export const Outline: Story = {
-  render: () => (
-    <ToggleGroup variant="outline" defaultValue={["left"]}>
+  args: { multiple: false },
+  render: (args) => (
+    <ToggleGroup {...args} defaultValue={["left"]}>
       <ToggleGroupItem value="left" aria-label="Align left">
         <AlignLeft />
       </ToggleGroupItem>
@@ -53,8 +58,9 @@ export const Outline: Story = {
 };
 
 export const Spacing: Story = {
-  render: () => (
-    <ToggleGroup variant="outline" size="sm" spacing={2} defaultValue={["bold"]}>
+  args: { multiple: false },
+  render: (args) => (
+    <ToggleGroup {...args} variant="outline" size="sm" spacing={2} defaultValue={["bold"]}>
       <ToggleGroupItem value="bold" aria-label="Toggle bold">
         <Bold />
       </ToggleGroupItem>
@@ -69,8 +75,9 @@ export const Spacing: Story = {
 };
 
 export const Vertical: Story = {
-  render: () => (
-    <ToggleGroup orientation="vertical" spacing={1} multiple defaultValue={["bold", "italic"]}>
+  args: { multiple: true },
+  render: (args) => (
+    <ToggleGroup {...args} orientation="vertical" spacing={1} defaultValue={["bold", "italic"]}>
       <ToggleGroupItem value="bold" aria-label="Toggle bold">
         <Bold />
       </ToggleGroupItem>
@@ -85,8 +92,9 @@ export const Vertical: Story = {
 };
 
 export const Disabled: Story = {
-  render: () => (
-    <ToggleGroup disabled>
+  args: { multiple: false },
+  render: (args) => (
+    <ToggleGroup {...args} disabled>
       <ToggleGroupItem value="bold" aria-label="Toggle bold">
         <Bold />
       </ToggleGroupItem>
@@ -101,9 +109,10 @@ export const Disabled: Story = {
 };
 
 export const InspectorVibe: Story = {
-  render: () => (
+  args: { multiple: true },
+  render: (args) => (
     <InspectorProvider>
-      <ToggleGroup variant="outline" multiple defaultValue={["left"]}>
+      <ToggleGroup {...args} variant="outline" defaultValue={["left"]}>
         <ToggleGroupItem value="left" aria-label="Align left">
           <AlignLeft />
         </ToggleGroupItem>
