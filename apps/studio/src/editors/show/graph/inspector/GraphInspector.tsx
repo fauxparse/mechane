@@ -74,7 +74,12 @@ function InspectorHeader({
               if (first) editing.beginRename(first.id);
             }}
             onCommit={(nextName) => {
-              editing.renameTo(nextName);
+              const name = nextName.trim();
+              if (!first || name.length === 0 || name === first.name) {
+                editing.cancelRename();
+                return;
+              }
+              editing.renameTo(name);
               editing.commitRename();
             }}
             onCancel={editing.cancelRename}
