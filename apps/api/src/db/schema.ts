@@ -519,10 +519,8 @@ export const graphEdges = pgTable(
     // it comes from, while still being a real column the foreign key below
     // can point at.
     targetVariableId: text("target_variable_id").generatedAlwaysAs(sql`target_path[1]`),
-    // Cues and Actions aren't modelled yet, so these are opaque ids with no
-    // FK — they exist now because the pairing is what makes parallel
-    // Navigate edges distinguishable, and retrofitting that into the
-    // uniqueness rule later would mean rewriting existing rows.
+    // Navigate edges pair a graph-scoped Cue with its graph-scoped Action.
+    // Composite foreign keys keep both references in the same graph.
     cueId: text("cue_id"),
     actionId: text("action_id"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -546,6 +544,16 @@ export const graphEdges = pgTable(
       name: "graph_edges_target_variable_fk",
       columns: [table.graphId, table.targetVariableId],
       foreignColumns: [graphNodeVariables.graphId, graphNodeVariables.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "graph_edges_cue_fk",
+      columns: [table.graphId, table.cueId],
+      foreignColumns: [graphCues.graphId, graphCues.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "graph_edges_action_fk",
+      columns: [table.graphId, table.actionId],
+      foreignColumns: [graphActions.graphId, graphActions.id],
     }).onDelete("cascade"),
     // Coalesced because Postgres treats NULLs as distinct, which would let
     // two identical Navigate edges with no Cue coexist.

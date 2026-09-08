@@ -1,0 +1,2 @@
+ALTER TABLE "graph_edges" ADD CONSTRAINT "graph_edges_cue_fk" FOREIGN KEY ("graph_id","cue_id") REFERENCES "public"."graph_cues"("graph_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "graph_edges" ADD CONSTRAINT "graph_edges_action_fk" FOREIGN KEY ("graph_id","action_id") REFERENCES "public"."graph_actions"("graph_id","id") ON DELETE cascade ON UPDATE no action;
