@@ -42,7 +42,10 @@ function Probe({ graph }: { graph: typeof SAMPLE_GRAPH }) {
         )}
       </pre>
       <div className="flex-1">
-        <ShowGraphEditor graph={graph} onEdit={(edits) => setLog((current) => [...current, ...edits])} />
+        <ShowGraphEditor
+          graph={graph}
+          onEdit={(edits) => setLog((current) => [...current, ...edits])}
+        />
       </div>
     </div>
   );

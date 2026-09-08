@@ -25,8 +25,14 @@ The helper records instance assignments under `~/.omp/mechane-worktrees`, outsid
 The `browser` tool's default headless device launches with `--use-mock-keychain`, so it never sees the Keychain entry and fails with `Failed to fetch` against any `*.mechane.dev` URL. Fix: open a dedicated instance instead of the default device, pointed at the browser tool's own managed Chrome binary (glob `~/.omp/puppeteer/chrome/*/chrome-mac-arm64/*.app/Contents/MacOS/*`) with a scratch `--user-data-dir`:
 
 ```json
-{ "action": "open", "url": "https://studio.mechane.dev/",
-  "app": { "path": "<globbed path above>", "args": ["--headless=new", "--user-data-dir=/tmp/omp-cft-<label>-profile"] } }
+{
+  "action": "open",
+  "url": "https://studio.mechane.dev/",
+  "app": {
+    "path": "<globbed path above>",
+    "args": ["--headless=new", "--user-data-dir=/tmp/omp-cft-<label>-profile"]
+  }
+}
 ```
 
 That binary is a separate app installation from anything under `/Applications`, so `close` with `kill: true` on it only tears down the instance you spawned.
