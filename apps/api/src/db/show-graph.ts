@@ -8,7 +8,7 @@
 import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
 import { applyGraphEdits } from "@mechane/commands";
 import type { GraphState, ShowGraph } from "@mechane/domain";
-import { assertBlockReferencesExist } from "@mechane/domain";
+import { assertBlockReferencesExist, generateId } from "@mechane/domain";
 import { eq } from "drizzle-orm";
 import type { StoredCanvas } from "./canvas";
 import { persistCanvases, readCanvasById, readCanvasWorkspace } from "./canvas";
@@ -23,6 +23,7 @@ import {
 import { drainPlayerInvalidations, enqueuePlayerInvalidations } from "./player-invalidation-outbox";
 import { reconcileActiveRunDeviceStates, reconcileActiveRunValues } from "./runs";
 import { devices, shows } from "./schema";
+import { withUniqueId } from "./ids";
 export interface PublishLoss {
   sourceId: string;
   fieldId: string;
@@ -115,6 +116,59 @@ async function writeGraph(
   });
   return { ...written.graph, eventBindings, nodes };
 }
+
+/** Creates a new Show with the starter Scene and shared projector Device (#606). */
+export async function createShowWithDefaults(name: string, userId: string) {
+  return withUniqueId("show", (id) =>
+    db.transaction(async (tx) => {
+      const [show] = await tx.insert(shows).values({ id, name, userId }).returning();
+      if (!show) throw new Error("The new Show could not be created.");
+
+      const sceneId = generateId("scene");
+      const deviceId = generateId("device");
+      await writeGraph(
+        tx,
+        show.id,
+        "draft",
+        {
+          nodes: [
+            {
+              id: sceneId,
+              kind: "scene",
+              name: "New Scene",
+              position: { x: 0, y: 0 },
+              parentId: null,
+              variables: [],
+            },
+            {
+              id: deviceId,
+              kind: "device",
+              name: "Projector",
+              position: { x: 500, y: 0 },
+              parentId: null,
+              perConnection: false,
+              pairingCode: null,
+            },
+          ],
+          edges: [
+            {
+              id: generateId("edge"),
+              kind: "device",
+              sourceId: sceneId,
+              targetId: deviceId,
+              sourcePath: [],
+              targetPath: [],
+            },
+          ],
+        } satisfies ShowGraph,
+        undefined,
+        { forceBlockCanvasWrites: true },
+      );
+      return show;
+    }),
+  );
+}
+
 /**
  * Replaces the Show's graph in `state`, in a transaction of its own.
  *
