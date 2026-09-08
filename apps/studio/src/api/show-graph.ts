@@ -90,14 +90,27 @@ export function patchShowGraphQueryData(
   for (const edit of edits) {
     switch (edit.type) {
       case "graph.addCue":
+        if (cues.some((cachedCue) => cachedCue.id === edit.cue.id)) break;
         cues = [...cues, toCachedCue(edit.cue)];
         changed = true;
         break;
       case "graph.removeCue": {
-        cues = cues.filter((cue) => cue.id !== edit.cueId);
-        actions = actions.filter((action) => action.cueId !== edit.cueId);
-        eventBindings = eventBindings.filter((binding) => binding.cueId !== edit.cueId);
-        edges = withoutCueEdges(edges, edit.cueId);
+        const nextCues = cues.filter((cue) => cue.id !== edit.cueId);
+        const nextActions = actions.filter((action) => action.cueId !== edit.cueId);
+        const nextEventBindings = eventBindings.filter((binding) => binding.cueId !== edit.cueId);
+        const nextEdges = withoutCueEdges(edges, edit.cueId);
+        if (
+          nextCues.length === cues.length &&
+          nextActions.length === actions.length &&
+          nextEventBindings.length === eventBindings.length &&
+          nextEdges.length === edges.length
+        ) {
+          break;
+        }
+        cues = nextCues;
+        actions = nextActions;
+        eventBindings = nextEventBindings;
+        edges = nextEdges;
         changed = true;
         break;
       }

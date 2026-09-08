@@ -96,11 +96,13 @@ describe("patchShowGraphQueryData", () => {
 
     expect(patched).toBe(graph);
   });
-  it("adds a newly-created Cue to the cached graph", () => {
+  it("adds a newly-created Cue to the cached graph only once", () => {
     const patched = patchShowGraphQueryData(graph, [newCue]);
+    const responsePatched = patchShowGraphQueryData(patched, [newCue]);
 
-    expect(patched?.cues.map((cue) => cue.id)).toEqual(["cue-new"]);
-    expect(patched?.cues[0]).toMatchObject({
+    expect(responsePatched).toBe(patched);
+    expect(responsePatched?.cues.map((cue) => cue.id)).toEqual(["cue-new"]);
+    expect(responsePatched?.cues[0]).toMatchObject({
       id: "cue-new",
       name: "New cue",
       ownerKind: "scene",
@@ -111,11 +113,13 @@ describe("patchShowGraphQueryData", () => {
     });
   });
 
-  it("removes a Cue and its dependent interactions from the cache", () => {
+  it("removes a Cue and its dependent interactions from the cache only once", () => {
     const patched = patchShowGraphQueryData(interactionGraph, [removeCachedCue]);
+    const responsePatched = patchShowGraphQueryData(patched, [removeCachedCue]);
 
-    expect(patched?.cues).toEqual([]);
-    expect(patched?.actions).toEqual([]);
-    expect(patched?.eventBindings).toEqual([]);
+    expect(responsePatched).toBe(patched);
+    expect(responsePatched?.cues).toEqual([]);
+    expect(responsePatched?.actions).toEqual([]);
+    expect(responsePatched?.eventBindings).toEqual([]);
   });
 });
