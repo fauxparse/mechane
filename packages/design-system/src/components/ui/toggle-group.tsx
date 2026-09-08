@@ -21,6 +21,7 @@ type ToggleGroupContextValue = VariantProps<typeof toggleVariants> & {
   vibe: Vibe;
   value: readonly string[];
   multiple: boolean;
+  animated: boolean;
   groupRef: React.RefObject<HTMLDivElement | null>;
   getItem: (value: string) => HTMLElement | null;
   registerItem: (value: string | undefined, element: HTMLElement | null) => void;
@@ -123,11 +124,13 @@ function ToggleGroup({
   vibe: vibeProp,
   children,
   multiple = false,
+  animated = false,
   ...props
 }: ToggleGroupPrimitive.Props &
   VariantProps<typeof toggleVariants> & {
     spacing?: number;
     orientation?: "horizontal" | "vertical";
+    animated?: boolean;
     vibe?: Vibe;
     children?: React.ReactNode;
   }) {
@@ -182,12 +185,14 @@ function ToggleGroup({
       vibe,
       value,
       multiple,
+      animated,
       groupRef,
       getItem,
       registerItem,
       itemVersion,
     }),
     [
+      animated,
       getItem,
       itemVersion,
       multiple,
@@ -230,7 +235,7 @@ function ToggleGroup({
         >
           <ToggleGroupContext.Provider value={contextValue}>
             {children}
-            {!multiple && <ToggleGroupHighlight />}
+            {animated && !multiple && <ToggleGroupHighlight />}
           </ToggleGroupContext.Provider>
         </ToggleGroupPrimitive>
       </VibeProvider>
@@ -259,6 +264,9 @@ function ToggleGroupItem({
     [context.registerItem, itemValue],
   );
   const isActive = itemValue !== undefined && context.value.includes(itemValue);
+  const activeStateClass = context.animated
+    ? "aria-pressed:bg-transparent data-[state=on]:bg-transparent"
+    : "aria-pressed:bg-primary aria-pressed:text-primary-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground";
 
   return (
     <span
@@ -266,7 +274,7 @@ function ToggleGroupItem({
       className="group-data-[orientation=vertical]/toggle-group:w-full h-full relative flex items-center justify-center shrink-0 rounded-[calc(var(--toggle-group-radius)-var(--toggle-group-padding))]"
     >
       <AnimatePresence initial={false}>
-        {context.multiple && isActive && (
+        {context.animated && context.multiple && isActive && (
           <m.span
             aria-hidden="true"
             data-slot="toggle-group-highlight"
@@ -282,7 +290,8 @@ function ToggleGroupItem({
         render={<m.button data-slot="toggle-group-item" />}
         className={cn(
           toggleVariants({ variant: resolvedVariant, size: resolvedSize }),
-          "group-data-[orientation=vertical]/toggle-group:w-full relative z-10 shrink-0 rounded-[inherit] border-0 bg-transparent shadow-none hover:bg-transparent aria-pressed:bg-transparent data-[state=on]:bg-transparent focus:z-10 focus-visible:z-10 h-full",
+          "group-data-[orientation=vertical]/toggle-group:w-full relative z-10 shrink-0 rounded-[inherit] border-0 bg-transparent shadow-none hover:bg-transparent focus:z-10 focus-visible:z-10 h-full",
+          activeStateClass,
           resolvedSize === "sm" && "h-6 min-w-6 rounded-xs",
           className,
         )}
