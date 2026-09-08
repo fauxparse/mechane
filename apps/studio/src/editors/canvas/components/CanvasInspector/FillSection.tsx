@@ -35,7 +35,9 @@ const gradientCss = (fill: GradientFill) => {
       (stop) => `${stop.color ?? "transparent"} ${Math.max(0, Math.min(1, stop.position)) * 100}%`,
     )
     .join(", ");
-  return `linear-gradient(to right, ${stops})`;
+  return fill.kind === "linear"
+    ? `linear-gradient(${fill.angle ?? 0}deg, ${stops})`
+    : `radial-gradient(circle, ${stops})`;
 };
 
 const GradientEditor = ({
@@ -67,6 +69,23 @@ const GradientEditor = ({
 
   return (
     <div className="col-span-full grid grid-cols-subgrid gap-2 items-center">
+      {fill.kind === "linear" ? (
+        <PropertyInput
+          className="col-span-2"
+          type="number"
+          icon="°"
+          value={{ kind: "number", value: fill.angle ?? 0 }}
+          min={0}
+          max={360}
+          step={1}
+          allowLink={false}
+          placeholder="Angle"
+          onChange={(next) => {
+            if (!next || isVariableInput(next) || next.kind !== "number") return;
+            updateGradient({ angle: next.value });
+          }}
+        />
+      ) : null}
       <Slider.Root
         className="col-span-2"
         value={fill.stops.map((stop) => Math.round(stop.position * 100))}
