@@ -42,7 +42,6 @@ import { createSchema } from "graphql-yoga";
 import { randomUUID } from "node:crypto";
 import { readCanvasWorkspace } from "../db/canvas";
 import { db } from "../db/client";
-import { withUniqueId } from "../db/ids";
 import { readPlayerSession } from "../player";
 import { commitBlob, imageDeliveryUrl, listImageAssets, toImageAsset } from "../db/images";
 import {
@@ -55,6 +54,7 @@ import { endRun, readActiveRun, startRun } from "../db/runs";
 import { blobUploadSessions, imageAssets, shows, userSettings } from "../db/schema";
 import {
   applyShowEdits as applyShowEditsToDb,
+  createShowWithDefaults,
   GraphVersionConflictError,
   publishShowGraph,
   readShowGraph,
@@ -1582,12 +1582,7 @@ export const schema = createSchema<GraphQLContext>({
       createShow: async (_parent, { name }: { name: string }, context) => {
         const userId = requireUserId(context);
         const validName = validShowName(name);
-        // Ids are random, so the insert generates one per attempt and
-        // retries if the primary key is already taken (../db/ids.ts).
-        return withUniqueId("show", async (id) => {
-          const [show] = await db.insert(shows).values({ id, name: validName, userId }).returning();
-          return show;
-        });
+        return createShowWithDefaults(validName, userId);
       },
       renameShow: async (_parent, { id, name }: { id: string; name: string }, context) => {
         const userId = requireUserId(context);

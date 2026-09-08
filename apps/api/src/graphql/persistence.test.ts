@@ -2,10 +2,12 @@ import { createYoga } from "graphql-yoga";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { readCanvasWorkspace } from "../db/canvas";
 import { db } from "../db/client";
 import { shows, user, userSettings } from "../db/schema";
-import { schema } from "./schema";
+import { readShowGraph } from "../db/show-graph";
 import type { GraphQLContext } from "./context";
+import { schema } from "./schema";
 
 const CREATE_SHOW = /* GraphQL */ `
   mutation CreateShow($name: String!) {
@@ -146,6 +148,40 @@ describe("GraphQL persistence", () => {
     const created = await request<{
       createShow: { id: string; name: string; createdAt: string; updatedAt: string };
     }>(CREATE_SHOW, context, { name: "  Rehearsal  " });
+    const graph = await readShowGraph(created.createShow.id, "draft");
+    const scene = graph.nodes.find((node) => node.kind === "scene");
+    const device = graph.nodes.find((node) => node.kind === "device");
+    expect(scene).toMatchObject({
+      kind: "scene",
+      name: "New Scene",
+      parentId: null,
+      variables: [],
+    });
+    expect(device).toMatchObject({
+      kind: "device",
+      name: "Projector",
+      parentId: null,
+      perConnection: false,
+      pairingCode: expect.stringMatching(/^[1-9A-HJ-NP-TV-Z]{5}$/),
+    });
+    expect(graph.nodes).toHaveLength(2);
+    expect(graph.edges).toEqual([
+      expect.objectContaining({
+        kind: "device",
+        sourceId: scene?.id,
+        targetId: device?.id,
+        sourcePath: [],
+        targetPath: [],
+      }),
+    ]);
+
+    const workspace = await readCanvasWorkspace(created.createShow.id, "draft");
+    expect(workspace.canvases).toHaveLength(1);
+    expect(workspace.canvases[0]).toMatchObject({
+      kind: "scene",
+      ownerId: scene?.id,
+      root: { type: "frame", children: [] },
+    });
 
     expect(created.createShow.name).toBe("Rehearsal");
     expect(created.createShow.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/);
