@@ -27,13 +27,13 @@ export function NoShowsFound({ query, onCreate, creating, error }: NoShowsFoundP
     <div className="flex h-full flex-col items-center justify-center gap-5 py-12 text-center">
       <EmptyStageIllustration />
 
-      <div className="max-w-sm">
+      <div className="max-w-sm text-balance">
         <p className="text-lg font-medium">
           {query ? <>No Shows match “{query}”</> : <>No Shows match that filter</>}
         </p>
         <p className="pt-1 text-sm text-muted-foreground">
           {query
-            ? "Check the spelling, or start a new Show under that name."
+            ? "Check the spelling, or start a new show under that name."
             : "Nothing here is live right now."}
         </p>
       </div>

@@ -45,7 +45,7 @@ export function Addons<T extends ShapeValue>({
         <InputGroupAddon
           align="inline-start"
           className={cn(
-            "h-full aspect-square p-0 flex items-center justify-center user-select-none",
+            "h-full aspect-square p-0 flex items-center justify-center select-none",
             inputType === "number" && "cursor-ew-resize",
           )}
         >

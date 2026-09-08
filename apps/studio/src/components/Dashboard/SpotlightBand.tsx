@@ -8,7 +8,6 @@ import { Button, ImageOffIcon, PencilIcon } from "@mechane/design-system";
 
 import type { DashboardShow } from "./dashboard-shows";
 import { DeviceLinks } from "./DeviceLinks";
-import { relativeTime } from "./elapsed";
 import { LiveBadge } from "./LiveBadge";
 import { SceneStrip } from "./SceneStrip";
 import { ShowCounts } from "./ShowCounts";
@@ -32,7 +31,7 @@ export function SpotlightBand({ show, live, onOpen, onOpenScene }: SpotlightBand
     // column where every line wrapped and the strip stacked one thumbnail per
     // row; `lg` plus a `minmax(20rem, …)` floor makes the side column earn its
     // place, and below that the band is one column.
-    <section className="grid items-stretch gap-5 pt-2 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,1fr)] lg:gap-8">
+    <section className="grid items-stretch gap-5 py-8 lg:py-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,1fr)] lg:gap-8">
       {/*
         A fixed-height row with a Scene-shaped box inside, so a 16:9 projector
         Scene and a 9:16 phone Scene both fill the height and neither gets grey
@@ -55,29 +54,24 @@ export function SpotlightBand({ show, live, onOpen, onOpenScene }: SpotlightBand
         />
       </div>
 
-      {/* `min-w-0` so the truncating Show name cannot widen the grid column. */}
-      <div className="flex min-w-0 flex-col gap-4 lg:py-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {live ? "On stage now" : "Pick up where you left off"}
-          </p>
-          {live ? <LiveBadge startedAt={live.startedAt} /> : null}
-        </div>
+      <div className="flex min-w-0 flex-col gap-6">
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="label my-0">{live ? "On stage now" : "Pick up where you left off"}</p>
+            {live ? <LiveBadge startedAt={live.startedAt} /> : null}
+          </div>
 
-        <div className="min-w-0">
-          <h1 className="truncate text-2xl font-semibold tracking-tight xl:text-3xl">
+          <h1 className="min-w-0 truncate text-2xl font-semibold tracking-tight xl:text-3xl">
             {show.name}
           </h1>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1.5 text-sm">
-            <ShowCounts counts={dossier.counts} pending={dossier.pending} size="md" />
-            <span className="text-muted-foreground">Updated {relativeTime(show.updatedAt)}</span>
+          <div className="min-w-0">
+            <ShowCounts counts={dossier.counts} pending={dossier.pending} size="sm" />
           </div>
         </div>
 
         <SceneStrip scenes={dossier.scenes} onOpenScene={onOpenScene} size="md" />
 
-        <div className="mt-auto flex flex-col gap-3">
-          {/* The primary action goes where the Show is authored, so it says so. */}
+        <div className="mt-auto flex flex-col gap-6">
           <Button size="lg" className="self-start" onClick={onOpen}>
             <PencilIcon />
             Edit Show

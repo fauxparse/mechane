@@ -8,6 +8,7 @@
 // ./scene-slots.
 import { cn } from "@mechane/design-system";
 
+import { CSSProperties } from "react";
 import { sceneSlots } from "./scene-slots";
 import { ShowPreview } from "./ShowPreview";
 import type { ScenePreview } from "./use-show-dossier";
@@ -31,10 +32,18 @@ export function SceneStrip({
 }: SceneStripProps) {
   if (scenes.length === 0) return null;
   const { shown, hidden } = sceneSlots(scenes, slots);
-  const tile = size === "sm" ? "h-12 w-20" : "h-16 w-28";
 
   return (
-    <ul className={cn("flex flex-wrap items-start gap-2", className)}>
+    <ul
+      className={cn("group/scenes flex flex-wrap items-start gap-2 select-none", className)}
+      data-size={size}
+      style={
+        {
+          "--tile-width": size === "sm" ? "5rem" : "7rem",
+          "--tile-height": size === "sm" ? "3rem" : "4rem",
+        } as CSSProperties
+      }
+    >
       {shown.map((scene) => (
         <li key={scene.artId}>
           <button
@@ -42,16 +51,14 @@ export function SceneStrip({
             onClick={() => onOpenScene(scene.artId)}
             title={`${scene.name} — ${scene.width} × ${scene.height}`}
             className={cn(
-              "group block cursor-pointer text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-              size === "sm" ? "w-20" : "w-28",
+              "group block cursor-pointer text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring w-(--tile-width)",
             )}
           >
             <ShowPreview
               scene={scene}
               fit="cover"
               className={cn(
-                "rounded ring-1 ring-border transition-shadow group-hover:ring-2 group-hover:ring-ring",
-                size === "sm" ? "h-12" : "h-16",
+                "rounded ring-1 ring-border transition-shadow group-hover:ring-2 group-hover:ring-ring h-(--tile-height)",
               )}
             />
             <span className="block truncate pt-1 text-[0.7rem] leading-tight text-muted-foreground group-hover:text-foreground">
@@ -63,10 +70,7 @@ export function SceneStrip({
       {hidden > 0 ? (
         <li>
           <span
-            className={cn(
-              "grid place-items-center rounded bg-muted text-sm font-medium text-muted-foreground ring-1 ring-border",
-              tile,
-            )}
+            className="grid place-items-center rounded bg-muted/50 text-sm font-medium text-muted-foreground ring-1 ring-border/50 w-(--tile-width) h-(--tile-height)"
             title={`${hidden} more ${hidden === 1 ? "Scene" : "Scenes"}`}
           >
             +{hidden}
