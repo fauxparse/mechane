@@ -16,6 +16,7 @@ const meta: Meta<typeof ToggleGroup> = {
   component: ToggleGroup,
   parameters: { layout: "padded" },
   argTypes: {
+    animated: { control: "boolean" },
     multiple: { control: "boolean" },
   },
 };

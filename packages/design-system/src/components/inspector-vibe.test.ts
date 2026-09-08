@@ -64,4 +64,18 @@ describe("inspector vibe", () => {
     expect(markup).toContain('data-vibe="inspector"');
     expect(markup).toContain("mr-0");
   });
+
+  it("uses active item backgrounds by default", () => {
+    const markup = renderInspector(
+      createElement(
+        ToggleGroup,
+        { multiple: true, value: ["one"] },
+        createElement(ToggleGroupItem, { value: "one" }, "One"),
+      ),
+    );
+
+    expect(markup).not.toContain('data-slot="toggle-group-highlight"');
+    expect(markup).toContain("aria-pressed:bg-primary");
+    expect(markup).toContain("aria-pressed:text-primary-foreground");
+  });
 });
