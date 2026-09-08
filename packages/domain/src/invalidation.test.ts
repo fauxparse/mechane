@@ -5,13 +5,48 @@ import type { ShowGraph } from "./graph";
 
 const graph: ShowGraph = {
   nodes: [
-    { id: "scene", kind: "scene", name: "Scene", parentId: "flow", position: { x: 0, y: 0 }, variables: [{ id: "variable", name: "Value", type: "number" }] },
-    { id: "transformer", kind: "transformer", name: "Transformer", parentId: null, position: { x: 0, y: 0 }, type: "number" },
-    { id: "source", kind: "source", name: "Source", parentId: null, position: { x: 0, y: 0 }, type: "number" },
+    {
+      id: "scene",
+      kind: "scene",
+      name: "Scene",
+      parentId: "flow",
+      position: { x: 0, y: 0 },
+      variables: [{ id: "variable", name: "Value", type: "number" }],
+    },
+    {
+      id: "transformer",
+      kind: "transformer",
+      name: "Transformer",
+      parentId: null,
+      position: { x: 0, y: 0 },
+      type: "number",
+    },
+    {
+      id: "source",
+      kind: "source",
+      name: "Source",
+      parentId: null,
+      position: { x: 0, y: 0 },
+      type: "number",
+    },
   ],
   edges: [
-    { id: "source-transformer", kind: "wiring", sourceId: "source", targetId: "transformer", sourcePath: [], targetPath: [] },
-    { id: "transformer-scene", kind: "wiring", sourceId: "transformer", targetId: "scene", sourcePath: [], targetPath: ["variable"] },
+    {
+      id: "source-transformer",
+      kind: "wiring",
+      sourceId: "source",
+      targetId: "transformer",
+      sourcePath: [],
+      targetPath: [],
+    },
+    {
+      id: "transformer-scene",
+      kind: "wiring",
+      sourceId: "transformer",
+      targetId: "scene",
+      sourcePath: [],
+      targetPath: ["variable"],
+    },
   ],
 };
 

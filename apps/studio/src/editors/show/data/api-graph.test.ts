@@ -171,9 +171,7 @@ describe("toShowGraph", () => {
     expect(actions.find((action) => action.id === "action_red_green")?.layout).toEqual({
       HVH: { "1": -24 },
     });
-    expect(actions.find((action) => action.id === "action_untouched")).not.toHaveProperty(
-      "layout",
-    );
+    expect(actions.find((action) => action.id === "action_untouched")).not.toHaveProperty("layout");
   });
 
   it("keeps a wiring edge's conversion, and drops one it doesn't recognise (#532)", () => {
