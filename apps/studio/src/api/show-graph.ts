@@ -22,6 +22,36 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toEditInput, toGraphEdit } from "../editors/show/data/api-graph";
 import { GRAPHQL_ENDPOINT } from "./client";
 
+function toCachedCue(
+  cue: Extract<GraphEdit, { type: "graph.addCue" }>["cue"],
+): ShowGraph["cues"][number] {
+  return {
+    id: cue.id,
+    name: cue.name,
+    ownerKind: cue.owner.kind,
+    sceneId: cue.owner.kind === "scene" ? cue.owner.sceneId : null,
+    blockId: cue.owner.kind === "block" ? cue.owner.blockId : null,
+    actionIds: [...cue.actionIds],
+    parameters: (cue.parameters ?? []).map((parameter) => ({
+      id: parameter.id,
+      name: parameter.name,
+      type: parameter.type,
+      position: parameter.position,
+    })),
+  };
+}
+
+function withoutCueEdges(
+  edges: ShowGraph["edges"],
+  cueId: Extract<GraphEdit, { type: "graph.removeCue" }>["cueId"],
+): ShowGraph["edges"] {
+  return edges.filter(
+    (edge) =>
+      (edge.__typename !== "NavigateEdge" && edge.__typename !== "UpdateEdge") ||
+      edge.cueId !== cueId,
+  );
+}
+
 export const showGraphQueryKey = (id: ShowId, state: GraphState) =>
   ["shows", id, "graph", state] as const;
 
@@ -52,7 +82,44 @@ export function patchShowGraphQueryData(
     changed = true;
     return { ...node, variables };
   });
-  return changed ? { ...previous, nodes } : previous;
+
+  let cues = previous.cues;
+  let actions = previous.actions;
+  let eventBindings = previous.eventBindings;
+  let edges = previous.edges;
+  for (const edit of edits) {
+    switch (edit.type) {
+      case "graph.addCue":
+        if (cues.some((cachedCue) => cachedCue.id === edit.cue.id)) break;
+        cues = [...cues, toCachedCue(edit.cue)];
+        changed = true;
+        break;
+      case "graph.removeCue": {
+        const nextCues = cues.filter((cue) => cue.id !== edit.cueId);
+        const nextActions = actions.filter((action) => action.cueId !== edit.cueId);
+        const nextEventBindings = eventBindings.filter((binding) => binding.cueId !== edit.cueId);
+        const nextEdges = withoutCueEdges(edges, edit.cueId);
+        if (
+          nextCues.length === cues.length &&
+          nextActions.length === actions.length &&
+          nextEventBindings.length === eventBindings.length &&
+          nextEdges.length === edges.length
+        ) {
+          break;
+        }
+        cues = nextCues;
+        actions = nextActions;
+        eventBindings = nextEventBindings;
+        edges = nextEdges;
+        changed = true;
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  return changed ? { ...previous, nodes, cues, actions, eventBindings, edges } : previous;
 }
 
 /**
