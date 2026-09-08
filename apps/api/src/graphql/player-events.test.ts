@@ -37,7 +37,7 @@ const SUBMIT_PLAYER_EVENT = /* GraphQL */ `
   }
 `;
 
-const { userId, showId, createShow: createUserAndShow } = setupPostgresTest("player-event-test");
+const { showId, createShow: createUserAndShow } = setupPostgresTest("player-event-test");
 
 function yoga(context: GraphQLContext) {
   return createYoga<GraphQLContext>({
