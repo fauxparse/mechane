@@ -171,14 +171,16 @@ function CanvasWorkspaceRoute() {
   });
   const createCue = useCallback(
     (owner: InteractionOwner) => {
+      const id = generateId("cue");
       graphEditing.command.commands.execute(
         addCue({
-          id: generateId("cue"),
+          id,
           name: "New cue",
           owner,
           actionIds: [],
         }),
       );
+      return id;
     },
     [graphEditing.command.commands],
   );

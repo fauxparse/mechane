@@ -1,11 +1,13 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import type { EventBinding } from "@mechane/domain";
 import type { CanvasArtboardDocument } from "../../../../api/canvas";
 
 import type { CanvasInspectorModel } from "./canvas-inspector-types";
 import { CanvasInspectorProvider } from "./CanvasInspectorContext";
 import { InteractionSection } from "./InteractionSection";
+import { addInteraction } from "./interaction-actions";
 import { keypressUnavailableReason } from "./keypress-availability";
 
 const element = { id: "button-vote", type: "rect" as const, name: "Vote" };
@@ -89,6 +91,33 @@ describe("InteractionSection", () => {
     );
 
     expect(html).toBe("");
+  });
+});
+
+describe("addInteraction", () => {
+  it("creates the binding when it has to create the owner's first Cue", () => {
+    const createdBindings: EventBinding[] = [];
+
+    addInteraction({
+      eventKind: "tap",
+      owner: { kind: "scene", sceneId: "scene-voting" },
+      canvasId: "canvas-voting",
+      elementId: "button-vote",
+      bindings: [],
+      ownedCues: [],
+      onCreateCue: () => "cue-created",
+      onCreateEventBinding: (binding) => createdBindings.push(binding),
+      onCapturingChange: () => {},
+    });
+
+    expect(createdBindings).toHaveLength(1);
+    expect(createdBindings[0]).toMatchObject({
+      canvasId: "canvas-voting",
+      elementId: "button-vote",
+      eventKind: "tap",
+      cueId: "cue-created",
+      position: 0,
+    });
   });
 });
 

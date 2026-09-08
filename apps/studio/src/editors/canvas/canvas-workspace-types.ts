@@ -100,7 +100,7 @@ export interface CanvasWorkspaceEditorProps {
   cues?: readonly Cue[];
   actions?: readonly Action[];
   eventBindings?: readonly EventBinding[];
-  onCreateCue?(owner: InteractionOwner): void;
+  onCreateCue?(owner: InteractionOwner): string | undefined;
   onFocusCue?(cueId: string): void;
   onSetEventBindingCue?(bindingId: string, cueId: string): void;
   onSetEventBindingKey?(bindingId: string, key: string | null): void;

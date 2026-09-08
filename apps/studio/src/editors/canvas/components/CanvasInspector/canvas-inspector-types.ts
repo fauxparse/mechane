@@ -48,7 +48,7 @@ export type CanvasInspectorProps = {
   imageAssets?: readonly ImageAsset[];
   deviceQrImages?: Readonly<Record<string, DeviceQrImage>>;
   onImageUpload?(props: ImageInputOnUploadProps): void;
-  onCreateCue?(owner: InteractionOwner): void;
+  onCreateCue?(owner: InteractionOwner): string | undefined;
   onFocusCue?(cueId: string): void;
   onSetEventBindingCue?(bindingId: string, cueId: string): void;
   onSetEventBindingKey?(bindingId: string, key: string | null): void;
@@ -89,7 +89,7 @@ export type CanvasInspectorModel = {
   deviceQrImages: Readonly<Record<string, DeviceQrImage>>;
   imageAssets: readonly ImageAsset[];
   onImageUpload?(props: ImageInputOnUploadProps): void;
-  onCreateCue?(owner: InteractionOwner): void;
+  onCreateCue?(owner: InteractionOwner): string | undefined;
   onFocusCue?(cueId: string): void;
   onSetEventBindingCue?(bindingId: string, cueId: string): void;
   onSetEventBindingKey?(bindingId: string, key: string | null): void;
