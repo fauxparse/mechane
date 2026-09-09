@@ -148,8 +148,12 @@ function resolveOperandValue(
   sceneId: string,
   sourceValues: Readonly<Record<string, unknown>>,
   operand: UpdateOperand,
+  cueParameterValues: Readonly<Record<string, unknown>>,
 ): unknown {
   if (operand.kind === "literal") return rawShapeValue(operand.value);
+  if (operand.kind === "cueParameter") {
+    return valueAtPath(cueParameterValues[operand.parameterId], operand.fieldPath);
+  }
   let value = valueAtPath(sceneVariableValues(graph, sceneId, sourceValues), [
     operand.variableId,
     ...(operand.fieldPath ?? []),
@@ -203,6 +207,7 @@ export function planUpdate(
   state: RunState,
   sceneId: string,
   action: UpdateAction,
+  cueParameterValues: Readonly<Record<string, unknown>> = {},
 ): UpdatePlan {
   const source = graph.nodes.find((node) => node.id === action.target.sourceId);
   if (!source || source.kind !== "source") return failed("missing-update-source");
@@ -240,7 +245,7 @@ export function planUpdate(
     if (
       action.operation.kind === "set" &&
       isStructuredType(slotType) &&
-      action.operation.operand.kind !== "literal"
+      action.operation.operand.kind === "variable"
     ) {
       return failed("unsupported-structured-operand");
     }
@@ -252,6 +257,7 @@ export function planUpdate(
       sceneId,
       resolveSourceValues(state),
       action.operation.operand,
+      cueParameterValues,
     );
     if (operand === undefined) return failed("missing-update-operand");
 
@@ -264,9 +270,16 @@ export function planUpdate(
       }
       nextValue = currentValue + operand;
     } else if (isStructuredType(slotType)) {
-      const fresh = materializeFresh(operand, slotType, graph);
-      nextValue = fresh.value;
-      records = fresh.records;
+      if (
+        action.operation.operand.kind === "cueParameter" &&
+        isStructuredValueReference(operand)
+      ) {
+        nextValue = operand;
+      } else {
+        const fresh = materializeFresh(operand, slotType, graph);
+        nextValue = fresh.value;
+        records = fresh.records;
+      }
     } else {
       nextValue = operand as RuntimeValue;
     }

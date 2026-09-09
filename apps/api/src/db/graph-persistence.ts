@@ -846,6 +846,7 @@ export async function persistEventBindings(
       elementId: binding.elementId,
       eventKind: binding.eventKind,
       params: binding.eventKind === "keypress" ? binding.params : {},
+      parameterMappings: binding.parameterMappings ?? [],
       cueId: binding.cueId,
       position: binding.position,
     })),

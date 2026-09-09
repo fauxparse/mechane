@@ -673,9 +673,9 @@ export const schema = createSchema<GraphQLContext>({
       eventKind: String!
       "Per-kind payload. Null for kinds that take no parameters."
       params: JSON
+      parameterMappings: JSON!
       cueId: ID!
       position: Int!
-    }
     type CueParameter {
       id: ID!
       name: String!
@@ -1014,9 +1014,9 @@ export const schema = createSchema<GraphQLContext>({
       elementId: ID!
       eventKind: String!
       params: JSON
+      parameterMappings: JSON
       cueId: ID!
       position: Int!
-    }
 
     type GraphEdit {
       type: String!

@@ -214,11 +214,23 @@ function toCue(value: unknown): Cue {
     input.ownerKind === "scene"
       ? { kind: "scene" as const, sceneId: String(input.sceneId) }
       : { kind: "block" as const, blockId: String(input.blockId) };
+  const parameters = Array.isArray(input.parameters)
+    ? input.parameters.map((parameter) => {
+        const item = record(parameter);
+        return {
+          id: String(item.id),
+          name: String(item.name),
+          type: toType(item.type),
+          position: Number(item.position),
+        };
+      })
+    : [];
   return {
     id: String(input.id),
     name: String(input.name),
     owner,
     actionIds: Array.isArray(input.actionIds) ? input.actionIds.map(String) : [],
+    parameters,
   };
 }
 function toAction(value: unknown): Action {
@@ -266,6 +278,30 @@ function toGraph(value: unknown): PlayerSession["graph"] {
       ? input.eventBindings.map((item) =>
           decodeEventBinding(record(item) as Parameters<typeof decodeEventBinding>[0]),
         )
+      : [],
+    slotEventBindings: Array.isArray(input.slotEventBindings)
+      ? input.slotEventBindings.map((item) => {
+          const binding = record(item);
+          return {
+            id: String(binding.id),
+            slotElementId: String(binding.slotElementId),
+            sourceCueId: String(binding.sourceCueId),
+            targetCueId: String(binding.targetCueId),
+            position: Number(binding.position),
+            parameterMappings: Array.isArray(binding.parameterMappings)
+              ? binding.parameterMappings.map((mapping) => {
+                  const value = record(mapping);
+                  return {
+                    sourceParameterId: String(value.sourceParameterId),
+                    targetParameterId: String(value.targetParameterId),
+                    ...(Array.isArray(value.sourceFieldPath)
+                      ? { sourceFieldPath: value.sourceFieldPath.map(String) }
+                      : {}),
+                  };
+                })
+              : [],
+          };
+        })
       : [],
   } as unknown as PlayerSession["graph"];
 }

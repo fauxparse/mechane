@@ -1021,6 +1021,9 @@ export const graphEventBindings = pgTable(
     params: jsonb("params")
       .notNull()
       .default(sql`'{}'::jsonb`),
+    parameterMappings: jsonb("parameter_mappings")
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     cueId: text("cue_id").notNull(),
     position: integer("position").notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
