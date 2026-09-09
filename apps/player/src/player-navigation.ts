@@ -153,6 +153,14 @@ export function usePlayerNavigation(
         eventId,
         publishedGraphVersion: runtime.session.graph.version,
         sceneId: plan.sceneId,
+        ...(execution.showActions.length > 0
+          ? {
+              evidence: {
+                sourceValues: nextState.flowSourceValues,
+                cueParameters: {},
+              },
+            }
+          : {}),
       });
       if (submission && execution.showActions.length > 0) {
         void submission.then((result) => {
