@@ -1,5 +1,12 @@
-import { PAIRING_CODE_PATTERN, type SourceValues, type StructuredValues } from "@mechane/domain";
-
+import {
+  PAIRING_CODE_PATTERN,
+  applyUpdateWrites,
+  planUpdate,
+  type Action,
+  type ShowGraph,
+  type SourceValues,
+  type StructuredValues,
+} from "@mechane/domain";
 export { sceneVariableValues } from "@mechane/domain";
 
 const STORAGE_PREFIX = "mechane.player:";
@@ -46,6 +53,53 @@ export interface PlayerRunState {
   readonly navigation: PlayerNavigation;
   readonly flowSourceValues: SourceValues;
   readonly flowStructuredValues: StructuredValues;
+}
+
+export type PlayerCueExecution =
+  | {
+      readonly kind: "applied";
+      readonly state: PlayerRunState;
+      readonly showActions: readonly Extract<Action, { kind: "update" }>[];
+    }
+  | { readonly kind: "failed"; readonly actionId: string; readonly reason: string };
+
+/** Executes a Cue's Actions in declared order against one Player Instance. */
+export function applyPlayerCue(
+  state: PlayerRunState,
+  graph: ShowGraph,
+  actions: readonly Action[],
+  sceneId: string,
+  cueParameterValues: Readonly<Record<string, unknown>> = {},
+): PlayerCueExecution {
+  let next = state;
+  const showActions: Extract<Action, { kind: "update" }>[] = [];
+  for (const action of actions) {
+    if (action.kind === "navigate") {
+      next = { ...next, navigation: { kind: "scene", sceneId: action.targetSceneId } };
+      continue;
+    }
+    const source = graph.nodes.find((node) => node.kind === "source" && node.id === action.target.sourceId);
+    if (source?.parentId === null) {
+      showActions.push(action);
+      continue;
+    }
+    const plan = planUpdate(
+      graph,
+      { sourceValues: next.flowSourceValues, structuredValues: next.flowStructuredValues },
+      sceneId,
+      action,
+      cueParameterValues,
+    );
+    if (plan.kind === "failed") {
+      return { kind: "failed", actionId: action.id, reason: plan.reason };
+    }
+    const updated = applyUpdateWrites(
+      { sourceValues: next.flowSourceValues, structuredValues: next.flowStructuredValues },
+      plan.writes,
+    );
+    next = { ...next, flowSourceValues: updated.sourceValues, flowStructuredValues: updated.structuredValues };
+  }
+  return { kind: "applied", state: next, showActions };
 }
 
 export type PlayerStoreStatus = {
