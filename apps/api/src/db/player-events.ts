@@ -299,7 +299,8 @@ async function dispatchPerConnectionEvent(
     .from(runs)
     .where(and(eq(runs.showId, device.showId), eq(runs.status, "active")))
     .orderBy(desc(runs.startedAt))
-    .limit(1);
+    .limit(1)
+    .for("update");
   if (!run) return { kind: "rejected", eventId: input.eventId, reason: "no-active-run" };
 
   const [existing] = await tx
@@ -476,7 +477,8 @@ export async function dispatchPlayerEvent(
           .from(runs)
           .where(and(eq(runs.showId, device.showId), eq(runs.status, "active")))
           .orderBy(desc(runs.startedAt))
-          .limit(1);
+          .limit(1)
+          .for("update");
         if (!run) return { kind: "ignored", eventId: input.eventId, reason: "no-active-run" };
         if (device.perConnection) {
           return { kind: "ignored", eventId: input.eventId, reason: "unsupported-device" };
