@@ -174,6 +174,13 @@ export interface DeviceNode extends BaseNode {
    *
    * This is the field that decides Event attribution. Directors pick a
    * default at creation and can change it later from the inspector.
+   *
+   * Changing it reaches further than the Device. Every Device one Flow
+   * drives must agree on this field, so flipping one can leave a Flow
+   * driving both kinds at once — invalid, because a Flow-local Source
+   * inside it would mean two different things simultaneously. Studio
+   * refuses the edge that would create that directly; a Flow that reaches
+   * it this way is preserved and blocks publication.
    */
   perConnection: boolean;
   /**
