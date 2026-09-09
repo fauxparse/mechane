@@ -1,5 +1,15 @@
-import { PAIRING_CODE_PATTERN, type SourceValues } from "@mechane/domain";
-
+import {
+  PAIRING_CODE_PATTERN,
+  applyUpdateWrites,
+  defaultSourceValueTemplates,
+  materializeInstanceState,
+  planUpdate,
+  type Action,
+  type RunState,
+  type ShowGraph,
+  type SourceValues,
+  type StructuredValues,
+} from "@mechane/domain";
 export { sceneVariableValues } from "@mechane/domain";
 
 const STORAGE_PREFIX = "mechane.player:";
@@ -45,6 +55,85 @@ export interface PlayerRunState {
   readonly flowId: string;
   readonly navigation: PlayerNavigation;
   readonly flowSourceValues: SourceValues;
+  readonly flowStructuredValues: StructuredValues;
+  readonly showSourceValues?: SourceValues;
+  readonly showStructuredValues?: StructuredValues;
+  readonly stateSequence?: number;
+  readonly optimisticOverlay?: {
+    readonly state: RunState;
+    readonly appliedStateSequence: number;
+  };
+}
+export interface PlayerSnapshot {
+  readonly stateSequence: number;
+  readonly sourceValues: SourceValues;
+  readonly structuredValues: StructuredValues;
+}
+
+/** Merges Show state without replacing the per-connection Instance layer. */
+export function mergePlayerSnapshot(
+  state: PlayerRunState,
+  snapshot: PlayerSnapshot,
+): PlayerRunState {
+  if ((state.stateSequence ?? -1) >= snapshot.stateSequence) return state;
+  const overlay =
+    state.optimisticOverlay && snapshot.stateSequence < state.optimisticOverlay.appliedStateSequence
+      ? state.optimisticOverlay
+      : undefined;
+  return {
+    ...state,
+    showSourceValues: snapshot.sourceValues,
+    showStructuredValues: snapshot.structuredValues,
+    stateSequence: snapshot.stateSequence,
+    optimisticOverlay: overlay,
+  };
+}
+
+export type PlayerCueExecution =
+  | {
+      readonly kind: "applied";
+      readonly state: PlayerRunState;
+      readonly showActions: readonly Extract<Action, { kind: "update" }>[];
+    }
+  | { readonly kind: "failed"; readonly actionId: string; readonly reason: string };
+
+/** Executes a Cue's Actions in declared order against one Player Instance. */
+export function applyPlayerCue(
+  state: PlayerRunState,
+  graph: ShowGraph,
+  actions: readonly Action[],
+  sceneId: string,
+  cueParameterValues: Readonly<Record<string, unknown>> = {},
+): PlayerCueExecution {
+  let next = state;
+  const showActions: Extract<Action, { kind: "update" }>[] = [];
+  for (const action of actions) {
+    if (action.kind === "navigate") {
+      next = { ...next, navigation: { kind: "scene", sceneId: action.targetSceneId } };
+      continue;
+    }
+    const source = graph.nodes.find((node) => node.kind === "source" && node.id === action.target.sourceId);
+    if (source?.parentId === null) {
+      showActions.push(action);
+      continue;
+    }
+    const plan = planUpdate(
+      graph,
+      { sourceValues: next.flowSourceValues, structuredValues: next.flowStructuredValues },
+      sceneId,
+      action,
+      cueParameterValues,
+    );
+    if (plan.kind === "failed") {
+      return { kind: "failed", actionId: action.id, reason: plan.reason };
+    }
+    const updated = applyUpdateWrites(
+      { sourceValues: next.flowSourceValues, structuredValues: next.flowStructuredValues },
+      plan.writes,
+    );
+    next = { ...next, flowSourceValues: updated.sourceValues, flowStructuredValues: updated.structuredValues };
+  }
+  return { kind: "applied", state: next, showActions };
 }
 
 export type PlayerStoreStatus = {
@@ -88,6 +177,7 @@ export type PlayerDriver =
       readonly flowId: string;
       readonly defaultSceneId: string | null;
       readonly sceneIds: ReadonlySet<string>;
+      readonly flowSourceIds?: ReadonlySet<string>;
       readonly publishedGraphVersion: number;
     }
   | { readonly kind: "scene" }
@@ -116,7 +206,15 @@ export function reconcilePlayerRunState(
     return { kind: "stale-snapshot", state: current };
   }
 
-  const sourceValues = current?.flowId === driver.flowId ? current.flowSourceValues : {};
+  const sourceValues =
+    current?.flowId === driver.flowId
+      ? Object.fromEntries(
+          Object.entries(current.flowSourceValues).filter(
+            ([sourceId]) => !driver.flowSourceIds || driver.flowSourceIds.has(sourceId),
+          ),
+        )
+      : {};
+  const structuredValues = current?.flowId === driver.flowId ? current.flowStructuredValues : {};
   const defaultNavigation: PlayerNavigation = driver.defaultSceneId
     ? { kind: "scene", sceneId: driver.defaultSceneId }
     : { kind: "not-ready" };
@@ -126,6 +224,7 @@ export function reconcilePlayerRunState(
     flowId: driver.flowId,
     navigation,
     flowSourceValues: sourceValues,
+    flowStructuredValues: structuredValues,
   });
 
   if (!current) {
@@ -152,6 +251,22 @@ export function reconcilePlayerRunState(
     kind: "reset",
     state: nextState(defaultNavigation),
     reason: driver.defaultSceneId ? "scene-invalid" : "missing-default",
+  };
+}
+/** Materializes defaults for newly introduced Flow-local Sources without overwriting live values. */
+export function initializePlayerInstanceState(
+  state: PlayerRunState,
+  graph: ShowGraph,
+): PlayerRunState {
+  const defaults = materializeInstanceState(
+    graph,
+    state.flowId,
+    defaultSourceValueTemplates(graph),
+  );
+  return {
+    ...state,
+    flowSourceValues: { ...defaults.sourceValues, ...state.flowSourceValues },
+    flowStructuredValues: { ...defaults.structuredValues, ...state.flowStructuredValues },
   };
 }
 
@@ -216,18 +331,22 @@ function decodeState(value: string): PlayerRunState | "newer" | null {
     !Number.isInteger(parsed.publishedGraphVersion) ||
     parsed.publishedGraphVersion < 0 ||
     typeof parsed.flowId !== "string" ||
-    parsed.flowId.length === 0 ||
     !isNavigation(parsed.navigation) ||
-    !isSourceValues(parsed.flowSourceValues)
+    !isSourceValues(parsed.flowSourceValues) ||
+    (parsed.flowStructuredValues !== undefined && !isRecord(parsed.flowStructuredValues))
   ) {
     return null;
   }
+  const flowStructuredValues = isRecord(parsed.flowStructuredValues)
+    ? (parsed.flowStructuredValues as StructuredValues)
+    : {};
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     publishedGraphVersion: parsed.publishedGraphVersion,
     flowId: parsed.flowId,
     navigation: parsed.navigation,
     flowSourceValues: parsed.flowSourceValues,
+    flowStructuredValues,
   };
 }
 

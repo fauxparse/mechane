@@ -4,6 +4,7 @@ import type { ShowGraph } from "@mechane/domain";
 import type { PlayerDriver, PlayerRunState, PlayerStorageAdapter } from "./player-state";
 import { sceneVariableValues } from "./player-state";
 import {
+  mergePlayerSnapshot,
   openPlayerStateStore,
   playerRunScope,
   playerTransitionCoordinator,
@@ -310,6 +311,7 @@ const storedState: PlayerRunState = {
   flowId: "flow_navigation",
   navigation: { kind: "scene", sceneId: "scene_green" },
   flowSourceValues: {},
+  flowStructuredValues: {},
 };
 
 describe("per-connection Player state", () => {
@@ -401,5 +403,33 @@ describe("per-connection Player state", () => {
     await expect(first).rejects.toThrow("expected");
     await expect(second).resolves.toBe("done");
     expect(order).toEqual(["first", "second"]);
+  });
+  it("replaces Show state while preserving Instance state and newer overlays", () => {
+    const state: PlayerRunState = {
+      ...storedState,
+      flowSourceValues: { local: 1 },
+      showSourceValues: { shared: 1 },
+      showStructuredValues: {},
+      stateSequence: 4,
+      optimisticOverlay: {
+        state: { sourceValues: { shared: 2 }, structuredValues: {} },
+        appliedStateSequence: 6,
+      },
+    };
+    const merged = mergePlayerSnapshot(state, {
+      stateSequence: 5,
+      sourceValues: { shared: 3 },
+      structuredValues: {},
+    });
+    expect(merged.flowSourceValues).toEqual({ local: 1 });
+    expect(merged.showSourceValues).toEqual({ shared: 3 });
+    expect(merged.optimisticOverlay).toBeDefined();
+    expect(
+      mergePlayerSnapshot(merged, {
+        stateSequence: 6,
+        sourceValues: { shared: 4 },
+        structuredValues: {},
+      }).optimisticOverlay,
+    ).toBeUndefined();
   });
 });

@@ -144,7 +144,11 @@ function toCue(
 
 function toEventBinding(row: EventBindingRow): EventBinding {
   try {
-    return decodeEventBinding(row);
+    const parameterMappings =
+      Array.isArray(row.parameterMappings) && row.parameterMappings.length === 0
+        ? undefined
+        : row.parameterMappings;
+    return decodeEventBinding({ ...row, parameterMappings });
   } catch (error) {
     if (error instanceof InvalidInteractionError) {
       throw new Error(`Stored Event Binding "${row.id}" is invalid: ${error.message}`);
@@ -544,7 +548,7 @@ export async function persistGraphRows(
         : sourceDefault;
     }),
   };
-  assertValidShowGraph(graph);
+  assertValidShowGraph(graph, { publication: state === "published" });
 
   const now = new Date();
   // Locked, not just read: two batches landing at once must queue here
@@ -846,6 +850,7 @@ export async function persistEventBindings(
       elementId: binding.elementId,
       eventKind: binding.eventKind,
       params: binding.eventKind === "keypress" ? binding.params : {},
+      parameterMappings: binding.parameterMappings ?? [],
       cueId: binding.cueId,
       position: binding.position,
     })),

@@ -112,7 +112,8 @@ export function normalizeStructuredValueTemplate(
   type: Type,
   shapes: readonly Shape[] = [],
 ): StructuredValueTemplate {
-  if (typeof type === "string") return value as SimpleValue | null;
+  if (value === null) return null;
+  if (typeof type === "string") return value as SimpleValue;
   if (type.kind === "array") {
     const existing = isArrayStructuredValueTemplate(value) ? value : null;
     const items = existing?.items ?? (Array.isArray(value) ? value : []);
@@ -142,69 +143,6 @@ export function normalizeStructuredValueTemplate(
     kind: "shape",
     fields,
   };
-}
-
-export function resolveStructuredValueTemplate(value: StructuredValueTemplate): unknown {
-  if (isArrayStructuredValueTemplate(value)) return value.items.map(resolveStructuredValueTemplate);
-  if (isShapeStructuredValueTemplate(value)) {
-    return Object.fromEntries(
-      Object.entries(value.fields).map(([fieldId, fieldValue]) => [
-        fieldId,
-        resolveStructuredValueTemplate(fieldValue),
-      ]),
-    );
-  }
-  return value;
-}
-
-function materialize(
-  template: StructuredValueTemplate,
-  type: Type,
-  shapes: readonly Shape[],
-  records: StructuredValues,
-): RuntimeValue {
-  if (typeof type === "string") return template as SimpleValue | null;
-  const normalized = normalizeStructuredValueTemplate(template, type, shapes);
-  if (type.kind === "array") {
-    if (!isArrayStructuredValueTemplate(normalized)) {
-      throw new InvalidStructuredValueError("Expected an array Structured Value Template.");
-    }
-    const record: ArrayStructuredValueRecord = {
-      id: normalized.id,
-      kind: "array",
-      type,
-      items: normalized.items.map((item) => materialize(item, type.of, shapes, records)),
-    };
-    insertRecord(records, record);
-    return { ref: record.id };
-  }
-  if (!isShapeStructuredValueTemplate(normalized)) {
-    throw new InvalidStructuredValueError("Expected a Shape Structured Value Template.");
-  }
-  const shape = shapes.find((candidate) => candidate.id === type.shapeId);
-  if (!shape) throw new InvalidStructuredValueError(`Unknown Shape "${type.shapeId}".`);
-  const fields = Object.fromEntries(
-    shape.fields.map((field) => [
-      field.id,
-      materialize(normalized.fields[field.id] ?? null, field.type, shapes, records),
-    ]),
-  );
-  const record: ShapeStructuredValueRecord = {
-    id: normalized.id,
-    kind: "shape",
-    type,
-    fields,
-  };
-  insertRecord(records, record);
-  return { ref: record.id };
-}
-
-function insertRecord(records: StructuredValues, record: StructuredValueRecord): void {
-  const previous = records[record.id];
-  if (previous && JSON.stringify(previous) !== JSON.stringify(record)) {
-    throw new InvalidStructuredValueError(`Structured Value id "${record.id}" is duplicated.`);
-  }
-  records[record.id] = record;
 }
 
 export function materializeStructuredValue(
@@ -265,6 +203,71 @@ export function preserveStructuredValueTemplateIds(
     ),
   };
 }
+
+export function resolveStructuredValueTemplate(value: StructuredValueTemplate): unknown {
+  if (isArrayStructuredValueTemplate(value)) return value.items.map(resolveStructuredValueTemplate);
+  if (isShapeStructuredValueTemplate(value)) {
+    return Object.fromEntries(
+      Object.entries(value.fields).map(([fieldId, fieldValue]) => [
+        fieldId,
+        resolveStructuredValueTemplate(fieldValue),
+      ]),
+    );
+  }
+  return value;
+}
+
+function materialize(
+  template: StructuredValueTemplate,
+  type: Type,
+  shapes: readonly Shape[],
+  records: StructuredValues,
+): RuntimeValue {
+  if (template === null) return null;
+  if (typeof type === "string") return template as SimpleValue;
+  const normalized = normalizeStructuredValueTemplate(template, type, shapes);
+  if (type.kind === "array") {
+    if (!isArrayStructuredValueTemplate(normalized)) {
+      throw new InvalidStructuredValueError("Expected an array Structured Value Template.");
+    }
+    const record: ArrayStructuredValueRecord = {
+      id: normalized.id,
+      kind: "array",
+      type,
+      items: normalized.items.map((item) => materialize(item, type.of, shapes, records)),
+    };
+    insertRecord(records, record);
+    return { ref: record.id };
+  }
+  if (!isShapeStructuredValueTemplate(normalized)) {
+    throw new InvalidStructuredValueError("Expected a Shape Structured Value Template.");
+  }
+  const shape = shapes.find((candidate) => candidate.id === type.shapeId);
+  if (!shape) throw new InvalidStructuredValueError(`Unknown Shape "${type.shapeId}".`);
+  const fields = Object.fromEntries(
+    shape.fields.map((field) => [
+      field.id,
+      materialize(normalized.fields[field.id] ?? null, field.type, shapes, records),
+    ]),
+  );
+  const record: ShapeStructuredValueRecord = {
+    id: normalized.id,
+    kind: "shape",
+    type,
+    fields,
+  };
+  insertRecord(records, record);
+  return { ref: record.id };
+}
+
+function insertRecord(records: StructuredValues, record: StructuredValueRecord): void {
+  const previous = records[record.id];
+  if (previous && JSON.stringify(previous) !== JSON.stringify(record)) {
+    throw new InvalidStructuredValueError(`Structured Value id "${record.id}" is duplicated.`);
+  }
+  records[record.id] = record;
+}
+
 export function materializeRunState(
   graph: ShowGraph,
   sourceTemplates: Readonly<Record<string, StructuredValueTemplate>>,
@@ -272,7 +275,7 @@ export function materializeRunState(
   const structuredValues: StructuredValues = {};
   const sourceValues: SourceValues = {};
   for (const source of graph.nodes) {
-    if (source.kind !== "source") continue;
+    if (source.kind !== "source" || source.parentId !== null) continue;
     sourceValues[source.id] = materialize(
       sourceTemplates[source.id] ?? null,
       source.type,
@@ -283,6 +286,34 @@ export function materializeRunState(
   const state = { sourceValues, structuredValues };
   assertValidRunState(state, graph);
   return state;
+}
+
+/** Materializes the Source records owned by one Flow/Device Instance. */
+export function materializeInstanceState(
+  graph: ShowGraph,
+  flowId: string,
+  sourceTemplates: Readonly<Record<string, StructuredValueTemplate>>,
+): RunState {
+  const structuredValues: StructuredValues = {};
+  const sourceValues: SourceValues = {};
+  for (const source of graph.nodes) {
+    if (source.kind !== "source" || source.parentId !== flowId) continue;
+    sourceValues[source.id] = materialize(
+      sourceTemplates[source.id] ?? null,
+      source.type,
+      graph.shapes ?? [],
+      structuredValues,
+    );
+  }
+  return { sourceValues, structuredValues };
+}
+
+/** Creates the composed view used by a Device Instance without scope shadowing. */
+export function composeInstanceView(shared: RunState, instance: RunState): RunState {
+  return {
+    sourceValues: { ...shared.sourceValues, ...instance.sourceValues },
+    structuredValues: { ...shared.structuredValues, ...instance.structuredValues },
+  };
 }
 
 export function resolveRuntimeValue(
@@ -326,6 +357,15 @@ function assertRuntimeValue(
   path: string,
   ancestors: ReadonlySet<string>,
 ): void {
+  if (
+    value === null &&
+    typeof type !== "string" &&
+    path.startsWith("Source ") &&
+    !path.includes(".") &&
+    !path.includes("[")
+  ) {
+    return;
+  }
   if (typeof type === "string") {
     if (isStructuredValueReference(value)) {
       throw new InvalidStructuredValueError(
@@ -390,6 +430,14 @@ export function assertValidRunState(state: RunState, graph: ShowGraph): void {
   }
   for (const source of graph.nodes) {
     if (source.kind !== "source") continue;
+    if (source.parentId !== null) {
+      if (Object.prototype.hasOwnProperty.call(state.sourceValues, source.id)) {
+        throw new InvalidStructuredValueError(
+          `Run state cannot contain Flow-local Source "${source.id}".`,
+        );
+      }
+      continue;
+    }
     if (!Object.prototype.hasOwnProperty.call(state.sourceValues, source.id)) {
       throw new InvalidStructuredValueError(`Missing live value for Source "${source.id}".`);
     }

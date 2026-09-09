@@ -9,7 +9,7 @@ import {
   type RuntimeValue,
   type StructuredValueReference,
 } from "./structured-values";
-import { applyUpdateWrites, planUpdate, resolveUpdateHolder } from "./update-plan";
+import { applyUpdateWrites, classifyUpdateActionScope, planUpdate, resolveUpdateHolder } from "./update-plan";
 
 const candidateShape: Shape = {
   id: "shape_candidate",
@@ -266,6 +266,45 @@ describe("planUpdate", () => {
       expect(plan).toMatchObject({ kind: "failed", reason: "unsupported-structured-operand" });
     });
   });
+
+describe("Update scope classification", () => {
+  it("distinguishes local root writes, shared writes, and dependent holders", () => {
+    const graph = graphOf([
+      sourceNode("shared", "number"),
+      {
+        ...sourceNode("local", candidateType),
+        parentId: "flow_1",
+      } as unknown as ShowGraph["nodes"][number],
+    ]);
+    expect(
+      classifyUpdateActionScope(graph, {
+        id: "set-local",
+        cueId: "cue",
+        kind: "update",
+        target: { sourceId: "local", fieldPath: [] },
+        operation: { kind: "reset" },
+      }),
+    ).toBe("instance");
+    expect(
+      classifyUpdateActionScope(graph, {
+        id: "adjust-shared",
+        cueId: "cue",
+        kind: "update",
+        target: { sourceId: "shared", fieldPath: [] },
+        operation: { kind: "reset" },
+      }),
+    ).toBe("show");
+    expect(
+      classifyUpdateActionScope(graph, {
+        id: "adjust-through-local",
+        cueId: "cue",
+        kind: "update",
+        target: { sourceId: "local", fieldPath: ["f_votes"] },
+        operation: { kind: "reset" },
+      }),
+    ).toBe("depends");
+  });
+});
 
   describe("changed", () => {
     it("reports a no-op adjustment as unchanged", () => {

@@ -234,6 +234,7 @@ export function serializeShowGraph(graph: StoredShowGraph) {
       elementId: binding.elementId,
       eventKind: binding.eventKind,
       params: binding.eventKind === "keypress" ? binding.params : null,
+      parameterMappings: binding.parameterMappings ?? [],
       cueId: binding.cueId,
       position: binding.position,
     })),

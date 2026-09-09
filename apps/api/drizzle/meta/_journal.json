@@ -309,6 +309,20 @@
       "when": 1788864819325,
       "tag": "0043_nappy_green_goblin",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1788933600000,
+      "tag": "0044_event_parameter_mappings",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1788933600001,
+      "tag": "0045_run_instance_state",
+      "breakpoints": true
     }
   ]
 }

@@ -390,8 +390,9 @@ export type GraphViolation =
   | "wiringCycle"
   | "missingSourceType"
   | "invalidNodeColor"
+  | "invalidUpdateEndpoints"
   | "invalidNavigateProjection"
-  | "invalidUpdateEndpoints";
+  | "flowDeviceCardinality";
 
 export class InvalidShowGraphError extends Error {
   readonly reason: GraphViolation;
@@ -867,6 +868,38 @@ function assertOneDriverPerDevice(edges: GraphEdge[]): void {
   }
 }
 
+function assertFlowDeviceCardinality(
+  graph: ShowGraph,
+  nodes: Map<string, GraphNode>,
+): void {
+  const flowIdsWithLocalState = new Set(
+    graph.nodes
+      .filter((node) => node.kind === "source" && node.parentId !== null)
+      .map((node) => node.parentId),
+  );
+  const cardinalities = new Map<string, { perConnection: boolean; deviceId: string }>();
+  for (const edge of graph.edges) {
+    if (edge.kind !== "device") continue;
+    const driver = nodes.get(edge.sourceId);
+    const device = nodes.get(edge.targetId);
+    if (
+      driver?.kind !== "flow" ||
+      device?.kind !== "device" ||
+      !flowIdsWithLocalState.has(driver.id)
+    ) {
+      continue;
+    }
+    const previous = cardinalities.get(driver.id);
+    if (previous && previous.perConnection !== device.perConnection) {
+      throw new InvalidShowGraphError(
+        "flowDeviceCardinality",
+        `Flow "${driver.id}" drives Devices with conflicting perConnection values ("${previous.deviceId}" and "${device.id}").`,
+      );
+    }
+    cardinalities.set(driver.id, { perConnection: device.perConnection, deviceId: device.id });
+  }
+}
+
 function assertNoWiringCycles(edges: GraphEdge[]): void {
   const outgoing = new Map<string, string[]>();
   for (const edge of edges) {
@@ -927,7 +960,10 @@ function assertNavigateProjection(graph: ShowGraph, interactions: InteractionCol
  * driver. Keeping these checks here means graph writes and drag validation
  * cannot disagree.
  */
-export function assertValidShowGraph(graph: ShowGraph): ShowGraph {
+export function assertValidShowGraph(
+  graph: ShowGraph,
+  options: { readonly publication?: boolean } = {},
+): ShowGraph {
   assertValidBlocks(graph.blocks, graph.shapes ?? []);
   try {
     assertValidShapes(graph.shapes ?? []);
@@ -1001,6 +1037,6 @@ export function assertValidShowGraph(graph: ShowGraph): ShowGraph {
   assertNoWiringFanIn(graph.edges, nodes);
   assertNoWiringCycles(graph.edges);
   assertOneDriverPerDevice(graph.edges);
-
+  if (options.publication !== false) assertFlowDeviceCardinality(graph, nodes);
   return graph;
 }

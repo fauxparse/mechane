@@ -114,6 +114,11 @@ export type PlayerEventInput = {
   elementId: string;
   /** Root-to-leaf Slot instance indices; the server re-resolves them. */
   slotInstancePath?: readonly BlockInstancePathSegment[];
+  /** Values resolved by the Player at the point a Show Action runs. */
+  evidence?: {
+    sourceValues: Record<string, unknown>;
+    cueParameters: Record<string, unknown>;
+  };
 } & ({ eventKind: "tap" } | { eventKind: "keypress"; params: { key: string } });
 
 export type PlayerEventResult =

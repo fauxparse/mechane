@@ -1,8 +1,10 @@
 import { resolveRuntimeEvent, type RuntimeEventObservation } from "@mechane/domain";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { PlayerSession, PlayerState } from "./api";
 import {
+  applyPlayerCue,
   clearPlayerDeviceState,
+  initializePlayerInstanceState,
   openPlayerStateStore,
   playerRunScope,
   reconcilePlayerRunState,
@@ -53,6 +55,11 @@ export function usePlayerNavigation(
       flowId: session.flow.flowId,
       defaultSceneId: session.flow.defaultSceneId,
       sceneIds: new Set(session.flow.scenes.map(({ scene }) => scene.id)),
+      flowSourceIds: new Set(
+        session.graph.nodes
+          .filter((node) => node.kind === "source" && node.parentId === session.flow?.flowId)
+          .map((node) => node.id),
+      ),
       publishedGraphVersion: session.graph.version,
     } satisfies PlayerDriver;
     const reconciliation = reconcilePlayerRunState(store.read(), driver);
@@ -66,18 +73,19 @@ export function usePlayerNavigation(
       store.close();
       return;
     }
-    store.replace(reconciliation.state);
+    const playerState = initializePlayerInstanceState(reconciliation.state, session.graph);
+    store.replace(playerState);
     store.claim();
     setRuntime({
-      status: reconciliation.state.navigation.kind === "scene" ? "playing" : "not-ready",
-      session: sessionForState(session, reconciliation.state),
+      status: playerState.navigation.kind === "scene" ? "playing" : "not-ready",
+      session: sessionForState(session, playerState),
       store,
     });
     const unsubscribe = store.subscribe(() => {
       if (store.getStatus().ownership === "superseded") {
         setRuntime({
           status: "superseded",
-          session: sessionForState(session, reconciliation.state),
+          session: sessionForState(session, playerState),
           store,
         });
       }
@@ -90,6 +98,7 @@ export function usePlayerNavigation(
 
   // One local resolver for both kinds: a keypress differs only in what it
   // observes, never in how the resolved plan is applied.
+  const retryEventId = useRef<string | null>(null);
   const navigateFor = useCallback(
     (observe: (sceneId: string, canvasId: string) => RuntimeEventObservation): boolean => {
       if (
@@ -107,17 +116,30 @@ export function usePlayerNavigation(
       const observation = observe(runtime.session.scene.id, runtime.session.canvas.id);
       const plan = resolveRuntimeEvent(runtime.session.graph, observation);
       if (plan.kind !== "planned") return false;
-      const action = plan.actions[0];
-      if (!action || action.kind !== "navigate") return false;
-      const target = runtime.session.flow?.scenes.find(
-        ({ scene }) => scene.id === action.targetSceneId,
-      );
       const currentState = runtime.store.read();
-      if (!target || !currentState) return false;
+      if (!currentState) return false;
+      const target = plan.actions.find(
+        (action) =>
+          action.kind === "navigate" &&
+          runtime.session.flow?.scenes.some(({ scene }) => scene.id === action.targetSceneId),
+      );
+      const execution = applyPlayerCue(
+        currentState,
+        runtime.session.graph,
+        plan.actions,
+        plan.sceneId,
+      );
+      if (execution.kind === "failed") return false;
+      if (
+        target &&
+        target.kind === "navigate" &&
+        !runtime.session.flow?.scenes.some(({ scene }) => scene.id === target.targetSceneId)
+      ) {
+        return false;
+      }
       const nextState: PlayerRunState = {
-        ...currentState,
+        ...execution.state,
         publishedGraphVersion: runtime.session.graph.version,
-        navigation: { kind: "scene", sceneId: target.scene.id },
       };
       if (!runtime.store.replace(nextState)) {
         setRuntime({ status: "superseded", session: runtime.session, store: runtime.store });
@@ -128,14 +150,47 @@ export function usePlayerNavigation(
         session: sessionForState(runtime.session, nextState),
         store: runtime.store,
       });
-      void baseState
-        .submitEvent?.({
-          ...observation,
-          eventId: crypto.randomUUID(),
-          publishedGraphVersion: runtime.session.graph.version,
-          sceneId: plan.sceneId,
-        })
-        .catch(() => undefined);
+      const eventId = retryEventId.current ?? crypto.randomUUID();
+      if (execution.showActions.length > 0) retryEventId.current = eventId;
+      const submission = baseState.submitEvent?.({
+        ...observation,
+        eventId,
+        publishedGraphVersion: runtime.session.graph.version,
+        sceneId: plan.sceneId,
+        ...(execution.showActions.length > 0
+          ? {
+              evidence: {
+                sourceValues: nextState.flowSourceValues,
+                cueParameters: {},
+              },
+            }
+          : {}),
+      });
+      if (submission && execution.showActions.length > 0) {
+        void submission.then((result) => {
+          if (result.kind !== "failed" && result.kind !== "rejected") {
+            retryEventId.current = null;
+            return;
+          }
+          if (runtime.store?.replace(currentState)) {
+            setRuntime({
+              status: currentState.navigation.kind === "scene" ? "playing" : "not-ready",
+              session: sessionForState(runtime.session, currentState),
+              store: runtime.store,
+            });
+          }
+        }).catch(() => {
+          if (runtime.store?.replace(currentState)) {
+            setRuntime({
+              status: currentState.navigation.kind === "scene" ? "playing" : "not-ready",
+              session: sessionForState(runtime.session, currentState),
+              store: runtime.store,
+            });
+          }
+        });
+      } else {
+        void submission?.catch(() => undefined);
+      }
       return true;
     },
     [baseState, runtime],

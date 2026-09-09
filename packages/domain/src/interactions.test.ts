@@ -309,6 +309,36 @@ it("accepts typed parameters and ordered actionless Block Cue relays", () => {
     }).slotEventBindings,
   ).toHaveLength(1);
 });
+it("validates Element Cue Parameter mappings", () => {
+  const cue: Cue = {
+    id: "cue_block_tap",
+    name: "Tapped",
+    owner: { kind: "block", blockId: "block_candidate" },
+    actionIds: [],
+    parameters: [{ id: "candidate", name: "Candidate", type: "text", position: 0 }],
+  };
+  const binding: EventBinding = {
+    id: "binding_block_tap",
+    canvasId: "canvas_block",
+    elementId: "candidate_button",
+    eventKind: "tap",
+    cueId: cue.id,
+    position: 0,
+    parameterMappings: [{ parameterId: "candidate", source: { kind: "literal", value: "Alice" } }],
+  };
+  expect(
+    assertValidInteractions({ nodes, blocks: [{ id: "block_candidate" }], cues: [cue], eventBindings: [binding] }),
+  ).toMatchObject({ eventBindings: [binding] });
+  expect(() =>
+    assertValidInteractions({
+      nodes,
+      blocks: [{ id: "block_candidate" }],
+      cues: [cue],
+      eventBindings: [{ ...binding, parameterMappings: [] }],
+    }),
+  ).toThrow(/every Cue Parameter exactly once/);
+});
+
 
 const keypress = (
   id: string,

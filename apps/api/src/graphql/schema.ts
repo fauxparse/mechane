@@ -309,6 +309,8 @@ export const schema = createSchema<GraphQLContext>({
       slotInstancePath: [BlockInstancePathInput!]
       "Per-kind payload as observed; a keypress carries { key }."
       params: JSON
+      "Resolved Instance values and Cue Parameters used by a per-connection Player."
+      evidence: JSON
     }
     type PlayerEventApplied {
       eventId: ID!
@@ -673,6 +675,7 @@ export const schema = createSchema<GraphQLContext>({
       eventKind: String!
       "Per-kind payload. Null for kinds that take no parameters."
       params: JSON
+      parameterMappings: JSON!
       cueId: ID!
       position: Int!
     }
@@ -1014,10 +1017,11 @@ export const schema = createSchema<GraphQLContext>({
       elementId: ID!
       eventKind: String!
       params: JSON
+      parameterMappings: JSON
       cueId: ID!
       position: Int!
-    }
 
+    }
     type GraphEdit {
       type: String!
       nodeId: ID

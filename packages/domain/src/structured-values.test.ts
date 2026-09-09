@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import type { StructuredValueTemplate } from "./structured-values";
 import type { ShowGraph } from "./graph";
 import { assertValidId } from "./id";
 import { expandSlotInstances } from "./slots";
@@ -107,6 +108,31 @@ describe("Structured Value identity", () => {
     }
     expect(after.items[0]).toEqual(before.items[0]);
     expect(resolveRuntimeValue(next.value, next.structuredValues)).toEqual([item("Ada Lovelace")]);
+  });
+
+  it("supports absent structured Source roots without materializing records", () => {
+    const shapeGraph: ShowGraph = {
+      ...graph,
+      nodes: [
+        {
+          id: "selected",
+          kind: "source",
+          name: "Selected",
+          parentId: null,
+          position: { x: 0, y: 0 },
+          type: { kind: "shape", shapeId: person.id },
+        },
+      ],
+    };
+    const absent = materializeRunState(shapeGraph, { selected: null });
+    expect(absent.structuredValues).toEqual({});
+    expect(absent.sourceValues.selected).toBeNull();
+    expect(() => assertValidRunState(absent, shapeGraph)).not.toThrow();
+
+    const empty = materializeStructuredValue([] as unknown as StructuredValueTemplate, people, [person]);
+    expect(empty.structuredValues).not.toEqual({});
+    expect(expandSlotInstances(null, undefined, {}).instances).toEqual([]);
+    expect(expandSlotInstances(empty.value, undefined, empty.structuredValues).instances).toEqual([]);
   });
 
   it("rejects dangling references and cycles", () => {

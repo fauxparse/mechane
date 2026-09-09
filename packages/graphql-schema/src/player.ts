@@ -14,6 +14,12 @@ const PlayerGraphFields = graphql(`
       sceneId
       blockId
       actionIds
+      parameters {
+        id
+        name
+        type
+        position
+      }
     }
     actions {
       id
@@ -30,8 +36,17 @@ const PlayerGraphFields = graphql(`
       elementId
       eventKind
       params
+      parameterMappings
       cueId
       position
+    }
+    slotEventBindings {
+      id
+      slotElementId
+      sourceCueId
+      targetCueId
+      position
+      parameterMappings
     }
     sourceFieldDefaults {
       nodeId

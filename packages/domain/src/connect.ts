@@ -506,6 +506,8 @@ function humanise(error: InvalidShowGraphError, kind: EdgeKind): string {
       return "Navigate edges are derived from Actions.";
     case "invalidUpdateEndpoints":
       return "Update edges must target a Source.";
+    case "flowDeviceCardinality":
+      return "All Devices driven by a Flow must use the same connection mode.";
   }
   const unreachable: never = error.reason;
   return unreachable;

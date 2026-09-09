@@ -1,12 +1,14 @@
 import {
   InvalidInteractionError,
   PAIRING_CODE_PATTERN,
+  isStructuredValueReference,
   planUpdate,
   resolveRuntimeEvent,
   type Action,
   type BlockInstancePathSegment,
   type RuntimeEventObservation,
   type RuntimeEventPlan,
+  type RunState,
   type ShowGraph,
   type UpdateWrite,
 } from "@mechane/domain";
@@ -14,7 +16,10 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 
 import { readCanvas } from "./canvas";
 import { db } from "./client";
-import { drainPlayerInvalidations, enqueuePlayerInvalidation } from "./player-invalidation-outbox";
+import {
+  drainPlayerInvalidations,
+  enqueuePlayerInvalidations,
+} from "./player-invalidation-outbox";
 import { RunConfigurationError, withRunErrorLog } from "./run-errors";
 import { readShowGraph } from "./show-graph";
 import { readRunState } from "./runs";
@@ -39,6 +44,11 @@ export interface PlayerEventInput {
   slotInstancePath?: readonly BlockInstancePathSegment[];
   /** Per-kind payload as the Player observed it; `keypress` carries `{ key }`. */
   params?: Record<string, unknown> | null;
+  /** Player-resolved values supplied as evidence for Show-scoped Actions. */
+  evidence?: {
+    sourceValues: Record<string, unknown>;
+    cueParameters: Record<string, unknown>;
+  };
 }
 
 /**
@@ -116,6 +126,7 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type PlayerEventRow = typeof playerEvents.$inferSelect;
 
 function duplicateResult(row: PlayerEventRow): PlayerEventResult {
+
   if (row.outcome === "failed") {
     return {
       kind: "duplicate",
@@ -154,6 +165,37 @@ function duplicateResult(row: PlayerEventRow): PlayerEventResult {
     resultingSceneId: row.resultingSceneId,
     reason: row.reason,
   };
+}
+function evidenceReferencesReachable(
+  graph: ShowGraph,
+  state: RunState,
+  evidence: PlayerEventInput["evidence"],
+): boolean {
+  if (!evidence) return true;
+  const reachable = new Set<string>();
+  const visit = (value: unknown): void => {
+    if (!isStructuredValueReference(value) || reachable.has(value.ref)) return;
+    const record = state.structuredValues[value.ref];
+    if (!record) return;
+    reachable.add(value.ref);
+    const values = record.kind === "array" ? record.items : Object.values(record.fields);
+    values.forEach(visit);
+  };
+  for (const source of graph.nodes) {
+    if (source.kind === "source" && source.parentId === null) visit(state.sourceValues[source.id]);
+  }
+  const containsOnlyReachableReferences = (value: unknown): boolean => {
+    if (isStructuredValueReference(value)) return reachable.has(value.ref);
+    if (Array.isArray(value)) return value.every(containsOnlyReachableReferences);
+    if (value !== null && typeof value === "object") {
+      return Object.values(value).every(containsOnlyReachableReferences);
+    }
+    return true;
+  };
+  return (
+    containsOnlyReachableReferences(evidence.sourceValues) &&
+    containsOnlyReachableReferences(evidence.cueParameters)
+  );
 }
 async function recordEvent(
   tx: Tx,
@@ -210,7 +252,33 @@ async function dispatchUpdateAction(
   input: PlayerEventInput,
 ): Promise<{ result: PlayerEventResult; changed: boolean }> {
   const current = await readRunState(run.id, tx);
-  const plan = planUpdate(graph, current, sceneId, action);
+  const evidence = input.evidence;
+  if (!evidenceReferencesReachable(graph, current, evidence)) {
+    const result: PlayerEventResult = {
+      kind: "failed",
+      eventId: input.eventId,
+      actionId: action.id,
+      reason: "detached-reference",
+    };
+    await recordEvent(tx, run.id, device.showId, device.id, input, result);
+    return { result, changed: false };
+  }
+  const evidenceSourceValues = evidence
+    ? (evidence.sourceValues as RunState["sourceValues"])
+    : undefined;
+  const routedState: RunState = evidence
+    ? {
+        sourceValues: { ...current.sourceValues, ...evidenceSourceValues },
+        structuredValues: current.structuredValues,
+      }
+    : current;
+  const plan = planUpdate(
+    graph,
+    routedState,
+    sceneId,
+    action,
+    evidence?.cueParameters ?? {},
+  );
   if (plan.kind === "failed") {
     const result: PlayerEventResult = {
       kind: "failed",
@@ -299,7 +367,8 @@ async function dispatchPerConnectionEvent(
     .from(runs)
     .where(and(eq(runs.showId, device.showId), eq(runs.status, "active")))
     .orderBy(desc(runs.startedAt))
-    .limit(1);
+    .limit(1)
+    .for("update");
   if (!run) return { kind: "rejected", eventId: input.eventId, reason: "no-active-run" };
 
   const [existing] = await tx
@@ -415,7 +484,7 @@ async function dispatchPerConnectionEvent(
       action,
       input,
     );
-    if (update.changed) await enqueuePlayerInvalidation(tx, device.showId, device.id);
+    if (update.changed) await enqueuePlayerInvalidations(tx, device.showId);
     return update.result;
   }
   const target =
@@ -476,7 +545,8 @@ export async function dispatchPlayerEvent(
           .from(runs)
           .where(and(eq(runs.showId, device.showId), eq(runs.status, "active")))
           .orderBy(desc(runs.startedAt))
-          .limit(1);
+          .limit(1)
+          .for("update");
         if (!run) return { kind: "ignored", eventId: input.eventId, reason: "no-active-run" };
         if (device.perConnection) {
           return { kind: "ignored", eventId: input.eventId, reason: "unsupported-device" };
@@ -677,7 +747,7 @@ export async function dispatchPlayerEvent(
             .update(runDeviceStates)
             .set({ activeSceneId: target.id, updatedAt: new Date() })
             .where(and(eq(runDeviceStates.runId, run.id), eq(runDeviceStates.deviceId, device.id)));
-          await enqueuePlayerInvalidation(tx, device.showId, device.id);
+          await enqueuePlayerInvalidations(tx, device.showId, [device.id]);
         }
         await recordEvent(tx, run.id, device.showId, device.id, input, result);
         return result;

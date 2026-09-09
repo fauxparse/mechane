@@ -5,14 +5,16 @@ import { imageAssets, blobs } from "../../../schema";
 import { processImage } from "../../../../images";
 import { blobStore } from "../../../../storage/blob-store";
 import { seedShowData, type SeedCanvases, type SeedShow } from "../../utils/seed-utils";
-import type {
-  Block,
-  FrameElement,
-  PropertyConnection,
-  ShowGraph,
-  SlotElement,
-  TextAlign,
-  TextElement,
+import {
+  projectNavigateEdges,
+  projectUpdateEdges,
+  type Block,
+  type FrameElement,
+  type PropertyConnection,
+  type ShowGraph,
+  type SlotElement,
+  type TextAlign,
+  type TextElement,
 } from "@mechane/domain";
 
 export const CANDIDATE_SHAPE_ID = "shape_candidate";
@@ -21,11 +23,16 @@ export const CANDIDATE_VOTES_FIELD_ID = "field_candidate_votes";
 export const CANDIDATE_IMAGE_FIELD_ID = "field_candidate_image";
 
 export const CANDIDATE_SOURCE_ID = "source_candidates";
+export const SELECTED_SOURCE_ID = "source_selected";
 export const TALLY_VARIABLE_ID = "variable_tally_candidates";
 export const AUDIENCE_VARIABLE_ID = "variable_audience_candidates";
+export const CONFIRMATION_VARIABLE_ID = "variable_confirmation_candidate";
 export const CANDIDATE_BUTTON_VARIABLE_ID = "candidate_button_candidate";
 export const TALLY_ROW_VARIABLE_ID = "tally_row_candidate";
-
+export const CANDIDATE_BUTTON_CUE_ID = "cue_candidate_button_selected";
+export const CHOOSE_CANDIDATE_CUE_ID = "cue_choose_candidate";
+export const CONFIRM_YES_CUE_ID = "cue_confirmation_yes";
+export const CONFIRM_NO_CUE_ID = "cue_confirmation_no";
 export const AUDIENCE_FLOW_ID = "flow_audience";
 export const CANDIDATE_LIST_SCENE_ID = "scene_candidate_list";
 export const CONFIRMATION_SCENE_ID = "scene_confirmation";
@@ -282,6 +289,7 @@ export function votingGraph(): ShowGraph {
   }));
   const sourceFieldDefaults = [
     { nodeId: CANDIDATE_SOURCE_ID, fieldPath: [], value: candidateDefaults },
+    { nodeId: SELECTED_SOURCE_ID, fieldPath: [], value: null },
   ];
   const sourceNode = {
     id: CANDIDATE_SOURCE_ID,
@@ -290,6 +298,14 @@ export function votingGraph(): ShowGraph {
     parentId: null,
     position: { x: 0, y: 0 },
     type: candidateArrayType,
+  };
+  const selectedNode = {
+    id: SELECTED_SOURCE_ID,
+    kind: "source" as const,
+    name: "Selected",
+    parentId: AUDIENCE_FLOW_ID,
+    position: { x: 0, y: 360 },
+    type: candidateType,
   };
   const tallyScene = {
     id: TALLY_SCENE_ID,
@@ -322,7 +338,9 @@ export function votingGraph(): ShowGraph {
     name: "Confirmation screen",
     parentId: AUDIENCE_FLOW_ID,
     position: { x: 340, y: 74 },
-    variables: [],
+    variables: [
+      { id: CONFIRMATION_VARIABLE_ID, name: "Selected", type: candidateType },
+    ],
   };
   const thankYouScene = {
     id: THANK_YOU_SCENE_ID,
@@ -350,12 +368,168 @@ export function votingGraph(): ShowGraph {
     perConnection: true,
     pairingCode: null,
   };
+  const cues = [
+    {
+      id: CANDIDATE_BUTTON_CUE_ID,
+      name: "Selected",
+      owner: { kind: "block" as const, blockId: "block_candidate_button" },
+      actionIds: [],
+      parameters: [{ id: "candidate", name: "Candidate", type: candidateType, position: 0 }],
+    },
+    {
+      id: CHOOSE_CANDIDATE_CUE_ID,
+      name: "Choose candidate",
+      owner: { kind: "scene" as const, sceneId: CANDIDATE_LIST_SCENE_ID },
+      actionIds: ["action_choose_candidate", "action_choose_candidate_navigate"],
+      parameters: [{ id: "selectedCandidate", name: "Candidate", type: candidateType, position: 0 }],
+    },
+    {
+      id: CONFIRM_YES_CUE_ID,
+      name: "Confirm vote",
+      owner: { kind: "scene" as const, sceneId: CONFIRMATION_SCENE_ID },
+      actionIds: ["action_confirm_yes", "action_confirm_yes_navigate"],
+    },
+    {
+      id: CONFIRM_NO_CUE_ID,
+      name: "Cancel vote",
+      owner: { kind: "scene" as const, sceneId: CONFIRMATION_SCENE_ID },
+      actionIds: ["action_confirm_no", "action_confirm_no_navigate"],
+    },
+  ];
+  const actions = [
+    {
+      id: "action_choose_candidate",
+      cueId: CHOOSE_CANDIDATE_CUE_ID,
+      kind: "update" as const,
+      target: { sourceId: SELECTED_SOURCE_ID, fieldPath: [] },
+      operation: {
+        kind: "set" as const,
+        operand: { kind: "cueParameter" as const, parameterId: "selectedCandidate", fieldPath: [] },
+      },
+    },
+    {
+      id: "action_choose_candidate_navigate",
+      cueId: CHOOSE_CANDIDATE_CUE_ID,
+      kind: "navigate" as const,
+      targetSceneId: CONFIRMATION_SCENE_ID,
+    },
+    {
+      id: "action_confirm_yes",
+      cueId: CONFIRM_YES_CUE_ID,
+      kind: "update" as const,
+      target: { sourceId: SELECTED_SOURCE_ID, fieldPath: [CANDIDATE_VOTES_FIELD_ID] },
+      operation: {
+        kind: "adjust" as const,
+        operand: { kind: "literal" as const, value: { kind: "number" as const, value: 1 } },
+      },
+    },
+    {
+      id: "action_confirm_yes_navigate",
+      cueId: CONFIRM_YES_CUE_ID,
+      kind: "navigate" as const,
+      targetSceneId: THANK_YOU_SCENE_ID,
+    },
+    {
+      id: "action_confirm_no",
+      cueId: CONFIRM_NO_CUE_ID,
+      kind: "update" as const,
+      target: { sourceId: SELECTED_SOURCE_ID, fieldPath: [] },
+      operation: { kind: "reset" as const },
+    },
+    {
+      id: "action_confirm_no_navigate",
+      cueId: CONFIRM_NO_CUE_ID,
+      kind: "navigate" as const,
+      targetSceneId: CANDIDATE_LIST_SCENE_ID,
+    },
+  ];
+  const eventBindings = [
+    {
+      id: "binding_candidate_button_tap",
+      canvasId: "canvas_block_candidate_button",
+      elementId: "candidate-button-root",
+      eventKind: "tap" as const,
+      cueId: CANDIDATE_BUTTON_CUE_ID,
+      position: 0,
+      parameterMappings: [
+        {
+          parameterId: "candidate",
+          source: { kind: "variable" as const, variableId: CANDIDATE_BUTTON_VARIABLE_ID },
+        },
+      ],
+    },
+    {
+      id: "binding_confirmation_yes",
+      canvasId: "canvas_voting_confirmation",
+      elementId: "confirmation-yes",
+      eventKind: "tap" as const,
+      cueId: CONFIRM_YES_CUE_ID,
+      position: 0,
+    },
+    {
+      id: "binding_confirmation_no",
+      canvasId: "canvas_voting_confirmation",
+      elementId: "confirmation-no",
+      eventKind: "tap" as const,
+      cueId: CONFIRM_NO_CUE_ID,
+      position: 0,
+    },
+  ];
+  const slotEventBindings = [
+    {
+      id: "slot_binding_candidate_selected",
+      slotElementId: "candidate-list-slot",
+      sourceCueId: CANDIDATE_BUTTON_CUE_ID,
+      targetCueId: CHOOSE_CANDIDATE_CUE_ID,
+      position: 0,
+      parameterMappings: [
+        { sourceParameterId: "candidate", targetParameterId: "selectedCandidate" },
+      ],
+    },
+  ];
+  const interactionEdges = [
+    ...projectNavigateEdges({
+      nodes: [
+        sourceNode,
+        selectedNode,
+        tallyScene,
+        audienceFlow,
+        candidateListScene,
+        confirmationScene,
+        thankYouScene,
+        projector,
+        audience,
+      ],
+      cues,
+      actions,
+    }),
+    ...projectUpdateEdges({
+      nodes: [
+        sourceNode,
+        selectedNode,
+        tallyScene,
+        audienceFlow,
+        candidateListScene,
+        confirmationScene,
+        thankYouScene,
+        projector,
+        audience,
+      ],
+      cues,
+      actions,
+    }),
+  ];
   return {
     shapes: [candidateShape],
     sourceFieldDefaults,
     blocks: workflowBlocks(),
+    cues,
+    actions,
+    eventBindings,
+    slotEventBindings,
     nodes: [
       sourceNode,
+      selectedNode,
       tallyScene,
       audienceFlow,
       candidateListScene,
@@ -365,6 +539,7 @@ export function votingGraph(): ShowGraph {
       audience,
     ],
     edges: [
+      ...interactionEdges,
       {
         id: "edge_candidates_tally",
         kind: "wiring",
@@ -380,6 +555,14 @@ export function votingGraph(): ShowGraph {
         targetId: CANDIDATE_LIST_SCENE_ID,
         sourcePath: [],
         targetPath: [AUDIENCE_VARIABLE_ID],
+      },
+      {
+        id: "edge_selected_confirmation",
+        kind: "wiring",
+        sourceId: SELECTED_SOURCE_ID,
+        targetId: CONFIRMATION_SCENE_ID,
+        sourcePath: [],
+        targetPath: [CONFIRMATION_VARIABLE_ID],
       },
       {
         id: "edge_tally_projector",
@@ -428,9 +611,20 @@ export function votingCanvases(): SeedCanvases {
       kind: "scene",
       root: root(CONFIRMATION_SCENE_ID, "Confirmation screen", 360, 720, [
         text("confirmation-title", "a", "Confirm your choice", "Title", 36),
-        text("confirmation-message", "b", "Are you sure?", "Message", 28),
-        button("confirmation-yes", "c", "Yes", "Yes", "#16A34A"),
-        button("confirmation-no", "d", "No", "No", "#DC2626"),
+        text(
+          "confirmation-selected",
+          "b",
+          {
+            kind: "variable",
+            variableId: CONFIRMATION_VARIABLE_ID,
+            fieldPath: [CANDIDATE_NAME_FIELD_ID],
+          },
+          "Selected candidate",
+          30,
+        ),
+        text("confirmation-message", "c", "Are you sure?", "Message", 28),
+        button("confirmation-yes", "d", "Yes", "Yes", "#16A34A"),
+        button("confirmation-no", "e", "No", "No", "#DC2626"),
       ]),
     },
     [THANK_YOU_SCENE_ID]: {

@@ -386,6 +386,7 @@ type ApiEventBinding = {
   cueId: string;
   position: number;
   params?: unknown;
+  parameterMappings?: unknown;
 };
 
 function toEventBinding(binding: ApiEventBinding): EventBinding {

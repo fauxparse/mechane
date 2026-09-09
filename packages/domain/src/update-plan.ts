@@ -131,6 +131,47 @@ export function resolveUpdateHolder(
   return failed("update-target-unknown-field");
 }
 
+export type UpdateScope = "show" | "instance" | "depends";
+
+/** Static scope classification used by Studio and dispatch lock selection. */
+export function classifyUpdateActionScope(
+  graph: ShowGraph,
+  action: UpdateAction,
+): UpdateScope {
+  const source = graph.nodes.find((node) => node.id === action.target.sourceId);
+  if (!source || source.kind !== "source" || source.parentId === null) return "show";
+  return action.target.fieldPath.length === 0 ? "instance" : "depends";
+}
+
+/** Resolves the holder's actual scope in a composed Show/Instance state. */
+export function resolveUpdateHolderScope(
+  graph: ShowGraph,
+  state: RunState,
+  action: UpdateAction,
+): Exclude<UpdateScope, "depends"> | null {
+  const source = graph.nodes.find((node) => node.id === action.target.sourceId);
+  const resolution = resolveUpdateHolder(state, action.target);
+  if (!source || source.kind !== "source" || resolution.kind === "failed") return null;
+  if (resolution.holder.kind === "sourceRoot") {
+    return source.parentId === null ? "show" : "instance";
+  }
+  const showRecordIds = new Set<string>();
+  const visit = (value: RuntimeValue): void => {
+    if (!isStructuredValueReference(value) || showRecordIds.has(value.ref)) return;
+    showRecordIds.add(value.ref);
+    const record = state.structuredValues[value.ref];
+    if (!record) return;
+    const values = record.kind === "array" ? record.items : Object.values(record.fields);
+    values.forEach(visit);
+  };
+  for (const candidate of graph.nodes) {
+    if (candidate.kind === "source" && candidate.parentId === null) {
+      visit(state.sourceValues[candidate.id]!);
+    }
+  }
+  return showRecordIds.has(resolution.holder.recordId) ? "show" : "instance";
+}
+
 /** The value a holder currently carries, or `undefined` when it carries none. */
 export function readUpdateHolder(state: RunState, holder: UpdateHolder): RuntimeValue | undefined {
   if (holder.kind === "sourceRoot") return state.sourceValues[holder.sourceId];
@@ -148,8 +189,12 @@ function resolveOperandValue(
   sceneId: string,
   sourceValues: Readonly<Record<string, unknown>>,
   operand: UpdateOperand,
+  cueParameterValues: Readonly<Record<string, unknown>>,
 ): unknown {
   if (operand.kind === "literal") return rawShapeValue(operand.value);
+  if (operand.kind === "cueParameter") {
+    return valueAtPath(cueParameterValues[operand.parameterId], operand.fieldPath);
+  }
   let value = valueAtPath(sceneVariableValues(graph, sceneId, sourceValues), [
     operand.variableId,
     ...(operand.fieldPath ?? []),
@@ -203,6 +248,7 @@ export function planUpdate(
   state: RunState,
   sceneId: string,
   action: UpdateAction,
+  cueParameterValues: Readonly<Record<string, unknown>> = {},
 ): UpdatePlan {
   const source = graph.nodes.find((node) => node.id === action.target.sourceId);
   if (!source || source.kind !== "source") return failed("missing-update-source");
@@ -240,7 +286,7 @@ export function planUpdate(
     if (
       action.operation.kind === "set" &&
       isStructuredType(slotType) &&
-      action.operation.operand.kind !== "literal"
+      action.operation.operand.kind === "variable"
     ) {
       return failed("unsupported-structured-operand");
     }
@@ -252,6 +298,7 @@ export function planUpdate(
       sceneId,
       resolveSourceValues(state),
       action.operation.operand,
+      cueParameterValues,
     );
     if (operand === undefined) return failed("missing-update-operand");
 
@@ -264,9 +311,16 @@ export function planUpdate(
       }
       nextValue = currentValue + operand;
     } else if (isStructuredType(slotType)) {
-      const fresh = materializeFresh(operand, slotType, graph);
-      nextValue = fresh.value;
-      records = fresh.records;
+      if (
+        action.operation.operand.kind === "cueParameter" &&
+        isStructuredValueReference(operand)
+      ) {
+        nextValue = operand;
+      } else {
+        const fresh = materializeFresh(operand, slotType, graph);
+        nextValue = fresh.value;
+        records = fresh.records;
+      }
     } else {
       nextValue = operand as RuntimeValue;
     }

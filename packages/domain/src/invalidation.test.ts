@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { deviceReadsChangedSources, sourceIdsReachableFromScenes } from "./invalidation";
+import { deviceReadsChangedSources, expandChangedSourceIds, sourceIdsReachableFromScenes } from "./invalidation";
 import type { ShowGraph } from "./graph";
 
 const graph: ShowGraph = {
@@ -55,5 +55,35 @@ describe("Source read-set reachability", () => {
     expect(sourceIdsReachableFromScenes(graph, ["scene"])).toEqual(new Set(["source"]));
     expect(deviceReadsChangedSources(graph, ["scene"], new Set(["source"]))).toBe(true);
     expect(deviceReadsChangedSources(graph, ["scene"], new Set(["other"]))).toBe(false);
+  });
+  it("expands a changed Source through downstream Source wiring", () => {
+    const chained: ShowGraph = {
+      ...graph,
+      nodes: [
+        ...graph.nodes,
+        {
+          id: "derived",
+          kind: "source",
+          name: "Derived",
+          parentId: null,
+          position: { x: 0, y: 0 },
+          type: "number",
+        },
+      ],
+      edges: [
+        ...graph.edges,
+        {
+          id: "source-derived",
+          kind: "wiring",
+          sourceId: "source",
+          targetId: "derived",
+          sourcePath: [],
+          targetPath: [],
+        },
+      ],
+    };
+    expect(expandChangedSourceIds(chained, new Set(["source"]))).toEqual(
+      new Set(["source", "derived"]),
+    );
   });
 });

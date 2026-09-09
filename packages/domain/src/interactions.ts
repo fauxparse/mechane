@@ -1,5 +1,6 @@
 import { isBindableKey } from "./keys";
 import type { EdgeLayout } from "./edge-layout";
+import type { SlotInputSource } from "./canvas";
 import type { Type } from "./shapes";
 import type { ShapeValue } from "./shapes";
 
@@ -10,12 +11,20 @@ export type InteractionOwner =
   | { readonly kind: "scene"; readonly sceneId: string }
   | { readonly kind: "block"; readonly blockId: string };
 
+/** Values supplied to a Cue Parameter by the Element's owning Canvas. */
+export interface EventParameterMapping {
+  parameterId: string;
+  source: SlotInputSource;
+}
+
 /** Fields every Event Binding carries, whatever its kind. */
 export interface EventBindingBase {
   id: string;
   canvasId: string;
   elementId: string;
   cueId: string;
+  /** Values mapped from the owning Canvas into the Cue's parameters. */
+  parameterMappings?: readonly EventParameterMapping[];
   /** Evaluation priority among bindings for this Element and Event kind. */
   position: number;
 }
@@ -112,6 +121,11 @@ export type UpdateOperand =
       variableId: string;
       fieldPath: readonly string[];
       fieldMapping?: Readonly<Record<string, string>>;
+    }
+  | {
+      kind: "cueParameter";
+      parameterId: string;
+      fieldPath: readonly string[];
     };
 
 export type UpdateOperation =
@@ -363,7 +377,8 @@ export type InteractionViolation =
   | "invalidUpdateTarget"
   | "invalidUpdateOperation"
   | "emptyElementReference"
-  | "bindingScene";
+  | "bindingScene"
+  | "invalidCueParameterMapping";
 
 export class InvalidInteractionError extends Error {
   constructor(
@@ -419,6 +434,34 @@ function assertValidEventParams(binding: EventBinding): void {
   }
 }
 
+
+function assertCompleteCueParameterMappings(
+  cue: Cue,
+  mappings: readonly { parameterId: string }[],
+  bindingId: string,
+): void {
+  const parameters = cue.parameters ?? [];
+  const seen = new Set<string>();
+  for (const mapping of mappings) {
+    if (
+      seen.has(mapping.parameterId) ||
+      !parameters.some((parameter) => parameter.id === mapping.parameterId)
+    ) {
+      throw new InvalidInteractionError(
+        "invalidCueParameterMapping",
+        `Binding "${bindingId}" maps Cue Parameter "${mapping.parameterId}" more than once or does not target the Cue.`,
+      );
+    }
+    seen.add(mapping.parameterId);
+  }
+  if (seen.size !== parameters.length) {
+    throw new InvalidInteractionError(
+      "invalidCueParameterMapping",
+      `Binding "${bindingId}" must map every Cue Parameter exactly once.`,
+    );
+  }
+}
+
 /**
  * Proves an Event Binding arriving from outside this process — the edit codec,
  * the database, the Studio's GraphQL client — and returns it typed.
@@ -439,6 +482,7 @@ export function decodeEventBinding(input: {
   cueId: unknown;
   position: unknown;
   params?: unknown;
+  parameterMappings?: unknown;
 }): EventBinding {
   const { id, canvasId, elementId, eventKind, cueId, position } = input;
   if (
@@ -454,12 +498,39 @@ export function decodeEventBinding(input: {
       `Event Binding "${String(id)}" is missing required fields.`,
     );
   }
+  const mappings = input.parameterMappings;
+  const parameterMappings =
+    mappings === undefined
+      ? undefined
+      : Array.isArray(mappings)
+        ? mappings.map((mapping) => {
+            if (
+              typeof mapping !== "object" ||
+              mapping === null ||
+              typeof (mapping as { parameterId?: unknown }).parameterId !== "string" ||
+              typeof (mapping as { source?: unknown }).source !== "object" ||
+              (mapping as { source?: unknown }).source === null
+            ) {
+              throw new InvalidInteractionError(
+                "invalidCueParameterMapping",
+                `Event Binding "${id}" has an invalid parameter mapping.`,
+              );
+            }
+            return mapping as EventParameterMapping;
+          })
+        : (() => {
+            throw new InvalidInteractionError(
+              "invalidCueParameterMapping",
+              `Event Binding "${id}" has invalid parameter mappings.`,
+            );
+          })();
   const base: EventBindingBase = {
     id,
     canvasId,
     elementId,
     cueId,
     position: position as number,
+    ...(parameterMappings ? { parameterMappings } : {}),
   };
   if (eventKind === "tap") {
     const binding: EventBinding = { ...base, eventKind: "tap" };
@@ -641,12 +712,18 @@ export function assertValidInteractions(graph: {
     }
     positions.add(binding.position);
     bindingPositions.set(key, positions);
-    if (!cuesById.has(binding.cueId)) {
+    const boundCue = cuesById.get(binding.cueId);
+    if (!boundCue) {
       throw new InvalidInteractionError(
         "missingCue",
         `Event Binding "${binding.id}" references missing Cue "${binding.cueId}".`,
       );
     }
+    assertCompleteCueParameterMappings(
+      boundCue,
+      binding.parameterMappings ?? [],
+      binding.id,
+    );
   }
 
   const slotBindingPositions = new Map<string, Set<number>>();
@@ -658,6 +735,19 @@ export function assertValidInteractions(graph: {
         "missingCue",
         `Slot Event Binding "${binding.id}" references a missing Cue.`,
       );
+    }
+    assertCompleteCueParameterMappings(
+      target,
+      binding.parameterMappings.map((mapping) => ({ parameterId: mapping.targetParameterId })),
+      binding.id,
+    );
+    for (const mapping of binding.parameterMappings) {
+      if (!source.parameters?.some((parameter) => parameter.id === mapping.sourceParameterId)) {
+        throw new InvalidInteractionError(
+          "invalidCueParameterMapping",
+          `Binding "${binding.id}" references missing source Cue Parameter "${mapping.sourceParameterId}".`,
+        );
+      }
     }
     if (source.owner.kind !== "block" || source.actionIds.length > 0) {
       throw new InvalidInteractionError(

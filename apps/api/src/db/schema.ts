@@ -657,6 +657,12 @@ export const runDeviceStates = pgTable(
     deviceId: text("device_id").notNull(),
     flowId: text("flow_id").notNull(),
     activeSceneId: text("active_scene_id"),
+    instanceSourceValues: jsonb("instance_source_values")
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    instanceStructuredValues: jsonb("instance_structured_values")
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     publishedGraphVersion: integer("published_graph_version").notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -1021,6 +1027,9 @@ export const graphEventBindings = pgTable(
     params: jsonb("params")
       .notNull()
       .default(sql`'{}'::jsonb`),
+    parameterMappings: jsonb("parameter_mappings")
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     cueId: text("cue_id").notNull(),
     position: integer("position").notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
