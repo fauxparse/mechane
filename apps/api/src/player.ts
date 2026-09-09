@@ -1,4 +1,4 @@
-import type { GraphNode, ShowGraph } from "@mechane/domain";
+import { PAIRING_CODE_PATTERN, type GraphNode, type ShowGraph } from "@mechane/domain";
 import { and, eq, isNull } from "drizzle-orm";
 
 import { readCanvas } from "./db/canvas";
@@ -9,8 +9,6 @@ import { readActiveRun, readRunDeviceState, type RunDeviceState } from "./db/run
 import { devices } from "./db/schema";
 import { readShowGraph, type StoredShowGraph } from "./db/show-graph";
 import { issueRealtimeGrant } from "./realtime-grants";
-
-const PAIRING_CODE_PATTERN = /^[A-HJ-KM-NP-Z1-9]{5}$/;
 
 function sceneForDevice(
   graph: ShowGraph,

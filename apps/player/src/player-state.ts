@@ -1,8 +1,7 @@
-import type { SourceValues } from "@mechane/domain";
+import { PAIRING_CODE_PATTERN, type SourceValues } from "@mechane/domain";
 
 export { sceneVariableValues } from "@mechane/domain";
 
-const PAIRING_CODE_PATTERN = /^[1-9A-HJ-KM-NP-Z]{5}$/;
 const STORAGE_PREFIX = "mechane.player:";
 const CLAIM_PREFIX = "mechane.player-claim:";
 const CURRENT_SCHEMA_VERSION = 1;

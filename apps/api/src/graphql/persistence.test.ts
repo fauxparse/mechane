@@ -1,3 +1,4 @@
+import { PAIRING_CODE_PATTERN } from "@mechane/domain";
 import { createYoga } from "graphql-yoga";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -162,7 +163,7 @@ describe("GraphQL persistence", () => {
       name: "Projector",
       parentId: null,
       perConnection: false,
-      pairingCode: expect.stringMatching(/^[1-9A-HJ-NP-TV-Z]{5}$/),
+      pairingCode: expect.stringMatching(PAIRING_CODE_PATTERN),
     });
     expect(graph.nodes).toHaveLength(2);
     expect(graph.edges).toEqual([
