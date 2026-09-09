@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import type { StructuredValueTemplate } from "./structured-values";
 import type { ShowGraph } from "./graph";
 import { assertValidId } from "./id";
 import { expandSlotInstances } from "./slots";
@@ -124,11 +125,11 @@ describe("Structured Value identity", () => {
       ],
     };
     const absent = materializeRunState(shapeGraph, { selected: null });
-    expect(absent.sourceValues.selected).toBeNull();
     expect(absent.structuredValues).toEqual({});
+    expect(absent.sourceValues.selected).toBeNull();
     expect(() => assertValidRunState(absent, shapeGraph)).not.toThrow();
 
-    const empty = materializeStructuredValue([], people, [person]);
+    const empty = materializeStructuredValue([] as unknown as StructuredValueTemplate, people, [person]);
     expect(empty.structuredValues).not.toEqual({});
     expect(expandSlotInstances(null, undefined, {}).instances).toEqual([]);
     expect(expandSlotInstances(empty.value, undefined, empty.structuredValues).instances).toEqual([]);
