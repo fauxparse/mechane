@@ -1,31 +1,30 @@
 import {
-  defaultSourceValues,
   InvalidInteractionError,
-  materializeStructuredValue,
-  normalizeStructuredValueTemplate,
-  resolveSourceValues,
+  planUpdate,
   resolveRuntimeEvent,
-  sceneVariableValues,
-  setValueAtPath,
-  valueAtPath,
   type Action,
   type BlockInstancePathSegment,
-  type RunState,
   type RuntimeEventObservation,
   type RuntimeEventPlan,
-  type ShapeValue,
   type ShowGraph,
-  type UpdateOperand,
+  type UpdateWrite,
 } from "@mechane/domain";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 
 import { readCanvas } from "./canvas";
 import { db } from "./client";
 import { drainPlayerInvalidations, enqueuePlayerInvalidation } from "./player-invalidation-outbox";
 import { RunConfigurationError, withRunErrorLog } from "./run-errors";
 import { readShowGraph } from "./show-graph";
-import { readRunState, replaceRunState } from "./runs";
-import { devices, playerEvents, runDeviceStates, runs } from "./schema";
+import { readRunState } from "./runs";
+import {
+  devices,
+  playerEvents,
+  runDeviceStates,
+  runs,
+  runSourceValues,
+  runStructuredValues,
+} from "./schema";
 
 const PAIRING_CODE_PATTERN = /^[A-HJ-KM-NP-Z1-9]{5}$/;
 const EVENT_ID_PATTERN =
@@ -111,87 +110,6 @@ function validSlotInstancePath(path: readonly BlockInstancePathSegment[] | undef
         segment.index >= 0,
     )
   );
-}
-
-type UpdateApplication = { state: RunState; changed: boolean } | { error: string };
-
-function rawShapeValue(value: ShapeValue): unknown {
-  return value.kind === "array" ? value.value.map(rawShapeValue) : value.value;
-}
-
-function resolveUpdateOperand(
-  graph: ShowGraph,
-  sceneId: string,
-  sourceValues: Readonly<Record<string, unknown>>,
-  operand: UpdateOperand,
-): unknown {
-  if (operand.kind === "literal") return rawShapeValue(operand.value);
-  let value = valueAtPath(sceneVariableValues(graph, sceneId, sourceValues), [
-    operand.variableId,
-    ...(operand.fieldPath ?? []),
-  ]);
-  if (
-    operand.fieldMapping &&
-    value !== null &&
-    typeof value === "object" &&
-    !Array.isArray(value)
-  ) {
-    value = Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).flatMap(([fieldId, fieldValue]) => {
-        const targetFieldId = operand.fieldMapping?.[fieldId];
-        return targetFieldId ? [[targetFieldId, fieldValue]] : [];
-      }),
-    );
-  }
-  return value;
-}
-
-function applyUpdateAction(
-  graph: ShowGraph,
-  current: RunState,
-  sceneId: string,
-  action: Extract<Action, { kind: "update" }>,
-): UpdateApplication {
-  const source = graph.nodes.find((node) => node.id === action.target.sourceId);
-  if (!source || source.kind !== "source") return { error: "missing-update-source" };
-  const resolved = resolveSourceValues(current);
-  const defaults = defaultSourceValues(graph);
-  const sourceValue = resolved[source.id] ?? defaults[source.id];
-  const currentValue = valueAtPath(sourceValue, action.target.fieldPath);
-  let nextValue: unknown;
-  if (action.operation.kind === "reset") {
-    nextValue = valueAtPath(defaults[source.id], action.target.fieldPath);
-  } else {
-    const operand = resolveUpdateOperand(graph, sceneId, resolved, action.operation.operand);
-    if (operand === undefined) return { error: "missing-update-operand" };
-    if (action.operation.kind === "adjust") {
-      if (typeof currentValue !== "number" || !Number.isFinite(currentValue)) {
-        return { error: "update-current-value-not-numeric" };
-      }
-      if (typeof operand !== "number" || !Number.isFinite(operand)) {
-        return { error: "update-operand-not-numeric" };
-      }
-      nextValue = currentValue + operand;
-    } else {
-      nextValue = operand;
-    }
-  }
-  if (nextValue === undefined) return { error: "missing-update-default" };
-  const nextSourceValue = setValueAtPath(sourceValue, action.target.fieldPath, nextValue);
-  const changed = JSON.stringify(nextSourceValue) !== JSON.stringify(sourceValue);
-  const template = normalizeStructuredValueTemplate(
-    nextSourceValue,
-    source.type,
-    graph.shapes ?? [],
-  );
-  const materialized = materializeStructuredValue(template, source.type, graph.shapes ?? []);
-  return {
-    changed,
-    state: {
-      sourceValues: { ...current.sourceValues, [source.id]: materialized.value },
-      structuredValues: { ...current.structuredValues, ...materialized.structuredValues },
-    },
-  };
 }
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -292,21 +210,83 @@ async function dispatchUpdateAction(
   input: PlayerEventInput,
 ): Promise<{ result: PlayerEventResult; changed: boolean }> {
   const current = await readRunState(run.id, tx);
-  const applied = applyUpdateAction(graph, current, sceneId, action);
-  if ("error" in applied) {
+  const plan = planUpdate(graph, current, sceneId, action);
+  if (plan.kind === "failed") {
     const result: PlayerEventResult = {
       kind: "failed",
       eventId: input.eventId,
       actionId: action.id,
-      reason: applied.error,
+      reason: plan.reason,
     };
     await recordEvent(tx, run.id, device.showId, device.id, input, result);
     return { result, changed: false };
   }
-  await replaceRunState(tx, run.id, graph, applied.state);
+  await applyUpdateWrites(tx, run.id, plan.writes);
   const result: PlayerEventResult = { kind: "accepted", eventId: input.eventId };
   await recordEvent(tx, run.id, device.showId, device.id, input, result);
-  return { result, changed: applied.changed };
+  return { result, changed: plan.changed };
+}
+
+/**
+ * Applies a plan as row operations.
+ *
+ * Each write touches one row, which is what `replaceRunState` — deleting and
+ * reinserting every row for the Run — could never do, and what gives the
+ * eventual row-level locking something to hold. A field write is a `jsonb_set`
+ * on the addressed record rather than a read-modify-write in JavaScript, so
+ * the update is the database's to serialize.
+ */
+async function applyUpdateWrites(
+  tx: Tx,
+  runId: string,
+  writes: readonly UpdateWrite[],
+): Promise<void> {
+  for (const write of writes) {
+    if (write.kind === "record") {
+      const { record } = write;
+      await tx
+        .insert(runStructuredValues)
+        .values({
+          runId,
+          structuredValueId: record.id,
+          kind: record.kind,
+          type: record.type,
+          payload: record.kind === "array" ? record.items : record.fields,
+        })
+        .onConflictDoUpdate({
+          target: [runStructuredValues.runId, runStructuredValues.structuredValueId],
+          set: {
+            kind: record.kind,
+            type: record.type,
+            payload: record.kind === "array" ? record.items : record.fields,
+          },
+        });
+      continue;
+    }
+
+    if (write.kind === "sourceRoot") {
+      await tx
+        .insert(runSourceValues)
+        .values({ runId, sourceId: write.sourceId, value: write.value })
+        .onConflictDoUpdate({
+          target: [runSourceValues.runId, runSourceValues.sourceId],
+          set: { value: write.value },
+        });
+      continue;
+    }
+
+    await tx
+      .update(runStructuredValues)
+      .set({
+        payload: sql`jsonb_set(${runStructuredValues.payload}, ARRAY[${write.fieldId}], ${JSON.stringify(write.value ?? null)}::jsonb)`,
+      })
+      .where(
+        and(
+          eq(runStructuredValues.runId, runId),
+          eq(runStructuredValues.structuredValueId, write.recordId),
+        ),
+      );
+  }
 }
 
 async function dispatchPerConnectionEvent(
