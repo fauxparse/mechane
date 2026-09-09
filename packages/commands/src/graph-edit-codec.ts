@@ -230,6 +230,7 @@ export interface FlatEventBinding {
   position: number;
   /** Per-kind payload; absent for kinds that take no parameters. */
   params?: Record<string, unknown> | null;
+  parameterMappings?: unknown;
 }
 
 /** One edit as a flat record: the shape both adapters exchange. */
@@ -688,6 +689,7 @@ function encodeEventBinding(binding: EventBinding): FlatEventBinding {
     cueId: binding.cueId,
     position: binding.position,
     params: binding.eventKind === "keypress" ? { ...binding.params } : null,
+    ...(binding.parameterMappings ? { parameterMappings: binding.parameterMappings } : {}),
   };
 }
 
