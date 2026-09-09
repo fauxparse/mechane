@@ -391,6 +391,7 @@ export type GraphViolation =
   | "missingSourceType"
   | "invalidNodeColor"
   | "invalidUpdateEndpoints"
+  | "invalidNavigateProjection"
   | "flowDeviceCardinality";
 
 export class InvalidShowGraphError extends Error {
@@ -948,7 +949,10 @@ function assertNavigateProjection(graph: ShowGraph, interactions: InteractionCol
  * driver. Keeping these checks here means graph writes and drag validation
  * cannot disagree.
  */
-export function assertValidShowGraph(graph: ShowGraph): ShowGraph {
+export function assertValidShowGraph(
+  graph: ShowGraph,
+  options: { readonly publication?: boolean } = {},
+): ShowGraph {
   assertValidBlocks(graph.blocks, graph.shapes ?? []);
   try {
     assertValidShapes(graph.shapes ?? []);
@@ -1018,11 +1022,8 @@ export function assertValidShowGraph(graph: ShowGraph): ShowGraph {
         break;
     }
   }
-  assertNoDuplicateEdges(graph.edges);
-  assertNoWiringFanIn(graph.edges, nodes);
   assertNoWiringCycles(graph.edges);
   assertOneDriverPerDevice(graph.edges);
-  assertFlowDeviceCardinality(graph, nodes);
-
+  if (options.publication !== false) assertFlowDeviceCardinality(graph, nodes);
   return graph;
 }

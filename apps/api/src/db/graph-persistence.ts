@@ -544,7 +544,7 @@ export async function persistGraphRows(
         : sourceDefault;
     }),
   };
-  assertValidShowGraph(graph);
+  assertValidShowGraph(graph, { publication: state === "published" });
 
   const now = new Date();
   // Locked, not just read: two batches landing at once must queue here
