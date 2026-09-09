@@ -3,6 +3,7 @@ import {
   applyUpdateWrites,
   planUpdate,
   type Action,
+  type RunState,
   type ShowGraph,
   type SourceValues,
   type StructuredValues,
@@ -53,6 +54,37 @@ export interface PlayerRunState {
   readonly navigation: PlayerNavigation;
   readonly flowSourceValues: SourceValues;
   readonly flowStructuredValues: StructuredValues;
+  readonly showSourceValues?: SourceValues;
+  readonly showStructuredValues?: StructuredValues;
+  readonly stateSequence?: number;
+  readonly optimisticOverlay?: {
+    readonly state: RunState;
+    readonly appliedStateSequence: number;
+  };
+}
+export interface PlayerSnapshot {
+  readonly stateSequence: number;
+  readonly sourceValues: SourceValues;
+  readonly structuredValues: StructuredValues;
+}
+
+/** Merges Show state without replacing the per-connection Instance layer. */
+export function mergePlayerSnapshot(
+  state: PlayerRunState,
+  snapshot: PlayerSnapshot,
+): PlayerRunState {
+  if ((state.stateSequence ?? -1) >= snapshot.stateSequence) return state;
+  const overlay =
+    state.optimisticOverlay && snapshot.stateSequence < state.optimisticOverlay.appliedStateSequence
+      ? state.optimisticOverlay
+      : undefined;
+  return {
+    ...state,
+    showSourceValues: snapshot.sourceValues,
+    showStructuredValues: snapshot.structuredValues,
+    stateSequence: snapshot.stateSequence,
+    optimisticOverlay: overlay,
+  };
 }
 
 export type PlayerCueExecution =
