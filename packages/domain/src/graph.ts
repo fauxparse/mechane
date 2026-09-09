@@ -872,12 +872,23 @@ function assertFlowDeviceCardinality(
   graph: ShowGraph,
   nodes: Map<string, GraphNode>,
 ): void {
+  const flowIdsWithLocalState = new Set(
+    graph.nodes
+      .filter((node) => node.kind === "source" && node.parentId !== null)
+      .map((node) => node.parentId),
+  );
   const cardinalities = new Map<string, { perConnection: boolean; deviceId: string }>();
   for (const edge of graph.edges) {
     if (edge.kind !== "device") continue;
     const driver = nodes.get(edge.sourceId);
     const device = nodes.get(edge.targetId);
-    if (driver?.kind !== "flow" || device?.kind !== "device") continue;
+    if (
+      driver?.kind !== "flow" ||
+      device?.kind !== "device" ||
+      !flowIdsWithLocalState.has(driver.id)
+    ) {
+      continue;
+    }
     const previous = cardinalities.get(driver.id);
     if (previous && previous.perConnection !== device.perConnection) {
       throw new InvalidShowGraphError(
