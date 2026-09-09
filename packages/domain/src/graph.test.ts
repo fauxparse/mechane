@@ -554,8 +554,11 @@ describe("assertValidShowGraph", () => {
       () =>
         assertValidShowGraph(
           graph(
-            [flow("flow"), device("audience", true), device("projector")],
-            [deviceEdge("flow-audience", "flow", "audience"), deviceEdge("flow-projector", "flow", "projector")],
+            [flow("flow"), source("local", "flow"), device("audience", true), device("projector")],
+            [
+              deviceEdge("flow-audience", "flow", "audience"),
+              deviceEdge("flow-projector", "flow", "projector"),
+            ],
           ),
         ),
       "flowDeviceCardinality",
