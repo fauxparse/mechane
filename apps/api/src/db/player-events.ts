@@ -1,8 +1,10 @@
 import {
   InvalidInteractionError,
   PAIRING_CODE_PATTERN,
+  classifyUpdateActionScope,
   isStructuredValueReference,
   planUpdate,
+  resolveCueParameters,
   resolveRuntimeEvent,
   type Action,
   type BlockInstancePathSegment,
@@ -16,10 +18,7 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 
 import { readCanvas } from "./canvas";
 import { db } from "./client";
-import {
-  drainPlayerInvalidations,
-  enqueuePlayerInvalidations,
-} from "./player-invalidation-outbox";
+import { drainPlayerInvalidations, enqueuePlayerInvalidations } from "./player-invalidation-outbox";
 import { RunConfigurationError, withRunErrorLog } from "./run-errors";
 import { readShowGraph } from "./show-graph";
 import { readRunState } from "./runs";
@@ -65,7 +64,12 @@ function observationFor(
   sceneId: string,
   canvasId: string,
 ): RuntimeEventObservation | null {
-  const base = { sceneId, canvasId, elementId: input.elementId };
+  const base = {
+    sceneId,
+    canvasId,
+    elementId: input.elementId,
+    slotInstancePath: input.slotInstancePath ?? [],
+  };
   if (input.eventKind === "tap") return { ...base, eventKind: "tap" };
   if (input.eventKind === "keypress") {
     const key = (input.params as { key?: unknown } | null | undefined)?.key;
@@ -126,7 +130,6 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type PlayerEventRow = typeof playerEvents.$inferSelect;
 
 function duplicateResult(row: PlayerEventRow): PlayerEventResult {
-
   if (row.outcome === "failed") {
     return {
       kind: "duplicate",
@@ -250,6 +253,13 @@ async function dispatchUpdateAction(
   sceneId: string,
   action: Extract<Action, { kind: "update" }>,
   input: PlayerEventInput,
+  /**
+   * Cue Parameters the server resolved for itself. A Shared Device's dispatch
+   * owns its own state, so it resolves them; a per-connection Device sends
+   * them as evidence, which ADR-0018 has the server validate rather than
+   * trust as storage.
+   */
+  cueParameters?: Readonly<Record<string, unknown>>,
 ): Promise<{ result: PlayerEventResult; changed: boolean }> {
   const current = await readRunState(run.id, tx);
   const evidence = input.evidence;
@@ -277,7 +287,7 @@ async function dispatchUpdateAction(
     routedState,
     sceneId,
     action,
-    evidence?.cueParameters ?? {},
+    cueParameters ?? evidence?.cueParameters ?? {},
   );
   if (plan.kind === "failed") {
     const result: PlayerEventResult = {
@@ -473,8 +483,22 @@ async function dispatchPerConnectionEvent(
     await recordEvent(tx, run.id, device.showId, device.id, input, result);
     return result;
   }
-  const action = plan.actions[0];
-  if (action?.kind === "update") {
+  // ADR-0018: the Player owns the current values of Flow-local Sources on a
+  // per-connection Device, so an Instance-scoped write is acknowledged and
+  // never applied here. Without this the server would both fail the Action it
+  // has no operand for and, given one, store one connection's value where
+  // every connection reads it.
+  const serverActions = plan.actions.filter(
+    (candidate) =>
+      candidate.kind !== "update" || classifyUpdateActionScope(graph, candidate) !== "instance",
+  );
+  const action = serverActions[0];
+  if (!action) {
+    const result: PlayerEventResult = { kind: "accepted", eventId: input.eventId };
+    await recordEvent(tx, run.id, device.showId, device.id, input, result);
+    return result;
+  }
+  if (action.kind === "update") {
     const update = await dispatchUpdateAction(
       tx,
       device,
@@ -488,11 +512,10 @@ async function dispatchPerConnectionEvent(
     return update.result;
   }
   const target =
-    action?.kind === "navigate"
+    action.kind === "navigate"
       ? graph.nodes.find((node) => node.id === action.targetSceneId)
       : undefined;
   if (
-    !action ||
     action.kind !== "navigate" ||
     action.cueId !== plan.cue.id ||
     !target ||
@@ -507,7 +530,7 @@ async function dispatchPerConnectionEvent(
       sceneId: observedScene.id,
       elementId: input.elementId,
       cueId: plan.cue.id,
-      actionId: action?.id,
+      actionId: action.id,
       publishedGraphVersion: graph.version,
     });
   }
@@ -701,6 +724,27 @@ export async function dispatchPlayerEvent(
           });
         }
         if (action.kind === "update") {
+          // A Shared Device's Instance state is the server's, so it resolves
+          // the Cue Parameters from the Canvas and the Run rather than
+          // accepting the Player's evidence for them.
+          const resolved = resolveCueParameters({
+            graph,
+            canvas,
+            sceneId: state.activeSceneId,
+            state: await readRunState(run.id, tx),
+            blocks: graph.blocks ?? [],
+            parameters: plan.parameters,
+          });
+          if (resolved.kind === "failed") {
+            const result: PlayerEventResult = {
+              kind: "failed",
+              eventId: input.eventId,
+              actionId: action.id,
+              reason: resolved.reason,
+            };
+            await recordEvent(tx, run.id, device.showId, device.id, input, result);
+            return result;
+          }
           const update = await dispatchUpdateAction(
             tx,
             device,
@@ -709,6 +753,7 @@ export async function dispatchPlayerEvent(
             state.activeSceneId,
             action,
             input,
+            resolved.values,
           );
           if (update.changed) invalidationScope = { showId: device.showId, deviceId: device.id };
           return update.result;

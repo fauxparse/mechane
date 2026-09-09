@@ -1,7 +1,13 @@
 import {
   assertValidCanvas,
   assertValidShowGraph,
+  composeInstanceView,
+  defaultSourceValueTemplates,
   defaultSourceValues,
+  materializeInstanceState,
+  materializeRunState,
+  resolveCueParameters,
+  resolveRuntimeEvent,
   resolveSlotInstances,
   sceneVariableValues,
 } from "@mechane/domain";
@@ -9,6 +15,7 @@ import type { Element } from "@mechane/domain";
 import { describe, expect, it } from "vitest";
 
 import {
+  AUDIENCE_FLOW_ID,
   AUDIENCE_VARIABLE_ID,
   CANDIDATE_BUTTON_VARIABLE_ID,
   CANDIDATE_IMAGE_FIELD_ID,
@@ -19,7 +26,9 @@ import {
   CANDIDATE_SOURCE_ID,
   CANDIDATE_VOTES_FIELD_ID,
   CANDIDATES,
+  CHOOSE_CANDIDATE_CUE_ID,
   CONFIRMATION_SCENE_ID,
+  CONFIRMATION_VARIABLE_ID,
   SELECTED_SOURCE_ID,
   seedBlockCanvasPosition,
   seedCanvasPosition,
@@ -114,7 +123,9 @@ describe("Voting seed", () => {
     const canvases = votingCanvases();
     expect(Object.keys(canvases)).toHaveLength(4);
     for (const canvas of Object.values(canvases))
-      expect(() => assertValidCanvas(canvas as Parameters<typeof assertValidCanvas>[0])).not.toThrow();
+      expect(() =>
+        assertValidCanvas(canvas as Parameters<typeof assertValidCanvas>[0]),
+      ).not.toThrow();
     expect(canvases[CANDIDATE_LIST_SCENE_ID]?.root.sizing).toMatchObject({
       width: { mode: "fixed", value: 360 },
       height: { mode: "fixed", value: 720 },
@@ -298,6 +309,85 @@ describe("Voting seed", () => {
     expect(seedCanvasPosition(1)).toEqual({ x: 800, y: 0 });
     expect(seedBlockCanvasPosition(0)).toEqual({ x: 0, y: 900 });
     expect(seedBlockCanvasPosition(1)).toEqual({ x: 0, y: 1400 });
+  });
+
+  it("shows the selected Candidate's name and image on the confirmation screen", () => {
+    const children = votingCanvases()[CONFIRMATION_SCENE_ID]?.root.children ?? [];
+    expect(children.find((child) => child.id === "confirmation-selected")).toMatchObject({
+      content: {
+        kind: "variable",
+        variableId: CONFIRMATION_VARIABLE_ID,
+        fieldPath: [CANDIDATE_NAME_FIELD_ID],
+      },
+    });
+    expect(children.find((child) => child.id === "confirmation-image")).toMatchObject({
+      type: "image",
+      image: {
+        kind: "variable",
+        variableId: CONFIRMATION_VARIABLE_ID,
+        fieldPath: [CANDIDATE_IMAGE_FIELD_ID],
+      },
+    });
+    // Every sibling keeps a distinct rank, so adding the image did not
+    // collide with the buttons the Event Bindings name.
+    const ranks = children.map((child) => child.rank);
+    expect(new Set(ranks).size).toBe(ranks.length);
+  });
+
+  it("relays a CandidateButton tap to the Scene Cue that handles it", () => {
+    const graph = votingGraph();
+    const plan = resolveRuntimeEvent(graph, {
+      sceneId: CANDIDATE_LIST_SCENE_ID,
+      canvasId: "canvas_voting_candidate_list",
+      elementId: "candidate-button-root",
+      eventKind: "tap",
+      slotInstancePath: [{ slotElementId: "candidate-list-slot", index: 1 }],
+    });
+    expect(plan.kind).toBe("planned");
+    if (plan.kind !== "planned") return;
+    expect(plan.cue.id).toBe(CHOOSE_CANDIDATE_CUE_ID);
+    expect(plan.actions.map((action) => action.id)).toEqual([
+      "action_choose_candidate",
+      "action_choose_candidate_navigate",
+    ]);
+  });
+
+  it("carries the tapped Candidate's record into the Cue Parameter", () => {
+    const graph = votingGraph();
+    const templates = defaultSourceValueTemplates(graph);
+    const state = composeInstanceView(
+      materializeRunState(graph, templates),
+      materializeInstanceState(graph, AUDIENCE_FLOW_ID, templates),
+    );
+    const plan = resolveRuntimeEvent(graph, {
+      sceneId: CANDIDATE_LIST_SCENE_ID,
+      canvasId: "canvas_voting_candidate_list",
+      elementId: "candidate-button-root",
+      eventKind: "tap",
+      slotInstancePath: [{ slotElementId: "candidate-list-slot", index: 1 }],
+    });
+    if (plan.kind !== "planned") throw new Error("Candidate tap did not resolve.");
+    const canvas = votingCanvases()[CANDIDATE_LIST_SCENE_ID];
+    if (!canvas) throw new Error("Candidate list Canvas is missing.");
+    const resolved = resolveCueParameters({
+      graph,
+      canvas,
+      sceneId: CANDIDATE_LIST_SCENE_ID,
+      state,
+      blocks: graph.blocks ?? [],
+      parameters: plan.parameters,
+    });
+    expect(resolved.kind).toBe("resolved");
+    if (resolved.kind !== "resolved") return;
+    // The Parameter carries the reference, so the Update that follows writes
+    // the seeded Candidate rather than a detached copy of it.
+    const selected = resolved.values["selectedCandidate"];
+    expect(selected).toEqual({ ref: expect.any(String) });
+    const record = state.structuredValues[(selected as { ref: string }).ref];
+    expect(record?.kind).toBe("shape");
+    expect(record?.kind === "shape" ? record.fields[CANDIDATE_NAME_FIELD_ID] : null).toBe(
+      CANDIDATES[1].name,
+    );
   });
 
   it("exports the Voting seed contract", () => {

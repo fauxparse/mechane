@@ -1,4 +1,10 @@
-import { resolveRuntimeEvent, type RuntimeEventObservation } from "@mechane/domain";
+import {
+  composeInstanceView,
+  resolveCueParameters,
+  resolveRuntimeEvent,
+  type BlockInstancePathSegment,
+  type RuntimeEventObservation,
+} from "@mechane/domain";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PlayerSession, PlayerState } from "./api";
 import {
@@ -27,7 +33,7 @@ export function usePlayerNavigation(
   baseState: PlayerState,
   pairingCode: string,
 ): NavigationRuntime & {
-  onElementTap: (elementId: string) => void;
+  onElementTap: (elementId: string, slotInstancePath: readonly BlockInstancePathSegment[]) => void;
   onKeyPress: (key: string) => boolean;
   onTakeOver: () => void;
 } {
@@ -118,6 +124,27 @@ export function usePlayerNavigation(
       if (plan.kind !== "planned") return false;
       const currentState = runtime.store.read();
       if (!currentState) return false;
+      // Show scope and Instance scope composed as ADR-0018 requires, so a
+      // Parameter relayed out of a Slot carries the reference the Player
+      // rendered rather than a copy of the value.
+      const parameters = resolveCueParameters({
+        graph: runtime.session.graph,
+        canvas: runtime.session.canvas,
+        sceneId: plan.sceneId,
+        state: composeInstanceView(
+          {
+            sourceValues: runtime.session.run?.sourceValues ?? {},
+            structuredValues: runtime.session.run?.structuredValues ?? {},
+          },
+          {
+            sourceValues: currentState.flowSourceValues,
+            structuredValues: currentState.flowStructuredValues,
+          },
+        ),
+        blocks: runtime.session.blocks ?? [],
+        parameters: plan.parameters,
+      });
+      if (parameters.kind !== "resolved") return false;
       const target = plan.actions.find(
         (action) =>
           action.kind === "navigate" &&
@@ -128,6 +155,7 @@ export function usePlayerNavigation(
         runtime.session.graph,
         plan.actions,
         plan.sceneId,
+        parameters.values,
       );
       if (execution.kind === "failed") return false;
       if (
@@ -161,33 +189,35 @@ export function usePlayerNavigation(
           ? {
               evidence: {
                 sourceValues: nextState.flowSourceValues,
-                cueParameters: {},
+                cueParameters: parameters.values,
               },
             }
           : {}),
       });
       if (submission && execution.showActions.length > 0) {
-        void submission.then((result) => {
-          if (result.kind !== "failed" && result.kind !== "rejected") {
-            retryEventId.current = null;
-            return;
-          }
-          if (runtime.store?.replace(currentState)) {
-            setRuntime({
-              status: currentState.navigation.kind === "scene" ? "playing" : "not-ready",
-              session: sessionForState(runtime.session, currentState),
-              store: runtime.store,
-            });
-          }
-        }).catch(() => {
-          if (runtime.store?.replace(currentState)) {
-            setRuntime({
-              status: currentState.navigation.kind === "scene" ? "playing" : "not-ready",
-              session: sessionForState(runtime.session, currentState),
-              store: runtime.store,
-            });
-          }
-        });
+        void submission
+          .then((result) => {
+            if (result.kind !== "failed" && result.kind !== "rejected") {
+              retryEventId.current = null;
+              return;
+            }
+            if (runtime.store?.replace(currentState)) {
+              setRuntime({
+                status: currentState.navigation.kind === "scene" ? "playing" : "not-ready",
+                session: sessionForState(runtime.session, currentState),
+                store: runtime.store,
+              });
+            }
+          })
+          .catch(() => {
+            if (runtime.store?.replace(currentState)) {
+              setRuntime({
+                status: currentState.navigation.kind === "scene" ? "playing" : "not-ready",
+                session: sessionForState(runtime.session, currentState),
+                store: runtime.store,
+              });
+            }
+          });
       } else {
         void submission?.catch(() => undefined);
       }
@@ -197,12 +227,13 @@ export function usePlayerNavigation(
   );
 
   const onElementTap = useCallback(
-    (elementId: string) => {
+    (elementId: string, slotInstancePath: readonly BlockInstancePathSegment[]) => {
       navigateFor((sceneId, canvasId) => ({
         sceneId,
         canvasId,
         elementId,
         eventKind: "tap",
+        slotInstancePath,
       }));
     },
     [navigateFor],

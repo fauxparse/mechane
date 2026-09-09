@@ -3,7 +3,12 @@ name: Voting
 description: An app where audience members can vote on their phones, and the results are tallied and displayed on a projector
 ---
 
-**Note:** Some of the functionality below (notably navigation and events) is currently not implemented. **This is fine.** Just build as much as you can and leave the rest, with the assumption that future iterations will build it out more fully.
+**Note:** Some of the functionality below is not implemented yet. **This is fine.** Build as much as you can and leave the rest, on the assumption that future iterations will fill it in.
+
+Events and navigation do work, including a tap inside a Block instance: tapping a candidate button sets `selected` and moves to the confirmation screen (#653). Two things below still do not work, and the seed should keep describing them as the Show wants them rather than working around them:
+
+- The confirmation screen cannot display the selected candidate's name or image. A Player renders Show-scoped state only, so a Scene Variable wired to a Flow-local Source reads as empty (#654).
+- Confirming a vote does not move the projector tally. The increment addresses a Show record through a Flow-local Source, and that Update is applied to the Player's own state instead of being sent to the server (#655).
 
 # Shapes
 
