@@ -11,6 +11,7 @@
 // writes the `devices` table.
 import { randomInt } from "node:crypto";
 
+import { CODE_ALPHABET } from "@mechane/domain";
 import type { DeviceNode, GraphNode } from "@mechane/domain";
 import { and, eq, inArray, isNotNull, isNull, notInArray } from "drizzle-orm";
 
@@ -26,20 +27,6 @@ export interface StoredDevice {
 }
 
 const CODE_LENGTH = 5;
-
-/**
- * The alphabet a pairing code is drawn from: uppercase letters and digits,
- * minus the four characters that read as each other. `I`/`L` vs `1`, and
- * `O` vs `0` — the letters go, the digits stay, so a code read aloud over
- * a headset or squinted at from the back of a venue can only be typed one
- * way. (`1` survives because with `I` and `L` gone nothing collides with
- * it.)
- *
- * 32 characters, which is not a coincidence worth relying on but is worth
- * noting: 32^5 is about 33.5 million codes, against 10^6 for the six
- * digits this replaces. Shorter to read out *and* 33× harder to guess.
- */
-const CODE_ALPHABET = "123456789ABCDEFGHJKMNPQRSTUVWXYZ";
 
 /**
  * How many codes to try before giving up. Collisions are drawn against every

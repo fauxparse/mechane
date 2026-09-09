@@ -8,7 +8,7 @@
 // table is expected to carry a `userId` column referencing `user.id`, per the
 // single-user ownership model (PRD.md §1, §9) — see @mechane/domain's
 // `ownership` module for the shared invariant this schema exists to support.
-import { DEFAULT_THEME_PALETTE, generateId } from "@mechane/domain";
+import { DEFAULT_THEME_PALETTE, generateId, PAIRING_CODE_PATTERN } from "@mechane/domain";
 import { sql } from "drizzle-orm";
 import {
   boolean,
@@ -639,7 +639,7 @@ export const devices = pgTable(
     // Database validation mirrors the human-readable pairing alphabet.
     check(
       "devices_pairing_code_is_unambiguous",
-      sql`${table.pairingCode} ~ '^[1-9A-HJKMNP-Z]{5}$'`,
+      sql`${table.pairingCode} ~ ${sql.raw(`'${PAIRING_CODE_PATTERN.source}'`)}`,
     ),
   ],
 );

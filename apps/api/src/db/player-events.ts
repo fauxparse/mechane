@@ -1,5 +1,6 @@
 import {
   InvalidInteractionError,
+  PAIRING_CODE_PATTERN,
   planUpdate,
   resolveRuntimeEvent,
   type Action,
@@ -26,7 +27,6 @@ import {
   runStructuredValues,
 } from "./schema";
 
-const PAIRING_CODE_PATTERN = /^[A-HJ-KM-NP-Z1-9]{5}$/;
 const EVENT_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export interface PlayerEventInput {

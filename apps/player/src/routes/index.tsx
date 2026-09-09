@@ -1,3 +1,4 @@
+import { PAIRING_CODE_PATTERN } from "@mechane/domain";
 import { Button } from "@mechane/design-system";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -5,7 +6,6 @@ import { CodeInput } from "../components/join/CodeInput";
 import { SplashScreen } from "../components/join/SplashScreen";
 
 const CODE_LENGTH = 5;
-const CODE_PATTERN = /^[A-HJ-KM-NP-Z1-9]{5}$/;
 
 export const Route = createFileRoute("/")({
   component: PlayerHome,
@@ -15,7 +15,7 @@ function PlayerHome() {
   const navigate = useNavigate();
   const [code, setCode] = useState("");
   const normalizedCode = code.trim().toUpperCase();
-  const valid = CODE_PATTERN.test(normalizedCode);
+  const valid = PAIRING_CODE_PATTERN.test(normalizedCode);
 
   function continueToPlayer() {
     if (!valid) return;

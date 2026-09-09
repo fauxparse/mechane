@@ -1,3 +1,4 @@
+import { CODE_ALPHABET } from "@mechane/domain";
 import { useRef } from "react";
 
 type CodeInputProps = {
@@ -5,6 +6,8 @@ type CodeInputProps = {
   length?: number;
   onChange: (value: string) => void;
 };
+
+const NON_PAIRING_CODE_CHARACTERS = new RegExp(`[^${CODE_ALPHABET}]`, "g");
 
 export const CodeInput = ({ value, length = 5, onChange }: CodeInputProps) => {
   const inputs = useRef<HTMLInputElement[]>([]);
@@ -45,7 +48,7 @@ export const CodeInput = ({ value, length = 5, onChange }: CodeInputProps) => {
 
   const handleChange = (index: number, character: string) => {
     const nextCharacter = character.slice(-1).toUpperCase();
-    if (nextCharacter && !/^[A-HJ-KM-NP-Z1-9]$/.test(nextCharacter)) return;
+    if (nextCharacter && !CODE_ALPHABET.includes(nextCharacter)) return;
     const newCode = value.slice(0, index) + nextCharacter;
     onChange(newCode);
     if (nextCharacter && index < length - 1) {
@@ -56,7 +59,7 @@ export const CodeInput = ({ value, length = 5, onChange }: CodeInputProps) => {
   const handlePaste = (pastedValue: string) => {
     const newCode = pastedValue
       .toUpperCase()
-      .replace(/[^A-HJ-KM-NP-Z1-9]/g, "")
+      .replace(NON_PAIRING_CODE_CHARACTERS, "")
       .slice(0, length);
     if (newCode.length > 0) {
       onChange(newCode);

@@ -260,12 +260,12 @@ export async function drainPlayerInvalidations(
       await provider
         .channel(playerChannel(row.deviceId))
         .publish("player.updated", { stateSequence: row.stateSequence });
-      if (await acknowledge(row, resolved.workerId, new Date())) delivered += 1;
+      if (await acknowledge(row, resolved.workerId, resolved.now)) delivered += 1;
     } catch (error) {
-      if (await reschedule(row, resolved.workerId, new Date(), error)) failed += 1;
+      if (await reschedule(row, resolved.workerId, resolved.now, error)) failed += 1;
     }
   }
-  await cleanupDelivered(new Date());
+  await cleanupDelivered(resolved.now);
   return { claimed: rows.length, delivered, failed };
 }
 

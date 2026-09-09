@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import type { RealtimeChannel, RealtimeMessage, RealtimeProvider } from "@mechane/realtime";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { db } from "./client";
@@ -45,7 +45,8 @@ async function outboxRows() {
   return db
     .select()
     .from(playerInvalidationOutbox)
-    .where(eq(playerInvalidationOutbox.showId, showId));
+    .where(eq(playerInvalidationOutbox.showId, showId))
+    .orderBy(asc(playerInvalidationOutbox.createdAt), asc(playerInvalidationOutbox.id));
 }
 
 beforeEach(async () => {
@@ -132,10 +133,11 @@ describe.sequential("player invalidation outbox", () => {
   it("reschedules provider failures and reclaims expired leases", async () => {
     await createShow();
     await db.transaction((tx) => enqueuePlayerInvalidations(tx, showId));
+    const now = new Date();
     const failing = providerFor(async () => {
       throw new Error("provider unavailable");
     });
-    expect(await drainPlayerInvalidations({ provider: failing })).toMatchObject({
+    expect(await drainPlayerInvalidations({ provider: failing, now })).toMatchObject({
       claimed: 2,
       delivered: 0,
       failed: 2,
@@ -146,10 +148,10 @@ describe.sequential("player invalidation outbox", () => {
 
     await db
       .update(playerInvalidationOutbox)
-      .set({ nextAttemptAt: new Date(Date.now() - 1) })
+      .set({ nextAttemptAt: new Date(now.getTime() - 1) })
       .where(eq(playerInvalidationOutbox.id, failed.id));
     const successful = providerFor(async () => undefined);
-    expect(await drainPlayerInvalidations({ provider: successful })).toMatchObject({
+    expect(await drainPlayerInvalidations({ provider: successful, now })).toMatchObject({
       claimed: 1,
       delivered: 1,
       failed: 0,
@@ -163,10 +165,10 @@ describe.sequential("player invalidation outbox", () => {
       .set({
         status: "leased",
         leaseOwner: "dead-worker",
-        leaseExpiresAt: new Date(Date.now() - 1),
+        leaseExpiresAt: new Date(now.getTime() - 1),
       })
       .where(eq(playerInvalidationOutbox.id, leased.id));
-    const reclaimed = await drainPlayerInvalidations({ provider: successful });
+    const reclaimed = await drainPlayerInvalidations({ provider: successful, now });
     expect(reclaimed.claimed).toBeGreaterThanOrEqual(1);
     expect(reclaimed.delivered).toBe(reclaimed.claimed);
     expect(reclaimed.failed).toBe(0);
