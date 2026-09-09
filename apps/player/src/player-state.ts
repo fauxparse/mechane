@@ -1,6 +1,8 @@
 import {
   PAIRING_CODE_PATTERN,
   applyUpdateWrites,
+  defaultSourceValueTemplates,
+  materializeInstanceState,
   planUpdate,
   type Action,
   type RunState,
@@ -249,6 +251,22 @@ export function reconcilePlayerRunState(
     kind: "reset",
     state: nextState(defaultNavigation),
     reason: driver.defaultSceneId ? "scene-invalid" : "missing-default",
+  };
+}
+/** Materializes defaults for newly introduced Flow-local Sources without overwriting live values. */
+export function initializePlayerInstanceState(
+  state: PlayerRunState,
+  graph: ShowGraph,
+): PlayerRunState {
+  const defaults = materializeInstanceState(
+    graph,
+    state.flowId,
+    defaultSourceValueTemplates(graph),
+  );
+  return {
+    ...state,
+    flowSourceValues: { ...defaults.sourceValues, ...state.flowSourceValues },
+    flowStructuredValues: { ...defaults.structuredValues, ...state.flowStructuredValues },
   };
 }
 

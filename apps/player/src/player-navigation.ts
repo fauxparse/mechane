@@ -4,6 +4,7 @@ import type { PlayerSession, PlayerState } from "./api";
 import {
   applyPlayerCue,
   clearPlayerDeviceState,
+  initializePlayerInstanceState,
   openPlayerStateStore,
   playerRunScope,
   reconcilePlayerRunState,
@@ -72,18 +73,19 @@ export function usePlayerNavigation(
       store.close();
       return;
     }
-    store.replace(reconciliation.state);
+    const playerState = initializePlayerInstanceState(reconciliation.state, session.graph);
+    store.replace(playerState);
     store.claim();
     setRuntime({
-      status: reconciliation.state.navigation.kind === "scene" ? "playing" : "not-ready",
-      session: sessionForState(session, reconciliation.state),
+      status: playerState.navigation.kind === "scene" ? "playing" : "not-ready",
+      session: sessionForState(session, playerState),
       store,
     });
     const unsubscribe = store.subscribe(() => {
       if (store.getStatus().ownership === "superseded") {
         setRuntime({
           status: "superseded",
-          session: sessionForState(session, reconciliation.state),
+          session: sessionForState(session, playerState),
           store,
         });
       }
