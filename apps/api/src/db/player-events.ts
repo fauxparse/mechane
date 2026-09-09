@@ -16,7 +16,10 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 
 import { readCanvas } from "./canvas";
 import { db } from "./client";
-import { drainPlayerInvalidations, enqueuePlayerInvalidation } from "./player-invalidation-outbox";
+import {
+  drainPlayerInvalidations,
+  enqueuePlayerInvalidations,
+} from "./player-invalidation-outbox";
 import { RunConfigurationError, withRunErrorLog } from "./run-errors";
 import { readShowGraph } from "./show-graph";
 import { readRunState } from "./runs";
@@ -481,7 +484,7 @@ async function dispatchPerConnectionEvent(
       action,
       input,
     );
-    if (update.changed) await enqueuePlayerInvalidation(tx, device.showId, device.id);
+    if (update.changed) await enqueuePlayerInvalidations(tx, device.showId);
     return update.result;
   }
   const target =
@@ -744,7 +747,7 @@ export async function dispatchPlayerEvent(
             .update(runDeviceStates)
             .set({ activeSceneId: target.id, updatedAt: new Date() })
             .where(and(eq(runDeviceStates.runId, run.id), eq(runDeviceStates.deviceId, device.id)));
-          await enqueuePlayerInvalidation(tx, device.showId, device.id);
+          await enqueuePlayerInvalidations(tx, device.showId, [device.id]);
         }
         await recordEvent(tx, run.id, device.showId, device.id, input, result);
         return result;
