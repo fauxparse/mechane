@@ -144,7 +144,11 @@ function toCue(
 
 function toEventBinding(row: EventBindingRow): EventBinding {
   try {
-    return decodeEventBinding(row);
+    const parameterMappings =
+      Array.isArray(row.parameterMappings) && row.parameterMappings.length === 0
+        ? undefined
+        : row.parameterMappings;
+    return decodeEventBinding({ ...row, parameterMappings });
   } catch (error) {
     if (error instanceof InvalidInteractionError) {
       throw new Error(`Stored Event Binding "${row.id}" is invalid: ${error.message}`);
