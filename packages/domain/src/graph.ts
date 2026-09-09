@@ -1022,6 +1022,8 @@ export function assertValidShowGraph(
         break;
     }
   }
+  assertNoDuplicateEdges(graph.edges);
+  assertNoWiringFanIn(graph.edges, nodes);
   assertNoWiringCycles(graph.edges);
   assertOneDriverPerDevice(graph.edges);
   if (options.publication !== false) assertFlowDeviceCardinality(graph, nodes);
