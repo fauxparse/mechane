@@ -338,9 +338,7 @@ export function votingGraph(): ShowGraph {
     name: "Confirmation screen",
     parentId: AUDIENCE_FLOW_ID,
     position: { x: 340, y: 74 },
-    variables: [
-      { id: CONFIRMATION_VARIABLE_ID, name: "Selected", type: candidateType },
-    ],
+    variables: [{ id: CONFIRMATION_VARIABLE_ID, name: "Selected", type: candidateType }],
   };
   const thankYouScene = {
     id: THANK_YOU_SCENE_ID,
@@ -381,7 +379,9 @@ export function votingGraph(): ShowGraph {
       name: "Choose candidate",
       owner: { kind: "scene" as const, sceneId: CANDIDATE_LIST_SCENE_ID },
       actionIds: ["action_choose_candidate", "action_choose_candidate_navigate"],
-      parameters: [{ id: "selectedCandidate", name: "Candidate", type: candidateType, position: 0 }],
+      parameters: [
+        { id: "selectedCandidate", name: "Candidate", type: candidateType, position: 0 },
+      ],
     },
     {
       id: CONFIRM_YES_CUE_ID,
@@ -622,9 +622,22 @@ export function votingCanvases(): SeedCanvases {
           "Selected candidate",
           30,
         ),
-        text("confirmation-message", "c", "Are you sure?", "Message", 28),
-        button("confirmation-yes", "d", "Yes", "Yes", "#16A34A"),
-        button("confirmation-no", "e", "No", "No", "#DC2626"),
+        {
+          id: "confirmation-image",
+          type: "image",
+          rank: "c",
+          name: "Selected candidate image",
+          image: {
+            kind: "variable",
+            variableId: CONFIRMATION_VARIABLE_ID,
+            fieldPath: [CANDIDATE_IMAGE_FIELD_ID],
+          },
+          sizing: { width: { mode: "fixed", value: 160 }, height: { mode: "fixed", value: 160 } },
+          cornerRadius: 16,
+        },
+        text("confirmation-message", "d", "Are you sure?", "Message", 28),
+        button("confirmation-yes", "e", "Yes", "Yes", "#16A34A"),
+        button("confirmation-no", "f", "No", "No", "#DC2626"),
       ]),
     },
     [THANK_YOU_SCENE_ID]: {

@@ -4,6 +4,7 @@ import type { ShowGraph } from "@mechane/domain";
 import type { PlayerDriver, PlayerRunState, PlayerStorageAdapter } from "./player-state";
 import { sceneVariableValues } from "./player-state";
 import {
+  applyPlayerCue,
   mergePlayerSnapshot,
   openPlayerStateStore,
   playerRunScope,
@@ -431,5 +432,135 @@ describe("per-connection Player state", () => {
         structuredValues: {},
       }).optimisticOverlay,
     ).toBeUndefined();
+  });
+});
+
+// A Flow-local Source holding a reference into a Show-owned record: the shape
+// the Voting Show's `selected` takes once a Candidate has been chosen.
+const CANDIDATE = "xcand234";
+
+const routingGraph = {
+  shapes: [
+    {
+      id: "candidate",
+      name: "Candidate",
+      fields: [{ id: "votes", name: "Votes", type: "number", required: true, defaultValue: 0 }],
+    },
+  ],
+  nodes: [
+    {
+      id: "source_candidates",
+      kind: "source",
+      name: "Candidates",
+      parentId: null,
+      position: { x: 0, y: 0 },
+      type: { kind: "array", of: { kind: "shape", shapeId: "candidate" } },
+    },
+    {
+      id: "flow_vote",
+      kind: "flow",
+      name: "Vote",
+      parentId: null,
+      position: { x: 0, y: 0 },
+      defaultSceneId: "scene_confirm",
+    },
+    {
+      id: "source_selected",
+      kind: "source",
+      name: "Selected",
+      parentId: "flow_vote",
+      position: { x: 0, y: 0 },
+      type: { kind: "shape", shapeId: "candidate" },
+    },
+    {
+      id: "scene_confirm",
+      kind: "scene",
+      name: "Confirm",
+      parentId: "flow_vote",
+      position: { x: 0, y: 0 },
+      variables: [],
+    },
+  ],
+  edges: [],
+  sourceFieldDefaults: [{ nodeId: "source_selected", fieldPath: [], value: null }],
+} as unknown as ShowGraph;
+
+const showState = {
+  sourceValues: { source_candidates: { ref: "xarr2345" } },
+  structuredValues: {
+    xarr2345: {
+      id: "xarr2345",
+      kind: "array",
+      type: { kind: "array", of: { kind: "shape", shapeId: "candidate" } },
+      items: [{ ref: CANDIDATE }],
+    },
+    [CANDIDATE]: {
+      id: CANDIDATE,
+      kind: "shape",
+      type: { kind: "shape", shapeId: "candidate" },
+      fields: { votes: 3 },
+    },
+  },
+} as never;
+
+const votedState = {
+  schemaVersion: 1,
+  publishedGraphVersion: 1,
+  flowId: "flow_vote",
+  navigation: { kind: "scene", sceneId: "scene_confirm" },
+  flowSourceValues: { source_selected: { ref: CANDIDATE } },
+  flowStructuredValues: {},
+} as unknown as PlayerRunState;
+
+describe("applyPlayerCue action routing", () => {
+  const adjustVotes = {
+    id: "action_confirm_yes",
+    cueId: "cue_confirm",
+    kind: "update" as const,
+    target: { sourceId: "source_selected", fieldPath: ["votes"] },
+    operation: {
+      kind: "adjust" as const,
+      operand: { kind: "literal" as const, value: { kind: "number" as const, value: 1 } },
+    },
+  };
+
+  it("sends a write that lands in a Show record to the server", () => {
+    const execution = applyPlayerCue(
+      votedState,
+      routingGraph,
+      [adjustVotes],
+      "scene_confirm",
+      {},
+      showState,
+    );
+    expect(execution.kind).toBe("applied");
+    if (execution.kind !== "applied") return;
+    // The Source naming the holder is Flow-local, but the holder itself is a
+    // Show-owned record, so the increment is the server's to apply.
+    expect(execution.showActions.map((action) => action.id)).toEqual(["action_confirm_yes"]);
+    expect(execution.state.flowStructuredValues).toEqual({});
+  });
+
+  it("keeps a write to the Flow-local Source itself on the Player", () => {
+    const execution = applyPlayerCue(
+      votedState,
+      routingGraph,
+      [
+        {
+          id: "action_clear",
+          cueId: "cue_confirm",
+          kind: "update",
+          target: { sourceId: "source_selected", fieldPath: [] },
+          operation: { kind: "reset" },
+        },
+      ],
+      "scene_confirm",
+      {},
+      showState,
+    );
+    expect(execution.kind).toBe("applied");
+    if (execution.kind !== "applied") return;
+    expect(execution.showActions).toEqual([]);
+    expect(execution.state.flowSourceValues["source_selected"]).not.toEqual({ ref: CANDIDATE });
   });
 });

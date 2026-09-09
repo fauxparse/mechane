@@ -168,6 +168,78 @@ describe("Show graph lifecycle", () => {
       expect.objectContaining({ canvasId: publishedCanvas?.id, elementId: "button_red" }),
     ]);
   });
+  it("carries a Block Canvas Binding and its Slot relay through publish", async () => {
+    await createShow();
+    const base = navigationGraph("scene_red");
+    const block = emptyBlock("Swatch");
+    const blockCue = {
+      id: "cue_swatch_picked",
+      name: "Picked",
+      owner: { kind: "block" as const, blockId: block.id },
+      actionIds: [],
+    };
+    const sceneCue = {
+      id: "cue_red_pick",
+      name: "Pick",
+      owner: { kind: "scene" as const, sceneId: "scene_red" },
+      actionIds: [],
+    };
+    await writeShowGraph(showId, "draft", { ...base, blocks: [block] });
+    const blockCanvas = (await readShowGraph(showId, "draft")).blocks?.[0]?.canvas;
+    if (!blockCanvas) throw new Error("Block Canvas was not created.");
+    await writeShowGraph(showId, "draft", {
+      ...base,
+      blocks: [block],
+      cues: [blockCue, sceneCue],
+      eventBindings: [
+        {
+          id: "binding_swatch_tap",
+          canvasId: blockCanvas.id,
+          elementId: blockCanvas.root.id,
+          eventKind: "tap",
+          cueId: blockCue.id,
+          position: 0,
+        },
+      ],
+      slotEventBindings: [
+        {
+          id: "slot_binding_swatch",
+          slotElementId: "swatch_slot",
+          sourceCueId: blockCue.id,
+          targetCueId: sceneCue.id,
+          position: 0,
+          parameterMappings: [],
+        },
+      ],
+    });
+
+    const draft = await readShowGraph(showId, "draft");
+    const draftBinding = draft.eventBindings?.[0];
+    expect(draftBinding?.id).toBe("binding_swatch_tap");
+    expect(draft.slotEventBindings?.map((binding) => binding.id)).toEqual(["slot_binding_swatch"]);
+
+    // Publish used to enumerate the collections it copied and omit
+    // `slotEventBindings`, which left every Block Cue unhandled the moment a
+    // Show went live.
+    const published = await publishShowGraph(showId);
+    expect(published.slotEventBindings).toEqual([
+      expect.objectContaining({
+        id: "slot_binding_swatch",
+        sourceCueId: blockCue.id,
+        targetCueId: sceneCue.id,
+      }),
+    ]);
+    const publishedBinding = published.eventBindings?.[0];
+    expect(publishedBinding).toMatchObject({
+      id: "binding_swatch_tap",
+      elementId: blockCanvas.root.id,
+      cueId: blockCue.id,
+    });
+    // Rebound onto the published graph's own Block Canvas rather than left
+    // pointing at the draft's.
+    expect(publishedBinding?.canvasId).not.toBe(draftBinding?.canvasId);
+  });
+
   it("persists a Flow default Scene edit", async () => {
     await createShow();
     await writeShowGraph(showId, "draft", navigationGraph("scene_red"));

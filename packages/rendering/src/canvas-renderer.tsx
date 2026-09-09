@@ -10,6 +10,7 @@ import type {
   AnchorPosition,
   AspectRatioLock,
   AxisSize,
+  BlockInstancePathSegment,
   CornerRadiusElement,
   Fill,
   FrameElement,
@@ -36,7 +37,9 @@ interface RenderElementOptions {
   onImageError?: (elementId: string, url: string, event: unknown) => void;
   onTextDoubleClick?: (elementId: string, event: ReactMouseEvent<HTMLDivElement>) => void;
   onTextKeyDown?: (elementId: string, event: ReactKeyboardEvent<HTMLDivElement>) => void;
-  onElementTap?: (elementId: string) => void;
+  onElementTap?: (elementId: string, slotInstancePath: readonly BlockInstancePathSegment[]) => void;
+  /** The Slot instances descended through to reach this Element. */
+  slotPath?: readonly BlockInstancePathSegment[];
 }
 function literal<T>(value: T | undefined): T | undefined {
   return value;
@@ -315,6 +318,7 @@ function renderElement({
   onTextDoubleClick,
   onTextKeyDown,
   onElementTap,
+  slotPath = [],
 }: RenderElementOptions): ReactNode {
   const element = prepared.element;
   const parentIsAuto = parent ? isAutoLayout(parent) : false;
@@ -350,6 +354,7 @@ function renderElement({
               onTextDoubleClick,
               onTextKeyDown,
               onElementTap,
+              slotPath,
             }),
           )
       : undefined;
@@ -392,6 +397,7 @@ function renderElement({
           onTextDoubleClick,
           onTextKeyDown,
           onElementTap,
+          slotPath: [...slotPath, { slotElementId: element.id, index: instance.index }],
         }),
       );
     }
@@ -454,7 +460,7 @@ function renderElement({
       onError: resolved?.url
         ? (event: unknown) => onImageError?.(element.id, resolved.url, event)
         : undefined,
-      onClick: onElementTap ? () => onElementTap(element.id) : undefined,
+      onClick: onElementTap ? () => onElementTap(element.id, slotPath) : undefined,
     });
   }
   const content =
@@ -503,7 +509,7 @@ function renderElement({
         editing && onTextKeyDown
           ? (event: ReactKeyboardEvent<HTMLDivElement>) => onTextKeyDown(element.id, event)
           : undefined,
-      onClick: onElementTap ? () => onElementTap(element.id) : undefined,
+      onClick: onElementTap ? () => onElementTap(element.id, slotPath) : undefined,
     },
     content,
   );

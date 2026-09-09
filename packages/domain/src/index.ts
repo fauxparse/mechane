@@ -7,6 +7,7 @@ export * from "./edge-layout";
 export * from "./graph";
 export * from "./graph-facts";
 export * from "./interactions";
+export * from "./cue-parameters";
 export * from "./id";
 export * from "./ownership";
 export * from "./publish";

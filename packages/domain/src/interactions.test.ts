@@ -9,6 +9,7 @@ import {
   type Action,
   type Cue,
   type EventBinding,
+  type SlotEventBinding,
 } from "./interactions";
 
 const nodes = [
@@ -70,6 +71,191 @@ const redGreenCue = cues[0];
 const redGreenAction = actions[0];
 const redGreenBinding = eventBindings[0];
 if (!redGreenCue || !redGreenAction || !redGreenBinding) throw new Error("Fixture is incomplete.");
+
+/**
+ * A Slot on `scene_red`'s Canvas holding a Block whose own Cue relays up. The
+ * Block's tap Binding names the Block Canvas, which is what makes a Scene
+ * Canvas match impossible and the relay necessary.
+ */
+const relayBlocks = [{ id: "block_swatch", canvas: { id: "canvas_swatch" } }];
+
+const relayCues: Cue[] = [
+  ...cues,
+  {
+    id: "cue_swatch_picked",
+    name: "Picked",
+    owner: { kind: "block", blockId: "block_swatch" },
+    actionIds: [],
+    parameters: [{ id: "swatch", name: "Swatch", type: "text", position: 0 }],
+  },
+  {
+    id: "cue_red_pick",
+    name: "Pick a swatch",
+    owner: { kind: "scene", sceneId: "scene_red" },
+    actionIds: ["action_red_pick"],
+    parameters: [{ id: "picked", name: "Picked", type: "text", position: 0 }],
+  },
+];
+
+const relayActions: Action[] = [
+  ...actions,
+  {
+    id: "action_red_pick",
+    cueId: "cue_red_pick",
+    kind: "navigate",
+    targetSceneId: "scene_blue",
+  },
+];
+
+const relayEventBindings: EventBinding[] = [
+  ...eventBindings,
+  {
+    id: "binding_swatch_tap",
+    canvasId: "canvas_swatch",
+    elementId: "swatch_root",
+    eventKind: "tap",
+    cueId: "cue_swatch_picked",
+    position: 0,
+    parameterMappings: [
+      { parameterId: "swatch", source: { kind: "variable", variableId: "swatch_label" } },
+    ],
+  },
+];
+
+const relaySlotEventBindings: SlotEventBinding[] = [
+  {
+    id: "slot_binding_swatch",
+    slotElementId: "swatch_slot",
+    sourceCueId: "cue_swatch_picked",
+    targetCueId: "cue_red_pick",
+    position: 0,
+    parameterMappings: [{ sourceParameterId: "swatch", targetParameterId: "picked" }],
+  },
+];
+
+const relayGraph = {
+  nodes,
+  blocks: relayBlocks,
+  cues: relayCues,
+  actions: relayActions,
+  eventBindings: relayEventBindings,
+  slotEventBindings: relaySlotEventBindings,
+};
+
+describe("Slot Event Binding relay", () => {
+  it("relays a tap inside a Block instance to the Scene Cue that handles it", () => {
+    const plan = resolveRuntimeEvent(relayGraph, {
+      sceneId: "scene_red",
+      canvasId: "canvas_red",
+      elementId: "swatch_root",
+      eventKind: "tap",
+      slotInstancePath: [{ slotElementId: "swatch_slot", index: 2 }],
+    });
+    expect(plan).toEqual({
+      kind: "planned",
+      sceneId: "scene_red",
+      cue: relayCues[3],
+      actions: [relayActions[2]],
+      parameters: {
+        instancePath: [{ slotElementId: "swatch_slot", index: 2 }],
+        bindingMappings: [
+          { parameterId: "swatch", source: { kind: "variable", variableId: "swatch_label" } },
+        ],
+        hops: [[{ sourceParameterId: "swatch", targetParameterId: "picked" }]],
+      },
+    });
+  });
+
+  it("leaves the same Element unbound without the Slot instance path", () => {
+    expect(
+      resolveRuntimeEvent(relayGraph, {
+        sceneId: "scene_red",
+        canvasId: "canvas_red",
+        elementId: "swatch_root",
+        eventKind: "tap",
+      }),
+    ).toEqual({ kind: "unbound", reason: "unbound-event" });
+  });
+
+  it("treats an unrelayed Block Cue as inert", () => {
+    const plan = resolveRuntimeEvent(
+      { ...relayGraph, slotEventBindings: [] },
+      {
+        sceneId: "scene_red",
+        canvasId: "canvas_red",
+        elementId: "swatch_root",
+        eventKind: "tap",
+        slotInstancePath: [{ slotElementId: "swatch_slot", index: 0 }],
+      },
+    );
+    expect(plan).toEqual({ kind: "unbound", reason: "unbound-event" });
+  });
+
+  it("rejects a relay that leaves a Block Cue unhandled at the outermost Slot", () => {
+    const graph = {
+      ...relayGraph,
+      cues: relayCues.map((cue) =>
+        cue.id === "cue_red_pick"
+          ? { ...cue, owner: { kind: "block" as const, blockId: "block_swatch" }, actionIds: [] }
+          : cue,
+      ),
+      actions,
+    };
+    expect(() =>
+      resolveRuntimeEvent(graph, {
+        sceneId: "scene_red",
+        canvasId: "canvas_red",
+        elementId: "swatch_root",
+        eventKind: "tap",
+        slotInstancePath: [{ slotElementId: "swatch_slot", index: 0 }],
+      }),
+    ).toThrow(InvalidInteractionError);
+  });
+
+  it("does not let a Scene Canvas Binding answer a tap observed inside a Slot", () => {
+    expect(
+      resolveRuntimeEvent(relayGraph, {
+        sceneId: "scene_red",
+        canvasId: "canvas_red",
+        elementId: "button_green",
+        eventKind: "tap",
+        slotInstancePath: [{ slotElementId: "swatch_slot", index: 0 }],
+      }),
+    ).toEqual({ kind: "unbound", reason: "unbound-event" });
+  });
+
+  it("rejects a Block Canvas Binding that names a Scene Cue directly", () => {
+    const graph = {
+      ...relayGraph,
+      eventBindings: [
+        ...eventBindings,
+        {
+          id: "binding_swatch_tap",
+          canvasId: "canvas_swatch",
+          elementId: "swatch_root",
+          eventKind: "tap" as const,
+          cueId: "cue_red_pick",
+          position: 0,
+          parameterMappings: [
+            {
+              parameterId: "picked",
+              source: { kind: "variable" as const, variableId: "swatch_label" },
+            },
+          ],
+        },
+      ],
+    };
+    expect(() =>
+      resolveRuntimeEvent(graph, {
+        sceneId: "scene_red",
+        canvasId: "canvas_red",
+        elementId: "swatch_root",
+        eventKind: "tap",
+        slotInstancePath: [{ slotElementId: "swatch_slot", index: 0 }],
+      }),
+    ).toThrow(InvalidInteractionError);
+  });
+});
 
 describe("interaction aggregate", () => {
   it("accepts owned ordered interactions and projects Navigate edges", () => {
@@ -226,6 +412,7 @@ describe("interaction aggregate", () => {
       sceneId: "scene_red",
       cue: redGreenCue,
       actions: [redGreenAction],
+      parameters: { instancePath: [], bindingMappings: [], hops: [] },
     });
   });
 
@@ -327,7 +514,12 @@ it("validates Element Cue Parameter mappings", () => {
     parameterMappings: [{ parameterId: "candidate", source: { kind: "literal", value: "Alice" } }],
   };
   expect(
-    assertValidInteractions({ nodes, blocks: [{ id: "block_candidate" }], cues: [cue], eventBindings: [binding] }),
+    assertValidInteractions({
+      nodes,
+      blocks: [{ id: "block_candidate" }],
+      cues: [cue],
+      eventBindings: [binding],
+    }),
   ).toMatchObject({ eventBindings: [binding] });
   expect(() =>
     assertValidInteractions({
@@ -338,7 +530,6 @@ it("validates Element Cue Parameter mappings", () => {
     }),
   ).toThrow(/every Cue Parameter exactly once/);
 });
-
 
 const keypress = (
   id: string,

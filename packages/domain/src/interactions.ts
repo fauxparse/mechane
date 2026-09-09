@@ -166,6 +166,16 @@ interface RuntimeEventObservationBase {
   sceneId: string;
   canvasId: string;
   elementId: string;
+  /**
+   * Root-to-leaf Slot instance path to the Element the Event was observed on,
+   * absent or empty for an Element on the Scene Canvas itself.
+   *
+   * A Block instance renders with its Block Canvas's own Element ids, so the
+   * `elementId` alone names an Element in every instance of that Block at
+   * once. The path is what distinguishes them, and what the relay walks to
+   * find the values the tapped instance was rendered with.
+   */
+  slotInstancePath?: readonly BlockInstancePathSegment[];
 }
 
 /**
@@ -177,9 +187,32 @@ export type RuntimeEventObservation =
   | (RuntimeEventObservationBase & { eventKind: "tap" })
   | (RuntimeEventObservationBase & { eventKind: "keypress"; params: { key: string } });
 
+/**
+ * How the resolved Cue's Parameters are to be computed.
+ *
+ * Resolution is graph-only and so cannot evaluate them: a Parameter's value
+ * comes from the Variables the tapped Block instance was rendered with, which
+ * needs the Canvas and the Run state. This is the authored half, handed to
+ * `resolveCueParameters` with the other half.
+ */
+export interface RuntimeEventParameterPlan {
+  /** The Slot instance path the Event was observed at, root to leaf. */
+  readonly instancePath: readonly BlockInstancePathSegment[];
+  /** The Element's own Binding mappings, read in the innermost Canvas. */
+  readonly bindingMappings: readonly EventParameterMapping[];
+  /** One hop per Slot Event Binding travelled, innermost first. */
+  readonly hops: readonly (readonly ParameterMapping[])[];
+}
+
 export type RuntimeEventPlan =
   | { kind: "unbound"; reason: "stale-scene" | "unbound-event" }
-  | { kind: "planned"; sceneId: string; cue: Cue; actions: readonly Action[] };
+  | {
+      kind: "planned";
+      sceneId: string;
+      cue: Cue;
+      actions: readonly Action[];
+      parameters: RuntimeEventParameterPlan;
+    };
 
 /**
  * Whether a Binding answers an observation: same kind, and — for kinds that
@@ -204,9 +237,11 @@ function matchesObservation(binding: EventBinding, observation: RuntimeEventObse
 export function resolveRuntimeEvent(
   graph: {
     nodes: readonly { id: string; kind: string; parentId: string | null }[];
+    blocks?: readonly { id: string; canvas: { id: string } }[];
     cues?: readonly Cue[];
     actions?: readonly Action[];
     eventBindings?: readonly EventBinding[];
+    slotEventBindings?: readonly SlotEventBinding[];
   },
   observation: RuntimeEventObservation,
 ): RuntimeEventPlan {
@@ -217,28 +252,43 @@ export function resolveRuntimeEvent(
   if (!scene || scene.parentId === null) {
     return { kind: "unbound", reason: "stale-scene" };
   }
+  const instancePath = observation.slotInstancePath ?? [];
+  const leaf = instancePath[instancePath.length - 1];
+
+  // Which Canvas the tapped Element belongs to. On the Scene Canvas that is
+  // the observed Canvas; inside a Slot it is the contained Block's Canvas,
+  // named by the Block the Slot's own relay Bindings emit from. Deriving it
+  // that way keeps resolution graph-only: the Slot-to-Block link lives in the
+  // Canvas, which this module cannot see, but the relay the author wrote
+  // names the same Block.
+  const canvasIds = leaf
+    ? blockCanvasIds(interactions, graph.blocks ?? [], leaf.slotElementId)
+    : new Set([observation.canvasId]);
+
   let binding: EventBinding | undefined;
   for (const candidate of interactions.eventBindings) {
     if (
-      candidate.canvasId !== observation.canvasId ||
+      !canvasIds.has(candidate.canvasId) ||
       candidate.elementId !== observation.elementId ||
       !matchesObservation(candidate, observation) ||
-      (binding &&
-        (candidate.position > binding.position ||
-          (candidate.position === binding.position && candidate.id >= binding.id)))
+      !preferredBinding(candidate, binding)
     ) {
       continue;
     }
     binding = candidate;
   }
   if (!binding) return { kind: "unbound", reason: "unbound-event" };
-  const cue = interactions.cues.find((candidate) => candidate.id === binding.cueId);
-  if (!cue || cue.owner.kind !== "scene" || cue.owner.sceneId !== scene.id) {
+  const bound = interactions.cues.find((candidate) => candidate.id === binding.cueId);
+  if (!bound) {
     throw new InvalidInteractionError(
-      "bindingScene",
-      `Event Binding "${binding.id}" does not belong to Scene "${scene.id}".`,
+      "missingCue",
+      `Event Binding "${binding.id}" references missing Cue "${binding.cueId}".`,
     );
   }
+
+  const relay = relayToScene(interactions, bound, instancePath, scene.id, binding.id);
+  if (relay.kind === "unbound") return { kind: "unbound", reason: "unbound-event" };
+  const cue = relay.cue;
   const actions = cue.actionIds.map((actionId) => {
     const action = interactions.actions.find((candidate) => candidate.id === actionId);
     if (!action) {
@@ -249,7 +299,136 @@ export function resolveRuntimeEvent(
     }
     return action;
   });
-  return { kind: "planned", sceneId: scene.id, cue, actions };
+  return {
+    kind: "planned",
+    sceneId: scene.id,
+    cue,
+    actions,
+    parameters: {
+      instancePath,
+      bindingMappings: binding.parameterMappings ?? [],
+      hops: relay.hops,
+    },
+  };
+}
+
+/** Lower position wins; equal positions break on the lower id. */
+function preferredBinding(
+  candidate: { position: number; id: string },
+  incumbent: { position: number; id: string } | undefined,
+): boolean {
+  if (!incumbent) return true;
+  return (
+    candidate.position < incumbent.position ||
+    (candidate.position === incumbent.position && candidate.id < incumbent.id)
+  );
+}
+
+/**
+ * The Canvas ids of the Blocks a Slot's authored relay Bindings emit from.
+ *
+ * Normally one: a Slot instantiates exactly one Block. The set exists because
+ * that is a Canvas fact rather than a graph one, so this module cannot assume
+ * it, and matching against all of them costs nothing.
+ */
+function blockCanvasIds(
+  interactions: InteractionCollections,
+  blocks: readonly { id: string; canvas: { id: string } }[],
+  slotElementId: string,
+): ReadonlySet<string> {
+  const canvasIds = new Set<string>();
+  for (const relay of interactions.slotEventBindings) {
+    if (relay.slotElementId !== slotElementId) continue;
+    const owner = interactions.cues.find((cue) => cue.id === relay.sourceCueId)?.owner;
+    if (owner?.kind !== "block") continue;
+    const block = blocks.find((candidate) => candidate.id === owner.blockId);
+    if (block) canvasIds.add(block.canvas.id);
+  }
+  return canvasIds;
+}
+
+/**
+ * Walks a Block-owned Cue up its Slot instance path to the Scene-owned Cue
+ * that handles it, one hop per Slot travelled.
+ *
+ * A Scene-owned Cue arrives already handled and relays nowhere, which is the
+ * Scene Canvas case and the empty path.
+ */
+function relayToScene(
+  interactions: InteractionCollections,
+  bound: Cue,
+  instancePath: readonly BlockInstancePathSegment[],
+  sceneId: string,
+  bindingId: string,
+):
+  | { kind: "planned"; cue: Cue; hops: readonly (readonly ParameterMapping[])[] }
+  | { kind: "unbound"; cue: Cue; hops: readonly (readonly ParameterMapping[])[] } {
+  if (bound.owner.kind === "scene") {
+    if (bound.owner.sceneId !== sceneId || instancePath.length > 0) {
+      throw new InvalidInteractionError(
+        "bindingScene",
+        `Event Binding "${bindingId}" does not belong to Scene "${sceneId}".`,
+      );
+    }
+    return { kind: "planned", cue: bound, hops: [] };
+  }
+  if (instancePath.length === 0) {
+    throw new InvalidInteractionError(
+      "bindingScene",
+      `Event Binding "${bindingId}" names Block Cue "${bound.id}" outside a Slot.`,
+    );
+  }
+  const hops: (readonly ParameterMapping[])[] = [];
+  let cue = bound;
+  for (let depth = instancePath.length - 1; depth >= 0; depth -= 1) {
+    const segment = instancePath[depth];
+    /* c8 ignore next */
+    if (!segment) return { kind: "unbound", cue, hops };
+    const slotElementId = segment.slotElementId;
+    let relay: SlotEventBinding | undefined;
+    for (const candidate of interactions.slotEventBindings) {
+      if (
+        candidate.slotElementId !== slotElementId ||
+        candidate.sourceCueId !== cue.id ||
+        !preferredBinding(candidate, relay)
+      ) {
+        continue;
+      }
+      relay = candidate;
+    }
+    // An unrelayed Block Cue is inert, exactly like an Element with no
+    // Binding: the author has exposed an output and connected nothing to it.
+    if (!relay) return { kind: "unbound", cue, hops };
+    hops.push(relay.parameterMappings);
+    const target = interactions.cues.find((candidate) => candidate.id === relay.targetCueId);
+    if (!target) {
+      throw new InvalidInteractionError(
+        "missingCue",
+        `Slot Event Binding "${relay.id}" references missing Cue "${relay.targetCueId}".`,
+      );
+    }
+    if (target.owner.kind === "scene") {
+      // The outermost Slot is the only one whose owner is the Scene, so a
+      // Scene Cue reached before the path runs out is a relay wired across
+      // Canvas ownership.
+      if (depth !== 0 || target.owner.sceneId !== sceneId) {
+        throw new InvalidInteractionError(
+          "bindingScene",
+          `Slot Event Binding "${relay.id}" does not relay into Scene "${sceneId}".`,
+        );
+      }
+      return { kind: "planned", cue: target, hops };
+    }
+    if (depth === 0) {
+      throw new InvalidInteractionError(
+        "bindingScene",
+        `Slot Event Binding "${relay.id}" leaves Block Cue "${target.id}" unhandled.`,
+      );
+    }
+    cue = target;
+  }
+  /* c8 ignore next */
+  return { kind: "unbound", cue, hops };
 }
 
 /** The id of the edge an Action projects as. */
@@ -433,7 +612,6 @@ function assertValidEventParams(binding: EventBinding): void {
     );
   }
 }
-
 
 function assertCompleteCueParameterMappings(
   cue: Cue,
@@ -719,11 +897,7 @@ export function assertValidInteractions(graph: {
         `Event Binding "${binding.id}" references missing Cue "${binding.cueId}".`,
       );
     }
-    assertCompleteCueParameterMappings(
-      boundCue,
-      binding.parameterMappings ?? [],
-      binding.id,
-    );
+    assertCompleteCueParameterMappings(boundCue, binding.parameterMappings ?? [], binding.id);
   }
 
   const slotBindingPositions = new Map<string, Set<number>>();

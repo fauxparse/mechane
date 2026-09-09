@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 
 import { readCanvasWorkspace, writeCanvasRows } from "../../canvas";
 import { db } from "../../client";
-import { showGraphs } from "../../schema";
+import { canvases, showGraphs } from "../../schema";
 import { publishShowGraph, writeShowGraph } from "../../show-graph";
 import type { Canvas, Position, ShowGraph } from "@mechane/domain";
 
@@ -108,18 +108,20 @@ async function seedBlockCanvases(
     .from(showGraphs)
     .where(and(eq(showGraphs.showId, showId), eq(showGraphs.state, state)));
   if (!graphRow) throw new Error(`Seeded ${state} graph for Show "${showId}" was not found.`);
+  // Position only. Writing the Canvas whole would re-insert its Elements, and
+  // `graph_event_bindings` cascades on `(canvas_id, element_id)` — so a Block
+  // Canvas rewritten after its Bindings were stored takes them with it. That
+  // is what silently dropped the Voting Show's candidate button Binding: the
+  // Elements are already written by the graph write, and all this step was
+  // ever for is laying the Block Canvases out below the Scene row.
   await db.transaction(async (tx) => {
     const now = new Date();
     for (const [index, block] of blocks.entries()) {
-      await writeCanvasRows(
-        tx,
-        showId,
-        graphRow.id,
-        { blockId: block.id },
-        block.canvas,
-        now,
-        seedBlockCanvasPosition(index),
-      );
+      const position = seedBlockCanvasPosition(index);
+      await tx
+        .update(canvases)
+        .set({ positionX: position.x, positionY: position.y, updatedAt: now })
+        .where(and(eq(canvases.graphId, graphRow.id), eq(canvases.blockId, block.id)));
     }
   });
 }

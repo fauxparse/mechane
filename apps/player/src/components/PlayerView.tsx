@@ -1,3 +1,4 @@
+import { resolveRuntimeEvent, type BlockInstancePathSegment } from "@mechane/domain";
 import { CanvasRenderer, prepareCanvasPresentation } from "@mechane/rendering";
 import { useCallback, useMemo } from "react";
 import { usePlayerSession, type PlayerSession } from "../api";
@@ -21,7 +22,7 @@ function PlayerCanvas({
   onElementTap,
 }: {
   session: PlayerSession;
-  onElementTap: (elementId: string) => void;
+  onElementTap: (elementId: string, slotInstancePath: readonly BlockInstancePathSegment[]) => void;
 }) {
   const presentation = useMemo(() => {
     if (!session.canvas || !session.scene || !session.run) return null;
@@ -89,7 +90,7 @@ export function PlayerView({ code }: { code: string }) {
   const state = usePlayerSession(code);
   const navigation = usePlayerNavigation(state, code);
   const handleElementTap = useCallback(
-    (elementId: string) => {
+    (elementId: string, slotInstancePath: readonly BlockInstancePathSegment[]) => {
       if (
         state.status !== "ready" ||
         state.session.device.perConnection ||
@@ -99,13 +100,25 @@ export function PlayerView({ code }: { code: string }) {
       ) {
         return;
       }
-      const binding = (state.session.graph.eventBindings ?? []).find(
-        (candidate) =>
-          candidate.canvasId === state.session.canvas?.id &&
-          candidate.elementId === elementId &&
-          candidate.eventKind === "tap",
-      );
-      if (!binding) return;
+      // The pre-check runs the real resolver rather than its own Binding
+      // search: a tap inside a Slot is bound on the contained Block's Canvas,
+      // which no match against the Scene Canvas id can see. A corrupt graph
+      // throws here, and submitting anyway is what puts it in the Run Error
+      // log where an operator will find it.
+      let bound = true;
+      try {
+        bound =
+          resolveRuntimeEvent(state.session.graph, {
+            sceneId: state.session.scene.id,
+            canvasId: state.session.canvas.id,
+            elementId,
+            eventKind: "tap",
+            slotInstancePath,
+          }).kind === "planned";
+      } catch {
+        bound = true;
+      }
+      if (!bound) return;
       void state
         .submitEvent({
           eventId: crypto.randomUUID(),
@@ -113,6 +126,7 @@ export function PlayerView({ code }: { code: string }) {
           sceneId: state.session.scene.id,
           elementId,
           eventKind: "tap",
+          slotInstancePath,
         })
         .catch(() => undefined);
     },
