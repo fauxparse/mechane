@@ -309,6 +309,8 @@ export const schema = createSchema<GraphQLContext>({
       slotInstancePath: [BlockInstancePathInput!]
       "Per-kind payload as observed; a keypress carries { key }."
       params: JSON
+      "Resolved Instance values and Cue Parameters used by a per-connection Player."
+      evidence: JSON
     }
     type PlayerEventApplied {
       eventId: ID!

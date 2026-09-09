@@ -1,12 +1,14 @@
 import {
   InvalidInteractionError,
   PAIRING_CODE_PATTERN,
+  isStructuredValueReference,
   planUpdate,
   resolveRuntimeEvent,
   type Action,
   type BlockInstancePathSegment,
   type RuntimeEventObservation,
   type RuntimeEventPlan,
+  type RunState,
   type ShowGraph,
   type UpdateWrite,
 } from "@mechane/domain";
@@ -39,6 +41,11 @@ export interface PlayerEventInput {
   slotInstancePath?: readonly BlockInstancePathSegment[];
   /** Per-kind payload as the Player observed it; `keypress` carries `{ key }`. */
   params?: Record<string, unknown> | null;
+  /** Player-resolved values supplied as evidence for Show-scoped Actions. */
+  evidence?: {
+    sourceValues: Record<string, unknown>;
+    cueParameters: Record<string, unknown>;
+  };
 }
 
 /**
@@ -116,6 +123,7 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type PlayerEventRow = typeof playerEvents.$inferSelect;
 
 function duplicateResult(row: PlayerEventRow): PlayerEventResult {
+
   if (row.outcome === "failed") {
     return {
       kind: "duplicate",
@@ -154,6 +162,37 @@ function duplicateResult(row: PlayerEventRow): PlayerEventResult {
     resultingSceneId: row.resultingSceneId,
     reason: row.reason,
   };
+}
+function evidenceReferencesReachable(
+  graph: ShowGraph,
+  state: RunState,
+  evidence: PlayerEventInput["evidence"],
+): boolean {
+  if (!evidence) return true;
+  const reachable = new Set<string>();
+  const visit = (value: unknown): void => {
+    if (!isStructuredValueReference(value) || reachable.has(value.ref)) return;
+    const record = state.structuredValues[value.ref];
+    if (!record) return;
+    reachable.add(value.ref);
+    const values = record.kind === "array" ? record.items : Object.values(record.fields);
+    values.forEach(visit);
+  };
+  for (const source of graph.nodes) {
+    if (source.kind === "source" && source.parentId === null) visit(state.sourceValues[source.id]);
+  }
+  const containsOnlyReachableReferences = (value: unknown): boolean => {
+    if (isStructuredValueReference(value)) return reachable.has(value.ref);
+    if (Array.isArray(value)) return value.every(containsOnlyReachableReferences);
+    if (value !== null && typeof value === "object") {
+      return Object.values(value).every(containsOnlyReachableReferences);
+    }
+    return true;
+  };
+  return (
+    containsOnlyReachableReferences(evidence.sourceValues) &&
+    containsOnlyReachableReferences(evidence.cueParameters)
+  );
 }
 async function recordEvent(
   tx: Tx,
@@ -210,7 +249,33 @@ async function dispatchUpdateAction(
   input: PlayerEventInput,
 ): Promise<{ result: PlayerEventResult; changed: boolean }> {
   const current = await readRunState(run.id, tx);
-  const plan = planUpdate(graph, current, sceneId, action);
+  const evidence = input.evidence;
+  if (!evidenceReferencesReachable(graph, current, evidence)) {
+    const result: PlayerEventResult = {
+      kind: "failed",
+      eventId: input.eventId,
+      actionId: action.id,
+      reason: "detached-reference",
+    };
+    await recordEvent(tx, run.id, device.showId, device.id, input, result);
+    return { result, changed: false };
+  }
+  const evidenceSourceValues = evidence
+    ? (evidence.sourceValues as RunState["sourceValues"])
+    : undefined;
+  const routedState: RunState = evidence
+    ? {
+        sourceValues: { ...current.sourceValues, ...evidenceSourceValues },
+        structuredValues: current.structuredValues,
+      }
+    : current;
+  const plan = planUpdate(
+    graph,
+    routedState,
+    sceneId,
+    action,
+    evidence?.cueParameters ?? {},
+  );
   if (plan.kind === "failed") {
     const result: PlayerEventResult = {
       kind: "failed",
