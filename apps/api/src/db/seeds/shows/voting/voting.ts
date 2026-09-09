@@ -381,7 +381,7 @@ export function votingGraph(): ShowGraph {
       name: "Choose candidate",
       owner: { kind: "scene" as const, sceneId: CANDIDATE_LIST_SCENE_ID },
       actionIds: ["action_choose_candidate", "action_choose_candidate_navigate"],
-      parameters: [{ id: "candidate", name: "Candidate", type: candidateType, position: 0 }],
+      parameters: [{ id: "selectedCandidate", name: "Candidate", type: candidateType, position: 0 }],
     },
     {
       id: CONFIRM_YES_CUE_ID,
@@ -404,7 +404,7 @@ export function votingGraph(): ShowGraph {
       target: { sourceId: SELECTED_SOURCE_ID, fieldPath: [] },
       operation: {
         kind: "set" as const,
-        operand: { kind: "cueParameter" as const, parameterId: "candidate", fieldPath: [] },
+        operand: { kind: "cueParameter" as const, parameterId: "selectedCandidate", fieldPath: [] },
       },
     },
     {
@@ -482,7 +482,9 @@ export function votingGraph(): ShowGraph {
       sourceCueId: CANDIDATE_BUTTON_CUE_ID,
       targetCueId: CHOOSE_CANDIDATE_CUE_ID,
       position: 0,
-      parameterMappings: [{ sourceParameterId: "candidate", targetParameterId: "candidate" }],
+      parameterMappings: [
+        { sourceParameterId: "candidate", targetParameterId: "selectedCandidate" },
+      ],
     },
   ];
   const interactionEdges = [
