@@ -20,6 +20,7 @@ import {
   CANDIDATE_VOTES_FIELD_ID,
   CANDIDATES,
   CONFIRMATION_SCENE_ID,
+  SELECTED_SOURCE_ID,
   seedBlockCanvasPosition,
   seedCanvasPosition,
   seedShow,
@@ -43,11 +44,15 @@ describe("Voting seed", () => {
     ]);
 
     const sources = graph.nodes.filter((node) => node.kind === "source");
-    expect(sources).toHaveLength(1);
+    expect(sources).toHaveLength(2);
     expect(sources[0]).toMatchObject({
       id: CANDIDATE_SOURCE_ID,
       name: "Candidates",
       type: { kind: "array", of: { kind: "shape", shapeId: CANDIDATE_SHAPE_ID } },
+    });
+    expect(sources.find((source) => source.id === SELECTED_SOURCE_ID)).toMatchObject({
+      parentId: expect.any(String),
+      type: { kind: "shape", shapeId: CANDIDATE_SHAPE_ID },
     });
 
     const sourceDefault = graph.sourceFieldDefaults?.[0];
@@ -78,7 +83,11 @@ describe("Voting seed", () => {
       variables: [{ id: AUDIENCE_VARIABLE_ID, type: { kind: "array" } }],
     });
 
-    expect(graph.edges.filter((edge) => edge.kind === "navigate")).toEqual([]);
+    expect(graph.edges.filter((edge) => edge.kind === "navigate")).toMatchObject([
+      { actionId: "action_choose_candidate_navigate" },
+      { actionId: "action_confirm_yes_navigate" },
+      { actionId: "action_confirm_no_navigate" },
+    ]);
     expect(graph.nodes.filter((node) => node.kind === "device")).toEqual([
       expect.objectContaining({ name: "Projector", perConnection: false }),
       expect.objectContaining({ name: "Audience", perConnection: true }),
@@ -105,7 +114,7 @@ describe("Voting seed", () => {
     const canvases = votingCanvases();
     expect(Object.keys(canvases)).toHaveLength(4);
     for (const canvas of Object.values(canvases))
-      expect(() => assertValidCanvas(canvas)).not.toThrow();
+      expect(() => assertValidCanvas(canvas as Parameters<typeof assertValidCanvas>[0])).not.toThrow();
     expect(canvases[CANDIDATE_LIST_SCENE_ID]?.root.sizing).toMatchObject({
       width: { mode: "fixed", value: 360 },
       height: { mode: "fixed", value: 720 },
