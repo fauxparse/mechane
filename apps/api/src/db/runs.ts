@@ -12,6 +12,7 @@ import {
   assertValidRunState,
   coerceShapeValue,
   defaultSourceValueTemplates,
+  materializeInstanceState,
   materializeRunState,
   materializeStructuredValue,
   normalizeStructuredValueTemplate,
@@ -128,6 +129,8 @@ export interface RunDeviceState {
   deviceId: string;
   flowId: string;
   activeSceneId: string | null;
+  instanceSourceValues: SourceValues;
+  instanceStructuredValues: StructuredValues;
   publishedGraphVersion: number;
 }
 
@@ -138,6 +141,8 @@ function toRunDeviceState(row: typeof runDeviceStates.$inferSelect): RunDeviceSt
     deviceId: row.deviceId,
     flowId: row.flowId,
     activeSceneId: row.activeSceneId,
+    instanceSourceValues: row.instanceSourceValues as SourceValues,
+    instanceStructuredValues: row.instanceStructuredValues as StructuredValues,
     publishedGraphVersion: row.publishedGraphVersion,
   };
 }
@@ -180,15 +185,21 @@ export async function initializeRunDeviceStates(
 ): Promise<void> {
   const drivers = flowDeviceDrivers(graph);
   if (drivers.length === 0) return;
+  const templates = defaultSourceValueTemplates(graph);
   await tx.insert(runDeviceStates).values(
-    drivers.map((driver) => ({
-      runId,
-      showId,
-      deviceId: driver.deviceId,
-      flowId: driver.flowId,
-      activeSceneId: driver.defaultSceneId,
-      publishedGraphVersion,
-    })),
+    drivers.map((driver) => {
+      const instance = materializeInstanceState(graph, driver.flowId, templates);
+      return {
+        runId,
+        showId,
+        deviceId: driver.deviceId,
+        flowId: driver.flowId,
+        activeSceneId: driver.defaultSceneId,
+        instanceSourceValues: instance.sourceValues,
+        instanceStructuredValues: instance.structuredValues,
+        publishedGraphVersion,
+      };
+    }),
   );
 }
 
@@ -233,11 +244,20 @@ export async function reconcileActiveRunDeviceStates(
       state.flowId === driver.flowId &&
       state.activeSceneId !== null &&
       scenes.get(state.activeSceneId)?.parentId === driver.flowId;
+    const instanceDefaults = materializeInstanceState(
+      graph,
+      driver.flowId,
+      defaultSourceValueTemplates(graph),
+    );
     await executor
       .update(runDeviceStates)
       .set({
         flowId: driver.flowId,
         activeSceneId: preserve ? state.activeSceneId : driver.defaultSceneId,
+        instanceSourceValues: preserve ? state.instanceSourceValues : instanceDefaults.sourceValues,
+        instanceStructuredValues: preserve
+          ? state.instanceStructuredValues
+          : instanceDefaults.structuredValues,
         publishedGraphVersion,
         updatedAt: new Date(),
       })
