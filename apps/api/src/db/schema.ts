@@ -615,8 +615,13 @@ export const devices = pgTable(
     // unique rather than unique within a Show.
     pairingCode: text("pairing_code").notNull(),
     // How many logical instances this Device is — see `DeviceNode` in
-    // @mechane/domain. Fixed at creation: it decides Event attribution,
-    // and flipping it would silently rewrite what existing edges mean.
+    // @mechane/domain. Changeable after creation, from the inspector, and
+    // not a decision that stays local: it decides Event attribution, so
+    // flipping it rewrites what existing edges mean. It can also invalidate
+    // a Flow from a distance, because every Device one Flow drives must
+    // agree on this field (CONTEXT.md) — flipping one is enough to leave a
+    // Flow driving both kinds at once, which is preserved and blocks
+    // publication like any other invalid draft.
     perConnection: boolean("per_connection").notNull().default(false),
     // Set when no graph state references this Device any more. Retirement
     // happens at publish, never at draft-edit time: a director deleting a

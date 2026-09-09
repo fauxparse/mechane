@@ -15,21 +15,21 @@ A candidate has a `name`, a `votes` count (starts at 0), and an `image`. There i
 
 ## Audience flow
 
-A flow containing three screens, wired to a `perConnection` device.
+A flow containing three screens, wired to a `perConnection` device. There is also a Candidate-shaped source node called `selected`, which is initially empty.
 
 ### Candidate list
 
-Takes an array of `candidates` and displays them as a list of buttons (make a `CandidateButton` block that takes a `Candidate` name as input and renders a rectangle with a solid background and rounded corners; render these as a vertical list in a slot with appropriate gap). Tapping one of these buttons takes the user to a confirmation screen.
+Takes an array of `candidates` and displays them as a list of buttons (make a `CandidateButton` block that takes a `Candidate` as input and renders a rectangle with a solid background and rounded corners, and the candidate's image and name; render these as a vertical list in a slot with appropriate gap). Tapping one of these buttons sets the value of `selected` to reference the selected candidate, and takes the user to a confirmation screen.
 
 ### Confirmation screen
 
-Shows a confirmation message and yes/no buttons. Tapping "no" returns the user to the candidate list; tapping "yes" increments the selected candidate's `votes` and takes the user to a thank you screen
+Shows a confirmation message with the selected candidate's name and image and yes/no buttons. Tapping "no" clears `selected` and returns the user to the candidate list; tapping "yes" increments the selected candidate's `votes` on the server and takes the user to a thank you screen
 
 ### Thank you screen
 
 Just displays a nice message
 
-## Projector flow
+## Projector screen
 
 There's no need for this to be a flow, just a single root screen that takes an array of `candidates` and renders a list of names and vote counts. Use a `TallyRow` block and render it in a slot with the array wired to the input so the block is repeated.
 
