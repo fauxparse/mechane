@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import type { ShowGraph } from "./graph";
 import type { Shape } from "./shapes";
-import { materializeRunState, type RunState } from "./structured-values";
+import {
+  isStructuredValueReference,
+  materializeRunState,
+  type RunState,
+  type RuntimeValue,
+  type StructuredValueReference,
+} from "./structured-values";
 import { applyUpdateWrites, planUpdate, resolveUpdateHolder } from "./update-plan";
 
 const candidateShape: Shape = {
@@ -44,6 +50,12 @@ function sourceNode(id: string, type: unknown) {
 
 const identities = (state: RunState) => Object.keys(state.structuredValues).sort();
 
+/** Narrows to a reference rather than casting, so the branded id survives. */
+function reference(value: RuntimeValue | undefined): StructuredValueReference {
+  if (!isStructuredValueReference(value)) throw new Error("expected a Structured Value reference");
+  return value;
+}
+
 describe("planUpdate", () => {
   describe("identity", () => {
     // The regression this module exists to prevent. The previous write path
@@ -69,16 +81,10 @@ describe("planUpdate", () => {
       } as never);
 
       const before = identities(state);
-      const arrayRef = state.sourceValues.src_candidates;
-      if (!arrayRef || typeof arrayRef !== "object" || !("ref" in arrayRef)) {
-        throw new Error("expected an array reference");
-      }
+      const arrayRef = reference(state.sourceValues.src_candidates);
       const arrayRecord = state.structuredValues[arrayRef.ref];
       if (!arrayRecord || arrayRecord.kind !== "array") throw new Error("expected an array record");
-      const aliceRef = arrayRecord.items[0];
-      if (!aliceRef || typeof aliceRef !== "object" || !("ref" in aliceRef)) {
-        throw new Error("expected a Candidate reference");
-      }
+      const aliceRef = reference(arrayRecord.items[0]);
 
       // A second Source aliasing the same Candidate record, so a re-key is
       // observable rather than merely internal.
@@ -111,10 +117,10 @@ describe("planUpdate", () => {
         src_candidates: [{ f_name: "Alice", f_votes: 0 }],
       } as never);
 
-      const arrayRef = state.sourceValues.src_candidates as { ref: string };
+      const arrayRef = reference(state.sourceValues.src_candidates);
       const arrayRecord = state.structuredValues[arrayRef.ref];
       if (!arrayRecord || arrayRecord.kind !== "array") throw new Error("expected an array record");
-      const aliceRef = arrayRecord.items[0] as { ref: string };
+      const aliceRef = reference(arrayRecord.items[0]);
 
       const aliased: RunState = {
         sourceValues: { ...state.sourceValues, src_selected: aliceRef },
@@ -141,7 +147,7 @@ describe("planUpdate", () => {
       // Read back through the array, which never appeared in the plan.
       const readThroughArray = next.structuredValues[arrayRef.ref];
       if (!readThroughArray || readThroughArray.kind !== "array") throw new Error("expected array");
-      const itemRef = readThroughArray.items[0] as { ref: string };
+      const itemRef = reference(readThroughArray.items[0]);
 
       expect(candidate.fields.f_votes).toBe(1);
       expect(itemRef.ref).toBe(aliceRef.ref);
@@ -181,7 +187,7 @@ describe("planUpdate", () => {
     });
 
     it("takes the record containing the final segment, never the one it points at", () => {
-      const rootRef = state.sourceValues.src_selected as { ref: string };
+      const rootRef = reference(state.sourceValues.src_selected);
       expect(
         resolveUpdateHolder(state, { sourceId: "src_selected", fieldPath: ["f_votes"] }),
       ).toEqual({
