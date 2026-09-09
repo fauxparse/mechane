@@ -9,7 +9,12 @@ import { dispatchPlayerEvent } from "./player-events";
 import { listRunErrors, RunConfigurationError } from "./run-errors";
 import { endRun, readActiveRun, readRunDeviceState, startRun } from "./runs";
 import { publishShowGraph, readShowGraph, writeShowGraph } from "./show-graph";
-import { playerEvents, playerInvalidationOutbox, runDeviceStates } from "./schema";
+import {
+  playerEvents,
+  playerInvalidationOutbox,
+  runDeviceStates,
+  runStructuredValues,
+} from "./schema";
 import { setupPostgresTest } from "./test-helpers";
 import { seedShow } from "./seeds/shows/navigation-proof/navigation-proof";
 
@@ -140,6 +145,110 @@ describe("dispatchPlayerEvent", () => {
     expect((await readActiveRun(showId))?.sourceValues[sourceId]).toBe(1);
     expect((await readRunDeviceState(run.id, device.id))?.activeSceneId).toBe("scene_red");
   });
+  it("adjusts a nested Field without re-keying any Structured Value (#635)", async () => {
+    await createShow();
+    const draft = await readShowGraph(showId, "draft");
+    const redCanvas = await readCanvas(showId, "draft", { sceneNodeId: "scene_red" });
+    if (!redCanvas) throw new Error("Red Scene Canvas is missing.");
+    const shapeId = "shape_candidate";
+    const sourceId = "source_candidate";
+    const cueId = "cue_vote";
+    const actionId = "action_vote";
+
+    await writeShowGraph(showId, "draft", {
+      ...draft,
+      shapes: [
+        ...(draft.shapes ?? []),
+        {
+          id: shapeId,
+          name: "Candidate",
+          fields: [
+            { id: "f_name", name: "Name", type: "text", required: true, defaultValue: "Alice" },
+            { id: "f_votes", name: "Votes", type: "number", required: true, defaultValue: 0 },
+          ],
+        },
+      ],
+      nodes: [
+        ...draft.nodes,
+        {
+          id: sourceId,
+          kind: "source",
+          name: "Candidate",
+          position: { x: 0, y: 0 },
+          parentId: null,
+          type: { kind: "shape", shapeId },
+        },
+      ],
+      cues: [
+        ...(draft.cues ?? []),
+        { id: cueId, name: "Vote", owner: { kind: "scene", sceneId: "scene_red" }, actionIds: [actionId] },
+      ],
+      actions: [
+        ...(draft.actions ?? []),
+        {
+          id: actionId,
+          cueId,
+          kind: "update",
+          target: { sourceId, fieldPath: ["f_votes"] },
+          operation: {
+            kind: "adjust",
+            operand: { kind: "literal", value: { kind: "number", value: 1 } },
+          },
+        },
+      ],
+      eventBindings: [
+        ...(draft.eventBindings ?? []),
+        {
+          id: "binding_vote",
+          canvasId: redCanvas.id,
+          elementId: "scene_red_root",
+          eventKind: "tap",
+          cueId,
+          position: 5,
+        },
+      ],
+    });
+
+    const published = await publishShowGraph(showId);
+    const run = await startRun(showId);
+    const device = await proofDevice();
+
+    const before = await db
+      .select()
+      .from(runStructuredValues)
+      .where(eq(runStructuredValues.runId, run.id));
+    const beforeIds = before.map((row) => row.structuredValueId).sort();
+    expect(beforeIds.length).toBeGreaterThan(0);
+
+    const result = await dispatchPlayerEvent(device.pairingCode, {
+      eventId: crypto.randomUUID(),
+      publishedGraphVersion: published.version,
+      sceneId: "scene_red",
+      elementId: "scene_red_root",
+      eventKind: "tap",
+    });
+    expect(result).toMatchObject({ kind: "accepted" });
+
+    const after = await db
+      .select()
+      .from(runStructuredValues)
+      .where(eq(runStructuredValues.runId, run.id));
+
+    // The regression: the old write path minted a fresh identity for every
+    // record it touched and left the originals behind as orphans.
+    expect(after.map((row) => row.structuredValueId).sort()).toEqual(beforeIds);
+
+    const candidate = after.find((row) => row.structuredValueId === beforeIds[0]);
+    if (!candidate) throw new Error("Candidate record is missing.");
+    const values = await readActiveRun(showId);
+    if (!values) throw new Error("Run is missing.");
+
+    // The Source still points at the record it always pointed at, and the
+    // write landed inside that record rather than replacing it.
+    expect((values.sourceValues[sourceId] as { ref: string }).ref).toBe(beforeIds[0]);
+    expect((candidate.payload as { f_votes: number }).f_votes).toBe(1);
+  });
+
   it("ignores Events when there is no active Run", async () => {
     await createShow();
     const device = await proofDevice();
