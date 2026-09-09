@@ -1,4 +1,4 @@
-import { PAIRING_CODE_PATTERN, type SourceValues } from "@mechane/domain";
+import { PAIRING_CODE_PATTERN, type SourceValues, type StructuredValues } from "@mechane/domain";
 
 export { sceneVariableValues } from "@mechane/domain";
 
@@ -45,6 +45,7 @@ export interface PlayerRunState {
   readonly flowId: string;
   readonly navigation: PlayerNavigation;
   readonly flowSourceValues: SourceValues;
+  readonly flowStructuredValues: StructuredValues;
 }
 
 export type PlayerStoreStatus = {
@@ -88,6 +89,7 @@ export type PlayerDriver =
       readonly flowId: string;
       readonly defaultSceneId: string | null;
       readonly sceneIds: ReadonlySet<string>;
+      readonly flowSourceIds?: ReadonlySet<string>;
       readonly publishedGraphVersion: number;
     }
   | { readonly kind: "scene" }
@@ -116,7 +118,15 @@ export function reconcilePlayerRunState(
     return { kind: "stale-snapshot", state: current };
   }
 
-  const sourceValues = current?.flowId === driver.flowId ? current.flowSourceValues : {};
+  const sourceValues =
+    current?.flowId === driver.flowId
+      ? Object.fromEntries(
+          Object.entries(current.flowSourceValues).filter(
+            ([sourceId]) => !driver.flowSourceIds || driver.flowSourceIds.has(sourceId),
+          ),
+        )
+      : {};
+  const structuredValues = current?.flowId === driver.flowId ? current.flowStructuredValues : {};
   const defaultNavigation: PlayerNavigation = driver.defaultSceneId
     ? { kind: "scene", sceneId: driver.defaultSceneId }
     : { kind: "not-ready" };
@@ -126,6 +136,7 @@ export function reconcilePlayerRunState(
     flowId: driver.flowId,
     navigation,
     flowSourceValues: sourceValues,
+    flowStructuredValues: structuredValues,
   });
 
   if (!current) {
@@ -216,18 +227,22 @@ function decodeState(value: string): PlayerRunState | "newer" | null {
     !Number.isInteger(parsed.publishedGraphVersion) ||
     parsed.publishedGraphVersion < 0 ||
     typeof parsed.flowId !== "string" ||
-    parsed.flowId.length === 0 ||
     !isNavigation(parsed.navigation) ||
-    !isSourceValues(parsed.flowSourceValues)
+    !isSourceValues(parsed.flowSourceValues) ||
+    (parsed.flowStructuredValues !== undefined && !isRecord(parsed.flowStructuredValues))
   ) {
     return null;
   }
+  const flowStructuredValues = isRecord(parsed.flowStructuredValues)
+    ? (parsed.flowStructuredValues as StructuredValues)
+    : {};
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     publishedGraphVersion: parsed.publishedGraphVersion,
     flowId: parsed.flowId,
     navigation: parsed.navigation,
     flowSourceValues: parsed.flowSourceValues,
+    flowStructuredValues,
   };
 }
 

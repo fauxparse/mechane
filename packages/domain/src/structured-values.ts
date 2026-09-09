@@ -275,7 +275,7 @@ export function materializeRunState(
   const structuredValues: StructuredValues = {};
   const sourceValues: SourceValues = {};
   for (const source of graph.nodes) {
-    if (source.kind !== "source") continue;
+    if (source.kind !== "source" || source.parentId !== null) continue;
     sourceValues[source.id] = materialize(
       sourceTemplates[source.id] ?? null,
       source.type,
@@ -286,6 +286,34 @@ export function materializeRunState(
   const state = { sourceValues, structuredValues };
   assertValidRunState(state, graph);
   return state;
+}
+
+/** Materializes the Source records owned by one Flow/Device Instance. */
+export function materializeInstanceState(
+  graph: ShowGraph,
+  flowId: string,
+  sourceTemplates: Readonly<Record<string, StructuredValueTemplate>>,
+): RunState {
+  const structuredValues: StructuredValues = {};
+  const sourceValues: SourceValues = {};
+  for (const source of graph.nodes) {
+    if (source.kind !== "source" || source.parentId !== flowId) continue;
+    sourceValues[source.id] = materialize(
+      sourceTemplates[source.id] ?? null,
+      source.type,
+      graph.shapes ?? [],
+      structuredValues,
+    );
+  }
+  return { sourceValues, structuredValues };
+}
+
+/** Creates the composed view used by a Device Instance without scope shadowing. */
+export function composeInstanceView(shared: RunState, instance: RunState): RunState {
+  return {
+    sourceValues: { ...shared.sourceValues, ...instance.sourceValues },
+    structuredValues: { ...shared.structuredValues, ...instance.structuredValues },
+  };
 }
 
 export function resolveRuntimeValue(
@@ -329,8 +357,14 @@ function assertRuntimeValue(
   path: string,
   ancestors: ReadonlySet<string>,
 ): void {
-  if (value === null && path.startsWith("Source ")) {
-    if (typeof type !== "string") return;
+  if (
+    value === null &&
+    typeof type !== "string" &&
+    path.startsWith("Source ") &&
+    !path.includes(".") &&
+    !path.includes("[")
+  ) {
+    return;
   }
   if (typeof type === "string") {
     if (isStructuredValueReference(value)) {
@@ -396,6 +430,14 @@ export function assertValidRunState(state: RunState, graph: ShowGraph): void {
   }
   for (const source of graph.nodes) {
     if (source.kind !== "source") continue;
+    if (source.parentId !== null) {
+      if (Object.prototype.hasOwnProperty.call(state.sourceValues, source.id)) {
+        throw new InvalidStructuredValueError(
+          `Run state cannot contain Flow-local Source "${source.id}".`,
+        );
+      }
+      continue;
+    }
     if (!Object.prototype.hasOwnProperty.call(state.sourceValues, source.id)) {
       throw new InvalidStructuredValueError(`Missing live value for Source "${source.id}".`);
     }

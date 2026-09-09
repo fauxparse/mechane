@@ -310,6 +310,7 @@ const storedState: PlayerRunState = {
   flowId: "flow_navigation",
   navigation: { kind: "scene", sceneId: "scene_green" },
   flowSourceValues: {},
+  flowStructuredValues: {},
 };
 
 describe("per-connection Player state", () => {
