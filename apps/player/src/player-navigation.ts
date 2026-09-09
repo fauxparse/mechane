@@ -1,5 +1,5 @@
 import { resolveRuntimeEvent, type RuntimeEventObservation } from "@mechane/domain";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { PlayerSession, PlayerState } from "./api";
 import {
   applyPlayerCue,
@@ -96,6 +96,7 @@ export function usePlayerNavigation(
 
   // One local resolver for both kinds: a keypress differs only in what it
   // observes, never in how the resolved plan is applied.
+  const retryEventId = useRef<string | null>(null);
   const navigateFor = useCallback(
     (observe: (sceneId: string, canvasId: string) => RuntimeEventObservation): boolean => {
       if (
@@ -147,7 +148,8 @@ export function usePlayerNavigation(
         session: sessionForState(runtime.session, nextState),
         store: runtime.store,
       });
-      const eventId = crypto.randomUUID();
+      const eventId = retryEventId.current ?? crypto.randomUUID();
+      if (execution.showActions.length > 0) retryEventId.current = eventId;
       const submission = baseState.submitEvent?.({
         ...observation,
         eventId,
@@ -164,7 +166,10 @@ export function usePlayerNavigation(
       });
       if (submission && execution.showActions.length > 0) {
         void submission.then((result) => {
-          if (result.kind !== "failed" && result.kind !== "rejected") return;
+          if (result.kind !== "failed" && result.kind !== "rejected") {
+            retryEventId.current = null;
+            return;
+          }
           if (runtime.store?.replace(currentState)) {
             setRuntime({
               status: currentState.navigation.kind === "scene" ? "playing" : "not-ready",
