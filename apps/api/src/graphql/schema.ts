@@ -678,6 +678,7 @@ export const schema = createSchema<GraphQLContext>({
       parameterMappings: JSON!
       cueId: ID!
       position: Int!
+    }
     type CueParameter {
       id: ID!
       name: String!
@@ -1020,6 +1021,7 @@ export const schema = createSchema<GraphQLContext>({
       cueId: ID!
       position: Int!
 
+    }
     type GraphEdit {
       type: String!
       nodeId: ID
