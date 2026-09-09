@@ -1,5 +1,6 @@
 import {
-  Button,
+  buttonVariants,
+  cn,
   CopyButton,
   ExternalLinkIcon,
   QrCode,
@@ -8,7 +9,7 @@ import {
 import { DEVICE_SOURCE_HANDLES } from "@mechane/domain";
 import { Position, type HandleProps } from "@xyflow/react";
 import type { ComponentType } from "react";
-
+import { playerSessionUrl } from "../../../../api/client";
 import type { ShowFlowNode } from "../graph-to-flow";
 import { handleFor } from "../handle-ids";
 import { HANDLE_CLASS } from "../handle-styles";
@@ -188,13 +189,17 @@ export function DevicePairing({
           className="size-24"
           label={`QR code for pairing code ${pairingCode}`}
         />
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="absolute right-4 top-1/2 -translate-y-1/2"
+        <a
+          className={cn(
+            buttonVariants({ variant: "ghost", size: "icon-sm" }),
+            "absolute right-4 top-1/2 -translate-y-1/2",
+          )}
+          href={playerSessionUrl(pairingCode)}
+          target="_blank"
+          rel="noopener noreferrer"
         >
           <ExternalLinkIcon />
-        </Button>
+        </a>
         <HandleComponent
           id={qrCodeHandleId}
           type="source"
