@@ -549,6 +549,19 @@ describe("assertValidShowGraph", () => {
       );
     });
   });
+  it("rejects a Flow whose Devices disagree on connection cardinality", () => {
+    expectViolation(
+      () =>
+        assertValidShowGraph(
+          graph(
+            [flow("flow"), device("audience", true), device("projector")],
+            [deviceEdge("flow-audience", "flow", "audience"), deviceEdge("flow-projector", "flow", "projector")],
+          ),
+        ),
+      "flowDeviceCardinality",
+    );
+  });
+
 });
 
 describe("structural queries", () => {
