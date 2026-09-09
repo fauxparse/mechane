@@ -117,6 +117,26 @@ const PanelShell = ({ title, children }: { title: string; children: ReactNode })
   </SidebarProvider>
 );
 
+/**
+ * Room to think. Ideas get judged at the size the idea needs, not squeezed
+ * into the sidebar they might eventually live in.
+ */
+const WideShell = ({ title, note, children }: { title: string; note?: string; children: ReactNode }) => (
+  <div className="min-h-screen bg-background p-10">
+    <p className="text-sm font-medium">{title}</p>
+    {note && <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{note}</p>}
+    <div className="mt-8">{children}</div>
+  </div>
+);
+
+/** A's sections at their natural width, for side-by-side comparison. */
+const NarrowColumn = ({ label, children }: { label: string; children: ReactNode }) => (
+  <div className="flex flex-col gap-2">
+    <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{label}</p>
+    <div className="w-[300px] overflow-hidden rounded-lg border bg-card">{children}</div>
+  </div>
+);
+
 /* ------------------------------------------------- A — form (inspector-native) */
 
 const VariantAName = "Form — sections and rows, like the rest of the inspector";
@@ -399,6 +419,215 @@ function VariantBSlot() {
   );
 }
 
+/* ------------------------------------- B2 — patch bay with room to breathe */
+
+/**
+ * B, rebuilt. The first pass crammed a patch bay into a 250px sidebar, which
+ * is the one place a patch bay cannot work: no room for labels, no room for
+ * the connections that are the entire point.
+ *
+ * This is an idea sketch, not a panel. It gets a full-width canvas, real
+ * connection curves, and type-aware targets. Where it eventually lives is a
+ * separate question from whether the idea is any good.
+ */
+
+const PANEL_W = 300;
+const GAP = 180;
+const ROW_H = 44;
+const HEAD_H = 40;
+
+interface BayRow {
+  id: string;
+  label: string;
+  type?: string;
+  /** A Cue, or one of its parameters. */
+  level: "cue" | "param";
+}
+
+const BAY_LEFT: BayRow[] = [
+  { id: "bc_selected", label: "Selected", level: "cue" },
+  { id: "bp_candidate", label: "Candidate", type: "Candidate", level: "param" },
+  { id: "bc_longpress", label: "Held", level: "cue" },
+];
+
+const BAY_RIGHT: BayRow[] = [
+  { id: "sc_choose", label: "Choose candidate", level: "cue" },
+  { id: "sp_candidate", label: "Candidate", type: "Candidate", level: "param" },
+  { id: "sc_dismiss", label: "Dismiss", level: "cue" },
+];
+
+const rowY = (index: number) => HEAD_H + index * ROW_H + ROW_H / 2;
+
+/** A source may only reach a target of the same level and the same type. */
+function compatible(source: BayRow, target: BayRow): boolean {
+  if (source.level !== target.level) return false;
+  return source.type === target.type;
+}
+
+function BayRowButton({
+  row,
+  side,
+  state,
+  dimmed,
+  onClick,
+}: {
+  row: BayRow;
+  side: "left" | "right";
+  state: "idle" | "armed" | "connected";
+  dimmed: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={dimmed}
+      style={{ height: ROW_H }}
+      className={cn(
+        "flex w-full items-center gap-2 border-b border-border/40 px-3 text-left transition-all",
+        row.level === "param" && "pl-8",
+        side === "right" && "flex-row-reverse pl-3 text-right",
+        side === "right" && row.level === "param" && "pr-8",
+        state === "armed" && "bg-primary/15 ring-1 ring-inset ring-primary",
+        state === "connected" && "bg-accent/40",
+        dimmed ? "cursor-not-allowed opacity-25" : "hover:bg-accent",
+      )}
+    >
+      <span
+        className={cn(
+          "size-2 shrink-0 rounded-full ring-2 ring-background",
+          state === "connected" || state === "armed" ? "bg-primary" : "bg-muted-foreground/30",
+        )}
+      />
+      <span
+        className={cn("flex-1 truncate", row.level === "cue" ? "text-sm font-medium" : "text-xs")}
+      >
+        {row.label}
+      </span>
+      {row.type && <TypePill type={row.type} />}
+    </button>
+  );
+}
+
+function PatchBay() {
+  const [armed, setArmed] = useState<string | null>(null);
+  const [links, setLinks] = useState<Record<string, string>>({
+    bc_selected: "sc_choose",
+    bp_candidate: "sp_candidate",
+  });
+
+  const armedRow = BAY_LEFT.find((row) => row.id === armed) ?? null;
+
+  const clickLeft = (row: BayRow) => {
+    if (links[row.id]) {
+      setLinks((current) => {
+        const next = { ...current };
+        delete next[row.id];
+        return next;
+      });
+      return;
+    }
+    setArmed((current) => (current === row.id ? null : row.id));
+  };
+
+  const clickRight = (row: BayRow) => {
+    if (!armedRow || !compatible(armedRow, row)) return;
+    setLinks((current) => ({ ...current, [armedRow.id]: row.id }));
+    setArmed(null);
+  };
+
+  const width = PANEL_W * 2 + GAP;
+  const height = HEAD_H + Math.max(BAY_LEFT.length, BAY_RIGHT.length) * ROW_H;
+  const missingParam = links.bc_selected && !links.bp_candidate;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-muted-foreground">
+        {armedRow
+          ? `Connecting “${armedRow.label}”. Click a matching target, or click it again to cancel.`
+          : "Click something the Block emits, then click what should receive it. Click a connected row to disconnect."}
+      </p>
+
+      <div className="relative" style={{ width, height }}>
+        <svg
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          width={width}
+          height={height}
+        >
+          {Object.entries(links).map(([sourceId, targetId]) => {
+            const sourceIndex = BAY_LEFT.findIndex((row) => row.id === sourceId);
+            const targetIndex = BAY_RIGHT.findIndex((row) => row.id === targetId);
+            if (sourceIndex < 0 || targetIndex < 0) return null;
+            const x1 = PANEL_W;
+            const x2 = PANEL_W + GAP;
+            const y1 = rowY(sourceIndex);
+            const y2 = rowY(targetIndex);
+            const bend = GAP * 0.45;
+            return (
+              <path
+                key={sourceId}
+                d={`M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`}
+                className="stroke-primary"
+                strokeWidth={2}
+                fill="none"
+              />
+            );
+          })}
+        </svg>
+
+        <div
+          className="absolute top-0 left-0 overflow-hidden rounded-lg border bg-card"
+          style={{ width: PANEL_W }}
+        >
+          <p
+            className="flex items-center border-b bg-muted/40 px-3 text-[11px] font-medium tracking-wide text-muted-foreground uppercase"
+            style={{ height: HEAD_H }}
+          >
+            {BLOCK_NAME} emits
+          </p>
+          {BAY_LEFT.map((row) => (
+            <BayRowButton
+              key={row.id}
+              row={row}
+              side="left"
+              state={armed === row.id ? "armed" : links[row.id] ? "connected" : "idle"}
+              dimmed={false}
+              onClick={() => clickLeft(row)}
+            />
+          ))}
+        </div>
+
+        <div
+          className="absolute top-0 overflow-hidden rounded-lg border bg-card"
+          style={{ width: PANEL_W, left: PANEL_W + GAP }}
+        >
+          <p
+            className="flex items-center justify-end border-b bg-muted/40 px-3 text-[11px] font-medium tracking-wide text-muted-foreground uppercase"
+            style={{ height: HEAD_H }}
+          >
+            Candidate list handles
+          </p>
+          {BAY_RIGHT.map((row) => (
+            <BayRowButton
+              key={row.id}
+              row={row}
+              side="right"
+              state={Object.values(links).includes(row.id) ? "connected" : "idle"}
+              dimmed={Boolean(armedRow) && !compatible(armedRow as BayRow, row)}
+              onClick={() => clickRight(row)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {missingParam && (
+        <Incomplete>Choose candidate still needs a Candidate. Publication is blocked.</Incomplete>
+      )}
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------ C — trace (path) */
 
 const VariantCName = "Trace — the whole relay chain as one path";
@@ -542,11 +771,45 @@ export const A3_FormSlot: Story = {
 };
 
 export const B1_PatchBay: Story = {
-  name: "B1 — Patch bay: Slot",
+  name: "B1 — Patch bay: crammed into the sidebar (rejected)",
   render: () => (
     <PanelShell title={VariantBName}>
       <VariantBSlot />
     </PanelShell>
+  ),
+};
+
+export const B2_PatchBayWithRoom: Story = {
+  name: "B2 — Patch bay: with room",
+  render: () => (
+    <WideShell
+      title="B — Patch bay, rebuilt"
+      note="The first pass failed because a patch bay in a 250px column has room for neither labels nor the connections that are the whole point. Same idea at the size it needs: real curves, and targets that dim when they cannot accept what you are holding. Cue-to-Cue and parameter-to-parameter are one gesture at two levels."
+    >
+      <PatchBay />
+    </WideShell>
+  ),
+};
+
+export const AB_Compare: Story = {
+  name: "A vs B — side by side",
+  render: () => (
+    <WideShell
+      title="A vs B, on the Slot"
+      note="A is shown at its natural width because being a sidebar form is its premise. B gets the room its premise needs. Both are doing the same job: relay two Cues out of a Slot and map one parameter."
+    >
+      <div className="flex flex-wrap items-start gap-16">
+        <NarrowColumn label="A — Form">
+          <VariantASlot />
+        </NarrowColumn>
+        <div className="flex flex-col gap-2">
+          <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+            B — Patch bay
+          </p>
+          <PatchBay />
+        </div>
+      </div>
+    </WideShell>
   ),
 };
 
