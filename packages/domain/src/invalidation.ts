@@ -24,6 +24,29 @@ export function sourceIdsReachableFromScenes(
   return reachable;
 }
 
+/** Expands changed Sources through downstream wiring/reference closures once per commit. */
+export function expandChangedSourceIds(
+  graph: ShowGraph,
+  changedSourceIds: ReadonlySet<string>,
+): ReadonlySet<string> {
+  const expanded = new Set(changedSourceIds);
+  const pending = [...changedSourceIds];
+  while (pending.length > 0) {
+    const sourceId = pending.pop();
+    if (!sourceId) continue;
+    for (const edge of graph.edges) {
+      if (edge.kind !== "wiring" || edge.sourceId !== sourceId) continue;
+      const target = graph.nodes.find((node) => node.id === edge.targetId);
+      if (target?.kind === "source" && !expanded.has(target.id)) {
+        expanded.add(target.id);
+        pending.push(target.id);
+      }
+    }
+  }
+  return expanded;
+}
+
+
 /** Device invalidation predicate for a stable published graph. */
 export function deviceReadsChangedSources(
   graph: ShowGraph,
@@ -31,6 +54,7 @@ export function deviceReadsChangedSources(
   changedSourceIds: ReadonlySet<string>,
 ): boolean {
   const readSources = sourceIdsReachableFromScenes(graph, sceneIds);
-  for (const sourceId of changedSourceIds) if (readSources.has(sourceId)) return true;
+  const changed = expandChangedSourceIds(graph, changedSourceIds);
+  for (const sourceId of changed) if (readSources.has(sourceId)) return true;
   return false;
 }
