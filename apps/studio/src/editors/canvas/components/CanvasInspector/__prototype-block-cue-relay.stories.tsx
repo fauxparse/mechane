@@ -129,14 +129,6 @@ const WideShell = ({ title, note, children }: { title: string; note?: string; ch
   </div>
 );
 
-/** A's sections at their natural width, for side-by-side comparison. */
-const NarrowColumn = ({ label, children }: { label: string; children: ReactNode }) => (
-  <div className="flex flex-col gap-2">
-    <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{label}</p>
-    <div className="w-[300px] overflow-hidden rounded-lg border bg-card">{children}</div>
-  </div>
-);
-
 /* ------------------------------------------------- A — form (inspector-native) */
 
 const VariantAName = "Form — sections and rows, like the rest of the inspector";
@@ -787,28 +779,6 @@ export const B2_PatchBayWithRoom: Story = {
       note="The first pass failed because a patch bay in a 250px column has room for neither labels nor the connections that are the whole point. Same idea at the size it needs: real curves, and targets that dim when they cannot accept what you are holding. Cue-to-Cue and parameter-to-parameter are one gesture at two levels."
     >
       <PatchBay />
-    </WideShell>
-  ),
-};
-
-export const AB_Compare: Story = {
-  name: "A vs B — side by side",
-  render: () => (
-    <WideShell
-      title="A vs B, on the Slot"
-      note="A is shown at its natural width because being a sidebar form is its premise. B gets the room its premise needs. Both are doing the same job: relay two Cues out of a Slot and map one parameter."
-    >
-      <div className="flex flex-wrap items-start gap-16">
-        <NarrowColumn label="A — Form">
-          <VariantASlot />
-        </NarrowColumn>
-        <div className="flex flex-col gap-2">
-          <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-            B — Patch bay
-          </p>
-          <PatchBay />
-        </div>
-      </div>
     </WideShell>
   ),
 };
