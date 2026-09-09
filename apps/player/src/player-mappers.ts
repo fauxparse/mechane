@@ -119,6 +119,12 @@ function toNode(value: unknown): GraphNode {
   return {
     ...normalizedFields,
     kind: nodeKind(__typename),
+    // `withoutNulls` is right for the optional Canvas properties it was
+    // written for, and wrong here: a null `parentId` is not an absent value
+    // but the statement that this node is Show-level. Dropping the key makes
+    // every `parentId === null` test — which is how Show scope is spelled
+    // throughout dispatch — read a Show Source as Instance-scoped.
+    parentId: (input.parentId as string | null | undefined) ?? null,
     ...(type !== undefined && type !== null ? { type: toType(type) } : {}),
   } as GraphNode;
 }
@@ -318,6 +324,11 @@ export function normalizePlayerSession(value: unknown, apiBaseUrl?: string): Pla
       : { ...decodeCanvasDocument(input.canvas), id: String(record(input.canvas).id) };
   const imageAssets = Array.isArray(input.imageAssets) ? input.imageAssets.map(record) : [];
   const flow = toFlowBundle(input.flow);
+  // Blocks are queried once, beside the graph rather than inside it. The
+  // graph still has to carry them: dispatch resolves a tap inside a Slot
+  // against the contained Block's Canvas, and a graph without Blocks cannot
+  // name that Canvas — it reports the tap unbound instead.
+  const blocks = Array.isArray(input.blocks) ? input.blocks.map(toBlock) : [];
 
   return {
     device: record(input.device) as PlayerSession["device"],
@@ -339,10 +350,10 @@ export function normalizePlayerSession(value: unknown, apiBaseUrl?: string): Pla
         }
       : null,
     flow,
-    graph: toGraph(input.graph),
+    graph: { ...toGraph(input.graph), blocks },
     scene: scene as PlayerSession["scene"],
     canvas: canvas as PlayerSession["canvas"],
-    blocks: Array.isArray(input.blocks) ? input.blocks.map(toBlock) : [],
+    blocks,
     imageAssets: imageAssets.map((asset) => ({
       assetId: String(asset.id),
       revision: String(asset.revision),

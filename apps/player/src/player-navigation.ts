@@ -124,6 +124,14 @@ export function usePlayerNavigation(
       if (plan.kind !== "planned") return false;
       const currentState = runtime.store.read();
       if (!currentState) return false;
+      // The base session, never the runtime one: `sessionForState` has already
+      // composed the Instance layer into that, and composing it twice would
+      // hide a Source the current Instance state no longer has.
+      const baseRun = baseState.status === "ready" ? baseState.session.run : null;
+      const showState = {
+        sourceValues: baseRun?.sourceValues ?? {},
+        structuredValues: baseRun?.structuredValues ?? {},
+      };
       // Show scope and Instance scope composed as ADR-0018 requires, so a
       // Parameter relayed out of a Slot carries the reference the Player
       // rendered rather than a copy of the value.
@@ -131,16 +139,10 @@ export function usePlayerNavigation(
         graph: runtime.session.graph,
         canvas: runtime.session.canvas,
         sceneId: plan.sceneId,
-        state: composeInstanceView(
-          {
-            sourceValues: runtime.session.run?.sourceValues ?? {},
-            structuredValues: runtime.session.run?.structuredValues ?? {},
-          },
-          {
-            sourceValues: currentState.flowSourceValues,
-            structuredValues: currentState.flowStructuredValues,
-          },
-        ),
+        state: composeInstanceView(showState, {
+          sourceValues: currentState.flowSourceValues,
+          structuredValues: currentState.flowStructuredValues,
+        }),
         blocks: runtime.session.blocks ?? [],
         parameters: plan.parameters,
       });
@@ -156,6 +158,7 @@ export function usePlayerNavigation(
         plan.actions,
         plan.sceneId,
         parameters.values,
+        showState,
       );
       if (execution.kind === "failed") return false;
       if (
@@ -180,11 +183,19 @@ export function usePlayerNavigation(
       });
       const eventId = retryEventId.current ?? crypto.randomUUID();
       if (execution.showActions.length > 0) retryEventId.current = eventId;
+      // Built field by field rather than spread from the observation: the
+      // observation carries `canvasId`, which `PlayerEventInput` does not
+      // declare, and an undeclared input field makes the server reject the
+      // whole argument — reported, unhelpfully, as a null `input`.
       const submission = baseState.submitEvent?.({
-        ...observation,
         eventId,
         publishedGraphVersion: runtime.session.graph.version,
         sceneId: plan.sceneId,
+        elementId: observation.elementId,
+        slotInstancePath: observation.slotInstancePath ?? [],
+        ...(observation.eventKind === "keypress"
+          ? { eventKind: "keypress" as const, params: observation.params }
+          : { eventKind: "tap" as const }),
         ...(execution.showActions.length > 0
           ? {
               evidence: {
@@ -267,12 +278,39 @@ export function usePlayerNavigation(
   return { ...runtime, onElementTap, onKeyPress, onTakeOver };
 }
 
+/**
+ * The session as the renderer should see it: the chosen Scene, and Show scope
+ * composed with this connection's Instance scope.
+ *
+ * ADR-0018 keeps the two layers apart in storage, so `run` alone carries only
+ * what the server owns. A Scene Variable wired to a Flow-local Source reads as
+ * empty until they are composed, which is what left the confirmation Screen
+ * with no Candidate on it.
+ */
 function sessionForState(session: PlayerSession, state: PlayerRunState): PlayerSession {
   const navigation = state.navigation;
+  const composed = session.run
+    ? {
+        ...session,
+        run: {
+          ...session.run,
+          ...composeInstanceView(
+            {
+              sourceValues: session.run.sourceValues,
+              structuredValues: session.run.structuredValues,
+            },
+            {
+              sourceValues: state.flowSourceValues,
+              structuredValues: state.flowStructuredValues,
+            },
+          ),
+        },
+      }
+    : session;
   if (!session.flow || navigation.kind !== "scene") {
-    return { ...session, scene: null, canvas: null };
+    return { ...composed, scene: null, canvas: null };
   }
   const selected = session.flow.scenes.find(({ scene }) => scene.id === navigation.sceneId);
-  if (!selected) return { ...session, scene: null, canvas: null };
-  return { ...session, scene: selected.scene, canvas: selected.canvas };
+  if (!selected) return { ...composed, scene: null, canvas: null };
+  return { ...composed, scene: selected.scene, canvas: selected.canvas };
 }

@@ -198,6 +198,53 @@ describe("normalizePlayerSession", () => {
       variables: [{ id: "selector", type: "text" }],
       states: [{ id: "default", isDefault: true }],
     });
+    // The graph carries the same Blocks. Dispatch resolves a tap inside a
+    // Slot against the contained Block's Canvas, and reads them off the graph
+    // rather than the session — with the graph's list empty it cannot name
+    // that Canvas and reports every such tap unbound.
+    expect(session.graph.blocks).toEqual(session.blocks);
+    expect(session.graph.blocks?.[0]?.canvas.id).toBe("canvas-card");
+  });
+
+  it("keeps a Show-level node's null parentId rather than dropping the key", () => {
+    const session = normalizePlayerSession({
+      device: { name: "Audience", perConnection: true },
+      realtime: { channel: "player:test", grant: "grant", expiresAt: "2026-01-01T00:01:00.000Z" },
+      graph: {
+        nodes: [
+          {
+            __typename: "SourceNode",
+            id: "source_candidates",
+            name: "Candidates",
+            parentId: null,
+            position: { x: 0, y: 0 },
+            sourceType: { kind: "number", shapeId: null, of: null },
+          },
+          {
+            __typename: "SourceNode",
+            id: "source_selected",
+            name: "Selected",
+            parentId: "flow_audience",
+            position: { x: 0, y: 0 },
+            sourceType: { kind: "number", shapeId: null, of: null },
+          },
+        ],
+        edges: [],
+        shapes: [],
+      },
+      scene: null,
+      canvas: null,
+      blocks: [],
+      imageAssets: [],
+    });
+
+    // `parentId === null` is how Show scope is spelled throughout dispatch, so
+    // a stripped null reads a Show Source as Instance-scoped and sends its
+    // writes to the Player's own state instead of the server.
+    const [showSource, flowSource] = session.graph.nodes;
+    expect(showSource).toMatchObject({ id: "source_candidates", parentId: null });
+    expect(Object.hasOwn(showSource ?? {}, "parentId")).toBe(true);
+    expect(flowSource).toMatchObject({ id: "source_selected", parentId: "flow_audience" });
   });
 
   it("resolves API-relative image URLs for the Player origin", () => {

@@ -1,9 +1,11 @@
 import {
   PAIRING_CODE_PATTERN,
   applyUpdateWrites,
+  composeInstanceView,
   defaultSourceValueTemplates,
   materializeInstanceState,
   planUpdate,
+  resolveUpdateHolderScope,
   type Action,
   type RunState,
   type ShowGraph,
@@ -97,13 +99,24 @@ export type PlayerCueExecution =
     }
   | { readonly kind: "failed"; readonly actionId: string; readonly reason: string };
 
-/** Executes a Cue's Actions in declared order against one Player Instance. */
+/**
+ * Executes a Cue's Actions in declared order against one Player Instance.
+ *
+ * Whether a write is the server's or this Player's is the *resolved* holder's
+ * question, not the target Source's. A Flow-local Source addressed with a
+ * field path can hold a reference into a Show-owned record — `selected.votes`
+ * where `selected` references a Candidate — and that write belongs to the
+ * server however Flow-local the Source naming it is. `showState` is what
+ * makes the holder reachable; without it such an Action would resolve against
+ * Instance scope alone and be applied locally, where nobody else can see it.
+ */
 export function applyPlayerCue(
   state: PlayerRunState,
   graph: ShowGraph,
   actions: readonly Action[],
   sceneId: string,
   cueParameterValues: Readonly<Record<string, unknown>> = {},
+  showState: RunState = { sourceValues: {}, structuredValues: {} },
 ): PlayerCueExecution {
   let next = state;
   const showActions: Extract<Action, { kind: "update" }>[] = [];
@@ -112,26 +125,27 @@ export function applyPlayerCue(
       next = { ...next, navigation: { kind: "scene", sceneId: action.targetSceneId } };
       continue;
     }
-    const source = graph.nodes.find((node) => node.kind === "source" && node.id === action.target.sourceId);
-    if (source?.parentId === null) {
+    const instanceState: RunState = {
+      sourceValues: next.flowSourceValues,
+      structuredValues: next.flowStructuredValues,
+    };
+    const composed = composeInstanceView(showState, instanceState);
+    if (resolveUpdateHolderScope(graph, composed, action) === "show") {
       showActions.push(action);
       continue;
     }
-    const plan = planUpdate(
-      graph,
-      { sourceValues: next.flowSourceValues, structuredValues: next.flowStructuredValues },
-      sceneId,
-      action,
-      cueParameterValues,
-    );
+    // Reads may reach Show scope; only the writes are confined to the
+    // Instance layer, which is where an Instance-scoped holder lives.
+    const plan = planUpdate(graph, composed, sceneId, action, cueParameterValues);
     if (plan.kind === "failed") {
       return { kind: "failed", actionId: action.id, reason: plan.reason };
     }
-    const updated = applyUpdateWrites(
-      { sourceValues: next.flowSourceValues, structuredValues: next.flowStructuredValues },
-      plan.writes,
-    );
-    next = { ...next, flowSourceValues: updated.sourceValues, flowStructuredValues: updated.structuredValues };
+    const updated = applyUpdateWrites(instanceState, plan.writes);
+    next = {
+      ...next,
+      flowSourceValues: updated.sourceValues,
+      flowStructuredValues: updated.structuredValues,
+    };
   }
   return { kind: "applied", state: next, showActions };
 }
