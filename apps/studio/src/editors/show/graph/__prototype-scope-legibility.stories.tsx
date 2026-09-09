@@ -17,8 +17,14 @@
  * Constraint from node-kinds.ts (#35): every node wears identical card chrome
  * and hue is reserved for state, never for type. None of these variants may
  * tint a node to say "Flow-local".
+ *
+ * NEW RULE, decided on #631: a Flow may drive many Devices, but they must all
+ * agree on `perConnection`. Mixing a Shared and a per-connection Device on one
+ * Flow is invalid. This amends #622, which had treated the mixed case as
+ * ordinary, and it is what finally makes "one copy per connection" a true
+ * thing to write on a Flow boundary.
  */
-import { cn, ServerIcon, SmartphoneIcon } from "@mechane/design-system";
+import { CircleAlertIcon, cn, ServerIcon, SmartphoneIcon } from "@mechane/design-system";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { ReactNode } from "react";
 
@@ -119,9 +125,12 @@ const Fields = ({
   </div>
 );
 
-const FlowBoundary = ({ caption }: { caption?: ReactNode }) => (
+const FlowBoundary = ({ caption, invalid }: { caption?: ReactNode; invalid?: ReactNode }) => (
   <div
-    className="absolute rounded-xl border-2 border-dashed border-(--flow-border)/60 bg-(--flow-background)/5"
+    className={cn(
+      "absolute rounded-xl border-2 border-dashed bg-(--flow-background)/5",
+      invalid ? "border-amber-500" : "border-(--flow-border)/60",
+    )}
     style={{ left: FLOW.x, top: FLOW.y, width: FLOW.w, height: FLOW.h }}
     data-flow-theme="purple"
   >
@@ -129,6 +138,12 @@ const FlowBoundary = ({ caption }: { caption?: ReactNode }) => (
       <span className="text-sm font-medium text-(--flow-foreground)">Audience flow</span>
       {caption}
     </div>
+    {invalid && (
+      <div className="mx-4 mt-2 flex items-start gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+        <CircleAlertIcon className="mt-px size-3.5 shrink-0" />
+        <span>{invalid}</span>
+      </div>
+    )}
   </div>
 );
 
@@ -267,18 +282,22 @@ const EDGES: EdgeSpec[] = [
 
 function GraphBody({
   flowCaption,
+  flowInvalid,
   selectedSubtitle,
   sharedField,
   selectedMarker,
+  projectorPerConnection,
 }: {
   flowCaption?: ReactNode;
+  flowInvalid?: ReactNode;
   selectedSubtitle?: ReactNode;
   sharedField?: string;
   selectedMarker?: ReactNode;
+  projectorPerConnection?: boolean;
 }) {
   return (
     <>
-      <FlowBoundary caption={flowCaption} />
+      <FlowBoundary caption={flowCaption} invalid={flowInvalid} />
       <Node at={CANDIDATES} data={{ name: "candidates", kind: "source", type: "text" }}>
         <Fields fields={CANDIDATE_FIELDS} />
       </Node>
@@ -292,7 +311,10 @@ function GraphBody({
         {selectedSubtitle}
         <Fields fields={CANDIDATE_FIELDS} sharedField={sharedField} />
       </Node>
-      <Node at={PROJECTOR} data={{ name: "Projector", kind: "device" }} />
+      <Node
+        at={PROJECTOR}
+        data={{ name: "Projector", kind: "device", perConnection: projectorPerConnection }}
+      />
       <Node at={AUDIENCE} data={{ name: "Audience", kind: "device", perConnection: true }} />
     </>
   );
@@ -413,29 +435,97 @@ export const C2_BoundaryLies: Story = {
   ),
 };
 
-export const MixedFlow: Story = {
-  name: "Mixed Flow — a projector and phones on one Flow",
+export const Combined: Story = {
+  name: "A + boundary — cardinality once, scope per edge",
   render: () => (
     <Canvas
-      title="The case that breaks “per connection” as a label"
-      note="Wire the Projector to this Flow as well and the same Source is one value for the projector and one per phone. #622 settled that a Flow-local value belongs to the Device Instance, so cardinality comes from the Devices driving the Flow, not from the Source. Any wording that says “per connection” on the node is a lie in this configuration."
+      title="What the new rule makes possible"
+      note="A Flow's Devices must now agree on cardinality, so the boundary can say “one copy per connection” and be telling the truth. That leaves only the write-scope question on the edges, which is the part geometry could never answer anyway. Two statements, each in the place that can actually make it."
+      legend={
+        <>
+          <LegendItem glyph={<SmartphoneIcon className="size-3.5" />}>
+            Stays on the device
+          </LegendItem>
+          <LegendItem glyph={<ServerIcon className="size-3.5" />}>Reaches the server</LegendItem>
+        </>
+      }
+    >
+      <Edges edges={EDGES} showMarkers />
+      <GraphBody
+        flowCaption={
+          <span className="inline-flex items-center gap-1 text-xs text-(--flow-muted-foreground)">
+            <SmartphoneIcon className="size-3" /> one copy per connection
+          </span>
+        }
+      />
+    </Canvas>
+  ),
+};
+
+export const IllegalDrop: Story = {
+  name: "Illegal — dropping a Projector on an audience Flow",
+  render: () => (
+    <Canvas
+      title="The gesture is refused"
+      note="A Flow may drive several Devices, but they must agree on cardinality. Wiring the Projector here would make one Source mean two different things at once, so Studio refuses the drop and says why rather than accepting it and diagnosing later."
+    >
+      <Edges edges={EDGES} />
+      <GraphBody
+        flowCaption={
+          <span className="inline-flex items-center gap-1 text-xs text-(--flow-muted-foreground)">
+            <SmartphoneIcon className="size-3" /> one copy per connection
+          </span>
+        }
+      />
+      <svg aria-hidden className="pointer-events-none absolute inset-0" width={W} height={H}>
+        <path
+          d={curve([FLOW.x + FLOW.w, FLOW.y + 60], [PROJECTOR.x, PROJECTOR.y + 34])}
+          fill="none"
+          strokeWidth={2}
+          strokeDasharray="6 5"
+          className="stroke-amber-500"
+        />
+      </svg>
+      <div
+        className="absolute flex max-w-[15rem] items-start gap-2 rounded-md border border-amber-500/50 bg-background px-3 py-2 text-xs shadow-md"
+        style={{ left: PROJECTOR.x - 40, top: PROJECTOR.y + 110 }}
+      >
+        <CircleAlertIcon className="mt-px size-3.5 shrink-0 text-amber-500" />
+        <span>
+          Audience flow already drives an Audience Device. A Flow cannot drive both shared and
+          per-connection Devices.
+        </span>
+      </div>
+    </Canvas>
+  ),
+};
+
+export const InvalidatedByFlip: Story = {
+  name: "Illegal — a Device kind flipped underneath",
+  render: () => (
+    <Canvas
+      title="Refusing the gesture is not enough"
+      note="`perConnection` can be changed after creation, so a Flow can become mixed without anyone touching its edges. The refusal in the previous story cannot catch this, which is why the domain diagnoses a mixed Flow wherever it came from. Preserved, and blocks publication."
     >
       <Edges
         edges={[
           ...EDGES,
           {
             id: "projector-drive",
-            from: [FLOW.x + FLOW.w, FLOW.y + 40],
+            from: [FLOW.x + FLOW.w, FLOW.y + 60],
             to: [PROJECTOR.x, PROJECTOR.y + 34],
             kind: "wiring",
           },
         ]}
       />
       <GraphBody
-        flowCaption={
-          <span className="inline-flex items-center gap-1 text-xs text-(--flow-muted-foreground)">
-            <SmartphoneIcon className="size-3" /> one copy per Device Instance
-          </span>
+        projectorPerConnection
+        flowInvalid={
+          <>
+            This Flow drives both shared and per-connection Devices, so a Flow-local Source here
+            would mean two different things at once. Publication is blocked until one of them
+            changes.
+          </>
         }
       />
     </Canvas>

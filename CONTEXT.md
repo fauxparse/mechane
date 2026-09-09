@@ -34,6 +34,15 @@ _Avoid_: Element tree, layer tree, stage
 A named physical endpoint in the venue — a projector, laptop, or audience phone — that displays Scenes and can emit Events. A Shared Device represents one logical runtime instance whose state is shared by all its connections; a per-connection Device represents one logical instance per connection. Devices are active participants, not passive displays.
 _Avoid_: Display, screen, endpoint
 
+### Device Instance
+
+One logical runtime occurrence of a Device within a Run, and the owner of
+everything that varies from one occurrence to the next: its active Scene and
+its Flow-local Source values. A Shared Device has exactly one Instance however
+many connections it has; a per-connection Device has one per connection. Which
+it is decides where that state lives, not what it means.
+_Avoid_: Connection (one Instance may outlive many), session, client
+
 ### Flow
 
 A named group of Scenes that behaves as a state machine. Its optional default Scene initializes Flow-driven Device runtime state for a Run; the active runtime Scene belongs to the Run-scoped Device instance. Navigate Actions transition that instance from one Scene to another.
@@ -56,11 +65,33 @@ The authored Structured Value Template or simple value used to initialize a
 Source when a Run starts and to service an explicit reset. It follows the
 Show's draft/publish lifecycle; editing it never implicitly changes live data.
 
+### Flow-local Source
+
+A Source placed inside a Flow's boundary. Flow-local is structural, not a flag
+or a separate kind: a Source is Flow-local by where it sits and Show-level
+otherwise. Its Current Source Value belongs to a Device Instance rather than to
+the Run, so each Instance holds its own independently.
+_Avoid_: Local source, private source, instance source, scoped source
+
+### Typed Absence
+
+The absence of a value where the Type permits one. It is a value, not a
+failure: an optional Field holding nothing, a Source whose authored default is
+absent, and a positional first-item selection over an empty array all produce
+it. One concept with two forms, split by the normalization boundary: stored
+normalized state spells it `null`, because JSON carries no `undefined`, while
+resolved evaluation values spell it as the missing key. How a value came to be
+absent is not recoverable from it and nothing downstream depends on knowing.
+_Avoid_: Null, empty, missing, undefined (each names one spelling, not the concept)
+
 ### Current Source Value
 
 The complete, conforming value a Source holds in one active Run. Actions and
 explicit Studio live editing change it immediately without changing the
 Source Default. Runtime reads never merge it with authored defaults.
+
+A Show-level Source has one such value for the whole Run. A Flow-local Source
+has one per Device Instance, and no Run-wide value at all.
 
 ### Transformer
 
@@ -303,6 +334,9 @@ _Avoid_: Binding (acceptable as a synonym), linking
 - A **Source** or **Transformer** is wired to a **Variable** via the Show graph
 - A **Wiring** edge has at most one **Wiring Conversion**; without one, the producer and consumer **Types** must be directly compatible
 - A **Run** materializes each published **Source Default** into a separate **Current Source Value**; live Actions and Studio edits change the current value immediately, while default edits follow draft/publish
+- A **Run** has one **Device Instance** per Shared **Device**, and one per connection to a per-connection **Device**
+- A **Device Instance** owns its active **Scene** and its **Flow-local Source** values; both are reset together when a different **Flow** comes to drive it, and neither is reset by publication alone
+- Every **Device** a **Flow** drives must agree on how many Instances it has; a Flow driving both a Shared and a per-connection **Device** is invalid, because a **Flow-local Source** inside it would mean two different things at once
 - A **Variable** can be connected to one or more **Element** properties within a **Scene** or **Block**
 - An **Element** can have one or more ordered **Event Bindings** for each Event kind; multiple Elements may bind to the same **Cue**
 - An **Element** can be a **Slot**, which instantiates a **Block**
