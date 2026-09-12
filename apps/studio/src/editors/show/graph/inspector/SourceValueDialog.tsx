@@ -14,7 +14,7 @@ import type { ImageAssetReference, ResolvedImageValue, Shape, Type } from "@mech
 import { formatValuePath, normalizeStructuredValueTemplate } from "@mechane/domain";
 
 import type { SourceValueRow } from "./source-value-types";
-import { ArrayValueEditor } from "./ArrayValueEditor";
+import { ArrayValueEditor } from "../ArrayValueEditor";
 import { ValueEditor } from "./ValueEditor";
 import { INLINE_STRING_LIMIT } from "./source-values-helpers";
 

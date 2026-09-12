@@ -1,0 +1,247 @@
+import {
+  Badge,
+  Button,
+  ChevronRight,
+  DownloadIcon,
+  EyeIcon,
+  ListIcon,
+  PencilIcon,
+  PlusIcon,
+  SearchInput,
+  Separator,
+  Switch,
+  Table2Icon,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  UploadIcon,
+} from "@mechane/design-system";
+import {
+  defaultValueForType,
+  isArrayStructuredValueTemplate,
+  isShapeStructuredValueTemplate,
+  normalizeStructuredValueTemplate,
+  type StructuredValueTemplate,
+} from "@mechane/domain";
+import { useEffect, useState } from "react";
+
+import { previewValue } from "../inspector/source-values-helpers";
+import { ArrayTable } from "./ArrayTable";
+import { RecordDetails } from "./RecordDetails";
+import { RecordRail } from "./RecordRail";
+import type { ArrayValueEditorProps, ShapeRecord, ViewMode } from "./types";
+
+export function ArrayValueEditor({
+  type,
+  value,
+  shapes,
+  path,
+  onChange,
+  onValidityChange,
+}: ArrayValueEditorProps) {
+  const normalized = isArrayStructuredValueTemplate(value) ? value : null;
+  if (!isArrayStructuredValueTemplate(normalized)) {
+    return <p className="text-sm text-destructive">This array value could not be opened.</p>;
+  }
+  const itemType = type.of;
+  if (typeof itemType === "string" || itemType.kind !== "shape") {
+    return (
+      <p className="text-sm text-muted-foreground">Use the standard value editor for this array.</p>
+    );
+  }
+
+  const shape = shapes.find((candidate) => candidate.id === itemType.shapeId);
+  const records = normalized.items.filter(isShapeStructuredValueTemplate);
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [editMode, setEditMode] = useState(true);
+  const [query, setQuery] = useState("");
+  const [selectedId, setSelectedId] = useState(records[0]?.id ?? "");
+
+  useEffect(() => {
+    if (!records.some((record) => record.id === selectedId)) {
+      setSelectedId(records[0]?.id ?? "");
+    }
+  }, [records, selectedId]);
+
+  if (!shape) {
+    return <p className="text-sm text-destructive">The array item shape is unavailable.</p>;
+  }
+
+  const visibleRecords = query.trim()
+    ? records.filter((record) =>
+        [record.id, ...shape.fields.map((field) => previewValue(record.fields[field.id]))].some(
+          (fieldValue) => fieldValue.toLowerCase().includes(query.trim().toLowerCase()),
+        ),
+      )
+    : records;
+  const selectedRecord = records.find((record) => record.id === selectedId) ?? records[0] ?? null;
+
+  const updateArray = (items: readonly StructuredValueTemplate[]) => {
+    onChange({ ...normalized, items });
+  };
+
+  const selectedIndex = records.findIndex((record) => record.id === selectedId);
+  const updateRecord = (nextRecord: ShapeRecord) => {
+    updateArray(
+      normalized.items.map((item) =>
+        isShapeStructuredValueTemplate(item) && item.id === nextRecord.id ? nextRecord : item,
+      ),
+    );
+  };
+
+  const reorderRecords = (sourceId: string, targetId: string) => {
+    if (!editMode || sourceId === targetId) return;
+    const sourceIndex = normalized.items.findIndex(
+      (item) => isShapeStructuredValueTemplate(item) && item.id === sourceId,
+    );
+    const targetIndex = normalized.items.findIndex(
+      (item) => isShapeStructuredValueTemplate(item) && item.id === targetId,
+    );
+    if (sourceIndex < 0 || targetIndex < 0) return;
+    const items = [...normalized.items];
+    const [moved] = items.splice(sourceIndex, 1);
+    if (!moved) return;
+    items.splice(targetIndex, 0, moved);
+    updateArray(items);
+  };
+
+  const addRecord = () => {
+    if (!editMode) return;
+    const next = normalizeStructuredValueTemplate(
+      defaultValueForType(itemType, shapes),
+      itemType,
+      shapes,
+    );
+    if (!isShapeStructuredValueTemplate(next)) return;
+    updateArray([...normalized.items, next]);
+    setSelectedId(next.id);
+    setViewMode("record");
+  };
+
+  const removeRecord = () => {
+    if (!editMode || !selectedRecord) return;
+    const nextRecords = records.filter((record) => record.id !== selectedRecord.id);
+    updateArray(nextRecords);
+    setSelectedId(nextRecords[0]?.id ?? "");
+  };
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+            <Table2Icon className="size-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="truncate text-sm font-semibold">items</span>
+              <Badge variant="outline">{records.length} records</Badge>
+              <Badge variant="secondary">{shape.name}</Badge>
+            </div>
+            <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+              <span>source value</span>
+              <ChevronRight className="size-3" />
+              <span className="font-mono">Array of {shape.name}</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="ghost" size="sm" disabled title="Import is a placeholder">
+            <UploadIcon /> Import
+          </Button>
+          <Button variant="ghost" size="sm" disabled title="Export is a placeholder">
+            <DownloadIcon /> Export
+          </Button>
+          <Separator orientation="vertical" className="hidden h-6 sm:block" />
+          <div className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5">
+            {editMode ? (
+              <PencilIcon className="size-3.5 text-primary" />
+            ) : (
+              <EyeIcon className="size-3.5 text-muted-foreground" />
+            )}
+            <span className="text-xs font-medium">{editMode ? "Edit" : "Read only"}</span>
+            <Switch
+              size="sm"
+              checked={editMode}
+              onCheckedChange={setEditMode}
+              aria-label={editMode ? "Edit mode" : "Read only"}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <SearchInput
+          className="h-8! max-h-8"
+          placeholder="Filter…"
+          value={query}
+          onValueChange={setQuery}
+        />
+        <div className="flex items-center gap-2">
+          <Tabs
+            value={viewMode}
+            onValueChange={(value) => setViewMode(value === "record" ? "record" : "table")}
+          >
+            <TabsList className="h-8">
+              <TabsTrigger value="table">
+                <Table2Icon /> Table
+              </TabsTrigger>
+              <TabsTrigger value="record">
+                <ListIcon /> Record
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <Button size="sm" onClick={addRecord} disabled={!editMode}>
+            <PlusIcon /> Add record
+          </Button>
+        </div>
+      </div>
+
+      {viewMode === "table" ? (
+        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+          <ArrayTable
+            records={visibleRecords}
+            fields={shape.fields}
+            selectedId={selectedId}
+            editMode={editMode}
+            onSelect={setSelectedId}
+            onReorder={reorderRecords}
+          />
+          <RecordDetails
+            record={selectedRecord}
+            recordIndex={selectedIndex < 0 ? 0 : selectedIndex}
+            fields={shape.fields}
+            shapes={shapes}
+            path={path}
+            editMode={editMode}
+            onChange={updateRecord}
+            onValidityChange={onValidityChange}
+            onRemove={removeRecord}
+          />
+        </div>
+      ) : (
+        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+          <RecordRail
+            records={visibleRecords}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onAdd={addRecord}
+            editMode={editMode}
+          />
+          <RecordDetails
+            record={selectedRecord}
+            recordIndex={selectedIndex < 0 ? 0 : selectedIndex}
+            fields={shape.fields}
+            shapes={shapes}
+            path={path}
+            editMode={editMode}
+            onChange={updateRecord}
+            onValidityChange={onValidityChange}
+            onRemove={removeRecord}
+            spacious
+          />
+        </div>
+      )}
+    </div>
+  );
+}

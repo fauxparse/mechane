@@ -11,16 +11,7 @@
 // Show's Scenes — which the components fetch themselves because the route
 // cannot know how many Shows there will be. See ./use-show-dossier for what
 // that costs.
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-  SearchIcon,
-  ToggleGroup,
-  ToggleGroupItem,
-  XIcon,
-} from "@mechane/design-system";
+import { SearchInput, ToggleGroup, ToggleGroupItem } from "@mechane/design-system";
 import type { ShowId } from "@mechane/domain";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
@@ -125,39 +116,10 @@ export function Dashboard({
           <h2 className="text-lg font-semibold text-muted-foreground">
             {filtering ? `${matching.length} of ${ordered.length} shows` : "All shows"}
           </h2>
-          {/* Beside the count rather than in place of the grid: the New Show
-              card should not vanish and reflow while the list arrives. */}
           {pending ? <span className="text-sm text-muted-foreground">Loading Shows…</span> : null}
 
-          {/* The controls belong with the thing they filter, not in the
-              chrome: nothing above this line is theirs to change. */}
           <div className="ml-auto flex items-center gap-3">
-            {/* Sized by a wrapper: InputGroup's own `w-full` is baked into its
-                cva base, which a `className` cannot reliably outrank. */}
-            <div className="w-60">
-              <InputGroup className="rounded-full bg-muted/50 border-0">
-                <InputGroupAddon>
-                  <SearchIcon />
-                </InputGroupAddon>
-                <InputGroupInput
-                  aria-label="Search shows"
-                  placeholder="Search shows"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                />
-                {query ? (
-                  <InputGroupAddon align="inline-end" className="size-8 p-1 mr-0!">
-                    <InputGroupButton
-                      className="rounded-full size-6"
-                      aria-label="Clear search"
-                      onClick={() => setQuery("")}
-                    >
-                      <XIcon />
-                    </InputGroupButton>
-                  </InputGroupAddon>
-                ) : null}
-              </InputGroup>
-            </div>
+            <SearchInput placeholder="Search shows" value={query} onValueChange={setQuery} />
 
             <ToggleGroup
               animated

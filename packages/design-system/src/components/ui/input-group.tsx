@@ -35,14 +35,10 @@ const InputGroup = forwardRef<
         data-vibe={vibe}
         role="group"
         className={cn(
-          inputGroupVariants({
-            size,
-            className: cn(
-              vibe === "inspector"
-                ? "h-7 max-h-7 rounded-sm border-0 bg-muted/50 dark:bg-muted/50 data-[size=default]:h-7"
-                : "",
-            ),
-          }),
+          inputGroupVariants({ size }),
+          vibe === "inspector"
+            ? "h-7 max-h-7 rounded-sm border-0 bg-muted/50 dark:bg-muted/50 data-[size=default]:h-7"
+            : "",
           className,
         )}
         {...props}

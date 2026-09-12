@@ -8,13 +8,13 @@ export { cn } from "./lib/utils";
 export { THEME_COLOR_METADATA } from "./themes/generated";
 export type { ThemeColorKey } from "./themes/generated";
 
+export { EditableName, type EditableNameProps } from "./components/editable-name";
 export {
   Section,
   SectionHelperText,
   SectionRow,
   type SectionProps,
 } from "./components/inspector-section";
-export { EditableName, type EditableNameProps } from "./components/editable-name";
 export { InspectorProvider, useVibe, type Vibe } from "./components/inspector-vibe";
 export { ThemeSwitcher, type ThemeSwitcherProps } from "./components/theme-switcher";
 export { Alert, AlertAction, AlertDescription, AlertTitle } from "./components/ui/alert";
@@ -157,6 +157,7 @@ export {
   type VariableTypeIconKind,
 } from "./components/ui/property-input/variable-type-icons";
 export { QrCode } from "./components/ui/qr-code";
+export { SearchInput } from "./components/ui/search-input";
 export {
   Select,
   SelectContent,
@@ -164,12 +165,6 @@ export {
   SelectTrigger,
   SelectValue,
 } from "./components/ui/select";
-export {
-  TypeSelect,
-  type TypeSelectOption,
-  type TypeSelectProps,
-  type TypeSelectTriggerProps,
-} from "./components/ui/type-select";
 export { Separator } from "./components/ui/separator";
 export {
   InsideSidebar,
@@ -223,6 +218,12 @@ export {
   TooltipProvider,
   TooltipTrigger,
 } from "./components/ui/tooltip";
+export {
+  TypeSelect,
+  type TypeSelectOption,
+  type TypeSelectProps,
+  type TypeSelectTriggerProps,
+} from "./components/ui/type-select";
 export { ThemeProvider, useTheme } from "./theme/theme-provider";
 export type { ThemeContextValue, ThemeProviderProps } from "./theme/theme-provider";
 
