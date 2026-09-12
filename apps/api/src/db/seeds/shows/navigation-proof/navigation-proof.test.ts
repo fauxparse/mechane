@@ -8,7 +8,7 @@ import {
   publishShowGraph,
   writeShowGraph,
 } from "../../../show-graph";
-import { startRun } from "../../../runs";
+import { readActiveRun, startRun } from "../../../runs";
 import { setupPostgresTest } from "../../../test-helpers";
 import { readPlayerSession } from "../../../../player";
 
@@ -158,6 +158,7 @@ describe("Navigation Proof seed", () => {
       value: 1,
     };
     await applyShowEdits(showId, [edit], [], beforeEdit.version);
+    expect((await readActiveRun(showId))?.sourceValues.source_counter).toBe(1);
 
     const published = await readShowGraph(showId, "published");
     expect(published.cues).toHaveLength(6);

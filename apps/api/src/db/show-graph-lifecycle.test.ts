@@ -120,7 +120,7 @@ describe("Show graph lifecycle", () => {
     };
     const applied = await applyShowEdits(showId, [edit], [], draftBeforePublish.version);
     expect(applied.version).toBe(draftBeforePublish.version + 1);
-    expect((await readActiveRun(showId))?.sourceValues).toEqual({ source_score: 1 });
+    expect((await readActiveRun(showId))?.sourceValues).toEqual({ source_score: 2 });
     expect((await readShowGraph(showId, "published")).version).toBe(1);
   });
   it("copies Scene Canvas Elements before persisting Event Bindings", async () => {

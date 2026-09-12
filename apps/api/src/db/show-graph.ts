@@ -21,7 +21,7 @@ import {
   readGraphRows,
 } from "./graph-persistence";
 import { drainPlayerInvalidations, enqueuePlayerInvalidations } from "./player-invalidation-outbox";
-import { reconcileActiveRunDeviceStates, reconcileActiveRunValues } from "./runs";
+import { reconcileActiveRunDeviceStates, reconcileActiveRunValues, syncActiveRunSourceValues } from "./runs";
 import { devices, shows } from "./schema";
 import { withUniqueId } from "./ids";
 export interface PublishLoss {
@@ -227,11 +227,17 @@ export async function applyShowEdits(
       canvasEdits,
       forceBlockCanvasWrites: false,
     });
-    let playerUpdated = false;
     const lastCanvasId = canvasEdits.at(-1)?.canvasId;
     const storedCanvas = lastCanvasId
       ? ((await readCanvasById(showId, "draft", lastCanvasId, tx))?.canvas ?? null)
       : null;
+    const editedSourceIds = new Set(
+      graphEdits
+        .filter((edit): edit is Extract<GraphEdit, { type: "graph.setSourceFieldDefault" }> => edit.type === "graph.setSourceFieldDefault")
+        .map((edit) => edit.nodeId),
+    );
+    const playerUpdated = await syncActiveRunSourceValues(showId, nextGraph, editedSourceIds, tx);
+    if (playerUpdated) await enqueuePlayerInvalidations(tx, showId);
     return {
       showId,
       state: written.state,

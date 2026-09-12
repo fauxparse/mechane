@@ -50,6 +50,7 @@ export function SourceValueDialog({
 }) {
   const [draft, setDraft] = useState(() => draftForRow(row, shapes));
   const [errors, setErrors] = useState<Map<string, string>>(new Map());
+  const rowKey = formatValuePath([...row.fieldPath]);
   const isLongText =
     typeof row.type === "string" &&
     typeof row.value === "string" &&
@@ -60,7 +61,7 @@ export function SourceValueDialog({
     if (!open) return;
     setDraft(draftForRow(row, shapes));
     setErrors(new Map());
-  }, [open, row, shapes]);
+  }, [open, rowKey]);
 
   const updateDraft = (next: unknown) => {
     setErrors(new Map());
