@@ -38,13 +38,24 @@ const source: SourceNode = {
   name: "Profile source",
   position: { x: 0, y: 0 },
   parentId: null,
-  type: { kind: "shape", shapeId: shape.id },
+  type: { kind: "array", of: { kind: "shape", shapeId: shape.id } },
 };
 
 const initialGraph: ShowGraph = {
   shapes: [detailsShape, shape],
   nodes: [source],
   edges: [],
+  sourceFieldDefaults: [
+    {
+      nodeId: source.id,
+      fieldPath: [],
+      value: [
+        { headline: "Welcome", score: 7, details: { city: "London", active: true } },
+        { headline: "Tonight", score: 9, details: { city: "Berlin", active: false } },
+        { headline: "Encore", score: 4, details: { city: "Oslo", active: true } },
+      ],
+    },
+  ],
 };
 
 const meta = {

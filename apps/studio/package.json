@@ -21,6 +21,7 @@
     "@tanstack/react-form": "^1.33.5",
     "@tanstack/react-query": "^5.90.0",
     "@tanstack/react-router": "^1.150.0",
+    "@tanstack/react-table": "^8.21.3",
     "@tisoap/react-flow-smart-edge": "^4.13.1",
     "@xyflow/react": "^12.11.2",
     "better-auth": "^1.6.26",
