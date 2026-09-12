@@ -184,6 +184,7 @@ export const GetShowGraphQuery = graphql(
           params
           cueId
           position
+          parameterMappings
         }
         slotEventBindings {
           id

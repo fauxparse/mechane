@@ -1,5 +1,6 @@
 import type { FlowNode, NavigateEdge, SceneNode, WiringEdge } from "@mechane/domain";
-import { assertValidShowGraph } from "@mechane/domain";
+import { assertValidShowGraph, planConnection } from "@mechane/domain";
+import { GetShowGraphQuery } from "@mechane/graphql-schema";
 import { describe, expect, it } from "vitest";
 
 import type { ApiGraph } from "./api-graph";
@@ -133,6 +134,77 @@ describe("toShowGraph", () => {
     expect(source).not.toHaveProperty("defaultSceneId");
     expect(source).not.toHaveProperty("variables");
     expect(graph.nodes.find((node) => node.id === "device_phone")).not.toHaveProperty("variables");
+  });
+  it("preserves Event Binding parameter mappings from the API", () => {
+    const withInteractions: ApiGraph = {
+      ...GRAPH,
+      cues: [
+        {
+          id: "cue_vote",
+          name: "Vote",
+          ownerKind: "scene",
+          sceneId: "scene_voting",
+          blockId: null,
+          actionIds: [],
+          parameters: [
+            {
+              id: "candidate",
+              name: "Candidate",
+              type: { kind: "text", shapeId: null, of: null },
+              position: 0,
+            },
+          ],
+        },
+      ],
+      eventBindings: [
+        {
+          id: "binding_vote",
+          canvasId: "canvas_voting",
+          elementId: "vote-button",
+          eventKind: "tap",
+          cueId: "cue_vote",
+          position: 0,
+          parameterMappings: [
+            {
+              parameterId: "candidate",
+              source: { kind: "variable", variableId: "variable_candidate" },
+            },
+          ],
+        },
+      ],
+    };
+
+    const graph = toShowGraph(withInteractions);
+    expect(graph.eventBindings?.[0]?.parameterMappings).toEqual([
+      {
+        parameterId: "candidate",
+        source: { kind: "variable", variableId: "variable_candidate" },
+      },
+    ]);
+    expect(() => assertValidShowGraph(graph)).not.toThrow();
+    const plan = planConnection(
+      graph,
+      { sourceId: "source_tally", targetId: "source_created" },
+      { edgeId: "edge_created", variableId: "variable_unused" },
+      {
+        addNode: {
+          id: "source_created",
+          kind: "source",
+          name: "Created",
+          parentId: null,
+          position: { x: 0, y: 0 },
+          type: "text",
+        },
+      },
+    );
+    expect(plan).toEqual(expect.objectContaining({ edits: expect.any(Array) }));
+  });
+
+  it("requests Event Binding parameter mappings", () => {
+    const query = JSON.stringify(GetShowGraphQuery);
+    expect(query).toMatch(
+      /"value":"eventBindings"[\s\S]*?"value":"parameterMappings"[\s\S]*?"value":"slotEventBindings"/,
+    );
   });
 
   it("converts every edge kind, keeping paths and Cue/Action ids", () => {
