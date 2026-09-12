@@ -106,4 +106,9 @@ describe("CanvasWorkspaceStage", () => {
     expect(markup).not.toContain("will-change:transform");
     expect(markup).toContain("contain:layout paint");
   });
+  it("contains browser overscroll navigation gestures", () => {
+    const markup = stageMarkup();
+    expect(markup).toContain("touch-action:none");
+    expect(markup).toContain("overscroll-behavior:none");
+  });
 });
