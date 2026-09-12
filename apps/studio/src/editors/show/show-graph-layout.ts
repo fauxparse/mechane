@@ -18,6 +18,7 @@
 // rules are testable without a canvas.
 import type { Position } from "@mechane/domain";
 
+import type { FlowDimensions, ShowFlowNode } from "./graph/graph-to-flow";
 import {
   absolutePosition,
   FLOW_HEADER_HEIGHT,
@@ -26,7 +27,6 @@ import {
   NODE_HEIGHT,
   NODE_WIDTH,
 } from "./graph/graph-to-flow";
-import type { FlowDimensions, ShowFlowNode } from "./graph/graph-to-flow";
 
 /** Vertical gap between nodes this module places in a column. */
 const STACK_GAP = 32;

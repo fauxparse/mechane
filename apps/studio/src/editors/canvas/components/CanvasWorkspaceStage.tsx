@@ -1310,6 +1310,7 @@ export function CanvasWorkspaceStage({
           : tool !== "select"
             ? "crosshair"
             : undefined,
+        overscrollBehavior: "none",
         touchAction: "none",
       }}
       aria-label="Canvas workspace"
