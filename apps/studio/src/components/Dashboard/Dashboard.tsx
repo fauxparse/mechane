@@ -160,7 +160,8 @@ export function Dashboard({
             </div>
 
             <ToggleGroup
-              className="rounded-full bg-muted/50 h-8 p-0.5 gap-0 *:rounded-full *:h-7 *:px-3"
+              animated
+              className="rounded-full bg-muted/50 h-8 p-0.5 gap-0 *:rounded-full *:h-7"
               value={[liveOnly ? "live" : "all"]}
               onValueChange={(value) => setLiveOnly(value[0] === "live")}
             >
