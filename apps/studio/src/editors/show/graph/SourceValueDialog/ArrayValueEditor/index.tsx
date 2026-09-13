@@ -3,13 +3,9 @@ import {
   Button,
   ChevronRight,
   DownloadIcon,
-  EyeIcon,
   ListIcon,
-  PencilIcon,
   PlusIcon,
   SearchInput,
-  Separator,
-  Switch,
   Table2Icon,
   Tabs,
   TabsList,
@@ -25,8 +21,7 @@ import {
   type StructuredValueTemplate,
 } from "@mechane/domain";
 import { useMemo, useState } from "react";
-
-import { previewValue } from "../inspector/source-values-helpers";
+import { previewValue } from "../../inspector/source-values-helpers";
 import { ArrayTable } from "./ArrayTable";
 import { RecordDetails } from "./RecordDetails";
 import { RecordRail } from "./RecordRail";
@@ -39,6 +34,7 @@ export function ArrayValueEditor({
   shapes,
   path,
   focus,
+  readOnly,
   onChange,
   onValidityChange,
   onSelectionChange,
@@ -56,7 +52,6 @@ export function ArrayValueEditor({
     [normalizedItems],
   );
   const [viewMode, setViewMode] = useState<ViewMode>("table");
-  const [editMode, setEditMode] = useState(true);
   const [query, setQuery] = useState("");
   const selectedId = focus?.kind === "record" ? focus.id : "";
   const displayedViewMode = focus?.kind === "array" ? "table" : viewMode;
@@ -106,7 +101,7 @@ export function ArrayValueEditor({
   };
 
   const reorderRecords = (sourceId: string, targetId: string) => {
-    if (!editMode || sourceId === targetId) return;
+    if (readOnly || sourceId === targetId) return;
     const sourceIndex = normalized.items.findIndex(
       (item) => isShapeStructuredValueTemplate(item) && item.id === sourceId,
     );
@@ -122,7 +117,7 @@ export function ArrayValueEditor({
   };
 
   const addRecord = () => {
-    if (!editMode) return;
+    if (readOnly) return;
     const next = normalizeStructuredValueTemplate(
       defaultValueForType(itemType, shapes),
       itemType,
@@ -135,7 +130,7 @@ export function ArrayValueEditor({
   };
 
   const removeRecord = () => {
-    if (!editMode || !selectedRecord) return;
+    if (readOnly || !selectedRecord) return;
     const nextRecords = records.filter((record) => record.id !== selectedRecord.id);
     updateArray(nextRecords);
     reportSelection(nextRecords[0] ?? null);
@@ -146,8 +141,7 @@ export function ArrayValueEditor({
       <ArrayEditorToolbar
         recordsCount={records.length}
         shapeName={shape.name}
-        editMode={editMode}
-        setEditMode={setEditMode}
+        readOnly={readOnly}
         query={query}
         setQuery={setQuery}
         viewMode={displayedViewMode}
@@ -160,7 +154,7 @@ export function ArrayValueEditor({
         visibleRecords={visibleRecords}
         shape={shape}
         selectedId={selectedId}
-        editMode={editMode}
+        readOnly={readOnly}
         selectRecord={selectRecord}
         reorderRecords={reorderRecords}
         selectedIndex={selectedIndex}
@@ -177,8 +171,7 @@ export function ArrayValueEditor({
 type ArrayEditorToolbarProps = {
   recordsCount: number;
   shapeName: string;
-  editMode: boolean;
-  setEditMode(value: boolean): void;
+  readOnly: boolean;
   query: string;
   setQuery(value: string): void;
   viewMode: ViewMode;
@@ -189,8 +182,7 @@ type ArrayEditorToolbarProps = {
 function ArrayEditorToolbar({
   recordsCount,
   shapeName,
-  editMode,
-  setEditMode,
+  readOnly,
   query,
   setQuery,
   viewMode,
@@ -224,21 +216,6 @@ function ArrayEditorToolbar({
           <Button variant="ghost" size="sm" disabled title="Export is a placeholder">
             <DownloadIcon /> Export
           </Button>
-          <Separator orientation="vertical" className="hidden h-6 sm:block" />
-          <div className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5">
-            {editMode ? (
-              <PencilIcon className="size-3.5 text-primary" />
-            ) : (
-              <EyeIcon className="size-3.5 text-muted-foreground" />
-            )}
-            <span className="text-xs font-medium">{editMode ? "Edit" : "Read only"}</span>
-            <Switch
-              size="sm"
-              checked={editMode}
-              onCheckedChange={setEditMode}
-              aria-label={editMode ? "Edit mode" : "Read only"}
-            />
-          </div>
         </div>
       </div>
 
@@ -263,7 +240,7 @@ function ArrayEditorToolbar({
               </TabsTrigger>
             </TabsList>
           </Tabs>
-          <Button size="sm" onClick={addRecord} disabled={!editMode}>
+          <Button size="sm" onClick={addRecord} disabled={readOnly}>
             <PlusIcon /> Add record
           </Button>
         </div>
@@ -278,7 +255,7 @@ type ArrayEditorRecordsProps = {
   visibleRecords: ShapeRecord[];
   shape: Shape;
   selectedId: string;
-  editMode: boolean;
+  readOnly: boolean;
   selectRecord(id: string): void;
   reorderRecords(sourceId: string, targetId: string): void;
   selectedIndex: number;
@@ -296,7 +273,7 @@ function ArrayEditorRecords({
   visibleRecords,
   shape,
   selectedId,
-  editMode,
+  readOnly,
   selectRecord,
   reorderRecords,
   selectedIndex,
@@ -320,7 +297,7 @@ function ArrayEditorRecords({
           records={visibleRecords}
           fields={shape.fields}
           selectedId={selectedId}
-          editMode={editMode}
+          readOnly={readOnly}
           onSelect={selectRecord}
           onReorder={reorderRecords}
         />
@@ -331,7 +308,7 @@ function ArrayEditorRecords({
             fields={shape.fields}
             shapes={shapes}
             path={path}
-            editMode={editMode}
+            readOnly={readOnly}
             onChange={updateRecord}
             onValidityChange={onValidityChange}
             onRemove={removeRecord}
@@ -355,7 +332,7 @@ function ArrayEditorRecords({
         fields={shape.fields}
         onSelect={selectRecord}
         onAdd={addRecord}
-        editMode={editMode}
+        readOnly={readOnly}
       />
       {selectedRecord ? (
         <RecordDetails
@@ -364,7 +341,7 @@ function ArrayEditorRecords({
           fields={shape.fields}
           shapes={shapes}
           path={path}
-          editMode={editMode}
+          readOnly={readOnly}
           onChange={updateRecord}
           onValidityChange={onValidityChange}
           onRemove={removeRecord}

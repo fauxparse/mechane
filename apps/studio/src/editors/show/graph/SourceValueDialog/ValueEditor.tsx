@@ -25,8 +25,12 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { SourceValueEditing } from "../../commands/use-graph-editing";
 import { typeLabel as graphTypeLabel } from "../node-kinds";
-import type { SourceValueRow, ValueEditorProps, ValueEditorRenderer } from "./source-value-types";
-import { previewValue, propertyInputType } from "./source-values-helpers";
+import type {
+  SourceValueRow,
+  ValueEditorProps,
+  ValueEditorRenderer,
+} from "../inspector/source-value-types";
+import { previewValue, propertyInputType } from "../inspector/source-values-helpers";
 
 type SourceValueGesture = Gesture<ShowGraph, GraphEdit>;
 
@@ -36,6 +40,10 @@ type PrimitiveInputProps = Omit<ValueEditorProps, "shapes"> & {
 };
 
 function SourcePrimitiveInput(props: PrimitiveInputProps) {
+  if (props.readOnly) {
+    if (props.type === "image") return <SourceImageInput {...props} />;
+    return <SourceReadOnlyValue value={props.value} label={props.label} />;
+  }
   const inputType = typeof props.type === "string" ? propertyInputType(props.type) : null;
   if (props.type === "image") return <SourceImageInput {...props} />;
   if (props.type === "boolean") return <SourceBooleanInput {...props} />;
@@ -49,6 +57,17 @@ function SourcePrimitiveInput(props: PrimitiveInputProps) {
   return <SourceValueInput {...props} inputType={inputType} />;
 }
 
+function SourceReadOnlyValue({ value, label }: Pick<PrimitiveInputProps, "value" | "label">) {
+  return (
+    <div
+      aria-label={label ? `${label} value` : undefined}
+      className="rounded-sm bg-muted/50 px-2 py-1 text-sm text-muted-foreground"
+    >
+      {previewValue(value)}
+    </div>
+  );
+}
+
 function SourceImageInput({
   value,
   path,
@@ -56,6 +75,7 @@ function SourceImageInput({
   onImageUpload,
   onChange,
   onValidityChange,
+  readOnly,
 }: PrimitiveInputProps) {
   const resolvedValue = isResolvedImageValue(value)
     ? value
@@ -68,6 +88,7 @@ function SourceImageInput({
     <ImageInput
       value={resolvedValue}
       imageAssets={imageAssets}
+      readOnly={readOnly}
       allowLink={false}
       onUpload={onImageUpload}
       onChange={(next: ImageInputValue | null) => {
@@ -176,6 +197,7 @@ function ArrayValueEditor({
   onChange,
   onValidityChange,
   renderValue,
+  readOnly,
 }: ValueEditorProps & {
   type: Extract<Type, { kind: "array" }>;
   renderValue: ValueEditorRenderer;
@@ -200,6 +222,7 @@ function ArrayValueEditor({
               type: type.of,
               value: item,
               shapes,
+              readOnly,
               imageAssets,
               onImageUpload,
               path: [...path, index],
@@ -213,34 +236,42 @@ function ArrayValueEditor({
                 ),
               onValidityChange,
             })}
-            <Button
-              type="button"
-              size="icon-sm"
-              variant="ghost"
-              aria-label={`Remove item ${index + 1}`}
-              onClick={() =>
-                updateItems(values.filter((_, currentIndex) => currentIndex !== index))
-              }
-            >
-              <Trash2Icon />
-            </Button>
+            {!readOnly ? (
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                aria-label={`Remove item ${index + 1}`}
+                onClick={() =>
+                  updateItems(values.filter((_, currentIndex) => currentIndex !== index))
+                }
+              >
+                <Trash2Icon />
+              </Button>
+            ) : null}
           </div>
         );
       })}
-      <Button
-        type="button"
-        variant="outline"
-        className="self-start"
-        onClick={() =>
-          updateItems([
-            ...values,
-            normalizeStructuredValueTemplate(defaultValueForType(type.of, shapes), type.of, shapes),
-          ])
-        }
-      >
-        <PlusIcon />
-        Add item
-      </Button>
+      {!readOnly ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="self-start"
+          onClick={() =>
+            updateItems([
+              ...values,
+              normalizeStructuredValueTemplate(
+                defaultValueForType(type.of, shapes),
+                type.of,
+                shapes,
+              ),
+            ])
+          }
+        >
+          <PlusIcon />
+          Add item
+        </Button>
+      ) : null}
     </div>
   );
 }
@@ -255,6 +286,7 @@ function ShapeValueEditor({
   onChange,
   onValidityChange,
   renderValue,
+  readOnly,
 }: ValueEditorProps & {
   type: Extract<Type, { kind: "shape" }>;
   renderValue: ValueEditorRenderer;
@@ -277,6 +309,7 @@ function ShapeValueEditor({
           {renderValue({
             type: field.type,
             value: Reflect.get(objectValue, field.id),
+            readOnly,
             shapes,
             imageAssets,
             onImageUpload,
@@ -289,15 +322,15 @@ function ShapeValueEditor({
     </div>
   );
 }
-
 export function ValueEditor(props: ValueEditorProps) {
-  const { type, value, shapes, onChange } = props;
+  const { type, value, shapes, onChange, readOnly = false } = props;
   if (typeof type === "string") {
     return (
       <SourcePrimitiveInput key={formatValuePath(props.path.map(String))} {...props} type={type} />
     );
   }
   if (value === null) {
+    if (readOnly) return <SourceReadOnlyValue value={value} />;
     return (
       <Button
         type="button"
@@ -309,10 +342,14 @@ export function ValueEditor(props: ValueEditorProps) {
     );
   }
   if (type.kind === "array") {
-    return <ArrayValueEditor {...props} type={type} renderValue={ValueEditor} />;
+    return (
+      <ArrayValueEditor {...props} type={type} renderValue={ValueEditor} readOnly={readOnly} />
+    );
   }
   if (type.kind === "shape") {
-    return <ShapeValueEditor {...props} type={type} renderValue={ValueEditor} />;
+    return (
+      <ShapeValueEditor {...props} type={type} renderValue={ValueEditor} readOnly={readOnly} />
+    );
   }
   const exhaustive: never = type;
   return exhaustive;

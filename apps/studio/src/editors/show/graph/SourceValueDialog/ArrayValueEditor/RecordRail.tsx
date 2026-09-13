@@ -11,14 +11,14 @@ export function RecordRail({
   fields,
   onSelect,
   onAdd,
-  editMode,
+  readOnly,
 }: {
   records: ShapeRecord[];
   selectedId: string;
   fields: Shape["fields"];
   onSelect(id: string): void;
   onAdd(): void;
-  editMode: boolean;
+  readOnly: boolean;
 }) {
   return (
     <div className="rounded-lg border border-border bg-muted/15 p-2">
@@ -48,7 +48,7 @@ export function RecordRail({
         size="sm"
         className="mt-2 w-full border border-dashed border-border"
         onClick={onAdd}
-        disabled={!editMode}
+        disabled={readOnly}
       >
         <Plus /> Add
       </Button>

@@ -13,7 +13,7 @@ import {
 } from "@tanstack/react-table";
 import { useMemo } from "react";
 
-import { previewValue } from "../inspector/source-values-helpers";
+import { previewValue } from "../../inspector/source-values-helpers";
 import type { ShapeRecord } from "./types";
 
 const tableSensors = (defaults: typeof defaultPreset.sensors) =>
@@ -31,14 +31,14 @@ export function ArrayTable({
   records,
   fields,
   selectedId,
-  editMode,
+  readOnly,
   onSelect,
   onReorder,
 }: {
   records: ShapeRecord[];
   fields: Shape["fields"];
   selectedId: string;
-  editMode: boolean;
+  readOnly: boolean;
   onSelect(id: string): void;
   onReorder(sourceId: string, targetId: string): void;
 }) {
@@ -48,7 +48,9 @@ export function ArrayTable({
         columnHelper.accessor((record) => previewValue(record.fields[field.id]), {
           id: field.id,
           header: field.name,
-          cell: ({ getValue }) => <span className="max-w-44 truncate text-xs">{getValue<string>()}</span>,
+          cell: ({ getValue }) => (
+            <span className="max-w-44 truncate text-xs">{getValue<string>()}</span>
+          ),
         }),
       ),
       columnHelper.display({
@@ -100,7 +102,7 @@ export function ArrayTable({
                 key={row.id}
                 row={row}
                 selectedId={selectedId}
-                editMode={editMode}
+                readOnly={readOnly}
                 onSelect={onSelect}
               />
             ))}
@@ -108,7 +110,9 @@ export function ArrayTable({
         </table>
       </DragDropProvider>
       {records.length === 0 ? (
-        <p className="p-8 text-center text-sm text-muted-foreground">No records match this filter.</p>
+        <p className="p-8 text-center text-sm text-muted-foreground">
+          No records match this filter.
+        </p>
       ) : null}
     </div>
   );
@@ -117,19 +121,19 @@ export function ArrayTable({
 function SortableTableRow({
   row,
   selectedId,
-  editMode,
+  readOnly,
   onSelect,
 }: {
   row: Row<ShapeRecord>;
   selectedId: string;
-  editMode: boolean;
+  readOnly: boolean;
   onSelect(id: string): void;
 }) {
   const { isDragging, isDropTarget, ref, handleRef } = useSortable({
     id: row.original.id,
     index: row.index,
     group: "source-array-records",
-    disabled: !editMode,
+    disabled: readOnly,
   });
   return (
     <tr
@@ -144,7 +148,7 @@ function SortableTableRow({
           aria-label={`Reorder ${previewValue(row.original.fields[Object.keys(row.original.fields)[0] ?? ""])}`}
           aria-roledescription="sortable"
           className="touch-none cursor-grab rounded p-1 text-muted-foreground hover:bg-muted active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40"
-          disabled={!editMode}
+          disabled={readOnly}
         >
           <GripVertical className="size-4" />
         </button>

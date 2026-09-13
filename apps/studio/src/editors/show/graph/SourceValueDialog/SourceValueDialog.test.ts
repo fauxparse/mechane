@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { ToastProvider } from "@mechane/design-system";
 import { generateId, type Shape } from "@mechane/domain";
 
-import { recordIdentifier } from "../ArrayValueEditor/types";
+import { recordIdentifier } from "./ArrayValueEditor/types";
 import { ValueEditor } from "./ValueEditor";
 
 const candidate: Shape = {
@@ -55,6 +55,22 @@ describe("ValueEditor", () => {
     expect(html).toContain('data-empty="false"');
     expect(html).toContain("Name");
     expect(html).toContain("Votes");
+  });
+  it("renders primitive values without editing controls in read-only mode", () => {
+    const html = renderToStaticMarkup(
+      createElement(ValueEditor, {
+        type: "text",
+        value: "Incoming value",
+        shapes: [],
+        path: [],
+        readOnly: true,
+        onChange: () => {},
+        onValidityChange: () => {},
+      }),
+    );
+
+    expect(html).toContain("Incoming value");
+    expect(html).not.toContain("combobox");
   });
 });
 

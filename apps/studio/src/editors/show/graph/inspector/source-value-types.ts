@@ -18,6 +18,7 @@ export type ValueEditorProps = {
   value: unknown;
   shapes: readonly Shape[];
   path: ErrorPath;
+  readOnly?: boolean;
   onChange: (value: unknown) => void;
   onValidityChange: (path: ErrorPath, error: string | null) => void;
   imageAssets?: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];

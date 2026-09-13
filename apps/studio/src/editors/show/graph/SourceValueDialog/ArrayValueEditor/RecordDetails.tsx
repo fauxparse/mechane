@@ -1,9 +1,9 @@
 import { Button, Separator, Trash2 } from "@mechane/design-system";
 import { isShapeStructuredValueTemplate, setValueAtPath, type Shape } from "@mechane/domain";
 
-import { ValueEditor } from "../inspector/ValueEditor";
-import { previewValue } from "../inspector/source-values-helpers";
-import type { ErrorPath } from "../inspector/source-value-types";
+import { ValueEditor } from "../ValueEditor";
+import { previewValue } from "../../inspector/source-values-helpers";
+import type { ErrorPath } from "../../inspector/source-value-types";
 import type { ShapeRecord } from "./types";
 
 export function RecordDetails({
@@ -12,7 +12,7 @@ export function RecordDetails({
   fields,
   shapes,
   path,
-  editMode,
+  readOnly,
   onChange,
   onValidityChange,
   onRemove,
@@ -23,7 +23,7 @@ export function RecordDetails({
   fields: Shape["fields"];
   shapes: readonly Shape[];
   path: ErrorPath;
-  editMode: boolean;
+  readOnly: boolean;
   onChange(record: ShapeRecord): void;
   onValidityChange(path: ErrorPath, error: string | null): void;
   onRemove(): void;
@@ -47,7 +47,13 @@ export function RecordDetails({
           <h3 className="mt-1 text-base font-semibold">Item</h3>
           <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{record.id}</p>
         </div>
-        <Button variant="ghost" size="icon-sm" onClick={onRemove} disabled={!editMode} aria-label="Remove record">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={onRemove}
+          disabled={readOnly}
+          aria-label="Remove record"
+        >
           <Trash2 />
         </Button>
       </div>
@@ -67,23 +73,18 @@ export function RecordDetails({
                       : "array"}
                 </span>
               </div>
-              {editMode ? (
-                <ValueEditor
-                  type={field.type}
-                  value={fieldValue}
-                  shapes={shapes}
-                  path={[...path, recordIndex, field.id]}
-                  onChange={(next) => {
-                    const updated = setValueAtPath(record, [field.id], next);
-                    if (isShapeStructuredValueTemplate(updated)) onChange(updated);
-                  }}
-                  onValidityChange={onValidityChange}
-                />
-              ) : (
-                <div className="rounded-md border border-border bg-muted/25 px-3 py-2 text-xs text-muted-foreground">
-                  {previewValue(fieldValue)}
-                </div>
-              )}
+              <ValueEditor
+                type={field.type}
+                value={fieldValue}
+                shapes={shapes}
+                readOnly={readOnly}
+                path={[...path, recordIndex, field.id]}
+                onChange={(next) => {
+                  const updated = setValueAtPath(record, [field.id], next);
+                  if (isShapeStructuredValueTemplate(updated)) onChange(updated);
+                }}
+                onValidityChange={onValidityChange}
+              />
             </div>
           );
         })}

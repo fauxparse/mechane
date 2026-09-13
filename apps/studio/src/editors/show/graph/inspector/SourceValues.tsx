@@ -23,8 +23,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { ShowGraphValueLocation } from "../../ShowGraphEditor";
 import type { SourceValueEditing } from "../../commands/use-graph-editing";
-import { InlineValue } from "./ValueEditor";
-import { SourceValueDialog } from "./SourceValueDialog";
+import { InlineValue } from "../SourceValueDialog/ValueEditor";
+import { SourceValueDialog } from "../SourceValueDialog";
 import type { SourceValueRow } from "./source-value-types";
 import { previewValue, sourceValuesEqual, usesModal } from "./source-values-helpers";
 
@@ -120,6 +120,9 @@ export const SourceValues = ({
 }) => {
   const rows = useMemo(() => sourceValueRows(node, editing), [editing, node]);
   const shapes = editing.graph.shapes ?? [];
+  const readOnly = editing.graph.edges.some(
+    (edge) => edge.kind === "wiring" && edge.targetId === node.id,
+  );
   const [activeRow, setActiveRow] = useState<SourceValueRow | null>(null);
 
   useEffect(() => {
@@ -188,6 +191,7 @@ export const SourceValues = ({
           nodeName={node.name}
           row={activeRow}
           shapes={shapes}
+          readOnly={readOnly}
           open
           onOpenChange={(open) => {
             if (!open) closeRow();

@@ -36,7 +36,7 @@ import {
   type Type,
 } from "@mechane/domain";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { SourceValueDialog } from "../editors/show/graph/inspector/SourceValueDialog";
+import { SourceValueDialog } from "../editors/show/graph/SourceValueDialog";
 import { reorderVariableIndices } from "./variable-order";
 export type VariableInspectorVariable = {
   readonly id: string;

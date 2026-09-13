@@ -1,7 +1,7 @@
 import type { Shape, StructuredValueTemplate, Type } from "@mechane/domain";
 
-import type { ErrorPath } from "../inspector/source-value-types";
-import { previewValue } from "../inspector/source-values-helpers";
+import type { ErrorPath } from "../../inspector/source-value-types";
+import { previewValue } from "../../inspector/source-values-helpers";
 
 export type ShapeRecord = Extract<StructuredValueTemplate, { kind: "shape" }>;
 export type ArrayType = Extract<Type, { kind: "array" }>;
@@ -24,6 +24,7 @@ export type ArrayValueEditorProps = {
   shapes: readonly Shape[];
   path: ErrorPath;
   focus: ArrayValueFocus;
+  readOnly: boolean;
   onChange(value: unknown): void;
   onValidityChange(path: ErrorPath, error: string | null): void;
   onSelectionChange(selection: ArrayValueSelection | null): void;

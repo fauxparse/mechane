@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import {
+  Badge,
   AlertDialog,
   AlertDialogContent,
   AlertDialogDescription,
@@ -25,15 +26,15 @@ import {
   isShapeStructuredValueTemplate,
   normalizeStructuredValueTemplate,
 } from "@mechane/domain";
-import { ArrayValueEditor } from "../ArrayValueEditor";
+import { ArrayValueEditor } from "./ArrayValueEditor";
 import {
   recordIdentifier,
   type ArrayValueFocus,
   type ArrayValueSelection,
-} from "../ArrayValueEditor/types";
+} from "./ArrayValueEditor/types";
 import { ValueEditor } from "./ValueEditor";
-import type { SourceValueRow } from "./source-value-types";
-import { INLINE_STRING_LIMIT, sourceValuesEqual } from "./source-values-helpers";
+import type { SourceValueRow } from "../inspector/source-value-types";
+import { INLINE_STRING_LIMIT, sourceValuesEqual } from "../inspector/source-values-helpers";
 
 type ShapeArrayType = { kind: "array"; of: { kind: "shape"; shapeId: string } };
 
@@ -81,6 +82,7 @@ export function SourceValueDialog({
   onOpenChange,
   onSave,
   onClear,
+  readOnly = false,
 }: {
   nodeName: string;
   row: SourceValueRow;
@@ -91,6 +93,7 @@ export function SourceValueDialog({
   onOpenChange: (open: boolean) => void;
   onSave: (value: unknown) => string | null;
   onClear?: () => void;
+  readOnly?: boolean;
 }) {
   const isLongText =
     typeof row.type === "string" &&
@@ -180,6 +183,7 @@ export function SourceValueDialog({
       onImageUpload={onImageUpload}
       errors={errors}
       onClear={onClear}
+      readOnly={readOnly}
       pendingFocus={pendingFocus}
       navigationError={navigationError}
       updateDraft={updateDraft}
@@ -225,6 +229,7 @@ type SourceValueDialogViewProps = {
   imageAssets?: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
   onImageUpload?: (props: ImageInputOnUploadProps) => void;
   errors: Map<string, string>;
+  readOnly: boolean;
   onClear?: () => void;
   pendingFocus: ArrayValueFocus | null;
   navigationError: string | null;
@@ -251,6 +256,7 @@ function SourceValueDialogView({
   imageAssets,
   onImageUpload,
   errors,
+  readOnly,
   onClear,
   pendingFocus,
   navigationError,
@@ -267,53 +273,58 @@ function SourceValueDialogView({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          aria-label={`Edit ${row.label}`}
+          aria-label={`${readOnly ? "View" : "Edit"} ${row.label}`}
           className={
             shapeArrayType
               ? "h-[min(90vh,780px)] w-[min(76rem,calc(100vw-2rem))] max-w-none overflow-hidden p-0"
               : undefined
           }
         >
-          <header className="border-b border-border p-5">
-            <DialogTitle>
-              <nav aria-label="Value path">
-                <ol className="flex min-w-0 items-center gap-1 text-sm">
-                  {breadcrumbs.map((breadcrumb, index) => {
-                    const isCurrent = index === breadcrumbs.length - 1;
-                    const focus = breadcrumb.focus;
-                    return (
-                      <li
-                        key={`${breadcrumb.label}-${index}`}
-                        className="flex min-w-0 items-center gap-1"
-                      >
-                        {index > 0 ? (
-                          <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
-                        ) : null}
-                        {focus && shapeArrayType ? (
-                          <button
-                            type="button"
-                            className={`truncate rounded-sm px-1 py-0.5 ${isCurrent ? "text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
-                            onClick={() => requestFocus(focus)}
-                          >
-                            {breadcrumb.label}
-                          </button>
-                        ) : (
-                          <span
-                            className={`truncate ${isCurrent ? "text-foreground" : "text-muted-foreground"}`}
-                          >
-                            {breadcrumb.label}
-                          </span>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ol>
-              </nav>
-            </DialogTitle>
+          <header className="border-b border-border p-5 flex items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-2">
+              <DialogTitle className="min-w-0">
+                <nav aria-label="Value path">
+                  <ol className="flex min-w-0 items-center gap-1 text-base">
+                    {breadcrumbs.map((breadcrumb, index) => {
+                      const isCurrent = index === breadcrumbs.length - 1;
+                      const focus = breadcrumb.focus;
+                      return (
+                        <li
+                          key={`${breadcrumb.label}-${index}`}
+                          className="flex min-w-0 items-center gap-1"
+                        >
+                          {index > 0 ? (
+                            <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
+                          ) : null}
+                          {focus && shapeArrayType ? (
+                            <button
+                              type="button"
+                              className={`truncate rounded-sm px-1 py-0.5 ${isCurrent ? "text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+                              onClick={() => requestFocus(focus)}
+                            >
+                              {breadcrumb.label}
+                            </button>
+                          ) : (
+                            <span
+                              className={`truncate ${isCurrent ? "text-foreground" : "text-muted-foreground"}`}
+                            >
+                              {breadcrumb.label}
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </nav>
+              </DialogTitle>
+              {readOnly ? <Badge variant="secondary">Read only</Badge> : null}
+            </div>
             <DialogDescription className="sr-only">
-              {shapeArrayType
-                ? "Browse the array as a table or record list. Changes apply as one undoable source-value edit."
-                : "Changes are applied as one undoable source-value edit."}
+              {readOnly
+                ? "This value is supplied by another node and cannot be edited."
+                : shapeArrayType
+                  ? "Browse the array as a table or record list. Changes apply as one undoable source-value edit."
+                  : "Changes are applied as one undoable source-value edit."}
             </DialogDescription>
             <DialogClose
               render={
@@ -328,6 +339,7 @@ function SourceValueDialogView({
               type={shapeArrayType}
               value={draft}
               shapes={shapes}
+              readOnly={readOnly}
               path={[]}
               focus={arrayFocus}
               onChange={updateDraft}
@@ -336,6 +348,7 @@ function SourceValueDialogView({
             />
           ) : isLongText ? (
             <Textarea
+              readOnly={readOnly}
               autoFocus
               value={typeof draft === "string" ? draft : ""}
               aria-label={`${row.label} value`}
@@ -348,6 +361,7 @@ function SourceValueDialogView({
               shapes={shapes}
               imageAssets={imageAssets}
               onImageUpload={onImageUpload}
+              readOnly={readOnly}
               path={[]}
               onChange={updateDraft}
               onValidityChange={updateErrors}
@@ -357,7 +371,7 @@ function SourceValueDialogView({
             <p className="text-sm text-destructive">{[...errors.values()][0]}</p>
           ) : null}
           <DialogFooter className="justify-between">
-            {onClear ? (
+            {!readOnly && onClear ? (
               <Button type="button" variant="ghost" onClick={onClear}>
                 Clear default
               </Button>
@@ -366,15 +380,17 @@ function SourceValueDialogView({
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button
-                type="button"
-                disabled={errors.size > 0}
-                onClick={() => {
-                  if (saveDraft()) onOpenChange(false);
-                }}
-              >
-                Apply
-              </Button>
+              {!readOnly ? (
+                <Button
+                  type="button"
+                  disabled={errors.size > 0}
+                  onClick={() => {
+                    if (saveDraft()) onOpenChange(false);
+                  }}
+                >
+                  Apply
+                </Button>
+              ) : null}
             </div>
           </DialogFooter>
         </DialogContent>
