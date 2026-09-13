@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { AxisSize, SlotInputSource } from "@mechane/domain";
+import type { AxisSize, Shape, SlotInputSource } from "@mechane/domain";
 import { elementPropertyDescriptor, type ElementPropertyName } from "@mechane/domain";
 import {
   Link2Icon,
@@ -241,51 +241,99 @@ const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldProps) =>
       : "px";
   const sizeVariables = variableOptions("number", variables, shapes);
   return (
-    <PropertyInput
-      icon={axis === "width" ? "W" : "H"}
-      type="number"
-      dimension={axis}
-      unit={unit}
-      placeholder={
-        sizeMixed ? "Mixed" : mode === "fill" ? "Fill" : mode === "hug" ? "Hug" : undefined
-      }
-      value={
-        previewing
-          ? literalValue("number", previewValue)
-          : sizeMixed
-            ? null
-            : sizeInputValue(size, sizeVariables, shapes)
-      }
-      sizing={mode}
-      variables={sizeVariables}
-      min={0}
+    <SizeFieldInput
+      axis={axis}
       constraints={constraints}
       onConstraintToggle={onConstraintToggle}
-      onSizingChange={(nextMode) => {
-        updateSize(sizingForMode(sizeMixed ? undefined : size, nextMode, currentValue));
-      }}
-      onChange={(next: PropertyInputValue | null) => {
-        if (isVariableInput(next)) {
-          updateSize({
-            ...(sizeMixed ? {} : size),
-            mode: "fixed",
-            value: {
-              kind: "variable",
-              variableId: next.id,
-              fieldPath: next.fieldPath ?? [],
-            },
-          });
-        } else if (next?.kind === "number") {
-          updateSize({
-            ...(sizeMixed ? {} : size),
-            mode: "fixed",
-            value: unit === "%" ? { value: next.value, unit } : next.value,
-          });
-        }
-      }}
+      size={size}
+      sizeMixed={sizeMixed}
+      previewValue={previewValue}
+      currentValue={currentValue}
+      previewing={previewing}
+      mode={mode}
+      unit={unit}
+      sizeVariables={sizeVariables}
+      shapes={shapes}
+      updateSize={updateSize}
     />
   );
 };
+
+type SizeFieldInputProps = {
+  axis: SizeFieldProps["axis"];
+  constraints?: PropertyInputConstraints;
+  onConstraintToggle?: (constraint: SizeConstraint, enabled: boolean) => void;
+  size: AxisSize | undefined;
+  sizeMixed: boolean;
+  previewValue: number | undefined;
+  currentValue: number | undefined;
+  previewing: boolean;
+  mode: AxisSize["mode"] | undefined;
+  unit: "px" | "%";
+  sizeVariables: ReturnType<typeof variableOptions>;
+  shapes: ReturnType<typeof useCanvasInspectorContext>["shapes"];
+  updateSize(next: AxisSize): void;
+};
+
+const SizeFieldInput = ({
+  axis,
+  constraints,
+  onConstraintToggle,
+  size,
+  sizeMixed,
+  previewValue,
+  currentValue,
+  previewing,
+  mode,
+  unit,
+  sizeVariables,
+  shapes,
+  updateSize,
+}: SizeFieldInputProps) => (
+  <PropertyInput
+    icon={axis === "width" ? "W" : "H"}
+    type="number"
+    dimension={axis}
+    unit={unit}
+    placeholder={
+      sizeMixed ? "Mixed" : mode === "fill" ? "Fill" : mode === "hug" ? "Hug" : undefined
+    }
+    value={
+      previewing
+        ? literalValue("number", previewValue)
+        : sizeMixed
+          ? null
+          : sizeInputValue(size, sizeVariables, shapes)
+    }
+    sizing={mode}
+    variables={sizeVariables}
+    min={0}
+    constraints={constraints}
+    onConstraintToggle={onConstraintToggle}
+    onSizingChange={(nextMode) => {
+      updateSize(sizingForMode(sizeMixed ? undefined : size, nextMode, currentValue));
+    }}
+    onChange={(next: PropertyInputValue | null) => {
+      if (isVariableInput(next)) {
+        updateSize({
+          ...(sizeMixed ? {} : size),
+          mode: "fixed",
+          value: {
+            kind: "variable",
+            variableId: next.id,
+            fieldPath: next.fieldPath ?? [],
+          },
+        });
+      } else if (next?.kind === "number") {
+        updateSize({
+          ...(sizeMixed ? {} : size),
+          mode: "fixed",
+          value: unit === "%" ? { value: next.value, unit } : next.value,
+        });
+      }
+    }}
+  />
+);
 
 type SizeConstraintFieldProps = {
   axis: "width" | "height";
