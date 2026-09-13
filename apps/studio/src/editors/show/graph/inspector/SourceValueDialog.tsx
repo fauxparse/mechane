@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import {
@@ -92,7 +92,6 @@ export function SourceValueDialog({
   onSave: (value: unknown) => string | null;
   onClear?: () => void;
 }) {
-  const rowKey = formatValuePath([...row.fieldPath]);
   const isLongText =
     typeof row.type === "string" &&
     typeof row.value === "string" &&
@@ -110,17 +109,6 @@ export function SourceValueDialog({
     arrayFocus.kind === "record"
       ? arraySelectionForValue(draft, shapeArrayType, shapes, arrayFocus.id)
       : null;
-
-  useEffect(() => {
-    if (!open) return;
-    const nextDraft = draftForRow(row, shapes);
-    setDraft(nextDraft);
-    setSavedDraft(nextDraft);
-    setErrors(new Map());
-    setArrayFocus({ kind: "array" });
-    setPendingFocus(null);
-    setNavigationError(null);
-  }, [open, row, rowKey, shapeArrayType, shapes]);
 
   const updateDraft = (next: unknown) => {
     setErrors(new Map());

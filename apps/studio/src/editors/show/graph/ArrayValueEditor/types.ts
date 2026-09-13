@@ -23,8 +23,8 @@ export type ArrayValueEditorProps = {
   value: unknown;
   shapes: readonly Shape[];
   path: ErrorPath;
-  focus?: ArrayValueFocus;
+  focus: ArrayValueFocus;
   onChange(value: unknown): void;
   onValidityChange(path: ErrorPath, error: string | null): void;
-  onSelectionChange?(selection: ArrayValueSelection | null): void;
+  onSelectionChange(selection: ArrayValueSelection | null): void;
 };

@@ -24,7 +24,7 @@ import {
   type Shape,
   type StructuredValueTemplate,
 } from "@mechane/domain";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { previewValue } from "../inspector/source-values-helpers";
 import { ArrayTable } from "./ArrayTable";
@@ -58,24 +58,8 @@ export function ArrayValueEditor({
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [editMode, setEditMode] = useState(true);
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState("");
-
-  useEffect(() => {
-    if (focus?.kind === "array") {
-      setSelectedId("");
-      setViewMode("table");
-      return;
-    }
-    if (focus?.kind === "record" && records.some((record) => record.id === focus.id)) {
-      setSelectedId(focus.id);
-    }
-  }, [focus, records]);
-
-  useEffect(() => {
-    if (selectedId && !records.some((record) => record.id === selectedId)) {
-      setSelectedId("");
-    }
-  }, [records, selectedId]);
+  const selectedId = focus?.kind === "record" ? focus.id : "";
+  const displayedViewMode = focus?.kind === "array" ? "table" : viewMode;
 
   if (normalized === null) {
     return <p className="text-sm text-destructive">This array value could not be opened.</p>;
@@ -99,17 +83,15 @@ export function ArrayValueEditor({
     ? (records.find((record) => record.id === selectedId) ?? null)
     : null;
   const reportSelection = (record: ShapeRecord | null) => {
-    onSelectionChange?.(
+    onSelectionChange(
       record ? { id: record.id, label: recordIdentifier(record, shape.fields) } : null,
     );
   };
   const selectRecord = (id: string) => {
     const record = records.find((candidate) => candidate.id === id);
     if (!record) return;
-    setSelectedId(id);
     reportSelection(record);
   };
-
   const updateArray = (items: readonly StructuredValueTemplate[]) => {
     onChange({ ...normalized, items });
   };
@@ -148,7 +130,6 @@ export function ArrayValueEditor({
     );
     if (!isShapeStructuredValueTemplate(next)) return;
     updateArray([...normalized.items, next]);
-    setSelectedId(next.id);
     reportSelection(next);
     setViewMode("record");
   };
@@ -157,7 +138,6 @@ export function ArrayValueEditor({
     if (!editMode || !selectedRecord) return;
     const nextRecords = records.filter((record) => record.id !== selectedRecord.id);
     updateArray(nextRecords);
-    setSelectedId(nextRecords[0]?.id ?? "");
     reportSelection(nextRecords[0] ?? null);
   };
 
@@ -215,7 +195,7 @@ export function ArrayValueEditor({
         />
         <div className="flex items-center gap-2">
           <Tabs
-            value={viewMode}
+            value={displayedViewMode}
             onValueChange={(value) => setViewMode(value === "record" ? "record" : "table")}
           >
             <TabsList className="h-8">
@@ -233,7 +213,7 @@ export function ArrayValueEditor({
         </div>
       </div>
       <ArrayEditorRecords
-        viewMode={viewMode}
+        viewMode={displayedViewMode}
         selectedRecord={selectedRecord}
         visibleRecords={visibleRecords}
         shape={shape}

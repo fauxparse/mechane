@@ -252,6 +252,7 @@ function VariableDefaultDialog({
   };
   return (
     <SourceValueDialog
+      key={`${variable.id}:${open ? "open" : "closed"}`}
       nodeName={variable.name}
       imageAssets={imageAssets}
       onImageUpload={onImageUpload}
