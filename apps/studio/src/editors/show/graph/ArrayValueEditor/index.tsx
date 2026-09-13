@@ -21,6 +21,7 @@ import {
   isArrayStructuredValueTemplate,
   isShapeStructuredValueTemplate,
   normalizeStructuredValueTemplate,
+  type Shape,
   type StructuredValueTemplate,
 } from "@mechane/domain";
 import { useEffect, useMemo, useState } from "react";
@@ -231,68 +232,126 @@ export function ArrayValueEditor({
           </Button>
         </div>
       </div>
-      {viewMode === "table" ? (
-        <div
-          className={
-            selectedRecord
-              ? "grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]"
-              : "min-h-0 flex-1"
-          }
-        >
-          <ArrayTable
-            records={visibleRecords}
+      <ArrayEditorRecords
+        viewMode={viewMode}
+        selectedRecord={selectedRecord}
+        visibleRecords={visibleRecords}
+        shape={shape}
+        selectedId={selectedId}
+        editMode={editMode}
+        selectRecord={selectRecord}
+        reorderRecords={reorderRecords}
+        selectedIndex={selectedIndex}
+        shapes={shapes}
+        path={path}
+        updateRecord={updateRecord}
+        onValidityChange={onValidityChange}
+        removeRecord={removeRecord}
+        addRecord={addRecord}
+      />
+    </div>
+  );
+}
+
+type ArrayEditorRecordsProps = {
+  viewMode: ViewMode;
+  selectedRecord: ShapeRecord | null;
+  visibleRecords: ShapeRecord[];
+  shape: Shape;
+  selectedId: string;
+  editMode: boolean;
+  selectRecord(id: string): void;
+  reorderRecords(sourceId: string, targetId: string): void;
+  selectedIndex: number;
+  shapes: readonly Shape[];
+  path: ArrayValueEditorProps["path"];
+  updateRecord(record: ShapeRecord): void;
+  onValidityChange: ArrayValueEditorProps["onValidityChange"];
+  removeRecord(): void;
+  addRecord(): void;
+};
+
+function ArrayEditorRecords({
+  viewMode,
+  selectedRecord,
+  visibleRecords,
+  shape,
+  selectedId,
+  editMode,
+  selectRecord,
+  reorderRecords,
+  selectedIndex,
+  shapes,
+  path,
+  updateRecord,
+  onValidityChange,
+  removeRecord,
+  addRecord,
+}: ArrayEditorRecordsProps) {
+  if (viewMode === "table") {
+    return (
+      <div
+        className={
+          selectedRecord
+            ? "grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]"
+            : "min-h-0 flex-1"
+        }
+      >
+        <ArrayTable
+          records={visibleRecords}
+          fields={shape.fields}
+          selectedId={selectedId}
+          editMode={editMode}
+          onSelect={selectRecord}
+          onReorder={reorderRecords}
+        />
+        {selectedRecord ? (
+          <RecordDetails
+            record={selectedRecord}
+            recordIndex={selectedIndex < 0 ? 0 : selectedIndex}
             fields={shape.fields}
-            selectedId={selectedId}
+            shapes={shapes}
+            path={path}
             editMode={editMode}
-            onSelect={selectRecord}
-            onReorder={reorderRecords}
+            onChange={updateRecord}
+            onValidityChange={onValidityChange}
+            onRemove={removeRecord}
           />
-          {selectedRecord ? (
-            <RecordDetails
-              record={selectedRecord}
-              recordIndex={selectedIndex < 0 ? 0 : selectedIndex}
-              fields={shape.fields}
-              shapes={shapes}
-              path={path}
-              editMode={editMode}
-              onChange={updateRecord}
-              onValidityChange={onValidityChange}
-              onRemove={removeRecord}
-            />
-          ) : null}
-        </div>
-      ) : (
-        <div
-          className={
-            selectedRecord
-              ? "grid min-h-0 flex-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)]"
-              : "min-h-0 flex-1"
-          }
-        >
-          <RecordRail
-            records={visibleRecords}
-            selectedId={selectedId}
-            fields={shape.fields}
-            onSelect={selectRecord}
-            onAdd={addRecord}
-            editMode={editMode}
-          />
-          {selectedRecord ? (
-            <RecordDetails
-              record={selectedRecord}
-              recordIndex={selectedIndex < 0 ? 0 : selectedIndex}
-              fields={shape.fields}
-              shapes={shapes}
-              path={path}
-              editMode={editMode}
-              onChange={updateRecord}
-              onValidityChange={onValidityChange}
-              onRemove={removeRecord}
-              spacious
-            />
-          ) : null}
-        </div>
-      )}
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={
+        selectedRecord
+          ? "grid min-h-0 flex-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)]"
+          : "min-h-0 flex-1"
+      }
+    >
+      <RecordRail
+        records={visibleRecords}
+        selectedId={selectedId}
+        fields={shape.fields}
+        onSelect={selectRecord}
+        onAdd={addRecord}
+        editMode={editMode}
+      />
+      {selectedRecord ? (
+        <RecordDetails
+          record={selectedRecord}
+          recordIndex={selectedIndex < 0 ? 0 : selectedIndex}
+          fields={shape.fields}
+          shapes={shapes}
+          path={path}
+          editMode={editMode}
+          onChange={updateRecord}
+          onValidityChange={onValidityChange}
+          onRemove={removeRecord}
+          spacious
+        />
+      ) : null}
     </div>
   );
 }
