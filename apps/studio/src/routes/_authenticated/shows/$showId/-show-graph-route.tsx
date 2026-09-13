@@ -1,5 +1,5 @@
 import type { ShowId } from "@mechane/domain";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useShowGraph, useShowGraphEdits } from "../../../../api/show-graph";
@@ -16,6 +16,11 @@ import {
 export interface ShowGraphRouteProps {
   initialSourceValue?: ShowGraphValueLocation;
   onSourceValueChange?: (location: ShowGraphValueLocation | null) => void;
+}
+
+export function ShowGraphIndexRoute() {
+  const params = useParams({ from: "/_authenticated/shows/$showId/" });
+  return <ShowGraphRoute showId={params.showId as ShowId} />;
 }
 
 export function ShowGraphRoute({
