@@ -62,107 +62,217 @@ export const LayoutSection = () => {
     selected.some((element) => Reflect.get(element, "padding") !== undefined);
 
   return (
+    <LayoutSectionContent
+      selectionKey={selectionKey}
+      frame={frame}
+      canEditPadding={canEditPadding}
+      layoutMode={layoutMode}
+      layoutModeMixed={layoutModeMixed}
+      hasAutoLayout={hasAutoLayout}
+      direction={direction}
+      gap={gap}
+      gapMixed={gapMixed}
+      alignPrimary={alignPrimary}
+      alignCounter={alignCounter}
+      clipChildren={clipChildren}
+      padding={padding}
+      paddingMixed={paddingMixed}
+      update={update}
+    />
+  );
+};
+type LayoutSectionContentProps = {
+  selectionKey: string;
+  frame: LayoutContainer | null;
+  canEditPadding: boolean;
+  layoutMode: unknown;
+  layoutModeMixed: boolean;
+  hasAutoLayout: boolean;
+  direction: "vertical" | "horizontal";
+  gap: unknown;
+  gapMixed: boolean;
+  alignPrimary: unknown;
+  alignCounter: unknown;
+  clipChildren: unknown;
+  padding: PaddingValue;
+  paddingMixed: boolean;
+  update(properties: Record<string, unknown>): void;
+};
+
+function LayoutSectionContent({
+  selectionKey,
+  frame,
+  canEditPadding,
+  layoutMode,
+  layoutModeMixed,
+  hasAutoLayout,
+  direction,
+  gap,
+  gapMixed,
+  alignPrimary,
+  alignCounter,
+  clipChildren,
+  padding,
+  paddingMixed,
+  update,
+}: LayoutSectionContentProps) {
+  return (
     <Section label="Layout">
       <SizeFields key={`size:${selectionKey}`} />
-      {frame && (
-        <>
-          <ToggleGroup
-            className="w-full *:grow"
-            spacing={0}
-            value={[
-              layoutModeMixed
-                ? ""
-                : layoutMode === "auto"
-                  ? direction
-                  : layoutMode === undefined
-                    ? "absolute"
-                    : "",
-            ]}
-            onValueChange={([value]) => {
-              switch (value) {
-                case "horizontal":
-                case "vertical":
-                  update({ layoutMode: "auto", direction: value });
-                  break;
-                default:
-                  update({ layoutMode: "absolute", direction: null });
-              }
-            }}
-          >
-            <ToggleGroupItem value="absolute">
-              <LayoutNoneIcon />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="horizontal">
-              <LayoutHorizontalIcon />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="vertical">
-              <LayoutVerticalIcon />
-            </ToggleGroupItem>
-          </ToggleGroup>
-          {hasAutoLayout && (
-            <>
-              <AlignmentSelector
-                className="row-span-2"
-                direction={direction}
-                alignPrimary={
-                  alignPrimary === "center" || alignPrimary === "end" ? alignPrimary : "start"
-                }
-                alignCounter={
-                  alignCounter === "center" || alignCounter === "end" ? alignCounter : "start"
-                }
-                auto={gap === "auto"}
-                onChange={(props) => update(props)}
-              />
-              <PropertyInput
-                className="col-start-1"
-                type="number"
-                icon={direction === "vertical" ? GapVerticalIcon : GapHorizontalIcon}
-                value={
-                  gapMixed || gap === "auto"
-                    ? null
-                    : { kind: "number", value: typeof gap === "number" ? gap : 0 }
-                }
-                placeholder={gapMixed ? "Mixed" : gap === "auto" ? "Auto" : undefined}
-                allowAuto
-                auto={gap === "auto"}
-                onAutoChange={(auto) => update({ gap: auto ? "auto" : 0 })}
-                onChange={(next) => {
-                  if (!isVariableInput(next) && next?.kind === "number")
-                    update({ gap: next.value });
-                }}
-              />
-            </>
-          )}
-          <PaddingControl
-            key={`padding:${selectionKey}`}
-            padding={padding}
-            mixed={paddingMixed}
-            update={update}
-          />
-          <div className="col-span-2">
-            <label className="flex items-center gap-2 w-fit">
-              <Switch
-                aria-label="Clip children"
-                checked={clipChildren === true}
-                indeterminate={clipChildren === undefined}
-                onCheckedChange={() => update({ clip: !clipChildren })}
-              />
-              Clip children
-            </label>
-          </div>
-        </>
-      )}
-      {canEditPadding && !frame && (
+      {frame ? (
+        <FrameLayoutFields
+          selectionKey={selectionKey}
+          layoutMode={layoutMode}
+          layoutModeMixed={layoutModeMixed}
+          hasAutoLayout={hasAutoLayout}
+          direction={direction}
+          gap={gap}
+          gapMixed={gapMixed}
+          alignPrimary={alignPrimary}
+          alignCounter={alignCounter}
+          clipChildren={clipChildren}
+          padding={padding}
+          paddingMixed={paddingMixed}
+          update={update}
+        />
+      ) : null}
+      {canEditPadding && !frame ? (
         <PaddingControl
           key={`padding:${selectionKey}`}
           padding={padding}
           mixed={paddingMixed}
           update={update}
         />
-      )}
+      ) : null}
     </Section>
   );
-};
+}
+type FrameLayoutFieldsProps = Omit<LayoutSectionContentProps, "frame" | "canEditPadding">;
+
+function FrameLayoutFields({
+  selectionKey,
+  layoutMode,
+  layoutModeMixed,
+  hasAutoLayout,
+  direction,
+  gap,
+  gapMixed,
+  alignPrimary,
+  alignCounter,
+  clipChildren,
+  padding,
+  paddingMixed,
+  update,
+}: FrameLayoutFieldsProps) {
+  return (
+    <>
+      <ToggleGroup
+        className="w-full *:grow"
+        spacing={0}
+        value={[
+          layoutModeMixed
+            ? ""
+            : layoutMode === "auto"
+              ? direction
+              : layoutMode === undefined
+                ? "absolute"
+                : "",
+        ]}
+        onValueChange={([value]) => {
+          switch (value) {
+            case "horizontal":
+            case "vertical":
+              update({ layoutMode: "auto", direction: value });
+              break;
+            default:
+              update({ layoutMode: "absolute", direction: null });
+          }
+        }}
+      >
+        <ToggleGroupItem value="absolute">
+          <LayoutNoneIcon />
+        </ToggleGroupItem>
+        <ToggleGroupItem value="horizontal">
+          <LayoutHorizontalIcon />
+        </ToggleGroupItem>
+        <ToggleGroupItem value="vertical">
+          <LayoutVerticalIcon />
+        </ToggleGroupItem>
+      </ToggleGroup>
+      {hasAutoLayout ? (
+        <AutoLayoutFields
+          direction={direction}
+          gap={gap}
+          gapMixed={gapMixed}
+          alignPrimary={alignPrimary}
+          alignCounter={alignCounter}
+          update={update}
+        />
+      ) : null}
+      <PaddingControl
+        key={`padding:${selectionKey}`}
+        padding={padding}
+        mixed={paddingMixed}
+        update={update}
+      />
+      <div className="col-span-2">
+        <label className="flex items-center gap-2 w-fit">
+          <Switch
+            aria-label="Clip children"
+            checked={clipChildren === true}
+            indeterminate={clipChildren === undefined}
+            onCheckedChange={() => update({ clip: !clipChildren })}
+          />
+          Clip children
+        </label>
+      </div>
+    </>
+  );
+}
+
+type AutoLayoutFieldsProps = Pick<
+  FrameLayoutFieldsProps,
+  "direction" | "gap" | "gapMixed" | "alignPrimary" | "alignCounter" | "update"
+>;
+
+function AutoLayoutFields({
+  direction,
+  gap,
+  gapMixed,
+  alignPrimary,
+  alignCounter,
+  update,
+}: AutoLayoutFieldsProps) {
+  return (
+    <>
+      <AlignmentSelector
+        className="row-span-2"
+        direction={direction}
+        alignPrimary={alignPrimary === "center" || alignPrimary === "end" ? alignPrimary : "start"}
+        alignCounter={alignCounter === "center" || alignCounter === "end" ? alignCounter : "start"}
+        auto={gap === "auto"}
+        onChange={(props) => update(props)}
+      />
+      <PropertyInput
+        className="col-start-1"
+        type="number"
+        icon={direction === "vertical" ? GapVerticalIcon : GapHorizontalIcon}
+        value={
+          gapMixed || gap === "auto"
+            ? null
+            : { kind: "number", value: typeof gap === "number" ? gap : 0 }
+        }
+        placeholder={gapMixed ? "Mixed" : gap === "auto" ? "Auto" : undefined}
+        allowAuto
+        auto={gap === "auto"}
+        onAutoChange={(auto) => update({ gap: auto ? "auto" : 0 })}
+        onChange={(next) => {
+          if (!isVariableInput(next) && next?.kind === "number") update({ gap: next.value });
+        }}
+      />
+    </>
+  );
+}
 
 type PaddingSide = keyof Padding;
 type PaddingValue = FrameElement["padding"] | TextElement["padding"];
