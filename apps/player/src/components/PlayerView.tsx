@@ -169,13 +169,22 @@ export function PlayerView({ code }: { code: string }) {
     },
     [state],
   );
-
   const perConnection = state.status === "ready" && state.session.device.perConnection;
   usePlayerKeypress(
     state.status === "ready" && Boolean(state.session.run),
     perConnection ? navigation.onKeyPress : handleKeyPress,
   );
 
+  return <PlayerStatusView state={state} navigation={navigation} onElementTap={handleElementTap} />;
+}
+
+type PlayerStatusViewProps = {
+  state: ReturnType<typeof usePlayerSession>;
+  navigation: ReturnType<typeof usePlayerNavigation>;
+  onElementTap: (elementId: string, slotInstancePath: readonly BlockInstancePathSegment[]) => void;
+};
+
+function PlayerStatusView({ state, navigation, onElementTap }: PlayerStatusViewProps) {
   if (state.status === "idle" || state.status === "loading") {
     return (
       <SplashScreen>
@@ -201,25 +210,25 @@ export function PlayerView({ code }: { code: string }) {
       </SplashScreen>
     );
   }
-  if (!state.session.run) return <WaitingForRun session={state.session} />;
 
-  if (state.session.device.perConnection) {
-    if (navigation.status === "inactive" && state.session.scene && state.session.canvas) {
-      return <PlayerCanvas session={state.session} onElementTap={navigation.onElementTap} />;
-    }
-    if (navigation.status === "loading" || navigation.status === "inactive") {
-      return (
-        <SplashScreen>
-          <p className="rounded-xl bg-white/25 px-6 py-4 text-lg text-neutral-900 shadow-xl">
-            Connecting…
-          </p>
-        </SplashScreen>
-      );
-    }
-    if (navigation.status === "superseded") {
-      return <SupersededScreen onTakeOver={navigation.onTakeOver} />;
-    }
-    return <PlayerCanvas session={navigation.session} onElementTap={navigation.onElementTap} />;
+  if (!state.session.run) return <WaitingForRun session={state.session} />;
+  if (!state.session.device.perConnection) {
+    return <PlayerCanvas session={state.session} onElementTap={onElementTap} />;
   }
-  return <PlayerCanvas session={state.session} onElementTap={handleElementTap} />;
+  if (navigation.status === "inactive" && state.session.scene && state.session.canvas) {
+    return <PlayerCanvas session={state.session} onElementTap={navigation.onElementTap} />;
+  }
+  if (navigation.status === "loading" || navigation.status === "inactive") {
+    return (
+      <SplashScreen>
+        <p className="rounded-xl bg-white/25 px-6 py-4 text-lg text-neutral-900 shadow-xl">
+          Connecting…
+        </p>
+      </SplashScreen>
+    );
+  }
+  if (navigation.status === "superseded") {
+    return <SupersededScreen onTakeOver={navigation.onTakeOver} />;
+  }
+  return <PlayerCanvas session={navigation.session} onElementTap={navigation.onElementTap} />;
 }
