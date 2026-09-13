@@ -868,10 +868,7 @@ function assertOneDriverPerDevice(edges: GraphEdge[]): void {
   }
 }
 
-function assertFlowDeviceCardinality(
-  graph: ShowGraph,
-  nodes: Map<string, GraphNode>,
-): void {
+function assertFlowDeviceCardinality(graph: ShowGraph, nodes: Map<string, GraphNode>): void {
   const flowIdsWithLocalState = new Set(
     graph.nodes
       .filter((node) => node.kind === "source" && node.parentId !== null)

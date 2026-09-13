@@ -40,6 +40,7 @@ import {
   votingGraph,
   workflowBlocks,
 } from "./voting";
+import { tidySeedGraph } from "../../utils/seed-utils";
 
 describe("Voting seed", () => {
   it("builds the requested valid graph", () => {
@@ -101,6 +102,36 @@ describe("Voting seed", () => {
       expect.objectContaining({ name: "Projector", perConnection: false }),
       expect.objectContaining({ name: "Audience", perConnection: true }),
     ]);
+  });
+
+  it("tidies graph positions when the seed is persisted", () => {
+    const graph = tidySeedGraph(votingGraph());
+    const flow = graph.nodes.find((node) => node.id === AUDIENCE_FLOW_ID);
+    if (flow?.kind !== "flow") throw new Error("Audience Flow is missing.");
+    const scenes = graph.nodes
+      .filter(
+        (node): node is Extract<typeof node, { kind: "scene" }> =>
+          node.kind === "scene" && node.parentId === AUDIENCE_FLOW_ID,
+      )
+      .sort((left, right) => left.position.x - right.position.x);
+    expect(scenes.map((scene) => scene.id)).toEqual([
+      CANDIDATE_LIST_SCENE_ID,
+      CONFIRMATION_SCENE_ID,
+      "scene_thank_you",
+    ]);
+    expect(scenes.map((scene) => scene.position.y)).toEqual([114, 114, 114]);
+    expect(scenes.map((scene) => scene.position.x)).toEqual([64, 400, 736]);
+    const flowSize = flow.size;
+    if (!flowSize) throw new Error("Tidy layout did not size the Audience Flow.");
+    expect(flowSize).toEqual({ width: 1040, height: 546 });
+
+    const devices = graph.nodes.filter((node) => node.kind === "device");
+    expect(devices.every((device) => device.position.x > flow.position.x + flowSize.width)).toBe(
+      true,
+    );
+    const devicesByY = [...devices].sort((left, right) => left.position.y - right.position.y);
+    expect(devicesByY[1]!.position.y - devicesByY[0]!.position.y).toBe(299);
+    expect(tidySeedGraph(graph)).toEqual(graph);
   });
 
   it("materializes one array source with zero votes", () => {

@@ -16,7 +16,7 @@
 //
 // Everything here is pure and works on rendered React Flow nodes, so the
 // rules are testable without a canvas.
-import type { Position } from "@mechane/domain";
+import type { FlowSize, GraphEdge, Position } from "@mechane/domain";
 
 import type { FlowDimensions, ShowFlowNode } from "./graph/graph-to-flow";
 import {
@@ -30,6 +30,15 @@ import {
 
 /** Vertical gap between nodes this module places in a column. */
 const STACK_GAP = 32;
+
+/** Gap used by the explicit tidy command between nodes and graph regions. */
+const TIDY_GAP = 96;
+
+/** Breathing room inside a Flow laid out by tidy. */
+const TIDY_FLOW_PADDING = 64;
+
+/** The first child row below a Flow header in a tidy layout. */
+const TIDY_FLOW_CONTENT_TOP = FLOW_HEADER_HEIGHT + TIDY_FLOW_PADDING;
 
 /** Horizontal gap between the two Scenes in a compact navigation pair. */
 export const SCENE_NAVIGATION_GAP = 32;
@@ -272,6 +281,247 @@ export function moveOutPositions(nodeIds: string[], rendered: ShowFlowNode[]): P
     );
 
   return layoutAt(searchAnchor(origin, isFree)).map(({ position }) => position);
+}
+
+export interface TidyLayout {
+  positions: { id: string; position: Position }[];
+  flowSizes: { id: string; size: FlowSize }[];
+}
+
+function orderedTidyNodes(nodes: readonly ShowFlowNode[]): ShowFlowNode[] {
+  return [...nodes].sort(
+    (left, right) =>
+      left.position.y - right.position.y ||
+      left.position.x - right.position.x ||
+      left.id.localeCompare(right.id),
+  );
+}
+
+/**
+ * Follows the authored Scene navigation order when a Flow has an entry Scene.
+ * A cycle is intentional in a Flow, so the walk stops at its first repeated
+ * Scene and appends any branches in their existing order.
+ */
+function orderedFlowScenes(
+  flow: ShowFlowNode,
+  scenes: readonly ShowFlowNode[],
+  edges: readonly GraphEdge[],
+): ShowFlowNode[] {
+  const byId = new Map(scenes.map((scene) => [scene.id, scene]));
+  const nextById = new Map<string, string>();
+  for (const edge of edges) {
+    if (edge.kind !== "navigate" || !byId.has(edge.sourceId) || !byId.has(edge.targetId)) continue;
+    if (!nextById.has(edge.sourceId)) nextById.set(edge.sourceId, edge.targetId);
+  }
+
+  const ordered: ShowFlowNode[] = [];
+  const seen = new Set<string>();
+  let current = flow.data.kind === "flow" ? flow.data.defaultSceneId : null;
+  while (current && !seen.has(current)) {
+    const scene = byId.get(current);
+    if (!scene) break;
+    seen.add(current);
+    ordered.push(scene);
+    current = nextById.get(current) ?? null;
+  }
+
+  if (ordered.length === 0) {
+    const incoming = new Map(scenes.map((scene) => [scene.id, 0]));
+    for (const targetId of nextById.values()) {
+      incoming.set(targetId, (incoming.get(targetId) ?? 0) + 1);
+    }
+    const queue = orderedTidyNodes(scenes).filter((scene) => incoming.get(scene.id) === 0);
+    while (queue.length > 0) {
+      const scene = queue.shift();
+      if (!scene) break;
+      ordered.push(scene);
+      const next = nextById.get(scene.id);
+      if (next) {
+        const remaining = (incoming.get(next) ?? 0) - 1;
+        incoming.set(next, remaining);
+        if (remaining === 0) {
+          const nextScene = byId.get(next);
+          if (nextScene) queue.push(nextScene);
+        }
+      }
+    }
+  }
+
+  for (const scene of orderedTidyNodes(scenes)) {
+    if (!seen.has(scene.id) && !ordered.some((candidate) => candidate.id === scene.id)) {
+      ordered.push(scene);
+    }
+  }
+  return ordered;
+}
+
+function tidyFlowSize(children: readonly ShowFlowNode[]): FlowSize {
+  const right = children.reduce(
+    (edge, child) => Math.max(edge, child.position.x + sizeOf(child).width),
+    0,
+  );
+  const bottom = children.reduce(
+    (edge, child) => Math.max(edge, child.position.y + sizeOf(child).height),
+    0,
+  );
+  return {
+    width: Math.max(NODE_WIDTH, right) + TIDY_FLOW_PADDING,
+    height: Math.max(FLOW_HEADER_HEIGHT + NODE_HEIGHT, bottom) + TIDY_FLOW_PADDING,
+  };
+}
+
+function sourcePosition(
+  nodeId: string,
+  nodes: ReadonlyMap<string, ShowFlowNode>,
+  positions: ReadonlyMap<string, Position>,
+): Position | null {
+  const node = nodes.get(nodeId);
+  const position = positions.get(nodeId);
+  if (!node || !position) return null;
+  if (!node.parentId) return position;
+  const parent = positions.get(node.parentId);
+  return parent ? { x: parent.x + position.x, y: parent.y + position.y } : position;
+}
+
+/**
+ * Lays out the visible graph for the explicit Tidy command.
+ *
+ * Scenes follow their Flow's navigation order from left to right. Other Flow
+ * children sit in a roomy row below them, aligned with their first Scene
+ * target. Root Flows occupy a vertical lane, non-Flow authoring nodes sit to
+ * their left, and Devices occupy a final lane to the right of every other
+ * node. This keeps the common producer → Flow → Device direction legible
+ * without pretending that arbitrary graph routing is a full path-finding
+ * problem.
+ */
+export function tidyLayout(
+  rendered: readonly ShowFlowNode[],
+  edges: readonly GraphEdge[] = [],
+): TidyLayout {
+  const byId = new Map(rendered.map((node) => [node.id, node]));
+  const childrenByParent = new Map<string | null, ShowFlowNode[]>();
+  for (const node of rendered) {
+    const parentId = node.parentId ?? null;
+    const children = childrenByParent.get(parentId);
+    if (children) children.push(node);
+    else childrenByParent.set(parentId, [node]);
+  }
+
+  const positions: { id: string; position: Position }[] = [];
+  const positionById = new Map<string, Position>();
+  const flowSizes: { id: string; size: FlowSize }[] = [];
+  const flowSizesById = new Map<string, FlowSize>();
+  const place = (node: ShowFlowNode, position: Position) => {
+    positions.push({ id: node.id, position });
+    positionById.set(node.id, position);
+  };
+
+  const flows = rendered.filter((node) => node.type === FLOW_NODE_TYPE);
+  for (const flow of flows) {
+    const children = childrenByParent.get(flow.id) ?? [];
+    const scenes = orderedFlowScenes(
+      flow,
+      children.filter((node) => node.data.kind === "scene"),
+      edges,
+    );
+    const others = orderedTidyNodes(children.filter((node) => node.data.kind !== "scene"));
+    const plannedChildren: ShowFlowNode[] = [];
+    let x = TIDY_FLOW_PADDING;
+    let sceneBottom = TIDY_FLOW_CONTENT_TOP;
+    const sceneColumnById = new Map<string, Position>();
+
+    for (const scene of scenes) {
+      const position = { x, y: TIDY_FLOW_CONTENT_TOP };
+      place(scene, position);
+      plannedChildren.push({ ...scene, position });
+      sceneColumnById.set(scene.id, position);
+      sceneBottom = Math.max(sceneBottom, position.y + sizeOf(scene).height);
+      x += sizeOf(scene).width + TIDY_GAP;
+    }
+
+    const otherY = scenes.length > 0 ? sceneBottom + TIDY_GAP : TIDY_FLOW_CONTENT_TOP;
+    let nextOtherX = TIDY_FLOW_PADDING;
+    for (const child of others) {
+      const target = edges.find(
+        (edge) => edge.sourceId === child.id && sceneColumnById.has(edge.targetId),
+      );
+      const targetPosition = target ? sceneColumnById.get(target.targetId) : undefined;
+      const position = {
+        x: Math.max(targetPosition?.x ?? nextOtherX, nextOtherX),
+        y: otherY,
+      };
+      place(child, position);
+      plannedChildren.push({ ...child, position });
+      nextOtherX = position.x + sizeOf(child).width + TIDY_GAP;
+    }
+
+    const size = tidyFlowSize(plannedChildren);
+    flowSizesById.set(flow.id, size);
+    flowSizes.push({ id: flow.id, size });
+  }
+
+  const roots = orderedTidyNodes(childrenByParent.get(null) ?? []);
+  const leftNodes = roots.filter(
+    (node) => node.data.kind !== "flow" && node.data.kind !== "device",
+  );
+  const rootFlows = roots.filter((node) => node.data.kind === "flow");
+  const devices = roots.filter((node) => node.data.kind === "device");
+  const baseX = roots.length > 0 ? Math.min(...roots.map((node) => node.position.x)) : 0;
+  const baseY = roots.length > 0 ? Math.min(...roots.map((node) => node.position.y)) : 0;
+  const leftWidth =
+    leftNodes.length > 0 ? Math.max(...leftNodes.map((node) => sizeOf(node).width)) + TIDY_GAP : 0;
+  const flowX = baseX + leftWidth;
+
+  let flowY = baseY;
+  for (const flow of rootFlows) {
+    place(flow, { x: flowX, y: flowY });
+    flowY += (flowSizesById.get(flow.id)?.height ?? sizeOf(flow).height) + TIDY_GAP;
+  }
+
+  let leftY = baseY;
+  for (const node of leftNodes) {
+    place(node, { x: baseX, y: leftY });
+    leftY += sizeOf(node).height + TIDY_GAP;
+  }
+
+  const nonDeviceRoots = roots.filter((node) => node.data.kind !== "device");
+  const graphRight =
+    nonDeviceRoots.length > 0
+      ? Math.max(
+          ...nonDeviceRoots.map(
+            (node) =>
+              (positionById.get(node.id)?.x ?? node.position.x) +
+              (flowSizesById.get(node.id)?.width ?? sizeOf(node).width),
+          ),
+        )
+      : baseX + NODE_WIDTH;
+  const deviceX = graphRight + TIDY_GAP;
+  const devicePlans = devices.map((device) => {
+    const edge = edges.find(
+      (candidate) => candidate.kind === "device" && candidate.targetId === device.id,
+    );
+    const sourceNode = edge ? byId.get(edge.sourceId) : undefined;
+    const source = edge ? sourcePosition(edge.sourceId, byId, positionById) : null;
+    return {
+      device,
+      desiredY:
+        source && sourceNode
+          ? source.y + sizeOf(sourceNode).height / 2 - sizeOf(device).height / 2
+          : baseY,
+    };
+  });
+  devicePlans.sort(
+    (left, right) =>
+      left.desiredY - right.desiredY || left.device.id.localeCompare(right.device.id),
+  );
+  let deviceY = baseY;
+  for (const { device, desiredY } of devicePlans) {
+    const position = { x: deviceX, y: Math.max(deviceY, desiredY) };
+    place(device, position);
+    deviceY = position.y + sizeOf(device).height + TIDY_GAP;
+  }
+
+  return { positions, flowSizes };
 }
 
 /**

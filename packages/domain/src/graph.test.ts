@@ -564,7 +564,6 @@ describe("assertValidShowGraph", () => {
       "flowDeviceCardinality",
     );
   });
-
 });
 
 describe("structural queries", () => {

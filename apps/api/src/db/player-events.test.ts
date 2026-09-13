@@ -181,7 +181,12 @@ describe("dispatchPlayerEvent", () => {
       ],
       cues: [
         ...(draft.cues ?? []),
-        { id: cueId, name: "Vote", owner: { kind: "scene", sceneId: "scene_red" }, actionIds: [actionId] },
+        {
+          id: cueId,
+          name: "Vote",
+          owner: { kind: "scene", sceneId: "scene_red" },
+          actionIds: [actionId],
+        },
       ],
       actions: [
         ...(draft.actions ?? []),

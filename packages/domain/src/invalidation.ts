@@ -46,7 +46,6 @@ export function expandChangedSourceIds(
   return expanded;
 }
 
-
 /** Device invalidation predicate for a stable published graph. */
 export function deviceReadsChangedSources(
   graph: ShowGraph,

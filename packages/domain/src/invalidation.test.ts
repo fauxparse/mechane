@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { deviceReadsChangedSources, expandChangedSourceIds, sourceIdsReachableFromScenes } from "./invalidation";
+import {
+  deviceReadsChangedSources,
+  expandChangedSourceIds,
+  sourceIdsReachableFromScenes,
+} from "./invalidation";
 import type { ShowGraph } from "./graph";
 
 const graph: ShowGraph = {

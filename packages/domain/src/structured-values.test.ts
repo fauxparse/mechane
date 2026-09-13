@@ -129,10 +129,14 @@ describe("Structured Value identity", () => {
     expect(absent.sourceValues.selected).toBeNull();
     expect(() => assertValidRunState(absent, shapeGraph)).not.toThrow();
 
-    const empty = materializeStructuredValue([] as unknown as StructuredValueTemplate, people, [person]);
+    const empty = materializeStructuredValue([] as unknown as StructuredValueTemplate, people, [
+      person,
+    ]);
     expect(empty.structuredValues).not.toEqual({});
     expect(expandSlotInstances(null, undefined, {}).instances).toEqual([]);
-    expect(expandSlotInstances(empty.value, undefined, empty.structuredValues).instances).toEqual([]);
+    expect(expandSlotInstances(empty.value, undefined, empty.structuredValues).instances).toEqual(
+      [],
+    );
   });
 
   it("rejects dangling references and cycles", () => {

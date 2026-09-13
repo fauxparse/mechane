@@ -9,6 +9,7 @@ import {
   ContextMenuSubmenuContent,
   ContextMenuSubmenuTrigger,
   ContextMenuTrigger,
+  LayoutHorizontalIcon,
   Maximize2,
   Pencil,
   Plus,
@@ -69,6 +70,7 @@ export interface ShowGraphContextMenuProps {
   onViewportChange?(viewport: { x: number; y: number; zoom: number }): void;
   selectedNodeIds: string[];
   selectedEdgeIds: string[];
+  tidy(): void;
   requestDelete(): void;
   nodes: ShowFlowNode[];
   edges: ShowFlowEdge[];
@@ -107,6 +109,7 @@ export function ShowGraphContextMenu({
   endDrag,
   creation,
   connections,
+  tidy,
   setNodeColor,
   createFromConnection,
   onConnect,
@@ -241,6 +244,9 @@ export function ShowGraphContextMenu({
           </ContextMenuSubmenu>
         ) : null}
         <ContextMenuSeparator />
+        <ContextMenuItem onClick={tidy}>
+          <LayoutHorizontalIcon /> Tidy graph
+        </ContextMenuItem>
         <ContextMenuItem onClick={() => fitView(fitViewOptions)}>
           <Maximize2 /> Fit whole Show
         </ContextMenuItem>
