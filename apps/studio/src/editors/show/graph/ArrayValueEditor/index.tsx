@@ -143,6 +143,62 @@ export function ArrayValueEditor({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <ArrayEditorToolbar
+        recordsCount={records.length}
+        shapeName={shape.name}
+        editMode={editMode}
+        setEditMode={setEditMode}
+        query={query}
+        setQuery={setQuery}
+        viewMode={displayedViewMode}
+        setViewMode={setViewMode}
+        addRecord={addRecord}
+      />
+      <ArrayEditorRecords
+        viewMode={displayedViewMode}
+        selectedRecord={selectedRecord}
+        visibleRecords={visibleRecords}
+        shape={shape}
+        selectedId={selectedId}
+        editMode={editMode}
+        selectRecord={selectRecord}
+        reorderRecords={reorderRecords}
+        selectedIndex={selectedIndex}
+        shapes={shapes}
+        path={path}
+        updateRecord={updateRecord}
+        onValidityChange={onValidityChange}
+        removeRecord={removeRecord}
+        addRecord={addRecord}
+      />
+    </div>
+  );
+}
+type ArrayEditorToolbarProps = {
+  recordsCount: number;
+  shapeName: string;
+  editMode: boolean;
+  setEditMode(value: boolean): void;
+  query: string;
+  setQuery(value: string): void;
+  viewMode: ViewMode;
+  setViewMode(value: ViewMode): void;
+  addRecord(): void;
+};
+
+function ArrayEditorToolbar({
+  recordsCount,
+  shapeName,
+  editMode,
+  setEditMode,
+  query,
+  setQuery,
+  viewMode,
+  setViewMode,
+  addRecord,
+}: ArrayEditorToolbarProps) {
+  return (
+    <>
       <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-3">
           <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
@@ -151,13 +207,13 @@ export function ArrayValueEditor({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="truncate text-sm font-semibold">items</span>
-              <Badge variant="outline">{records.length} records</Badge>
-              <Badge variant="secondary">{shape.name}</Badge>
+              <Badge variant="outline">{recordsCount} records</Badge>
+              <Badge variant="secondary">{shapeName}</Badge>
             </div>
             <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
               <span>source value</span>
               <ChevronRight className="size-3" />
-              <span className="font-mono">Array of {shape.name}</span>
+              <span className="font-mono">Array of {shapeName}</span>
             </div>
           </div>
         </div>
@@ -195,7 +251,7 @@ export function ArrayValueEditor({
         />
         <div className="flex items-center gap-2">
           <Tabs
-            value={displayedViewMode}
+            value={viewMode}
             onValueChange={(value) => setViewMode(value === "record" ? "record" : "table")}
           >
             <TabsList className="h-8">
@@ -212,24 +268,7 @@ export function ArrayValueEditor({
           </Button>
         </div>
       </div>
-      <ArrayEditorRecords
-        viewMode={displayedViewMode}
-        selectedRecord={selectedRecord}
-        visibleRecords={visibleRecords}
-        shape={shape}
-        selectedId={selectedId}
-        editMode={editMode}
-        selectRecord={selectRecord}
-        reorderRecords={reorderRecords}
-        selectedIndex={selectedIndex}
-        shapes={shapes}
-        path={path}
-        updateRecord={updateRecord}
-        onValidityChange={onValidityChange}
-        removeRecord={removeRecord}
-        addRecord={addRecord}
-      />
-    </div>
+    </>
   );
 }
 
