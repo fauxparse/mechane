@@ -9,6 +9,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  type ImageInputOnUploadProps,
   type ImageInputValue,
 } from "@mechane/design-system";
 import {
@@ -175,6 +176,78 @@ export const ImageSection = () => {
     if (revision) update({ image: { assetId: next.assetId, revision } });
   };
 
+  const resetSize = () => {
+    if (!resetAsset || selected.length !== 1) return;
+    const current = selected[0];
+    if (!current) return;
+    update({
+      sizing: {
+        ...current.sizing,
+        width: { mode: "fixed", value: resetAsset.width },
+        height: { mode: "fixed", value: resetAsset.height },
+      },
+      objectFit: "cover",
+      objectPosition: "center center",
+    });
+  };
+
+  return (
+    <ImageSectionContent
+      imageInputValue={imageInputValue}
+      imageInputVariables={imageInputVariables}
+      imageInputAssets={imageInputAssets}
+      objectPositionValue={objectPositionValue}
+      objectFitValue={objectFitValue}
+      objectFitMixed={objectFitMixed}
+      resetAsset={resetAsset}
+      canReset={selected.length === 1}
+      onResetSize={resetSize}
+      update={update}
+      onImageUpload={onImageUpload}
+      onImageChange={handleImageChange}
+    />
+  );
+};
+
+type ImageSectionAsset = {
+  assetId: string;
+  url: string;
+  width: number;
+  height: number;
+  alt: string;
+  mimeType: string;
+  blurHash: string | null;
+};
+
+type ImageSectionContentProps = {
+  imageInputValue: ImageInputValue | null;
+  imageInputVariables: VariableReference<ImageValue>[];
+  imageInputAssets: ImageSectionAsset[];
+  objectPositionValue: Exclude<ObjectPosition, "center"> | undefined;
+  objectFitValue: ObjectFit | null;
+  objectFitMixed: boolean;
+  resetAsset: { width: number; height: number } | undefined;
+  canReset: boolean;
+  onResetSize(): void;
+  update(properties: Record<string, unknown>, unset?: readonly string[]): void;
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
+  onImageChange(next: ImageInputValue | null): void;
+};
+
+function ImageSectionContent({
+  imageInputValue,
+  imageInputVariables,
+  imageInputAssets,
+  objectPositionValue,
+  objectFitValue,
+  objectFitMixed,
+  resetAsset,
+  canReset,
+  onResetSize,
+  update,
+  onImageUpload,
+  onImageChange,
+}: ImageSectionContentProps) {
   return (
     <Section label="Image">
       <ImageInput
@@ -182,7 +255,7 @@ export const ImageSection = () => {
         value={imageInputValue}
         variables={imageInputVariables}
         imageAssets={imageInputAssets}
-        onChange={handleImageChange}
+        onChange={onImageChange}
         onDelete={() => update({}, ["image"])}
         onUpload={onImageUpload}
       />
@@ -219,20 +292,8 @@ export const ImageSection = () => {
         <Button
           variant="outline"
           className="w-full col-start-2"
-          disabled={!resetAsset}
-          onClick={() => {
-            if (!resetAsset || selected.length !== 1) return;
-            const current = selected[0]!;
-            update({
-              sizing: {
-                ...current.sizing,
-                width: { mode: "fixed", value: resetAsset.width },
-                height: { mode: "fixed", value: resetAsset.height },
-              },
-              objectFit: "cover",
-              objectPosition: "center center",
-            });
-          }}
+          disabled={!resetAsset || !canReset}
+          onClick={onResetSize}
         >
           <RotateCcwIcon />
           Reset size
@@ -240,4 +301,4 @@ export const ImageSection = () => {
       </SectionRow>
     </Section>
   );
-};
+}
