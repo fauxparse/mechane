@@ -167,7 +167,6 @@ export function SourceValueDialog({
 
   return (
     <SourceValueDialogView
-      nodeName={nodeName}
       row={row}
       shapeArrayType={shapeArrayType}
       breadcrumbs={breadcrumbs}
@@ -214,7 +213,6 @@ export function SourceValueDialog({
 }
 
 type SourceValueDialogViewProps = {
-  nodeName: string;
   row: SourceValueRow;
   shapeArrayType: ShapeArrayType | null;
   breadcrumbs: readonly SourceValueBreadcrumb[];
@@ -241,7 +239,6 @@ type SourceValueDialogViewProps = {
 };
 
 function SourceValueDialogView({
-  nodeName,
   row,
   shapeArrayType,
   breadcrumbs,
