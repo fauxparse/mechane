@@ -24,7 +24,7 @@ import {
   SidebarMenu,
   TvMinimalIcon,
 } from "@mechane/design-system";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type RefObject } from "react";
 
 import type { Element as CanvasElement } from "@mechane/domain";
 import type { CanvasArtboardDocument } from "../../../api/canvas";
@@ -159,13 +159,6 @@ function LayerRowView({
   onBeginRename(): void;
   onCommitRename(name: string): void;
 }) {
-  const Icon =
-    row.kind === "canvas"
-      ? artboard.kind === "scene"
-        ? TvMinimalIcon
-        : PuzzleIcon
-      : elementIconFor(row.elementKind);
-  const name = row.kind === "canvas" ? artboardLabel(artboard) : row.name;
   const afterZone: LayerDropZone =
     row.kind === "element" && expanded && row.hasChildren ? "inside" : "after";
   const sourceId = `layer-source:${row.artId}:${row.id}`;
@@ -213,6 +206,68 @@ function LayerRowView({
   const rowIndentRem = row.depth * LAYER_ROW_INDENT_REM;
 
   return (
+    <LayerRowContent
+      row={row}
+      artboard={artboard}
+      active={active}
+      expanded={expanded}
+      renaming={renaming}
+      onToggle={onToggle}
+      onSelectRow={onSelectRow}
+      onBeginRename={onBeginRename}
+      onCommitRename={onCommitRename}
+      before={before}
+      inside={inside}
+      after={after}
+      hint={hint}
+      rowIndentRem={rowIndentRem}
+      rowRef={rowRef}
+      isDragging={isDragging}
+    />
+  );
+}
+
+type LayerDropRegistration = ReturnType<typeof useDroppable<LayerDropData>>;
+
+type LayerRowContentProps = {
+  row: LayerRow;
+  artboard: CanvasArtboardDocument;
+  active: boolean;
+  expanded: boolean;
+  renaming: boolean;
+  onToggle(): void;
+  onSelectRow(shiftKey: boolean): void;
+  onBeginRename(): void;
+  onCommitRename(name: string): void;
+  before: LayerDropRegistration;
+  inside: LayerDropRegistration;
+  after: LayerDropRegistration;
+  hint: LayerDropZone | null;
+  rowIndentRem: number;
+  rowRef: RefObject<HTMLDivElement | null>;
+  isDragging: boolean;
+};
+
+function LayerRowContent({
+  row,
+  artboard,
+  active,
+  expanded,
+  renaming,
+  onToggle,
+  onSelectRow,
+  onBeginRename,
+  onCommitRename,
+  before,
+  inside,
+  after,
+  hint,
+  rowIndentRem,
+  rowRef,
+  isDragging,
+}: LayerRowContentProps) {
+  const name = row.kind === "canvas" ? artboardLabel(artboard) : row.name;
+  return (
     <li className="relative">
       {hint === "before" || hint === "after" ? (
         <DropIndicator zone={hint} depth={row.depth} />
@@ -232,84 +287,141 @@ function LayerRowView({
           paddingInlineStart: `${LAYER_ROW_CONTENT_INSET_REM}rem`,
         }}
       >
-        <span
-          ref={before.ref}
-          aria-hidden="true"
-          data-layer-drop-zone="before"
-          className={`pointer-events-none absolute inset-x-0 ${
-            row.kind === "element" && row.elementKind === "frame" ? "top-0 h-1/4" : "top-0 h-1/2"
-          }`}
+        <LayerRowDropZones row={row} before={before} inside={inside} after={after} />
+        <LayerRowLabel
+          row={row}
+          artboard={artboard}
+          name={name}
+          expanded={expanded}
+          renaming={renaming}
+          onToggle={onToggle}
+          onSelectRow={onSelectRow}
+          onBeginRename={onBeginRename}
+          onCommitRename={onCommitRename}
         />
-        <span
-          ref={inside.ref}
-          aria-hidden="true"
-          data-layer-drop-zone="inside"
-          className={`pointer-events-none absolute inset-x-0 ${
-            row.kind === "canvas" ? "inset-y-0" : "top-1/4 bottom-1/4"
-          }`}
-        />
-        <span
-          ref={after.ref}
-          aria-hidden="true"
-          data-layer-drop-zone="after"
-          className={`pointer-events-none absolute inset-x-0 -bottom-1 ${
-            row.kind === "element" && row.elementKind === "frame" ? "h-1/4" : "h-1/2"
-          }`}
-        />
-        {row.hasChildren ? (
-          <button
-            type="button"
-            data-layer-disclosure="true"
-            aria-label={expanded ? `Collapse ${name}` : `Expand ${name}`}
-            aria-expanded={expanded}
-            className="relative z-10 grid size-4 shrink-0 place-items-center rounded-sm hover:bg-background/60"
-            onPointerDownCapture={(event) => event.stopPropagation()}
-            onClick={onToggle}
-          >
-            <ChevronRight
-              aria-hidden="true"
-              className={`size-3 transition-transform ${expanded ? "rotate-90" : ""}`}
-            />
-          </button>
-        ) : (
-          <span aria-hidden="true" className="relative z-10 size-4 shrink-0" />
-        )}
-        <Icon
-          aria-hidden="true"
-          className="relative z-10 size-3.5 shrink-0 text-muted-foreground"
-        />
-        {renaming ? (
-          <input
-            autoFocus
-            defaultValue={row.kind === "canvas" ? artboard.name : (row.rawName ?? "")}
-            aria-label={`Rename ${name}`}
-            className="relative z-10 h-6 min-w-0 flex-1 rounded-sm border border-border bg-background px-1 text-sm outline-none focus:ring-2 focus:ring-ring"
-            onKeyDown={(event) => {
-              if (event.key === "Enter") event.currentTarget.blur();
-              if (event.key === "Escape") {
-                event.currentTarget.value =
-                  row.kind === "canvas" ? artboard.name : (row.rawName ?? "");
-                event.currentTarget.blur();
-              }
-            }}
-            onBlur={(event) => onCommitRename(event.currentTarget.value)}
-          />
-        ) : (
-          <button
-            type="button"
-            className="relative z-10 min-w-0 flex-1 truncate text-left"
-            aria-label={`${name} ${row.kind === "canvas" ? "canvas" : "layer"}`}
-            onClick={(event) => onSelectRow(event.shiftKey)}
-            onDoubleClick={onBeginRename}
-          >
-            {name}
-          </button>
-        )}
       </div>
     </li>
   );
 }
+function LayerRowDropZones({
+  row,
+  before,
+  inside,
+  after,
+}: {
+  row: LayerRow;
+  before: LayerDropRegistration;
+  inside: LayerDropRegistration;
+  after: LayerDropRegistration;
+}) {
+  return (
+    <>
+      <span
+        ref={before.ref}
+        aria-hidden="true"
+        data-layer-drop-zone="before"
+        className={`pointer-events-none absolute inset-x-0 ${
+          row.kind === "element" && row.elementKind === "frame" ? "top-0 h-1/4" : "top-0 h-1/2"
+        }`}
+      />
+      <span
+        ref={inside.ref}
+        aria-hidden="true"
+        data-layer-drop-zone="inside"
+        className={`pointer-events-none absolute inset-x-0 ${
+          row.kind === "canvas" ? "inset-y-0" : "top-1/4 bottom-1/4"
+        }`}
+      />
+      <span
+        ref={after.ref}
+        aria-hidden="true"
+        data-layer-drop-zone="after"
+        className={`pointer-events-none absolute inset-x-0 -bottom-1 ${
+          row.kind === "element" && row.elementKind === "frame" ? "h-1/4" : "h-1/2"
+        }`}
+      />
+    </>
+  );
+}
 
+function LayerRowLabel({
+  row,
+  artboard,
+  name,
+  expanded,
+  renaming,
+  onToggle,
+  onSelectRow,
+  onBeginRename,
+  onCommitRename,
+}: {
+  row: LayerRow;
+  artboard: CanvasArtboardDocument;
+  name: string;
+  expanded: boolean;
+  renaming: boolean;
+  onToggle(): void;
+  onSelectRow(shiftKey: boolean): void;
+  onBeginRename(): void;
+  onCommitRename(name: string): void;
+}) {
+  const Icon =
+    row.kind === "canvas"
+      ? artboard.kind === "scene"
+        ? TvMinimalIcon
+        : PuzzleIcon
+      : elementIconFor(row.elementKind);
+  return (
+    <>
+      {row.hasChildren ? (
+        <button
+          type="button"
+          data-layer-disclosure="true"
+          aria-label={expanded ? `Collapse ${name}` : `Expand ${name}`}
+          aria-expanded={expanded}
+          className="relative z-10 grid size-4 shrink-0 place-items-center rounded-sm hover:bg-background/60"
+          onPointerDownCapture={(event) => event.stopPropagation()}
+          onClick={onToggle}
+        >
+          <ChevronRight
+            aria-hidden="true"
+            className={`size-3 transition-transform ${expanded ? "rotate-90" : ""}`}
+          />
+        </button>
+      ) : (
+        <span aria-hidden="true" className="relative z-10 size-4 shrink-0" />
+      )}
+      <Icon aria-hidden="true" className="relative z-10 size-3.5 shrink-0 text-muted-foreground" />
+      {renaming ? (
+        <input
+          autoFocus
+          defaultValue={row.kind === "canvas" ? artboard.name : (row.rawName ?? "")}
+          aria-label={`Rename ${name}`}
+          className="relative z-10 h-6 min-w-0 flex-1 rounded-sm border border-border bg-background px-1 text-sm outline-none focus:ring-2 focus:ring-ring"
+          onKeyDown={(event) => {
+            if (event.key === "Enter") event.currentTarget.blur();
+            if (event.key === "Escape") {
+              event.currentTarget.value =
+                row.kind === "canvas" ? artboard.name : (row.rawName ?? "");
+              event.currentTarget.blur();
+            }
+          }}
+          onBlur={(event) => onCommitRename(event.currentTarget.value)}
+        />
+      ) : (
+        <button
+          type="button"
+          className="relative z-10 min-w-0 flex-1 truncate text-left"
+          aria-label={`${name} ${row.kind === "canvas" ? "canvas" : "layer"}`}
+          onClick={(event) => onSelectRow(event.shiftKey)}
+          onDoubleClick={onBeginRename}
+        >
+          {name}
+        </button>
+      )}
+    </>
+  );
+}
 function LayerDragPreview({ row, artboard }: { row: LayerRow; artboard: CanvasArtboardDocument }) {
   const Icon =
     row.kind === "canvas"
