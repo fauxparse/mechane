@@ -37,6 +37,11 @@ import { INLINE_STRING_LIMIT, sourceValuesEqual } from "./source-values-helpers"
 
 type ShapeArrayType = { kind: "array"; of: { kind: "shape"; shapeId: string } };
 
+type SourceValueBreadcrumb = {
+  label: string;
+  focus: ArrayValueFocus | null;
+};
+
 function isShapeArrayType(type: Type): type is ShapeArrayType {
   return (
     typeof type !== "string" &&
@@ -173,6 +178,107 @@ export function SourceValueDialog({
   ];
 
   return (
+    <SourceValueDialogView
+      nodeName={nodeName}
+      row={row}
+      shapeArrayType={shapeArrayType}
+      breadcrumbs={breadcrumbs}
+      open={open}
+      onOpenChange={onOpenChange}
+      draft={draft}
+      shapes={shapes}
+      arrayFocus={arrayFocus}
+      isLongText={isLongText}
+      imageAssets={imageAssets}
+      onImageUpload={onImageUpload}
+      errors={errors}
+      onClear={onClear}
+      pendingFocus={pendingFocus}
+      navigationError={navigationError}
+      updateDraft={updateDraft}
+      updateErrors={updateErrors}
+      requestFocus={requestFocus}
+      onSelectionChange={(selection) => {
+        setArrayFocus(selection ? { kind: "record", id: selection.id } : { kind: "array" });
+      }}
+      saveDraft={saveDraft}
+      onCancelNavigation={() => {
+        setPendingFocus(null);
+        setNavigationError(null);
+      }}
+      onDiscardNavigation={() => {
+        if (!pendingFocus) return;
+        setDraft(savedDraft);
+        setErrors(new Map());
+        setPendingFocus(null);
+        setNavigationError(null);
+        applyFocus(pendingFocus);
+      }}
+      onSaveNavigation={() => {
+        const nextFocus = pendingFocus;
+        if (!nextFocus || !saveDraft()) return;
+        setPendingFocus(null);
+        setNavigationError(null);
+        applyFocus(nextFocus);
+      }}
+    />
+  );
+}
+
+type SourceValueDialogViewProps = {
+  nodeName: string;
+  row: SourceValueRow;
+  shapeArrayType: ShapeArrayType | null;
+  breadcrumbs: readonly SourceValueBreadcrumb[];
+  open: boolean;
+  onOpenChange(open: boolean): void;
+  draft: unknown;
+  shapes: readonly Shape[];
+  arrayFocus: ArrayValueFocus;
+  isLongText: boolean;
+  imageAssets?: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
+  errors: Map<string, string>;
+  onClear?: () => void;
+  pendingFocus: ArrayValueFocus | null;
+  navigationError: string | null;
+  updateDraft(next: unknown): void;
+  updateErrors(path: readonly (string | number)[], error: string | null): void;
+  requestFocus(focus: ArrayValueFocus): void;
+  onSelectionChange(selection: ArrayValueSelection | null): void;
+  saveDraft(): boolean;
+  onCancelNavigation(): void;
+  onDiscardNavigation(): void;
+  onSaveNavigation(): void;
+};
+
+function SourceValueDialogView({
+  nodeName,
+  row,
+  shapeArrayType,
+  breadcrumbs,
+  open,
+  onOpenChange,
+  draft,
+  shapes,
+  arrayFocus,
+  isLongText,
+  imageAssets,
+  onImageUpload,
+  errors,
+  onClear,
+  pendingFocus,
+  navigationError,
+  updateDraft,
+  updateErrors,
+  requestFocus,
+  onSelectionChange,
+  saveDraft,
+  onCancelNavigation,
+  onDiscardNavigation,
+  onSaveNavigation,
+}: SourceValueDialogViewProps) {
+  return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
@@ -241,9 +347,7 @@ export function SourceValueDialog({
               focus={arrayFocus}
               onChange={updateDraft}
               onValidityChange={updateErrors}
-              onSelectionChange={(selection) => {
-                setArrayFocus(selection ? { kind: "record", id: selection.id } : { kind: "array" });
-              }}
+              onSelectionChange={onSelectionChange}
             />
           ) : isLongText ? (
             <Textarea
@@ -293,10 +397,7 @@ export function SourceValueDialog({
       <AlertDialog
         open={pendingFocus !== null}
         onOpenChange={(nextOpen) => {
-          if (!nextOpen) {
-            setPendingFocus(null);
-            setNavigationError(null);
-          }
+          if (!nextOpen) onCancelNavigation();
         }}
       >
         <AlertDialogContent>
@@ -307,42 +408,13 @@ export function SourceValueDialog({
           </AlertDialogDescription>
           {navigationError ? <p className="text-sm text-destructive">{navigationError}</p> : null}
           <AlertDialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                setPendingFocus(null);
-                setNavigationError(null);
-              }}
-            >
+            <Button type="button" variant="ghost" onClick={onCancelNavigation}>
               Cancel
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                if (!pendingFocus) return;
-                const nextFocus = pendingFocus;
-                setDraft(savedDraft);
-                setErrors(new Map());
-                setPendingFocus(null);
-                setNavigationError(null);
-                applyFocus(nextFocus);
-              }}
-            >
+            <Button type="button" variant="outline" onClick={onDiscardNavigation}>
               Discard changes
             </Button>
-            <Button
-              type="button"
-              disabled={errors.size > 0}
-              onClick={() => {
-                const nextFocus = pendingFocus;
-                if (!nextFocus || !saveDraft()) return;
-                setPendingFocus(null);
-                setNavigationError(null);
-                applyFocus(nextFocus);
-              }}
-            >
+            <Button type="button" disabled={errors.size > 0} onClick={onSaveNavigation}>
               Save changes
             </Button>
           </AlertDialogFooter>
