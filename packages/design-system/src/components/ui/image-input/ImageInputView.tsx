@@ -134,6 +134,7 @@ export const ImageInputView = ({
               size="icon"
               className="rounded-full bg-neutral-900/50 hover:bg-neutral-900/75 dark:bg-neutral-900/50 dark:hover:bg-neutral-900/75 fg-neutral-100 pointer-events-auto"
               onClick={onDelete}
+              aria-label="Remove image"
             >
               <Trash2Icon className="size-4" />
             </Button>
