@@ -39,6 +39,19 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse {
+    animation: none;
+  }
+
+  .transition-all,
+  .transition-colors,
+  .transition-opacity,
+  .transition-transform {
+    transition-duration: 0.01ms;
+  }
+}
+
 @utility label {
   @apply text-xs uppercase text-muted-foreground tracking-wider;
 }
