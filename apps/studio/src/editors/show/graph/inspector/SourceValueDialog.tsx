@@ -94,13 +94,10 @@ export function SourceValueDialog({
     (row.value.includes("\n") || row.value.length > INLINE_STRING_LIMIT);
   const shapeArrayType = isShapeArrayType(row.type) ? row.type : null;
   const initialDraft = draftForRow(row, shapes);
-  const initialSelection = arraySelectionForValue(initialDraft, shapeArrayType, shapes);
   const [draft, setDraft] = useState(initialDraft);
   const [savedDraft, setSavedDraft] = useState(initialDraft);
   const [errors, setErrors] = useState<Map<string, string>>(new Map());
-  const [arrayFocus, setArrayFocus] = useState<ArrayValueFocus>(
-    initialSelection ? { kind: "record", id: initialSelection.id } : { kind: "array" },
-  );
+  const [arrayFocus, setArrayFocus] = useState<ArrayValueFocus>({ kind: "array" });
   const [pendingFocus, setPendingFocus] = useState<ArrayValueFocus | null>(null);
   const [navigationError, setNavigationError] = useState<string | null>(null);
   const isDirty = !sourceValuesEqual(draft, savedDraft);
@@ -112,11 +109,10 @@ export function SourceValueDialog({
   useEffect(() => {
     if (!open) return;
     const nextDraft = draftForRow(row, shapes);
-    const nextSelection = arraySelectionForValue(nextDraft, shapeArrayType, shapes);
     setDraft(nextDraft);
     setSavedDraft(nextDraft);
     setErrors(new Map());
-    setArrayFocus(nextSelection ? { kind: "record", id: nextSelection.id } : { kind: "array" });
+    setArrayFocus({ kind: "array" });
     setPendingFocus(null);
     setNavigationError(null);
   }, [open, rowKey]);
@@ -167,7 +163,7 @@ export function SourceValueDialog({
   };
 
   const breadcrumbs = [
-    { label: nodeName, focus: null },
+    { label: nodeName, focus: { kind: "array" } as const },
     ...(row.fieldPath.length > 0
       ? [{ label: row.label, focus: shapeArrayType ? ({ kind: "array" } as const) : null }]
       : []),

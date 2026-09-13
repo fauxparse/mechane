@@ -53,10 +53,11 @@ export function ArrayValueEditor({
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [editMode, setEditMode] = useState(true);
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState(records[0]?.id ?? "");
+  const [selectedId, setSelectedId] = useState("");
 
   useEffect(() => {
     if (focus?.kind === "array") {
+      setSelectedId("");
       setViewMode("table");
       return;
     }
@@ -66,8 +67,8 @@ export function ArrayValueEditor({
   }, [focus, records]);
 
   useEffect(() => {
-    if (!records.some((record) => record.id === selectedId)) {
-      setSelectedId(records[0]?.id ?? "");
+    if (selectedId && !records.some((record) => record.id === selectedId)) {
+      setSelectedId("");
     }
   }, [records, selectedId]);
 
@@ -89,7 +90,9 @@ export function ArrayValueEditor({
         ),
       )
     : records;
-  const selectedRecord = records.find((record) => record.id === selectedId) ?? records[0] ?? null;
+  const selectedRecord = selectedId
+    ? (records.find((record) => record.id === selectedId) ?? null)
+    : null;
   const reportSelection = (record: ShapeRecord | null) => {
     onSelectionChange?.(
       record ? { id: record.id, label: recordIdentifier(record, shape.fields) } : null,
@@ -224,9 +227,14 @@ export function ArrayValueEditor({
           </Button>
         </div>
       </div>
-
       {viewMode === "table" ? (
-        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div
+          className={
+            selectedRecord
+              ? "grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]"
+              : "min-h-0 flex-1"
+          }
+        >
           <ArrayTable
             records={visibleRecords}
             fields={shape.fields}
@@ -235,20 +243,28 @@ export function ArrayValueEditor({
             onSelect={selectRecord}
             onReorder={reorderRecords}
           />
-          <RecordDetails
-            record={selectedRecord}
-            recordIndex={selectedIndex < 0 ? 0 : selectedIndex}
-            fields={shape.fields}
-            shapes={shapes}
-            path={path}
-            editMode={editMode}
-            onChange={updateRecord}
-            onValidityChange={onValidityChange}
-            onRemove={removeRecord}
-          />
+          {selectedRecord ? (
+            <RecordDetails
+              record={selectedRecord}
+              recordIndex={selectedIndex < 0 ? 0 : selectedIndex}
+              fields={shape.fields}
+              shapes={shapes}
+              path={path}
+              editMode={editMode}
+              onChange={updateRecord}
+              onValidityChange={onValidityChange}
+              onRemove={removeRecord}
+            />
+          ) : null}
         </div>
       ) : (
-        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+        <div
+          className={
+            selectedRecord
+              ? "grid min-h-0 flex-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)]"
+              : "min-h-0 flex-1"
+          }
+        >
           <RecordRail
             records={visibleRecords}
             selectedId={selectedId}
@@ -257,18 +273,20 @@ export function ArrayValueEditor({
             onAdd={addRecord}
             editMode={editMode}
           />
-          <RecordDetails
-            record={selectedRecord}
-            recordIndex={selectedIndex < 0 ? 0 : selectedIndex}
-            fields={shape.fields}
-            shapes={shapes}
-            path={path}
-            editMode={editMode}
-            onChange={updateRecord}
-            onValidityChange={onValidityChange}
-            onRemove={removeRecord}
-            spacious
-          />
+          {selectedRecord ? (
+            <RecordDetails
+              record={selectedRecord}
+              recordIndex={selectedIndex < 0 ? 0 : selectedIndex}
+              fields={shape.fields}
+              shapes={shapes}
+              path={path}
+              editMode={editMode}
+              onChange={updateRecord}
+              onValidityChange={onValidityChange}
+              onRemove={removeRecord}
+              spacious
+            />
+          ) : null}
         </div>
       )}
     </div>
