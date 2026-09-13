@@ -1,4 +1,11 @@
-import { composite, moveNode, moveNodesIntoFlow, moveNodesOutOfFlow } from "@mechane/commands";
+import {
+  composite,
+  moveNode,
+  moveNodesIntoFlow,
+  moveNodesOutOfFlow,
+  setFlowSize,
+} from "@mechane/commands";
+import type { ShowGraphCommand } from "@mechane/commands";
 import { generateId, type GraphNode, type Position, type ShowGraph } from "@mechane/domain";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { Connection, FitViewOptions, OnNodeDrag, XYPosition } from "@xyflow/react";
@@ -25,6 +32,7 @@ import {
   relativeToFlow,
   SCENE_NAVIGATION_GAP,
   sizeOf,
+  tidyLayout,
   type CreationSite,
   type Size,
 } from "../show-graph-layout";
@@ -547,6 +555,38 @@ export function useShowGraphEditorActions({
   );
 
   // ---------------------------------------------------------------------------
+  // Layout
+  // ---------------------------------------------------------------------------
+
+  const tidy = useCallback(() => {
+    const { rendered } = renderedGraph();
+    const layout = tidyLayout(rendered, graph.edges);
+    const currentById = new Map(graph.nodes.map((node) => [node.id, node]));
+    const next: ShowGraphCommand[] = [];
+
+    for (const { id, position } of layout.positions) {
+      const current = currentById.get(id);
+      if (!current || (current.position.x === position.x && current.position.y === position.y)) {
+        continue;
+      }
+      next.push(moveNode(id, position));
+    }
+
+    for (const { id, size } of layout.flowSizes) {
+      const current = currentById.get(id);
+      if (
+        current?.kind !== "flow" ||
+        (current.size?.width === size.width && current.size?.height === size.height)
+      ) {
+        continue;
+      }
+      next.push(setFlowSize(id, size));
+    }
+
+    if (next.length > 0) commands.execute(composite({ label: "Tidy graph", commands: next }));
+  }, [commands, graph.edges, graph.nodes, renderedGraph]);
+
+  // ---------------------------------------------------------------------------
   // Camera
   // ---------------------------------------------------------------------------
 
@@ -592,6 +632,7 @@ export function useShowGraphEditorActions({
     confirmDelete,
     onConnect,
     isValidConnection,
+    tidy,
     fitToNodes,
     zoomToSelection,
     jumpToMinimapPoint,

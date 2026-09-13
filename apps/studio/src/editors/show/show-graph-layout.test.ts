@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-
+import type { GraphEdge } from "@mechane/domain";
 import {
   FLOW_HEADER_HEIGHT,
   FLOW_NODE_TYPE,
@@ -22,19 +22,21 @@ import {
   nextChildPosition,
   relativeToFlow,
   sizeOf,
+  tidyLayout,
 } from "./show-graph-layout";
 
 function flowNode(
   id: string,
   position: { x: number; y: number },
   size: { width: number; height: number },
+  defaultSceneId: string | null = null,
 ): ShowFlowNode {
   return {
     id,
     type: FLOW_NODE_TYPE,
     position,
     style: size,
-    data: { kind: "flow", name: id } as ShowFlowNode["data"],
+    data: { kind: "flow", name: id, defaultSceneId } as ShowFlowNode["data"],
   };
 }
 
@@ -56,6 +58,15 @@ function childNode(
       ? {}
       : { measured: { width: NODE_WIDTH, height: measuredHeight } }),
     data: { kind: "scene", name: id } as ShowFlowNode["data"],
+  };
+}
+function deviceNode(id: string, position: { x: number; y: number }): ShowFlowNode {
+  return {
+    id,
+    type: NODE_TYPE_BY_KIND.device,
+    position,
+    style: { width: NODE_WIDTH, minHeight: NODE_HEIGHT },
+    data: { kind: "device", name: id } as ShowFlowNode["data"],
   };
 }
 
@@ -214,6 +225,70 @@ describe("moveOutPositions", () => {
       position!.y < 500 &&
       position!.y + NODE_HEIGHT > 100;
     expect(stillInside).toBe(false);
+  });
+});
+describe("tidyLayout", () => {
+  it("keeps root Flows in a spacious vertical lane", () => {
+    const first = flowNode("first", { x: 480, y: 120 }, { width: 200, height: 180 });
+    const second = flowNode("second", { x: 80, y: 600 }, { width: 300, height: 220 });
+    const [firstPosition, secondPosition] = tidyLayout([first, second]).positions;
+
+    expect(firstPosition).toBeDefined();
+    expect(secondPosition?.position.x).toBe(80);
+    expect(secondPosition?.position.y).toBeGreaterThan(
+      (firstPosition?.position.y ?? 0) + sizeOf(first).height + 80,
+    );
+  });
+
+  it("orders Flow Scenes by navigation and resizes the Flow around them", () => {
+    const flow = flowNode("flow", { x: 0, y: 0 }, { width: 300, height: 200 }, "first");
+    const first = childNode("first", flow.id, { x: 180, y: 220 });
+    const second = childNode("second", flow.id, { x: 12, y: 4 });
+    const edges = [
+      {
+        id: "first-second",
+        kind: "navigate",
+        sourceId: first.id,
+        targetId: second.id,
+        sourcePath: [],
+        targetPath: [],
+        cueId: "cue-1",
+        actionId: "action-1",
+      },
+    ] satisfies GraphEdge[];
+
+    expect(tidyLayout([flow, first, second], edges)).toEqual({
+      positions: [
+        { id: "first", position: { x: 64, y: 114 } },
+        { id: "second", position: { x: 400, y: 114 } },
+        { id: "flow", position: { x: 0, y: 0 } },
+      ],
+      flowSizes: [{ id: "flow", size: { width: 704, height: 234 } }],
+    });
+  });
+
+  it("puts Devices in a lane right of every root Flow", () => {
+    const flow = flowNode("flow", { x: 0, y: 0 }, { width: 300, height: 200 });
+    const scene = childNode("scene", flow.id, { x: 0, y: 0 });
+    const device = deviceNode("device", { x: -500, y: -500 });
+    const edges = [
+      {
+        id: "flow-device",
+        kind: "device",
+        sourceId: flow.id,
+        targetId: device.id,
+        sourcePath: [],
+        targetPath: [],
+      },
+    ] satisfies GraphEdge[];
+
+    const plan = tidyLayout([flow, scene, device], edges);
+    const flowPosition = plan.positions.find((position) => position.id === flow.id);
+    const devicePosition = plan.positions.find((position) => position.id === device.id);
+    const flowSize = plan.flowSizes.find((size) => size.id === flow.id);
+    expect(devicePosition?.position.x).toBeGreaterThan(
+      (flowPosition?.position.x ?? 0) + (flowSize?.size.width ?? 0),
+    );
   });
 });
 

@@ -134,10 +134,7 @@ export function resolveUpdateHolder(
 export type UpdateScope = "show" | "instance" | "depends";
 
 /** Static scope classification used by Studio and dispatch lock selection. */
-export function classifyUpdateActionScope(
-  graph: ShowGraph,
-  action: UpdateAction,
-): UpdateScope {
+export function classifyUpdateActionScope(graph: ShowGraph, action: UpdateAction): UpdateScope {
   const source = graph.nodes.find((node) => node.id === action.target.sourceId);
   if (!source || source.kind !== "source" || source.parentId === null) return "show";
   return action.target.fieldPath.length === 0 ? "instance" : "depends";
@@ -199,7 +196,12 @@ function resolveOperandValue(
     operand.variableId,
     ...(operand.fieldPath ?? []),
   ]);
-  if (operand.fieldMapping && value !== null && typeof value === "object" && !Array.isArray(value)) {
+  if (
+    operand.fieldMapping &&
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value)
+  ) {
     value = Object.fromEntries(
       Object.entries(value as Record<string, unknown>).flatMap(([fieldId, fieldValue]) => {
         const targetFieldId = operand.fieldMapping?.[fieldId];
@@ -311,10 +313,7 @@ export function planUpdate(
       }
       nextValue = currentValue + operand;
     } else if (isStructuredType(slotType)) {
-      if (
-        action.operation.operand.kind === "cueParameter" &&
-        isStructuredValueReference(operand)
-      ) {
+      if (action.operation.operand.kind === "cueParameter" && isStructuredValueReference(operand)) {
         nextValue = operand;
       } else {
         const fresh = materializeFresh(operand, slotType, graph);

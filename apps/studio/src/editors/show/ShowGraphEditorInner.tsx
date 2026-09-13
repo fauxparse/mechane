@@ -63,6 +63,7 @@ export function ShowGraphEditorInner(props: ShowGraphEditorProps) {
     create,
     createFromConnection,
     requestDelete,
+    tidy,
     fitView,
     fitViewOptions,
     screenToFlowPosition,
@@ -97,6 +98,7 @@ export function ShowGraphEditorInner(props: ShowGraphEditorProps) {
             onViewportChange={onViewportChange}
             selectedNodeIds={selectedNodeIds}
             selectedEdgeIds={selectedEdgeIds}
+            tidy={tidy}
             requestDelete={requestDelete}
             nodes={nodes}
             edges={edges}

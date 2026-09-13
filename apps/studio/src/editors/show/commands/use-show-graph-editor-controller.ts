@@ -61,6 +61,7 @@ export interface ShowGraphEditorController {
   endDrag: ReturnType<typeof useShowGraphEditorActions>["endDrag"];
   create: ReturnType<typeof useShowGraphEditorActions>["create"];
   createFromConnection: ConnectionDropCreator;
+  tidy: ReturnType<typeof useShowGraphEditorActions>["tidy"];
   requestDelete: ReturnType<typeof useShowGraphEditorActions>["requestDelete"];
   fitView: ReturnType<typeof useReactFlow>["fitView"];
   fitViewOptions: ReturnType<typeof useFitViewOptions>;
@@ -321,6 +322,7 @@ export function useShowGraphEditorController({
     moveIntoFlow: editing.moveIntoFlow,
     moveOutOfFlow: editing.moveOutOfFlow,
     addVariable: variables.addVariable,
+    tidy: actions.tidy,
     say,
     requestDelete: actions.requestDelete,
     nodes,

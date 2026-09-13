@@ -1,4 +1,12 @@
-import { Maximize2, Pencil, Plus, Redo2, Trash2, Undo2 } from "@mechane/design-system";
+import {
+  LayoutHorizontalIcon,
+  Maximize2,
+  Pencil,
+  Plus,
+  Redo2,
+  Trash2,
+  Undo2,
+} from "@mechane/design-system";
 import type { FitViewOptions } from "@xyflow/react";
 import type { CreatableNode } from "../graph/node-kinds";
 import { CREATABLE_NODES } from "../graph/node-kinds";
@@ -26,6 +34,7 @@ export interface ShowGraphEditorPaletteOptions {
   moveIntoFlow(nodeIds: string[], flowId: string, origin: Position): void;
   moveOutOfFlow(nodeIds: string[], positions: Position[]): string | null;
   addVariable(sceneId: string): void;
+  tidy(): void;
   say(text: string): void;
   requestDelete(): void;
   nodes: ShowFlowNode[];
@@ -44,6 +53,7 @@ export function useShowGraphEditorPalette({
   moveIntoFlow,
   moveOutOfFlow,
   addVariable,
+  tidy,
   say,
   requestDelete,
   nodes,
@@ -152,6 +162,14 @@ export function useShowGraphEditorPalette({
         run: () => single && editing.addVariable(single.id),
       },
       {
+        id: "tidy",
+        label: "Tidy graph",
+        scope: "canvas" as const,
+        icon: LayoutHorizontalIcon,
+        disabledReason: nodes.length === 0 ? "add a node first" : undefined,
+        run: tidy,
+      },
+      {
         id: "delete",
         label: "Delete selection",
         scope: "selection" as const,
@@ -174,6 +192,7 @@ export function useShowGraphEditorPalette({
     requestDelete,
     say,
     selectAll,
+    tidy,
     selectedEdgeIds.length,
     selectedNodes,
     nodes,
