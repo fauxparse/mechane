@@ -35,84 +35,105 @@ type PrimitiveInputProps = Omit<ValueEditorProps, "shapes"> & {
   actions?: ReactNode;
 };
 
-function SourcePrimitiveInput({
-  type,
+function SourcePrimitiveInput(props: PrimitiveInputProps) {
+  const inputType = typeof props.type === "string" ? propertyInputType(props.type) : null;
+  if (props.type === "image") return <SourceImageInput {...props} />;
+  if (props.type === "boolean") return <SourceBooleanInput {...props} />;
+  if (!inputType)
+    return (
+      <div className="flex min-w-0 items-center justify-between gap-1">
+        <span className="truncate text-sm text-muted-foreground">{previewValue(props.value)}</span>
+        {props.actions}
+      </div>
+    );
+  return <SourceValueInput {...props} inputType={inputType} />;
+}
+
+function SourceImageInput({
   value,
   path,
-  imageAssets: propsImageAssets,
-  onImageUpload: propsOnImageUpload,
+  imageAssets,
+  onImageUpload,
+  onChange,
+  onValidityChange,
+}: PrimitiveInputProps) {
+  const resolvedValue = isResolvedImageValue(value)
+    ? value
+    : isImageAssetReference(value)
+      ? ((imageAssets ?? []).find(
+          (asset) => asset.assetId === value.assetId && asset.revision === value.revision,
+        ) ?? null)
+      : null;
+  return (
+    <ImageInput
+      value={resolvedValue}
+      imageAssets={imageAssets}
+      allowLink={false}
+      onUpload={onImageUpload}
+      onChange={(next: ImageInputValue | null) => {
+        if (next === null) {
+          onValidityChange(path, null);
+          onChange(null);
+          return;
+        }
+        if (!isResolvedImageValue(next)) {
+          onValidityChange(path, "The selected image is not resolved.");
+          return;
+        }
+        const revision = isImageAssetReference(next)
+          ? next.revision
+          : imageAssets?.find((asset) => asset.assetId === next.assetId)?.revision;
+        if (!revision) {
+          onValidityChange(path, "The selected image has no revision.");
+          return;
+        }
+        onValidityChange(path, null);
+        onChange({ assetId: next.assetId, revision });
+      }}
+      onError={(error) => onValidityChange(path, error.message)}
+    />
+  );
+}
+
+function SourceBooleanInput({
+  value,
+  path,
   label,
   actions,
   onChange,
   onValidityChange,
 }: PrimitiveInputProps) {
-  const inputType = typeof type === "string" ? propertyInputType(type) : null;
   const [error, setError] = useState<string | null>(null);
-  if (type === "image") {
-    const resolvedValue = isResolvedImageValue(value)
-      ? value
-      : isImageAssetReference(value)
-        ? ((propsImageAssets ?? []).find(
-            (asset) => asset.assetId === value.assetId && asset.revision === value.revision,
-          ) ?? null)
-        : null;
-    return (
-      <ImageInput
-        value={resolvedValue}
-        imageAssets={propsImageAssets}
-        allowLink={false}
-        onUpload={propsOnImageUpload}
-        onChange={(next: ImageInputValue | null) => {
-          if (next === null) {
+  return (
+    <div className="flex min-w-0 items-center gap-1">
+      <Switch
+        checked={value === true}
+        onCheckedChange={(checked) => {
+          if (typeof checked === "boolean") {
+            setError(null);
             onValidityChange(path, null);
-            onChange(null);
-            return;
+            onChange(checked);
           }
-          if (!isResolvedImageValue(next)) {
-            onValidityChange(path, "The selected image is not resolved.");
-            return;
-          }
-          const revision = isImageAssetReference(next)
-            ? next.revision
-            : propsImageAssets?.find((asset) => asset.assetId === next.assetId)?.revision;
-          if (!revision) {
-            onValidityChange(path, "The selected image has no revision.");
-            return;
-          }
-          onValidityChange(path, null);
-          onChange({ assetId: next.assetId, revision });
         }}
-        onError={(error) => onValidityChange(path, error.message)}
+        aria-label={label ? `${label} value` : "Boolean value"}
       />
-    );
-  }
+      {actions}
+      {error ? <span className="text-xs text-destructive">{error}</span> : null}
+    </div>
+  );
+}
 
-  if (type === "boolean") {
-    return (
-      <div className="flex min-w-0 items-center gap-1">
-        <Switch
-          checked={value === true}
-          onCheckedChange={(checked) => {
-            if (typeof checked === "boolean") {
-              setError(null);
-              onValidityChange(path, null);
-              onChange(checked);
-            }
-          }}
-          aria-label={label ? `${label} value` : "Boolean value"}
-        />
-        {actions}
-      </div>
-    );
-  }
-  if (!inputType)
-    return (
-      <div className="flex min-w-0 items-center justify-between gap-1">
-        <span className="truncate text-sm text-muted-foreground">{previewValue(value)}</span>
-        {actions}
-      </div>
-    );
-
+function SourceValueInput({
+  type,
+  value,
+  path,
+  label,
+  actions,
+  onChange,
+  onValidityChange,
+  inputType,
+}: PrimitiveInputProps & { inputType: "text" | "number" | "color" }) {
+  const [error, setError] = useState<string | null>(null);
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-1">
       <PropertyInput

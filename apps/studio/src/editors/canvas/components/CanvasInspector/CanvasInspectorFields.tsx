@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { AxisSize, Shape, SlotInputSource } from "@mechane/domain";
+import type { AxisSize, SlotInputSource } from "@mechane/domain";
 import { elementPropertyDescriptor, type ElementPropertyName } from "@mechane/domain";
 import {
   Link2Icon,
