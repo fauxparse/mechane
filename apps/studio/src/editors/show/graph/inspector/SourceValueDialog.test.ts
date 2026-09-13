@@ -2,8 +2,9 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ToastProvider } from "@mechane/design-system";
-import type { Shape } from "@mechane/domain";
+import { generateId, type Shape } from "@mechane/domain";
 
+import { recordIdentifier } from "../ArrayValueEditor/types";
 import { ValueEditor } from "./ValueEditor";
 
 const candidate: Shape = {
@@ -54,5 +55,24 @@ describe("ValueEditor", () => {
     expect(html).toContain('data-empty="false"');
     expect(html).toContain("Name");
     expect(html).toContain("Votes");
+  });
+});
+
+describe("array record identifiers", () => {
+  it("uses the first text field instead of the first field", () => {
+    const shape: Shape = {
+      id: "candidate",
+      name: "Candidate",
+      fields: [
+        { id: "votes", name: "Votes", type: "number", required: true, defaultValue: 0 },
+        { id: "name", name: "Name", type: "text", required: true, defaultValue: "" },
+      ],
+    };
+    const record = {
+      id: generateId("structuredValue"),
+      kind: "shape",
+      fields: { votes: 3, name: "Alice" },
+    } satisfies Parameters<typeof recordIdentifier>[0];
+    expect(recordIdentifier(record, shape.fields)).toBe("Alice");
   });
 });

@@ -10,6 +10,8 @@ import {
 import type { DeletionScope } from "@mechane/commands";
 import type { Dispatch, SetStateAction } from "react";
 
+import type { ShowGraphValueLocation } from "./ShowGraphEditor";
+
 import { EditorSlot } from "../../components/EditorLayout/editor-slots";
 import { CommandPalette } from "./commands/CommandPalette";
 import type { PaletteCommand } from "./commands/palette-commands";
@@ -21,6 +23,8 @@ export interface ShowGraphEditorOverlaysProps {
   selectedNodes: GraphNode[];
   selectedEdges: GraphEdge[];
   inspector: GraphInspectorEditing;
+  initialSourceValue?: ShowGraphValueLocation;
+  onSourceValueChange?: (location: ShowGraphValueLocation | null) => void;
   message: string | null;
   paletteOpen: boolean;
   setPaletteOpen: Dispatch<SetStateAction<boolean>>;
@@ -34,6 +38,8 @@ export function ShowGraphEditorOverlays({
   selectedNodes,
   selectedEdges,
   inspector,
+  initialSourceValue,
+  onSourceValueChange,
   message,
   paletteOpen,
   setPaletteOpen,
@@ -49,6 +55,8 @@ export function ShowGraphEditorOverlays({
           selected={selectedNodes}
           selectedEdges={selectedEdges}
           editing={inspector}
+          initialSourceValue={initialSourceValue}
+          onSourceValueChange={onSourceValueChange}
         />
       </EditorSlot>
 

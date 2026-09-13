@@ -19,8 +19,9 @@ import {
   type SourceNode,
   valueAtPath,
 } from "@mechane/domain";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import type { ShowGraphValueLocation } from "../../ShowGraphEditor";
 import type { SourceValueEditing } from "../../commands/use-graph-editing";
 import { InlineValue } from "./ValueEditor";
 import { SourceValueDialog } from "./SourceValueDialog";
@@ -109,13 +110,40 @@ function SourceValueActions({
 export const SourceValues = ({
   node,
   editing,
+  initialSourceValue,
+  onSourceValueChange,
 }: {
   node: SourceNode;
   editing: SourceValueEditing;
+  initialSourceValue?: ShowGraphValueLocation;
+  onSourceValueChange?: (location: ShowGraphValueLocation | null) => void;
 }) => {
   const rows = useMemo(() => sourceValueRows(node, editing), [editing, node]);
   const shapes = editing.graph.shapes ?? [];
   const [activeRow, setActiveRow] = useState<SourceValueRow | null>(null);
+
+  useEffect(() => {
+    if (!initialSourceValue || initialSourceValue.nodeId !== node.id) return;
+    const target = rows.find(
+      (row) =>
+        row.fieldPath.length === initialSourceValue.fieldPath.length &&
+        row.fieldPath.every((segment, index) => segment === initialSourceValue.fieldPath[index]),
+    );
+    const alreadyOpen =
+      target &&
+      activeRow?.fieldPath.length === target.fieldPath.length &&
+      activeRow.fieldPath.every((segment, index) => segment === target.fieldPath[index]);
+    if (target && !alreadyOpen) setActiveRow(target);
+  }, [activeRow, initialSourceValue, node.id, rows]);
+
+  const openRow = (row: SourceValueRow) => {
+    setActiveRow(row);
+    onSourceValueChange?.({ nodeId: node.id, fieldPath: row.fieldPath });
+  };
+  const closeRow = () => {
+    setActiveRow(null);
+    onSourceValueChange?.(null);
+  };
   return (
     <Section label="Source values">
       {rows.map((row) => {
@@ -126,7 +154,7 @@ export const SourceValues = ({
             row={row}
             nodeId={node.id}
             editing={editing}
-            onEdit={() => setActiveRow(row)}
+            onEdit={() => openRow(row)}
           />
         );
         return (
@@ -141,7 +169,7 @@ export const SourceValues = ({
                   <button
                     type="button"
                     className="min-w-0 flex-1 truncate rounded-sm bg-transparent px-2 py-1 text-left text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => setActiveRow(row)}
+                    onClick={() => openRow(row)}
                     aria-label={`Edit ${row.label}`}
                   >
                     {previewValue(row.value)}
@@ -157,11 +185,12 @@ export const SourceValues = ({
       })}
       {activeRow ? (
         <SourceValueDialog
+          nodeName={node.name}
           row={activeRow}
           shapes={shapes}
           open
           onOpenChange={(open) => {
-            if (!open) setActiveRow(null);
+            if (!open) closeRow();
           }}
           onSave={(value) => {
             const currentValue = valueAtPath(

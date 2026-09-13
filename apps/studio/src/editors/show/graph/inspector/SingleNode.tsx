@@ -17,7 +17,7 @@ import {
 } from "@mechane/design-system";
 import { FLOW_COLORS, type Cue, type FlowColor, type GraphNode } from "@mechane/domain";
 import { useEffect, useState } from "react";
-
+import type { ShowGraphValueLocation } from "../../ShowGraphEditor";
 import type { GraphInspectorEditing } from "../../commands/use-graph-editing";
 import { SourceValues } from "./SourceValues";
 import { SourceTypeSection } from "./SourceTypeSection";
@@ -110,7 +110,17 @@ function FlowDefaultSceneSection({
   );
 }
 
-export function SingleNode({ node, editing }: { node: GraphNode; editing: GraphInspectorEditing }) {
+export function SingleNode({
+  node,
+  editing,
+  initialSourceValue,
+  onSourceValueChange,
+}: {
+  node: GraphNode;
+  editing: GraphInspectorEditing;
+  initialSourceValue?: ShowGraphValueLocation;
+  onSourceValueChange?: (location: ShowGraphValueLocation | null) => void;
+}) {
   return (
     <SidebarContent>
       <Section label="color">
@@ -191,7 +201,12 @@ export function SingleNode({ node, editing }: { node: GraphNode; editing: GraphI
       {node.kind === "source" ? (
         <>
           <SourceTypeSection node={node} editing={editing} />
-          <SourceValues node={node} editing={editing} />
+          <SourceValues
+            node={node}
+            editing={editing}
+            initialSourceValue={initialSourceValue}
+            onSourceValueChange={onSourceValueChange}
+          />
         </>
       ) : null}
       {node.kind === "transformer" ? (

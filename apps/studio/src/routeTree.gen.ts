@@ -20,6 +20,7 @@ import { Route as AuthenticatedShowsShowIdArtRouteImport } from './routes/_authe
 import { Route as AuthenticatedShowsShowIdShapesRouteImport } from './routes/_authenticated/shows/$showId/shapes'
 import { Route as AuthenticatedShowsShowIdArtArtIdRouteImport } from './routes/_authenticated/shows/$showId/art/$artId'
 import { Route as AuthenticatedShowsShowIdShapesShapeIdRouteImport } from './routes/_authenticated/shows/$showId/shapes/$shapeId'
+import { Route as AuthenticatedShowsShowIdSourceSourceIdFieldIdRouteImport } from './routes/_authenticated/shows/$showId/source/$sourceId/$fieldId'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -80,6 +81,12 @@ const AuthenticatedShowsShowIdShapesShapeIdRoute =
     path: '/$shapeId',
     getParentRoute: () => AuthenticatedShowsShowIdShapesRoute,
   } as any)
+const AuthenticatedShowsShowIdSourceSourceIdFieldIdRoute =
+  AuthenticatedShowsShowIdSourceSourceIdFieldIdRouteImport.update({
+    id: '/source/$sourceId/$fieldId',
+    path: '/source/$sourceId/$fieldId',
+    getParentRoute: () => AuthenticatedShowsShowIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -91,6 +98,7 @@ export interface FileRoutesByFullPath {
   '/shows/$showId/': typeof AuthenticatedShowsShowIdIndexRoute
   '/shows/$showId/art/$artId': typeof AuthenticatedShowsShowIdArtArtIdRoute
   '/shows/$showId/shapes/$shapeId': typeof AuthenticatedShowsShowIdShapesShapeIdRoute
+  '/shows/$showId/source/$sourceId/$fieldId': typeof AuthenticatedShowsShowIdSourceSourceIdFieldIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
@@ -101,6 +109,7 @@ export interface FileRoutesByTo {
   '/shows/$showId': typeof AuthenticatedShowsShowIdIndexRoute
   '/shows/$showId/art/$artId': typeof AuthenticatedShowsShowIdArtArtIdRoute
   '/shows/$showId/shapes/$shapeId': typeof AuthenticatedShowsShowIdShapesShapeIdRoute
+  '/shows/$showId/source/$sourceId/$fieldId': typeof AuthenticatedShowsShowIdSourceSourceIdFieldIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -115,6 +124,7 @@ export interface FileRoutesById {
   '/_authenticated/shows/$showId/': typeof AuthenticatedShowsShowIdIndexRoute
   '/_authenticated/shows/$showId/art/$artId': typeof AuthenticatedShowsShowIdArtArtIdRoute
   '/_authenticated/shows/$showId/shapes/$shapeId': typeof AuthenticatedShowsShowIdShapesShapeIdRoute
+  '/_authenticated/shows/$showId/source/$sourceId/$fieldId': typeof AuthenticatedShowsShowIdSourceSourceIdFieldIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/shows/$showId/'
     | '/shows/$showId/art/$artId'
     | '/shows/$showId/shapes/$shapeId'
+    | '/shows/$showId/source/$sourceId/$fieldId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/shows/$showId'
     | '/shows/$showId/art/$artId'
     | '/shows/$showId/shapes/$shapeId'
+    | '/shows/$showId/source/$sourceId/$fieldId'
   id:
     | '__root__'
     | '/_authenticated'
@@ -151,6 +163,7 @@ export interface FileRouteTypes {
     | '/_authenticated/shows/$showId/'
     | '/_authenticated/shows/$showId/art/$artId'
     | '/_authenticated/shows/$showId/shapes/$shapeId'
+    | '/_authenticated/shows/$showId/source/$sourceId/$fieldId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -237,6 +250,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShowsShowIdShapesShapeIdRouteImport
       parentRoute: typeof AuthenticatedShowsShowIdShapesRoute
     }
+    '/_authenticated/shows/$showId/source/$sourceId/$fieldId': {
+      id: '/_authenticated/shows/$showId/source/$sourceId/$fieldId'
+      path: '/source/$sourceId/$fieldId'
+      fullPath: '/shows/$showId/source/$sourceId/$fieldId'
+      preLoaderRoute: typeof AuthenticatedShowsShowIdSourceSourceIdFieldIdRouteImport
+      parentRoute: typeof AuthenticatedShowsShowIdRoute
+    }
   }
 }
 
@@ -274,6 +294,7 @@ interface AuthenticatedShowsShowIdRouteChildren {
   AuthenticatedShowsShowIdArtRoute: typeof AuthenticatedShowsShowIdArtRouteWithChildren
   AuthenticatedShowsShowIdShapesRoute: typeof AuthenticatedShowsShowIdShapesRouteWithChildren
   AuthenticatedShowsShowIdIndexRoute: typeof AuthenticatedShowsShowIdIndexRoute
+  AuthenticatedShowsShowIdSourceSourceIdFieldIdRoute: typeof AuthenticatedShowsShowIdSourceSourceIdFieldIdRoute
 }
 
 const AuthenticatedShowsShowIdRouteChildren: AuthenticatedShowsShowIdRouteChildren =
@@ -283,6 +304,8 @@ const AuthenticatedShowsShowIdRouteChildren: AuthenticatedShowsShowIdRouteChildr
     AuthenticatedShowsShowIdShapesRoute:
       AuthenticatedShowsShowIdShapesRouteWithChildren,
     AuthenticatedShowsShowIdIndexRoute: AuthenticatedShowsShowIdIndexRoute,
+    AuthenticatedShowsShowIdSourceSourceIdFieldIdRoute:
+      AuthenticatedShowsShowIdSourceSourceIdFieldIdRoute,
   }
 
 const AuthenticatedShowsShowIdRouteWithChildren =

@@ -120,6 +120,8 @@ export function ShowGraphEditorInner(props: ShowGraphEditorProps) {
             selectedNodes={selectedNodes}
             selectedEdges={selectedEdges}
             inspector={inspector}
+            initialSourceValue={props.initialSourceValue}
+            onSourceValueChange={props.onSourceValueChange}
             message={message}
             paletteOpen={paletteOpen}
             setPaletteOpen={setPaletteOpen}

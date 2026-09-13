@@ -252,6 +252,7 @@ function VariableDefaultDialog({
   };
   return (
     <SourceValueDialog
+      nodeName={variable.name}
       imageAssets={imageAssets}
       onImageUpload={onImageUpload}
       row={row}

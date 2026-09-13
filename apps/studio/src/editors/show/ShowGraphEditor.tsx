@@ -14,11 +14,18 @@ export interface ShowGraphEditorHandle {
   applyAmendments(edits: readonly GraphEdit[]): void;
 }
 
+export interface ShowGraphValueLocation {
+  nodeId: string;
+  fieldPath: readonly string[];
+}
+
 export interface ShowGraphEditorProps {
   graph: ApiGraph | null | undefined;
   onEdit?: (edits: readonly GraphEdit[], graph: ShowGraph) => void;
   initialViewport?: Viewport;
   onViewportChange?(viewport: Viewport): void;
+  initialSourceValue?: ShowGraphValueLocation;
+  onSourceValueChange?(location: ShowGraphValueLocation | null): void;
   className?: string;
   ref?: Ref<ShowGraphEditorHandle>;
 }

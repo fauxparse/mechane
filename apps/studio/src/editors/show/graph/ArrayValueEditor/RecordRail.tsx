@@ -1,17 +1,21 @@
 import { Button, ChevronRight, Grid2X2, Plus } from "@mechane/design-system";
 
-import { previewValue } from "../inspector/source-values-helpers";
+import type { Shape } from "@mechane/domain";
+
 import type { ShapeRecord } from "./types";
+import { recordIdentifier } from "./types";
 
 export function RecordRail({
   records,
   selectedId,
+  fields,
   onSelect,
   onAdd,
   editMode,
 }: {
   records: ShapeRecord[];
   selectedId: string;
+  fields: Shape["fields"];
   onSelect(id: string): void;
   onAdd(): void;
   editMode: boolean;
@@ -33,7 +37,7 @@ export function RecordRail({
               {String(index + 1).padStart(2, "0")}
             </span>
             <span className="min-w-0 flex-1 truncate text-xs font-medium">
-              {previewValue(record.fields[Object.keys(record.fields)[0] ?? ""])}
+              {recordIdentifier(record, fields)}
             </span>
             <ChevronRight className="size-3.5 text-muted-foreground" />
           </button>

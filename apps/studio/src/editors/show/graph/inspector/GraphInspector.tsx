@@ -10,6 +10,7 @@ import {
 import type { EdgeKind, GraphEdge, GraphNode } from "@mechane/domain";
 import type { GraphInspectorEditing } from "@show-editor/commands/use-graph-editing";
 import { pluralize } from "../../../../utils/pluralize";
+import type { ShowGraphValueLocation } from "../../ShowGraphEditor";
 import { NODE_KIND_META, nodeIcon } from "../node-kinds";
 import { SingleEdge } from "./SingleEdge";
 import { SingleNode } from "./SingleNode";
@@ -23,6 +24,8 @@ export interface GraphInspectorProps {
    */
   selectedEdges: GraphEdge[];
   editing: GraphInspectorEditing;
+  initialSourceValue?: ShowGraphValueLocation;
+  onSourceValueChange?: (location: ShowGraphValueLocation | null) => void;
   className?: string;
 }
 
@@ -151,6 +154,8 @@ export function GraphInspector({
   selected,
   selectedEdges,
   editing,
+  initialSourceValue,
+  onSourceValueChange,
   className,
 }: GraphInspectorProps) {
   const [node] = selected;
@@ -171,7 +176,12 @@ export function GraphInspector({
             {selected.length > 1 ? (
               <MultiSelection selected={selected} />
             ) : (
-              <SingleNode node={node} editing={editing} />
+              <SingleNode
+                node={node}
+                editing={editing}
+                initialSourceValue={initialSourceValue}
+                onSourceValueChange={onSourceValueChange}
+              />
             )}
           </>
         ) : (
