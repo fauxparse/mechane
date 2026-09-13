@@ -23,7 +23,7 @@ import {
   normalizeStructuredValueTemplate,
   type StructuredValueTemplate,
 } from "@mechane/domain";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { previewValue } from "../inspector/source-values-helpers";
 import { ArrayTable } from "./ArrayTable";
@@ -49,7 +49,11 @@ export function ArrayValueEditor({
   const shape = canEditArray
     ? shapes.find((candidate) => candidate.id === itemType.shapeId)
     : undefined;
-  const records = normalized?.items.filter(isShapeStructuredValueTemplate) ?? [];
+  const normalizedItems = normalized?.items;
+  const records = useMemo(
+    () => normalizedItems?.filter(isShapeStructuredValueTemplate) ?? [],
+    [normalizedItems],
+  );
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [editMode, setEditMode] = useState(true);
   const [query, setQuery] = useState("");

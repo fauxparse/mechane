@@ -115,7 +115,7 @@ export function SourceValueDialog({
     setArrayFocus({ kind: "array" });
     setPendingFocus(null);
     setNavigationError(null);
-  }, [open, rowKey]);
+  }, [open, row, rowKey, shapeArrayType, shapes]);
 
   const updateDraft = (next: unknown) => {
     setErrors(new Map());
