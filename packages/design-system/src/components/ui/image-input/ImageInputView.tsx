@@ -78,6 +78,11 @@ export const ImageInputView = ({
           } as CSSProperties
         }
       />
+      {resolvedValue?.name ? (
+        <span className="z-2 self-end justify-self-stretch truncate bg-black/60 px-2 py-1 text-xs text-white">
+          {resolvedValue.name}
+        </span>
+      ) : null}
       <ImageInputDropzone
         value={value}
         phase={phase}

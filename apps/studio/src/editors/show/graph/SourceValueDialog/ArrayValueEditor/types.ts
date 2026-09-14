@@ -1,6 +1,7 @@
+import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import type { Shape, StructuredValueTemplate, Type } from "@mechane/domain";
 
-import type { ErrorPath } from "../../inspector/source-value-types";
+import type { ErrorPath, SourceImageAsset } from "../../inspector/source-value-types";
 import { previewValue } from "../../inspector/source-values-helpers";
 
 export type ShapeRecord = Extract<StructuredValueTemplate, { kind: "shape" }>;
@@ -13,9 +14,28 @@ export function firstHumanReadableField(fields: Shape["fields"]): Shape["fields"
   return fields.find((field) => field.type === "text") ?? fields[0] ?? null;
 }
 
-export function recordIdentifier(record: ShapeRecord, fields: Shape["fields"]): string {
+export function recordIdentifier(
+  record: ShapeRecord,
+  fields: Shape["fields"],
+  imageAssets: readonly SourceImageAsset[] = [],
+): string {
   const field = firstHumanReadableField(fields);
-  return field ? previewValue(record.fields[field.id]) : record.id;
+  if (!field) return record.id;
+  if (field.type !== "image") return previewValue(record.fields[field.id]);
+  const value = record.fields[field.id];
+  const asset =
+    typeof value === "object" &&
+    value !== null &&
+    "assetId" in value &&
+    "revision" in value &&
+    typeof value.assetId === "string" &&
+    typeof value.revision === "string"
+      ? imageAssets.find(
+          (candidate) =>
+            candidate.assetId === value.assetId && candidate.revision === value.revision,
+        )
+      : null;
+  return asset?.name || asset?.alt || "Unnamed image";
 }
 
 export type ArrayValueEditorProps = {
@@ -28,4 +48,6 @@ export type ArrayValueEditorProps = {
   onChange(value: unknown): void;
   onValidityChange(path: ErrorPath, error: string | null): void;
   onSelectionChange(selection: ArrayValueSelection | null): void;
+  imageAssets?: readonly SourceImageAsset[];
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
 };

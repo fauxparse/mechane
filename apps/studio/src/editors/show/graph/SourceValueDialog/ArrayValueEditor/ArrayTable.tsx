@@ -13,7 +13,9 @@ import {
 } from "@tanstack/react-table";
 import { useMemo } from "react";
 
+import { SourceImagePreview } from "../ValueEditor";
 import { previewValue } from "../../inspector/source-values-helpers";
+import type { SourceImageAsset } from "../../inspector/source-value-types";
 import type { ShapeRecord } from "./types";
 
 const tableSensors = (defaults: typeof defaultPreset.sensors) =>
@@ -24,7 +26,6 @@ const tableSensors = (defaults: typeof defaultPreset.sensors) =>
         })
       : sensor,
   );
-
 const columnHelper = createColumnHelper<ShapeRecord>();
 
 export function ArrayTable({
@@ -32,6 +33,7 @@ export function ArrayTable({
   fields,
   selectedId,
   readOnly,
+  imageAssets,
   onSelect,
   onReorder,
 }: {
@@ -39,6 +41,7 @@ export function ArrayTable({
   fields: Shape["fields"];
   selectedId: string;
   readOnly: boolean;
+  imageAssets?: readonly SourceImageAsset[];
   onSelect(id: string): void;
   onReorder(sourceId: string, targetId: string): void;
 }) {
@@ -48,9 +51,16 @@ export function ArrayTable({
         columnHelper.accessor((record) => previewValue(record.fields[field.id]), {
           id: field.id,
           header: field.name,
-          cell: ({ getValue }) => (
-            <span className="max-w-44 truncate text-xs">{getValue<string>()}</span>
-          ),
+          cell: ({ getValue, row }) =>
+            field.type === "image" ? (
+              <SourceImagePreview
+                value={row.original.fields[field.id]}
+                imageAssets={imageAssets}
+                className="max-w-44"
+              />
+            ) : (
+              <span className="max-w-44 truncate text-xs">{getValue<string>()}</span>
+            ),
         }),
       ),
       columnHelper.display({
@@ -59,7 +69,7 @@ export function ArrayTable({
         cell: () => <ChevronRight className="size-4 text-muted-foreground" />,
       }),
     ],
-    [fields],
+    [fields, imageAssets],
   );
   const table = useReactTable({
     data: records,

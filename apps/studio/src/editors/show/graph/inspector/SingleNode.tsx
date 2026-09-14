@@ -16,10 +16,12 @@ import {
   ToggleGroupItem,
 } from "@mechane/design-system";
 import { FLOW_COLORS, type Cue, type FlowColor, type GraphNode } from "@mechane/domain";
+import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import { useEffect, useState } from "react";
 import type { ShowGraphValueLocation } from "../../ShowGraphEditor";
 import type { GraphInspectorEditing } from "../../commands/use-graph-editing";
 import { SourceValues } from "./SourceValues";
+import type { SourceImageAsset } from "./source-value-types";
 import { SourceTypeSection } from "./SourceTypeSection";
 import { Variables } from "./Variables";
 
@@ -105,7 +107,6 @@ function FlowDefaultSceneSection({
           </SelectContent>
         </Select>
       </SectionRow>
-      <SectionHelperText>The Scene shown when this Flow starts on a Device.</SectionHelperText>
     </Section>
   );
 }
@@ -113,11 +114,15 @@ function FlowDefaultSceneSection({
 export function SingleNode({
   node,
   editing,
+  imageAssets,
+  onImageUpload,
   initialSourceValue,
   onSourceValueChange,
 }: {
   node: GraphNode;
   editing: GraphInspectorEditing;
+  imageAssets?: readonly SourceImageAsset[];
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
   initialSourceValue?: ShowGraphValueLocation;
   onSourceValueChange?: (location: ShowGraphValueLocation | null) => void;
 }) {
@@ -204,6 +209,8 @@ export function SingleNode({
           <SourceValues
             node={node}
             editing={editing}
+            imageAssets={imageAssets}
+            onImageUpload={onImageUpload}
             initialSourceValue={initialSourceValue}
             onSourceValueChange={onSourceValueChange}
           />

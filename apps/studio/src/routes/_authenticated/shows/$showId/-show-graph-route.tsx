@@ -1,7 +1,10 @@
-import type { ShowId } from "@mechane/domain";
+import type { ImageInputOnUploadProps } from "@mechane/design-system";
+import type { ResolvedImageValue, ShowId } from "@mechane/domain";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { resolveApiUrl } from "../../../../api/client";
+import { useImageAssets, useImageUpload } from "../../../../api/images";
 import { useShowGraph, useShowGraphEdits } from "../../../../api/show-graph";
 import {
   ShowGraphEditor,
@@ -12,7 +15,6 @@ import {
   rememberedShowViewport,
   rememberShowViewport,
 } from "../../../../editors/show/data/show-session";
-
 export interface ShowGraphRouteProps {
   initialSourceValue?: ShowGraphValueLocation;
   onSourceValueChange?: (location: ShowGraphValueLocation | null) => void;
@@ -30,6 +32,41 @@ export function ShowGraphRoute({
 }: ShowGraphRouteProps & { showId: ShowId }) {
   const navigate = useNavigate();
   const draft = useShowGraph(showId, "draft");
+  const imageAssets = useImageAssets(showId);
+  const imageUpload = useImageUpload(showId);
+  const resolvedImageAssets = useMemo(
+    () => (imageAssets.data ?? []).map((asset) => ({ ...asset, assetId: asset.id })),
+    [imageAssets.data],
+  );
+  const handleImageUpload = useCallback(
+    ({ file, signal, onProgress, onSuccess, onError }: ImageInputOnUploadProps) => {
+      void imageUpload
+        .mutateAsync({ file, signal, onProgress })
+        .then((asset) => {
+          const resolvedValue: ResolvedImageValue & { revision: string } = {
+            assetId: asset.id,
+            revision: asset.revision,
+            url: resolveApiUrl(asset.url),
+            width: asset.width,
+            height: asset.height,
+            name: asset.name,
+            alt: asset.alt,
+            mimeType: asset.mimeType,
+            blurHash: asset.blurHash,
+          };
+          onSuccess(resolvedValue);
+        })
+        .catch((error: unknown) => {
+          if (signal.aborted) return;
+          onError({
+            code: "NETWORK_FAILURE",
+            message: error instanceof Error ? error.message : "The image upload failed.",
+            cause: error,
+          });
+        });
+    },
+    [imageUpload],
+  );
   const editor = useRef<ShowGraphEditorHandle>(null);
   const initialViewport = rememberedShowViewport(showId);
   const onViewportChange = useCallback(
@@ -76,6 +113,8 @@ export function ShowGraphRoute({
       <ShowGraphEditor
         ref={editor}
         graph={openedWith}
+        imageAssets={resolvedImageAssets}
+        onImageUpload={handleImageUpload}
         onEdit={(edits) => {
           setEdited(true);
           saveGraph.enqueue(edits);

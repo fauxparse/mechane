@@ -1,11 +1,11 @@
 import { Button, Separator, Trash2 } from "@mechane/design-system";
+import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import { isShapeStructuredValueTemplate, setValueAtPath, type Shape } from "@mechane/domain";
 
 import { ValueEditor } from "../ValueEditor";
 import { previewValue } from "../../inspector/source-values-helpers";
-import type { ErrorPath } from "../../inspector/source-value-types";
+import type { ErrorPath, SourceImageAsset } from "../../inspector/source-value-types";
 import type { ShapeRecord } from "./types";
-
 export function RecordDetails({
   record,
   recordIndex,
@@ -13,6 +13,8 @@ export function RecordDetails({
   shapes,
   path,
   readOnly,
+  imageAssets,
+  onImageUpload,
   onChange,
   onValidityChange,
   onRemove,
@@ -24,6 +26,8 @@ export function RecordDetails({
   shapes: readonly Shape[];
   path: ErrorPath;
   readOnly: boolean;
+  imageAssets?: readonly SourceImageAsset[];
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
   onChange(record: ShapeRecord): void;
   onValidityChange(path: ErrorPath, error: string | null): void;
   onRemove(): void;
@@ -77,6 +81,8 @@ export function RecordDetails({
                 type={field.type}
                 value={fieldValue}
                 shapes={shapes}
+                imageAssets={imageAssets}
+                onImageUpload={onImageUpload}
                 readOnly={readOnly}
                 path={[...path, recordIndex, field.id]}
                 onChange={(next) => {

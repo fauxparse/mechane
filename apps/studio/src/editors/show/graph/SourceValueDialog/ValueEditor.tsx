@@ -2,6 +2,7 @@ import type { Gesture, GraphEdit } from "@mechane/commands";
 import { setSourceFieldDefault } from "@mechane/commands";
 import {
   Button,
+  cn,
   ImageInput,
   PlusIcon,
   PropertyInput,
@@ -18,20 +19,62 @@ import {
   isShapeStructuredValueTemplate,
   normalizeStructuredValueTemplate,
   setValueAtPath,
+  type ResolvedImageValue,
   type ShowGraph,
   type Type,
 } from "@mechane/domain";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import type { SourceValueEditing } from "../../commands/use-graph-editing";
 import { typeLabel as graphTypeLabel } from "../node-kinds";
+import type { SourceValueEditing } from "../../commands/use-graph-editing";
 import type {
+  SourceImageAsset,
   SourceValueRow,
   ValueEditorProps,
   ValueEditorRenderer,
 } from "../inspector/source-value-types";
 import { previewValue, propertyInputType } from "../inspector/source-values-helpers";
 
+function imageAssetForValue(
+  value: unknown,
+  imageAssets: readonly SourceImageAsset[] = [],
+): (SourceImageAsset | ResolvedImageValue) | null {
+  if (isResolvedImageValue(value)) return value;
+  if (!isImageAssetReference(value)) return null;
+  return (
+    imageAssets.find(
+      (asset) => asset.assetId === value.assetId && asset.revision === value.revision,
+    ) ?? null
+  );
+}
+
+export function SourceImagePreview({
+  value,
+  imageAssets,
+  className,
+}: {
+  value: unknown;
+  imageAssets?: readonly SourceImageAsset[];
+  className?: string;
+}) {
+  const asset = imageAssetForValue(value, imageAssets);
+  const name = asset?.name?.trim() || asset?.alt?.trim() || "Unnamed image";
+  if (!asset) {
+    return <span className={cn("truncate text-xs text-muted-foreground", className)}>{name}</span>;
+  }
+  return (
+    <span className={cn("flex min-w-0 items-center gap-2", className)}>
+      <img
+        src={asset.url}
+        alt={asset.alt || name}
+        width={32}
+        height={32}
+        className="size-8 shrink-0 rounded-sm object-cover"
+      />
+      <span className="min-w-0 truncate text-xs">{name}</span>
+    </span>
+  );
+}
 type SourceValueGesture = Gesture<ShowGraph, GraphEdit>;
 
 type PrimitiveInputProps = Omit<ValueEditorProps, "shapes"> & {

@@ -339,6 +339,8 @@ function SourceValueDialogView({
               type={shapeArrayType}
               value={draft}
               shapes={shapes}
+              imageAssets={imageAssets}
+              onImageUpload={onImageUpload}
               readOnly={readOnly}
               path={[]}
               focus={arrayFocus}

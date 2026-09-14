@@ -35,6 +35,8 @@ export function ArrayValueEditor({
   path,
   focus,
   readOnly,
+  imageAssets,
+  onImageUpload,
   onChange,
   onValidityChange,
   onSelectionChange,
@@ -75,11 +77,11 @@ export function ArrayValueEditor({
       )
     : records;
   const selectedRecord = selectedId
-    ? (records.find((record) => record.id === selectedId) ?? null)
+    ? (records.find((candidate) => candidate.id === selectedId) ?? null)
     : null;
   const reportSelection = (record: ShapeRecord | null) => {
     onSelectionChange(
-      record ? { id: record.id, label: recordIdentifier(record, shape.fields) } : null,
+      record ? { id: record.id, label: recordIdentifier(record, shape.fields, imageAssets) } : null,
     );
   };
   const selectRecord = (id: string) => {
@@ -159,6 +161,8 @@ export function ArrayValueEditor({
         reorderRecords={reorderRecords}
         selectedIndex={selectedIndex}
         shapes={shapes}
+        imageAssets={imageAssets}
+        onImageUpload={onImageUpload}
         path={path}
         updateRecord={updateRecord}
         onValidityChange={onValidityChange}
@@ -260,6 +264,8 @@ type ArrayEditorRecordsProps = {
   reorderRecords(sourceId: string, targetId: string): void;
   selectedIndex: number;
   shapes: readonly Shape[];
+  imageAssets?: ArrayValueEditorProps["imageAssets"];
+  onImageUpload?: ArrayValueEditorProps["onImageUpload"];
   path: ArrayValueEditorProps["path"];
   updateRecord(record: ShapeRecord): void;
   onValidityChange: ArrayValueEditorProps["onValidityChange"];
@@ -276,6 +282,8 @@ function ArrayEditorRecords({
   readOnly,
   selectRecord,
   reorderRecords,
+  imageAssets,
+  onImageUpload,
   selectedIndex,
   shapes,
   path,
@@ -298,6 +306,7 @@ function ArrayEditorRecords({
           fields={shape.fields}
           selectedId={selectedId}
           readOnly={readOnly}
+          imageAssets={imageAssets}
           onSelect={selectRecord}
           onReorder={reorderRecords}
         />
@@ -309,6 +318,8 @@ function ArrayEditorRecords({
             shapes={shapes}
             path={path}
             readOnly={readOnly}
+            imageAssets={imageAssets}
+            onImageUpload={onImageUpload}
             onChange={updateRecord}
             onValidityChange={onValidityChange}
             onRemove={removeRecord}
@@ -342,6 +353,8 @@ function ArrayEditorRecords({
           shapes={shapes}
           path={path}
           readOnly={readOnly}
+          imageAssets={imageAssets}
+          onImageUpload={onImageUpload}
           onChange={updateRecord}
           onValidityChange={onValidityChange}
           onRemove={removeRecord}

@@ -23,10 +23,11 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { ShowGraphValueLocation } from "../../ShowGraphEditor";
 import type { SourceValueEditing } from "../../commands/use-graph-editing";
-import { InlineValue } from "../SourceValueDialog/ValueEditor";
+import { InlineValue, SourceImagePreview } from "../SourceValueDialog/ValueEditor";
 import { SourceValueDialog } from "../SourceValueDialog";
-import type { SourceValueRow } from "./source-value-types";
+import type { SourceImageAsset, SourceValueRow } from "./source-value-types";
 import { previewValue, sourceValuesEqual, usesModal } from "./source-values-helpers";
+const EMPTY_SOURCE_IMAGE_ASSETS: readonly SourceImageAsset[] = [];
 
 function hasGraphOverride(
   graph: SourceValueEditing["graph"],
@@ -106,15 +107,18 @@ function SourceValueActions({
     </DropdownMenu>
   );
 }
-
 export const SourceValues = ({
   node,
   editing,
+  imageAssets = EMPTY_SOURCE_IMAGE_ASSETS,
+  onImageUpload,
   initialSourceValue,
   onSourceValueChange,
 }: {
   node: SourceNode;
   editing: SourceValueEditing;
+  imageAssets?: readonly SourceImageAsset[];
+  onImageUpload?: Parameters<typeof SourceValueDialog>[0]["onImageUpload"];
   initialSourceValue?: ShowGraphValueLocation;
   onSourceValueChange?: (location: ShowGraphValueLocation | null) => void;
 }) => {
@@ -175,7 +179,11 @@ export const SourceValues = ({
                     onClick={() => openRow(row)}
                     aria-label={`Edit ${row.label}`}
                   >
-                    {previewValue(row.value)}
+                    {row.type === "image" ? (
+                      <SourceImagePreview value={row.value} imageAssets={imageAssets} />
+                    ) : (
+                      previewValue(row.value)
+                    )}
                   </button>
                   {actions}
                 </div>
@@ -191,6 +199,8 @@ export const SourceValues = ({
           nodeName={node.name}
           row={activeRow}
           shapes={shapes}
+          imageAssets={imageAssets}
+          onImageUpload={onImageUpload}
           readOnly={readOnly}
           open
           onOpenChange={(open) => {

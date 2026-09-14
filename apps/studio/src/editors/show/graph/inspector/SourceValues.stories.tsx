@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import type { SourceValueEditing } from "../../commands/use-graph-editing";
 import { SourceValues } from "./SourceValues";
+import type { SourceImageAsset } from "./source-value-types";
 
 const detailsShape: Shape = {
   id: "shape-details",
@@ -21,16 +22,37 @@ const shape: Shape = {
   name: "Profile",
   fields: [
     { id: "headline", name: "Headline", type: "text", required: true, defaultValue: "Welcome" },
+    {
+      id: "image",
+      name: "Image",
+      type: "image",
+      required: false,
+      defaultValue: null,
+    },
     { id: "score", name: "Score", type: "number", required: true, defaultValue: 7 },
     {
       id: "details",
       name: "Details",
+
       type: { kind: "shape", shapeId: detailsShape.id },
       required: true,
       defaultValue: { city: "London", active: true },
     },
   ],
 };
+const imageAssets = [
+  {
+    assetId: "story-image",
+    revision: "revision-1",
+    url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Crect width='160' height='90' fill='%2331758f'/%3E%3Ccircle cx='112' cy='30' r='18' fill='%23f6c177'/%3E%3C/svg%3E",
+    width: 160,
+    height: 90,
+    name: "stage-lights.png",
+    alt: "Stage lights",
+    mimeType: "image/svg+xml",
+    blurHash: null,
+  },
+] satisfies SourceImageAsset[];
 
 const source: SourceNode = {
   id: "source-profile",
@@ -50,9 +72,24 @@ const initialGraph: ShowGraph = {
       nodeId: source.id,
       fieldPath: [],
       value: [
-        { headline: "Welcome", score: 7, details: { city: "London", active: true } },
-        { headline: "Tonight", score: 9, details: { city: "Berlin", active: false } },
-        { headline: "Encore", score: 4, details: { city: "Oslo", active: true } },
+        {
+          headline: "Welcome",
+          image: { assetId: "story-image", revision: "revision-1" },
+          score: 7,
+          details: { city: "London", active: true },
+        },
+        {
+          headline: "Tonight",
+          image: { assetId: "story-image", revision: "revision-1" },
+          score: 9,
+          details: { city: "Berlin", active: false },
+        },
+        {
+          headline: "Encore",
+          image: { assetId: "story-image", revision: "revision-1" },
+          score: 4,
+          details: { city: "Oslo", active: true },
+        },
       ],
     },
   ],
@@ -89,7 +126,7 @@ function SourceValuesStory() {
       <div className="min-h-screen flex-1 bg-background" />
       <Sidebar collapsible="offcanvas" side="right" variant="floating" aria-label="Source values">
         <SidebarContent className="p-0">
-          <SourceValues node={source} editing={editing} />
+          <SourceValues node={source} editing={editing} imageAssets={imageAssets} />
         </SidebarContent>
       </Sidebar>
     </SidebarProvider>

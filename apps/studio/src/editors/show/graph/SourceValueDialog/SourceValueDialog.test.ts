@@ -5,7 +5,7 @@ import { ToastProvider } from "@mechane/design-system";
 import { generateId, type Shape } from "@mechane/domain";
 
 import { recordIdentifier } from "./ArrayValueEditor/types";
-import { ValueEditor } from "./ValueEditor";
+import { SourceImagePreview, ValueEditor } from "./ValueEditor";
 
 const candidate: Shape = {
   id: "candidate",
@@ -38,6 +38,7 @@ describe("ValueEditor", () => {
               url: "/alice.png",
               width: 128,
               height: 128,
+              name: "alice.png",
               alt: "Alice",
               mimeType: "image/png",
               blurHash: null,
@@ -52,9 +53,36 @@ describe("ValueEditor", () => {
 
     expect(html).toContain("Image");
     expect(html).toContain('aria-label="Choose image file"');
+    expect(html).toContain('src="/alice.png"');
+    expect(html).toContain("alice.png");
     expect(html).toContain('data-empty="false"');
     expect(html).toContain("Name");
     expect(html).toContain("Votes");
+  });
+
+  it("renders image references with their asset name and preview", () => {
+    const html = renderToStaticMarkup(
+      createElement(SourceImagePreview, {
+        value: { assetId: "asset-alice", revision: "revision-1" },
+        imageAssets: [
+          {
+            assetId: "asset-alice",
+            revision: "revision-1",
+            url: "/alice.png",
+            width: 128,
+            height: 128,
+            name: "alice.png",
+            alt: "Alice",
+            mimeType: "image/png",
+            blurHash: null,
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain('src="/alice.png"');
+    expect(html).toContain("alice.png");
+    expect(html).not.toContain("2 fields");
   });
   it("renders primitive values without editing controls in read-only mode", () => {
     const html = renderToStaticMarkup(

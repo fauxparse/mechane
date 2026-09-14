@@ -39,6 +39,7 @@ export interface ResolvedImageValue {
   url: string;
   width: number;
   height: number;
+  name?: string;
   alt: string;
   mimeType: string;
   blurHash: string | null;
