@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { ToastProvider } from "@mechane/design-system";
 import { generateId, type Shape } from "@mechane/domain";
 
+import { ArrayTable } from "./ArrayValueEditor/ArrayTable";
 import { recordIdentifier } from "./ArrayValueEditor/types";
 import { SourceImagePreview, ValueEditor } from "./ValueEditor";
 
@@ -80,6 +81,56 @@ describe("ValueEditor", () => {
       }),
     );
 
+    expect(html).toContain('src="/alice.png"');
+    expect(html).toContain("alice.png");
+    expect(html).not.toContain("2 fields");
+  });
+
+  it("renders editable property inputs in table cells", () => {
+    const fields: Shape["fields"] = [
+      { id: "headline", name: "Headline", type: "text", required: true, defaultValue: "" },
+      { id: "score", name: "Score", type: "number", required: true, defaultValue: 0 },
+      { id: "image", name: "Image", type: "image", required: false, defaultValue: null },
+    ];
+    const html = renderToStaticMarkup(
+      createElement(ArrayTable, {
+        records: [
+          {
+            id: generateId("structuredValue"),
+            kind: "shape",
+            fields: {
+              headline: "Welcome",
+              score: 7,
+              image: { assetId: "asset-alice", revision: "revision-1" },
+            },
+          },
+        ],
+        fields,
+        readOnly: false,
+        imageAssets: [
+          {
+            assetId: "asset-alice",
+            revision: "revision-1",
+            url: "/alice.png",
+            width: 128,
+            height: 128,
+            name: "alice.png",
+            alt: "Alice",
+            mimeType: "image/png",
+            blurHash: null,
+          },
+        ],
+        path: [],
+        onReorder: () => {},
+        onRecordChange: () => {},
+        onValidityChange: () => {},
+        onOpenRecord: () => {},
+      }),
+    );
+
+    expect(html).toContain('aria-label="Headline value"');
+    expect(html).toContain('aria-label="Score value"');
+    expect(html).toContain('aria-label="Open Welcome"');
     expect(html).toContain('src="/alice.png"');
     expect(html).toContain("alice.png");
     expect(html).not.toContain("2 fields");

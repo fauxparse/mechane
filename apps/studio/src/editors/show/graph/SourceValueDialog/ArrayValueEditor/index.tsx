@@ -1,11 +1,17 @@
 import {
   Badge,
   Button,
+  ChevronLeft,
   ChevronRight,
   DownloadIcon,
   ListIcon,
   PlusIcon,
   SearchInput,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Table2Icon,
   Tabs,
   TabsList,
@@ -21,11 +27,11 @@ import {
   type StructuredValueTemplate,
 } from "@mechane/domain";
 import { useMemo, useState } from "react";
+
 import { previewValue } from "../../inspector/source-values-helpers";
 import { ArrayTable } from "./ArrayTable";
 import { RecordDetails } from "./RecordDetails";
-import { RecordRail } from "./RecordRail";
-import type { ArrayValueEditorProps, ViewMode, ShapeRecord } from "./types";
+import type { ArrayValueEditorProps, ShapeRecord, ViewMode } from "./types";
 import { recordIdentifier } from "./types";
 
 export function ArrayValueEditor({
@@ -38,6 +44,7 @@ export function ArrayValueEditor({
   imageAssets,
   onImageUpload,
   onChange,
+  onImmediateChange,
   onValidityChange,
   onSelectionChange,
 }: ArrayValueEditorProps) {
@@ -55,8 +62,9 @@ export function ArrayValueEditor({
   );
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [query, setQuery] = useState("");
-  const selectedId = focus?.kind === "record" ? focus.id : "";
-  const displayedViewMode = focus?.kind === "array" ? "table" : viewMode;
+  const [recordId, setRecordId] = useState<string | null>(() =>
+    focus.kind === "record" ? focus.id : null,
+  );
 
   if (normalized === null) {
     return <p className="text-sm text-destructive">This array value could not be opened.</p>;
@@ -69,6 +77,7 @@ export function ArrayValueEditor({
   if (!shape) {
     return <p className="text-sm text-destructive">The array item shape is unavailable.</p>;
   }
+
   const visibleRecords = query.trim()
     ? records.filter((record) =>
         [record.id, ...shape.fields.map((field) => previewValue(record.fields[field.id]))].some(
@@ -76,24 +85,47 @@ export function ArrayValueEditor({
         ),
       )
     : records;
-  const selectedRecord = selectedId
-    ? (records.find((candidate) => candidate.id === selectedId) ?? null)
+  const activeRecordId =
+    focus.kind === "record"
+      ? focus.id
+      : records.some((record) => record.id === recordId)
+        ? recordId
+        : (records[0]?.id ?? null);
+  const activeRecord = activeRecordId
+    ? (records.find((record) => record.id === activeRecordId) ?? null)
     : null;
+  const activeIndex = activeRecordId
+    ? records.findIndex((record) => record.id === activeRecordId)
+    : -1;
+
   const reportSelection = (record: ShapeRecord | null) => {
     onSelectionChange(
       record ? { id: record.id, label: recordIdentifier(record, shape.fields, imageAssets) } : null,
     );
   };
-  const selectRecord = (id: string) => {
+  const openRecord = (id: string) => {
     const record = records.find((candidate) => candidate.id === id);
     if (!record) return;
+    setRecordId(id);
+    setViewMode("record");
     reportSelection(record);
   };
-  const updateArray = (items: readonly StructuredValueTemplate[]) => {
-    onChange({ ...normalized, items });
+  const changeViewMode = (next: ViewMode) => {
+    setViewMode(next);
+    if (next === "record") {
+      const record = activeRecord ?? records[0] ?? null;
+      setRecordId(record?.id ?? null);
+      reportSelection(record);
+    } else {
+      setRecordId(null);
+      reportSelection(null);
+    }
   };
-
-  const selectedIndex = records.findIndex((record) => record.id === selectedId);
+  const updateArray = (items: readonly StructuredValueTemplate[]) => {
+    const next = { ...normalized, items };
+    onChange(next);
+    onImmediateChange?.(next);
+  };
   const updateRecord = (nextRecord: ShapeRecord) => {
     updateArray(
       normalized.items.map((item) =>
@@ -101,7 +133,6 @@ export function ArrayValueEditor({
       ),
     );
   };
-
   const reorderRecords = (sourceId: string, targetId: string) => {
     if (readOnly || sourceId === targetId) return;
     const sourceIndex = normalized.items.findIndex(
@@ -117,7 +148,6 @@ export function ArrayValueEditor({
     items.splice(targetIndex, 0, moved);
     updateArray(items);
   };
-
   const addRecord = () => {
     if (readOnly) return;
     const next = normalizeStructuredValueTemplate(
@@ -127,15 +157,23 @@ export function ArrayValueEditor({
     );
     if (!isShapeStructuredValueTemplate(next)) return;
     updateArray([...normalized.items, next]);
-    reportSelection(next);
-    setViewMode("record");
+    openRecord(next.id);
   };
-
   const removeRecord = () => {
-    if (readOnly || !selectedRecord) return;
-    const nextRecords = records.filter((record) => record.id !== selectedRecord.id);
+    if (readOnly || !activeRecord) return;
+    const nextRecords = records.filter((record) => record.id !== activeRecord.id);
     updateArray(nextRecords);
-    reportSelection(nextRecords[0] ?? null);
+    const nextRecord = nextRecords[Math.min(activeIndex, nextRecords.length - 1)] ?? null;
+    if (nextRecord) {
+      setRecordId(nextRecord.id);
+      reportSelection(nextRecord);
+    } else {
+      changeViewMode("table");
+    }
+  };
+  const selectAdjacentRecord = (offset: number) => {
+    const nextRecord = records[activeIndex + offset];
+    if (nextRecord) openRecord(nextRecord.id);
   };
 
   return (
@@ -146,32 +184,51 @@ export function ArrayValueEditor({
         readOnly={readOnly}
         query={query}
         setQuery={setQuery}
-        viewMode={displayedViewMode}
-        setViewMode={setViewMode}
+        viewMode={viewMode}
+        setViewMode={changeViewMode}
         addRecord={addRecord}
-      />
-      <ArrayEditorRecords
-        viewMode={displayedViewMode}
-        selectedRecord={selectedRecord}
-        visibleRecords={visibleRecords}
-        shape={shape}
-        selectedId={selectedId}
-        readOnly={readOnly}
-        selectRecord={selectRecord}
-        reorderRecords={reorderRecords}
-        selectedIndex={selectedIndex}
-        shapes={shapes}
+        recordIndex={activeIndex}
+        recordId={activeRecordId}
+        recordLabel={activeRecord ? recordIdentifier(activeRecord, shape.fields, imageAssets) : ""}
+        onRecordSelect={openRecord}
+        records={records}
+        fields={shape.fields}
         imageAssets={imageAssets}
-        onImageUpload={onImageUpload}
-        path={path}
-        updateRecord={updateRecord}
-        onValidityChange={onValidityChange}
-        removeRecord={removeRecord}
-        addRecord={addRecord}
+        onPrevious={() => selectAdjacentRecord(-1)}
+        onNext={() => selectAdjacentRecord(1)}
       />
+      {viewMode === "table" ? (
+        <ArrayTable
+          records={visibleRecords}
+          fields={shape.fields}
+          readOnly={readOnly}
+          path={path}
+          onRecordChange={updateRecord}
+          onValidityChange={onValidityChange}
+          imageAssets={imageAssets}
+          onOpenRecord={openRecord}
+          onReorder={reorderRecords}
+        />
+      ) : (
+        <RecordDetails
+          record={activeRecord}
+          recordIndex={activeIndex < 0 ? 0 : activeIndex}
+          fields={shape.fields}
+          shapes={shapes}
+          path={path}
+          readOnly={readOnly}
+          imageAssets={imageAssets}
+          onImageUpload={onImageUpload}
+          onChange={updateRecord}
+          onValidityChange={onValidityChange}
+          onRemove={removeRecord}
+          spacious
+        />
+      )}
     </div>
   );
 }
+
 type ArrayEditorToolbarProps = {
   recordsCount: number;
   shapeName: string;
@@ -181,6 +238,15 @@ type ArrayEditorToolbarProps = {
   viewMode: ViewMode;
   setViewMode(value: ViewMode): void;
   addRecord(): void;
+  recordIndex: number;
+  recordLabel: string;
+  recordId: string | null;
+  records: readonly ShapeRecord[];
+  fields: Shape["fields"];
+  imageAssets?: ArrayValueEditorProps["imageAssets"];
+  onRecordSelect(id: string): void;
+  onPrevious(): void;
+  onNext(): void;
 };
 
 function ArrayEditorToolbar({
@@ -192,6 +258,15 @@ function ArrayEditorToolbar({
   viewMode,
   setViewMode,
   addRecord,
+  recordLabel,
+  fields,
+  imageAssets,
+  recordIndex,
+  recordId,
+  records,
+  onRecordSelect,
+  onPrevious,
+  onNext,
 }: ArrayEditorToolbarProps) {
   return (
     <>
@@ -230,7 +305,7 @@ function ArrayEditorToolbar({
           value={query}
           onValueChange={setQuery}
         />
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Tabs
             value={viewMode}
             onValueChange={(value) => setViewMode(value === "record" ? "record" : "table")}
@@ -244,123 +319,51 @@ function ArrayEditorToolbar({
               </TabsTrigger>
             </TabsList>
           </Tabs>
+          {viewMode === "record" ? (
+            <>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                aria-label="Previous record"
+                disabled={recordIndex <= 0}
+                onClick={onPrevious}
+              >
+                <ChevronLeft />
+              </Button>
+              <Select
+                value={recordId ?? ""}
+                onValueChange={(value) => {
+                  if (value) onRecordSelect(value);
+                }}
+              >
+                <SelectTrigger className="w-44" aria-label="Choose record">
+                  <SelectValue placeholder="Choose record">{recordLabel}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {records.map((record, index) => (
+                    <SelectItem key={record.id} value={record.id}>
+                      {String(index + 1).padStart(2, "0")}{" "}
+                      {recordIdentifier(record, fields, imageAssets)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                aria-label="Next record"
+                disabled={recordIndex < 0 || recordIndex >= records.length - 1}
+                onClick={onNext}
+              >
+                <ChevronRight />
+              </Button>
+            </>
+          ) : null}
           <Button size="sm" onClick={addRecord} disabled={readOnly}>
             <PlusIcon /> Add record
           </Button>
         </div>
       </div>
     </>
-  );
-}
-
-type ArrayEditorRecordsProps = {
-  viewMode: ViewMode;
-  selectedRecord: ShapeRecord | null;
-  visibleRecords: ShapeRecord[];
-  shape: Shape;
-  selectedId: string;
-  readOnly: boolean;
-  selectRecord(id: string): void;
-  reorderRecords(sourceId: string, targetId: string): void;
-  selectedIndex: number;
-  shapes: readonly Shape[];
-  imageAssets?: ArrayValueEditorProps["imageAssets"];
-  onImageUpload?: ArrayValueEditorProps["onImageUpload"];
-  path: ArrayValueEditorProps["path"];
-  updateRecord(record: ShapeRecord): void;
-  onValidityChange: ArrayValueEditorProps["onValidityChange"];
-  removeRecord(): void;
-  addRecord(): void;
-};
-
-function ArrayEditorRecords({
-  viewMode,
-  selectedRecord,
-  visibleRecords,
-  shape,
-  selectedId,
-  readOnly,
-  selectRecord,
-  reorderRecords,
-  imageAssets,
-  onImageUpload,
-  selectedIndex,
-  shapes,
-  path,
-  updateRecord,
-  onValidityChange,
-  removeRecord,
-  addRecord,
-}: ArrayEditorRecordsProps) {
-  if (viewMode === "table") {
-    return (
-      <div
-        className={
-          selectedRecord
-            ? "grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]"
-            : "min-h-0 flex-1"
-        }
-      >
-        <ArrayTable
-          records={visibleRecords}
-          fields={shape.fields}
-          selectedId={selectedId}
-          readOnly={readOnly}
-          imageAssets={imageAssets}
-          onSelect={selectRecord}
-          onReorder={reorderRecords}
-        />
-        {selectedRecord ? (
-          <RecordDetails
-            record={selectedRecord}
-            recordIndex={selectedIndex < 0 ? 0 : selectedIndex}
-            fields={shape.fields}
-            shapes={shapes}
-            path={path}
-            readOnly={readOnly}
-            imageAssets={imageAssets}
-            onImageUpload={onImageUpload}
-            onChange={updateRecord}
-            onValidityChange={onValidityChange}
-            onRemove={removeRecord}
-          />
-        ) : null}
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className={
-        selectedRecord
-          ? "grid min-h-0 flex-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)]"
-          : "min-h-0 flex-1"
-      }
-    >
-      <RecordRail
-        records={visibleRecords}
-        selectedId={selectedId}
-        fields={shape.fields}
-        onSelect={selectRecord}
-        onAdd={addRecord}
-        readOnly={readOnly}
-      />
-      {selectedRecord ? (
-        <RecordDetails
-          record={selectedRecord}
-          recordIndex={selectedIndex < 0 ? 0 : selectedIndex}
-          fields={shape.fields}
-          shapes={shapes}
-          path={path}
-          readOnly={readOnly}
-          imageAssets={imageAssets}
-          onImageUpload={onImageUpload}
-          onChange={updateRecord}
-          onValidityChange={onValidityChange}
-          onRemove={removeRecord}
-          spacious
-        />
-      ) : null}
-    </div>
   );
 }

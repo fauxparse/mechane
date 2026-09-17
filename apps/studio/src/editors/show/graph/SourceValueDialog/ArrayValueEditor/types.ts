@@ -46,6 +46,7 @@ export type ArrayValueEditorProps = {
   focus: ArrayValueFocus;
   readOnly: boolean;
   onChange(value: unknown): void;
+  onImmediateChange?(value: unknown): void;
   onValidityChange(path: ErrorPath, error: string | null): void;
   onSelectionChange(selection: ArrayValueSelection | null): void;
   imageAssets?: readonly SourceImageAsset[];

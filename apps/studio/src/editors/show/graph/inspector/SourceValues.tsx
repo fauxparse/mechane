@@ -206,6 +206,9 @@ export const SourceValues = ({
           onOpenChange={(open) => {
             if (!open) closeRow();
           }}
+          onImmediateChange={(value) =>
+            editing.setSourceFieldDefault(node.id, activeRow.fieldPath, value)
+          }
           onSave={(value) => {
             const currentValue = valueAtPath(
               defaultSourceValues(editing.graph)[node.id],

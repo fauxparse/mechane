@@ -81,6 +81,7 @@ export function SourceValueDialog({
   open,
   onOpenChange,
   onSave,
+  onImmediateChange,
   onClear,
   readOnly = false,
 }: {
@@ -92,6 +93,7 @@ export function SourceValueDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (value: unknown) => string | null;
+  onImmediateChange?: (value: unknown) => void;
   onClear?: () => void;
   readOnly?: boolean;
 }) {
@@ -116,6 +118,11 @@ export function SourceValueDialog({
   const updateDraft = (next: unknown) => {
     setErrors(new Map());
     setDraft(next);
+  };
+
+  const commitImmediate = (next: unknown) => {
+    onImmediateChange?.(next);
+    if (onImmediateChange) setSavedDraft(next);
   };
 
   const updateErrors = (path: readonly (string | number)[], error: string | null) => {
@@ -148,6 +155,7 @@ export function SourceValueDialog({
   };
 
   const saveDraft = () => {
+    if (!isDirty) return true;
     const conflict = onSave(draft);
     if (conflict) {
       setErrors(new Map([["conflict", conflict]]));
@@ -179,6 +187,7 @@ export function SourceValueDialog({
       shapes={shapes}
       arrayFocus={arrayFocus}
       isLongText={isLongText}
+      onImmediateChange={commitImmediate}
       imageAssets={imageAssets}
       onImageUpload={onImageUpload}
       errors={errors}
@@ -226,6 +235,7 @@ type SourceValueDialogViewProps = {
   shapes: readonly Shape[];
   arrayFocus: ArrayValueFocus;
   isLongText: boolean;
+  onImmediateChange(value: unknown): void;
   imageAssets?: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
   onImageUpload?: (props: ImageInputOnUploadProps) => void;
   errors: Map<string, string>;
@@ -252,6 +262,7 @@ function SourceValueDialogView({
   draft,
   shapes,
   arrayFocus,
+  onImmediateChange,
   isLongText,
   imageAssets,
   onImageUpload,
@@ -322,9 +333,7 @@ function SourceValueDialogView({
             <DialogDescription className="sr-only">
               {readOnly
                 ? "This value is supplied by another node and cannot be edited."
-                : shapeArrayType
-                  ? "Browse the array as a table or record list. Changes apply as one undoable source-value edit."
-                  : "Changes are applied as one undoable source-value edit."}
+                : "Committed changes update the draft and any active Run immediately."}
             </DialogDescription>
             <DialogClose
               render={
@@ -344,6 +353,7 @@ function SourceValueDialogView({
               readOnly={readOnly}
               path={[]}
               focus={arrayFocus}
+              onImmediateChange={onImmediateChange}
               onChange={updateDraft}
               onValidityChange={updateErrors}
               onSelectionChange={onSelectionChange}
@@ -354,7 +364,11 @@ function SourceValueDialogView({
               autoFocus
               value={typeof draft === "string" ? draft : ""}
               aria-label={`${row.label} value`}
-              onChange={(event) => updateDraft(event.target.value)}
+              onChange={(event) => {
+                const next = event.target.value;
+                updateDraft(next);
+                onImmediateChange(next);
+              }}
             />
           ) : (
             <ValueEditor
@@ -365,7 +379,10 @@ function SourceValueDialogView({
               onImageUpload={onImageUpload}
               readOnly={readOnly}
               path={[]}
-              onChange={updateDraft}
+              onChange={(next) => {
+                updateDraft(next);
+                onImmediateChange(next);
+              }}
               onValidityChange={updateErrors}
             />
           )}
