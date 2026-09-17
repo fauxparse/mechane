@@ -130,10 +130,10 @@ describe("ValueEditor", () => {
 
     expect(html).toContain('aria-label="Headline value"');
     expect(html).toContain('aria-label="Score value"');
+    expect(html).toContain('aria-label="Resize Headline"');
     expect(html).toContain('aria-label="Open Welcome"');
     expect(html).toContain('src="/alice.png"');
     expect(html).toContain("alice.png");
-    expect(html).not.toContain("2 fields");
   });
   it("renders primitive values without editing controls in read-only mode", () => {
     const html = renderToStaticMarkup(

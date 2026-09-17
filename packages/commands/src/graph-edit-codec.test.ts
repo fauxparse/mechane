@@ -108,6 +108,11 @@ const FIXTURES: { [T in GraphEdit["type"]]: Extract<GraphEdit, { type: T }> } = 
     flowId: "flow_vote",
     size: { width: 640, height: 480 },
   },
+  "graph.setSourceColumnSizes": {
+    type: "graph.setSourceColumnSizes",
+    nodeId: "source_votes",
+    columnSizes: { headline: 240, score: 96 },
+  },
   "graph.setNodeColor": { type: "graph.setNodeColor", nodeId: "flow_vote", color: "purple" },
   "graph.setShapes": {
     type: "graph.setShapes",

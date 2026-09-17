@@ -102,6 +102,11 @@ export type GraphEdit =
       readonly size: FlowSize | null;
     }
   | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setSourceColumnSizes;
+      readonly nodeId: string;
+      readonly columnSizes: Record<string, number> | null;
+    }
+  | {
       readonly type: typeof GRAPH_COMMAND_TYPES.setNodeColor;
       readonly nodeId: string;
       readonly color: FlowColor | null;
@@ -392,6 +397,8 @@ function supersedes(edit: GraphEdit): { key: string; ids: readonly string[] } | 
       };
     case GRAPH_COMMAND_TYPES.setFlowSize:
       return { key: `flowSize:${edit.flowId}`, ids: [edit.flowId] };
+    case GRAPH_COMMAND_TYPES.setSourceColumnSizes:
+      return { key: `sourceColumnSizes:${edit.nodeId}`, ids: [edit.nodeId] };
     case GRAPH_COMMAND_TYPES.setNodeColor:
       return { key: `nodeColor:${edit.nodeId}`, ids: [edit.nodeId] };
     case GRAPH_COMMAND_TYPES.setEdgeLayout:

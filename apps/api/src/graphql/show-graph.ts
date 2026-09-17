@@ -146,9 +146,9 @@ export function serializeGraphEdit(edit: GraphEdit) {
     block: null as SerializedBlock | null,
     blockId: null as string | null,
     blockVariables: null as unknown[] | null,
-    pairingCode: null as string | null,
     perConnection: null as boolean | null,
     size: null as { width: number; height: number } | null,
+    columnSizes: null as Record<string, number> | null,
   };
   const encoded = encodeGraphEdit(edit);
   return {

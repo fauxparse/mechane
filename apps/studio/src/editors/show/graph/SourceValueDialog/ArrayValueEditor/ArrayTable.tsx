@@ -11,19 +11,30 @@ import {
 } from "@mechane/design-system";
 import { isShapeStructuredValueTemplate, setValueAtPath, type Shape } from "@mechane/domain";
 import {
+  columnResizingFeature,
+  columnSizingFeature,
+  coreCellsFeature,
+  coreColumnsFeature,
+  coreHeadersFeature,
+  coreRowModelsFeature,
+  coreRowsFeature,
+  coreTablesFeature,
   createColumnHelper,
   flexRender,
-  getCoreRowModel,
-  useReactTable,
+  tableFeatures,
+  useTable,
+  type ColumnSizingState,
   type Row,
 } from "@tanstack/react-table";
 import { useEffect, useMemo, useRef } from "react";
 import { SourceImagePreview } from "../ValueEditor";
 
-import { propertyInputType, previewValue } from "../../inspector/source-values-helpers";
 import type { ErrorPath, SourceImageAsset } from "../../inspector/source-value-types";
+import { previewValue, propertyInputType } from "../../inspector/source-values-helpers";
 import type { ShapeRecord } from "./types";
 import { recordIdentifier } from "./types";
+import { useColumnSizing } from "./use-column-sizing";
+
 const tableSensors = (defaults: typeof defaultPreset.sensors) =>
   defaults.map((sensor) =>
     sensor === PointerSensor
@@ -32,12 +43,23 @@ const tableSensors = (defaults: typeof defaultPreset.sensors) =>
         })
       : sensor,
   );
-const columnHelper = createColumnHelper<ShapeRecord>();
-
+const features = tableFeatures({
+  coreCellsFeature,
+  coreColumnsFeature,
+  coreHeadersFeature,
+  coreRowModelsFeature,
+  coreRowsFeature,
+  coreTablesFeature,
+  columnSizingFeature,
+  columnResizingFeature,
+});
+const columnHelper = createColumnHelper<typeof features, ShapeRecord>();
 export function ArrayTable({
   records,
   fields,
   readOnly,
+  columnSizes,
+  onColumnSizesChange,
   imageAssets,
   path,
   onReorder,
@@ -48,6 +70,8 @@ export function ArrayTable({
   records: ShapeRecord[];
   fields: Shape["fields"];
   readOnly: boolean;
+  columnSizes?: ColumnSizingState;
+  onColumnSizesChange?(columnSizes: ColumnSizingState): void;
   imageAssets?: readonly SourceImageAsset[];
   path: ErrorPath;
   onReorder(sourceId: string, targetId: string): void;
@@ -65,50 +89,72 @@ export function ArrayTable({
     pathRef.current = path;
     openRecordRef.current = onOpenRecord;
   }, [onRecordChange, onValidityChange, onOpenRecord, path]);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const {
+    columnSizes: localColumnSizes,
+    containerWidth,
+    resizingColumnId,
+    startResize,
+    moveResize,
+    finishResize,
+  } = useColumnSizing({
+    columnIds: fields.map((field) => field.id),
+    savedSizes: columnSizes,
+    containerRef,
+    fixedWidth: 84,
+    enabled: !readOnly && Boolean(onColumnSizesChange),
+    onCommit: onColumnSizesChange,
+  });
   const columns = useMemo(
-    () => [
-      ...fields.map((field) =>
-        columnHelper.accessor((record) => previewValue(record.fields[field.id]), {
-          id: field.id,
-          header: field.name,
+    () =>
+      columnHelper.columns([
+        ...fields.map((field) =>
+          columnHelper.accessor((record) => previewValue(record.fields[field.id]), {
+            id: field.id,
+            header: field.name,
+            enableResizing: !readOnly,
+            cell: ({ row }) => (
+              <TableValueCell
+                field={field}
+                value={row.original.fields[field.id]}
+                record={row.original}
+                readOnly={readOnly}
+                imageAssets={imageAssets}
+                path={[...pathRef.current, row.original.id, field.id]}
+                onRecordChange={(record) => recordChangeRef.current(record)}
+                onValidityChange={(nextPath, error) => validityChangeRef.current(nextPath, error)}
+              />
+            ),
+          }),
+        ),
+        columnHelper.display({
+          id: "open",
+          enableResizing: false,
+          size: 44,
+          header: "",
           cell: ({ row }) => (
-            <TableValueCell
-              field={field}
-              value={row.original.fields[field.id]}
-              record={row.original}
-              readOnly={readOnly}
-              imageAssets={imageAssets}
-              path={[...pathRef.current, row.original.id, field.id]}
-              onRecordChange={(record) => recordChangeRef.current(record)}
-              onValidityChange={(nextPath, error) => validityChangeRef.current(nextPath, error)}
-            />
+            <button
+              type="button"
+              className="rounded-sm p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={`Open ${recordIdentifier(row.original, fields, imageAssets)}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                openRecordRef.current(row.original.id);
+              }}
+            >
+              <ChevronRight className="size-4" />
+            </button>
           ),
         }),
-      ),
-      columnHelper.display({
-        id: "open",
-        header: "",
-        cell: ({ row }) => (
-          <button
-            type="button"
-            className="rounded-sm p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label={`Open ${recordIdentifier(row.original, fields, imageAssets)}`}
-            onClick={(event) => {
-              event.stopPropagation();
-              openRecordRef.current(row.original.id);
-            }}
-          >
-            <ChevronRight className="size-4" />
-          </button>
-        ),
-      }),
-    ],
+      ]),
     [fields, imageAssets, readOnly],
   );
-  const table = useReactTable({
+  const table = useTable({
+    features,
     data: records,
     columns,
-    getCoreRowModel: getCoreRowModel(),
+    columnResizeMode: "onChange",
+    state: { columnSizing: localColumnSizes },
     getRowId: (record) => record.id,
   });
   const finishDrag = (event: DragEndEvent) => {
@@ -121,20 +167,59 @@ export function ArrayTable({
     if (!targetRecord) return;
     onReorder(source.id, targetRecord.id);
   };
-
   return (
-    <div className="min-w-0 overflow-auto rounded-lg border border-border">
+    <div
+      ref={containerRef}
+      className="min-w-0 overflow-auto overscroll-x-contain border-t border-b border-border"
+    >
       <DragDropProvider sensors={tableSensors} onDragEnd={finishDrag}>
-        <table className="min-w-full text-left text-sm">
+        <table
+          className="table-fixed text-left text-sm"
+          style={{ width: Math.max(containerWidth, table.getTotalSize() + 40) }}
+        >
+          <colgroup>
+            <col style={{ width: 40 }} />
+            {table.getAllLeafColumns().map((column) => (
+              <col key={column.id} style={{ width: column.getSize() }} />
+            ))}
+          </colgroup>
           <thead className="bg-muted/45 text-[11px] uppercase tracking-wide text-muted-foreground">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
-                <th className="w-10 px-3 py-2.5" aria-label={readOnly ? undefined : "Reorder"} />
+                <th
+                  className="sticky left-0 z-20 w-10 bg-muted/45 px-3 py-2.5 shadow-[2px_0_4px_-2px_rgb(0_0_0_/_0.25)]"
+                  aria-label={readOnly ? undefined : "Reorder"}
+                />
                 {headerGroup.headers.map((header) => (
-                  <th key={header.id} className="whitespace-nowrap px-3 py-2.5 font-medium">
+                  <th
+                    key={header.id}
+                    colSpan={header.colSpan}
+                    style={{ width: header.getSize() }}
+                    className={`relative whitespace-nowrap px-3 py-2.5 font-medium ${
+                      header.column.id === "open"
+                        ? "sticky right-0 z-20 bg-muted/45 shadow-[-2px_0_4px_-2px_rgb(0_0_0_/_0.25)]"
+                        : ""
+                    }`}
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(header.column.columnDef.header, header.getContext())}
+                    {header.column.getCanResize() ? (
+                      <div
+                        role="separator"
+                        tabIndex={0}
+                        aria-orientation="vertical"
+                        aria-label={`Resize ${String(header.column.columnDef.header ?? header.id)}`}
+                        onPointerDown={(event) =>
+                          startResize(event, header.column.id, header.column.getSize())
+                        }
+                        onPointerMove={moveResize}
+                        onPointerUp={finishResize}
+                        onPointerCancel={finishResize}
+                        className="absolute inset-y-0 right-0 z-10 w-1 cursor-col-resize touch-none select-none border-r border-border"
+                        data-resizing={resizingColumnId === header.column.id || undefined}
+                      />
+                    ) : null}
                   </th>
                 ))}
               </tr>
@@ -182,7 +267,6 @@ function TableValueCell({
   if (field.type === "image") {
     return <SourceImagePreview value={value} imageAssets={imageAssets} className="max-w-44" />;
   }
-
   if (field.type === "boolean") {
     return (
       <div className="min-w-6" onClick={(event) => event.stopPropagation()}>
@@ -233,7 +317,13 @@ function TableValueCell({
   );
 }
 
-function SortableTableRow({ row, readOnly }: { row: Row<ShapeRecord>; readOnly: boolean }) {
+function SortableTableRow({
+  row,
+  readOnly,
+}: {
+  row: Row<typeof features, ShapeRecord>;
+  readOnly: boolean;
+}) {
   const { isDragging, isDropTarget, ref, handleRef } = useSortable({
     id: row.original.id,
     index: row.index,
@@ -245,7 +335,7 @@ function SortableTableRow({ row, readOnly }: { row: Row<ShapeRecord>; readOnly: 
       ref={ref}
       className={`transition-colors hover:bg-muted/35 ${isDragging ? "opacity-50" : ""} ${isDropTarget ? "ring-2 ring-inset ring-primary" : ""}`}
     >
-      <td className="px-2 py-2">
+      <td className="sticky left-0 z-10 bg-background px-2 py-2 shadow-[2px_0_4px_-2px_rgb(0_0_0_/_0.25)]">
         {!readOnly ? (
           <button
             ref={handleRef}
@@ -258,8 +348,16 @@ function SortableTableRow({ row, readOnly }: { row: Row<ShapeRecord>; readOnly: 
           </button>
         ) : null}
       </td>
-      {row.getVisibleCells().map((cell) => (
-        <td key={cell.id} className="whitespace-nowrap px-3 py-3">
+      {row.getAllCells().map((cell) => (
+        <td
+          key={cell.id}
+          style={{ width: cell.column.getSize() }}
+          className={`whitespace-nowrap px-3 py-3 ${
+            cell.column.id === "open"
+              ? "sticky right-0 z-10 bg-background shadow-[-2px_0_4px_-2px_rgb(0_0_0_/_0.25)]"
+              : ""
+          }`}
+        >
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
         </td>
       ))}

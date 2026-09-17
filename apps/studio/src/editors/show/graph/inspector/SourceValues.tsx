@@ -199,6 +199,8 @@ export const SourceValues = ({
           nodeName={node.name}
           row={activeRow}
           shapes={shapes}
+          columnSizes={node.editorMetadata?.columnSizes}
+          onColumnSizesChange={(columnSizes) => editing.setSourceColumnSizes(node.id, columnSizes)}
           imageAssets={imageAssets}
           onImageUpload={onImageUpload}
           readOnly={readOnly}

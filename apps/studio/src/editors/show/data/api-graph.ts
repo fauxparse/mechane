@@ -40,6 +40,7 @@ import type {
   Block,
   Cue,
   EdgeLayout,
+  EditorMetadata,
   EventBinding,
   FlowSize,
   GraphEdge,
@@ -48,13 +49,13 @@ import type {
   ShowGraph,
   Type,
 } from "@mechane/domain";
+import { decodeCanvasDocument } from "@mechane/graphql-schema";
 import {
   decodeEventBinding,
   InvalidInteractionError,
   isFlowColor,
   isWiringConversion,
 } from "@mechane/domain";
-import { decodeCanvasDocument } from "@mechane/graphql-schema";
 import type { ShowGraph as ApiShowGraph, ApplyShowEditsResult } from "@mechane/graphql-schema";
 type ApiType = ApiShowGraph["shapes"][number]["fields"][number]["type"];
 type ApiGraphNode = {
@@ -66,6 +67,7 @@ type ApiGraphNode = {
   defaultSceneId?: string | null;
   size?: unknown;
   color?: unknown;
+  editorMetadata?: unknown;
   sourceType?: ApiType;
   transformerType?: ApiType | null;
   fieldDefaults?: { fieldPath: string[]; value: unknown }[];
@@ -200,6 +202,7 @@ function toNode(node: ApiGraphNode): GraphNode {
     parentId: node.parentId ?? null,
     position: { x: node.position.x, y: node.position.y },
     ...(color ? { color } : {}),
+    ...(node.editorMetadata ? { editorMetadata: node.editorMetadata as EditorMetadata } : {}),
   };
   switch (node.__typename) {
     case "SceneNode": {

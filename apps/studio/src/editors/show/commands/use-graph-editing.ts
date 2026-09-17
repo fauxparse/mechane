@@ -50,6 +50,7 @@ import {
   setShapeFieldDefault,
   setShapeFieldRequired,
   setShapeFieldType,
+  setSourceColumnSizes,
   setSourceFieldDefault,
 } from "@mechane/commands";
 import type {
@@ -181,10 +182,10 @@ export interface VariableEditing {
   reorderVariables(sceneId: string, variableIds: readonly string[]): void;
   removeVariable(sceneId: string, variableId: string): void;
 }
-
 export interface SourceValueEditing {
   graph: ShowGraph;
   commands: Pick<GraphCommands, "beginGesture">;
+  setSourceColumnSizes(nodeId: string, columnSizes: Record<string, number>): void;
   setSourceFieldDefault(nodeId: string, fieldPath: readonly string[], value: unknown): void;
 }
 
@@ -266,6 +267,7 @@ export interface GraphInspectorEditing {
   setVariableType(sceneId: string, variableId: string, type: Type): void;
   setVariableDefault(sceneId: string, variableId: string, defaultValue: unknown): void;
   reorderVariables(sceneId: string, variableIds: readonly string[]): void;
+  setSourceColumnSizes(nodeId: string, columnSizes: Record<string, number>): void;
   removeVariable(sceneId: string, variableId: string): void;
   setSourceFieldDefault(nodeId: string, fieldPath: readonly string[], value: unknown): void;
   addCue(owner: InteractionOwner): void;
@@ -285,6 +287,7 @@ export function graphInspectorEditing(
     commands: sourceValues.commands,
     ...gestures,
     ...variables,
+    setSourceColumnSizes: sourceValues.setSourceColumnSizes,
     setSourceFieldDefault: sourceValues.setSourceFieldDefault,
     ...nodeEditing,
     ...interaction,
@@ -861,6 +864,12 @@ export function useGraphEditing(
     },
     [execute],
   );
+  const changeSourceColumnSizes = useCallback(
+    (nodeId: string, columnSizes: Record<string, number>) => {
+      execute(setSourceColumnSizes(nodeId, columnSizes));
+    },
+    [execute],
+  );
 
   const changeSourceFieldDefault = useCallback(
     (nodeId: string, fieldPath: readonly string[], value: unknown) => {
@@ -989,6 +998,7 @@ export function useGraphEditing(
     sourceValues: {
       graph,
       commands: { beginGesture: commands.beginGesture },
+      setSourceColumnSizes: changeSourceColumnSizes,
       setSourceFieldDefault: changeSourceFieldDefault,
     },
     interaction: { addCue: addInteractionCue, renameCue: renameInteractionCue },

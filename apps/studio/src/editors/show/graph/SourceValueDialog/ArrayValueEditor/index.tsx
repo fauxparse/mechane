@@ -41,6 +41,8 @@ export function ArrayValueEditor({
   path,
   focus,
   readOnly,
+  columnSizes,
+  onColumnSizesChange,
   imageAssets,
   onImageUpload,
   onChange,
@@ -199,6 +201,8 @@ export function ArrayValueEditor({
       />
       {viewMode === "table" ? (
         <ArrayTable
+          columnSizes={columnSizes}
+          onColumnSizesChange={onColumnSizesChange}
           records={visibleRecords}
           fields={shape.fields}
           readOnly={readOnly}
@@ -306,19 +310,6 @@ function ArrayEditorToolbar({
           onValueChange={setQuery}
         />
         <div className="flex flex-wrap items-center gap-2">
-          <Tabs
-            value={viewMode}
-            onValueChange={(value) => setViewMode(value === "record" ? "record" : "table")}
-          >
-            <TabsList className="h-8">
-              <TabsTrigger value="table">
-                <Table2Icon /> Table
-              </TabsTrigger>
-              <TabsTrigger value="record">
-                <ListIcon /> Record
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
           {viewMode === "record" ? (
             <>
               <Button
@@ -359,6 +350,19 @@ function ArrayEditorToolbar({
               </Button>
             </>
           ) : null}
+          <Tabs
+            value={viewMode}
+            onValueChange={(value) => setViewMode(value === "record" ? "record" : "table")}
+          >
+            <TabsList className="h-8">
+              <TabsTrigger value="table">
+                <Table2Icon /> Table
+              </TabsTrigger>
+              <TabsTrigger value="record">
+                <ListIcon /> Record
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
           <Button size="sm" onClick={addRecord} disabled={readOnly}>
             <PlusIcon /> Add record
           </Button>

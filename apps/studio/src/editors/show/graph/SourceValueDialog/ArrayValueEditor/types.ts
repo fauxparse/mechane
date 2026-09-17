@@ -45,6 +45,8 @@ export type ArrayValueEditorProps = {
   path: ErrorPath;
   focus: ArrayValueFocus;
   readOnly: boolean;
+  columnSizes?: Record<string, number>;
+  onColumnSizesChange?(columnSizes: Record<string, number>): void;
   onChange(value: unknown): void;
   onImmediateChange?(value: unknown): void;
   onValidityChange(path: ErrorPath, error: string | null): void;

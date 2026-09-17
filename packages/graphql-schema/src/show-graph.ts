@@ -69,6 +69,7 @@ export const GetShowGraphQuery = graphql(
             y
           }
           color
+          editorMetadata
           ... on SceneNode {
             variables {
               id

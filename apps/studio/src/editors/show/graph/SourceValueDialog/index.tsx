@@ -78,6 +78,8 @@ export function SourceValueDialog({
   shapes,
   imageAssets,
   onImageUpload,
+  columnSizes,
+  onColumnSizesChange,
   open,
   onOpenChange,
   onSave,
@@ -90,6 +92,8 @@ export function SourceValueDialog({
   shapes: readonly Shape[];
   imageAssets?: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
   onImageUpload?: (props: ImageInputOnUploadProps) => void;
+  columnSizes?: Record<string, number>;
+  onColumnSizesChange?: (columnSizes: Record<string, number>) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (value: unknown) => string | null;
@@ -189,6 +193,8 @@ export function SourceValueDialog({
       isLongText={isLongText}
       onImmediateChange={commitImmediate}
       imageAssets={imageAssets}
+      columnSizes={columnSizes}
+      onColumnSizesChange={onColumnSizesChange}
       onImageUpload={onImageUpload}
       errors={errors}
       onClear={onClear}
@@ -236,6 +242,8 @@ type SourceValueDialogViewProps = {
   arrayFocus: ArrayValueFocus;
   isLongText: boolean;
   onImmediateChange(value: unknown): void;
+  columnSizes?: Record<string, number>;
+  onColumnSizesChange?: (columnSizes: Record<string, number>) => void;
   imageAssets?: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
   onImageUpload?: (props: ImageInputOnUploadProps) => void;
   errors: Map<string, string>;
@@ -263,6 +271,8 @@ function SourceValueDialogView({
   shapes,
   arrayFocus,
   onImmediateChange,
+  columnSizes,
+  onColumnSizesChange,
   isLongText,
   imageAssets,
   onImageUpload,
@@ -348,6 +358,8 @@ function SourceValueDialogView({
               type={shapeArrayType}
               value={draft}
               shapes={shapes}
+              columnSizes={columnSizes}
+              onColumnSizesChange={onColumnSizesChange}
               imageAssets={imageAssets}
               onImageUpload={onImageUpload}
               readOnly={readOnly}

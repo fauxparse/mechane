@@ -122,12 +122,18 @@ interface BaseNode {
   position: Position;
   /** Optional editor colorway; absent inherits its Flow's color or neutral. */
   color?: FlowColor;
+  /** Persisted UI-only state that does not affect graph semantics. */
+  editorMetadata?: EditorMetadata;
   /**
    * The Flow containing this node, or null for a Show-level node. This one
    * field carries both Scene nesting and Flow-local placement — see the
    * header note on #29.
    */
   parentId: string | null;
+}
+
+export interface EditorMetadata {
+  columnSizes?: Record<string, number>;
 }
 
 export interface SceneNode extends BaseNode {
