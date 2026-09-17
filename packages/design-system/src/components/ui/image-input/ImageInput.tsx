@@ -9,6 +9,7 @@ import { ImageInputVariableControl } from "./ImageInputVariableControl";
 import { ImageInputView } from "./ImageInputView";
 import type { ImageInputCrop } from "./crop-types";
 import { useImageInputController } from "./use-image-input-controller";
+import { CompactImageInputView } from "./CompactImageInputView";
 import type {
   ImageInputError,
   ImageInputOnUploadProps,
@@ -30,6 +31,7 @@ export type ImageInputProps = {
   value: ImageInputValue | null;
   variables?: VariableReference<ImageValue>[];
   imageAssets?: readonly ResolvedImageValue[];
+  compact?: boolean;
   readOnly?: boolean;
   allowLink?: boolean;
   validation?: ImageInputValidation;
@@ -39,12 +41,12 @@ export type ImageInputProps = {
   onError?: (error: ImageInputError) => void;
   onUpload?: (props: ImageInputOnUploadProps) => void;
 };
-
 export const ImageInput = ({
   className,
   value,
   variables = [],
   imageAssets = [],
+  compact = false,
   readOnly = false,
   allowLink = true,
   validation,
@@ -77,6 +79,24 @@ export const ImageInput = ({
     onError: handleImageError,
     onUpload,
   });
+  if (compact) {
+    return (
+      <CompactImageInputView
+        value={value}
+        resolvedValue={controller.resolvedValue}
+        previewUrl={controller.imageState.previewUrl}
+        phase={controller.imageState.phase}
+        progress={controller.imageState.progress}
+        readOnly={readOnly}
+        canUpload={Boolean(onUpload)}
+        inputRef={controller.inputRef}
+        onFileInputChange={controller.handleFileInputChange}
+        onBrowse={() => controller.inputRef.current?.click()}
+        onCancelUpload={controller.handleCancelUpload}
+        onDelete={onDelete}
+      />
+    );
+  }
 
   return (
     <>
@@ -88,6 +108,7 @@ export const ImageInput = ({
         }}
       >
         <ImageInputView
+          compact={compact}
           className={className}
           value={value}
           resolvedValue={controller.resolvedValue}

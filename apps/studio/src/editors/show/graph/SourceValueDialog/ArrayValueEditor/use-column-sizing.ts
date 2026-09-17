@@ -113,12 +113,6 @@ export function useColumnSizing({
   }, [containerRef]);
 
   useEffect(() => {
-    if (activeRef.current) return;
-    columnSizesRef.current = savedSizes ?? {};
-    setColumnSizes(savedSizes ?? {});
-  }, [savedSizes]);
-
-  useEffect(() => {
     if (containerWidth <= 0 || columnIds.length === 0) return;
     const key = `${containerWidth}:${JSON.stringify(savedSizes ?? {})}`;
     if (initializedKeyRef.current === key) return;

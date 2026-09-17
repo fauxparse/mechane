@@ -21,7 +21,7 @@ import {
 } from "@mechane/design-system";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
-import { SizeFields } from "./CanvasInspectorFields";
+import { SizeFields } from "./SizeFields";
 import { isVariableInput } from "./canvas-inspector-values";
 import { AlignmentSelector } from "./AlignmentSelector";
 import type { Element, FrameElement, Padding, SlotElement, TextElement } from "@mechane/domain";

@@ -150,16 +150,28 @@ export function ArrayValueEditor({
     items.splice(targetIndex, 0, moved);
     updateArray(items);
   };
-  const addRecord = () => {
-    if (readOnly) return;
+  const createRecord = (): string | null => {
+    if (readOnly) return null;
     const next = normalizeStructuredValueTemplate(
       defaultValueForType(itemType, shapes),
       itemType,
       shapes,
     );
-    if (!isShapeStructuredValueTemplate(next)) return;
+    if (!isShapeStructuredValueTemplate(next)) return null;
     updateArray([...normalized.items, next]);
-    openRecord(next.id);
+    return next.id;
+  };
+  const addRecord = () => {
+    const id = createRecord();
+    if (id) openRecord(id);
+  };
+  const addRecordFromTable = () => {
+    const id = createRecord();
+    if (id) {
+      changeViewMode("table");
+      setRecordId(null);
+    }
+    return id;
   };
   const removeRecord = () => {
     if (readOnly || !activeRecord) return;
@@ -209,8 +221,10 @@ export function ArrayValueEditor({
           path={path}
           onRecordChange={updateRecord}
           onValidityChange={onValidityChange}
+          onImageUpload={onImageUpload}
           imageAssets={imageAssets}
           onOpenRecord={openRecord}
+          onCreateRecord={addRecordFromTable}
           onReorder={reorderRecords}
         />
       ) : (

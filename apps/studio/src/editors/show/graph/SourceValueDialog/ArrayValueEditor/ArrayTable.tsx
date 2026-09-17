@@ -5,11 +5,20 @@ import { isSortable, useSortable } from "@dnd-kit/react/sortable";
 import {
   ChevronRight,
   GripVertical,
+  ImageInput,
   PropertyInput,
   Switch,
+  type ImageInputOnUploadProps,
   type PropertyInputValue,
+  variableTypeIcon,
 } from "@mechane/design-system";
-import { isShapeStructuredValueTemplate, setValueAtPath, type Shape } from "@mechane/domain";
+import {
+  isImageAssetReference,
+  isResolvedImageValue,
+  isShapeStructuredValueTemplate,
+  setValueAtPath,
+  type Shape,
+} from "@mechane/domain";
 import {
   columnResizingFeature,
   columnSizingFeature,
@@ -26,7 +35,7 @@ import {
   type ColumnSizingState,
   type Row,
 } from "@tanstack/react-table";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { SourceImagePreview } from "../ValueEditor";
 
 import type { ErrorPath, SourceImageAsset } from "../../inspector/source-value-types";
@@ -34,6 +43,7 @@ import { previewValue, propertyInputType } from "../../inspector/source-values-h
 import type { ShapeRecord } from "./types";
 import { recordIdentifier } from "./types";
 import { useColumnSizing } from "./use-column-sizing";
+import { useTableKeyboardNavigation } from "./use-table-keyboard-navigation";
 
 const tableSensors = (defaults: typeof defaultPreset.sensors) =>
   defaults.map((sensor) =>
@@ -54,6 +64,7 @@ const features = tableFeatures({
   columnResizingFeature,
 });
 const columnHelper = createColumnHelper<typeof features, ShapeRecord>();
+
 export function ArrayTable({
   records,
   fields,
@@ -61,11 +72,13 @@ export function ArrayTable({
   columnSizes,
   onColumnSizesChange,
   imageAssets,
+  onImageUpload,
   path,
   onReorder,
   onRecordChange,
   onValidityChange,
   onOpenRecord,
+  onCreateRecord,
 }: {
   records: ShapeRecord[];
   fields: Shape["fields"];
@@ -73,11 +86,13 @@ export function ArrayTable({
   columnSizes?: ColumnSizingState;
   onColumnSizesChange?(columnSizes: ColumnSizingState): void;
   imageAssets?: readonly SourceImageAsset[];
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
   path: ErrorPath;
   onReorder(sourceId: string, targetId: string): void;
   onRecordChange(record: ShapeRecord): void;
   onValidityChange(path: ErrorPath, error: string | null): void;
   onOpenRecord(id: string): void;
+  onCreateRecord?(): string | null;
 }) {
   const recordChangeRef = useRef(onRecordChange);
   const validityChangeRef = useRef(onValidityChange);
@@ -105,6 +120,13 @@ export function ArrayTable({
     enabled: !readOnly && Boolean(onColumnSizesChange),
     onCommit: onColumnSizesChange,
   });
+  const { onCellKeyDown } = useTableKeyboardNavigation({
+    containerRef,
+    columnIds: fields.map((field) => field.id),
+    rowCount: records.length,
+    readOnly,
+    onCreateRow: onCreateRecord,
+  });
   const columns = useMemo(
     () =>
       columnHelper.columns([
@@ -120,7 +142,15 @@ export function ArrayTable({
                 record={row.original}
                 readOnly={readOnly}
                 imageAssets={imageAssets}
+                onImageUpload={onImageUpload}
                 path={[...pathRef.current, row.original.id, field.id]}
+                onKeyDown={(event) =>
+                  onCellKeyDown(
+                    event,
+                    row.index,
+                    fields.findIndex((candidate) => candidate.id === field.id),
+                  )
+                }
                 onRecordChange={(record) => recordChangeRef.current(record)}
                 onValidityChange={(nextPath, error) => validityChangeRef.current(nextPath, error)}
               />
@@ -147,7 +177,7 @@ export function ArrayTable({
           ),
         }),
       ]),
-    [fields, imageAssets, readOnly],
+    [fields, imageAssets, onCellKeyDown, onImageUpload, readOnly],
   );
   const table = useTable({
     features,
@@ -246,7 +276,9 @@ function TableValueCell({
   record,
   readOnly,
   imageAssets,
+  onImageUpload,
   path,
+  onKeyDown,
   onRecordChange,
   onValidityChange,
 }: {
@@ -255,7 +287,9 @@ function TableValueCell({
   record: ShapeRecord;
   readOnly: boolean;
   imageAssets?: readonly SourceImageAsset[];
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
   path: ErrorPath;
+  onKeyDown?(event: ReactKeyboardEvent<HTMLElement>): void;
   onRecordChange(record: ShapeRecord): void;
   onValidityChange(path: ErrorPath, error: string | null): void;
 }) {
@@ -263,17 +297,54 @@ function TableValueCell({
     const updated = setValueAtPath(record, [field.id], nextValue);
     if (isShapeStructuredValueTemplate(updated)) onRecordChange(updated);
   };
-
   if (field.type === "image") {
-    return <SourceImagePreview value={value} imageAssets={imageAssets} className="max-w-44" />;
+    const resolvedValue = isResolvedImageValue(value)
+      ? value
+      : isImageAssetReference(value)
+        ? (imageAssets?.find(
+            (asset) => asset.assetId === value.assetId && asset.revision === value.revision,
+          ) ?? null)
+        : null;
+    if (readOnly || !onImageUpload) {
+      return (
+        <div className="h-8" role="group" tabIndex={0} onKeyDown={onKeyDown}>
+          <SourceImagePreview value={value} imageAssets={imageAssets} className="max-w-44" />
+        </div>
+      );
+    }
+    return (
+      <div className="h-8" role="group" tabIndex={0} onKeyDown={onKeyDown}>
+        <ImageInput
+          compact
+          value={resolvedValue}
+          imageAssets={imageAssets}
+          readOnly={readOnly}
+          allowLink={false}
+          onUpload={onImageUpload}
+          onChange={(next) => {
+            if (next === null) {
+              onValidityChange(path, null);
+              updateValue(null);
+              return;
+            }
+            if (!isResolvedImageValue(next)) return;
+            const revision = imageAssets?.find((asset) => asset.assetId === next.assetId)?.revision;
+            if (!revision) return;
+            onValidityChange(path, null);
+            updateValue({ assetId: next.assetId, revision });
+          }}
+        />
+      </div>
+    );
   }
   if (field.type === "boolean") {
     return (
-      <div className="min-w-6" onClick={(event) => event.stopPropagation()}>
+      <div className="min-w-6">
         <Switch
           checked={value === true}
           disabled={readOnly}
           aria-label={`${field.name} value`}
+          onKeyDown={onKeyDown}
           onCheckedChange={(checked) => {
             if (typeof checked !== "boolean") return;
             onValidityChange(path, null);
@@ -283,10 +354,16 @@ function TableValueCell({
       </div>
     );
   }
-
   const inputType = typeof field.type === "string" ? propertyInputType(field.type) : null;
+  const isEmptyValue =
+    value === null || value === undefined || (typeof value === "string" && value.length === 0);
+
   if (!inputType || readOnly) {
-    return <span className="max-w-44 truncate text-xs">{previewValue(value)}</span>;
+    return (
+      <span role="group" tabIndex={0} onKeyDown={onKeyDown} className="max-w-44 truncate text-xs">
+        {isEmptyValue ? "(Empty)" : previewValue(value)}
+      </span>
+    );
   }
 
   const inputValue: PropertyInputValue | null =
@@ -299,12 +376,16 @@ function TableValueCell({
         : null;
 
   return (
-    <div onClick={(event) => event.stopPropagation()}>
+    <div className="h-8" onClick={(event) => event.stopPropagation()}>
       <PropertyInput
         type={inputType}
         value={inputValue}
+        icon={variableTypeIcon(field.type)}
+        vibe="table"
+        className="h-full"
         allowLink={false}
-        placeholder={`${field.name} value`}
+        placeholder={isEmptyValue ? "(Empty)" : `${field.name} value`}
+        onKeyDown={onKeyDown}
         onValidationError={(error) => onValidityChange(path, error)}
         onChange={(next) => {
           const nextValue =
@@ -351,6 +432,7 @@ function SortableTableRow({
       {row.getAllCells().map((cell) => (
         <td
           key={cell.id}
+          data-table-cell={cell.column.id === "open" ? undefined : `${row.index}:${cell.column.id}`}
           style={{ width: cell.column.getSize() }}
           className={`whitespace-nowrap px-3 py-3 ${
             cell.column.id === "open"

@@ -116,7 +116,11 @@ export const PropertyInput = <T extends ShapeValue>({
             aria-label={placeholder ?? input.inputType}
             placeholder={placeholder}
             className={cn(
-              "w-full min-w-0 bg-muted/50 dark:bg-muted/50 border-0 *:data-[slot=combobox-input]:px-1 rounded-sm h-7 data-[slot=combobox-input]:h-7",
+              "w-full min-w-0 border-0 *:data-[slot=combobox-input]:px-1 rounded-sm h-7 data-[slot=combobox-input]:h-7",
+              vibe === "table"
+                ? "h-full rounded-none bg-transparent dark:bg-transparent"
+                : "bg-muted/50 dark:bg-muted/50",
+              vibe === "table" && "data-[slot=combobox-input]:h-full",
               !icon && "pl-2",
               hasInactiveValue &&
                 "[&>input]:pointer-events-none [&>input]:w-0 [&>input]:flex-none *:data-[slot=combobox-input]:p-0 [&>input]:opacity-0",

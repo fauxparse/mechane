@@ -7,6 +7,7 @@ import type { ImageInputValue } from "./types";
 
 type ImageInputViewProps = {
   className?: string;
+  compact?: boolean;
   value: ImageInputValue | null;
   resolvedValue: ResolvedImageValue | null;
   phase: "idle" | "loading";
@@ -33,6 +34,7 @@ type ImageInputViewProps = {
 
 export const ImageInputView = ({
   className,
+  compact = false,
   value,
   resolvedValue,
   phase,
@@ -59,7 +61,9 @@ export const ImageInputView = ({
   return (
     <div
       className={cn(
-        "group/input relative w-full aspect-video rounded-md grid overflow-hidden *:col-start-1 *:row-start-1",
+        compact
+          ? "group/input relative inline-grid h-8! max-h-8! min-h-8! w-full! min-w-24 max-w-44 overflow-hidden rounded-sm *:col-start-1 *:row-start-1 [&>img]:h-full! [&>img]:w-8! [&>img]:object-cover [&_button]:h-6 [&_button]:min-w-0 [&_button]:px-1 [&_button]:text-[10px]"
+          : "group/input relative w-full aspect-video rounded-md grid overflow-hidden *:col-start-1 *:row-start-1",
         className,
       )}
       data-empty={!resolvedValue && !previewUrl}
