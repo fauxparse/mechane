@@ -15,7 +15,7 @@ export {
   SectionRow,
   type SectionProps,
 } from "./components/inspector-section";
-export { InspectorProvider, useVibe, type Vibe } from "./components/inspector-vibe";
+export { InspectorProvider, VibeProvider, useVibe, type Vibe } from "./components/inspector-vibe";
 export { ThemeSwitcher, type ThemeSwitcherProps } from "./components/theme-switcher";
 export { Alert, AlertAction, AlertDescription, AlertTitle } from "./components/ui/alert";
 export {

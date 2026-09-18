@@ -1,9 +1,7 @@
 import {
-  Badge,
   Button,
   ChevronLeft,
   ChevronRight,
-  DownloadIcon,
   ListIcon,
   PlusIcon,
   SearchInput,
@@ -16,7 +14,6 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-  UploadIcon,
 } from "@mechane/design-system";
 import {
   defaultValueForType,
@@ -28,6 +25,7 @@ import {
 } from "@mechane/domain";
 import { useMemo, useState } from "react";
 
+import { pluralize } from "@studio/utils/pluralize";
 import { previewValue } from "../../inspector/source-values-helpers";
 import { ArrayTable } from "./ArrayTable";
 import { RecordDetails } from "./RecordDetails";
@@ -269,7 +267,6 @@ type ArrayEditorToolbarProps = {
 
 function ArrayEditorToolbar({
   recordsCount,
-  shapeName,
   readOnly,
   query,
   setQuery,
@@ -288,38 +285,10 @@ function ArrayEditorToolbar({
 }: ArrayEditorToolbarProps) {
   return (
     <>
-      <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-            <Table2Icon className="size-4" />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="truncate text-sm font-semibold">items</span>
-              <Badge variant="outline">{recordsCount} records</Badge>
-              <Badge variant="secondary">{shapeName}</Badge>
-            </div>
-            <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
-              <span>source value</span>
-              <ChevronRight className="size-3" />
-              <span className="font-mono">Array of {shapeName}</span>
-            </div>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="ghost" size="sm" disabled title="Import is a placeholder">
-            <UploadIcon /> Import
-          </Button>
-          <Button variant="ghost" size="sm" disabled title="Export is a placeholder">
-            <DownloadIcon /> Export
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col px-4 gap-3 sm:flex-row sm:items-center sm:justify-between">
         <SearchInput
           className="h-8! max-h-8"
-          placeholder="Filter…"
+          placeholder={`Filter ${pluralize("record", recordsCount)}`}
           value={query}
           onValueChange={setQuery}
         />

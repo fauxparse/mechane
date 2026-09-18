@@ -12,17 +12,12 @@ import {
   TypeSelect,
   variableTypeIcon,
 } from "@mechane/design-system";
-import { type Shape, type SourceNode, type Type } from "@mechane/domain";
+import { typeLabel, type Shape, type SourceNode, type Type } from "@mechane/domain";
 import { useState } from "react";
 
 import type { GraphInspectorEditing } from "../../commands/use-graph-editing";
 import { sourceTypeChangeHasImpact, type SourceTypeChangePlan } from "./source-type-change";
 
-function typeLabel(type: Type, shapes: readonly Shape[]): string {
-  if (typeof type === "string") return type;
-  if (type.kind === "array") return `Array of ${typeLabel(type.of, shapes)}`;
-  return shapes.find((shape) => shape.id === type.shapeId)?.name ?? "Shape";
-}
 
 function SourceTypeImpactDialog({
   plan,

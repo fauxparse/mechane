@@ -13,6 +13,28 @@ export type PrimitiveType = (typeof PRIMITIVE_TYPES)[number];
 
 /** A recursive Type: primitive, array-of-Type, or a named Shape reference. */
 export type Type = PrimitiveType | { kind: "array"; of: Type } | { kind: "shape"; shapeId: string };
+const PRIMITIVE_TYPE_LABELS = {
+  text: "Text",
+  number: "Number",
+  boolean: "Boolean",
+  image: "Image",
+  color: "Color",
+  date: "Date",
+  datetime: "Date and time",
+} as const satisfies Record<PrimitiveType, string>;
+
+/** Returns the human-readable label for a Type and its known Shape references. */
+export function typeLabel(type: Type, shapes?: readonly Shape[]): string;
+export function typeLabel(type: Type | null | undefined, shapes?: readonly Shape[]): string | null;
+export function typeLabel(
+  type: Type | null | undefined,
+  shapes: readonly Shape[] = [],
+): string | null {
+  if (type == null) return null;
+  if (typeof type === "string") return PRIMITIVE_TYPE_LABELS[type];
+  if (type.kind === "array") return `Array of ${typeLabel(type.of, shapes)}`;
+  return shapes.find((shape) => shape.id === type.shapeId)?.name ?? "Shape";
+}
 
 export interface TextValue {
   kind: "text";
@@ -630,12 +652,6 @@ function hasOwn(value: unknown, key: string): value is Record<string, unknown> {
   return (
     value !== null && typeof value === "object" && Object.prototype.hasOwnProperty.call(value, key)
   );
-}
-
-function typeLabel(type: Type): string {
-  if (typeof type === "string") return type;
-  if (type.kind === "array") return `array of ${typeLabel(type.of)}`;
-  return `Shape ${type.shapeId}`;
 }
 
 interface TypeCoercion {

@@ -24,12 +24,11 @@ import type {
   GraphNode,
   NodeKind,
   Position,
-  Shape,
   ShapeValue,
   Type,
 } from "@mechane/domain";
-import { generateId, NODE_ID_ENTITIES } from "@mechane/domain";
-import { DEFAULT_FLOW_DIMENSIONS, type ShowNodeData } from "./graph-to-flow";
+import { generateId, NODE_ID_ENTITIES, typeLabel } from "@mechane/domain";
+import { DEFAULT_FLOW_DIMENSIONS } from "./graph-to-flow";
 
 export interface NodeKindMeta {
   kind: NodeKind;
@@ -198,13 +197,3 @@ export function createNode(
       return { ...base, kind: "transformer", parentId };
   }
 }
-
-export const typeLabel = (
-  type: ShowNodeData["type"],
-  shapes: readonly Shape[] = [],
-): string | null => {
-  if (!type) return null;
-  if (typeof type === "string") return type;
-  if (type.kind === "array") return `array<${typeLabel(type.of, shapes) ?? "?"}>`;
-  return shapes.find((shape) => shape.id === type.shapeId)?.name ?? "Shape";
-};

@@ -8,9 +8,10 @@ import {
   ImageInput,
   PropertyInput,
   Switch,
+  variableTypeIcon,
+  VibeProvider,
   type ImageInputOnUploadProps,
   type PropertyInputValue,
-  variableTypeIcon,
 } from "@mechane/design-system";
 import {
   isImageAssetReference,
@@ -53,6 +54,7 @@ const tableSensors = (defaults: typeof defaultPreset.sensors) =>
         })
       : sensor,
   );
+
 const features = tableFeatures({
   coreCellsFeature,
   coreColumnsFeature,
@@ -63,6 +65,7 @@ const features = tableFeatures({
   columnSizingFeature,
   columnResizingFeature,
 });
+
 const columnHelper = createColumnHelper<typeof features, ShapeRecord>();
 
 export function ArrayTable({
@@ -70,10 +73,10 @@ export function ArrayTable({
   fields,
   readOnly,
   columnSizes,
-  onColumnSizesChange,
   imageAssets,
-  onImageUpload,
   path,
+  onColumnSizesChange,
+  onImageUpload,
   onReorder,
   onRecordChange,
   onValidityChange,
@@ -84,10 +87,10 @@ export function ArrayTable({
   fields: Shape["fields"];
   readOnly: boolean;
   columnSizes?: ColumnSizingState;
-  onColumnSizesChange?(columnSizes: ColumnSizingState): void;
   imageAssets?: readonly SourceImageAsset[];
-  onImageUpload?: (props: ImageInputOnUploadProps) => void;
   path: ErrorPath;
+  onColumnSizesChange?(columnSizes: ColumnSizingState): void;
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
   onReorder(sourceId: string, targetId: string): void;
   onRecordChange(record: ShapeRecord): void;
   onValidityChange(path: ErrorPath, error: string | null): void;
@@ -98,13 +101,16 @@ export function ArrayTable({
   const validityChangeRef = useRef(onValidityChange);
   const pathRef = useRef(path);
   const openRecordRef = useRef(onOpenRecord);
+
   useEffect(() => {
     recordChangeRef.current = onRecordChange;
     validityChangeRef.current = onValidityChange;
     pathRef.current = path;
     openRecordRef.current = onOpenRecord;
   }, [onRecordChange, onValidityChange, onOpenRecord, path]);
+
   const containerRef = useRef<HTMLDivElement | null>(null);
+
   const {
     columnSizes: localColumnSizes,
     containerWidth,
@@ -120,6 +126,7 @@ export function ArrayTable({
     enabled: !readOnly && Boolean(onColumnSizesChange),
     onCommit: onColumnSizesChange,
   });
+
   const { onCellKeyDown } = useTableKeyboardNavigation({
     containerRef,
     columnIds: fields.map((field) => field.id),
@@ -127,6 +134,7 @@ export function ArrayTable({
     readOnly,
     onCreateRow: onCreateRecord,
   });
+
   const columns = useMemo(
     () =>
       columnHelper.columns([
@@ -179,6 +187,7 @@ export function ArrayTable({
       ]),
     [fields, imageAssets, onCellKeyDown, onImageUpload, readOnly],
   );
+
   const table = useTable({
     features,
     data: records,
@@ -187,6 +196,7 @@ export function ArrayTable({
     state: { columnSizing: localColumnSizes },
     getRowId: (record) => record.id,
   });
+
   const finishDrag = (event: DragEndEvent) => {
     if (readOnly || event.canceled) return;
     const source = event.operation.source;
@@ -197,79 +207,83 @@ export function ArrayTable({
     if (!targetRecord) return;
     onReorder(source.id, targetRecord.id);
   };
+
   return (
     <div
       ref={containerRef}
       className="min-w-0 overflow-auto overscroll-x-contain border-t border-b border-border"
     >
-      <DragDropProvider sensors={tableSensors} onDragEnd={finishDrag}>
-        <table
-          className="table-fixed text-left text-sm"
-          style={{ width: Math.max(containerWidth, table.getTotalSize() + 40) }}
-        >
-          <colgroup>
-            <col style={{ width: 40 }} />
-            {table.getAllLeafColumns().map((column) => (
-              <col key={column.id} style={{ width: column.getSize() }} />
-            ))}
-          </colgroup>
-          <thead className="bg-muted/45 text-[11px] uppercase tracking-wide text-muted-foreground">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id}>
-                <th
-                  className="sticky left-0 z-20 w-10 bg-muted/45 px-3 py-2.5 shadow-[2px_0_4px_-2px_rgb(0_0_0_/_0.25)]"
-                  aria-label={readOnly ? undefined : "Reorder"}
-                />
-                {headerGroup.headers.map((header) => (
+      <VibeProvider vibe="table">
+        <DragDropProvider sensors={tableSensors} onDragEnd={finishDrag}>
+          <table
+            className="table-fixed text-left text-sm"
+            style={{ width: Math.max(containerWidth, table.getTotalSize() + 40) }}
+          >
+            <colgroup>
+              <col style={{ width: 40 }} />
+              {table.getAllLeafColumns().map((column) => (
+                <col key={column.id} style={{ width: column.getSize() }} />
+              ))}
+            </colgroup>
+            <thead className="bg-muted/45 text-[11px] uppercase tracking-wide text-muted-foreground">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
                   <th
-                    key={header.id}
-                    colSpan={header.colSpan}
-                    style={{ width: header.getSize() }}
-                    className={`relative whitespace-nowrap px-3 py-2.5 font-medium ${
-                      header.column.id === "open"
-                        ? "sticky right-0 z-20 bg-muted/45 shadow-[-2px_0_4px_-2px_rgb(0_0_0_/_0.25)]"
-                        : ""
-                    }`}
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
-                    {header.column.getCanResize() ? (
-                      <div
-                        role="separator"
-                        tabIndex={0}
-                        aria-orientation="vertical"
-                        aria-label={`Resize ${String(header.column.columnDef.header ?? header.id)}`}
-                        onPointerDown={(event) =>
-                          startResize(event, header.column.id, header.column.getSize())
-                        }
-                        onPointerMove={moveResize}
-                        onPointerUp={finishResize}
-                        onPointerCancel={finishResize}
-                        className="absolute inset-y-0 right-0 z-10 w-1 cursor-col-resize touch-none select-none border-r border-border"
-                        data-resizing={resizingColumnId === header.column.id || undefined}
-                      />
-                    ) : null}
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody className="divide-y divide-border">
-            {table.getRowModel().rows.map((row) => (
-              <SortableTableRow key={row.id} row={row} readOnly={readOnly} />
-            ))}
-          </tbody>
-        </table>
-      </DragDropProvider>
-      {records.length === 0 ? (
-        <p className="p-8 text-center text-sm text-muted-foreground">
-          No records match this filter.
-        </p>
-      ) : null}
+                    className="sticky left-0 z-20 w-10 bg-muted/45 px-3 py-2.5 shadow-[2px_0_4px_-2px_rgb(0_0_0/0.25)]"
+                    aria-label={readOnly ? undefined : "Reorder"}
+                  />
+                  {headerGroup.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      colSpan={header.colSpan}
+                      style={{ width: header.getSize() }}
+                      className={`relative whitespace-nowrap px-3 py-2.5 font-medium ${
+                        header.column.id === "open"
+                          ? "sticky right-0 z-20 bg-muted/45 shadow-[-2px_0_4px_-2px_rgb(0_0_0/0.25)]"
+                          : ""
+                      }`}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(header.column.columnDef.header, header.getContext())}
+                      {header.column.getCanResize() ? (
+                        <div
+                          role="separator"
+                          tabIndex={0}
+                          aria-orientation="vertical"
+                          aria-label={`Resize ${String(header.column.columnDef.header ?? header.id)}`}
+                          onPointerDown={(event) =>
+                            startResize(event, header.column.id, header.column.getSize())
+                          }
+                          onPointerMove={moveResize}
+                          onPointerUp={finishResize}
+                          onPointerCancel={finishResize}
+                          className="absolute inset-y-0 right-0 z-10 w-1 cursor-col-resize touch-none select-none border-r border-border"
+                          data-resizing={resizingColumnId === header.column.id || undefined}
+                        />
+                      ) : null}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody className="divide-y divide-border">
+              {table.getRowModel().rows.map((row) => (
+                <SortableTableRow key={row.id} row={row} readOnly={readOnly} />
+              ))}
+            </tbody>
+          </table>
+        </DragDropProvider>
+        {records.length === 0 ? (
+          <p className="p-8 text-center text-sm text-muted-foreground">
+            No records match this filter.
+          </p>
+        ) : null}
+      </VibeProvider>
     </div>
   );
 }
+
 function TableValueCell({
   field,
   value,
@@ -381,7 +395,6 @@ function TableValueCell({
         type={inputType}
         value={inputValue}
         icon={variableTypeIcon(field.type)}
-        vibe="table"
         className="h-full"
         allowLink={false}
         placeholder={isEmptyValue ? "(Empty)" : `${field.name} value`}
@@ -416,7 +429,7 @@ function SortableTableRow({
       ref={ref}
       className={`transition-colors hover:bg-muted/35 ${isDragging ? "opacity-50" : ""} ${isDropTarget ? "ring-2 ring-inset ring-primary" : ""}`}
     >
-      <td className="sticky left-0 z-10 bg-background px-2 py-2 shadow-[2px_0_4px_-2px_rgb(0_0_0_/_0.25)]">
+      <td className="sticky left-0 z-10 bg-background px-2 py-2 shadow-[2px_0_4px_-2px_rgb(0_0_0/0.25)]">
         {!readOnly ? (
           <button
             ref={handleRef}
@@ -436,7 +449,7 @@ function SortableTableRow({
           style={{ width: cell.column.getSize() }}
           className={`whitespace-nowrap px-3 py-3 ${
             cell.column.id === "open"
-              ? "sticky right-0 z-10 bg-background shadow-[-2px_0_4px_-2px_rgb(0_0_0_/_0.25)]"
+              ? "sticky right-0 z-10 bg-background shadow-[-2px_0_4px_-2px_rgb(0_0_0/0.25)]"
               : ""
           }`}
         >

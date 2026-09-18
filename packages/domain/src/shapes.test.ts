@@ -15,6 +15,7 @@ import {
   CoercionError,
   InvalidShapeError,
   shapeReferencesShape,
+  typeLabel,
 } from "./shapes";
 import type { Shape } from "./shapes";
 
@@ -41,6 +42,22 @@ const person: Shape = {
     },
   ],
 };
+
+describe("Type labels", () => {
+  const shapes: Shape[] = [{ id: "person", name: "Person", fields: [] }];
+
+  it("labels primitives, Shape references, and arrays consistently", () => {
+    expect(typeLabel("datetime")).toBe("Date and time");
+    expect(typeLabel({ kind: "shape", shapeId: "person" }, shapes)).toBe("Person");
+    expect(typeLabel({ kind: "array", of: { kind: "shape", shapeId: "person" } }, shapes)).toBe(
+      "Array of Person",
+    );
+  });
+
+  it("falls back when a Shape reference is unavailable", () => {
+    expect(typeLabel({ kind: "shape", shapeId: "missing" })).toBe("Shape");
+  });
+});
 
 describe("Shape grammar", () => {
   it("accepts nested Shape references and preserves field order", () => {
@@ -189,7 +206,7 @@ describe("Shape values", () => {
           path: ["value"],
           fieldId: "value",
           fieldName: "Value",
-          reason: "Value could not be converted from text to number; default used.",
+          reason: "Value could not be converted from Text to Number; default used.",
         },
       ],
     });

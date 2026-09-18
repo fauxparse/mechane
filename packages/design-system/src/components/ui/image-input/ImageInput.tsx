@@ -1,30 +1,31 @@
 import { type ImageValue, type ResolvedImageValue, type VariableReference } from "@mechane/domain";
 import { useCallback } from "react";
 
-import { useToastManager } from "../toast";
+import { useVibe, Vibe } from "../../inspector-vibe";
 import { Popover, PopoverContent } from "../popover";
 import { VariablePicker } from "../property-input/variable-picker";
+import { useToastManager } from "../toast";
+import { CompactImageInputView } from "./CompactImageInputView";
 import { ImageCropper } from "./ImageCropper";
 import { ImageInputVariableControl } from "./ImageInputVariableControl";
 import { ImageInputView } from "./ImageInputView";
 import type { ImageInputCrop } from "./crop-types";
-import { useImageInputController } from "./use-image-input-controller";
-import { CompactImageInputView } from "./CompactImageInputView";
 import type {
   ImageInputError,
   ImageInputOnUploadProps,
-  ImageInputValue,
   ImageInputValidation,
+  ImageInputValue,
 } from "./types";
+import { useImageInputController } from "./use-image-input-controller";
 
+export type { ImageInputCrop } from "./crop-types";
 export type {
   ImageInputError,
   ImageInputErrorCode,
   ImageInputOnUploadProps,
-  ImageInputValue,
   ImageInputValidation,
+  ImageInputValue,
 } from "./types";
-export type { ImageInputCrop } from "./crop-types";
 
 export type ImageInputProps = {
   className?: string;
@@ -36,6 +37,7 @@ export type ImageInputProps = {
   allowLink?: boolean;
   validation?: ImageInputValidation;
   crop?: ImageInputCrop;
+  vibe?: Vibe;
   onChange: (value: ImageInputValue | null) => void;
   onDelete?: () => void;
   onError?: (error: ImageInputError) => void;
@@ -51,6 +53,7 @@ export const ImageInput = ({
   allowLink = true,
   validation,
   crop,
+  vibe: vibeOverride,
   onChange,
   onDelete,
   onError,
@@ -79,6 +82,8 @@ export const ImageInput = ({
     onError: handleImageError,
     onUpload,
   });
+  const vibe = useVibe(vibeOverride);
+
   if (compact) {
     return (
       <CompactImageInputView
@@ -90,6 +95,7 @@ export const ImageInput = ({
         readOnly={readOnly}
         canUpload={Boolean(onUpload)}
         inputRef={controller.inputRef}
+        vibe={vibe}
         onFileInputChange={controller.handleFileInputChange}
         onBrowse={() => controller.inputRef.current?.click()}
         onCancelUpload={controller.handleCancelUpload}

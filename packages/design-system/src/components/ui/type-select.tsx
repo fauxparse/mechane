@@ -1,4 +1,4 @@
-import { PRIMITIVE_TYPES, type Shape, type Type } from "@mechane/domain";
+import { PRIMITIVE_TYPES, type Shape, type Type, typeLabel } from "@mechane/domain";
 import { CheckIcon, ChevronRightIcon, type LucideIcon } from "lucide-react";
 import type { ReactElement } from "react";
 
@@ -15,7 +15,7 @@ import {
   DropdownMenuSubmenuTrigger,
   DropdownMenuTrigger,
 } from "./dropdown-menu";
-import { variableTypeIcon, variableTypeLabel } from "./property-input/variable-type-icons";
+import { variableTypeIcon } from "./property-input/variable-type-icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
 export type TypeSelectOption = {
   value: Type;
@@ -47,7 +47,7 @@ export type TypeSelectProps = {
 
 const PRIMITIVE_OPTIONS: readonly TypeSelectOption[] = PRIMITIVE_TYPES.map((value) => ({
   value,
-  label: variableTypeLabel(value),
+  label: typeLabel(value),
   icon: variableTypeIcon(value),
 }));
 
@@ -66,11 +66,6 @@ function typesEqual(left: Type | null, right: Type): boolean {
   return true;
 }
 
-function typeLabel(type: Type, shapes: readonly Shape[]): string {
-  if (typeof type === "string") return variableTypeLabel(type);
-  if (type.kind === "array") return `Array of ${typeLabel(type.of, shapes)}`;
-  return shapes.find((shape) => shape.id === type.shapeId)?.name ?? "Shape";
-}
 
 function typeIcon(type: Type): LucideIcon {
   return variableTypeIcon(type);

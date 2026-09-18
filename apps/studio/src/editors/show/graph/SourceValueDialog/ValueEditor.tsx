@@ -19,13 +19,13 @@ import {
   isShapeStructuredValueTemplate,
   normalizeStructuredValueTemplate,
   setValueAtPath,
+  typeLabel,
   type ResolvedImageValue,
   type ShowGraph,
   type Type,
 } from "@mechane/domain";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { typeLabel as graphTypeLabel } from "../node-kinds";
 import type { SourceValueEditing } from "../../commands/use-graph-editing";
 import type {
   SourceImageAsset,
@@ -346,7 +346,7 @@ function ShapeValueEditor({
           <div className="flex items-center justify-between gap-2 text-sm">
             <span>{field.name}</span>
             <span className="text-xs text-muted-foreground">
-              {graphTypeLabel(field.type, shapes)}
+              {typeLabel(field.type, shapes)}
             </span>
           </div>
           {renderValue({
@@ -380,7 +380,7 @@ export function ValueEditor(props: ValueEditorProps) {
         variant="outline"
         onClick={() => onChange(defaultValueForType(type, shapes))}
       >
-        Use {graphTypeLabel(type, shapes) ?? "value"} value
+        Use {typeLabel(type, shapes) ?? "value"} value
       </Button>
     );
   }

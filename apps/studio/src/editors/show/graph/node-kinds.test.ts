@@ -1,4 +1,4 @@
-import type { ShowGraph } from "@mechane/domain";
+import { typeLabel, type ShowGraph } from "@mechane/domain";
 import { assertValidShowGraph, isId } from "@mechane/domain";
 import { describe, expect, it } from "vitest";
 
@@ -8,7 +8,6 @@ import {
   createNode,
   NODE_KIND_META,
   nodeIcon,
-  typeLabel,
 } from "./node-kinds";
 
 describe("createNode", () => {
@@ -132,7 +131,7 @@ describe("typeLabel", () => {
     expect(typeLabel({ kind: "shape", shapeId: "shape_person" }, shapes)).toBe("Person");
     expect(
       typeLabel({ kind: "array", of: { kind: "shape", shapeId: "shape_person" } }, shapes),
-    ).toBe("array<Person>");
+    ).toBe("Array of Person");
   });
 
   it("uses a generic label when a Shape reference is unavailable", () => {
