@@ -59,6 +59,7 @@ describe("ValueEditor", () => {
     expect(html).toContain('data-empty="false"');
     expect(html).toContain("Name");
     expect(html).toContain("Votes");
+    expect(html).toContain("cursor-ew-resize");
   });
 
   it("renders image references with their asset name and preview", () => {
@@ -134,6 +135,32 @@ describe("ValueEditor", () => {
     expect(html).toContain('aria-label="Open Welcome"');
     expect(html).toContain('src="/alice.png"');
     expect(html).toContain("alice.png");
+  });
+
+  it("keeps empty table inputs named after their field", () => {
+    const html = renderToStaticMarkup(
+      createElement(ArrayTable, {
+        records: [
+          {
+            id: generateId("structuredValue"),
+            kind: "shape",
+            fields: { headline: "" },
+          },
+        ],
+        fields: [
+          { id: "headline", name: "Headline", type: "text", required: true, defaultValue: "" },
+        ],
+        readOnly: false,
+        path: [],
+        onReorder: () => {},
+        onRecordChange: () => {},
+        onValidityChange: () => {},
+        onOpenRecord: () => {},
+      }),
+    );
+
+    expect(html).toContain('aria-label="Headline value"');
+    expect(html).toContain('placeholder="(Empty)"');
   });
   it("renders primitive values without editing controls in read-only mode", () => {
     const html = renderToStaticMarkup(

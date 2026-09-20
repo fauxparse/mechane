@@ -130,6 +130,7 @@ export function ArrayTable({
   const { onCellKeyDown } = useTableKeyboardNavigation({
     containerRef,
     columnIds: fields.map((field) => field.id),
+    rowIds: records.map((record) => record.id),
     rowCount: records.length,
     readOnly,
     onCreateRow: onCreateRecord,
@@ -327,7 +328,7 @@ function TableValueCell({
       );
     }
     return (
-      <div className="h-8" role="group" tabIndex={0} onKeyDown={onKeyDown}>
+      <div className="h-8" role="group" onKeyDown={onKeyDown}>
         <ImageInput
           compact
           value={resolvedValue}
@@ -397,6 +398,7 @@ function TableValueCell({
         icon={variableTypeIcon(field.type)}
         className="h-full"
         allowLink={false}
+        ariaLabel={`${field.name} value`}
         placeholder={isEmptyValue ? "(Empty)" : `${field.name} value`}
         onKeyDown={onKeyDown}
         onValidationError={(error) => onValidityChange(path, error)}
@@ -445,7 +447,9 @@ function SortableTableRow({
       {row.getAllCells().map((cell) => (
         <td
           key={cell.id}
-          data-table-cell={cell.column.id === "open" ? undefined : `${row.index}:${cell.column.id}`}
+          data-table-cell={cell.column.id === "open" ? undefined : true}
+          data-table-row-id={cell.column.id === "open" ? undefined : row.original.id}
+          data-table-column-id={cell.column.id === "open" ? undefined : cell.column.id}
           style={{ width: cell.column.getSize() }}
           className={`whitespace-nowrap px-3 py-3 ${
             cell.column.id === "open"

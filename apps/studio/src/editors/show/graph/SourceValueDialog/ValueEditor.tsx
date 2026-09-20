@@ -8,6 +8,7 @@ import {
   PropertyInput,
   Switch,
   Trash2Icon,
+  variableTypeIcon,
   type ImageInputValue,
 } from "@mechane/design-system";
 import {
@@ -202,6 +203,7 @@ function SourceValueInput({
     <div className="flex min-w-0 flex-1 flex-col gap-1">
       <PropertyInput
         type={inputType}
+        icon={variableTypeIcon(type)}
         value={
           value === null || value === undefined
             ? null
@@ -345,9 +347,7 @@ function ShapeValueEditor({
         <div className="flex flex-col gap-1" key={field.id}>
           <div className="flex items-center justify-between gap-2 text-sm">
             <span>{field.name}</span>
-            <span className="text-xs text-muted-foreground">
-              {typeLabel(field.type, shapes)}
-            </span>
+            <span className="text-xs text-muted-foreground">{typeLabel(field.type, shapes)}</span>
           </div>
           {renderValue({
             type: field.type,

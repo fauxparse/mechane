@@ -31,6 +31,8 @@ export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   renderInactiveValue?: (value: ShapeValue | null) => ReactNode;
   /** Render controls inside the input's trailing addon. */
   actions?: ReactNode;
+  /** Accessible name for the input when it differs from the visible placeholder. */
+  ariaLabel?: string;
   placeholder?: string;
   dimension?: "width" | "height";
   unit?: PropertyInputUnit;
@@ -55,6 +57,6 @@ export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   onConstraintToggle?: (constraint: PropertyInputConstraint, enabled: boolean) => void;
   /** Reports why a draft could not be committed, or clears the current error. */
   onValidationError?: (message: string | null) => void;
-  /** Observes Enter/Escape after PropertyInput handles the draft. */
+  /** Observes keys after PropertyInput handles its draft. Invalid Enter commits are not forwarded. */
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
 };

@@ -25,7 +25,7 @@ import {
 } from "@mechane/domain";
 import { useMemo, useState } from "react";
 
-import { pluralize } from "@studio/utils/pluralize";
+import { pluralize } from "../../../../../utils/pluralize";
 import { previewValue } from "../../inspector/source-values-helpers";
 import { ArrayTable } from "./ArrayTable";
 import { RecordDetails } from "./RecordDetails";
@@ -222,7 +222,7 @@ export function ArrayValueEditor({
           onImageUpload={onImageUpload}
           imageAssets={imageAssets}
           onOpenRecord={openRecord}
-          onCreateRecord={addRecordFromTable}
+          onCreateRecord={query.trim() ? undefined : addRecordFromTable}
           onReorder={reorderRecords}
         />
       ) : (

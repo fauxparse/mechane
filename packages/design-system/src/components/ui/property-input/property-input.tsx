@@ -25,6 +25,7 @@ export const PropertyInput = <T extends ShapeValue>({
   type = "text",
   renderInactiveValue,
   actions,
+  ariaLabel,
   placeholder,
   dimension,
   unit = "px",
@@ -113,7 +114,7 @@ export const PropertyInput = <T extends ShapeValue>({
             type="text"
             ref={input.inputElementRef}
             inputMode={input.inputType === "number" ? "decimal" : undefined}
-            aria-label={placeholder ?? input.inputType}
+            aria-label={ariaLabel ?? placeholder ?? input.inputType}
             placeholder={placeholder}
             className={cn(
               "w-full min-w-0 border-0 *:data-[slot=combobox-input]:px-1 rounded-sm h-7 data-[slot=combobox-input]:h-7",
@@ -135,14 +136,13 @@ export const PropertyInput = <T extends ShapeValue>({
               setInputActive(false);
             }}
             onKeyDown={(event) => {
-              input.handleInputKeyDown(event);
-              onKeyDown?.(event);
+              if (input.handleInputKeyDown(event)) onKeyDown?.(event);
             }}
           >
             {hasInactiveValue && (
               <button
                 type="button"
-                aria-label={placeholder ?? `Edit ${input.inputType}`}
+                aria-label={ariaLabel ?? placeholder ?? `Edit ${input.inputType}`}
                 className={cn(
                   "min-w-0 flex-1 truncate border-0 bg-transparent px-1 py-0 text-left text-sm",
                 )}
@@ -162,8 +162,8 @@ export const PropertyInput = <T extends ShapeValue>({
               linkedVariable={input.linkedVariable}
               allowLink={allowLink}
               onScrubPointerDown={input.handleScrubPointerDown}
-              onScrubPointerMove={input.handleScrubPointerMove}
-              onScrubPointerEnd={input.handleScrubPointerEnd}
+              onScrubPointerMove={input.isScrubbing ? input.handleScrubPointerMove : undefined}
+              onScrubPointerEnd={input.isScrubbing ? input.handleScrubPointerEnd : undefined}
               actions={actions}
               connector={
                 <Connector
