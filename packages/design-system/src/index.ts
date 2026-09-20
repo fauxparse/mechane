@@ -100,6 +100,7 @@ export {
   DropdownMenuSubmenuContent,
   DropdownMenuSubmenuTrigger,
   DropdownMenuTrigger,
+  createDropdownMenuHandle,
   dropdownMenuItemVariants,
 } from "./components/ui/dropdown-menu";
 export { ImageCropper } from "./components/ui/image-input/ImageCropper";

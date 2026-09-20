@@ -175,10 +175,11 @@ export function ArrayValueEditor({
     }
     return id;
   };
-  const removeRecord = () => {
-    if (readOnly || !activeRecord) return;
-    const nextRecords = records.filter((record) => record.id !== activeRecord.id);
+  const removeRecord = (recordId = activeRecord?.id) => {
+    if (readOnly || !recordId) return;
+    const nextRecords = records.filter((record) => record.id !== recordId);
     updateArray(nextRecords);
+    if (viewMode === "table" || activeRecord?.id !== recordId) return;
     const nextRecord = nextRecords[Math.min(activeIndex, nextRecords.length - 1)] ?? null;
     if (nextRecord) {
       setRecordId(nextRecord.id);
@@ -226,6 +227,7 @@ export function ArrayValueEditor({
           onImageUpload={onImageUpload}
           imageAssets={imageAssets}
           onOpenRecord={openRecord}
+          onDeleteRecord={removeRecord}
           onCreateRecord={query.trim() ? undefined : addRecordFromTable}
           onReorder={reorderRecords}
         />

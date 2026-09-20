@@ -43,6 +43,7 @@ function NumericScrubbingStory() {
         }}
         onValidityChange={() => setValidityChangeCount((count) => count + 1)}
         onOpenRecord={() => {}}
+        onDeleteRecord={() => {}}
       />
       <output data-testid="scrub-commit-count" className="sr-only">
         {commitCount}

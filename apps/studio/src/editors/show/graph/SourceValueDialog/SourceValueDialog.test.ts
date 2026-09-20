@@ -126,13 +126,14 @@ describe("ValueEditor", () => {
         onRecordChange: () => {},
         onValidityChange: () => {},
         onOpenRecord: () => {},
+        onDeleteRecord: () => {},
       }),
     );
 
     expect(html).toContain('aria-label="Headline value"');
     expect(html).toContain('aria-label="Score value"');
     expect(html).toContain('aria-label="Resize Headline"');
-    expect(html).toContain('aria-label="Open Welcome"');
+    expect(html).toContain('aria-label="Welcome options"');
     expect(html).toContain('src="/alice.png"');
     expect(html).toContain("alice.png");
   });
@@ -156,6 +157,7 @@ describe("ValueEditor", () => {
         onRecordChange: () => {},
         onValidityChange: () => {},
         onOpenRecord: () => {},
+        onDeleteRecord: () => {},
       }),
     );
 

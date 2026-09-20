@@ -14,12 +14,19 @@ import { ChevronRightIcon } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { menuItemClass, menuLabelClass, menuPopupClass, menuSeparatorClass } from "./menu-styles";
 
-function DropdownMenu(props: Menu.Root.Props) {
+function DropdownMenu<Payload>({ ...props }: Menu.Root.Props<Payload>) {
   return <Menu.Root {...props} />;
 }
 
-function DropdownMenuTrigger({ className, ...props }: Menu.Trigger.Props) {
+function DropdownMenuTrigger<Payload>({
+  className,
+  ...props
+}: Menu.Trigger.Props<Payload>) {
   return <Menu.Trigger data-slot="dropdown-menu-trigger" className={className} {...props} />;
+}
+
+export function createDropdownMenuHandle<Payload>() {
+  return Menu.createHandle<Payload>();
 }
 
 interface DropdownMenuContentProps extends Menu.Popup.Props {

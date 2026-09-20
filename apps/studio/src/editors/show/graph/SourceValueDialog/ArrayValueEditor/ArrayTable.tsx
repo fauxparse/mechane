@@ -3,11 +3,20 @@ import type { DragEndEvent } from "@dnd-kit/react";
 import { DragDropProvider, PointerSensor } from "@dnd-kit/react";
 import { isSortable, useSortable } from "@dnd-kit/react/sortable";
 import {
-  ChevronRight,
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  EllipsisIcon,
+  ExternalLinkIcon,
   GripVertical,
   ImageInput,
   PropertyInput,
   Switch,
+  Trash2Icon,
+  createDropdownMenuHandle,
   variableTypeIcon,
   VibeProvider,
   type ImageInputOnUploadProps,
@@ -71,6 +80,10 @@ const DRAG_HANDLE_COLUMN_SIZE = 40;
 const OPEN_COLUMN_SIZE = 44;
 const FIXED_COLUMN_SIZE = DRAG_HANDLE_COLUMN_SIZE + OPEN_COLUMN_SIZE;
 
+type RecordMenuPayload = {
+  recordId: ShapeRecord["id"];
+};
+
 export function ArrayTable({
   records,
   fields,
@@ -84,6 +97,7 @@ export function ArrayTable({
   onRecordChange,
   onValidityChange,
   onOpenRecord,
+  onDeleteRecord,
   onCreateRecord,
 }: {
   records: ShapeRecord[];
@@ -98,21 +112,25 @@ export function ArrayTable({
   onRecordChange(record: ShapeRecord): void;
   onValidityChange(path: ErrorPath, error: string | null): void;
   onOpenRecord(id: string): void;
+  onDeleteRecord(id: ShapeRecord["id"]): void;
   onCreateRecord?(): string | null;
 }) {
   const recordChangeRef = useRef(onRecordChange);
   const validityChangeRef = useRef(onValidityChange);
   const pathRef = useRef(path);
   const openRecordRef = useRef(onOpenRecord);
+  const deleteRecordRef = useRef(onDeleteRecord);
 
   useEffect(() => {
     recordChangeRef.current = onRecordChange;
     validityChangeRef.current = onValidityChange;
     pathRef.current = path;
     openRecordRef.current = onOpenRecord;
-  }, [onRecordChange, onValidityChange, onOpenRecord, path]);
+    deleteRecordRef.current = onDeleteRecord;
+  }, [onDeleteRecord, onRecordChange, onValidityChange, onOpenRecord, path]);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const recordMenu = useMemo(() => createDropdownMenuHandle<RecordMenuPayload>(), []);
 
   const {
     columnSizes: localColumnSizes,
@@ -184,22 +202,24 @@ export function ArrayTable({
           minSize: OPEN_COLUMN_SIZE,
           maxSize: OPEN_COLUMN_SIZE,
           header: "",
-          cell: ({ row }) => (
-            <button
-              type="button"
-              className="rounded-sm p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label={`Open ${recordIdentifier(row.original, fields, imageAssets)}`}
-              onClick={(event) => {
-                event.stopPropagation();
-                openRecordRef.current(row.original.id);
-              }}
-            >
-              <ChevronRight className="size-4" />
-            </button>
-          ),
+          cell: ({ row }) => {
+            const label = recordIdentifier(row.original, fields, imageAssets);
+            return (
+              <DropdownMenuTrigger
+                handle={recordMenu}
+                payload={{ recordId: row.original.id }}
+                render={
+                  <Button variant="ghost" size="icon-sm" aria-label={`${label} options`}>
+                    <EllipsisIcon />
+                  </Button>
+                }
+                onClick={(event) => event.stopPropagation()}
+              />
+            );
+          },
         }),
       ]),
-    [containerWidth, fields, imageAssets, onImageUpload, readOnly],
+    [containerWidth, fields, imageAssets, onImageUpload, readOnly, recordMenu],
   );
 
   const table = useTable({
@@ -228,6 +248,31 @@ export function ArrayTable({
       className="min-w-0 overflow-auto overscroll-x-contain border-t border-b border-border"
     >
       <VibeProvider vibe="table">
+        <DropdownMenu<RecordMenuPayload> handle={recordMenu}>
+          {({ payload }) => (
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => {
+                  if (payload) openRecordRef.current(payload.recordId);
+                }}
+              >
+                <ExternalLinkIcon />
+                Open record
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={readOnly}
+                onClick={() => {
+                  if (payload) deleteRecordRef.current(payload.recordId);
+                }}
+              >
+                <Trash2Icon />
+                Delete record
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          )}
+        </DropdownMenu>
         <DragDropProvider sensors={tableSensors} onDragEnd={finishDrag}>
           <table
             className="table-fixed text-left text-sm"
