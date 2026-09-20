@@ -314,6 +314,7 @@ export function ArrayTable({
                   />
                   {headerGroup.headers.map((header) => (
                     <th
+                      key={header.id}
                       style={{
                         width: header.getSize(),
                         minWidth: header.getSize(),
