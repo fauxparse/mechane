@@ -1,4 +1,4 @@
-import { useCallback, type KeyboardEvent, type RefObject } from "react";
+import { useCallback, useEffect, useRef, type KeyboardEvent, type RefObject } from "react";
 
 type CellPosition = {
   rowIndex: number;
@@ -114,6 +114,16 @@ export function useTableKeyboardNavigation({
     },
     [columnIds, containerRef],
   );
+  const pendingFocusRowIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const rowId = pendingFocusRowIdRef.current;
+    if (!rowId || !rowIds.includes(rowId)) return;
+    const frame = requestAnimationFrame(() => {
+      if (pendingFocusRowIdRef.current === rowId) pendingFocusRowIdRef.current = null;
+      focusCellById(rowId, 0);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusCellById, rowIds]);
 
   const focusCell = useCallback(
     ({ rowIndex, columnIndex }: CellPosition) => {
@@ -150,8 +160,8 @@ export function useTableKeyboardNavigation({
       if (next === "create-row") {
         const id = onCreateRow?.();
         if (!id) return;
+        pendingFocusRowIdRef.current = id;
         event.preventDefault();
-        requestAnimationFrame(() => focusCellById(id, 0));
         return;
       }
       event.preventDefault();

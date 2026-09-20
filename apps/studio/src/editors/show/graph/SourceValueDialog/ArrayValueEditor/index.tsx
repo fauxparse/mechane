@@ -23,7 +23,7 @@ import {
   type Shape,
   type StructuredValueTemplate,
 } from "@mechane/domain";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { pluralize } from "../../../../../utils/pluralize";
 import { previewValue } from "../../inspector/source-values-helpers";
@@ -65,6 +65,10 @@ export function ArrayValueEditor({
   const [recordId, setRecordId] = useState<string | null>(() =>
     focus.kind === "record" ? focus.id : null,
   );
+  useEffect(() => {
+    setViewMode(focus.kind === "record" ? "record" : "table");
+    setRecordId(focus.kind === "record" ? focus.id : null);
+  }, [focus]);
 
   if (normalized === null) {
     return <p className="text-sm text-destructive">This array value could not be opened.</p>;
