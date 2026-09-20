@@ -27,7 +27,7 @@ type Story = StoryObj<typeof meta>;
 function NumericScrubbingStory() {
   const [record, setRecord] = useState(initialRecord);
   const [commitCount, setCommitCount] = useState(0);
-  const [, rerenderAfterValidityChange] = useState(0);
+  const [validityChangeCount, setValidityChangeCount] = useState(0);
 
   return (
     <div className="mx-auto mt-12 w-[42rem] rounded-lg border border-border bg-background py-4">
@@ -41,11 +41,14 @@ function NumericScrubbingStory() {
           setCommitCount((count) => count + 1);
           setRecord(nextRecord);
         }}
-        onValidityChange={() => rerenderAfterValidityChange((revision) => revision + 1)}
+        onValidityChange={() => setValidityChangeCount((count) => count + 1)}
         onOpenRecord={() => {}}
       />
       <output data-testid="scrub-commit-count" className="sr-only">
         {commitCount}
+      </output>
+      <output data-testid="validity-change-count" className="sr-only">
+        {validityChangeCount}
       </output>
     </div>
   );
@@ -164,6 +167,51 @@ export const ViewportExitEndsScrub: Story = {
     if (finalInput?.value !== "17" || finalCommitCount !== "1") {
       throw new Error(
         `Leaving the viewport did not end the scrub; value=${finalInput?.value}, commits=${finalCommitCount}`,
+      );
+    }
+  },
+};
+
+export const TypingInCell: Story = {
+  render: NumericScrubbingStory,
+  play: async ({ canvasElement }) => {
+    const nameInput = canvasElement.querySelector<HTMLInputElement>('[aria-label="Name value"]');
+    if (!nameInput) throw new Error("Text table input is missing");
+
+    nameInput.focus();
+    const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    valueSetter?.call(nameInput, "Edited opening night");
+    nameInput.dispatchEvent(
+      new InputEvent("input", {
+        bubbles: true,
+        data: "Edited opening night",
+        inputType: "insertText",
+      }),
+    );
+    await nextFrame();
+
+    const draftInput = canvasElement.querySelector<HTMLInputElement>('[aria-label="Name value"]');
+    const draftValidityChanges = canvasElement.querySelector(
+      '[data-testid="validity-change-count"]',
+    )?.textContent;
+    if (draftInput?.value !== "Edited opening night" || draftValidityChanges !== "0") {
+      throw new Error(
+        `Typing caused a parent update; value=${draftInput?.value}, validityChanges=${draftValidityChanges}`,
+      );
+    }
+
+    draftInput.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Enter" }));
+    await nextFrame();
+
+    const committedInput = canvasElement.querySelector<HTMLInputElement>(
+      '[aria-label="Name value"]',
+    );
+    const commitCount = canvasElement.querySelector(
+      '[data-testid="scrub-commit-count"]',
+    )?.textContent;
+    if (committedInput?.value !== "Edited opening night" || commitCount !== "1") {
+      throw new Error(
+        `Typed value did not commit once; value=${committedInput?.value}, commits=${commitCount}`,
       );
     }
   },

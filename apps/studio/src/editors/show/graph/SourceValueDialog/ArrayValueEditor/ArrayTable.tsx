@@ -135,6 +135,11 @@ export function ArrayTable({
     readOnly,
     onCreateRow: onCreateRecord,
   });
+  const cellKeyDownRef = useRef(onCellKeyDown);
+
+  useEffect(() => {
+    cellKeyDownRef.current = onCellKeyDown;
+  }, [onCellKeyDown]);
 
   const columns = useMemo(
     () =>
@@ -154,7 +159,7 @@ export function ArrayTable({
                 onImageUpload={onImageUpload}
                 path={[...pathRef.current, row.original.id, field.id]}
                 onKeyDown={(event) =>
-                  onCellKeyDown(
+                  cellKeyDownRef.current(
                     event,
                     row.index,
                     fields.findIndex((candidate) => candidate.id === field.id),
@@ -186,7 +191,7 @@ export function ArrayTable({
           ),
         }),
       ]),
-    [fields, imageAssets, onCellKeyDown, onImageUpload, readOnly],
+    [fields, imageAssets, onImageUpload, readOnly],
   );
 
   const table = useTable({

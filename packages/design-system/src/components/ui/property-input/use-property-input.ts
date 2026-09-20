@@ -131,6 +131,7 @@ export function usePropertyInput<T extends ShapeValue>({
   const [isScrubbing, setIsScrubbing] = useState(false);
   const draftInputRef = useRef<string | null>(null);
   const inputElementRef = useRef<HTMLInputElement | null>(null);
+  const validationErrorRef = useRef<string | null>(null);
   const scrubOrigin = useRef<{
     x: number;
     value: number;
@@ -169,13 +170,19 @@ export function usePropertyInput<T extends ShapeValue>({
     onChange?.(nextValue);
   };
 
+  const reportValidationError = (error: string | null) => {
+    if (validationErrorRef.current === error) return;
+    validationErrorRef.current = error;
+    onValidationError?.(error);
+  };
+
   const updateDraftInput = (nextValue: string | null) => {
     if (inputType === "color" && nextValue !== null && !/^#?[0-9a-f]{0,8}$/i.test(nextValue)) {
       return;
     }
     draftInputRef.current = nextValue;
     setDraftInputValue(nextValue);
-    onValidationError?.(null);
+    reportValidationError(null);
     // The color picker emits draft values continuously while dragging; valid samples must reach
     // controlled consumers immediately so renderers can paint the current color.
     if (inputType === "color" && nextValue !== null) {
@@ -189,10 +196,10 @@ export function usePropertyInput<T extends ShapeValue>({
     if (rawValue === null) return true;
     const nextValue = parsePropertyInputValue<T>(inputType, rawValue, min, max);
     if (nextValue === undefined) {
-      onValidationError?.(propertyInputValidationMessage(inputType));
+      reportValidationError(propertyInputValidationMessage(inputType));
       return false;
     }
-    onValidationError?.(null);
+    reportValidationError(null);
     const sameColor =
       inputType === "color" &&
       nextValue !== null &&
