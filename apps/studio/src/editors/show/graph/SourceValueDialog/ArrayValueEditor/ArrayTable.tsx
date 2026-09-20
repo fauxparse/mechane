@@ -303,6 +303,7 @@ export function ArrayTable({
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   <th
+                    key="reorder"
                     style={{
                       width: DRAG_HANDLE_COLUMN_SIZE,
                       minWidth: DRAG_HANDLE_COLUMN_SIZE,
@@ -512,6 +513,7 @@ function SortableTableRow({
       className={`transition-colors hover:bg-muted/35 ${isDragging ? "opacity-50" : ""} ${isDropTarget ? "ring-2 ring-inset ring-primary" : ""}`}
     >
       <td
+        key="reorder"
         style={{
           width: DRAG_HANDLE_COLUMN_SIZE,
           minWidth: DRAG_HANDLE_COLUMN_SIZE,
