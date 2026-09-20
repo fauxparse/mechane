@@ -43,7 +43,7 @@ import type { ErrorPath, SourceImageAsset } from "../../inspector/source-value-t
 import { previewValue, propertyInputType } from "../../inspector/source-values-helpers";
 import type { ShapeRecord } from "./types";
 import { recordIdentifier } from "./types";
-import { useColumnSizing } from "./use-column-sizing";
+import { MIN_COLUMN_SIZE, useColumnSizing } from "./use-column-sizing";
 import { useTableKeyboardNavigation } from "./use-table-keyboard-navigation";
 
 const tableSensors = (defaults: typeof defaultPreset.sensors) =>
@@ -67,6 +67,9 @@ const features = tableFeatures({
 });
 
 const columnHelper = createColumnHelper<typeof features, ShapeRecord>();
+const DRAG_HANDLE_COLUMN_SIZE = 40;
+const OPEN_COLUMN_SIZE = 44;
+const FIXED_COLUMN_SIZE = DRAG_HANDLE_COLUMN_SIZE + OPEN_COLUMN_SIZE;
 
 export function ArrayTable({
   records,
@@ -122,7 +125,7 @@ export function ArrayTable({
     columnIds: fields.map((field) => field.id),
     savedSizes: columnSizes,
     containerRef,
-    fixedWidth: 84,
+    fixedWidth: FIXED_COLUMN_SIZE,
     enabled: !readOnly && Boolean(onColumnSizesChange),
     onCommit: onColumnSizesChange,
   });
@@ -144,11 +147,14 @@ export function ArrayTable({
   const columns = useMemo(
     () =>
       columnHelper.columns([
-        ...fields.map((field) =>
+        ...fields.map((field, index) =>
           columnHelper.accessor((record) => previewValue(record.fields[field.id]), {
             id: field.id,
             header: field.name,
-            enableResizing: !readOnly,
+            enableResizing:
+              !readOnly &&
+              (index < fields.length - 1 ||
+                containerWidth <= FIXED_COLUMN_SIZE + fields.length * MIN_COLUMN_SIZE),
             cell: ({ row }) => (
               <TableValueCell
                 field={field}
@@ -174,7 +180,9 @@ export function ArrayTable({
         columnHelper.display({
           id: "open",
           enableResizing: false,
-          size: 44,
+          size: OPEN_COLUMN_SIZE,
+          minSize: OPEN_COLUMN_SIZE,
+          maxSize: OPEN_COLUMN_SIZE,
           header: "",
           cell: ({ row }) => (
             <button
@@ -191,7 +199,7 @@ export function ArrayTable({
           ),
         }),
       ]),
-    [fields, imageAssets, onImageUpload, readOnly],
+    [containerWidth, fields, imageAssets, onImageUpload, readOnly],
   );
 
   const table = useTable({
@@ -223,26 +231,48 @@ export function ArrayTable({
         <DragDropProvider sensors={tableSensors} onDragEnd={finishDrag}>
           <table
             className="table-fixed text-left text-sm"
-            style={{ width: Math.max(containerWidth, table.getTotalSize() + 40) }}
+            style={{
+              width: Math.max(containerWidth, table.getTotalSize() + DRAG_HANDLE_COLUMN_SIZE),
+            }}
           >
             <colgroup>
-              <col style={{ width: 40 }} />
+              <col
+                style={{
+                  width: DRAG_HANDLE_COLUMN_SIZE,
+                  minWidth: DRAG_HANDLE_COLUMN_SIZE,
+                  maxWidth: DRAG_HANDLE_COLUMN_SIZE,
+                }}
+              />
               {table.getAllLeafColumns().map((column) => (
-                <col key={column.id} style={{ width: column.getSize() }} />
+                <col
+                  key={column.id}
+                  style={{
+                    width: column.getSize(),
+                    minWidth: column.getSize(),
+                    maxWidth: column.getSize(),
+                  }}
+                />
               ))}
             </colgroup>
             <thead className="bg-muted/45 text-[11px] uppercase tracking-wide text-muted-foreground">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   <th
-                    className="sticky left-0 z-20 w-10 bg-muted/45 px-3 py-2.5 shadow-[2px_0_4px_-2px_rgb(0_0_0/0.25)]"
+                    style={{
+                      width: DRAG_HANDLE_COLUMN_SIZE,
+                      minWidth: DRAG_HANDLE_COLUMN_SIZE,
+                      maxWidth: DRAG_HANDLE_COLUMN_SIZE,
+                    }}
+                    className="sticky left-0 z-20 w-10 min-w-10 max-w-10 bg-muted/45 px-3 py-2.5 shadow-[2px_0_4px_-2px_rgb(0_0_0/0.25)]"
                     aria-label={readOnly ? undefined : "Reorder"}
                   />
                   {headerGroup.headers.map((header) => (
                     <th
-                      key={header.id}
-                      colSpan={header.colSpan}
-                      style={{ width: header.getSize() }}
+                      style={{
+                        width: header.getSize(),
+                        minWidth: header.getSize(),
+                        maxWidth: header.getSize(),
+                      }}
                       className={`relative whitespace-nowrap px-3 py-2.5 font-medium ${
                         header.column.id === "open"
                           ? "sticky right-0 z-20 bg-muted/45 shadow-[-2px_0_4px_-2px_rgb(0_0_0/0.25)]"
@@ -436,7 +466,14 @@ function SortableTableRow({
       ref={ref}
       className={`transition-colors hover:bg-muted/35 ${isDragging ? "opacity-50" : ""} ${isDropTarget ? "ring-2 ring-inset ring-primary" : ""}`}
     >
-      <td className="sticky left-0 z-10 bg-background px-2 py-2 shadow-[2px_0_4px_-2px_rgb(0_0_0/0.25)]">
+      <td
+        style={{
+          width: DRAG_HANDLE_COLUMN_SIZE,
+          minWidth: DRAG_HANDLE_COLUMN_SIZE,
+          maxWidth: DRAG_HANDLE_COLUMN_SIZE,
+        }}
+        className="sticky left-0 z-10 w-10 min-w-10 max-w-10 bg-background px-2 py-2 shadow-[2px_0_4px_-2px_rgb(0_0_0/0.25)]"
+      >
         {!readOnly ? (
           <button
             ref={handleRef}
@@ -455,7 +492,11 @@ function SortableTableRow({
           data-table-cell={cell.column.id === "open" ? undefined : true}
           data-table-row-id={cell.column.id === "open" ? undefined : row.original.id}
           data-table-column-id={cell.column.id === "open" ? undefined : cell.column.id}
-          style={{ width: cell.column.getSize() }}
+          style={{
+            width: cell.column.getSize(),
+            minWidth: cell.column.getSize(),
+            maxWidth: cell.column.getSize(),
+          }}
           className={`whitespace-nowrap px-3 py-3 ${
             cell.column.id === "open"
               ? "sticky right-0 z-10 bg-background shadow-[-2px_0_4px_-2px_rgb(0_0_0/0.25)]"
