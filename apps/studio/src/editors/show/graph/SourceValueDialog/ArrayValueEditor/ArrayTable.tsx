@@ -309,7 +309,7 @@ export function ArrayTable({
                       minWidth: DRAG_HANDLE_COLUMN_SIZE,
                       maxWidth: DRAG_HANDLE_COLUMN_SIZE,
                     }}
-                    className="sticky left-0 z-20 w-10 min-w-10 max-w-10 bg-muted/45 px-3 py-2.5 shadow-[2px_0_4px_-2px_rgb(0_0_0/0.25)]"
+                    className="sticky top-0 left-0 z-30 w-10 min-w-10 max-w-10 bg-muted/45 px-3 py-2.5 shadow-[2px_0_4px_-2px_rgb(0_0_0/0.25)]"
                     aria-label={readOnly ? undefined : "Reorder"}
                   />
                   {headerGroup.headers.map((header) => (
@@ -320,10 +320,10 @@ export function ArrayTable({
                         minWidth: header.getSize(),
                         maxWidth: header.getSize(),
                       }}
-                      className={`relative whitespace-nowrap px-3 py-2.5 font-medium ${
+                      className={`sticky top-0 whitespace-nowrap bg-muted/45 px-3 py-2.5 font-medium ${
                         header.column.id === "open"
-                          ? "sticky right-0 z-20 bg-muted/45 shadow-[-2px_0_4px_-2px_rgb(0_0_0/0.25)]"
-                          : ""
+                          ? "right-0 z-30 shadow-[-2px_0_4px_-2px_rgb(0_0_0/0.25)]"
+                          : "z-20"
                       }`}
                     >
                       {header.isPlaceholder
