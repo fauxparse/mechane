@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type KeyboardEvent, type RefObject } from "react";
+import { useCallback, type KeyboardEvent, type RefObject } from "react";
 
 type CellPosition = {
   rowIndex: number;
@@ -100,7 +100,7 @@ export function useTableKeyboardNavigation({
   const focusCellById = useCallback(
     (rowId: string, columnIndex: number) => {
       const columnId = columnIds[columnIndex];
-      if (!columnId) return;
+      if (!columnId) return false;
       const cell = [
         ...(containerRef.current?.querySelectorAll<HTMLElement>("[data-table-cell]") ?? []),
       ].find(
@@ -110,20 +110,12 @@ export function useTableKeyboardNavigation({
       const focusable = cell?.querySelector<HTMLElement>(
         "input:not([type='file']):not([disabled]):not([aria-hidden='true']), button:not([disabled]), [tabindex]:not([tabindex='-1'])",
       );
-      focusable?.focus();
+      if (!focusable) return false;
+      focusable.focus();
+      return true;
     },
     [columnIds, containerRef],
   );
-  const pendingFocusRowIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    const rowId = pendingFocusRowIdRef.current;
-    if (!rowId || !rowIds.includes(rowId)) return;
-    const frame = requestAnimationFrame(() => {
-      if (pendingFocusRowIdRef.current === rowId) pendingFocusRowIdRef.current = null;
-      focusCellById(rowId, 0);
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [focusCellById, rowIds]);
 
   const focusCell = useCallback(
     ({ rowIndex, columnIndex }: CellPosition) => {
@@ -131,6 +123,18 @@ export function useTableKeyboardNavigation({
       if (rowId) focusCellById(rowId, columnIndex);
     },
     [focusCellById, rowIds],
+  );
+  const focusNewRow = useCallback(
+    (rowId: string) => {
+      let attempts = 0;
+      const tryFocus = () => {
+        if (focusCellById(rowId, 0) || attempts >= 3) return;
+        attempts += 1;
+        requestAnimationFrame(tryFocus);
+      };
+      requestAnimationFrame(tryFocus);
+    },
+    [focusCellById],
   );
 
   const onCellKeyDown = useCallback(
@@ -158,16 +162,15 @@ export function useTableKeyboardNavigation({
       const next = nextTableCell({ rowIndex, columnIndex }, key, rowCount, columnIds.length);
       if (!next) return;
       if (next === "create-row") {
-        const id = onCreateRow?.();
-        if (!id) return;
-        pendingFocusRowIdRef.current = id;
         event.preventDefault();
+        const id = onCreateRow?.();
+        if (id) focusNewRow(id);
         return;
       }
       event.preventDefault();
       focusCell(next);
     },
-    [columnIds.length, focusCell, focusCellById, onCreateRow, readOnly, rowCount],
+    [columnIds.length, focusCell, focusNewRow, onCreateRow, readOnly, rowCount],
   );
 
   return { onCellKeyDown };
