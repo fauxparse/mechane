@@ -86,10 +86,11 @@ import {
   setDevicePerConnection,
   setFlowDefaultScene,
   setFlowSize,
+  setSourceColumnSizes,
   setEdgeLayout,
   setNodeColor,
-  setSceneVariableType,
   setSceneVariableDefault,
+  setSceneVariableType,
   setShapeFieldDefault,
   setShapeFieldRequired,
   setShapeFieldType,
@@ -265,8 +266,8 @@ export interface FlatGraphEdit {
   fieldMapping?: Record<string, string> | null;
   layout?: EdgeLayout | null;
   size?: FlowSize | null;
+  columnSizes?: Record<string, number> | null;
   value?: unknown;
-  targetSourceId?: string | null;
   target?: { sourceId: string; fieldPath: readonly string[] } | null;
   operation?: unknown;
   operand?: unknown;
@@ -316,6 +317,22 @@ function decodeFlowSize(value: FlowSize | null | undefined): FlowSize | null {
     throw new GraphEditCodecError("A Flow size needs finite width and height.");
   }
   return { width: value.width, height: value.height };
+}
+function decodeColumnSizes(
+  value: Record<string, number> | null | undefined,
+): Record<string, number> | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw new GraphEditCodecError("Source column sizes must be an object.");
+  }
+  const sizes: Record<string, number> = {};
+  for (const [columnId, size] of Object.entries(value)) {
+    if (columnId.length === 0 || !Number.isFinite(size) || size < 0) {
+      throw new GraphEditCodecError("Source column sizes must be finite non-negative numbers.");
+    }
+    sizes[columnId] = size;
+  }
+  return sizes;
 }
 
 function required<T>(flat: FlatGraphEdit, field: string, value: T | null | undefined): T {
@@ -923,6 +940,15 @@ export const GRAPH_EDIT_CODECS: { [T in GraphEdit["type"]]: GraphEditCodec<T> } 
       type: GRAPH_COMMAND_TYPES.setFlowSize,
       flowId: required(flat, "flowId", flat.flowId),
       size: decodeFlowSize(flat.size),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.setSourceColumnSizes]: {
+    command: (edit) => setSourceColumnSizes(edit.nodeId, edit.columnSizes),
+    encode: (edit) => ({ type: edit.type, nodeId: edit.nodeId, columnSizes: edit.columnSizes }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.setSourceColumnSizes,
+      nodeId: required(flat, "nodeId", flat.nodeId),
+      columnSizes: decodeColumnSizes(flat.columnSizes),
     }),
   },
   [GRAPH_COMMAND_TYPES.setNodeColor]: {

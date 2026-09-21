@@ -119,7 +119,11 @@ export function ShowGraphEditorInner(props: ShowGraphEditorProps) {
           <ShowGraphEditorOverlays
             selectedNodes={selectedNodes}
             selectedEdges={selectedEdges}
+            imageAssets={props.imageAssets}
+            onImageUpload={props.onImageUpload}
             inspector={inspector}
+            initialSourceValue={props.initialSourceValue}
+            onSourceValueChange={props.onSourceValueChange}
             message={message}
             paletteOpen={paletteOpen}
             setPaletteOpen={setPaletteOpen}

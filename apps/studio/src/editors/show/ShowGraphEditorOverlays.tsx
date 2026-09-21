@@ -9,18 +9,25 @@ import {
 } from "@mechane/design-system";
 import type { DeletionScope } from "@mechane/commands";
 import type { Dispatch, SetStateAction } from "react";
+import type { ImageInputOnUploadProps } from "@mechane/design-system";
 
+import type { ShowGraphValueLocation } from "./ShowGraphEditor";
 import { EditorSlot } from "../../components/EditorLayout/editor-slots";
 import { CommandPalette } from "./commands/CommandPalette";
 import type { PaletteCommand } from "./commands/palette-commands";
 import { GraphInspector } from "./graph/inspector/GraphInspector";
 import type { GraphEdge, GraphNode } from "@mechane/domain";
 import type { GraphInspectorEditing } from "./commands/use-graph-editing";
+import type { SourceImageAsset } from "./graph/inspector/source-value-types";
 
 export interface ShowGraphEditorOverlaysProps {
   selectedNodes: GraphNode[];
   selectedEdges: GraphEdge[];
   inspector: GraphInspectorEditing;
+  imageAssets?: readonly SourceImageAsset[];
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
+  initialSourceValue?: ShowGraphValueLocation;
+  onSourceValueChange?: (location: ShowGraphValueLocation | null) => void;
   message: string | null;
   paletteOpen: boolean;
   setPaletteOpen: Dispatch<SetStateAction<boolean>>;
@@ -34,6 +41,10 @@ export function ShowGraphEditorOverlays({
   selectedNodes,
   selectedEdges,
   inspector,
+  imageAssets,
+  onImageUpload,
+  initialSourceValue,
+  onSourceValueChange,
   message,
   paletteOpen,
   setPaletteOpen,
@@ -46,9 +57,13 @@ export function ShowGraphEditorOverlays({
     <>
       <EditorSlot name="right">
         <GraphInspector
+          imageAssets={imageAssets}
+          onImageUpload={onImageUpload}
           selected={selectedNodes}
           selectedEdges={selectedEdges}
           editing={inspector}
+          initialSourceValue={initialSourceValue}
+          onSourceValueChange={onSourceValueChange}
         />
       </EditorSlot>
 

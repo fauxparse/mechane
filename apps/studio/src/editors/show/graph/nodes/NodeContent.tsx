@@ -197,6 +197,7 @@ export function DevicePairing({
           href={playerSessionUrl(pairingCode)}
           target="_blank"
           rel="noopener noreferrer"
+          aria-label="Open player session"
         >
           <ExternalLinkIcon />
         </a>

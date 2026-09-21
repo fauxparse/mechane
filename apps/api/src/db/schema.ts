@@ -381,6 +381,8 @@ export const graphNodes = pgTable(
     // `assertValidShowGraph` is what keeps this pointing at a Scene of
     // this Flow.
     defaultSceneId: text("default_scene_id"),
+    // Persisted UI-only state for node-owned editor surfaces.
+    editorMetadata: jsonb("editor_metadata"),
     color: text("color"),
     type: jsonb("type"),
     positionX: doublePrecision("position_x").notNull().default(0),

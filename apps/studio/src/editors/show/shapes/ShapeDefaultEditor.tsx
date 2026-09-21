@@ -1,6 +1,6 @@
 import { PlusIcon, Trash2Icon } from "@mechane/design-system";
 import type { Shape, ShapeField, Type } from "@mechane/domain";
-import { defaultValueForType } from "@mechane/domain";
+import { defaultValueForType, typeLabel } from "@mechane/domain";
 
 export type ShapeDefaultEditorProps = {
   field: ShapeField;
@@ -27,7 +27,7 @@ export function ShapeDefaultEditor({
       type={field.type}
       value={field.defaultValue}
       shapes={shapes}
-      label={`Default ${typeLabel(field.type)}`}
+      label={`Default ${typeLabel(field.type, shapes)}`}
       onChange={(value) => onChange({ defaultValue: value })}
       onOpenShape={onOpenShape}
     />
@@ -218,11 +218,4 @@ function PrimitiveEditor({
       />
     </label>
   );
-}
-
-function typeLabel(type: Type): string {
-  if (typeof type === "string") return type === "datetime" ? "date/time" : type;
-  if (type.kind === "array") return `Array of ${typeLabel(type.of)}`;
-  if (type.kind === "shape") return "Shape";
-  return "Object";
 }

@@ -1,7 +1,11 @@
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
+import type { ImageAssetReference, ResolvedImageValue, Shape, Type } from "@mechane/domain";
 import type { ReactNode } from "react";
 
-import type { ImageAssetReference, ResolvedImageValue, Shape, Type } from "@mechane/domain";
+export type SourceImageAsset = ResolvedImageValue &
+  Pick<ImageAssetReference, "revision"> & {
+    name?: string;
+  };
 
 export type SourceValueRow = {
   label: string;
@@ -18,9 +22,10 @@ export type ValueEditorProps = {
   value: unknown;
   shapes: readonly Shape[];
   path: ErrorPath;
+  readOnly?: boolean;
   onChange: (value: unknown) => void;
   onValidityChange: (path: ErrorPath, error: string | null) => void;
-  imageAssets?: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
+  imageAssets?: readonly SourceImageAsset[];
   onImageUpload?: (props: ImageInputOnUploadProps) => void;
 };
 

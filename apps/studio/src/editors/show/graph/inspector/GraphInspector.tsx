@@ -1,3 +1,4 @@
+import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import {
   CableIcon,
   cn,
@@ -10,19 +11,25 @@ import {
 import type { EdgeKind, GraphEdge, GraphNode } from "@mechane/domain";
 import type { GraphInspectorEditing } from "@show-editor/commands/use-graph-editing";
 import { pluralize } from "../../../../utils/pluralize";
+import type { ShowGraphValueLocation } from "../../ShowGraphEditor";
 import { NODE_KIND_META, nodeIcon } from "../node-kinds";
 import { SingleEdge } from "./SingleEdge";
 import { SingleNode } from "./SingleNode";
+import type { SourceImageAsset } from "./source-value-types";
 
 export interface GraphInspectorProps {
   /** The selected nodes, in graph order. */
   selected: GraphNode[];
+  selectedEdges: GraphEdge[];
   /**
    * The selected edges, in graph order. Nodes win when both are selected:
    * a node carries editable properties and an edge currently does not.
    */
-  selectedEdges: GraphEdge[];
   editing: GraphInspectorEditing;
+  imageAssets?: readonly SourceImageAsset[];
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
+  initialSourceValue?: ShowGraphValueLocation;
+  onSourceValueChange?: (location: ShowGraphValueLocation | null) => void;
   className?: string;
 }
 
@@ -151,6 +158,10 @@ export function GraphInspector({
   selected,
   selectedEdges,
   editing,
+  imageAssets,
+  onImageUpload,
+  initialSourceValue,
+  onSourceValueChange,
   className,
 }: GraphInspectorProps) {
   const [node] = selected;
@@ -171,7 +182,14 @@ export function GraphInspector({
             {selected.length > 1 ? (
               <MultiSelection selected={selected} />
             ) : (
-              <SingleNode node={node} editing={editing} />
+              <SingleNode
+                imageAssets={imageAssets}
+                onImageUpload={onImageUpload}
+                node={node}
+                editing={editing}
+                initialSourceValue={initialSourceValue}
+                onSourceValueChange={onSourceValueChange}
+              />
             )}
           </>
         ) : (

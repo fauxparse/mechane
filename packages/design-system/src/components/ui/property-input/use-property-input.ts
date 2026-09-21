@@ -1,4 +1,12 @@
-import { useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+} from "react";
 import type { ShapeValue } from "@mechane/domain";
 
 import { parseHexColor, rgbaToHex } from "./color-utils";
@@ -119,9 +127,18 @@ export function usePropertyInput<T extends ShapeValue>({
   const [variableQuery, setVariableQuery] = useState("");
   const [editingVariable, setEditingVariable] = useState<VariableReference | null>(null);
   const [draftInputValue, setDraftInputValue] = useState<string | null>(null);
+  const [scrubPreviewValue, setScrubPreviewValue] = useState<number | null>(null);
+  const [isScrubbing, setIsScrubbing] = useState(false);
   const draftInputRef = useRef<string | null>(null);
   const inputElementRef = useRef<HTMLInputElement | null>(null);
-  const scrubOrigin = useRef<{ x: number; value: number } | null>(null);
+  const validationErrorRef = useRef<string | null>(null);
+  const scrubOrigin = useRef<{
+    x: number;
+    value: number;
+    previewValue: number;
+    pointerId: number;
+    target: HTMLDivElement;
+  } | null>(null);
 
   const displayedValue = value === undefined ? uncontrolledValue : value;
   const connectedVariable = isVariableReference(displayedValue) ? displayedValue : null;
@@ -129,8 +146,16 @@ export function usePropertyInput<T extends ShapeValue>({
   const currentValue = getDisplayValue(displayedValue);
   const inputType = getInputType(displayedValue, type);
   const currentSizing = sizing ?? uncontrolledSizing;
-  const displayText = formatValueText(currentValue, dimension, unit);
-  const inputText = linkedVariable ? "" : (draftInputValue ?? displayText);
+  const previewValue =
+    scrubPreviewValue === null
+      ? currentValue
+      : ({ kind: "number", value: scrubPreviewValue } as ShapeValue);
+  const displayText = formatValueText(previewValue, dimension, unit);
+  const inputText = linkedVariable
+    ? ""
+    : scrubPreviewValue === null
+      ? (draftInputValue ?? displayText)
+      : displayText;
   const colorText = draftInputValue ?? displayText;
   const filteredVariables = useMemo(() => {
     const query = variableQuery.trim().toLocaleLowerCase();
@@ -145,13 +170,19 @@ export function usePropertyInput<T extends ShapeValue>({
     onChange?.(nextValue);
   };
 
+  const reportValidationError = (error: string | null) => {
+    if (validationErrorRef.current === error) return;
+    validationErrorRef.current = error;
+    onValidationError?.(error);
+  };
+
   const updateDraftInput = (nextValue: string | null) => {
     if (inputType === "color" && nextValue !== null && !/^#?[0-9a-f]{0,8}$/i.test(nextValue)) {
       return;
     }
     draftInputRef.current = nextValue;
     setDraftInputValue(nextValue);
-    onValidationError?.(null);
+    reportValidationError(null);
     // The color picker emits draft values continuously while dragging; valid samples must reach
     // controlled consumers immediately so renderers can paint the current color.
     if (inputType === "color" && nextValue !== null) {
@@ -160,19 +191,15 @@ export function usePropertyInput<T extends ShapeValue>({
     }
   };
 
-  const commitRawValue = (rawValue: string | number) => {
-    commit(createValue<T>(inputType, rawValue));
-  };
-
-  const commitDraftInput = () => {
+  const commitDraftInput = (): boolean => {
     const rawValue = draftInputRef.current;
-    if (rawValue === null) return;
+    if (rawValue === null) return true;
     const nextValue = parsePropertyInputValue<T>(inputType, rawValue, min, max);
     if (nextValue === undefined) {
-      onValidationError?.(propertyInputValidationMessage(inputType));
-      return;
+      reportValidationError(propertyInputValidationMessage(inputType));
+      return false;
     }
-    onValidationError?.(null);
+    reportValidationError(null);
     const sameColor =
       inputType === "color" &&
       nextValue !== null &&
@@ -182,6 +209,7 @@ export function usePropertyInput<T extends ShapeValue>({
       nextValue.value === currentValue.value;
     if (!sameColor) commit(nextValue);
     updateDraftInput(null);
+    return true;
   };
 
   const cancelDraft = () => {
@@ -191,50 +219,107 @@ export function usePropertyInput<T extends ShapeValue>({
       setEditingVariable(null);
     }
   };
-  const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+  const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>): boolean => {
+    if (event.nativeEvent.isComposing) return true;
     if (event.key === "Enter") {
       event.preventDefault();
       (
         event as KeyboardEvent<HTMLInputElement> & { preventBaseUIHandler?: () => void }
       ).preventBaseUIHandler?.();
-      commitDraftInput();
-      return;
+      return commitDraftInput();
     }
     if (event.key === "Backspace" && linkedVariable && connectedVariable) {
       event.preventDefault();
       setEditingVariable(connectedVariable);
       updateDraftInput(formatValueText(connectedVariable.current, dimension, unit));
       commit((connectedVariable.current ?? null) as PropertyInputValue<T> | null);
-      return;
+      return true;
     }
     handleEscapeKey(event, cancelDraft);
+    return true;
   };
 
-  const handleScrubPointerDown = (event: PointerEvent<HTMLSpanElement>) => {
+  const finishScrub = useCallback(
+    (pointerId?: number) => {
+      const origin = scrubOrigin.current;
+      if (!origin || (pointerId !== undefined && pointerId !== origin.pointerId)) return;
+
+      scrubOrigin.current = null;
+      if (origin.target.hasPointerCapture(origin.pointerId)) {
+        origin.target.releasePointerCapture(origin.pointerId);
+      }
+      setScrubPreviewValue(null);
+      setIsScrubbing(false);
+
+      if (origin.previewValue === origin.value) return;
+      const nextValue = createValue<T>(inputType, origin.previewValue);
+      if (value === undefined) setUncontrolledValue(nextValue);
+      onChange?.(nextValue);
+    },
+    [inputType, onChange, value],
+  );
+
+  useEffect(() => {
+    if (!isScrubbing) return;
+
+    const handlePointerEnd = (event: globalThis.PointerEvent) => finishScrub(event.pointerId);
+    const handlePointerOut = (event: globalThis.PointerEvent) => {
+      if (event.relatedTarget === null) finishScrub(event.pointerId);
+    };
+    const handleWindowBlur = () => finishScrub();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") finishScrub();
+    };
+
+    window.addEventListener("pointerup", handlePointerEnd, true);
+    window.addEventListener("pointercancel", handlePointerEnd, true);
+    window.addEventListener("pointerout", handlePointerOut, true);
+    window.addEventListener("blur", handleWindowBlur);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("pointerup", handlePointerEnd, true);
+      window.removeEventListener("pointercancel", handlePointerEnd, true);
+      window.removeEventListener("pointerout", handlePointerOut, true);
+      window.removeEventListener("blur", handleWindowBlur);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [finishScrub, isScrubbing]);
+
+  const handleScrubPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (linkedVariable || currentValue?.kind !== "number") return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
-    scrubOrigin.current = { x: event.clientX, value: currentValue.value };
+    draftInputRef.current = null;
+    setDraftInputValue(null);
+    scrubOrigin.current = {
+      x: event.clientX,
+      value: currentValue.value,
+      previewValue: currentValue.value,
+      pointerId: event.pointerId,
+      target: event.currentTarget,
+    };
+    setScrubPreviewValue(currentValue.value);
+    setIsScrubbing(true);
   };
 
-  const handleScrubPointerMove = (event: PointerEvent<HTMLSpanElement>) => {
-    if (!scrubOrigin.current || currentValue?.kind !== "number") return;
+  const handleScrubPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const origin = scrubOrigin.current;
+    if (!origin || event.pointerId !== origin.pointerId) return;
+    if (event.pointerType === "mouse" && event.buttons === 0) {
+      finishScrub(event.pointerId);
+      return;
+    }
     const scrubUnit = step && step > 0 ? step : 1;
     const scale = Math.max(0.1, scrubScale);
-    const delta =
-      Math.round((event.clientX - scrubOrigin.current.x) / scale / scrubUnit) * scrubUnit;
-    const nextValue = Math.min(
-      max ?? Infinity,
-      Math.max(min ?? -Infinity, scrubOrigin.current.value + delta),
-    );
-    commitRawValue(nextValue);
+    const delta = Math.round((event.clientX - origin.x) / scale / scrubUnit) * scrubUnit;
+    const nextValue = Math.min(max ?? Infinity, Math.max(min ?? -Infinity, origin.value + delta));
+    if (nextValue === origin.previewValue) return;
+    origin.previewValue = nextValue;
+    setScrubPreviewValue(nextValue);
   };
 
-  const handleScrubPointerEnd = (event: PointerEvent<HTMLSpanElement>) => {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    scrubOrigin.current = null;
+  const handleScrubPointerEnd = (event: PointerEvent<HTMLDivElement>) => {
+    finishScrub(event.pointerId);
   };
 
   const commitSizing = (nextSizing: PropertyInputSizing) => {
@@ -300,6 +385,7 @@ export function usePropertyInput<T extends ShapeValue>({
     variableQuery,
     setVariableQuery,
     inputElementRef,
+    isScrubbing,
     updateDraftInput,
     commitDraftInput,
     handleInputKeyDown,

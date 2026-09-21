@@ -207,6 +207,9 @@ function toNode(
     name: row.name,
     position: { x: row.positionX, y: row.positionY },
     ...(row.color ? { color: row.color as FlowColor } : {}),
+    ...(row.editorMetadata
+      ? { editorMetadata: row.editorMetadata as GraphNode["editorMetadata"] }
+      : {}),
   };
   switch (row.kind) {
     case "scene":
@@ -671,6 +674,7 @@ export async function persistGraphRows(
           parentId: sql.raw("excluded.parent_id"),
           defaultSceneId: sql.raw("excluded.default_scene_id"),
           size: sql.raw("excluded.size"),
+          editorMetadata: sql.raw("excluded.editor_metadata"),
           color: sql.raw("excluded.color"),
           type: sql.raw("excluded.type"),
           positionX: sql.raw("excluded.position_x"),

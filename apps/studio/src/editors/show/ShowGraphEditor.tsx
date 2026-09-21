@@ -1,10 +1,12 @@
-import { ReactFlowProvider } from "@xyflow/react";
 import type { Ref } from "react";
-import type { GraphEdit } from "@mechane/commands";
+import { ReactFlowProvider } from "@xyflow/react";
 import type { Viewport } from "@xyflow/react";
+import type { GraphEdit } from "@mechane/commands";
 import type { ShowGraph } from "@mechane/domain";
+import type { ImageInputOnUploadProps } from "@mechane/design-system";
 
 import type { ApiGraph } from "./data/api-graph";
+import type { SourceImageAsset } from "./graph/inspector/source-value-types";
 import { ShowGraphEditorInner } from "./ShowGraphEditorInner";
 
 export interface ShowGraphEditorHandle {
@@ -14,11 +16,20 @@ export interface ShowGraphEditorHandle {
   applyAmendments(edits: readonly GraphEdit[]): void;
 }
 
+export interface ShowGraphValueLocation {
+  nodeId: string;
+  fieldPath: readonly string[];
+}
+
 export interface ShowGraphEditorProps {
   graph: ApiGraph | null | undefined;
+  imageAssets?: readonly SourceImageAsset[];
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
   onEdit?: (edits: readonly GraphEdit[], graph: ShowGraph) => void;
   initialViewport?: Viewport;
   onViewportChange?(viewport: Viewport): void;
+  initialSourceValue?: ShowGraphValueLocation;
+  onSourceValueChange?(location: ShowGraphValueLocation | null): void;
   className?: string;
   ref?: Ref<ShowGraphEditorHandle>;
 }

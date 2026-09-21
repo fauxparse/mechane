@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from "react";
 import { createContext, useContext } from "react";
 
-export type Vibe = "default" | "inspector";
+export type Vibe = "default" | "inspector" | "table";
 
 const VibeContext = createContext<Vibe>("default");
 

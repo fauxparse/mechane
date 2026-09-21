@@ -4,9 +4,16 @@
 // hand any more. This file only owns the two things codegen can't: the
 // shared QueryClient and the router instance built around it.
 import { QueryClient } from "@tanstack/react-query";
-import { createRouter } from "@tanstack/react-router";
+import { createRouteMask, createRouter } from "@tanstack/react-router";
 
 import { routeTree } from "./routeTree.gen";
+
+const sourceValueRouteMask = createRouteMask({
+  routeTree,
+  from: "/shows/$showId/source/$sourceId/$fieldId",
+  to: "/shows/$showId",
+  params: (previous) => ({ showId: previous.showId }),
+});
 
 const CANVAS_EDITOR_PATH = /^\/shows\/[^/]+\/art(?:\/[^/]+)?\/?$/;
 const SHOW_EDITOR_PATH = /^\/shows\/[^/]+(?:\/shapes(?:\/[^/]+)?)?\/?$/;
@@ -29,10 +36,10 @@ function prefersReducedMotion(): boolean {
 // `src/routes/_guest/route.tsx) and the app's components read/write the
 // same cache.
 export const queryClient = new QueryClient();
-
 export const router = createRouter({
   routeTree,
   context: { queryClient },
+  routeMasks: [sourceValueRouteMask],
   defaultViewTransition: {
     types: ({ fromLocation, toLocation }) => {
       if (prefersReducedMotion() || !fromLocation) return false;

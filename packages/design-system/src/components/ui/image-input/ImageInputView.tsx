@@ -1,15 +1,13 @@
 import type { ResolvedImageValue } from "@mechane/domain";
 import type { ChangeEvent, CSSProperties, DragEvent, ReactNode, RefObject } from "react";
-import { PencilIcon, Trash2Icon } from "lucide-react";
 
-import { Button } from "../button";
 import { cn } from "../../../lib/utils";
-import { ImageUploadIcon } from "./ImageUploadIcon";
-import { ACCEPTED_IMAGE_ACCEPT } from "./utils";
+import { ImageInputDropzone } from "./ImageInputDropzone";
 import type { ImageInputValue } from "./types";
 
 type ImageInputViewProps = {
   className?: string;
+  compact?: boolean;
   value: ImageInputValue | null;
   resolvedValue: ResolvedImageValue | null;
   phase: "idle" | "loading";
@@ -36,6 +34,7 @@ type ImageInputViewProps = {
 
 export const ImageInputView = ({
   className,
+  compact = false,
   value,
   resolvedValue,
   phase,
@@ -59,11 +58,12 @@ export const ImageInputView = ({
   onEdit,
   onDelete,
 }: ImageInputViewProps) => {
-  const isBusy = busy;
   return (
     <div
       className={cn(
-        "group/input relative w-full aspect-video rounded-md grid overflow-hidden *:col-start-1 *:row-start-1",
+        compact
+          ? "group/input relative inline-grid h-8! max-h-8! min-h-8! w-full! min-w-24 max-w-44 overflow-hidden rounded-sm *:col-start-1 *:row-start-1 [&>img]:h-full! [&>img]:w-8! [&>img]:object-cover [&_button]:h-6 [&_button]:min-w-0 [&_button]:px-1 [&_button]:text-[10px]"
+          : "group/input relative w-full aspect-video rounded-md grid overflow-hidden *:col-start-1 *:row-start-1",
         className,
       )}
       data-empty={!resolvedValue && !previewUrl}
@@ -82,64 +82,31 @@ export const ImageInputView = ({
           } as CSSProperties
         }
       />
-      <div
-        className={cn(
-          "relative z-1 flex w-full h-full flex-col items-center justify-center gap-2 p-2 rounded-[inherit] bg-muted/50 border border-dashed border-transparent transition-opacity duration-500 hover:duration-300",
-          isBusy
-            ? "opacity-100"
-            : "group-data-[empty=false]/input:opacity-0 group-data-[empty=false]/input:backdrop-blur-sm group-data-[empty=false]/input:backdrop-saturate-25 group-data-[empty=false]/input:backdrop-brightness-50 hover:opacity-100 group-data-[picker-open=true]/input:opacity-100 group-data-[dragging=true]/input:border-foreground group-data-[dragging=true]/input:opacity-100",
-        )}
+      {resolvedValue?.name ? (
+        <span className="z-2 self-end justify-self-stretch truncate bg-black/60 px-2 py-1 text-xs text-white">
+          {resolvedValue.name}
+        </span>
+      ) : null}
+      <ImageInputDropzone
+        value={value}
+        phase={phase}
+        busy={busy}
+        isValidating={isValidating}
+        progress={progress}
+        readOnly={readOnly}
+        canUpload={canUpload}
+        inputRef={inputRef}
+        onFileInputChange={onFileInputChange}
         onDragEnter={onDragEnter}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
-      >
-        <ImageUploadIcon state={phase} progress={progress} />
-        <input
-          className="sr-only"
-          type="file"
-          aria-label="Choose image file"
-          accept={ACCEPTED_IMAGE_ACCEPT}
-          ref={inputRef}
-          onChange={onFileInputChange}
-          disabled={readOnly || isBusy || !canUpload}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="group-data-[empty=false]/input:border-foreground group-data-[empty=false]/input:hover:border-foreground disabled:border-transparent"
-          onClick={onBrowse}
-          disabled={readOnly || isBusy || !canUpload}
-        >
-          {isValidating ? "Checking..." : isBusy ? "Uploading..." : "Browse files"}
-        </Button>
-        {phase === "loading" && (
-          <Button type="button" variant="ghost" onClick={onCancelUpload}>
-            Cancel
-          </Button>
-        )}
-        {onEdit && !isBusy && !readOnly && (
-          <Button type="button" variant="secondary" onClick={onEdit}>
-            <PencilIcon className="size-4" />
-            Edit
-          </Button>
-        )}
-        <div className="absolute top-2 left-2 right-2 z-2 flex justify-between items-center gap-2 pointer-events-none">
-          {!isBusy && variableControl}
-          {!isBusy && onDelete && value && !readOnly && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="rounded-full bg-neutral-900/50 hover:bg-neutral-900/75 dark:bg-neutral-900/50 dark:hover:bg-neutral-900/75 fg-neutral-100 pointer-events-auto"
-              onClick={onDelete}
-            >
-              <Trash2Icon className="size-4" />
-            </Button>
-          )}
-        </div>
-      </div>
+        onBrowse={onBrowse}
+        onCancelUpload={onCancelUpload}
+        variableControl={variableControl}
+        onEdit={onEdit}
+        onDelete={onDelete}
+      />
     </div>
   );
 };

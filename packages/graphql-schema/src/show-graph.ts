@@ -69,6 +69,7 @@ export const GetShowGraphQuery = graphql(
             y
           }
           color
+          editorMetadata
           ... on SceneNode {
             variables {
               id
@@ -184,6 +185,7 @@ export const GetShowGraphQuery = graphql(
           params
           cueId
           position
+          parameterMappings
         }
         slotEventBindings {
           id

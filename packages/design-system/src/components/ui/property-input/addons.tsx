@@ -33,9 +33,9 @@ export function Addons<T extends ShapeValue>({
   colorText: string;
   linkedVariable: VariableReference<T> | null;
   allowLink?: boolean;
-  onScrubPointerDown: PointerEventHandler<HTMLSpanElement>;
-  onScrubPointerMove: PointerEventHandler<HTMLSpanElement>;
-  onScrubPointerEnd: PointerEventHandler<HTMLSpanElement>;
+  onScrubPointerDown: PointerEventHandler<HTMLDivElement>;
+  onScrubPointerMove?: PointerEventHandler<HTMLDivElement>;
+  onScrubPointerEnd?: PointerEventHandler<HTMLDivElement>;
   connector: ReactNode;
   actions?: ReactNode;
 }) {
@@ -46,23 +46,15 @@ export function Addons<T extends ShapeValue>({
           align="inline-start"
           className={cn(
             "h-full aspect-square p-0 flex items-center justify-center select-none",
-            inputType === "number" && "cursor-ew-resize",
+            inputType === "number" && "touch-none cursor-ew-resize",
           )}
+          onPointerDown={inputType === "number" ? onScrubPointerDown : undefined}
+          onPointerMove={inputType === "number" ? onScrubPointerMove : undefined}
+          onPointerUp={inputType === "number" ? onScrubPointerEnd : undefined}
+          onPointerCancel={inputType === "number" ? onScrubPointerEnd : undefined}
+          onLostPointerCapture={inputType === "number" ? onScrubPointerEnd : undefined}
         >
-          {inputType === "number" ? (
-            <span
-              role="presentation"
-              className="touch-none select-none"
-              onPointerDown={onScrubPointerDown}
-              onPointerMove={onScrubPointerMove}
-              onPointerUp={onScrubPointerEnd}
-              onPointerCancel={onScrubPointerEnd}
-            >
-              {renderIcon(icon)}
-            </span>
-          ) : (
-            renderIcon(icon)
-          )}
+          {renderIcon(icon)}
         </InputGroupAddon>
       )}
       {inputType === "color" && (

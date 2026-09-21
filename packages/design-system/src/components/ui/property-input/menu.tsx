@@ -60,96 +60,138 @@ export function Menu<T extends ShapeValue>({
 
   return (
     <ComboboxContent className={cn("p-0.5 min-w-fit", inputType === "color" && "overflow-y-auto")}>
-      {inputType === "color" && (
+      {inputType === "color" ? (
         <>
           <InlineColorPicker value={colorText} onChange={onColorChange} />
           <ComboboxSeparator />
         </>
-      )}
+      ) : null}
       <ComboboxList>
-        {dimension && (
-          <>
-            <ComboboxGroup>
-              <ComboboxItem value="fixed">
-                <RulerDimensionLineIcon className={cn(dimension === "height" && "rotate-90")} />
-                Fixed {dimension}
-                <CheckIcon
-                  className={cn("ml-auto", sizing === "fixed" ? "opacity-100" : "opacity-0")}
-                />
-              </ComboboxItem>
-              <ComboboxItem value="fill">
-                {dimension === "width" ? <ChevronsLeftRightIcon /> : <ChevronsUpDownIcon />}Fill
-                container
-                <CheckIcon
-                  className={cn("ml-auto", sizing === "fill" ? "opacity-100" : "opacity-0")}
-                />
-              </ComboboxItem>
-              <ComboboxItem value="hug">
-                {dimension === "width" ? <ChevronsRightLeftIcon /> : <ChevronsDownUpIcon />}Hug
-                contents
-                <CheckIcon
-                  className={cn("ml-auto", sizing === "hug" ? "opacity-100" : "opacity-0")}
-                />
-              </ComboboxItem>
-            </ComboboxGroup>
-            <ComboboxSeparator />
-            <ComboboxGroup>
-              <ComboboxItem value="add-min">
-                Add min {dimension}
-                <CheckIcon
-                  className={cn("ml-auto", constraints?.min ? "opacity-100" : "opacity-0")}
-                />
-              </ComboboxItem>
-              <ComboboxItem value="add-max">
-                Add max {dimension}
-                <CheckIcon
-                  className={cn("ml-auto", constraints?.max ? "opacity-100" : "opacity-0")}
-                />
-              </ComboboxItem>
-            </ComboboxGroup>
-            <ComboboxSeparator />
-          </>
-        )}
-        {presets?.includes("auto") ? (
-          <>
-            <ComboboxGroup>
-              <ComboboxItem value="auto">
-                Auto
-                <CheckIcon className={cn("ml-auto", auto ? "opacity-100" : "opacity-0")} />
-              </ComboboxItem>
-            </ComboboxGroup>
-            <ComboboxSeparator />
-          </>
+        {dimension ? (
+          <DimensionMenu dimension={dimension} sizing={sizing} constraints={constraints} />
         ) : null}
-        {presets && presets.length > 0 ? (
-          <>
-            <ComboboxGroup>
-              {presets.map((preset) =>
-                preset === "auto" ? null : (
-                  <ComboboxItem key={String(preset)} value={String(preset)}>
-                    {preset}
-                  </ComboboxItem>
-                ),
-              )}
-            </ComboboxGroup>
-            <ComboboxSeparator />
-          </>
-        ) : null}
-        <ComboboxGroup>
-          {allowAuto && !presets?.includes("auto") && (
-            <ComboboxItem value="auto">
-              Auto
-              <CheckIcon className={cn("ml-auto", auto ? "opacity-100" : "opacity-0")} />
-            </ComboboxItem>
-          )}
-          {allowLink && (
-            <ComboboxItem value="connect">
-              <PlugIcon />
-              {linkedVariable ? "Change variable…" : "Connect variable…"}
-            </ComboboxItem>
-          )}
-        </ComboboxGroup>
+        <AutoPresetMenu presets={presets} auto={auto} />
+        <PresetsMenu presets={presets} />
+        <ConnectionMenu
+          allowAuto={allowAuto}
+          allowLink={allowLink}
+          auto={auto}
+          presets={presets}
+          linkedVariable={linkedVariable}
+        />
       </ComboboxList>
     </ComboboxContent>
+  );
+}
+
+function DimensionMenu({
+  dimension,
+  sizing,
+  constraints,
+}: {
+  dimension: "width" | "height";
+  sizing: PropertyInputSizing;
+  constraints?: PropertyInputConstraints;
+}) {
+  return (
+    <>
+      <ComboboxGroup>
+        <ComboboxItem value="fixed">
+          <RulerDimensionLineIcon className={cn(dimension === "height" && "rotate-90")} />
+          Fixed {dimension}
+          <CheckIcon className={cn("ml-auto", sizing === "fixed" ? "opacity-100" : "opacity-0")} />
+        </ComboboxItem>
+        <ComboboxItem value="fill">
+          {dimension === "width" ? <ChevronsLeftRightIcon /> : <ChevronsUpDownIcon />}Fill container
+          <CheckIcon className={cn("ml-auto", sizing === "fill" ? "opacity-100" : "opacity-0")} />
+        </ComboboxItem>
+        <ComboboxItem value="hug">
+          {dimension === "width" ? <ChevronsRightLeftIcon /> : <ChevronsDownUpIcon />}Hug contents
+          <CheckIcon className={cn("ml-auto", sizing === "hug" ? "opacity-100" : "opacity-0")} />
+        </ComboboxItem>
+      </ComboboxGroup>
+      <ComboboxSeparator />
+      <ComboboxGroup>
+        <ComboboxItem value="add-min">
+          Add min {dimension}
+          <CheckIcon className={cn("ml-auto", constraints?.min ? "opacity-100" : "opacity-0")} />
+        </ComboboxItem>
+        <ComboboxItem value="add-max">
+          Add max {dimension}
+          <CheckIcon className={cn("ml-auto", constraints?.max ? "opacity-100" : "opacity-0")} />
+        </ComboboxItem>
+      </ComboboxGroup>
+      <ComboboxSeparator />
+    </>
+  );
+}
+
+function AutoPresetMenu({
+  presets,
+  auto,
+}: {
+  presets?: readonly PropertyInputPreset[];
+  auto: boolean;
+}) {
+  if (!presets?.includes("auto")) return null;
+  return (
+    <>
+      <ComboboxGroup>
+        <ComboboxItem value="auto">
+          Auto
+          <CheckIcon className={cn("ml-auto", auto ? "opacity-100" : "opacity-0")} />
+        </ComboboxItem>
+      </ComboboxGroup>
+      <ComboboxSeparator />
+    </>
+  );
+}
+
+function PresetsMenu({ presets }: { presets?: readonly PropertyInputPreset[] }) {
+  if (!presets || presets.length === 0) return null;
+  return (
+    <>
+      <ComboboxGroup>
+        {presets.map((preset) =>
+          preset === "auto" ? null : (
+            <ComboboxItem key={String(preset)} value={String(preset)}>
+              {preset}
+            </ComboboxItem>
+          ),
+        )}
+      </ComboboxGroup>
+      <ComboboxSeparator />
+    </>
+  );
+}
+
+function ConnectionMenu<T extends ShapeValue>({
+  allowAuto,
+  allowLink,
+  auto,
+  presets,
+  linkedVariable,
+}: {
+  allowAuto?: boolean;
+  allowLink?: boolean;
+  auto: boolean;
+  presets?: readonly PropertyInputPreset[];
+  linkedVariable: VariableReference<T> | null;
+}) {
+  return (
+    <ComboboxGroup>
+      {allowAuto && !presets?.includes("auto") ? (
+        <ComboboxItem value="auto">
+          Auto
+          <CheckIcon className={cn("ml-auto", auto ? "opacity-100" : "opacity-0")} />
+        </ComboboxItem>
+      ) : null}
+      {allowLink ? (
+        <ComboboxItem value="connect">
+          <PlugIcon />
+          {linkedVariable ? "Change variable…" : "Connect variable…"}
+        </ComboboxItem>
+      ) : null}
+    </ComboboxGroup>
   );
 }

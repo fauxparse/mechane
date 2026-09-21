@@ -575,37 +575,45 @@ async function loadManifest(): Promise<Manifest> {
 }
 
 async function loadThemes(manifest: Manifest): Promise<GeneratedTheme[]> {
+  const sources = manifest.themes.flatMap((entry) =>
+    (["dark", "light"] as const).map((mode) => ({
+      entry,
+      mode,
+      sourcePath: join(VENDOR_ROOT, entry[mode]),
+    })),
+  );
+  for (const { sourcePath } of sources) {
+    if (!existsSync(sourcePath))
+      throw new Error(`Manifest source not found: ${relative(PACKAGE_ROOT, sourcePath)}`);
+  }
+  const sourceTexts = await Promise.all(
+    sources.map(({ sourcePath }) => readFile(sourcePath, "utf8")),
+  );
   const generated: GeneratedTheme[] = [];
-  for (const entry of manifest.themes) {
-    for (const mode of ["dark", "light"] as const) {
-      const sourcePath = join(VENDOR_ROOT, entry[mode]);
-      if (!existsSync(sourcePath))
-        throw new Error(`Manifest source not found: ${relative(PACKAGE_ROOT, sourcePath)}`);
-      const scheme = parseScheme(
-        await readFile(sourcePath, "utf8"),
-        relative(PACKAGE_ROOT, sourcePath),
+  for (const [index, { entry, mode, sourcePath }] of sources.entries()) {
+    const sourceText = sourceTexts[index];
+    if (sourceText === undefined) throw new Error(`Manifest source missing at index ${index}`);
+    const scheme = parseScheme(sourceText, relative(PACKAGE_ROOT, sourcePath));
+    if (scheme.variant !== mode)
+      throw new Error(`${sourcePath}: expected ${mode} scheme, got ${scheme.variant}`);
+    const scales: Record<string, Record<Step, string>> = {
+      neutral: generateNeutralScale(scheme),
+    };
+    for (const key of COLOR_KEYS)
+      scales[key] = generateScale(
+        scheme.palette[
+          `base${key === "red" ? "08" : key === "orange" ? "09" : key === "yellow" ? "0a" : key === "green" ? "0b" : key === "aqua" ? "0c" : key === "blue" ? "0d" : "0e"}`
+        ],
+        key,
       );
-      if (scheme.variant !== mode)
-        throw new Error(`${sourcePath}: expected ${mode} scheme, got ${scheme.variant}`);
-      const scales: Record<string, Record<Step, string>> = {
-        neutral: generateNeutralScale(scheme),
-      };
-      for (const key of COLOR_KEYS)
-        scales[key] = generateScale(
-          scheme.palette[
-            `base${key === "red" ? "08" : key === "orange" ? "09" : key === "yellow" ? "0a" : key === "green" ? "0b" : key === "aqua" ? "0c" : key === "blue" ? "0d" : "0e"}`
-          ],
-          key,
-        );
-      generated.push({
-        key: entry.key,
-        label: entry.label,
-        primary: entry.primary,
-        mode,
-        scales,
-        semantic: semanticValues(scales, entry.primary, mode),
-      });
-    }
+    generated.push({
+      key: entry.key,
+      label: entry.label,
+      primary: entry.primary,
+      mode,
+      scales,
+      semantic: semanticValues(scales, entry.primary, mode),
+    });
   }
   return generated;
 }

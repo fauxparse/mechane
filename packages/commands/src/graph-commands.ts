@@ -84,6 +84,7 @@ export const GRAPH_COMMAND_TYPES = {
   removeEdge: "graph.removeEdge",
   setFlowDefaultScene: "graph.setFlowDefaultScene",
   setFlowSize: "graph.setFlowSize",
+  setSourceColumnSizes: "graph.setSourceColumnSizes",
   setSourceType: "graph.setSourceType",
   setWiringFieldMapping: "graph.setWiringFieldMapping",
   setEdgeLayout: "graph.setEdgeLayout",
@@ -620,6 +621,58 @@ export function setFlowSize(
     apply: (graph) => withFlowSize(graph, flowId, size),
     restore: (graph, captured) => withFlowSize(graph, flowId, captured ?? null),
   });
+}
+
+/** Persists UI-only column widths on a Source node. */
+export function setSourceColumnSizes(
+  nodeId: string,
+  columnSizes: Record<string, number> | null,
+  label = "Resize source columns",
+): ShowGraphCommand {
+  return capturing<ShowGraph, Record<string, number> | undefined, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setSourceColumnSizes,
+    label,
+    scope: "selection",
+    coalesceKey: `${GRAPH_COMMAND_TYPES.setSourceColumnSizes}:${nodeId}`,
+    edits: [{ type: GRAPH_COMMAND_TYPES.setSourceColumnSizes, nodeId, columnSizes }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.setSourceColumnSizes, nodeId, columnSizes: captured ?? null },
+    ],
+    capture: (graph) => {
+      const node = graph.nodes[nodeIndex(graph, nodeId)] as GraphNode;
+      if (node.kind !== "source") throw new UnknownGraphTargetError("Source", nodeId);
+      return node.editorMetadata?.columnSizes ? { ...node.editorMetadata.columnSizes } : undefined;
+    },
+    isEmpty: (graph) => {
+      const node = graph.nodes[nodeIndex(graph, nodeId)] as GraphNode;
+      if (node.kind !== "source") throw new UnknownGraphTargetError("Source", nodeId);
+      return (
+        JSON.stringify(node.editorMetadata?.columnSizes ?? null) === JSON.stringify(columnSizes)
+      );
+    },
+    apply: (graph) => withSourceColumnSizes(graph, nodeId, columnSizes),
+    restore: (graph, captured) => withSourceColumnSizes(graph, nodeId, captured ?? null),
+  });
+}
+function withSourceColumnSizes(
+  graph: ShowGraph,
+  nodeId: string,
+  columnSizes: Record<string, number> | null,
+): ShowGraph {
+  const index = nodeIndex(graph, nodeId);
+  const node = graph.nodes[index] as GraphNode;
+  if (node.kind !== "source") throw new UnknownGraphTargetError("Source", nodeId);
+  const metadata = { ...node.editorMetadata };
+  if (columnSizes === null) {
+    delete metadata.columnSizes;
+  } else {
+    metadata.columnSizes = { ...columnSizes };
+  }
+  if (Object.keys(metadata).length === 0) {
+    const { editorMetadata: _editorMetadata, ...withoutMetadata } = node;
+    return replaceNode(graph, index, withoutMetadata);
+  }
+  return replaceNode(graph, index, { ...node, editorMetadata: metadata });
 }
 
 function withFlowSize(graph: ShowGraph, flowId: string, size: FlowSize | null): ShowGraph {

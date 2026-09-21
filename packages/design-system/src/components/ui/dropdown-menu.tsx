@@ -14,12 +14,23 @@ import { ChevronRightIcon } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { menuItemClass, menuLabelClass, menuPopupClass, menuSeparatorClass } from "./menu-styles";
 
-function DropdownMenu(props: Menu.Root.Props) {
+function DropdownMenu<Payload>({ ...props }: Menu.Root.Props<Payload>) {
   return <Menu.Root {...props} />;
 }
 
-function DropdownMenuTrigger({ className, ...props }: Menu.Trigger.Props) {
+function DropdownMenuTrigger<Payload>({ className, ...props }: Menu.Trigger.Props<Payload>) {
   return <Menu.Trigger data-slot="dropdown-menu-trigger" className={className} {...props} />;
+}
+
+/**
+ * Connects a `DropdownMenu` to triggers rendered outside it. One handle plus
+ * one root serves a whole list: each trigger passes its own `payload`, and the
+ * root receives the payload of whichever trigger opened it.
+ */
+export type DropdownMenuHandle<Payload> = Menu.Handle<Payload>;
+
+export function createDropdownMenuHandle<Payload>(): DropdownMenuHandle<Payload> {
+  return Menu.createHandle<Payload>();
 }
 
 interface DropdownMenuContentProps extends Menu.Popup.Props {

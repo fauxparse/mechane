@@ -5,7 +5,7 @@ import type { Block, SceneVariable, Shape } from "@mechane/domain";
 import type { CanvasArtboardDocument } from "../../../../api/canvas";
 import type { CanvasInspectorModel } from "./canvas-inspector-types";
 import { CanvasInspectorProvider } from "./CanvasInspectorContext";
-import { SlotInputsSection } from "./CanvasInspectorFields";
+import { SlotInputsSection } from "./SlotInputsSection";
 
 const candidateShape: Shape = {
   id: "shape_candidate",

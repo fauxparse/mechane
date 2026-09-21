@@ -1,4 +1,4 @@
-import type { ShapeValue, Type } from "@mechane/domain";
+import { typeLabel, type ShapeValue, type Type } from "@mechane/domain";
 import { upperFirst } from "es-toolkit";
 import {
   CalendarClockIcon,
@@ -53,9 +53,10 @@ export function variableTypeIcon(
 }
 
 export function variableTypeLabel(type: Type | ShapeValue["kind"] | null | undefined): string {
+  if (typeof type === "string") return type === "array" ? "Array" : typeLabel(type);
   switch (variableTypeKind(type)) {
-    case "datetime":
-      return "Date and time";
+    case "object":
+      return "Object";
     default:
       return upperFirst(variableTypeKind(type));
   }

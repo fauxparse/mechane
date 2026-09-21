@@ -84,6 +84,7 @@ export function useShowGraphEditorController({
   graph,
   onEdit,
   initialViewport,
+  initialSourceValue,
   ref,
 }: ShowGraphEditorProps): ShowGraphEditorController {
   const editing = useGraphEditing(graph, onEdit);
@@ -104,7 +105,7 @@ export function useShowGraphEditorController({
     });
   }, []);
   const dragging = useRef(false);
-  const selectOnArrival = useRef<string | null>(null);
+  const selectOnArrival = useRef<string | null>(initialSourceValue?.nodeId ?? null);
   const focusOnArrival = useRef<string | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState(drawn.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(drawn.edges);
@@ -188,8 +189,11 @@ export function useShowGraphEditorController({
   useUndoKeys(commands);
 
   useEffect(() => {
-    const arriving = selectOnArrival.current;
-    selectOnArrival.current = null;
+    const arriving =
+      selectOnArrival.current && drawn.nodes.some((node) => node.id === selectOnArrival.current)
+        ? selectOnArrival.current
+        : null;
+    if (arriving) selectOnArrival.current = null;
     const focusId = focusOnArrival.current;
     focusOnArrival.current = null;
     if (focusId) {

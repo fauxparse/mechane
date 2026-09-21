@@ -14,13 +14,17 @@ import {
   TypeSelect,
 } from "@mechane/design-system";
 import type { Shape, ShapeField, ShowGraph, Type } from "@mechane/domain";
-import { assertValidShapes, defaultValueForType, shapeReferencesShape } from "@mechane/domain";
+import {
+  assertValidShapes,
+  defaultValueForType,
+  shapeReferencesShape,
+  typeLabel,
+} from "@mechane/domain";
 import { useForm } from "@tanstack/react-form";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
 import type { ShapeEditing } from "../commands/use-graph-editing";
-import { typeLabel } from "../graph/node-kinds";
 import { ShapeDefaultEditor } from "./ShapeDefaultEditor";
 import { setShapeEditorStatus } from "./shape-editor-status";
 
@@ -598,6 +602,7 @@ function ShapeEditor({
                 <FieldRailItem
                   key={field.id}
                   field={field}
+                  shapes={shapes}
                   index={index}
                   selected={field.id === selectedFieldId}
                   onSelect={setSelectedFieldId}
@@ -646,11 +651,13 @@ function makeNameId(fields: readonly ShapeField[]): string {
 
 function FieldRailItem({
   field,
+  shapes,
   index,
   selected,
   onSelect,
 }: {
   field: ShapeField;
+  shapes: readonly Shape[];
   index: number;
   selected: boolean;
   onSelect(id: string): void;
@@ -686,7 +693,7 @@ function FieldRailItem({
       >
         {field.name}
       </button>
-      <span className="text-[10px] text-muted-foreground">{typeLabel(field.type)}</span>
+      <span className="text-[10px] text-muted-foreground">{typeLabel(field.type, shapes)}</span>
     </div>
   );
 }

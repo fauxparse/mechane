@@ -2,11 +2,13 @@ import type { Gesture, GraphEdit } from "@mechane/commands";
 import { setSourceFieldDefault } from "@mechane/commands";
 import {
   Button,
+  cn,
   ImageInput,
   PlusIcon,
   PropertyInput,
   Switch,
   Trash2Icon,
+  variableTypeIcon,
   type ImageInputValue,
 } from "@mechane/design-system";
 import {
@@ -18,16 +20,62 @@ import {
   isShapeStructuredValueTemplate,
   normalizeStructuredValueTemplate,
   setValueAtPath,
+  typeLabel,
+  type ResolvedImageValue,
   type ShowGraph,
   type Type,
 } from "@mechane/domain";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { SourceValueEditing } from "../../commands/use-graph-editing";
-import { typeLabel as graphTypeLabel } from "../node-kinds";
-import type { SourceValueRow, ValueEditorProps, ValueEditorRenderer } from "./source-value-types";
-import { previewValue, propertyInputType } from "./source-values-helpers";
+import type {
+  SourceImageAsset,
+  SourceValueRow,
+  ValueEditorProps,
+  ValueEditorRenderer,
+} from "../inspector/source-value-types";
+import { previewValue, propertyInputType } from "../inspector/source-values-helpers";
 
+function imageAssetForValue(
+  value: unknown,
+  imageAssets: readonly SourceImageAsset[] = [],
+): (SourceImageAsset | ResolvedImageValue) | null {
+  if (isResolvedImageValue(value)) return value;
+  if (!isImageAssetReference(value)) return null;
+  return (
+    imageAssets.find(
+      (asset) => asset.assetId === value.assetId && asset.revision === value.revision,
+    ) ?? null
+  );
+}
+
+export function SourceImagePreview({
+  value,
+  imageAssets,
+  className,
+}: {
+  value: unknown;
+  imageAssets?: readonly SourceImageAsset[];
+  className?: string;
+}) {
+  const asset = imageAssetForValue(value, imageAssets);
+  const name = asset?.name?.trim() || asset?.alt?.trim() || "Unnamed image";
+  if (!asset) {
+    return <span className={cn("truncate text-xs text-muted-foreground", className)}>{name}</span>;
+  }
+  return (
+    <span className={cn("flex min-w-0 items-center gap-2", className)}>
+      <img
+        src={asset.url}
+        alt={asset.alt || name}
+        width={32}
+        height={32}
+        className="size-8 shrink-0 rounded-sm object-cover"
+      />
+      <span className="min-w-0 truncate text-xs">{name}</span>
+    </span>
+  );
+}
 type SourceValueGesture = Gesture<ShowGraph, GraphEdit>;
 
 type PrimitiveInputProps = Omit<ValueEditorProps, "shapes"> & {
@@ -35,88 +83,127 @@ type PrimitiveInputProps = Omit<ValueEditorProps, "shapes"> & {
   actions?: ReactNode;
 };
 
-function SourcePrimitiveInput({
-  type,
+function SourcePrimitiveInput(props: PrimitiveInputProps) {
+  if (props.readOnly) {
+    if (props.type === "image") return <SourceImageInput {...props} />;
+    return <SourceReadOnlyValue value={props.value} label={props.label} />;
+  }
+  const inputType = typeof props.type === "string" ? propertyInputType(props.type) : null;
+  if (props.type === "image") return <SourceImageInput {...props} />;
+  if (props.type === "boolean") return <SourceBooleanInput {...props} />;
+  if (!inputType)
+    return (
+      <div className="flex min-w-0 items-center justify-between gap-1">
+        <span className="truncate text-sm text-muted-foreground">{previewValue(props.value)}</span>
+        {props.actions}
+      </div>
+    );
+  return <SourceValueInput {...props} inputType={inputType} />;
+}
+
+function SourceReadOnlyValue({ value, label }: Pick<PrimitiveInputProps, "value" | "label">) {
+  return (
+    <div
+      aria-label={label ? `${label} value` : undefined}
+      className="rounded-sm bg-muted/50 px-2 py-1 text-sm text-muted-foreground"
+    >
+      {previewValue(value)}
+    </div>
+  );
+}
+
+function SourceImageInput({
   value,
   path,
-  imageAssets: propsImageAssets,
-  onImageUpload: propsOnImageUpload,
+  imageAssets,
+  onImageUpload,
+  onChange,
+  onValidityChange,
+  readOnly,
+}: PrimitiveInputProps) {
+  const resolvedValue = isResolvedImageValue(value)
+    ? value
+    : isImageAssetReference(value)
+      ? ((imageAssets ?? []).find(
+          (asset) => asset.assetId === value.assetId && asset.revision === value.revision,
+        ) ?? null)
+      : null;
+  return (
+    <ImageInput
+      value={resolvedValue}
+      imageAssets={imageAssets}
+      readOnly={readOnly}
+      allowLink={false}
+      onUpload={onImageUpload}
+      onChange={(next: ImageInputValue | null) => {
+        if (next === null) {
+          onValidityChange(path, null);
+          onChange(null);
+          return;
+        }
+        if (!isResolvedImageValue(next)) {
+          onValidityChange(path, "The selected image is not resolved.");
+          return;
+        }
+        const revision = isImageAssetReference(next)
+          ? next.revision
+          : imageAssets?.find((asset) => asset.assetId === next.assetId)?.revision;
+        if (!revision) {
+          onValidityChange(path, "The selected image has no revision.");
+          return;
+        }
+        onValidityChange(path, null);
+        onChange({ assetId: next.assetId, revision });
+      }}
+      onError={(error) => onValidityChange(path, error.message)}
+    />
+  );
+}
+
+function SourceBooleanInput({
+  value,
+  path,
   label,
   actions,
   onChange,
   onValidityChange,
 }: PrimitiveInputProps) {
-  const inputType = typeof type === "string" ? propertyInputType(type) : null;
   const [error, setError] = useState<string | null>(null);
-  if (type === "image") {
-    const resolvedValue = isResolvedImageValue(value)
-      ? value
-      : isImageAssetReference(value)
-        ? ((propsImageAssets ?? []).find(
-            (asset) => asset.assetId === value.assetId && asset.revision === value.revision,
-          ) ?? null)
-        : null;
-    return (
-      <ImageInput
-        value={resolvedValue}
-        imageAssets={propsImageAssets}
-        allowLink={false}
-        onUpload={propsOnImageUpload}
-        onChange={(next: ImageInputValue | null) => {
-          if (next === null) {
+  return (
+    <div className="flex min-w-0 items-center gap-1">
+      <Switch
+        checked={value === true}
+        onCheckedChange={(checked) => {
+          if (typeof checked === "boolean") {
+            setError(null);
             onValidityChange(path, null);
-            onChange(null);
-            return;
+            onChange(checked);
           }
-          if (!isResolvedImageValue(next)) {
-            onValidityChange(path, "The selected image is not resolved.");
-            return;
-          }
-          const revision = isImageAssetReference(next)
-            ? next.revision
-            : propsImageAssets?.find((asset) => asset.assetId === next.assetId)?.revision;
-          if (!revision) {
-            onValidityChange(path, "The selected image has no revision.");
-            return;
-          }
-          onValidityChange(path, null);
-          onChange({ assetId: next.assetId, revision });
         }}
-        onError={(error) => onValidityChange(path, error.message)}
+        aria-label={label ? `${label} value` : "Boolean value"}
       />
-    );
-  }
+      {actions}
+      {error ? <span className="text-xs text-destructive">{error}</span> : null}
+    </div>
+  );
+}
 
-  if (type === "boolean") {
-    return (
-      <div className="flex min-w-0 items-center gap-1">
-        <Switch
-          checked={value === true}
-          onCheckedChange={(checked) => {
-            if (typeof checked === "boolean") {
-              setError(null);
-              onValidityChange(path, null);
-              onChange(checked);
-            }
-          }}
-          aria-label={label ? `${label} value` : "Boolean value"}
-        />
-        {actions}
-      </div>
-    );
-  }
-  if (!inputType)
-    return (
-      <div className="flex min-w-0 items-center justify-between gap-1">
-        <span className="truncate text-sm text-muted-foreground">{previewValue(value)}</span>
-        {actions}
-      </div>
-    );
-
+function SourceValueInput({
+  type,
+  value,
+  path,
+  label,
+  actions,
+  onChange,
+  onValidityChange,
+  inputType,
+}: PrimitiveInputProps & { inputType: "text" | "number" | "color" }) {
+  const [error, setError] = useState<string | null>(null);
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-1">
       <PropertyInput
         type={inputType}
+        icon={variableTypeIcon(type)}
         value={
           value === null || value === undefined
             ? null
@@ -155,6 +242,7 @@ function ArrayValueEditor({
   onChange,
   onValidityChange,
   renderValue,
+  readOnly,
 }: ValueEditorProps & {
   type: Extract<Type, { kind: "array" }>;
   renderValue: ValueEditorRenderer;
@@ -179,6 +267,7 @@ function ArrayValueEditor({
               type: type.of,
               value: item,
               shapes,
+              readOnly,
               imageAssets,
               onImageUpload,
               path: [...path, index],
@@ -192,34 +281,42 @@ function ArrayValueEditor({
                 ),
               onValidityChange,
             })}
-            <Button
-              type="button"
-              size="icon-sm"
-              variant="ghost"
-              aria-label={`Remove item ${index + 1}`}
-              onClick={() =>
-                updateItems(values.filter((_, currentIndex) => currentIndex !== index))
-              }
-            >
-              <Trash2Icon />
-            </Button>
+            {!readOnly ? (
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                aria-label={`Remove item ${index + 1}`}
+                onClick={() =>
+                  updateItems(values.filter((_, currentIndex) => currentIndex !== index))
+                }
+              >
+                <Trash2Icon />
+              </Button>
+            ) : null}
           </div>
         );
       })}
-      <Button
-        type="button"
-        variant="outline"
-        className="self-start"
-        onClick={() =>
-          updateItems([
-            ...values,
-            normalizeStructuredValueTemplate(defaultValueForType(type.of, shapes), type.of, shapes),
-          ])
-        }
-      >
-        <PlusIcon />
-        Add item
-      </Button>
+      {!readOnly ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="self-start"
+          onClick={() =>
+            updateItems([
+              ...values,
+              normalizeStructuredValueTemplate(
+                defaultValueForType(type.of, shapes),
+                type.of,
+                shapes,
+              ),
+            ])
+          }
+        >
+          <PlusIcon />
+          Add item
+        </Button>
+      ) : null}
     </div>
   );
 }
@@ -234,6 +331,7 @@ function ShapeValueEditor({
   onChange,
   onValidityChange,
   renderValue,
+  readOnly,
 }: ValueEditorProps & {
   type: Extract<Type, { kind: "shape" }>;
   renderValue: ValueEditorRenderer;
@@ -249,13 +347,12 @@ function ShapeValueEditor({
         <div className="flex flex-col gap-1" key={field.id}>
           <div className="flex items-center justify-between gap-2 text-sm">
             <span>{field.name}</span>
-            <span className="text-xs text-muted-foreground">
-              {graphTypeLabel(field.type, shapes)}
-            </span>
+            <span className="text-xs text-muted-foreground">{typeLabel(field.type, shapes)}</span>
           </div>
           {renderValue({
             type: field.type,
             value: Reflect.get(objectValue, field.id),
+            readOnly,
             shapes,
             imageAssets,
             onImageUpload,
@@ -268,30 +365,34 @@ function ShapeValueEditor({
     </div>
   );
 }
-
 export function ValueEditor(props: ValueEditorProps) {
-  const { type, value, shapes, onChange } = props;
+  const { type, value, shapes, onChange, readOnly = false } = props;
   if (typeof type === "string") {
     return (
       <SourcePrimitiveInput key={formatValuePath(props.path.map(String))} {...props} type={type} />
     );
   }
   if (value === null) {
+    if (readOnly) return <SourceReadOnlyValue value={value} />;
     return (
       <Button
         type="button"
         variant="outline"
         onClick={() => onChange(defaultValueForType(type, shapes))}
       >
-        Use {graphTypeLabel(type, shapes) ?? "value"} value
+        Use {typeLabel(type, shapes) ?? "value"} value
       </Button>
     );
   }
   if (type.kind === "array") {
-    return <ArrayValueEditor {...props} type={type} renderValue={ValueEditor} />;
+    return (
+      <ArrayValueEditor {...props} type={type} renderValue={ValueEditor} readOnly={readOnly} />
+    );
   }
   if (type.kind === "shape") {
-    return <ShapeValueEditor {...props} type={type} renderValue={ValueEditor} />;
+    return (
+      <ShapeValueEditor {...props} type={type} renderValue={ValueEditor} readOnly={readOnly} />
+    );
   }
   const exhaustive: never = type;
   return exhaustive;

@@ -549,14 +549,16 @@ export const schema = createSchema<GraphQLContext>({
       position: Position!
       "The node editor colorway; absent values are neutral or inherit their Flow."
       color: String
+      "Persisted UI-only state for editor surfaces."
+      editorMetadata: JSON
     }
-
     type SceneNode implements GraphNode {
       id: ID!
       name: String!
       parentId: ID
       position: Position!
       color: String
+      editorMetadata: JSON
       "The Variables wiring edges can target."
       variables: [SceneVariable!]!
     }
@@ -566,7 +568,9 @@ export const schema = createSchema<GraphQLContext>({
       name: String!
       parentId: ID
       color: String
+      editorMetadata: JSON
       position: Position!
+      "The Flow's authored design-time size; absent means fit around children."
       size: JSON
       "The Flow's design-time entry Scene, if one is set."
       defaultSceneId: ID
@@ -578,17 +582,18 @@ export const schema = createSchema<GraphQLContext>({
       parentId: ID
       position: Position!
       color: String
+      editorMetadata: JSON
       type: Type!
       "Sparse default overrides for Source fields, keyed by stable field ids."
       fieldDefaults: [SourceFieldDefault!]!
     }
-
     type TransformerNode implements GraphNode {
       id: ID!
       name: String!
       parentId: ID
       position: Position!
       color: String
+      editorMetadata: JSON
       type: Type
     }
 
@@ -598,6 +603,7 @@ export const schema = createSchema<GraphQLContext>({
       parentId: ID
       position: Position!
       color: String
+      editorMetadata: JSON
       "Whether each connection is its own logical instance."
       perConnection: Boolean!
       "The server-minted pairing code, absent before the first save."
@@ -1050,6 +1056,8 @@ export const schema = createSchema<GraphQLContext>({
       layout: JSON
       "The authored Flow size for graph.setFlowSize; null clears it."
       size: JSON
+      "Persisted Source table column widths for graph.setSourceColumnSizes."
+      columnSizes: JSON
       "The graph-owned Source field value; null clears the override."
       value: JSON
       "The Block target for Block lifecycle and variable commands."
@@ -1121,6 +1129,8 @@ export const schema = createSchema<GraphQLContext>({
       layout: JSON
       "The authored Flow size for graph.setFlowSize; null clears it."
       size: JSON
+      "Persisted Source table column widths for graph.setSourceColumnSizes."
+      columnSizes: JSON
       "The interaction payloads selected by type."
       cue: CueInput
       action: ActionInput

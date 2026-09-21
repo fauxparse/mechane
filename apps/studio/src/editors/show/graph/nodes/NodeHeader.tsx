@@ -2,11 +2,12 @@ import { Position, type HandleProps } from "@xyflow/react";
 import type { ReactNode, ComponentType } from "react";
 
 import { cn } from "@mechane/design-system";
+import { typeLabel } from "@mechane/domain";
 
 import type { ShowFlowNode } from "../graph-to-flow";
 import { handleFor } from "../handle-ids";
 import { HANDLE_CLASS } from "../handle-styles";
-import { nodeIcon, typeLabel } from "../node-kinds";
+import { nodeIcon } from "../node-kinds";
 import { upperFirst } from "es-toolkit";
 import { DummyHandle } from "./DummyHandle";
 

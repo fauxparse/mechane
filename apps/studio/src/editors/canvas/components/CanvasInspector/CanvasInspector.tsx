@@ -4,7 +4,7 @@ import { memo } from "react";
 import { AppearanceSection } from "./AppearanceSection";
 import type { CanvasInspectorProps } from "./canvas-inspector-types";
 import { CanvasInspectorProvider } from "./CanvasInspectorContext";
-import { SlotInputsSection } from "./CanvasInspectorFields";
+import { SlotInputsSection } from "./SlotInputsSection";
 import { BlockVariablesSection, ImageSection } from "./CanvasInspectorSections";
 import { FillSection } from "./FillSection";
 import { Header } from "./Header";

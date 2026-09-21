@@ -56,16 +56,18 @@ export function usePlayerNavigation(
     }
     const scope = playerRunScope(pairingCode, session.run.id);
     const store = openPlayerStateStore(scope);
+    const flowSourceIds = new Set<string>();
+    for (const node of session.graph.nodes) {
+      if (node.kind === "source" && node.parentId === session.flow.flowId) {
+        flowSourceIds.add(node.id);
+      }
+    }
     const driver = {
       kind: "flow",
       flowId: session.flow.flowId,
       defaultSceneId: session.flow.defaultSceneId,
       sceneIds: new Set(session.flow.scenes.map(({ scene }) => scene.id)),
-      flowSourceIds: new Set(
-        session.graph.nodes
-          .filter((node) => node.kind === "source" && node.parentId === session.flow?.flowId)
-          .map((node) => node.id),
-      ),
+      flowSourceIds,
       publishedGraphVersion: session.graph.version,
     } satisfies PlayerDriver;
     const reconciliation = reconcilePlayerRunState(store.read(), driver);

@@ -335,6 +335,9 @@ interface GraphNode {
   The node editor colorway; absent values are neutral or inherit their Flow.
   """
   color: String
+
+  """Persisted UI-only state for editor surfaces."""
+  editorMetadata: JSON
 }
 
 type SceneNode implements GraphNode {
@@ -343,6 +346,7 @@ type SceneNode implements GraphNode {
   parentId: ID
   position: Position!
   color: String
+  editorMetadata: JSON
 
   """The Variables wiring edges can target."""
   variables: [SceneVariable!]!
@@ -353,7 +357,12 @@ type FlowNode implements GraphNode {
   name: String!
   parentId: ID
   color: String
+  editorMetadata: JSON
   position: Position!
+
+  """
+  The Flow's authored design-time size; absent means fit around children.
+  """
   size: JSON
 
   """The Flow's design-time entry Scene, if one is set."""
@@ -366,6 +375,7 @@ type SourceNode implements GraphNode {
   parentId: ID
   position: Position!
   color: String
+  editorMetadata: JSON
   type: Type!
 
   """Sparse default overrides for Source fields, keyed by stable field ids."""
@@ -378,6 +388,7 @@ type TransformerNode implements GraphNode {
   parentId: ID
   position: Position!
   color: String
+  editorMetadata: JSON
   type: Type
 }
 
@@ -387,6 +398,7 @@ type DeviceNode implements GraphNode {
   parentId: ID
   position: Position!
   color: String
+  editorMetadata: JSON
 
   """Whether each connection is its own logical instance."""
   perConnection: Boolean!
@@ -898,6 +910,9 @@ type GraphEdit {
   """The authored Flow size for graph.setFlowSize; null clears it."""
   size: JSON
 
+  """Persisted Source table column widths for graph.setSourceColumnSizes."""
+  columnSizes: JSON
+
   """The graph-owned Source field value; null clears the override."""
   value: JSON
 
@@ -991,6 +1006,9 @@ input ShowEditInput {
 
   """The authored Flow size for graph.setFlowSize; null clears it."""
   size: JSON
+
+  """Persisted Source table column widths for graph.setSourceColumnSizes."""
+  columnSizes: JSON
 
   """The interaction payloads selected by type."""
   cue: CueInput
