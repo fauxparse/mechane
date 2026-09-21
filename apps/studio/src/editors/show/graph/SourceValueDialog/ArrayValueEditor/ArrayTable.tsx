@@ -1,57 +1,31 @@
 import { defaultPreset, PointerActivationConstraints } from "@dnd-kit/dom";
 import type { DragEndEvent } from "@dnd-kit/react";
 import { DragDropProvider, PointerSensor } from "@dnd-kit/react";
-import { isSortable, useSortable } from "@dnd-kit/react/sortable";
+import { isSortable } from "@dnd-kit/react/sortable";
 import {
-  Button,
   createDropdownMenuHandle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  EllipsisIcon,
-  ExternalLinkIcon,
-  GripVertical,
-  ImageInput,
-  PropertyInput,
-  Switch,
-  Trash2Icon,
-  variableTypeIcon,
   VibeProvider,
   type ImageInputOnUploadProps,
-  type PropertyInputValue,
 } from "@mechane/design-system";
-import {
-  isImageAssetReference,
-  isResolvedImageValue,
-  isShapeStructuredValueTemplate,
-  setValueAtPath,
-  type Shape,
-} from "@mechane/domain";
-import {
-  columnResizingFeature,
-  columnSizingFeature,
-  coreCellsFeature,
-  coreColumnsFeature,
-  coreHeadersFeature,
-  coreRowModelsFeature,
-  coreRowsFeature,
-  coreTablesFeature,
-  createColumnHelper,
-  flexRender,
-  tableFeatures,
-  useTable,
-  type ColumnSizingState,
-  type Row,
-} from "@tanstack/react-table";
-import { useEffect, useMemo, useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { SourceImagePreview } from "../ValueEditor";
+import type { Shape } from "@mechane/domain";
+import { AnimatePresence, domAnimation, LazyMotion } from "motion/react";
+import { useEffect, useMemo, useRef } from "react";
 
 import type { ErrorPath, SourceImageAsset } from "../../inspector/source-value-types";
-import { previewValue, propertyInputType } from "../../inspector/source-values-helpers";
+import {
+  DEFAULT_COLUMN_SIZE,
+  DRAG_HANDLE_COLUMN_SIZE,
+  FIXED_COLUMN_SIZE,
+  OPEN_COLUMN_SIZE,
+  type ArrayTableCallbacks,
+  type ArrayTableColumn,
+  type RecordMenuPayload,
+} from "./array-table-model";
+import "./array-table.css";
+import { ArrayTableHeader } from "./ArrayTableHeader";
+import { ArrayTableRow } from "./ArrayTableRow";
+import { RecordActionsMenu } from "./RecordActionsMenu";
 import type { ShapeRecord } from "./types";
-import { recordIdentifier } from "./types";
 import { MIN_COLUMN_SIZE, useColumnSizing } from "./use-column-sizing";
 import { useTableKeyboardNavigation } from "./use-table-keyboard-navigation";
 
@@ -64,24 +38,21 @@ const tableSensors = (defaults: typeof defaultPreset.sensors) =>
       : sensor,
   );
 
-const features = tableFeatures({
-  coreCellsFeature,
-  coreColumnsFeature,
-  coreHeadersFeature,
-  coreRowModelsFeature,
-  coreRowsFeature,
-  coreTablesFeature,
-  columnSizingFeature,
-  columnResizingFeature,
-});
-
-const columnHelper = createColumnHelper<typeof features, ShapeRecord>();
-const DRAG_HANDLE_COLUMN_SIZE = 40;
-const OPEN_COLUMN_SIZE = 44;
-const FIXED_COLUMN_SIZE = DRAG_HANDLE_COLUMN_SIZE + OPEN_COLUMN_SIZE;
-
-type RecordMenuPayload = {
-  recordId: ShapeRecord["id"];
+type ArrayTableProps = {
+  records: ShapeRecord[];
+  fields: Shape["fields"];
+  readOnly: boolean;
+  columnSizes?: Record<string, number>;
+  imageAssets?: readonly SourceImageAsset[];
+  path: ErrorPath;
+  onColumnSizesChange?(columnSizes: Record<string, number>): void;
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
+  onReorder(sourceId: string, targetId: string): void;
+  onRecordChange(record: ShapeRecord): void;
+  onValidityChange(path: ErrorPath, error: string | null): void;
+  onOpenRecord(id: string): void;
+  onDeleteRecord(id: ShapeRecord["id"]): void;
+  onCreateRecord?(): string | null;
 };
 
 export function ArrayTable({
@@ -99,38 +70,12 @@ export function ArrayTable({
   onOpenRecord,
   onDeleteRecord,
   onCreateRecord,
-}: {
-  records: ShapeRecord[];
-  fields: Shape["fields"];
-  readOnly: boolean;
-  columnSizes?: ColumnSizingState;
-  imageAssets?: readonly SourceImageAsset[];
-  path: ErrorPath;
-  onColumnSizesChange?(columnSizes: ColumnSizingState): void;
-  onImageUpload?: (props: ImageInputOnUploadProps) => void;
-  onReorder(sourceId: string, targetId: string): void;
-  onRecordChange(record: ShapeRecord): void;
-  onValidityChange(path: ErrorPath, error: string | null): void;
-  onOpenRecord(id: string): void;
-  onDeleteRecord(id: ShapeRecord["id"]): void;
-  onCreateRecord?(): string | null;
-}) {
-  const recordChangeRef = useRef(onRecordChange);
-  const validityChangeRef = useRef(onValidityChange);
-  const pathRef = useRef(path);
-  const openRecordRef = useRef(onOpenRecord);
-  const deleteRecordRef = useRef(onDeleteRecord);
-
-  useEffect(() => {
-    recordChangeRef.current = onRecordChange;
-    validityChangeRef.current = onValidityChange;
-    pathRef.current = path;
-    openRecordRef.current = onOpenRecord;
-    deleteRecordRef.current = onDeleteRecord;
-  }, [onDeleteRecord, onRecordChange, onValidityChange, onOpenRecord, path]);
-
+}: ArrayTableProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const recordMenu = useMemo(() => createDropdownMenuHandle<RecordMenuPayload>(), []);
+
+  const columnIds = useMemo(() => fields.map((field) => field.id), [fields]);
+  const rowIds = useMemo(() => records.map((record) => record.id), [records]);
 
   const {
     columnSizes: localColumnSizes,
@@ -140,7 +85,7 @@ export function ArrayTable({
     moveResize,
     finishResize,
   } = useColumnSizing({
-    columnIds: fields.map((field) => field.id),
+    columnIds,
     savedSizes: columnSizes,
     containerRef,
     fixedWidth: FIXED_COLUMN_SIZE,
@@ -150,86 +95,68 @@ export function ArrayTable({
 
   const { onCellKeyDown } = useTableKeyboardNavigation({
     containerRef,
-    columnIds: fields.map((field) => field.id),
-    rowIds: records.map((record) => record.id),
-    rowCount: records.length,
+    columnIds,
+    rowIds,
     readOnly,
     onCreateRow: onCreateRecord,
   });
-  const cellKeyDownRef = useRef(onCellKeyDown);
 
+  // Rows and cells are memoized, so every callback they receive has to keep the
+  // same identity for the life of the table. They call through this box instead
+  // of closing over props directly.
+  const latestRef = useRef({
+    onRecordChange,
+    onValidityChange,
+    onOpenRecord,
+    onDeleteRecord,
+    onImageUpload,
+    onCellKeyDown,
+    path,
+  });
   useEffect(() => {
-    cellKeyDownRef.current = onCellKeyDown;
-  }, [onCellKeyDown]);
+    latestRef.current = {
+      onRecordChange,
+      onValidityChange,
+      onOpenRecord,
+      onDeleteRecord,
+      onImageUpload,
+      onCellKeyDown,
+      path,
+    };
+  });
 
-  const columns = useMemo(
-    () =>
-      columnHelper.columns([
-        ...fields.map((field, index) =>
-          columnHelper.accessor((record) => previewValue(record.fields[field.id]), {
-            id: field.id,
-            header: field.name,
-            enableResizing:
-              !readOnly &&
-              (index < fields.length - 1 ||
-                containerWidth <= FIXED_COLUMN_SIZE + fields.length * MIN_COLUMN_SIZE),
-            cell: ({ row }) => (
-              <TableValueCell
-                field={field}
-                value={row.original.fields[field.id]}
-                record={row.original}
-                readOnly={readOnly}
-                imageAssets={imageAssets}
-                onImageUpload={onImageUpload}
-                path={[...pathRef.current, row.original.id, field.id]}
-                onKeyDown={(event) =>
-                  cellKeyDownRef.current(
-                    event,
-                    row.index,
-                    fields.findIndex((candidate) => candidate.id === field.id),
-                  )
-                }
-                onRecordChange={(record) => recordChangeRef.current(record)}
-                onValidityChange={(nextPath, error) => validityChangeRef.current(nextPath, error)}
-              />
-            ),
-          }),
-        ),
-        columnHelper.display({
-          id: "open",
-          enableResizing: false,
-          size: OPEN_COLUMN_SIZE,
-          minSize: OPEN_COLUMN_SIZE,
-          maxSize: OPEN_COLUMN_SIZE,
-          header: "",
-          cell: ({ row }) => {
-            const label = recordIdentifier(row.original, fields, imageAssets);
-            return (
-              <DropdownMenuTrigger
-                handle={recordMenu}
-                payload={{ recordId: row.original.id }}
-                render={
-                  <Button variant="ghost" size="icon-sm" aria-label={`${label} options`}>
-                    <EllipsisIcon />
-                  </Button>
-                }
-                onClick={(event) => event.stopPropagation()}
-              />
-            );
-          },
-        }),
-      ]),
-    [containerWidth, fields, imageAssets, onImageUpload, readOnly, recordMenu],
+  const callbacks = useMemo<ArrayTableCallbacks>(
+    () => ({
+      changeRecord: (record) => latestRef.current.onRecordChange(record),
+      reportValidity: (recordId, fieldId, error) =>
+        latestRef.current.onValidityChange([...latestRef.current.path, recordId, fieldId], error),
+      keyDownInCell: (event, recordId, fieldId) =>
+        latestRef.current.onCellKeyDown(event, recordId, fieldId),
+      openRecord: (recordId) => latestRef.current.onOpenRecord(recordId),
+      deleteRecord: (recordId) => latestRef.current.onDeleteRecord(recordId),
+      uploadImage: (props) => latestRef.current.onImageUpload?.(props),
+    }),
+    [],
   );
 
-  const table = useTable({
-    features,
-    data: records,
-    columns,
-    columnResizeMode: "onChange",
-    state: { columnSizing: localColumnSizes },
-    getRowId: (record) => record.id,
-  });
+  const columns = useMemo<ArrayTableColumn[]>(() => {
+    // Once the columns no longer fit, the last one gets a handle too, otherwise
+    // there would be no way to shrink it back.
+    const lastColumnResizable =
+      containerWidth <= FIXED_COLUMN_SIZE + fields.length * MIN_COLUMN_SIZE;
+    return fields.map((field, index) => ({
+      field,
+      width: localColumnSizes[field.id] ?? DEFAULT_COLUMN_SIZE,
+      resizable: !readOnly && (index < fields.length - 1 || lastColumnResizable),
+    }));
+  }, [containerWidth, fields, localColumnSizes, readOnly]);
+
+  const tableWidth = Math.max(
+    containerWidth,
+    columns.reduce((total, column) => total + column.width, 0) +
+      DRAG_HANDLE_COLUMN_SIZE +
+      OPEN_COLUMN_SIZE,
+  );
 
   const finishDrag = (event: DragEndEvent) => {
     if (readOnly || event.canceled) return;
@@ -248,113 +175,48 @@ export function ArrayTable({
       className="min-w-0 overflow-auto overscroll-x-contain overscroll-y-none border-t border-b border-border [--background:var(--color-popover)] [--row-hovered:var(--palette-neutral-600)]"
     >
       <VibeProvider vibe="table">
-        <DropdownMenu<RecordMenuPayload> handle={recordMenu}>
-          {({ payload }) => (
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => {
-                  if (payload) openRecordRef.current(payload.recordId);
-                }}
-              >
-                <ExternalLinkIcon />
-                Open record
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                disabled={readOnly}
-                onClick={() => {
-                  if (payload) deleteRecordRef.current(payload.recordId);
-                }}
-              >
-                <Trash2Icon />
-                Delete record
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          )}
-        </DropdownMenu>
-        <DragDropProvider sensors={tableSensors} onDragEnd={finishDrag}>
-          <table
-            className="table-fixed text-left text-sm"
-            style={{
-              width: Math.max(containerWidth, table.getTotalSize() + DRAG_HANDLE_COLUMN_SIZE),
-            }}
-          >
-            <colgroup>
-              <col
-                style={{
-                  width: DRAG_HANDLE_COLUMN_SIZE,
-                  minWidth: DRAG_HANDLE_COLUMN_SIZE,
-                  maxWidth: DRAG_HANDLE_COLUMN_SIZE,
-                }}
+        <RecordActionsMenu handle={recordMenu} readOnly={readOnly} callbacks={callbacks} />
+        <LazyMotion features={domAnimation}>
+          <DragDropProvider sensors={tableSensors} onDragEnd={finishDrag}>
+            <table className="table-fixed text-left text-sm" style={{ width: tableWidth }}>
+              <colgroup>
+                <col style={{ width: DRAG_HANDLE_COLUMN_SIZE }} />
+                {columns.map((column) => (
+                  <col key={column.field.id} style={{ width: column.width }} />
+                ))}
+                <col style={{ width: OPEN_COLUMN_SIZE }} />
+              </colgroup>
+              <ArrayTableHeader
+                columns={columns}
+                readOnly={readOnly}
+                resizingColumnId={resizingColumnId}
+                onResizeStart={startResize}
+                onResizeMove={moveResize}
+                onResizeEnd={finishResize}
               />
-              {table.getAllLeafColumns().map((column) => (
-                <col
-                  key={column.id}
-                  style={{
-                    width: column.getSize(),
-                    minWidth: column.getSize(),
-                    maxWidth: column.getSize(),
-                  }}
-                />
-              ))}
-            </colgroup>
-            <thead className="bg-background **:[th]:label **:[th]:font-normal **:[th]:sticky **:[th]:top-0 **:[th]:bg-background **:[th]:border-t-0 **:[th]:inset-shadow-[0_-1px_0_0_var(--color-border)]">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id}>
-                  <th
-                    key="reorder"
-                    style={{
-                      width: DRAG_HANDLE_COLUMN_SIZE,
-                      minWidth: DRAG_HANDLE_COLUMN_SIZE,
-                      maxWidth: DRAG_HANDLE_COLUMN_SIZE,
-                    }}
-                    className="left-0 z-30 w-10 min-w-10 max-w-10 px-3 py-2.5"
-                    aria-label={readOnly ? undefined : "Reorder"}
-                  />
-                  {headerGroup.headers.map((header) => (
-                    <th
-                      key={header.id}
-                      style={{
-                        width: header.getSize(),
-                        minWidth: header.getSize(),
-                        maxWidth: header.getSize(),
-                      }}
-                      className={`whitespace-nowrap px-3 py-2.5 ${
-                        header.column.id === "open" ? "right-0 z-30" : "z-20"
-                      }`}
-                    >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(header.column.columnDef.header, header.getContext())}
-                      {header.column.getCanResize() ? (
-                        <div
-                          role="separator"
-                          tabIndex={0}
-                          aria-orientation="vertical"
-                          aria-label={`Resize ${String(header.column.columnDef.header ?? header.id)}`}
-                          onPointerDown={(event) =>
-                            startResize(event, header.column.id, header.column.getSize())
-                          }
-                          onPointerMove={moveResize}
-                          onPointerUp={finishResize}
-                          onPointerCancel={finishResize}
-                          className="absolute inset-y-0 right-0 z-10 w-1 cursor-col-resize touch-none select-none border-t-0 border-r border-border"
-                          data-resizing={resizingColumnId === header.column.id || undefined}
-                        />
-                      ) : null}
-                    </th>
+              <tbody className="divide-y divide-border">
+                {/* `presenceAffectsLayout` would hand every row a fresh presence
+                    context on each render, re-rendering all of them. It exists to
+                    retrigger Motion layout animations, and this table has none. */}
+                <AnimatePresence initial={false} presenceAffectsLayout={false}>
+                  {records.map((record, index) => (
+                    <ArrayTableRow
+                      key={record.id}
+                      record={record}
+                      index={index}
+                      fields={fields}
+                      readOnly={readOnly}
+                      canUploadImage={Boolean(onImageUpload)}
+                      imageAssets={imageAssets}
+                      menu={recordMenu}
+                      callbacks={callbacks}
+                    />
                   ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody className="divide-y divide-border">
-              {table.getRowModel().rows.map((row) => (
-                <SortableTableRow key={row.id} row={row} readOnly={readOnly} />
-              ))}
-            </tbody>
-          </table>
-        </DragDropProvider>
+                </AnimatePresence>
+              </tbody>
+            </table>
+          </DragDropProvider>
+        </LazyMotion>
         {records.length === 0 ? (
           <p className="p-8 text-center text-sm text-muted-foreground">
             No records match this filter.
@@ -362,194 +224,5 @@ export function ArrayTable({
         ) : null}
       </VibeProvider>
     </div>
-  );
-}
-
-function TableValueCell({
-  field,
-  value,
-  record,
-  readOnly,
-  imageAssets,
-  onImageUpload,
-  path,
-  onKeyDown,
-  onRecordChange,
-  onValidityChange,
-}: {
-  field: Shape["fields"][number];
-  value: unknown;
-  record: ShapeRecord;
-  readOnly: boolean;
-  imageAssets?: readonly SourceImageAsset[];
-  onImageUpload?: (props: ImageInputOnUploadProps) => void;
-  path: ErrorPath;
-  onKeyDown?(event: ReactKeyboardEvent<HTMLElement>): void;
-  onRecordChange(record: ShapeRecord): void;
-  onValidityChange(path: ErrorPath, error: string | null): void;
-}) {
-  const updateValue = (nextValue: unknown) => {
-    const updated = setValueAtPath(record, [field.id], nextValue);
-    if (isShapeStructuredValueTemplate(updated)) onRecordChange(updated);
-  };
-  if (field.type === "image") {
-    const resolvedValue = isResolvedImageValue(value)
-      ? value
-      : isImageAssetReference(value)
-        ? (imageAssets?.find(
-            (asset) => asset.assetId === value.assetId && asset.revision === value.revision,
-          ) ?? null)
-        : null;
-    if (readOnly || !onImageUpload) {
-      return (
-        <div className="h-8" role="group" tabIndex={0} onKeyDown={onKeyDown}>
-          <SourceImagePreview value={value} imageAssets={imageAssets} className="max-w-44" />
-        </div>
-      );
-    }
-    return (
-      <div className="h-8" role="group" onKeyDown={onKeyDown}>
-        <ImageInput
-          compact
-          value={resolvedValue}
-          imageAssets={imageAssets}
-          readOnly={readOnly}
-          allowLink={false}
-          onUpload={onImageUpload}
-          onChange={(next) => {
-            if (next === null) {
-              onValidityChange(path, null);
-              updateValue(null);
-              return;
-            }
-            if (!isResolvedImageValue(next)) return;
-            const revision = imageAssets?.find((asset) => asset.assetId === next.assetId)?.revision;
-            if (!revision) return;
-            onValidityChange(path, null);
-            updateValue({ assetId: next.assetId, revision });
-          }}
-        />
-      </div>
-    );
-  }
-  if (field.type === "boolean") {
-    return (
-      <div className="min-w-6">
-        <Switch
-          checked={value === true}
-          disabled={readOnly}
-          aria-label={`${field.name} value`}
-          onKeyDown={onKeyDown}
-          onCheckedChange={(checked) => {
-            if (typeof checked !== "boolean") return;
-            onValidityChange(path, null);
-            updateValue(checked);
-          }}
-        />
-      </div>
-    );
-  }
-  const inputType = typeof field.type === "string" ? propertyInputType(field.type) : null;
-  const isEmptyValue =
-    value === null || value === undefined || (typeof value === "string" && value.length === 0);
-
-  if (!inputType || readOnly) {
-    return (
-      <span role="group" tabIndex={0} onKeyDown={onKeyDown} className="max-w-44 truncate text-xs">
-        {isEmptyValue ? "(Empty)" : previewValue(value)}
-      </span>
-    );
-  }
-
-  const inputValue: PropertyInputValue | null =
-    inputType === "number"
-      ? typeof value === "number"
-        ? { kind: "number", value }
-        : null
-      : typeof value === "string"
-        ? { kind: inputType, value }
-        : null;
-
-  return (
-    <div className="h-8" onClick={(event) => event.stopPropagation()}>
-      <PropertyInput
-        type={inputType}
-        value={inputValue}
-        icon={variableTypeIcon(field.type)}
-        className="h-full"
-        allowLink={false}
-        ariaLabel={`${field.name} value`}
-        placeholder={isEmptyValue ? "(Empty)" : `${field.name} value`}
-        onKeyDown={onKeyDown}
-        onValidationError={(error) => onValidityChange(path, error)}
-        onChange={(next) => {
-          const nextValue =
-            next !== null && typeof next === "object" && "value" in next ? next.value : null;
-          onValidityChange(path, null);
-          updateValue(nextValue);
-        }}
-      />
-    </div>
-  );
-}
-
-function SortableTableRow({
-  row,
-  readOnly,
-}: {
-  row: Row<typeof features, ShapeRecord>;
-  readOnly: boolean;
-}) {
-  const { isDragging, isDropTarget, ref, handleRef } = useSortable({
-    id: row.original.id,
-    index: row.index,
-    group: "source-array-records",
-    disabled: readOnly,
-  });
-  return (
-    <tr
-      ref={ref}
-      className={`group/row bg-background hover:bg-(--row-hovered) ${isDragging ? "opacity-50" : ""} ${isDropTarget ? "ring-2 ring-inset ring-primary" : ""}`}
-    >
-      <td
-        key="reorder"
-        style={{
-          width: DRAG_HANDLE_COLUMN_SIZE,
-          minWidth: DRAG_HANDLE_COLUMN_SIZE,
-          maxWidth: DRAG_HANDLE_COLUMN_SIZE,
-        }}
-        className="sticky left-0 z-10 w-10 min-w-10 max-w-10 bg-inherit px-2 py-2"
-      >
-        {!readOnly ? (
-          <button
-            ref={handleRef}
-            type="button"
-            aria-label={`Reorder ${previewValue(row.original.fields[Object.keys(row.original.fields)[0] ?? ""])}`}
-            aria-roledescription="sortable"
-            className="touch-none cursor-grab rounded p-1 text-muted-foreground hover:bg-muted active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <GripVertical className="size-4" />
-          </button>
-        ) : null}
-      </td>
-      {row.getAllCells().map((cell) => (
-        <td
-          key={cell.id}
-          data-table-cell={cell.column.id === "open" ? undefined : true}
-          data-table-row-id={cell.column.id === "open" ? undefined : row.original.id}
-          data-table-column-id={cell.column.id === "open" ? undefined : cell.column.id}
-          style={{
-            width: cell.column.getSize(),
-            minWidth: cell.column.getSize(),
-            maxWidth: cell.column.getSize(),
-          }}
-          className={`whitespace-nowrap px-3 py-3 ${
-            cell.column.id === "open" ? "sticky right-0 z-10 bg-inherit" : ""
-          }`}
-        >
-          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-        </td>
-      ))}
-    </tr>
   );
 }

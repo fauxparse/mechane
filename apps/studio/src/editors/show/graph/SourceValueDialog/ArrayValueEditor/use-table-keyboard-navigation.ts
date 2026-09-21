@@ -84,7 +84,6 @@ type UseTableKeyboardNavigationOptions = {
   containerRef: RefObject<HTMLElement | null>;
   columnIds: readonly string[];
   rowIds: readonly string[];
-  rowCount: number;
   readOnly: boolean;
   onCreateRow?(): string | null;
 };
@@ -93,7 +92,6 @@ export function useTableKeyboardNavigation({
   containerRef,
   columnIds,
   rowIds,
-  rowCount,
   readOnly,
   onCreateRow,
 }: UseTableKeyboardNavigationOptions) {
@@ -137,9 +135,17 @@ export function useTableKeyboardNavigation({
     [focusCellById],
   );
 
+  /**
+   * Cells report the row and column they belong to rather than their indices.
+   * Indices belong to the table's current order, and a memoized cell would be
+   * holding whatever order was current when it last rendered.
+   */
   const onCellKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLElement>, rowIndex: number, columnIndex: number) => {
+    (event: KeyboardEvent<HTMLElement>, rowId: string, columnId: string) => {
       if (readOnly) return;
+      const rowIndex = rowIds.indexOf(rowId);
+      const columnIndex = columnIds.indexOf(columnId);
+      if (rowIndex < 0 || columnIndex < 0) return;
       const target = event.target;
       const key = tableCellNavigationKey({
         key: event.key,
@@ -159,7 +165,7 @@ export function useTableKeyboardNavigation({
         valueLength: target instanceof HTMLInputElement ? target.value.length : undefined,
       });
       if (!key) return;
-      const next = nextTableCell({ rowIndex, columnIndex }, key, rowCount, columnIds.length);
+      const next = nextTableCell({ rowIndex, columnIndex }, key, rowIds.length, columnIds.length);
       if (!next) return;
       if (next === "create-row") {
         event.preventDefault();
@@ -170,7 +176,7 @@ export function useTableKeyboardNavigation({
       event.preventDefault();
       focusCell(next);
     },
-    [columnIds.length, focusCell, focusNewRow, onCreateRow, readOnly, rowCount],
+    [columnIds, focusCell, focusNewRow, onCreateRow, readOnly, rowIds],
   );
 
   return { onCellKeyDown };

@@ -1,0 +1,16 @@
+/*
+ * Row reveal driver for ArrayTable (see ArrayTableRow.tsx).
+ *
+ * A table row cannot clip its own cells, so a row cannot be collapsed by
+ * animating its height. Instead every cell sizes its padding and content box
+ * from this one inherited number, and Motion animates it on the <tr>.
+ *
+ * Registering it buys two things: the browser can interpolate it (so the
+ * animation is not a series of discrete jumps), and rows that never animate
+ * get the full-height default without any inline style.
+ */
+@property --array-row-open {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}

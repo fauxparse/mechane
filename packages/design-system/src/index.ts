@@ -102,6 +102,7 @@ export {
   DropdownMenuTrigger,
   createDropdownMenuHandle,
   dropdownMenuItemVariants,
+  type DropdownMenuHandle,
 } from "./components/ui/dropdown-menu";
 export { ImageCropper } from "./components/ui/image-input/ImageCropper";
 export type { ImageCropperProps } from "./components/ui/image-input/ImageCropper";

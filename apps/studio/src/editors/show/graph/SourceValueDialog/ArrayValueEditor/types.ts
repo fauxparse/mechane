@@ -5,18 +5,19 @@ import type { ErrorPath, SourceImageAsset } from "../../inspector/source-value-t
 import { previewValue } from "../../inspector/source-values-helpers";
 
 export type ShapeRecord = Extract<StructuredValueTemplate, { kind: "shape" }>;
+export type ShapeField = Shape["fields"][number];
 export type ArrayType = Extract<Type, { kind: "array" }>;
 export type ViewMode = "table" | "record";
 export type ArrayValueFocus = { kind: "array" } | { kind: "record"; id: string };
 export type ArrayValueSelection = { id: string; label: string };
 
-export function firstHumanReadableField(fields: Shape["fields"]): Shape["fields"][number] | null {
+export function firstHumanReadableField(fields: readonly ShapeField[]): ShapeField | null {
   return fields.find((field) => field.type === "text") ?? fields[0] ?? null;
 }
 
 export function recordIdentifier(
   record: ShapeRecord,
-  fields: Shape["fields"],
+  fields: readonly ShapeField[],
   imageAssets: readonly SourceImageAsset[] = [],
 ): string {
   const field = firstHumanReadableField(fields);

@@ -69,6 +69,16 @@ export function ArrayValueEditor({
     setViewMode(focus.kind === "record" ? "record" : "table");
     setRecordId(focus.kind === "record" ? focus.id : null);
   }, [focus]);
+  const shapeFields = shape?.fields;
+  const visibleRecords = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle || !shapeFields) return records;
+    return records.filter((record) =>
+      [record.id, ...shapeFields.map((field) => previewValue(record.fields[field.id]))].some(
+        (fieldValue) => fieldValue.toLowerCase().includes(needle),
+      ),
+    );
+  }, [query, records, shapeFields]);
 
   if (normalized === null) {
     return <p className="text-sm text-destructive">This array value could not be opened.</p>;
@@ -82,13 +92,6 @@ export function ArrayValueEditor({
     return <p className="text-sm text-destructive">The array item shape is unavailable.</p>;
   }
 
-  const visibleRecords = query.trim()
-    ? records.filter((record) =>
-        [record.id, ...shape.fields.map((field) => previewValue(record.fields[field.id]))].some(
-          (fieldValue) => fieldValue.toLowerCase().includes(query.trim().toLowerCase()),
-        ),
-      )
-    : records;
   const activeRecordId =
     focus.kind === "record"
       ? focus.id
