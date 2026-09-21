@@ -3,7 +3,6 @@ import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import { isShapeStructuredValueTemplate, setValueAtPath, type Shape } from "@mechane/domain";
 
 import { ValueEditor } from "../ValueEditor";
-import { previewValue } from "../../inspector/source-values-helpers";
 import type { ErrorPath, SourceImageAsset } from "../../inspector/source-value-types";
 import type { ShapeRecord } from "./types";
 export function RecordDetails({

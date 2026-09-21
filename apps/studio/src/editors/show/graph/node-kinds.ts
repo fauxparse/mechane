@@ -19,15 +19,8 @@ import {
   variableTypeIcon,
   Workflow,
 } from "@mechane/design-system";
-import type {
-  FlowColor,
-  GraphNode,
-  NodeKind,
-  Position,
-  ShapeValue,
-  Type,
-} from "@mechane/domain";
-import { generateId, NODE_ID_ENTITIES, typeLabel } from "@mechane/domain";
+import type { FlowColor, GraphNode, NodeKind, Position, ShapeValue, Type } from "@mechane/domain";
+import { generateId, NODE_ID_ENTITIES } from "@mechane/domain";
 import { DEFAULT_FLOW_DIMENSIONS } from "./graph-to-flow";
 
 export interface NodeKindMeta {

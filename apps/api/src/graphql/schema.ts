@@ -1125,6 +1125,8 @@ export const schema = createSchema<GraphQLContext>({
       value: JSON
       "The wiring edge's stable source-field to target-field mapping."
       fieldMapping: JSON
+      "The edge layout, for graph.setEdgeLayout; null clears it."
+      layout: JSON
       "The authored Flow size for graph.setFlowSize; null clears it."
       size: JSON
       "Persisted Source table column widths for graph.setSourceColumnSizes."

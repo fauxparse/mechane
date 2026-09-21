@@ -107,6 +107,7 @@ function FlowDefaultSceneSection({
           </SelectContent>
         </Select>
       </SectionRow>
+      <SectionHelperText>The Scene shown when this Flow starts on a Device.</SectionHelperText>
     </Section>
   );
 }

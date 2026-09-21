@@ -34,7 +34,6 @@ import type {
   Block,
   BlockVariable,
   DeviceNode,
-  EditorMetadata,
   Element,
   FlowColor,
   GraphEdge,
