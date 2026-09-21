@@ -4,6 +4,7 @@ import { DragDropProvider, PointerSensor } from "@dnd-kit/react";
 import { isSortable, useSortable } from "@dnd-kit/react/sortable";
 import {
   Button,
+  createDropdownMenuHandle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -16,7 +17,6 @@ import {
   PropertyInput,
   Switch,
   Trash2Icon,
-  createDropdownMenuHandle,
   variableTypeIcon,
   VibeProvider,
   type ImageInputOnUploadProps,
@@ -245,7 +245,7 @@ export function ArrayTable({
   return (
     <div
       ref={containerRef}
-      className="min-w-0 overflow-auto overscroll-x-contain border-t border-b border-border"
+      className="min-w-0 overflow-auto overscroll-x-contain overscroll-y-none border-t border-b border-border [--background:var(--color-popover)] [--row-hovered:var(--palette-neutral-600)]"
     >
       <VibeProvider vibe="table">
         <DropdownMenu<RecordMenuPayload> handle={recordMenu}>
@@ -299,7 +299,7 @@ export function ArrayTable({
                 />
               ))}
             </colgroup>
-            <thead className="bg-muted/45 text-[11px] uppercase tracking-wide text-muted-foreground">
+            <thead className="bg-background **:[th]:label **:[th]:font-normal **:[th]:sticky **:[th]:top-0 **:[th]:bg-background **:[th]:border-t-0 **:[th]:inset-shadow-[0_-1px_0_0_var(--color-border)]">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   <th
@@ -309,7 +309,7 @@ export function ArrayTable({
                       minWidth: DRAG_HANDLE_COLUMN_SIZE,
                       maxWidth: DRAG_HANDLE_COLUMN_SIZE,
                     }}
-                    className="sticky top-0 left-0 z-30 w-10 min-w-10 max-w-10 bg-muted/45 px-3 py-2.5 shadow-[2px_0_4px_-2px_rgb(0_0_0/0.25)]"
+                    className="left-0 z-30 w-10 min-w-10 max-w-10 px-3 py-2.5"
                     aria-label={readOnly ? undefined : "Reorder"}
                   />
                   {headerGroup.headers.map((header) => (
@@ -320,10 +320,8 @@ export function ArrayTable({
                         minWidth: header.getSize(),
                         maxWidth: header.getSize(),
                       }}
-                      className={`sticky top-0 whitespace-nowrap bg-muted/45 px-3 py-2.5 font-medium ${
-                        header.column.id === "open"
-                          ? "right-0 z-30 shadow-[-2px_0_4px_-2px_rgb(0_0_0/0.25)]"
-                          : "z-20"
+                      className={`whitespace-nowrap px-3 py-2.5 ${
+                        header.column.id === "open" ? "right-0 z-30" : "z-20"
                       }`}
                     >
                       {header.isPlaceholder
@@ -341,7 +339,7 @@ export function ArrayTable({
                           onPointerMove={moveResize}
                           onPointerUp={finishResize}
                           onPointerCancel={finishResize}
-                          className="absolute inset-y-0 right-0 z-10 w-1 cursor-col-resize touch-none select-none border-r border-border"
+                          className="absolute inset-y-0 right-0 z-10 w-1 cursor-col-resize touch-none select-none border-t-0 border-r border-border"
                           data-resizing={resizingColumnId === header.column.id || undefined}
                         />
                       ) : null}
@@ -511,7 +509,7 @@ function SortableTableRow({
   return (
     <tr
       ref={ref}
-      className={`transition-colors hover:bg-muted/35 ${isDragging ? "opacity-50" : ""} ${isDropTarget ? "ring-2 ring-inset ring-primary" : ""}`}
+      className={`group/row bg-background hover:bg-(--row-hovered) ${isDragging ? "opacity-50" : ""} ${isDropTarget ? "ring-2 ring-inset ring-primary" : ""}`}
     >
       <td
         key="reorder"
@@ -520,7 +518,7 @@ function SortableTableRow({
           minWidth: DRAG_HANDLE_COLUMN_SIZE,
           maxWidth: DRAG_HANDLE_COLUMN_SIZE,
         }}
-        className="sticky left-0 z-10 w-10 min-w-10 max-w-10 bg-background px-2 py-2 shadow-[2px_0_4px_-2px_rgb(0_0_0/0.25)]"
+        className="sticky left-0 z-10 w-10 min-w-10 max-w-10 bg-inherit px-2 py-2"
       >
         {!readOnly ? (
           <button
@@ -546,9 +544,7 @@ function SortableTableRow({
             maxWidth: cell.column.getSize(),
           }}
           className={`whitespace-nowrap px-3 py-3 ${
-            cell.column.id === "open"
-              ? "sticky right-0 z-10 bg-background shadow-[-2px_0_4px_-2px_rgb(0_0_0/0.25)]"
-              : ""
+            cell.column.id === "open" ? "sticky right-0 z-10 bg-inherit" : ""
           }`}
         >
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
