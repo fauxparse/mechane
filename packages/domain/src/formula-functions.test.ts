@@ -66,3 +66,59 @@ describe("MIN", () => {
     ]);
   });
 });
+
+describe("MAX", () => {
+  it("returns the largest present number and supports pipe use", () => {
+    const result = analyse("numbers|MAX", {
+      ports: [
+        {
+          name: "numbers",
+          type: { array: "number" },
+          value: { kind: "array", items: [number(3), absent("missing"), number(-2), number(7)] },
+        },
+      ],
+      shapes: {},
+    });
+    expect(result.value).toEqual(number(7));
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  it("returns Typed Absence when no number is present", () => {
+    const result = analyse("MAX(numbers)", {
+      ports: [{ name: "numbers", type: { array: "number" }, value: absent("unwired") }],
+      shapes: {},
+    });
+    expect(result.value).toEqual(absent("MAX has no present numbers"));
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ category: "missingRequiredValue", severity: "runtime" }),
+    ]);
+  });
+
+  it("blocks an invalid argument Type", () => {
+    const result = analyse('MAX(["seven"])', EMPTY_SCOPE);
+    expect(result.value).toBeNull();
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        category: "invalidFunctionArgument",
+        severity: "blocking",
+      }),
+    ]);
+  });
+
+  it("propagates runtime failures from an array item", () => {
+    const result = analyse("MAX(numbers)", {
+      ports: [
+        {
+          name: "numbers",
+          type: { array: "number" },
+          value: { kind: "array", items: [number(3), upstreamFailure] },
+        },
+      ],
+      shapes: {},
+    });
+    expect(result.value).toEqual(upstreamFailure);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ category: "invalidFieldValue", severity: "runtime" }),
+    ]);
+  });
+});

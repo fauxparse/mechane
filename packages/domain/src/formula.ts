@@ -724,9 +724,19 @@ export const CATALOGUE = Object.freeze([
     call: ([input], span, budget) =>
       numericExtremum(input, span, "MIN", budget, (candidate, selected) => candidate < selected),
   },
+  {
+    name: "MAX",
+    arity: [1, 1],
+    signature: "MAX(numbers)",
+    summary: "Returns the largest present number.",
+    pipeable: true,
+    parameters: [NUMERIC_INPUT_PARAMETER],
+    returns: () => "number",
+    call: ([input], span, budget) =>
+      numericExtremum(input, span, "MAX", budget, (candidate, selected) => candidate > selected),
+  },
 ] satisfies CatalogueEntry[]);
 export const DEFERRED_FUNCTIONS = Object.freeze([
-  "MAX",
   "ROUND",
   "LEN",
   "UPPER",
