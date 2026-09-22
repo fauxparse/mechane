@@ -164,3 +164,43 @@ describe("ROUND", () => {
     ]);
   });
 });
+
+describe("LEN", () => {
+  it("counts Unicode characters and supports pipe use", () => {
+    expect(analyse('"A🙂"|LEN', EMPTY_SCOPE).value).toEqual(number(2));
+    expect(analyse('LEN("")', EMPTY_SCOPE).value).toEqual(number(0));
+  });
+
+  it("propagates Typed Absence", () => {
+    const result = analyse("LEN(value)", {
+      ports: [{ name: "value", type: "text", value: absent("unwired") }],
+      shapes: {},
+    });
+    expect(result.value).toEqual(absent("unwired"));
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ category: "missingRequiredValue", severity: "runtime" }),
+    ]);
+  });
+
+  it("blocks an invalid argument Type", () => {
+    const result = analyse("LEN(12)", EMPTY_SCOPE);
+    expect(result.value).toBeNull();
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        category: "invalidFunctionArgument",
+        severity: "blocking",
+      }),
+    ]);
+  });
+
+  it("propagates runtime failures", () => {
+    const result = analyse("value|LEN", {
+      ports: [{ name: "value", type: "text", value: upstreamFailure }],
+      shapes: {},
+    });
+    expect(result.value).toEqual(upstreamFailure);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ category: "invalidFieldValue", severity: "runtime" }),
+    ]);
+  });
+});

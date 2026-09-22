@@ -663,6 +663,10 @@ const NUMBER_PARAMETER: CatalogueParameter = {
   expected: "Number",
   accepts: (type) => type === "number" || type === "unknown",
 };
+const TEXT_PARAMETER: CatalogueParameter = {
+  expected: "Text",
+  accepts: (type) => type === "text" || type === "unknown",
+};
 
 const NUMERIC_INPUT_PARAMETER: CatalogueParameter = {
   expected: "Number or Array of Number",
@@ -750,14 +754,23 @@ export const CATALOGUE = Object.freeze([
     returns: () => "number",
     call: ([input, precision], span) => roundToPrecision(input, precision, span),
   },
+  {
+    name: "LEN",
+    arity: [1, 1],
+    signature: "LEN(text)",
+    summary: "Returns the number of Unicode characters in text.",
+    pipeable: true,
+    parameters: [TEXT_PARAMETER],
+    returns: () => "number",
+    call: ([input], span) =>
+      transformText(input, span, "LEN", (value) => {
+        let length = 0;
+        for (const _character of value) length += 1;
+        return number(length);
+      }),
+  },
 ] satisfies CatalogueEntry[]);
-export const DEFERRED_FUNCTIONS = Object.freeze([
-  "LEN",
-  "UPPER",
-  "LOWER",
-  "FIRST",
-  "LAST",
-] as const);
+export const DEFERRED_FUNCTIONS = Object.freeze(["UPPER", "LOWER", "FIRST", "LAST"] as const);
 
 export function catalogueEntry(name: string): CatalogueEntry | undefined {
   const upper = name.toUpperCase();
@@ -855,6 +868,19 @@ function roundToPrecision(
 function shiftDecimal(value: number, places: number): number {
   const [coefficient = "0", exponent = "0"] = value.toString().toLowerCase().split("e");
   return Number(`${coefficient}e${Number(exponent) + places}`);
+}
+
+function transformText(
+  input: FormulaValue | undefined,
+  span: Span,
+  name: string,
+  transform: (value: string) => FormulaValue,
+): FormulaValue {
+  if (!input) return absent(`${name} is missing an argument`);
+  if (input.kind === "failure" || input.kind === "absent") return input;
+  return input.kind === "text"
+    ? transform(input.value)
+    : failure("invalidFunctionArgument", `Function "${name}" requires Text.`, span);
 }
 
 function sameType(left: FormulaType, right: FormulaType): boolean {
