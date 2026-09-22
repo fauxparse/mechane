@@ -175,9 +175,14 @@ export default function FormulaCodeEditor({
   const view = useRef<EditorView | null>(null);
   const scopeRef = useRef(scope);
   const changeRef = useRef(onChange);
-  scopeRef.current = scope;
   const initialValue = useRef(value);
-  changeRef.current = onChange;
+
+  // The CodeMirror extensions below are built once and read these through the
+  // refs, so they must track the latest props without tearing the editor down.
+  useEffect(() => {
+    scopeRef.current = scope;
+    changeRef.current = onChange;
+  });
 
   useEffect(() => {
     if (!host.current) return undefined;

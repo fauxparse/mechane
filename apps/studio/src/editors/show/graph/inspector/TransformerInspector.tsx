@@ -23,10 +23,12 @@ import {
   transformerInputType,
   transformerOutputType,
   typeLabel,
+  type DeviceNode,
   type FormulaScope,
   type GraphNode,
+  type ShowGraph,
 } from "@mechane/domain";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { GraphInspectorEditing } from "../../commands/use-graph-editing";
 import { FormulaEditor } from "../formula/FormulaEditor";
 
@@ -67,18 +69,33 @@ function formulaScope(
 }
 
 function PortNameInput({ name, onCommit }: { name: string; onCommit(name: string): void }) {
-  const [value, setValue] = useState(name);
-  useEffect(() => setValue(name), [name]);
+  // Uncontrolled, keyed by the committed name: the input owns the draft between
+  // edits, and a rename from anywhere else remounts it with the new value.
   return (
     <Input
+      key={name}
       aria-label={`Input name ${name}`}
-      value={value}
-      onChange={(event) => setValue(event.target.value)}
-      onBlur={() => {
-        if (value !== name) onCommit(value);
+      defaultValue={name}
+      onBlur={(event) => {
+        const next = event.target.value;
+        if (next !== name) onCommit(next);
       }}
     />
   );
+}
+
+/**
+ * The Device driven by the Flow that owns this Transformer, if any. A
+ * per-connection Device gives every Player Instance its own Shuffle seed.
+ */
+function drivenDevice(graph: ShowGraph, parentId: string): DeviceNode | null {
+  const nodesById = new Map(graph.nodes.map((node) => [node.id, node]));
+  for (const edge of graph.edges) {
+    if (edge.kind !== "device" || edge.sourceId !== parentId) continue;
+    const target = nodesById.get(edge.targetId);
+    if (target?.kind === "device") return target;
+  }
+  return null;
 }
 
 export function TransformerInspector({
@@ -101,15 +118,8 @@ export function TransformerInspector({
     [formula, node.transform.kind, scope],
   );
   const effectiveOutputType = transformerOutputType(editing.graph, node);
-  const shuffleDevice =
-    node.parentId === null
-      ? null
-      : editing.graph.edges
-          .filter((edge) => edge.kind === "device" && edge.sourceId === node.parentId)
-          .map((edge) => editing.graph.nodes.find((candidate) => candidate.id === edge.targetId))
-          .find((candidate) => candidate?.kind === "device");
-  const perConnectionShuffle =
-    shuffleDevice?.kind === "device" && shuffleDevice.perConnection === true;
+  const shuffleDevice = node.parentId === null ? null : drivenDevice(editing.graph, node.parentId);
+  const perConnectionShuffle = shuffleDevice?.perConnection === true;
 
   return (
     <>
@@ -310,12 +320,7 @@ export function TransformerInspector({
               size="sm"
               variant="outline"
               disabled={!runActive || reshuffling || !onReshuffle || perConnectionShuffle}
-              onClick={() =>
-                onReshuffle?.(
-                  node.id,
-                  shuffleDevice?.kind === "device" ? shuffleDevice.id : undefined,
-                )
-              }
+              onClick={() => onReshuffle?.(node.id, shuffleDevice?.id)}
             >
               {reshuffling ? "Reshuffling…" : "Reshuffle"}
             </Button>

@@ -34,6 +34,15 @@ export default {
         files: ["src/components/ui/**"],
         rules: ["react-doctor/only-export-components"],
       },
+      {
+        // FormulaCodeEditor *is* the lazy chunk this rule asks for:
+        // FormulaEditor.tsx loads it through React.lazy, and a studio build
+        // emits CodeMirror in its own FormulaCodeEditor-*.js chunk, absent from
+        // the entry bundle. The rule only sees the static imports inside that
+        // already-split chunk (#687).
+        files: ["src/editors/show/graph/formula/FormulaCodeEditor.tsx"],
+        rules: ["react-doctor/prefer-dynamic-import"],
+      },
     ],
   },
 
