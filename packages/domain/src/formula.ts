@@ -651,6 +651,11 @@ export interface CatalogueEntry {
   ) => FormulaValue;
 }
 
+const ARRAY_PARAMETER: CatalogueParameter = {
+  expected: "Array",
+  accepts: (type) => type === "unknown" || (typeof type === "object" && "array" in type),
+};
+
 const ANY_PARAMETER: CatalogueParameter = {
   expected: "any value",
   accepts: () => true,
@@ -791,8 +796,19 @@ export const CATALOGUE = Object.freeze([
     call: ([input], span) =>
       transformText(input, span, "LOWER", (value) => text(value.toLowerCase())),
   },
+  {
+    name: "FIRST",
+    arity: [1, 1],
+    signature: "FIRST(items)",
+    summary: "Returns the first present array item.",
+    pipeable: true,
+    parameters: [ARRAY_PARAMETER],
+    returns: ([input]) =>
+      input && typeof input === "object" && "array" in input ? input.array : "unknown",
+    call: ([input], span, budget) => presentArrayItem(input, span, "FIRST", budget, false),
+  },
 ] satisfies CatalogueEntry[]);
-export const DEFERRED_FUNCTIONS = Object.freeze(["FIRST", "LAST"] as const);
+export const DEFERRED_FUNCTIONS = Object.freeze(["LAST"] as const);
 
 export function catalogueEntry(name: string): CatalogueEntry | undefined {
   const upper = name.toUpperCase();
@@ -903,6 +919,29 @@ function transformText(
   return input.kind === "text"
     ? transform(input.value)
     : failure("invalidFunctionArgument", `Function "${name}" requires Text.`, span);
+}
+
+function presentArrayItem(
+  input: FormulaValue | undefined,
+  span: Span,
+  name: string,
+  budget: EvaluationBudget,
+  fromEnd: boolean,
+): FormulaValue {
+  if (!input) return absent(`${name} is missing an argument`);
+  if (input.kind === "failure" || input.kind === "absent") return input;
+  if (input.kind !== "array") {
+    return failure("invalidFunctionArgument", `Function "${name}" requires an Array.`, span);
+  }
+  for (let offset = 0; offset < input.items.length; offset += 1) {
+    const exhausted = consumeStep(budget, span);
+    if (exhausted) return exhausted;
+    const index = fromEnd ? input.items.length - offset - 1 : offset;
+    const item = input.items[index];
+    if (!item || item.kind === "absent") continue;
+    return item;
+  }
+  return absent(`${name} has no present items`);
 }
 
 function sameType(left: FormulaType, right: FormulaType): boolean {

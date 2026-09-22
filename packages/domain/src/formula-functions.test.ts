@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { absent, analyse, number, text, type FormulaScope, type FormulaValue } from "./formula";
+import { generateId } from "./id";
 
 const EMPTY_SCOPE = { ports: [], shapes: {} } satisfies FormulaScope;
 
@@ -274,6 +275,75 @@ describe("LOWER", () => {
   it("propagates runtime failures", () => {
     const result = analyse("value|LOWER", {
       ports: [{ name: "value", type: "text", value: upstreamFailure }],
+      shapes: {},
+    });
+    expect(result.value).toEqual(upstreamFailure);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ category: "invalidFieldValue", severity: "runtime" }),
+    ]);
+  });
+});
+
+describe("FIRST", () => {
+  it("returns the first present item through a pipe and preserves its identity", () => {
+    const first = {
+      kind: "record",
+      shape: "Candidate",
+      fields: {},
+      reference: generateId("structuredValue"),
+    } satisfies FormulaValue;
+    const later = {
+      kind: "record",
+      shape: "Candidate",
+      fields: {},
+      reference: generateId("structuredValue"),
+    } satisfies FormulaValue;
+    const result = analyse("items|FIRST", {
+      ports: [
+        {
+          name: "items",
+          type: { array: { record: "Candidate" } },
+          value: { kind: "array", items: [absent("missing"), first, later] },
+        },
+      ],
+      shapes: { Candidate: {} },
+    });
+    expect(result.value).toBe(first);
+    expect(result.value).toEqual(expect.objectContaining({ reference: first.reference }));
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  it("propagates Typed Absence", () => {
+    const result = analyse("FIRST(items)", {
+      ports: [{ name: "items", type: { array: "number" }, value: absent("unwired") }],
+      shapes: {},
+    });
+    expect(result.value).toEqual(absent("unwired"));
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ category: "missingRequiredValue", severity: "runtime" }),
+    ]);
+  });
+
+  it("blocks an invalid argument Type", () => {
+    const result = analyse("FIRST(12)", EMPTY_SCOPE);
+    expect(result.value).toBeNull();
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        category: "invalidFunctionArgument",
+        severity: "blocking",
+      }),
+    ]);
+  });
+
+  it("propagates a runtime failure before the first present item", () => {
+    const result = analyse("FIRST(items)", {
+      ports: [
+        {
+          name: "items",
+          type: { array: "number" },
+          value: { kind: "array", items: [absent("missing"), upstreamFailure, number(3)] },
+        },
+      ],
       shapes: {},
     });
     expect(result.value).toEqual(upstreamFailure);
