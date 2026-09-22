@@ -6,10 +6,11 @@ import {
   defaultSourceValues,
   materializeInstanceState,
   materializeRunState,
+  isStructuredValueReference,
   resolveCueParameters,
   resolveRuntimeEvent,
   resolveSlotInstances,
-  sceneVariableValues,
+  sceneVariableResolution,
 } from "@mechane/domain";
 import type { Element } from "@mechane/domain";
 import { describe, expect, it } from "vitest";
@@ -17,6 +18,7 @@ import { describe, expect, it } from "vitest";
 import {
   AUDIENCE_FLOW_ID,
   AUDIENCE_VARIABLE_ID,
+  CANDIDATE_ORDER_TRANSFORMER_ID,
   CANDIDATE_BUTTON_VARIABLE_ID,
   CANDIDATE_IMAGE_FIELD_ID,
   CANDIDATE_IMAGE_REVISION,
@@ -28,6 +30,7 @@ import {
   CANDIDATES,
   CHOOSE_CANDIDATE_CUE_ID,
   CONFIRMATION_SCENE_ID,
+  FRONT_RUNNERS_TRANSFORMER_ID,
   CONFIRMATION_VARIABLE_ID,
   SELECTED_SOURCE_ID,
   seedBlockCanvasPosition,
@@ -35,6 +38,8 @@ import {
   seedShow,
   TALLY_ROW_VARIABLE_ID,
   TALLY_SCENE_ID,
+  TALLY_HEADLINE_TRANSFORMER_ID,
+  TALLY_HEADLINE_VARIABLE_ID,
   TALLY_VARIABLE_ID,
   votingCanvases,
   votingGraph,
@@ -87,8 +92,27 @@ describe("Voting seed", () => {
       "Thank you screen",
     ]);
     expect(graph.nodes.find((node) => node.id === TALLY_SCENE_ID)).toMatchObject({
-      variables: [{ id: TALLY_VARIABLE_ID, type: { kind: "array" } }],
+      variables: [
+        { id: TALLY_HEADLINE_VARIABLE_ID, type: "text" },
+        { id: TALLY_VARIABLE_ID, type: { kind: "array" } },
+      ],
     });
+    expect(graph.nodes.filter((node) => node.kind === "transformer")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: TALLY_HEADLINE_TRANSFORMER_ID,
+          transform: expect.objectContaining({ kind: "calculate" }),
+        }),
+        expect.objectContaining({
+          id: FRONT_RUNNERS_TRANSFORMER_ID,
+          transform: expect.objectContaining({ kind: "filter" }),
+        }),
+        expect.objectContaining({
+          id: CANDIDATE_ORDER_TRANSFORMER_ID,
+          transform: { kind: "shuffle" },
+        }),
+      ]),
+    );
     expect(graph.nodes.find((node) => node.id === CANDIDATE_LIST_SCENE_ID)).toMatchObject({
       variables: [{ id: AUDIENCE_VARIABLE_ID, type: { kind: "array" } }],
     });
@@ -196,7 +220,12 @@ describe("Voting seed", () => {
     if (candidateList?.kind !== "scene") throw new Error("Candidate list scene is missing.");
     const candidatesVariable = candidateList.variables[0];
     if (!candidatesVariable?.type) throw new Error("Candidate list variable type is missing.");
-    const values = sceneVariableValues(graph, candidateList.id, defaultSourceValues(graph));
+    const state = materializeRunState(graph, defaultSourceValueTemplates(graph));
+    const resolution = sceneVariableResolution(graph, candidateList.id, state.sourceValues, {
+      structuredValues: state.structuredValues,
+      shuffleSeeds: { [CANDIDATE_ORDER_TRANSFORMER_ID]: "test-seed" },
+    });
+    const values = resolution.values;
     const slot = canvases[CANDIDATE_LIST_SCENE_ID]?.root.children?.[1];
     if (slot?.type !== "slot") throw new Error("Candidate list slot is missing.");
     const candidateButton = workflowBlocks().find((block) => block.id === "block_candidate_button");
@@ -214,6 +243,10 @@ describe("Voting seed", () => {
       runtimeType: { kind: "shape", shapeId: CANDIDATE_SHAPE_ID },
       shapes: graph.shapes,
       allBlocks: workflowBlocks(),
+      structuredValues: {
+        ...state.structuredValues,
+        ...resolution.computedStructuredValues,
+      },
     });
     expect(result.instances).toHaveLength(3);
   });
@@ -229,7 +262,32 @@ describe("Voting seed", () => {
     if (slot?.type !== "slot") throw new Error("Candidate list slot is missing.");
     const candidateButton = workflowBlocks().find((block) => block.id === "block_candidate_button");
     if (!candidateButton) throw new Error("CandidateButton block is missing.");
-    const values = sceneVariableValues(graph, candidateList.id, defaultSourceValues(graph));
+    const state = materializeRunState(graph, defaultSourceValueTemplates(graph));
+    const resolution = sceneVariableResolution(graph, candidateList.id, state.sourceValues, {
+      structuredValues: state.structuredValues,
+      shuffleSeeds: { [CANDIDATE_ORDER_TRANSFORMER_ID]: "test-seed" },
+    });
+    const values = resolution.values;
+    const ordered = values[AUDIENCE_VARIABLE_ID];
+    if (!isStructuredValueReference(ordered)) throw new Error("Candidate order was not computed.");
+    const orderedRecord = resolution.computedStructuredValues[ordered.ref];
+    const firstCandidate = orderedRecord?.kind === "array" ? orderedRecord.items[0] : null;
+    if (!isStructuredValueReference(firstCandidate)) {
+      throw new Error("Shuffled Candidate reference is missing.");
+    }
+    const candidateRecord = state.structuredValues[firstCandidate.ref];
+    const candidateImage =
+      candidateRecord?.kind === "shape" ? candidateRecord.fields[CANDIDATE_IMAGE_FIELD_ID] : null;
+    if (
+      candidateImage === null ||
+      typeof candidateImage !== "object" ||
+      !("assetId" in candidateImage)
+    ) {
+      throw new Error("Shuffled Candidate image is missing.");
+    }
+    const expectedImageUrl = `/${CANDIDATES.find(
+      (candidate) => candidate.imageAssetId === candidateImage.assetId,
+    )?.name.toLowerCase()}.png`;
     const result = resolveSlotInstances({
       block: candidateButton,
       slot,
@@ -243,24 +301,26 @@ describe("Voting seed", () => {
       runtimeType: { kind: "shape", shapeId: CANDIDATE_SHAPE_ID },
       shapes: graph.shapes,
       allBlocks: workflowBlocks(),
-      imageAssets: [
-        {
-          assetId: "image_asset_alice",
-          revision: CANDIDATE_IMAGE_REVISION,
-          url: "/alice.png",
-          width: 128,
-          height: 128,
-          alt: "Alice",
-          mimeType: "image/png",
-          blurHash: null,
-        },
-      ],
+      structuredValues: {
+        ...state.structuredValues,
+        ...resolution.computedStructuredValues,
+      },
+      imageAssets: CANDIDATES.map((candidate) => ({
+        assetId: candidate.imageAssetId,
+        revision: CANDIDATE_IMAGE_REVISION,
+        url: `/${candidate.name.toLowerCase()}.png`,
+        width: 128,
+        height: 128,
+        alt: candidate.name,
+        mimeType: "image/png",
+        blurHash: null,
+      })),
     });
     const first = result.instances[0];
     if (!first?.canvas) throw new Error("CandidateButton instance has no canvas.");
     expect(first.canvas.root.children?.[0]).toMatchObject({
       type: "image",
-      image: { url: "/alice.png" },
+      image: { url: expectedImageUrl },
     });
   });
 
@@ -407,17 +467,34 @@ describe("Voting seed", () => {
       state,
       blocks: graph.blocks ?? [],
       parameters: plan.parameters,
+      transformerRuntime: {
+        shuffleSeeds: { [CANDIDATE_ORDER_TRANSFORMER_ID]: "test-seed" },
+      },
     });
     expect(resolved.kind).toBe("resolved");
     if (resolved.kind !== "resolved") return;
     // The Parameter carries the reference, so the Update that follows writes
     // the seeded Candidate rather than a detached copy of it.
     const selected = resolved.values["selectedCandidate"];
-    expect(selected).toEqual({ ref: expect.any(String) });
-    const record = state.structuredValues[(selected as { ref: string }).ref];
+    const expectedResolution = sceneVariableResolution(
+      graph,
+      CANDIDATE_LIST_SCENE_ID,
+      state.sourceValues,
+      {
+        structuredValues: state.structuredValues,
+        shuffleSeeds: { [CANDIDATE_ORDER_TRANSFORMER_ID]: "test-seed" },
+      },
+    );
+    const ordered = expectedResolution.values[AUDIENCE_VARIABLE_ID];
+    expect(isStructuredValueReference(ordered)).toBe(true);
+    expect(isStructuredValueReference(selected)).toBe(true);
+    if (!isStructuredValueReference(ordered) || !isStructuredValueReference(selected)) return;
+    const orderedRecord = expectedResolution.computedStructuredValues[ordered.ref];
+    expect(orderedRecord?.kind === "array" ? orderedRecord.items[1] : null).toEqual(selected);
+    const record = state.structuredValues[selected.ref];
     expect(record?.kind).toBe("shape");
-    expect(record?.kind === "shape" ? record.fields[CANDIDATE_NAME_FIELD_ID] : null).toBe(
-      CANDIDATES[1].name,
+    expect(CANDIDATES.map((candidate) => candidate.name)).toContain(
+      record?.kind === "shape" ? record.fields[CANDIDATE_NAME_FIELD_ID] : null,
     );
   });
 

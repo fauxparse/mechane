@@ -129,6 +129,52 @@ function toNode(value: unknown): GraphNode {
   } as GraphNode;
 }
 
+function toTransformerNode(value: unknown): Extract<GraphNode, { kind: "transformer" }> {
+  const input = record(value);
+  const transform = record(input.transform);
+  const kind = transform.kind;
+  if (kind !== "calculate" && kind !== "filter" && kind !== "shuffle") {
+    throw new Error(`Unknown Player Transformer kind: ${String(kind)}.`);
+  }
+  const decodedTransform: Extract<GraphNode, { kind: "transformer" }>["transform"] =
+    kind === "calculate"
+      ? {
+          kind,
+          formula: transform.calculateFormula === null ? null : String(transform.calculateFormula),
+          outputType: transform.outputType === null ? null : toType(transform.outputType),
+        }
+      : kind === "filter"
+        ? { kind, formula: String(transform.filterFormula) }
+        : { kind };
+  return {
+    id: String(input.id),
+    kind: "transformer",
+    name: String(input.name),
+    parentId: input.parentId === null ? null : String(input.parentId),
+    position: {
+      x: Number(record(input.position).x),
+      y: Number(record(input.position).y),
+    },
+    ...(typeof input.color === "string"
+      ? {
+          color: input.color as Extract<GraphNode, { kind: "transformer" }>["color"],
+        }
+      : {}),
+    ports: Array.isArray(input.ports)
+      ? input.ports.map((port) => {
+          const normalized = record(port);
+          return {
+            id: String(normalized.id),
+            name: String(normalized.name),
+            rank: String(normalized.rank),
+            type: toType(normalized.type),
+          };
+        })
+      : [],
+    transform: decodedTransform,
+  };
+}
+
 function toEdge(value: unknown): GraphEdge {
   const input = record(value);
   const { __typename, ...fields } = input;
@@ -211,6 +257,9 @@ function toFlowBundle(value: unknown): PlayerSession["flow"] {
     flowId: String(input.flowId),
     defaultSceneId: input.defaultSceneId === null ? null : String(input.defaultSceneId),
     scenes,
+    transformers: Array.isArray(input.transformers)
+      ? input.transformers.map(toTransformerNode)
+      : [],
   };
 }
 
@@ -324,12 +373,18 @@ export function normalizePlayerSession(value: unknown, apiBaseUrl?: string): Pla
       : { ...decodeCanvasDocument(input.canvas), id: String(record(input.canvas).id) };
   const imageAssets = Array.isArray(input.imageAssets) ? input.imageAssets.map(record) : [];
   const flow = toFlowBundle(input.flow);
-  // Blocks are queried once, beside the graph rather than inside it. The
-  // graph still has to carry them: dispatch resolves a tap inside a Slot
-  // against the contained Block's Canvas, and a graph without Blocks cannot
-  // name that Canvas — it reports the tap unbound instead.
   const blocks = Array.isArray(input.blocks) ? input.blocks.map(toBlock) : [];
-
+  const graph = toGraph(input.graph);
+  const flowTransformers = new Map(
+    (flow?.transformers ?? []).map((transformer) => [transformer.id, transformer]),
+  );
+  const mergedGraph = {
+    ...graph,
+    blocks,
+    nodes: graph.nodes.map((node) =>
+      node.kind === "transformer" ? (flowTransformers.get(node.id) ?? node) : node,
+    ),
+  };
   return {
     device: record(input.device) as PlayerSession["device"],
     realtime: {
@@ -345,12 +400,13 @@ export function normalizePlayerSession(value: unknown, apiBaseUrl?: string): Pla
           startedAt: String(run.startedAt),
           endedAt: run.endedAt === null ? null : String(run.endedAt),
           stateSequence: Number(run.stateSequence),
+          shuffleSeeds: {},
           sourceValues: run.sourceValues as SourceValues,
           structuredValues: run.structuredValues as StructuredValues,
         }
       : null,
     flow,
-    graph: { ...toGraph(input.graph), blocks },
+    graph: mergedGraph,
     scene: scene as PlayerSession["scene"],
     canvas: canvas as PlayerSession["canvas"],
     blocks,

@@ -220,6 +220,55 @@ export const GetPlayerSessionQuery: TadaDocumentNode<any, any> = graphql(
               }
             }
           }
+          transformers {
+            id
+            name
+            parentId
+            color
+            position {
+              x
+              y
+            }
+            ports {
+              id
+              name
+              rank
+              type {
+                kind
+                shapeId
+                of {
+                  kind
+                  shapeId
+                }
+              }
+            }
+            transform {
+              __typename
+              kind
+              ... on CalculateTransform {
+                calculateFormula: formula
+                outputType {
+                  kind
+                  shapeId
+                  of {
+                    kind
+                    shapeId
+                  }
+                }
+              }
+              ... on FilterTransform {
+                filterFormula: formula
+              }
+            }
+            type {
+              kind
+              shapeId
+              of {
+                kind
+                shapeId
+              }
+            }
+          }
         }
         scene {
           __typename

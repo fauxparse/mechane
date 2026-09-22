@@ -36,6 +36,7 @@ function PlayerCanvas({
         scene: session.scene,
         sourceValues: session.run.sourceValues,
         structuredValues: session.run.structuredValues,
+        shuffleSeeds: session.run.shuffleSeeds ?? {},
       },
       mode: "player",
     });

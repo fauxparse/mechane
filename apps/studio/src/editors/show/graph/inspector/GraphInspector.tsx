@@ -30,6 +30,9 @@ export interface GraphInspectorProps {
   onImageUpload?: (props: ImageInputOnUploadProps) => void;
   initialSourceValue?: ShowGraphValueLocation;
   onSourceValueChange?: (location: ShowGraphValueLocation | null) => void;
+  runActive?: boolean;
+  reshufflingTransformerId?: string | null;
+  onReshuffleTransformer?(transformerId: string, deviceId?: string): void;
   className?: string;
 }
 
@@ -162,6 +165,9 @@ export function GraphInspector({
   onImageUpload,
   initialSourceValue,
   onSourceValueChange,
+  runActive,
+  reshufflingTransformerId,
+  onReshuffleTransformer,
   className,
 }: GraphInspectorProps) {
   const [node] = selected;
@@ -189,6 +195,9 @@ export function GraphInspector({
                 editing={editing}
                 initialSourceValue={initialSourceValue}
                 onSourceValueChange={onSourceValueChange}
+                runActive={runActive}
+                reshufflingTransformerId={reshufflingTransformerId}
+                onReshuffleTransformer={onReshuffleTransformer}
               />
             )}
           </>

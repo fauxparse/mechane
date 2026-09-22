@@ -45,6 +45,12 @@ export const EndRunMutation = graphql(`
   }
 `);
 
+export const ReshuffleTransformerMutation = graphql(`
+  mutation ReshuffleTransformer($showId: ID!, $transformerId: ID!, $deviceId: ID) {
+    reshuffleTransformer(showId: $showId, transformerId: $transformerId, deviceId: $deviceId)
+  }
+`);
+
 export const GetRunErrorsQuery = graphql(`
   query GetRunErrors($showId: ID!, $runId: ID, $category: String, $limit: Int) {
     runErrors(showId: $showId, runId: $runId, category: $category, limit: $limit) {
@@ -56,6 +62,7 @@ export const GetRunErrorsQuery = graphql(`
       deviceId
       sceneId
       elementId
+      transformerId
       cueId
       actionId
       eventId

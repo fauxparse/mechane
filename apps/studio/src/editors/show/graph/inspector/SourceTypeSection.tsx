@@ -18,7 +18,6 @@ import { useState } from "react";
 import type { GraphInspectorEditing } from "../../commands/use-graph-editing";
 import { sourceTypeChangeHasImpact, type SourceTypeChangePlan } from "./source-type-change";
 
-
 function SourceTypeImpactDialog({
   plan,
   node,

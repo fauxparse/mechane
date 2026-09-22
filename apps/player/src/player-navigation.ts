@@ -147,6 +147,7 @@ export function usePlayerNavigation(
         }),
         blocks: runtime.session.blocks ?? [],
         parameters: plan.parameters,
+        transformerRuntime: { shuffleSeeds: currentState.shuffleSeeds ?? {} },
       });
       if (parameters.kind !== "resolved") return false;
       const target = plan.actions.find(
@@ -306,6 +307,7 @@ function sessionForState(session: PlayerSession, state: PlayerRunState): PlayerS
               structuredValues: state.flowStructuredValues,
             },
           ),
+          shuffleSeeds: state.shuffleSeeds ?? {},
         },
       }
     : session;

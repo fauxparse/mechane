@@ -21,7 +21,11 @@ import {
   readGraphRows,
 } from "./graph-persistence";
 import { drainPlayerInvalidations, enqueuePlayerInvalidations } from "./player-invalidation-outbox";
-import { reconcileActiveRunDeviceStates, reconcileActiveRunValues, syncActiveRunSourceValues } from "./runs";
+import {
+  reconcileActiveRunDeviceStates,
+  reconcileActiveRunValues,
+  syncActiveRunSourceValues,
+} from "./runs";
 import { devices, shows } from "./schema";
 import { withUniqueId } from "./ids";
 export interface PublishLoss {
@@ -233,7 +237,10 @@ export async function applyShowEdits(
       : null;
     const editedSourceIds = new Set(
       graphEdits
-        .filter((edit): edit is Extract<GraphEdit, { type: "graph.setSourceFieldDefault" }> => edit.type === "graph.setSourceFieldDefault")
+        .filter(
+          (edit): edit is Extract<GraphEdit, { type: "graph.setSourceFieldDefault" }> =>
+            edit.type === "graph.setSourceFieldDefault",
+        )
         .map((edit) => edit.nodeId),
     );
     const playerUpdated = await syncActiveRunSourceValues(showId, nextGraph, editedSourceIds, tx);

@@ -124,6 +124,9 @@ export function ShowGraphEditorInner(props: ShowGraphEditorProps) {
             inspector={inspector}
             initialSourceValue={props.initialSourceValue}
             onSourceValueChange={props.onSourceValueChange}
+            runActive={props.runActive}
+            reshufflingTransformerId={props.reshufflingTransformerId}
+            onReshuffleTransformer={props.onReshuffleTransformer}
             message={message}
             paletteOpen={paletteOpen}
             setPaletteOpen={setPaletteOpen}

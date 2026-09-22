@@ -8,6 +8,7 @@ import {
   formatValuePath,
   sourceDefaultsFor,
   typeAtPath,
+  transformerOutputType,
   wiringTargetVariableId,
   wiringTypesCompatible,
 } from "@mechane/domain";
@@ -64,9 +65,7 @@ function targetTypeAtPath(
   if (!target) return null;
   const shapes = graph.shapes ?? [];
   if (target.kind === "source") return typeAtPath(target.type, edge.targetPath, shapes);
-  if (target.kind === "transformer") {
-    return target.type ? typeAtPath(target.type, edge.targetPath, shapes) : null;
-  }
+  if (target.kind === "transformer") return null;
   if (target.kind !== "scene") return null;
   const variable = target.variables.find(
     (candidate) => candidate.id === wiringTargetVariableId(edge),
@@ -171,11 +170,13 @@ export function planSourceTypeChange(
       ? sourceTypeAtPath(nextType, edge, shapes)
       : (() => {
           const producer = findNode(graph, edge.sourceId);
-          return producer?.kind === "source" || producer?.kind === "transformer"
-            ? producer.type
-              ? sourceTypeAtPath(producer.type, edge, shapes)
-              : null
-            : null;
+          const producerType =
+            producer?.kind === "source"
+              ? producer.type
+              : producer?.kind === "transformer"
+                ? transformerOutputType(graph, producer)
+                : null;
+          return producerType ? sourceTypeAtPath(producerType, edge, shapes) : null;
         })();
     const nextTargetType = isIncoming
       ? typeAtPath(nextType, edge.targetPath, shapes)

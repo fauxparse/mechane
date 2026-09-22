@@ -60,12 +60,15 @@ const TRANSFORMER: TransformerNode = {
   name: "Total",
   position: at,
   parentId: null,
+  ports: [{ id: "port_total_input", name: "input" }],
+  transform: { kind: "calculate", formula: "input", outputType: "number" },
 };
 const OTHER_LOCAL: SourceNode = { ...LOCAL, id: "source_other", parentId: INTERVAL.id };
 const LOCAL_TRANSFORMER: TransformerNode = {
   ...TRANSFORMER,
   id: "transformer_local",
   parentId: VOTE.id,
+  ports: [{ id: "port_local_input", name: "input" }],
 };
 const PHONE: DeviceNode = {
   id: "device_phone",
@@ -223,10 +226,10 @@ describe("connectionEdge", () => {
       ),
     ).toEqual(expect.objectContaining({ kind: "wiring", sourcePath: ["score"] }));
   });
-  it("leaves Transformer input paths unnamed", () => {
+  it("addresses a Transformer's named input port", () => {
     expect(
       connectionEdge(GRAPH, { sourceId: TALLY.id, targetId: TRANSFORMER.id }, "edge_new"),
-    )?.toEqual(expect.objectContaining({ kind: "wiring", targetPath: [] }));
+    )?.toEqual(expect.objectContaining({ kind: "wiring", targetPath: ["port_total_input"] }));
   });
 
   it("puts the Variable at the head of a wiring edge's target path", () => {
@@ -424,7 +427,7 @@ describe("canConnect", () => {
             sourceId: LOCAL.id,
             targetId: TRANSFORMER.id,
             sourcePath: [],
-            targetPath: [],
+            targetPath: ["port_total_input"],
           },
         },
       ],

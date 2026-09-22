@@ -2,7 +2,7 @@ import {
   resolveCanvasProperties,
   resolveSlotInstances,
   resolveSourceValues,
-  sceneVariableValues,
+  sceneVariableResolution,
 } from "@mechane/domain";
 import type {
   Block,
@@ -30,6 +30,7 @@ export type CanvasPresentationOwner =
       readonly scene: SceneNode;
       readonly sourceValues: Readonly<Record<string, unknown>>;
       readonly structuredValues?: StructuredValues;
+      readonly shuffleSeeds?: Readonly<Record<string, string>>;
     }
   | { readonly kind: "block"; readonly block: Block };
 
@@ -164,21 +165,32 @@ export function prepareCanvasForRender(input: PrepareCanvasInput): CanvasPresent
 
 export function prepareCanvasPresentation(input: CanvasPresentationInput): CanvasPresentation {
   const { owner } = input;
-  const sourceValues =
-    owner.kind === "scene" && owner.structuredValues
-      ? resolveSourceValues({
-          sourceValues: owner.sourceValues as never,
-          structuredValues: owner.structuredValues,
-        })
-      : owner.kind === "scene"
-        ? owner.sourceValues
-        : {};
-  const values =
-    owner.kind === "scene"
-      ? sceneVariableValues(input.graph, owner.scene.id, sourceValues)
-      : Object.fromEntries(
-          owner.block.variables.map((variable) => [variable.id, variable.defaultValue]),
-        );
+  let values: Record<string, unknown>;
+  if (owner.kind === "scene") {
+    const resolution = sceneVariableResolution(input.graph, owner.scene.id, owner.sourceValues, {
+      structuredValues: owner.structuredValues,
+      shuffleSeeds:
+        owner.shuffleSeeds ??
+        Object.fromEntries(
+          input.graph.nodes.flatMap((node) =>
+            node.kind === "transformer" && node.transform.kind === "shuffle"
+              ? [[node.id, `preview:${node.id}`]]
+              : [],
+          ),
+        ),
+    });
+    values = resolveSourceValues({
+      sourceValues: resolution.values as never,
+      structuredValues: {
+        ...owner.structuredValues,
+        ...resolution.computedStructuredValues,
+      },
+    });
+  } else {
+    values = Object.fromEntries(
+      owner.block.variables.map((variable) => [variable.id, variable.defaultValue]),
+    );
+  }
   const sceneVariables = owner.kind === "scene" ? owner.scene.variables : owner.block.variables;
   const variables =
     owner.kind === "scene"

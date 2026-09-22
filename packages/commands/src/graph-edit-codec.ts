@@ -46,6 +46,8 @@ import type {
   ShapeField,
   SuggestedImageDimensions,
   Type,
+  TransformerInputPort,
+  TransformerTransform,
   WiringConversion,
 } from "@mechane/domain";
 import {
@@ -71,12 +73,17 @@ import {
   removeEdge,
   removeNode,
   removeSceneVariable,
+  addTransformerPort,
   removeShape,
   removeShapeField,
   renameBlock,
   renameNode,
   renameSceneVariable,
   renameShape,
+  removeTransformerPort,
+  renameTransformerPort,
+  reorderTransformerPorts,
+  replaceTransformer,
   renameShapeField,
   reorderSceneVariables,
   reorderShapeFields,
@@ -97,6 +104,8 @@ import {
   setShapes,
   setSourceFieldDefault,
   setSourceType,
+  setTransformerFormula,
+  setTransformerOutputType,
   setWiringFieldMapping,
 } from "./graph-commands";
 import {
@@ -150,6 +159,11 @@ export interface FlatSceneVariable {
   suggestedDimensions?: SuggestedImageDimensions | null;
   defaultValue?: unknown;
 }
+export interface FlatTransformerInputPort {
+  id: string;
+  name: string;
+  rank?: string | null;
+}
 export interface FlatBlockVariable {
   id: string;
   name: string;
@@ -168,10 +182,13 @@ export interface FlatGraphNode {
   type?: FlatType | null;
   position: Position;
   variables?: FlatSceneVariable[] | null;
+  ports?: FlatTransformerInputPort[] | null;
+  transformKind?: string | null;
+  formula?: string | null;
+  outputType?: FlatType | null;
   size?: FlowSize | null;
   perConnection?: boolean | null;
 }
-
 export interface FlatGraphEdge {
   id: string;
   kind: string;
@@ -258,6 +275,13 @@ export interface FlatGraphEdit {
   variableId?: string | null;
   variableIds?: string[] | null;
   variable?: FlatSceneVariable | null;
+  portId?: string | null;
+  portIds?: string[] | null;
+  port?: FlatTransformerInputPort | null;
+  ports?: FlatTransformerInputPort[] | null;
+  transformKind?: string | null;
+  formula?: string | null;
+  outputType?: FlatType | null;
   variableType?: FlatType | null;
   sourceType?: FlatType | null;
   color?: string | null;
@@ -462,6 +486,36 @@ export function decodeSceneVariable(flat: FlatSceneVariable): SceneVariable {
   };
 }
 
+function encodeTransformerPort(port: TransformerInputPort): FlatTransformerInputPort {
+  return { id: port.id, name: port.name, rank: port.rank ?? null };
+}
+
+function decodeTransformerPort(port: FlatTransformerInputPort): TransformerInputPort {
+  return {
+    id: port.id,
+    name: port.name,
+    ...(port.rank ? { rank: port.rank } : {}),
+  };
+}
+
+function decodeTransformerTransform(flat: FlatGraphEdit): TransformerTransform {
+  if (flat.transformKind === "calculate") {
+    return {
+      kind: "calculate",
+      formula: flat.formula ?? null,
+      outputType: decodeType(flat.outputType),
+    };
+  }
+  if (flat.transformKind === "filter") {
+    return {
+      kind: "filter",
+      formula: required(flat, "formula", flat.formula),
+    };
+  }
+  if (flat.transformKind === "shuffle") return { kind: "shuffle" };
+  throw new GraphEditCodecError(`A "${flat.type}" edit needs a valid transformKind.`);
+}
+
 // ---------------------------------------------------------------------------
 // Block variables
 // ---------------------------------------------------------------------------
@@ -500,9 +554,22 @@ export function encodeNode(node: GraphNode): FlatGraphNode {
     parentId: node.parentId,
     defaultSceneId: node.kind === "flow" ? node.defaultSceneId : null,
     color: node.color ?? null,
-    type: node.kind === "source" || node.kind === "transformer" ? encodeType(node.type) : null,
+    type: node.kind === "source" ? encodeType(node.type) : null,
     position: { x: node.position.x, y: node.position.y },
     variables: node.kind === "scene" ? node.variables.map(encodeSceneVariable) : [],
+    ports:
+      node.kind === "transformer"
+        ? node.ports.map((port) => ({ id: port.id, name: port.name, rank: port.rank ?? null }))
+        : [],
+    transformKind: node.kind === "transformer" ? node.transform.kind : null,
+    formula:
+      node.kind === "transformer" && node.transform.kind !== "shuffle"
+        ? node.transform.formula
+        : null,
+    outputType:
+      node.kind === "transformer" && node.transform.kind === "calculate"
+        ? encodeType(node.transform.outputType)
+        : null,
     size: node.kind === "flow" ? (node.size ?? null) : null,
     perConnection: node.kind === "device" ? node.perConnection : false,
   };
@@ -547,8 +614,41 @@ export function decodeNode(flat: FlatGraphNode): GraphNode {
     case "source":
       if (!type) throw new GraphEditCodecError(`Source "${flat.id}" must have a Type.`);
       return { ...base, kind: "source", parentId, type };
-    case "transformer":
-      return { ...base, kind: "transformer", parentId, type };
+    case "transformer": {
+      const ports = (flat.ports ?? []).map((port) => ({
+        id: port.id,
+        name: port.name,
+        ...(port.rank ? { rank: port.rank } : {}),
+      }));
+      if (flat.transformKind === "calculate") {
+        return {
+          ...base,
+          kind: "transformer",
+          parentId,
+          ports,
+          transform: {
+            kind: "calculate",
+            formula: flat.formula ?? null,
+            outputType: decodeType(flat.outputType),
+          },
+        };
+      }
+      if (flat.transformKind === "filter" && flat.formula !== null && flat.formula !== undefined) {
+        return {
+          ...base,
+          kind: "transformer",
+          parentId,
+          ports,
+          transform: { kind: "filter", formula: flat.formula },
+        };
+      }
+      if (flat.transformKind === "shuffle") {
+        return { ...base, kind: "transformer", parentId, ports, transform: { kind: "shuffle" } };
+      }
+      throw new GraphEditCodecError(
+        `Transformer "${flat.id}" has invalid transform kind "${flat.transformKind ?? ""}".`,
+      );
+    }
     case "device":
       if (parentId !== null) {
         throw new GraphEditCodecError(
@@ -1226,6 +1326,106 @@ export const GRAPH_EDIT_CODECS: { [T in GraphEdit["type"]]: GraphEditCodec<T> } 
       type: GRAPH_COMMAND_TYPES.removeSceneVariable,
       sceneId: required(flat, "sceneId", flat.sceneId),
       variableId: required(flat, "variableId", flat.variableId),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.setTransformerFormula]: {
+    command: (edit) => setTransformerFormula(edit.nodeId, edit.formula),
+    encode: (edit) => ({ type: edit.type, nodeId: edit.nodeId, formula: edit.formula }),
+    decode: (flat) => {
+      if (flat.formula === undefined) {
+        throw new GraphEditCodecError(`A "${flat.type}" edit needs a formula.`);
+      }
+      return {
+        type: GRAPH_COMMAND_TYPES.setTransformerFormula,
+        nodeId: required(flat, "nodeId", flat.nodeId),
+        formula: flat.formula,
+      };
+    },
+  },
+  [GRAPH_COMMAND_TYPES.setTransformerOutputType]: {
+    command: (edit) => setTransformerOutputType(edit.nodeId, edit.outputType),
+    encode: (edit) => ({
+      type: edit.type,
+      nodeId: edit.nodeId,
+      outputType: encodeType(edit.outputType),
+    }),
+    decode: (flat) => {
+      if (flat.outputType === undefined) {
+        throw new GraphEditCodecError(`A "${flat.type}" edit needs an outputType.`);
+      }
+      return {
+        type: GRAPH_COMMAND_TYPES.setTransformerOutputType,
+        nodeId: required(flat, "nodeId", flat.nodeId),
+        outputType: decodeType(flat.outputType),
+      };
+    },
+  },
+  [GRAPH_COMMAND_TYPES.replaceTransformer]: {
+    command: (edit) => replaceTransformer(edit.nodeId, edit.ports, edit.transform),
+    encode: (edit) => ({
+      type: edit.type,
+      nodeId: edit.nodeId,
+      ports: edit.ports.map(encodeTransformerPort),
+      transformKind: edit.transform.kind,
+      formula: edit.transform.kind === "shuffle" ? null : edit.transform.formula,
+      outputType:
+        edit.transform.kind === "calculate" ? encodeType(edit.transform.outputType) : null,
+    }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.replaceTransformer,
+      nodeId: required(flat, "nodeId", flat.nodeId),
+      ports: required(flat, "ports", flat.ports).map(decodeTransformerPort),
+      transform: decodeTransformerTransform(flat),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.addTransformerPort]: {
+    command: (edit) => addTransformerPort(edit.nodeId, edit.port),
+    encode: (edit) => ({
+      type: edit.type,
+      nodeId: edit.nodeId,
+      port: encodeTransformerPort(edit.port),
+    }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.addTransformerPort,
+      nodeId: required(flat, "nodeId", flat.nodeId),
+      port: decodeTransformerPort(required(flat, "port", flat.port)),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.renameTransformerPort]: {
+    command: (edit) => renameTransformerPort(edit.nodeId, edit.portId, edit.name),
+    encode: (edit) => ({
+      type: edit.type,
+      nodeId: edit.nodeId,
+      portId: edit.portId,
+      name: edit.name,
+    }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.renameTransformerPort,
+      nodeId: required(flat, "nodeId", flat.nodeId),
+      portId: required(flat, "portId", flat.portId),
+      name: required(flat, "name", flat.name),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.reorderTransformerPorts]: {
+    command: (edit) => reorderTransformerPorts(edit.nodeId, edit.portIds),
+    encode: (edit) => ({
+      type: edit.type,
+      nodeId: edit.nodeId,
+      portIds: [...edit.portIds],
+    }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.reorderTransformerPorts,
+      nodeId: required(flat, "nodeId", flat.nodeId),
+      portIds: required(flat, "portIds", flat.portIds),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.removeTransformerPort]: {
+    command: (edit) => removeTransformerPort(edit.nodeId, edit.portId),
+    encode: (edit) => ({ type: edit.type, nodeId: edit.nodeId, portId: edit.portId }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.removeTransformerPort,
+      nodeId: required(flat, "nodeId", flat.nodeId),
+      portId: required(flat, "portId", flat.portId),
     }),
   },
   [GRAPH_COMMAND_TYPES.setDevicePairingCode]: {

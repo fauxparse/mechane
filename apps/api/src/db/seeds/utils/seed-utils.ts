@@ -8,6 +8,7 @@ import {
   type GraphNode,
   type Position,
   type ShowGraph,
+  transformerOutputType,
 } from "@mechane/domain";
 import { readCanvasWorkspace, writeCanvasRows } from "../../canvas";
 import { db } from "../../client";
@@ -115,12 +116,16 @@ function tidyNodeHeight(node: GraphNode, graph: ShowGraph): number {
           (cue) => cue.owner.kind === "scene" && cue.owner.sceneId === node.id,
         ).length
       : 0;
+  const type =
+    node.kind === "source"
+      ? node.type
+      : node.kind === "transformer"
+        ? transformerOutputType(graph, node)
+        : null;
   const rowCount =
     node.kind === "scene"
       ? node.variables.length + cueCount
-      : node.kind === "source" || node.kind === "transformer"
-        ? fieldsForType(node.type, graph.shapes ?? []).length
-        : 0;
+      : fieldsForType(type, graph.shapes ?? []).length;
   return rowCount === 0 ? TIDY_NODE_HEIGHT : TIDY_NODE_HEIGHT + rowCount * 24 + 8;
 }
 

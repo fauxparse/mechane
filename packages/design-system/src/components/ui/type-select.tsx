@@ -66,7 +66,6 @@ function typesEqual(left: Type | null, right: Type): boolean {
   return true;
 }
 
-
 function typeIcon(type: Type): LucideIcon {
   return variableTypeIcon(type);
 }

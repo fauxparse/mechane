@@ -23,7 +23,8 @@ const graph: ShowGraph = {
       name: "Transformer",
       parentId: null,
       position: { x: 0, y: 0 },
-      type: "number",
+      ports: [{ id: "transformer-input", name: "input" }],
+      transform: { kind: "calculate", formula: "input", outputType: "number" },
     },
     {
       id: "source",
@@ -41,7 +42,7 @@ const graph: ShowGraph = {
       sourceId: "source",
       targetId: "transformer",
       sourcePath: [],
-      targetPath: [],
+      targetPath: ["transformer-input"],
     },
     {
       id: "transformer-scene",

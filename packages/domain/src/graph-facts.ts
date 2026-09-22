@@ -1,5 +1,11 @@
 import type { FlowColor, GraphEdge, GraphNode, ShowGraph, WiringEdge } from "./graph";
-import { DEFAULT_FLOW_COLOR, deviceSourceType, wiringTargetVariableId } from "./graph";
+import {
+  DEFAULT_FLOW_COLOR,
+  deviceSourceType,
+  transformerInputType,
+  transformerOutputType,
+  wiringTargetVariableId,
+} from "./graph";
 import { typeAtPath } from "./property-values";
 import type { PrimitiveType, Type } from "./shapes";
 import { findCoercion, PRIMITIVE_TYPES } from "./shapes";
@@ -95,37 +101,34 @@ function drivenDevices(graph: ShowGraph): ReadonlySet<string> {
 }
 
 function sourceType(
+  graph: ShowGraph,
   edge: WiringEdge,
   source: GraphNode | undefined,
-  shapes: ShowGraph["shapes"],
 ): Type | null {
   if (source?.kind === "device") return deviceSourceType(edge.sourcePath[0]);
   if (source?.kind !== "source" && source?.kind !== "transformer") return null;
-  if (!source.type) return null;
-  return edge.sourcePath.length > 0
-    ? typeAtPath(source.type, edge.sourcePath, shapes ?? [])
-    : source.type;
+  const type = source.kind === "source" ? source.type : transformerOutputType(graph, source);
+  if (!type) return null;
+  return edge.sourcePath.length > 0 ? typeAtPath(type, edge.sourcePath, graph.shapes ?? []) : type;
 }
 
 function targetType(
+  graph: ShowGraph,
   edge: WiringEdge,
   target: GraphNode | undefined,
   targetVariableId: string | null,
-  shapes: ShowGraph["shapes"],
 ): Type | null {
   if (!target) return null;
   if (target.kind === "transformer") {
-    if (!target.type) return null;
-    return edge.targetPath.length > 0
-      ? typeAtPath(target.type, edge.targetPath, shapes ?? [])
-      : target.type;
+    const portId = edge.targetPath[0];
+    return portId ? transformerInputType(graph, target, portId) : null;
   }
   if (target.kind === "source") return target.type;
   if (target.kind !== "scene" || targetVariableId === null) return null;
   const variable = target.variables.find((candidate) => candidate.id === targetVariableId);
   if (!variable?.type) return null;
   return edge.targetPath.length > 1
-    ? typeAtPath(variable.type, edge.targetPath.slice(1), shapes ?? [])
+    ? typeAtPath(variable.type, edge.targetPath.slice(1), graph.shapes ?? [])
     : variable.type;
 }
 
@@ -145,8 +148,8 @@ export function wiringEdgeTypes(
   const targetVariableId =
     target?.kind === "scene" && edge.targetPath.length > 0 ? wiringTargetVariableId(edge) : null;
   return {
-    source: sourceType(edge, nodes.get(edge.sourceId), graph.shapes),
-    target: targetType(edge, target, targetVariableId, graph.shapes),
+    source: sourceType(graph, edge, nodes.get(edge.sourceId)),
+    target: targetType(graph, edge, target, targetVariableId),
   };
 }
 
@@ -174,18 +177,18 @@ function compatibility(
 }
 
 function edgeFacts(
+  graph: ShowGraph,
   edge: GraphEdge,
   nodes: ReadonlyMap<string, GraphNode>,
   colors: ReadonlyMap<string, FlowColor>,
-  shapes: ShowGraph["shapes"],
 ): ShowGraphEdgeFacts {
   const source = nodes.get(edge.sourceId);
   const target = nodes.get(edge.targetId);
   const targetVariableId =
     edge.kind === "wiring" && target?.kind === "scene" ? wiringTargetVariableId(edge) : null;
-  const sourceTypeValue = edge.kind === "wiring" ? sourceType(edge, source, shapes) : null;
+  const sourceTypeValue = edge.kind === "wiring" ? sourceType(graph, edge, source) : null;
   const targetTypeValue =
-    edge.kind === "wiring" ? targetType(edge, target, targetVariableId, shapes) : null;
+    edge.kind === "wiring" ? targetType(graph, edge, target, targetVariableId) : null;
   const conversion = (edge.kind === "wiring" ? edge.conversion : undefined) ?? null;
   const sourceParentId = source?.parentId ?? null;
   const targetParentId = target?.parentId ?? null;
@@ -194,7 +197,7 @@ function edgeFacts(
     sourceType: sourceTypeValue,
     targetType: targetTypeValue,
     conversion,
-    typeCompatibility: compatibility(sourceTypeValue, targetTypeValue, conversion, shapes),
+    typeCompatibility: compatibility(sourceTypeValue, targetTypeValue, conversion, graph.shapes),
     color:
       sourceParentId !== null && sourceParentId === targetParentId
         ? (colors.get(sourceParentId) ?? DEFAULT_FLOW_COLOR)
@@ -226,8 +229,6 @@ export function deriveShowGraphFacts(graph: ShowGraph): ShowGraphFacts {
         },
       ]),
     ),
-    edges: new Map(
-      graph.edges.map((edge) => [edge.id, edgeFacts(edge, nodes, colors, graph.shapes)]),
-    ),
+    edges: new Map(graph.edges.map((edge) => [edge.id, edgeFacts(graph, edge, nodes, colors)])),
   };
 }

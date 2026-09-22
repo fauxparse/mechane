@@ -25,6 +25,8 @@ import type {
   ShowGraphEdgeFacts,
   ShowGraphNodeFacts,
   Type,
+  TransformerInputPort,
+  TransformerTransform,
   WiringConversion,
   WiringDiagnostic,
 } from "@mechane/domain";
@@ -146,6 +148,8 @@ type SourceNodeData = ShowNodeDataBase & {
 type TransformerNodeData = ShowNodeDataBase & {
   kind: "transformer";
   type: Type | null;
+  ports: TransformerInputPort[];
+  transform: TransformerTransform;
   defaultSceneId: null;
   fields: ShowNodeField[];
   variables: [];
@@ -264,6 +268,13 @@ export const ROUTED_SMOOTH_STEP_EDGE_TYPE = "routedSmoothStep";
  */
 const EDGE_TYPE = ROUTED_SMOOTH_STEP_EDGE_TYPE;
 
+function authoredOutputType(node: MappableNode): Type | null {
+  if (node.kind === "source") return node.type;
+  return node.kind === "transformer" && node.transform.kind === "calculate"
+    ? node.transform.outputType
+    : null;
+}
+
 /**
  * How tall a node is. Every kind is one header tall except nodes with rows.
  */
@@ -275,9 +286,7 @@ export function nodeHeight(
   const rowCount =
     node.kind === "scene"
       ? node.variables.length + cueCount
-      : node.kind === "source" || node.kind === "transformer"
-        ? fieldsForType(node.type, shapes).length
-        : 0;
+      : fieldsForType(authoredOutputType(node), shapes).length;
   return rowCount === 0
     ? NODE_HEIGHT
     : NODE_HEIGHT + rowCount * VARIABLE_ROW_HEIGHT + VARIABLE_LIST_PADDING;
@@ -331,7 +340,7 @@ export function fieldRows(
   value: unknown,
   shapes: readonly Shape[],
 ): { id: string; name: string; type: Type; value: unknown }[] {
-  const type = node.kind === "source" || node.kind === "transformer" ? node.type : null;
+  const type = authoredOutputType(node);
   const fields = fieldsForType(type, shapes);
   return fields.map((field) => ({
     id: field.id,
@@ -359,7 +368,7 @@ function nodeData({
   childCount: number;
   collapsed: boolean;
 }): ShowNodeData {
-  const type = node.kind === "source" || node.kind === "transformer" ? (node.type ?? null) : null;
+  const type = authoredOutputType(node);
   const shared = {
     color: facts.color,
     name: node.name,
@@ -420,6 +429,8 @@ function nodeData({
         ...shared,
         kind: "transformer",
         type,
+        ports: node.ports,
+        transform: node.transform,
         fields,
         variables: [],
         cues: [],

@@ -17,10 +17,16 @@
 // uses on a candidate edge. That keeps persisted graphs and drag validation
 // on the same seam.
 
-import { assertValidShowGraph, deviceSourceType, findNode, InvalidShowGraphError } from "./graph";
+import {
+  assertValidShowGraph,
+  deviceSourceType,
+  findNode,
+  InvalidShowGraphError,
+  transformerOutputType,
+} from "./graph";
 import { wiringEdgeTypes } from "./graph-facts";
 import { requiredWiringConversion } from "./wiring-conversion";
-import { fieldsForType, resolveShapeFieldMapping, type Type } from "./shapes";
+import { resolveShapeFieldMapping, type Type } from "./shapes";
 import { defaultSourceValues } from "./source-defaults";
 import { typeAtPath, valueAtPath } from "./property-values";
 import type { EdgeKind, GraphEdge, GraphNode, SceneVariable, ShowGraph, WiringEdge } from "./graph";
@@ -55,11 +61,12 @@ export function sourceTypeAtHandle(
   const virtualSourceType = deviceSourceType(sourceHandle);
   if (virtualSourceType) return virtualSourceType;
   if (producer?.kind !== "source" && producer?.kind !== "transformer") return null;
-  if (!producer.type) return null;
+  const type = producer.kind === "source" ? producer.type : transformerOutputType(graph, producer);
+  if (!type) return null;
   if (sourceHandle && sourceHandle !== "out") {
-    return typeAtPath(producer.type, [sourceHandle], graph.shapes ?? []);
+    return typeAtPath(type, [sourceHandle], graph.shapes ?? []);
   }
-  return producer.type;
+  return type;
 }
 
 /** Resolves a Source's design-time value exposed by one of its handles. */
@@ -129,9 +136,17 @@ export function connectionEdge(
     case "wiring": {
       const consumer = findNode(graph, request.targetId);
       if (consumer?.kind === "transformer") {
-        const targetPath =
-          request.targetHandle && request.targetHandle !== "in" ? [request.targetHandle] : [];
-        return withConversion(graph, { ...base, kind: "wiring", targetPath });
+        const portId =
+          request.targetHandle && request.targetHandle !== "in"
+            ? request.targetHandle
+            : consumer.ports.length === 1
+              ? consumer.ports[0]?.id
+              : undefined;
+        return withConversion(graph, {
+          ...base,
+          kind: "wiring",
+          targetPath: portId ? [portId] : [],
+        });
       }
       if (consumer?.kind === "source") {
         return withConversion(graph, { ...base, kind: "wiring", targetPath: [] });
@@ -508,6 +523,12 @@ function humanise(error: InvalidShowGraphError, kind: EdgeKind): string {
       return "Update edges must target a Source.";
     case "flowDeviceCardinality":
       return "All Devices driven by a Flow must use the same connection mode.";
+    case "invalidTransformer":
+      return "That Transformer configuration is incomplete.";
+    case "invalidTransformerPort":
+      return "That Transformer input is invalid.";
+    case "invalidFormula":
+      return "That Transformer Formula is invalid.";
   }
   const unreachable: never = error.reason;
   return unreachable;
@@ -558,18 +579,17 @@ export function connectionTargets(
       if (anyVariable || sceneTargetable) nodeIds.add(node.id);
       continue;
     }
-    if (node.kind === "transformer" && node.type) {
-      const fields = fieldsForType(node.type, graph.shapes ?? []);
-      for (const field of fields) {
+    if (node.kind === "transformer") {
+      for (const port of node.ports) {
         if (
           canConnect(graph, {
             sourceId,
             sourceHandle,
             targetId: node.id,
-            targetHandle: field.id,
+            targetHandle: port.id,
           })
         ) {
-          fieldIds.add(field.id);
+          fieldIds.add(port.id);
           nodeIds.add(node.id);
         }
       }

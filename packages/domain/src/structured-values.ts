@@ -6,26 +6,30 @@ import {
   type Shape,
   type Type,
 } from "./shapes";
+export type ComputedStructuredValueId = StructuredValueId & {
+  readonly __computedStructuredValue: true;
+};
+export type AnyStructuredValueId = StructuredValueId | ComputedStructuredValueId;
 
 export interface StructuredValueReference {
-  readonly ref: StructuredValueId;
+  readonly ref: AnyStructuredValueId;
 }
 
 export type SimpleValue = string | number | boolean | ImageAssetReference;
 
-/** A live value is either scalar data or a reference into the Run-owned graph. */
+/** A live value is scalar data or a reference into a stored or computed overlay. */
 export type RuntimeValue = SimpleValue | null | StructuredValueReference;
 export type SourceValues = Record<string, RuntimeValue>;
 
 export interface ShapeStructuredValueRecord {
-  readonly id: StructuredValueId;
+  readonly id: AnyStructuredValueId;
   readonly kind: "shape";
   readonly type: Extract<Type, { kind: "shape" }>;
   readonly fields: Readonly<Record<string, RuntimeValue>>;
 }
 
 export interface ArrayStructuredValueRecord {
-  readonly id: StructuredValueId;
+  readonly id: AnyStructuredValueId;
   readonly kind: "array";
   readonly type: Extract<Type, { kind: "array" }>;
   readonly items: readonly RuntimeValue[];
@@ -70,13 +74,40 @@ function object(value: unknown): Record<string, unknown> | null {
     ? (value as Record<string, unknown>)
     : null;
 }
+export function isComputedStructuredValueId(value: string): value is ComputedStructuredValueId {
+  const [namespace, transformerId, typeKey, pathKey, extra] = value.split(":");
+  return (
+    namespace === "y" &&
+    transformerId !== undefined &&
+    transformerId.length > 0 &&
+    typeKey !== undefined &&
+    typeKey.length > 0 &&
+    pathKey !== undefined &&
+    extra === undefined
+  );
+}
+
+/** Builds the reversible identity for one computed structured result. */
+export function computedStructuredValueId(
+  transformerId: string,
+  type: Type,
+  path: readonly string[],
+): ComputedStructuredValueId {
+  const typeKey = encodeURIComponent(JSON.stringify(type));
+  const pathKey = path.map((segment) => encodeURIComponent(segment)).join("/");
+  const id = `y:${encodeURIComponent(transformerId)}:${typeKey}:${pathKey}`;
+  if (!isComputedStructuredValueId(id)) {
+    throw new InvalidStructuredValueError("Could not encode a computed Structured Value id.");
+  }
+  return id;
+}
 
 export function isStructuredValueReference(value: unknown): value is StructuredValueReference {
   const candidate = object(value);
   return (
     candidate !== null &&
     typeof candidate.ref === "string" &&
-    isId("structuredValue", candidate.ref)
+    (isId("structuredValue", candidate.ref) || isComputedStructuredValueId(candidate.ref))
   );
 }
 

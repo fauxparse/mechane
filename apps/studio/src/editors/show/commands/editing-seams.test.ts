@@ -46,6 +46,13 @@ const nodeEditing: GraphInspectorNodeEditing = {
   setUpdateOperation: () => {},
   setUpdateOperand: () => {},
   setSourceType: () => null,
+  setTransformerFormula: () => {},
+  setTransformerOutputType: () => {},
+  setTransformerKind: () => {},
+  addTransformerPort: () => {},
+  renameTransformerPort: () => {},
+  reorderTransformerPorts: () => {},
+  removeTransformerPort: () => {},
 };
 const interaction = {
   addCue: () => {},

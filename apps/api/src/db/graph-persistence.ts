@@ -25,6 +25,8 @@ import type {
   SlotEventBinding,
   Type,
   UpdateOperation,
+  TransformerInputPort,
+  TransformerTransform,
 } from "@mechane/domain";
 import {
   assertValidShowGraph,
@@ -55,8 +57,9 @@ import {
   graphEdges,
   graphEventBindings,
   graphSlotEventBindings,
-  graphNodeVariables,
+  graphNodePorts,
   graphNodes,
+  graphTransformers,
   shapeFieldRefs,
   shapeFields,
   shapes,
@@ -180,7 +183,8 @@ function readInteractions(
 }
 
 type NodeRow = typeof graphNodes.$inferSelect;
-type VariableRow = typeof graphNodeVariables.$inferSelect;
+type PortRow = typeof graphNodePorts.$inferSelect;
+type TransformerRow = typeof graphTransformers.$inferSelect;
 type EdgeRow = typeof graphEdges.$inferSelect;
 type ShapeRow = typeof shapes.$inferSelect;
 type ShapeFieldRow = typeof shapeFields.$inferSelect;
@@ -199,7 +203,8 @@ export class GraphVersionConflictError extends Error {
 
 function toNode(
   row: NodeRow,
-  variablesByScene: Map<string, SceneVariable[]>,
+  portsByNode: Map<string, PortRow[]>,
+  transformersByNode: ReadonlyMap<string, TransformerRow>,
   deviceIdentities: ReadonlyMap<string, StoredDevice>,
 ): GraphNode {
   const base = {
@@ -217,7 +222,7 @@ function toNode(
         ...base,
         kind: "scene",
         parentId: row.parentId,
-        variables: variablesByScene.get(row.id) ?? [],
+        variables: (portsByNode.get(row.id) ?? []).map(toSceneVariable),
       };
     case "flow":
       return {
@@ -234,13 +239,38 @@ function toNode(
         parentId: row.parentId,
         type: row.type as Type,
       };
-    case "transformer":
+    case "transformer": {
+      const stored = transformersByNode.get(row.id);
+      if (!stored) throw new Error(`Stored Transformer node "${row.id}" has no configuration.`);
+      const transform: TransformerTransform =
+        stored.kind === "calculate"
+          ? {
+              kind: "calculate",
+              formula: stored.formula,
+              outputType: stored.outputType as Type | null,
+            }
+          : stored.kind === "filter" && stored.formula !== null
+            ? { kind: "filter", formula: stored.formula }
+            : stored.kind === "shuffle"
+              ? { kind: "shuffle" }
+              : (() => {
+                  throw new Error(
+                    `Stored Transformer node "${row.id}" has invalid kind "${stored.kind}".`,
+                  );
+                })();
+      const ports: TransformerInputPort[] = (portsByNode.get(row.id) ?? []).map((port) => ({
+        id: port.id,
+        name: port.name,
+        ...(port.rank ? { rank: port.rank } : {}),
+      }));
       return {
         ...base,
         kind: "transformer",
         parentId: row.parentId,
-        type: row.type as Type | null,
+        ports,
+        transform,
       };
+    }
     case "device": {
       // A Device node carries its identity rather than owning it: the row
       // in `devices` is the Show-level thing that survives publish and
@@ -316,22 +346,26 @@ function toEdge(row: EdgeRow): GraphEdge {
   throw new Error(`Stored graph edge "${row.id}" has unknown kind "${unreachable}".`);
 }
 
-function groupVariables(rows: VariableRow[]): Map<string, SceneVariable[]> {
-  const bySceneId = new Map<string, SceneVariable[]>();
+function toSceneVariable(row: PortRow): SceneVariable {
+  return {
+    id: row.id,
+    name: row.name,
+    ...(row.rank ? { rank: row.rank } : {}),
+    type: row.type as Type | undefined,
+    ...(row.suggestedDimensions
+      ? { suggestedDimensions: row.suggestedDimensions as { width: number; height: number } }
+      : {}),
+  };
+}
+
+function groupPorts(rows: PortRow[]): Map<string, PortRow[]> {
+  const byNodeId = new Map<string, PortRow[]>();
   for (const row of rows) {
-    const variables = bySceneId.get(row.sceneId) ?? [];
-    variables.push({
-      id: row.id,
-      name: row.name,
-      ...(row.rank ? { rank: row.rank } : {}),
-      type: row.type as Type | undefined,
-      ...(row.suggestedDimensions
-        ? { suggestedDimensions: row.suggestedDimensions as { width: number; height: number } }
-        : {}),
-    });
-    bySceneId.set(row.sceneId, variables);
+    const ports = byNodeId.get(row.nodeId) ?? [];
+    ports.push(row);
+    byNodeId.set(row.nodeId, ports);
   }
-  return bySceneId;
+  return byNodeId;
 }
 
 function blockMetadata(block: typeof blocks.$inferSelect): {
@@ -433,11 +467,16 @@ export async function readGraphRows(
     .from(graphNodes)
     .where(eq(graphNodes.graphId, row.id))
     .orderBy(graphNodes.id);
-  const variableRows = await executor
+  const portRows = await executor
     .select()
-    .from(graphNodeVariables)
-    .where(eq(graphNodeVariables.graphId, row.id))
-    .orderBy(graphNodeVariables.sceneId, graphNodeVariables.rank, graphNodeVariables.id);
+    .from(graphNodePorts)
+    .where(eq(graphNodePorts.graphId, row.id))
+    .orderBy(graphNodePorts.nodeId, graphNodePorts.rank, graphNodePorts.id);
+  const transformerRows = await executor
+    .select()
+    .from(graphTransformers)
+    .where(eq(graphTransformers.graphId, row.id))
+    .orderBy(graphTransformers.nodeId);
   const sourceDefaultRows = await executor
     .select()
     .from(sourceFieldDefaults)
@@ -485,7 +524,13 @@ export async function readGraphRows(
     slotBindingRows,
   );
   const blockValues = await readBlocks(showId, state, row.id, executor);
-  const variablesByScene = groupVariables(variableRows);
+  const portsByNode = groupPorts(portRows);
+  const transformersByNode = new Map(
+    transformerRows.map((transformer) => [transformer.nodeId, transformer]),
+  );
+  const mappedNodes = nodeRows.map((node) =>
+    toNode(node, portsByNode, transformersByNode, deviceIdentities),
+  );
   return {
     showId,
     state,
@@ -499,12 +544,12 @@ export async function readGraphRows(
     })),
     blocks: blockValues,
     ...interactions,
-    nodes: nodeRows.map((node) => toNode(node, variablesByScene, deviceIdentities)),
+    nodes: mappedNodes,
     edges: [
       ...edgeRows.map(toEdge),
       ...projectUpdateEdges({
         ...interactions,
-        nodes: nodeRows.map((node) => toNode(node, variablesByScene, deviceIdentities)),
+        nodes: mappedNodes,
       }),
     ],
   };
@@ -581,7 +626,8 @@ export async function persistGraphRows(
   // Graph rows are rewritten, but retained node identities stay in place so
   // their Scene Canvases and Element trees cannot be cascaded away.
   await tx.delete(graphEdges).where(eq(graphEdges.graphId, row.id));
-  await tx.delete(graphNodeVariables).where(eq(graphNodeVariables.graphId, row.id));
+  await tx.delete(graphNodePorts).where(eq(graphNodePorts.graphId, row.id));
+  await tx.delete(graphTransformers).where(eq(graphTransformers.graphId, row.id));
   await tx.delete(sourceFieldDefaults).where(eq(sourceFieldDefaults.graphId, row.id));
   await tx.delete(graphSlotEventBindings).where(eq(graphSlotEventBindings.graphId, row.id));
   await tx.delete(graphCueParameters).where(eq(graphCueParameters.graphId, row.id));
@@ -685,6 +731,21 @@ export async function persistGraphRows(
   };
   await upsertNodes(topLevel);
   await upsertNodes(nested);
+  const transformers = graph.nodes.filter(
+    (node): node is Extract<GraphNode, { kind: "transformer" }> => node.kind === "transformer",
+  );
+  if (transformers.length > 0) {
+    await tx.insert(graphTransformers).values(
+      transformers.map((node) => ({
+        graphId: row.id,
+        nodeId: node.id,
+        kind: node.transform.kind,
+        formula: node.transform.kind === "shuffle" ? null : node.transform.formula,
+        outputType:
+          node.transform.kind === "calculate" ? (node.transform.outputType ?? null) : null,
+      })),
+    );
+  }
   const graphCues = graph.cues ?? [];
   if (graphCues.length > 0) {
     await tx.insert(graphCuesTable).values(
@@ -746,21 +807,22 @@ export async function persistGraphRows(
     );
   }
 
-  const variables = graph.nodes.flatMap((node) =>
-    node.kind === "scene"
-      ? node.variables.map((variable, position) => ({
-          id: variable.id,
-          graphId: row.id,
-          sceneId: node.id,
-          name: variable.name,
-          rank: variable.rank ?? String(position).padStart(10, "0"),
-          type: variable.type ?? null,
-          suggestedDimensions: variable.suggestedDimensions ?? null,
-        }))
-      : [],
-  );
-  if (variables.length > 0) {
-    await tx.insert(graphNodeVariables).values(variables);
+  const ports = graph.nodes.flatMap((node) => {
+    const nodePorts =
+      node.kind === "scene" ? node.variables : node.kind === "transformer" ? node.ports : [];
+    return nodePorts.map((port, position) => ({
+      id: port.id,
+      graphId: row.id,
+      nodeId: node.id,
+      name: port.name,
+      rank: port.rank ?? String(position).padStart(10, "0"),
+      type: node.kind === "scene" ? ((port as SceneVariable).type ?? null) : null,
+      suggestedDimensions:
+        node.kind === "scene" ? ((port as SceneVariable).suggestedDimensions ?? null) : null,
+    }));
+  });
+  if (ports.length > 0) {
+    await tx.insert(graphNodePorts).values(ports);
   }
   const sourceDefaults = (graph.sourceFieldDefaults ?? []).map((fieldDefault) => ({
     graphId: row.id,

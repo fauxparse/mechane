@@ -25,6 +25,10 @@ export const CANDIDATE_IMAGE_FIELD_ID = "field_candidate_image";
 export const CANDIDATE_SOURCE_ID = "source_candidates";
 export const SELECTED_SOURCE_ID = "source_selected";
 export const TALLY_VARIABLE_ID = "variable_tally_candidates";
+export const TALLY_HEADLINE_VARIABLE_ID = "variable_tally_headline";
+export const TALLY_HEADLINE_TRANSFORMER_ID = "transformer_tally_headline";
+export const FRONT_RUNNERS_TRANSFORMER_ID = "transformer_front_runners";
+export const CANDIDATE_ORDER_TRANSFORMER_ID = "transformer_candidate_order";
 export const AUDIENCE_VARIABLE_ID = "variable_audience_candidates";
 export const CONFIRMATION_VARIABLE_ID = "variable_confirmation_candidate";
 export const CANDIDATE_BUTTON_VARIABLE_ID = "candidate_button_candidate";
@@ -307,13 +311,39 @@ export function votingGraph(): ShowGraph {
     position: { x: 0, y: 360 },
     type: candidateType,
   };
+  const tallyHeadline = {
+    id: TALLY_HEADLINE_TRANSFORMER_ID,
+    kind: "transformer" as const,
+    name: "Tally headline",
+    parentId: null,
+    position: { x: 260, y: -120 },
+    ports: [{ id: "port_tally_candidates", name: "candidates", rank: "a" }],
+    transform: {
+      kind: "calculate" as const,
+      formula:
+        '"Tally: " & SUM(candidates.votes) & " vote" & IF(SUM(candidates.votes) == 1, "", "s") & " across " & COUNT(candidates) & " candidate" & IF(COUNT(candidates) == 1, "", "s")',
+      outputType: "text" as const,
+    },
+  };
+  const frontRunners = {
+    id: FRONT_RUNNERS_TRANSFORMER_ID,
+    kind: "transformer" as const,
+    name: "Candidates with votes",
+    parentId: null,
+    position: { x: 260, y: 80 },
+    ports: [{ id: "port_front_candidates", name: "input", rank: "a" }],
+    transform: { kind: "filter" as const, formula: "item.votes > 0" },
+  };
   const tallyScene = {
     id: TALLY_SCENE_ID,
     kind: "scene" as const,
     name: "Projector tally",
     parentId: null,
     position: { x: 520, y: 0 },
-    variables: [{ id: TALLY_VARIABLE_ID, name: "Candidates", type: candidateArrayType }],
+    variables: [
+      { id: TALLY_HEADLINE_VARIABLE_ID, name: "Headline", type: "text" as const },
+      { id: TALLY_VARIABLE_ID, name: "Candidates", type: candidateArrayType },
+    ],
   };
   const audienceFlow = {
     id: AUDIENCE_FLOW_ID,
@@ -322,7 +352,7 @@ export function votingGraph(): ShowGraph {
     parentId: null,
     position: { x: 520, y: 460 },
     defaultSceneId: CANDIDATE_LIST_SCENE_ID,
-    size: { width: 920, height: 186 },
+    size: { width: 920, height: 450 },
   };
   const candidateListScene = {
     id: CANDIDATE_LIST_SCENE_ID,
@@ -331,6 +361,15 @@ export function votingGraph(): ShowGraph {
     parentId: AUDIENCE_FLOW_ID,
     position: { x: 24, y: 74 },
     variables: [{ id: AUDIENCE_VARIABLE_ID, name: "Candidates", type: candidateArrayType }],
+  };
+  const candidateOrder = {
+    id: CANDIDATE_ORDER_TRANSFORMER_ID,
+    kind: "transformer" as const,
+    name: "Candidate order",
+    parentId: AUDIENCE_FLOW_ID,
+    position: { x: 24, y: 260 },
+    ports: [{ id: "port_candidate_order_input", name: "input", rank: "a" }],
+    transform: { kind: "shuffle" as const },
   };
   const confirmationScene = {
     id: CONFIRMATION_SCENE_ID,
@@ -530,9 +569,12 @@ export function votingGraph(): ShowGraph {
     nodes: [
       sourceNode,
       selectedNode,
+      tallyHeadline,
+      frontRunners,
       tallyScene,
       audienceFlow,
       candidateListScene,
+      candidateOrder,
       confirmationScene,
       thankYouScene,
       projector,
@@ -541,17 +583,49 @@ export function votingGraph(): ShowGraph {
     edges: [
       ...interactionEdges,
       {
-        id: "edge_candidates_tally",
+        id: "edge_candidates_tally_headline",
         kind: "wiring",
         sourceId: CANDIDATE_SOURCE_ID,
+        targetId: TALLY_HEADLINE_TRANSFORMER_ID,
+        sourcePath: [],
+        targetPath: ["port_tally_candidates"],
+      },
+      {
+        id: "edge_tally_headline_scene",
+        kind: "wiring",
+        sourceId: TALLY_HEADLINE_TRANSFORMER_ID,
+        targetId: TALLY_SCENE_ID,
+        sourcePath: [],
+        targetPath: [TALLY_HEADLINE_VARIABLE_ID],
+      },
+      {
+        id: "edge_candidates_front_runners",
+        kind: "wiring",
+        sourceId: CANDIDATE_SOURCE_ID,
+        targetId: FRONT_RUNNERS_TRANSFORMER_ID,
+        sourcePath: [],
+        targetPath: ["port_front_candidates"],
+      },
+      {
+        id: "edge_front_runners_tally",
+        kind: "wiring",
+        sourceId: FRONT_RUNNERS_TRANSFORMER_ID,
         targetId: TALLY_SCENE_ID,
         sourcePath: [],
         targetPath: [TALLY_VARIABLE_ID],
       },
       {
-        id: "edge_candidates_audience",
+        id: "edge_candidates_candidate_order",
         kind: "wiring",
         sourceId: CANDIDATE_SOURCE_ID,
+        targetId: CANDIDATE_ORDER_TRANSFORMER_ID,
+        sourcePath: [],
+        targetPath: ["port_candidate_order_input"],
+      },
+      {
+        id: "edge_candidate_order_audience",
+        kind: "wiring",
+        sourceId: CANDIDATE_ORDER_TRANSFORMER_ID,
         targetId: CANDIDATE_LIST_SCENE_ID,
         sourcePath: [],
         targetPath: [AUDIENCE_VARIABLE_ID],
@@ -652,7 +726,13 @@ export function votingCanvases(): SeedCanvases {
       id: "canvas_voting_tally",
       kind: "scene",
       root: root(TALLY_SCENE_ID, "Projector tally", 1920, 1080, [
-        text("tally-title", "a", "Vote tally", "Title", 56),
+        text(
+          "tally-title",
+          "a",
+          { kind: "variable", variableId: TALLY_HEADLINE_VARIABLE_ID, fieldPath: [] },
+          "Tally headline",
+          56,
+        ),
         tallySlot,
       ]),
     },

@@ -28,6 +28,9 @@ export interface ShowGraphEditorOverlaysProps {
   onImageUpload?: (props: ImageInputOnUploadProps) => void;
   initialSourceValue?: ShowGraphValueLocation;
   onSourceValueChange?: (location: ShowGraphValueLocation | null) => void;
+  runActive?: boolean;
+  reshufflingTransformerId?: string | null;
+  onReshuffleTransformer?(transformerId: string, deviceId?: string): void;
   message: string | null;
   paletteOpen: boolean;
   setPaletteOpen: Dispatch<SetStateAction<boolean>>;
@@ -45,6 +48,9 @@ export function ShowGraphEditorOverlays({
   onImageUpload,
   initialSourceValue,
   onSourceValueChange,
+  runActive,
+  reshufflingTransformerId,
+  onReshuffleTransformer,
   message,
   paletteOpen,
   setPaletteOpen,
@@ -64,6 +70,9 @@ export function ShowGraphEditorOverlays({
           editing={inspector}
           initialSourceValue={initialSourceValue}
           onSourceValueChange={onSourceValueChange}
+          runActive={runActive}
+          reshufflingTransformerId={reshufflingTransformerId}
+          onReshuffleTransformer={onReshuffleTransformer}
         />
       </EditorSlot>
 

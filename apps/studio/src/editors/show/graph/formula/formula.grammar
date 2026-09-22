@@ -1,0 +1,33 @@
+@top Formula { Expression }
+
+Expression { PrefixExpression (BinaryOperator PrefixExpression)* Ternary? }
+Ternary { "?" Expression ":" Expression }
+PrefixExpression { UnaryOperator* PostfixExpression }
+PostfixExpression { PrimaryExpression Postfix* }
+Postfix { Property | Index | Arguments | Pipe }
+Property { "." Identifier }
+Index { "[" Expression "]" }
+Arguments { "(" ArgList? ")" }
+ArgList { Expression ("," Expression)* }
+Pipe { "|" Identifier }
+PrimaryExpression { Number | String | Boolean | Null | Identifier | Relative | Array | Object | "(" Expression ")" }
+Relative { "." Identifier }
+Array { "[" ArgList? "]" }
+Object { "{" PropertyList? "}" }
+PropertyList { ObjectProperty ("," ObjectProperty)* }
+ObjectProperty { (Identifier | String) ":" Expression }
+
+UnaryOperator { "!" | "+" | "-" }
+BinaryOperator { "||" | "&&" | "==" | "!=" | "<=" | ">=" | "<" | ">" | "+" | "-" | "*" | "/" | "%" | "&" }
+Boolean { "true" | "false" }
+Null { "null" }
+
+@tokens {
+  Number { @digit+ ("." @digit+)? }
+  String { '"' !["]* '"' | "'" ![']* "'" }
+  Identifier { $[A-Za-z_] $[A-Za-z0-9_]* }
+  space { $[\u0009\u000a\u000d\u0020]+ }
+  @precedence { "true", "false", "null", Identifier }
+}
+
+@skip { space }

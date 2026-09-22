@@ -392,4 +392,74 @@ describe("normalizePlayerSession", () => {
       target: { sourceId: "source_score", fieldPath: [] },
     });
   });
+  it("merges executable Flow-local Transformer configuration into the formula-free graph", () => {
+    const session = normalizePlayerSession({
+      device: { name: "Audience", perConnection: true },
+      realtime: { channel: "player:test", grant: "grant", expiresAt: "2026-01-01T00:01:00.000Z" },
+      graph: {
+        nodes: [
+          {
+            __typename: "TransformerNode",
+            id: "transformer_filter",
+            name: "Front runners",
+            parentId: "flow_audience",
+            position: { x: 0, y: 0 },
+            transformerType: {
+              kind: "array",
+              shapeId: null,
+              of: { kind: "number", shapeId: null, of: null },
+            },
+          },
+        ],
+        edges: [],
+        shapes: [],
+      },
+      flow: {
+        flowId: "flow_audience",
+        defaultSceneId: null,
+        scenes: [],
+        transformers: [
+          {
+            __typename: "TransformerNode",
+            id: "transformer_filter",
+            name: "Front runners",
+            parentId: "flow_audience",
+            position: { x: 0, y: 0 },
+            color: null,
+            ports: [
+              {
+                id: "port_input",
+                name: "input",
+                rank: "a",
+                type: {
+                  kind: "array",
+                  shapeId: null,
+                  of: { kind: "number", shapeId: null, of: null },
+                },
+              },
+            ],
+            transform: {
+              __typename: "FilterTransform",
+              kind: "filter",
+              filterFormula: "item > 10",
+            },
+            type: {
+              kind: "array",
+              shapeId: null,
+              of: { kind: "number", shapeId: null, of: null },
+            },
+          },
+        ],
+      },
+      scene: null,
+      canvas: null,
+      imageAssets: [],
+    });
+
+    expect(session.graph.nodes[0]).toMatchObject({
+      kind: "transformer",
+      ports: [{ id: "port_input", name: "input" }],
+      transform: { kind: "filter", formula: "item > 10" },
+    });
+  });
 });

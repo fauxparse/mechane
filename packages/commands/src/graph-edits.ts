@@ -50,6 +50,8 @@ import type {
   ShapeField,
   ShowGraph,
   Type,
+  TransformerInputPort,
+  TransformerTransform,
 } from "@mechane/domain";
 import { graphEditCodec } from "./graph-edit-codec";
 import type { ShowGraphCommand } from "./graph-commands";
@@ -205,6 +207,43 @@ export type GraphEdit =
       readonly type: typeof GRAPH_COMMAND_TYPES.removeSceneVariable;
       readonly sceneId: string;
       readonly variableId: string;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setTransformerFormula;
+      readonly nodeId: string;
+      readonly formula: string | null;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setTransformerOutputType;
+      readonly nodeId: string;
+      readonly outputType: Type | null;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.replaceTransformer;
+      readonly nodeId: string;
+      readonly ports: readonly TransformerInputPort[];
+      readonly transform: TransformerTransform;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.addTransformerPort;
+      readonly nodeId: string;
+      readonly port: TransformerInputPort;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.renameTransformerPort;
+      readonly nodeId: string;
+      readonly portId: string;
+      readonly name: string;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.reorderTransformerPorts;
+      readonly nodeId: string;
+      readonly portIds: readonly string[];
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.removeTransformerPort;
+      readonly nodeId: string;
+      readonly portId: string;
     }
   /**
    * The one edit that only ever travels *from* the server (#111): the pairing
