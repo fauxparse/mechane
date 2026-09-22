@@ -241,6 +241,43 @@ const FIXTURES: { [T in GraphEdit["type"]]: Extract<GraphEdit, { type: T }> } = 
     sceneId: "scene_lobby",
     variableId: "variable_tally",
   },
+  "graph.setTransformerFormula": {
+    type: "graph.setTransformerFormula",
+    nodeId: "transformer_tally",
+    formula: "votes + bonus",
+  },
+  "graph.setTransformerOutputType": {
+    type: "graph.setTransformerOutputType",
+    nodeId: "transformer_tally",
+    outputType: "number",
+  },
+  "graph.replaceTransformer": {
+    type: "graph.replaceTransformer",
+    nodeId: "transformer_tally",
+    ports: [{ id: "port_votes", name: "votes", rank: "0000000000" }],
+    transform: { kind: "calculate", formula: "SUM(votes)", outputType: "number" },
+  },
+  "graph.addTransformerPort": {
+    type: "graph.addTransformerPort",
+    nodeId: "transformer_tally",
+    port: { id: "port_bonus", name: "bonus", rank: "0000000001" },
+  },
+  "graph.renameTransformerPort": {
+    type: "graph.renameTransformerPort",
+    nodeId: "transformer_tally",
+    portId: "port_bonus",
+    name: "extra",
+  },
+  "graph.reorderTransformerPorts": {
+    type: "graph.reorderTransformerPorts",
+    nodeId: "transformer_tally",
+    portIds: ["port_bonus", "port_votes"],
+  },
+  "graph.removeTransformerPort": {
+    type: "graph.removeTransformerPort",
+    nodeId: "transformer_tally",
+    portId: "port_bonus",
+  },
   "graph.setDevicePairingCode": {
     type: "graph.setDevicePairingCode",
     nodeId: "device_projector",

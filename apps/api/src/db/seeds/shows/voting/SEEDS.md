@@ -3,12 +3,11 @@ name: Voting
 description: An app where audience members can vote on their phones, and the results are tallied and displayed on a projector
 ---
 
-**Note:** Some of the functionality below is not implemented yet. **This is fine.** Build as much as you can and leave the rest, on the assumption that future iterations will fill it in.
+The Show demonstrates shared and per-connection Transformer evaluation end to end:
 
-Events and navigation do work, including a tap inside a Block instance: tapping a candidate button sets `selected` and moves to the confirmation screen (#653). Two things below still do not work, and the seed should keep describing them as the Show wants them rather than working around them:
-
-- The confirmation screen cannot display the selected candidate's name or image. A Player renders Show-scoped state only, so a Scene Variable wired to a Flow-local Source reads as empty (#654).
-- Confirming a vote does not move the projector tally. The increment addresses a Show record through a Flow-local Source, and that Update is applied to the Player's own state instead of being sent to the server (#655).
+- `Tally headline` is a Show-level Calculate over the original `candidates`. It constructs `Tally: <votes> vote(s) across <candidates> candidate(s)` with `SUM`, `COUNT`, `IF`, `&`, and `candidates.votes`.
+- `Candidates with votes` is a Show-level Filter using `item.votes > 0`; its reference-preserving output drives the projector's `TallyRow` slot.
+- `Candidate order` is a Flow-local Shuffle whose per-connection stable order drives the audience's `CandidateButton` slot. Voting through a shuffled item still updates the original Candidate record.
 
 # Shapes
 

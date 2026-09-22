@@ -3,7 +3,7 @@ import type { Element, SlotElement, SlotInputSource } from "./canvas";
 import type { SceneVariable, ShowGraph } from "./graph";
 import type { RuntimeEventParameterPlan } from "./interactions";
 import { valueAtPath } from "./property-values";
-import { sceneVariableValues } from "./scene-variable-values";
+import { sceneVariableResolution, type TransformerRuntimeState } from "./scene-variable-values";
 import { expandSlotSource, type SlotVariableValue } from "./slots";
 import {
   isStructuredValueReference,
@@ -35,6 +35,7 @@ export interface ResolveCueParametersInput {
   readonly state: RunState;
   readonly blocks: readonly Block[];
   readonly parameters: RuntimeEventParameterPlan;
+  readonly transformerRuntime?: TransformerRuntimeState;
 }
 
 /**
@@ -54,7 +55,18 @@ export function resolveCueParameters(input: ResolveCueParametersInput): CueParam
   );
   if (!scene || scene.kind !== "scene") return { kind: "failed", reason: "missing-scene" };
 
-  let variables = sceneEnvironment(input.graph, input.sceneId, input.state, scene.variables);
+  const environment = sceneEnvironment(
+    input.graph,
+    input.sceneId,
+    input.state,
+    scene.variables,
+    input.transformerRuntime,
+  );
+  const state: RunState = {
+    ...input.state,
+    structuredValues: environment.structuredValues,
+  };
+  let variables = environment.variables;
   let root = input.canvas.root;
   let item: unknown;
 
@@ -65,10 +77,10 @@ export function resolveCueParameters(input: ResolveCueParametersInput): CueParam
     }
     const block = input.blocks.find((candidate) => candidate.id === slot.blockId);
     if (!block) return { kind: "failed", reason: "missing-block" };
-    const expansion = expansionItem(slot, variables, item, input.state, segment.index);
+    const expansion = expansionItem(slot, variables, item, state, segment.index);
     if (expansion.kind === "failed") return expansion;
     item = expansion.item;
-    variables = blockEnvironment(block, slot, variables, item, input.state.structuredValues);
+    variables = blockEnvironment(block, slot, variables, item, state.structuredValues);
     root = block.canvas.root;
   }
 
@@ -78,7 +90,7 @@ export function resolveCueParameters(input: ResolveCueParametersInput): CueParam
       mapping.source,
       variables,
       item,
-      input.state.structuredValues,
+      state.structuredValues,
     );
   }
   for (const hop of input.parameters.hops) {
@@ -87,7 +99,7 @@ export function resolveCueParameters(input: ResolveCueParametersInput): CueParam
       relayed[mapping.targetParameterId] = valueAtReferencePath(
         values[mapping.sourceParameterId],
         mapping.sourceFieldPath ?? [],
-        input.state.structuredValues,
+        state.structuredValues,
       );
     }
     values = relayed;
@@ -107,19 +119,35 @@ function sceneEnvironment(
   sceneId: string,
   state: RunState,
   sceneVariables: readonly SceneVariable[],
-): readonly SlotVariableValue[] {
-  const values = sceneVariableValues(graph, sceneId, state.sourceValues);
-  return sceneVariables.flatMap((variable): SlotVariableValue[] =>
-    variable.type
-      ? [
-          {
-            id: variable.id,
-            type: variable.type,
-            value: values[variable.id] === undefined ? variable.defaultValue : values[variable.id],
-          },
-        ]
-      : [],
-  );
+  runtime: TransformerRuntimeState = {},
+): {
+  variables: readonly SlotVariableValue[];
+  structuredValues: StructuredValues;
+} {
+  const resolution = sceneVariableResolution(graph, sceneId, state.sourceValues, {
+    ...runtime,
+    structuredValues: state.structuredValues,
+  });
+  return {
+    variables: sceneVariables.flatMap((variable): SlotVariableValue[] =>
+      variable.type
+        ? [
+            {
+              id: variable.id,
+              type: variable.type,
+              value:
+                resolution.values[variable.id] === undefined
+                  ? variable.defaultValue
+                  : resolution.values[variable.id],
+            },
+          ]
+        : [],
+    ),
+    structuredValues: {
+      ...state.structuredValues,
+      ...resolution.computedStructuredValues,
+    },
+  };
 }
 
 /** One Block instance's Variables, assigned from the Slot without coercion. */

@@ -13,6 +13,7 @@ import {
   addCue,
   addNavigateAction,
   addNode,
+  addTransformerPort,
   addSceneVariable,
   addUpdateAction,
   setUpdateOperation,
@@ -35,6 +36,10 @@ import {
   renameSceneAndCue,
   renameSceneVariable,
   renameShape,
+  removeTransformerPort,
+  renameTransformerPort,
+  reorderTransformerPorts,
+  replaceTransformer,
   renameShapeField,
   reorderSceneVariables,
   reorderShapeFields,
@@ -52,6 +57,8 @@ import {
   setShapeFieldType,
   setSourceColumnSizes,
   setSourceFieldDefault,
+  setTransformerFormula,
+  setTransformerOutputType,
 } from "@mechane/commands";
 import type {
   ConnectionTargets,
@@ -66,6 +73,7 @@ import type {
   ShapeField,
   ShowGraph,
   Type,
+  TransformerTransform,
   UpdateOperation,
   UpdateOperand,
 } from "@mechane/domain";
@@ -229,6 +237,13 @@ export interface GraphEditing {
     type: Type,
     confirmedPlan?: SourceTypeChangePlan,
   ): SourceTypeChangePlan | null;
+  setTransformerFormula(nodeId: string, formula: string | null): void;
+  setTransformerOutputType(nodeId: string, type: Type | null): void;
+  setTransformerKind(nodeId: string, kind: TransformerTransform["kind"]): void;
+  addTransformerPort(nodeId: string): void;
+  renameTransformerPort(nodeId: string, portId: string, name: string): void;
+  reorderTransformerPorts(nodeId: string, portIds: readonly string[]): void;
+  removeTransformerPort(nodeId: string, portId: string): void;
   moveIntoFlow(nodeIds: string[], flowId: string, origin: Position): void;
   moveOutOfFlow(nodeIds: string[], positions: Position[]): string | null;
 }
@@ -243,6 +258,13 @@ export interface GraphInspectorNodeEditing {
     type: Type,
     confirmedPlan?: SourceTypeChangePlan,
   ): SourceTypeChangePlan | null;
+  setTransformerFormula(nodeId: string, formula: string | null): void;
+  setTransformerOutputType(nodeId: string, type: Type | null): void;
+  setTransformerKind(nodeId: string, kind: TransformerTransform["kind"]): void;
+  addTransformerPort(nodeId: string): void;
+  renameTransformerPort(nodeId: string, portId: string, name: string): void;
+  reorderTransformerPorts(nodeId: string, portIds: readonly string[]): void;
+  removeTransformerPort(nodeId: string, portId: string): void;
 }
 export interface GraphInspectorEditing {
   graph: ShowGraph;
@@ -262,6 +284,13 @@ export interface GraphInspectorEditing {
     type: Type,
     confirmedPlan?: SourceTypeChangePlan,
   ): SourceTypeChangePlan | null;
+  setTransformerFormula(nodeId: string, formula: string | null): void;
+  setTransformerOutputType(nodeId: string, type: Type | null): void;
+  setTransformerKind(nodeId: string, kind: TransformerTransform["kind"]): void;
+  addTransformerPort(nodeId: string): void;
+  renameTransformerPort(nodeId: string, portId: string, name: string): void;
+  reorderTransformerPorts(nodeId: string, portIds: readonly string[]): void;
+  removeTransformerPort(nodeId: string, portId: string): void;
   addVariable(sceneId: string): void;
   renameVariable(sceneId: string, variableId: string, name: string): void;
   setVariableType(sceneId: string, variableId: string, type: Type): void;
@@ -775,6 +804,71 @@ export function useGraphEditing(
     [execute, graph],
   );
 
+  const changeTransformerFormula = useCallback(
+    (nodeId: string, formula: string | null) => execute(setTransformerFormula(nodeId, formula)),
+    [execute],
+  );
+  const changeTransformerOutputType = useCallback(
+    (nodeId: string, type: Type | null) => execute(setTransformerOutputType(nodeId, type)),
+    [execute],
+  );
+  const changeTransformerKind = useCallback(
+    (nodeId: string, kind: TransformerTransform["kind"]) => {
+      const node = graph.nodes.find(
+        (candidate): candidate is Extract<GraphNode, { kind: "transformer" }> =>
+          candidate.kind === "transformer" && candidate.id === nodeId,
+      );
+      if (!node || node.transform.kind === kind) return;
+      const firstPort = node.ports[0] ?? {
+        id: generateId("variable"),
+        name: "input",
+        rank: "a",
+      };
+      const inputPort = { ...firstPort, name: "input" };
+      const formula = "formula" in node.transform ? node.transform.formula : "";
+      const transform: TransformerTransform =
+        kind === "calculate"
+          ? { kind, formula: formula || null, outputType: null }
+          : kind === "filter"
+            ? { kind, formula: formula ?? "" }
+            : { kind };
+      execute(
+        replaceTransformer(nodeId, kind === "calculate" ? node.ports : [inputPort], transform),
+      );
+    },
+    [execute, graph],
+  );
+  const addTransformerInput = useCallback(
+    (nodeId: string) => {
+      const node = graph.nodes.find(
+        (candidate): candidate is Extract<GraphNode, { kind: "transformer" }> =>
+          candidate.kind === "transformer" && candidate.id === nodeId,
+      );
+      if (!node || node.transform.kind !== "calculate") return;
+      execute(
+        addTransformerPort(nodeId, {
+          id: generateId("variable"),
+          name: `input${node.ports.length + 1}`,
+          rank: `${node.ports.length}`.padStart(6, "0"),
+        }),
+      );
+    },
+    [execute, graph],
+  );
+  const renameTransformerInput = useCallback(
+    (nodeId: string, portId: string, name: string) =>
+      execute(renameTransformerPort(nodeId, portId, name)),
+    [execute],
+  );
+  const reorderTransformerInputs = useCallback(
+    (nodeId: string, portIds: readonly string[]) =>
+      execute(reorderTransformerPorts(nodeId, portIds)),
+    [execute],
+  );
+  const removeTransformerInput = useCallback(
+    (nodeId: string, portId: string) => execute(removeTransformerPort(nodeId, portId)),
+    [execute],
+  );
   const removeVariable = useCallback(
     (sceneId: string, variableId: string) => {
       execute(removeSceneVariable(sceneId, variableId));
@@ -1007,6 +1101,13 @@ export function useGraphEditing(
     setFlowDefaultScene: changeFlowDefaultScene,
     setUpdateOperation: changeUpdateOperation,
     setUpdateOperand: changeUpdateOperand,
+    setTransformerFormula: changeTransformerFormula,
+    setTransformerOutputType: changeTransformerOutputType,
+    setTransformerKind: changeTransformerKind,
+    addTransformerPort: addTransformerInput,
+    renameTransformerPort: renameTransformerInput,
+    reorderTransformerPorts: reorderTransformerInputs,
+    removeTransformerPort: removeTransformerInput,
     setSourceType: changeSourceType,
     moveIntoFlow,
     moveOutOfFlow,

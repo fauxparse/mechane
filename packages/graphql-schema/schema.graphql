@@ -47,6 +47,7 @@ type RunError {
   cueId: ID
   actionId: ID
   eventId: ID
+  transformerId: ID
   publishedGraphVersion: Int
 }
 
@@ -128,6 +129,7 @@ type PlayerFlowBundle {
   flowId: ID!
   defaultSceneId: ID
   scenes: [PlayerFlowScene!]!
+  transformers: [TransformerNode!]!
 }
 
 type PlayerSession {
@@ -382,6 +384,34 @@ type SourceNode implements GraphNode {
   fieldDefaults: [SourceFieldDefault!]!
 }
 
+type TransformerPort {
+  id: ID!
+  name: String!
+  rank: String
+
+  """The effective Type delivered by the connected producer."""
+  type: Type
+}
+
+interface TransformerTransform {
+  kind: String!
+}
+
+type CalculateTransform implements TransformerTransform {
+  kind: String!
+  formula: String
+  outputType: Type
+}
+
+type FilterTransform implements TransformerTransform {
+  kind: String!
+  formula: String!
+}
+
+type ShuffleTransform implements TransformerTransform {
+  kind: String!
+}
+
 type TransformerNode implements GraphNode {
   id: ID!
   name: String!
@@ -389,7 +419,11 @@ type TransformerNode implements GraphNode {
   position: Position!
   color: String
   editorMetadata: JSON
+
+  """The effective output Type; derived for Filter and Shuffle."""
   type: Type
+  ports: [TransformerPort!]!
+  transform: TransformerTransform!
 }
 
 type DeviceNode implements GraphNode {
@@ -800,6 +834,12 @@ input SceneVariableInput {
   suggestedDimensions: SuggestedImageDimensionsInput
 }
 
+input TransformerPortInput {
+  id: ID!
+  name: String!
+  rank: String
+}
+
 input GraphNodeInput {
   id: ID!
   kind: String!
@@ -810,6 +850,10 @@ input GraphNodeInput {
   type: TypeInput
   position: PositionInput!
   variables: [SceneVariableInput!]
+  ports: [TransformerPortInput!]
+  transformKind: String
+  formula: String
+  outputType: TypeInput
   size: JSON
 
   """
@@ -969,6 +1013,15 @@ input ShowEditInput {
   parentId: ID
   name: String
   flowId: ID
+
+  """Transformer command payloads."""
+  portId: ID
+  portIds: [ID!]
+  port: TransformerPortInput
+  ports: [TransformerPortInput!]
+  transformKind: String
+  formula: String
+  outputType: TypeInput
   sceneId: ID
   variableId: ID
   variableIds: [ID!]
@@ -1135,6 +1188,7 @@ type Mutation {
   publishShowGraph(showId: ID!): ShowGraph!
   endRun(showId: ID!): Run
   startRun(showId: ID!): Run!
+  reshuffleTransformer(showId: ID!, transformerId: ID!, deviceId: ID): Boolean!
   submitPlayerEvent(input: PlayerEventInput!): PlayerEventResult!
   beginImageUpload(showId: ID!, mimeType: String!, byteLength: Int!): ImageUploadSession!
   completeImageUpload(sessionId: ID!): ImageUploadCandidate!

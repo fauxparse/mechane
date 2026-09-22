@@ -5,6 +5,7 @@ import type {
   ShowGraph,
   SourceValues,
   StructuredValues,
+  TransformerNode,
 } from "@mechane/domain";
 import type { RealtimeSubscriber, RealtimeSubscription } from "@mechane/realtime";
 import { AblyRealtimeSubscriber, WebSocketRealtimeSubscriber } from "@mechane/realtime/browser";
@@ -44,6 +45,7 @@ export type PlayerSession = {
     endedAt: string | null;
     stateSequence: number;
     sourceValues: SourceValues;
+    shuffleSeeds?: Readonly<Record<string, string>>;
     structuredValues: StructuredValues;
   } | null;
   graph: ShowGraph & {
@@ -55,6 +57,7 @@ export type PlayerSession = {
   flow: {
     flowId: string;
     defaultSceneId: string | null;
+    transformers: TransformerNode[];
     scenes: Array<{
       scene: SceneNode;
       canvas: Canvas & { id: string; ownerId: string; ownerName: string };

@@ -39,6 +39,7 @@ export const RUN_ERROR_CATEGORIES = [
   "invalidInteractions",
   "invalidNavigateAction",
   "incompleteEventRecord",
+  "formulaEvaluationFailure",
 ] as const;
 export type RunErrorCategory = (typeof RUN_ERROR_CATEGORIES)[number];
 
@@ -60,6 +61,7 @@ export interface RunErrorDetail {
   readonly cueId?: string;
   readonly actionId?: string;
   readonly eventId?: string;
+  readonly transformerId?: string;
   /** The published graph version in play, which dates the failure to a publication. */
   readonly publishedGraphVersion?: number;
 }
@@ -104,6 +106,8 @@ const DESCRIPTIONS: Record<RunErrorCategory, (error: RunErrorDetail) => string> 
   incompleteEventRecord: (error) =>
     `${named("Event", error.eventId)} was recorded as applied but stored no resulting Scene, ` +
     `so its Device cannot be told where it ended up.`,
+  formulaEvaluationFailure: (error) =>
+    `${named("Transformer", error.transformerId)} could not evaluate its Formula, so it produced no value.`,
 };
 
 /** One concise sentence an operator can read, rendered from the stored facts. */

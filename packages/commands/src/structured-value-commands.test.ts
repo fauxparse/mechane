@@ -50,11 +50,11 @@ describe("Structured Value command boundary", () => {
     ).toEqual(applied);
   });
   it("preserves array item order when applying an edited structured value", () => {
-    const initial = setSourceFieldDefault("source_people", [], [
-      { name: "Ada" },
-      { name: "Grace" },
-      { name: "Lin" },
-    ]).apply(graph).state;
+    const initial = setSourceFieldDefault(
+      "source_people",
+      [],
+      [{ name: "Ada" }, { name: "Grace" }, { name: "Lin" }],
+    ).apply(graph).state;
     const current = initial.sourceFieldDefaults?.[0]?.value;
     if (!isArrayStructuredValueTemplate(current)) {
       throw new Error("Expected a normalized array template.");
@@ -65,10 +65,8 @@ describe("Structured Value command boundary", () => {
     if (!isArrayStructuredValueTemplate(next)) {
       throw new Error("Expected a normalized array template.");
     }
-    expect(next.items.map((item) => isShapeStructuredValueTemplate(item) ? item.fields.name : null)).toEqual([
-      "Lin",
-      "Ada",
-      "Grace",
-    ]);
+    expect(
+      next.items.map((item) => (isShapeStructuredValueTemplate(item) ? item.fields.name : null)),
+    ).toEqual(["Lin", "Ada", "Grace"]);
   });
 });

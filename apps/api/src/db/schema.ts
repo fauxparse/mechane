@@ -413,6 +413,34 @@ export const graphNodes = pgTable(
   ],
 );
 
+/** Authored state specific to a Transformer node; effective output Type is derived. */
+export const graphTransformers = pgTable(
+  "graph_transformers",
+  {
+    graphId: text("graph_id")
+      .notNull()
+      .references(() => showGraphs.id, { onDelete: "cascade" }),
+    nodeId: text("node_id").notNull(),
+    kind: text("kind").notNull(),
+    formula: text("formula"),
+    outputType: jsonb("output_type"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.graphId, table.nodeId] }),
+    foreignKey({
+      name: "graph_transformers_node_fk",
+      columns: [table.graphId, table.nodeId],
+      foreignColumns: [graphNodes.graphId, graphNodes.id],
+    }).onDelete("cascade"),
+    check(
+      "graph_transformers_configuration",
+      sql`(${table.kind} = 'calculate') or (${table.kind} = 'filter' and ${table.formula} is not null and ${table.outputType} is null) or (${table.kind} = 'shuffle' and ${table.formula} is null and ${table.outputType} is null)`,
+    ),
+  ],
+);
+
 export const sourceFieldDefaults = pgTable(
   "source_field_defaults",
   {
@@ -433,17 +461,16 @@ export const sourceFieldDefaults = pgTable(
   ],
 );
 
-// A Variable is a port on a Scene, not a node of its own (#20) — so it
-// lives in its own table keyed to a Scene node, and a wiring edge points
-// at a row here rather than at the Scene generally.
-export const graphNodeVariables = pgTable(
-  "graph_node_variables",
+// Variables and Transformer inputs share stable port identity and naming.
+// Scene-only Type/default metadata stays nullable for Transformer-owned rows.
+export const graphNodePorts = pgTable(
+  "graph_node_ports",
   {
     id: text("id").notNull(),
     graphId: text("graph_id")
       .notNull()
       .references(() => showGraphs.id, { onDelete: "cascade" }),
-    sceneId: text("scene_id").notNull(),
+    nodeId: text("node_id").notNull(),
     name: text("name").notNull(),
     type: jsonb("type"),
     suggestedDimensions: jsonb("suggested_dimensions"),
@@ -454,11 +481,11 @@ export const graphNodeVariables = pgTable(
   (table) => [
     primaryKey({ columns: [table.graphId, table.id] }),
     foreignKey({
-      name: "graph_node_variables_scene_fk",
-      columns: [table.graphId, table.sceneId],
+      name: "graph_node_ports_node_fk",
+      columns: [table.graphId, table.nodeId],
       foreignColumns: [graphNodes.graphId, graphNodes.id],
     }).onDelete("cascade"),
-    unique("graph_node_variables_scene_name_unique").on(table.graphId, table.sceneId, table.name),
+    unique("graph_node_ports_node_name_unique").on(table.graphId, table.nodeId, table.name),
   ],
 );
 
@@ -520,7 +547,7 @@ export const graphEdges = pgTable(
     // on. Generated rather than written so it can't disagree with the path
     // it comes from, while still being a real column the foreign key below
     // can point at.
-    targetVariableId: text("target_variable_id").generatedAlwaysAs(sql`target_path[1]`),
+    targetPortId: text("target_port_id").generatedAlwaysAs(sql`target_path[1]`),
     // Navigate edges pair a graph-scoped Cue with its graph-scoped Action.
     // Composite foreign keys keep both references in the same graph.
     cueId: text("cue_id"),
@@ -543,9 +570,9 @@ export const graphEdges = pgTable(
       foreignColumns: [graphNodes.graphId, graphNodes.id],
     }).onDelete("cascade"),
     foreignKey({
-      name: "graph_edges_target_variable_fk",
-      columns: [table.graphId, table.targetVariableId],
-      foreignColumns: [graphNodeVariables.graphId, graphNodeVariables.id],
+      name: "graph_edges_target_port_fk",
+      columns: [table.graphId, table.targetPortId],
+      foreignColumns: [graphNodePorts.graphId, graphNodePorts.id],
     }).onDelete("cascade"),
     foreignKey({
       name: "graph_edges_cue_fk",
@@ -680,6 +707,35 @@ export const runDeviceStates = pgTable(
   ],
 );
 
+/** Stable Shuffle seeds owned by one Run's Show scope. */
+export const runTransformerSeeds = pgTable(
+  "run_transformer_seeds",
+  {
+    runId: text("run_id")
+      .notNull()
+      .references(() => runs.id, { onDelete: "cascade" }),
+    transformerId: text("transformer_id").notNull(),
+    seed: text("seed").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.runId, table.transformerId] })],
+);
+
+/** Stable Shuffle seeds owned by one shared Device instance within a Run. */
+export const runDeviceTransformerSeeds = pgTable(
+  "run_device_transformer_seeds",
+  {
+    runId: text("run_id")
+      .notNull()
+      .references(() => runs.id, { onDelete: "cascade" }),
+    deviceId: text("device_id").notNull(),
+    transformerId: text("transformer_id").notNull(),
+    seed: text("seed").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.runId, table.deviceId, table.transformerId] })],
+);
+
 /** Idempotent outcomes for authenticated Player Events within a Run. */
 export const playerEvents = pgTable(
   "player_events",
@@ -759,6 +815,7 @@ export const runErrors = pgTable(
     cueId: text("cue_id"),
     actionId: text("action_id"),
     eventId: text("event_id"),
+    transformerId: text("transformer_id"),
     publishedGraphVersion: integer("published_graph_version"),
     occurredAt: timestamp("occurred_at").notNull().defaultNow(),
   },
@@ -767,6 +824,7 @@ export const runErrors = pgTable(
     // index serves the category filter as a scan of the Show's slice.
     index("run_errors_show_occurred_idx").on(table.showId, table.occurredAt),
     index("run_errors_run_occurred_idx").on(table.runId, table.occurredAt),
+    uniqueIndex("run_errors_formula_unique").on(table.runId, table.category, table.transformerId),
   ],
 );
 

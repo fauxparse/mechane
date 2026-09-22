@@ -58,6 +58,7 @@ export interface PlayerRunState {
   readonly navigation: PlayerNavigation;
   readonly flowSourceValues: SourceValues;
   readonly flowStructuredValues: StructuredValues;
+  readonly shuffleSeeds?: Readonly<Record<string, string>>;
   readonly showSourceValues?: SourceValues;
   readonly showStructuredValues?: StructuredValues;
   readonly stateSequence?: number;
@@ -229,6 +230,7 @@ export function reconcilePlayerRunState(
         )
       : {};
   const structuredValues = current?.flowId === driver.flowId ? current.flowStructuredValues : {};
+  const shuffleSeeds = current?.flowId === driver.flowId ? (current.shuffleSeeds ?? {}) : {};
   const defaultNavigation: PlayerNavigation = driver.defaultSceneId
     ? { kind: "scene", sceneId: driver.defaultSceneId }
     : { kind: "not-ready" };
@@ -239,6 +241,7 @@ export function reconcilePlayerRunState(
     navigation,
     flowSourceValues: sourceValues,
     flowStructuredValues: structuredValues,
+    shuffleSeeds,
   });
 
   if (!current) {
@@ -267,7 +270,7 @@ export function reconcilePlayerRunState(
     reason: driver.defaultSceneId ? "scene-invalid" : "missing-default",
   };
 }
-/** Materializes defaults for newly introduced Flow-local Sources without overwriting live values. */
+/** Materializes defaults and stable Shuffle seeds for newly introduced Flow-local state. */
 export function initializePlayerInstanceState(
   state: PlayerRunState,
   graph: ShowGraph,
@@ -277,10 +280,22 @@ export function initializePlayerInstanceState(
     state.flowId,
     defaultSourceValueTemplates(graph),
   );
+  const shuffleSeeds = { ...state.shuffleSeeds };
+  for (const node of graph.nodes) {
+    if (
+      node.kind === "transformer" &&
+      node.parentId === state.flowId &&
+      node.transform.kind === "shuffle" &&
+      !shuffleSeeds[node.id]
+    ) {
+      shuffleSeeds[node.id] = globalThis.crypto.randomUUID();
+    }
+  }
   return {
     ...state,
     flowSourceValues: { ...defaults.sourceValues, ...state.flowSourceValues },
     flowStructuredValues: { ...defaults.structuredValues, ...state.flowStructuredValues },
+    shuffleSeeds,
   };
 }
 
@@ -347,12 +362,20 @@ function decodeState(value: string): PlayerRunState | "newer" | null {
     typeof parsed.flowId !== "string" ||
     !isNavigation(parsed.navigation) ||
     !isSourceValues(parsed.flowSourceValues) ||
-    (parsed.flowStructuredValues !== undefined && !isRecord(parsed.flowStructuredValues))
+    (parsed.flowStructuredValues !== undefined && !isRecord(parsed.flowStructuredValues)) ||
+    (parsed.shuffleSeeds !== undefined && !isRecord(parsed.shuffleSeeds))
   ) {
     return null;
   }
   const flowStructuredValues = isRecord(parsed.flowStructuredValues)
     ? (parsed.flowStructuredValues as StructuredValues)
+    : {};
+  const shuffleSeeds = isRecord(parsed.shuffleSeeds)
+    ? Object.fromEntries(
+        Object.entries(parsed.shuffleSeeds).filter(
+          (entry): entry is [string, string] => typeof entry[1] === "string",
+        ),
+      )
     : {};
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -361,6 +384,7 @@ function decodeState(value: string): PlayerRunState | "newer" | null {
     navigation: parsed.navigation,
     flowSourceValues: parsed.flowSourceValues,
     flowStructuredValues,
+    ...(parsed.shuffleSeeds === undefined ? {} : { shuffleSeeds }),
   };
 }
 

@@ -46,6 +46,9 @@ import type {
   ShowGraph,
   SourceFieldDefault,
   Type,
+  TransformerInputPort,
+  TransformerNode,
+  TransformerTransform,
 } from "@mechane/domain";
 import {
   BlockReferenceError,
@@ -61,6 +64,7 @@ import {
   renameBlock as renameBlockResource,
   shapeReferencesShape,
   typeAtPath,
+  renameFormulaIdentifier,
 } from "@mechane/domain";
 
 import type { Command } from "./command";
@@ -108,6 +112,13 @@ export const GRAPH_COMMAND_TYPES = {
   setSceneVariableDefault: "graph.setSceneVariableDefault",
   reorderSceneVariables: "graph.reorderSceneVariables",
   removeSceneVariable: "graph.removeSceneVariable",
+  setTransformerFormula: "graph.setTransformerFormula",
+  setTransformerOutputType: "graph.setTransformerOutputType",
+  replaceTransformer: "graph.replaceTransformer",
+  addTransformerPort: "graph.addTransformerPort",
+  renameTransformerPort: "graph.renameTransformerPort",
+  reorderTransformerPorts: "graph.reorderTransformerPorts",
+  removeTransformerPort: "graph.removeTransformerPort",
   setDevicePairingCode: "graph.setDevicePairingCode",
   setDevicePerConnection: "graph.setDevicePerConnection",
   setBlockVariables: "graph.setBlockVariables",
@@ -1736,6 +1747,312 @@ export function removeSceneVariable(
       for (const { index, edge } of captured.edges) {
         next = insertEdge(next, index, edge);
       }
+      return next;
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Transformer configuration and input ports
+// ---------------------------------------------------------------------------
+
+function transformerAt(
+  graph: ShowGraph,
+  nodeId: string,
+): { index: number; transformer: TransformerNode } {
+  const index = nodeIndex(graph, nodeId);
+  const transformer = graph.nodes[index] as GraphNode;
+  if (transformer.kind !== "transformer") {
+    throw new UnknownGraphTargetError("Transformer", nodeId);
+  }
+  return { index, transformer };
+}
+
+function withTransformer(
+  graph: ShowGraph,
+  nodeId: string,
+  update: (transformer: TransformerNode) => TransformerNode,
+): ShowGraph {
+  const { index, transformer } = transformerAt(graph, nodeId);
+  return replaceNode(graph, index, update(transformer));
+}
+
+export function setTransformerFormula(
+  nodeId: string,
+  formula: string | null,
+  label = "Set Formula",
+): ShowGraphCommand {
+  const update = (graph: ShowGraph, value: string | null) =>
+    withTransformer(graph, nodeId, (node) => {
+      if (node.transform.kind === "shuffle") {
+        throw new UnknownGraphTargetError("Formula Transformer", nodeId);
+      }
+      if (node.transform.kind === "calculate") {
+        return { ...node, transform: { ...node.transform, formula: value } };
+      }
+      if (value === null) throw new UnknownGraphTargetError("Filter Formula", nodeId);
+      return { ...node, transform: { ...node.transform, formula: value } };
+    });
+  return capturing<ShowGraph, string | null, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setTransformerFormula,
+    label,
+    scope: "selection",
+    coalesceKey: `${GRAPH_COMMAND_TYPES.setTransformerFormula}:${nodeId}`,
+    edits: [{ type: GRAPH_COMMAND_TYPES.setTransformerFormula, nodeId, formula }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.setTransformerFormula, nodeId, formula: captured },
+    ],
+    capture: (graph) => {
+      const transform = transformerAt(graph, nodeId).transformer.transform;
+      return transform.kind === "shuffle" ? null : transform.formula;
+    },
+    isEmpty: (_graph, captured) => captured === formula,
+    apply: (graph) => update(graph, formula),
+    restore: (graph, captured) => update(graph, captured),
+  });
+}
+
+export function setTransformerOutputType(
+  nodeId: string,
+  outputType: Type | null,
+  label = "Set output Type",
+): ShowGraphCommand {
+  const update = (graph: ShowGraph, value: Type | null) =>
+    withTransformer(graph, nodeId, (node) => {
+      if (node.transform.kind !== "calculate") {
+        throw new UnknownGraphTargetError("Calculate Transformer", nodeId);
+      }
+      return { ...node, transform: { ...node.transform, outputType: value } };
+    });
+  return capturing<ShowGraph, Type | null, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setTransformerOutputType,
+    label,
+    scope: "selection",
+    edits: [{ type: GRAPH_COMMAND_TYPES.setTransformerOutputType, nodeId, outputType }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.setTransformerOutputType, nodeId, outputType: captured },
+    ],
+    capture: (graph) => {
+      const transform = transformerAt(graph, nodeId).transformer.transform;
+      return transform.kind === "calculate" ? transform.outputType : null;
+    },
+    isEmpty: (_graph, captured) => typesEqual(captured, outputType),
+    apply: (graph) => update(graph, outputType),
+    restore: (graph, captured) => update(graph, captured),
+  });
+}
+
+export function replaceTransformer(
+  nodeId: string,
+  ports: readonly TransformerInputPort[],
+  transform: TransformerTransform,
+  label = "Change Transformer",
+): ShowGraphCommand {
+  const update = (
+    graph: ShowGraph,
+    value: { ports: readonly TransformerInputPort[]; transform: TransformerTransform },
+  ) =>
+    withTransformer(graph, nodeId, (node) => ({
+      ...node,
+      ports: value.ports.map((port) => ({ ...port })),
+      transform: value.transform,
+    }));
+  return capturing<
+    ShowGraph,
+    { ports: readonly TransformerInputPort[]; transform: TransformerTransform },
+    GraphEdit
+  >({
+    type: GRAPH_COMMAND_TYPES.replaceTransformer,
+    label,
+    scope: "selection",
+    edits: [{ type: GRAPH_COMMAND_TYPES.replaceTransformer, nodeId, ports, transform }],
+    restoreEdits: (captured) => [
+      {
+        type: GRAPH_COMMAND_TYPES.replaceTransformer,
+        nodeId,
+        ports: captured.ports,
+        transform: captured.transform,
+      },
+    ],
+    capture: (graph) => {
+      const node = transformerAt(graph, nodeId).transformer;
+      return { ports: node.ports, transform: node.transform };
+    },
+    apply: (graph) => update(graph, { ports, transform }),
+    restore: (graph, captured) => update(graph, captured),
+  });
+}
+
+export function addTransformerPort(
+  nodeId: string,
+  port: TransformerInputPort,
+  label = "Add Input",
+): ShowGraphCommand {
+  return capturing<ShowGraph, null, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.addTransformerPort,
+    label,
+    scope: "selection",
+    edits: [{ type: GRAPH_COMMAND_TYPES.addTransformerPort, nodeId, port }],
+    restoreEdits: () => [
+      { type: GRAPH_COMMAND_TYPES.removeTransformerPort, nodeId, portId: port.id },
+    ],
+    capture: () => null,
+    apply: (graph) =>
+      withTransformer(graph, nodeId, (node) => ({
+        ...node,
+        ports: [...node.ports, { ...port, rank: port.rank ?? variableRank(node.ports.length) }],
+      })),
+    restore: (graph) =>
+      withTransformer(graph, nodeId, (node) => ({
+        ...node,
+        ports: node.ports.filter((candidate) => candidate.id !== port.id),
+      })),
+  });
+}
+
+export function renameTransformerPort(
+  nodeId: string,
+  portId: string,
+  name: string,
+  label = "Rename Input",
+): ShowGraphCommand {
+  const rename = (graph: ShowGraph, nextName: string) =>
+    withTransformer(graph, nodeId, (node) => {
+      const port = node.ports.find((candidate) => candidate.id === portId);
+      if (!port) throw new UnknownGraphTargetError("Transformer input", portId);
+      let transform: TransformerTransform;
+      if (node.transform.kind === "shuffle") {
+        transform = node.transform;
+      } else if (node.transform.kind === "filter") {
+        transform = {
+          ...node.transform,
+          formula: renameFormulaIdentifier(node.transform.formula, port.name, nextName).formula,
+        };
+      } else {
+        transform = {
+          ...node.transform,
+          formula: node.transform.formula
+            ? renameFormulaIdentifier(node.transform.formula, port.name, nextName).formula
+            : null,
+        };
+      }
+      return {
+        ...node,
+        ports: node.ports.map((candidate) =>
+          candidate.id === portId ? { ...candidate, name: nextName } : candidate,
+        ),
+        transform,
+      };
+    });
+  return capturing<ShowGraph, string, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.renameTransformerPort,
+    label,
+    scope: "selection",
+    edits: [{ type: GRAPH_COMMAND_TYPES.renameTransformerPort, nodeId, portId, name }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.renameTransformerPort, nodeId, portId, name: captured },
+    ],
+    capture: (graph) => {
+      const port = transformerAt(graph, nodeId).transformer.ports.find(
+        (candidate) => candidate.id === portId,
+      );
+      if (!port) throw new UnknownGraphTargetError("Transformer input", portId);
+      return port.name;
+    },
+    isEmpty: (_graph, captured) => captured === name,
+    apply: (graph) => rename(graph, name),
+    restore: (graph, captured) => rename(graph, captured),
+  });
+}
+
+export function reorderTransformerPorts(
+  nodeId: string,
+  portIds: readonly string[],
+  label = "Reorder Inputs",
+): ShowGraphCommand {
+  const reorder = (graph: ShowGraph, order: readonly string[]) =>
+    withTransformer(graph, nodeId, (node) => {
+      if (order.length !== node.ports.length || new Set(order).size !== node.ports.length) {
+        throw new Error(`Input order for Transformer "${nodeId}" must contain every port once.`);
+      }
+      return {
+        ...node,
+        ports: order.map((id, index) => {
+          const port = node.ports.find((candidate) => candidate.id === id);
+          if (!port) throw new UnknownGraphTargetError("Transformer input", id);
+          return { ...port, rank: variableRank(index) };
+        }),
+      };
+    });
+  return capturing<ShowGraph, readonly string[], GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.reorderTransformerPorts,
+    label,
+    scope: "selection",
+    edits: [{ type: GRAPH_COMMAND_TYPES.reorderTransformerPorts, nodeId, portIds }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.reorderTransformerPorts, nodeId, portIds: captured },
+    ],
+    capture: (graph) => transformerAt(graph, nodeId).transformer.ports.map((port) => port.id),
+    apply: (graph) => reorder(graph, portIds),
+    restore: (graph, captured) => reorder(graph, captured),
+  });
+}
+
+interface RemovedTransformerPort {
+  readonly index: number;
+  readonly port: TransformerInputPort;
+  readonly edges: readonly { index: number; edge: GraphEdge }[];
+}
+
+export function removeTransformerPort(
+  nodeId: string,
+  portId: string,
+  label = "Delete Input",
+): ShowGraphCommand {
+  return capturing<ShowGraph, RemovedTransformerPort, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.removeTransformerPort,
+    label,
+    scope: "selection",
+    edits: [{ type: GRAPH_COMMAND_TYPES.removeTransformerPort, nodeId, portId }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.addTransformerPort, nodeId, port: captured.port },
+      ...captured.edges.map(({ edge }) => ({ type: GRAPH_COMMAND_TYPES.addEdge, edge }) as const),
+    ],
+    capture: (graph) => {
+      const node = transformerAt(graph, nodeId).transformer;
+      const index = node.ports.findIndex((port) => port.id === portId);
+      if (index < 0) throw new UnknownGraphTargetError("Transformer input", portId);
+      return {
+        index,
+        port: node.ports[index] as TransformerInputPort,
+        edges: graph.edges
+          .map((edge, edgeIndex) => ({ edge, index: edgeIndex }))
+          .filter(
+            ({ edge }) =>
+              edge.kind === "wiring" && edge.targetId === nodeId && edge.targetPath[0] === portId,
+          ),
+      };
+    },
+    apply: (graph) => {
+      const next = withTransformer(graph, nodeId, (node) => ({
+        ...node,
+        ports: node.ports.filter((port) => port.id !== portId),
+      }));
+      return {
+        ...next,
+        edges: next.edges.filter(
+          (edge) =>
+            !(edge.kind === "wiring" && edge.targetId === nodeId && edge.targetPath[0] === portId),
+        ),
+      };
+    },
+    restore: (graph, captured) => {
+      let next = withTransformer(graph, nodeId, (node) => {
+        const ports = [...node.ports];
+        ports.splice(Math.min(captured.index, ports.length), 0, captured.port);
+        return { ...node, ports };
+      });
+      for (const { index, edge } of captured.edges) next = insertEdge(next, index, edge);
       return next;
     },
   });

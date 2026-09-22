@@ -38,6 +38,8 @@ import type { WiringConversion } from "./wiring-conversion";
 import { typeAtPath } from "./property-values";
 import { assertValidBlocks } from "./blocks";
 import type { Block } from "./blocks";
+import { absent, analyse, isFormulaIdentifier } from "./formula";
+import { formulaShapeTable, formulaType } from "./formula-runtime";
 export const NODE_KINDS = ["scene", "flow", "source", "transformer", "device"] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
 /** Colorways available to every Show node's editor chrome (#316). */
@@ -102,12 +104,16 @@ export interface SuggestedImageDimensions {
   height: number;
 }
 
-/** A named port on a Scene. A wiring edge targets one of these. */
-export interface SceneVariable {
+/** Stable identity shared by Scene Variables and Transformer input ports. */
+export interface NodePort {
   id: string;
   name: string;
-  /** Stable lexicographic order key within the owning Scene. */
+  /** Stable lexicographic order key within the owning node. */
   rank?: string;
+}
+
+/** A named port on a Scene. A wiring edge targets one of these. */
+export interface SceneVariable extends NodePort {
   /** Optional literal default used when no graph value is supplied. */
   defaultValue?: unknown;
   /** The value type for this Variable, when defined (#107). */
@@ -156,9 +162,26 @@ export interface SourceNode extends BaseNode {
   type: Type;
 }
 
+export type TransformerInputPort = NodePort;
+
+export type TransformerTransform =
+  | {
+      kind: "calculate";
+      formula: string | null;
+      outputType: Type | null;
+    }
+  | {
+      kind: "filter";
+      formula: string;
+    }
+  | {
+      kind: "shuffle";
+    };
+
 export interface TransformerNode extends BaseNode {
   kind: "transformer";
-  type?: Type | null;
+  ports: TransformerInputPort[];
+  transform: TransformerTransform;
 }
 
 export interface DeviceNode extends BaseNode {
@@ -356,6 +379,60 @@ export interface ShowGraph {
   edges: GraphEdge[];
 }
 
+function transformerInputTypeFromGraph(
+  graph: ShowGraph,
+  transformer: TransformerNode,
+  portId: string,
+  visiting: ReadonlySet<string>,
+): Type | null {
+  const edge = graph.edges.find(
+    (candidate): candidate is WiringEdge =>
+      candidate.kind === "wiring" &&
+      candidate.targetId === transformer.id &&
+      candidate.targetPath[0] === portId,
+  );
+  if (!edge) return null;
+  const producer = graph.nodes.find((candidate) => candidate.id === edge.sourceId);
+  const produced =
+    producer?.kind === "source"
+      ? producer.type
+      : producer?.kind === "transformer"
+        ? transformerOutputType(graph, producer, visiting)
+        : producer?.kind === "device"
+          ? deviceSourceType(edge.sourcePath[0])
+          : null;
+  return produced && edge.sourcePath.length > 0
+    ? typeAtPath(produced, edge.sourcePath, graph.shapes ?? [])
+    : produced;
+}
+
+/** Resolves one Transformer's effective output Type without persisting derived state. */
+export function transformerOutputType(
+  graph: ShowGraph,
+  transformer: TransformerNode,
+  visiting: ReadonlySet<string> = new Set(),
+): Type | null {
+  if (transformer.transform.kind === "calculate") return transformer.transform.outputType;
+  if (visiting.has(transformer.id)) return null;
+  const input = transformer.ports.find((port) => port.name === "input");
+  if (!input) return null;
+  return transformerInputTypeFromGraph(
+    graph,
+    transformer,
+    input.id,
+    new Set([...visiting, transformer.id]),
+  );
+}
+
+/** Resolves the Type delivered to a named Transformer input port. */
+export function transformerInputType(
+  graph: ShowGraph,
+  transformer: TransformerNode,
+  portId: string,
+): Type | null {
+  return transformerInputTypeFromGraph(graph, transformer, portId, new Set());
+}
+
 /** The empty graph a Show starts life with. Valid — zero Flows is fine (#25). */
 export function emptyShowGraph(): ShowGraph {
   return { shapes: [], nodes: [], edges: [], cues: [], actions: [], eventBindings: [] };
@@ -398,7 +475,10 @@ export type GraphViolation =
   | "invalidNodeColor"
   | "invalidUpdateEndpoints"
   | "invalidNavigateProjection"
-  | "flowDeviceCardinality";
+  | "flowDeviceCardinality"
+  | "invalidTransformer"
+  | "invalidTransformerPort"
+  | "invalidFormula";
 
 export class InvalidShowGraphError extends Error {
   readonly reason: GraphViolation;
@@ -513,6 +593,89 @@ function assertImageVariableMetadata(variable: SceneVariable, sceneId: string): 
   }
 }
 
+function assertValidTransformer(
+  graph: ShowGraph,
+  node: TransformerNode,
+  publication: boolean,
+): void {
+  assertUniqueIds(
+    node.ports.map((port) => port.name),
+    `input name on Transformer "${node.id}"`,
+  );
+  for (const port of node.ports) {
+    if (!isFormulaIdentifier(port.name)) {
+      throw new InvalidShowGraphError(
+        "invalidTransformerPort",
+        `Transformer "${node.id}" input "${port.name}" is not a valid Formula identifier.`,
+      );
+    }
+  }
+  if (node.transform.kind !== "calculate") {
+    if (node.ports.length !== 1 || node.ports[0]?.name !== "input") {
+      throw new InvalidShowGraphError(
+        "invalidTransformerPort",
+        `${node.transform.kind === "filter" ? "Filter" : "Shuffle"} Transformer "${node.id}" must have exactly one input named "input".`,
+      );
+    }
+  }
+  if (!publication) return;
+  if (node.transform.kind === "calculate" && !node.transform.outputType) {
+    throw new InvalidShowGraphError(
+      "invalidTransformer",
+      `Calculate Transformer "${node.id}" needs an output Type before publication.`,
+    );
+  }
+  const formula = node.transform.kind === "shuffle" ? null : node.transform.formula?.trim() || null;
+  if (!formula) {
+    if (node.transform.kind !== "shuffle") {
+      throw new InvalidShowGraphError(
+        "invalidFormula",
+        `${node.transform.kind === "calculate" ? "Calculate" : "Filter"} Transformer "${node.id}" needs a Formula before publication.`,
+      );
+    }
+    return;
+  }
+  const shapes = graph.shapes ?? [];
+  const inputTypes = new Map(
+    node.ports.map((port) => [port.id, transformerInputType(graph, node, port.id)] as const),
+  );
+  const inputType = node.ports[0] ? inputTypes.get(node.ports[0].id) : null;
+  const analysis = analyse(formula, {
+    ports: node.ports.map((port) => {
+      const type = inputTypes.get(port.id);
+      return {
+        name: port.name,
+        type: type ? formulaType(type, shapes) : "unknown",
+        value: absent(`input "${port.name}" is not connected`),
+      };
+    }),
+    shapes: formulaShapeTable(shapes),
+    expected:
+      node.transform.kind === "calculate" && node.transform.outputType
+        ? formulaType(node.transform.outputType, shapes)
+        : "boolean",
+    ...(node.transform.kind === "filter" &&
+    inputType &&
+    typeof inputType === "object" &&
+    inputType.kind === "array"
+      ? {
+          itemBinding: {
+            name: "item",
+            type: formulaType(inputType.of, shapes),
+            value: absent("Filter item is available only during evaluation"),
+          },
+        }
+      : {}),
+  });
+  const blocking = analysis.diagnostics.find((diagnostic) => diagnostic.severity === "blocking");
+  if (blocking) {
+    throw new InvalidShowGraphError(
+      "invalidFormula",
+      `Transformer "${node.id}" Formula is invalid: ${blocking.message}`,
+    );
+  }
+}
+
 /** Looks a node up by id, or null if the graph has no such node. */
 export function findNode(graph: ShowGraph, nodeId: string): GraphNode | null {
   return graph.nodes.find((node) => node.id === nodeId) ?? null;
@@ -619,13 +782,18 @@ function assertNoPaths(edge: NavigateEdge | DeviceEdge): void {
 }
 
 function assertValidWiringEdge(
+  graph: ShowGraph,
   edge: WiringEdge,
   nodes: Map<string, GraphNode>,
   shapes: readonly Shape[],
 ): void {
   const producer = requireNode(nodes, edge.sourceId, `Wiring edge "${edge.id}"`);
   const wholeProducerType =
-    producer.kind === "source" || producer.kind === "transformer" ? producer.type : null;
+    producer.kind === "source"
+      ? producer.type
+      : producer.kind === "transformer"
+        ? transformerOutputType(graph, producer)
+        : null;
   const sourceType =
     producer.kind === "device"
       ? deviceSourceType(edge.sourcePath[0])
@@ -668,14 +836,15 @@ function assertValidWiringEdge(
   }
   let targetType: Type | null = null;
   if (consumer.kind === "transformer") {
-    targetType =
-      consumer.type && edge.targetPath.length > 0
-        ? typeAtPath(consumer.type, edge.targetPath, shapes)
-        : (consumer.type ?? null);
-    if (consumer.type && edge.targetPath.length > 0 && targetType === null) {
+    const portId = edge.targetPath[0];
+    if (
+      edge.targetPath.length !== 1 ||
+      !portId ||
+      !consumer.ports.some((port) => port.id === portId)
+    ) {
       throw new InvalidShowGraphError(
         "missingTransformerField",
-        `wiring edge "${edge.id}" targets a Transformer field that does not exist.`,
+        `wiring edge "${edge.id}" must target an existing Transformer input port.`,
       );
     }
   } else if (consumer.kind === "source") {
@@ -987,9 +1156,13 @@ export function assertValidShowGraph(
   );
   assertUniqueIds(
     graph.nodes.flatMap((node) =>
-      node.kind === "scene" ? node.variables.map((variable) => variable.id) : [],
+      node.kind === "scene"
+        ? node.variables.map((variable) => variable.id)
+        : node.kind === "transformer"
+          ? node.ports.map((port) => port.id)
+          : [],
     ),
-    "Variable id",
+    "node port id",
   );
   for (const node of graph.nodes) {
     if (node.kind === "source" && !node.type) {
@@ -1013,6 +1186,9 @@ export function assertValidShowGraph(
       );
       for (const variable of node.variables) assertImageVariableMetadata(variable, node.id);
     }
+    if (node.kind === "transformer") {
+      assertValidTransformer(graph, node, options.publication !== false);
+    }
   }
   const interactions = assertValidInteractions(graph);
   assertNavigateProjection(graph, interactions);
@@ -1021,7 +1197,7 @@ export function assertValidShowGraph(
     assertValidPathSegments(edge);
     switch (edge.kind) {
       case "wiring":
-        assertValidWiringEdge(edge, nodes, graph.shapes ?? []);
+        assertValidWiringEdge(graph, edge, nodes, graph.shapes ?? []);
         break;
       case "navigate":
         assertNoPaths(edge);

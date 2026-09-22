@@ -187,6 +187,12 @@ export function createNode(
     case "source":
       return { ...base, kind: "source", parentId, type: options.sourceType ?? "text" };
     case "transformer":
-      return { ...base, kind: "transformer", parentId };
+      return {
+        ...base,
+        kind: "transformer",
+        parentId,
+        ports: [],
+        transform: { kind: "calculate", formula: null, outputType: null },
+      };
   }
 }

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { resolveApiUrl } from "../../../../api/client";
 import { useImageAssets, useImageUpload } from "../../../../api/images";
+import { useActiveRun, useReshuffleTransformer } from "../../../../api/runs";
 import { useShowGraph, useShowGraphEdits } from "../../../../api/show-graph";
 import {
   ShowGraphEditor,
@@ -34,6 +35,8 @@ export function ShowGraphRoute({
   const draft = useShowGraph(showId, "draft");
   const imageAssets = useImageAssets(showId);
   const imageUpload = useImageUpload(showId);
+  const activeRun = useActiveRun(showId);
+  const reshuffleTransformer = useReshuffleTransformer();
   const resolvedImageAssets = useMemo(
     () => (imageAssets.data ?? []).map((asset) => ({ ...asset, assetId: asset.id })),
     [imageAssets.data],
@@ -123,6 +126,15 @@ export function ShowGraphRoute({
         onViewportChange={onViewportChange}
         initialSourceValue={initialSourceValue}
         onSourceValueChange={openSourceValue}
+        runActive={activeRun.data !== null && activeRun.data !== undefined}
+        reshufflingTransformerId={
+          reshuffleTransformer.isPending
+            ? (reshuffleTransformer.variables?.transformerId ?? null)
+            : null
+        }
+        onReshuffleTransformer={(transformerId, deviceId) =>
+          reshuffleTransformer.mutate({ showId, transformerId, deviceId })
+        }
       />
       {saveGraph.error ? (
         <p

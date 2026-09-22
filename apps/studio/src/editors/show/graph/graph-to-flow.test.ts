@@ -64,7 +64,16 @@ function node(overrides: Partial<ShowGraphNode> & Pick<ShowGraphNode, "id" | "ki
     case "source":
       return { ...base, kind: "source", type: overrides.type ?? "text" };
     case "transformer":
-      return { ...base, kind: "transformer", type: overrides.type ?? null };
+      return {
+        ...base,
+        kind: "transformer",
+        ports: [{ id: `${overrides.id}_input`, name: "input" }],
+        transform: {
+          kind: "calculate",
+          formula: "input",
+          outputType: overrides.type ?? null,
+        },
+      };
     case "device":
       return {
         ...base,

@@ -10,6 +10,14 @@ import { defaultSourceValues } from "./source-defaults";
 import { deviceQrImageValue } from "./device-qr";
 import { resolveShapeFieldMapping } from "./shapes";
 import { applyWiringConversion, convertedSourceType } from "./wiring-conversion";
+import { evaluateTransformer } from "./transformers";
+import type { FormulaDiagnostic } from "./formula";
+import {
+  isStructuredValueReference,
+  type RuntimeValue,
+  type StructuredValueRecord,
+  type StructuredValues,
+} from "./structured-values";
 
 function valueAtPath(value: unknown, path: readonly string[]): unknown {
   let current = value;
@@ -126,6 +134,26 @@ export interface WiringDiagnostic {
 export interface SceneVariableResolution {
   readonly values: Record<string, unknown>;
   readonly diagnostics: readonly WiringDiagnostic[];
+  readonly formulaDiagnostics: readonly FormulaDiagnostic[];
+  readonly computedStructuredValues: StructuredValues;
+}
+
+export interface TransformerRuntimeState {
+  readonly structuredValues?: Readonly<Record<string, StructuredValueRecord>>;
+  readonly shuffleSeeds?: Readonly<Record<string, string>>;
+}
+
+function runtimeValue(value: unknown): RuntimeValue | undefined {
+  if (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    isStructuredValueReference(value)
+  ) {
+    return value;
+  }
+  return undefined;
 }
 
 /**
@@ -175,55 +203,122 @@ function deviceValue(node: DeviceNode, sourcePath: readonly string[]): unknown {
 function resolveGraph(
   graph: ShowGraph,
   sourceValues: Readonly<Record<string, unknown>>,
+  runtime: TransformerRuntimeState = {},
 ): {
   wiringEdges: readonly WiringEdge[];
   diagnostics: WiringDiagnostic[];
+  formulaDiagnostics: FormulaDiagnostic[];
+  computedStructuredValues: StructuredValues;
   resolveValue: (nodeId: string, sourcePath?: readonly string[]) => unknown;
 } {
   const diagnostics: WiringDiagnostic[] = [];
+  const formulaDiagnostics: FormulaDiagnostic[] = [];
+  const computedStructuredValues: StructuredValues = {};
   const designTimeSourceValues = defaultSourceValues(graph);
-  const resolvedSourceValues: Record<string, unknown> = {};
+  const resolvedNodeValues: Record<string, unknown> = {};
+  const resolvedNodes = new Set<string>();
+  const resolvingNodes = new Set<string>();
   for (const node of graph.nodes) {
     if (node.kind !== "source") continue;
-    resolvedSourceValues[node.id] = mergeRuntimeValue(
+    resolvedNodeValues[node.id] = mergeRuntimeValue(
       designTimeSourceValues[node.id],
       sourceValues[node.id],
     );
   }
+  for (const node of graph.nodes) {
+    if (node.kind !== "transformer" || !(node.id in sourceValues)) continue;
+    resolvedNodeValues[node.id] = sourceValues[node.id];
+    resolvedNodes.add(node.id);
+  }
 
   const wiringEdges = graph.edges.filter((edge): edge is WiringEdge => edge.kind === "wiring");
-  const resolvedNodes = new Set<string>();
-  const resolvingNodes = new Set<string>();
   const resolveValue = (nodeId: string, sourcePath: readonly string[] = []): unknown => {
     const node = graph.nodes.find((candidate) => candidate.id === nodeId);
     if (!node) return undefined;
     if (node.kind === "device") return deviceValue(node, sourcePath);
-    if (node.kind !== "source") return undefined;
-    if (resolvedNodes.has(nodeId)) return valueAtPath(resolvedSourceValues[nodeId], sourcePath);
+    if (resolvedNodes.has(nodeId)) return valueAtPath(resolvedNodeValues[nodeId], sourcePath);
+    if (node.kind !== "source" && node.kind !== "transformer") return undefined;
     if (resolvingNodes.has(nodeId)) return undefined;
 
     resolvingNodes.add(nodeId);
     const incomingEdges = wiringEdges.filter((edge) => edge.targetId === nodeId);
-    const assemblesArray =
-      typeof node.type !== "string" && node.type.kind === "array" && incomingEdges.length > 0;
-    let value = assemblesArray ? [] : resolvedSourceValues[nodeId];
-    for (const edge of incomingEdges) {
-      const producedValue = resolveValue(edge.sourceId, edge.sourcePath);
-      if (producedValue === undefined) continue;
-      const sourceValue = carriedValue(graph, edge, producedValue, diagnostics);
-      if (sourceValue === undefined) continue;
-      const incomingValue = remapFields(sourceValue, fieldMappingFor(graph, edge));
-      value = assemblesArray
-        ? appendArrayValues(value, incomingValue)
-        : mergeRuntimeValue(value, incomingValue);
+    if (node.kind === "transformer") {
+      const inputValues: Record<string, RuntimeValue | undefined> = {};
+      for (const edge of incomingEdges) {
+        const portId = edge.targetPath[0];
+        if (!portId) continue;
+        const produced = resolveValue(edge.sourceId, edge.sourcePath);
+        const carried = carriedValue(graph, edge, produced, diagnostics);
+        inputValues[portId] = runtimeValue(carried);
+      }
+      const result = evaluateTransformer({
+        graph,
+        node,
+        inputValues,
+        structuredValues: {
+          ...runtime.structuredValues,
+          ...computedStructuredValues,
+        },
+        shuffleSeed: runtime.shuffleSeeds?.[node.id],
+      });
+      formulaDiagnostics.push(
+        ...result.diagnostics.map((diagnostic) => ({ ...diagnostic, transformerId: node.id })),
+      );
+      Object.assign(computedStructuredValues, result.computedStructuredValues);
+      resolvedNodeValues[nodeId] = result.value;
+    } else {
+      const assemblesArray =
+        typeof node.type !== "string" && node.type.kind === "array" && incomingEdges.length > 0;
+      let value = assemblesArray ? [] : resolvedNodeValues[nodeId];
+      for (const edge of incomingEdges) {
+        const producedValue = resolveValue(edge.sourceId, edge.sourcePath);
+        if (producedValue === undefined) continue;
+        const sourceValue = carriedValue(graph, edge, producedValue, diagnostics);
+        if (sourceValue === undefined) continue;
+        const incomingValue = remapFields(sourceValue, fieldMappingFor(graph, edge));
+        value = assemblesArray
+          ? appendArrayValues(value, incomingValue)
+          : mergeRuntimeValue(value, incomingValue);
+      }
+      resolvedNodeValues[nodeId] = value;
     }
-    resolvedSourceValues[nodeId] = value;
     resolvingNodes.delete(nodeId);
     resolvedNodes.add(nodeId);
-    return valueAtPath(value, sourcePath);
+    return valueAtPath(resolvedNodeValues[nodeId], sourcePath);
   };
 
-  return { wiringEdges, diagnostics, resolveValue };
+  return { wiringEdges, diagnostics, formulaDiagnostics, computedStructuredValues, resolveValue };
+}
+
+export interface TransformerSnapshot {
+  readonly values: Readonly<Record<string, unknown>>;
+  readonly computedStructuredValues: StructuredValues;
+  readonly diagnostics: readonly FormulaDiagnostic[];
+}
+
+/** Evaluates the selected Transformer outputs for a server-owned runtime snapshot. */
+export function transformerSnapshot(
+  graph: ShowGraph,
+  sourceValues: Readonly<Record<string, unknown>>,
+  runtime: TransformerRuntimeState = {},
+  transformerIds?: ReadonlySet<string>,
+): TransformerSnapshot {
+  const { formulaDiagnostics, computedStructuredValues, resolveValue } = resolveGraph(
+    graph,
+    sourceValues,
+    runtime,
+  );
+  const values: Record<string, unknown> = {};
+  for (const node of graph.nodes) {
+    if (
+      node.kind !== "transformer" ||
+      (transformerIds !== undefined && !transformerIds.has(node.id))
+    ) {
+      continue;
+    }
+    values[node.id] = resolveValue(node.id);
+  }
+  return { values, computedStructuredValues, diagnostics: formulaDiagnostics };
 }
 
 /** One entry per edge: the same edge cannot fail two different ways at once. */
@@ -240,8 +335,9 @@ export function sceneVariableValues(
   graph: ShowGraph,
   sceneId: string,
   sourceValues: Readonly<Record<string, unknown>>,
+  runtime: TransformerRuntimeState = {},
 ): Record<string, unknown> {
-  return sceneVariableResolution(graph, sceneId, sourceValues).values;
+  return sceneVariableResolution(graph, sceneId, sourceValues, runtime).values;
 }
 
 /**
@@ -254,8 +350,10 @@ export function sceneVariableResolution(
   graph: ShowGraph,
   sceneId: string,
   sourceValues: Readonly<Record<string, unknown>>,
+  runtime: TransformerRuntimeState = {},
 ): SceneVariableResolution {
-  const { wiringEdges, diagnostics, resolveValue } = resolveGraph(graph, sourceValues);
+  const { wiringEdges, diagnostics, formulaDiagnostics, computedStructuredValues, resolveValue } =
+    resolveGraph(graph, sourceValues, runtime);
   const values: Record<string, unknown> = {};
   for (const edge of wiringEdges) {
     if (edge.targetId !== sceneId) continue;
@@ -272,7 +370,12 @@ export function sceneVariableResolution(
       remapFields(sourceValue, fieldMappingFor(graph, edge)),
     );
   }
-  return { values, diagnostics: byEdge(diagnostics) };
+  return {
+    values,
+    diagnostics: byEdge(diagnostics),
+    formulaDiagnostics,
+    computedStructuredValues,
+  };
 }
 
 /**

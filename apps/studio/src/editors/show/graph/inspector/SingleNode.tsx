@@ -24,6 +24,7 @@ import { SourceValues } from "./SourceValues";
 import type { SourceImageAsset } from "./source-value-types";
 import { SourceTypeSection } from "./SourceTypeSection";
 import { Variables } from "./Variables";
+import { TransformerInspector } from "./TransformerInspector";
 
 function CueRow({ cue, editing }: { cue: Cue; editing: GraphInspectorEditing }) {
   const [name, setName] = useState(cue.name);
@@ -119,6 +120,9 @@ export function SingleNode({
   onImageUpload,
   initialSourceValue,
   onSourceValueChange,
+  runActive,
+  reshufflingTransformerId,
+  onReshuffleTransformer,
 }: {
   node: GraphNode;
   editing: GraphInspectorEditing;
@@ -126,6 +130,9 @@ export function SingleNode({
   onImageUpload?: (props: ImageInputOnUploadProps) => void;
   initialSourceValue?: ShowGraphValueLocation;
   onSourceValueChange?: (location: ShowGraphValueLocation | null) => void;
+  runActive?: boolean;
+  reshufflingTransformerId?: string | null;
+  onReshuffleTransformer?(transformerId: string, deviceId?: string): void;
 }) {
   return (
     <SidebarContent>
@@ -218,10 +225,13 @@ export function SingleNode({
         </>
       ) : null}
       {node.kind === "transformer" ? (
-        <p className="text-xs text-muted-foreground">
-          Expressions arrive with the Transformer slice — they evaluate server-side (ADR-0004), so
-          there's nothing to type here yet.
-        </p>
+        <TransformerInspector
+          node={node}
+          editing={editing}
+          runActive={runActive}
+          reshuffling={reshufflingTransformerId === node.id}
+          onReshuffle={onReshuffleTransformer}
+        />
       ) : null}
     </SidebarContent>
   );

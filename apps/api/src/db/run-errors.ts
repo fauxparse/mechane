@@ -49,6 +49,7 @@ function toRunError(row: typeof runErrors.$inferSelect): RunError {
     cueId: row.cueId ?? undefined,
     actionId: row.actionId ?? undefined,
     eventId: row.eventId ?? undefined,
+    transformerId: row.transformerId ?? undefined,
     publishedGraphVersion: row.publishedGraphVersion ?? undefined,
     occurredAt: row.occurredAt,
   };
@@ -77,6 +78,7 @@ export async function recordRunError(entry: RunErrorEntry): Promise<RunError> {
         cueId: entry.cueId ?? null,
         actionId: entry.actionId ?? null,
         eventId: entry.eventId ?? null,
+        transformerId: entry.transformerId ?? null,
         publishedGraphVersion: entry.publishedGraphVersion ?? null,
       })
       .returning(),

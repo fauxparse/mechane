@@ -51,6 +51,7 @@ import {
 } from "../db/player-events";
 import { listRunErrors, RunConfigurationError } from "../db/run-errors";
 import { endRun, readActiveRun, startRun } from "../db/runs";
+import { reshuffleTransformer } from "../db/transformer-seeds";
 import { blobUploadSessions, imageAssets, shows, userSettings } from "../db/schema";
 import {
   applyShowEdits as applyShowEditsToDb,
@@ -69,6 +70,7 @@ import {
   resolveGraphEdgeType,
   resolveGraphNodeType,
   serializeBlock,
+  serializeGraphNode,
   serializeShowGraph,
 } from "./show-graph";
 
@@ -100,6 +102,7 @@ function serializeRunError(error: RunError) {
     cueId: error.cueId ?? null,
     actionId: error.actionId ?? null,
     eventId: error.eventId ?? null,
+    transformerId: error.transformerId ?? null,
     publishedGraphVersion: error.publishedGraphVersion ?? null,
   };
 }
@@ -284,6 +287,7 @@ export const schema = createSchema<GraphQLContext>({
       cueId: ID
       actionId: ID
       eventId: ID
+      transformerId: ID
       publishedGraphVersion: Int
     }
     type PlayerDevice {
@@ -356,6 +360,7 @@ export const schema = createSchema<GraphQLContext>({
       flowId: ID!
       defaultSceneId: ID
       scenes: [PlayerFlowScene!]!
+      transformers: [TransformerNode!]!
     }
     type PlayerSession {
       device: PlayerDevice!
@@ -587,6 +592,28 @@ export const schema = createSchema<GraphQLContext>({
       "Sparse default overrides for Source fields, keyed by stable field ids."
       fieldDefaults: [SourceFieldDefault!]!
     }
+    type TransformerPort {
+      id: ID!
+      name: String!
+      rank: String
+      "The effective Type delivered by the connected producer."
+      type: Type
+    }
+    interface TransformerTransform {
+      kind: String!
+    }
+    type CalculateTransform implements TransformerTransform {
+      kind: String!
+      formula: String
+      outputType: Type
+    }
+    type FilterTransform implements TransformerTransform {
+      kind: String!
+      formula: String!
+    }
+    type ShuffleTransform implements TransformerTransform {
+      kind: String!
+    }
     type TransformerNode implements GraphNode {
       id: ID!
       name: String!
@@ -594,7 +621,10 @@ export const schema = createSchema<GraphQLContext>({
       position: Position!
       color: String
       editorMetadata: JSON
+      "The effective output Type; derived for Filter and Shuffle."
       type: Type
+      ports: [TransformerPort!]!
+      transform: TransformerTransform!
     }
 
     type DeviceNode implements GraphNode {
@@ -966,6 +996,11 @@ export const schema = createSchema<GraphQLContext>({
       defaultValue: JSON
       suggestedDimensions: SuggestedImageDimensionsInput
     }
+    input TransformerPortInput {
+      id: ID!
+      name: String!
+      rank: String
+    }
 
     input GraphNodeInput {
       id: ID!
@@ -977,6 +1012,10 @@ export const schema = createSchema<GraphQLContext>({
       type: TypeInput
       position: PositionInput!
       variables: [SceneVariableInput!]
+      ports: [TransformerPortInput!]
+      transformKind: String
+      formula: String
+      outputType: TypeInput
       size: JSON
       """
       Device nodes only: whether each connection is its own instance.
@@ -1101,6 +1140,14 @@ export const schema = createSchema<GraphQLContext>({
       parentId: ID
       name: String
       flowId: ID
+      "Transformer command payloads."
+      portId: ID
+      portIds: [ID!]
+      port: TransformerPortInput
+      ports: [TransformerPortInput!]
+      transformKind: String
+      formula: String
+      outputType: TypeInput
       sceneId: ID
       variableId: ID
       variableIds: [ID!]
@@ -1241,6 +1288,7 @@ export const schema = createSchema<GraphQLContext>({
       publishShowGraph(showId: ID!): ShowGraph!
       endRun(showId: ID!): Run
       startRun(showId: ID!): Run!
+      reshuffleTransformer(showId: ID!, transformerId: ID!, deviceId: ID): Boolean!
       submitPlayerEvent(input: PlayerEventInput!): PlayerEventResult!
       beginImageUpload(showId: ID!, mimeType: String!, byteLength: Int!): ImageUploadSession!
       completeImageUpload(sessionId: ID!): ImageUploadCandidate!
@@ -1279,6 +1327,9 @@ export const schema = createSchema<GraphQLContext>({
     }),
     GraphNode: {
       __resolveType: resolveGraphNodeType,
+    },
+    TransformerTransform: {
+      __resolveType: (transform: { __typename: string }) => transform.__typename,
     },
     Element: {
       __resolveType: resolveCanvasElementType,
@@ -1418,6 +1469,9 @@ export const schema = createSchema<GraphQLContext>({
                   scene,
                   canvas: serializeCanvas(canvas),
                 })),
+                transformers: session.flow.transformers.map((node) =>
+                  serializeGraphNode(node, session.graph),
+                ),
               }
             : null,
           graph: serializeShowGraph(session.graph),
@@ -1659,6 +1713,43 @@ export const schema = createSchema<GraphQLContext>({
         await findOwnShowOrThrow(showId, userId);
         const run = await endRun(showId);
         return run ? serializeRun(run) : null;
+      },
+      reshuffleTransformer: async (
+        _parent,
+        {
+          showId,
+          transformerId,
+          deviceId,
+        }: { showId: string; transformerId: string; deviceId?: string | null },
+        context,
+      ) => {
+        const userId = requireUserId(context);
+        await findOwnShowOrThrow(showId, userId);
+        const [run, graph] = await Promise.all([
+          readActiveRun(showId),
+          readShowGraph(showId, "published"),
+        ]);
+        if (!run) throw new Error("Start the Run before reshuffling.");
+        const transformer = graph.nodes.find(
+          (node) => node.kind === "transformer" && node.id === transformerId,
+        );
+        if (!transformer || transformer.kind !== "transformer") {
+          throw new Error("That Transformer is not in the published Show.");
+        }
+        if (transformer.transform.kind !== "shuffle") {
+          throw new Error("Only a Shuffle Transformer can be reshuffled.");
+        }
+        let seedDeviceId: string | undefined;
+        if (transformer.parentId !== null) {
+          if (!deviceId) throw new Error("A shared-instance Shuffle requires a Device.");
+          const device = graph.nodes.find(
+            (node) => node.kind === "device" && node.id === deviceId && !node.perConnection,
+          );
+          if (!device) throw new Error("That shared Device is not in the published Show.");
+          seedDeviceId = deviceId;
+        }
+        await reshuffleTransformer(run.id, transformerId, seedDeviceId);
+        return true;
       },
       publishShowGraph: async (_parent, { showId }: { showId: string }, context) => {
         const userId = requireUserId(context);

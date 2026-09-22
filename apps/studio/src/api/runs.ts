@@ -3,6 +3,7 @@ import {
   EndRunMutation,
   GetActiveRunQuery,
   graphqlRequest,
+  ReshuffleTransformerMutation,
   StartRunMutation,
 } from "@mechane/graphql-schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -45,6 +46,31 @@ export function useEndRun() {
       return data.endRun;
     },
     onSuccess: (_run, showId) => {
+      void queryClient.invalidateQueries({ queryKey: activeRunQueryKey(showId) });
+    },
+  });
+}
+
+export function useReshuffleTransformer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      showId,
+      transformerId,
+      deviceId,
+    }: {
+      showId: ShowId;
+      transformerId: string;
+      deviceId?: string;
+    }) => {
+      const data = await graphqlRequest(GRAPHQL_ENDPOINT, ReshuffleTransformerMutation, {
+        showId,
+        transformerId,
+        deviceId: deviceId ?? null,
+      });
+      return data.reshuffleTransformer;
+    },
+    onSuccess: (_result, { showId }) => {
       void queryClient.invalidateQueries({ queryKey: activeRunQueryKey(showId) });
     },
   });

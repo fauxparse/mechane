@@ -65,6 +65,56 @@ describe("graph row persistence", () => {
     expect(reread.edges).toEqual(graph.edges);
     expect(await db.select().from(devices).where(eq(devices.showId, showId))).toEqual([]);
   });
+  it("round-trips every Transformer transform and named port", async () => {
+    await createShow();
+    const transformerGraph: ShowGraph = {
+      ...graph,
+      nodes: [
+        ...graph.nodes,
+        {
+          id: "transformer_calculate",
+          kind: "transformer",
+          name: "Calculate",
+          position: { x: 200, y: 0 },
+          parentId: null,
+          ports: [
+            { id: "port_left", name: "left", rank: "a" },
+            { id: "port_right", name: "right", rank: "b" },
+          ],
+          transform: {
+            kind: "calculate",
+            formula: null,
+            outputType: { kind: "array", of: "number" },
+          },
+        },
+        {
+          id: "transformer_filter",
+          kind: "transformer",
+          name: "Filter",
+          position: { x: 200, y: 100 },
+          parentId: null,
+          ports: [{ id: "port_filter", name: "input", rank: "a" }],
+          transform: { kind: "filter", formula: "item.score > 10" },
+        },
+        {
+          id: "transformer_shuffle",
+          kind: "transformer",
+          name: "Shuffle",
+          position: { x: 200, y: 200 },
+          parentId: null,
+          ports: [{ id: "port_shuffle", name: "input", rank: "a" }],
+          transform: { kind: "shuffle" },
+        },
+      ],
+    };
+
+    await db.transaction((tx) => persistGraphRows(tx, showId, "draft", transformerGraph));
+    const reread = await readGraphRows(showId, "draft");
+
+    expect(reread.nodes.filter((node) => node.kind === "transformer")).toEqual(
+      transformerGraph.nodes.filter((node) => node.kind === "transformer"),
+    );
+  });
   it("persists a wiring edge's conversion, so a published graph carries it (#532)", async () => {
     await createShow();
     const convertingGraph: ShowGraph = {

@@ -1,11 +1,17 @@
-import { PAIRING_CODE_PATTERN, type GraphNode, type ShowGraph } from "@mechane/domain";
+import {
+  PAIRING_CODE_PATTERN,
+  transformerSnapshot,
+  type GraphNode,
+  type ShowGraph,
+} from "@mechane/domain";
 import { and, eq, isNull } from "drizzle-orm";
 
 import { readCanvas } from "./db/canvas";
 import { db } from "./db/client";
 import { listImageAssets } from "./db/images";
-import { RunConfigurationError, withRunErrorLog } from "./db/run-errors";
+import { recordRunError, RunConfigurationError, withRunErrorLog } from "./db/run-errors";
 import { readActiveRun, readRunDeviceState, type RunDeviceState } from "./db/runs";
+import { readOrCreateTransformerSeeds } from "./db/transformer-seeds";
 import { devices } from "./db/schema";
 import { readShowGraph, type StoredShowGraph } from "./db/show-graph";
 import { issueRealtimeGrant } from "./realtime-grants";
@@ -51,6 +57,10 @@ async function flowBundleForDevice(
     (node): node is Extract<GraphNode, { kind: "scene" }> =>
       node.kind === "scene" && node.parentId === flow.id,
   );
+  const transformers = graph.nodes.filter(
+    (node): node is Extract<GraphNode, { kind: "transformer" }> =>
+      node.kind === "transformer" && node.parentId === flow.id,
+  );
   const sceneCanvases = await Promise.all(
     scenes.map(async (scene) => {
       const canvas = await readCanvas(showId, "published", { sceneNodeId: scene.id });
@@ -67,7 +77,12 @@ async function flowBundleForDevice(
       return { scene, canvas };
     }),
   );
-  return { flowId: flow.id, defaultSceneId: flow.defaultSceneId, scenes: sceneCanvases };
+  return {
+    flowId: flow.id,
+    defaultSceneId: flow.defaultSceneId,
+    scenes: sceneCanvases,
+    transformers,
+  };
 }
 /** Returns the authoritative snapshot a paired Player needs to render. */
 export async function readPlayerSession(pairingCode: string) {
@@ -97,6 +112,42 @@ export async function readPlayerSession(pairingCode: string) {
   const canvas = scene
     ? await readCanvas(device.showId, "published", { sceneNodeId: scene.id })
     : null;
+  const shuffleSeeds = run
+    ? await readOrCreateTransformerSeeds(run.id, device.id, graph, !device.perConnection)
+    : {};
+  const transformerRuntime = run
+    ? transformerSnapshot(
+        graph,
+        run.sourceValues,
+        { structuredValues: run.structuredValues, shuffleSeeds },
+        new Set(
+          graph.nodes
+            .filter(
+              (node) =>
+                node.kind === "transformer" && (!device.perConnection || node.parentId === null),
+            )
+            .map((node) => node.id),
+        ),
+      )
+    : null;
+  if (run && transformerRuntime) {
+    const failedTransformerIds = new Set(
+      transformerRuntime.diagnostics.flatMap((diagnostic) =>
+        diagnostic.transformerId ? [diagnostic.transformerId] : [],
+      ),
+    );
+    await Promise.all(
+      [...failedTransformerIds].map((transformerId) =>
+        recordRunError({
+          showId: run.showId,
+          runId: run.id,
+          category: "formulaEvaluationFailure",
+          transformerId,
+          publishedGraphVersion: graph.version,
+        }).catch(() => undefined),
+      ),
+    );
+  }
   const playerGraph = {
     ...graph,
     nodes: graph.nodes.filter((node) => node.kind !== "device"),
@@ -121,8 +172,11 @@ export async function readPlayerSession(pairingCode: string) {
           startedAt: run.startedAt.toISOString(),
           endedAt: run.endedAt?.toISOString() ?? null,
           stateSequence: run.stateSequence,
-          sourceValues: run.sourceValues,
-          structuredValues: run.structuredValues,
+          sourceValues: { ...run.sourceValues, ...transformerRuntime?.values },
+          structuredValues: {
+            ...run.structuredValues,
+            ...transformerRuntime?.computedStructuredValues,
+          },
         }
       : null,
     flow,

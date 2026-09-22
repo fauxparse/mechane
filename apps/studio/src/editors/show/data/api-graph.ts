@@ -70,6 +70,14 @@ type ApiGraphNode = {
   editorMetadata?: unknown;
   sourceType?: ApiType;
   transformerType?: ApiType | null;
+  ports?: { id: string; name: string; rank?: string | null }[];
+  transform?: {
+    __typename: "CalculateTransform" | "FilterTransform" | "ShuffleTransform";
+    kind: string;
+    calculateFormula?: string | null;
+    filterFormula?: string | null;
+    outputType?: ApiType | null;
+  };
   fieldDefaults?: { fieldPath: string[]; value: unknown }[];
   variables?: {
     id: string;
@@ -93,7 +101,8 @@ type ApiSourceNode = ApiGraphNode & {
 };
 type ApiTransformerNode = ApiGraphNode & {
   __typename: "TransformerNode";
-  transformerType?: ApiType | null;
+  ports: NonNullable<ApiGraphNode["ports"]>;
+  transform: NonNullable<ApiGraphNode["transform"]>;
 };
 type ApiGraphEdge = {
   __typename: string;
@@ -252,11 +261,41 @@ function toNode(node: ApiGraphNode): GraphNode {
     }
     case "TransformerNode": {
       const transformer = node as ApiTransformerNode;
+      const ports = transformer.ports.map((port) => ({
+        id: port.id,
+        name: port.name,
+        ...(port.rank ? { rank: port.rank } : {}),
+      }));
+      if (transformer.transform.__typename === "CalculateTransform") {
+        return {
+          ...base,
+          kind: "transformer",
+          parentId: transformer.parentId ?? null,
+          ports,
+          transform: {
+            kind: "calculate",
+            formula: transformer.transform.calculateFormula ?? null,
+            outputType: transformer.transform.outputType
+              ? toType(transformer.transform.outputType)
+              : null,
+          },
+        };
+      }
+      if (transformer.transform.__typename === "FilterTransform") {
+        return {
+          ...base,
+          kind: "transformer",
+          parentId: transformer.parentId ?? null,
+          ports,
+          transform: { kind: "filter", formula: transformer.transform.filterFormula ?? "" },
+        };
+      }
       return {
         ...base,
         kind: "transformer",
         parentId: transformer.parentId ?? null,
-        type: transformer.transformerType ? toType(transformer.transformerType as ApiType) : null,
+        ports,
+        transform: { kind: "shuffle" },
       };
     }
     default:

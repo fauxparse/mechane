@@ -117,6 +117,29 @@ export const GetShowGraphQuery = graphql(
                 shapeId
               }
             }
+            ports {
+              id
+              name
+              rank
+            }
+            transform {
+              __typename
+              kind
+              ... on CalculateTransform {
+                calculateFormula: formula
+                outputType {
+                  kind
+                  shapeId
+                  of {
+                    kind
+                    shapeId
+                  }
+                }
+              }
+              ... on FilterTransform {
+                filterFormula: formula
+              }
+            }
           }
           ... on DeviceNode {
             perConnection

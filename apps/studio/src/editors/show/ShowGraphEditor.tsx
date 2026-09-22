@@ -30,6 +30,9 @@ export interface ShowGraphEditorProps {
   onViewportChange?(viewport: Viewport): void;
   initialSourceValue?: ShowGraphValueLocation;
   onSourceValueChange?(location: ShowGraphValueLocation | null): void;
+  runActive?: boolean;
+  reshufflingTransformerId?: string | null;
+  onReshuffleTransformer?(transformerId: string, deviceId?: string): void;
   className?: string;
   ref?: Ref<ShowGraphEditorHandle>;
 }

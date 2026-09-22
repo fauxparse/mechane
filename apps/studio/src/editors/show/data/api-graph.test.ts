@@ -26,7 +26,18 @@ function apiNode(overrides: { id: string; kind: string } & Partial<ApiNode>): Ap
     parentId: null,
     defaultSceneId: null,
     sourceType: kind === "source" ? { kind: "text", shapeId: null, of: null } : undefined,
-    transformerType: kind === "transformer" ? null : undefined,
+    transformerType:
+      kind === "transformer" ? { kind: "number", shapeId: null, of: null } : undefined,
+    ports: kind === "transformer" ? [] : undefined,
+    transform:
+      kind === "transformer"
+        ? {
+            __typename: "CalculateTransform",
+            kind: "calculate",
+            calculateFormula: "0",
+            outputType: { kind: "number", shapeId: null, of: null },
+          }
+        : undefined,
     fieldDefaults: [],
     position: { x: 0, y: 0 },
     variables: [],
@@ -298,40 +309,6 @@ describe("toShowGraph", () => {
 });
 
 describe("toEditInput", () => {
-  it("sends a whole node for an add, ready to be restored by an undo", () => {
-    // The awkward one: an undone delete arrives back as `graph.addNode`
-    // carrying the node the delete destroyed, Variables and all, so the
-    // server rebuilds it rather than being told to remember it.
-    expect(
-      toEditInput({
-        type: "graph.addNode",
-        node: {
-          id: "scene_lobby",
-          kind: "scene",
-          name: "Lobby",
-          parentId: "flow_vote",
-          position: { x: 3, y: 4 },
-          variables: [{ id: "variable_prompt", name: "prompt", type: null }],
-        },
-      }),
-    ).toEqual({
-      type: "graph.addNode",
-      node: {
-        id: "scene_lobby",
-        kind: "scene",
-        name: "Lobby",
-        parentId: "flow_vote",
-        defaultSceneId: null,
-        color: null,
-        type: null,
-        position: { x: 3, y: 4 },
-        size: null,
-        variables: [{ id: "variable_prompt", name: "prompt", type: null }],
-        perConnection: false,
-      },
-    });
-  });
-
   it("sends only what an edit's type is about", () => {
     expect(toEditInput({ type: "graph.removeNode", nodeId: "scene_lobby" })).toEqual({
       type: "graph.removeNode",

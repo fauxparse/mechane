@@ -70,7 +70,15 @@ function source(
 }
 
 function transformer(id: string, parentId: string | null = null): TransformerNode {
-  return { id, kind: "transformer", name: id, position: at, parentId };
+  return {
+    id,
+    kind: "transformer",
+    name: id,
+    position: at,
+    parentId,
+    ports: [{ id: `${id}_input`, name: "input" }],
+    transform: { kind: "calculate", formula: "input", outputType: "text" },
+  };
 }
 
 function device(id: string, perConnection = false): DeviceNode {
@@ -92,7 +100,15 @@ function wiring(
   targetPath: string[],
   sourcePath: string[] = [],
 ): WiringEdge {
-  return { id, kind: "wiring", sourceId, targetId, sourcePath, targetPath };
+  return {
+    id,
+    kind: "wiring",
+    sourceId,
+    targetId,
+    sourcePath,
+    targetPath:
+      targetId.startsWith("t") && targetPath.length === 0 ? [`${targetId}_input`] : targetPath,
+  };
 }
 
 function navigate(
@@ -437,10 +453,22 @@ describe("assertValidShowGraph", () => {
       expect(() => assertValidShowGraph(showGraph)).not.toThrow();
     });
 
-    it("accepts multiple Flow-local inputs into a Transformer in their Flow", () => {
+    it("accepts multiple named Flow-local inputs into a Transformer in their Flow", () => {
+      const calculate = {
+        ...transformer("t1", "f1"),
+        ports: [
+          { id: "t1_first", name: "first" },
+          { id: "t1_second", name: "second" },
+        ],
+        transform: {
+          kind: "calculate" as const,
+          formula: "first & second",
+          outputType: "text" as const,
+        },
+      };
       const showGraph = graph(
-        [flow("f1"), source("r1", "f1"), source("r2", "f1"), transformer("t1", "f1")],
-        [wiring("e1", "r1", "t1", []), wiring("e2", "r2", "t1", [])],
+        [flow("f1"), source("r1", "f1"), source("r2", "f1"), calculate],
+        [wiring("e1", "r1", "t1", ["t1_first"]), wiring("e2", "r2", "t1", ["t1_second"])],
       );
       expect(() => assertValidShowGraph(showGraph)).not.toThrow();
     });
