@@ -659,6 +659,11 @@ const BOOLEAN_PARAMETER: CatalogueParameter = {
   expected: "Boolean",
   accepts: (type) => type === "boolean" || type === "unknown",
 };
+const NUMBER_PARAMETER: CatalogueParameter = {
+  expected: "Number",
+  accepts: (type) => type === "number" || type === "unknown",
+};
+
 const NUMERIC_INPUT_PARAMETER: CatalogueParameter = {
   expected: "Number or Array of Number",
   accepts: (type) =>
@@ -735,9 +740,18 @@ export const CATALOGUE = Object.freeze([
     call: ([input], span, budget) =>
       numericExtremum(input, span, "MAX", budget, (candidate, selected) => candidate > selected),
   },
+  {
+    name: "ROUND",
+    arity: [2, 2],
+    signature: "ROUND(number, precision)",
+    summary: "Rounds a number to the requested decimal precision.",
+    pipeable: true,
+    parameters: [NUMBER_PARAMETER, NUMBER_PARAMETER],
+    returns: () => "number",
+    call: ([input, precision], span) => roundToPrecision(input, precision, span),
+  },
 ] satisfies CatalogueEntry[]);
 export const DEFERRED_FUNCTIONS = Object.freeze([
-  "ROUND",
   "LEN",
   "UPPER",
   "LOWER",
@@ -812,6 +826,35 @@ function numericExtremum(
     if (selected === undefined || replaces(item.value, selected)) selected = item.value;
   }
   return selected === undefined ? absent(`${name} has no present numbers`) : number(selected);
+}
+
+function roundToPrecision(
+  input: FormulaValue | undefined,
+  precision: FormulaValue | undefined,
+  span: Span,
+): FormulaValue {
+  if (!input || !precision) return absent("ROUND is missing an argument");
+  if (input.kind === "failure") return input;
+  if (precision.kind === "failure") return precision;
+  if (input.kind === "absent") return input;
+  if (precision.kind === "absent") return precision;
+  if (input.kind !== "number" || precision.kind !== "number") {
+    return failure("invalidFunctionArgument", "ROUND requires two Number arguments.", span);
+  }
+  if (!Number.isInteger(precision.value)) {
+    return failure("invalidFunctionArgument", "ROUND precision must be a whole number.", span);
+  }
+  const shifted = shiftDecimal(input.value, precision.value);
+  const rounded = Math.sign(shifted) * Math.round(Math.abs(shifted));
+  const result = shiftDecimal(rounded, -precision.value);
+  return Number.isFinite(result)
+    ? number(result)
+    : failure("nonFiniteNumber", "ROUND produced a non-finite number.", span);
+}
+
+function shiftDecimal(value: number, places: number): number {
+  const [coefficient = "0", exponent = "0"] = value.toString().toLowerCase().split("e");
+  return Number(`${coefficient}e${Number(exponent) + places}`);
 }
 
 function sameType(left: FormulaType, right: FormulaType): boolean {

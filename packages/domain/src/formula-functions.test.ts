@@ -122,3 +122,45 @@ describe("MAX", () => {
     ]);
   });
 });
+
+describe("ROUND", () => {
+  it("rounds decimal and whole-place precision and supports pipe use", () => {
+    expect(analyse("2.675|ROUND(2)", EMPTY_SCOPE).value).toEqual(number(2.68));
+    expect(analyse("1234|ROUND(-2)", EMPTY_SCOPE).value).toEqual(number(1200));
+  });
+
+  it("propagates Typed Absence", () => {
+    const result = analyse("ROUND(value, 2)", {
+      ports: [{ name: "value", type: "number", value: absent("unwired") }],
+      shapes: {},
+    });
+    expect(result.value).toEqual(absent("unwired"));
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ category: "missingRequiredValue", severity: "runtime" }),
+    ]);
+  });
+
+  it("blocks an invalid argument Type", () => {
+    const result = analyse('ROUND("12.5", 1)', EMPTY_SCOPE);
+    expect(result.value).toBeNull();
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        category: "invalidFunctionArgument",
+        severity: "blocking",
+      }),
+    ]);
+  });
+
+  it("reports an invalid runtime precision", () => {
+    const result = analyse("ROUND(12.5, 1.5)", EMPTY_SCOPE);
+    expect(result.value).toEqual(
+      expect.objectContaining({ kind: "failure", category: "invalidFunctionArgument" }),
+    );
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        category: "invalidFunctionArgument",
+        severity: "runtime",
+      }),
+    ]);
+  });
+});
