@@ -807,8 +807,19 @@ export const CATALOGUE = Object.freeze([
       input && typeof input === "object" && "array" in input ? input.array : "unknown",
     call: ([input], span, budget) => presentArrayItem(input, span, "FIRST", budget, false),
   },
+  {
+    name: "LAST",
+    arity: [1, 1],
+    signature: "LAST(items)",
+    summary: "Returns the last present array item.",
+    pipeable: true,
+    parameters: [ARRAY_PARAMETER],
+    returns: ([input]) =>
+      input && typeof input === "object" && "array" in input ? input.array : "unknown",
+    call: ([input], span, budget) => presentArrayItem(input, span, "LAST", budget, true),
+  },
 ] satisfies CatalogueEntry[]);
-export const DEFERRED_FUNCTIONS = Object.freeze(["LAST"] as const);
+export const DEFERRED_FUNCTIONS = Object.freeze([] as const);
 
 export function catalogueEntry(name: string): CatalogueEntry | undefined {
   const upper = name.toUpperCase();

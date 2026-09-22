@@ -352,3 +352,72 @@ describe("FIRST", () => {
     ]);
   });
 });
+
+describe("LAST", () => {
+  it("returns the last present item through a pipe and preserves its identity", () => {
+    const earlier = {
+      kind: "record",
+      shape: "Candidate",
+      fields: {},
+      reference: generateId("structuredValue"),
+    } satisfies FormulaValue;
+    const last = {
+      kind: "record",
+      shape: "Candidate",
+      fields: {},
+      reference: generateId("structuredValue"),
+    } satisfies FormulaValue;
+    const result = analyse("items|LAST", {
+      ports: [
+        {
+          name: "items",
+          type: { array: { record: "Candidate" } },
+          value: { kind: "array", items: [earlier, last, absent("missing")] },
+        },
+      ],
+      shapes: { Candidate: {} },
+    });
+    expect(result.value).toBe(last);
+    expect(result.value).toEqual(expect.objectContaining({ reference: last.reference }));
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  it("propagates Typed Absence", () => {
+    const result = analyse("LAST(items)", {
+      ports: [{ name: "items", type: { array: "number" }, value: absent("unwired") }],
+      shapes: {},
+    });
+    expect(result.value).toEqual(absent("unwired"));
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ category: "missingRequiredValue", severity: "runtime" }),
+    ]);
+  });
+
+  it("blocks an invalid argument Type", () => {
+    const result = analyse("LAST(12)", EMPTY_SCOPE);
+    expect(result.value).toBeNull();
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        category: "invalidFunctionArgument",
+        severity: "blocking",
+      }),
+    ]);
+  });
+
+  it("propagates a runtime failure before the last present item", () => {
+    const result = analyse("LAST(items)", {
+      ports: [
+        {
+          name: "items",
+          type: { array: "number" },
+          value: { kind: "array", items: [number(3), upstreamFailure, absent("missing")] },
+        },
+      ],
+      shapes: {},
+    });
+    expect(result.value).toEqual(upstreamFailure);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ category: "invalidFieldValue", severity: "runtime" }),
+    ]);
+  });
+});
