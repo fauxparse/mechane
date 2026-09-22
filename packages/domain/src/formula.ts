@@ -631,12 +631,18 @@ function unquote(raw: string): string {
 // Function catalogue (#670: IF, SUM, COUNT ship; the rest are its fast-follows)
 // ---------------------------------------------------------------------------
 
+export interface CatalogueParameter {
+  readonly expected: string;
+  readonly accepts: (type: FormulaType) => boolean;
+}
+
 export interface CatalogueEntry {
   readonly name: string;
   readonly arity: readonly [minimum: number, maximum: number];
   readonly signature: string;
   readonly summary: string;
   readonly pipeable: boolean;
+  readonly parameters: readonly CatalogueParameter[];
   readonly returns: (args: readonly FormulaType[]) => FormulaType;
   readonly call: (
     args: readonly FormulaValue[],
@@ -645,6 +651,38 @@ export interface CatalogueEntry {
   ) => FormulaValue;
 }
 
+const ARRAY_PARAMETER: CatalogueParameter = {
+  expected: "Array",
+  accepts: (type) => type === "unknown" || (typeof type === "object" && "array" in type),
+};
+
+const ANY_PARAMETER: CatalogueParameter = {
+  expected: "any value",
+  accepts: () => true,
+};
+const BOOLEAN_PARAMETER: CatalogueParameter = {
+  expected: "Boolean",
+  accepts: (type) => type === "boolean" || type === "unknown",
+};
+const NUMBER_PARAMETER: CatalogueParameter = {
+  expected: "Number",
+  accepts: (type) => type === "number" || type === "unknown",
+};
+const TEXT_PARAMETER: CatalogueParameter = {
+  expected: "Text",
+  accepts: (type) => type === "text" || type === "unknown",
+};
+
+const NUMERIC_INPUT_PARAMETER: CatalogueParameter = {
+  expected: "Number or Array of Number",
+  accepts: (type) =>
+    type === "number" ||
+    type === "unknown" ||
+    (typeof type === "object" &&
+      "array" in type &&
+      (type.array === "number" || type.array === "unknown")),
+};
+
 export const CATALOGUE = Object.freeze([
   {
     name: "IF",
@@ -652,6 +690,7 @@ export const CATALOGUE = Object.freeze([
     signature: "IF(test, whenTrue, whenFalse)",
     summary: "Picks one of two values. Only the selected branch is evaluated.",
     pipeable: false,
+    parameters: [BOOLEAN_PARAMETER, ANY_PARAMETER, ANY_PARAMETER],
     returns: ([, whenTrue, whenFalse]) =>
       sameType(whenTrue ?? "unknown", whenFalse ?? "unknown") ? (whenTrue ?? "unknown") : "unknown",
     call: () => absent("IF must be evaluated lazily"),
@@ -662,6 +701,7 @@ export const CATALOGUE = Object.freeze([
     signature: "SUM(numbers)",
     summary: "Adds an array of numbers, skipping absent items.",
     pipeable: true,
+    parameters: [NUMERIC_INPUT_PARAMETER],
     returns: () => "number",
     call: ([input], span, budget) =>
       aggregate(input, span, "SUM", budget, (numbers) => numbers.reduce((a, b) => a + b, 0)),
@@ -672,6 +712,7 @@ export const CATALOGUE = Object.freeze([
     signature: "COUNT(items)",
     summary: "Counts present items.",
     pipeable: true,
+    parameters: [ANY_PARAMETER],
     returns: () => "number",
     call: ([input], span, budget) => {
       if (!input || input.kind === "absent") return number(0);
@@ -686,17 +727,99 @@ export const CATALOGUE = Object.freeze([
       return number(count);
     },
   },
+  {
+    name: "MIN",
+    arity: [1, 1],
+    signature: "MIN(numbers)",
+    summary: "Returns the smallest present number.",
+    pipeable: true,
+    parameters: [NUMERIC_INPUT_PARAMETER],
+    returns: () => "number",
+    call: ([input], span, budget) =>
+      numericExtremum(input, span, "MIN", budget, (candidate, selected) => candidate < selected),
+  },
+  {
+    name: "MAX",
+    arity: [1, 1],
+    signature: "MAX(numbers)",
+    summary: "Returns the largest present number.",
+    pipeable: true,
+    parameters: [NUMERIC_INPUT_PARAMETER],
+    returns: () => "number",
+    call: ([input], span, budget) =>
+      numericExtremum(input, span, "MAX", budget, (candidate, selected) => candidate > selected),
+  },
+  {
+    name: "ROUND",
+    arity: [2, 2],
+    signature: "ROUND(number, precision)",
+    summary: "Rounds a number to the requested decimal precision.",
+    pipeable: true,
+    parameters: [NUMBER_PARAMETER, NUMBER_PARAMETER],
+    returns: () => "number",
+    call: ([input, precision], span) => roundToPrecision(input, precision, span),
+  },
+  {
+    name: "LEN",
+    arity: [1, 1],
+    signature: "LEN(text)",
+    summary: "Returns the number of Unicode characters in text.",
+    pipeable: true,
+    parameters: [TEXT_PARAMETER],
+    returns: () => "number",
+    call: ([input], span) =>
+      transformText(input, span, "LEN", (value) => {
+        let length = 0;
+        for (const _character of value) length += 1;
+        return number(length);
+      }),
+  },
+  {
+    name: "UPPER",
+    arity: [1, 1],
+    signature: "UPPER(text)",
+    summary: "Returns text converted to uppercase.",
+    pipeable: true,
+    parameters: [TEXT_PARAMETER],
+    returns: () => "text",
+    call: ([input], span) =>
+      transformText(input, span, "UPPER", (value) => text(value.toUpperCase())),
+  },
+  {
+    name: "LOWER",
+    arity: [1, 1],
+    signature: "LOWER(text)",
+    summary: "Returns text converted to lowercase.",
+    pipeable: true,
+    parameters: [TEXT_PARAMETER],
+    returns: () => "text",
+    call: ([input], span) =>
+      transformText(input, span, "LOWER", (value) => text(value.toLowerCase())),
+  },
+  {
+    name: "FIRST",
+    arity: [1, 1],
+    signature: "FIRST(items)",
+    summary: "Returns the first present array item.",
+    pipeable: true,
+    parameters: [ARRAY_PARAMETER],
+    returns: ([input]) =>
+      input && typeof input === "object" && "array" in input ? input.array : "unknown",
+    call: ([input], span, budget) => presentArrayItem(input, span, "FIRST", budget, false),
+  },
+  {
+    name: "LAST",
+    arity: [1, 1],
+    signature: "LAST(items)",
+    summary: "Returns the last present array item.",
+    pipeable: true,
+    parameters: [ARRAY_PARAMETER],
+    returns: ([input]) =>
+      input && typeof input === "object" && "array" in input ? input.array : "unknown",
+    call: ([input], span, budget) => presentArrayItem(input, span, "LAST", budget, true),
+  },
 ] satisfies CatalogueEntry[]);
-export const DEFERRED_FUNCTIONS = Object.freeze([
-  "MIN",
-  "MAX",
-  "ROUND",
-  "LEN",
-  "UPPER",
-  "LOWER",
-  "FIRST",
-  "LAST",
-] as const);
+export const DEFERRED_FUNCTIONS = Object.freeze([] as const);
 
 export function catalogueEntry(name: string): CatalogueEntry | undefined {
   const upper = name.toUpperCase();
@@ -737,6 +860,99 @@ function aggregate(
     numbers.push(item.value);
   }
   return number(reduce(numbers));
+}
+
+function numericExtremum(
+  input: FormulaValue | undefined,
+  span: Span,
+  name: string,
+  budget: EvaluationBudget,
+  replaces: (candidate: number, selected: number) => boolean,
+): FormulaValue {
+  if (!input || input.kind === "absent") return absent(`${name} has no present numbers`);
+  if (input.kind === "failure") return input;
+  const items = input.kind === "array" ? input.items : [input];
+  let selected: number | undefined;
+  for (const item of items) {
+    const exhausted = consumeStep(budget, span);
+    if (exhausted) return exhausted;
+    if (item.kind === "failure") return item;
+    if (item.kind === "absent") continue;
+    if (item.kind !== "number") {
+      return failure(
+        "invalidFunctionArgument",
+        `Function "${name}" cannot accept ${typeName(staticTypeOfValue(item))}; expected Number.`,
+        span,
+      );
+    }
+    if (selected === undefined || replaces(item.value, selected)) selected = item.value;
+  }
+  return selected === undefined ? absent(`${name} has no present numbers`) : number(selected);
+}
+
+function roundToPrecision(
+  input: FormulaValue | undefined,
+  precision: FormulaValue | undefined,
+  span: Span,
+): FormulaValue {
+  if (!input || !precision) return absent("ROUND is missing an argument");
+  if (input.kind === "failure") return input;
+  if (precision.kind === "failure") return precision;
+  if (input.kind === "absent") return input;
+  if (precision.kind === "absent") return precision;
+  if (input.kind !== "number" || precision.kind !== "number") {
+    return failure("invalidFunctionArgument", "ROUND requires two Number arguments.", span);
+  }
+  if (!Number.isInteger(precision.value)) {
+    return failure("invalidFunctionArgument", "ROUND precision must be a whole number.", span);
+  }
+  const shifted = shiftDecimal(input.value, precision.value);
+  const rounded = Math.sign(shifted) * Math.round(Math.abs(shifted));
+  const result = shiftDecimal(rounded, -precision.value);
+  return Number.isFinite(result)
+    ? number(result)
+    : failure("nonFiniteNumber", "ROUND produced a non-finite number.", span);
+}
+
+function shiftDecimal(value: number, places: number): number {
+  const [coefficient = "0", exponent = "0"] = value.toString().toLowerCase().split("e");
+  return Number(`${coefficient}e${Number(exponent) + places}`);
+}
+
+function transformText(
+  input: FormulaValue | undefined,
+  span: Span,
+  name: string,
+  transform: (value: string) => FormulaValue,
+): FormulaValue {
+  if (!input) return absent(`${name} is missing an argument`);
+  if (input.kind === "failure" || input.kind === "absent") return input;
+  return input.kind === "text"
+    ? transform(input.value)
+    : failure("invalidFunctionArgument", `Function "${name}" requires Text.`, span);
+}
+
+function presentArrayItem(
+  input: FormulaValue | undefined,
+  span: Span,
+  name: string,
+  budget: EvaluationBudget,
+  fromEnd: boolean,
+): FormulaValue {
+  if (!input) return absent(`${name} is missing an argument`);
+  if (input.kind === "failure" || input.kind === "absent") return input;
+  if (input.kind !== "array") {
+    return failure("invalidFunctionArgument", `Function "${name}" requires an Array.`, span);
+  }
+  for (let offset = 0; offset < input.items.length; offset += 1) {
+    const exhausted = consumeStep(budget, span);
+    if (exhausted) return exhausted;
+    const index = fromEnd ? input.items.length - offset - 1 : offset;
+    const item = input.items[index];
+    if (!item || item.kind === "absent") continue;
+    return item;
+  }
+  return absent(`${name} has no present items`);
 }
 
 function sameType(left: FormulaType, right: FormulaType): boolean {
@@ -1039,6 +1255,18 @@ function check(
           category: "wrongArity",
         });
         return "unknown";
+      }
+      for (const [index, argumentType] of argumentTypes.entries()) {
+        const parameter = entry.parameters[index];
+        const argument = expression.args[index];
+        if (!parameter || !argument || parameter.accepts(argumentType)) continue;
+        diagnostics.push({
+          from: argument.from,
+          to: argument.to,
+          message: `Function "${entry.name}" expects ${parameter.expected} for argument ${index + 1}, but received ${typeName(argumentType)}.`,
+          severity: "blocking",
+          category: "invalidFunctionArgument",
+        });
       }
       return entry.returns(argumentTypes);
     }
