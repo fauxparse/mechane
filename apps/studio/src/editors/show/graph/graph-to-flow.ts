@@ -31,6 +31,10 @@ import type {
 import type { Edge, Node } from "@xyflow/react";
 
 import { handleFor } from "./handle-ids";
+// PROTOTYPE #676: the Calculate-port prototype widens Transformer nodes and
+// re-anchors their wiring edges onto its port handles. Delete with it.
+import { prototypeNodeWidth } from "./prototype-transformer-ports/prototype-variant";
+import { prototypeEdgePortHandle } from "./prototype-transformer-ports/transform-prototype-state";
 
 /** The domain graph is the adapter's only input; React Flow types stop below. */
 export type MappableNode = GraphNode;
@@ -466,6 +470,9 @@ function toFlowNode(
       ? cues.filter((cue) => cue.owner.kind === "scene" && cue.owner.sceneId === node.id)
       : [];
   const minimumHeight = nodeHeight(node, resolvedShapes, ownedCues.length);
+  // PROTOTYPE #676: the Calculate-port variants author at their own widths.
+  // Delete this line, its import, and `width` below with the prototype.
+  const width = (kind === "transformer" ? prototypeNodeWidth() : null) ?? NODE_WIDTH;
   const dimensions: FlowDimensions = !isFlow
     ? { width: NODE_WIDTH, height: minimumHeight }
     : collapsed
@@ -490,10 +497,10 @@ function toFlowNode(
     // left. React Flow would go on treating it as a child (dragging the Flow
     // would drag it too) and the next drag would try to extract it again.
     parentId: node.parentId ?? undefined,
-    initialWidth: NODE_WIDTH,
+    initialWidth: width,
     initialHeight: isFlow ? dimensions.height : minimumHeight,
     ...(isFlow ? { width: dimensions.width, height: dimensions.height } : {}),
-    style: isFlow ? dimensions : { width: NODE_WIDTH, minHeight: minimumHeight },
+    style: isFlow ? dimensions : { width, minHeight: minimumHeight },
     data: nodeData({
       node,
       facts,
@@ -535,13 +542,16 @@ function toFlowEdge(
             ? handleFor({ kind: "field", id: sourcePath })
             : handleFor({ kind: "output" }),
     targetHandle:
-      edge.kind === "wiring" && target?.kind === "scene" && facts.targetVariableId
+      // PROTOTYPE #676: a Transformer port cannot live in `target_path`, so the
+      // prototype says where its seeded wires land. Delete with the prototype.
+      (target?.kind === "transformer" ? prototypeEdgePortHandle(edge.id) : null) ??
+      (edge.kind === "wiring" && target?.kind === "scene" && facts.targetVariableId
         ? handleFor({ kind: "variable", id: facts.targetVariableId })
         : edge.kind === "wiring" && target?.kind === "transformer" && edge.targetPath[0]
           ? handleFor({ kind: "field", id: edge.targetPath[0] })
           : edge.kind === "update" && target?.kind === "source" && edge.targetPath[0]
             ? handleFor({ kind: "field", id: edge.targetPath[0] })
-            : handleFor({ kind: "input" }),
+            : handleFor({ kind: "input" })),
     data: {
       kind: edge.kind,
       color: facts.color,

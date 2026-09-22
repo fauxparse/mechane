@@ -15,6 +15,8 @@ import {
   rememberedShowViewport,
   rememberShowViewport,
 } from "../../../../editors/show/data/show-session";
+// PROTOTYPE #676: the Calculate-port variant switcher. Delete with the prototype.
+import { PrototypeVariantBar } from "../../../../editors/show/graph/prototype-transformer-ports";
 export interface ShowGraphRouteProps {
   initialSourceValue?: ShowGraphValueLocation;
   onSourceValueChange?: (location: ShowGraphValueLocation | null) => void;
@@ -138,6 +140,8 @@ export function ShowGraphRoute({
           Nothing here yet. Right-click the canvas, or press ⌘K, to create something.
         </p>
       ) : null}
+      {/* PROTOTYPE #676: the Calculate-port variant switcher. Delete with the prototype. */}
+      <PrototypeVariantBar />
     </>
   );
 }
