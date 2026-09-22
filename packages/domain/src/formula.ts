@@ -769,8 +769,19 @@ export const CATALOGUE = Object.freeze([
         return number(length);
       }),
   },
+  {
+    name: "UPPER",
+    arity: [1, 1],
+    signature: "UPPER(text)",
+    summary: "Returns text converted to uppercase.",
+    pipeable: true,
+    parameters: [TEXT_PARAMETER],
+    returns: () => "text",
+    call: ([input], span) =>
+      transformText(input, span, "UPPER", (value) => text(value.toUpperCase())),
+  },
 ] satisfies CatalogueEntry[]);
-export const DEFERRED_FUNCTIONS = Object.freeze(["UPPER", "LOWER", "FIRST", "LAST"] as const);
+export const DEFERRED_FUNCTIONS = Object.freeze(["LOWER", "FIRST", "LAST"] as const);
 
 export function catalogueEntry(name: string): CatalogueEntry | undefined {
   const upper = name.toUpperCase();

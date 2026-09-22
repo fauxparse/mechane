@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { absent, analyse, number, type FormulaScope, type FormulaValue } from "./formula";
+import { absent, analyse, number, text, type FormulaScope, type FormulaValue } from "./formula";
 
 const EMPTY_SCOPE = { ports: [], shapes: {} } satisfies FormulaScope;
 
@@ -195,6 +195,45 @@ describe("LEN", () => {
 
   it("propagates runtime failures", () => {
     const result = analyse("value|LEN", {
+      ports: [{ name: "value", type: "text", value: upstreamFailure }],
+      shapes: {},
+    });
+    expect(result.value).toEqual(upstreamFailure);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ category: "invalidFieldValue", severity: "runtime" }),
+    ]);
+  });
+});
+
+describe("UPPER", () => {
+  it("uppercases text without locale input and supports pipe use", () => {
+    expect(analyse('"straße"|UPPER', EMPTY_SCOPE).value).toEqual(text("STRASSE"));
+  });
+
+  it("propagates Typed Absence", () => {
+    const result = analyse("UPPER(value)", {
+      ports: [{ name: "value", type: "text", value: absent("unwired") }],
+      shapes: {},
+    });
+    expect(result.value).toEqual(absent("unwired"));
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ category: "missingRequiredValue", severity: "runtime" }),
+    ]);
+  });
+
+  it("blocks an invalid argument Type", () => {
+    const result = analyse("UPPER(12)", EMPTY_SCOPE);
+    expect(result.value).toBeNull();
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        category: "invalidFunctionArgument",
+        severity: "blocking",
+      }),
+    ]);
+  });
+
+  it("propagates runtime failures", () => {
+    const result = analyse("value|UPPER", {
       ports: [{ name: "value", type: "text", value: upstreamFailure }],
       shapes: {},
     });
