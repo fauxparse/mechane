@@ -95,8 +95,13 @@ has one per Device Instance, and no Run-wide value at all.
 
 ### Transformer
 
-A node in the Show graph that transforms data from one form to another — via an expression or string formatting. Transformers take Sources (or other Transformers) as input and produce a new value.
+A node in the Show graph that derives a typed value from named input ports. A Calculate Transformer evaluates a Formula; a Filter retains matching array items; a Shuffle gives array items a stable, scope-owned order. Passing through structured inputs preserves their identities, while construction produces Computed Structured Value Instances.
 _Avoid_: Operation, expression converter, computed node
+
+### Formula
+
+A director-authored, pure rule that computes a typed value from a Transformer's named input ports and nothing else. A Formula can pass through existing Structured Value Instances or construct new values; Typed Absence and diagnosed failures propagate rather than becoming implicit defaults.
+_Avoid_: Expression (the older term), script, code
 
 ### Element
 
@@ -198,13 +203,28 @@ The Slot behavior that renders one Block instance for each item in a compatible 
 
 ### Structured Value Instance
 
-An identity-bearing live value whose Type is a Shape or an array. Every nested
-Shape and array is its own Structured Value Instance. Passing a complete
-instance through wiring, Variable or Slot input, or an Action preserves its
-identity; updates through any alias are observed by every holder. Creating,
-constructing, or cloning an instance is explicit, never an incidental
-consequence of crossing a graph boundary. Simple typed values retain value
-semantics.
+An identity-bearing live value whose Type is a Shape or an array. Its identity
+is an encoded id that survives transport boundaries, never TypeScript object
+identity. Every nested Shape and array is its own Structured Value Instance.
+Passing a complete instance through wiring, Variable or Slot input, an Action
+or a Formula preserves its identity. Creating, constructing or cloning an
+instance is explicit, never an incidental consequence of crossing a graph
+boundary. Simple typed values retain value semantics.
+
+### Stored Structured Value Instance
+
+A Structured Value Instance with minted identity, owned by Run or Device
+Instance state. It may be held through multiple aliases; an update through any
+holder is observed by every other holder.
+
+### Computed Structured Value Instance
+
+A read-only Structured Value Instance produced by a Transformer with
+deterministic identity derived from the Transformer, its output Type and the
+value's structural path. Its content changes only through recomputation.
+Its identity provides stable reference transport and reconciliation; the
+instance is regenerated rather than persisted and cannot be updated through
+an alias.
 
 ### Structured Value Template
 
@@ -355,6 +375,8 @@ _Avoid_: Binding (acceptable as a synonym), linking
 - A **Slot** may use **Array Expansion** to render one Block instance per source item; a scalar source produces one instance and an empty array produces none
 - A structured array item uses its **Structured Value Instance** identity for Slot reconciliation; repeated references add occurrence identity, while simple items retain positional identity
 - Complete Shape and array values are **Structured Value Instances**: wiring, Variable and Slot input, and Actions preserve their reference identity; simple values retain value semantics
+- A **Formula** that selects or rearranges a **Structured Value Instance** preserves its identity; constructing a Shape or array produces a **Computed Structured Value Instance**
+- A Show-level **Transformer** evaluates in Run scope; a **Flow-local Transformer** evaluates in its **Device Instance** scope, where that Instance's state lives
 - Invalid source data invalidates the Slot, while an invalid individual item is omitted and does not prevent valid sibling instances from rendering
 - Each repeated instance resolves its State independently and passes its current item as runtime context to nested Slots
 - A **Slot** instantiates a **Nested Block** in its position; nested rendering is depth-first in Canvas and source order
