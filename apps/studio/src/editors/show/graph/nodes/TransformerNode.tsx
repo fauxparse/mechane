@@ -55,20 +55,30 @@ export function TransformerNode({ id, data, selected }: NodeProps<ShowFlowNode>)
           );
         })}
       </div>
-      <div className="border-t border-(--flow-border)/50 px-3 py-2">
-        <div className="text-[10px] uppercase tracking-wide text-(--flow-muted-foreground)">
+      <div className="border-t border-(--flow-border)/50">
+        <div className="px-3 pt-2 text-[10px] tracking-wide text-(--flow-muted-foreground) uppercase">
           {data.transform.kind}
         </div>
-        <div
-          className={cn(
-            "truncate font-mono text-xs",
-            data.transform.kind !== "shuffle" && !data.transform.formula && "text-destructive",
-          )}
-        >
-          {data.transform.kind === "shuffle"
-            ? "stable random order"
-            : data.transform.formula || "Formula required"}
-        </div>
+        {data.transform.kind === "shuffle" ? (
+          <div className="px-3 pb-2 font-mono text-xs">stable random order</div>
+        ) : (
+          // The Formula line is the way into the immersive editor, which is
+          // also how a Transformer in error is reached from the graph (#686).
+          <button
+            type="button"
+            className={cn(
+              "nodrag block w-full truncate px-3 pb-2 text-left font-mono text-xs hover:bg-(--flow-border)/30",
+              !data.transform.formula && "text-destructive",
+            )}
+            title="Open the Formula editor"
+            onClick={(event) => {
+              event.stopPropagation();
+              node.openFormulaEditor(id);
+            }}
+          >
+            {data.transform.formula || "Formula required"}
+          </button>
+        )}
       </div>
       <NodeFieldList
         fields={data.fields}

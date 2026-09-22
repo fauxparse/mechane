@@ -2,10 +2,13 @@ import type { ShowGraph, TransformerNode } from "./graph";
 import { transformerInputType, transformerOutputType } from "./graph";
 import {
   evaluateFormula,
+  formulaShapeTable,
+  formulaType,
+  runtimeToFormula,
   type FormulaEvaluationResult,
   type FormulaInput,
 } from "./formula-runtime";
-import type { FormulaDiagnostic } from "./formula";
+import { absent, type FormulaDiagnostic, type FormulaScope } from "./formula";
 import type { Type } from "./shapes";
 import {
   computedStructuredValueId,
@@ -41,6 +44,70 @@ function arrayInput(
   }
   const record = records[value.ref];
   return record?.kind === "array" ? record : null;
+}
+
+/**
+ * The scope a Transformer's Formula is authored against: its named ports
+ * carrying the values that actually reach them.
+ *
+ * Both authoring surfaces — the inspector editor and the immersive dialog
+ * (#686) — check, complete and preview against this, so a port's completion
+ * detail and the `=` line report the values the evaluator will see. Filter
+ * binds `item` to the first input row, because a predicate is written about
+ * one row and a real example row is what teaches that.
+ */
+export function transformerFormulaScope(options: {
+  readonly graph: ShowGraph;
+  readonly node: TransformerNode;
+  readonly inputValues: Readonly<Record<string, RuntimeValue | undefined>>;
+  readonly structuredValues: Readonly<Record<string, StructuredValueRecord>>;
+}): FormulaScope {
+  const { graph, node, inputValues, structuredValues } = options;
+  const shapes = graph.shapes ?? [];
+  const scope: FormulaScope = {
+    ports: node.ports.map((port) => {
+      const type = transformerInputType(graph, node, port.id);
+      const value = inputValues[port.id];
+      return {
+        name: port.name,
+        type: type ? formulaType(type, shapes) : "unknown",
+        value:
+          type && value !== undefined
+            ? runtimeToFormula(value, type, structuredValues, shapes)
+            : absent(`nothing is connected to "${port.name}"`),
+      };
+    }),
+    shapes: formulaShapeTable(shapes),
+  };
+
+  if (node.transform.kind === "calculate") {
+    if (!node.transform.outputType) return scope;
+    return { ...scope, expected: formulaType(node.transform.outputType, shapes) };
+  }
+
+  const inputPort = node.ports[0];
+  const inputType = inputPort ? transformerInputType(graph, node, inputPort.id) : null;
+  if (node.transform.kind !== "filter") return scope;
+  if (!inputType || typeof inputType === "string" || inputType.kind !== "array") {
+    return { ...scope, expected: "boolean" };
+  }
+  const firstItem = arrayInput(
+    inputPort ? inputValues[inputPort.id] : undefined,
+    inputType,
+    structuredValues,
+  )?.items[0];
+  return {
+    ...scope,
+    expected: "boolean",
+    itemBinding: {
+      name: "item",
+      type: formulaType(inputType.of, shapes),
+      value:
+        firstItem === undefined
+          ? absent("the input has no items to read")
+          : runtimeToFormula(firstItem, inputType.of, structuredValues, shapes),
+    },
+  };
 }
 
 function stableValueKey(value: RuntimeValue): string {

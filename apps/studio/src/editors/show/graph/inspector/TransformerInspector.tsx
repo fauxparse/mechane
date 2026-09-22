@@ -1,6 +1,7 @@
 import {
   Button,
   Input,
+  Maximize2Icon,
   PlusIcon,
   Section,
   SectionHelperText,
@@ -15,58 +16,18 @@ import {
   cn,
 } from "@mechane/design-system";
 import {
-  absent,
-  analyse,
-  formulaShapeTable,
-  formulaType,
   previewText,
   transformerInputType,
   transformerOutputType,
   typeLabel,
   type DeviceNode,
-  type FormulaScope,
   type GraphNode,
   type ShowGraph,
 } from "@mechane/domain";
-import { useMemo } from "react";
 import type { GraphInspectorEditing } from "../../commands/use-graph-editing";
 import { FormulaEditor } from "../formula/FormulaEditor";
-
-function formulaScope(
-  node: Extract<GraphNode, { kind: "transformer" }>,
-  editing: GraphInspectorEditing,
-): FormulaScope {
-  const shapes = editing.graph.shapes ?? [];
-  const ports = node.ports.map((port) => {
-    const type = transformerInputType(editing.graph, node, port.id) ?? "text";
-    return {
-      name: port.name,
-      type: formulaType(type, shapes),
-      value: absent(`input "${port.name}" has no preview value`),
-    };
-  });
-  if (node.transform.kind !== "filter") {
-    return {
-      ports,
-      shapes: formulaShapeTable(shapes),
-      ...(node.transform.kind === "calculate" && node.transform.outputType
-        ? { expected: formulaType(node.transform.outputType, shapes) }
-        : {}),
-    };
-  }
-  const input = transformerInputType(editing.graph, node, node.ports[0]?.id ?? "");
-  const itemType = input && typeof input !== "string" && input.kind === "array" ? input.of : "text";
-  return {
-    ports,
-    shapes: formulaShapeTable(shapes),
-    expected: "boolean",
-    itemBinding: {
-      name: "item",
-      type: formulaType(itemType, shapes),
-      value: absent("the input has no preview item"),
-    },
-  };
-}
+import { useTransformerPreview } from "../formula/use-transformer-preview";
+import { useNodeInteraction } from "../node-interaction";
 
 function PortNameInput({ name, onCommit }: { name: string; onCommit(name: string): void }) {
   // Uncontrolled, keyed by the committed name: the input owns the draft between
@@ -112,11 +73,8 @@ export function TransformerInspector({
   onReshuffle?(transformerId: string, deviceId?: string): void;
 }) {
   const formula = "formula" in node.transform ? (node.transform.formula ?? "") : "";
-  const scope = useMemo(() => formulaScope(node, editing), [editing, node]);
-  const analysis = useMemo(
-    () => (node.transform.kind === "shuffle" ? null : analyse(formula, scope)),
-    [formula, node.transform.kind, scope],
-  );
+  const { scope, analysis } = useTransformerPreview(editing.graph, node);
+  const { openFormulaEditor } = useNodeInteraction();
   const effectiveOutputType = transformerOutputType(editing.graph, node);
   const shuffleDevice = node.parentId === null ? null : drivenDevice(editing.graph, node.parentId);
   const perConnectionShuffle = shuffleDevice?.perConnection === true;
@@ -174,7 +132,7 @@ export function TransformerInspector({
                     onCommit={(name) => editing.renameTransformerPort(node.id, port.id, name)}
                   />
                   <span className="mt-1 block text-[10px] text-muted-foreground">
-                    {inputType ? typeLabel(inputType) : "not connected"}
+                    {inputType ? typeLabel(inputType, editing.graph.shapes ?? []) : "not connected"}
                   </span>
                 </div>
                 <Button
@@ -236,7 +194,20 @@ export function TransformerInspector({
       )}
 
       {node.transform.kind !== "shuffle" ? (
-        <Section label={node.transform.kind === "filter" ? "Keep when" : "Formula"}>
+        <Section
+          label={node.transform.kind === "filter" ? "Keep when" : "Formula"}
+          buttons={
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              aria-label="Open the Formula editor"
+              title="Open the Formula editor"
+              onClick={() => openFormulaEditor(node.id)}
+            >
+              <Maximize2Icon />
+            </Button>
+          }
+        >
           <SectionRow className="grid-cols-[1fr]">
             <FormulaEditor
               value={formula}

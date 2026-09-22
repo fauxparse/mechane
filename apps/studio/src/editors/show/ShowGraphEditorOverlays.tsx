@@ -19,6 +19,8 @@ import { GraphInspector } from "./graph/inspector/GraphInspector";
 import type { GraphEdge, GraphNode } from "@mechane/domain";
 import type { GraphInspectorEditing } from "./commands/use-graph-editing";
 import type { SourceImageAsset } from "./graph/inspector/source-value-types";
+import { FormulaDialog } from "./graph/formula/FormulaDialog";
+import { useNodeInteraction } from "./graph/node-interaction";
 
 export interface ShowGraphEditorOverlaysProps {
   selectedNodes: GraphNode[];
@@ -88,6 +90,8 @@ export function ShowGraphEditorOverlays({
 
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} commands={paletteCommands} />
 
+      <TransformerFormulaDialog inspector={inspector} />
+
       <AlertDialog
         open={pendingDelete !== null}
         onOpenChange={(open) => !open && setPendingDelete(null)}
@@ -113,5 +117,24 @@ export function ShowGraphEditorOverlays({
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+/**
+ * The one immersive Formula editor, opened from the inspector's Formula
+ * section or from a Transformer's Formula line on the graph (#686). It reads
+ * the open node out of the node-interaction seam so both openers reach the
+ * same dialog without threading a callback through React Flow.
+ */
+function TransformerFormulaDialog({ inspector }: { inspector: GraphInspectorEditing }) {
+  const { formulaEditorNodeId, closeFormulaEditor } = useNodeInteraction();
+  const node = inspector.graph.nodes.find((candidate) => candidate.id === formulaEditorNodeId);
+  return (
+    <FormulaDialog
+      graph={inspector.graph}
+      node={node?.kind === "transformer" ? node : null}
+      onFormulaChange={inspector.setTransformerFormula}
+      onOpenChange={(open) => !open && closeFormulaEditor()}
+    />
   );
 }

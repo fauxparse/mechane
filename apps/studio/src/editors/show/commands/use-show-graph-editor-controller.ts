@@ -96,6 +96,7 @@ export function useShowGraphEditorController({
     () => graphToFlow(command.graph, { collapsedFlowIds, sourceValues }),
     [collapsedFlowIds, command.graph, sourceValues],
   );
+  const [formulaEditorNodeId, setFormulaEditorNodeId] = useState<string | null>(null);
   const toggleCollapse = useCallback((flowId: string) => {
     setCollapsedFlowIds((current) => {
       const next = new Set(current);
@@ -340,10 +341,13 @@ export function useShowGraphEditorController({
       cancelRename: gestures.cancelRename,
       connecting: connections.connecting,
       targets: connections.targets,
+      formulaEditorNodeId,
+      openFormulaEditor: setFormulaEditorNodeId,
+      closeFormulaEditor: () => setFormulaEditorNodeId(null),
       toggleCollapse,
       resizeFlow,
     }),
-    [connections, gestures, resizeFlow, toggleCollapse],
+    [connections, formulaEditorNodeId, gestures, resizeFlow, toggleCollapse],
   );
   const edgeInteraction = useMemo<EdgeInteraction>(
     () => ({ moveEdge: editing.edges.moveEdge }),
