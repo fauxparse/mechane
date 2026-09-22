@@ -9,6 +9,8 @@ export interface FormulaEditorProps {
   onChange(value: string): void;
   placeholder?: string;
   className?: string;
+  /** Puts the caret in the Formula on mount, for a surface opened to write. */
+  autoFocus?: boolean;
 }
 
 export function FormulaEditor(props: FormulaEditorProps) {

@@ -12,6 +12,7 @@ import {
   closeBrackets,
   closeBracketsKeymap,
   completionKeymap,
+  completionStatus,
   type Completion,
   type CompletionContext,
 } from "@codemirror/autocomplete";
@@ -162,6 +163,7 @@ export interface FormulaCodeEditorProps {
   onChange(value: string): void;
   placeholder?: string;
   className?: string;
+  autoFocus?: boolean;
 }
 
 export default function FormulaCodeEditor({
@@ -170,12 +172,14 @@ export default function FormulaCodeEditor({
   onChange,
   placeholder = "Write a Formula…",
   className,
+  autoFocus = false,
 }: FormulaCodeEditorProps) {
   const host = useRef<HTMLDivElement | null>(null);
   const view = useRef<EditorView | null>(null);
   const scopeRef = useRef(scope);
   const changeRef = useRef(onChange);
   const initialValue = useRef(value);
+  const completionOpen = useRef(false);
 
   // The CodeMirror extensions below are built once and read these through the
   // refs, so they must track the latest props without tearing the editor down.
@@ -228,10 +232,17 @@ export default function FormulaCodeEditor({
       parent: host.current,
     });
     view.current = editor;
+    if (autoFocus) {
+      editor.focus();
+      editor.dispatch({ selection: { anchor: editor.state.doc.length } });
+    }
     return () => {
       editor.destroy();
       view.current = null;
     };
+    // `autoFocus` is read once, at mount: refocusing a live editor would
+    // steal the caret from wherever the director actually is.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [placeholder]);
 
   useEffect(() => {
@@ -254,7 +265,21 @@ export default function FormulaCodeEditor({
         "nodrag nowheel overflow-hidden rounded-sm border border-input bg-background focus-within:ring-2 focus-within:ring-ring/40",
         className,
       )}
-      onKeyDown={(event) => event.stopPropagation()}
+      // Escape is decided in the capture phase because CodeMirror's own
+      // native handler closes completion before a bubbling handler could ask
+      // whether it had been open.
+      onKeyDownCapture={(event) => {
+        if (event.key !== "Escape") return;
+        const state = view.current?.state;
+        completionOpen.current = state ? completionStatus(state) !== null : false;
+      }}
+      onKeyDown={(event) => {
+        // React Flow reads Backspace and the arrows as canvas commands, so the
+        // editor keeps its own keys. Escape is the exception: it belongs to
+        // whatever host wants to close, unless completion owned it first.
+        if (event.key === "Escape" && !completionOpen.current) return;
+        event.stopPropagation();
+      }}
       onPointerDownCapture={(event) => event.stopPropagation()}
     />
   );

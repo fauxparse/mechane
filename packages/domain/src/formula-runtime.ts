@@ -61,12 +61,19 @@ function computedId(transformerId: string, type: Type, path: readonly string[]) 
   return computedStructuredValueId(transformerId, type, path);
 }
 
-function runtimeToFormula(
+/**
+ * One runtime value in the Formula domain.
+ *
+ * `resolving` guards reference cycles as the walk descends; a caller starts
+ * with none. Authoring surfaces call this to *show* an input value without
+ * running a Formula over it (#686).
+ */
+export function runtimeToFormula(
   value: RuntimeValue | undefined,
   type: Type,
   records: Readonly<Record<string, StructuredValueRecord>>,
   shapes: readonly Shape[],
-  resolving: Set<string>,
+  resolving: Set<string> = new Set(),
 ): FormulaValue {
   if (value === undefined || value === null) return absent("the input is absent");
   if (typeof type === "string") {
@@ -76,6 +83,9 @@ function runtimeToFormula(
     if ((type === "date" || type === "datetime" || type === "color") && typeof value === "string") {
       return text(value);
     }
+    // Image has no Formula value: `formulaType` already calls it `unknown`,
+    // so reading one is typed absence rather than a wrong answer (#667).
+    if (type === "image") return absent("a Formula can't read an Image");
     return {
       kind: "failure",
       category: "typeMismatch",
@@ -260,13 +270,7 @@ export function evaluateFormula(options: {
   const ports = options.inputs.map((input) => ({
     name: input.name,
     type: formulaType(input.type, options.shapes),
-    value: runtimeToFormula(
-      input.value,
-      input.type,
-      options.structuredValues,
-      options.shapes,
-      new Set(),
-    ),
+    value: runtimeToFormula(input.value, input.type, options.structuredValues, options.shapes),
   }));
   const scope: FormulaScope = {
     ports,
@@ -283,7 +287,6 @@ export function evaluateFormula(options: {
               options.item.type,
               options.structuredValues,
               options.shapes,
-              new Set(),
             ),
           },
         }
@@ -296,7 +299,6 @@ export function evaluateFormula(options: {
             options.relativeItem.type,
             options.structuredValues,
             options.shapes,
-            new Set(),
           ),
         }
       : {}),

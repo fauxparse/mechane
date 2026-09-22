@@ -27,6 +27,16 @@ export interface NodeInteraction {
   connecting: boolean;
   /** What that drag may land on (`connectionTargets`), or null when idle. */
   targets: ConnectionTargets | null;
+  /** The Transformer whose immersive Formula editor is open, if any (#686). */
+  formulaEditorNodeId: string | null;
+  /**
+   * Opens that editor. It lives here rather than in props because both the
+   * node body (its Formula line, and its error at rest) and the inspector's
+   * Formula section open the same one dialog, and React Flow constructs the
+   * node itself.
+   */
+  openFormulaEditor(nodeId: string): void;
+  closeFormulaEditor(): void;
   /** Toggles a Flow's local collapsed view state; not an edit command. */
   toggleCollapse(flowId: string): void;
   /**
@@ -46,6 +56,9 @@ const IDLE: NodeInteraction = {
   cancelRename: () => {},
   connecting: false,
   targets: null,
+  formulaEditorNodeId: null,
+  openFormulaEditor: () => {},
+  closeFormulaEditor: () => {},
   toggleCollapse: () => {},
   resizeFlow: () => {},
 };

@@ -195,6 +195,27 @@ function deviceValue(node: DeviceNode, sourcePath: readonly string[]): unknown {
 }
 
 /**
+ * What each named Transformer port receives, keyed by port id.
+ *
+ * A port with no incoming edge is simply absent from the record, which is how
+ * `evaluateTransformer` tells "nothing is wired here" from "a wire delivered
+ * nothing".
+ */
+function portInputValues(
+  incomingEdges: readonly WiringEdge[],
+  resolveValue: (nodeId: string, sourcePath?: readonly string[]) => unknown,
+  carry: (edge: WiringEdge, produced: unknown) => unknown,
+): Record<string, RuntimeValue | undefined> {
+  const inputValues: Record<string, RuntimeValue | undefined> = {};
+  for (const edge of incomingEdges) {
+    const portId = edge.targetPath[0];
+    if (!portId) continue;
+    inputValues[portId] = runtimeValue(carry(edge, resolveValue(edge.sourceId, edge.sourcePath)));
+  }
+  return inputValues;
+}
+
+/**
  * One pass of graph value resolution, shared by every reader.
  *
  * `resolveValue` memoizes each Source as it goes, so asking for the same
@@ -243,14 +264,9 @@ function resolveGraph(
     resolvingNodes.add(nodeId);
     const incomingEdges = wiringEdges.filter((edge) => edge.targetId === nodeId);
     if (node.kind === "transformer") {
-      const inputValues: Record<string, RuntimeValue | undefined> = {};
-      for (const edge of incomingEdges) {
-        const portId = edge.targetPath[0];
-        if (!portId) continue;
-        const produced = resolveValue(edge.sourceId, edge.sourcePath);
-        const carried = carriedValue(graph, edge, produced, diagnostics);
-        inputValues[portId] = runtimeValue(carried);
-      }
+      const inputValues = portInputValues(incomingEdges, resolveValue, (edge, produced) =>
+        carriedValue(graph, edge, produced, diagnostics),
+      );
       const result = evaluateTransformer({
         graph,
         node,
@@ -319,6 +335,42 @@ export function transformerSnapshot(
     values[node.id] = resolveValue(node.id);
   }
   return { values, computedStructuredValues, diagnostics: formulaDiagnostics };
+}
+
+export interface TransformerInputs {
+  /** The value reaching each named port, keyed by port id. */
+  readonly values: Readonly<Record<string, RuntimeValue | undefined>>;
+  /** Every Structured Value record those inputs can dereference. */
+  readonly structuredValues: Readonly<Record<string, StructuredValueRecord>>;
+}
+
+/**
+ * What one Transformer is reading right now, per named input port.
+ *
+ * `transformerSnapshot` answers what a Transformer *produces*. An authoring
+ * surface has to show what goes in before the Formula runs, so the director
+ * can see the rows a predicate is about (#686).
+ */
+export function transformerInputs(
+  graph: ShowGraph,
+  transformerId: string,
+  sourceValues: Readonly<Record<string, unknown>>,
+  runtime: TransformerRuntimeState = {},
+): TransformerInputs {
+  const { wiringEdges, diagnostics, computedStructuredValues, resolveValue } = resolveGraph(
+    graph,
+    sourceValues,
+    runtime,
+  );
+  const values = portInputValues(
+    wiringEdges.filter((edge) => edge.targetId === transformerId),
+    resolveValue,
+    (edge, produced) => carriedValue(graph, edge, produced, diagnostics),
+  );
+  return {
+    values,
+    structuredValues: { ...runtime.structuredValues, ...computedStructuredValues },
+  };
 }
 
 /** One entry per edge: the same edge cannot fail two different ways at once. */

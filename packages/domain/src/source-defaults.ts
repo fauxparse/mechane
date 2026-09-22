@@ -3,9 +3,12 @@ import type { Shape, ShapeField, Type } from "./shapes";
 import {
   isArrayStructuredValueTemplate,
   isShapeStructuredValueTemplate,
+  materializeStructuredValue,
   normalizeStructuredValueTemplate,
   resolveStructuredValueTemplate,
+  type RuntimeValue,
   type StructuredValueTemplate,
+  type StructuredValues,
 } from "./structured-values";
 
 function primitiveDefault(type: Type): unknown {
@@ -115,6 +118,39 @@ export function defaultSourceValues(graph: ShowGraph): Record<string, unknown> {
       resolveStructuredValueTemplate(value),
     ]),
   );
+}
+
+export interface SourceRuntimeState {
+  /** One entry per Source node, structured values carried as references. */
+  readonly values: Record<string, RuntimeValue>;
+  readonly structuredValues: StructuredValues;
+}
+
+/**
+ * The same design-time defaults in reference form, with the records they point
+ * at.
+ *
+ * `defaultSourceValues` inlines every structured value, which is what the
+ * renderer and the wiring diagnostics want. Anything that evaluates a Formula
+ * wants the reference domain instead, because that is the only form
+ * `evaluateTransformer` reads (#668). Studio uses this to preview a Formula
+ * against the values a Show actually carries before a Run exists.
+ */
+export function defaultSourceRuntimeState(graph: ShowGraph): SourceRuntimeState {
+  const shapes = graph.shapes ?? [];
+  const values: Record<string, RuntimeValue> = {};
+  const structuredValues: StructuredValues = {};
+  for (const node of graph.nodes) {
+    if (node.kind !== "source") continue;
+    const materialized = materializeStructuredValue(
+      sourceValueTemplate(node, graph),
+      node.type,
+      shapes,
+    );
+    values[node.id] = materialized.value;
+    Object.assign(structuredValues, materialized.structuredValues);
+  }
+  return { values, structuredValues };
 }
 
 /** Narrowing helper for callers iterating a graph's nodes. */
