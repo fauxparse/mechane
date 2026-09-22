@@ -631,12 +631,18 @@ function unquote(raw: string): string {
 // Function catalogue (#670: IF, SUM, COUNT ship; the rest are its fast-follows)
 // ---------------------------------------------------------------------------
 
+export interface CatalogueParameter {
+  readonly expected: string;
+  readonly accepts: (type: FormulaType) => boolean;
+}
+
 export interface CatalogueEntry {
   readonly name: string;
   readonly arity: readonly [minimum: number, maximum: number];
   readonly signature: string;
   readonly summary: string;
   readonly pipeable: boolean;
+  readonly parameters: readonly CatalogueParameter[];
   readonly returns: (args: readonly FormulaType[]) => FormulaType;
   readonly call: (
     args: readonly FormulaValue[],
@@ -645,6 +651,24 @@ export interface CatalogueEntry {
   ) => FormulaValue;
 }
 
+const ANY_PARAMETER: CatalogueParameter = {
+  expected: "any value",
+  accepts: () => true,
+};
+const BOOLEAN_PARAMETER: CatalogueParameter = {
+  expected: "Boolean",
+  accepts: (type) => type === "boolean" || type === "unknown",
+};
+const NUMERIC_INPUT_PARAMETER: CatalogueParameter = {
+  expected: "Number or Array of Number",
+  accepts: (type) =>
+    type === "number" ||
+    type === "unknown" ||
+    (typeof type === "object" &&
+      "array" in type &&
+      (type.array === "number" || type.array === "unknown")),
+};
+
 export const CATALOGUE = Object.freeze([
   {
     name: "IF",
@@ -652,6 +676,7 @@ export const CATALOGUE = Object.freeze([
     signature: "IF(test, whenTrue, whenFalse)",
     summary: "Picks one of two values. Only the selected branch is evaluated.",
     pipeable: false,
+    parameters: [BOOLEAN_PARAMETER, ANY_PARAMETER, ANY_PARAMETER],
     returns: ([, whenTrue, whenFalse]) =>
       sameType(whenTrue ?? "unknown", whenFalse ?? "unknown") ? (whenTrue ?? "unknown") : "unknown",
     call: () => absent("IF must be evaluated lazily"),
@@ -662,6 +687,7 @@ export const CATALOGUE = Object.freeze([
     signature: "SUM(numbers)",
     summary: "Adds an array of numbers, skipping absent items.",
     pipeable: true,
+    parameters: [NUMERIC_INPUT_PARAMETER],
     returns: () => "number",
     call: ([input], span, budget) =>
       aggregate(input, span, "SUM", budget, (numbers) => numbers.reduce((a, b) => a + b, 0)),
@@ -672,6 +698,7 @@ export const CATALOGUE = Object.freeze([
     signature: "COUNT(items)",
     summary: "Counts present items.",
     pipeable: true,
+    parameters: [ANY_PARAMETER],
     returns: () => "number",
     call: ([input], span, budget) => {
       if (!input || input.kind === "absent") return number(0);
@@ -686,9 +713,19 @@ export const CATALOGUE = Object.freeze([
       return number(count);
     },
   },
+  {
+    name: "MIN",
+    arity: [1, 1],
+    signature: "MIN(numbers)",
+    summary: "Returns the smallest present number.",
+    pipeable: true,
+    parameters: [NUMERIC_INPUT_PARAMETER],
+    returns: () => "number",
+    call: ([input], span, budget) =>
+      numericExtremum(input, span, "MIN", budget, (candidate, selected) => candidate < selected),
+  },
 ] satisfies CatalogueEntry[]);
 export const DEFERRED_FUNCTIONS = Object.freeze([
-  "MIN",
   "MAX",
   "ROUND",
   "LEN",
@@ -737,6 +774,34 @@ function aggregate(
     numbers.push(item.value);
   }
   return number(reduce(numbers));
+}
+
+function numericExtremum(
+  input: FormulaValue | undefined,
+  span: Span,
+  name: string,
+  budget: EvaluationBudget,
+  replaces: (candidate: number, selected: number) => boolean,
+): FormulaValue {
+  if (!input || input.kind === "absent") return absent(`${name} has no present numbers`);
+  if (input.kind === "failure") return input;
+  const items = input.kind === "array" ? input.items : [input];
+  let selected: number | undefined;
+  for (const item of items) {
+    const exhausted = consumeStep(budget, span);
+    if (exhausted) return exhausted;
+    if (item.kind === "failure") return item;
+    if (item.kind === "absent") continue;
+    if (item.kind !== "number") {
+      return failure(
+        "invalidFunctionArgument",
+        `Function "${name}" cannot accept ${typeName(staticTypeOfValue(item))}; expected Number.`,
+        span,
+      );
+    }
+    if (selected === undefined || replaces(item.value, selected)) selected = item.value;
+  }
+  return selected === undefined ? absent(`${name} has no present numbers`) : number(selected);
 }
 
 function sameType(left: FormulaType, right: FormulaType): boolean {
@@ -1039,6 +1104,18 @@ function check(
           category: "wrongArity",
         });
         return "unknown";
+      }
+      for (const [index, argumentType] of argumentTypes.entries()) {
+        const parameter = entry.parameters[index];
+        const argument = expression.args[index];
+        if (!parameter || !argument || parameter.accepts(argumentType)) continue;
+        diagnostics.push({
+          from: argument.from,
+          to: argument.to,
+          message: `Function "${entry.name}" expects ${parameter.expected} for argument ${index + 1}, but received ${typeName(argumentType)}.`,
+          severity: "blocking",
+          category: "invalidFunctionArgument",
+        });
       }
       return entry.returns(argumentTypes);
     }
