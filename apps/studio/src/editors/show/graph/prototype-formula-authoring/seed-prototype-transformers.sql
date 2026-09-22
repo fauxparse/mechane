@@ -1,15 +1,18 @@
--- PROTOTYPE (issue #676) — dev-only data for the Calculate-port prototype.
--- Adds three Transformer nodes to the Voting show's draft graph plus the wiring
+-- PROTOTYPE (issue #675, inherited from #676) — dev-only data for the
+-- Formula-authoring prototype.
+-- Adds four Transformer nodes to the Voting show's draft graph plus the wiring
 -- edges that land on the prototype's port handles, so the variants are judged
--- against real neighbours, real edge routing and real density.
+-- against real neighbours, real edge routing and real density. The fourth,
+-- "Vote share", is seeded with a broken Formula and left that way: it is the
+-- node the variants have to present in error, at rest, with nobody editing it.
 --
 -- Run:
 --   docker compose exec -T postgres psql -U mechane -d mechane \
---     < apps/studio/src/editors/show/graph/prototype-transformer-ports/seed-prototype-transformers.sql
+--     < apps/studio/src/editors/show/graph/prototype-formula-authoring/seed-prototype-transformers.sql
 --
 -- Undo:
 --   DELETE FROM graph_nodes WHERE id IN
---     ('transformer_tally','transformer_shortlist','transformer_order');
+--     ('transformer_tally','transformer_shortlist','transformer_order','transformer_share');
 --   DELETE FROM graph_node_variables WHERE id = 'variable_tally_headline';
 --   (edges cascade from both)
 --
@@ -37,7 +40,8 @@ CROSS JOIN (
   VALUES
     ('transformer_tally', 'transformer', 'Tally headline', NULL::text, 0.0, 300.0),
     ('transformer_shortlist', 'transformer', 'Front runners', NULL::text, 0.0, 640.0),
-    ('transformer_order', 'transformer', 'Candidate order', 'flow_audience', 704.0, 330.0)
+    ('transformer_order', 'transformer', 'Candidate order', 'flow_audience', 704.0, 330.0),
+    ('transformer_share', 'transformer', 'Vote share', NULL::text, 0.0, 980.0)
 ) AS node(id, kind, name, parent_id, position_x, position_y)
 ON CONFLICT DO NOTHING;
 
@@ -61,6 +65,8 @@ CROSS JOIN (
     ('edge_candidates_shortlist_port', 'wiring', 'source_candidates', 'transformer_shortlist',
      '{}'::text[], '{}'::text[]),
     ('edge_candidates_order_port', 'wiring', 'source_candidates', 'transformer_order',
+     '{}'::text[], '{}'::text[]),
+    ('edge_candidates_share_port', 'wiring', 'source_candidates', 'transformer_share',
      '{}'::text[], '{}'::text[]),
     ('edge_tally_headline', 'wiring', 'transformer_tally', 'scene_vote_tally',
      '{}'::text[], '{variable_tally_headline}'::text[])

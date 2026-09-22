@@ -1,4 +1,4 @@
-// PROTOTYPE (issue #676) — the floating variant switcher.
+// PROTOTYPE (issue #675) — the floating variant switcher.
 //
 // High-contrast on purpose: it must not read as part of the design under
 // evaluation. Hidden unless `?variant=` is present, and never rendered in a
@@ -46,7 +46,7 @@ export function PrototypeVariantBar() {
           <ChevronLeftIcon className="size-4" />
         </BarButton>
         <span className="px-2 text-xs font-semibold whitespace-nowrap">
-          #676 · {variant} ({VARIANT_NAMES[variant]}) · wiring is visual only
+          #675 · {variant} ({VARIANT_NAMES[variant]}) · wiring is visual only
         </span>
         <BarButton label="Next variant" onClick={() => showVariant(step(variant, 1))}>
           <ChevronRightIcon className="size-4" />

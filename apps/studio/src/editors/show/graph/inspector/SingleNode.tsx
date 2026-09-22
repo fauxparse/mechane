@@ -24,13 +24,13 @@ import { SourceValues } from "./SourceValues";
 import type { SourceImageAsset } from "./source-value-types";
 import { SourceTypeSection } from "./SourceTypeSection";
 import { Variables } from "./Variables";
-// PROTOTYPE #676: the Calculate-port prototype owns the Transformer section
+// PROTOTYPE #675: the Formula-authoring prototype owns the Transformer section
 // while `?variant=` is on the URL. Delete this import with the prototype.
 import {
   PROTOTYPE_VARIANT_COMPONENTS,
   activeVariant,
   usePrototypeTransform,
-} from "../prototype-transformer-ports";
+} from "../prototype-formula-authoring";
 
 function CueRow({ cue, editing }: { cue: Cue; editing: GraphInspectorEditing }) {
   const [name, setName] = useState(cue.name);
@@ -230,7 +230,7 @@ export function SingleNode({
 }
 
 /**
- * PROTOTYPE #676: while `?variant=` is on the URL this is one of the three
+ * PROTOTYPE #675: while `?variant=` is on the URL this is one of the three
  * prototype inspectors; otherwise it is the placeholder the Transformer slice
  * replaces. Delete the prototype branch with the prototype.
  */

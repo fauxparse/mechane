@@ -2,13 +2,13 @@ import type { NodeProps } from "@xyflow/react";
 
 import type { ShowFlowNode } from "../graph-to-flow";
 import { NODE_KIND_META } from "../node-kinds";
-// PROTOTYPE #676: the Calculate-port prototype swaps this node's body when
+// PROTOTYPE #675: the Formula-authoring prototype swaps this node's body when
 // `?variant=` is on the URL. Delete this import with the prototype.
 import {
   PROTOTYPE_VARIANT_COMPONENTS,
   activeVariant,
   usePrototypeTransform,
-} from "../prototype-transformer-ports";
+} from "../prototype-formula-authoring";
 import { BaseNode } from "./BaseNode";
 import { NodeFieldList } from "./NodeContent";
 import { useReactFlowNode } from "./use-react-flow-node";
@@ -43,6 +43,7 @@ export function TransformerNode({ id, data, selected }: NodeProps<ShowFlowNode>)
           handle={node.handle}
           connectedHandleIds={node.connectedHandleIds}
           targetable={node.targetable}
+          selected={selected ?? false}
         />
       ) : (
         <NodeFieldList

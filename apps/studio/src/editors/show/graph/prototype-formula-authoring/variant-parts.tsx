@@ -1,14 +1,20 @@
-// PROTOTYPE (issue #676) — the little that all three variants share.
+// PROTOTYPE (issue #675) — the little that all three variants share.
 //
-// Deliberately thin: the variants disagree about layout, so only the props
-// contract, the React Flow handle bookkeeping and the fake diagnostics live
-// here. Anything shaping a variant's layout belongs in the variant.
+// Deliberately thin: the variants disagree about where the Formula is written
+// and how its feedback is presented, so only the props contract, the React Flow
+// handle bookkeeping and the analysis hook live here. Anything shaping a
+// variant's layout belongs in the variant.
 import type { GraphNode, Shape } from "@mechane/domain";
 import { useUpdateNodeInternals, type HandleProps } from "@xyflow/react";
-import { useEffect, type ComponentType } from "react";
+import { useEffect, useMemo, type ComponentType } from "react";
 
-import type { PrototypeTransform } from "./transform-prototype-state";
-import { countReferences } from "./transform-prototype-state";
+import { previewText, type FormulaValue } from "./formula-language";
+import {
+  analyseTransform,
+  countReferences,
+  type PrototypeTransform,
+  type TransformAnalysis,
+} from "./formula-state";
 
 export interface VariantNodeProps {
   nodeId: string;
@@ -16,6 +22,7 @@ export interface VariantNodeProps {
   handle: ComponentType<HandleProps>;
   connectedHandleIds: ReadonlySet<string>;
   targetable: boolean;
+  selected: boolean;
 }
 
 export interface VariantInspectorProps {
@@ -46,17 +53,33 @@ export function usePortHandles(nodeId: string, transform: PrototypeTransform): v
   }, [nodeId, updateNodeInternals, key]);
 }
 
-export interface PrototypeDiagnostic {
+export function useAnalysis(transform: PrototypeTransform): TransformAnalysis {
+  return useMemo(() => analyseTransform(transform), [transform]);
+}
+
+/** A short, safe rendering of a live value for a one-line slot. */
+export function shortValue(value: FormulaValue, limit = 40): string {
+  if (value.kind === "array") {
+    const count = value.items.length;
+    const inner = previewText(value);
+    const summary = `${count} ${count === 1 ? "item" : "items"}`;
+    return inner.length > limit ? summary : `${summary} · ${inner}`;
+  }
+  const rendered = previewText(value);
+  return rendered.length > limit ? `${rendered.slice(0, limit - 1)}…` : rendered;
+}
+
+export interface PortWarning {
   portId: string;
-  /** What the director sees; the prototype has no diagnostic model yet. */
+  /** What the director sees. */
   message: string;
 }
 
 /**
- * The two states a port can be in that the director has to notice: nothing
- * wired into it, and nothing in the Formula reading it.
+ * The two states a port can be in that the director has to notice, carried over
+ * from #676: nothing wired into it, and nothing in the Formula reading it.
  */
-export function portDiagnostics(transform: PrototypeTransform): PrototypeDiagnostic[] {
+export function portWarnings(transform: PrototypeTransform): PortWarning[] {
   if (transform.kind !== "calculate") return [];
   return transform.ports.flatMap((port) => {
     if (port.wiredFrom === null) {

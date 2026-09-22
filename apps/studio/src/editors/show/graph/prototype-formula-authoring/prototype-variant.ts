@@ -1,4 +1,4 @@
-// PROTOTYPE (issue #676) — which variant the graph route is showing.
+// PROTOTYPE (issue #675) — which variant the graph route is showing.
 //
 // The variant lives in `?variant=`, read straight off `window.location` rather
 // than through the router: the route has no search schema, and a throwaway
@@ -7,28 +7,24 @@
 // from the seeded state anyway.
 import { useSyncExternalStore } from "react";
 
-import {
-  BLANK_TRANSFORM,
-  prototypeSnapshot,
-  subscribePrototype,
-} from "./transform-prototype-state";
-import type { PrototypeTransform } from "./transform-prototype-state";
+import { BLANK_TRANSFORM, prototypeSnapshot, subscribePrototype } from "./formula-state";
+import type { PrototypeTransform } from "./formula-state";
 
 export const PROTOTYPE_VARIANTS = ["A", "B", "C"] as const;
 
 export type PrototypeVariant = (typeof PROTOTYPE_VARIANTS)[number];
 
 export const VARIANT_NAMES: Record<PrototypeVariant, string> = {
-  A: "Inspector-owned ports",
-  B: "Formula-first",
-  C: "Ports on the node",
+  A: "In the inspector",
+  B: "The workbench",
+  C: "On the node, like a sheet",
 };
 
 /** Each variant authors at its own width; 240 is the production node width. */
 export const VARIANT_NODE_WIDTHS: Record<PrototypeVariant, number> = {
   A: 240,
-  B: 340,
-  C: 320,
+  B: 300,
+  C: 340,
 };
 
 export function activeVariant(): PrototypeVariant | null {
