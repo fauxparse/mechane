@@ -41,7 +41,7 @@ Shared packages (indicative, not prescriptive of final folder names): domain mod
 - **Auth**: Better Auth — email/password + Google OAuth
 - **Styling/components**: Tailwind CSS v4 (CSS-first `@theme` config), shadcn/ui built on a Base UI adapter (not Radix) as the primitive layer, Lucide for icons
 - **Flow editor**: React Flow (Show/Flow graph UI)
-- **Expression evaluation**: JEXL subset, server-side only — see [ADR-0004](./docs/adr/0004-server-side-sandboxed-transformers.md)
+- **Formula evaluation**: vendored, sandboxed JEXL-derived runtime shared by the server and Player; evaluation follows value scope — see [ADR-0004](./docs/adr/0004-server-side-sandboxed-transformers.md)
 - **Component docs/dev**: Storybook
 - **Testing**: Vitest (unit, required for domain logic); no E2E framework (see §8)
 - **Lint/format**: oxlint/oxfmt
@@ -82,7 +82,7 @@ Per-connection Navigate Actions are the exception: the Player owns the active Sc
 
 ### 4.5 Transformers
 
-Transformer expressions (JEXL subset) evaluate **server-side only**, never on-Device, so every connected Device sees an identical result. See [ADR-0004](./docs/adr/0004-server-side-sandboxed-transformers.md).
+Transformer Formulas evaluate where their scope lives. Show-level Transformers evaluate on the server. Flow-local Transformers evaluate with their Device Instance state: on the server for a Shared Device and in the browser for a per-connection Device. Both sites use the same sandboxed, typed, deterministic Formula runtime. See [ADR-0004](./docs/adr/0004-server-side-sandboxed-transformers.md).
 
 ### 4.6 Canvas rendering
 
