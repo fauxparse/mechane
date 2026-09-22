@@ -243,3 +243,42 @@ describe("UPPER", () => {
     ]);
   });
 });
+
+describe("LOWER", () => {
+  it("lowercases text without locale input and supports pipe use", () => {
+    expect(analyse('"MECHANE"|LOWER', EMPTY_SCOPE).value).toEqual(text("mechane"));
+  });
+
+  it("propagates Typed Absence", () => {
+    const result = analyse("LOWER(value)", {
+      ports: [{ name: "value", type: "text", value: absent("unwired") }],
+      shapes: {},
+    });
+    expect(result.value).toEqual(absent("unwired"));
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ category: "missingRequiredValue", severity: "runtime" }),
+    ]);
+  });
+
+  it("blocks an invalid argument Type", () => {
+    const result = analyse("LOWER(12)", EMPTY_SCOPE);
+    expect(result.value).toBeNull();
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        category: "invalidFunctionArgument",
+        severity: "blocking",
+      }),
+    ]);
+  });
+
+  it("propagates runtime failures", () => {
+    const result = analyse("value|LOWER", {
+      ports: [{ name: "value", type: "text", value: upstreamFailure }],
+      shapes: {},
+    });
+    expect(result.value).toEqual(upstreamFailure);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ category: "invalidFieldValue", severity: "runtime" }),
+    ]);
+  });
+});
