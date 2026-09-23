@@ -1,8 +1,4 @@
-import {
-  PropertyInput,
-  type LucideIcon,
-  type PropertyInputPreset,
-} from "@mechane/design-system";
+import { PropertyInput, type LucideIcon, type PropertyInputPreset } from "@mechane/design-system";
 import {
   absent,
   analyse,
@@ -67,9 +63,7 @@ export const PropertyField = ({
     return null;
   const rawValue = common(name);
   const formula = isPropertyFormula(rawValue) ? rawValue : null;
-  const formulaDiagnostics = formula
-    ? analyse(formula.formula, formulaScope).diagnostics
-    : [];
+  const formulaDiagnostics = formula ? analyse(formula.formula, formulaScope).diagnostics : [];
   const blockingFormulaDiagnostic = formulaDiagnostics.find(
     (diagnostic) => diagnostic.severity === "blocking",
   );
@@ -132,7 +126,7 @@ export const PropertyField = ({
           }
         }}
       />
-      {formulaOpen && isElementPropertyFormulaable(descriptor) ? (
+      {(formulaOpen || formula) && isElementPropertyFormulaable(descriptor) ? (
         <FormulaEditor
           className="min-h-[4.5rem] text-xs"
           value={formula?.formula ?? ""}

@@ -1,7 +1,6 @@
 import {
   resolveCanvasProperties,
   resolveSlotInstances,
-  resolveSourceValues,
   sceneVariableResolution,
 } from "@mechane/domain";
 import type {
@@ -189,10 +188,9 @@ export function prepareCanvasPresentation(input: CanvasPresentationInput): Canva
       ...owner.structuredValues,
       ...resolution.computedStructuredValues,
     };
-    values = resolveSourceValues({
-      sourceValues: resolution.values as never,
-      structuredValues,
-    });
+    // Kept as RuntimeValues: flattening here strips the identity that Slot
+    // expansion hands to `item` in an Element Formula (#739).
+    values = resolution.values;
   } else {
     values = Object.fromEntries(
       owner.block.variables.map((variable) => [variable.id, variable.defaultValue]),

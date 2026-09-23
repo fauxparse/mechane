@@ -3,7 +3,7 @@ import {
   type PropertyInputConstraints,
   type PropertyInputValue,
 } from "@mechane/design-system";
-import type { AxisSize } from "@mechane/domain";
+import type { AxisSize, PropertyFormula } from "@mechane/domain";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import {
@@ -27,9 +27,11 @@ type SizeFieldInputProps = {
   previewing: boolean;
   mode: AxisSize["mode"] | undefined;
   unit: "px" | "%";
+  formula: PropertyFormula | null;
   sizeVariables: ReturnType<typeof variableOptions>;
   shapes: ReturnType<typeof useCanvasInspectorContext>["shapes"];
   updateSize(next: AxisSize): void;
+  onWriteFormula(): void;
 };
 
 export const SizeFieldInput = ({
@@ -43,9 +45,11 @@ export const SizeFieldInput = ({
   previewing,
   mode,
   unit,
+  formula,
   sizeVariables,
   shapes,
   updateSize,
+  onWriteFormula,
 }: SizeFieldInputProps) => (
   <PropertyInput
     icon={axis === "width" ? "W" : "H"}
@@ -53,7 +57,15 @@ export const SizeFieldInput = ({
     dimension={axis}
     unit={unit}
     placeholder={
-      sizeMixed ? "Mixed" : mode === "fill" ? "Fill" : mode === "hug" ? "Hug" : undefined
+      sizeMixed
+        ? "Mixed"
+        : formula
+          ? formula.formula
+          : mode === "fill"
+            ? "Fill"
+            : mode === "hug"
+              ? "Hug"
+              : undefined
     }
     value={
       previewing
@@ -67,6 +79,10 @@ export const SizeFieldInput = ({
     min={0}
     constraints={constraints}
     onConstraintToggle={onConstraintToggle}
+    menuItems={[{ value: "formula", label: "Write formula" }]}
+    onMenuItemSelect={(item) => {
+      if (item === "formula") onWriteFormula();
+    }}
     onSizingChange={(nextMode) => {
       updateSize(sizingForMode(sizeMixed ? undefined : size, nextMode, currentValue));
     }}
