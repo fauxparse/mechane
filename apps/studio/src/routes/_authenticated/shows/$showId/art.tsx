@@ -24,6 +24,7 @@ import {
   deviceQrImageValue,
   generateId,
   isId,
+  normalizeFormulaIdentifier,
 } from "@mechane/domain";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -91,7 +92,9 @@ function useBlockVariableEditing(
       renameVariable: (variableId: string, name: string) => {
         updateVariables(
           block.variables.map((variable) =>
-            variable.id === variableId ? { ...variable, name } : variable,
+            variable.id === variableId
+              ? { ...variable, name: normalizeFormulaIdentifier(name) }
+              : variable,
           ),
         );
       },

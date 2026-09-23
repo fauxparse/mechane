@@ -425,25 +425,46 @@ export function normaliseShowGraphVariableNames(graph: ShowGraph): ShowGraph {
   };
 }
 export interface ShowVariableReference {
-  readonly kind: "wiring" | "update" | "slot";
+  readonly kind: "wiring" | "update" | "slot" | "formula";
   readonly ownerId: string;
   readonly path: readonly string[];
 }
-
 /** Finds persisted graph references that would block deleting a Variable. */
 export function findShowVariableReferences(
   graph: ShowGraph,
   variableId: string,
 ): readonly ShowVariableReference[] {
-  return graph.edges.flatMap((edge): ShowVariableReference[] => {
-    if (edge.kind === "wiring" && edge.targetPath[0] === variableId) {
-      return [{ kind: "wiring", ownerId: edge.id, path: edge.targetPath }];
+  const names = new Set(
+    graph.nodes.flatMap((node) =>
+      node.kind === "scene"
+        ? node.variables.filter((variable) => variable.id === variableId).map((variable) => variable.name)
+        : [],
+    ),
+  );
+  const references: ShowVariableReference[] = graph.edges.flatMap(
+    (edge): ShowVariableReference[] => {
+      if (edge.kind === "wiring" && edge.targetPath[0] === variableId) {
+        return [{ kind: "wiring", ownerId: edge.id, path: edge.targetPath }];
+      }
+      if (edge.kind === "update" && edge.targetPath[0] === variableId) {
+        return [{ kind: "update", ownerId: edge.id, path: edge.targetPath }];
+      }
+      return [];
+    },
+  );
+  for (const node of graph.nodes) {
+    if (node.kind !== "transformer") continue;
+    const formula = "formula" in node.transform ? node.transform.formula : null;
+    if (
+      formula !== null &&
+      [...names].some((name) =>
+        new RegExp(`(^|[^A-Za-z0-9_$])${name}(?=[^A-Za-z0-9_$]|$)`).test(formula),
+      )
+    ) {
+      references.push({ kind: "formula", ownerId: node.id, path: [] });
     }
-    if (edge.kind === "update" && edge.targetPath[0] === variableId) {
-      return [{ kind: "update", ownerId: edge.id, path: edge.targetPath }];
-    }
-    return [];
-  });
+  }
+  return references;
 }
 
 function transformerInputTypeFromGraph(

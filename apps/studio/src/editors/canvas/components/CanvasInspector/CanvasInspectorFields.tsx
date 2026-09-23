@@ -5,6 +5,7 @@ import {
 } from "@mechane/design-system";
 import {
   absent,
+  analyse,
   elementPropertyDescriptor,
   formulaShapeTable,
   formulaType,
@@ -66,6 +67,12 @@ export const PropertyField = ({
       diagnosticSubject: "Element Property",
     }),
     [descriptor.targetType, shapes, variables],
+  );
+  const formulaDiagnostics = formula
+    ? analyse(formula.formula, formulaScope).diagnostics
+    : [];
+  const blockingFormulaDiagnostic = formulaDiagnostics.find(
+    (diagnostic) => diagnostic.severity === "blocking",
   );
   const isUnset =
     rawValue === undefined &&
@@ -142,6 +149,11 @@ export const PropertyField = ({
             })
           }
         />
+      ) : null}
+      {blockingFormulaDiagnostic ? (
+        <p role="alert" className="text-xs text-destructive">
+          {blockingFormulaDiagnostic.message}
+        </p>
       ) : null}
     </div>
   );

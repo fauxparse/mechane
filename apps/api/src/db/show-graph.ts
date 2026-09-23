@@ -11,6 +11,7 @@ import {
   assertBlockReferencesExist,
   diagnoseCanvasFormulas,
   generateId,
+  normaliseShowGraphVariableNames,
   type ElementPropertyResolutionContext,
 } from "@mechane/domain";
 import type { GraphState, ShowGraph } from "@mechane/domain";
@@ -164,6 +165,7 @@ async function writeGraph(
   expectedVersion: number | undefined,
   options: WriteGraphOptions,
 ): Promise<StoredShowGraph> {
+  graph = normaliseShowGraphVariableNames(graph);
   const written = await persistGraphRows(tx, showId, state, graph, expectedVersion);
   await persistCanvases(tx, {
     showId,

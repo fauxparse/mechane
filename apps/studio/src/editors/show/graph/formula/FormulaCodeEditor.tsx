@@ -126,6 +126,9 @@ function completionSource(scope: FormulaScope) {
     const word = context.matchBefore(/[A-Za-z_][A-Za-z0-9_]*/);
     if (!word && !context.explicit) return null;
     const inputs: Completion[] = [
+      ...(scope.index !== undefined
+        ? [{ label: "index", type: "variable", detail: "number" }]
+        : []),
       ...(scope.itemBinding
         ? [
             {

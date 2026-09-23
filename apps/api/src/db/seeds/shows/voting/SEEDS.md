@@ -5,9 +5,9 @@ description: An app where audience members can vote on their phones, and the res
 
 The Show demonstrates shared and per-connection Transformer evaluation end to end:
 
-- `Tally headline` is a Show-level Calculate over the original `candidates`. It constructs `Tally: <votes> vote(s) across <candidates> candidate(s)` with `SUM`, `COUNT`, `IF`, `&`, and `candidates.votes`.
-- `Candidates with votes` is a Show-level Filter using `item.votes > 0`; its reference-preserving output drives the projector's `TallyRow` slot.
-- `Candidate order` is a Flow-local Shuffle whose per-connection stable order drives the audience's `CandidateButton` slot. Voting through a shuffled item still updates the original Candidate record.
+- `Tally headline` is a Show-level Calculate over the original `candidates`. It constructs `Tally: <votes> vote(s) across <candidates> candidate(s)` with `SUM`, `COUNT`, `IF`, and `candidates.votes`.
+- `Candidates with votes` remains available as a Filter proof, while the projector's `TallyRow` Slot receives the unfiltered `candidates` array so zero-vote candidates remain visible.
+- `Candidate order` is a Flow-local Shuffle whose per-connection stable order drives the audience's `CandidateButton` Slot. Voting through a shuffled item still updates the original Candidate record.
 
 # Shapes
 

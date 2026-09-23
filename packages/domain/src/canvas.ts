@@ -399,6 +399,41 @@ function visit(
   }
 }
 
+export function materializePercentageChildrenForHug(
+  frame: FrameElement,
+  dimensions: Readonly<Record<string, { readonly width: number; readonly height: number }>>,
+): FrameElement {
+  const children = (frame.children ?? []).map((child) => {
+    const sizing = child.sizing;
+    const nextSizing = sizing
+      ? (["width", "height"] as const).reduce(
+          (current, axis) => {
+            const parentSize = frame.sizing?.[axis];
+            const value = current[axis]?.value;
+            const measured = dimensions[child.id]?.[axis];
+            if (
+              parentSize?.mode === "hug" &&
+              typeof value === "object" &&
+              value.unit === "%" &&
+              measured !== undefined
+            ) {
+              return {
+                ...current,
+                [axis]: { ...current[axis], mode: "fixed", value: measured },
+              };
+            }
+            return current;
+          },
+          { ...sizing },
+        )
+      : sizing;
+    const nextChild = nextSizing ? { ...child, sizing: nextSizing } : child;
+    return nextChild.type === "frame"
+      ? materializePercentageChildrenForHug(nextChild, dimensions)
+      : nextChild;
+  });
+  return children.length > 0 ? { ...frame, children } : frame;
+}
 export function assertValidCanvas(canvas: Canvas): Canvas {
   if (!canvas || !canvas.root) throw new InvalidCanvasError("a root Frame is required.");
   visit(canvas.root, new Set<string>(), true);

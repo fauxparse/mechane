@@ -333,6 +333,15 @@ export function resolveSlotInstances({
           diagnostics: resolution.diagnostics,
         };
       }
+      const selector = block.stateSelectorVariableId
+        ? resolution.values[block.stateSelectorVariableId]
+        : undefined;
+      const selected = applyBlockState(block, resolveBlockState(block, selector));
+      const resolvedVariables = block.variables.map((variable) => ({
+        id: variable.id,
+        type: variable.type,
+        value: resolution.values[variable.id],
+      }));
       const contextItem = expansion ? instance.item ?? runtimeItem : runtimeItem;
       const contextType = expansion ? itemType : runtimeType;
       const contextIndex = expansion ? instance.index : (runtimeIndex ?? 0);
@@ -344,17 +353,13 @@ export function resolveSlotInstances({
           block,
           resolution.values,
           shapes,
-          block.canvas,
+          selected,
           imageAssets,
           contextType && contextItem !== undefined
             ? { item: contextItem, type: contextType, index: contextIndex }
             : undefined,
         ),
-        variables: block.variables.map((variable) => ({
-          id: variable.id,
-          type: variable.type,
-          value: resolution.values[variable.id],
-        })),
+        variables: resolvedVariables,
         diagnostics: [],
       };
     }),

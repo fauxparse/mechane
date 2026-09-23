@@ -782,3 +782,21 @@ export function diagnoseCanvasFormulas(
   visit(canvas.root);
   return diagnostics;
 }
+
+/** Converts legacy connections on closed value-set properties to literals. */
+export function normaliseClosedPropertyConnections(canvas: Canvas): Canvas {
+  const visit = (element: Element): Element => {
+    const next = { ...element } as Element;
+    const record = next as unknown as Record<string, unknown>;
+    for (const descriptor of ELEMENT_PROPERTY_DESCRIPTORS) {
+      if (!descriptor.closedValueSet || !descriptor.elementKinds.includes(element.type)) continue;
+      const value = record[descriptor.name];
+      if (isPropertyConnection(value)) {
+        record[descriptor.name] = resolveConnection(value, descriptor, { variables: [] });
+      }
+    }
+    if (element.children) record.children = element.children.map(visit);
+    return next;
+  };
+  return { ...canvas, root: visit(canvas.root) as Canvas["root"] };
+}

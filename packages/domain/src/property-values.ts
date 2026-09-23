@@ -72,6 +72,7 @@ export function isPropertyFormula(value: unknown): value is PropertyFormula {
     "formula" in value &&
     typeof value.formula === "string" &&
     "fallback" in value &&
+    value.fallback !== undefined &&
     ("unit" in value ? value.unit === undefined || value.unit === "px" || value.unit === "%" : true)
   );
 }
