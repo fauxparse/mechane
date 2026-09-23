@@ -14,8 +14,10 @@ import { useRef, type ReactNode } from "react";
 import type { PrototypeVariant } from "./prototype-variant";
 import { usePropertyFormula, type FormulaSlot } from "./use-property-formula";
 import { VariantA, variantAOverrides } from "./VariantA";
-import { VariantBFlyout, variantBOverrides } from "./VariantB";
+import { FormulaFlyout } from "./FormulaFlyout";
+import { variantBOverrides } from "./VariantB";
 import { variantCOverrides } from "./VariantC";
+import { variantDOverrides } from "./VariantD";
 import type { FormulaInputOverrides } from "./variant-contract";
 
 export function PrototypeFormulaProperty({
@@ -42,6 +44,8 @@ export function PrototypeFormulaProperty({
       : variantAOverrides(formula);
   } else if (variant === "B") {
     overrides = variantBOverrides(formula, anchorRef);
+  } else if (variant === "D") {
+    overrides = variantDOverrides(formula, slot);
   } else {
     overrides = variantCOverrides(formula, slot);
   }
@@ -49,8 +53,8 @@ export function PrototypeFormulaProperty({
   return (
     <div ref={anchorRef} className={cn("min-w-0", className, overrides.wrapperClassName)}>
       {overrides.replaced ?? children(overrides)}
-      {variant === "B" ? (
-        <VariantBFlyout formula={formula} slot={slot} anchorRef={anchorRef} />
+      {variant === "B" || variant === "D" ? (
+        <FormulaFlyout formula={formula} slot={slot} anchorRef={anchorRef} />
       ) : null}
     </div>
   );

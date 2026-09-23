@@ -1,7 +1,8 @@
 // PROTOTYPE (issue #711) — the pieces every variant shows, so the variants
 // disagree about *where* a Formula is authored and nothing else.
-import { Button, cn, TriangleAlertIcon } from "@mechane/design-system";
+import { Button, cn, TriangleAlertIcon, type LucideIcon } from "@mechane/design-system";
 import { previewText, type FormulaAnalysis } from "@mechane/domain";
+import { isFunction, isObject } from "es-toolkit/compat";
 
 import type { ScopeEntry } from "./property-scope";
 
@@ -17,6 +18,39 @@ export function FormulaGlyph({ blocked, className }: { blocked?: boolean; classN
       )}
     >
       fx
+    </span>
+  );
+}
+
+/**
+ * The Property keeps its own icon — an Element's Opacity still reads as
+ * Opacity — and carries a dot in the primary accent to say it is computed.
+ * Replacing the icon outright costs the row the one glyph that names it.
+ */
+export function BadgedPropertyIcon({
+  icon,
+  blocked,
+}: {
+  icon?: LucideIcon | string;
+  blocked?: boolean;
+}) {
+  const Icon = isFunction(icon) || isObject(icon) ? (icon as LucideIcon) : null;
+  return (
+    <span className="relative flex size-7 shrink-0 items-center justify-center select-none">
+      {Icon ? (
+        <Icon aria-hidden="true" className="size-4" />
+      ) : (
+        <span aria-hidden="true" className="text-sm">
+          {typeof icon === "string" ? icon : null}
+        </span>
+      )}
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute top-1 right-1 size-1.5 rounded-full ring-1 ring-background",
+          blocked ? "bg-destructive" : "bg-primary",
+        )}
+      />
     </span>
   );
 }

@@ -4,7 +4,7 @@
 // than through TanStack Router: `/shows/$showId/art` has no search schema and a
 // throwaway prototype should not make it grow one. Switching reloads, because
 // every variant is meant to start from the same at-rest state.
-export const PROTOTYPE_VARIANTS = ["A", "B", "C"] as const;
+export const PROTOTYPE_VARIANTS = ["A", "B", "C", "D"] as const;
 
 export type PrototypeVariant = (typeof PROTOTYPE_VARIANTS)[number];
 
@@ -12,6 +12,7 @@ export const VARIANT_NAMES: Record<PrototypeVariant, string> = {
   A: "Type = like a spreadsheet",
   B: "The row never grows",
   C: "One Formula section",
+  D: "= or the menu, into a flyout",
 };
 
 export function activeVariant(): PrototypeVariant | null {

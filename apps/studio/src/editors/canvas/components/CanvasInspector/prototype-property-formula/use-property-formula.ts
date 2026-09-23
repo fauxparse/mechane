@@ -5,6 +5,7 @@
 // preview: whenever the Formula evaluates, its result is written as an ordinary
 // literal through the inspector's normal update path, debounced so a burst of
 // typing is one edit rather than one per keystroke.
+import type { LucideIcon } from "@mechane/design-system";
 import {
   previewText,
   type FormulaAnalysis,
@@ -34,6 +35,8 @@ import {
 const WRITE_THROUGH_DELAY = 180;
 
 export interface FormulaSlot {
+  /** The Property's own leading icon, kept at rest and badged rather than replaced. */
+  readonly icon?: LucideIcon | string;
   /** Stable Property key; `sizing.width` for the dimension inputs. */
   readonly property: string;
   readonly label: string;

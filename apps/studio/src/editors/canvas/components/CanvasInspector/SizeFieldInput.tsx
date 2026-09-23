@@ -112,6 +112,7 @@ export const SizeFieldInput = ({
     <PrototypeFormulaProperty
       variant={variant}
       slot={{
+        icon: axis === "width" ? "W" : "H",
         property: `sizing.${axis}`,
         label: axis === "width" ? "Width" : "Height",
         type: "number",

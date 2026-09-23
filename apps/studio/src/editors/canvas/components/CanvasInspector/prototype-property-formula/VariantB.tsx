@@ -5,28 +5,16 @@
 // canvas, so the editor is 420px wide instead of a 270px column — the standing
 // cost #675 recorded — and the Artboard stays visible beside it as you type.
 // At rest the row is still exactly one row: result, plus a lit `fx` button.
-import { Button, cn, InputGroupButton, Trash2Icon, XIcon } from "@mechane/design-system";
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { cn, InputGroupButton } from "@mechane/design-system";
+import type { ReactNode, RefObject } from "react";
 
-import { FormulaEditor } from "../../../../show/graph/formula/FormulaEditor";
-import {
-  BlockedMark,
-  DiagnosticsList,
-  FormulaGlyph,
-  MixedFormulas,
-  ReadingNow,
-  ResultLine,
-} from "./variant-parts";
-import type { FormulaSlot, PropertyFormula } from "./use-property-formula";
+import { BlockedMark, FormulaGlyph } from "./variant-parts";
+import type { PropertyFormula } from "./use-property-formula";
 import type { FormulaInputOverrides } from "./variant-contract";
-
-const FLYOUT_WIDTH = 420;
-const GUTTER = 12;
 
 export function variantBOverrides(
   formula: PropertyFormula,
-  anchorRef: React.RefObject<HTMLDivElement | null>,
+  anchorRef: RefObject<HTMLDivElement | null>,
 ): FormulaInputOverrides {
   const button = (
     <>
@@ -67,7 +55,7 @@ function VariantBRestingRow({
 }: {
   formula: PropertyFormula;
   actions: ReactNode;
-  anchorRef: React.RefObject<HTMLDivElement | null>;
+  anchorRef: RefObject<HTMLDivElement | null>;
 }) {
   return (
     <div
@@ -84,102 +72,5 @@ function VariantBRestingRow({
       </span>
       {actions}
     </div>
-  );
-}
-
-export function VariantBFlyout({
-  formula,
-  slot,
-  anchorRef,
-}: {
-  formula: PropertyFormula;
-  slot: FormulaSlot;
-  anchorRef: React.RefObject<HTMLDivElement | null>;
-}) {
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
-
-  useLayoutEffect(() => {
-    const anchor = anchorRef.current;
-    if (!formula.open || !anchor) return;
-    const rect = anchor.getBoundingClientRect();
-    setPosition({
-      top: Math.min(rect.top, window.innerHeight - 320),
-      left: Math.max(GUTTER, rect.left - FLYOUT_WIDTH - GUTTER),
-    });
-  }, [formula.open, anchorRef]);
-
-  useEffect(() => {
-    if (!formula.open) return;
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (panelRef.current?.contains(target) || anchorRef.current?.contains(target)) return;
-      formula.close();
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") formula.close();
-    };
-    window.addEventListener("pointerdown", onPointerDown, true);
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("pointerdown", onPointerDown, true);
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  });
-
-  if (!formula.open || !position) return null;
-
-  return createPortal(
-    <div
-      ref={panelRef}
-      style={{ top: position.top, left: position.left, width: FLYOUT_WIDTH }}
-      className="fixed z-50 flex flex-col gap-2 rounded-lg bg-popover p-3 text-popover-foreground shadow-xl ring-1 ring-foreground/10"
-    >
-      <div className="flex items-center gap-2">
-        <FormulaGlyph />
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">{slot.label}</span>
-        <span className="text-xs text-muted-foreground">
-          {formula.selectionCount === 1 ? "1 Element" : `${formula.selectionCount} Elements`}
-        </span>
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          aria-label="Close the Formula editor"
-          onClick={formula.close}
-        >
-          <XIcon />
-        </Button>
-      </div>
-      {formula.mixed ? (
-        <MixedFormulas sources={formula.sources} onReplaceAll={formula.replaceAll} />
-      ) : (
-        <>
-          <FormulaEditor
-            autoFocus
-            value={formula.source ?? ""}
-            scope={formula.scope}
-            onChange={formula.change}
-            placeholder="opacity * 100"
-          />
-          <ResultLine analysis={formula.analysis} />
-          <DiagnosticsList analysis={formula.analysis} />
-          <ReadingNow entries={formula.entries} />
-        </>
-      )}
-      <div className="flex justify-end">
-        <Button
-          size="sm"
-          variant="ghost"
-          className="text-destructive"
-          onClick={() => {
-            formula.remove();
-            formula.close();
-          }}
-        >
-          <Trash2Icon /> Remove Formula
-        </Button>
-      </div>
-    </div>,
-    document.body,
   );
 }

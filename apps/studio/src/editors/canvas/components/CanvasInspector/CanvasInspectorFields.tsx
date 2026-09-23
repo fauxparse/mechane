@@ -102,6 +102,7 @@ export const PropertyField = ({
       variant={variant}
       className={className}
       slot={{
+        icon,
         property: name,
         label: FORMULA_PROPERTIES[name]?.label ?? name,
         type: descriptor.targetType,

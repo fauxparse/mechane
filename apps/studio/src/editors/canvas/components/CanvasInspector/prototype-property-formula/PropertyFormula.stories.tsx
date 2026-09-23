@@ -14,7 +14,7 @@ import type { CanvasArtboardDocument } from "../../../../../api/canvas";
 import { StaticGoogleFontsProvider } from "../../../google-fonts-provider";
 import type { CanvasSelection } from "../../canvas-selection";
 import { CanvasInspector } from "../CanvasInspector";
-import { PROTOTYPE_VARIANTS, VARIANT_NAMES, type PrototypeVariant } from "./prototype-variant";
+import { VARIANT_NAMES, type PrototypeVariant } from "./prototype-variant";
 
 const CANVAS_ID = "prototype-711-canvas";
 const ART_ID = "prototype-711-art";
@@ -130,6 +130,7 @@ function Banner({ children }: { children: ReactNode }) {
       <p className="mt-3 max-w-prose text-sm text-muted-foreground">
         Variant A: type <code>=</code> in any Property. Variant B: the <code>fx</code> button in the
         row. Variant C: “Write a Formula” in the Property menu (press <kbd>↓</kbd> in a Property).
+        Variant D: either <code>=</code> or that menu item, into a floating editor.
       </p>
     </div>
   );
@@ -159,7 +160,11 @@ export const OneFormulaSection: Story = {
   render: () => <FormulaStory variant="C" selection={single} />,
 };
 
+export const EqualsOrTheMenuIntoAFlyout: Story = {
+  render: () => <FormulaStory variant="D" selection={single} />,
+};
+
 /** Two Elements at once: what the affordance does across a selection. */
 export const MultipleElements: Story = {
-  render: () => <FormulaStory variant={PROTOTYPE_VARIANTS[0]} selection={multiple} />,
+  render: () => <FormulaStory variant="D" selection={multiple} />,
 };
