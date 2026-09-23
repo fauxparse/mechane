@@ -203,6 +203,8 @@ export function resolveBlockCanvas(
   shapes: readonly Shape[] = [],
   canvas: BlockCanvas = block.canvas,
   imageAssets: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[] = [],
+  runtimeContext?: { readonly item: unknown; readonly type: Type; readonly index: number },
+  structuredValues: Readonly<Record<string, StructuredValueRecord>> = {},
 ): ResolvedCanvas {
   return resolveCanvasProperties(canvas, {
     variables: block.variables.map(({ id, name, type, defaultValue }) => ({
@@ -214,6 +216,8 @@ export function resolveBlockCanvas(
     values,
     shapes,
     imageAssets,
+    structuredValues,
+    ...(runtimeContext ? { runtimeContext } : {}),
   });
 }
 
@@ -250,6 +254,7 @@ export interface ResolveSlotInstancesInput {
   readonly variables?: readonly SlotVariableValue[];
   readonly runtimeItem?: unknown;
   readonly runtimeType?: Type;
+  readonly runtimeIndex?: number;
   readonly structuredValues?: Readonly<Record<string, StructuredValueRecord>>;
   readonly shapes?: readonly Shape[];
   readonly allBlocks?: readonly Block[];
@@ -262,6 +267,7 @@ export function resolveSlotInstances({
   variables = [],
   runtimeItem,
   runtimeType,
+  runtimeIndex,
   shapes = [],
   allBlocks = [block],
   imageAssets = [],
@@ -275,6 +281,13 @@ export function resolveSlotInstances({
     return { instances: [], diagnostic: structuralDiagnostics[0] };
   }
   const expansion = slot.expansion?.source;
+  const expansionType = expansion
+    ? sourceType(expansion, variables, runtimeType, shapes)
+    : undefined;
+  const itemType =
+    expansionType && typeof expansionType === "object" && expansionType.kind === "array"
+      ? expansionType.of
+      : expansionType;
   let expansionValue: unknown;
   if (expansion?.kind === "literal") expansionValue = expansion.value;
   else if (expansion?.kind === "runtimeItem") expansionValue = runtimeItem;
@@ -331,11 +344,29 @@ export function resolveSlotInstances({
         type: variable.type,
         value: resolution.values[variable.id],
       }));
+      const contextItem =
+        expansion && instance.id
+          ? { ref: instance.id }
+          : expansion
+            ? instance.item ?? runtimeItem
+            : runtimeItem;
+      const contextType = expansion ? itemType : runtimeType;
+      const contextIndex = expansion ? instance.index : (runtimeIndex ?? 0);
       return {
         ...identity,
         index: instance.index,
         item: instance.item,
-        canvas: resolveBlockCanvas(block, resolution.values, shapes, selected, imageAssets),
+        canvas: resolveBlockCanvas(
+          block,
+          resolution.values,
+          shapes,
+          selected,
+          imageAssets,
+          contextType && contextItem !== undefined
+            ? { item: contextItem, type: contextType, index: contextIndex }
+            : undefined,
+          structuredValues,
+        ),
         variables: resolvedVariables,
         diagnostics: [],
       };

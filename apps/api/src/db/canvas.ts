@@ -14,6 +14,7 @@ import {
   ELEMENT_KINDS,
   generateId,
   InvalidCanvasError as CanvasError,
+  normaliseClosedPropertyConnections,
 } from "@mechane/domain";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 
@@ -157,8 +158,9 @@ export async function readCanvas(
     ownerName: ownerRow.name,
     root: root as FrameElement & CanvasElementValue,
   } satisfies StoredCanvas;
-  assertValidCanvas(result);
-  return result;
+  const normalized = normaliseClosedPropertyConnections(result) as StoredCanvas;
+  assertValidCanvas(normalized);
+  return normalized;
 }
 
 /** Reads the owned Canvas for each Block in a graph. */
@@ -482,6 +484,9 @@ function elementRow(
     rank: _rank,
     ...properties
   } = element as Element & { parentId?: string | null };
+  const persistedHidden = typeof hidden === "boolean" ? hidden : false;
+  const persistedProperties =
+    typeof hidden === "boolean" || hidden === undefined ? properties : { ...properties, hidden };
   return {
     id,
     canvasId,
@@ -489,8 +494,8 @@ function elementRow(
     type,
     rank,
     name: name ?? null,
-    hidden: hidden ?? false,
-    properties,
+    hidden: persistedHidden,
+    properties: persistedProperties,
   };
 }
 
@@ -694,7 +699,8 @@ async function writeCanvasInTransaction(
   canvas: Canvas,
   expectedVersion?: number,
 ): Promise<StoredCanvas> {
-  assertValidCanvas(canvas);
+  const normalizedCanvas = normaliseClosedPropertyConnections(canvas);
+  assertValidCanvas(normalizedCanvas);
   const now = new Date();
   const [current] = await tx
     .select({ id: showGraphs.id, version: showGraphs.version })
@@ -716,7 +722,7 @@ async function writeCanvasInTransaction(
     .returning({ id: showGraphs.id });
   if (!graph) throw new Error(`Failed to upsert the ${state} graph row for Show "${showId}".`);
 
-  const canvasId = await writeCanvasRows(tx, showId, graph.id, owner, canvas, now);
+  const canvasId = await writeCanvasRows(tx, showId, graph.id, owner, normalizedCanvas, now);
   const stored = await readCanvas(showId, state, owner, tx);
   if (!stored) throw new Error(`Canvas "${canvasId}" disappeared while it was being written.`);
   return stored;

@@ -35,10 +35,16 @@ import type { Shape, Type } from "./shapes";
 import { assertValidShapes, InvalidShapeError } from "./shapes";
 import { isWiringConversion, wiringTypesCompatible } from "./wiring-conversion";
 import type { WiringConversion } from "./wiring-conversion";
-import { typeAtPath } from "./property-values";
+import type { Canvas, Element } from "./canvas";
+import { isPropertyConnection, isPropertyFormula, typeAtPath } from "./property-values";
 import { assertValidBlocks } from "./blocks";
 import type { Block } from "./blocks";
-import { absent, analyse, isFormulaIdentifier } from "./formula";
+import {
+  absent,
+  analyse,
+  isFormulaIdentifier,
+  normalizeFormulaIdentifier,
+} from "./formula";
 import { formulaShapeTable, formulaType } from "./formula-runtime";
 export const NODE_KINDS = ["scene", "flow", "source", "transformer", "device"] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
@@ -378,6 +384,150 @@ export interface ShowGraph {
   slotEventBindings?: readonly SlotEventBinding[];
   edges: GraphEdge[];
 }
+function repairedFormulaIdentifier(
+  value: string,
+  used: ReadonlySet<string>,
+): string {
+  const normalized = normalizeFormulaIdentifier(value).trim();
+  const candidate = normalized
+    .replace(/[^A-Za-z0-9_$\u00c0-\u024f\u0400-\u04ff]/g, "_")
+    .replace(/^[^A-Za-z_$\u00c0-\u024f\u0400-\u04ff]/, "_");
+  const base = isFormulaIdentifier(candidate) ? candidate : "variable";
+  let next = base;
+  let suffix = 2;
+  while (used.has(next) || !isFormulaIdentifier(next)) next = `${base}_${suffix++}`;
+  return next;
+}
+
+function normaliseVariableNames<T extends { name: string }>(
+  variables: readonly T[],
+): T[] {
+  const used = new Set<string>();
+  return variables.map((variable) => {
+    const name = repairedFormulaIdentifier(variable.name, used);
+    used.add(name);
+    return name === variable.name ? variable : { ...variable, name };
+  });
+}
+
+/** Repairs legacy Scene and Block Variable names without changing their ids. */
+export function normaliseShowGraphVariableNames(graph: ShowGraph): ShowGraph {
+  return {
+    ...graph,
+    nodes: graph.nodes.map((node) =>
+      node.kind === "scene"
+        ? { ...node, variables: normaliseVariableNames(node.variables) }
+        : node,
+    ),
+    blocks: graph.blocks?.map((block) => ({
+      ...block,
+      variables: normaliseVariableNames(block.variables),
+    })),
+  };
+}
+export interface ShowVariableReference {
+  readonly kind: "wiring" | "update" | "slot" | "connection" | "formula";
+  readonly ownerId: string;
+  readonly path: readonly string[];
+}
+
+const CANVAS_REFERENCE_PROPERTIES = [
+  "alt",
+  "content",
+  "cornerRadius",
+  "fill",
+  "fontFamily",
+  "fontSize",
+  "hidden",
+  "image",
+  "letterSpacing",
+  "objectFit",
+  "objectPosition",
+  "opacity",
+  "textAlign",
+  "textDecoration",
+  "textVerticalAlign",
+] as const;
+
+function collectCanvasVariableReferences(
+  element: Element,
+  variableId: string,
+  names: ReadonlySet<string>,
+  canvasId: string,
+  references: ShowVariableReference[],
+): void {
+  const record = element as unknown as Record<string, unknown>;
+  for (const property of CANVAS_REFERENCE_PROPERTIES) {
+    const value = record[property];
+    if (isPropertyConnection(value) && value.variableId === variableId) {
+      references.push({ kind: "connection", ownerId: canvasId, path: [element.id, property] });
+    }
+    if (
+      isPropertyFormula(value) &&
+      [...names].some((name) =>
+        new RegExp(`(^|[^A-Za-z0-9_$])${name}(?=[^A-Za-z0-9_$]|$)`).test(value.formula),
+      )
+    ) {
+      references.push({ kind: "formula", ownerId: canvasId, path: [element.id, property] });
+    }
+  }
+  for (const child of element.children ?? []) {
+    collectCanvasVariableReferences(child, variableId, names, canvasId, references);
+  }
+}
+
+/** Finds persisted graph and Canvas references that would affect a Variable edit. */
+export function findShowVariableReferences(
+  graph: ShowGraph,
+  variableId: string,
+  canvases: readonly (Canvas & { readonly id?: string })[] = [],
+): readonly ShowVariableReference[] {
+  const names = new Set(
+    graph.nodes.flatMap((node) =>
+      node.kind === "scene"
+        ? node.variables.filter((variable) => variable.id === variableId).map((variable) => variable.name)
+        : [],
+    ),
+  );
+  for (const block of graph.blocks ?? []) {
+    for (const variable of block.variables) {
+      if (variable.id === variableId) names.add(variable.name);
+    }
+  }
+  const references: ShowVariableReference[] = graph.edges.flatMap(
+    (edge): ShowVariableReference[] => {
+      if (edge.kind === "wiring" && edge.targetPath[0] === variableId) {
+        return [{ kind: "wiring", ownerId: edge.id, path: edge.targetPath }];
+      }
+      if (edge.kind === "update" && edge.targetPath[0] === variableId) {
+        return [{ kind: "update", ownerId: edge.id, path: edge.targetPath }];
+      }
+      return [];
+    },
+  );
+  for (const node of graph.nodes) {
+    if (node.kind !== "transformer") continue;
+    const formula = "formula" in node.transform ? node.transform.formula : null;
+    if (
+      formula !== null &&
+      [...names].some((name) =>
+        new RegExp(`(^|[^A-Za-z0-9_$])${name}(?=[^A-Za-z0-9_$]|$)`).test(formula),
+      )
+    ) {
+      references.push({ kind: "formula", ownerId: node.id, path: [] });
+    }
+  }
+  for (const canvas of canvases) {
+    collectCanvasVariableReferences(
+      canvas.root,
+      variableId,
+      names,
+      canvas.id ?? canvas.root.id,
+      references,
+    );
+  }
+  return references;
+}
 
 function transformerInputTypeFromGraph(
   graph: ShowGraph,
@@ -478,7 +628,8 @@ export type GraphViolation =
   | "flowDeviceCardinality"
   | "invalidTransformer"
   | "invalidTransformerPort"
-  | "invalidFormula";
+  | "invalidFormula"
+  | "invalidVariableName";
 
 export class InvalidShowGraphError extends Error {
   readonly reason: GraphViolation;
@@ -1184,7 +1335,18 @@ export function assertValidShowGraph(
         node.variables.map((variable) => variable.name),
         `Variable name on Scene "${node.id}"`,
       );
-      for (const variable of node.variables) assertImageVariableMetadata(variable, node.id);
+      for (const variable of node.variables) {
+        if (
+          normalizeFormulaIdentifier(variable.name) !== variable.name ||
+          !isFormulaIdentifier(variable.name)
+        ) {
+          throw new InvalidShowGraphError(
+            "invalidVariableName",
+            `Variable "${variable.name}" on Scene "${node.id}" must be a valid Formula identifier.`,
+          );
+        }
+        assertImageVariableMetadata(variable, node.id);
+      }
     }
     if (node.kind === "transformer") {
       assertValidTransformer(graph, node, options.publication !== false);

@@ -9,6 +9,7 @@ import {
   DEVICE_SOURCE_HANDLES,
   emptyShowGraph,
   findNode,
+  findShowVariableReferences,
   formatValuePath,
   InvalidGraphStateError,
   InvalidShowGraphError,
@@ -632,6 +633,37 @@ describe("structural queries", () => {
     expect(deviceInstanceCardinality(device("shared"))).toBe("one");
     expect(deviceInstanceCardinality(device("phones", true))).toBe("perConnection");
   });
+  it("finds Canvas connections and formulas for a Variable", () => {
+    const graph: ShowGraph = {
+      ...emptyShowGraph(),
+      nodes: [scene("scene", null, ["total"])],
+    };
+    const canvas = {
+      kind: "scene" as const,
+      id: "canvas",
+      root: {
+        id: "root",
+        type: "frame" as const,
+        children: [
+          {
+            id: "label",
+            type: "text" as const,
+            content: { kind: "variable" as const, variableId: "total", fallback: "0" },
+          },
+          {
+            id: "bar",
+            type: "rect" as const,
+            hidden: { kind: "formula" as const, formula: "total > 0", fallback: false },
+          },
+        ],
+      },
+    };
+    expect(findShowVariableReferences(graph, "total", [canvas])).toEqual([
+      { kind: "connection", ownerId: "canvas", path: ["label", "content"] },
+      { kind: "formula", ownerId: "canvas", path: ["bar", "hidden"] },
+    ]);
+  });
+
 });
 
 describe("assertValidGraphState", () => {

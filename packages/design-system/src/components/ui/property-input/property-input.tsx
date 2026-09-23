@@ -34,6 +34,7 @@ export const PropertyInput = <T extends ShapeValue>({
   max,
   step,
   presets,
+  menuItems,
   scrubScale = 2,
   constraints,
   allowAuto,
@@ -42,6 +43,7 @@ export const PropertyInput = <T extends ShapeValue>({
   vibe: vibeProp,
   onChange,
   onSizingChange,
+  onMenuItemSelect,
   onAutoChange,
   onConstraintToggle,
   onValidationError,
@@ -59,11 +61,13 @@ export const PropertyInput = <T extends ShapeValue>({
     max,
     step,
     presets,
+    menuItems,
     scrubScale,
     allowAuto,
     auto,
     onChange,
     onSizingChange,
+    onMenuItemSelect,
     onAutoChange,
     onValidationError,
     constraints,
@@ -180,8 +184,8 @@ export const PropertyInput = <T extends ShapeValue>({
             colorText={input.colorText}
             dimension={dimension}
             sizing={input.currentSizing}
-            constraints={constraints}
             presets={presets}
+            menuItems={menuItems}
             auto={input.auto}
             allowAuto={allowAuto}
             allowLink={allowLink}

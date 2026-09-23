@@ -529,6 +529,8 @@ function humanise(error: InvalidShowGraphError, kind: EdgeKind): string {
       return "That Transformer input is invalid.";
     case "invalidFormula":
       return "That Transformer Formula is invalid.";
+    case "invalidVariableName":
+      return "That Variable name is not a valid Formula identifier.";
   }
   const unreachable: never = error.reason;
   return unreachable;

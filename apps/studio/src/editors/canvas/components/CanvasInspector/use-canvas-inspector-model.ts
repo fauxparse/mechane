@@ -154,6 +154,7 @@ export function useCanvasInspectorModel({
   onImageUpload,
   inspectorPreview = null,
   currentDimensions = null,
+  currentDimensionsById,
   blockVariableEditing,
   onRenameArtboard,
   onUpdateElement,
@@ -190,6 +191,25 @@ export function useCanvasInspectorModel({
       ),
     [elements, focused, onUpdateElement, onUpdateElements, target],
   );
+  const updateElements = useCallback(
+    (
+      updates: readonly {
+        readonly elementId: string;
+        readonly properties: Record<string, unknown>;
+        readonly unsetProperties?: readonly string[];
+      }[],
+    ) => {
+      if (!focused) return;
+      if (onUpdateElements) {
+        onUpdateElements(focused.canvasId, updates);
+        return;
+      }
+      for (const item of updates) {
+        onUpdateElement?.(focused.canvasId, item.elementId, item.properties, item.unsetProperties);
+      }
+    },
+    [focused, onUpdateElement, onUpdateElements],
+  );
   const text = useCallback(
     (property: string, fallback = "") => {
       const value = common(property);
@@ -214,9 +234,13 @@ export function useCanvasInspectorModel({
             blocks,
             variables,
             shapes,
-            cues,
-            actions,
-            eventBindings,
+            currentDimensions,
+            currentDimensionsById,
+            absolute,
+            common,
+            update,
+            updateElements,
+            text,
             onCreateCue,
             onFocusCue,
             onSetEventBindingCue,
@@ -231,11 +255,6 @@ export function useCanvasInspectorModel({
             blockVariableEditing,
             fontFamilies,
             inspectorPreview,
-            currentDimensions,
-            absolute,
-            common,
-            update,
-            text,
             ...aspectRatioLock,
           }
         : null,
@@ -250,12 +269,14 @@ export function useCanvasInspectorModel({
       imageAssets,
       onImageUpload,
       currentDimensions,
+      currentDimensionsById,
       inspectorPreview,
       selected,
       focused,
       target,
       text,
       update,
+      updateElements,
       blocks,
       variables,
       shapes,

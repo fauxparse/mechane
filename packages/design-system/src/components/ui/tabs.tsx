@@ -1,6 +1,6 @@
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
 import { cva, type VariantProps } from "class-variance-authority";
-import { LazyMotion, domAnimation, m, type Transition } from "motion/react";
+import { LazyMotion, domAnimation, m, useReducedMotion, type Transition } from "motion/react";
 import * as React from "react";
 
 import { cn } from "../../lib/utils";
@@ -110,6 +110,7 @@ function TabsHighlight({
   variant: "default" | "line";
 }) {
   const { getTab, orientation, tabVersion, value } = useTabsContext();
+  const reduceMotion = useReducedMotion();
   const [bounds, setBounds] = React.useState<HighlightBounds | null>(null);
 
   const measure = React.useCallback(() => {
@@ -191,7 +192,7 @@ function TabsHighlight({
         data-slot="tabs-highlight"
         initial={false}
         animate={lineBounds}
-        transition={tabsHighlightTransition}
+        transition={reduceMotion ? { duration: 0 } : tabsHighlightTransition}
         className={cn(
           "pointer-events-none absolute z-0",
           variant === "default" ? "rounded-full bg-background shadow-sm" : "bg-foreground",

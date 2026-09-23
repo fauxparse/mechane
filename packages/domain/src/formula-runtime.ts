@@ -258,13 +258,16 @@ function formulaToRuntime(
 
 export function evaluateFormula(options: {
   readonly formula: string;
-  readonly transformerId: string;
+  readonly ownerId?: string;
+  readonly transformerId?: string;
   readonly outputType: Type;
   readonly inputs: readonly FormulaInput[];
   readonly structuredValues: Readonly<Record<string, StructuredValueRecord>>;
   readonly shapes: readonly Shape[];
   readonly item?: FormulaInput;
+  readonly index?: number;
   readonly relativeItem?: FormulaInput;
+  readonly diagnosticSubject?: "Transformer" | "Element Property";
 }): FormulaEvaluationResult {
   const budget: EvaluationBudget = { steps: 0, constructedValues: 0 };
   const ports = options.inputs.map((input) => ({
@@ -276,6 +279,7 @@ export function evaluateFormula(options: {
     ports,
     shapes: formulaShapeTable(options.shapes),
     expected: formulaType(options.outputType, options.shapes),
+    diagnosticSubject: options.diagnosticSubject,
     budget,
     ...(options.item
       ? {
@@ -289,6 +293,7 @@ export function evaluateFormula(options: {
               options.shapes,
             ),
           },
+          ...(options.index !== undefined ? { index: options.index } : {}),
         }
       : {}),
     ...(options.relativeItem
@@ -318,7 +323,7 @@ export function evaluateFormula(options: {
   const converted = formulaToRuntime(
     analysis.value,
     options.outputType,
-    options.transformerId,
+    options.ownerId ?? options.transformerId ?? "formula",
     [],
     options.shapes,
     computedStructuredValues,

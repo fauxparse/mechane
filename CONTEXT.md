@@ -145,11 +145,15 @@ _Avoid_: Safe area, inset (reserved for the measurements that define the Editabl
 
 ### Property
 
-An application-defined attribute of an Element, as opposed to a Variable, which is user-defined. A Property has one current value mode: a literal value or a connection to a Variable.
+An application-defined attribute of an Element, as opposed to a Variable, which is user-defined. A Property has one current value mode: a literal value, a connection to a Variable with an authored fallback, or a Formula with an authored fallback. Fallbacks are used when live inputs are absent or invalid.
 
 ### Property Connection
 
-The relationship that makes an Element Property take its value from a Variable owned by the Scene or Block containing the Element.
+The relationship that makes an Element Property take its value from a Variable owned by the Scene or Block containing the Element. A connection stores an authored fallback so the Canvas remains deterministic when the Variable is unavailable.
+
+### Property Formula
+
+A Formula authored directly on an Element Property. It evaluates in the owning Scene or Block's Variable scope, with `item` and `index` available inside repeated Slot instances. Its authored fallback is used when evaluation cannot produce a valid value.
 
 ### Property Coercion
 

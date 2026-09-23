@@ -3,16 +3,28 @@ import type { Shape, ShapeValue, Type } from "./shapes";
 import { defaultValueForType } from "./source-defaults";
 
 /** A persisted reference from an Element Property to an owner Variable. */
-export interface PropertyConnection {
+export interface PropertyConnection<T = unknown> {
   readonly kind: "variable";
   readonly variableId: string;
   /** Stable Shape Field ids to read before coercing into the Element property. */
   readonly fieldPath?: readonly string[];
+  /** The authored literal retained when the connection cannot resolve. */
+  readonly fallback?: T;
+  /** Sizing unit retained alongside a connected numeric value. */
+  readonly unit?: "px" | "%";
 }
 
-/** A Property is either a literal value or a Variable connection. */
-export type PropertyValue<T> = T | PropertyConnection;
-/** A Variable resolved for an editor control, optionally carrying its current value. */
+/** A Formula authored directly on an Element Property. */
+export interface PropertyFormula<T = unknown> {
+  readonly kind: "formula";
+  readonly formula: string;
+  readonly fallback: T;
+  /** Sizing unit retained alongside a Formula-valued numeric result. */
+  readonly unit?: "px" | "%";
+}
+
+/** A Property is a literal, a Variable connection, or an Element Property Formula. */
+export type PropertyValue<T> = T | PropertyConnection<T> | PropertyFormula<T>;
 export interface VariableReference<TSource extends ShapeValue = ShapeValue> extends SceneVariable {
   readonly current?: TSource;
   /** Stable Shape Field ids represented by this editor binding. */
@@ -27,8 +39,6 @@ export interface PropertyFieldPath {
   readonly label: readonly string[];
 }
 
-export type PropertyCoercion = "identity" | "number-to-text";
-
 export function isPropertyConnection(value: unknown): value is PropertyConnection {
   if (
     typeof value !== "object" ||
@@ -39,10 +49,31 @@ export function isPropertyConnection(value: unknown): value is PropertyConnectio
     return false;
   }
   if (!("variableId" in value) || typeof value.variableId !== "string") return false;
+  if ("fallback" in value && value.fallback === undefined) return false;
+  if ("unit" in value && value.unit !== undefined && value.unit !== "px" && value.unit !== "%")
+    return false;
   if (!("fieldPath" in value) || value.fieldPath === undefined) return true;
   return (
     Array.isArray(value.fieldPath) &&
     value.fieldPath.every((segment) => typeof segment === "string")
+  );
+}
+
+export function isPropertyFormula(value: unknown): value is PropertyFormula {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !("kind" in value) ||
+    value.kind !== "formula"
+  ) {
+    return false;
+  }
+  return (
+    "formula" in value &&
+    typeof value.formula === "string" &&
+    "fallback" in value &&
+    value.fallback !== undefined &&
+    ("unit" in value ? value.unit === undefined || value.unit === "px" || value.unit === "%" : true)
   );
 }
 
@@ -80,6 +111,7 @@ export function valueAtPath(value: unknown, path: readonly string[]): unknown {
   return current;
 }
 
+export type PropertyCoercion = "identity" | "number-to-text";
 export function propertyFieldPaths(
   source: Type,
   target: Type,

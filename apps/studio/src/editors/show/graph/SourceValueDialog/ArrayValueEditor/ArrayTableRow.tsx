@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/react/sortable";
 import { Button, DropdownMenuTrigger, EllipsisIcon, GripVertical } from "@mechane/design-system";
-import { m, useIsPresent, type Transition } from "motion/react";
+import { m, useIsPresent, useReducedMotion, type Transition } from "motion/react";
 import { memo } from "react";
 
 import type { SourceImageAsset } from "../../inspector/source-value-types";
@@ -62,6 +62,7 @@ export const ArrayTableRow = memo(function ArrayTableRow({
 }: ArrayTableRowProps) {
   // While a deleted row plays its exit animation it is still mounted but no
   // longer has a place in the order, so it must not claim a sortable index.
+  const reduceMotion = useReducedMotion();
   const isPresent = useIsPresent();
   const { isDragging, isDropTarget, ref, handleRef } = useSortable({
     id: record.id,
@@ -77,7 +78,7 @@ export const ArrayTableRow = memo(function ArrayTableRow({
       initial={rowCollapsed}
       animate={rowOpen}
       exit={rowCollapsed}
-      transition={rowTransition}
+      transition={reduceMotion ? { duration: 0 } : rowTransition}
       className={`group/row bg-background hover:bg-(--row-hovered) ${isDragging ? "opacity-50" : ""} ${isDropTarget ? "ring-2 ring-inset ring-primary" : ""}`}
     >
       <td

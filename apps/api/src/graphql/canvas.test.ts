@@ -100,6 +100,36 @@ describe("Canvas GraphQL adapter", () => {
   });
 });
 
+  it("round-trips percentage sizing and property formulas verbatim", () => {
+    const root: FrameElement = {
+      id: "root",
+      type: "frame",
+      rank: "",
+      children: [
+        {
+          id: "bar",
+          type: "rect",
+          rank: "",
+          sizing: {
+            width: {
+              mode: "fixed",
+              value: {
+                kind: "formula",
+                formula: "item.votes / Total * 100",
+                fallback: { value: 0, unit: "%" },
+                unit: "%",
+              },
+            },
+            height: { mode: "fixed", value: { value: 50, unit: "%" } },
+          },
+          hidden: { kind: "formula", formula: "item.votes == 0", fallback: false },
+        },
+      ],
+    };
+    const decoded = decodeCanvasDocument(asDelivered(storedCanvas(root)));
+    expect(decoded.root).toEqual(root);
+  });
+
 describe("Canvas GraphQL schema", () => {
   it.each([
     ["TextElement", "textAlign"],

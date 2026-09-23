@@ -287,7 +287,7 @@ describe("Show graph lifecycle", () => {
     );
     expect(scene).toMatchObject({
       kind: "scene",
-      variables: [{ id: "variable_label", name: "New name" }],
+      variables: [{ id: "variable_label", name: "New_name" }],
     });
   });
   it("initializes and reconciles Shared Device navigation state", async () => {

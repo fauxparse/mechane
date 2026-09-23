@@ -633,6 +633,12 @@ type ShowGraph {
   losses: [PublishLoss!]!
 }
 
+type VariableReference {
+  kind: String!
+  ownerId: ID!
+  path: [String!]!
+}
+
 """
 A persisted Scene or Block Canvas (ADR-0014).
 
@@ -1159,6 +1165,7 @@ type Query {
   A single Show owned by the signed-in user, or null if it doesn't exist or isn't theirs.
   """
   show(id: ID!): Show
+  variableReferences(showId: ID!, variableId: ID!, state: String): [VariableReference!]!
 
   """
   The signed-in user's theme settings, or PRD.md §7 defaults if they haven't set any yet.

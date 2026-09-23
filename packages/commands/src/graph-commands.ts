@@ -59,6 +59,7 @@ import {
   assertValidShapeType,
   assertValidShapes,
   duplicateBlock as duplicateBlockResource,
+  normalizeFormulaIdentifier,
   normalizeStructuredValueTemplate,
   navigateEdgeActionId,
   renameBlock as renameBlockResource,
@@ -1499,11 +1500,19 @@ export function renameSceneVariable(
 
 function renamed(graph: ShowGraph, sceneId: string, variableId: string, name: string): ShowGraph {
   const { scene } = sceneAt(graph, sceneId);
+  const normalizedName = normalizeFormulaIdentifier(name);
+  if (
+    scene.variables.some(
+      (variable) => variable.id !== variableId && variable.name === normalizedName,
+    )
+  ) {
+    throw new Error(`Scene Variable name "${normalizedName}" is already in use.`);
+  }
   return withVariables(
     graph,
     sceneId,
     scene.variables.map((variable) =>
-      variable.id === variableId ? { ...variable, name } : variable,
+      variable.id === variableId ? { ...variable, name: normalizedName } : variable,
     ),
   );
 }
@@ -2229,13 +2238,23 @@ export function removeBlock(blockId: string, label = "Delete Block"): ShowGraphC
     apply: (graph) =>
       withBlocks(
         graph,
-        (graph.blocks ?? []).filter((candidate) => candidate.id !== blockId),
+        (graph.blocks ?? []).filter((block) => block.id !== blockId),
       ),
     restore: (graph, captured) => {
       const blocks = graph.blocks?.slice() ?? [];
       blocks.splice(Math.min(captured.index, blocks.length), 0, captured.block);
       return withBlocks(graph, blocks);
     },
+  });
+}
+
+function validatedBlockVariables(variables: readonly BlockVariable[]): BlockVariable[] {
+  const used = new Set<string>();
+  return variables.map((variable) => {
+    const name = normalizeFormulaIdentifier(variable.name);
+    if (used.has(name)) throw new Error(`Block Variable name "${name}" is already in use.`);
+    used.add(name);
+    return name === variable.name ? variable : { ...variable, name };
   });
 }
 export function setBlockVariables(
@@ -2259,7 +2278,9 @@ export function setBlockVariables(
       withBlocks(
         graph,
         (graph.blocks ?? []).map((block) =>
-          block.id === blockId ? { ...block, variables: [...variables] } : block,
+          block.id === blockId
+            ? { ...block, variables: validatedBlockVariables(variables) }
+            : block,
         ),
       ),
     restore: (graph, captured) =>

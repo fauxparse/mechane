@@ -69,11 +69,12 @@ export const variableInput = (
             (candidate) => JSON.stringify(candidate.fieldPath) === JSON.stringify(fieldPath),
           )
         : undefined;
-    const variableFallback =
-      variable.defaultValue === undefined
+    const fallback =
+      value.fallback ??
+      (variable.defaultValue === undefined
         ? undefined
-        : valueAtPath(variable.defaultValue, fieldPath);
-    const fallback = variableFallback ?? (sourceType ? defaultPropertyValue(sourceType) : null);
+        : valueAtPath(variable.defaultValue, fieldPath)) ??
+      (sourceType ? defaultPropertyValue(sourceType) : null);
     const current = sourceType ? literalValue(sourceType, fallback) : null;
     return {
       ...variable,
@@ -99,7 +100,7 @@ export const variableOptions = (
     return propertyFieldPaths(variable.type, type, shapes).map((field) => {
       const defaultValue =
         variable.defaultValue === undefined
-          ? defaultPropertyValue(field.type)
+          ? undefined
           : valueAtPath(variable.defaultValue, field.fieldPath);
       return {
         ...variable,

@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { KeyboardEvent, ReactNode } from "react";
 import type {
+  NumberValue,
   PropertyConnection,
   PropertyValue,
   ShapeValue,
@@ -19,8 +20,19 @@ export type PropertyInputConstraint = "min" | "max";
 export type PropertyInputConstraints = Partial<Record<PropertyInputConstraint, boolean>>;
 export type PropertyInputUnit = "px" | "%";
 
+/** Number values may carry the unit typed in a size field until the host persists it. */
+export type NumberInputValue = NumberValue & { readonly unit?: PropertyInputUnit };
+
 /** The value shape exchanged by the editor control. Variable current values may have another source Type. */
-export type PropertyInputValue<T extends ShapeValue = ShapeValue> = T | VariableReference;
+export type PropertyInputValue<T extends ShapeValue = ShapeValue> =
+  | T
+  | (T extends NumberValue ? NumberInputValue : never)
+  | VariableReference;
+export type PropertyInputMenuItem = {
+  readonly value: string;
+  readonly label: string;
+  readonly icon?: ReactNode;
+};
 
 export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   className?: string;
@@ -51,6 +63,9 @@ export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   scrubScale?: number;
   onChange?: (value: PropertyInputValue<T> | null) => void;
   onSizingChange?: (sizing: PropertyInputSizing) => void;
+  /** Additional menu actions supplied by a property editor, such as Formula authoring. */
+  menuItems?: readonly PropertyInputMenuItem[];
+  onMenuItemSelect?: (value: string) => void;
   onAutoChange?: (auto: boolean) => void;
   /** Marks the min/max menu items as active. */
   constraints?: PropertyInputConstraints;

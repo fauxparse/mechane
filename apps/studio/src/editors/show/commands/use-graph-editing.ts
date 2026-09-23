@@ -83,6 +83,7 @@ import {
   generateId,
   planConnection,
   sourceTypeAtHandle,
+  normalizeFormulaIdentifier,
 } from "@mechane/domain";
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { SourceTypeChangePlan } from "../graph/inspector/source-type-change";
@@ -751,7 +752,7 @@ export function useGraphEditing(
   const renameVariable = useCallback(
     (sceneId: string, variableId: string, name: string) => {
       const gesture = beginGesture({ key: `rename:${variableId}`, label: "Rename Variable" });
-      gesture.update(renameSceneVariable(sceneId, variableId, name));
+      gesture.update(renameSceneVariable(sceneId, variableId, normalizeFormulaIdentifier(name)));
       gesture.commit();
     },
     [beginGesture],

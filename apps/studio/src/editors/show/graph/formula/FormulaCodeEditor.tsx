@@ -18,8 +18,8 @@ import {
 } from "@codemirror/autocomplete";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { LRLanguage, syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language";
+import { Annotation, EditorState } from "@codemirror/state";
 import { forceLinting, linter, type Diagnostic } from "@codemirror/lint";
-import { EditorState } from "@codemirror/state";
 import {
   EditorView,
   keymap,
@@ -48,6 +48,7 @@ const formulaLanguage = LRLanguage.define({
   languageData: { closeBrackets: { brackets: ["(", "[", "{", "'", '"'] } },
 });
 
+const programmaticValueChange = Annotation.define<boolean>();
 const editorTheme = EditorView.theme({
   "&": { fontSize: "12px", backgroundColor: "transparent" },
   "&.cm-focused": { outline: "none" },
@@ -125,6 +126,9 @@ function completionSource(scope: FormulaScope) {
     const word = context.matchBefore(/[A-Za-z_][A-Za-z0-9_]*/);
     if (!word && !context.explicit) return null;
     const inputs: Completion[] = [
+      ...(scope.index !== undefined
+        ? [{ label: "index", type: "variable", detail: "number" }]
+        : []),
       ...(scope.itemBinding
         ? [
             {
@@ -225,7 +229,14 @@ export default function FormulaCodeEditor({
             { delay: 120 },
           ),
           EditorView.updateListener.of((update) => {
-            if (update.docChanged) changeRef.current(update.state.doc.toString());
+            if (
+              update.docChanged &&
+              !update.transactions.some((transaction) =>
+                transaction.annotation(programmaticValueChange),
+              )
+            ) {
+              changeRef.current(update.state.doc.toString());
+            }
           }),
         ],
       }),
@@ -250,7 +261,10 @@ export default function FormulaCodeEditor({
     if (!editor) return;
     const current = editor.state.doc.toString();
     if (current !== value) {
-      editor.dispatch({ changes: { from: 0, to: current.length, insert: value } });
+      editor.dispatch({
+        changes: { from: 0, to: current.length, insert: value },
+        annotations: programmaticValueChange.of(true),
+      });
     }
   }, [value]);
 
