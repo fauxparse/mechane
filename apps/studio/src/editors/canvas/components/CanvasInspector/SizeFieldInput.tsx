@@ -3,6 +3,7 @@ import {
   type PropertyInputConstraints,
   type PropertyInputValue,
 } from "@mechane/design-system";
+import { joinFormulaUnit } from "@mechane/domain";
 import type { AxisSize, PropertyFormula } from "@mechane/domain";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
@@ -60,7 +61,7 @@ export const SizeFieldInput = ({
       sizeMixed
         ? "Mixed"
         : formula
-          ? formula.formula
+          ? joinFormulaUnit(formula.formula, formula.unit)
           : mode === "fill"
             ? "Fill"
             : mode === "hug"

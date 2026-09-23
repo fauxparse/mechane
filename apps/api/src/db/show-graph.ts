@@ -116,7 +116,7 @@ function blockingCanvasFormulaDiagnostics(
               variable.type !== undefined &&
               typeof variable.type === "object" &&
               variable.type.kind === "shape",
-            )
+          )
         : undefined;
     const itemRef = "__publication_formula_item" as StructuredValueId;
     const itemType = itemVariable?.type;

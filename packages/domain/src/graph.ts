@@ -39,12 +39,7 @@ import type { Canvas, Element } from "./canvas";
 import { isPropertyConnection, isPropertyFormula, typeAtPath } from "./property-values";
 import { assertValidBlocks } from "./blocks";
 import type { Block } from "./blocks";
-import {
-  absent,
-  analyse,
-  isFormulaIdentifier,
-  normalizeFormulaIdentifier,
-} from "./formula";
+import { absent, analyse, isFormulaIdentifier, normalizeFormulaIdentifier } from "./formula";
 import { formulaShapeTable, formulaType } from "./formula-runtime";
 export const NODE_KINDS = ["scene", "flow", "source", "transformer", "device"] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
@@ -384,10 +379,7 @@ export interface ShowGraph {
   slotEventBindings?: readonly SlotEventBinding[];
   edges: GraphEdge[];
 }
-function repairedFormulaIdentifier(
-  value: string,
-  used: ReadonlySet<string>,
-): string {
+function repairedFormulaIdentifier(value: string, used: ReadonlySet<string>): string {
   const normalized = normalizeFormulaIdentifier(value).trim();
   const candidate = normalized
     .replace(/[^A-Za-z0-9_$\u00c0-\u024f\u0400-\u04ff]/g, "_")
@@ -399,9 +391,7 @@ function repairedFormulaIdentifier(
   return next;
 }
 
-function normaliseVariableNames<T extends { name: string }>(
-  variables: readonly T[],
-): T[] {
+function normaliseVariableNames<T extends { name: string }>(variables: readonly T[]): T[] {
   const used = new Set<string>();
   return variables.map((variable) => {
     const name = repairedFormulaIdentifier(variable.name, used);
@@ -415,9 +405,7 @@ export function normaliseShowGraphVariableNames(graph: ShowGraph): ShowGraph {
   return {
     ...graph,
     nodes: graph.nodes.map((node) =>
-      node.kind === "scene"
-        ? { ...node, variables: normaliseVariableNames(node.variables) }
-        : node,
+      node.kind === "scene" ? { ...node, variables: normaliseVariableNames(node.variables) } : node,
     ),
     blocks: graph.blocks?.map((block) => ({
       ...block,
@@ -485,7 +473,9 @@ export function findShowVariableReferences(
   const names = new Set(
     graph.nodes.flatMap((node) =>
       node.kind === "scene"
-        ? node.variables.filter((variable) => variable.id === variableId).map((variable) => variable.name)
+        ? node.variables
+            .filter((variable) => variable.id === variableId)
+            .map((variable) => variable.name)
         : [],
     ),
   );

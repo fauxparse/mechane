@@ -170,6 +170,13 @@ export const AppearanceSection = () => {
     () => radius !== undefined && hasAsymmetricCornerRadius(radius),
   );
 
+  // `hidden` became a PropertyValue<boolean> in #705, so it can hold a Formula
+  // the eye cannot express. Driven visibility is reported, never overwritten:
+  // one stray click used to replace the Formula with a literal and lose it.
+  const hiddenValue = common("hidden");
+  const hiddenFormula = isPropertyFormula(hiddenValue) ? hiddenValue : null;
+  const isHidden = hiddenValue === true;
+
   return (
     <Section
       label="Appearance"
@@ -179,14 +186,21 @@ export const AppearanceSection = () => {
             render={
               <Toggle
                 className="p-0 size-7"
-                pressed={common("hidden") === true}
+                disabled={hiddenFormula !== null}
+                pressed={isHidden}
                 onPressedChange={(hidden) => update({ hidden })}
               >
-                {common("hidden") === true ? <EyeClosedIcon /> : <EyeIcon />}
+                {isHidden ? <EyeClosedIcon /> : <EyeIcon />}
               </Toggle>
             }
           />
-          <TooltipContent>{common("hidden") === true ? "Show" : "Hide"}</TooltipContent>
+          <TooltipContent>
+            {hiddenFormula
+              ? `Visibility is driven by a Formula: ${hiddenFormula.formula}`
+              : isHidden
+                ? "Show"
+                : "Hide"}
+          </TooltipContent>
         </Tooltip>
       }
     >

@@ -61,7 +61,7 @@ const model: CanvasInspectorModel = {
 };
 
 describe("SizeField", () => {
-  it("shows the Formula driving a size instead of an empty input", () => {
+  it("shows the Formula and the unit it sets, as one expression", () => {
     const html = renderToStaticMarkup(
       createElement(
         CanvasInspectorProvider,
@@ -70,6 +70,6 @@ describe("SizeField", () => {
       ),
     );
 
-    expect(html).toContain("item.votes / Total * 100");
+    expect(html).toContain("item.votes / Total * 100%");
   });
 });

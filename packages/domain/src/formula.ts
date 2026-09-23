@@ -572,6 +572,11 @@ export function parse(source: string): Expression {
         };
         continue;
       }
+      // A `%` with nothing after it is the result's unit, written where Excel
+      // writes it. Binary `%` needs a right operand, so every input this
+      // admits is a parse failure today and no accepted Formula changes
+      // meaning — `100 % 3` and `100%3` stay modulus (#740).
+      if (token.text === "%" && position === tokens.length - 1) break;
       const binding = token.kind === "operator" ? BINDING[token.text] : undefined;
       if (binding === undefined || binding <= minimum) break;
       position += 1;
@@ -589,6 +594,7 @@ export function parse(source: string): Expression {
   }
 
   const expression = parseExpression(0);
+  if (peek()?.text === "%" && position === tokens.length - 1) position += 1;
   const trailing = peek();
   if (trailing) {
     throw new ParseFailure(
@@ -598,6 +604,28 @@ export function parse(source: string): Expression {
     );
   }
   return expression;
+}
+
+/**
+ * Splits the trailing `%` result unit off a Formula. A size Property stores
+ * the unit beside the Formula (#706), so this is the boundary that turns what
+ * the author typed into those two fields — and back, for display.
+ *
+ * No suffix means pixels, exactly as a typed literal's does (#712).
+ */
+export function splitFormulaUnit(source: string): {
+  readonly formula: string;
+  readonly unit: "px" | "%";
+} {
+  const trimmed = source.trimEnd();
+  return trimmed.endsWith("%")
+    ? { formula: trimmed.slice(0, -1).trimEnd(), unit: "%" }
+    : { formula: source, unit: "px" };
+}
+
+/** Rejoins a stored Formula and its unit into the text the author typed. */
+export function joinFormulaUnit(formula: string, unit: "px" | "%" | undefined): string {
+  return unit === "%" ? `${formula}%` : formula;
 }
 type CachedParse =
   | { readonly ok: true; readonly expression: Expression }
@@ -1045,6 +1073,8 @@ export interface FormulaScope {
   /** Calculate's declared output Type; Filter's required Boolean. */
   expected?: FormulaType;
   budget?: EvaluationBudget;
+  /** Whether the consuming Property carries a size unit, so `…%` is meaningful. */
+  allowsUnit?: boolean;
   /** Noun used in diagnostics on non-Transformer consumers. */
   diagnosticSubject?: "Transformer" | "Element Property";
 }
@@ -1101,6 +1131,17 @@ export function analyse(source: string, scope: FormulaScope): FormulaAnalysis {
     };
   }
   const expression = parsed.expression;
+
+  const percentAt = scope.allowsUnit ? -1 : source.trimEnd().length - 1;
+  if (percentAt >= 0 && source[percentAt] === "%") {
+    diagnostics.push({
+      from: percentAt,
+      to: percentAt + 1,
+      message: "A trailing % sets a size unit, and this Formula's result has no unit to set.",
+      severity: "blocking",
+      category: "unexpectedUnit",
+    });
+  }
 
   const type = check(expression, scope, diagnostics);
 

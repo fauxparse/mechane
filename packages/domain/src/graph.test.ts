@@ -663,7 +663,6 @@ describe("structural queries", () => {
       { kind: "formula", ownerId: "canvas", path: ["bar", "hidden"] },
     ]);
   });
-
 });
 
 describe("assertValidGraphState", () => {

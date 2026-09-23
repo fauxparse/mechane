@@ -153,7 +153,7 @@ The relationship that makes an Element Property take its value from a Variable o
 
 ### Property Formula
 
-A Formula authored directly on an Element Property. It evaluates in the owning Scene or Block's Variable scope, with `item` and `index` available inside repeated Slot instances. Its authored fallback is used when evaluation cannot produce a valid value.
+A Formula authored directly on an Element Property. It evaluates in the owning Scene or Block's Variable scope, with `item` and `index` available inside repeated Slot instances. Its authored fallback is used when evaluation cannot produce a valid value. On a width or height, a trailing `%` sets the result's unit — the same gesture as typing `50%` as a literal — and is the only position `%` means a unit rather than modulus.
 
 ### Property Coercion
 
