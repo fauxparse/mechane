@@ -20,6 +20,7 @@ import { InlineColorPicker } from "./color-picker";
 import { cn } from "../../../lib/utils";
 import type {
   PropertyInputConstraints,
+  PropertyInputMenuItem,
   PropertyInputPreset,
   PropertyInputSizing,
   PropertyInputType,
@@ -32,10 +33,12 @@ export function Menu<T extends ShapeValue>({
   sizing,
   constraints,
   presets,
+  menuItems,
   auto,
   allowAuto,
   allowLink = true,
   linkedVariable,
+  onMenuItemSelect,
   onColorChange,
 }: {
   inputType: PropertyInputType;
@@ -44,16 +47,19 @@ export function Menu<T extends ShapeValue>({
   sizing: PropertyInputSizing;
   constraints?: PropertyInputConstraints;
   presets?: readonly PropertyInputPreset[];
+  menuItems?: readonly PropertyInputMenuItem[];
   auto: boolean;
   allowAuto?: boolean;
   allowLink?: boolean;
   linkedVariable: VariableReference<T> | null;
+  onMenuItemSelect: (value: string) => void;
   onColorChange: (value: string | null) => void;
 }) {
   const hasMenuItems =
     inputType === "color" ||
     dimension !== undefined ||
     (presets?.length ?? 0) > 0 ||
+    (menuItems?.length ?? 0) > 0 ||
     allowAuto ||
     allowLink;
   if (!hasMenuItems) return null;
@@ -67,6 +73,19 @@ export function Menu<T extends ShapeValue>({
         </>
       ) : null}
       <ComboboxList>
+        {menuItems && menuItems.length > 0 ? (
+          <>
+            <ComboboxGroup>
+              {menuItems.map((item) => (
+                <ComboboxItem key={item.value} value={item.value}>
+                  {item.icon}
+                  {item.label}
+                </ComboboxItem>
+              ))}
+            </ComboboxGroup>
+            <ComboboxSeparator />
+          </>
+        ) : null}
         {dimension ? (
           <DimensionMenu dimension={dimension} sizing={sizing} constraints={constraints} />
         ) : null}

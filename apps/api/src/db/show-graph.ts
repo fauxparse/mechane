@@ -5,10 +5,15 @@
 // Kept out of the resolvers so the GraphQL layer stays a thin adapter: the
 // resolvers authenticate, check ownership, validate through the domain, and
 // call one of the lifecycle functions below.
-import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
 import { applyGraphEdits } from "@mechane/commands";
+import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
+import {
+  assertBlockReferencesExist,
+  diagnoseCanvasFormulas,
+  generateId,
+  type ElementPropertyResolutionContext,
+} from "@mechane/domain";
 import type { GraphState, ShowGraph } from "@mechane/domain";
-import { assertBlockReferencesExist, generateId } from "@mechane/domain";
 import { eq } from "drizzle-orm";
 import type { StoredCanvas } from "./canvas";
 import { persistCanvases, readCanvasById, readCanvasWorkspace } from "./canvas";
@@ -49,6 +54,66 @@ export interface StoredShowGraph extends ShowGraph {
   version: number;
   /** Data loss reported while publishing this graph, if applicable. */
   losses?: PublishLoss[];
+}
+
+export class CanvasFormulaPublicationError extends Error {
+  constructor(
+    readonly diagnostics: readonly {
+      readonly canvasId: string;
+      readonly elementId: string;
+      readonly property: string;
+      readonly message: string;
+    }[],
+  ) {
+    super(
+      `Cannot publish: ${diagnostics.length} Element Formula ${
+        diagnostics.length === 1 ? "diagnostic" : "diagnostics"
+      } must be fixed.`,
+    );
+    this.name = "CanvasFormulaPublicationError";
+  }
+}
+
+function blockingCanvasFormulaDiagnostics(
+  graph: ShowGraph,
+  canvases: readonly StoredCanvas[],
+): CanvasFormulaPublicationError["diagnostics"] {
+  const diagnostics: {
+    canvasId: string;
+    elementId: string;
+    property: string;
+    message: string;
+  }[] = [];
+  for (const canvas of canvases) {
+    const variables =
+      canvas.kind === "block"
+        ? (graph.blocks?.find((block) => block.id === canvas.ownerId)?.variables ?? [])
+        : (() => {
+            const scene = graph.nodes.find(
+              (node) => node.kind === "scene" && node.id === canvas.ownerId,
+            );
+            return scene?.kind === "scene" ? scene.variables : [];
+          })();
+    const context: ElementPropertyResolutionContext = {
+      variables: variables.map((variable) => ({
+        id: variable.id,
+        name: variable.name,
+        type: variable.type,
+        ...("defaultValue" in variable ? { defaultValue: variable.defaultValue } : {}),
+      })),
+      shapes: graph.shapes ?? [],
+    };
+    for (const diagnostic of diagnoseCanvasFormulas(canvas, context)) {
+      if (diagnostic.severity !== "blocking") continue;
+      diagnostics.push({
+        canvasId: canvas.id,
+        elementId: diagnostic.elementId,
+        property: diagnostic.property,
+        message: diagnostic.message,
+      });
+    }
+  }
+  return diagnostics;
 }
 
 /** The transaction type the graph functions run inside. */
@@ -309,6 +374,10 @@ export async function publishShowGraph(
     const draft = await readShowGraph(showId, "draft", tx);
     const draftCanvases = await readCanvasWorkspace(showId, "draft", tx);
     assertBlockReferencesExist(draft.blocks ?? [], draftCanvases.canvases);
+    const formulaDiagnostics = blockingCanvasFormulaDiagnostics(draft, draftCanvases.canvases);
+    if (formulaDiagnostics.length > 0) {
+      throw new CanvasFormulaPublicationError(formulaDiagnostics);
+    }
     const publishedBefore = await readShowGraph(showId, "published", tx);
     const reconciled = await reconcileActiveRunValues(showId, publishedBefore, draft, tx);
     const published = await writeGraph(

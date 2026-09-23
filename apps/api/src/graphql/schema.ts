@@ -26,6 +26,7 @@ import {
   DEFAULT_IMAGE_UPLOAD_POLICY,
   defaultThemeSettings,
   describeRunError,
+  findShowVariableReferences,
   InvalidGraphStateError,
   InvalidImageNameError,
   InvalidInteractionError,
@@ -55,6 +56,7 @@ import { reshuffleTransformer } from "../db/transformer-seeds";
 import { blobUploadSessions, imageAssets, shows, userSettings } from "../db/schema";
 import {
   applyShowEdits as applyShowEditsToDb,
+  CanvasFormulaPublicationError,
   createShowWithDefaults,
   GraphVersionConflictError,
   publishShowGraph,
@@ -798,6 +800,11 @@ export const schema = createSchema<GraphQLContext>({
       "Fields that lost data while this graph was published."
       losses: [PublishLoss!]!
     }
+    type VariableReference {
+      kind: String!
+      ownerId: ID!
+      path: [String!]!
+    }
     """
     A persisted Scene or Block Canvas (ADR-0014).
 
@@ -1264,6 +1271,7 @@ export const schema = createSchema<GraphQLContext>({
       shows: [Show!]!
       "A single Show owned by the signed-in user, or null if it doesn't exist or isn't theirs."
       show(id: ID!): Show
+      variableReferences(showId: ID!, variableId: ID!, state: String): [VariableReference!]!
       "The signed-in user's theme settings, or PRD.md §7 defaults if they haven't set any yet."
       userSettings: UserSettings!
       "The active Run for a Show, or null when the Show is stopped."
@@ -1528,6 +1536,16 @@ export const schema = createSchema<GraphQLContext>({
         const graphState = validGraphState(state ?? "draft");
         return serializeShowGraph(await readShowGraph(showId, graphState));
       },
+      variableReferences: async (
+        _parent,
+        { showId, variableId, state }: { showId: string; variableId: string; state?: string | null },
+        context,
+      ) => {
+        const userId = requireUserId(context);
+        await findOwnShowOrThrow(showId, userId);
+        const graph = await readShowGraph(showId, validGraphState(state ?? "draft"));
+        return findShowVariableReferences(graph, variableId);
+      },
       showCanvases: async (
         _parent,
         { showId, state }: { showId: string; state?: string | null },
@@ -1754,7 +1772,19 @@ export const schema = createSchema<GraphQLContext>({
       publishShowGraph: async (_parent, { showId }: { showId: string }, context) => {
         const userId = requireUserId(context);
         await findOwnShowOrThrow(showId, userId);
-        return serializeShowGraph(await publishShowGraph(showId));
+        try {
+          return serializeShowGraph(await publishShowGraph(showId));
+        } catch (error) {
+          if (error instanceof CanvasFormulaPublicationError) {
+            throw new GraphQLError(error.message, {
+              extensions: {
+                code: "BAD_USER_INPUT",
+                diagnostics: error.diagnostics,
+              },
+            });
+          }
+          throw error;
+        }
       },
       beginImageUpload: async (
         _parent,

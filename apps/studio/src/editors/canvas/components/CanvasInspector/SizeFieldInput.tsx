@@ -78,14 +78,26 @@ export const SizeFieldInput = ({
           value: {
             kind: "variable",
             variableId: next.id,
-            fieldPath: next.fieldPath ?? [],
+            fallback:
+              size?.value &&
+              typeof size.value === "object" &&
+              "value" in size.value &&
+              typeof size.value.value === "number"
+                ? size.value
+                : currentValue,
           },
         });
       } else if (next?.kind === "number") {
+        const nextUnit = "unit" in next ? next.unit : undefined;
         updateSize({
           ...(sizeMixed ? {} : size),
           mode: "fixed",
-          value: unit === "%" ? { value: next.value, unit } : next.value,
+          value:
+            nextUnit === "%"
+              ? { value: next.value, unit: "%" }
+              : nextUnit === "px"
+                ? { value: next.value, unit: "px" }
+                : next.value,
         });
       }
     }}

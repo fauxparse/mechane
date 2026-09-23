@@ -171,7 +171,7 @@ export function evaluateTransformer(options: {
     }
     const result: FormulaEvaluationResult = evaluateFormula({
       formula: node.transform.formula,
-      transformerId: node.id,
+      ownerId: node.id,
       outputType: node.transform.outputType,
       inputs,
       structuredValues: options.structuredValues,
@@ -234,7 +234,7 @@ export function evaluateTransformer(options: {
   for (const item of input.items) {
     const result = evaluateFormula({
       formula: node.transform.formula,
-      transformerId: node.id,
+      ownerId: node.id,
       outputType: "boolean",
       inputs,
       structuredValues: options.structuredValues,

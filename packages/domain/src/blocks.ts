@@ -5,6 +5,7 @@ import type { Position } from "./graph";
 import { generateId } from "./id";
 import type { Shape, Type } from "./shapes";
 import { assertValidShapeType } from "./shapes";
+import { isFormulaIdentifier, normalizeFormulaIdentifier } from "./formula";
 
 export interface BlockVariable {
   readonly id: string;
@@ -108,6 +109,10 @@ export function assertValidBlock(block: Block, shapes: readonly Shape[] = []): B
     "Variable",
   );
   assertUnique(
+    block.variables.map((variable) => variable.name),
+    "Variable name",
+  );
+  assertUnique(
     block.states.map((state) => state.id),
     "State",
   );
@@ -117,6 +122,14 @@ export function assertValidBlock(block: Block, shapes: readonly Shape[] = []): B
   );
   for (const variable of block.variables) {
     if (!variable.name.trim()) throw new InvalidBlockError("Variable names must not be empty.");
+    if (
+      normalizeFormulaIdentifier(variable.name) !== variable.name ||
+      !isFormulaIdentifier(variable.name)
+    ) {
+      throw new InvalidBlockError(
+        `Variable "${variable.name}" must be a valid Formula identifier.`,
+      );
+    }
     assertValidShapeType(variable.type, shapes, `Variable "${variable.name}" type`);
   }
   const selector = block.stateSelectorVariableId;

@@ -203,6 +203,7 @@ export function resolveBlockCanvas(
   shapes: readonly Shape[] = [],
   canvas: BlockCanvas = block.canvas,
   imageAssets: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[] = [],
+  runtimeContext?: { readonly item: unknown; readonly type: Type; readonly index: number },
 ): ResolvedCanvas {
   return resolveCanvasProperties(canvas, {
     variables: block.variables.map(({ id, name, type, defaultValue }) => ({
@@ -214,6 +215,7 @@ export function resolveBlockCanvas(
     values,
     shapes,
     imageAssets,
+    ...(runtimeContext ? { runtimeContext } : {}),
   });
 }
 
@@ -250,6 +252,7 @@ export interface ResolveSlotInstancesInput {
   readonly variables?: readonly SlotVariableValue[];
   readonly runtimeItem?: unknown;
   readonly runtimeType?: Type;
+  readonly runtimeIndex?: number;
   readonly structuredValues?: Readonly<Record<string, StructuredValueRecord>>;
   readonly shapes?: readonly Shape[];
   readonly allBlocks?: readonly Block[];
@@ -262,6 +265,7 @@ export function resolveSlotInstances({
   variables = [],
   runtimeItem,
   runtimeType,
+  runtimeIndex,
   shapes = [],
   allBlocks = [block],
   imageAssets = [],
@@ -275,6 +279,13 @@ export function resolveSlotInstances({
     return { instances: [], diagnostic: structuralDiagnostics[0] };
   }
   const expansion = slot.expansion?.source;
+  const expansionType = expansion
+    ? sourceType(expansion, variables, runtimeType, shapes)
+    : undefined;
+  const itemType =
+    expansionType && typeof expansionType === "object" && expansionType.kind === "array"
+      ? expansionType.of
+      : expansionType;
   let expansionValue: unknown;
   if (expansion?.kind === "literal") expansionValue = expansion.value;
   else if (expansion?.kind === "runtimeItem") expansionValue = runtimeItem;
@@ -322,21 +333,28 @@ export function resolveSlotInstances({
           diagnostics: resolution.diagnostics,
         };
       }
-      const selector = block.stateSelectorVariableId
-        ? resolution.values[block.stateSelectorVariableId]
-        : undefined;
-      const selected = applyBlockState(block, resolveBlockState(block, selector));
-      const resolvedVariables = block.variables.map((variable) => ({
-        id: variable.id,
-        type: variable.type,
-        value: resolution.values[variable.id],
-      }));
+      const contextItem = expansion ? instance.item ?? runtimeItem : runtimeItem;
+      const contextType = expansion ? itemType : runtimeType;
+      const contextIndex = expansion ? instance.index : (runtimeIndex ?? 0);
       return {
         ...identity,
         index: instance.index,
         item: instance.item,
-        canvas: resolveBlockCanvas(block, resolution.values, shapes, selected, imageAssets),
-        variables: resolvedVariables,
+        canvas: resolveBlockCanvas(
+          block,
+          resolution.values,
+          shapes,
+          block.canvas,
+          imageAssets,
+          contextType && contextItem !== undefined
+            ? { item: contextItem, type: contextType, index: contextIndex }
+            : undefined,
+        ),
+        variables: block.variables.map((variable) => ({
+          id: variable.id,
+          type: variable.type,
+          value: resolution.values[variable.id],
+        })),
         diagnostics: [],
       };
     }),

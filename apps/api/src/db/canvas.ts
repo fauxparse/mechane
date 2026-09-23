@@ -482,6 +482,9 @@ function elementRow(
     rank: _rank,
     ...properties
   } = element as Element & { parentId?: string | null };
+  const persistedHidden = typeof hidden === "boolean" ? hidden : false;
+  const persistedProperties =
+    typeof hidden === "boolean" || hidden === undefined ? properties : { ...properties, hidden };
   return {
     id,
     canvasId,
@@ -489,8 +492,8 @@ function elementRow(
     type,
     rank,
     name: name ?? null,
-    hidden: hidden ?? false,
-    properties,
+    hidden: persistedHidden,
+    properties: persistedProperties,
   };
 }
 

@@ -19,7 +19,7 @@ import {
   type LucideIcon,
 } from "@mechane/design-system";
 import type { CornerRadius, CornerRadiusElement } from "@mechane/domain";
-import { hasCornerRadius, isPropertyConnection } from "@mechane/domain";
+import { hasCornerRadius, isPropertyConnection, isPropertyFormula } from "@mechane/domain";
 import { Dispatch, SetStateAction, useState } from "react";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
@@ -34,7 +34,7 @@ const cornerRadiusSides = (
   if (typeof radius === "number") {
     return { topLeft: radius, topRight: radius, bottomRight: radius, bottomLeft: radius };
   }
-  if (!radius || isPropertyConnection(radius)) {
+  if (!radius || isPropertyConnection(radius) || isPropertyFormula(radius)) {
     return { topLeft: 0, topRight: 0, bottomRight: 0, bottomLeft: 0 };
   }
   return {

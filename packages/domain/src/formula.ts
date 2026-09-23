@@ -122,16 +122,29 @@ const OPERATORS = [
 const IDENT_START = /[A-Za-z_$\u00c0-\u024f\u0400-\u04ff]/;
 const IDENT_PART = /[A-Za-z0-9_$\u00c0-\u024f\u0400-\u04ff]/;
 
-/** Whether a port name is a legal, non-reserved Formula identifier. */
-export function isFormulaIdentifier(value: string): boolean {
-  if (!value || !IDENT_START.test(value[0]!)) return false;
-  for (const character of value.slice(1)) {
-    if (!IDENT_PART.test(character)) return false;
-  }
-  const normalized = value.toLowerCase();
-  return normalized !== "true" && normalized !== "false" && normalized !== "in";
+/** NFC-normalises a user-authored Formula identifier. */
+export function normalizeFormulaIdentifier(value: string): string {
+  return value.normalize("NFC");
 }
 
+/** Whether a port name is a legal, non-reserved Formula identifier. */
+export function isFormulaIdentifier(value: string): boolean {
+  const normalizedValue = normalizeFormulaIdentifier(value);
+  if (!normalizedValue || !IDENT_START.test(normalizedValue[0]!)) return false;
+  for (const character of normalizedValue.slice(1)) {
+    if (!IDENT_PART.test(character)) return false;
+  }
+  const normalized = normalizedValue.toLowerCase();
+  return (
+    normalized !== "true" &&
+    normalized !== "false" &&
+    normalized !== "in" &&
+    normalizedValue !== "item" &&
+    normalizedValue !== "index"
+  );
+}
+
+export const normaliseFormulaIdentifier = normalizeFormulaIdentifier;
 export function lex(source: string): Token[] {
   const tokens: Token[] = [];
   let index = 0;
@@ -586,6 +599,30 @@ export function parse(source: string): Expression {
   }
   return expression;
 }
+type CachedParse =
+  | { readonly ok: true; readonly expression: Expression }
+  | { readonly ok: false; readonly error: ParseFailure };
+
+const FORMULA_PARSE_CACHE_LIMIT = 256;
+const formulaParseCache = new Map<string, CachedParse>();
+
+function parseCached(source: string): CachedParse {
+  const cached = formulaParseCache.get(source);
+  if (cached) return cached;
+  let result: CachedParse;
+  try {
+    result = { ok: true, expression: parse(source) };
+  } catch (error) {
+    if (!(error instanceof ParseFailure)) throw error;
+    result = { ok: false, error };
+  }
+  if (formulaParseCache.size >= FORMULA_PARSE_CACHE_LIMIT) {
+    const oldest = formulaParseCache.keys().next().value;
+    if (oldest !== undefined) formulaParseCache.delete(oldest);
+  }
+  formulaParseCache.set(source, result);
+  return result;
+}
 
 function containsRelative(expression: Expression): boolean {
   switch (expression.type) {
@@ -998,14 +1035,18 @@ export interface FormulaScope {
   /** The node's named input ports, in order. */
   ports: readonly { name: string; type: FormulaType; value: FormulaValue }[];
   shapes: ShapeTable;
-  /** Filter's per-item binding, when the Formula is a predicate. */
+  /** Property Formula repeat binding. */
   itemBinding?: { name: string; type: FormulaType; value: FormulaValue };
+  /** The 0-based position paired with itemBinding inside an expansion. */
+  index?: number;
   /** Current item while a stock relative filter predicate is checked/evaluated. */
   relativeType?: FormulaType;
   relativeItem?: FormulaValue;
   /** Calculate's declared output Type; Filter's required Boolean. */
   expected?: FormulaType;
   budget?: EvaluationBudget;
+  /** Noun used in diagnostics on non-Transformer consumers. */
+  diagnosticSubject?: "Transformer" | "Element Property";
 }
 
 export interface FormulaAnalysis {
@@ -1039,11 +1080,9 @@ export function analyse(source: string, scope: FormulaScope): FormulaAnalysis {
     };
   }
 
-  let expression: Expression | null = null;
-  try {
-    expression = parse(source);
-  } catch (error) {
-    const failed = error as ParseFailure;
+  const parsed = parseCached(source);
+  if (!parsed.ok) {
+    const failed = parsed.error;
     return {
       source,
       expression: null,
@@ -1061,6 +1100,7 @@ export function analyse(source: string, scope: FormulaScope): FormulaAnalysis {
       blocked: true,
     };
   }
+  const expression = parsed.expression;
 
   const type = check(expression, scope, diagnostics);
 
@@ -1112,18 +1152,24 @@ function check(
     case "boolean":
       return expression.type;
     case "identifier": {
+      if (scope.index !== undefined && expression.name === "index") return "number";
       if (scope.itemBinding && expression.name === scope.itemBinding.name) {
         return scope.itemBinding.type;
       }
       const port = scope.ports.find((candidate) => candidate.name === expression.name);
       if (!port) {
         const names = scope.ports.map((candidate) => candidate.name);
+        const message = scope.diagnosticSubject
+          ? names.length
+            ? `${scope.diagnosticSubject} input "${expression.name}" is not available. Available inputs are ${listed(names)}.`
+            : `${scope.diagnosticSubject} input "${expression.name}" is not available; it has no inputs yet.`
+          : names.length
+            ? `Input "${expression.name}" is not an input of this Transformer. Its inputs are ${listed(names)}.`
+            : `Input "${expression.name}" is not an input of this Transformer, which has no inputs yet.`;
         diagnostics.push({
           from: expression.from,
           to: expression.to,
-          message: names.length
-            ? `Input "${expression.name}" is not an input of this Transformer. Its inputs are ${listed(names)}.`
-            : `Input "${expression.name}" is not an input of this Transformer, which has no inputs yet.`,
+          message,
           severity: "blocking",
           category: "unknownInput",
         });
@@ -1410,6 +1456,7 @@ export function evaluate(expression: Expression, scope: FormulaScope): FormulaVa
     case "boolean":
       return boolean(expression.value);
     case "identifier": {
+      if (scope.index !== undefined && expression.name === "index") return number(scope.index);
       if (scope.itemBinding && expression.name === scope.itemBinding.name) {
         return scope.itemBinding.value;
       }

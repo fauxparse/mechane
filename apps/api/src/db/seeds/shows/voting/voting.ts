@@ -59,7 +59,7 @@ const candidateArrayType = { kind: "array" as const, of: candidateType };
 function text(
   id: string,
   rank: string,
-  content: string | PropertyConnection,
+  content: string | PropertyConnection<string>,
   name: string,
   fontSize = 28,
   align: TextAlign = "left",
@@ -80,7 +80,7 @@ function text(
 function button(
   id: string,
   rank: string,
-  label: string | PropertyConnection,
+  label: string | PropertyConnection<string>,
   name: string,
   fill: string,
 ): FrameElement {
@@ -607,9 +607,9 @@ export function votingGraph(): ShowGraph {
         targetPath: ["port_front_candidates"],
       },
       {
-        id: "edge_front_runners_tally",
+        id: "edge_candidates_tally",
         kind: "wiring",
-        sourceId: FRONT_RUNNERS_TRANSFORMER_ID,
+        sourceId: CANDIDATE_SOURCE_ID,
         targetId: TALLY_SCENE_ID,
         sourcePath: [],
         targetPath: [TALLY_VARIABLE_ID],

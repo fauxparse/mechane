@@ -75,6 +75,7 @@ export interface PrepareCanvasInput {
   readonly imageAssets: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
   readonly runtimeItem?: unknown;
   readonly runtimeType?: Type;
+  readonly runtimeIndex?: number;
   readonly mode: CanvasPresentationMode;
 }
 
@@ -97,13 +98,13 @@ function prepareElement(
         },
       };
     }
-
     const resolution = resolveSlotInstances({
       block,
       slot: element,
       variables: input.variables,
       runtimeItem: input.runtimeItem,
       runtimeType: input.runtimeType,
+      runtimeIndex: input.runtimeIndex,
       shapes: input.shapes,
       allBlocks: input.blocks,
       imageAssets: input.imageAssets,
@@ -131,6 +132,7 @@ function prepareElement(
                     ...input,
                     variables: instance.variables ?? input.variables,
                     runtimeItem: instance.item ?? input.runtimeItem,
+                    runtimeIndex: instance.index,
                   }),
                 }
               : {}),

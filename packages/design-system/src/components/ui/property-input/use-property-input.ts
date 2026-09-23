@@ -74,11 +74,15 @@ export function parsePropertyInputValue<T extends ShapeValue = ShapeValue>(
   }
   if (type !== "number") return createValue<T>(type, rawValue);
 
-  const numericValue = rawValue.replace(/%/g, "").trim();
-  if (numericValue === "") return null;
+  const trimmed = rawValue.trim();
+  if (trimmed === "") return null;
+  const suffix = trimmed.endsWith("%") ? "%" : trimmed.endsWith("px") ? "px" : undefined;
+  const numericValue = suffix ? trimmed.slice(0, -suffix.length).trim() : trimmed;
+  if (numericValue === "" || /[a-zA-Z]/.test(numericValue)) return undefined;
   const parsed = Number(numericValue);
   if (!Number.isFinite(parsed)) return undefined;
-  return createValue<T>(type, Math.min(max ?? Infinity, Math.max(min ?? -Infinity, parsed)));
+  const value = Math.min(max ?? Infinity, Math.max(min ?? -Infinity, parsed));
+  return { ...createValue<T>(type, value), ...(suffix ? { unit: suffix } : {}) };
 }
 
 export function propertyInputValidationMessage(type: PropertyInputType): string {
@@ -109,11 +113,13 @@ export function usePropertyInput<T extends ShapeValue>({
   max,
   step,
   presets,
+  menuItems,
   allowAuto = false,
   auto = false,
   scrubScale = 2,
   onChange,
   onSizingChange,
+  onMenuItemSelect,
   onAutoChange,
   onValidationError,
   constraints,
@@ -183,8 +189,6 @@ export function usePropertyInput<T extends ShapeValue>({
     draftInputRef.current = nextValue;
     setDraftInputValue(nextValue);
     reportValidationError(null);
-    // The color picker emits draft values continuously while dragging; valid samples must reach
-    // controlled consumers immediately so renderers can paint the current color.
     if (inputType === "color" && nextValue !== null) {
       const parsed = parseHexColor(nextValue);
       if (parsed) commit(createValue<T>(inputType, rgbaToHex(parsed)));
@@ -223,9 +227,8 @@ export function usePropertyInput<T extends ShapeValue>({
     if (event.nativeEvent.isComposing) return true;
     if (event.key === "Enter") {
       event.preventDefault();
-      (
-        event as KeyboardEvent<HTMLInputElement> & { preventBaseUIHandler?: () => void }
-      ).preventBaseUIHandler?.();
+      (event as KeyboardEvent<HTMLInputElement> & { preventBaseUIHandler?: () => void })
+        .preventBaseUIHandler?.();
       return commitDraftInput();
     }
     if (event.key === "Backspace" && linkedVariable && connectedVariable) {
@@ -243,14 +246,12 @@ export function usePropertyInput<T extends ShapeValue>({
     (pointerId?: number) => {
       const origin = scrubOrigin.current;
       if (!origin || (pointerId !== undefined && pointerId !== origin.pointerId)) return;
-
       scrubOrigin.current = null;
       if (origin.target.hasPointerCapture(origin.pointerId)) {
         origin.target.releasePointerCapture(origin.pointerId);
       }
       setScrubPreviewValue(null);
       setIsScrubbing(false);
-
       if (origin.previewValue === origin.value) return;
       const nextValue = createValue<T>(inputType, origin.previewValue);
       if (value === undefined) setUncontrolledValue(nextValue);
@@ -261,7 +262,6 @@ export function usePropertyInput<T extends ShapeValue>({
 
   useEffect(() => {
     if (!isScrubbing) return;
-
     const handlePointerEnd = (event: globalThis.PointerEvent) => finishScrub(event.pointerId);
     const handlePointerOut = (event: globalThis.PointerEvent) => {
       if (event.relatedTarget === null) finishScrub(event.pointerId);
@@ -270,7 +270,6 @@ export function usePropertyInput<T extends ShapeValue>({
     const handleVisibilityChange = () => {
       if (document.visibilityState !== "visible") finishScrub();
     };
-
     window.addEventListener("pointerup", handlePointerEnd, true);
     window.addEventListener("pointercancel", handlePointerEnd, true);
     window.addEventListener("pointerout", handlePointerOut, true);
@@ -326,8 +325,11 @@ export function usePropertyInput<T extends ShapeValue>({
     if (sizing === undefined) setUncontrolledSizing(nextSizing);
     onSizingChange?.(nextSizing);
   };
-
   const handleMenuValueChange = (menuValue: string | null) => {
+    if (menuValue && menuItems?.some((item) => item.value === menuValue)) {
+      onMenuItemSelect?.(menuValue);
+      return;
+    }
     const preset = presets?.find((value) => String(value) === menuValue);
     if (preset === "auto" && allowAuto) {
       onAutoChange?.(true);
@@ -335,17 +337,15 @@ export function usePropertyInput<T extends ShapeValue>({
       return;
     }
     if (preset !== undefined) {
-      const value = inputType === "number" ? preset : String(preset);
-      commit(createValue<T>(inputType, value));
+      const next = inputType === "number" ? preset : String(preset);
+      commit(createValue<T>(inputType, next));
       updateDraftInput(null);
       return;
     }
     if (menuValue === "fixed" || menuValue === "fill" || menuValue === "hug") {
       commitSizing(menuValue);
     }
-    if (menuValue === "auto" && allowAuto) {
-      onAutoChange?.(true);
-    }
+    if (menuValue === "auto" && allowAuto) onAutoChange?.(true);
     if (menuValue === "add-min" || menuValue === "add-max") {
       const constraint = menuValue === "add-min" ? "min" : "max";
       onConstraintToggle?.(constraint, !constraints?.[constraint]);

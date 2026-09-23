@@ -35,11 +35,14 @@ export const SizeConstraintField = ({ axis, constraint }: SizeConstraintFieldPro
       allowLink={false}
       onChange={(next: PropertyInputValue | null) => {
         if (isVariableInput(next)) return;
+        const nextUnit = next?.kind === "number" && "unit" in next ? next.unit : undefined;
         const nextValue =
           next?.kind === "number"
-            ? unit === "%"
-              ? { value: next.value, unit }
-              : next.value
+            ? nextUnit === "%"
+              ? { value: next.value, unit: "%" }
+              : nextUnit === "px"
+                ? { value: next.value, unit: "px" }
+                : next.value
             : undefined;
         update({ sizing: { ...target.sizing, [key]: nextValue } });
       }}

@@ -5,9 +5,10 @@
  * this tree from relational rows; studio and player consume the same value.
  */
 import type { ImageAssetReference, ResolvedImageValue } from "./shapes";
-import { isPropertyConnection } from "./property-values";
-import type { PropertyConnection, PropertyValue } from "./property-values";
+import { isPropertyConnection, isPropertyFormula } from "./property-values";
+import type { PropertyConnection, PropertyFormula, PropertyValue } from "./property-values";
 import { assertValidElementProperties } from "./element-properties";
+
 export const ELEMENT_KINDS = ["rect", "ellipse", "text", "image", "frame", "slot"] as const;
 export type ElementKind = (typeof ELEMENT_KINDS)[number];
 
@@ -15,10 +16,9 @@ export const SIZE_MODES = ["hug", "fill", "fixed"] as const;
 export type SizeMode = (typeof SIZE_MODES)[number];
 export type SizeUnit = "px" | "%";
 export type SizeValue = number | { value: number; unit: SizeUnit };
-
 export interface AxisSize {
   mode: SizeMode;
-  value?: SizeValue | PropertyConnection;
+  value?: SizeValue | PropertyConnection<SizeValue> | PropertyFormula<SizeValue>;
 }
 
 export type Rotation = 0 | 90 | 180 | 270;
@@ -100,12 +100,11 @@ export interface ElementSizing {
 }
 export interface ElementBase {
   id: string;
-  type: ElementKind;
   name?: string | null;
   rank?: string;
-  hidden?: boolean;
   layout?: ElementLayout;
   sizing?: ElementSizing;
+  hidden?: PropertyValue<boolean>;
   opacity?: PropertyValue<number>;
   blendMode?: BlendMode;
   alignSelf?: LayoutAlignment;
@@ -237,7 +236,7 @@ export function hasCornerRadius(
  * The detached shape consumed by rendering after Property Connections are resolved.
  * Keeping this type distinct prevents renderer code from owning graph resolution.
  */
-export type ResolvedCanvasValue<T> = T extends PropertyConnection
+export type ResolvedCanvasValue<T> = T extends PropertyConnection | PropertyFormula
   ? never
   : T extends readonly (infer Item)[]
     ? readonly ResolvedCanvasValue<Item>[]
@@ -245,14 +244,14 @@ export type ResolvedCanvasValue<T> = T extends PropertyConnection
       ? { [Key in keyof T]: ResolvedCanvasValue<T[Key]> }
       : T;
 export type ResolvedElement = ResolvedCanvasValue<Element>;
-export type ResolvedCanvas = ResolvedCanvasValue<Canvas>;
-
 export class InvalidCanvasError extends Error {
   constructor(reason: string) {
     super(`Invalid Canvas: ${reason}`);
     this.name = "InvalidCanvasError";
   }
 }
+
+export type ResolvedCanvas = ResolvedCanvasValue<Canvas>;
 
 function assertSizeValue(value: SizeValue, context: string): void {
   if (typeof value === "number") {
@@ -278,12 +277,20 @@ function assertAxisSize(size: AxisSize | undefined, context: string): void {
   if (size.mode === "fixed" && size.value === undefined) {
     throw new InvalidCanvasError(`${context} fixed sizing requires a value.`);
   }
-  if (size.value !== undefined && !isPropertyConnection(size.value)) {
+  if (
+    size.value !== undefined &&
+    !isPropertyConnection(size.value) &&
+    !isPropertyFormula(size.value)
+  ) {
     assertSizeValue(size.value, `${context} value`);
   }
 }
 
-function assertLayout(element: Element): void {
+function assertLayout(
+  element: Element,
+  parentLayoutMode?: FrameLayoutMode,
+  parentSizing?: ElementSizing,
+): void {
   if (element.type === "slot") {
     if (!element.blockId) throw new InvalidCanvasError(`${element.id} requires a Block reference.`);
     if (element.layoutMode !== undefined && element.layoutMode !== "auto") {
@@ -298,7 +305,6 @@ function assertLayout(element: Element): void {
     ) {
       throw new InvalidCanvasError(`${element.id} Slots cannot define paint properties.`);
     }
-    return;
   }
   const sizing = element.sizing;
   for (const [axis, size] of [
@@ -306,6 +312,20 @@ function assertLayout(element: Element): void {
     ["height", sizing?.height],
   ] as const) {
     assertAxisSize(size, `${element.id} sizing.${axis}`);
+    const unit =
+      size?.value && typeof size.value === "object" && "unit" in size.value
+        ? size.value.unit
+        : undefined;
+    if (parentSizing?.[axis]?.mode === "hug" && unit === "%") {
+      throw new InvalidCanvasError(
+        `${element.id} cannot use percentage ${axis} sizing inside a hugging parent.`,
+      );
+    }
+    if (parentLayoutMode === "absolute" && size?.mode === "fill") {
+      throw new InvalidCanvasError(
+        `${element.id} cannot fill ${axis} inside an absolute Frame; use fixed sizing instead.`,
+      );
+    }
   }
   for (const [name, value] of [
     ["minWidth", sizing?.minWidth],
@@ -315,6 +335,7 @@ function assertLayout(element: Element): void {
   ] as const) {
     if (value !== undefined) assertSizeValue(value, `${element.id} sizing.${name}`);
   }
+  if (element.type === "slot") return;
   if (element.stroke) {
     if (!Number.isFinite(element.stroke.width) || element.stroke.width < 0) {
       throw new InvalidCanvasError(`${element.id} stroke width must be finite and non-negative.`);
@@ -334,7 +355,14 @@ function assertLayout(element: Element): void {
     }
   }
 }
-function visit(element: Element, ids: Set<string>, root: boolean): void {
+
+function visit(
+  element: Element,
+  ids: Set<string>,
+  root: boolean,
+  parentLayoutMode?: FrameLayoutMode,
+  parentSizing?: ElementSizing,
+): void {
   if (!element.id) throw new InvalidCanvasError("every Element requires an id.");
   if (ids.has(element.id))
     throw new InvalidCanvasError(`Element id "${element.id}" is duplicated.`);
@@ -350,7 +378,7 @@ function visit(element: Element, ids: Set<string>, root: boolean): void {
     if (error instanceof InvalidCanvasError) throw error;
     throw new InvalidCanvasError(error instanceof Error ? error.message : String(error));
   }
-  assertLayout(element);
+  assertLayout(element, parentLayoutMode, parentSizing);
   const children = element.children ?? [];
   if (element.type !== "frame" && children.length > 0) {
     throw new InvalidCanvasError(`${element.id} of type ${element.type} cannot contain children.`);
@@ -361,7 +389,13 @@ function visit(element: Element, ids: Set<string>, root: boolean): void {
       throw new InvalidCanvasError(`siblings under ${element.id} have duplicate ranks.`);
     }
     if (child.rank !== undefined) ranks.add(child.rank);
-    visit(child, ids, false);
+    visit(
+      child,
+      ids,
+      false,
+      element.type === "frame" ? element.layoutMode : undefined,
+      element.type === "frame" ? element.sizing : undefined,
+    );
   }
 }
 

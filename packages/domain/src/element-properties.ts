@@ -13,10 +13,12 @@ import {
   coercePropertyValue,
   defaultPropertyValue,
   isPropertyConnection,
+  isPropertyFormula,
   propertyCoercion,
   typeAtPath,
   valueAtPath,
 } from "./property-values";
+import { evaluateFormula } from "./formula-runtime";
 import { defaultValueForType } from "./source-defaults";
 import {
   conformsToType,
@@ -28,6 +30,7 @@ import {
   type Type,
 } from "./shapes";
 import type { VariableReference } from "./property-values";
+import { isStructuredValueReference, type RuntimeValue } from "./structured-values";
 
 export type ElementPropertyInputValue = ShapeValue | VariableReference;
 
@@ -120,7 +123,9 @@ export type ElementPropertyName =
   | "image"
   | "alt"
   | "objectFit"
-  | "objectPosition";
+  | "objectPosition"
+  | "hidden";
+
 
 export interface ElementPropertyDescriptor {
   readonly name: ElementPropertyName;
@@ -132,6 +137,7 @@ export interface ElementPropertyDescriptor {
   readonly max?: number;
   readonly step?: number;
   readonly allowAuto?: boolean;
+  readonly closedValueSet?: boolean;
   readonly toInput: (value: ElementPropertyInputValue | null) => ElementPropertyInputValue | null;
   readonly fromInput: (value: unknown) => unknown;
 }
@@ -228,10 +234,19 @@ export const ELEMENT_PROPERTY_DESCRIPTORS: readonly ElementPropertyDescriptor[] 
     fromInput: identityInput,
   },
   {
+    name: "hidden",
+    targetType: "boolean",
+    elementKinds: PAINTABLE_ELEMENTS,
+    defaultValue: false,
+    toInput: identityInput,
+    fromInput: identityInput,
+  },
+  {
     name: "fontWeight",
     targetType: "text",
     elementKinds: TEXT_ELEMENTS,
     defaultValue: undefined,
+    closedValueSet: true,
     toInput: identityInput,
     fromInput: identityInput,
   },
@@ -240,6 +255,7 @@ export const ELEMENT_PROPERTY_DESCRIPTORS: readonly ElementPropertyDescriptor[] 
     targetType: "text",
     elementKinds: TEXT_ELEMENTS,
     defaultValue: undefined,
+    closedValueSet: true,
     toInput: identityInput,
     fromInput: identityInput,
   },
@@ -248,6 +264,7 @@ export const ELEMENT_PROPERTY_DESCRIPTORS: readonly ElementPropertyDescriptor[] 
     targetType: "text",
     elementKinds: TEXT_ELEMENTS,
     defaultValue: undefined,
+    closedValueSet: true,
     toInput: identityInput,
     fromInput: identityInput,
   },
@@ -273,6 +290,7 @@ export const ELEMENT_PROPERTY_DESCRIPTORS: readonly ElementPropertyDescriptor[] 
     targetType: "text",
     elementKinds: TEXT_ELEMENTS,
     defaultValue: undefined,
+    closedValueSet: true,
     toInput: identityInput,
     fromInput: identityInput,
   },
@@ -281,6 +299,7 @@ export const ELEMENT_PROPERTY_DESCRIPTORS: readonly ElementPropertyDescriptor[] 
     targetType: "text",
     elementKinds: TEXT_ELEMENTS,
     defaultValue: undefined,
+    closedValueSet: true,
     toInput: identityInput,
     fromInput: identityInput,
   },
@@ -313,6 +332,7 @@ export const ELEMENT_PROPERTY_DESCRIPTORS: readonly ElementPropertyDescriptor[] 
     targetType: "text",
     elementKinds: IMAGE_ELEMENTS,
     defaultValue: undefined,
+    closedValueSet: true,
     toInput: identityInput,
     fromInput: identityInput,
   },
@@ -321,6 +341,7 @@ export const ELEMENT_PROPERTY_DESCRIPTORS: readonly ElementPropertyDescriptor[] 
     targetType: "text",
     elementKinds: IMAGE_ELEMENTS,
     defaultValue: undefined,
+    closedValueSet: true,
     toInput: identityInput,
     fromInput: identityInput,
   },
@@ -348,6 +369,23 @@ export function elementPropertyType(name: string, element: Element | ElementKind
   return elementPropertyDescriptor(name, element)?.targetType ?? null;
 }
 
+export function isElementPropertyFormulaable(
+  descriptor: ElementPropertyDescriptor,
+): boolean {
+  return (
+    !descriptor.closedValueSet &&
+    typeof descriptor.targetType === "string" &&
+    ["number", "text", "color", "boolean"].includes(descriptor.targetType)
+  );
+}
+
+export function isElementPropertyConnectable(
+  descriptor: ElementPropertyDescriptor,
+): boolean {
+  return isElementPropertyFormulaable(descriptor) || descriptor.targetType === "image";
+}
+
+
 function rawValue(value: unknown): unknown {
   if (
     value !== null &&
@@ -361,6 +399,17 @@ function rawValue(value: unknown): unknown {
     return Reflect.get(value, "value");
   }
   return value;
+}
+function formulaRuntimeValue(value: unknown): RuntimeValue | undefined {
+  if (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return value;
+  }
+  return isStructuredValueReference(value) || isImageAssetReference(value) ? value : undefined;
 }
 
 function isGradientFill(value: unknown): value is GradientFill {
@@ -407,45 +456,107 @@ function resolveImageAsset(
   );
 }
 
+export interface ElementPropertyRuntimeContext {
+  readonly item: unknown;
+  readonly type: Type;
+  readonly index: number;
+}
+
 export interface ElementPropertyResolutionContext {
   readonly graph?: ShowGraph;
   readonly variables: readonly SceneVariable[];
   readonly values?: Readonly<Record<string, unknown>>;
   readonly shapes?: readonly Shape[];
   readonly imageAssets?: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
+  readonly runtimeContext?: ElementPropertyRuntimeContext;
+}
+
+function descriptorFallback(
+  descriptor: ElementPropertyDescriptor,
+  fallback: unknown,
+): unknown {
+  const defaultValue =
+    fallback === undefined
+      ? (defaultPropertyValue(descriptor.targetType) ?? descriptor.defaultValue)
+      : fallback;
+  return rawValue(defaultValue);
 }
 
 function resolveConnection(
-  connection: { readonly variableId: string; readonly fieldPath?: readonly string[] },
-  targetType: Type,
+  connection: {
+    readonly variableId: string;
+    readonly fieldPath?: readonly string[];
+    readonly fallback?: unknown;
+  },
+  descriptor: ElementPropertyDescriptor,
   context: ElementPropertyResolutionContext,
 ): unknown {
+  const fallback = descriptorFallback(descriptor, connection.fallback);
   const shapes = context.shapes ?? [];
   const variable = context.variables.find((candidate) => candidate.id === connection.variableId);
   const fieldPath = connection.fieldPath ?? [];
   const variableType = variable?.type;
-  if (!variable || !variableType) return rawValue(defaultPropertyValue(targetType));
+  if (!variable || !variableType) return fallback;
 
   const sourceType = typeAtPath(variableType, fieldPath, shapes);
-  if (!sourceType) return rawValue(defaultPropertyValue(targetType));
-
-  const coercion = propertyCoercion(sourceType, targetType);
-  if (!coercion) return rawValue(defaultPropertyValue(targetType));
+  if (!sourceType) return fallback;
+  const coercion = propertyCoercion(sourceType, descriptor.targetType);
+  if (!coercion) return fallback;
 
   const qrValue =
     fieldPath.length === 0 ? deviceQrValueForVariable(variable.id, context.graph) : undefined;
   const supplied = qrValue ?? valueAtPath(rawValue(context.values?.[variable.id]), fieldPath);
   const variableDefault =
     variable.defaultValue === undefined ? undefined : valueAtPath(variable.defaultValue, fieldPath);
-  const fallback = variableDefault ?? defaultAtPath(variableType, fieldPath, shapes);
-  const candidate = rawValue(supplied ?? fallback);
-  const sourceValue = conformsToType(candidate, sourceType, shapes)
-    ? candidate
-    : rawValue(defaultAtPath(variableType, fieldPath, shapes));
-  if (!conformsToType(sourceValue, sourceType, shapes)) {
-    return rawValue(defaultPropertyValue(targetType));
-  }
-  return coercePropertyValue(sourceValue, coercion);
+  const candidateSource =
+    supplied ??
+    (connection.fallback === undefined
+      ? variableDefault ?? defaultAtPath(variableType, fieldPath, shapes)
+      : undefined);
+  const candidate = rawValue(candidateSource);
+  if (!conformsToType(candidate, sourceType, shapes)) return fallback;
+  return coercePropertyValue(candidate, coercion);
+}
+
+function evaluatePropertyFormula(
+  formula: { readonly formula: string; readonly fallback: unknown },
+  descriptor: ElementPropertyDescriptor,
+  elementId: string,
+  context: ElementPropertyResolutionContext,
+): unknown {
+  const shapes = context.shapes ?? [];
+  const result = evaluateFormula({
+    formula: formula.formula,
+    ownerId: `${elementId}:${descriptor.name}`,
+    outputType: descriptor.targetType,
+    inputs: context.variables.flatMap((variable) =>
+      variable.type
+        ? [
+            {
+              name: variable.name,
+              type: variable.type,
+              value: formulaRuntimeValue(
+                context.values?.[variable.id] ?? variable.defaultValue,
+              ),
+            },
+          ]
+        : [],
+    ),
+    structuredValues: {},
+    shapes,
+    diagnosticSubject: "Element Property",
+    ...(context.runtimeContext
+      ? {
+          item: {
+            name: "item",
+            type: context.runtimeContext.type,
+            value: formulaRuntimeValue(context.runtimeContext.item),
+          },
+          index: context.runtimeContext.index,
+        }
+      : {}),
+  });
+  return result.value === undefined ? rawValue(formula.fallback) : result.value;
 }
 
 function resolveElementProperty(
@@ -456,30 +567,54 @@ function resolveElementProperty(
   const record = element as unknown as Record<string, unknown>;
   const value = record[descriptor.name];
   if (isPropertyConnection(value)) {
-    record[descriptor.name] = resolveConnection(value, descriptor.targetType, context);
+    record[descriptor.name] = resolveConnection(value, descriptor, context);
+  } else if (isPropertyFormula(value)) {
+    record[descriptor.name] = evaluatePropertyFormula(value, descriptor, element.id, context);
   }
   if (descriptor.name === "image") {
     record.image = resolveImageAsset(record.image, context.imageAssets);
   }
 }
 
+function resolvedSizeValue(
+  value: unknown,
+  descriptor: ElementPropertyDescriptor,
+  elementId: string,
+  context: ElementPropertyResolutionContext,
+): unknown {
+  if (isPropertyConnection(value)) return resolveConnection(value, descriptor, context);
+  if (isPropertyFormula(value)) return evaluatePropertyFormula(value, descriptor, elementId, context);
+  return value;
+}
+
 function resolveSizing(element: ResolvedElement, context: ElementPropertyResolutionContext): void {
   if (!element.sizing) return;
   const sizing = { ...element.sizing };
+  const sizeDescriptor: ElementPropertyDescriptor = {
+    name: "fontSize",
+    targetType: "number",
+    elementKinds: [],
+    defaultValue: 0,
+    toInput: identityInput,
+    fromInput: identityInput,
+  };
   for (const axis of ["width", "height"] as const) {
     const size = sizing[axis];
-    if (size?.value && isPropertyConnection(size.value)) {
-      sizing[axis] = {
-        ...size,
-        value: resolveConnection(size.value, "number", context) as number,
-      };
-    }
-  }
-  for (const axis of ["minWidth", "maxWidth", "minHeight", "maxHeight"] as const) {
-    const value = sizing[axis];
-    if (isPropertyConnection(value)) {
-      sizing[axis] = resolveConnection(value, "number", context) as never;
-    }
+    if (!size?.value) continue;
+    const resolved = resolvedSizeValue(size.value, sizeDescriptor, element.id, context);
+    const unit =
+      typeof size.value === "object" &&
+      size.value !== null &&
+      "unit" in size.value &&
+      (size.value.unit === "px" || size.value.unit === "%")
+        ? size.value.unit
+        : undefined;
+    const nextValue =
+      unit && typeof resolved === "number" ? { value: resolved, unit } : resolved;
+    sizing[axis] = {
+      ...size,
+      value: nextValue as never,
+    };
   }
   (element as unknown as Record<string, unknown>).sizing = sizing;
 }
@@ -506,15 +641,23 @@ export class InvalidElementPropertyError extends Error {
     this.name = "InvalidElementPropertyError";
   }
 }
-
 export function assertElementPropertyConnections(element: Element): void {
   const record = element as unknown as Record<string, unknown>;
   for (const [name, value] of Object.entries(record)) {
-    if (!isPropertyConnection(value)) continue;
-    if (!elementPropertyDescriptor(name, element)) {
-      throw new InvalidElementPropertyError(
-        `${element.id} has an invalid Property Connection for "${name}".`,
-      );
+    const descriptor = elementPropertyDescriptor(name, element);
+    if (isPropertyConnection(value)) {
+      if (!descriptor || !isElementPropertyConnectable(descriptor)) {
+        throw new InvalidElementPropertyError(
+          `${element.id} has an invalid Property Connection for "${name}".`,
+        );
+      }
+    }
+    if (isPropertyFormula(value)) {
+      if (!descriptor || !isElementPropertyFormulaable(descriptor)) {
+        throw new InvalidElementPropertyError(
+          `${element.id} has an invalid Property Formula for "${name}".`,
+        );
+      }
     }
   }
 }
@@ -571,4 +714,71 @@ export function resolveCanvasProperties(
     ...canvas,
     root: resolveElement(canvas.root, context) as ResolvedCanvas["root"],
   };
+}
+
+export interface CanvasFormulaDiagnostic {
+  readonly elementId: string;
+  readonly property: ElementPropertyName;
+  readonly message: string;
+  readonly severity: "blocking" | "runtime";
+  readonly category: string;
+}
+
+/** Collects all authored Element Formula diagnostics without mutating the Canvas. */
+export function diagnoseCanvasFormulas(
+  canvas: Canvas,
+  context: ElementPropertyResolutionContext,
+): readonly CanvasFormulaDiagnostic[] {
+  const diagnostics: CanvasFormulaDiagnostic[] = [];
+  const visit = (element: Element): void => {
+    const record = element as unknown as Record<string, unknown>;
+    for (const descriptor of ELEMENT_PROPERTY_DESCRIPTORS) {
+      if (!descriptor.elementKinds.includes(element.type)) continue;
+      const value = record[descriptor.name];
+      if (!isPropertyFormula(value)) continue;
+      const result = evaluateFormula({
+        formula: value.formula,
+        ownerId: `${element.id}:${descriptor.name}`,
+        outputType: descriptor.targetType,
+        inputs: context.variables.flatMap((variable) =>
+          variable.type
+            ? [
+                {
+                  name: variable.name,
+                  type: variable.type,
+                  value: formulaRuntimeValue(
+                    context.values?.[variable.id] ?? variable.defaultValue,
+                  ),
+                },
+              ]
+            : [],
+        ),
+        structuredValues: {},
+        shapes: context.shapes ?? [],
+        diagnosticSubject: "Element Property",
+        ...(context.runtimeContext
+          ? {
+              item: {
+                name: "item",
+                type: context.runtimeContext.type,
+                value: formulaRuntimeValue(context.runtimeContext.item),
+              },
+              index: context.runtimeContext.index,
+            }
+          : {}),
+      });
+      for (const diagnostic of result.diagnostics) {
+        diagnostics.push({
+          elementId: element.id,
+          property: descriptor.name,
+          message: diagnostic.message,
+          severity: diagnostic.severity,
+          category: diagnostic.category,
+        });
+      }
+    }
+    for (const child of element.children ?? []) visit(child);
+  };
+  visit(canvas.root);
+  return diagnostics;
 }

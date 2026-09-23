@@ -38,7 +38,12 @@ import type { WiringConversion } from "./wiring-conversion";
 import { typeAtPath } from "./property-values";
 import { assertValidBlocks } from "./blocks";
 import type { Block } from "./blocks";
-import { absent, analyse, isFormulaIdentifier } from "./formula";
+import {
+  absent,
+  analyse,
+  isFormulaIdentifier,
+  normalizeFormulaIdentifier,
+} from "./formula";
 import { formulaShapeTable, formulaType } from "./formula-runtime";
 export const NODE_KINDS = ["scene", "flow", "source", "transformer", "device"] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
@@ -378,6 +383,68 @@ export interface ShowGraph {
   slotEventBindings?: readonly SlotEventBinding[];
   edges: GraphEdge[];
 }
+function repairedFormulaIdentifier(
+  value: string,
+  used: ReadonlySet<string>,
+): string {
+  const normalized = normalizeFormulaIdentifier(value).trim();
+  const candidate = normalized
+    .replace(/[^A-Za-z0-9_$\u00c0-\u024f\u0400-\u04ff]/g, "_")
+    .replace(/^[^A-Za-z_$\u00c0-\u024f\u0400-\u04ff]/, "_");
+  const base = isFormulaIdentifier(candidate) ? candidate : "variable";
+  let next = base;
+  let suffix = 2;
+  while (used.has(next) || !isFormulaIdentifier(next)) next = `${base}_${suffix++}`;
+  return next;
+}
+
+function normaliseVariableNames<T extends { name: string }>(
+  variables: readonly T[],
+): T[] {
+  const used = new Set<string>();
+  return variables.map((variable) => {
+    const name = repairedFormulaIdentifier(variable.name, used);
+    used.add(name);
+    return name === variable.name ? variable : { ...variable, name };
+  });
+}
+
+/** Repairs legacy Scene and Block Variable names without changing their ids. */
+export function normaliseShowGraphVariableNames(graph: ShowGraph): ShowGraph {
+  return {
+    ...graph,
+    nodes: graph.nodes.map((node) =>
+      node.kind === "scene"
+        ? { ...node, variables: normaliseVariableNames(node.variables) }
+        : node,
+    ),
+    blocks: graph.blocks?.map((block) => ({
+      ...block,
+      variables: normaliseVariableNames(block.variables),
+    })),
+  };
+}
+export interface ShowVariableReference {
+  readonly kind: "wiring" | "update" | "slot";
+  readonly ownerId: string;
+  readonly path: readonly string[];
+}
+
+/** Finds persisted graph references that would block deleting a Variable. */
+export function findShowVariableReferences(
+  graph: ShowGraph,
+  variableId: string,
+): readonly ShowVariableReference[] {
+  return graph.edges.flatMap((edge): ShowVariableReference[] => {
+    if (edge.kind === "wiring" && edge.targetPath[0] === variableId) {
+      return [{ kind: "wiring", ownerId: edge.id, path: edge.targetPath }];
+    }
+    if (edge.kind === "update" && edge.targetPath[0] === variableId) {
+      return [{ kind: "update", ownerId: edge.id, path: edge.targetPath }];
+    }
+    return [];
+  });
+}
 
 function transformerInputTypeFromGraph(
   graph: ShowGraph,
@@ -478,7 +545,8 @@ export type GraphViolation =
   | "flowDeviceCardinality"
   | "invalidTransformer"
   | "invalidTransformerPort"
-  | "invalidFormula";
+  | "invalidFormula"
+  | "invalidVariableName";
 
 export class InvalidShowGraphError extends Error {
   readonly reason: GraphViolation;
@@ -1184,7 +1252,18 @@ export function assertValidShowGraph(
         node.variables.map((variable) => variable.name),
         `Variable name on Scene "${node.id}"`,
       );
-      for (const variable of node.variables) assertImageVariableMetadata(variable, node.id);
+      for (const variable of node.variables) {
+        if (
+          normalizeFormulaIdentifier(variable.name) !== variable.name ||
+          !isFormulaIdentifier(variable.name)
+        ) {
+          throw new InvalidShowGraphError(
+            "invalidVariableName",
+            `Variable "${variable.name}" on Scene "${node.id}" must be a valid Formula identifier.`,
+          );
+        }
+        assertImageVariableMetadata(variable, node.id);
+      }
     }
     if (node.kind === "transformer") {
       assertValidTransformer(graph, node, options.publication !== false);
