@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { assertValidCanvas, hasCornerRadius, InvalidCanvasError, type Canvas } from "./canvas";
+import {
+  assertValidCanvas,
+  hasCornerRadius,
+  InvalidCanvasError,
+  materializePercentageChildrenForHug,
+  type Canvas,
+} from "./canvas";
 
 const ROOT: Canvas = {
   kind: "scene",
@@ -127,5 +133,31 @@ describe("Canvas model", () => {
         },
       }),
     ).toThrow(/stroke width must be finite and non-negative/);
+  });
+
+  it("materializes percentage children when a parent changes to hug", () => {
+    const frame = {
+      id: "parent",
+      type: "frame" as const,
+      sizing: { width: { mode: "hug" as const } },
+      children: [
+        {
+          id: "child",
+          type: "rect" as const,
+          sizing: {
+            width: { mode: "fixed" as const, value: { value: 50, unit: "%" as const } },
+            height: { mode: "fixed" as const, value: 20 },
+          },
+        },
+      ],
+    };
+    expect(
+      materializePercentageChildrenForHug(frame, {
+        child: { width: 320, height: 20 },
+      }).children?.[0]?.sizing,
+    ).toEqual({
+      width: { mode: "fixed", value: 320 },
+      height: { mode: "fixed", value: 20 },
+    });
   });
 });

@@ -35,7 +35,8 @@ import type { Shape, Type } from "./shapes";
 import { assertValidShapes, InvalidShapeError } from "./shapes";
 import { isWiringConversion, wiringTypesCompatible } from "./wiring-conversion";
 import type { WiringConversion } from "./wiring-conversion";
-import { typeAtPath } from "./property-values";
+import type { Canvas, Element } from "./canvas";
+import { isPropertyConnection, isPropertyFormula, typeAtPath } from "./property-values";
 import { assertValidBlocks } from "./blocks";
 import type { Block } from "./blocks";
 import {
@@ -425,14 +426,61 @@ export function normaliseShowGraphVariableNames(graph: ShowGraph): ShowGraph {
   };
 }
 export interface ShowVariableReference {
-  readonly kind: "wiring" | "update" | "slot" | "formula";
+  readonly kind: "wiring" | "update" | "slot" | "connection" | "formula";
   readonly ownerId: string;
   readonly path: readonly string[];
 }
-/** Finds persisted graph references that would block deleting a Variable. */
+
+const CANVAS_REFERENCE_PROPERTIES = [
+  "alt",
+  "content",
+  "cornerRadius",
+  "fill",
+  "fontFamily",
+  "fontSize",
+  "hidden",
+  "image",
+  "letterSpacing",
+  "objectFit",
+  "objectPosition",
+  "opacity",
+  "textAlign",
+  "textDecoration",
+  "textVerticalAlign",
+] as const;
+
+function collectCanvasVariableReferences(
+  element: Element,
+  variableId: string,
+  names: ReadonlySet<string>,
+  canvasId: string,
+  references: ShowVariableReference[],
+): void {
+  const record = element as unknown as Record<string, unknown>;
+  for (const property of CANVAS_REFERENCE_PROPERTIES) {
+    const value = record[property];
+    if (isPropertyConnection(value) && value.variableId === variableId) {
+      references.push({ kind: "connection", ownerId: canvasId, path: [element.id, property] });
+    }
+    if (
+      isPropertyFormula(value) &&
+      [...names].some((name) =>
+        new RegExp(`(^|[^A-Za-z0-9_$])${name}(?=[^A-Za-z0-9_$]|$)`).test(value.formula),
+      )
+    ) {
+      references.push({ kind: "formula", ownerId: canvasId, path: [element.id, property] });
+    }
+  }
+  for (const child of element.children ?? []) {
+    collectCanvasVariableReferences(child, variableId, names, canvasId, references);
+  }
+}
+
+/** Finds persisted graph and Canvas references that would affect a Variable edit. */
 export function findShowVariableReferences(
   graph: ShowGraph,
   variableId: string,
+  canvases: readonly (Canvas & { readonly id?: string })[] = [],
 ): readonly ShowVariableReference[] {
   const names = new Set(
     graph.nodes.flatMap((node) =>
@@ -441,6 +489,11 @@ export function findShowVariableReferences(
         : [],
     ),
   );
+  for (const block of graph.blocks ?? []) {
+    for (const variable of block.variables) {
+      if (variable.id === variableId) names.add(variable.name);
+    }
+  }
   const references: ShowVariableReference[] = graph.edges.flatMap(
     (edge): ShowVariableReference[] => {
       if (edge.kind === "wiring" && edge.targetPath[0] === variableId) {
@@ -463,6 +516,15 @@ export function findShowVariableReferences(
     ) {
       references.push({ kind: "formula", ownerId: node.id, path: [] });
     }
+  }
+  for (const canvas of canvases) {
+    collectCanvasVariableReferences(
+      canvas.root,
+      variableId,
+      names,
+      canvas.id ?? canvas.root.id,
+      references,
+    );
   }
   return references;
 }

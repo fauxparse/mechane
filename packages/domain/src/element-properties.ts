@@ -30,7 +30,7 @@ import {
   type Type,
 } from "./shapes";
 import type { VariableReference } from "./property-values";
-import { isStructuredValueReference, type RuntimeValue } from "./structured-values";
+import { isStructuredValueReference, type RuntimeValue, type StructuredValues } from "./structured-values";
 
 export type ElementPropertyInputValue = ShapeValue | VariableReference;
 
@@ -466,6 +466,7 @@ export interface ElementPropertyResolutionContext {
   readonly graph?: ShowGraph;
   readonly variables: readonly SceneVariable[];
   readonly values?: Readonly<Record<string, unknown>>;
+  readonly structuredValues?: StructuredValues;
   readonly shapes?: readonly Shape[];
   readonly imageAssets?: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
   readonly runtimeContext?: ElementPropertyRuntimeContext;
@@ -542,7 +543,7 @@ function evaluatePropertyFormula(
           ]
         : [],
     ),
-    structuredValues: {},
+    structuredValues: context.structuredValues ?? {},
     shapes,
     diagnosticSubject: "Element Property",
     ...(context.runtimeContext
@@ -753,7 +754,7 @@ export function diagnoseCanvasFormulas(
               ]
             : [],
         ),
-        structuredValues: {},
+        structuredValues: context.structuredValues ?? {},
         shapes: context.shapes ?? [],
         diagnosticSubject: "Element Property",
         ...(context.runtimeContext

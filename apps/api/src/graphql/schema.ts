@@ -1543,8 +1543,10 @@ export const schema = createSchema<GraphQLContext>({
       ) => {
         const userId = requireUserId(context);
         await findOwnShowOrThrow(showId, userId);
-        const graph = await readShowGraph(showId, validGraphState(state ?? "draft"));
-        return findShowVariableReferences(graph, variableId);
+        const graphState = validGraphState(state ?? "draft");
+        const graph = await readShowGraph(showId, graphState);
+        const canvases = (await readCanvasWorkspace(showId, graphState)).canvases;
+        return findShowVariableReferences(graph, variableId, canvases);
       },
       showCanvases: async (
         _parent,

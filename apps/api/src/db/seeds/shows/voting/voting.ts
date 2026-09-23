@@ -11,6 +11,7 @@ import {
   type Block,
   type FrameElement,
   type PropertyConnection,
+  type PropertyFormula,
   type ShowGraph,
   type SlotElement,
   type TextAlign,
@@ -25,14 +26,17 @@ export const CANDIDATE_IMAGE_FIELD_ID = "field_candidate_image";
 export const CANDIDATE_SOURCE_ID = "source_candidates";
 export const SELECTED_SOURCE_ID = "source_selected";
 export const TALLY_VARIABLE_ID = "variable_tally_candidates";
+export const TOTAL_VOTES_VARIABLE_ID = "variable_tally_total";
 export const TALLY_HEADLINE_VARIABLE_ID = "variable_tally_headline";
 export const TALLY_HEADLINE_TRANSFORMER_ID = "transformer_tally_headline";
+export const TOTAL_VOTES_TRANSFORMER_ID = "transformer_tally_total";
 export const FRONT_RUNNERS_TRANSFORMER_ID = "transformer_front_runners";
 export const CANDIDATE_ORDER_TRANSFORMER_ID = "transformer_candidate_order";
 export const AUDIENCE_VARIABLE_ID = "variable_audience_candidates";
 export const CONFIRMATION_VARIABLE_ID = "variable_confirmation_candidate";
 export const CANDIDATE_BUTTON_VARIABLE_ID = "candidate_button_candidate";
 export const TALLY_ROW_VARIABLE_ID = "tally_row_candidate";
+export const TALLY_ROW_TOTAL_VARIABLE_ID = "tally_row_total";
 export const CANDIDATE_BUTTON_CUE_ID = "cue_candidate_button_selected";
 export const CHOOSE_CANDIDATE_CUE_ID = "cue_choose_candidate";
 export const CONFIRM_YES_CUE_ID = "cue_confirmation_yes";
@@ -202,6 +206,41 @@ export function workflowBlocks(): Block[] {
     ],
     states: [],
   };
+  const tallyBar: FrameElement = {
+    id: "tally-row-track",
+    type: "frame",
+    rank: "c",
+    name: "Vote share track",
+    layoutMode: "auto",
+    sizing: { width: { mode: "fill" }, height: { mode: "fixed", value: 16 } },
+    fill: "#334155",
+    children: [
+      {
+        id: "tally-row-bar",
+        type: "rect",
+        rank: "a",
+        name: "Vote share",
+        fill: "#38BDF8",
+        sizing: {
+          width: {
+            mode: "fixed",
+            value: {
+              kind: "formula",
+              formula: "item.votes / Total * 100",
+              fallback: { value: 0, unit: "%" },
+              unit: "%",
+            } satisfies PropertyFormula<{ value: number; unit: "%" }>,
+          },
+          height: { mode: "fill" },
+        },
+        hidden: {
+          kind: "formula",
+          formula: "item.votes == 0",
+          fallback: false,
+        },
+      },
+    ],
+  };
   const tallyRow: Block = {
     id: "block_tally_row",
     name: "TallyRow",
@@ -232,9 +271,10 @@ export function workflowBlocks(): Block[] {
             "Candidate name",
             32,
           ),
+          tallyBar,
           text(
             "tally-row-votes",
-            "b",
+            "d",
             {
               kind: "variable",
               variableId: TALLY_ROW_VARIABLE_ID,
@@ -249,6 +289,12 @@ export function workflowBlocks(): Block[] {
     },
     variables: [
       { id: TALLY_ROW_VARIABLE_ID, name: "Candidate", type: candidateType, required: true },
+      {
+        id: TALLY_ROW_TOTAL_VARIABLE_ID,
+        name: "Total",
+        type: "number",
+        required: true,
+      },
     ],
     states: [],
   };
@@ -325,6 +371,19 @@ export function votingGraph(): ShowGraph {
       outputType: "text" as const,
     },
   };
+  const totalVotes = {
+    id: TOTAL_VOTES_TRANSFORMER_ID,
+    kind: "transformer" as const,
+    name: "Total votes",
+    parentId: null,
+    position: { x: 260, y: -20 },
+    ports: [{ id: "port_total_candidates", name: "candidates", rank: "a" }],
+    transform: {
+      kind: "calculate" as const,
+      formula: "SUM(candidates.votes)",
+      outputType: "number" as const,
+    },
+  };
   const frontRunners = {
     id: FRONT_RUNNERS_TRANSFORMER_ID,
     kind: "transformer" as const,
@@ -343,6 +402,7 @@ export function votingGraph(): ShowGraph {
     variables: [
       { id: TALLY_HEADLINE_VARIABLE_ID, name: "Headline", type: "text" as const },
       { id: TALLY_VARIABLE_ID, name: "Candidates", type: candidateArrayType },
+      { id: TOTAL_VOTES_VARIABLE_ID, name: "Total", type: "number" as const },
     ],
   };
   const audienceFlow = {
@@ -570,6 +630,7 @@ export function votingGraph(): ShowGraph {
       sourceNode,
       selectedNode,
       tallyHeadline,
+      totalVotes,
       frontRunners,
       tallyScene,
       audienceFlow,
@@ -597,6 +658,22 @@ export function votingGraph(): ShowGraph {
         targetId: TALLY_SCENE_ID,
         sourcePath: [],
         targetPath: [TALLY_HEADLINE_VARIABLE_ID],
+      },
+      {
+        id: "edge_candidates_total_votes",
+        kind: "wiring",
+        sourceId: CANDIDATE_SOURCE_ID,
+        targetId: TOTAL_VOTES_TRANSFORMER_ID,
+        sourcePath: [],
+        targetPath: ["port_total_candidates"],
+      },
+      {
+        id: "edge_total_votes_scene",
+        kind: "wiring",
+        sourceId: TOTAL_VOTES_TRANSFORMER_ID,
+        targetId: TALLY_SCENE_ID,
+        sourcePath: [],
+        targetPath: [TOTAL_VOTES_VARIABLE_ID],
       },
       {
         id: "edge_candidates_front_runners",
@@ -670,6 +747,7 @@ export function votingCanvases(): SeedCanvases {
   );
   const tallySlot = repeatedSlot("tally-row-slot", "b", "block_tally_row", TALLY_VARIABLE_ID, [
     { variableId: TALLY_ROW_VARIABLE_ID, source: { kind: "runtimeItem" } },
+    { variableId: TALLY_ROW_TOTAL_VARIABLE_ID, source: { kind: "variable", variableId: TOTAL_VOTES_VARIABLE_ID } },
   ]);
   return {
     [CANDIDATE_LIST_SCENE_ID]: {

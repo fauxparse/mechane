@@ -76,6 +76,7 @@ export interface PrepareCanvasInput {
   readonly runtimeItem?: unknown;
   readonly runtimeType?: Type;
   readonly runtimeIndex?: number;
+  readonly structuredValues?: StructuredValues;
   readonly mode: CanvasPresentationMode;
 }
 
@@ -108,6 +109,7 @@ function prepareElement(
       shapes: input.shapes,
       allBlocks: input.blocks,
       imageAssets: input.imageAssets,
+      structuredValues: input.structuredValues,
     });
     if (resolution.diagnostic) {
       return {
@@ -156,6 +158,7 @@ export function prepareCanvasForRender(input: PrepareCanvasInput): CanvasPresent
     values: Object.fromEntries(input.variables.map((variable) => [variable.id, variable.value])),
     shapes: input.shapes,
     imageAssets: input.imageAssets,
+    structuredValues: input.structuredValues ?? {},
   });
   return {
     canvas,
@@ -168,6 +171,7 @@ export function prepareCanvasForRender(input: PrepareCanvasInput): CanvasPresent
 export function prepareCanvasPresentation(input: CanvasPresentationInput): CanvasPresentation {
   const { owner } = input;
   let values: Record<string, unknown>;
+  let structuredValues: StructuredValues = {};
   if (owner.kind === "scene") {
     const resolution = sceneVariableResolution(input.graph, owner.scene.id, owner.sourceValues, {
       structuredValues: owner.structuredValues,
@@ -181,12 +185,13 @@ export function prepareCanvasPresentation(input: CanvasPresentationInput): Canva
           ),
         ),
     });
+    structuredValues = {
+      ...owner.structuredValues,
+      ...resolution.computedStructuredValues,
+    };
     values = resolveSourceValues({
       sourceValues: resolution.values as never,
-      structuredValues: {
-        ...owner.structuredValues,
-        ...resolution.computedStructuredValues,
-      },
+      structuredValues,
     });
   } else {
     values = Object.fromEntries(
@@ -217,6 +222,7 @@ export function prepareCanvasPresentation(input: CanvasPresentationInput): Canva
     graph: input.graph,
     variables: sceneVariables,
     values,
+    structuredValues,
     shapes: input.graph.shapes,
     imageAssets: input.imageAssets,
   });
@@ -224,6 +230,7 @@ export function prepareCanvasPresentation(input: CanvasPresentationInput): Canva
     canvas,
     root: prepareElement(canvas.root, {
       variables,
+      structuredValues,
       shapes: input.graph.shapes ?? [],
       blocks: input.blocks,
       imageAssets: input.imageAssets,

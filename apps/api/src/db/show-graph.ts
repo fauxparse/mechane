@@ -9,10 +9,14 @@ import { applyGraphEdits } from "@mechane/commands";
 import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
 import {
   assertBlockReferencesExist,
+  defaultValueForType,
   diagnoseCanvasFormulas,
   generateId,
   normaliseShowGraphVariableNames,
   type ElementPropertyResolutionContext,
+  type RuntimeValue,
+  type StructuredValueId,
+  type StructuredValues,
 } from "@mechane/domain";
 import type { GraphState, ShowGraph } from "@mechane/domain";
 import { eq } from "drizzle-orm";
@@ -95,14 +99,57 @@ function blockingCanvasFormulaDiagnostics(
             );
             return scene?.kind === "scene" ? scene.variables : [];
           })();
+    const contextValues = Object.fromEntries(
+      variables.map((variable) => [
+        variable.id,
+        "defaultValue" in variable
+          ? variable.defaultValue
+          : defaultValueForType(variable.type ?? "text", graph.shapes ?? []),
+      ]),
+    );
+    const structuredValues: StructuredValues = {};
+    const itemVariable =
+      canvas.kind === "block"
+        ? variables.find(
+            (variable) =>
+              variable.type !== null &&
+              variable.type !== undefined &&
+              typeof variable.type === "object" &&
+              variable.type.kind === "shape",
+            )
+        : undefined;
+    const itemRef = "__publication_formula_item" as StructuredValueId;
+    const itemType = itemVariable?.type;
+    const runtimeContext =
+      itemType && typeof itemType === "object" && itemType.kind === "shape"
+        ? { item: { ref: itemRef }, type: itemType, index: 0 }
+        : undefined;
+    if (itemType && typeof itemType === "object" && itemType.kind === "shape") {
+      const value = defaultValueForType(itemType, graph.shapes ?? []);
+      structuredValues[itemRef] = {
+        id: itemRef,
+        kind: "shape",
+        type: itemType,
+        fields: (value ?? {}) as Record<string, RuntimeValue>,
+      };
+    }
     const context: ElementPropertyResolutionContext = {
-      variables: variables.map((variable) => ({
-        id: variable.id,
-        name: variable.name,
-        type: variable.type,
-        ...("defaultValue" in variable ? { defaultValue: variable.defaultValue } : {}),
-      })),
+      variables: variables.flatMap((variable) =>
+        variable.type
+          ? [
+              {
+                id: variable.id,
+                name: variable.name,
+                type: variable.type,
+                ...("defaultValue" in variable ? { defaultValue: variable.defaultValue } : {}),
+              },
+            ]
+          : [],
+      ),
+      values: contextValues,
+      structuredValues,
       shapes: graph.shapes ?? [],
+      ...(runtimeContext ? { runtimeContext } : {}),
     };
     for (const diagnostic of diagnoseCanvasFormulas(canvas, context)) {
       if (diagnostic.severity !== "blocking") continue;

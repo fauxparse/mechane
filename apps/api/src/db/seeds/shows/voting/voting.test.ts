@@ -36,11 +36,14 @@ import {
   seedBlockCanvasPosition,
   seedCanvasPosition,
   seedShow,
+  TALLY_ROW_TOTAL_VARIABLE_ID,
   TALLY_ROW_VARIABLE_ID,
   TALLY_SCENE_ID,
   TALLY_HEADLINE_TRANSFORMER_ID,
   TALLY_HEADLINE_VARIABLE_ID,
   TALLY_VARIABLE_ID,
+  TOTAL_VOTES_TRANSFORMER_ID,
+  TOTAL_VOTES_VARIABLE_ID,
   votingCanvases,
   votingGraph,
   workflowBlocks,
@@ -95,6 +98,7 @@ describe("Voting seed", () => {
       variables: [
         { id: TALLY_HEADLINE_VARIABLE_ID, type: "text" },
         { id: TALLY_VARIABLE_ID, type: { kind: "array" } },
+        { id: TOTAL_VOTES_VARIABLE_ID, name: "Total", type: "number" },
       ],
     });
     expect(graph.nodes.filter((node) => node.kind === "transformer")).toEqual(
@@ -102,6 +106,11 @@ describe("Voting seed", () => {
         expect.objectContaining({
           id: TALLY_HEADLINE_TRANSFORMER_ID,
           transform: expect.objectContaining({ kind: "calculate" }),
+        }),
+        expect.objectContaining({
+          id: TOTAL_VOTES_TRANSFORMER_ID,
+          name: "Total votes",
+          transform: { kind: "calculate", formula: "SUM(candidates.votes)", outputType: "number" },
         }),
         expect.objectContaining({
           id: FRONT_RUNNERS_TRANSFORMER_ID,
@@ -154,7 +163,7 @@ describe("Voting seed", () => {
       true,
     );
     const devicesByY = [...devices].sort((left, right) => left.position.y - right.position.y);
-    expect(devicesByY[1]!.position.y - devicesByY[0]!.position.y).toBe(299);
+    expect(devicesByY[1]!.position.y - devicesByY[0]!.position.y).toBe(403);
     expect(tidySeedGraph(graph)).toEqual(graph);
   });
 
@@ -209,7 +218,13 @@ describe("Voting seed", () => {
       type: "slot",
       blockId: "block_tally_row",
       expansion: { source: { kind: "variable", variableId: TALLY_VARIABLE_ID } },
-      assignments: [{ variableId: TALLY_ROW_VARIABLE_ID, source: { kind: "runtimeItem" } }],
+      assignments: expect.arrayContaining([
+        { variableId: TALLY_ROW_VARIABLE_ID, source: { kind: "runtimeItem" } },
+        {
+          variableId: TALLY_ROW_TOTAL_VARIABLE_ID,
+          source: { kind: "variable", variableId: TOTAL_VOTES_VARIABLE_ID },
+        },
+      ]),
     });
   });
 
@@ -341,14 +356,22 @@ describe("Voting seed", () => {
         height: { mode: "hug" },
       },
     });
-    expect(tallyRow?.variables).toEqual([
-      {
-        id: TALLY_ROW_VARIABLE_ID,
-        name: "Candidate",
-        type: { kind: "shape", shapeId: CANDIDATE_SHAPE_ID },
-        required: true,
-      },
-    ]);
+    expect(tallyRow?.variables).toEqual(
+      expect.arrayContaining([
+        {
+          id: TALLY_ROW_VARIABLE_ID,
+          name: "Candidate",
+          type: { kind: "shape", shapeId: CANDIDATE_SHAPE_ID },
+          required: true,
+        },
+        {
+          id: TALLY_ROW_TOTAL_VARIABLE_ID,
+          name: "Total",
+          type: "number",
+          required: true,
+        },
+      ]),
+    );
     expect(candidateButton?.canvas.root.children?.[0]).toMatchObject({
       type: "image",
       image: {
@@ -382,6 +405,95 @@ describe("Voting seed", () => {
         }),
       ]),
     );
+  });
+
+  it("authors the responsive tally bar formulas on one reusable block", () => {
+    const [, tallyRow] = workflowBlocks();
+    const track = tallyRow?.canvas.root.children?.find((child) => child.id === "tally-row-track");
+    const bar = track?.children?.find((child) => child.id === "tally-row-bar");
+    expect(track).toMatchObject({
+      type: "frame",
+      sizing: { width: { mode: "fill" } },
+    });
+    expect(bar).toMatchObject({
+      type: "rect",
+      sizing: {
+        width: {
+          mode: "fixed",
+          value: {
+            kind: "formula",
+            formula: "item.votes / Total * 100",
+            unit: "%",
+          },
+        },
+      },
+      hidden: { kind: "formula", formula: "item.votes == 0", fallback: false },
+    });
+  });
+
+  it("resolves distinct percentage bars and hides zero-vote candidates", () => {
+    const graph = votingGraph();
+    const state = materializeRunState(graph, defaultSourceValueTemplates(graph));
+    const candidates = state.sourceValues[CANDIDATE_SOURCE_ID];
+    if (!isStructuredValueReference(candidates)) throw new Error("Candidates source is missing.");
+    const candidateArray = state.structuredValues[candidates.ref];
+    if (candidateArray?.kind !== "array") throw new Error("Candidates array is missing.");
+    const votes = [10, 0, 30];
+    candidateArray.items.forEach((item, index) => {
+      if (!isStructuredValueReference(item)) throw new Error("Candidate reference is missing.");
+      const candidate = state.structuredValues[item.ref];
+      if (candidate?.kind !== "shape") throw new Error("Candidate shape is missing.");
+      (candidate.fields as Record<string, unknown>)[CANDIDATE_VOTES_FIELD_ID] = votes[index] ?? 0;
+    });
+    const tallyScene = graph.nodes.find((node) => node.id === TALLY_SCENE_ID);
+    if (tallyScene?.kind !== "scene") throw new Error("Tally scene is missing.");
+    const resolution = sceneVariableResolution(graph, tallyScene.id, state.sourceValues, {
+      structuredValues: state.structuredValues,
+    });
+    expect(resolution.values[TOTAL_VOTES_VARIABLE_ID]).toBe(40);
+    const slot = votingCanvases()[TALLY_SCENE_ID]?.root.children?.[1];
+    const candidateVariable = tallyScene.variables.find(
+      (variable) => variable.id === TALLY_VARIABLE_ID,
+    );
+    const totalVariable = tallyScene.variables.find(
+      (variable) => variable.id === TOTAL_VOTES_VARIABLE_ID,
+    );
+    if (!slot || slot.type !== "slot" || !candidateVariable?.type || !totalVariable?.type) {
+      throw new Error("Tally slot variables are missing.");
+    }
+    const instances = resolveSlotInstances({
+      block: workflowBlocks().find((block) => block.id === "block_tally_row")!,
+      slot,
+      variables: [
+        {
+          id: TALLY_VARIABLE_ID,
+          type: candidateVariable.type,
+          value: resolution.values[TALLY_VARIABLE_ID],
+        },
+        {
+          id: TOTAL_VOTES_VARIABLE_ID,
+          type: totalVariable.type,
+          value: resolution.values[TOTAL_VOTES_VARIABLE_ID],
+        },
+      ],
+      shapes: graph.shapes,
+      allBlocks: graph.blocks ?? [],
+      structuredValues: {
+        ...state.structuredValues,
+        ...resolution.computedStructuredValues,
+      },
+    });
+    expect(instances.instances).toHaveLength(3);
+    const bars = instances.instances.map((instance) => {
+      const track = instance.canvas?.root.children?.find((child) => child.id === "tally-row-track");
+      return track?.children?.find((child) => child.id === "tally-row-bar");
+    });
+    expect(bars.map((bar) => bar?.sizing?.width?.value)).toEqual([
+      { value: 25, unit: "%" },
+      { value: 0, unit: "%" },
+      { value: 75, unit: "%" },
+    ]);
+    expect(bars.map((bar) => bar?.hidden)).toEqual([false, true, false]);
   });
 
   it("assigns persisted ranks to every Block sibling", () => {

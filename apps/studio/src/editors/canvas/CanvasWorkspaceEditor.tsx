@@ -375,6 +375,17 @@ export function CanvasWorkspaceEditor({
             : null;
         })()
       : null;
+  const currentDimensionsById = selectedGeometry
+    ? Object.fromEntries(
+        [...selectedGeometry.elements].map(([elementId, rect]) => [
+          elementId,
+          {
+            width: Math.round(rect.width / camera.zoom),
+            height: Math.round(rect.height / camera.zoom),
+          },
+        ]),
+      )
+    : undefined;
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background text-foreground">
@@ -431,7 +442,7 @@ export function CanvasWorkspaceEditor({
           onImageUpload={onImageUpload}
           inspectorPreview={inspectorPreview}
           currentDimensions={currentDimensions}
-          onUpdateElement={onUpdateElement}
+          currentDimensionsById={currentDimensionsById}
           onRenameArtboard={onRenameArtboard}
           onUpdateElements={onUpdateElements}
         />

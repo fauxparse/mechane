@@ -1,4 +1,4 @@
-import type { AxisSize } from "@mechane/domain";
+import { materializePercentageChildrenForHug, type AxisSize, type Element } from "@mechane/domain";
 import type { PropertyInputConstraints } from "@mechane/design-system";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
@@ -11,6 +11,14 @@ export type SizeFieldProps = {
   onConstraintToggle?: (constraint: SizeConstraint, enabled: boolean) => void;
 };
 
+function flattenSizing(elements: readonly Element[], into = new Map<string, unknown>()) {
+  for (const element of elements) {
+    into.set(element.id, element.sizing);
+    flattenSizing(element.children ?? [], into);
+  }
+  return into;
+}
+
 export const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldProps) => {
   const {
     target,
@@ -20,13 +28,34 @@ export const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldPr
     shapes,
     inspectorPreview,
     currentDimensions,
+    currentDimensionsById,
     update,
+    updateElements,
   } = useCanvasInspectorContext();
   const size = common(`sizing.${axis}`) as AxisSize | undefined;
   const sizeMixed =
     size === undefined && selected.some((element) => element.sizing?.[axis] !== undefined);
   const updateSize = (next: AxisSize) => {
-    update({ sizing: { ...target.sizing, [axis]: next } });
+    const nextSizing = { ...target.sizing, [axis]: next };
+    if (next.mode === "hug" && target.type === "frame" && updateElements && currentDimensionsById) {
+      const converted = materializePercentageChildrenForHug(
+        { ...target, sizing: nextSizing },
+        currentDimensionsById,
+      );
+      const before = flattenSizing(target.children ?? []);
+      const after = flattenSizing(converted.children ?? []);
+      const updates = [
+        { elementId: target.id, properties: { sizing: nextSizing } },
+        ...[...after].flatMap(([elementId, sizing]) =>
+          JSON.stringify(before.get(elementId)) === JSON.stringify(sizing)
+            ? []
+            : [{ elementId, properties: { sizing } as Record<string, unknown> }],
+        ),
+      ];
+      updateElements(updates);
+      return;
+    }
+    update({ sizing: nextSizing });
   };
   const previewValue =
     selected.length === 1 && inspectorPreview?.elementId === target.id

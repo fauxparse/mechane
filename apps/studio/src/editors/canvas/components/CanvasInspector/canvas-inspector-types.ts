@@ -30,6 +30,10 @@ export type CanvasInspectorDimensions = {
   height: number;
 };
 
+export type CanvasInspectorDimensionsById = Readonly<
+  Record<string, { readonly width: number; readonly height: number }>
+>;
+
 export type CanvasInspectorUpdate = (
   properties: Record<string, unknown>,
   unset?: readonly string[],
@@ -59,6 +63,7 @@ export type CanvasInspectorProps = {
   currentDimensions?: CanvasInspectorDimensions | null;
   blockVariableEditing?: VariableInspectorEditing;
   onRenameArtboard?(artId: string, name: string): void;
+  currentDimensionsById?: CanvasInspectorDimensionsById;
   onUpdateElement?(
     canvasId: string,
     elementId: string,
@@ -96,14 +101,22 @@ export type CanvasInspectorModel = {
   onCreateEventBinding?(binding: EventBinding): void;
   onRemoveEventBinding?(bindingId: string): void;
   onReorderEventBindings?(bindingIds: readonly string[]): void;
-  onRenameArtboard?(artId: string, name: string): void;
   blockVariableEditing?: VariableInspectorEditing;
+  onRenameArtboard?(artId: string, name: string): void;
   fontFamilies: readonly string[];
   inspectorPreview: CanvasInspectorPreview | null;
   currentDimensions: CanvasInspectorDimensions | null;
+  currentDimensionsById?: CanvasInspectorDimensionsById;
   absolute: boolean;
   common(property: string): unknown;
   update: CanvasInspectorUpdate;
+  updateElements?(
+    updates: readonly {
+      readonly elementId: string;
+      readonly properties: Record<string, unknown>;
+      readonly unsetProperties?: readonly string[];
+    }[],
+  ): void;
   text(property: string, fallback?: string): string;
   isAspectRatioLocked: boolean;
   setAspectRatioLock(locked: boolean): void;

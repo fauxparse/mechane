@@ -204,6 +204,7 @@ export function resolveBlockCanvas(
   canvas: BlockCanvas = block.canvas,
   imageAssets: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[] = [],
   runtimeContext?: { readonly item: unknown; readonly type: Type; readonly index: number },
+  structuredValues: Readonly<Record<string, StructuredValueRecord>> = {},
 ): ResolvedCanvas {
   return resolveCanvasProperties(canvas, {
     variables: block.variables.map(({ id, name, type, defaultValue }) => ({
@@ -215,6 +216,7 @@ export function resolveBlockCanvas(
     values,
     shapes,
     imageAssets,
+    structuredValues,
     ...(runtimeContext ? { runtimeContext } : {}),
   });
 }
@@ -342,7 +344,12 @@ export function resolveSlotInstances({
         type: variable.type,
         value: resolution.values[variable.id],
       }));
-      const contextItem = expansion ? instance.item ?? runtimeItem : runtimeItem;
+      const contextItem =
+        expansion && instance.id
+          ? { ref: instance.id }
+          : expansion
+            ? instance.item ?? runtimeItem
+            : runtimeItem;
       const contextType = expansion ? itemType : runtimeType;
       const contextIndex = expansion ? instance.index : (runtimeIndex ?? 0);
       return {
@@ -358,6 +365,7 @@ export function resolveSlotInstances({
           contextType && contextItem !== undefined
             ? { item: contextItem, type: contextType, index: contextIndex }
             : undefined,
+          structuredValues,
         ),
         variables: resolvedVariables,
         diagnostics: [],
