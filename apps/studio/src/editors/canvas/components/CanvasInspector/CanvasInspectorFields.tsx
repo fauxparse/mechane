@@ -42,13 +42,7 @@ export const PropertyField = ({
   const { target, elements, selected, variables, shapes, common, update } =
     useCanvasInspectorContext();
   const descriptor = elementPropertyDescriptor(name, target);
-  if (!descriptor) return null;
-  if (elements.length > 0 && !elements.every((element) => elementPropertyDescriptor(name, element)))
-    return null;
-
-  const rawValue = common(name);
   const [formulaOpen, setFormulaOpen] = useState(false);
-  const formula = isPropertyFormula(rawValue) ? rawValue : null;
   const formulaScope = useMemo<FormulaScope>(
     () => ({
       ports: variables.flatMap((variable) =>
@@ -63,11 +57,16 @@ export const PropertyField = ({
           : [],
       ),
       shapes: formulaShapeTable(shapes),
-      expected: formulaType(descriptor.targetType, shapes),
+      expected: descriptor ? formulaType(descriptor.targetType, shapes) : "unknown",
       diagnosticSubject: "Element Property",
     }),
-    [descriptor.targetType, shapes, variables],
+    [descriptor?.targetType, shapes, variables],
   );
+  if (!descriptor) return null;
+  if (elements.length > 0 && !elements.every((element) => elementPropertyDescriptor(name, element)))
+    return null;
+  const rawValue = common(name);
+  const formula = isPropertyFormula(rawValue) ? rawValue : null;
   const formulaDiagnostics = formula
     ? analyse(formula.formula, formulaScope).diagnostics
     : [];

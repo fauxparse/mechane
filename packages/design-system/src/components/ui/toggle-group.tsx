@@ -1,7 +1,14 @@
 import { Toggle as TogglePrimitive } from "@base-ui/react/toggle";
 import { ToggleGroup as ToggleGroupPrimitive } from "@base-ui/react/toggle-group";
 import { type VariantProps } from "class-variance-authority";
-import { AnimatePresence, domAnimation, LazyMotion, m, type Transition } from "motion/react";
+import {
+  AnimatePresence,
+  domAnimation,
+  LazyMotion,
+  m,
+  type Transition,
+  useReducedMotion,
+} from "motion/react";
 import * as React from "react";
 
 import { cn } from "../../lib/utils";
@@ -46,6 +53,7 @@ const toggleGroupHighlightTransition: Transition = {
 
 function ToggleGroupHighlight() {
   const { getItem, groupRef, itemVersion, value } = useToggleGroupContext();
+  const reduceMotion = useReducedMotion();
   const [bounds, setBounds] = React.useState<HighlightBounds | null>(null);
 
   const measure = React.useCallback(() => {
@@ -109,7 +117,7 @@ function ToggleGroupHighlight() {
       data-slot="toggle-group-highlight"
       initial={false}
       animate={bounds}
-      transition={toggleGroupHighlightTransition}
+      transition={reduceMotion ? { duration: 0 } : toggleGroupHighlightTransition}
       className="pointer-events-none absolute z-0 rounded-[calc(var(--toggle-group-radius)-var(--toggle-group-padding))] bg-accent"
     />
   );
@@ -255,6 +263,7 @@ function ToggleGroupItem({
     vibe?: Vibe;
   }) {
   const context = useToggleGroupContext();
+  const reduceMotion = useReducedMotion();
   const vibe = useVibe(vibeProp);
   const resolvedVariant = context.variant || variant || "default";
   const resolvedSize = context.size || size || (vibe === "inspector" ? "sm" : "default");
@@ -282,6 +291,7 @@ function ToggleGroupItem({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="pointer-events-none absolute inset-0 z-0 rounded-[inherit] bg-accent"
+            transition={{ duration: reduceMotion ? 0 : 0.15 }}
           />
         )}
       </AnimatePresence>
