@@ -677,7 +677,7 @@ interface Element {
   name: String
   parentId: ID
   rank: String!
-  hidden: Boolean!
+  hidden: JSON!
   layout: JSON
   sizing: JSON
   opacity: JSON
@@ -693,7 +693,7 @@ type RectElement implements Element {
   name: String
   parentId: ID
   rank: String!
-  hidden: Boolean!
+  hidden: JSON!
   layout: JSON
   sizing: JSON
   opacity: JSON
@@ -710,7 +710,7 @@ type EllipseElement implements Element {
   name: String
   parentId: ID
   rank: String!
-  hidden: Boolean!
+  hidden: JSON!
   layout: JSON
   sizing: JSON
   opacity: JSON
@@ -726,7 +726,7 @@ type TextElement implements Element {
   name: String
   parentId: ID
   rank: String!
-  hidden: Boolean!
+  hidden: JSON!
   layout: JSON
   sizing: JSON
   opacity: JSON
@@ -755,7 +755,7 @@ type ImageElement implements Element {
   name: String
   parentId: ID
   rank: String!
-  hidden: Boolean!
+  hidden: JSON!
   layout: JSON
   sizing: JSON
   opacity: JSON
@@ -776,7 +776,7 @@ type FrameElement implements Element {
   name: String
   parentId: ID
   rank: String!
-  hidden: Boolean!
+  hidden: JSON!
   layout: JSON
   sizing: JSON
   opacity: JSON
@@ -800,7 +800,7 @@ type SlotElement implements Element {
   name: String
   parentId: ID
   rank: String!
-  hidden: Boolean!
+  hidden: JSON!
   layout: JSON
   sizing: JSON
   opacity: JSON

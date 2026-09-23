@@ -11,6 +11,7 @@ import type { StructuredValueId } from "./id";
 import {
   isStructuredValueReference,
   resolveRuntimeValue,
+  runtimeValueAtPath,
   type StructuredValueRecord,
 } from "./structured-values";
 import type { ResolvedCanvas, SlotElement, SlotInputAssignment, SlotInputSource } from "./canvas";
@@ -53,12 +54,17 @@ function sourceValue(
   source: SlotInputSource,
   variables: readonly SlotVariableValue[],
   runtimeItem: unknown,
+  structuredValues: Readonly<Record<string, StructuredValueRecord>>,
 ): unknown {
   if (source.kind === "literal") return source.value;
   if (source.kind === "runtimeItem") return valueAtPath(runtimeItem, source.fieldPath ?? []);
   if (source.kind === "variable") {
     const variable = variables.find((candidate) => candidate.id === source.variableId);
-    return variable ? valueAtPath(variable.value, source.fieldPath ?? []) : undefined;
+    if (!variable) return undefined;
+    // A Block Variable is painted, not carried: flatten what the path lands on
+    // so `coerceValue` and every Connection downstream see plain data (#739).
+    const read = runtimeValueAtPath(variable.value, source.fieldPath ?? [], structuredValues);
+    return isStructuredValueReference(read) ? resolveRuntimeValue(read, structuredValues) : read;
   }
   return undefined;
 }
@@ -108,6 +114,7 @@ export function resolveSlotInputs(
   runtimeItem?: unknown,
   runtimeType?: Type,
   shapes: readonly Shape[] = [],
+  structuredValues: Readonly<Record<string, StructuredValueRecord>> = {},
 ): SlotResolution {
   const assignments = slot.assignments ?? [];
   const values: Record<string, unknown> = {};
@@ -133,7 +140,7 @@ export function resolveSlotInputs(
   for (const variable of block.variables) {
     const assignment = assignmentFor(assignments, variable.id);
     const source = assignment?.source ?? { kind: "unset" as const };
-    const value = sourceValue(source, variables, runtimeItem);
+    const value = sourceValue(source, variables, runtimeItem, structuredValues);
     const sourceTypeValue = sourceType(source, variables, runtimeType, shapes);
     const invalidPath =
       (source.kind === "variable" &&
@@ -292,9 +299,12 @@ export function resolveSlotInstances({
   if (expansion?.kind === "literal") expansionValue = expansion.value;
   else if (expansion?.kind === "runtimeItem") expansionValue = runtimeItem;
   else if (expansion?.kind === "variable") {
-    expansionValue = valueAtPath(
+    // The reference is the point: `expandSlotInstances` reads item identity
+    // out of it so a Block Formula can still see `item` (#739).
+    expansionValue = runtimeValueAtPath(
       variables.find((variable) => variable.id === expansion.variableId)?.value,
       expansion.fieldPath ?? [],
+      structuredValues,
     );
   }
   const expanded = expansion
@@ -326,6 +336,7 @@ export function resolveSlotInstances({
         instance.item ?? runtimeItem,
         runtimeType,
         shapes,
+        structuredValues,
       );
       if (resolution.diagnostics.length > 0) {
         return {
@@ -348,7 +359,7 @@ export function resolveSlotInstances({
         expansion && instance.id
           ? { ref: instance.id }
           : expansion
-            ? instance.item ?? runtimeItem
+            ? (instance.item ?? runtimeItem)
             : runtimeItem;
       const contextType = expansion ? itemType : runtimeType;
       const contextIndex = expansion ? instance.index : (runtimeIndex ?? 0);

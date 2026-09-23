@@ -10,9 +10,14 @@ import type {
   SlotInputSource,
   Type,
   VariableReference,
+  FormulaScope,
+  FormulaType,
 } from "@mechane/domain";
 import {
+  absent,
   defaultPropertyValue,
+  formulaShapeTable,
+  formulaType,
   isPropertyConnection,
   propertyFieldPaths,
   typeAtPath,
@@ -21,6 +26,52 @@ import {
 import type { PropertyInputConstraint, PropertyInputValue } from "@mechane/design-system";
 
 export type SizeConstraint = PropertyInputConstraint;
+
+export interface ElementFormulaScopeOptions {
+  /** The Property carries a size unit, so a trailing `%` is meaningful. */
+  readonly allowsUnit?: boolean;
+  /** A Block Canvas: its Elements are repeated, so `item` is a legal name. */
+  readonly repeated?: boolean;
+}
+
+/**
+ * The scope an inspector Formula is written against. A Block definition binds
+ * no `item` — its Type is call-site dependent, so publication diagnoses a
+ * Block once per referencing Slot (#710) — but the name still has to resolve
+ * here, or every repeat Formula reads as broken while you author it.
+ */
+export const elementFormulaScope = (
+  variables: readonly SceneVariable[],
+  shapes: readonly Shape[],
+  expected: FormulaType,
+  { allowsUnit, repeated }: ElementFormulaScopeOptions = {},
+): FormulaScope => ({
+  ports: variables.flatMap((variable) =>
+    variable.type
+      ? [
+          {
+            name: variable.name,
+            type: formulaType(variable.type, shapes),
+            value: absent("the input is absent"),
+          },
+        ]
+      : [],
+  ),
+  shapes: formulaShapeTable(shapes),
+  expected,
+  diagnosticSubject: "Element Property",
+  ...(allowsUnit ? { allowsUnit } : {}),
+  ...(repeated
+    ? {
+        itemBinding: {
+          name: "item",
+          type: "unknown" as const,
+          value: absent("item is supplied where the Block is used"),
+        },
+        index: 0,
+      }
+    : {}),
+});
 
 export const inputType = (type: Type): "text" | "number" | "color" | null => {
   if (type === "number") return "number";

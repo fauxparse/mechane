@@ -14,6 +14,8 @@ import {
   ELEMENT_KINDS,
   generateId,
   InvalidCanvasError as CanvasError,
+  isPropertyConnection,
+  isPropertyFormula,
   normaliseClosedPropertyConnections,
 } from "@mechane/domain";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
@@ -76,13 +78,21 @@ function toElement(
     row.properties !== null && typeof row.properties === "object" && !Array.isArray(row.properties)
       ? (row.properties as Record<string, unknown>)
       : {};
+  // `hidden` owns a column so a Canvas query can filter on it, but #705 made
+  // it a PropertyValue: a Connection or Formula lives in `properties` and the
+  // boolean is only its resolved shadow. Reading the column over the authored
+  // value silently replaced the Formula with `false` on the next write.
+  const authoredHidden = properties.hidden;
   const element = {
     ...properties,
     id: row.id,
     type: elementKind(row.type),
     rank: row.rank,
     name: row.name,
-    hidden: row.hidden,
+    hidden:
+      isPropertyConnection(authoredHidden) || isPropertyFormula(authoredHidden)
+        ? authoredHidden
+        : row.hidden,
     parentId: row.parentId,
     children: (children.get(row.id) ?? []).map((child) => toElement(child, children, visiting)),
   } as CanvasElementValue;

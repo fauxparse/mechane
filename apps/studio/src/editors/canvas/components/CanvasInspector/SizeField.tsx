@@ -1,8 +1,23 @@
-import { materializePercentageChildrenForHug, type AxisSize, type Element } from "@mechane/domain";
+import {
+  isPropertyFormula,
+  joinFormulaUnit,
+  materializePercentageChildrenForHug,
+  splitFormulaUnit,
+  type AxisSize,
+  type Element,
+  type FormulaScope,
+} from "@mechane/domain";
 import type { PropertyInputConstraints } from "@mechane/design-system";
+import { useMemo, useState } from "react";
 
+import { FormulaEditor } from "../../../show/graph/formula/FormulaEditor";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
-import { variableOptions, type SizeConstraint } from "./canvas-inspector-values";
+import {
+  elementFormulaScope,
+  sizeValueNumber,
+  variableOptions,
+  type SizeConstraint,
+} from "./canvas-inspector-values";
 import { SizeFieldInput } from "./SizeFieldInput";
 
 export type SizeFieldProps = {
@@ -21,6 +36,7 @@ function flattenSizing(elements: readonly Element[], into = new Map<string, unkn
 
 export const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldProps) => {
   const {
+    focused,
     target,
     selected,
     common,
@@ -33,6 +49,15 @@ export const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldPr
     updateElements,
   } = useCanvasInspectorContext();
   const size = common(`sizing.${axis}`) as AxisSize | undefined;
+  const [formulaOpen, setFormulaOpen] = useState(false);
+  const formulaScope = useMemo<FormulaScope>(
+    () =>
+      elementFormulaScope(variables, shapes, "number", {
+        allowsUnit: true,
+        repeated: focused?.kind === "block",
+      }),
+    [focused?.kind, shapes, variables],
+  );
   const sizeMixed =
     size === undefined && selected.some((element) => element.sizing?.[axis] !== undefined);
   const updateSize = (next: AxisSize) => {
@@ -77,21 +102,51 @@ export const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldPr
       ? "%"
       : "px";
   const sizeVariables = variableOptions("number", variables, shapes);
+  const formula =
+    previewing || sizeMixed ? null : isPropertyFormula(size?.value) ? size.value : null;
   return (
-    <SizeFieldInput
-      axis={axis}
-      constraints={constraints}
-      onConstraintToggle={onConstraintToggle}
-      size={size}
-      sizeMixed={sizeMixed}
-      previewValue={previewValue}
-      currentValue={currentValue}
-      previewing={previewing}
-      mode={mode}
-      unit={unit}
-      sizeVariables={sizeVariables}
-      shapes={shapes}
-      updateSize={updateSize}
-    />
+    <div className="flex min-w-0 flex-col gap-1">
+      <SizeFieldInput
+        axis={axis}
+        constraints={constraints}
+        onConstraintToggle={onConstraintToggle}
+        size={size}
+        sizeMixed={sizeMixed}
+        previewValue={previewValue}
+        currentValue={currentValue}
+        previewing={previewing}
+        mode={mode}
+        unit={unit}
+        formula={formula}
+        sizeVariables={sizeVariables}
+        shapes={shapes}
+        updateSize={updateSize}
+        onWriteFormula={() => setFormulaOpen(true)}
+      />
+      {formulaOpen || formula ? (
+        <FormulaEditor
+          className="min-h-[4.5rem] text-xs"
+          value={joinFormulaUnit(formula?.formula ?? "", formula?.unit)}
+          scope={formulaScope}
+          autoFocus={!formula}
+          onChange={(next) => {
+            const typed = splitFormulaUnit(next);
+            updateSize({
+              ...(sizeMixed ? {} : size),
+              mode: "fixed",
+              value: {
+                kind: "formula",
+                formula: typed.formula,
+                fallback: {
+                  value: sizeValueNumber(formula?.fallback) ?? currentValue ?? 0,
+                  unit: typed.unit,
+                },
+                unit: typed.unit,
+              },
+            });
+          }}
+        />
+      ) : null}
+    </div>
   );
 };

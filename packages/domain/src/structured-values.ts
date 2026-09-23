@@ -371,6 +371,37 @@ export function resolveRuntimeValue(
   );
 }
 
+/**
+ * Reads a Field path without flattening the references it crosses, so the
+ * result still carries the identity a Formula needs to read `item.field`.
+ * Plain objects are walked too: authored defaults never became records.
+ */
+export function runtimeValueAtPath(
+  value: unknown,
+  path: readonly string[],
+  structuredValues: Readonly<Record<string, StructuredValueRecord>>,
+): unknown {
+  let current = value;
+  for (const fieldId of path) {
+    if (isStructuredValueReference(current)) {
+      const record = structuredValues[current.ref];
+      if (record?.kind !== "shape") return undefined;
+      current = record.fields[fieldId];
+      continue;
+    }
+    if (
+      typeof current !== "object" ||
+      current === null ||
+      Array.isArray(current) ||
+      !(fieldId in current)
+    ) {
+      return undefined;
+    }
+    current = Reflect.get(current, fieldId);
+  }
+  return current;
+}
+
 export function resolveSourceValues(state: RunState): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(state.sourceValues).map(([sourceId, value]) => [

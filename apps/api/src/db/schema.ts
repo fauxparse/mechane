@@ -826,7 +826,9 @@ export const runErrors = pgTable(
     index("run_errors_run_occurred_idx").on(table.runId, table.occurredAt),
     uniqueIndex("run_errors_formula_unique")
       .on(table.runId, table.category, table.transformerId)
-      .where(sql`${table.category} = 'formulaEvaluationFailure' AND ${table.transformerId} IS NOT NULL`),
+      .where(
+        sql`${table.category} = 'formulaEvaluationFailure' AND ${table.transformerId} IS NOT NULL`,
+      ),
   ],
 );
 

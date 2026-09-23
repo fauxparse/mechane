@@ -30,7 +30,13 @@ import {
   type Type,
 } from "./shapes";
 import type { VariableReference } from "./property-values";
-import { isStructuredValueReference, type RuntimeValue, type StructuredValues } from "./structured-values";
+import {
+  isStructuredValueReference,
+  resolveRuntimeValue,
+  runtimeValueAtPath,
+  type RuntimeValue,
+  type StructuredValues,
+} from "./structured-values";
 
 export type ElementPropertyInputValue = ShapeValue | VariableReference;
 
@@ -125,7 +131,6 @@ export type ElementPropertyName =
   | "objectFit"
   | "objectPosition"
   | "hidden";
-
 
 export interface ElementPropertyDescriptor {
   readonly name: ElementPropertyName;
@@ -369,9 +374,7 @@ export function elementPropertyType(name: string, element: Element | ElementKind
   return elementPropertyDescriptor(name, element)?.targetType ?? null;
 }
 
-export function isElementPropertyFormulaable(
-  descriptor: ElementPropertyDescriptor,
-): boolean {
+export function isElementPropertyFormulaable(descriptor: ElementPropertyDescriptor): boolean {
   return (
     !descriptor.closedValueSet &&
     typeof descriptor.targetType === "string" &&
@@ -379,12 +382,9 @@ export function isElementPropertyFormulaable(
   );
 }
 
-export function isElementPropertyConnectable(
-  descriptor: ElementPropertyDescriptor,
-): boolean {
+export function isElementPropertyConnectable(descriptor: ElementPropertyDescriptor): boolean {
   return isElementPropertyFormulaable(descriptor) || descriptor.targetType === "image";
 }
-
 
 function rawValue(value: unknown): unknown {
   if (
@@ -472,10 +472,7 @@ export interface ElementPropertyResolutionContext {
   readonly runtimeContext?: ElementPropertyRuntimeContext;
 }
 
-function descriptorFallback(
-  descriptor: ElementPropertyDescriptor,
-  fallback: unknown,
-): unknown {
+function descriptorFallback(descriptor: ElementPropertyDescriptor, fallback: unknown): unknown {
   const defaultValue =
     fallback === undefined
       ? (defaultPropertyValue(descriptor.targetType) ?? descriptor.defaultValue)
@@ -504,15 +501,23 @@ function resolveConnection(
   const coercion = propertyCoercion(sourceType, descriptor.targetType);
   if (!coercion) return fallback;
 
+  const structuredValues = context.structuredValues ?? {};
   const qrValue =
     fieldPath.length === 0 ? deviceQrValueForVariable(variable.id, context.graph) : undefined;
-  const supplied = qrValue ?? valueAtPath(rawValue(context.values?.[variable.id]), fieldPath);
+  const read = runtimeValueAtPath(
+    rawValue(context.values?.[variable.id]),
+    fieldPath,
+    structuredValues,
+  );
+  const supplied =
+    qrValue ??
+    (isStructuredValueReference(read) ? resolveRuntimeValue(read, structuredValues) : read);
   const variableDefault =
     variable.defaultValue === undefined ? undefined : valueAtPath(variable.defaultValue, fieldPath);
   const candidateSource =
     supplied ??
     (connection.fallback === undefined
-      ? variableDefault ?? defaultAtPath(variableType, fieldPath, shapes)
+      ? (variableDefault ?? defaultAtPath(variableType, fieldPath, shapes))
       : undefined);
   const candidate = rawValue(candidateSource);
   if (!conformsToType(candidate, sourceType, shapes)) return fallback;
@@ -536,9 +541,7 @@ function evaluatePropertyFormula(
             {
               name: variable.name,
               type: variable.type,
-              value: formulaRuntimeValue(
-                context.values?.[variable.id] ?? variable.defaultValue,
-              ),
+              value: formulaRuntimeValue(context.values?.[variable.id] ?? variable.defaultValue),
             },
           ]
         : [],
@@ -584,7 +587,8 @@ function resolvedSizeValue(
   context: ElementPropertyResolutionContext,
 ): unknown {
   if (isPropertyConnection(value)) return resolveConnection(value, descriptor, context);
-  if (isPropertyFormula(value)) return evaluatePropertyFormula(value, descriptor, elementId, context);
+  if (isPropertyFormula(value))
+    return evaluatePropertyFormula(value, descriptor, elementId, context);
   return value;
 }
 
@@ -610,8 +614,7 @@ function resolveSizing(element: ResolvedElement, context: ElementPropertyResolut
       (size.value.unit === "px" || size.value.unit === "%")
         ? size.value.unit
         : undefined;
-    const nextValue =
-      unit && typeof resolved === "number" ? { value: resolved, unit } : resolved;
+    const nextValue = unit && typeof resolved === "number" ? { value: resolved, unit } : resolved;
     sizing[axis] = {
       ...size,
       value: nextValue as never,

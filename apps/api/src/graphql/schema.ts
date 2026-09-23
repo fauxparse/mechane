@@ -842,7 +842,7 @@ export const schema = createSchema<GraphQLContext>({
       name: String
       parentId: ID
       rank: String!
-      hidden: Boolean!
+      hidden: JSON!
       layout: JSON
       sizing: JSON
       opacity: JSON
@@ -858,7 +858,7 @@ export const schema = createSchema<GraphQLContext>({
       name: String
       parentId: ID
       rank: String!
-      hidden: Boolean!
+      hidden: JSON!
       layout: JSON
       sizing: JSON
       opacity: JSON
@@ -875,7 +875,7 @@ export const schema = createSchema<GraphQLContext>({
       name: String
       parentId: ID
       rank: String!
-      hidden: Boolean!
+      hidden: JSON!
       layout: JSON
       sizing: JSON
       opacity: JSON
@@ -891,7 +891,7 @@ export const schema = createSchema<GraphQLContext>({
       name: String
       parentId: ID
       rank: String!
-      hidden: Boolean!
+      hidden: JSON!
       layout: JSON
       sizing: JSON
       opacity: JSON
@@ -920,7 +920,7 @@ export const schema = createSchema<GraphQLContext>({
       name: String
       parentId: ID
       rank: String!
-      hidden: Boolean!
+      hidden: JSON!
       layout: JSON
       sizing: JSON
       opacity: JSON
@@ -941,7 +941,7 @@ export const schema = createSchema<GraphQLContext>({
       name: String
       parentId: ID
       rank: String!
-      hidden: Boolean!
+      hidden: JSON!
       layout: JSON
       sizing: JSON
       opacity: JSON
@@ -965,7 +965,7 @@ export const schema = createSchema<GraphQLContext>({
       name: String
       parentId: ID
       rank: String!
-      hidden: Boolean!
+      hidden: JSON!
       layout: JSON
       sizing: JSON
       opacity: JSON
@@ -1538,7 +1538,11 @@ export const schema = createSchema<GraphQLContext>({
       },
       variableReferences: async (
         _parent,
-        { showId, variableId, state }: { showId: string; variableId: string; state?: string | null },
+        {
+          showId,
+          variableId,
+          state,
+        }: { showId: string; variableId: string; state?: string | null },
         context,
       ) => {
         const userId = requireUserId(context);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { generateId, type StructuredValueId } from "./id";
 import { evaluateFormula, renameFormulaIdentifier } from "./formula-runtime";
-import { analyse, parse } from "./formula";
+import { analyse, joinFormulaUnit, parse, splitFormulaUnit, type FormulaScope } from "./formula";
 import type { Shape, Type } from "./shapes";
 import type { StructuredValues } from "./structured-values";
 
@@ -178,5 +178,28 @@ describe("Formula", () => {
       formula: 'SUM(items.count) & "votes" & record.votes',
       references: 1,
     });
+  });
+
+  it("reads a trailing % as the result's unit, leaving modulus alone", () => {
+    const scope = { ports: [], shapes: {}, allowsUnit: true } satisfies FormulaScope;
+    const percentage = analyse("3 / 4 * 100%", scope);
+
+    expect(percentage.diagnostics).toEqual([]);
+    expect(percentage.value).toMatchObject({ kind: "number", value: 75 });
+    expect(splitFormulaUnit("3 / 4 * 100%")).toEqual({ formula: "3 / 4 * 100", unit: "%" });
+    expect(joinFormulaUnit("3 / 4 * 100", "%")).toBe("3 / 4 * 100%");
+
+    // Every accepted Formula keeps its meaning: only inputs that failed to
+    // parse at all are newly admitted.
+    expect(analyse("100 % 3", scope).value).toMatchObject({ kind: "number", value: 1 });
+    expect(analyse("100%3", scope).value).toMatchObject({ kind: "number", value: 1 });
+    expect(splitFormulaUnit("100 % 3")).toEqual({ formula: "100 % 3", unit: "px" });
+  });
+
+  it("blocks a unit on a Formula whose result cannot carry one", () => {
+    const diagnostic = analyse("3 / 4 * 100%", { ports: [], shapes: {} }).diagnostics[0];
+
+    expect(diagnostic).toMatchObject({ category: "unexpectedUnit", severity: "blocking" });
+    expect(diagnostic?.from).toBe(11);
   });
 });

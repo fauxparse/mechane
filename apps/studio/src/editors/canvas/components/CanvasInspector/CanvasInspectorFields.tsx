@@ -1,13 +1,7 @@
+import { PropertyInput, type LucideIcon, type PropertyInputPreset } from "@mechane/design-system";
 import {
-  PropertyInput,
-  type LucideIcon,
-  type PropertyInputPreset,
-} from "@mechane/design-system";
-import {
-  absent,
   analyse,
   elementPropertyDescriptor,
-  formulaShapeTable,
   formulaType,
   isElementPropertyFormulaable,
   isPropertyFormula,
@@ -18,6 +12,7 @@ import { useMemo, useState } from "react";
 import { FormulaEditor } from "../../../show/graph/formula/FormulaEditor";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import {
+  elementFormulaScope,
   inputType,
   isVariableInput,
   variableInput,
@@ -39,37 +34,26 @@ export const PropertyField = ({
   placeholder,
   presets,
 }: PropertyFieldProps) => {
-  const { target, elements, selected, variables, shapes, common, update } =
+  const { focused, target, elements, selected, variables, shapes, common, update } =
     useCanvasInspectorContext();
   const descriptor = elementPropertyDescriptor(name, target);
   const [formulaOpen, setFormulaOpen] = useState(false);
   const formulaScope = useMemo<FormulaScope>(
-    () => ({
-      ports: variables.flatMap((variable) =>
-        variable.type
-          ? [
-              {
-                name: variable.name,
-                type: formulaType(variable.type, shapes),
-                value: absent("the input is absent"),
-              },
-            ]
-          : [],
+    () =>
+      elementFormulaScope(
+        variables,
+        shapes,
+        descriptor ? formulaType(descriptor.targetType, shapes) : "unknown",
+        { repeated: focused?.kind === "block" },
       ),
-      shapes: formulaShapeTable(shapes),
-      expected: descriptor ? formulaType(descriptor.targetType, shapes) : "unknown",
-      diagnosticSubject: "Element Property",
-    }),
-    [descriptor?.targetType, shapes, variables],
+    [descriptor?.targetType, focused?.kind, shapes, variables],
   );
   if (!descriptor) return null;
   if (elements.length > 0 && !elements.every((element) => elementPropertyDescriptor(name, element)))
     return null;
   const rawValue = common(name);
   const formula = isPropertyFormula(rawValue) ? rawValue : null;
-  const formulaDiagnostics = formula
-    ? analyse(formula.formula, formulaScope).diagnostics
-    : [];
+  const formulaDiagnostics = formula ? analyse(formula.formula, formulaScope).diagnostics : [];
   const blockingFormulaDiagnostic = formulaDiagnostics.find(
     (diagnostic) => diagnostic.severity === "blocking",
   );
@@ -132,7 +116,7 @@ export const PropertyField = ({
           }
         }}
       />
-      {formulaOpen && isElementPropertyFormulaable(descriptor) ? (
+      {(formulaOpen || formula) && isElementPropertyFormulaable(descriptor) ? (
         <FormulaEditor
           className="min-h-[4.5rem] text-xs"
           value={formula?.formula ?? ""}

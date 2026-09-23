@@ -747,7 +747,10 @@ export function votingCanvases(): SeedCanvases {
   );
   const tallySlot = repeatedSlot("tally-row-slot", "b", "block_tally_row", TALLY_VARIABLE_ID, [
     { variableId: TALLY_ROW_VARIABLE_ID, source: { kind: "runtimeItem" } },
-    { variableId: TALLY_ROW_TOTAL_VARIABLE_ID, source: { kind: "variable", variableId: TOTAL_VOTES_VARIABLE_ID } },
+    {
+      variableId: TALLY_ROW_TOTAL_VARIABLE_ID,
+      source: { kind: "variable", variableId: TOTAL_VOTES_VARIABLE_ID },
+    },
   ]);
   return {
     [CANDIDATE_LIST_SCENE_ID]: {
