@@ -171,8 +171,10 @@ export function usePercentageField(slot: PercentageSlot): PercentageField {
     if (!match?.[1]) return { handled: false, error: null };
     const typed = Number(match[1]);
     if (!Number.isFinite(typed)) return { handled: false, error: null };
-    const suffix = match[2]?.toLowerCase();
-    const nextUnit: SizeUnit = suffix === "%" ? "%" : suffix === "px" ? "px" : (unit ?? "px");
+    // A bare number means pixels, even on a Property currently holding a percentage. The field
+    // displays the unit as part of the value (`50%`), so replacing the whole entry with `25`
+    // is dropping the `%` deliberately; carrying the old unit over would ignore what was typed.
+    const nextUnit: SizeUnit = match[2]?.toLowerCase() === "%" ? "%" : "px";
     if (nextUnit === "%" && !availability.allowed) {
       return { handled: true, error: availability.reason };
     }
