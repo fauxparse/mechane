@@ -17,6 +17,8 @@ import type {
 } from "./components/CanvasWorkspaceStage";
 import { CanvasWorkspaceEditorCommands } from "./components/CanvasWorkspaceEditorCommands";
 import { CanvasInspector } from "./components/CanvasInspector/CanvasInspector";
+// PROTOTYPE #711 — the floating variant switcher.
+import { PrototypeVariantBar } from "./components/CanvasInspector/prototype-property-formula";
 import { CanvasLayers } from "./components/CanvasLayers";
 import { Toolbar } from "./Toolbar/Toolbar";
 import { artboardLabel, canvasArtboardSize } from "./data/canvas-workspace";
@@ -378,6 +380,8 @@ export function CanvasWorkspaceEditor({
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background text-foreground">
+      {/* PROTOTYPE #711 — renders nothing without `?variant=`. */}
+      <PrototypeVariantBar />
       <CanvasWorkspaceStage
         ordered={ordered}
         focused={focused}

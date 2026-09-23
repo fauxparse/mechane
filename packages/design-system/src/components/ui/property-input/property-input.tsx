@@ -1,4 +1,4 @@
-import { useState, type FocusEvent, type KeyboardEvent } from "react";
+import { useState, type FocusEvent, type KeyboardEvent, type ReactNode } from "react";
 import type { ShapeValue } from "@mechane/domain";
 
 import { Combobox, ComboboxInput } from "../combobox";
@@ -39,6 +39,8 @@ export const PropertyInput = <T extends ShapeValue>({
   allowAuto,
   allowLink = true,
   auto,
+  menuItems,
+  onMenuSelect,
   vibe: vibeProp,
   onChange,
   onSizingChange,
@@ -46,7 +48,13 @@ export const PropertyInput = <T extends ShapeValue>({
   onConstraintToggle,
   onValidationError,
   onKeyDown,
-}: PropertyInputProps<T> & { vibe?: Vibe }) => {
+}: PropertyInputProps<T> & {
+  vibe?: Vibe;
+  /** PROTOTYPE #711 — extra items at the head of the input's menu. */
+  menuItems?: ReactNode;
+  /** PROTOTYPE #711 — claims a menu selection before PropertyInput reads it. */
+  onMenuSelect?: (value: string) => boolean;
+}) => {
   const vibe = useVibe(vibeProp);
   const [inputActive, setInputActive] = useState(false);
   const input = usePropertyInput({
@@ -96,7 +104,10 @@ export const PropertyInput = <T extends ShapeValue>({
         <Combobox
           value={null}
           inputValue={input.inputText}
-          onValueChange={input.handleMenuValueChange}
+          onValueChange={(next) => {
+            if (typeof next === "string" && onMenuSelect?.(next)) return;
+            input.handleMenuValueChange(next);
+          }}
           onOpenChange={(open) => {
             if (!open) input.commitDraftInput();
           }}
@@ -186,6 +197,7 @@ export const PropertyInput = <T extends ShapeValue>({
             allowAuto={allowAuto}
             allowLink={allowLink}
             linkedVariable={input.linkedVariable}
+            menuItems={menuItems}
             onColorChange={input.updateDraftInput}
           />
         </Combobox>

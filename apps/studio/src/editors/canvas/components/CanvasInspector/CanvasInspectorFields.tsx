@@ -8,6 +8,13 @@ import {
   variableInput,
   variableOptions,
 } from "./canvas-inspector-values";
+// PROTOTYPE #711 — see ./prototype-property-formula.
+import { FORMULA_PROPERTIES } from "./prototype-property-formula/formula-properties";
+import {
+  activeVariant,
+  PrototypeFormulaProperty,
+  type FormulaInputOverrides,
+} from "./prototype-property-formula";
 
 type PropertyFieldProps = {
   name: ElementPropertyName;
@@ -24,6 +31,7 @@ export const PropertyField = ({
   placeholder,
   presets,
 }: PropertyFieldProps) => {
+  const variant = activeVariant();
   const { target, elements, selected, variables, shapes, common, update } =
     useCanvasInspectorContext();
   const descriptor = elementPropertyDescriptor(name, target);
@@ -45,9 +53,9 @@ export const PropertyField = ({
   if (!type) return null;
   const availableVariables = variableOptions(descriptor.targetType, variables, shapes);
 
-  return (
+  const input = (overrides: FormulaInputOverrides = {}) => (
     <PropertyInput
-      className={className}
+      className={variant ? undefined : className}
       type={type}
       value={value}
       placeholder={isAuto ? "Auto" : placeholder}
@@ -65,6 +73,10 @@ export const PropertyField = ({
       icon={icon}
       min={descriptor.min}
       max={descriptor.max}
+      menuItems={overrides.menuItems}
+      onMenuSelect={overrides.onMenuSelect}
+      actions={overrides.actions}
+      onKeyDown={overrides.onKeyDown}
       onChange={(next) => {
         if (isVariableInput(next)) {
           update({
@@ -81,5 +93,22 @@ export const PropertyField = ({
         }
       }}
     />
+  );
+
+  // PROTOTYPE #711 — a Formula surface on every Property row. Off without `?variant=`.
+  if (!variant) return input();
+  return (
+    <PrototypeFormulaProperty
+      variant={variant}
+      className={className}
+      slot={{
+        property: name,
+        label: FORMULA_PROPERTIES[name]?.label ?? name,
+        type: descriptor.targetType,
+        commit: (evaluated) => update({ [name]: descriptor.fromInput(evaluated.value) }),
+      }}
+    >
+      {input}
+    </PrototypeFormulaProperty>
   );
 };

@@ -14,6 +14,9 @@ import { PositionSection } from "./PositionSection";
 import { StrokeSection } from "./StrokeSection";
 import { TextSection } from "./TextSection";
 import { useCanvasInspectorModel } from "./use-canvas-inspector-model";
+// PROTOTYPE #711 — Variant C's pinned Formula section. Renders nothing for the
+// other variants, or with no `?variant=` at all.
+import { VariantCFormulaSection } from "./prototype-property-formula";
 
 const EmptySelection = () => (
   <SidebarContent>
@@ -35,6 +38,7 @@ const CanvasInspectorContent = () => (
         <FillSection />
         <StrokeSection />
         <TextSection />
+        <VariantCFormulaSection />
       </TabsContent>
       <TabsContent value="interactions">
         <InteractionSection />
