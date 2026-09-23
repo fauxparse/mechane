@@ -30,6 +30,19 @@ export type CanvasInspectorDimensions = {
   height: number;
 };
 
+/** PROTOTYPE #712 — measured logical sizes of every Element in the focused artboard. */
+export type CanvasInspectorElementSizes = ReadonlyMap<
+  string,
+  { readonly width: number; readonly height: number }
+>;
+
+/** PROTOTYPE #712 — one edit touching Elements the selection does not contain. */
+export type CanvasInspectorElementUpdate = {
+  readonly elementId: string;
+  readonly properties: Record<string, unknown>;
+  readonly unsetProperties?: readonly string[];
+};
+
 export type CanvasInspectorUpdate = (
   properties: Record<string, unknown>,
   unset?: readonly string[],
@@ -57,6 +70,8 @@ export type CanvasInspectorProps = {
   onReorderEventBindings?(bindingIds: readonly string[]): void;
   inspectorPreview?: CanvasInspectorPreview | null;
   currentDimensions?: CanvasInspectorDimensions | null;
+  /** PROTOTYPE #712 — see CanvasInspectorElementSizes. */
+  elementSizes?: CanvasInspectorElementSizes;
   blockVariableEditing?: VariableInspectorEditing;
   onRenameArtboard?(artId: string, name: string): void;
   onUpdateElement?(
@@ -101,6 +116,10 @@ export type CanvasInspectorModel = {
   fontFamilies: readonly string[];
   inspectorPreview: CanvasInspectorPreview | null;
   currentDimensions: CanvasInspectorDimensions | null;
+  /** PROTOTYPE #712 — see CanvasInspectorElementSizes. Absent in tests and stories. */
+  elementSizes?: CanvasInspectorElementSizes;
+  /** PROTOTYPE #712 — applies one edit across arbitrary Elements as a single undo step. */
+  updateElements?(updates: readonly CanvasInspectorElementUpdate[]): void;
   absolute: boolean;
   common(property: string): unknown;
   update: CanvasInspectorUpdate;

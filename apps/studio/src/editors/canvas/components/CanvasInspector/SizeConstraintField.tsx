@@ -8,6 +8,8 @@ import {
   sizeValueUnit,
   type SizeConstraint,
 } from "./canvas-inspector-values";
+// PROTOTYPE #712 — see ./prototype-percentage-entry.
+import { usePercentageOverrides } from "./prototype-percentage-entry";
 
 const CONSTRAINT_ICONS: Record<SizeConstraint, string> = { min: "≥", max: "≤" };
 
@@ -18,6 +20,8 @@ type SizeConstraintFieldProps = {
 
 export const SizeConstraintField = ({ axis, constraint }: SizeConstraintFieldProps) => {
   const { target, update } = useCanvasInspectorContext();
+  // PROTOTYPE #712 — empty without `?variant=`, so this row is the shipped row.
+  const percentage = usePercentageOverrides({ axis, constraint });
   const key = sizeConstraintKey(axis, constraint);
   const stored = target.sizing?.[key];
   const unit = sizeValueUnit(stored);
@@ -28,11 +32,15 @@ export const SizeConstraintField = ({ axis, constraint }: SizeConstraintFieldPro
     <PropertyInput
       icon={CONSTRAINT_ICONS[constraint]}
       type="number"
-      unit={unit}
+      unit={percentage.unit ?? unit}
       placeholder={label}
       value={value === null ? null : { kind: "number", value }}
       min={0}
       allowLink={false}
+      actions={percentage.actions}
+      menuItems={percentage.menuItems}
+      onMenuSelect={percentage.onMenuSelect}
+      onRawCommit={percentage.onRawCommit}
       onChange={(next: PropertyInputValue | null) => {
         if (isVariableInput(next)) return;
         const nextValue =

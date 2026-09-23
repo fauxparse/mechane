@@ -59,4 +59,10 @@ export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   onValidationError?: (message: string | null) => void;
   /** Observes keys after PropertyInput handles its draft. Invalid Enter commits are not forwarded. */
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
+  /** PROTOTYPE #712 — extra items at the head of the input's menu. */
+  menuItems?: ReactNode;
+  /** PROTOTYPE #712 — claims a menu selection before PropertyInput reads it. */
+  onMenuSelect?: (value: string) => boolean;
+  /** PROTOTYPE #712 — claims the raw draft text (e.g. `50%`) before it is parsed. */
+  onRawCommit?: (rawValue: string) => boolean;
 };

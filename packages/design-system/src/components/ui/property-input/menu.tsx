@@ -7,6 +7,7 @@ import {
   PlugIcon,
   RulerDimensionLineIcon,
 } from "lucide-react";
+import type { ReactNode } from "react";
 import type { ShapeValue } from "@mechane/domain";
 
 import {
@@ -35,6 +36,7 @@ export function Menu<T extends ShapeValue>({
   auto,
   allowAuto,
   allowLink = true,
+  menuItems,
   linkedVariable,
   onColorChange,
 }: {
@@ -47,10 +49,13 @@ export function Menu<T extends ShapeValue>({
   auto: boolean;
   allowAuto?: boolean;
   allowLink?: boolean;
+  /** PROTOTYPE #712 — extra items at the head of the menu. */
+  menuItems?: ReactNode;
   linkedVariable: VariableReference<T> | null;
   onColorChange: (value: string | null) => void;
 }) {
   const hasMenuItems =
+    menuItems !== undefined ||
     inputType === "color" ||
     dimension !== undefined ||
     (presets?.length ?? 0) > 0 ||
@@ -67,6 +72,7 @@ export function Menu<T extends ShapeValue>({
         </>
       ) : null}
       <ComboboxList>
+        {menuItems}
         {dimension ? (
           <DimensionMenu dimension={dimension} sizing={sizing} constraints={constraints} />
         ) : null}

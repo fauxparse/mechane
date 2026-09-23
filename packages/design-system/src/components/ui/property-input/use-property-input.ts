@@ -118,6 +118,7 @@ export function usePropertyInput<T extends ShapeValue>({
   onValidationError,
   constraints,
   onConstraintToggle,
+  onRawCommit,
 }: PropertyInputProps<T>) {
   const [uncontrolledValue, setUncontrolledValue] = useState<PropertyInputValue<T> | null>(
     value ?? null,
@@ -194,6 +195,12 @@ export function usePropertyInput<T extends ShapeValue>({
   const commitDraftInput = (): boolean => {
     const rawValue = draftInputRef.current;
     if (rawValue === null) return true;
+    // PROTOTYPE #712 — a variant may claim the raw text (`50%`) before it is parsed as a number.
+    if (onRawCommit?.(rawValue)) {
+      reportValidationError(null);
+      updateDraftInput(null);
+      return true;
+    }
     const nextValue = parsePropertyInputValue<T>(inputType, rawValue, min, max);
     if (nextValue === undefined) {
       reportValidationError(propertyInputValidationMessage(inputType));

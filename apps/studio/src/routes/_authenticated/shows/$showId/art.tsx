@@ -58,6 +58,10 @@ import {
 import { useUndoKeys } from "../../../../editors/show/keyboard/use-undo-keys";
 
 export const Route = createFileRoute("/_authenticated/shows/$showId/art")({
+  // PROTOTYPE #712 — without a schema, TanStack Router drops `?variant=` the
+  // moment you select a layer, and the prototype silently turns itself off.
+  validateSearch: (search: Record<string, unknown>): { variant?: string } =>
+    typeof search.variant === "string" ? { variant: search.variant } : {},
   component: CanvasWorkspaceRoute,
 });
 
@@ -323,6 +327,8 @@ function CanvasWorkspaceRoute() {
         void navigate({
           to: "/shows/$showId/art/$artId",
           params: { showId: params.showId, artId: focused.artId },
+          // PROTOTYPE #712 — a bare `navigate` resets search; keep `?variant=`.
+          search: (previous) => previous,
           replace: true,
         });
       }
@@ -332,6 +338,8 @@ function CanvasWorkspaceRoute() {
       void navigate({
         to: "/shows/$showId/art",
         params: { showId: params.showId },
+        // PROTOTYPE #712 — a bare `navigate` resets search; keep `?variant=`.
+        search: (previous) => previous,
         replace: true,
       });
     }
@@ -431,6 +439,8 @@ function CanvasWorkspaceRoute() {
         void navigate({
           to: "/shows/$showId/art/$artId",
           params: { showId: params.showId, artId },
+          // PROTOTYPE #712 — a bare `navigate` resets search; keep `?variant=`.
+          search: (previous) => previous,
           replace: true,
         })
       }

@@ -145,11 +145,18 @@ _Avoid_: Safe area, inset (reserved for the measurements that define the Editabl
 
 ### Property
 
-An application-defined attribute of an Element, as opposed to a Variable, which is user-defined. A Property has one current value mode: a literal value or a connection to a Variable.
+An application-defined attribute of an Element, as opposed to a Variable, which is user-defined. A Property has one current value mode: a literal, a Property Connection, or an Element Property Formula.
 
 ### Property Connection
 
-The relationship that makes an Element Property take its value from a Variable owned by the Scene or Block containing the Element.
+The relationship that makes an Element Property take its value from a Variable owned by the Scene or Block containing the Element. It names that Variable by stable identity rather than by authored name.
+### Property Reference
+
+The authored relationship by which an Element Property reads a Variable: either a Property Connection or an Element Property Formula. A Property Connection uses stable Variable identity; an Element Property Formula uses a Variable's Formula identifier.
+
+### Dangling Property Reference
+
+A Property Reference that no longer resolves to a Variable after the Variable is deleted or renamed. It remains authored state, is diagnosed and navigable in the Canvas Editor, and blocks publication until repaired rather than being silently rewritten.
 
 ### Property Coercion
 

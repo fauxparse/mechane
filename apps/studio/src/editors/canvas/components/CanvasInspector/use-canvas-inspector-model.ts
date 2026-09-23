@@ -6,6 +6,7 @@ import type { CanvasArtboardDocument } from "../../../../api/canvas";
 import { lockedAspectRatio } from "../../commands/canvas-resize";
 import { numericSizeValue } from "./canvas-inspector-values";
 import type {
+  CanvasInspectorElementUpdate,
   CanvasInspectorModel,
   CanvasInspectorProps,
   CanvasInspectorUpdate,
@@ -31,6 +32,8 @@ const EMPTY_SHAPES = [] as const;
 const EMPTY_CUES = [] as const;
 const EMPTY_ACTIONS = [] as const;
 const EMPTY_EVENT_BINDINGS = [] as const;
+/** PROTOTYPE #712 */
+const EMPTY_ELEMENT_SIZES: ReadonlyMap<string, { width: number; height: number }> = new Map();
 
 function sameValue(left: unknown, right: unknown): boolean {
   if (Object.is(left, right)) return true;
@@ -154,6 +157,8 @@ export function useCanvasInspectorModel({
   onImageUpload,
   inspectorPreview = null,
   currentDimensions = null,
+  // PROTOTYPE #712 — measured sizes and cross-Element edits, for percentage conversion.
+  elementSizes = EMPTY_ELEMENT_SIZES,
   blockVariableEditing,
   onRenameArtboard,
   onUpdateElement,
@@ -189,6 +194,18 @@ export function useCanvasInspectorModel({
         unset,
       ),
     [elements, focused, onUpdateElement, onUpdateElements, target],
+  );
+  // PROTOTYPE #712 — the inspector's ordinary `update` only ever reaches the selection; converting
+  // a hugging parent's children needs Elements outside it, in one command so one undo reverses it.
+  const updateElements = useCallback(
+    (updates: readonly CanvasInspectorElementUpdate[]) => {
+      if (!focused || updates.length === 0) return;
+      if (onUpdateElements) onUpdateElements(focused.canvasId, updates);
+      else
+        for (const item of updates)
+          onUpdateElement?.(focused.canvasId, item.elementId, item.properties, item.unsetProperties);
+    },
+    [focused, onUpdateElement, onUpdateElements],
   );
   const text = useCallback(
     (property: string, fallback = "") => {
@@ -232,6 +249,8 @@ export function useCanvasInspectorModel({
             fontFamilies,
             inspectorPreview,
             currentDimensions,
+            elementSizes,
+            updateElements,
             absolute,
             common,
             update,
@@ -243,6 +262,8 @@ export function useCanvasInspectorModel({
       absolute,
       aspectRatioLock,
       common,
+      elementSizes,
+      updateElements,
       deviceQrImages,
       elements,
       fontFamilies,

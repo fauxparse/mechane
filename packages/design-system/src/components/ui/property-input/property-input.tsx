@@ -46,6 +46,9 @@ export const PropertyInput = <T extends ShapeValue>({
   onConstraintToggle,
   onValidationError,
   onKeyDown,
+  menuItems,
+  onMenuSelect,
+  onRawCommit,
 }: PropertyInputProps<T> & { vibe?: Vibe }) => {
   const vibe = useVibe(vibeProp);
   const [inputActive, setInputActive] = useState(false);
@@ -68,6 +71,7 @@ export const PropertyInput = <T extends ShapeValue>({
     onValidationError,
     constraints,
     onConstraintToggle,
+    onRawCommit,
   });
   const inactiveValue = renderInactiveValue?.(input.currentValue);
   const hasInactiveValue =
@@ -96,7 +100,11 @@ export const PropertyInput = <T extends ShapeValue>({
         <Combobox
           value={null}
           inputValue={input.inputText}
-          onValueChange={input.handleMenuValueChange}
+          onValueChange={(next) => {
+            // PROTOTYPE #712 — a variant may claim its own menu selection.
+            if (typeof next === "string" && onMenuSelect?.(next)) return;
+            input.handleMenuValueChange(next);
+          }}
           onOpenChange={(open) => {
             if (!open) input.commitDraftInput();
           }}
@@ -184,6 +192,7 @@ export const PropertyInput = <T extends ShapeValue>({
             presets={presets}
             auto={input.auto}
             allowAuto={allowAuto}
+            menuItems={menuItems}
             allowLink={allowLink}
             linkedVariable={input.linkedVariable}
             onColorChange={input.updateDraftInput}
