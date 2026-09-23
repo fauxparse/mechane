@@ -38,7 +38,6 @@ export function Menu<T extends ShapeValue>({
   allowAuto,
   allowLink = true,
   linkedVariable,
-  onMenuItemSelect,
   onColorChange,
 }: {
   inputType: PropertyInputType;
@@ -52,7 +51,6 @@ export function Menu<T extends ShapeValue>({
   allowAuto?: boolean;
   allowLink?: boolean;
   linkedVariable: VariableReference<T> | null;
-  onMenuItemSelect: (value: string) => void;
   onColorChange: (value: string | null) => void;
 }) {
   const hasMenuItems =

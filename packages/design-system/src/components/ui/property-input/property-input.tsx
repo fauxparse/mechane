@@ -190,7 +190,6 @@ export const PropertyInput = <T extends ShapeValue>({
             allowAuto={allowAuto}
             allowLink={allowLink}
             linkedVariable={input.linkedVariable}
-            onMenuItemSelect={input.handleMenuValueChange}
             onColorChange={input.updateDraftInput}
           />
         </Combobox>
