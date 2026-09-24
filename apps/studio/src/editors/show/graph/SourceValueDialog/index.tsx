@@ -1,9 +1,7 @@
-import { useState } from "react";
-
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
+
 import type { ImageAssetReference, ResolvedImageValue, Shape, Type } from "@mechane/domain";
 import {
-  formatValuePath,
   isArrayStructuredValueTemplate,
   isShapeStructuredValueTemplate,
   normalizeStructuredValueTemplate,
@@ -16,6 +14,7 @@ import {
   type ArrayValueSelection,
 } from "./ArrayValueEditor/types";
 import { SourceValueView } from "./SourceValueView";
+import { useStructuredValueSession } from "./structured-value-session";
 
 type ShapeArrayType = { kind: "array"; of: { kind: "shape"; shapeId: string } };
 
@@ -83,68 +82,27 @@ export function SourceValueDialog({
     (row.value.includes("\n") || row.value.length > INLINE_STRING_LIMIT);
   const shapeArrayType = isShapeArrayType(row.type) ? row.type : null;
   const initialDraft = draftForRow(row, shapes);
-  const [draft, setDraft] = useState(initialDraft);
-  const [savedDraft, setSavedDraft] = useState(initialDraft);
-  const [errors, setErrors] = useState<Map<string, string>>(new Map());
-  const [arrayFocus, setArrayFocus] = useState<ArrayValueFocus>({ kind: "array" });
-  const [pendingFocus, setPendingFocus] = useState<ArrayValueFocus | null>(null);
-  const [navigationError, setNavigationError] = useState<string | null>(null);
-  const isDirty = !sourceValuesEqual(draft, savedDraft);
+  const session = useStructuredValueSession({
+    initialValue: initialDraft,
+    onCommit: onSave,
+    onImmediateChange,
+  });
+  const draft = session.value;
+  const savedDraft = session.savedValue;
+  const errors = session.errors;
+  const arrayFocus = session.focus;
+  const pendingFocus = session.pendingFocus;
+  const navigationError = session.navigationError;
+  const isDirty = session.dirty;
+  const updateDraft = session.change;
+  const commitImmediate = session.changeImmediately;
+  const updateErrors = session.reportValidity;
+  const requestFocus = session.requestFocus;
+  const saveDraft = session.commit;
   const selectedRecord =
     arrayFocus.kind === "record"
       ? arraySelectionForValue(draft, shapeArrayType, shapes, arrayFocus.id)
       : null;
-
-  const updateDraft = (next: unknown) => {
-    setErrors(new Map());
-    setDraft(next);
-  };
-
-  const commitImmediate = (next: unknown) => {
-    onImmediateChange?.(next);
-    if (onImmediateChange) setSavedDraft(next);
-  };
-
-  const updateErrors = (path: readonly (string | number)[], error: string | null) => {
-    setErrors((current) => {
-      const next = new Map(current);
-      const key = formatValuePath(path.map(String));
-      if (error) next.set(key, error);
-      else next.delete(key);
-      return next;
-    });
-  };
-
-  const applyFocus = (focus: ArrayValueFocus) => {
-    setArrayFocus(focus);
-  };
-
-  const requestFocus = (focus: ArrayValueFocus) => {
-    if (
-      (focus.kind === "array" && arrayFocus.kind === "array") ||
-      (focus.kind === "record" && arrayFocus.kind === "record" && arrayFocus.id === focus.id)
-    ) {
-      return;
-    }
-    if (isDirty) {
-      setNavigationError(null);
-      setPendingFocus(focus);
-      return;
-    }
-    applyFocus(focus);
-  };
-
-  const saveDraft = () => {
-    if (!isDirty) return true;
-    const conflict = onSave(draft);
-    if (conflict) {
-      setErrors(new Map([["conflict", conflict]]));
-      setNavigationError(conflict);
-      return false;
-    }
-    setSavedDraft(draft);
-    return true;
-  };
 
   const breadcrumbs = [
     { label: nodeName, focus: { kind: "array" } as const },
@@ -181,28 +139,12 @@ export function SourceValueDialog({
       updateErrors={updateErrors}
       requestFocus={requestFocus}
       onSelectionChange={(selection) => {
-        setArrayFocus(selection ? { kind: "record", id: selection.id } : { kind: "array" });
+        session.requestFocus(selection ? { kind: "record", id: selection.id } : { kind: "array" });
       }}
       saveDraft={saveDraft}
-      onCancelNavigation={() => {
-        setPendingFocus(null);
-        setNavigationError(null);
-      }}
-      onDiscardNavigation={() => {
-        if (!pendingFocus) return;
-        setDraft(savedDraft);
-        setErrors(new Map());
-        setPendingFocus(null);
-        setNavigationError(null);
-        applyFocus(pendingFocus);
-      }}
-      onSaveNavigation={() => {
-        const nextFocus = pendingFocus;
-        if (!nextFocus || !saveDraft()) return;
-        setPendingFocus(null);
-        setNavigationError(null);
-        applyFocus(nextFocus);
-      }}
+      onCancelNavigation={session.cancelPendingFocus}
+      onDiscardNavigation={session.discardPendingFocus}
+      onSaveNavigation={session.savePendingFocus}
     />
   );
 }
