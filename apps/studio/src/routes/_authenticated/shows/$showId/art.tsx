@@ -38,10 +38,7 @@ import { useShow } from "../../../../api/shows";
 import { CanvasWorkspaceEditor } from "../../../../editors/canvas/CanvasWorkspaceEditor";
 import type { CanvasWorkspaceSession } from "../../../../editors/canvas/canvas-workspace-types";
 import { UndoCoordinator } from "../../../../editors/canvas/commands/undo-coordinator";
-import {
-  useBlockCreation,
-  useBlockCreationFromDrag,
-} from "../../../../editors/canvas/commands/use-block-creation";
+import { useBlockCreationSession } from "../../../../editors/canvas/commands/use-block-creation";
 import { useCanvasCommands } from "../../../../editors/canvas/commands/use-canvas-commands";
 import {
   rememberCanvasCamera,
@@ -298,15 +295,7 @@ function CanvasWorkspaceRoute() {
     [canvasCommands.createElement, focused],
   );
 
-  const createBlock = useBlockCreation({
-    artboards,
-    canvasCommands,
-    graph: graphEditing.command.graph,
-    executeGraphCommand: graphEditing.command.commands.execute,
-    undoHistory,
-  });
-
-  const createBlockFromDrag = useBlockCreationFromDrag({
+  const blockCreation = useBlockCreationSession({
     artboards,
     canvasCommands,
     graph: graphEditing.command.graph,
@@ -424,8 +413,8 @@ function CanvasWorkspaceRoute() {
       updateElement: canvasCommands.updateElement,
       updateElements: canvasCommands.updateElements,
       placeBlock,
-      createBlockFromDrag,
-      createBlockFromSelection: createBlock,
+      createBlockFromDrag: blockCreation.fromDrag,
+      createBlockFromSelection: blockCreation.fromSelection,
       deleteElements: removeElements,
       renameArtboard,
     },
