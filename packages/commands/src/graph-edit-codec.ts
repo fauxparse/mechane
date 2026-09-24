@@ -1666,6 +1666,22 @@ export const GRAPH_EDIT_CODECS: { [T in GraphEdit["type"]]: GraphEditCodec<T> } 
     }),
   },
 };
+type GraphEditDescriptorRegistry = {
+  [T in GraphEdit["type"]]: GraphEditDescriptor<T>;
+};
+
+/**
+ * The complete descriptor registry. The mapped return type keeps command,
+ * codec, lifetime and coalescing metadata together for every edit type.
+ * Adding a codec without a descriptor is a type error at this seam.
+ */
+export const GRAPH_EDIT_DESCRIPTORS: GraphEditDescriptorRegistry = Object.fromEntries(
+  Object.entries(GRAPH_EDIT_CODECS).map(([type, codec]) => [
+    type,
+    { ...codec, structuralIds, supersedes },
+  ]),
+) as GraphEditDescriptorRegistry;
+
 /**
  * An edit that sets a value and therefore makes an earlier edit to the same
  * value redundant until a structural lifetime boundary is crossed.
@@ -1793,10 +1809,6 @@ export function structuralIds(edit: GraphEdit): readonly string[] {
       return [edit.cueId];
     case GRAPH_COMMAND_TYPES.addNavigateAction:
       return [edit.action.id];
-    case GRAPH_COMMAND_TYPES.removeAction:
-      return [edit.actionId];
-    case GRAPH_COMMAND_TYPES.addEventBinding:
-      return [edit.binding.id];
     case GRAPH_COMMAND_TYPES.removeEventBinding:
       return [edit.bindingId];
     default:
@@ -1810,8 +1822,13 @@ export function structuralIds(edit: GraphEdit): readonly string[] {
  * prevents callers from accidentally depending on a partial descriptor.
  */
 export function graphEditDescriptor(type: string): GraphEditDescriptor<GraphEdit["type"]> | null {
-  const codec = graphEditCodec(type);
-  return codec ? { ...codec, structuralIds, supersedes } : null;
+  const descriptor = (
+    GRAPH_EDIT_DESCRIPTORS as Record<
+      string,
+      GraphEditDescriptor<GraphEdit["type"]> | undefined
+    >
+  )[type];
+  return descriptor ?? null;
 }
 
 /** The descriptor for `type`, or null if this build has never heard of it. */
