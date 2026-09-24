@@ -17,76 +17,46 @@ import {
 } from "@mechane/design-system";
 import { DEFAULT_FLOW_COLOR, FLOW_COLORS, isFlowColor } from "@mechane/domain";
 import type { FlowColor, GraphNode, Position } from "@mechane/domain";
-import {
-  Background,
-  BackgroundVariant,
-  Controls,
-  MiniMap,
-  PanOnScrollMode,
-  ReactFlow,
-  SelectionMode,
-} from "./graph/react-flow";
-import type {
-  Connection,
-  FitViewOptions,
-  OnEdgesChange,
-  OnNodeDrag,
-  OnNodesChange,
-  ShowGraphViewport,
-  XYPosition,
-} from "./graph/react-flow";
 import type { MutableRefObject } from "react";
 
 import type { GraphConnectionEditing, GraphCreationEditing } from "./commands/use-graph-editing";
 import type { CreationSite } from "./show-graph-layout";
-import { FLOW_NODE_TYPE, NODE_TYPE_BY_KIND } from "./graph/graph-to-flow";
-import type { ShowFlowEdge, ShowFlowNode } from "./graph/graph-to-flow";
-import { ShowEdgeRoutingProvider } from "./graph/ShowEdgeRoutingProvider";
-import { showEdgeTypes } from "./graph/show-edge-types";
+import {
+  ShowGraphCanvas,
+  type ShowGraphCanvasProps,
+  type ShowGraphFitViewOptions,
+} from "./graph/ShowGraphCanvas";
+import type { ShowGraphViewport } from "./graph/react-flow";
 import type { CreatableNode } from "./graph/node-kinds";
 import { CREATABLE_NODES } from "./graph/node-kinds";
-import { DeviceNode } from "./graph/nodes/DeviceNode";
-import { FlowNode } from "./graph/nodes/FlowNode";
-import { SceneNode } from "./graph/nodes/SceneNode";
-import { SourceNode } from "./graph/nodes/SourceNode";
-import { TransformerNode } from "./graph/nodes/TransformerNode";
-import { MIN_ZOOM, MAX_ZOOM } from "./show-graph-editor-constants";
-
-const nodeTypes = {
-  [NODE_TYPE_BY_KIND.device]: DeviceNode,
-  [FLOW_NODE_TYPE]: FlowNode,
-  [NODE_TYPE_BY_KIND.scene]: SceneNode,
-  [NODE_TYPE_BY_KIND.source]: SourceNode,
-  [NODE_TYPE_BY_KIND.transformer]: TransformerNode,
-};
 
 export interface ShowGraphContextMenuProps {
   menuPosition: MutableRefObject<Position>;
-  screenToFlowPosition(position: XYPosition): XYPosition;
+  screenToFlowPosition(position: Position): Position;
   selectedNodes: GraphNode[];
   create(creatable: CreatableNode, site: CreationSite): unknown;
-  fitView(options: FitViewOptions): void;
-  fitViewOptions: FitViewOptions;
+  fitView(options: ShowGraphFitViewOptions): void;
+  fitViewOptions: ShowGraphFitViewOptions;
   initialViewport?: ShowGraphViewport;
   onViewportChange?(viewport: ShowGraphViewport): void;
   selectedNodeIds: string[];
   selectedEdgeIds: string[];
   tidy(): void;
   requestDelete(): void;
-  nodes: ShowFlowNode[];
-  edges: ShowFlowEdge[];
-  onNodesChange: OnNodesChange<ShowFlowNode>;
-  onEdgesChange: OnEdgesChange<ShowFlowEdge>;
-  beginDrag: OnNodeDrag<ShowFlowNode>;
-  dragTo(moved: ShowFlowNode[]): void;
-  endDrag: OnNodeDrag<ShowFlowNode>;
+  nodes: ShowGraphCanvasProps["nodes"];
+  edges: ShowGraphCanvasProps["edges"];
+  onNodesChange: ShowGraphCanvasProps["onNodesChange"];
+  onEdgesChange: ShowGraphCanvasProps["onEdgesChange"];
+  beginDrag: ShowGraphCanvasProps["beginDrag"];
+  dragTo: ShowGraphCanvasProps["dragTo"];
+  endDrag: ShowGraphCanvasProps["endDrag"];
   creation: GraphCreationEditing;
   connections: GraphConnectionEditing;
   setNodeColor(nodeId: string, color: FlowColor): void;
-  onConnect(connection: Connection): void;
-  createFromConnection(sourceId: string, sourceHandle: string, position: Position): void;
-  isValidConnection(connection: Connection | ShowFlowEdge): boolean;
-  jumpToMinimapPoint(event: React.MouseEvent, position: XYPosition): void;
+  onConnect: ShowGraphCanvasProps["onConnect"];
+  createFromConnection: ShowGraphCanvasProps["createFromConnection"];
+  isValidConnection: ShowGraphCanvasProps["isValidConnection"];
+  jumpToMinimapPoint: ShowGraphCanvasProps["jumpToMinimapPoint"];
 }
 
 export function ShowGraphContextMenu({
@@ -128,67 +98,24 @@ export function ShowGraphContextMenu({
           menuPosition.current = screenToFlowPosition({ x: event.clientX, y: event.clientY });
         }}
       >
-        <ShowEdgeRoutingProvider nodes={nodes}>
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            nodeTypes={nodeTypes}
-            edgeTypes={showEdgeTypes}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onNodeDragStart={beginDrag}
-            onNodeDrag={(_event, _node, moved) => dragTo(moved)}
-            onNodeDragStop={endDrag}
-            onConnectStart={(_event, { nodeId, handleId }) => {
-              if (nodeId) editing.beginConnect(nodeId, handleId);
-            }}
-            onConnectEnd={(event, connectionState) => {
-              editing.endConnect();
-              if (
-                connectionState.toNode ||
-                !connectionState.fromNode ||
-                !connectionState.fromHandle
-              ) {
-                return;
-              }
-              const point = "changedTouches" in event ? event.changedTouches[0] : event;
-              if (!point) return;
-              createFromConnection(
-                connectionState.fromNode.id,
-                connectionState.fromHandle.id ?? "",
-                screenToFlowPosition({ x: point.clientX, y: point.clientY }),
-              );
-            }}
-            onConnect={onConnect}
-            isValidConnection={(connection) => isValidConnection(connection as Connection)}
-            deleteKeyCode={null}
-            selectionMode={SelectionMode.Full}
-            selectionKeyCode={null}
-            selectionOnDrag
-            panActivationKeyCode="Space"
-            panOnDrag={false}
-            panOnScroll
-            panOnScrollMode={PanOnScrollMode.Free}
-            zoomOnScroll
-            minZoom={MIN_ZOOM}
-            maxZoom={MAX_ZOOM}
-            defaultViewport={initialViewport}
-            onViewportChange={onViewportChange}
-            fitView={false}
-            fitViewOptions={fitViewOptions}
-            proOptions={{ hideAttribution: true }}
-            aria-label="Show graph"
-          >
-            <Background variant={BackgroundVariant.Dots} gap={24} size={1} />
-            <Controls fitViewOptions={fitViewOptions} />
-            <MiniMap
-              pannable
-              zoomable
-              onClick={jumpToMinimapPoint}
-              ariaLabel="Show graph minimap"
-            />
-          </ReactFlow>
-        </ShowEdgeRoutingProvider>
+        <ShowGraphCanvas
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          beginDrag={beginDrag}
+          dragTo={dragTo}
+          endDrag={endDrag}
+          beginConnect={editing.beginConnect}
+          endConnect={editing.endConnect}
+          onConnect={onConnect}
+          isValidConnection={isValidConnection}
+          createFromConnection={createFromConnection}
+          initialViewport={initialViewport}
+          onViewportChange={onViewportChange}
+          fitViewOptions={fitViewOptions}
+          jumpToMinimapPoint={jumpToMinimapPoint}
+        />
       </ContextMenuTrigger>
 
       <ContextMenuContent>
