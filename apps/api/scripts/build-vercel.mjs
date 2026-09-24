@@ -40,6 +40,12 @@ await writeFile(
     {
       version: 3,
       routes: [{ src: "/api/(.*)", dest: "/api" }],
+      crons: [
+        {
+          path: "/api/cron/player-invalidations",
+          schedule: process.env.CRON_SCHEDULE ?? "0 4 * * *",
+        },
+      ],
     },
     null,
     2,
