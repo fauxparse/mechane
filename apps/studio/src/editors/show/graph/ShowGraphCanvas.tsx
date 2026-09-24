@@ -18,13 +18,11 @@ import type {
 } from "./react-flow";
 import type { MouseEvent } from "react";
 
-import type { GraphNode, Position } from "@mechane/domain";
+import type { Position } from "@mechane/domain";
 import { FLOW_NODE_TYPE, NODE_TYPE_BY_KIND } from "./graph-to-flow";
 import type { ShowFlowEdge, ShowFlowNode } from "./graph-to-flow";
 import { ShowEdgeRoutingProvider } from "./ShowEdgeRoutingProvider";
 import { showEdgeTypes } from "./show-edge-types";
-import type { CreatableNode } from "./node-kinds";
-import { CREATABLE_NODES } from "./node-kinds";
 import { DeviceNode } from "./nodes/DeviceNode";
 import { FlowNode } from "./nodes/FlowNode";
 import { SceneNode } from "./nodes/SceneNode";
@@ -151,5 +149,3 @@ export function ShowGraphCanvas({
   );
 }
 
-export type { CreatableNode, GraphNode };
-export { CREATABLE_NODES };
