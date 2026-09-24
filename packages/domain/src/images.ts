@@ -47,11 +47,14 @@ export interface ImageUploadPolicy {
   candidateTtlMs: number;
 }
 
+// Uploads and deliveries pass through Vercel Functions, whose request and
+// response bodies cap at 4.5 MB; 2 MB leaves headroom until uploads go
+// straight to storage.
 export const DEFAULT_IMAGE_UPLOAD_POLICY: ImageUploadPolicy = {
-  maxSourceBytes: 25 * 1024 * 1024,
+  maxSourceBytes: 2 * 1024 * 1024,
   maxPixels: 40_000_000,
   maxAxis: 8_000,
-  maxNormalizedBytes: 10 * 1024 * 1024,
+  maxNormalizedBytes: 2 * 1024 * 1024,
   sessionTtlMs: 60 * 60 * 1000,
   candidateTtlMs: 24 * 60 * 60 * 1000,
 };
