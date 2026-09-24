@@ -53,7 +53,7 @@ import type {
   TransformerInputPort,
   TransformerTransform,
 } from "@mechane/domain";
-import { graphEditCodec } from "./graph-edit-codec";
+import { graphEditDescriptor } from "./graph-edit-codec";
 import type { ShowGraphCommand } from "./graph-commands";
 import { GRAPH_COMMAND_TYPES } from "./graph-commands";
 
@@ -348,172 +348,20 @@ export class UnknownGraphEditError extends Error {
 }
 
 /**
- * The command that performs `edit`.
- *
- * The point of routing through commands rather than mutating the graph
- * directly is that the atoms already carry the rules that aren't in the edit:
- * removing a node takes its edges and any Flow's reference to it, removing a
- * Variable takes the wiring that fed it. An `applyGraphEdit` that reimplemented
- * those would be a second definition of the graph's semantics, free to drift
- * from the first.
+ * The descriptor owns both the edit's command and its wire-batch semantics.
+ * Keeping this lookup here means graph edit application has no second
+ * lifetime/coalescing registry to drift from the codec.
  */
-export function commandForEdit(edit: GraphEdit): ShowGraphCommand {
-  const codec = graphEditCodec(edit.type);
-  if (!codec) {
-    // Not reachable from the union above; reachable from an edit that came
-    // off the wire with a type this build has never heard of, which is worth
-    // failing the whole batch over rather than skipping.
+function descriptorFor(edit: GraphEdit) {
+  const descriptor = graphEditDescriptor(edit.type);
+  if (!descriptor) {
     throw new UnknownGraphEditError(`Unknown Show graph edit "${edit.type}".`);
   }
-  return codec.command(edit);
+  return descriptor;
 }
 
-/**
- * An edit that *sets* a value rather than nudging one, and therefore makes
- * any earlier edit setting the same thing redundant: the key it writes, and
- * the ids whose creation or destruction in between would mean the two edits
- * aren't talking about the same thing after all.
- *
- * Deliberately not every edit type. `addEdge`/`removeEdge` and the add/remove
- * pairs are *steps* — two of them in a batch mean two different things
- * happened, and collapsing them would lose one.
- */
-function supersedes(edit: GraphEdit): { key: string; ids: readonly string[] } | null {
-  switch (edit.type) {
-    case GRAPH_COMMAND_TYPES.moveNode:
-      return { key: `move:${edit.nodeId}`, ids: [edit.nodeId] };
-    case GRAPH_COMMAND_TYPES.renameNode:
-      return { key: `rename:${edit.nodeId}`, ids: [edit.nodeId] };
-    case GRAPH_COMMAND_TYPES.reparentNode:
-      // Absolute like a move: it carries both the Flow and the position, so
-      // the last one is the whole answer.
-      return {
-        key: `reparent:${edit.nodeId}`,
-        ids: edit.parentId === null ? [edit.nodeId] : [edit.nodeId, edit.parentId],
-      };
-    case GRAPH_COMMAND_TYPES.setSourceType:
-      return { key: `sourceType:${edit.nodeId}`, ids: [edit.nodeId] };
-    case GRAPH_COMMAND_TYPES.setWiringFieldMapping:
-      return { key: `wiringFieldMapping:${edit.edgeId}`, ids: [edit.edgeId] };
-    case GRAPH_COMMAND_TYPES.setSourceFieldDefault:
-      return {
-        key: `sourceFieldDefault:${edit.nodeId}:${edit.fieldPath.join(".")}`,
-        ids: [edit.nodeId, ...edit.fieldPath],
-      };
-    case GRAPH_COMMAND_TYPES.setShapes:
-      return { key: GRAPH_COMMAND_TYPES.setShapes, ids: edit.shapes.map((shape) => shape.id) };
-    case GRAPH_COMMAND_TYPES.renameShape:
-      return { key: `renameShape:${edit.shapeId}`, ids: [edit.shapeId] };
-    case GRAPH_COMMAND_TYPES.renameShapeField:
-      return {
-        key: `renameShapeField:${edit.shapeId}:${edit.fieldId}`,
-        ids: [edit.shapeId, edit.fieldId],
-      };
-    case GRAPH_COMMAND_TYPES.setShapeFieldType:
-      return {
-        key: `shapeFieldType:${edit.shapeId}:${edit.fieldId}`,
-        ids: [edit.shapeId, edit.fieldId],
-      };
-    case GRAPH_COMMAND_TYPES.setShapeFieldDefault:
-      return {
-        key: `shapeFieldDefault:${edit.shapeId}:${edit.fieldId}`,
-        ids: [edit.shapeId, edit.fieldId],
-      };
-    case GRAPH_COMMAND_TYPES.setShapeFieldRequired:
-      return {
-        key: `shapeFieldRequired:${edit.shapeId}:${edit.fieldId}`,
-        ids: [edit.shapeId, edit.fieldId],
-      };
-    case GRAPH_COMMAND_TYPES.reorderShapeFields:
-      return {
-        key: `shapeFieldOrder:${edit.shapeId}`,
-        ids: [edit.shapeId, ...edit.fieldIds],
-      };
-    case GRAPH_COMMAND_TYPES.setFlowDefaultScene:
-      return {
-        key: `defaultScene:${edit.flowId}`,
-        ids: edit.sceneId === null ? [edit.flowId] : [edit.flowId, edit.sceneId],
-      };
-    case GRAPH_COMMAND_TYPES.setFlowSize:
-      return { key: `flowSize:${edit.flowId}`, ids: [edit.flowId] };
-    case GRAPH_COMMAND_TYPES.setSourceColumnSizes:
-      return { key: `sourceColumnSizes:${edit.nodeId}`, ids: [edit.nodeId] };
-    case GRAPH_COMMAND_TYPES.setNodeColor:
-      return { key: `nodeColor:${edit.nodeId}`, ids: [edit.nodeId] };
-    case GRAPH_COMMAND_TYPES.setEdgeLayout:
-      return { key: `edgeLayout:${edit.edgeId}`, ids: [edit.edgeId] };
-    case GRAPH_COMMAND_TYPES.setSceneVariableType:
-      return {
-        key: `variableType:${edit.sceneId}:${edit.variableId}`,
-        ids: [edit.sceneId, edit.variableId],
-      };
-    case GRAPH_COMMAND_TYPES.reorderSceneVariables:
-      return {
-        key: `variableOrder:${edit.sceneId}`,
-        ids: [edit.sceneId, ...edit.variableIds],
-      };
-    case GRAPH_COMMAND_TYPES.renameCue:
-      return { key: `renameCue:${edit.cueId}`, ids: [edit.cueId] };
-    case GRAPH_COMMAND_TYPES.setCueActionOrder:
-      return {
-        key: `cueActionOrder:${edit.cueId}`,
-        ids: [edit.cueId, ...edit.actionIds],
-      };
-    case GRAPH_COMMAND_TYPES.setNavigateTarget:
-      return { key: `navigateTarget:${edit.actionId}`, ids: [edit.actionId, edit.targetSceneId] };
-    case GRAPH_COMMAND_TYPES.setEventBindingCue:
-      return { key: `eventBindingCue:${edit.bindingId}`, ids: [edit.bindingId, edit.cueId] };
-    case GRAPH_COMMAND_TYPES.setEventBindingKey:
-      return { key: `eventBindingKey:${edit.bindingId}`, ids: [edit.bindingId] };
-    case GRAPH_COMMAND_TYPES.setEventBindingOrder:
-      return {
-        key: `eventBindingOrder:${edit.bindingIds.join(",")}`,
-        ids: [...edit.bindingIds],
-      };
-
-    case GRAPH_COMMAND_TYPES.setDevicePerConnection:
-      return { key: `perConnection:${edit.nodeId}`, ids: [edit.nodeId] };
-    default:
-      return null;
-  }
-}
-
-/** Ids this edit brings into existence or destroys — a barrier for the above. */
-function structuralIds(edit: GraphEdit): readonly string[] {
-  switch (edit.type) {
-    case GRAPH_COMMAND_TYPES.addNode:
-      return [edit.node.id];
-    case GRAPH_COMMAND_TYPES.removeNode:
-      return [edit.nodeId];
-    case GRAPH_COMMAND_TYPES.addShape:
-    case GRAPH_COMMAND_TYPES.duplicateShape:
-      return [edit.shape.id];
-    case GRAPH_COMMAND_TYPES.removeShape:
-      return [edit.shapeId];
-    case GRAPH_COMMAND_TYPES.addShapeField:
-      return [edit.shapeId, edit.field.id];
-    case GRAPH_COMMAND_TYPES.removeShapeField:
-      return [edit.shapeId, edit.fieldId];
-    case GRAPH_COMMAND_TYPES.addSceneVariable:
-      return [edit.variable.id];
-    case GRAPH_COMMAND_TYPES.removeSceneVariable:
-      return [edit.variableId];
-    case GRAPH_COMMAND_TYPES.addCue:
-      return [edit.cue.id];
-    case GRAPH_COMMAND_TYPES.removeCue:
-      return [edit.cueId];
-    case GRAPH_COMMAND_TYPES.addNavigateAction:
-      return [edit.action.id];
-    case GRAPH_COMMAND_TYPES.removeAction:
-      return [edit.actionId];
-    case GRAPH_COMMAND_TYPES.addEventBinding:
-      return [edit.binding.id];
-    case GRAPH_COMMAND_TYPES.removeEventBinding:
-      return [edit.bindingId];
-
-    default:
-      return [];
-  }
+export function commandForEdit(edit: GraphEdit): ShowGraphCommand {
+  return descriptorFor(edit).command(edit);
 }
 
 /**
@@ -522,32 +370,20 @@ function structuralIds(edit: GraphEdit): readonly string[] {
  * A drag emits a position every frame and a rename a name every keystroke —
  * which is right for the undo stack, where the whole run is one entry the
  * user can step back through as a unit, and absurd on the wire, where 150
- * absolute positions for one node say exactly what the last one says. This is
- * the difference between the two: the stack keeps every frame because it
- * needs to invert them, the network sends the outcome.
- *
- * Only *absolute setters* collapse (see `supersedes`), and only across a span
- * with no add or remove of the ids involved: "move n, delete n, restore n,
- * move n" is two moves of two different lifetimes of that node, and the first
- * one stays. Everything else keeps its order and its multiplicity, so the
- * batch still replays to exactly the graph the client is looking at.
+ * absolute positions for one node say exactly what the last one says.
  */
 export function coalesceGraphEdits(edits: readonly GraphEdit[]): GraphEdit[] {
-  // Backwards, because the *last* setter is the one that survives: an edit is
-  // dropped when a key it wrote has already been seen further along.
   const superseded = new Set<number>();
   const seen = new Map<string, readonly string[]>();
   for (let index = edits.length - 1; index >= 0; index -= 1) {
     const edit = edits[index] as GraphEdit;
-    // A node coming or going resets everything it takes part in: edits either
-    // side of it are about different lifetimes, not the same value twice.
-    const barriers = structuralIds(edit);
+    const barriers = descriptorFor(edit).structuralIds(edit);
     if (barriers.length > 0) {
       for (const [key, ids] of seen) {
         if (ids.some((id) => barriers.includes(id))) seen.delete(key);
       }
     }
-    const setter = supersedes(edit);
+    const setter = descriptorFor(edit).supersedes(edit);
     if (!setter) continue;
     if (seen.has(setter.key)) superseded.add(index);
     else seen.set(setter.key, setter.ids);
@@ -571,3 +407,4 @@ export function coalesceGraphEdits(edits: readonly GraphEdit[]): GraphEdit[] {
 export function applyGraphEdits(graph: ShowGraph, edits: readonly GraphEdit[]): ShowGraph {
   return edits.reduce((next, edit) => commandForEdit(edit).apply(next).state, graph);
 }
+
