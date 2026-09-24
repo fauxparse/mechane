@@ -80,8 +80,10 @@ export function SourceValueDialog({
   const initialDraft = draftForRow(row, shapes);
   const session = useStructuredValueSession({
     initialValue: initialDraft,
+    initialColumnSizes: columnSizes,
     onCommit: onSave,
     onImmediateChange,
+    onColumnSizesCommit: onColumnSizesChange,
   });
   const draft = session.value;
   const errors = session.errors;
@@ -91,6 +93,7 @@ export function SourceValueDialog({
   const updateDraft = session.change;
   const commitImmediate = session.changeImmediately;
   const updateErrors = session.reportValidity;
+  const commitColumnSizes = session.commitColumnSizes;
   const requestFocus = session.requestFocus;
   const saveDraft = session.commit;
   const selectedRecord =
@@ -121,8 +124,8 @@ export function SourceValueDialog({
       isLongText={isLongText}
       onImmediateChange={commitImmediate}
       imageAssets={imageAssets}
-      columnSizes={columnSizes}
-      onColumnSizesChange={onColumnSizesChange}
+      columnSizes={session.columnSizes}
+      onColumnSizesChange={commitColumnSizes}
       onImageUpload={onImageUpload}
       errors={errors}
       onClear={onClear}
