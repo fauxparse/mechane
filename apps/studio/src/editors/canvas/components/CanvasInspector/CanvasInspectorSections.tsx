@@ -12,15 +12,9 @@ import {
   type ImageInputOnUploadProps,
   type ImageInputValue,
 } from "@mechane/design-system";
-import {
-  isPropertyConnection,
-  type ImageAssetReference,
-  type ImageValue,
-  type ObjectFit,
-  type ObjectPosition,
-  type ResolvedImageValue,
-  type VariableReference,
-} from "@mechane/domain";
+import type { ObjectFit, ObjectPosition } from "@mechane/domain/canvas";
+import { isPropertyConnection, type VariableReference } from "@mechane/domain/property-values";
+import type { ImageAssetReference, ImageValue, ResolvedImageValue } from "@mechane/domain/shapes";
 import { VariableInspector } from "../../../../components/VariableInspector";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";

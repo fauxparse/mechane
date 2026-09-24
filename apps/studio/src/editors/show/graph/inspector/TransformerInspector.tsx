@@ -15,15 +15,15 @@ import {
   TypeSelect,
   cn,
 } from "@mechane/design-system";
+import { previewText } from "@mechane/domain/formula";
 import {
-  previewText,
   transformerInputType,
   transformerOutputType,
-  typeLabel,
   type DeviceNode,
   type GraphNode,
   type ShowGraph,
-} from "@mechane/domain";
+} from "@mechane/domain/graph";
+import { typeLabel } from "@mechane/domain/shapes";
 import type { GraphInspectorEditing } from "../../commands/use-graph-editing";
 import { FormulaEditor } from "../formula/FormulaEditor";
 import { useTransformerPreview } from "../formula/use-transformer-preview";

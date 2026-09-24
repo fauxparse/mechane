@@ -1,4 +1,4 @@
-import type { GraphNode } from "@mechane/domain";
+import type { GraphNode } from "@mechane/domain/graph";
 
 export function moveOutOfFlowDisabledReason(selectedNodes: GraphNode[]): string | undefined {
   if (selectedNodes.length === 0) return "select a Flow-local node first";

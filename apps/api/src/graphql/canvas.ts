@@ -1,15 +1,17 @@
-// The server end of the Canvas transport seam (#436, ADR-0014).
+// The Canvas slice: the server end of the Canvas transport seam (#436,
+// ADR-0014) — the SDL for Canvas documents and their Artboards, the
+// Element interface resolution, and the workspace query that serves them.
 //
-// Outbound only, and thin on purpose: a stored Canvas tree becomes the flat
+// Serialization is outbound only: a stored Canvas tree becomes the flat
 // Element list the schema exposes — the exact inverse of what
 // `@mechane/graphql-schema`'s `decodeCanvasDocument` does at the clients.
-// Inbound, `@mechane/commands`' `decodeCanvasWorkspaceEdit` is the one
-// decoder; what stays at ./schema.ts is this end's policy — how a rejection
-// reaches a person — because nothing in the codec imports GraphQL. The
-// hand-written `parseCanvasEdit` switch that used to live here was the second
-// half of a pair nothing checked for agreement (#436).
-import type { Element } from "@mechane/domain";
-import type { StoredCanvas } from "../db/canvas";
+// Inbound edit policy lives with the Show graph slice.
+import type { Element } from "@mechane/domain/canvas";
+
+import { readCanvasWorkspace, type StoredCanvas } from "../db/canvas";
+import type { GraphQLContext, Resolvers } from "./context";
+import { requireUserId } from "./context";
+import { findOwnShowOrThrow, validGraphState } from "./show";
 
 const ELEMENT_TYPE_NAMES = {
   rect: "RectElement",
@@ -73,3 +75,208 @@ export function serializeArtboard(canvas: StoredCanvas) {
     position: canvas.position,
   };
 }
+
+export const typeDefs = /* GraphQL */ `
+    """
+    A persisted Scene or Block Canvas (ADR-0014).
+
+    Elements arrive flat, each naming its parent and its rank, because a
+    Canvas hierarchy has no authored depth limit and a recursive selection
+    always has one. Clients rebuild the tree; \`@mechane/graphql-schema\`'s
+    \`decodeCanvasDocument\` is the one decoder that does it. Element stays an
+    interface so clients can select the primitive-specific content without a
+    nullable field bag.
+    """
+    type Canvas {
+      id: ID!
+      kind: String!
+      "Exactly one Element has no parent, and it is the root Frame."
+      elements: [Element!]!
+    }
+
+    """
+    One Canvas as it is placed on the Canvas Editor's plane.
+
+    Framing, not content: an Artboard has a place and a size, while the Canvas
+    it presents has an Element tree (CONTEXT.md). Owner identity lives here for
+    the same reason — the Canvas editor works on a Canvas without knowing
+    whether a Scene or a Block owns it.
+    """
+    type Artboard {
+      canvas: Canvas!
+      ownerId: ID!
+      ownerName: String!
+      position: Position!
+    }
+
+    interface Element {
+      id: ID!
+      name: String
+      parentId: ID
+      rank: String!
+      hidden: JSON!
+      layout: JSON
+      sizing: JSON
+      opacity: JSON
+      blendMode: String
+      fill: JSON
+      stroke: JSON
+      anchor: JSON
+      alignSelf: String
+    }
+
+    type RectElement implements Element {
+      id: ID!
+      name: String
+      parentId: ID
+      rank: String!
+      hidden: JSON!
+      layout: JSON
+      sizing: JSON
+      opacity: JSON
+      blendMode: String
+      fill: JSON
+      stroke: JSON
+      anchor: JSON
+      alignSelf: String
+      cornerRadius: JSON
+    }
+
+    type EllipseElement implements Element {
+      id: ID!
+      name: String
+      parentId: ID
+      rank: String!
+      hidden: JSON!
+      layout: JSON
+      sizing: JSON
+      opacity: JSON
+      blendMode: String
+      fill: JSON
+      stroke: JSON
+      anchor: JSON
+      alignSelf: String
+    }
+
+    type TextElement implements Element {
+      id: ID!
+      name: String
+      parentId: ID
+      rank: String!
+      hidden: JSON!
+      layout: JSON
+      sizing: JSON
+      opacity: JSON
+      blendMode: String
+      fill: JSON
+      stroke: JSON
+      anchor: JSON
+      alignSelf: String
+      content: JSON
+      color: JSON
+      fontFamily: JSON
+      fontSize: JSON
+      fontWeight: JSON
+      fontStyle: JSON
+      textDecoration: JSON
+      lineHeight: JSON
+      letterSpacing: JSON
+      textAlign: JSON
+      textVerticalAlign: JSON
+      textOverflow: String
+      padding: JSON
+    }
+
+    type ImageElement implements Element {
+      id: ID!
+      name: String
+      parentId: ID
+      rank: String!
+      hidden: JSON!
+      layout: JSON
+      sizing: JSON
+      opacity: JSON
+      blendMode: String
+      fill: JSON
+      stroke: JSON
+      anchor: JSON
+      alignSelf: String
+      image: JSON
+      alt: JSON
+      objectFit: JSON
+      objectPosition: JSON
+      cornerRadius: JSON
+    }
+
+    type FrameElement implements Element {
+      id: ID!
+      name: String
+      parentId: ID
+      rank: String!
+      hidden: JSON!
+      layout: JSON
+      sizing: JSON
+      opacity: JSON
+      blendMode: String
+      fill: JSON
+      stroke: JSON
+      anchor: JSON
+      alignSelf: String
+      cornerRadius: JSON
+      layoutMode: String
+      direction: String
+      gap: JSON
+      padding: JSON
+      alignPrimary: String
+      alignCounter: String
+      clip: Boolean
+    }
+
+    type SlotElement implements Element {
+      id: ID!
+      name: String
+      parentId: ID
+      rank: String!
+      hidden: JSON!
+      layout: JSON
+      sizing: JSON
+      opacity: JSON
+      blendMode: String
+      fill: JSON
+      stroke: JSON
+      anchor: JSON
+      alignSelf: String
+      layoutMode: String
+      direction: String
+      gap: JSON
+      padding: JSON
+      alignPrimary: String
+      alignCounter: String
+      clip: Boolean
+      blockId: ID!
+      assignments: JSON
+      expansion: JSON
+    }
+
+    type Query {
+      showCanvases(showId: ID!, state: String): [Artboard!]!
+    }
+`;
+
+export const resolvers: Resolvers = {
+  Element: {
+    __resolveType: resolveCanvasElementType,
+  },
+  Query: {
+    showCanvases: async (
+      _parent,
+      { showId, state }: { showId: string; state?: string | null },
+      context: GraphQLContext,
+    ) => {
+      const userId = requireUserId(context);
+      await findOwnShowOrThrow(showId, userId);
+      const workspace = await readCanvasWorkspace(showId, validGraphState(state ?? "draft"));
+      return workspace.canvases.map(serializeArtboard);
+    },
+  },
+};

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { GraphEdge } from "@mechane/domain";
+import type { GraphEdge } from "@mechane/domain/graph";
 import {
   FLOW_HEADER_HEIGHT,
   FLOW_NODE_TYPE,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Canvas, FrameElement, ShowGraph } from "@mechane/domain";
+import type { Canvas, FrameElement } from "@mechane/domain/canvas";
+import type { ShowGraph } from "@mechane/domain/graph";
 
 import { createBlockFromSelection, BlockExtractionError } from "./block-extraction";
 import type { CanvasWorkspace } from "./canvas-commands";

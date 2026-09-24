@@ -1,4 +1,4 @@
-import { typeLabel, type ShapeValue, type Type } from "@mechane/domain";
+import { typeLabel, type ShapeValue, type Type } from "@mechane/domain/shapes";
 import { upperFirst } from "es-toolkit";
 import {
   CalendarClockIcon,

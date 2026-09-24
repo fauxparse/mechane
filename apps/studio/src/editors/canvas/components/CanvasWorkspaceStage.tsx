@@ -4,8 +4,8 @@ import { Puzzle, TvMinimal } from "@mechane/design-system";
 import { CanvasRenderer } from "@mechane/rendering";
 import { canvasElementParent, findCanvasElement } from "@mechane/commands";
 import type { NewElement } from "@mechane/commands";
-import { isContainerElement } from "@mechane/domain";
-import type { FrameElement, Position } from "@mechane/domain";
+import { isContainerElement, type FrameElement } from "@mechane/domain/canvas";
+import type { Position } from "@mechane/domain/graph";
 import type { CanvasCamera } from "./canvas-camera";
 
 import type { CanvasArtboardDocument } from "../../../api/canvas";

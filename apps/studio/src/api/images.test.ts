@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ShowId } from "@mechane/domain";
+import type { ShowId } from "@mechane/domain/id";
 
 import { uploadImageFile } from "./images";
 

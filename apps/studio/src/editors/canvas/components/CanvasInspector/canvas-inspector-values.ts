@@ -1,28 +1,23 @@
+import type { BlockVariable } from "@mechane/domain/blocks";
 import type {
   AxisSize,
-  BlockVariable,
   ElementSizing,
-  SceneVariable,
-  Shape,
-  ShapeValue,
   SizeMode,
   SlotElement,
   SlotInputSource,
-  Type,
-  VariableReference,
-  FormulaScope,
-  FormulaType,
-} from "@mechane/domain";
+} from "@mechane/domain/canvas";
+import { type FormulaScope, type FormulaType, absent } from "@mechane/domain/formula";
+import { formulaShapeTable, formulaType } from "@mechane/domain/formula-runtime";
+import type { SceneVariable } from "@mechane/domain/graph";
 import {
-  absent,
+  type VariableReference,
   defaultPropertyValue,
-  formulaShapeTable,
-  formulaType,
   isPropertyConnection,
   propertyFieldPaths,
   typeAtPath,
   valueAtPath,
-} from "@mechane/domain";
+} from "@mechane/domain/property-values";
+import type { Shape, ShapeValue, Type } from "@mechane/domain/shapes";
 import type { PropertyInputConstraint, PropertyInputValue } from "@mechane/design-system";
 
 export type SizeConstraint = PropertyInputConstraint;

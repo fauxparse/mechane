@@ -11,20 +11,20 @@ import {
   variableTypeIcon,
   type ImageInputValue,
 } from "@mechane/design-system";
+import { formatValuePath, type ShowGraph } from "@mechane/domain/graph";
 import {
-  defaultValueForType,
-  formatValuePath,
-  isArrayStructuredValueTemplate,
   isImageAssetReference,
   isResolvedImageValue,
-  isShapeStructuredValueTemplate,
-  normalizeStructuredValueTemplate,
-  setValueAtPath,
   typeLabel,
   type ResolvedImageValue,
-  type ShowGraph,
   type Type,
-} from "@mechane/domain";
+} from "@mechane/domain/shapes";
+import { defaultValueForType, setValueAtPath } from "@mechane/domain/source-defaults";
+import {
+  isArrayStructuredValueTemplate,
+  isShapeStructuredValueTemplate,
+  normalizeStructuredValueTemplate,
+} from "@mechane/domain/structured-values";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { SourceValueEditing } from "../../commands/use-graph-editing";

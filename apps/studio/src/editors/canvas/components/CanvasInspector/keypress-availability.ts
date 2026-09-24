@@ -1,4 +1,4 @@
-import type { InteractionOwner } from "@mechane/domain";
+import type { InteractionOwner } from "@mechane/domain/interactions";
 
 /**
  * Why a Keypress can't be added to the current selection, or null when it can.

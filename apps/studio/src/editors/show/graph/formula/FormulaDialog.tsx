@@ -20,13 +20,12 @@ import {
   CATALOGUE,
   asText,
   previewText,
-  typeLabel,
   typeName,
   type FormulaDiagnostic,
   type FormulaValue,
-  type Shape,
-  type ShowGraph,
-} from "@mechane/domain";
+} from "@mechane/domain/formula";
+import type { ShowGraph } from "@mechane/domain/graph";
+import { typeLabel, type Shape } from "@mechane/domain/shapes";
 import type { ReactNode } from "react";
 
 import { FormulaEditor } from "./FormulaEditor";

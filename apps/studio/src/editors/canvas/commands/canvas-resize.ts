@@ -1,4 +1,4 @@
-import type { Element, Element as CanvasElement } from "@mechane/domain";
+import type { Element, Element as CanvasElement } from "@mechane/domain/canvas";
 import { roundToLogicalPixel } from "../components/canvas-pixels";
 
 /** One Element caught up in a resize, with everything needed to place it again afterwards. */

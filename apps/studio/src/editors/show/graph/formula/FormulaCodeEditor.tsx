@@ -5,7 +5,7 @@ import {
   typeName,
   type FormulaScope,
   type FormulaType,
-} from "@mechane/domain";
+} from "@mechane/domain/formula";
 import { cn } from "@mechane/design-system";
 import {
   autocompletion,

@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import type { EventBinding } from "@mechane/domain";
+import type { EventBinding } from "@mechane/domain/interactions";
 import type { CanvasArtboardDocument } from "../../../../api/canvas";
 
 import type { CanvasInspectorModel } from "./canvas-inspector-types";

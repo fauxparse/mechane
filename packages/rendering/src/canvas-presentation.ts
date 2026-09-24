@@ -1,24 +1,16 @@
+import type { Block } from "@mechane/domain/blocks";
+import type { Canvas, ResolvedCanvas, ResolvedElement } from "@mechane/domain/canvas";
+import { resolveCanvasProperties } from "@mechane/domain/element-properties";
+import type { GraphNode, ShowGraph } from "@mechane/domain/graph";
+import type { StructuredValueId } from "@mechane/domain/id";
+import { sceneVariableResolution } from "@mechane/domain/scene-variable-values";
+import type { ImageAssetReference, ResolvedImageValue, Shape, Type } from "@mechane/domain/shapes";
 import {
-  resolveCanvasProperties,
   resolveSlotInstances,
-  sceneVariableResolution,
-} from "@mechane/domain";
-import type {
-  Block,
-  Canvas,
-  GraphNode,
-  ImageAssetReference,
-  ResolvedCanvas,
-  ResolvedElement,
-  ResolvedImageValue,
-  Shape,
-  SlotDiagnostic,
-  SlotVariableValue,
-  StructuredValueId,
-  StructuredValues,
-  Type,
-} from "@mechane/domain";
-import type { ShowGraph } from "@mechane/domain";
+  type SlotDiagnostic,
+  type SlotVariableValue,
+} from "@mechane/domain/slots";
+import type { StructuredValues } from "@mechane/domain/structured-values";
 
 type SceneNode = Extract<GraphNode, { kind: "scene" }>;
 export type CanvasPresentationMode = "studio" | "player";

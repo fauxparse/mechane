@@ -1,6 +1,6 @@
 // GraphQL request context: who (if anyone) is signed in, resolved from the
 // Better Auth session cookie on the incoming request.
-import { GraphQLError } from "graphql";
+import { GraphQLError, type GraphQLFieldResolver } from "graphql";
 
 import { auth } from "../auth";
 
@@ -15,6 +15,15 @@ export interface GraphQLContext {
   playerPairingCode?: string | null;
 }
 
+/**
+ * One slice's resolver map: GraphQL type name → that type's field (or
+ * `__resolveType`) resolvers. Slice modules export one of these alongside
+ * their `typeDefs`; ./schema.ts assembles them into the served schema.
+ */
+export type Resolvers = Record<
+  string,
+  Record<string, GraphQLFieldResolver<never, GraphQLContext>>
+>;
 function bearerCredential(request: Request): string | null {
   const header = request.headers.get("authorization");
   if (!header?.startsWith("Bearer ")) return null;

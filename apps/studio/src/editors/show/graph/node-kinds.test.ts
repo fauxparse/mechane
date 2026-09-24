@@ -1,5 +1,6 @@
-import { typeLabel, type ShowGraph } from "@mechane/domain";
-import { assertValidShowGraph, isId } from "@mechane/domain";
+import { type ShowGraph, assertValidShowGraph } from "@mechane/domain/graph";
+import { isId } from "@mechane/domain/id";
+import { typeLabel } from "@mechane/domain/shapes";
 import { describe, expect, it } from "vitest";
 
 import {

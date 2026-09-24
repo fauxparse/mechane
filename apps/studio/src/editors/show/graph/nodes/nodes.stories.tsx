@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/react-vite";
-import { FLOW_COLORS, type FlowColor } from "@mechane/domain";
+import { FLOW_COLORS, type FlowColor } from "@mechane/domain/graph";
 import { ComponentProps } from "react";
 
 import { BaseNode } from "./BaseNode";

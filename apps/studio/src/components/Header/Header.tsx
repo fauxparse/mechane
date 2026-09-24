@@ -10,7 +10,8 @@
 // the SPA navigation. Neither needs a router in scope, so a story can point
 // them all at "#".
 import { cn } from "@mechane/design-system";
-import type { PublishState, ThemeMode } from "@mechane/domain";
+import type { PublishState } from "@mechane/domain/publish";
+import type { ThemeMode } from "@mechane/domain/theme-settings";
 
 import { HeaderLeft } from "./HeaderLeft";
 import { HeaderRight } from "./HeaderRight";

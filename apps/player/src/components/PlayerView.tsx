@@ -1,4 +1,4 @@
-import type { BlockInstancePathSegment } from "@mechane/domain";
+import type { BlockInstancePathSegment } from "@mechane/domain/interactions";
 import { CanvasRenderer, prepareCanvasPresentation } from "@mechane/rendering";
 import { useCallback, useMemo } from "react";
 import { usePlayerSession, type PlayerSession } from "../api";

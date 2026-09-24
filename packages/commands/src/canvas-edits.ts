@@ -1,5 +1,10 @@
-import type { Canvas, Element, FrameElement, Position } from "@mechane/domain";
-import { ELEMENT_KINDS } from "@mechane/domain";
+import {
+  type Canvas,
+  type Element,
+  type FrameElement,
+  ELEMENT_KINDS,
+} from "@mechane/domain/canvas";
+import type { Position } from "@mechane/domain/graph";
 import type { GraphEdit } from "./graph-edits";
 
 export const CANVAS_COMMAND_TYPES = {

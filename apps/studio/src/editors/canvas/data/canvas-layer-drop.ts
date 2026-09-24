@@ -1,4 +1,4 @@
-import type { Element, FrameElement } from "@mechane/domain";
+import type { Element, FrameElement } from "@mechane/domain/canvas";
 
 import { rankForInsertion } from "../commands/canvas-creation";
 import { layerChildren } from "./canvas-layers";

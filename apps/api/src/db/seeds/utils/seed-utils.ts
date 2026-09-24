@@ -1,15 +1,15 @@
 import { and, eq } from "drizzle-orm";
 
+import type { Canvas } from "@mechane/domain/canvas";
 import {
-  fieldsForType,
-  type Canvas,
   type FlowSize,
   type GraphEdge,
   type GraphNode,
   type Position,
   type ShowGraph,
   transformerOutputType,
-} from "@mechane/domain";
+} from "@mechane/domain/graph";
+import { fieldsForType } from "@mechane/domain/shapes";
 import { readCanvasWorkspace, writeCanvasRows } from "../../canvas";
 import { db } from "../../client";
 import { canvases, showGraphs } from "../../schema";

@@ -10,7 +10,7 @@ import {
   blockNameForSelection,
   createBlockFromSelection,
 } from "@mechane/commands";
-import type { ShowGraph } from "@mechane/domain";
+import type { ShowGraph } from "@mechane/domain/graph";
 import { useCallback } from "react";
 import type { CanvasArtboardDocument } from "../../../api/canvas";
 import {
@@ -36,18 +36,23 @@ export interface BlockCreationInput {
   readonly undoHistory: UndoCoordinator;
 }
 
-export function useBlockCreation({
+export interface BlockCreationSession {
+  fromSelection(
+    canvasId: string,
+    elementIds: readonly string[],
+  ): CanvasBlockCreationResult | null;
+  fromDrag(request: CanvasBlockCreationRequest): CanvasBlockCreationResult;
+}
+
+export function useBlockCreationSession({
   artboards,
   canvasCommands,
   graph,
   executeGraphCommand,
   undoHistory,
-}: BlockCreationInput): (
-  canvasId: string,
-  elementIds: readonly string[],
-) => CanvasBlockCreationResult | null {
+}: BlockCreationInput): BlockCreationSession {
   const execute = canvasCommands.execute;
-  return useCallback(
+  const fromSelection = useCallback(
     (canvasId: string, elementIds: readonly string[]) => {
       const artboard = artboards.find((candidate) => candidate.canvasId === canvasId);
       if (!artboard || blockExtractionProblem(artboard.canvas, elementIds)) return null;
@@ -82,15 +87,7 @@ export function useBlockCreation({
     },
     [artboards, execute, executeGraphCommand, graph.blocks, undoHistory],
   );
-}
-export function useBlockCreationFromDrag({
-  canvasCommands,
-  graph,
-  executeGraphCommand,
-  undoHistory,
-}: BlockCreationInput): (request: CanvasBlockCreationRequest) => CanvasBlockCreationResult {
-  const execute = canvasCommands.execute;
-  return useCallback(
+  const fromDrag = useCallback(
     (request: CanvasBlockCreationRequest) => {
       const created = createBlockFromDrag(graph, request);
       undoHistory.link(() => {
@@ -106,4 +103,5 @@ export function useBlockCreationFromDrag({
     },
     [execute, executeGraphCommand, graph, undoHistory],
   );
+  return { fromSelection, fromDrag };
 }

@@ -11,8 +11,10 @@
 // the selection already lived in — the Frame's own dimensions, or the shared parent's — rather
 // than to measure the DOM and bake pixels the model would then disagree with.
 
-import type { Block, Canvas, Element, FrameElement, Position } from "@mechane/domain";
-import { generateId } from "@mechane/domain";
+import type { Block } from "@mechane/domain/blocks";
+import type { Canvas, Element, FrameElement } from "@mechane/domain/canvas";
+import type { Position } from "@mechane/domain/graph";
+import { generateId } from "@mechane/domain/id";
 
 import { canvasElementParent, findCanvasElement } from "./canvas-edits";
 import type { NewElement } from "./canvas-edits";

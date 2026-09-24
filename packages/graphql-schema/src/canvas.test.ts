@@ -1,4 +1,4 @@
-import type { Element } from "@mechane/domain";
+import type { Element } from "@mechane/domain/canvas";
 import { print } from "graphql";
 import { describe, expect, it } from "vitest";
 

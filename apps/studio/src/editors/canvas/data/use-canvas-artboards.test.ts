@@ -1,7 +1,8 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { resolveSlotInstances } from "@mechane/domain";
-import type { Block, BlockVariable, ShowGraph } from "@mechane/domain";
+import type { Block, BlockVariable } from "@mechane/domain/blocks";
+import type { ShowGraph } from "@mechane/domain/graph";
+import { resolveSlotInstances } from "@mechane/domain/slots";
 import { describe, expect, it } from "vitest";
 
 import type { CanvasArtboardDocument } from "../../../api/canvas";

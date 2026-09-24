@@ -1,19 +1,20 @@
+import { resolveCueParameters } from "@mechane/domain/cue-parameters";
+import type { ShowGraph } from "@mechane/domain/graph";
 import {
   InvalidInteractionError,
-  PAIRING_CODE_PATTERN,
-  classifyUpdateActionScope,
-  isStructuredValueReference,
-  planUpdate,
-  resolveCueParameters,
   resolveRuntimeEvent,
   type Action,
   type BlockInstancePathSegment,
   type RuntimeEventObservation,
   type RuntimeEventPlan,
-  type RunState,
-  type ShowGraph,
+} from "@mechane/domain/interactions";
+import { PAIRING_CODE_PATTERN } from "@mechane/domain/pairing-code";
+import { isStructuredValueReference, type RunState } from "@mechane/domain/structured-values";
+import {
+  classifyUpdateActionScope,
+  planUpdate,
   type UpdateWrite,
-} from "@mechane/domain";
+} from "@mechane/domain/update-plan";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 
 import { readCanvas } from "./canvas";

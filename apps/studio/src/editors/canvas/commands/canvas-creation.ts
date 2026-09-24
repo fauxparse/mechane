@@ -1,5 +1,5 @@
 import type { NewElement } from "@mechane/commands";
-import type { Element } from "@mechane/domain";
+import type { Element } from "@mechane/domain/canvas";
 import type { CanvasClientRect } from "../components/canvas-geometry";
 
 /** Replaces fill axes with the rendered dimensions an absolute parent can honor. */

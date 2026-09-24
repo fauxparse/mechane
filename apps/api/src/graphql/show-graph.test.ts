@@ -3,7 +3,7 @@
 // what this boundary decides — whether the *graph* accepts it is the command
 // layer's answer, given when the batch is applied.
 import { GRAPH_COMMAND_TYPES, type FlatGraphEdit } from "@mechane/commands";
-import type { FlowNode } from "@mechane/domain";
+import type { FlowNode } from "@mechane/domain/graph";
 import { GraphQLError } from "graphql";
 import { describe, expect, it } from "vitest";
 

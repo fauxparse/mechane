@@ -1,5 +1,5 @@
 import { eq, and, desc } from "drizzle-orm";
-import type { ImageAsset } from "@mechane/domain";
+import type { ImageAsset } from "@mechane/domain/images";
 
 import { db } from "./client";
 import { blobs, imageAssets } from "./schema";

@@ -7,7 +7,7 @@
 // must be dropped, not fail the whole batch and roll back a valid deletion.
 import { CANVAS_COMMAND_TYPES, GRAPH_COMMAND_TYPES } from "@mechane/commands";
 import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
-import type { ShowGraph } from "@mechane/domain";
+import type { ShowGraph } from "@mechane/domain/graph";
 import { describe, expect, it } from "vitest";
 
 import { readCanvasWorkspace } from "./canvas";

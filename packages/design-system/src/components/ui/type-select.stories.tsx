@@ -1,4 +1,4 @@
-import type { Shape } from "@mechane/domain";
+import type { Shape } from "@mechane/domain/shapes";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { InspectorProvider } from "@mechane/design-system";
 import { useState } from "react";

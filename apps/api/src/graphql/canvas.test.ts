@@ -1,4 +1,4 @@
-import type { Canvas, FrameElement } from "@mechane/domain";
+import type { Canvas, FrameElement } from "@mechane/domain/canvas";
 import { decodeCanvasDocument } from "@mechane/graphql-schema";
 import { describe, expect, it } from "vitest";
 

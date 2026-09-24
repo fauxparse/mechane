@@ -18,8 +18,12 @@ import {
   TooltipTrigger,
   type LucideIcon,
 } from "@mechane/design-system";
-import type { CornerRadius, CornerRadiusElement } from "@mechane/domain";
-import { hasCornerRadius, isPropertyConnection, isPropertyFormula } from "@mechane/domain";
+import {
+  type CornerRadius,
+  type CornerRadiusElement,
+  hasCornerRadius,
+} from "@mechane/domain/canvas";
+import { isPropertyConnection, isPropertyFormula } from "@mechane/domain/property-values";
 import { Dispatch, SetStateAction, useState } from "react";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";

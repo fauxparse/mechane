@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import type { GraphInspectorEditing } from "../../commands/use-graph-editing";
-import type { FlowNode, SceneNode, ShowGraph } from "@mechane/domain";
+import type { FlowNode, SceneNode, ShowGraph } from "@mechane/domain/graph";
 import { SingleNode } from "./SingleNode";
 
 const flow: FlowNode = {

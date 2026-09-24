@@ -11,8 +11,8 @@
 // fix belongs on the server: a `Show.scenes` selection, or a rendered
 // thumbnail, so the list query answers this in one round trip. Everything that
 // would have to change lives in this file, so that fix is a drop-in.
-import { defaultSourceValues } from "@mechane/domain";
-import type { ShowId } from "@mechane/domain";
+import type { ShowId } from "@mechane/domain/id";
+import { defaultSourceValues } from "@mechane/domain/source-defaults";
 import { prepareCanvasPresentation } from "@mechane/rendering";
 import type { CanvasPresentation } from "@mechane/rendering";
 import { useMemo } from "react";

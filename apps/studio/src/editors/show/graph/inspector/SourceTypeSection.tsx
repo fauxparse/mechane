@@ -12,7 +12,8 @@ import {
   TypeSelect,
   variableTypeIcon,
 } from "@mechane/design-system";
-import { typeLabel, type Shape, type SourceNode, type Type } from "@mechane/domain";
+import type { SourceNode } from "@mechane/domain/graph";
+import { typeLabel, type Shape, type Type } from "@mechane/domain/shapes";
 import { useState } from "react";
 
 import type { GraphInspectorEditing } from "../../commands/use-graph-editing";

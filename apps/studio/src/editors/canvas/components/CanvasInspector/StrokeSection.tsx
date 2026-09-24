@@ -1,4 +1,4 @@
-import type { Element as CanvasElement, Stroke, StrokeStyle } from "@mechane/domain";
+import type { Element as CanvasElement, Stroke, StrokeStyle } from "@mechane/domain/canvas";
 import {
   Button,
   PenLineIcon,

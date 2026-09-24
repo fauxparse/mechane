@@ -7,22 +7,25 @@
 // disagree with each other about what the ports hold.
 import {
   analyse,
-  defaultSourceRuntimeState,
-  evaluateTransformer,
-  isStructuredValueReference,
-  transformerFormulaScope,
-  transformerInputs,
-  transformerInputType,
-  transformerOutputType,
   type FormulaAnalysis,
   type FormulaScope,
   type FormulaValue,
+} from "@mechane/domain/formula";
+import {
+  transformerInputType,
+  transformerOutputType,
   type GraphNode,
-  type RuntimeValue,
   type ShowGraph,
+} from "@mechane/domain/graph";
+import { transformerInputs } from "@mechane/domain/scene-variable-values";
+import type { Type } from "@mechane/domain/shapes";
+import { defaultSourceRuntimeState } from "@mechane/domain/source-defaults";
+import {
+  isStructuredValueReference,
+  type RuntimeValue,
   type StructuredValueRecord,
-  type Type,
-} from "@mechane/domain";
+} from "@mechane/domain/structured-values";
+import { evaluateTransformer, transformerFormulaScope } from "@mechane/domain/transformers";
 import { useMemo } from "react";
 
 export type StudioTransformerNode = Extract<GraphNode, { kind: "transformer" }>;

@@ -12,7 +12,7 @@
 // cannot know how many Shows there will be. See ./use-show-dossier for what
 // that costs.
 import { SearchInput, ToggleGroup, ToggleGroupItem } from "@mechane/design-system";
-import type { ShowId } from "@mechane/domain";
+import type { ShowId } from "@mechane/domain/id";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type { DashboardShow } from "./dashboard-shows";

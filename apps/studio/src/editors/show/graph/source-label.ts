@@ -1,5 +1,4 @@
-import { DEVICE_SOURCE_HANDLES } from "@mechane/domain";
-import type { ShowGraph } from "@mechane/domain";
+import { DEVICE_SOURCE_HANDLES, type ShowGraph } from "@mechane/domain/graph";
 
 export function sourceLabelFor(
   graph: ShowGraph,

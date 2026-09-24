@@ -4,8 +4,9 @@ import { describe, expect, it } from "vitest";
 
 import { CanvasRenderer } from "./canvas-renderer";
 import { prepareCanvasForRender } from "./canvas-presentation";
-import type { Canvas } from "@mechane/domain";
-import type { Block, SlotVariableValue } from "@mechane/domain";
+import type { Block } from "@mechane/domain/blocks";
+import type { Canvas } from "@mechane/domain/canvas";
+import type { SlotVariableValue } from "@mechane/domain/slots";
 
 interface MarkupOptions {
   readonly blocks?: readonly Block[];

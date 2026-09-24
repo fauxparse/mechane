@@ -1,4 +1,4 @@
-import { emptyShowGraph } from "@mechane/domain";
+import { emptyShowGraph } from "@mechane/domain/graph";
 import { describe, expect, it } from "vitest";
 
 import { serializeShowGraph } from "./show-graph";

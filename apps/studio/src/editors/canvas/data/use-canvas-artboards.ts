@@ -6,8 +6,9 @@
 // query has never seen. The command stack made it, and the server will make its own from the
 // same `graph.addBlock` edit, so until the next read the stack's copy *is* the Artboard.
 
-import { defaultSourceValues } from "@mechane/domain";
-import type { Block, ShowGraph } from "@mechane/domain";
+import type { Block } from "@mechane/domain/blocks";
+import type { ShowGraph } from "@mechane/domain/graph";
+import { defaultSourceValues } from "@mechane/domain/source-defaults";
 import type { CanvasWorkspace } from "@mechane/commands";
 import { prepareCanvasPresentation } from "@mechane/rendering";
 import { useMemo } from "react";

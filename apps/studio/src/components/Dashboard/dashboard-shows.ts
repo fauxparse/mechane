@@ -4,7 +4,7 @@
 // piece of this screen with a right answer worth pinning down: a Show that is
 // live outranks one that was merely edited recently, and getting that backwards
 // puts the wrong Show in the one spot a director looks at first.
-import type { ShowId } from "@mechane/domain";
+import type { ShowId } from "@mechane/domain/id";
 
 /** The Show fields the dashboard list needs; a subset of the `shows` query. */
 export interface DashboardShow {

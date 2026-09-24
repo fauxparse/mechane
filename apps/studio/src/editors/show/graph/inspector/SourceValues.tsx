@@ -11,14 +11,10 @@ import {
   SectionRow,
   variableTypeIcon,
 } from "@mechane/design-system";
-import {
-  defaultSourceValues,
-  fieldsForType,
-  formatValuePath,
-  sourceDefaultsFor,
-  type SourceNode,
-  valueAtPath,
-} from "@mechane/domain";
+import { formatValuePath, type SourceNode } from "@mechane/domain/graph";
+import { valueAtPath } from "@mechane/domain/property-values";
+import { fieldsForType } from "@mechane/domain/shapes";
+import { defaultSourceValues, sourceDefaultsFor } from "@mechane/domain/source-defaults";
 import { useEffect, useMemo, useState } from "react";
 
 import type { ShowGraphValueLocation } from "../../ShowGraphEditor";

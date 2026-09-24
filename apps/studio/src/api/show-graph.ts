@@ -8,7 +8,8 @@
 // stored on either.
 import { coalesceCanvasWorkspaceEdits, coalesceGraphEdits } from "@mechane/commands";
 import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
-import type { GraphState, ShowId } from "@mechane/domain";
+import type { GraphState } from "@mechane/domain/graph";
+import type { ShowId } from "@mechane/domain/id";
 import {
   ApplyShowEditsMutation,
   GetShowGraphQuery,

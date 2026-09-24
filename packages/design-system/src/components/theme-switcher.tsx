@@ -4,8 +4,12 @@
 // consumer (apps/studio's SettingsRoute) supplies the current
 // mode/palette and the change callbacks, wiring them to the
 // userSettings GraphQL mutation.
-import { THEME_PALETTE_METADATA, THEME_PALETTES } from "@mechane/domain";
-import type { ThemeMode, ThemePalette } from "@mechane/domain";
+import {
+  THEME_PALETTE_METADATA,
+  THEME_PALETTES,
+  type ThemeMode,
+  type ThemePalette,
+} from "@mechane/domain/theme-settings";
 import { Moon, Sun } from "lucide-react";
 
 import { cn } from "../lib/utils";

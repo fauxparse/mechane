@@ -6,7 +6,7 @@ import {
   QrCode,
   variableTypeIcon,
 } from "@mechane/design-system";
-import { DEVICE_SOURCE_HANDLES } from "@mechane/domain";
+import { DEVICE_SOURCE_HANDLES } from "@mechane/domain/graph";
 import { Position, type HandleProps } from "@xyflow/react";
 import type { ComponentType } from "react";
 import { playerSessionUrl } from "../../../../api/client";

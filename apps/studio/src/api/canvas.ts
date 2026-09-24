@@ -1,4 +1,5 @@
-import type { Canvas, ShowId } from "@mechane/domain";
+import type { Canvas } from "@mechane/domain/canvas";
+import type { ShowId } from "@mechane/domain/id";
 import type { CanvasPresentation } from "@mechane/rendering";
 import {
   decodeCanvasDocument,

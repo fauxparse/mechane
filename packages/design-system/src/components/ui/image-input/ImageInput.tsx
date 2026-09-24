@@ -1,4 +1,5 @@
-import { type ImageValue, type ResolvedImageValue, type VariableReference } from "@mechane/domain";
+import type { VariableReference } from "@mechane/domain/property-values";
+import type { ImageValue, ResolvedImageValue } from "@mechane/domain/shapes";
 import { useCallback } from "react";
 
 import { useVibe, Vibe } from "../../inspector-vibe";

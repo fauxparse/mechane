@@ -27,7 +27,7 @@ import {
   type ResolvedImageValue,
   type Shape,
   typeLabel,
-} from "@mechane/domain";
+} from "@mechane/domain/shapes";
 import type { SourceValueRow } from "../inspector/source-value-types";
 import { ArrayValueEditor } from "./ArrayValueEditor";
 import { type ArrayValueFocus, type ArrayValueSelection } from "./ArrayValueEditor/types";

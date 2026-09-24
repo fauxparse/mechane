@@ -23,7 +23,7 @@
 // `CanvasEditCodecError`; the api adapter turns that into a `BAD_USER_INPUT`
 // GraphQLError, and nothing here imports GraphQL.
 
-import type { Position } from "@mechane/domain";
+import type { Position } from "@mechane/domain/graph";
 
 import {
   ARTBOARD_COMMAND_TYPES,

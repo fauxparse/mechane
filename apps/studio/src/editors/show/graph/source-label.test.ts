@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ShowGraph } from "@mechane/domain";
+import type { ShowGraph } from "@mechane/domain/graph";
 
 import { sourceLabelFor } from "./source-label";
 

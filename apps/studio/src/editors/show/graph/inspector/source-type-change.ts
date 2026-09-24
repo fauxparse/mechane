@@ -1,18 +1,24 @@
 import type { GraphEdit } from "@mechane/commands";
 import { GRAPH_COMMAND_TYPES } from "@mechane/commands";
 import {
+  findNode,
+  formatValuePath,
+  transformerOutputType,
+  wiringTargetVariableId,
+  type GraphEdge,
+  type ShowGraph,
+  type SourceNode,
+} from "@mechane/domain/graph";
+import { typeAtPath } from "@mechane/domain/property-values";
+import {
   coerceShapeValue,
   coerceValue,
   fieldsForType,
-  findNode,
-  formatValuePath,
-  sourceDefaultsFor,
-  typeAtPath,
-  transformerOutputType,
-  wiringTargetVariableId,
-  wiringTypesCompatible,
-} from "@mechane/domain";
-import type { GraphEdge, Shape, ShowGraph, SourceNode, Type } from "@mechane/domain";
+  type Shape,
+  type Type,
+} from "@mechane/domain/shapes";
+import { sourceDefaultsFor } from "@mechane/domain/source-defaults";
+import { wiringTypesCompatible } from "@mechane/domain/wiring-conversion";
 
 export interface SourceTypeEdgeImpact {
   readonly edge: Extract<GraphEdge, { kind: "wiring" }>;

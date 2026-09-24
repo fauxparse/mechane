@@ -7,7 +7,7 @@ import {
   PlugIcon,
   RulerDimensionLineIcon,
 } from "lucide-react";
-import type { ShapeValue } from "@mechane/domain";
+import type { ShapeValue } from "@mechane/domain/shapes";
 
 import { InputGroupAddon, InputGroupButton } from "../input-group";
 import { PopoverTrigger } from "../popover";

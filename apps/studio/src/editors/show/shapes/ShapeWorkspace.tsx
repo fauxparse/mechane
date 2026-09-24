@@ -13,13 +13,16 @@ import {
   Trash2Icon,
   TypeSelect,
 } from "@mechane/design-system";
-import type { Shape, ShapeField, ShowGraph, Type } from "@mechane/domain";
+import type { ShowGraph } from "@mechane/domain/graph";
 import {
+  type Shape,
+  type ShapeField,
+  type Type,
   assertValidShapes,
-  defaultValueForType,
   shapeReferencesShape,
   typeLabel,
-} from "@mechane/domain";
+} from "@mechane/domain/shapes";
+import { defaultValueForType } from "@mechane/domain/source-defaults";
 import { useForm } from "@tanstack/react-form";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { z } from "zod";

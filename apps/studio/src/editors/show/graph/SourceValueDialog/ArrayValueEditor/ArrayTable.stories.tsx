@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { generateId, type Shape } from "@mechane/domain";
+import { generateId } from "@mechane/domain/id";
+import type { Shape } from "@mechane/domain/shapes";
 import { useState } from "react";
 
 import { ArrayTable } from "./ArrayTable";
@@ -32,18 +33,20 @@ function NumericScrubbingStory() {
   return (
     <div className="mx-auto mt-12 w-[42rem] rounded-lg border border-border bg-background py-4">
       <ArrayTable
-        records={[record]}
-        fields={fields}
-        readOnly={false}
-        path={[]}
-        onReorder={() => {}}
-        onRecordChange={(nextRecord) => {
-          setCommitCount((count) => count + 1);
-          setRecord(nextRecord);
+        model={{
+          records: [record],
+          fields,
+          readOnly: false,
+          path: [],
+          onReorder: () => {},
+          onRecordChange: (nextRecord) => {
+            setCommitCount((count) => count + 1);
+            setRecord(nextRecord);
+          },
+          onValidityChange: () => setValidityChangeCount((count) => count + 1),
+          onOpenRecord: () => {},
+          onDeleteRecord: () => {},
         }}
-        onValidityChange={() => setValidityChangeCount((count) => count + 1)}
-        onOpenRecord={() => {}}
-        onDeleteRecord={() => {}}
       />
       <output data-testid="scrub-commit-count" className="sr-only">
         {commitCount}

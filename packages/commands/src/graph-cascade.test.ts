@@ -1,14 +1,14 @@
-import { assertValidShowGraph } from "@mechane/domain";
-import type {
-  DeviceEdge,
-  DeviceNode,
-  FlowNode,
-  NavigateEdge,
-  SceneNode,
-  ShowGraph,
-  SourceNode,
-  WiringEdge,
-} from "@mechane/domain";
+import {
+  assertValidShowGraph,
+  type DeviceEdge,
+  type DeviceNode,
+  type FlowNode,
+  type NavigateEdge,
+  type SceneNode,
+  type ShowGraph,
+  type SourceNode,
+  type WiringEdge,
+} from "@mechane/domain/graph";
 import { describe, expect, it } from "vitest";
 
 import { deleteEdges, deleteGraphElements, deletionScope, describeDeletion } from "./graph-cascade";

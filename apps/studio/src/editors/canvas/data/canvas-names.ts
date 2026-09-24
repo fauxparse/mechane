@@ -1,4 +1,4 @@
-import type { Element, ElementKind } from "@mechane/domain";
+import type { Element, ElementKind } from "@mechane/domain/canvas";
 
 import type { CanvasArtboardDocument } from "../../../api/canvas";
 

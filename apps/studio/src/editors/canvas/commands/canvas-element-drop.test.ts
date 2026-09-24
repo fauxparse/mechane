@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Element } from "@mechane/domain";
+import type { Element } from "@mechane/domain/canvas";
 
 import { planCanvasElementDrop } from "./canvas-element-drop";
 

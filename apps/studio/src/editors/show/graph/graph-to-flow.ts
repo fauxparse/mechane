@@ -5,31 +5,28 @@
 // geometry, handles, and collapsed Flow projection. The domain fact seam owns
 // inherited colors, wired Variables, driven Devices, entry Scenes, and type
 // compatibility so other Show Editor surfaces can reuse those answers.
+import type { EdgeLayout } from "@mechane/domain/edge-layout";
 import {
   DEFAULT_FLOW_COLOR,
+  type EdgeKind,
+  type FlowColor,
+  type GraphEdge,
+  type GraphNode,
+  type Position,
+  type ShowGraph,
+  type TransformerInputPort,
+  type TransformerTransform,
+} from "@mechane/domain/graph";
+import {
   deriveShowGraphFacts,
-  fieldsForType,
-  valueAtPath,
-  wiringDiagnostics,
-} from "@mechane/domain";
-import type {
-  Cue,
-  EdgeKind,
-  EdgeLayout,
-  FlowColor,
-  GraphEdge,
-  GraphNode,
-  Position,
-  Shape,
-  ShowGraph,
-  ShowGraphEdgeFacts,
-  ShowGraphNodeFacts,
-  Type,
-  TransformerInputPort,
-  TransformerTransform,
-  WiringConversion,
-  WiringDiagnostic,
-} from "@mechane/domain";
+  type ShowGraphEdgeFacts,
+  type ShowGraphNodeFacts,
+} from "@mechane/domain/graph-facts";
+import type { Cue } from "@mechane/domain/interactions";
+import { valueAtPath } from "@mechane/domain/property-values";
+import { wiringDiagnostics, type WiringDiagnostic } from "@mechane/domain/scene-variable-values";
+import { fieldsForType, type Shape, type Type } from "@mechane/domain/shapes";
+import type { WiringConversion } from "@mechane/domain/wiring-conversion";
 import type { Edge, Node } from "@xyflow/react";
 
 import { handleFor } from "./handle-ids";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ShowGraph } from "@mechane/domain";
+import type { ShowGraph } from "@mechane/domain/graph";
 
 import type { PlayerDriver, PlayerRunState, PlayerStorageAdapter } from "./player-state";
 import { sceneVariableValues } from "./player-state";

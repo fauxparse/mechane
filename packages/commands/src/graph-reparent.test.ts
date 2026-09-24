@@ -1,13 +1,14 @@
-import { assertValidShowGraph, navigateEdgeId } from "@mechane/domain";
-import type {
-  DeviceEdge,
-  DeviceNode,
-  FlowNode,
-  SceneNode,
-  ShowGraph,
-  SourceNode,
-  WiringEdge,
-} from "@mechane/domain";
+import {
+  assertValidShowGraph,
+  type DeviceEdge,
+  type DeviceNode,
+  type FlowNode,
+  type SceneNode,
+  type ShowGraph,
+  type SourceNode,
+  type WiringEdge,
+} from "@mechane/domain/graph";
+import { navigateEdgeId } from "@mechane/domain/interactions";
 import { describe, expect, it } from "vitest";
 
 import { addCue, addNavigateAction } from "./interaction-commands";

@@ -5,12 +5,9 @@ import {
   variableTypeIcon,
   type PropertyInputValue,
 } from "@mechane/design-system";
-import {
-  isImageAssetReference,
-  isResolvedImageValue,
-  isShapeStructuredValueTemplate,
-  setValueAtPath,
-} from "@mechane/domain";
+import { isImageAssetReference, isResolvedImageValue } from "@mechane/domain/shapes";
+import { setValueAtPath } from "@mechane/domain/source-defaults";
+import { isShapeStructuredValueTemplate } from "@mechane/domain/structured-values";
 import { memo, type KeyboardEvent as ReactKeyboardEvent } from "react";
 
 import type { SourceImageAsset } from "../../inspector/source-value-types";

@@ -5,7 +5,7 @@
 // — but it reaches the *same* two dispatch owners: per-connection Devices
 // resolve locally in ./player-navigation, Shared Devices submit to the server.
 
-import { bindableKeyFor } from "@mechane/domain";
+import { bindableKeyFor } from "@mechane/domain/keys";
 import { useEffect } from "react";
 
 /**

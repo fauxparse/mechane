@@ -1,4 +1,4 @@
-import type { ShowGraph } from "@mechane/domain";
+import type { ShowGraph } from "@mechane/domain/graph";
 import { describe, expect, it } from "vitest";
 import { db } from "./client";
 import { runs } from "./schema";

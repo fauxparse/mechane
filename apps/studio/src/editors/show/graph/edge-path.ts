@@ -6,7 +6,7 @@
 // an unrounded polyline and this module rounds it — an arc never carries a
 // handle, a label, or a color of its own.
 
-import { edgeLayoutKey } from "@mechane/domain";
+import { edgeLayoutKey } from "@mechane/domain/edge-layout";
 
 import { DEFAULT_MARGIN, DEFAULT_MAX_RADIUS, simplify, type Point } from "./edge-routing";
 

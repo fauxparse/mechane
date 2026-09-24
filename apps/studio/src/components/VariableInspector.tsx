@@ -28,13 +28,8 @@ import {
   type ImageInputOnUploadProps,
   type PropertyInputValue,
 } from "@mechane/design-system";
-import {
-  defaultValueForType,
-  type ImageAssetReference,
-  type ResolvedImageValue,
-  type Shape,
-  type Type,
-} from "@mechane/domain";
+import type { ImageAssetReference, ResolvedImageValue, Shape, Type } from "@mechane/domain/shapes";
+import { defaultValueForType } from "@mechane/domain/source-defaults";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { SourceValueDialog } from "../editors/show/graph/SourceValueDialog";
 import { reorderVariableIndices } from "./variable-order";

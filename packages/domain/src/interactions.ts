@@ -237,7 +237,10 @@ function matchesObservation(binding: EventBinding, observation: RuntimeEventObse
 export function resolveRuntimeEvent(
   graph: {
     nodes: readonly { id: string; kind: string; parentId: string | null }[];
-    blocks?: readonly { id: string; canvas: { id: string } }[];
+    blocks?: readonly {
+      id: string;
+      canvas: { id: string; root?: { id: string } };
+    }[];
     cues?: readonly Cue[];
     actions?: readonly Action[];
     eventBindings?: readonly EventBinding[];
@@ -264,12 +267,18 @@ export function resolveRuntimeEvent(
   const canvasIds = leaf
     ? blockCanvasIds(interactions, graph.blocks ?? [], leaf.slotElementId)
     : new Set([observation.canvasId]);
+  const blockRootIds = leaf
+    ? blockCanvasRootIds(interactions, graph.blocks ?? [], leaf.slotElementId)
+    : new Set<string>();
 
   let binding: EventBinding | undefined;
   for (const candidate of interactions.eventBindings) {
+    const elementMatches =
+      candidate.elementId === observation.elementId ||
+      (observation.eventKind === "keypress" && blockRootIds.has(candidate.elementId));
     if (
       !canvasIds.has(candidate.canvasId) ||
-      candidate.elementId !== observation.elementId ||
+      !elementMatches ||
       !matchesObservation(candidate, observation) ||
       !preferredBinding(candidate, binding)
     ) {
@@ -345,6 +354,21 @@ function blockCanvasIds(
     if (block) canvasIds.add(block.canvas.id);
   }
   return canvasIds;
+}
+function blockCanvasRootIds(
+  interactions: InteractionCollections,
+  blocks: readonly { id: string; canvas: { id: string; root?: { id: string } } }[],
+  slotElementId: string,
+): ReadonlySet<string> {
+  const rootIds = new Set<string>();
+  for (const relay of interactions.slotEventBindings) {
+    if (relay.slotElementId !== slotElementId) continue;
+    const owner = interactions.cues.find((cue) => cue.id === relay.sourceCueId)?.owner;
+    if (owner?.kind !== "block") continue;
+    const block = blocks.find((candidate) => candidate.id === owner.blockId);
+    if (block?.canvas.root?.id) rootIds.add(block.canvas.root.id);
+  }
+  return rootIds;
 }
 
 /**

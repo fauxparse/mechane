@@ -2,8 +2,10 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { generateId } from "@mechane/domain";
-import type { Block, ShowGraph, StructuredValues } from "@mechane/domain";
+import type { Block } from "@mechane/domain/blocks";
+import type { ShowGraph } from "@mechane/domain/graph";
+import { generateId } from "@mechane/domain/id";
+import type { StructuredValues } from "@mechane/domain/structured-values";
 import { CanvasRenderer } from "./canvas-renderer";
 import { prepareCanvasPresentation } from "./canvas-presentation";
 

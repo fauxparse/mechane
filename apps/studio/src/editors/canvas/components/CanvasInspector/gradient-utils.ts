@@ -1,4 +1,4 @@
-import type { GradientFill, GradientStop } from "@mechane/domain";
+import type { GradientFill, GradientStop } from "@mechane/domain/canvas";
 
 const DEFAULT_GRADIENT: GradientFill = {
   kind: "linear",

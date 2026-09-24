@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
-import type { NumberValue, ShapeValue } from "@mechane/domain";
+import type { NumberValue, ShapeValue } from "@mechane/domain/shapes";
 import { InspectorProvider, PaintBucketIcon, VariableIcon } from "@mechane/design-system";
 
 import { PropertyInput, type PropertyInputValue, type VariableReference } from "./property-input";

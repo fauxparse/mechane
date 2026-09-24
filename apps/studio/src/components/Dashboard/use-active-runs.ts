@@ -7,7 +7,7 @@
 // The query keys are `../../api/runs`'s own, so a component that separately
 // calls `useActiveRun` for one Show reads this cache instead of issuing a
 // second request for an answer already on the page.
-import type { ShowId } from "@mechane/domain";
+import type { ShowId } from "@mechane/domain/id";
 import { GetActiveRunQuery, graphqlRequest } from "@mechane/graphql-schema";
 import { useQueries } from "@tanstack/react-query";
 

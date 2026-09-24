@@ -1,13 +1,11 @@
+import type { Canvas, FrameElement, TextElement } from "@mechane/domain/canvas";
+import type { ShowGraph } from "@mechane/domain/graph";
 import {
   projectNavigateEdges,
-  type Canvas,
   type Cue,
   type EventBinding,
-  type FrameElement,
   type NavigateAction,
-  type ShowGraph,
-  type TextElement,
-} from "@mechane/domain";
+} from "@mechane/domain/interactions";
 import { seedShowData, type SeedCanvases, type SeedShow } from "../../utils/seed-utils";
 
 export const NAVIGATION_FLOW_ID = "flow_navigation";

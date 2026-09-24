@@ -1,5 +1,6 @@
-import type { Canvas, Element, Position } from "@mechane/domain";
-import { generateId } from "@mechane/domain";
+import type { Canvas, Element } from "@mechane/domain/canvas";
+import type { Position } from "@mechane/domain/graph";
+import { generateId } from "@mechane/domain/id";
 import {
   ARTBOARD_COMMAND_TYPES,
   CANVAS_COMMAND_TYPES,

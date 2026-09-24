@@ -1,4 +1,4 @@
-import type { FormulaScope } from "@mechane/domain";
+import type { FormulaScope } from "@mechane/domain/formula";
 import { lazy, Suspense } from "react";
 
 const FormulaCodeEditor = lazy(() => import("./FormulaCodeEditor"));

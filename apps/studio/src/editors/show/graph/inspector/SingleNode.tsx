@@ -15,7 +15,8 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@mechane/design-system";
-import { FLOW_COLORS, type Cue, type FlowColor, type GraphNode } from "@mechane/domain";
+import { FLOW_COLORS, type FlowColor, type GraphNode } from "@mechane/domain/graph";
+import type { Cue } from "@mechane/domain/interactions";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import { useEffect, useState } from "react";
 import type { ShowGraphValueLocation } from "../../ShowGraphEditor";

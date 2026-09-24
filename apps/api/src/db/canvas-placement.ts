@@ -1,4 +1,4 @@
-import type { Position } from "@mechane/domain";
+import type { Position } from "@mechane/domain/graph";
 
 export interface CanvasPlacementSize {
   width: number;

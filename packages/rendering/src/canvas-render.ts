@@ -6,7 +6,8 @@ import {
   type ReactNode,
 } from "react";
 
-import type { BlockInstancePathSegment, Canvas, FrameElement } from "@mechane/domain";
+import type { Canvas, FrameElement } from "@mechane/domain/canvas";
+import type { BlockInstancePathSegment } from "@mechane/domain/interactions";
 import { prepareLegacyCanvasPresentation } from "./canvas-presentation";
 import { CanvasRenderer } from "./canvas-renderer";
 import type { CanvasPresentation } from "./canvas-presentation";

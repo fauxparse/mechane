@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
+import type { EdgeLayout } from "@mechane/domain/edge-layout";
 import type {
   EdgeKind,
-  EdgeLayout,
   FlowSize,
   FlowColor,
   GraphEdge,
   GraphNode,
   NodeKind,
   ShowGraph,
-  Type,
-} from "@mechane/domain";
+} from "@mechane/domain/graph";
+import type { Type } from "@mechane/domain/shapes";
 
 import {
   DEFAULT_FLOW_DIMENSIONS,

@@ -1,4 +1,5 @@
-import { assertValidCanvas, assertValidShowGraph } from "@mechane/domain";
+import { assertValidCanvas } from "@mechane/domain/canvas";
+import { assertValidShowGraph } from "@mechane/domain/graph";
 import type { GraphEdit } from "@mechane/commands";
 import { describe, expect, it } from "vitest";
 

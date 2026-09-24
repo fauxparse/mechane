@@ -1,7 +1,4 @@
-import {
-  resolveRuntimeEvent,
-  type RuntimeEventObservation,
-} from "@mechane/domain";
+import { resolveRuntimeEvent, type RuntimeEventObservation } from "@mechane/domain/interactions";
 import type { PlayerEventInput, PlayerEventResult, PlayerEventSubmitter } from "./api";
 
 export function resolvePlayerEvent(

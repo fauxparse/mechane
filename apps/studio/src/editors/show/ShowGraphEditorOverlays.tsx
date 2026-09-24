@@ -16,7 +16,7 @@ import { EditorSlot } from "../../components/EditorLayout/editor-slots";
 import { CommandPalette } from "./commands/CommandPalette";
 import type { PaletteCommand } from "./commands/palette-commands";
 import { GraphInspector } from "./graph/inspector/GraphInspector";
-import type { GraphEdge, GraphNode } from "@mechane/domain";
+import type { GraphEdge, GraphNode } from "@mechane/domain/graph";
 import type { GraphInspectorEditing } from "./commands/use-graph-editing";
 import type { SourceImageAsset } from "./graph/inspector/source-value-types";
 import { FormulaDialog } from "./graph/formula/FormulaDialog";

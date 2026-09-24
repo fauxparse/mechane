@@ -1,6 +1,6 @@
 import { SearchIcon, XIcon } from "lucide-react";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
-import type { ShapeValue } from "@mechane/domain";
+import type { ShapeValue } from "@mechane/domain/shapes";
 
 import { Button } from "../button";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "../input-group";

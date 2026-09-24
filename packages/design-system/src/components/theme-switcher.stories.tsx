@@ -1,5 +1,4 @@
-import { DEFAULT_THEME_PALETTE } from "@mechane/domain";
-import type { ThemePalette } from "@mechane/domain";
+import { DEFAULT_THEME_PALETTE, type ThemePalette } from "@mechane/domain/theme-settings";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 

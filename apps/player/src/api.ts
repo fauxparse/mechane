@@ -1,12 +1,6 @@
-import type {
-  Canvas,
-  GraphNode,
-  SceneNode,
-  ShowGraph,
-  SourceValues,
-  StructuredValues,
-  TransformerNode,
-} from "@mechane/domain";
+import type { Canvas } from "@mechane/domain/canvas";
+import type { GraphNode, SceneNode, ShowGraph, TransformerNode } from "@mechane/domain/graph";
+import type { SourceValues, StructuredValues } from "@mechane/domain/structured-values";
 import type { RealtimeSubscriber, RealtimeSubscription } from "@mechane/realtime";
 import { AblyRealtimeSubscriber, WebSocketRealtimeSubscriber } from "@mechane/realtime/browser";
 import {

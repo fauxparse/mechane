@@ -1,12 +1,11 @@
 import type { LucideIcon } from "lucide-react";
 import type { KeyboardEvent, ReactNode } from "react";
 import type {
-  NumberValue,
   PropertyConnection,
   PropertyValue,
-  ShapeValue,
   VariableReference as DomainVariableReference,
-} from "@mechane/domain";
+} from "@mechane/domain/property-values";
+import type { NumberValue, ShapeValue } from "@mechane/domain/shapes";
 
 export type { PropertyConnection, PropertyValue };
 export type VariableReference<TSource extends ShapeValue = ShapeValue> =

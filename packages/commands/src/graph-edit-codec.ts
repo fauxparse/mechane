@@ -29,36 +29,31 @@
 //     no name") throw `GraphEditCodecError`. The api adapter turns that into
 //     a `BAD_USER_INPUT` GraphQLError; nothing here imports GraphQL.
 
-import type {
-  Action,
-  Block,
-  BlockVariable,
-  Cue,
-  EdgeLayout,
-  EventBinding,
-  FlowColor,
-  FlowSize,
-  GraphEdge,
-  GraphNode,
-  Position,
-  SceneVariable,
-  Shape,
-  ShapeField,
-  SuggestedImageDimensions,
-  Type,
-  TransformerInputPort,
-  TransformerTransform,
-  WiringConversion,
-} from "@mechane/domain";
+import type { Block, BlockVariable } from "@mechane/domain/blocks";
+import { type EdgeLayout, pruneEdgeLayout } from "@mechane/domain/edge-layout";
 import {
+  type FlowColor,
+  type FlowSize,
+  type GraphEdge,
+  type GraphNode,
+  type Position,
+  type SceneVariable,
+  type SuggestedImageDimensions,
+  type TransformerInputPort,
+  type TransformerTransform,
   assertValidFlowColor,
-  decodeEventBinding as decodeBinding,
-  InvalidInteractionError,
   isEdgeKind,
   isNodeKind,
-  isWiringConversion,
-  pruneEdgeLayout,
-} from "@mechane/domain";
+} from "@mechane/domain/graph";
+import {
+  type Action,
+  type Cue,
+  type EventBinding,
+  decodeEventBinding as decodeBinding,
+  InvalidInteractionError,
+} from "@mechane/domain/interactions";
+import type { Shape, ShapeField, Type } from "@mechane/domain/shapes";
+import { type WiringConversion, isWiringConversion } from "@mechane/domain/wiring-conversion";
 import {
   addBlock,
   addEdge,
@@ -127,7 +122,282 @@ import {
   setUpdateTarget,
 } from "./interaction-commands";
 import type { ShowGraphCommand } from "./graph-commands";
-import type { GraphEdit } from "./graph-edits";
+export type GraphEdit =
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.addNode; readonly node: GraphNode }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.removeNode; readonly nodeId: string }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.moveNode;
+      readonly nodeId: string;
+      readonly position: Position;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.renameNode;
+      readonly nodeId: string;
+      readonly name: string;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.reparentNode;
+      readonly nodeId: string;
+      readonly parentId: string | null;
+      readonly position: Position;
+    }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.addEdge; readonly edge: GraphEdge }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setSourceType;
+      readonly nodeId: string;
+      readonly sourceType: Type;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setWiringFieldMapping;
+      readonly edgeId: string;
+      readonly fieldMapping: Record<string, string> | null;
+    }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.removeEdge; readonly edgeId: string }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setFlowDefaultScene;
+      readonly flowId: string;
+      readonly sceneId: string | null;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setFlowSize;
+      readonly flowId: string;
+      readonly size: FlowSize | null;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setSourceColumnSizes;
+      readonly nodeId: string;
+      readonly columnSizes: Record<string, number> | null;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setNodeColor;
+      readonly nodeId: string;
+      readonly color: FlowColor | null;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setEdgeLayout;
+      readonly edgeId: string;
+      readonly layout: EdgeLayout | null;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setShapes;
+      readonly shapes: Shape[];
+    }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.addShape; readonly shape: Shape }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.renameShape;
+      readonly shapeId: string;
+      readonly name: string;
+    }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.duplicateShape; readonly shape: Shape }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.removeShape; readonly shapeId: string }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.addShapeField;
+      readonly shapeId: string;
+      readonly field: ShapeField;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.renameShapeField;
+      readonly shapeId: string;
+      readonly fieldId: string;
+      readonly name: string;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setShapeFieldType;
+      readonly shapeId: string;
+      readonly fieldId: string;
+      readonly fieldType: Type;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setShapeFieldDefault;
+      readonly shapeId: string;
+      readonly fieldId: string;
+      readonly defaultValue: unknown;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.reorderShapeFields;
+      readonly shapeId: string;
+      readonly fieldIds: readonly string[];
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.removeShapeField;
+      readonly shapeId: string;
+      readonly fieldId: string;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setShapeFieldRequired;
+      readonly shapeId: string;
+      readonly fieldId: string;
+      readonly required: boolean;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setSourceFieldDefault;
+      readonly nodeId: string;
+      readonly fieldPath: readonly string[];
+      readonly value: unknown;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.addSceneVariable;
+      readonly sceneId: string;
+      readonly variable: SceneVariable;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.reorderSceneVariables;
+      readonly sceneId: string;
+      readonly variableIds: readonly string[];
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.renameSceneVariable;
+      readonly sceneId: string;
+      readonly variableId: string;
+      readonly name: string;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setSceneVariableType;
+      readonly sceneId: string;
+      readonly variableId: string;
+      readonly variableType: Type | null;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setSceneVariableDefault;
+      readonly sceneId: string;
+      readonly variableId: string;
+      readonly defaultValue: unknown;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.removeSceneVariable;
+      readonly sceneId: string;
+      readonly variableId: string;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setTransformerFormula;
+      readonly nodeId: string;
+      readonly formula: string | null;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setTransformerOutputType;
+      readonly nodeId: string;
+      readonly outputType: Type | null;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.replaceTransformer;
+      readonly nodeId: string;
+      readonly ports: readonly TransformerInputPort[];
+      readonly transform: TransformerTransform;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.addTransformerPort;
+      readonly nodeId: string;
+      readonly port: TransformerInputPort;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.renameTransformerPort;
+      readonly nodeId: string;
+      readonly portId: string;
+      readonly name: string;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.reorderTransformerPorts;
+      readonly nodeId: string;
+      readonly portIds: readonly string[];
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.removeTransformerPort;
+      readonly nodeId: string;
+      readonly portId: string;
+    }
+  /**
+   * The one edit that only ever travels *from* the server (#111): the pairing
+   * code it minted for a Device the client had just created (#45). A client
+   * that sent one would be guessing at something only the server can decide,
+   * which is why apps/api refuses it on the way in rather than merely
+   * ignoring it.
+   */
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setDevicePairingCode;
+      readonly nodeId: string;
+      readonly pairingCode: string | null;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setDevicePerConnection;
+      readonly nodeId: string;
+      readonly perConnection: boolean;
+    }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.addBlock; readonly block: Block }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setBlockVariables;
+      readonly blockId: string;
+      readonly variables: readonly BlockVariable[];
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.renameBlock;
+      readonly blockId: string;
+      readonly name: string;
+    }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.duplicateBlock; readonly block: Block }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.removeBlock; readonly blockId: string }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.addCue; readonly cue: Cue }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.renameCue;
+      readonly cueId: string;
+      readonly name: string;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setCueActionOrder;
+      readonly cueId: string;
+      readonly actionIds: readonly string[];
+    }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.removeCue; readonly cueId: string }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.addNavigateAction;
+      readonly action: Extract<Action, { kind: "navigate" }>;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.addUpdateAction;
+      readonly action: Extract<Action, { kind: "update" }>;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setUpdateTarget;
+      readonly actionId: string;
+      readonly target: Extract<Action, { kind: "update" }>["target"];
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setUpdateOperation;
+      readonly actionId: string;
+      readonly operation: Extract<Action, { kind: "update" }>["operation"];
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setUpdateOperand;
+      readonly actionId: string;
+      readonly operand: Extract<
+        Extract<Action, { kind: "update" }>["operation"],
+        { kind: "set" | "adjust" }
+      >["operand"];
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setNavigateTarget;
+      readonly actionId: string;
+      readonly targetSceneId: string;
+    }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.removeAction; readonly actionId: string }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.addEventBinding;
+      readonly binding: EventBinding;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setEventBindingCue;
+      readonly bindingId: string;
+      readonly cueId: string;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setEventBindingKey;
+      readonly bindingId: string;
+      readonly key: string | null;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setEventBindingOrder;
+      readonly bindingIds: readonly string[];
+    }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.removeEventBinding; readonly bindingId: string };
 
 /** An edit that named a field its `type` needs, or named nothing at all. */
 export class GraphEditCodecError extends Error {
@@ -930,13 +1200,13 @@ export interface GraphEditSuperseder {
  * and codec descriptor because lifetime and coalescing are part of what an
  * edit means, not a property of the transport.
  */
-export interface GraphEditMetadata {
-  readonly structuralIds: (edit: GraphEdit) => readonly string[];
-  readonly supersedes: (edit: GraphEdit) => GraphEditSuperseder | null;
+export interface GraphEditMetadata<T extends GraphEdit["type"]> {
+  readonly structuralIds: (edit: EditOf<T>) => readonly string[];
+  readonly supersedes: (edit: EditOf<T>) => GraphEditSuperseder | null;
 }
 
 export type GraphEditDescriptor<T extends GraphEdit["type"]> = GraphEditCodec<T> &
-  GraphEditMetadata;
+  GraphEditMetadata<T>;
 
 /**
  * One descriptor per edit type. The mapped type is the exhaustiveness check:
@@ -1666,6 +1936,22 @@ export const GRAPH_EDIT_CODECS: { [T in GraphEdit["type"]]: GraphEditCodec<T> } 
     }),
   },
 };
+type GraphEditDescriptorRegistry = {
+  [T in GraphEdit["type"]]: GraphEditDescriptor<T>;
+};
+
+/**
+ * The complete descriptor registry. The mapped return type keeps command,
+ * codec, lifetime and coalescing metadata together for every edit type.
+ * Adding a codec without a descriptor is a type error at this seam.
+ */
+export const GRAPH_EDIT_DESCRIPTORS: GraphEditDescriptorRegistry = Object.fromEntries(
+  Object.entries(GRAPH_EDIT_CODECS).map(([type, codec]) => [
+    type,
+    { ...codec, structuralIds, supersedes },
+  ]),
+) as GraphEditDescriptorRegistry;
+
 /**
  * An edit that sets a value and therefore makes an earlier edit to the same
  * value redundant until a structural lifetime boundary is crossed.
@@ -1793,10 +2079,6 @@ export function structuralIds(edit: GraphEdit): readonly string[] {
       return [edit.cueId];
     case GRAPH_COMMAND_TYPES.addNavigateAction:
       return [edit.action.id];
-    case GRAPH_COMMAND_TYPES.removeAction:
-      return [edit.actionId];
-    case GRAPH_COMMAND_TYPES.addEventBinding:
-      return [edit.binding.id];
     case GRAPH_COMMAND_TYPES.removeEventBinding:
       return [edit.bindingId];
     default:
@@ -1810,8 +2092,13 @@ export function structuralIds(edit: GraphEdit): readonly string[] {
  * prevents callers from accidentally depending on a partial descriptor.
  */
 export function graphEditDescriptor(type: string): GraphEditDescriptor<GraphEdit["type"]> | null {
-  const codec = graphEditCodec(type);
-  return codec ? { ...codec, structuralIds, supersedes } : null;
+  const descriptor = (
+    GRAPH_EDIT_DESCRIPTORS as Record<
+      string,
+      GraphEditDescriptor<GraphEdit["type"]> | undefined
+    >
+  )[type];
+  return descriptor ?? null;
 }
 
 /** The descriptor for `type`, or null if this build has never heard of it. */

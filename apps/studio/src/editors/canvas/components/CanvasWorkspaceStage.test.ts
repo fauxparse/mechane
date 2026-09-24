@@ -3,7 +3,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { prepareCanvasForRender } from "@mechane/rendering";
 import type { CanvasArtboardDocument } from "../../../api/canvas";
-import type { Block, Canvas, SlotVariableValue } from "@mechane/domain";
+import type { Block } from "@mechane/domain/blocks";
+import type { Canvas } from "@mechane/domain/canvas";
+import type { SlotVariableValue } from "@mechane/domain/slots";
 import { CanvasWorkspaceStage } from "./CanvasWorkspaceStage";
 
 const block: Block = {

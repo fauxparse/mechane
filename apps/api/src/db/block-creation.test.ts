@@ -3,8 +3,8 @@
 // the same batch can already target it.
 import { CANVAS_COMMAND_TYPES, GRAPH_COMMAND_TYPES } from "@mechane/commands";
 import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
-import { emptyBlock } from "@mechane/domain";
-import type { ShowGraph } from "@mechane/domain";
+import { emptyBlock } from "@mechane/domain/blocks";
+import type { ShowGraph } from "@mechane/domain/graph";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 

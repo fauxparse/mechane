@@ -1,4 +1,4 @@
-import { PRIMITIVE_TYPES, type Shape, type Type, typeLabel } from "@mechane/domain";
+import { PRIMITIVE_TYPES, type Shape, type Type, typeLabel } from "@mechane/domain/shapes";
 import { CheckIcon, ChevronRightIcon, type LucideIcon } from "lucide-react";
 import type { ReactElement } from "react";
 

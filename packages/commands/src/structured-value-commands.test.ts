@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import type { Shape, ShowGraph } from "@mechane/domain";
-import { isArrayStructuredValueTemplate, isShapeStructuredValueTemplate } from "@mechane/domain";
+import type { ShowGraph } from "@mechane/domain/graph";
+import type { Shape } from "@mechane/domain/shapes";
+import {
+  isArrayStructuredValueTemplate,
+  isShapeStructuredValueTemplate,
+} from "@mechane/domain/structured-values";
 import { applyGraphEdits } from "./graph-edits";
 import { setSourceFieldDefault } from "./graph-commands";
 

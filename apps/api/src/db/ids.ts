@@ -7,8 +7,7 @@
 // The database's primary-key constraint is what actually detects the
 // collision; this just retries against it. Checking for the id with a
 // SELECT first would be a race, not a fix.
-import type { EntityName, Id } from "@mechane/domain";
-import { generateId } from "@mechane/domain";
+import { type EntityName, type Id, generateId } from "@mechane/domain/id";
 
 /** Postgres `unique_violation`. */
 const UNIQUE_VIOLATION = "23505";

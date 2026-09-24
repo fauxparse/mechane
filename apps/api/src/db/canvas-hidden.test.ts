@@ -1,7 +1,7 @@
 // `hidden` owns a boolean column *and* lives in the property JSON, because
 // #705 made it a PropertyValue. Reading the column over an authored Formula
 // resolved it to `false`, so the next save wrote the loss back (#740).
-import type { ShowGraph } from "@mechane/domain";
+import type { ShowGraph } from "@mechane/domain/graph";
 import { describe, expect, it } from "vitest";
 
 import { readCanvas, writeCanvas } from "./canvas";

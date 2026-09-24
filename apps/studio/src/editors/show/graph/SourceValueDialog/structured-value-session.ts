@@ -1,4 +1,4 @@
-import { formatValuePath } from "@mechane/domain";
+import { formatValuePath } from "@mechane/domain/graph";
 import { sourceValuesEqual } from "../inspector/source-values-helpers";
 import { useState } from "react";
 import type { ArrayValueFocus } from "./ArrayValueEditor/types";
@@ -10,12 +10,14 @@ export interface StructuredValueSession {
   readonly focus: ArrayValueFocus;
   readonly pendingFocus: ArrayValueFocus | null;
   readonly navigationError: string | null;
+  readonly columnSizes?: Record<string, number>;
   readonly dirty: boolean;
   change(value: unknown): void;
   changeImmediately(value: unknown): void;
   reportValidity(path: readonly (string | number)[], error: string | null): void;
   requestFocus(focus: ArrayValueFocus): void;
   commit(): boolean;
+  commitColumnSizes(columnSizes: Record<string, number>): void;
   discardPendingFocus(): void;
   cancelPendingFocus(): void;
   savePendingFocus(): boolean;
@@ -23,15 +25,20 @@ export interface StructuredValueSession {
 
 export function useStructuredValueSession({
   initialValue,
+  initialColumnSizes,
   onCommit,
   onImmediateChange,
+  onColumnSizesCommit,
 }: {
   initialValue: unknown;
+  initialColumnSizes?: Record<string, number>;
   onCommit(value: unknown): string | null;
   onImmediateChange?(value: unknown): void;
+  onColumnSizesCommit?(columnSizes: Record<string, number>): void;
 }): StructuredValueSession {
   const [value, setValue] = useState(initialValue);
   const [savedValue, setSavedValue] = useState(initialValue);
+  const [columnSizes, setColumnSizes] = useState(initialColumnSizes);
   const [errors, setErrors] = useState<Map<string, string>>(new Map());
   const [focus, setFocus] = useState<ArrayValueFocus>({ kind: "array" });
   const [pendingFocus, setPendingFocus] = useState<ArrayValueFocus | null>(null);
@@ -65,6 +72,10 @@ export function useStructuredValueSession({
     }
     setSavedValue(value);
     return true;
+  };
+  const commitColumnSizes = (nextColumnSizes: Record<string, number>) => {
+    onColumnSizesCommit?.(nextColumnSizes);
+    setColumnSizes(nextColumnSizes);
   };
   const requestFocus = (nextFocus: ArrayValueFocus) => {
     if (
@@ -107,12 +118,14 @@ export function useStructuredValueSession({
     focus,
     pendingFocus,
     navigationError,
+    columnSizes,
     dirty,
     change,
     changeImmediately,
     reportValidity,
     requestFocus,
     commit,
+    commitColumnSizes,
     discardPendingFocus,
     cancelPendingFocus,
     savePendingFocus,

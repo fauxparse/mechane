@@ -4,7 +4,7 @@ import {
   ToastViewport,
   TooltipProvider,
 } from "@mechane/design-system";
-import { DEFAULT_THEME_PALETTE, THEME_PALETTE_METADATA } from "@mechane/domain";
+import { DEFAULT_THEME_PALETTE, THEME_PALETTE_METADATA } from "@mechane/domain/theme-settings";
 import { createElement } from "react";
 import { Preview } from "@storybook/react-vite";
 

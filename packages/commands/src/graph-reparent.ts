@@ -21,7 +21,7 @@
 //
 // The whole move is one composite, so it is one undo entry however many edges
 // went with it (#28).
-import type { GraphNode, Position, ShowGraph } from "@mechane/domain";
+import type { GraphNode, Position, ShowGraph } from "@mechane/domain/graph";
 
 import { composite } from "./command";
 import {

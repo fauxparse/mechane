@@ -43,36 +43,31 @@
 // compatibility, Wiring Conversion validity, Block Reference Graph
 // acyclicity — stays in @mechane/domain, where the Shapes and Types those
 // rules need are already resolved.
-import type {
-  Action,
-  Block,
-  BlockState,
-  BlockVariable,
-  Cue,
-  CueParameter,
-  EdgeLayout,
-  EditorMetadata,
-  EventBinding,
-  FlowSize,
-  GraphEdge,
-  GraphNode,
-  Shape,
-  ShapeField,
-  ShowGraph,
-  SlotEventBinding,
-  SourceFieldDefault,
-  TransformerInputPort,
-  TransformerTransform,
-  Type,
-  UpdateOperation,
-} from "@mechane/domain";
+import type { Block, BlockState, BlockVariable } from "@mechane/domain/blocks";
+import type { EdgeLayout } from "@mechane/domain/edge-layout";
 import {
-  PRIMITIVE_TYPES,
+  type EditorMetadata,
+  type FlowSize,
+  type GraphEdge,
+  type GraphNode,
+  type ShowGraph,
+  type SourceFieldDefault,
+  type TransformerInputPort,
+  type TransformerTransform,
+  isFlowColor,
+} from "@mechane/domain/graph";
+import {
+  type Action,
+  type Cue,
+  type CueParameter,
+  type EventBinding,
+  type SlotEventBinding,
+  type UpdateOperation,
   decodeEventBinding,
   InvalidInteractionError,
-  isFlowColor,
-  isWiringConversion,
-} from "@mechane/domain";
+} from "@mechane/domain/interactions";
+import { type Shape, type ShapeField, type Type, PRIMITIVE_TYPES } from "@mechane/domain/shapes";
+import { isWiringConversion } from "@mechane/domain/wiring-conversion";
 import { CanvasElementFields, decodeCanvasDocument } from "./canvas";
 import { graphql } from "./graphql";
 import { isRecord } from "./type-guards";

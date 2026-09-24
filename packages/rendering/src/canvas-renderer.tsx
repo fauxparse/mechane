@@ -10,7 +10,6 @@ import type {
   AnchorPosition,
   AspectRatioLock,
   AxisSize,
-  BlockInstancePathSegment,
   CornerRadiusElement,
   Fill,
   FrameElement,
@@ -20,7 +19,8 @@ import type {
   Rotation,
   SizeValue,
   Stroke,
-} from "@mechane/domain";
+} from "@mechane/domain/canvas";
+import type { BlockInstancePathSegment } from "@mechane/domain/interactions";
 import type { CanvasRendererProps } from "./canvas-render";
 import type { CanvasPresentation, PreparedCanvasElement } from "./canvas-presentation";
 

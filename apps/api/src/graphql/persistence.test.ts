@@ -1,4 +1,4 @@
-import { PAIRING_CODE_PATTERN } from "@mechane/domain";
+import { PAIRING_CODE_PATTERN } from "@mechane/domain/pairing-code";
 import { createYoga } from "graphql-yoga";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";

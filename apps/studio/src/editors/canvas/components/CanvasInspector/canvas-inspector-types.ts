@@ -1,14 +1,9 @@
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
-import type {
-  Action,
-  Block,
-  Cue,
-  Element,
-  EventBinding,
-  InteractionOwner,
-  SceneVariable,
-  Shape,
-} from "@mechane/domain";
+import type { Block } from "@mechane/domain/blocks";
+import type { Element } from "@mechane/domain/canvas";
+import type { SceneVariable } from "@mechane/domain/graph";
+import type { Action, Cue, EventBinding, InteractionOwner } from "@mechane/domain/interactions";
+import type { Shape } from "@mechane/domain/shapes";
 import type { ImageAsset } from "@mechane/graphql-schema";
 
 import type { CanvasArtboardDocument } from "../../../../api/canvas";

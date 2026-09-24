@@ -60,31 +60,31 @@ import {
   setTransformerFormula,
   setTransformerOutputType,
 } from "@mechane/commands";
+import {
+  type ConnectionTargets,
+  connectionError,
+  connectionTargets,
+  planConnection,
+  sourceTypeAtHandle,
+} from "@mechane/domain/connect";
+import type { EdgeLayout } from "@mechane/domain/edge-layout";
+import { normalizeFormulaIdentifier } from "@mechane/domain/formula";
 import type {
-  ConnectionTargets,
-  EdgeLayout,
   FlowColor,
   FlowSize,
   GraphNode,
-  InteractionOwner,
   NodeKind,
   Position,
-  Shape,
-  ShapeField,
   ShowGraph,
-  Type,
   TransformerTransform,
+} from "@mechane/domain/graph";
+import { generateId } from "@mechane/domain/id";
+import type {
+  InteractionOwner,
   UpdateOperation,
   UpdateOperand,
-} from "@mechane/domain";
-import {
-  connectionError,
-  connectionTargets,
-  generateId,
-  planConnection,
-  sourceTypeAtHandle,
-  normalizeFormulaIdentifier,
-} from "@mechane/domain";
+} from "@mechane/domain/interactions";
+import type { Shape, ShapeField, Type } from "@mechane/domain/shapes";
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { SourceTypeChangePlan } from "../graph/inspector/source-type-change";
 import {

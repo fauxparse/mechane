@@ -1,23 +1,19 @@
 import type { CanvasWorkspaceEdit } from "@mechane/commands";
 import { ARTBOARD_COMMAND_TYPES, applyCanvasEdits } from "@mechane/commands";
-import type {
-  Block,
-  Canvas,
-  Element,
-  ElementKind,
-  FrameElement,
-  GraphState,
-  Position,
-} from "@mechane/domain";
+import type { Block } from "@mechane/domain/blocks";
 import {
+  type Canvas,
+  type Element,
+  type ElementKind,
+  type FrameElement,
   assertValidCanvas,
   ELEMENT_KINDS,
-  generateId,
   InvalidCanvasError as CanvasError,
-  isPropertyConnection,
-  isPropertyFormula,
-  normaliseClosedPropertyConnections,
-} from "@mechane/domain";
+} from "@mechane/domain/canvas";
+import { normaliseClosedPropertyConnections } from "@mechane/domain/element-properties";
+import type { GraphState, Position } from "@mechane/domain/graph";
+import { generateId } from "@mechane/domain/id";
+import { isPropertyConnection, isPropertyFormula } from "@mechane/domain/property-values";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 
 import { DEFAULT_CANVAS_FILL, newCanvasRootProperties } from "./canvas-defaults";

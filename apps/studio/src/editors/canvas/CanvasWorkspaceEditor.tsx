@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useToastManager } from "@mechane/design-system";
 import { canvasElementParent, findCanvasElement } from "@mechane/commands";
-import type { FrameElement } from "@mechane/domain";
+import type { FrameElement } from "@mechane/domain/canvas";
 
 import type { CanvasArtboardDocument } from "../../api/canvas";
 import { EditorSlot } from "../../components/EditorLayout/editor-slots";
@@ -29,16 +29,13 @@ import type {
   CanvasArtboardDimensions,
   CanvasBlockCreationResult,
   CanvasWorkspaceEditorProps,
-  CanvasWorkspaceSessionEditorProps,
 } from "./canvas-workspace-types";
 import { focusContext } from "../show/keyboard/focus-context";
 
-export type { CanvasWorkspaceEditorProps, CanvasWorkspaceSessionEditorProps } from "./canvas-workspace-types";
+export type { CanvasWorkspaceEditorProps } from "./canvas-workspace-types";
 
 // react-doctor-disable-next-line no-giant-component
-export function CanvasWorkspaceEditor(
-  props: CanvasWorkspaceEditorProps | CanvasWorkspaceSessionEditorProps,
-) {
+export function CanvasWorkspaceEditor(props: CanvasWorkspaceEditorProps) {
   const {
     artboards,
     focusedArtId,
@@ -54,62 +51,38 @@ export function CanvasWorkspaceEditor(
     blockVariableEditing,
     imageAssets,
     deviceQrImages,
+    session,
   } = props;
-  const callbacks =
-    "session" in props
-      ? {
-          onFocusArtboard: props.session.canvas.focusArtboard,
-          onSelectionChange: props.session.canvas.selectionChange,
-          onBeginMoveArtboard: props.session.canvas.beginMoveArtboard,
-          onMoveArtboard: props.session.canvas.moveArtboard,
-          onEndMoveArtboard: props.session.canvas.endMoveArtboard,
-          onCameraChange: props.session.camera.change,
-          onCreateElement: props.session.canvas.createElement,
-          onMoveElement: props.session.canvas.moveElement,
-          onMoveElementBetweenCanvases: props.session.canvas.moveElementBetweenCanvases,
-          onUpdateElement: props.session.canvas.updateElement,
-          onUpdateElements: props.session.canvas.updateElements,
-          onPlaceBlock: props.session.canvas.placeBlock,
-          onCreateBlockFromDrag: props.session.canvas.createBlockFromDrag,
-          onCreateBlockFromSelection: props.session.canvas.createBlockFromSelection,
-          onImageUpload: props.session.assets.imageUpload,
-          onDeleteElements: props.session.canvas.deleteElements,
-          onCreateCue: props.session.graph.createCue,
-          onFocusCue: props.session.graph.focusCue,
-          onSetEventBindingCue: props.session.graph.setEventBindingCue,
-          onSetEventBindingKey: props.session.graph.setEventBindingKey,
-          onCreateEventBinding: props.session.graph.createEventBinding,
-          onRemoveEventBinding: props.session.graph.removeEventBinding,
-          onReorderEventBindings: props.session.graph.reorderEventBindings,
-          onRenameArtboard: props.session.canvas.renameArtboard,
-        }
-      : props;
   const {
-    onFocusArtboard,
-    onSelectionChange,
-    onBeginMoveArtboard,
-    onMoveArtboard,
-    onEndMoveArtboard,
-    onCameraChange,
-    onCreateElement,
-    onMoveElement,
-    onMoveElementBetweenCanvases,
-    onUpdateElement,
-    onUpdateElements,
-    onPlaceBlock,
-    onCreateBlockFromDrag,
-    onCreateBlockFromSelection,
-    onImageUpload,
-    onDeleteElements,
-    onCreateCue,
-    onFocusCue,
-    onSetEventBindingCue,
-    onSetEventBindingKey,
-    onCreateEventBinding,
-    onRemoveEventBinding,
-    onReorderEventBindings,
-    onRenameArtboard,
-  } = callbacks;
+    canvas: {
+      focusArtboard: onFocusArtboard,
+      selectionChange: onSelectionChange,
+      beginMoveArtboard: onBeginMoveArtboard,
+      moveArtboard: onMoveArtboard,
+      endMoveArtboard: onEndMoveArtboard,
+      createElement: onCreateElement,
+      moveElement: onMoveElement,
+      moveElementBetweenCanvases: onMoveElementBetweenCanvases,
+      updateElement: onUpdateElement,
+      updateElements: onUpdateElements,
+      placeBlock: onPlaceBlock,
+      createBlockFromDrag: onCreateBlockFromDrag,
+      createBlockFromSelection: onCreateBlockFromSelection,
+      deleteElements: onDeleteElements,
+      renameArtboard: onRenameArtboard,
+    },
+    graph: {
+      createCue: onCreateCue,
+      focusCue: onFocusCue,
+      setEventBindingCue: onSetEventBindingCue,
+      setEventBindingKey: onSetEventBindingKey,
+      createEventBinding: onCreateEventBinding,
+      removeEventBinding: onRemoveEventBinding,
+      reorderEventBindings: onReorderEventBindings,
+    },
+    assets: { imageUpload: onImageUpload },
+    camera: { change: onCameraChange },
+  } = session;
   const toastManager = useToastManager();
   const ordered = useMemo(
     () =>

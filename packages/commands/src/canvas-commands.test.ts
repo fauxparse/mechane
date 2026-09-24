@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Canvas } from "@mechane/domain";
+import type { Canvas } from "@mechane/domain/canvas";
 
 import {
   addCanvasElement,

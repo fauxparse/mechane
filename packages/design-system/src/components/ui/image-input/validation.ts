@@ -1,4 +1,4 @@
-import { DEFAULT_IMAGE_UPLOAD_POLICY } from "@mechane/domain";
+import { DEFAULT_IMAGE_UPLOAD_POLICY } from "@mechane/domain/images";
 
 import { isAcceptedImageFile } from "./utils";
 import type { ImageInputDimensions, ImageInputError, ImageInputValidation } from "./types";

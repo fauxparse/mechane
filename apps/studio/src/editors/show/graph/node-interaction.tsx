@@ -8,7 +8,7 @@
 // aren't in `ShowNodeData`: putting them there would rebuild every node's data
 // object on every frame of a connection drag.
 import { createContext, useContext } from "react";
-import type { ConnectionTargets } from "@mechane/domain";
+import type { ConnectionTargets } from "@mechane/domain/connect";
 
 import type { FlowResizeParams } from "./graph-to-flow";
 

@@ -1,4 +1,5 @@
-import { defaultSourceValues, resolveRuntimeEvent } from "@mechane/domain";
+import { resolveRuntimeEvent } from "@mechane/domain/interactions";
+import { defaultSourceValues } from "@mechane/domain/source-defaults";
 import { decodeShowGraphDocument } from "@mechane/graphql-schema";
 import { describe, expect, it } from "vitest";
 import { normalizePlayerSession } from "./player-mappers";

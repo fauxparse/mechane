@@ -1,8 +1,76 @@
+scalar JSON
+
 type User {
   id: ID!
   name: String!
   email: String!
   emailVerified: Boolean!
+}
+
+"""The signed-in user's design-system preference (PRD.md §7)."""
+type UserSettings {
+  """Display mode: light or dark."""
+  themeMode: String!
+
+  """Which built-in theme is active."""
+  themePalette: String!
+}
+
+type Query {
+  """The signed-in user, or null if the request has no valid session."""
+  me: User
+
+  """
+  The signed-in user's theme settings, or PRD.md §7 defaults if they haven't set any yet.
+  """
+  userSettings: UserSettings!
+
+  """The signed-in user's own Shows, most recently updated first."""
+  shows: [Show!]!
+
+  """
+  A single Show owned by the signed-in user, or null if it doesn't exist or isn't theirs.
+  """
+  show(id: ID!): Show
+
+  """The active Run for a Show, or null when the Show is stopped."""
+  activeRun(showId: ID!): Run
+
+  """
+  A Show's Run error log, newest first. Covers failures from every Run and
+  from before any Run started; `runId` narrows it to one Run and `category`
+  to one kind of failure.
+  """
+  runErrors(showId: ID!, runId: ID, category: String, limit: Int): [RunError!]!
+
+  """
+  A public Device snapshot resolved by the pairing bearer credential.
+  Invalid credentials return null.
+  """
+  playerSession: PlayerSession
+  variableReferences(showId: ID!, variableId: ID!, state: String): [VariableReference!]!
+  showGraph(showId: ID!, state: String): ShowGraph!
+  showCanvases(showId: ID!, state: String): [Artboard!]!
+  imageAssets(showId: ID!): [ImageAsset!]!
+}
+
+type Mutation {
+  updateUserSettings(themeMode: String, themePalette: String): UserSettings!
+  createShow(name: String!): Show!
+  renameShow(id: ID!, name: String!): Show!
+  deleteShow(id: ID!): Boolean!
+  endRun(showId: ID!): Run
+  startRun(showId: ID!): Run!
+  reshuffleTransformer(showId: ID!, transformerId: ID!, deviceId: ID): Boolean!
+  submitPlayerEvent(input: PlayerEventInput!): PlayerEventResult!
+  applyShowEdits(showId: ID!, baseVersion: Int!, edits: [ShowEditInput!]!): AppliedShowEdits!
+  publishShowGraph(showId: ID!): ShowGraph!
+  beginImageUpload(showId: ID!, mimeType: String!, byteLength: Int!): ImageUploadSession!
+  completeImageUpload(sessionId: ID!): ImageUploadCandidate!
+  finalizeImageUpload(sessionId: ID!, name: String!): ImageAsset!
+  renameImageAsset(showId: ID!, assetId: ID!, name: String!): ImageAsset!
+  abortImageUpload(sessionId: ID!): Boolean!
+  deleteImageAsset(showId: ID!, assetId: ID!): Boolean!
 }
 
 type Show {
@@ -144,15 +212,6 @@ type PlayerSession {
   imageAssets: [ImageAsset!]!
 }
 
-"""The signed-in user's design-system preference (PRD.md §7)."""
-type UserSettings {
-  """Display mode: light or dark."""
-  themeMode: String!
-
-  """Which built-in theme is active."""
-  themePalette: String!
-}
-
 """
 Free-form canvas coordinates for a graph node (issue #25 — no auto-layout).
 """
@@ -177,8 +236,6 @@ type SuggestedImageDimensions {
   width: Int!
   height: Int!
 }
-
-scalar JSON
 
 """
 A recursive Type descriptor: primitive, array, or a named Shape reference.
@@ -205,16 +262,6 @@ type NumberValue {
 
 type BooleanValue {
   value: Boolean!
-}
-
-type ImageValue {
-  assetId: ID!
-  url: String!
-  width: Int!
-  height: Int!
-  alt: String!
-  mimeType: String!
-  blurHash: String
 }
 
 type ColorValue {
@@ -639,188 +686,6 @@ type VariableReference {
   path: [String!]!
 }
 
-"""
-A persisted Scene or Block Canvas (ADR-0014).
-
-Elements arrive flat, each naming its parent and its rank, because a
-Canvas hierarchy has no authored depth limit and a recursive selection
-always has one. Clients rebuild the tree; `@mechane/graphql-schema`'s
-`decodeCanvasDocument` is the one decoder that does it. Element stays an
-interface so clients can select the primitive-specific content without a
-nullable field bag.
-"""
-type Canvas {
-  id: ID!
-  kind: String!
-
-  """Exactly one Element has no parent, and it is the root Frame."""
-  elements: [Element!]!
-}
-
-"""
-One Canvas as it is placed on the Canvas Editor's plane.
-
-Framing, not content: an Artboard has a place and a size, while the Canvas
-it presents has an Element tree (CONTEXT.md). Owner identity lives here for
-the same reason — the Canvas editor works on a Canvas without knowing
-whether a Scene or a Block owns it.
-"""
-type Artboard {
-  canvas: Canvas!
-  ownerId: ID!
-  ownerName: String!
-  position: Position!
-}
-
-interface Element {
-  id: ID!
-  name: String
-  parentId: ID
-  rank: String!
-  hidden: JSON!
-  layout: JSON
-  sizing: JSON
-  opacity: JSON
-  blendMode: String
-  fill: JSON
-  stroke: JSON
-  anchor: JSON
-  alignSelf: String
-}
-
-type RectElement implements Element {
-  id: ID!
-  name: String
-  parentId: ID
-  rank: String!
-  hidden: JSON!
-  layout: JSON
-  sizing: JSON
-  opacity: JSON
-  blendMode: String
-  fill: JSON
-  stroke: JSON
-  anchor: JSON
-  alignSelf: String
-  cornerRadius: JSON
-}
-
-type EllipseElement implements Element {
-  id: ID!
-  name: String
-  parentId: ID
-  rank: String!
-  hidden: JSON!
-  layout: JSON
-  sizing: JSON
-  opacity: JSON
-  blendMode: String
-  fill: JSON
-  stroke: JSON
-  anchor: JSON
-  alignSelf: String
-}
-
-type TextElement implements Element {
-  id: ID!
-  name: String
-  parentId: ID
-  rank: String!
-  hidden: JSON!
-  layout: JSON
-  sizing: JSON
-  opacity: JSON
-  blendMode: String
-  fill: JSON
-  stroke: JSON
-  anchor: JSON
-  alignSelf: String
-  content: JSON
-  color: JSON
-  fontFamily: JSON
-  fontSize: JSON
-  fontWeight: JSON
-  fontStyle: JSON
-  textDecoration: JSON
-  lineHeight: JSON
-  letterSpacing: JSON
-  textAlign: JSON
-  textVerticalAlign: JSON
-  textOverflow: String
-  padding: JSON
-}
-
-type ImageElement implements Element {
-  id: ID!
-  name: String
-  parentId: ID
-  rank: String!
-  hidden: JSON!
-  layout: JSON
-  sizing: JSON
-  opacity: JSON
-  blendMode: String
-  fill: JSON
-  stroke: JSON
-  anchor: JSON
-  alignSelf: String
-  image: JSON
-  alt: JSON
-  objectFit: JSON
-  objectPosition: JSON
-  cornerRadius: JSON
-}
-
-type FrameElement implements Element {
-  id: ID!
-  name: String
-  parentId: ID
-  rank: String!
-  hidden: JSON!
-  layout: JSON
-  sizing: JSON
-  opacity: JSON
-  blendMode: String
-  fill: JSON
-  stroke: JSON
-  anchor: JSON
-  alignSelf: String
-  cornerRadius: JSON
-  layoutMode: String
-  direction: String
-  gap: JSON
-  padding: JSON
-  alignPrimary: String
-  alignCounter: String
-  clip: Boolean
-}
-
-type SlotElement implements Element {
-  id: ID!
-  name: String
-  parentId: ID
-  rank: String!
-  hidden: JSON!
-  layout: JSON
-  sizing: JSON
-  opacity: JSON
-  blendMode: String
-  fill: JSON
-  stroke: JSON
-  anchor: JSON
-  alignSelf: String
-  layoutMode: String
-  direction: String
-  gap: JSON
-  padding: JSON
-  alignPrimary: String
-  alignCounter: String
-  clip: Boolean
-  blockId: ID!
-  assignments: JSON
-  expansion: JSON
-}
-
 input PositionInput {
   x: Float!
   y: Float!
@@ -1107,6 +972,198 @@ type AppliedShowEdits {
   amendments: [GraphEdit!]!
 }
 
+"""
+A persisted Scene or Block Canvas (ADR-0014).
+
+Elements arrive flat, each naming its parent and its rank, because a
+Canvas hierarchy has no authored depth limit and a recursive selection
+always has one. Clients rebuild the tree; `@mechane/graphql-schema`'s
+`decodeCanvasDocument` is the one decoder that does it. Element stays an
+interface so clients can select the primitive-specific content without a
+nullable field bag.
+"""
+type Canvas {
+  id: ID!
+  kind: String!
+
+  """Exactly one Element has no parent, and it is the root Frame."""
+  elements: [Element!]!
+}
+
+"""
+One Canvas as it is placed on the Canvas Editor's plane.
+
+Framing, not content: an Artboard has a place and a size, while the Canvas
+it presents has an Element tree (CONTEXT.md). Owner identity lives here for
+the same reason — the Canvas editor works on a Canvas without knowing
+whether a Scene or a Block owns it.
+"""
+type Artboard {
+  canvas: Canvas!
+  ownerId: ID!
+  ownerName: String!
+  position: Position!
+}
+
+interface Element {
+  id: ID!
+  name: String
+  parentId: ID
+  rank: String!
+  hidden: JSON!
+  layout: JSON
+  sizing: JSON
+  opacity: JSON
+  blendMode: String
+  fill: JSON
+  stroke: JSON
+  anchor: JSON
+  alignSelf: String
+}
+
+type RectElement implements Element {
+  id: ID!
+  name: String
+  parentId: ID
+  rank: String!
+  hidden: JSON!
+  layout: JSON
+  sizing: JSON
+  opacity: JSON
+  blendMode: String
+  fill: JSON
+  stroke: JSON
+  anchor: JSON
+  alignSelf: String
+  cornerRadius: JSON
+}
+
+type EllipseElement implements Element {
+  id: ID!
+  name: String
+  parentId: ID
+  rank: String!
+  hidden: JSON!
+  layout: JSON
+  sizing: JSON
+  opacity: JSON
+  blendMode: String
+  fill: JSON
+  stroke: JSON
+  anchor: JSON
+  alignSelf: String
+}
+
+type TextElement implements Element {
+  id: ID!
+  name: String
+  parentId: ID
+  rank: String!
+  hidden: JSON!
+  layout: JSON
+  sizing: JSON
+  opacity: JSON
+  blendMode: String
+  fill: JSON
+  stroke: JSON
+  anchor: JSON
+  alignSelf: String
+  content: JSON
+  color: JSON
+  fontFamily: JSON
+  fontSize: JSON
+  fontWeight: JSON
+  fontStyle: JSON
+  textDecoration: JSON
+  lineHeight: JSON
+  letterSpacing: JSON
+  textAlign: JSON
+  textVerticalAlign: JSON
+  textOverflow: String
+  padding: JSON
+}
+
+type ImageElement implements Element {
+  id: ID!
+  name: String
+  parentId: ID
+  rank: String!
+  hidden: JSON!
+  layout: JSON
+  sizing: JSON
+  opacity: JSON
+  blendMode: String
+  fill: JSON
+  stroke: JSON
+  anchor: JSON
+  alignSelf: String
+  image: JSON
+  alt: JSON
+  objectFit: JSON
+  objectPosition: JSON
+  cornerRadius: JSON
+}
+
+type FrameElement implements Element {
+  id: ID!
+  name: String
+  parentId: ID
+  rank: String!
+  hidden: JSON!
+  layout: JSON
+  sizing: JSON
+  opacity: JSON
+  blendMode: String
+  fill: JSON
+  stroke: JSON
+  anchor: JSON
+  alignSelf: String
+  cornerRadius: JSON
+  layoutMode: String
+  direction: String
+  gap: JSON
+  padding: JSON
+  alignPrimary: String
+  alignCounter: String
+  clip: Boolean
+}
+
+type SlotElement implements Element {
+  id: ID!
+  name: String
+  parentId: ID
+  rank: String!
+  hidden: JSON!
+  layout: JSON
+  sizing: JSON
+  opacity: JSON
+  blendMode: String
+  fill: JSON
+  stroke: JSON
+  anchor: JSON
+  alignSelf: String
+  layoutMode: String
+  direction: String
+  gap: JSON
+  padding: JSON
+  alignPrimary: String
+  alignCounter: String
+  clip: Boolean
+  blockId: ID!
+  assignments: JSON
+  expansion: JSON
+}
+
+type ImageValue {
+  assetId: ID!
+  url: String!
+  width: Int!
+  height: Int!
+  alt: String!
+  mimeType: String!
+  blurHash: String
+}
+
 type ImageUploadConstraints {
   maxSourceBytes: Int!
   maxPixels: Int!
@@ -1146,61 +1203,4 @@ type ImageAsset {
   name: String!
   alt: String!
   blurHash: String
-}
-
-type Query {
-  """The signed-in user, or null if the request has no valid session."""
-  me: User
-
-  """
-  A public Device snapshot resolved by the pairing bearer credential.
-  Invalid credentials return null.
-  """
-  playerSession: PlayerSession
-
-  """The signed-in user's own Shows, most recently updated first."""
-  shows: [Show!]!
-
-  """
-  A single Show owned by the signed-in user, or null if it doesn't exist or isn't theirs.
-  """
-  show(id: ID!): Show
-  variableReferences(showId: ID!, variableId: ID!, state: String): [VariableReference!]!
-
-  """
-  The signed-in user's theme settings, or PRD.md §7 defaults if they haven't set any yet.
-  """
-  userSettings: UserSettings!
-
-  """The active Run for a Show, or null when the Show is stopped."""
-  activeRun(showId: ID!): Run
-  showGraph(showId: ID!, state: String): ShowGraph!
-  showCanvases(showId: ID!, state: String): [Artboard!]!
-  imageAssets(showId: ID!): [ImageAsset!]!
-
-  """
-  A Show's Run error log, newest first. Covers failures from every Run and
-  from before any Run started; `runId` narrows it to one Run and `category`
-  to one kind of failure.
-  """
-  runErrors(showId: ID!, runId: ID, category: String, limit: Int): [RunError!]!
-}
-
-type Mutation {
-  createShow(name: String!): Show!
-  renameShow(id: ID!, name: String!): Show!
-  deleteShow(id: ID!): Boolean!
-  updateUserSettings(themeMode: String, themePalette: String): UserSettings!
-  applyShowEdits(showId: ID!, baseVersion: Int!, edits: [ShowEditInput!]!): AppliedShowEdits!
-  publishShowGraph(showId: ID!): ShowGraph!
-  endRun(showId: ID!): Run
-  startRun(showId: ID!): Run!
-  reshuffleTransformer(showId: ID!, transformerId: ID!, deviceId: ID): Boolean!
-  submitPlayerEvent(input: PlayerEventInput!): PlayerEventResult!
-  beginImageUpload(showId: ID!, mimeType: String!, byteLength: Int!): ImageUploadSession!
-  completeImageUpload(sessionId: ID!): ImageUploadCandidate!
-  finalizeImageUpload(sessionId: ID!, name: String!): ImageAsset!
-  renameImageAsset(showId: ID!, assetId: ID!, name: String!): ImageAsset!
-  abortImageUpload(sessionId: ID!): Boolean!
-  deleteImageAsset(showId: ID!, assetId: ID!): Boolean!
 }

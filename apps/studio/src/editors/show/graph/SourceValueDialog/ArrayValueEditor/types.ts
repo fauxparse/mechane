@@ -1,5 +1,6 @@
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
-import type { Shape, StructuredValueTemplate, Type } from "@mechane/domain";
+import type { Shape, Type } from "@mechane/domain/shapes";
+import type { StructuredValueTemplate } from "@mechane/domain/structured-values";
 
 import type { ErrorPath, SourceImageAsset } from "../../inspector/source-value-types";
 import { previewValue } from "../../inspector/source-values-helpers";

@@ -9,8 +9,8 @@
 // Show, the graphs, the run, and the signed-in user, and hands EditorLayout
 // plain data and callbacks. That is what lets the whole Chrome be reviewed in
 // Storybook with no router and no query client.
-import { isId, publishState } from "@mechane/domain";
-import type { ShowId } from "@mechane/domain";
+import { isId, type ShowId } from "@mechane/domain/id";
+import { publishState } from "@mechane/domain/publish";
 import { GraphQLRequestError } from "@mechane/graphql-schema";
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";

@@ -7,7 +7,7 @@ import {
   type KeyboardEvent,
   type PointerEvent,
 } from "react";
-import type { ShapeValue } from "@mechane/domain";
+import type { ShapeValue } from "@mechane/domain/shapes";
 
 import { parseHexColor, rgbaToHex } from "./color-utils";
 import type {

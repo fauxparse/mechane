@@ -1,4 +1,4 @@
-import type { GraphEdge, ShowGraph } from "@mechane/domain";
+import type { GraphEdge, ShowGraph } from "@mechane/domain/graph";
 import {
   navigationProofCanvases,
   navigationProofGraph,

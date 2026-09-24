@@ -8,7 +8,9 @@
 // table is expected to carry a `userId` column referencing `user.id`, per the
 // single-user ownership model (PRD.md §1, §9) — see @mechane/domain's
 // `ownership` module for the shared invariant this schema exists to support.
-import { DEFAULT_THEME_PALETTE, generateId, PAIRING_CODE_PATTERN } from "@mechane/domain";
+import { generateId } from "@mechane/domain/id";
+import { PAIRING_CODE_PATTERN } from "@mechane/domain/pairing-code";
+import { DEFAULT_THEME_PALETTE } from "@mechane/domain/theme-settings";
 import { sql } from "drizzle-orm";
 import {
   boolean,

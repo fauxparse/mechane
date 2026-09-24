@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
-import type { Canvas, FrameElement } from "@mechane/domain";
+import type { Canvas, FrameElement } from "@mechane/domain/canvas";
 import { prepareCanvasForRender } from "./canvas-presentation";
 import { CanvasRenderer } from "./canvas-renderer";
 

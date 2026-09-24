@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
-import type { Element } from "@mechane/domain";
-import { isPropertyConnection } from "@mechane/domain";
+import type { Element } from "@mechane/domain/canvas";
+import { isPropertyConnection } from "@mechane/domain/property-values";
 import { canvasElementParent, findCanvasElement } from "@mechane/commands";
 import type { CanvasArtboardDocument } from "../../../../api/canvas";
 import { lockedAspectRatio } from "../../commands/canvas-resize";

@@ -1,8 +1,12 @@
 // Reading and writing the Run error log (#459). The category set, the record
 // shape, and the prose each category renders all live in @mechane/domain's
 // `run-errors` module; this is the storage and capture side.
-import type { RunError, RunErrorCategory, RunErrorDetail } from "@mechane/domain";
-import { describeRunError } from "@mechane/domain";
+import {
+  type RunError,
+  type RunErrorCategory,
+  type RunErrorDetail,
+  describeRunError,
+} from "@mechane/domain/run-errors";
 import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "./client";

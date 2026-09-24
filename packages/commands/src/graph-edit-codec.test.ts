@@ -10,13 +10,14 @@
 // edit whose fixture leaves a field out proves nothing about that field.
 
 import { describe, expect, it } from "vitest";
-import type { SceneNode } from "@mechane/domain";
-import { emptyBlock } from "@mechane/domain";
+import { emptyBlock } from "@mechane/domain/blocks";
+import type { SceneNode } from "@mechane/domain/graph";
 import type { GraphEdit } from "./graph-edits";
 import {
   decodeGraphEdit,
   encodeGraphEdit,
   GRAPH_EDIT_CODECS,
+  GRAPH_EDIT_DESCRIPTORS,
   GraphEditCodecError,
 } from "./graph-edit-codec";
 
@@ -400,6 +401,18 @@ const FIXTURES: { [T in GraphEdit["type"]]: Extract<GraphEdit, { type: T }> } = 
 describe("graph edit codec", () => {
   it("has a descriptor for every edit type", () => {
     expect(Object.keys(GRAPH_EDIT_CODECS).sort()).toEqual(Object.keys(FIXTURES).sort());
+  });
+  it("keeps command, codec, lifetime, and coalescing metadata in one registry", () => {
+    expect(Object.keys(GRAPH_EDIT_DESCRIPTORS).sort()).toEqual(
+      Object.keys(GRAPH_EDIT_CODECS).sort(),
+    );
+    for (const type of Object.keys(FIXTURES) as GraphEdit["type"][]) {
+      expect(GRAPH_EDIT_DESCRIPTORS[type].command).toBeTypeOf("function");
+      expect(GRAPH_EDIT_DESCRIPTORS[type].encode).toBeTypeOf("function");
+      expect(GRAPH_EDIT_DESCRIPTORS[type].decode).toBeTypeOf("function");
+      expect(GRAPH_EDIT_DESCRIPTORS[type].structuralIds).toBeTypeOf("function");
+      expect(GRAPH_EDIT_DESCRIPTORS[type].supersedes).toBeTypeOf("function");
+    }
   });
 
   it.each(Object.keys(FIXTURES) as GraphEdit["type"][])("round-trips %s", (type) => {

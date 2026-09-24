@@ -1,4 +1,5 @@
-import type { SceneNode, SceneVariable, Type } from "@mechane/domain";
+import type { SceneNode, SceneVariable } from "@mechane/domain/graph";
+import type { Type } from "@mechane/domain/shapes";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { InspectorProvider } from "@mechane/design-system";
