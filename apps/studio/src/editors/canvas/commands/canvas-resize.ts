@@ -1,4 +1,5 @@
-import type { Element, Element as CanvasElement } from "@mechane/domain/canvas";
+import type { AxisSize, Element, Element as CanvasElement } from "@mechane/domain/canvas";
+import { isPropertyFormula } from "@mechane/domain/property-values";
 import { roundToLogicalPixel } from "../components/canvas-pixels";
 
 /** One Element caught up in a resize, with everything needed to place it again afterwards. */
@@ -32,6 +33,14 @@ export function isCornerHandle(handle: ResizeHandle): boolean {
   return handle.length === 2;
 }
 
+/** The axes a handle drags: an edge handle moves one, a corner both. */
+export function resizeAxes(handle: ResizeHandle): { width: boolean; height: boolean } {
+  return {
+    width: handle.includes("e") || handle.includes("w"),
+    height: handle.includes("n") || handle.includes("s"),
+  };
+}
+
 /** Where a handle sits in the selection box, as a fraction of its width and height. */
 export function handlePosition(handle: ResizeHandle): { x: number; y: number } {
   return {
@@ -58,7 +67,8 @@ export function lockedAspectRatio(element: Element | null | undefined): number |
 /**
  * Where a box inside `from` lands once `from` has been resized into `to`. Resizing a
  * multi-selection is this applied to each Element: the selection box is what the handle drags,
- * and everything inside keeps its relative place and proportion within it.
+ * and everything inside keeps its relative place and proportion within it. An axis with no
+ * extent cannot be scaled, so it grows by the drag instead — a 0%-wide bar must still resize.
  */
 export function scaleWithin(box: ResizeBox, from: ResizeBox, to: ResizeBox): ResizeBox {
   const scaleX = from.width > 0 ? to.width / from.width : 1;
@@ -66,24 +76,41 @@ export function scaleWithin(box: ResizeBox, from: ResizeBox, to: ResizeBox): Res
   return {
     x: to.x + (box.x - from.x) * scaleX,
     y: to.y + (box.y - from.y) * scaleY,
-    width: Math.max(MIN_ELEMENT_SIZE, box.width * scaleX),
-    height: Math.max(MIN_ELEMENT_SIZE, box.height * scaleY),
+    width: Math.max(
+      MIN_ELEMENT_SIZE,
+      from.width > 0 ? box.width * scaleX : box.width + to.width - from.width,
+    ),
+    height: Math.max(
+      MIN_ELEMENT_SIZE,
+      from.height > 0 ? box.height * scaleY : box.height + to.height - from.height,
+    ),
   };
 }
 
-/** Writes resized dimensions into the canonical `sizing` object. */
+/**
+ * Writes resized dimensions into the canonical `sizing` object, one axis at a time; an axis
+ * the drag did not touch keeps its mode. A Formula-driven axis keeps its Formula and takes
+ * the dragged size as its fallback, the literal the Artboard shows while the Formula reads
+ * nothing.
+ */
 export function fixedResizeProperties(
   element: Element,
-  width: number,
-  height: number,
+  size: { readonly width?: number; readonly height?: number },
 ): Record<string, unknown> {
-  const properties: Record<string, unknown> = {
-    sizing: {
-      ...element.sizing,
-      width: { mode: "fixed", value: width },
-      height: { mode: "fixed", value: height },
-    },
-  };
+  const sizing = { ...element.sizing };
+  for (const axis of ["width", "height"] as const) {
+    const value = size[axis];
+    if (value === undefined) continue;
+    const current = sizing[axis]?.value;
+    sizing[axis] = isPropertyFormula(current)
+      ? ({
+          ...sizing[axis],
+          mode: "fixed",
+          value: { ...current, fallback: { value, unit: "px" } },
+        } as AxisSize)
+      : { mode: "fixed", value };
+  }
+  const properties: Record<string, unknown> = { sizing };
   if (element.layout) properties.layout = element.layout;
   return properties;
 }
@@ -113,16 +140,15 @@ export function resizeElementUpdate(input: {
 }): CanvasElementUpdate {
   const { subject, selectionStart, requested, element, handle, zoom } = input;
   const next = scaleWithin(subject.start, selectionStart, requested);
-  const width = Math.max(1, roundToLogicalPixel(next.width, zoom));
-  const height = Math.max(1, roundToLogicalPixel(next.height, zoom));
-  const properties = element
-    ? fixedResizeProperties(element, width, height)
-    : {
-        sizing: {
-          width: { mode: "fixed", value: width },
-          height: { mode: "fixed", value: height },
-        },
-      };
+  const axes = resizeAxes(handle);
+  const size = {
+    ...(axes.width ? { width: Math.max(1, roundToLogicalPixel(next.width, zoom)) } : {}),
+    ...(axes.height ? { height: Math.max(1, roundToLogicalPixel(next.height, zoom)) } : {}),
+  };
+  const properties = fixedResizeProperties(
+    element ?? { id: subject.elementId, type: "rect" },
+    size,
+  );
   const unlock = !isCornerHandle(handle)
     ? element
       ? unlockedAspectRatioProperties(element)
@@ -141,7 +167,9 @@ export function resizeElementUpdate(input: {
 }
 /**
  * The box a resize drag asks for. The edge opposite the handle is what stays put, which is what
- * makes dragging the west edge grow the Element leftwards rather than move it.
+ * makes dragging the west edge grow the Element leftwards rather than move it. An axis with no
+ * extent has both its handles on one point, so whichever one the pointer caught, the box grows
+ * the way the pointer goes.
  */
 export function resizeBox(
   start: ResizeBox,
@@ -151,13 +179,23 @@ export function resizeBox(
   options: { constrain?: boolean; ratio?: number; min?: number } = {},
 ): ResizeBox {
   const min = options.min ?? MIN_ELEMENT_SIZE;
-  const movesWest = handle.includes("w");
-  const movesEast = handle.includes("e");
-  const movesNorth = handle.includes("n");
-  const movesSouth = handle.includes("s");
+  const horizontal = handle.includes("w") || handle.includes("e");
+  const vertical = handle.includes("n") || handle.includes("s");
+  const flatX = horizontal && start.width === 0;
+  const flatY = vertical && start.height === 0;
+  const movesWest = flatX ? dx < 0 : handle.includes("w");
+  const movesEast = !flatX && handle.includes("e");
+  const movesNorth = flatY ? dy < 0 : handle.includes("n");
+  const movesSouth = !flatY && handle.includes("s");
 
-  let width = Math.max(min, start.width + (movesEast ? dx : 0) - (movesWest ? dx : 0));
-  let height = Math.max(min, start.height + (movesSouth ? dy : 0) - (movesNorth ? dy : 0));
+  let width = Math.max(
+    min,
+    flatX ? Math.abs(dx) : start.width + (movesEast ? dx : 0) - (movesWest ? dx : 0),
+  );
+  let height = Math.max(
+    min,
+    flatY ? Math.abs(dy) : start.height + (movesSouth ? dy : 0) - (movesNorth ? dy : 0),
+  );
 
   // Only corners can honour a ratio: an edge drag has one free axis, so forcing the other would
   // make the handle disobey the pointer.
