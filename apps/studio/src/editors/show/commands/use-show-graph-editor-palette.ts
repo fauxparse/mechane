@@ -7,7 +7,7 @@ import {
   Trash2,
   Undo2,
 } from "@mechane/design-system";
-import type { FitViewOptions } from "@xyflow/react";
+import type { FitViewOptions } from "../graph/react-flow";
 import type { CreatableNode } from "../graph/node-kinds";
 import { CREATABLE_NODES } from "../graph/node-kinds";
 import type { GraphNode, Position } from "@mechane/domain";

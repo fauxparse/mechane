@@ -113,3 +113,98 @@ export interface CanvasArtboardDimensions {
   readonly width: number;
   readonly height: number;
 }
+export interface CanvasWorkspaceSession {
+  readonly canvas: {
+    focusArtboard(artId: string): void;
+    selectionChange?(selection: CanvasSelection): void;
+    beginMoveArtboard(canvasId: string): void;
+    moveArtboard(canvasId: string, position: Position): void;
+    endMoveArtboard(canvasId: string, cancel?: boolean): void;
+    createElement(canvasId: string, element: NewElement, parentId: string, rank: string): void;
+    moveElement?(
+      canvasId: string,
+      elementId: string,
+      parentId: string,
+      rank: string,
+      properties?: Record<string, unknown>,
+      unsetProperties?: readonly string[],
+    ): void;
+    moveElementBetweenCanvases?(
+      sourceCanvasId: string,
+      targetCanvasId: string,
+      elementId: string,
+      parentId: string,
+      rank: string,
+      properties?: Record<string, unknown>,
+      unsetProperties?: readonly string[],
+    ): void;
+    updateElement?(
+      canvasId: string,
+      elementId: string,
+      properties: Record<string, unknown>,
+      unsetProperties?: readonly string[],
+    ): void;
+    updateElements?(
+      canvasId: string,
+      updates: readonly {
+        readonly elementId: string;
+        readonly properties: Record<string, unknown>;
+        readonly unsetProperties?: readonly string[];
+      }[],
+    ): void;
+    placeBlock?(blockId: string): void;
+    createBlockFromDrag?(
+      request: CanvasBlockCreationRequest,
+    ): CanvasBlockCreationResult | null | undefined;
+    createBlockFromSelection?(
+      canvasId: string,
+      elementIds: readonly string[],
+    ): CanvasBlockCreationResult | null | undefined;
+    deleteElements?(canvasId: string, elementIds: readonly string[]): void;
+    renameArtboard?(artId: string, name: string): void;
+  };
+  readonly graph: {
+    createCue?(owner: InteractionOwner): string | undefined;
+    focusCue?(cueId: string): void;
+    setEventBindingCue?(bindingId: string, cueId: string): void;
+    setEventBindingKey?(bindingId: string, key: string | null): void;
+    createEventBinding?(binding: EventBinding): void;
+    removeEventBinding?(bindingId: string): void;
+    reorderEventBindings?(bindingIds: readonly string[]): void;
+  };
+  readonly assets: {
+    imageUpload?(props: ImageInputOnUploadProps): void;
+  };
+  readonly camera: {
+    change?(camera: CanvasCamera): void;
+  };
+}
+
+export type CanvasWorkspaceSessionEditorProps = Omit<
+  CanvasWorkspaceEditorProps,
+  | "onFocusArtboard"
+  | "onBeginMoveArtboard"
+  | "onMoveArtboard"
+  | "onEndMoveArtboard"
+  | "onCameraChange"
+  | "onCreateElement"
+  | "onMoveElement"
+  | "onMoveElementBetweenCanvases"
+  | "onUpdateElement"
+  | "onUpdateElements"
+  | "onPlaceBlock"
+  | "onCreateBlockFromDrag"
+  | "onCreateBlockFromSelection"
+  | "onImageUpload"
+  | "onDeleteElements"
+  | "onCreateCue"
+  | "onFocusCue"
+  | "onSetEventBindingCue"
+  | "onSetEventBindingKey"
+  | "onCreateEventBinding"
+  | "onRemoveEventBinding"
+  | "onReorderEventBindings"
+  | "onRenameArtboard"
+> & {
+  readonly session: CanvasWorkspaceSession;
+};

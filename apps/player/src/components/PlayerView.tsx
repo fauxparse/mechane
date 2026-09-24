@@ -1,9 +1,10 @@
-import { resolveRuntimeEvent, type BlockInstancePathSegment } from "@mechane/domain";
+import type { BlockInstancePathSegment } from "@mechane/domain";
 import { CanvasRenderer, prepareCanvasPresentation } from "@mechane/rendering";
 import { useCallback, useMemo } from "react";
 import { usePlayerSession, type PlayerSession } from "../api";
 import { usePlayerKeypress } from "../player-keypress";
 import { usePlayerNavigation } from "../player-navigation";
+import { dispatchSharedPlayerEvent } from "../player-event-dispatch";
 import { SplashScreen } from "./join/SplashScreen";
 function WaitingForRun({ session }: { session: PlayerSession }) {
   return (
@@ -101,41 +102,22 @@ export function PlayerView({ code }: { code: string }) {
       ) {
         return;
       }
-      // The pre-check runs the real resolver rather than its own Binding
-      // search: a tap inside a Slot is bound on the contained Block's Canvas,
-      // which no match against the Scene Canvas id can see. A corrupt graph
-      // throws here, and submitting anyway is what puts it in the Run Error
-      // log where an operator will find it.
-      let bound = true;
-      try {
-        bound =
-          resolveRuntimeEvent(state.session.graph, {
-            sceneId: state.session.scene.id,
-            canvasId: state.session.canvas.id,
-            elementId,
-            eventKind: "tap",
-            slotInstancePath,
-          }).kind === "planned";
-      } catch {
-        bound = true;
-      }
-      if (!bound) return;
-      void state
-        .submitEvent({
-          eventId: crypto.randomUUID(),
-          publishedGraphVersion: state.session.graphVersion,
+      dispatchSharedPlayerEvent({
+        graph: state.session.graph,
+        observation: {
           sceneId: state.session.scene.id,
+          canvasId: state.session.canvas.id,
           elementId,
           eventKind: "tap",
           slotInstancePath,
-        })
-        .catch(() => undefined);
+        },
+        publishedGraphVersion: state.session.graphVersion,
+        submitEvent: state.submitEvent,
+      });
     },
     [state],
   );
 
-  // The Shared path's client-side pre-check, now matching kind *and* key:
-  // unbound keystrokes never become a server round-trip with a persisted row.
   const handleKeyPress = useCallback(
     (key: string) => {
       if (
@@ -147,29 +129,22 @@ export function PlayerView({ code }: { code: string }) {
       ) {
         return false;
       }
-      const rootId = state.session.canvas.root.id;
-      const binding = (state.session.graph.eventBindings ?? []).find(
-        (candidate) =>
-          candidate.canvasId === state.session.canvas?.id &&
-          candidate.elementId === rootId &&
-          candidate.eventKind === "keypress" &&
-          candidate.params.key === key,
-      );
-      if (!binding) return false;
-      void state
-        .submitEvent({
-          eventId: crypto.randomUUID(),
-          publishedGraphVersion: state.session.graphVersion,
+      return dispatchSharedPlayerEvent({
+        graph: state.session.graph,
+        observation: {
           sceneId: state.session.scene.id,
-          elementId: rootId,
+          canvasId: state.session.canvas.id,
+          elementId: state.session.canvas.root.id,
           eventKind: "keypress",
           params: { key },
-        })
-        .catch(() => undefined);
-      return true;
+        },
+        publishedGraphVersion: state.session.graphVersion,
+        submitEvent: state.submitEvent,
+      });
     },
     [state],
   );
+
   const perConnection = state.status === "ready" && state.session.device.perConnection;
   usePlayerKeypress(
     state.status === "ready" && Boolean(state.session.run),

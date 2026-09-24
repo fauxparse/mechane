@@ -1,6 +1,6 @@
 import type { Ref } from "react";
-import { ReactFlowProvider } from "@xyflow/react";
-import type { Viewport } from "@xyflow/react";
+import { ReactFlowProvider } from "./graph/react-flow";
+import type { ShowGraphViewport } from "./graph/react-flow";
 import type { GraphEdit } from "@mechane/commands";
 import type { ShowGraph } from "@mechane/domain";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
@@ -25,8 +25,8 @@ export interface ShowGraphEditorProps {
   imageAssets?: readonly SourceImageAsset[];
   onImageUpload?: (props: ImageInputOnUploadProps) => void;
   onEdit?: (edits: readonly GraphEdit[], graph: ShowGraph) => void;
-  initialViewport?: Viewport;
-  onViewportChange?(viewport: Viewport): void;
+  initialViewport?: ShowGraphViewport;
+  onViewportChange?(viewport: ShowGraphViewport): void;
   initialSourceValue?: ShowGraphValueLocation;
   onSourceValueChange?(location: ShowGraphValueLocation | null): void;
   runActive?: boolean;

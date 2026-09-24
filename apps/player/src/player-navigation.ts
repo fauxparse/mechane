@@ -1,10 +1,10 @@
 import {
   composeInstanceView,
   resolveCueParameters,
-  resolveRuntimeEvent,
   type BlockInstancePathSegment,
   type RuntimeEventObservation,
 } from "@mechane/domain";
+import { resolvePlayerEvent } from "./player-event-dispatch";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PlayerSession, PlayerState } from "./api";
 import {
@@ -122,7 +122,7 @@ export function usePlayerNavigation(
         return false;
       }
       const observation = observe(runtime.session.scene.id, runtime.session.canvas.id);
-      const plan = resolveRuntimeEvent(runtime.session.graph, observation);
+      const plan = resolvePlayerEvent(runtime.session.graph, observation);
       if (plan.kind !== "planned") return false;
       const currentState = runtime.store.read();
       if (!currentState) return false;
