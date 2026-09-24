@@ -48,12 +48,13 @@ export type PlayerSession = {
     shuffleSeeds?: Readonly<Record<string, string>>;
     structuredValues: StructuredValues;
   } | null;
-  graph: ShowGraph & {
-    showId: string;
-    state: string;
-    updatedAt: string;
-    version: number;
-  };
+  graph: ShowGraph;
+  /**
+   * The version of the published graph this session read (ADR-0006, #742).
+   * A fact about the read rather than about the graph: it is what an Event
+   * submitted from this session is stamped with.
+   */
+  graphVersion: number;
   flow: {
     flowId: string;
     defaultSceneId: string | null;
@@ -146,7 +147,14 @@ export async function submitPlayerEvent(
   const result = await graphqlRequest(
     GRAPHQL_ENDPOINT,
     SubmitPlayerEventMutation,
-    { input },
+    // `slotInstancePath` is readonly in the domain and mutable in the
+    // generated input; the copy is the whole difference.
+    {
+      input: {
+        ...input,
+        slotInstancePath: input.slotInstancePath ? [...input.slotInstancePath] : undefined,
+      },
+    },
     { headers: { Authorization: `Bearer ${code.trim().toUpperCase()}` } },
   );
   const event = result.submitPlayerEvent;

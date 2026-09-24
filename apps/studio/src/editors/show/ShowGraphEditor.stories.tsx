@@ -33,7 +33,7 @@ export const Default: Story = {};
 const COLORFUL_GRAPH = {
   ...SAMPLE_GRAPH,
   nodes: SAMPLE_GRAPH.nodes.map((node, index) =>
-    node.__typename === "FlowNode"
+    node.kind === "flow"
       ? { ...node, color: (["red", "aqua", "purple"] as const)[index % 3] }
       : node,
   ),

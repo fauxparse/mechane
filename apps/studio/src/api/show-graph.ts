@@ -15,16 +15,67 @@ import {
   graphqlRequest,
   PublishShowGraphMutation,
 } from "@mechane/graphql-schema";
-import type { ShowGraph } from "@mechane/graphql-schema";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { toEditInput, toGraphEdit } from "../editors/show/data/api-graph";
 import { GRAPHQL_ENDPOINT } from "./client";
 
+/**
+ * The cached query response, described only as far as this module patches it.
+ *
+ * Patching a cached graph in place is the one job left in Studio that works
+ * in transport terms; everything that *reads* a graph goes through
+ * `decodeShowGraphDocument`, and the editor is handed the decoded result
+ * (#742, #750). Narrow on purpose: a field named here is a field this module
+ * rewrites.
+ */
+interface CachedShowGraph {
+  readonly nodes: readonly CachedNode[];
+  readonly edges: readonly CachedEdge[];
+  readonly shapes: readonly unknown[];
+  readonly blocks: readonly unknown[];
+  readonly cues: readonly CachedCue[];
+  readonly actions: readonly { readonly cueId: string }[];
+  readonly eventBindings: readonly { readonly cueId: string }[];
+  readonly slotEventBindings: readonly unknown[];
+  readonly sourceFieldDefaults: readonly unknown[];
+  readonly showId: string;
+  readonly state: string;
+  readonly updatedAt: string;
+  readonly version: number;
+}
+
+interface CachedNode {
+  readonly __typename: string;
+  readonly id: string;
+  readonly variables?: readonly { readonly id: string; readonly rank?: string | null }[];
+}
+
+interface CachedEdge {
+  readonly __typename: string;
+  readonly cueId?: string | null;
+}
+
+interface CachedCue {
+  readonly id: string;
+  readonly name: string;
+  readonly ownerKind: string;
+  readonly sceneId: string | null;
+  readonly blockId: string | null;
+  readonly actionIds: readonly string[];
+  readonly parameters: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly type: unknown;
+    readonly position: number;
+  }[];
+}
+
 function toCachedCue(
   cue: Extract<GraphEdit, { type: "graph.addCue" }>["cue"],
-): ShowGraph["cues"][number] {
+): CachedShowGraph["cues"][number] {
   return {
     id: cue.id,
     name: cue.name,
@@ -42,9 +93,9 @@ function toCachedCue(
 }
 
 function withoutCueEdges(
-  edges: ShowGraph["edges"],
+  edges: CachedShowGraph["edges"],
   cueId: Extract<GraphEdit, { type: "graph.removeCue" }>["cueId"],
-): ShowGraph["edges"] {
+): CachedShowGraph["edges"] {
   return edges.filter(
     (edge) =>
       (edge.__typename !== "NavigateEdge" && edge.__typename !== "UpdateEdge") ||
@@ -60,13 +111,13 @@ export const showGraphQueryKey = (id: ShowId, state: GraphState) =>
  * snapshot. Reordering only changes the Variable array on the addressed Scene.
  */
 export function patchShowGraphQueryData(
-  previous: ShowGraph | undefined,
+  previous: CachedShowGraph | undefined,
   edits: readonly GraphEdit[],
-): ShowGraph | undefined {
+): CachedShowGraph | undefined {
   if (!previous) return previous;
   let changed = false;
   const nodes = previous.nodes.map((node) => {
-    if (node.__typename !== "SceneNode") return node;
+    if (node.__typename !== "SceneNode" || !node.variables) return node;
     let variables = node.variables;
     for (const edit of edits) {
       if (edit.type !== "graph.reorderSceneVariables" || edit.sceneId !== node.id) continue;
@@ -159,7 +210,7 @@ export function usePublishShowGraph() {
       const showId = graph.showId as ShowId;
       queryClient.setQueryData(
         showGraphQueryKey(showId, "published"),
-        (previous: ShowGraph | undefined) =>
+        (previous: CachedShowGraph | undefined) =>
           // The publish mutation only selects the metadata, so keep
           // whatever nodes/edges the cache already had rather than
           // blanking a populated graph. It's a copy of the draft either
@@ -271,7 +322,7 @@ export function useShowGraphEdits(
         version.current = result.version;
         queryClient.setQueryData(
           showGraphQueryKey(result.showId as ShowId, "draft"),
-          (previous: ShowGraph | undefined) => {
+          (previous: CachedShowGraph | undefined) => {
             const graphEdits = edits.filter((edit): edit is GraphEdit => !("canvasId" in edit));
             const patched = patchShowGraphQueryData(previous, graphEdits);
             return patched
@@ -314,7 +365,7 @@ export function useShowGraphEdits(
         const graphEdits = edits.filter((edit): edit is GraphEdit => !("canvasId" in edit));
         queryClient.setQueryData(
           showGraphQueryKey(showId, "draft"),
-          (previous: ShowGraph | undefined) => patchShowGraphQueryData(previous, graphEdits),
+          (previous: CachedShowGraph | undefined) => patchShowGraphQueryData(previous, graphEdits),
         );
       }
       pending.current.push(...edits);

@@ -68,7 +68,7 @@ export function usePlayerNavigation(
       defaultSceneId: session.flow.defaultSceneId,
       sceneIds: new Set(session.flow.scenes.map(({ scene }) => scene.id)),
       flowSourceIds,
-      publishedGraphVersion: session.graph.version,
+      publishedGraphVersion: session.graphVersion,
     } satisfies PlayerDriver;
     const reconciliation = reconcilePlayerRunState(store.read(), driver);
     if (reconciliation.kind === "stale-snapshot") {
@@ -173,7 +173,7 @@ export function usePlayerNavigation(
       }
       const nextState: PlayerRunState = {
         ...execution.state,
-        publishedGraphVersion: runtime.session.graph.version,
+        publishedGraphVersion: runtime.session.graphVersion,
       };
       if (!runtime.store.replace(nextState)) {
         setRuntime({ status: "superseded", session: runtime.session, store: runtime.store });
@@ -192,7 +192,7 @@ export function usePlayerNavigation(
       // whole argument — reported, unhelpfully, as a null `input`.
       const submission = baseState.submitEvent?.({
         eventId,
-        publishedGraphVersion: runtime.session.graph.version,
+        publishedGraphVersion: runtime.session.graphVersion,
         sceneId: plan.sceneId,
         elementId: observation.elementId,
         slotInstancePath: observation.slotInstancePath ?? [],

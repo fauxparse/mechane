@@ -6,6 +6,7 @@ export * from "./me";
 export * from "./show";
 export * from "./runs";
 export * from "./show-graph";
+export * from "./show-graph-document";
 export * from "./canvas";
 export * from "./user-settings";
 export * from "./player";

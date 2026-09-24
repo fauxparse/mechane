@@ -26,16 +26,7 @@ import type { GraphEdit, Gesture, ShowGraphCommand } from "@mechane/commands";
 import type { ShowGraph } from "@mechane/domain";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { toShowGraph } from "../data/api-graph";
-import type { ApiGraph } from "../data/api-graph";
-function sameGraphContent(
-  left: ApiGraph | null | undefined,
-  right: ApiGraph | null | undefined,
-): boolean {
-  return (
-    left?.nodes === right?.nodes && left?.edges === right?.edges && left?.shapes === right?.shapes
-  );
-}
+const EMPTY_GRAPH: ShowGraph = { shapes: [], nodes: [], edges: [] };
 
 export interface GraphCommands {
   /** The graph as edited — what the editor draws. */
@@ -66,14 +57,14 @@ export interface GraphCommands {
 /**
  * Holds `source` as an editable graph with an undo/redo history.
  *
- * `source` is the graph as the API returned it, or null while it's loading.
- * A new graph content snapshot replaces the graph and clears the history.
- * Cache metadata updates are intentionally ignored: the save path updates
- * `version` and `updatedAt` with a shallow copy, while the graph content keeps
- * the same node, edge, and shape arrays.
+ * `source` is the graph the route opened this editor with, or null while it
+ * is loading. A *different* graph is a different document: state replaced,
+ * history dropped. That is identity, not content comparison — the route
+ * decodes once and holds the result (#750), so the same document stays the
+ * same object however often its cache entry is rewritten underneath.
  */
 export function useGraphCommands(
-  source: ApiGraph | null | undefined,
+  source: ShowGraph | null | undefined,
   onEdit?: (edits: readonly GraphEdit[], graph: ShowGraph) => void,
 ): GraphCommands {
   // Held in a ref so a caller passing an inline callback doesn't rebuild the
@@ -86,7 +77,7 @@ export function useGraphCommands(
   useEffect(() => {
     edited.current = onEdit;
   }, [onEdit]);
-  const [graph, setGraph] = useState<ShowGraph>(() => toShowGraph(source));
+  const [graph, setGraph] = useState<ShowGraph>(() => source ?? EMPTY_GRAPH);
   // Bumped whenever something changes that isn't visible in `graph` itself —
   // a gesture committing lands an entry without moving the state, and the
   // undo button has to notice.
@@ -95,7 +86,7 @@ export function useGraphCommands(
   const stack = useMemo(
     () =>
       new CommandStack<ShowGraph, GraphEdit>({
-        state: toShowGraph(source),
+        state: source ?? EMPTY_GRAPH,
         onChange: setGraph,
         dispatch: (_command, next, edits) => edited.current?.(edits, next),
       }),
@@ -108,14 +99,14 @@ export function useGraphCommands(
 
   const changed = useCallback(() => setRevision((revision) => revision + 1), []);
 
-  // A different graph content snapshot is a new document: state replaced,
-  // history dropped. Metadata-only cache writes keep the content arrays
-  // identical, so they do not interrupt local edits or history.
+  // A different graph is a different document: state replaced, history
+  // dropped. The route decodes once and holds the result, so a cache rewrite
+  // that does not change which document is open never reaches here.
   const applied = useRef(source);
   useEffect(() => {
-    if (sameGraphContent(applied.current, source)) return;
+    if (applied.current === source) return;
     applied.current = source;
-    stack.reset(toShowGraph(source));
+    stack.reset(source ?? EMPTY_GRAPH);
     changed();
   }, [changed, source, stack]);
 

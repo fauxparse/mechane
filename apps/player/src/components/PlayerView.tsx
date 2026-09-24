@@ -123,7 +123,7 @@ export function PlayerView({ code }: { code: string }) {
       void state
         .submitEvent({
           eventId: crypto.randomUUID(),
-          publishedGraphVersion: state.session.graph.version,
+          publishedGraphVersion: state.session.graphVersion,
           sceneId: state.session.scene.id,
           elementId,
           eventKind: "tap",
@@ -159,7 +159,7 @@ export function PlayerView({ code }: { code: string }) {
       void state
         .submitEvent({
           eventId: crypto.randomUUID(),
-          publishedGraphVersion: state.session.graph.version,
+          publishedGraphVersion: state.session.graphVersion,
           sceneId: state.session.scene.id,
           elementId: rootId,
           eventKind: "keypress",

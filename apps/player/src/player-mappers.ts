@@ -1,18 +1,25 @@
+// The Player's end of the Show graph API boundary.
+//
+// Reading the graph is not written here. `decodeShowGraphDocument` is shared
+// with the Show Editor (#742, ADR-0020), so what a Show graph document means
+// is decided once. This module used to hold its own `toType`, `toShape`,
+// `toBlock`, `toNode`, `toEdge`, `toCue`, `toAction` and Event Binding
+// decoding over `unknown`, and it had drifted from Studio's: Shape Fields
+// arrived unordered and without their authored defaults (#751), Actions
+// discriminated on the wire `kind` rather than `__typename`, and a missing
+// Transformer formula became the literal string "undefined".
+//
+// What stays is the session around the graph: which Device this is, the Run
+// it is attached to, the Flow bundle a per-connection Device navigates
+// locally (ADR-0018), the active Scene and Canvas, and image asset URLs
+// resolved against this Player's API origin.
 import {
-  PRIMITIVE_TYPES,
-  decodeEventBinding,
-  type Action,
-  type Block,
-  type Cue,
-  type GraphEdge,
-  type GraphNode,
-  type Shape,
-  type SourceValues,
-  type StructuredValues,
-  type Type,
-  type UpdateOperation,
-} from "@mechane/domain";
-import { decodeCanvasDocument } from "@mechane/graphql-schema";
+  decodeGraphNode,
+  decodeShowGraphDocument,
+  decodeCanvasDocument,
+} from "@mechane/graphql-schema";
+import type { GraphNode, ShowGraph, SourceValues, StructuredValues, Type } from "@mechane/domain";
+import { PRIMITIVE_TYPES } from "@mechane/domain";
 import { resolveApiUrl } from "./api-url";
 import type { PlayerSession } from "./api";
 
@@ -22,17 +29,21 @@ function record(value: unknown): ApiRecord {
   return value !== null && typeof value === "object" ? (value as ApiRecord) : {};
 }
 
-function withoutNulls(value: ApiRecord): ApiRecord {
-  return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== null));
-}
-
-function toType(value: unknown): Type {
+/**
+ * A Flow-bundle port's effective Type.
+ *
+ * Ports on a graph Transformer carry no Type — the domain's
+ * `TransformerInputPort` has none. The Flow bundle's copies do, because a
+ * per-connection Device evaluates those Transformers itself (ADR-0004) and
+ * needs the Type the connected producer delivers.
+ */
+function toPortType(value: unknown): Type {
   const input = record(value);
   if (input.kind === "array") {
     if (input.of === null || input.of === undefined) {
       throw new Error("Array Shape types must include an element type.");
     }
-    return { kind: "array", of: toType(input.of) };
+    return { kind: "array", of: toPortType(input.of) };
   }
   if (input.kind === "shape") {
     if (typeof input.shapeId !== "string" || input.shapeId.length === 0) {
@@ -45,187 +56,22 @@ function toType(value: unknown): Type {
   throw new Error(`Unknown Player Type "${String(input.kind)}".`);
 }
 
-function toShape(value: unknown): Shape {
-  const input = record(value);
-  const fields = Array.isArray(input.fields) ? input.fields : [];
-  return {
-    id: String(input.id),
-    name: String(input.name),
-    fields: fields.map((field) => {
-      const normalized = record(field);
-      return {
-        id: String(normalized.id),
-        name: String(normalized.name),
-        type: toType(normalized.type),
-        required: normalized.required === true,
-        defaultValue: normalized.defaultValue,
-      };
-    }),
-  };
-}
-
-function nodeKind(typename: unknown): GraphNode["kind"] {
-  switch (typename) {
-    case "SceneNode":
-      return "scene";
-    case "FlowNode":
-      return "flow";
-    case "SourceNode":
-      return "source";
-    case "TransformerNode":
-      return "transformer";
-
-    case "DeviceNode":
-      return "device";
-    default:
-      throw new Error(`Unknown Player graph node type: ${String(typename)}.`);
-  }
-}
-
-function edgeKind(typename: unknown): GraphEdge["kind"] {
-  switch (typename) {
-    case "WiringEdge":
-      return "wiring";
-    case "NavigateEdge":
-      return "navigate";
-    case "UpdateEdge":
-      return "update";
-    case "DeviceEdge":
-      return "device";
-    default:
-      throw new Error(`Unknown Player graph edge type: ${String(typename)}.`);
-  }
-}
-
-function toNode(value: unknown): GraphNode {
-  const input = record(value);
-  const { __typename, sourceType, transformerType, ...fields } = input;
-  const normalizedFields = Object.fromEntries(
-    Object.entries(withoutNulls(fields)).filter(([key]) => key !== "fieldDefaults"),
-  );
-  if (Array.isArray(normalizedFields.variables)) {
-    normalizedFields.variables = normalizedFields.variables.map((variable) => {
-      const normalized = withoutNulls(record(variable));
-      const variableType = normalized.type;
-      return {
-        ...normalized,
-        ...(variableType !== undefined && variableType !== null
-          ? { type: toType(variableType) }
-          : {}),
-      };
-    });
-  }
-  const type = sourceType ?? transformerType ?? fields.type;
-  return {
-    ...normalizedFields,
-    kind: nodeKind(__typename),
-    // `withoutNulls` is right for the optional Canvas properties it was
-    // written for, and wrong here: a null `parentId` is not an absent value
-    // but the statement that this node is Show-level. Dropping the key makes
-    // every `parentId === null` test — which is how Show scope is spelled
-    // throughout dispatch — read a Show Source as Instance-scoped.
-    parentId: (input.parentId as string | null | undefined) ?? null,
-    ...(type !== undefined && type !== null ? { type: toType(type) } : {}),
-  } as GraphNode;
-}
-
+/**
+ * One Flow-bundle Transformer, which is the same node the graph carries plus
+ * the typed ports its local evaluation needs.
+ */
 function toTransformerNode(value: unknown): Extract<GraphNode, { kind: "transformer" }> {
   const input = record(value);
-  const transform = record(input.transform);
-  const kind = transform.kind;
-  if (kind !== "calculate" && kind !== "filter" && kind !== "shuffle") {
-    throw new Error(`Unknown Player Transformer kind: ${String(kind)}.`);
+  const node = decodeGraphNode({ ...input, __typename: "TransformerNode" });
+  if (node.kind !== "transformer") {
+    throw new Error("A Flow bundle Transformer decoded as another node kind.");
   }
-  const decodedTransform: Extract<GraphNode, { kind: "transformer" }>["transform"] =
-    kind === "calculate"
-      ? {
-          kind,
-          formula: transform.calculateFormula === null ? null : String(transform.calculateFormula),
-          outputType: transform.outputType === null ? null : toType(transform.outputType),
-        }
-      : kind === "filter"
-        ? { kind, formula: String(transform.filterFormula) }
-        : { kind };
   return {
-    id: String(input.id),
-    kind: "transformer",
-    name: String(input.name),
-    parentId: input.parentId === null ? null : String(input.parentId),
-    position: {
-      x: Number(record(input.position).x),
-      y: Number(record(input.position).y),
-    },
-    ...(typeof input.color === "string"
-      ? {
-          color: input.color as Extract<GraphNode, { kind: "transformer" }>["color"],
-        }
-      : {}),
-    ports: Array.isArray(input.ports)
-      ? input.ports.map((port) => {
-          const normalized = record(port);
-          return {
-            id: String(normalized.id),
-            name: String(normalized.name),
-            rank: String(normalized.rank),
-            type: toType(normalized.type),
-          };
-        })
-      : [],
-    transform: decodedTransform,
-  };
-}
-
-function toEdge(value: unknown): GraphEdge {
-  const input = record(value);
-  const { __typename, ...fields } = input;
-  return { ...withoutNulls(fields), kind: edgeKind(__typename) } as GraphEdge;
-}
-
-function toBlock(value: unknown): Block {
-  const input = record(value);
-  const canvasInput = record(input.canvas);
-  const canvas = decodeCanvasDocument(canvasInput);
-  const variables = Array.isArray(input.variables)
-    ? input.variables.map((variable) => {
-        const normalized = record(variable);
-        return {
-          id: String(normalized.id),
-          name: String(normalized.name),
-          type: toType(normalized.type),
-          required: normalized.required === true,
-          defaultValue: normalized.defaultValue,
-        };
-      })
-    : [];
-  const states = Array.isArray(input.states)
-    ? input.states.map((state) => {
-        const normalized = record(state);
-        const overrides = Array.isArray(normalized.overrides)
-          ? normalized.overrides.map((override) => {
-              const item = record(override);
-              return {
-                elementId: String(item.elementId),
-                property: String(item.property),
-                value: item.value,
-              };
-            })
-          : [];
-        return {
-          id: String(normalized.id),
-          name: String(normalized.name),
-          isDefault: normalized.isDefault === true,
-          overrides,
-        };
-      })
-    : [];
-  return {
-    id: String(input.id),
-    name: String(input.name),
-    canvas: { ...canvas, id: String(canvasInput.id) },
-    variables,
-    states,
-    stateSelectorVariableId:
-      typeof input.stateSelectorVariableId === "string" ? input.stateSelectorVariableId : null,
+    ...node,
+    ports: (Array.isArray(input.ports) ? input.ports : []).map((entry, index) => {
+      const port = record(entry);
+      return { ...node.ports[index], type: toPortType(port.type) };
+    }) as typeof node.ports,
   };
 }
 
@@ -235,7 +81,7 @@ function toFlowBundle(value: unknown): PlayerSession["flow"] {
   const scenes = Array.isArray(input.scenes)
     ? input.scenes.map((entry) => {
         const item = record(entry);
-        const scene = toNode(item.scene);
+        const scene = decodeGraphNode(item.scene);
         if (scene.kind !== "scene")
           throw new Error("Player Flow bundle contains a non-Scene node.");
         if (item.canvas === null || item.canvas === undefined) {
@@ -263,109 +109,12 @@ function toFlowBundle(value: unknown): PlayerSession["flow"] {
   };
 }
 
-function toCue(value: unknown): Cue {
-  const input = record(value);
-  const owner =
-    input.ownerKind === "scene"
-      ? { kind: "scene" as const, sceneId: String(input.sceneId) }
-      : { kind: "block" as const, blockId: String(input.blockId) };
-  const parameters = Array.isArray(input.parameters)
-    ? input.parameters.map((parameter) => {
-        const item = record(parameter);
-        return {
-          id: String(item.id),
-          name: String(item.name),
-          type: toType(item.type),
-          position: Number(item.position),
-        };
-      })
-    : [];
-  return {
-    id: String(input.id),
-    name: String(input.name),
-    owner,
-    actionIds: Array.isArray(input.actionIds) ? input.actionIds.map(String) : [],
-    parameters,
-  };
-}
-function toAction(value: unknown): Action {
-  const input = record(value);
-  const id = String(input.id);
-  const cueId = String(input.cueId);
-  if (input.kind === "navigate") {
-    return {
-      id,
-      cueId,
-      kind: "navigate",
-      targetSceneId: String(input.targetSceneId),
-    };
-  }
-  if (input.kind === "update") {
-    const params = record(input.params);
-    if (typeof input.targetSourceId !== "string" || !Array.isArray(params.fieldPath)) {
-      throw new Error(`Player Update Action "${id}" is missing its target.`);
-    }
-    return {
-      id,
-      cueId,
-      kind: "update",
-      target: {
-        sourceId: input.targetSourceId,
-        fieldPath: params.fieldPath.map(String),
-      },
-      operation: params.operation as UpdateOperation,
-    };
-  }
-  throw new Error(`Unknown Player action kind: ${String(input.kind)}.`);
-}
-
-function toGraph(value: unknown): PlayerSession["graph"] {
-  const input = record(value);
-  return {
-    ...input,
-    nodes: Array.isArray(input.nodes) ? input.nodes.map(toNode) : [],
-    edges: Array.isArray(input.edges) ? input.edges.map(toEdge) : [],
-    shapes: Array.isArray(input.shapes) ? input.shapes.map(toShape) : [],
-    blocks: Array.isArray(input.blocks) ? input.blocks.map(toBlock) : [],
-    cues: Array.isArray(input.cues) ? input.cues.map(toCue) : [],
-    actions: Array.isArray(input.actions) ? input.actions.map(toAction) : [],
-    eventBindings: Array.isArray(input.eventBindings)
-      ? input.eventBindings.map((item) =>
-          decodeEventBinding(record(item) as Parameters<typeof decodeEventBinding>[0]),
-        )
-      : [],
-    slotEventBindings: Array.isArray(input.slotEventBindings)
-      ? input.slotEventBindings.map((item) => {
-          const binding = record(item);
-          return {
-            id: String(binding.id),
-            slotElementId: String(binding.slotElementId),
-            sourceCueId: String(binding.sourceCueId),
-            targetCueId: String(binding.targetCueId),
-            position: Number(binding.position),
-            parameterMappings: Array.isArray(binding.parameterMappings)
-              ? binding.parameterMappings.map((mapping) => {
-                  const value = record(mapping);
-                  return {
-                    sourceParameterId: String(value.sourceParameterId),
-                    targetParameterId: String(value.targetParameterId),
-                    ...(Array.isArray(value.sourceFieldPath)
-                      ? { sourceFieldPath: value.sourceFieldPath.map(String) }
-                      : {}),
-                  };
-                })
-              : [],
-          };
-        })
-      : [],
-  } as unknown as PlayerSession["graph"];
-}
-
 export function normalizePlayerSession(value: unknown, apiBaseUrl?: string): PlayerSession {
   const input = record(value);
   const realtime = record(input.realtime);
   const run = input.run === null ? null : record(input.run);
-  const scene = input.scene === null ? null : toNode(input.scene);
+  const scene = input.scene === null ? null : decodeGraphNode(input.scene);
+  // Flat, so arbitrary Canvas depth survives the read: the old recursive
   // query's cap painted the audience a truncated Scene.
   const canvas =
     input.canvas === null
@@ -373,14 +122,17 @@ export function normalizePlayerSession(value: unknown, apiBaseUrl?: string): Pla
       : { ...decodeCanvasDocument(input.canvas), id: String(record(input.canvas).id) };
   const imageAssets = Array.isArray(input.imageAssets) ? input.imageAssets.map(record) : [];
   const flow = toFlowBundle(input.flow);
-  const blocks = Array.isArray(input.blocks) ? input.blocks.map(toBlock) : [];
-  const graph = toGraph(input.graph);
+  const document = decodeShowGraphDocument(input.graph);
+  const graph = document.graph;
+  const blocks = graph.blocks ?? [];
+  // A Flow-local Transformer is evaluated here rather than on the server
+  // (ADR-0004), and only the bundle's copy carries its ports' effective
+  // Types — so the bundle's node wins for the Transformers it covers.
   const flowTransformers = new Map(
     (flow?.transformers ?? []).map((transformer) => [transformer.id, transformer]),
   );
-  const mergedGraph = {
+  const mergedGraph: ShowGraph = {
     ...graph,
-    blocks,
     nodes: graph.nodes.map((node) =>
       node.kind === "transformer" ? (flowTransformers.get(node.id) ?? node) : node,
     ),
@@ -407,6 +159,7 @@ export function normalizePlayerSession(value: unknown, apiBaseUrl?: string): Pla
       : null,
     flow,
     graph: mergedGraph,
+    graphVersion: document.version,
     scene: scene as PlayerSession["scene"],
     canvas: canvas as PlayerSession["canvas"],
     blocks,

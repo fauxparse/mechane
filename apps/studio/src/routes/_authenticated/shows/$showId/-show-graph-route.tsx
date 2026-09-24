@@ -1,7 +1,7 @@
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import type { ResolvedImageValue, ShowId } from "@mechane/domain";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { resolveApiUrl } from "../../../../api/client";
 import { useImageAssets, useImageUpload } from "../../../../api/images";
@@ -16,6 +16,7 @@ import {
   rememberedShowViewport,
   rememberShowViewport,
 } from "../../../../editors/show/data/show-session";
+import { useOpenedShowGraph } from "../../../../editors/show/data/use-opened-graph";
 export interface ShowGraphRouteProps {
   initialSourceValue?: ShowGraphValueLocation;
   onSourceValueChange?: (location: ShowGraphValueLocation | null) => void;
@@ -102,13 +103,9 @@ export function ShowGraphRoute({
   const saveGraph = useShowGraphEdits(showId, draft.data?.version, {
     onAmend: (edits) => editor.current?.applyAmendments(edits),
   });
-
-  // The graph the editor opens with is captured once. The editor owns that
-  // snapshot after opening so a cache refresh cannot reset its command stack.
-  const [openedWith, setOpenedWith] = useState<typeof draft.data | null>(null);
-  useEffect(() => {
-    if (draft.data && !openedWith) setOpenedWith(draft.data);
-  }, [draft.data, openedWith]);
+  // The graph the editor opens with, decoded once at the seam where the
+  // transport stops (#750).
+  const openedWith = useOpenedShowGraph(draft.data);
   const [edited, setEdited] = useState(false);
 
   return (

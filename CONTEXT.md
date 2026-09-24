@@ -78,10 +78,12 @@ _Avoid_: Local source, private source, instance source, scoped source
 The absence of a value where the Type permits one. It is a value, not a
 failure: an optional Field holding nothing, a Source whose authored default is
 absent, and a positional first-item selection over an empty array all produce
-it. One concept with two forms, split by the normalization boundary: stored
-normalized state spells it `null`, because JSON carries no `undefined`, while
-resolved evaluation values spell it as the missing key. How a value came to be
-absent is not recoverable from it and nothing downstream depends on knowing.
+it. One concept with two forms, split by what holds it rather than where it
+happens to sit: authored structure — a Show's graph, its Shapes, its Canvases —
+spells absence `null`, at rest and in transit alike, because JSON carries no
+`undefined`, while resolved evaluation values spell it as the missing key. How
+a value came to be absent is not recoverable from it and nothing downstream
+depends on knowing.
 _Avoid_: Null, empty, missing, undefined (each names one spelling, not the concept)
 
 ### Current Source Value

@@ -28,6 +28,7 @@ import type { Canvas, Element, ElementKind, FrameElement } from "@mechane/domain
 import { assertValidCanvas, ELEMENT_KINDS, InvalidCanvasError } from "@mechane/domain";
 import type { TadaDocumentNode } from "gql.tada";
 import { graphql } from "./graphql";
+import { isRecord } from "./type-guards";
 
 /**
  * Every field a Canvas Element carries, in one fragment.
@@ -203,10 +204,6 @@ export class CanvasDocumentError extends Error {
     this.canvasId = context.canvasId ?? null;
     this.elementId = context.elementId ?? null;
   }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 /**

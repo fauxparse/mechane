@@ -1,4 +1,5 @@
-import { resolveRuntimeEvent } from "@mechane/domain";
+import { defaultSourceValues, resolveRuntimeEvent } from "@mechane/domain";
+import { decodeShowGraphDocument } from "@mechane/graphql-schema";
 import { describe, expect, it } from "vitest";
 import { normalizePlayerSession } from "./player-mappers";
 
@@ -13,6 +14,15 @@ describe("normalizePlayerSession", () => {
         updatedAt: "2026-08-22T00:00:00.000Z",
         version: 1,
         nodes: [
+          {
+            __typename: "SceneNode",
+            id: "scene_1",
+            name: "Opening",
+            parentId: null,
+            position: { x: 0, y: 0 },
+            color: null,
+            variables: [],
+          },
           {
             __typename: "DeviceNode",
             id: "device_1",
@@ -55,7 +65,7 @@ describe("normalizePlayerSession", () => {
       imageAssets: [],
     });
 
-    expect(session.graph.nodes[0]).toMatchObject({ kind: "device", pairingCode: "FBPCW" });
+    expect(session.graph.nodes[1]).toMatchObject({ kind: "device", pairingCode: "FBPCW" });
     expect(session.graph.edges[0]).toMatchObject({ kind: "device" });
     expect(session.canvas?.root).toMatchObject({ type: "frame" });
     expect("fill" in (session.canvas?.root ?? {})).toBe(false);
@@ -158,38 +168,46 @@ describe("normalizePlayerSession", () => {
     const session = normalizePlayerSession({
       device: { name: "Audience", perConnection: true },
       realtime: { channel: "player:test", grant: "grant", expiresAt: "2026-01-01T00:01:00.000Z" },
-      graph: { nodes: [], edges: [], shapes: [] },
+      graph: {
+        showId: "show_1",
+        state: "published",
+        updatedAt: "2026-08-22T00:00:00.000Z",
+        version: 1,
+        nodes: [],
+        edges: [],
+        shapes: [],
+        blocks: [
+          {
+            id: "block-card",
+            name: "Card",
+            stateSelectorVariableId: "selector",
+            canvas: {
+              id: "canvas-card",
+              kind: "block",
+              elements: [{ __typename: "FrameElement", id: "root", parentId: null, rank: "a0" }],
+            },
+            variables: [
+              {
+                id: "selector",
+                name: "State",
+                type: { kind: "text", shapeId: null, of: null },
+                required: false,
+                defaultValue: null,
+              },
+            ],
+            states: [
+              {
+                id: "default",
+                name: "Default",
+                isDefault: true,
+                overrides: [],
+              },
+            ],
+          },
+        ],
+      },
       scene: null,
       canvas: null,
-      blocks: [
-        {
-          id: "block-card",
-          name: "Card",
-          stateSelectorVariableId: "selector",
-          canvas: {
-            id: "canvas-card",
-            kind: "block",
-            elements: [{ __typename: "FrameElement", id: "root", parentId: null, rank: "a0" }],
-          },
-          variables: [
-            {
-              id: "selector",
-              name: "State",
-              type: { kind: "text", shapeId: null, of: null },
-              required: false,
-              defaultValue: null,
-            },
-          ],
-          states: [
-            {
-              id: "default",
-              name: "Default",
-              isDefault: true,
-              overrides: [],
-            },
-          ],
-        },
-      ],
       imageAssets: [],
     });
 
@@ -211,7 +229,20 @@ describe("normalizePlayerSession", () => {
       device: { name: "Audience", perConnection: true },
       realtime: { channel: "player:test", grant: "grant", expiresAt: "2026-01-01T00:01:00.000Z" },
       graph: {
+        showId: "show_1",
+        state: "published",
+        updatedAt: "2026-08-22T00:00:00.000Z",
+        version: 1,
         nodes: [
+          {
+            __typename: "FlowNode",
+            id: "flow_audience",
+            name: "Audience",
+            parentId: null,
+            position: { x: 0, y: 0 },
+            color: null,
+            defaultSceneId: null,
+          },
           {
             __typename: "SourceNode",
             id: "source_candidates",
@@ -241,7 +272,7 @@ describe("normalizePlayerSession", () => {
     // `parentId === null` is how Show scope is spelled throughout dispatch, so
     // a stripped null reads a Show Source as Instance-scoped and sends its
     // writes to the Player's own state instead of the server.
-    const [showSource, flowSource] = session.graph.nodes;
+    const [, showSource, flowSource] = session.graph.nodes;
     expect(showSource).toMatchObject({ id: "source_candidates", parentId: null });
     expect(Object.hasOwn(showSource ?? {}, "parentId")).toBe(true);
     expect(flowSource).toMatchObject({ id: "source_selected", parentId: "flow_audience" });
@@ -252,7 +283,15 @@ describe("normalizePlayerSession", () => {
       {
         device: { name: "Projector", perConnection: false },
         realtime: { channel: "player:test", grant: "grant", expiresAt: "2026-01-01T00:01:00.000Z" },
-        graph: { nodes: [], edges: [], shapes: [] },
+        graph: {
+          showId: "show_1",
+          state: "published",
+          updatedAt: "2026-08-22T00:00:00.000Z",
+          version: 1,
+          nodes: [],
+          edges: [],
+          shapes: [],
+        },
         scene: null,
         canvas: null,
         imageAssets: [
@@ -323,6 +362,7 @@ describe("normalizePlayerSession", () => {
         ],
         actions: [
           {
+            __typename: "NavigateAction",
             id: "action_red_green",
             cueId: "cue_red_green",
             kind: "navigate",
@@ -361,7 +401,30 @@ describe("normalizePlayerSession", () => {
       device: { name: "Projector", perConnection: false },
       realtime: { channel: "player:test", grant: "grant", expiresAt: "2026-01-01T00:01:00.000Z" },
       graph: {
-        nodes: [],
+        showId: "show_1",
+        state: "published",
+        updatedAt: "2026-08-22T00:00:00.000Z",
+        version: 1,
+        nodes: [
+          {
+            __typename: "SceneNode",
+            id: "scene_red",
+            name: "Red",
+            parentId: null,
+            position: { x: 0, y: 0 },
+            color: null,
+            variables: [],
+          },
+          {
+            __typename: "SourceNode",
+            id: "source_score",
+            name: "Score",
+            parentId: null,
+            position: { x: 0, y: 0 },
+            color: null,
+            sourceType: { kind: "number", shapeId: null, of: null },
+          },
+        ],
         edges: [
           {
             __typename: "UpdateEdge",
@@ -374,6 +437,7 @@ describe("normalizePlayerSession", () => {
         ],
         actions: [
           {
+            __typename: "UpdateAction",
             id: "action_update",
             cueId: "cue_update",
             kind: "update",
@@ -397,13 +461,32 @@ describe("normalizePlayerSession", () => {
       device: { name: "Audience", perConnection: true },
       realtime: { channel: "player:test", grant: "grant", expiresAt: "2026-01-01T00:01:00.000Z" },
       graph: {
+        showId: "show_1",
+        state: "published",
+        updatedAt: "2026-08-22T00:00:00.000Z",
+        version: 1,
         nodes: [
+          {
+            __typename: "FlowNode",
+            id: "flow_audience",
+            name: "Audience",
+            parentId: null,
+            position: { x: 0, y: 0 },
+            color: null,
+            defaultSceneId: null,
+          },
           {
             __typename: "TransformerNode",
             id: "transformer_filter",
             name: "Front runners",
             parentId: "flow_audience",
             position: { x: 0, y: 0 },
+            ports: [{ id: "port_input", name: "input", rank: "a" }],
+            transform: {
+              __typename: "FilterTransform",
+              kind: "filter",
+              filterFormula: "item > 10",
+            },
             transformerType: {
               kind: "array",
               shapeId: null,
@@ -456,10 +539,162 @@ describe("normalizePlayerSession", () => {
       imageAssets: [],
     });
 
-    expect(session.graph.nodes[0]).toMatchObject({
+    expect(session.graph.nodes[1]).toMatchObject({
       kind: "transformer",
       ports: [{ id: "port_input", name: "input" }],
       transform: { kind: "filter", formula: "item > 10" },
     });
+  });
+
+  // #751: a per-connection Device gets no server-materialised Flow-local
+  // values (`flowDeviceDrivers` skips `perConnection`), so the Player builds
+  // them itself from the Shape's authored Field defaults. The query used to
+  // omit `ShapeField.default` entirely, so every required Field silently fell
+  // back to a generic type default instead.
+  describe("Shape Field defaults", () => {
+    const candidateSession = (sourceFieldDefaults: unknown[] = []) =>
+      normalizePlayerSession({
+        device: { name: "Audience", perConnection: true },
+        realtime: { channel: "player:test", grant: "grant", expiresAt: "2026-01-01T00:01:00.000Z" },
+        graph: {
+          showId: "show_1",
+          state: "published",
+          updatedAt: "2026-08-22T00:00:00.000Z",
+          version: 1,
+          sourceFieldDefaults,
+          nodes: [
+            {
+              __typename: "FlowNode",
+              id: "flow_audience",
+              name: "Audience",
+              parentId: null,
+              position: { x: 0, y: 0 },
+              color: null,
+              defaultSceneId: null,
+            },
+            {
+              __typename: "SourceNode",
+              id: "source_selected",
+              name: "Selected",
+              parentId: "flow_audience",
+              position: { x: 0, y: 0 },
+              color: null,
+              sourceType: { kind: "shape", shapeId: "candidate", of: null },
+            },
+          ],
+          edges: [],
+          shapes: [
+            {
+              id: "candidate",
+              name: "Candidate",
+              fields: [
+                {
+                  id: "field_votes",
+                  name: "Votes",
+                  position: 1,
+                  required: true,
+                  default: { __typename: "NumberValue", numberValue: 7 },
+                  type: { kind: "number", shapeId: null, of: null },
+                },
+                {
+                  id: "field_name",
+                  name: "Name",
+                  position: 0,
+                  required: true,
+                  default: { __typename: "TextValue", textValue: "Unnamed" },
+                  type: { kind: "text", shapeId: null, of: null },
+                },
+                {
+                  id: "field_note",
+                  name: "Note",
+                  position: 2,
+                  required: false,
+                  default: null,
+                  type: { kind: "text", shapeId: null, of: null },
+                },
+              ],
+            },
+          ],
+        },
+        scene: null,
+        canvas: null,
+        imageAssets: [],
+      });
+
+    it("initialises a Flow-local Shape Source from the authored Field defaults", () => {
+      const values = defaultSourceValues(candidateSession().graph);
+
+      expect(values.source_selected).toEqual({
+        field_name: "Unnamed",
+        field_votes: 7,
+        field_note: null,
+      });
+    });
+
+    it("lets an explicit Source-level override win over the Field default", () => {
+      const values = defaultSourceValues(
+        candidateSession([{ nodeId: "source_selected", fieldPath: ["field_name"], value: null }])
+          .graph,
+      );
+
+      expect(values.source_selected).toMatchObject({ field_name: null, field_votes: 7 });
+    });
+
+    it("orders Shape Fields by position", () => {
+      const shape = candidateSession().graph.shapes?.[0];
+
+      expect(shape?.fields.map((field) => field.id)).toEqual([
+        "field_name",
+        "field_votes",
+        "field_note",
+      ]);
+    });
+  });
+
+  // The whole point of #742: the Player's graph is whatever the shared
+  // decoder produced, not a second reading of the same document. The only
+  // thing this host adds is the Flow bundle's typed Transformer ports, and
+  // a session without a Flow adds nothing at all.
+  it("hands back exactly what the shared decoder produced", () => {
+    const graph = {
+      showId: "show_1",
+      state: "published",
+      updatedAt: "2026-08-22T00:00:00.000Z",
+      version: 4,
+      nodes: [
+        {
+          __typename: "SceneNode",
+          id: "scene_vote",
+          name: "Vote",
+          parentId: null,
+          position: { x: 0, y: 0 },
+          color: null,
+          variables: [
+            {
+              id: "variable_prompt",
+              name: "prompt",
+              rank: "a",
+              defaultValue: "Pick one",
+              type: { kind: "text", shapeId: null, of: null },
+              suggestedDimensions: null,
+            },
+          ],
+        },
+      ],
+      edges: [],
+      shapes: [],
+    };
+    const session = normalizePlayerSession({
+      device: { name: "Audience", perConnection: true },
+      realtime: { channel: "player:test", grant: "grant", expiresAt: "2026-01-01T00:01:00.000Z" },
+      graph,
+      scene: null,
+      canvas: null,
+      imageAssets: [],
+    });
+
+    const decoded = decodeShowGraphDocument(graph);
+    expect(session.graph).toEqual(decoded.graph);
+    expect(session.graphVersion).toBe(decoded.version);
   });
 });
