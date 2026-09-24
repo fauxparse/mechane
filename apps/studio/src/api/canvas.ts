@@ -49,6 +49,9 @@ export function useCanvasWorkspace(showId: ShowId | null, state: "draft" | "publ
   return useQuery({
     queryKey: canvasWorkspaceQueryKey(showId ?? ("" as ShowId), state),
     enabled: showId !== null,
+    // An editor's command stack is the source of truth while it is open; a refetch replaces the
+    // stack's base and clears undo, so returning to the window must not trigger one.
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       const data = await graphqlRequest(GRAPHQL_ENDPOINT, GetShowCanvasesQuery, {
         showId: showId as ShowId,

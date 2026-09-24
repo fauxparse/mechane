@@ -20,6 +20,7 @@ import { CanvasInspector } from "./components/CanvasInspector/CanvasInspector";
 import { CanvasLayers } from "./components/CanvasLayers";
 import { Toolbar } from "./Toolbar/Toolbar";
 import { artboardLabel, canvasArtboardSize } from "./data/canvas-workspace";
+import { restoreCanvasSelection } from "./data/canvas-session";
 import { arrangeIntentFor, arrangeWithinParent } from "./commands/canvas-arrange";
 import type { ArrangeIntent } from "./commands/canvas-arrange";
 import { useGoogleFonts } from "./google-fonts-provider";
@@ -42,6 +43,7 @@ export function CanvasWorkspaceEditor(props: CanvasWorkspaceEditorProps) {
     selectedArtId,
     selectedElementIds,
     initialCamera,
+    initialSelection,
     variables,
     shapes,
     blocks,
@@ -96,10 +98,9 @@ export function CanvasWorkspaceEditor(props: CanvasWorkspaceEditorProps) {
   );
   const [tool, setTool] = useState<CanvasCreationTool>("select");
   const [renamingArtId, setRenamingArtId] = useState<string | null>(null);
-  const [localSelection, setLocalSelection] = useState<CanvasSelection>({
-    artId: null,
-    elementIds: [],
-  });
+  const [localSelection, setLocalSelection] = useState<CanvasSelection>(() =>
+    normalizeSelection(restoreCanvasSelection(initialSelection, artboards)),
+  );
   const [inspectorPreview, setInspectorPreview] = useState<CanvasLiveElementGeometry | null>(null);
   const focused = ordered.find((artboard) => artboard.artId === focusedArtId) ?? ordered[0] ?? null;
   const selection = useMemo(

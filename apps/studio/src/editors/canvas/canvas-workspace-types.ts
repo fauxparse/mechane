@@ -34,6 +34,8 @@ export interface CanvasWorkspaceEditorProps {
   selectedArtId?: string | null;
   selectedElementIds?: readonly string[];
   initialCamera?: CanvasCamera;
+  /** A remembered selection, restored against `artboards` when the editor mounts. */
+  initialSelection?: CanvasSelection;
   variables?: readonly SceneVariable[];
   shapes?: readonly Shape[];
   blocks?: readonly Block[];
@@ -116,4 +118,3 @@ export interface CanvasWorkspaceSession {
     change?(camera: CanvasCamera): void;
   };
 }
-
