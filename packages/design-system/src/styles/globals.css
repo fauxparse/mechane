@@ -39,16 +39,20 @@
   }
 }
 
+/* Reduced motion ends every CSS animation and transition almost at once rather than removing
+   it, so `animationend`/`transitionend` still fire and popups that wait for their exit still
+   unmount. Pulses, which only loop, stop. */
 @media (prefers-reduced-motion: reduce) {
-  .animate-pulse {
-    animation: none;
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 
-  .transition-all,
-  .transition-colors,
-  .transition-opacity,
-  .transition-transform {
-    transition-duration: 0.01ms;
+  .animate-pulse {
+    animation: none !important;
   }
 }
 

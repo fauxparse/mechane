@@ -4,18 +4,22 @@ import {
   type Element,
 } from "@mechane/domain/canvas";
 import { joinFormulaUnit, splitFormulaUnit, type FormulaScope } from "@mechane/domain/formula";
-import { isPropertyFormula } from "@mechane/domain/property-values";
+import { isPropertyConnection, isPropertyFormula } from "@mechane/domain/property-values";
 import type { PropertyInputConstraints } from "@mechane/design-system";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
-import { FormulaEditor } from "../../../show/graph/formula/FormulaEditor";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import {
+  connectionFormulaSource,
   elementFormulaScope,
-  sizeValueNumber,
   variableOptions,
   type SizeConstraint,
 } from "./canvas-inspector-values";
+import {
+  PropertyFormulaField,
+  type PropertyFormulaBinding,
+  type PropertyFormulaEntry,
+} from "./PropertyFormulaField";
 import { SizeFieldInput } from "./SizeFieldInput";
 
 export type SizeFieldProps = {
@@ -47,7 +51,6 @@ export const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldPr
     updateElements,
   } = useCanvasInspectorContext();
   const size = common(`sizing.${axis}`) as AxisSize | undefined;
-  const [formulaOpen, setFormulaOpen] = useState(false);
   const formulaScope = useMemo<FormulaScope>(
     () =>
       elementFormulaScope(variables, shapes, "number", {
@@ -100,51 +103,75 @@ export const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldPr
       ? "%"
       : "px";
   const sizeVariables = variableOptions("number", variables, shapes);
-  const formula =
-    previewing || sizeMixed ? null : isPropertyFormula(size?.value) ? size.value : null;
-  return (
-    <div className="flex min-w-0 flex-col gap-1">
-      <SizeFieldInput
-        axis={axis}
-        constraints={constraints}
-        onConstraintToggle={onConstraintToggle}
-        size={size}
-        sizeMixed={sizeMixed}
-        previewValue={previewValue}
-        currentValue={currentValue}
-        previewing={previewing}
-        mode={mode}
-        unit={unit}
-        formula={formula}
-        sizeVariables={sizeVariables}
-        shapes={shapes}
-        updateSize={updateSize}
-        onWriteFormula={() => setFormulaOpen(true)}
-      />
-      {formulaOpen || formula ? (
-        <FormulaEditor
-          className="min-h-[4.5rem] text-xs"
-          value={joinFormulaUnit(formula?.formula ?? "", formula?.unit)}
-          scope={formulaScope}
-          autoFocus={!formula}
-          onChange={(next) => {
-            const typed = splitFormulaUnit(next);
-            updateSize({
-              ...(sizeMixed ? {} : size),
-              mode: "fixed",
-              value: {
-                kind: "formula",
-                formula: typed.formula,
-                fallback: {
-                  value: sizeValueNumber(formula?.fallback) ?? currentValue ?? 0,
-                  unit: typed.unit,
-                },
-                unit: typed.unit,
-              },
-            });
-          }}
-        />
-      ) : null}
-    </div>
+  const input = (entry?: PropertyFormulaEntry) => (
+    <SizeFieldInput
+      axis={axis}
+      constraints={constraints}
+      onConstraintToggle={onConstraintToggle}
+      size={size}
+      sizeMixed={sizeMixed}
+      previewValue={previewValue}
+      currentValue={currentValue}
+      previewing={previewing}
+      mode={mode}
+      unit={unit}
+      sizeVariables={sizeVariables}
+      shapes={shapes}
+      updateSize={updateSize}
+      entry={entry}
+    />
   );
+  // A drag on the Artboard previews literal pixels over whatever is stored.
+  if (previewing) return input();
+
+  const measured = (element: Element) =>
+    currentDimensionsById?.[element.id]?.[axis] ??
+    (currentDimensions?.elementId === element.id ? currentDimensions[axis] : undefined) ??
+    0;
+  const binding: PropertyFormulaBinding = {
+    label: axis === "width" ? "Width" : "Height",
+    scope: formulaScope,
+    formulaOf: (element) => {
+      const stored = element.sizing?.[axis]?.value;
+      return isPropertyFormula(stored) ? stored : null;
+    },
+    sourceOf: (formula) => joinFormulaUnit(formula.formula, formula.unit),
+    seedOf: (element) => connectionFormulaSource(element.sizing?.[axis]?.value, variables, shapes),
+    restingText: (formula, analysis) => {
+      const result = analysis.blocked ? null : analysis.value;
+      if (result?.kind === "number")
+        return `${Math.round(result.value * 10) / 10}${formula.unit === "%" ? "%" : ""}`;
+      const fallback = formula.fallback;
+      if (typeof fallback === "number") return String(fallback);
+      if (fallback && typeof fallback === "object" && "value" in fallback && "unit" in fallback)
+        return `${String(fallback.value)}${fallback.unit === "%" ? "%" : ""}`;
+      return "—";
+    },
+    resultSuffix: (source) => (splitFormulaUnit(source).unit === "%" ? "%" : ""),
+    write: (element, source) => {
+      const typed = splitFormulaUnit(source);
+      const stored = element.sizing?.[axis]?.value;
+      const fallback = isPropertyFormula(stored)
+        ? stored.fallback
+        : isPropertyConnection(stored)
+          ? (stored.fallback ?? measured(element))
+          : (stored ?? measured(element));
+      return {
+        sizing: {
+          ...element.sizing,
+          [axis]: {
+            mode: "fixed",
+            value: { kind: "formula", formula: typed.formula, fallback, unit: typed.unit },
+          },
+        },
+      };
+    },
+    remove: (element, formula) => ({
+      sizing: {
+        ...element.sizing,
+        [axis]: { mode: "fixed", value: formula.fallback ?? measured(element) },
+      },
+    }),
+  };
+  return <PropertyFormulaField binding={binding}>{input}</PropertyFormulaField>;
 };

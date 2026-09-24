@@ -47,7 +47,13 @@ import { useOpenedShowGraph } from "../../show/data/use-opened-graph";
 import { useUndoKeys } from "../../show/keyboard/use-undo-keys";
 import type { CanvasCamera } from "../components/canvas-camera";
 import type { CanvasWorkspaceSession, DeviceQrImage } from "../canvas-workspace-types";
-import { rememberCanvasCamera, rememberedCanvasCamera } from "../data/canvas-session";
+import type { CanvasSelection } from "../components/canvas-selection";
+import {
+  rememberCanvasCamera,
+  rememberCanvasSelection,
+  rememberedCanvasCamera,
+  rememberedCanvasSelection,
+} from "../data/canvas-session";
 import { resolveFocusedArtboard } from "../data/canvas-workspace";
 import { useCanvasArtboards } from "../data/use-canvas-artboards";
 import { UndoCoordinator } from "./undo-coordinator";
@@ -81,6 +87,8 @@ export interface CanvasWorkspaceSessionState {
   readonly deviceQrImages: Readonly<Record<string, DeviceQrImage>>;
   readonly imageAssets: readonly ImageAsset[];
   readonly initialCamera: CanvasCamera | undefined;
+  /** The selection this tab last had on this Show, as stored; the editor checks it against the documents. */
+  readonly initialSelection: CanvasSelection | undefined;
   /** True until the workspace and graph documents have both been read. */
   readonly pending: boolean;
   /** True once the persisted Artboards have been read; the route's redirect gate. */
@@ -180,9 +188,16 @@ export function useCanvasWorkspaceSession({
   const draft = useShowGraph(showId, "draft");
   const documents = useCanvasWorkspace(showId);
   const initialCamera = showId ? rememberedCanvasCamera(showId) : undefined;
+  const initialSelection = showId ? rememberedCanvasSelection(showId) : undefined;
   const onCameraChange = useCallback(
     (camera: CanvasCamera) => {
       if (showId) rememberCanvasCamera(showId, camera);
+    },
+    [showId],
+  );
+  const onSelectionChange = useCallback(
+    (selection: CanvasSelection) => {
+      if (showId) rememberCanvasSelection(showId, selection);
     },
     [showId],
   );
@@ -383,6 +398,7 @@ export function useCanvasWorkspaceSession({
   const session: CanvasWorkspaceSession = {
     canvas: {
       focusArtboard,
+      selectionChange: onSelectionChange,
       beginMoveArtboard: canvasCommands.beginArtboardMove,
       moveArtboard: canvasCommands.updateArtboardMove,
       endMoveArtboard: canvasCommands.endArtboardMove,
@@ -423,6 +439,7 @@ export function useCanvasWorkspaceSession({
     deviceQrImages,
     imageAssets: imageAssets.data ?? [],
     initialCamera,
+    initialSelection,
     pending: documents.isPending || draft.isPending,
     documentsLoaded: documents.data !== undefined,
   };

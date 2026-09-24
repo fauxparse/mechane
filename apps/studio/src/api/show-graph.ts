@@ -183,6 +183,9 @@ export function useShowGraph(id: ShowId | null, state: GraphState) {
   return useQuery({
     queryKey: showGraphQueryKey(id ?? ("" as ShowId), state),
     enabled: id !== null,
+    // An editor's command stack is the source of truth while it is open; a refetch replaces the
+    // stack's base and clears undo, so returning to the window must not trigger one.
+    refetchOnWindowFocus: false,
     queryFn: async () => {
       // `enabled` above means this only runs with a non-null id.
       const data = await graphqlRequest(GRAPHQL_ENDPOINT, GetShowGraphQuery, {

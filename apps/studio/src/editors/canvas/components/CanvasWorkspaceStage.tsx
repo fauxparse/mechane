@@ -37,6 +37,7 @@ import {
   isCornerHandle,
   lockedAspectRatio,
   RESIZE_HANDLES,
+  resizeAxes,
   resizeBox,
   resizeElementUpdate,
   scaleWithin,
@@ -68,8 +69,9 @@ export interface CanvasLiveElementGeometry {
   readonly elementId: string;
   readonly x?: number;
   readonly y?: number;
-  readonly width: number;
-  readonly height: number;
+  /** Present only for an axis the gesture is resizing. */
+  readonly width?: number;
+  readonly height?: number;
 }
 type DragPreview = {
   readonly target: CanvasElementDropSite;
@@ -311,17 +313,21 @@ export function CanvasWorkspaceStage({
     readonly elementId: string;
     readonly box: ResizeBox;
     readonly parent: Pick<CanvasClientRect, "x" | "y"> | null;
+    readonly axes: { readonly width: boolean; readonly height: boolean };
   }) => {
+    const { axes } = input;
     onLiveElementGeometry({
       elementId: input.elementId,
       ...(input.parent
         ? {
-            x: (input.box.x - input.parent.x) / camera.zoom,
-            y: (input.box.y - input.parent.y) / camera.zoom,
+            x: roundToLogicalPixel(input.box.x - input.parent.x, camera.zoom),
+            y: roundToLogicalPixel(input.box.y - input.parent.y, camera.zoom),
           }
         : {}),
-      width: input.box.width / camera.zoom,
-      height: input.box.height / camera.zoom,
+      // The inspector previews what the commit will write: whole pixels, and only the axes
+      // this drag moves, so a Fill height is not shown as fixed while the width is dragged.
+      ...(axes.width ? { width: roundToLogicalPixel(input.box.width, camera.zoom) } : {}),
+      ...(axes.height ? { height: roundToLogicalPixel(input.box.height, camera.zoom) } : {}),
     });
   };
 
@@ -470,6 +476,7 @@ export function CanvasWorkspaceStage({
         height: measuredRect(element).height,
       },
       parent: originParent ? measuredRect(originParent) : null,
+      axes: { width: false, height: false },
     });
     const artboardsAtPoint = document
       .elementsFromPoint(event.clientX, event.clientY)
@@ -750,6 +757,7 @@ export function CanvasWorkspaceStage({
         elementId: subject.elementId,
         box: scaleWithin(subject.start, resizeGesture.start, requested),
         parent: subject.parent,
+        axes: resizeAxes(resizeGesture.handle),
       });
     }
   };

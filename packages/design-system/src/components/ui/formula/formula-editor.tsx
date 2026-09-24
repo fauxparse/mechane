@@ -1,12 +1,14 @@
 import type { FormulaScope } from "@mechane/domain/formula";
 import { lazy, Suspense } from "react";
 
-const FormulaCodeEditor = lazy(() => import("./FormulaCodeEditor"));
+const FormulaCodeEditor = lazy(() => import("./formula-code-editor"));
 
 export interface FormulaEditorProps {
   value: string;
   scope: FormulaScope;
   onChange(value: string): void;
+  /** Enter, when completion is not claiming it. Without it Enter inserts a newline. */
+  onSubmit?(): void;
   placeholder?: string;
   className?: string;
   /** Puts the caret in the Formula on mount, for a surface opened to write. */

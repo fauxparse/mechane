@@ -20,7 +20,6 @@ describe("property input addons", () => {
         inputType: "text",
         colorText: "",
         linkedVariable,
-        allowLink: false,
         onScrubPointerDown: () => {},
         onScrubPointerMove: () => {},
         onScrubPointerEnd: () => {},

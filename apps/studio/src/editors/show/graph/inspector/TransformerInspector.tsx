@@ -1,5 +1,6 @@
 import {
   Button,
+  FormulaEditor,
   Input,
   Maximize2Icon,
   PlusIcon,
@@ -25,7 +26,6 @@ import {
 } from "@mechane/domain/graph";
 import { typeLabel } from "@mechane/domain/shapes";
 import type { GraphInspectorEditing } from "../../commands/use-graph-editing";
-import { FormulaEditor } from "../formula/FormulaEditor";
 import { useTransformerPreview } from "../formula/use-transformer-preview";
 import { useNodeInteraction } from "../node-interaction";
 

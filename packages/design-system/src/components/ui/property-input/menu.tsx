@@ -26,6 +26,25 @@ import type {
   PropertyInputType,
   VariableReference,
 } from "./property-input-types";
+/** Whether the Property menu has anything to offer; with nothing, the row shows no chevron. */
+export function hasMenuContent(input: {
+  readonly inputType: PropertyInputType;
+  readonly dimension?: "width" | "height";
+  readonly presets?: readonly PropertyInputPreset[];
+  readonly menuItems?: readonly PropertyInputMenuItem[];
+  readonly allowAuto?: boolean;
+  readonly allowLink?: boolean;
+}): boolean {
+  return (
+    input.inputType === "color" ||
+    input.dimension !== undefined ||
+    (input.presets?.length ?? 0) > 0 ||
+    (input.menuItems?.length ?? 0) > 0 ||
+    input.allowAuto === true ||
+    input.allowLink === true
+  );
+}
+
 export function Menu<T extends ShapeValue>({
   inputType,
   colorText,
@@ -53,14 +72,8 @@ export function Menu<T extends ShapeValue>({
   linkedVariable: VariableReference<T> | null;
   onColorChange: (value: string | null) => void;
 }) {
-  const hasMenuItems =
-    inputType === "color" ||
-    dimension !== undefined ||
-    (presets?.length ?? 0) > 0 ||
-    (menuItems?.length ?? 0) > 0 ||
-    allowAuto ||
-    allowLink;
-  if (!hasMenuItems) return null;
+  if (!hasMenuContent({ inputType, dimension, presets, menuItems, allowAuto, allowLink }))
+    return null;
 
   return (
     <ComboboxContent className={cn("p-0.5 min-w-fit", inputType === "color" && "overflow-y-auto")}>

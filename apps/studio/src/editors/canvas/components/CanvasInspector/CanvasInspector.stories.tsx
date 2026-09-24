@@ -583,10 +583,10 @@ export const MixedImageSelection: Story = {
     );
     if (!position) throw new Error("Object position should be mixed");
     const reset = Array.from(canvasElement.querySelectorAll("button")).find(
-      (button) => button.textContent?.trim() === "Reset",
+      (button) => button.textContent?.trim() === "Reset size",
     );
     if (!(reset instanceof HTMLButtonElement) || !reset.disabled)
-      throw new Error("Reset should be disabled for mixed images");
+      throw new Error("Reset size should be disabled for mixed images");
   },
 };
 

@@ -14,10 +14,16 @@ import {
 
 describe("canvas inspector values", () => {
   it("uses the current rendered dimension when changing hug to fixed", () => {
-    expect(sizingForMode({ mode: "hug", value: 120 }, "fixed", 248)).toEqual({
-      mode: "fixed",
-      value: 248,
-    });
+    expect(sizingForMode({ mode: "hug" }, "fixed", 248)).toEqual({ mode: "fixed", value: 248 });
+  });
+
+  it("drops a Formula when switching to Fill, and keeps it when re-choosing fixed", () => {
+    const formula = {
+      mode: "fixed" as const,
+      value: { kind: "formula" as const, formula: "Total * 2", fallback: 40 },
+    };
+    expect(sizingForMode(formula, "fill", 120)).toEqual({ mode: "fill" });
+    expect(sizingForMode(formula, "fixed", 120)).toBe(formula);
   });
 
   it("maps each axis and constraint to its sizing key", () => {

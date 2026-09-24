@@ -1,14 +1,13 @@
+import type { AxisSize } from "@mechane/domain/canvas";
 import type { Position } from "@mechane/domain/graph";
 import { isPropertyConnection } from "@mechane/domain/property-values";
 import type { CanvasArtboardDocument } from "../../../api/canvas";
 
 const SCENE_PREVIEW_SIZE = { width: 720, height: 420 };
 const DEFAULT_BLOCK_SIZE = { width: 720, height: 420 };
-function authoredPixels(
-  size: { mode: string; value?: unknown } | undefined,
-  modes: readonly string[] = ["fixed"],
-): number | undefined {
-  if (!size || !modes.includes(size.mode) || size.value === undefined) return undefined;
+/** A root's authored pixel size. Only a fixed size carries a value; Fill and Hug carry none. */
+function authoredPixels(size: AxisSize | undefined): number | undefined {
+  if (size?.mode !== "fixed") return undefined;
   if (isPropertyConnection(size.value)) return undefined;
   if (typeof size.value === "number") return size.value;
   if (
@@ -38,8 +37,8 @@ export function canvasArtboardSize(
 } {
   const root = artboard.canvas.root;
   const fallback = artboard.kind === "scene" ? SCENE_PREVIEW_SIZE : DEFAULT_BLOCK_SIZE;
-  const designWidth = authoredPixels(root.sizing?.width, ["fixed", "fill"]);
-  const designHeight = authoredPixels(root.sizing?.height, ["fixed", "fill"]);
+  const designWidth = authoredPixels(root.sizing?.width);
+  const designHeight = authoredPixels(root.sizing?.height);
   return {
     width:
       root.sizing?.width?.mode === "hug"

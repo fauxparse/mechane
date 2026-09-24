@@ -68,7 +68,15 @@ function CanvasWorkspaceRoute() {
         replace: true,
       });
     }
-  }, [focused, focusArtboard, navigate, onCanvasRoute, params.showId, requestedArtId, workspace.documentsLoaded]);
+  }, [
+    focused,
+    focusArtboard,
+    navigate,
+    onCanvasRoute,
+    params.showId,
+    requestedArtId,
+    workspace.documentsLoaded,
+  ]);
 
   if (showId === null || show.isError || !show.data) {
     return (
@@ -84,6 +92,7 @@ function CanvasWorkspaceRoute() {
     <CanvasWorkspaceEditor
       artboards={workspace.artboards}
       initialCamera={workspace.initialCamera}
+      initialSelection={workspace.initialSelection}
       focusedArtId={focused?.artId ?? null}
       session={workspace.session}
       variables={workspace.variables}

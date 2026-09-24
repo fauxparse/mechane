@@ -58,6 +58,12 @@ describe("Canvas resize geometry", () => {
     expect(squashed.height).toBe(1);
   });
 
+  it("grows a zero-width box the way the pointer goes, whichever coincident handle it caught", () => {
+    const bar = { x: 100, y: 200, width: 0, height: 16 };
+    expect(resizeBox(bar, "w", 120, 0)).toEqual({ x: 100, y: 200, width: 120, height: 16 });
+    expect(resizeBox(bar, "e", -30, 0)).toEqual({ x: 70, y: 200, width: 30, height: 16 });
+  });
+
   it("holds the start ratio on a constrained corner drag", () => {
     const box = resizeBox(start, "se", 40, 0, { constrain: true });
     expect(box.width / box.height).toBeCloseTo(start.width / start.height);
@@ -138,6 +144,12 @@ describe("Canvas multi-selection scaling", () => {
     });
     expect(scaled).toEqual({ x: 9, y: 9, width: 4, height: 4 });
   });
+
+  it("grows an Element with no width by the drag rather than pinning it at the minimum", () => {
+    const bar = { x: 5, y: 5, width: 0, height: 16 };
+    const scaled = scaleWithin(bar, bar, { x: 5, y: 5, width: 120, height: 16 });
+    expect(scaled).toEqual({ x: 5, y: 5, width: 120, height: 16 });
+  });
 });
 
 describe("Canvas aspect ratio locks", () => {
@@ -198,13 +210,9 @@ describe("Canvas fixed resize properties", () => {
           id: "root",
           type: "frame",
           layout: { rotation: 90 },
-          sizing: {
-            width: { mode: "fill", value: 1 },
-            height: { mode: "fill", value: 1 },
-          },
-        } as Element,
-        320,
-        180,
+          sizing: { width: { mode: "fill" }, height: { mode: "fill" } },
+        },
+        { width: 320, height: 180 },
       ),
     ).toEqual({
       sizing: {
@@ -215,24 +223,52 @@ describe("Canvas fixed resize properties", () => {
     });
   });
 
-  it("writes fixed dimensions into sizing", () => {
+  it("leaves an axis the drag did not touch in its own mode", () => {
     expect(
       fixedResizeProperties(
         {
-          id: "root",
-          type: "frame",
+          id: "bar",
+          type: "rect",
+          sizing: { width: { mode: "fixed", value: 40 }, height: { mode: "fill" } },
+        },
+        { width: 120 },
+      ),
+    ).toEqual({
+      sizing: { width: { mode: "fixed", value: 120 }, height: { mode: "fill" } },
+    });
+  });
+
+  it("keeps a Formula and moves its fallback to the dragged size", () => {
+    expect(
+      fixedResizeProperties(
+        {
+          id: "bar",
+          type: "rect",
           sizing: {
-            width: { mode: "fill", value: 1 },
-            height: { mode: "fill", value: 1 },
+            width: {
+              mode: "fixed",
+              value: {
+                kind: "formula",
+                formula: "item.votes / Total * 100",
+                fallback: { value: 0, unit: "%" },
+                unit: "%",
+              },
+            },
           },
-        } as Element,
-        240,
-        120,
+        },
+        { width: 120 },
       ),
     ).toEqual({
       sizing: {
-        width: { mode: "fixed", value: 240 },
-        height: { mode: "fixed", value: 120 },
+        width: {
+          mode: "fixed",
+          value: {
+            kind: "formula",
+            formula: "item.votes / Total * 100",
+            fallback: { value: 120, unit: "px" },
+            unit: "%",
+          },
+        },
       },
     });
   });
@@ -282,6 +318,9 @@ describe("resizeElementUpdate", () => {
       zoom: 1,
     });
     expect(update.properties).not.toHaveProperty("anchor");
+    expect(update.properties).toMatchObject({
+      sizing: { width: { mode: "fixed", value: 120 }, height: { mode: "fixed", value: 50 } },
+    });
     expect(update.unsetProperties).toEqual(["layout"]);
   });
 });
