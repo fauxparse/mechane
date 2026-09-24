@@ -1,0 +1,1286 @@
+diff --git a/apps/studio/src/editors/canvas/CanvasWorkspaceEditor.stories.tsx b/apps/studio/src/editors/canvas/CanvasWorkspaceEditor.stories.tsx
+index c7435e7..9dca336 100644
+--- a/apps/studio/src/editors/canvas/CanvasWorkspaceEditor.stories.tsx
++++ b/apps/studio/src/editors/canvas/CanvasWorkspaceEditor.stories.tsx
+@@ -403,10 +403,7 @@ const meta: Meta<typeof CanvasWorkspaceEditor> = {
+   args: {
+     artboards,
+     focusedArtId: "scene-lobby",
+-    onFocusArtboard: noOp,
+-    onBeginMoveArtboard: noOp,
+-    onMoveArtboard: noOp,
+-    onEndMoveArtboard: noOp,
++    session: storySession(),
+   },
+ };
+ 
+@@ -434,32 +431,28 @@ export const SelectionReviewAtZoom: Story = {
+ };
+ export const StatefulCreationTools: Story = {
+   args: {
+-    onCreateElement: (canvasId, element, parentId, rank) =>
+-      console.info("create canvas element", { canvasId, element, parentId, rank }),
++    session: storySession({
++      createElement: (canvasId, element, parentId, rank) =>
++        console.info("create canvas element", { canvasId, element, parentId, rank }),
++    }),
+   },
+ };
+ 
+-export const CreationToolCancellation: Story = {
+-  args: {
+-    onCreateElement: noOp,
+-  },
+-};
++export const CreationToolCancellation: Story = {};
+ export const DragAcrossLayoutParents: Story = {
+   args: {
+-    onMoveElement: (canvasId, elementId, parentId, rank) =>
+-      console.info("move canvas element", { canvasId, elementId, parentId, rank }),
++    session: storySession({
++      moveElement: (canvasId, elementId, parentId, rank) =>
++        console.info("move canvas element", { canvasId, elementId, parentId, rank }),
++    }),
+   },
+ };
+ 
+-export const InvalidDragTargets: Story = {
+-  args: { onMoveElement: noOp },
+-};
++export const InvalidDragTargets: Story = {};
+ export const KeyboardNudgeAndReorder: Story = {
+   args: {
+     selectedArtId: "scene-lobby",
+     selectedElementIds: ["Lobby-title"],
+-    onUpdateElement: noOp,
+-    onMoveElement: noOp,
+   },
+ };
+ /** The Layers navigator as a tree: nested Frames, disclosure, icons, and drag targets (#222). */
+@@ -469,8 +462,6 @@ export const LayersNestedTree: Story = {
+     focusedArtId: "reparent-review",
+     selectedArtId: "reparent-review",
+     selectedElementIds: ["reparent-source"],
+-    onUpdateElement: noOp,
+-    onMoveElement: noOp,
+   },
+ };
+ 
+@@ -478,14 +469,12 @@ export const LayersSearchAndNestedTree: Story = {
+   args: {
+     selectedArtId: "scene-lobby",
+     selectedElementIds: ["Lobby-title"],
+-    onUpdateElement: noOp,
+   },
+ };
+ export const InspectorControls: Story = {
+   args: {
+     selectedArtId: "scene-lobby",
+     selectedElementIds: ["Lobby-title"],
+-    onUpdateElement: noOp,
+   },
+ };
+ 
+@@ -553,9 +542,6 @@ export const CrossCuttingReviewMatrix: Story = {
+     focusedArtId: "scene-nested",
+     selectedArtId: "scene-nested",
+     selectedElementIds: ["Nested-copy"],
+-    onCreateElement: noOp,
+-    onMoveElement: noOp,
+-    onUpdateElement: noOp,
+   },
+ };
+ 
+diff --git a/apps/studio/src/editors/canvas/CanvasWorkspaceEditor.tsx b/apps/studio/src/editors/canvas/CanvasWorkspaceEditor.tsx
+index 661b06d..a198691 100644
+--- a/apps/studio/src/editors/canvas/CanvasWorkspaceEditor.tsx
++++ b/apps/studio/src/editors/canvas/CanvasWorkspaceEditor.tsx
+@@ -29,16 +29,13 @@ import type {
+   CanvasArtboardDimensions,
+   CanvasBlockCreationResult,
+   CanvasWorkspaceEditorProps,
+-  CanvasWorkspaceSessionEditorProps,
+ } from "./canvas-workspace-types";
+ import { focusContext } from "../show/keyboard/focus-context";
+ 
+-export type { CanvasWorkspaceEditorProps, CanvasWorkspaceSessionEditorProps } from "./canvas-workspace-types";
++export type { CanvasWorkspaceEditorProps } from "./canvas-workspace-types";
+ 
+ // react-doctor-disable-next-line no-giant-component
+-export function CanvasWorkspaceEditor(
+-  props: CanvasWorkspaceEditorProps | CanvasWorkspaceSessionEditorProps,
+-) {
++export function CanvasWorkspaceEditor(props: CanvasWorkspaceEditorProps) {
+   const {
+     artboards,
+     focusedArtId,
+@@ -54,62 +51,38 @@ export function CanvasWorkspaceEditor(
+     blockVariableEditing,
+     imageAssets,
+     deviceQrImages,
++    session,
+   } = props;
+-  const callbacks =
+-    "session" in props
+-      ? {
+-          onFocusArtboard: props.session.canvas.focusArtboard,
+-          onSelectionChange: props.session.canvas.selectionChange,
+-          onBeginMoveArtboard: props.session.canvas.beginMoveArtboard,
+-          onMoveArtboard: props.session.canvas.moveArtboard,
+-          onEndMoveArtboard: props.session.canvas.endMoveArtboard,
+-          onCameraChange: props.session.camera.change,
+-          onCreateElement: props.session.canvas.createElement,
+-          onMoveElement: props.session.canvas.moveElement,
+-          onMoveElementBetweenCanvases: props.session.canvas.moveElementBetweenCanvases,
+-          onUpdateElement: props.session.canvas.updateElement,
+-          onUpdateElements: props.session.canvas.updateElements,
+-          onPlaceBlock: props.session.canvas.placeBlock,
+-          onCreateBlockFromDrag: props.session.canvas.createBlockFromDrag,
+-          onCreateBlockFromSelection: props.session.canvas.createBlockFromSelection,
+-          onImageUpload: props.session.assets.imageUpload,
+-          onDeleteElements: props.session.canvas.deleteElements,
+-          onCreateCue: props.session.graph.createCue,
+-          onFocusCue: props.session.graph.focusCue,
+-          onSetEventBindingCue: props.session.graph.setEventBindingCue,
+-          onSetEventBindingKey: props.session.graph.setEventBindingKey,
+-          onCreateEventBinding: props.session.graph.createEventBinding,
+-          onRemoveEventBinding: props.session.graph.removeEventBinding,
+-          onReorderEventBindings: props.session.graph.reorderEventBindings,
+-          onRenameArtboard: props.session.canvas.renameArtboard,
+-        }
+-      : props;
+   const {
+-    onFocusArtboard,
+-    onSelectionChange,
+-    onBeginMoveArtboard,
+-    onMoveArtboard,
+-    onEndMoveArtboard,
+-    onCameraChange,
+-    onCreateElement,
+-    onMoveElement,
+-    onMoveElementBetweenCanvases,
+-    onUpdateElement,
+-    onUpdateElements,
+-    onPlaceBlock,
+-    onCreateBlockFromDrag,
+-    onCreateBlockFromSelection,
+-    onImageUpload,
+-    onDeleteElements,
+-    onCreateCue,
+-    onFocusCue,
+-    onSetEventBindingCue,
+-    onSetEventBindingKey,
+-    onCreateEventBinding,
+-    onRemoveEventBinding,
+-    onReorderEventBindings,
+-    onRenameArtboard,
+-  } = callbacks;
++    canvas: {
++      focusArtboard: onFocusArtboard,
++      selectionChange: onSelectionChange,
++      beginMoveArtboard: onBeginMoveArtboard,
++      moveArtboard: onMoveArtboard,
++      endMoveArtboard: onEndMoveArtboard,
++      createElement: onCreateElement,
++      moveElement: onMoveElement,
++      moveElementBetweenCanvases: onMoveElementBetweenCanvases,
++      updateElement: onUpdateElement,
++      updateElements: onUpdateElements,
++      placeBlock: onPlaceBlock,
++      createBlockFromDrag: onCreateBlockFromDrag,
++      createBlockFromSelection: onCreateBlockFromSelection,
++      deleteElements: onDeleteElements,
++      renameArtboard: onRenameArtboard,
++    },
++    graph: {
++      createCue: onCreateCue,
++      focusCue: onFocusCue,
++      setEventBindingCue: onSetEventBindingCue,
++      setEventBindingKey: onSetEventBindingKey,
++      createEventBinding: onCreateEventBinding,
++      removeEventBinding: onRemoveEventBinding,
++      reorderEventBindings: onReorderEventBindings,
++    },
++    assets: { imageUpload: onImageUpload },
++    camera: { change: onCameraChange },
++  } = session;
+   const toastManager = useToastManager();
+   const ordered = useMemo(
+     () =>
+diff --git a/apps/studio/src/editors/canvas/canvas-workspace-types.ts b/apps/studio/src/editors/canvas/canvas-workspace-types.ts
+index 1f5e388..348df9c 100644
+--- a/apps/studio/src/editors/canvas/canvas-workspace-types.ts
++++ b/apps/studio/src/editors/canvas/canvas-workspace-types.ts
+@@ -39,75 +39,20 @@ export interface CanvasBlockCreationResult {
+ export interface CanvasWorkspaceEditorProps {
+   artboards: readonly CanvasArtboardDocument[];
+   focusedArtId: string | null;
+-  onFocusArtboard(artId: string): void;
+-  onBeginMoveArtboard(canvasId: string): void;
+-  onMoveArtboard(canvasId: string, position: Position): void;
+-  onEndMoveArtboard(canvasId: string, cancel?: boolean): void;
+   selectedArtId?: string | null;
+   selectedElementIds?: readonly string[];
+-  onSelectionChange?(selection: CanvasSelection): void;
+   initialCamera?: CanvasCamera;
+-  onCameraChange?(camera: CanvasCamera): void;
+-  onCreateElement?(canvasId: string, element: NewElement, parentId: string, rank: string): void;
+-  onMoveElement?(
+-    canvasId: string,
+-    elementId: string,
+-    parentId: string,
+-    rank: string,
+-    properties?: Record<string, unknown>,
+-    unsetProperties?: readonly string[],
+-  ): void;
+-  onMoveElementBetweenCanvases?(
+-    sourceCanvasId: string,
+-    targetCanvasId: string,
+-    elementId: string,
+-    parentId: string,
+-    rank: string,
+-    properties?: Record<string, unknown>,
+-    unsetProperties?: readonly string[],
+-  ): void;
+-  onUpdateElement?(
+-    canvasId: string,
+-    elementId: string,
+-    properties: Record<string, unknown>,
+-    unsetProperties?: readonly string[],
+-  ): void;
+-  onUpdateElements?(
+-    canvasId: string,
+-    updates: readonly {
+-      readonly elementId: string;
+-      readonly properties: Record<string, unknown>;
+-      readonly unsetProperties?: readonly string[];
+-    }[],
+-  ): void;
+   variables?: readonly SceneVariable[];
+   shapes?: readonly Shape[];
+   blocks?: readonly Block[];
+   blockVariableEditing?: VariableInspectorEditing;
+-  onPlaceBlock?(blockId: string): void;
+-  onCreateBlockFromDrag?(
+-    request: CanvasBlockCreationRequest,
+-  ): CanvasBlockCreationResult | null | undefined;
+-  /** Replaces the selection with a Slot holding a new Block made from it (#426). */
+-  onCreateBlockFromSelection?(
+-    canvasId: string,
+-    elementIds: readonly string[],
+-  ): CanvasBlockCreationResult | null | undefined;
+   imageAssets?: readonly ImageAsset[];
+   deviceQrImages?: Readonly<Record<string, DeviceQrImage>>;
+-  onImageUpload?(props: ImageInputOnUploadProps): void;
+-  onDeleteElements?(canvasId: string, elementIds: readonly string[]): void;
+   cues?: readonly Cue[];
+   actions?: readonly Action[];
+   eventBindings?: readonly EventBinding[];
+-  onCreateCue?(owner: InteractionOwner): string | undefined;
+-  onFocusCue?(cueId: string): void;
+-  onSetEventBindingCue?(bindingId: string, cueId: string): void;
+-  onSetEventBindingKey?(bindingId: string, key: string | null): void;
+-  onCreateEventBinding?(binding: EventBinding): void;
+-  onRemoveEventBinding?(bindingId: string): void;
+-  onReorderEventBindings?(bindingIds: readonly string[]): void;
+-  onRenameArtboard?(artId: string, name: string): void;
++  /** Every mutation the editor can cause, in domain terms. */
++  readonly session: CanvasWorkspaceSession;
+ }
+ export interface CanvasArtboardDimensions {
+   readonly width: number;
+@@ -180,31 +125,3 @@ export interface CanvasWorkspaceSession {
+   };
+ }
+ 
+-export type CanvasWorkspaceSessionEditorProps = Omit<
+-  CanvasWorkspaceEditorProps,
+-  | "onFocusArtboard"
+-  | "onBeginMoveArtboard"
+-  | "onMoveArtboard"
+-  | "onEndMoveArtboard"
+-  | "onCameraChange"
+-  | "onCreateElement"
+-  | "onMoveElement"
+-  | "onMoveElementBetweenCanvases"
+-  | "onUpdateElement"
+-  | "onUpdateElements"
+-  | "onPlaceBlock"
+-  | "onCreateBlockFromDrag"
+-  | "onCreateBlockFromSelection"
+-  | "onImageUpload"
+-  | "onDeleteElements"
+-  | "onCreateCue"
+-  | "onFocusCue"
+-  | "onSetEventBindingCue"
+-  | "onSetEventBindingKey"
+-  | "onCreateEventBinding"
+-  | "onRemoveEventBinding"
+-  | "onReorderEventBindings"
+-  | "onRenameArtboard"
+-> & {
+-  readonly session: CanvasWorkspaceSession;
+-};
+diff --git a/apps/studio/src/editors/canvas/commands/use-canvas-workspace-session.ts b/apps/studio/src/editors/canvas/commands/use-canvas-workspace-session.ts
+new file mode 100644
+index 0000000..b7e0286
+--- /dev/null
++++ b/apps/studio/src/editors/canvas/commands/use-canvas-workspace-session.ts
+@@ -0,0 +1,439 @@
++// The Canvas editor's session (issue #745): everything it means to *edit* a
++// Show's Canvas workspace, in one hook.
++//
++// The route used to compose this by hand — the Canvas and Show-graph command
++// stacks, the undo coordinator that keeps one gesture one undo across both,
++// the save path they both reach, upload normalization, and the derivations the
++// editor paints from (Artboards, device QR images, variables). That
++// composition is a Canvas concern, not a routing one, so it lives here: the
++// route hands over the Show, the Artboard the URL names, and two navigation
++// adapters, and gets back the session the editor calls plus the view data it
++// renders.
++//
++// Focused-Artboard navigation stays a route adapter passed in — this module
++// knows the router exists only through `focusArtboard` and `focusCue`.
++
++import {
++  addCue,
++  addEventBinding,
++  composite,
++  removeEventBinding,
++  setBlockVariables,
++  setEventBindingCue,
++  setEventBindingKey,
++  setEventBindingOrder,
++} from "@mechane/commands";
++import type { ImageInputOnUploadProps } from "@mechane/design-system";
++import type {
++  Action,
++  Block,
++  BlockVariable,
++  Cue,
++  EventBinding,
++  InteractionOwner,
++  ResolvedImageValue,
++  SceneVariable,
++  Shape,
++  ShowId,
++} from "@mechane/domain";
++import {
++  DEVICE_SOURCE_HANDLES,
++  defaultValueForType,
++  deviceQrImageValue,
++  generateId,
++  normalizeFormulaIdentifier,
++} from "@mechane/domain";
++import type { ImageAsset } from "@mechane/graphql-schema";
++import { useCallback, useMemo, useRef } from "react";
++
++import { resolveApiUrl } from "../../../api/client";
++import type { CanvasArtboardDocument } from "../../../api/canvas";
++import { useCanvasWorkspace } from "../../../api/canvas";
++import { useImageAssets, useImageUpload } from "../../../api/images";
++import { useShowGraph, useShowGraphEdits } from "../../../api/show-graph";
++import type { VariableInspectorEditing } from "../../../components/VariableInspector";
++import { useGraphEditing, type GraphEditing } from "../../show/commands/use-graph-editing";
++import { useOpenedShowGraph } from "../../show/data/use-opened-graph";
++import { useUndoKeys } from "../../show/keyboard/use-undo-keys";
++import type { CanvasCamera } from "../components/canvas-camera";
++import type { CanvasWorkspaceSession, DeviceQrImage } from "../canvas-workspace-types";
++import { rememberCanvasCamera, rememberedCanvasCamera } from "../data/canvas-session";
++import { resolveFocusedArtboard } from "../data/canvas-workspace";
++import { useCanvasArtboards } from "../data/use-canvas-artboards";
++import { UndoCoordinator } from "./undo-coordinator";
++import { useBlockCreationSession } from "./use-block-creation";
++import { useCanvasCommands } from "./use-canvas-commands";
++
++export interface CanvasWorkspaceSessionOptions {
++  readonly showId: ShowId | null;
++  /** The Artboard (or Canvas) the URL names, already parsed by the route. */
++  readonly requestedArtId: string | null;
++  /** Route navigation adapter: make `artId` the focused Artboard in the URL. */
++  readonly focusArtboard(artId: string): void;
++  /** Route navigation adapter: leave Canvas for the Show editor's Cue. */
++  readonly focusCue(cueId: string): void;
++}
++
++/** The session the editor calls, and the view-only data it renders with. */
++export interface CanvasWorkspaceSessionState {
++  readonly session: CanvasWorkspaceSession;
++  readonly artboards: readonly CanvasArtboardDocument[];
++  /** The Blocks the editor can place, one per Block Artboard. */
++  readonly blocks: readonly Block[];
++  /** The Artboard `requestedArtId` resolves to; the route redirects on it. */
++  readonly focused: CanvasArtboardDocument | null;
++  readonly variables: readonly SceneVariable[];
++  readonly blockVariableEditing: VariableInspectorEditing | undefined;
++  readonly cues: readonly Cue[];
++  readonly actions: readonly Action[];
++  readonly eventBindings: readonly EventBinding[];
++  readonly shapes: readonly Shape[];
++  readonly deviceQrImages: Readonly<Record<string, DeviceQrImage>>;
++  readonly imageAssets: readonly ImageAsset[];
++  readonly initialCamera: CanvasCamera | undefined;
++  /** True until the workspace and graph documents have both been read. */
++  readonly pending: boolean;
++  /** True once the persisted Artboards have been read; the route's redirect gate. */
++  readonly documentsLoaded: boolean;
++}
++
++function useBlockVariableEditing(
++  focused: CanvasArtboardDocument | null,
++  graphEditing: Pick<GraphEditing, "command">,
++) {
++  return useMemo(() => {
++    if (!focused || focused.kind !== "block") return undefined;
++    const block = graphEditing.command.graph.blocks?.find(
++      (candidate) => candidate.id === focused.artId,
++    );
++    if (!block) return undefined;
++    const updateVariables = (variables: readonly BlockVariable[]) => {
++      graphEditing.command.commands.execute(setBlockVariables(block.id, variables));
++    };
++    return {
++      addVariable: () => {
++        const type: Type = "text";
++        updateVariables([
++          ...block.variables,
++          {
++            id: generateId("variable"),
++            name: `variable${block.variables.length + 1}`,
++            type,
++            required: false,
++            defaultValue: defaultValueForType(type, graphEditing.command.graph.shapes ?? []),
++          },
++        ]);
++      },
++      renameVariable: (variableId: string, name: string) => {
++        updateVariables(
++          block.variables.map((variable) =>
++            variable.id === variableId
++              ? { ...variable, name: normalizeFormulaIdentifier(name) }
++              : variable,
++          ),
++        );
++      },
++      setVariableType: (variableId: string, type: Type) => {
++        updateVariables(
++          block.variables.map((variable) =>
++            variable.id === variableId
++              ? {
++                  ...variable,
++                  type,
++                  defaultValue: defaultValueForType(type, graphEditing.command.graph.shapes ?? []),
++                }
++              : variable,
++          ),
++        );
++      },
++      setVariableDefault: (variableId: string, defaultValue: unknown) => {
++        updateVariables(
++          block.variables.map((variable) => {
++            if (variable.id !== variableId) return variable;
++            const next = { ...variable };
++            if (defaultValue === null || defaultValue === undefined) delete next.defaultValue;
++            else next.defaultValue = defaultValue;
++            return next;
++          }),
++        );
++      },
++      reorderVariables: (variableIds: readonly string[]) => {
++        const byId = new Map(block.variables.map((variable) => [variable.id, variable]));
++        updateVariables(
++          variableIds.flatMap((variableId) => {
++            const variable = byId.get(variableId);
++            return variable ? [variable] : [];
++          }),
++        );
++      },
++      removeVariable: (variableId: string) => {
++        updateVariables(block.variables.filter((variable) => variable.id !== variableId));
++      },
++    };
++  }, [focused, graphEditing]);
++}
++
++/**
++ * Composes the Canvas workspace's editing session: the Canvas and Show-graph
++ * command stacks, their shared undo history and save path, Block creation,
++ * cross-stack deletion, uploads, camera persistence, and the derivations the
++ * editor paints from.
++ */
++export function useCanvasWorkspaceSession({
++  showId,
++  requestedArtId,
++  focusArtboard,
++  focusCue,
++}: CanvasWorkspaceSessionOptions): CanvasWorkspaceSessionState {
++  const imageAssets = useImageAssets(showId);
++  const imageUpload = useImageUpload(showId);
++  const draft = useShowGraph(showId, "draft");
++  const documents = useCanvasWorkspace(showId);
++  const initialCamera = showId ? rememberedCanvasCamera(showId) : undefined;
++  const onCameraChange = useCallback(
++    (camera: CanvasCamera) => {
++      if (showId) rememberCanvasCamera(showId, camera);
++    },
++    [showId],
++  );
++  const save = useShowGraphEdits(showId, draft.data?.version);
++  // Both editors' stacks are live at once here, and one action can reach both — creating a Block
++  // moves Elements onto a new Block Canvas and adds the Block itself (#426). The coordinator
++  // remembers which stacks each action reached so one Cmd+Z reverses all of it.
++  const undoCoordinator = useRef<UndoCoordinator | null>(null);
++  undoCoordinator.current ??= new UndoCoordinator();
++  const undoHistory = undoCoordinator.current;
++  const canvasCommands = useCanvasCommands(documents.data, (edits) => {
++    undoHistory.record("canvas");
++    save.enqueue(edits);
++  });
++  const openedGraph = useOpenedShowGraph(draft.data);
++  const graphEditing = useGraphEditing(openedGraph, (edits) => {
++    undoHistory.record("graph");
++    save.enqueue(edits);
++  });
++  const createCue = useCallback(
++    (owner: InteractionOwner) => {
++      const id = generateId("cue");
++      graphEditing.command.commands.execute(
++        addCue({
++          id,
++          name: "New cue",
++          owner,
++          actionIds: [],
++        }),
++      );
++      return id;
++    },
++    [graphEditing.command.commands],
++  );
++  const createBinding = useCallback(
++    (binding: EventBinding) => {
++      graphEditing.command.commands.execute(addEventBinding(binding));
++    },
++    [graphEditing.command.commands],
++  );
++  const changeBindingCue = useCallback(
++    (bindingId: string, cueId: string) => {
++      graphEditing.command.commands.execute(setEventBindingCue(bindingId, cueId));
++    },
++    [graphEditing.command.commands],
++  );
++  const changeBindingKey = useCallback(
++    (bindingId: string, key: string | null) => {
++      graphEditing.command.commands.execute(setEventBindingKey(bindingId, key));
++    },
++    [graphEditing.command.commands],
++  );
++  const removeBinding = useCallback(
++    (bindingId: string) => {
++      graphEditing.command.commands.execute(removeEventBinding(bindingId));
++    },
++    [graphEditing.command.commands],
++  );
++  const reorderBindings = useCallback(
++    (bindingIds: readonly string[]) => {
++      graphEditing.command.commands.execute(setEventBindingOrder(bindingIds));
++    },
++    [graphEditing.command.commands],
++  );
++  const removeElements = useCallback(
++    (canvasId: string, elementIds: readonly string[]) => {
++      const selectedElementIds = new Set(elementIds);
++      const bindingIds: string[] = [];
++      for (const binding of graphEditing.command.graph.eventBindings ?? []) {
++        if (binding.canvasId === canvasId && selectedElementIds.has(binding.elementId)) {
++          bindingIds.push(binding.id);
++        }
++      }
++      undoHistory.link(() => {
++        if (bindingIds.length > 0) {
++          graphEditing.command.commands.execute(
++            composite({
++              label: "Remove Element interactions",
++              commands: bindingIds.map((bindingId) => removeEventBinding(bindingId)),
++            }),
++          );
++        }
++        canvasCommands.removeElements(canvasId, elementIds);
++      });
++    },
++    [canvasCommands, graphEditing.command.commands, graphEditing.command.graph, undoHistory],
++  );
++  const undoStacks = useMemo(
++    () => ({ graph: graphEditing.command.commands, canvas: canvasCommands }),
++    [canvasCommands, graphEditing.command.commands],
++  );
++  const undo = useCallback(() => undoHistory.undo(undoStacks), [undoHistory, undoStacks]);
++  const redo = useCallback(() => undoHistory.redo(undoStacks), [undoHistory, undoStacks]);
++  useUndoKeys({ undo, redo });
++  const { artboards, blocks } = useCanvasArtboards({
++    documents: documents.data,
++    workspace: canvasCommands.workspace,
++    graph: graphEditing.command.graph,
++    imageAssets: imageAssets.data ?? [],
++  });
++
++  // An artboard's name belongs to the Scene or Block that owns the Canvas, so a rename is a
++  // Show-graph gesture. The graph stack owns the live name and the same save path as every
++  // Canvas edit; the undo coordinator above keeps both editor histories in order.
++  const renameArtboard = useCallback(
++    (artId: string, name: string) => {
++      if (!showId) return;
++      graphEditing.gestures.beginRename(artId);
++      graphEditing.gestures.renameTo(name);
++      graphEditing.gestures.commitRename();
++    },
++    [
++      graphEditing.gestures.beginRename,
++      graphEditing.gestures.commitRename,
++      graphEditing.gestures.renameTo,
++      showId,
++    ],
++  );
++  const focused = resolveFocusedArtboard(artboards, requestedArtId);
++
++  const placeBlock = useCallback(
++    (blockId: string) => {
++      if (!focused) return;
++      const parentId = focused.canvas.root.id;
++      const rank = String(focused.canvas.root.children?.length ?? 0);
++      canvasCommands.createElement(
++        focused.canvasId,
++        { id: generateId("canvas"), type: "slot", blockId },
++        parentId,
++        rank,
++      );
++    },
++    [canvasCommands.createElement, focused],
++  );
++
++  const blockCreation = useBlockCreationSession({
++    artboards,
++    canvasCommands,
++    graph: graphEditing.command.graph,
++    executeGraphCommand: graphEditing.command.commands.execute,
++    undoHistory,
++  });
++
++  const handleImageUpload = useCallback(
++    ({ file, signal, onProgress, onSuccess, onError }: ImageInputOnUploadProps) => {
++      void imageUpload
++        .mutateAsync({ file, signal, onProgress })
++        .then((asset) => {
++          const resolvedValue = {
++            assetId: asset.id,
++            revision: asset.revision,
++            url: resolveApiUrl(asset.url),
++            width: asset.width,
++            height: asset.height,
++            alt: asset.alt,
++            mimeType: asset.mimeType,
++            blurHash: asset.blurHash,
++          } as ResolvedImageValue & { revision: string };
++          onSuccess(resolvedValue);
++        })
++        .catch((error: unknown) => {
++          if (signal.aborted) return;
++          onError({
++            code: "NETWORK_FAILURE",
++            message: error instanceof Error ? error.message : "The image upload failed.",
++            cause: error,
++          });
++        });
++    },
++    [imageUpload],
++  );
++  const deviceQrImages = useMemo(() => {
++    const images: Record<string, DeviceQrImage> = {};
++    const nodesById = new Map(graphEditing.command.graph.nodes.map((node) => [node.id, node]));
++    for (const edge of graphEditing.command.graph.edges) {
++      if (edge.kind !== "wiring" || edge.sourcePath[0] !== DEVICE_SOURCE_HANDLES.qrCode) continue;
++      const variableId = edge.targetPath[0];
++      const device = nodesById.get(edge.sourceId);
++      if (!variableId || device?.kind !== "device" || !device.pairingCode) continue;
++      images[variableId] = deviceQrImageValue(device.id, device.pairingCode);
++    }
++    return images;
++  }, [graphEditing.command.graph]);
++  const blockVariableEditing = useBlockVariableEditing(focused, graphEditing);
++  const focusedNode = graphEditing.command.graph.nodes.find((node) => node.id === focused?.artId);
++  const focusedBlock = graphEditing.command.graph.blocks?.find(
++    (block) => block.id === focused?.artId,
++  );
++  const variables: readonly SceneVariable[] =
++    focusedNode?.kind === "scene"
++      ? focusedNode.variables
++      : (focusedBlock?.variables.map(({ id, name, type, defaultValue }) => ({
++          id,
++          name,
++          type,
++          defaultValue,
++        })) ?? []);
++  const session: CanvasWorkspaceSession = {
++    canvas: {
++      focusArtboard,
++      beginMoveArtboard: canvasCommands.beginArtboardMove,
++      moveArtboard: canvasCommands.updateArtboardMove,
++      endMoveArtboard: canvasCommands.endArtboardMove,
++      createElement: canvasCommands.createElement,
++      moveElement: canvasCommands.moveElement,
++      moveElementBetweenCanvases: canvasCommands.moveElementBetweenCanvases,
++      updateElement: canvasCommands.updateElement,
++      updateElements: canvasCommands.updateElements,
++      placeBlock,
++      createBlockFromDrag: blockCreation.fromDrag,
++      createBlockFromSelection: blockCreation.fromSelection,
++      deleteElements: removeElements,
++      renameArtboard,
++    },
++    graph: {
++      createCue,
++      focusCue,
++      setEventBindingCue: changeBindingCue,
++      setEventBindingKey: changeBindingKey,
++      createEventBinding: createBinding,
++      removeEventBinding: removeBinding,
++      reorderEventBindings: reorderBindings,
++    },
++    assets: { imageUpload: handleImageUpload },
++    camera: { change: onCameraChange },
++  };
++  return {
++    session,
++    artboards,
++    blocks,
++    focused,
++    variables,
++    blockVariableEditing,
++    cues: graphEditing.command.graph.cues ?? [],
++    actions: graphEditing.command.graph.actions ?? [],
++    eventBindings: graphEditing.command.graph.eventBindings ?? [],
++    shapes: graphEditing.command.graph.shapes ?? [],
++    deviceQrImages,
++    imageAssets: imageAssets.data ?? [],
++    initialCamera,
++    pending: documents.isPending || draft.isPending,
++    documentsLoaded: documents.data !== undefined,
++  };
++}
+diff --git a/apps/studio/src/editors/canvas/components/CanvasWorkspaceEditorCommands.tsx b/apps/studio/src/editors/canvas/components/CanvasWorkspaceEditorCommands.tsx
+index aecc75f..8cc0161 100644
+--- a/apps/studio/src/editors/canvas/components/CanvasWorkspaceEditorCommands.tsx
++++ b/apps/studio/src/editors/canvas/components/CanvasWorkspaceEditorCommands.tsx
+@@ -9,6 +9,7 @@ import type { CanvasArtboardDocument } from "../../../api/canvas";
+ import type {
+   CanvasBlockCreationResult,
+   CanvasWorkspaceEditorProps,
++  CanvasWorkspaceSession,
+ } from "../canvas-workspace-types";
+ import type { CanvasSelection } from "./canvas-selection";
+ import type { CanvasTool } from "../Toolbar/Toolbar";
+@@ -27,9 +28,9 @@ interface CanvasWorkspaceEditorCommandsProps {
+   frameCreatedBlock(result: CanvasBlockCreationResult): void;
+   setSelection(selection: CanvasSelection): void;
+   blocks?: CanvasWorkspaceEditorProps["blocks"];
+-  onPlaceBlock: CanvasWorkspaceEditorProps["onPlaceBlock"];
+-  onCreateBlockFromSelection: CanvasWorkspaceEditorProps["onCreateBlockFromSelection"];
+-  onDeleteElements: CanvasWorkspaceEditorProps["onDeleteElements"];
++  onPlaceBlock: CanvasWorkspaceSession["canvas"]["placeBlock"];
++  onCreateBlockFromSelection: CanvasWorkspaceSession["canvas"]["createBlockFromSelection"];
++  onDeleteElements: CanvasWorkspaceSession["canvas"]["deleteElements"];
+ }
+ 
+ /** Owns the Canvas editor's command palette and keyboard command wiring. */
+diff --git a/apps/studio/src/routes/_authenticated/shows/$showId/art.tsx b/apps/studio/src/routes/_authenticated/shows/$showId/art.tsx
+index 37cdb22..cb75663 100644
+--- a/apps/studio/src/routes/_authenticated/shows/$showId/art.tsx
++++ b/apps/studio/src/routes/_authenticated/shows/$showId/art.tsx
+@@ -1,191 +1,38 @@
+-import {
+-  addCue,
+-  addEventBinding,
+-  composite,
+-  removeEventBinding,
+-  setBlockVariables,
+-  setEventBindingCue,
+-  setEventBindingKey,
+-  setEventBindingOrder,
+-} from "@mechane/commands";
+-import type { ImageInputOnUploadProps } from "@mechane/design-system";
+-import type {
+-  BlockVariable,
+-  EventBinding,
+-  ImageAssetReference,
+-  InteractionOwner,
+-  ResolvedImageValue,
+-  ShowId,
+-  Type,
+-} from "@mechane/domain";
+-import {
+-  DEVICE_SOURCE_HANDLES,
+-  defaultValueForType,
+-  deviceQrImageValue,
+-  generateId,
+-  isId,
+-  normalizeFormulaIdentifier,
+-} from "@mechane/domain";
++import type { ShowId } from "@mechane/domain";
++import { isId } from "@mechane/domain";
+ import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
+-import { useCallback, useEffect, useMemo, useRef } from "react";
++import { useCallback, useEffect } from "react";
+ 
+-import type { CanvasArtboardDocument } from "../../../../api/canvas";
+-import { useCanvasWorkspace } from "../../../../api/canvas";
+-import { resolveApiUrl } from "../../../../api/client";
+-import { useImageAssets, useImageUpload } from "../../../../api/images";
+-import { useShowGraph, useShowGraphEdits } from "../../../../api/show-graph";
+ import { useShow } from "../../../../api/shows";
+ import { CanvasWorkspaceEditor } from "../../../../editors/canvas/CanvasWorkspaceEditor";
+-import type { CanvasWorkspaceSession } from "../../../../editors/canvas/canvas-workspace-types";
+-import { UndoCoordinator } from "../../../../editors/canvas/commands/undo-coordinator";
+-import { useBlockCreationSession } from "../../../../editors/canvas/commands/use-block-creation";
+-import { useCanvasCommands } from "../../../../editors/canvas/commands/use-canvas-commands";
+-import {
+-  rememberCanvasCamera,
+-  rememberedCanvasCamera,
+-} from "../../../../editors/canvas/data/canvas-session";
+-import {
+-  artIdFromPath,
+-  isCanvasPath,
+-  resolveFocusedArtboard,
+-} from "../../../../editors/canvas/data/canvas-workspace";
+-import { useCanvasArtboards } from "../../../../editors/canvas/data/use-canvas-artboards";
+-import {
+-  useGraphEditing,
+-  type GraphEditing,
+-} from "../../../../editors/show/commands/use-graph-editing";
+-import { useUndoKeys } from "../../../../editors/show/keyboard/use-undo-keys";
+-import { useOpenedShowGraph } from "../../../../editors/show/data/use-opened-graph";
++import { useCanvasWorkspaceSession } from "../../../../editors/canvas/commands/use-canvas-workspace-session";
++import { artIdFromPath, isCanvasPath } from "../../../../editors/canvas/data/canvas-workspace";
+ 
+ export const Route = createFileRoute("/_authenticated/shows/$showId/art")({
+   component: CanvasWorkspaceRoute,
+ });
+ 
+-function useBlockVariableEditing(
+-  focused: CanvasArtboardDocument | null,
+-  graphEditing: Pick<GraphEditing, "command">,
+-) {
+-  return useMemo(() => {
+-    if (!focused || focused.kind !== "block") return undefined;
+-    const block = graphEditing.command.graph.blocks?.find(
+-      (candidate) => candidate.id === focused.artId,
+-    );
+-    if (!block) return undefined;
+-    const updateVariables = (variables: readonly BlockVariable[]) => {
+-      graphEditing.command.commands.execute(setBlockVariables(block.id, variables));
+-    };
+-    return {
+-      addVariable: () => {
+-        const type: Type = "text";
+-        updateVariables([
+-          ...block.variables,
+-          {
+-            id: generateId("variable"),
+-            name: `variable${block.variables.length + 1}`,
+-            type,
+-            required: false,
+-            defaultValue: defaultValueForType(type, graphEditing.command.graph.shapes ?? []),
+-          },
+-        ]);
+-      },
+-      renameVariable: (variableId: string, name: string) => {
+-        updateVariables(
+-          block.variables.map((variable) =>
+-            variable.id === variableId
+-              ? { ...variable, name: normalizeFormulaIdentifier(name) }
+-              : variable,
+-          ),
+-        );
+-      },
+-      setVariableType: (variableId: string, type: Type) => {
+-        updateVariables(
+-          block.variables.map((variable) =>
+-            variable.id === variableId
+-              ? {
+-                  ...variable,
+-                  type,
+-                  defaultValue: defaultValueForType(type, graphEditing.command.graph.shapes ?? []),
+-                }
+-              : variable,
+-          ),
+-        );
+-      },
+-      setVariableDefault: (variableId: string, defaultValue: unknown) => {
+-        updateVariables(
+-          block.variables.map((variable) => {
+-            if (variable.id !== variableId) return variable;
+-            const next = { ...variable };
+-            if (defaultValue === null || defaultValue === undefined) delete next.defaultValue;
+-            else next.defaultValue = defaultValue;
+-            return next;
+-          }),
+-        );
+-      },
+-      reorderVariables: (variableIds: readonly string[]) => {
+-        const byId = new Map(block.variables.map((variable) => [variable.id, variable]));
+-        updateVariables(
+-          variableIds.flatMap((variableId) => {
+-            const variable = byId.get(variableId);
+-            return variable ? [variable] : [];
+-          }),
+-        );
+-      },
+-      removeVariable: (variableId: string) => {
+-        updateVariables(block.variables.filter((variable) => variable.id !== variableId));
+-      },
+-    };
+-  }, [focused, graphEditing]);
+-}
+-
+-// This route intentionally coordinates the graph, Canvas, persistence, and inspector lifecycles.
+-// react-doctor-disable-next-line no-giant-component
++// This route owns the URL's side of the Canvas workspace — which Artboard the
++// address bar names, keeping it truthful, and navigating to a Cue's Show — and
++// otherwise renders the editor over the session. Editing, persistence, and
++// derivation live in the session module.
+ function CanvasWorkspaceRoute() {
+   const params = Route.useParams();
+   const showId: ShowId | null = isId("show", params.showId) ? params.showId : null;
+   const navigate = useNavigate();
+   const pathname = useRouterState({ select: (state) => state.location.pathname });
+   const show = useShow(showId);
+-  const imageAssets = useImageAssets(showId);
+-  const imageUpload = useImageUpload(showId);
+-  const draft = useShowGraph(showId, "draft");
+-  const workspace = useCanvasWorkspace(showId);
+-  const initialCamera = showId ? rememberedCanvasCamera(showId) : undefined;
+-  const onCameraChange = useCallback(
+-    (camera: Parameters<typeof rememberCanvasCamera>[1]) => {
+-      if (showId) rememberCanvasCamera(showId, camera);
++
++  const requestedArtId = showId ? artIdFromPath(pathname, showId) : null;
++  const focusArtboard = useCallback(
++    (artId: string) => {
++      void navigate({
++        to: "/shows/$showId/art/$artId",
++        params: { showId: params.showId, artId },
++        replace: true,
++      });
+     },
+-    [showId],
+-  );
+-  const save = useShowGraphEdits(showId, draft.data?.version);
+-  // Both editors' stacks are live at once here, and one action can reach both — creating a Block
+-  // moves Elements onto a new Block Canvas and adds the Block itself (#426). The coordinator
+-  // remembers which stacks each action reached so one Cmd+Z reverses all of it.
+-  const undoCoordinator = useRef<UndoCoordinator | null>(null);
+-  undoCoordinator.current ??= new UndoCoordinator();
+-  const undoHistory = undoCoordinator.current;
+-  const canvasCommands = useCanvasCommands(workspace.data, (edits) => {
+-    undoHistory.record("canvas");
+-    save.enqueue(edits);
+-  });
+-  const openedGraph = useOpenedShowGraph(draft.data);
+-  const graphEditing = useGraphEditing(openedGraph, (edits) => {
+-    undoHistory.record("graph");
+-    save.enqueue(edits);
+-  });
+-  const createCue = useCallback(
+-    (owner: InteractionOwner) => {
+-      const id = generateId("cue");
+-      graphEditing.command.commands.execute(
+-        addCue({
+-          id,
+-          name: "New cue",
+-          owner,
+-          actionIds: [],
+-        }),
+-      );
+-      return id;
+-    },
+-    [graphEditing.command.commands],
++    [navigate, params.showId],
+   );
+   const focusCue = useCallback(
+     (_cueId: string) => {
+@@ -193,115 +40,13 @@ function CanvasWorkspaceRoute() {
+     },
+     [navigate, showId],
+   );
+-  const createBinding = useCallback(
+-    (binding: EventBinding) => {
+-      graphEditing.command.commands.execute(addEventBinding(binding));
+-    },
+-    [graphEditing.command.commands],
+-  );
+-  const changeBindingCue = useCallback(
+-    (bindingId: string, cueId: string) => {
+-      graphEditing.command.commands.execute(setEventBindingCue(bindingId, cueId));
+-    },
+-    [graphEditing.command.commands],
+-  );
+-  const changeBindingKey = useCallback(
+-    (bindingId: string, key: string | null) => {
+-      graphEditing.command.commands.execute(setEventBindingKey(bindingId, key));
+-    },
+-    [graphEditing.command.commands],
+-  );
+-  const removeBinding = useCallback(
+-    (bindingId: string) => {
+-      graphEditing.command.commands.execute(removeEventBinding(bindingId));
+-    },
+-    [graphEditing.command.commands],
+-  );
+-  const reorderBindings = useCallback(
+-    (bindingIds: readonly string[]) => {
+-      graphEditing.command.commands.execute(setEventBindingOrder(bindingIds));
+-    },
+-    [graphEditing.command.commands],
+-  );
+-  const removeElements = useCallback(
+-    (canvasId: string, elementIds: readonly string[]) => {
+-      const selectedElementIds = new Set(elementIds);
+-      const bindingIds: string[] = [];
+-      for (const binding of graphEditing.command.graph.eventBindings ?? []) {
+-        if (binding.canvasId === canvasId && selectedElementIds.has(binding.elementId)) {
+-          bindingIds.push(binding.id);
+-        }
+-      }
+-      undoHistory.link(() => {
+-        if (bindingIds.length > 0) {
+-          graphEditing.command.commands.execute(
+-            composite({
+-              label: "Remove Element interactions",
+-              commands: bindingIds.map((bindingId) => removeEventBinding(bindingId)),
+-            }),
+-          );
+-        }
+-        canvasCommands.removeElements(canvasId, elementIds);
+-      });
+-    },
+-    [canvasCommands, graphEditing.command.commands, graphEditing.command.graph, undoHistory],
+-  );
+-  const undoStacks = useMemo(
+-    () => ({ graph: graphEditing.command.commands, canvas: canvasCommands }),
+-    [canvasCommands, graphEditing.command.commands],
+-  );
+-  const undo = useCallback(() => undoHistory.undo(undoStacks), [undoHistory, undoStacks]);
+-  const redo = useCallback(() => undoHistory.redo(undoStacks), [undoHistory, undoStacks]);
+-  useUndoKeys({ undo, redo });
+-  const { artboards, blocks } = useCanvasArtboards({
+-    documents: workspace.data,
+-    workspace: canvasCommands.workspace,
+-    graph: graphEditing.command.graph,
+-    imageAssets: imageAssets.data ?? [],
+-  });
+-
+-  // An artboard's name belongs to the Scene or Block that owns the Canvas, so a rename is a
+-  // Show-graph gesture. The graph stack owns the live name and the same save path as every
+-  // Canvas edit; the undo coordinator above keeps both editor histories in order.
+-  const renameArtboard = useCallback(
+-    (artId: string, name: string) => {
+-      if (!showId) return;
+-      graphEditing.gestures.beginRename(artId);
+-      graphEditing.gestures.renameTo(name);
+-      graphEditing.gestures.commitRename();
+-    },
+-    [
+-      graphEditing.gestures.beginRename,
+-      graphEditing.gestures.commitRename,
+-      graphEditing.gestures.renameTo,
+-      showId,
+-    ],
+-  );
+-  const requestedArtId = showId ? artIdFromPath(pathname, showId) : null;
+-  const focused = resolveFocusedArtboard(artboards, requestedArtId);
+-
+-  const placeBlock = useCallback(
+-    (blockId: string) => {
+-      if (!focused) return;
+-      const parentId = focused.canvas.root.id;
+-      const rank = String(focused.canvas.root.children?.length ?? 0);
+-      canvasCommands.createElement(
+-        focused.canvasId,
+-        { id: generateId("canvas"), type: "slot", blockId },
+-        parentId,
+-        rank,
+-      );
+-    },
+-    [canvasCommands.createElement, focused],
+-  );
+-
+-  const blockCreation = useBlockCreationSession({
+-    artboards,
+-    canvasCommands,
+-    graph: graphEditing.command.graph,
+-    executeGraphCommand: graphEditing.command.commands.execute,
+-    undoHistory,
++  const workspace = useCanvasWorkspaceSession({
++    showId,
++    requestedArtId,
++    focusArtboard,
++    focusCue,
+   });
++  const focused = workspace.focused;
+ 
+   // This route stays mounted for a moment while the router transitions away
+   // from it, and during that moment `pathname` is already the destination's. Bail
+@@ -310,17 +55,11 @@ function CanvasWorkspaceRoute() {
+   const onCanvasRoute = showId ? isCanvasPath(pathname, showId) : false;
+ 
+   useEffect(() => {
+-    if (!onCanvasRoute || !workspace.data) return;
++    if (!onCanvasRoute || !workspace.documentsLoaded) return;
+     // An artboard is always active, so the URL should name it — landing on the bare /art route
+     // leaves the address bar disagreeing with the editor, and un-shareable.
+     if (!requestedArtId) {
+-      if (focused) {
+-        void navigate({
+-          to: "/shows/$showId/art/$artId",
+-          params: { showId: params.showId, artId: focused.artId },
+-          replace: true,
+-        });
+-      }
++      if (focused) focusArtboard(focused.artId);
+       return;
+     }
+     if (!focused || (focused.artId !== requestedArtId && focused.canvasId !== requestedArtId)) {
+@@ -330,49 +69,8 @@ function CanvasWorkspaceRoute() {
+         replace: true,
+       });
+     }
+-  }, [focused, navigate, onCanvasRoute, params.showId, requestedArtId, workspace.data]);
++  }, [focused, focusArtboard, navigate, onCanvasRoute, params.showId, requestedArtId, workspace.documentsLoaded]);
+ 
+-  const handleImageUpload = useCallback(
+-    ({ file, signal, onProgress, onSuccess, onError }: ImageInputOnUploadProps) => {
+-      void imageUpload
+-        .mutateAsync({ file, signal, onProgress })
+-        .then((asset) => {
+-          const resolvedValue = {
+-            assetId: asset.id,
+-            revision: asset.revision,
+-            url: resolveApiUrl(asset.url),
+-            width: asset.width,
+-            height: asset.height,
+-            alt: asset.alt,
+-            mimeType: asset.mimeType,
+-            blurHash: asset.blurHash,
+-          } as ResolvedImageValue & { revision: string };
+-          onSuccess(resolvedValue);
+-        })
+-        .catch((error: unknown) => {
+-          if (signal.aborted) return;
+-          onError({
+-            code: "NETWORK_FAILURE",
+-            message: error instanceof Error ? error.message : "The image upload failed.",
+-            cause: error,
+-          });
+-        });
+-    },
+-    [imageUpload],
+-  );
+-  const deviceQrImages = useMemo(() => {
+-    const images: Record<string, ResolvedImageValue & Pick<ImageAssetReference, "revision">> = {};
+-    const nodesById = new Map(graphEditing.command.graph.nodes.map((node) => [node.id, node]));
+-    for (const edge of graphEditing.command.graph.edges) {
+-      if (edge.kind !== "wiring" || edge.sourcePath[0] !== DEVICE_SOURCE_HANDLES.qrCode) continue;
+-      const variableId = edge.targetPath[0];
+-      const device = nodesById.get(edge.sourceId);
+-      if (!variableId || device?.kind !== "device" || !device.pairingCode) continue;
+-      images[variableId] = deviceQrImageValue(device.id, device.pairingCode);
+-    }
+-    return images;
+-  }, [graphEditing.command.graph]);
+-  const blockVariableEditing = useBlockVariableEditing(focused, graphEditing);
+   if (showId === null || show.isError || !show.data) {
+     return (
+       <p className="p-6" role="alert">
+@@ -380,71 +78,24 @@ function CanvasWorkspaceRoute() {
+       </p>
+     );
+   }
+-  if (show.isPending || workspace.isPending || draft.isPending) {
++  if (show.isPending || workspace.pending) {
+     return <p className="p-6 text-muted-foreground">Loading Canvas workspace…</p>;
+   }
+-  const focusedNode = graphEditing.command.graph.nodes.find((node) => node.id === focused?.artId);
+-  const focusedBlock = graphEditing.command.graph.blocks?.find(
+-    (block) => block.id === focused?.artId,
+-  );
+-  const focusedVariables =
+-    focusedNode?.kind === "scene"
+-      ? focusedNode.variables
+-      : (focusedBlock?.variables.map(({ id, name, type, defaultValue }) => ({
+-          id,
+-          name,
+-          type,
+-          defaultValue,
+-        })) ?? []);
+-  const session: CanvasWorkspaceSession = {
+-    canvas: {
+-      focusArtboard: (artId) =>
+-        void navigate({
+-          to: "/shows/$showId/art/$artId",
+-          params: { showId: params.showId, artId },
+-          replace: true,
+-        }),
+-      beginMoveArtboard: canvasCommands.beginArtboardMove,
+-      moveArtboard: canvasCommands.updateArtboardMove,
+-      endMoveArtboard: canvasCommands.endArtboardMove,
+-      createElement: canvasCommands.createElement,
+-      moveElement: canvasCommands.moveElement,
+-      moveElementBetweenCanvases: canvasCommands.moveElementBetweenCanvases,
+-      updateElement: canvasCommands.updateElement,
+-      updateElements: canvasCommands.updateElements,
+-      placeBlock,
+-      createBlockFromDrag: blockCreation.fromDrag,
+-      createBlockFromSelection: blockCreation.fromSelection,
+-      deleteElements: removeElements,
+-      renameArtboard,
+-    },
+-    graph: {
+-      createCue,
+-      focusCue,
+-      setEventBindingCue: changeBindingCue,
+-      setEventBindingKey: changeBindingKey,
+-      createEventBinding: createBinding,
+-      removeEventBinding: removeBinding,
+-      reorderEventBindings: reorderBindings,
+-    },
+-    assets: { imageUpload: handleImageUpload },
+-    camera: { change: onCameraChange },
+-  };
+   return (
+     <CanvasWorkspaceEditor
+-      artboards={artboards}
+-      initialCamera={initialCamera}
++      artboards={workspace.artboards}
++      initialCamera={workspace.initialCamera}
+       focusedArtId={focused?.artId ?? null}
+-      session={session}
+-      variables={focusedVariables}
+-      blockVariableEditing={blockVariableEditing}
+-      blocks={blocks}
+-      cues={graphEditing.command.graph.cues ?? []}
+-      actions={graphEditing.command.graph.actions ?? []}
+-      eventBindings={graphEditing.command.graph.eventBindings ?? []}
+-      shapes={graphEditing.command.graph.shapes ?? []}
+-      deviceQrImages={deviceQrImages}
+-      imageAssets={imageAssets.data ?? []}
++      session={workspace.session}
++      variables={workspace.variables}
++      blockVariableEditing={workspace.blockVariableEditing}
++      blocks={workspace.blocks}
++      cues={workspace.cues}
++      actions={workspace.actions}
++      eventBindings={workspace.eventBindings}
++      shapes={workspace.shapes}
++      deviceQrImages={workspace.deviceQrImages}
++      imageAssets={workspace.imageAssets}
+     />
+   );
+ }

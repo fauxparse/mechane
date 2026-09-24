@@ -1,182 +1,37 @@
-import {
-  addCue,
-  addEventBinding,
-  composite,
-  removeEventBinding,
-  setBlockVariables,
-  setEventBindingCue,
-  setEventBindingKey,
-  setEventBindingOrder,
-} from "@mechane/commands";
-import type { ImageInputOnUploadProps } from "@mechane/design-system";
-import type { BlockVariable } from "@mechane/domain/blocks";
-import { deviceQrImageValue } from "@mechane/domain/device-qr";
-import { normalizeFormulaIdentifier } from "@mechane/domain/formula";
-import { DEVICE_SOURCE_HANDLES } from "@mechane/domain/graph";
-import { type ShowId, generateId, isId } from "@mechane/domain/id";
-import type { EventBinding, InteractionOwner } from "@mechane/domain/interactions";
-import type { ImageAssetReference, ResolvedImageValue, Type } from "@mechane/domain/shapes";
-import { defaultValueForType } from "@mechane/domain/source-defaults";
+import { type ShowId, isId } from "@mechane/domain/id";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect } from "react";
 
-import type { CanvasArtboardDocument } from "../../../../api/canvas";
-import { useCanvasWorkspace } from "../../../../api/canvas";
-import { resolveApiUrl } from "../../../../api/client";
-import { useImageAssets, useImageUpload } from "../../../../api/images";
-import { useShowGraph, useShowGraphEdits } from "../../../../api/show-graph";
 import { useShow } from "../../../../api/shows";
 import { CanvasWorkspaceEditor } from "../../../../editors/canvas/CanvasWorkspaceEditor";
-import type { CanvasWorkspaceSession } from "../../../../editors/canvas/canvas-workspace-types";
-import { UndoCoordinator } from "../../../../editors/canvas/commands/undo-coordinator";
-import { useBlockCreationSession } from "../../../../editors/canvas/commands/use-block-creation";
-import { useCanvasCommands } from "../../../../editors/canvas/commands/use-canvas-commands";
-import {
-  rememberCanvasCamera,
-  rememberedCanvasCamera,
-} from "../../../../editors/canvas/data/canvas-session";
-import {
-  artIdFromPath,
-  isCanvasPath,
-  resolveFocusedArtboard,
-} from "../../../../editors/canvas/data/canvas-workspace";
-import { useCanvasArtboards } from "../../../../editors/canvas/data/use-canvas-artboards";
-import {
-  useGraphEditing,
-  type GraphEditing,
-} from "../../../../editors/show/commands/use-graph-editing";
-import { useUndoKeys } from "../../../../editors/show/keyboard/use-undo-keys";
-import { useOpenedShowGraph } from "../../../../editors/show/data/use-opened-graph";
+import { useCanvasWorkspaceSession } from "../../../../editors/canvas/commands/use-canvas-workspace-session";
+import { artIdFromPath, isCanvasPath } from "../../../../editors/canvas/data/canvas-workspace";
 
 export const Route = createFileRoute("/_authenticated/shows/$showId/art")({
   component: CanvasWorkspaceRoute,
 });
 
-function useBlockVariableEditing(
-  focused: CanvasArtboardDocument | null,
-  graphEditing: Pick<GraphEditing, "command">,
-) {
-  return useMemo(() => {
-    if (!focused || focused.kind !== "block") return undefined;
-    const block = graphEditing.command.graph.blocks?.find(
-      (candidate) => candidate.id === focused.artId,
-    );
-    if (!block) return undefined;
-    const updateVariables = (variables: readonly BlockVariable[]) => {
-      graphEditing.command.commands.execute(setBlockVariables(block.id, variables));
-    };
-    return {
-      addVariable: () => {
-        const type: Type = "text";
-        updateVariables([
-          ...block.variables,
-          {
-            id: generateId("variable"),
-            name: `variable${block.variables.length + 1}`,
-            type,
-            required: false,
-            defaultValue: defaultValueForType(type, graphEditing.command.graph.shapes ?? []),
-          },
-        ]);
-      },
-      renameVariable: (variableId: string, name: string) => {
-        updateVariables(
-          block.variables.map((variable) =>
-            variable.id === variableId
-              ? { ...variable, name: normalizeFormulaIdentifier(name) }
-              : variable,
-          ),
-        );
-      },
-      setVariableType: (variableId: string, type: Type) => {
-        updateVariables(
-          block.variables.map((variable) =>
-            variable.id === variableId
-              ? {
-                  ...variable,
-                  type,
-                  defaultValue: defaultValueForType(type, graphEditing.command.graph.shapes ?? []),
-                }
-              : variable,
-          ),
-        );
-      },
-      setVariableDefault: (variableId: string, defaultValue: unknown) => {
-        updateVariables(
-          block.variables.map((variable) => {
-            if (variable.id !== variableId) return variable;
-            const next = { ...variable };
-            if (defaultValue === null || defaultValue === undefined) delete next.defaultValue;
-            else next.defaultValue = defaultValue;
-            return next;
-          }),
-        );
-      },
-      reorderVariables: (variableIds: readonly string[]) => {
-        const byId = new Map(block.variables.map((variable) => [variable.id, variable]));
-        updateVariables(
-          variableIds.flatMap((variableId) => {
-            const variable = byId.get(variableId);
-            return variable ? [variable] : [];
-          }),
-        );
-      },
-      removeVariable: (variableId: string) => {
-        updateVariables(block.variables.filter((variable) => variable.id !== variableId));
-      },
-    };
-  }, [focused, graphEditing]);
-}
-
-// This route intentionally coordinates the graph, Canvas, persistence, and inspector lifecycles.
-// react-doctor-disable-next-line no-giant-component
+// This route owns the URL's side of the Canvas workspace — which Artboard the
+// address bar names, keeping it truthful, and navigating to a Cue's Show — and
+// otherwise renders the editor over the session. Editing, persistence, and
+// derivation live in the session module.
 function CanvasWorkspaceRoute() {
   const params = Route.useParams();
   const showId: ShowId | null = isId("show", params.showId) ? params.showId : null;
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const show = useShow(showId);
-  const imageAssets = useImageAssets(showId);
-  const imageUpload = useImageUpload(showId);
-  const draft = useShowGraph(showId, "draft");
-  const workspace = useCanvasWorkspace(showId);
-  const initialCamera = showId ? rememberedCanvasCamera(showId) : undefined;
-  const onCameraChange = useCallback(
-    (camera: Parameters<typeof rememberCanvasCamera>[1]) => {
-      if (showId) rememberCanvasCamera(showId, camera);
+
+  const requestedArtId = showId ? artIdFromPath(pathname, showId) : null;
+  const focusArtboard = useCallback(
+    (artId: string) => {
+      void navigate({
+        to: "/shows/$showId/art/$artId",
+        params: { showId: params.showId, artId },
+        replace: true,
+      });
     },
-    [showId],
-  );
-  const save = useShowGraphEdits(showId, draft.data?.version);
-  // Both editors' stacks are live at once here, and one action can reach both — creating a Block
-  // moves Elements onto a new Block Canvas and adds the Block itself (#426). The coordinator
-  // remembers which stacks each action reached so one Cmd+Z reverses all of it.
-  const undoCoordinator = useRef<UndoCoordinator | null>(null);
-  undoCoordinator.current ??= new UndoCoordinator();
-  const undoHistory = undoCoordinator.current;
-  const canvasCommands = useCanvasCommands(workspace.data, (edits) => {
-    undoHistory.record("canvas");
-    save.enqueue(edits);
-  });
-  const openedGraph = useOpenedShowGraph(draft.data);
-  const graphEditing = useGraphEditing(openedGraph, (edits) => {
-    undoHistory.record("graph");
-    save.enqueue(edits);
-  });
-  const createCue = useCallback(
-    (owner: InteractionOwner) => {
-      const id = generateId("cue");
-      graphEditing.command.commands.execute(
-        addCue({
-          id,
-          name: "New cue",
-          owner,
-          actionIds: [],
-        }),
-      );
-      return id;
-    },
-    [graphEditing.command.commands],
+    [navigate, params.showId],
   );
   const focusCue = useCallback(
     (_cueId: string) => {
@@ -184,115 +39,13 @@ function CanvasWorkspaceRoute() {
     },
     [navigate, showId],
   );
-  const createBinding = useCallback(
-    (binding: EventBinding) => {
-      graphEditing.command.commands.execute(addEventBinding(binding));
-    },
-    [graphEditing.command.commands],
-  );
-  const changeBindingCue = useCallback(
-    (bindingId: string, cueId: string) => {
-      graphEditing.command.commands.execute(setEventBindingCue(bindingId, cueId));
-    },
-    [graphEditing.command.commands],
-  );
-  const changeBindingKey = useCallback(
-    (bindingId: string, key: string | null) => {
-      graphEditing.command.commands.execute(setEventBindingKey(bindingId, key));
-    },
-    [graphEditing.command.commands],
-  );
-  const removeBinding = useCallback(
-    (bindingId: string) => {
-      graphEditing.command.commands.execute(removeEventBinding(bindingId));
-    },
-    [graphEditing.command.commands],
-  );
-  const reorderBindings = useCallback(
-    (bindingIds: readonly string[]) => {
-      graphEditing.command.commands.execute(setEventBindingOrder(bindingIds));
-    },
-    [graphEditing.command.commands],
-  );
-  const removeElements = useCallback(
-    (canvasId: string, elementIds: readonly string[]) => {
-      const selectedElementIds = new Set(elementIds);
-      const bindingIds: string[] = [];
-      for (const binding of graphEditing.command.graph.eventBindings ?? []) {
-        if (binding.canvasId === canvasId && selectedElementIds.has(binding.elementId)) {
-          bindingIds.push(binding.id);
-        }
-      }
-      undoHistory.link(() => {
-        if (bindingIds.length > 0) {
-          graphEditing.command.commands.execute(
-            composite({
-              label: "Remove Element interactions",
-              commands: bindingIds.map((bindingId) => removeEventBinding(bindingId)),
-            }),
-          );
-        }
-        canvasCommands.removeElements(canvasId, elementIds);
-      });
-    },
-    [canvasCommands, graphEditing.command.commands, graphEditing.command.graph, undoHistory],
-  );
-  const undoStacks = useMemo(
-    () => ({ graph: graphEditing.command.commands, canvas: canvasCommands }),
-    [canvasCommands, graphEditing.command.commands],
-  );
-  const undo = useCallback(() => undoHistory.undo(undoStacks), [undoHistory, undoStacks]);
-  const redo = useCallback(() => undoHistory.redo(undoStacks), [undoHistory, undoStacks]);
-  useUndoKeys({ undo, redo });
-  const { artboards, blocks } = useCanvasArtboards({
-    documents: workspace.data,
-    workspace: canvasCommands.workspace,
-    graph: graphEditing.command.graph,
-    imageAssets: imageAssets.data ?? [],
+  const workspace = useCanvasWorkspaceSession({
+    showId,
+    requestedArtId,
+    focusArtboard,
+    focusCue,
   });
-
-  // An artboard's name belongs to the Scene or Block that owns the Canvas, so a rename is a
-  // Show-graph gesture. The graph stack owns the live name and the same save path as every
-  // Canvas edit; the undo coordinator above keeps both editor histories in order.
-  const renameArtboard = useCallback(
-    (artId: string, name: string) => {
-      if (!showId) return;
-      graphEditing.gestures.beginRename(artId);
-      graphEditing.gestures.renameTo(name);
-      graphEditing.gestures.commitRename();
-    },
-    [
-      graphEditing.gestures.beginRename,
-      graphEditing.gestures.commitRename,
-      graphEditing.gestures.renameTo,
-      showId,
-    ],
-  );
-  const requestedArtId = showId ? artIdFromPath(pathname, showId) : null;
-  const focused = resolveFocusedArtboard(artboards, requestedArtId);
-
-  const placeBlock = useCallback(
-    (blockId: string) => {
-      if (!focused) return;
-      const parentId = focused.canvas.root.id;
-      const rank = String(focused.canvas.root.children?.length ?? 0);
-      canvasCommands.createElement(
-        focused.canvasId,
-        { id: generateId("canvas"), type: "slot", blockId },
-        parentId,
-        rank,
-      );
-    },
-    [canvasCommands.createElement, focused],
-  );
-
-  const blockCreation = useBlockCreationSession({
-    artboards,
-    canvasCommands,
-    graph: graphEditing.command.graph,
-    executeGraphCommand: graphEditing.command.commands.execute,
-    undoHistory,
-  });
+  const focused = workspace.focused;
 
   // This route stays mounted for a moment while the router transitions away
   // from it, and during that moment `pathname` is already the destination's. Bail
@@ -301,17 +54,11 @@ function CanvasWorkspaceRoute() {
   const onCanvasRoute = showId ? isCanvasPath(pathname, showId) : false;
 
   useEffect(() => {
-    if (!onCanvasRoute || !workspace.data) return;
+    if (!onCanvasRoute || !workspace.documentsLoaded) return;
     // An artboard is always active, so the URL should name it — landing on the bare /art route
     // leaves the address bar disagreeing with the editor, and un-shareable.
     if (!requestedArtId) {
-      if (focused) {
-        void navigate({
-          to: "/shows/$showId/art/$artId",
-          params: { showId: params.showId, artId: focused.artId },
-          replace: true,
-        });
-      }
+      if (focused) focusArtboard(focused.artId);
       return;
     }
     if (!focused || (focused.artId !== requestedArtId && focused.canvasId !== requestedArtId)) {
@@ -321,49 +68,8 @@ function CanvasWorkspaceRoute() {
         replace: true,
       });
     }
-  }, [focused, navigate, onCanvasRoute, params.showId, requestedArtId, workspace.data]);
+  }, [focused, focusArtboard, navigate, onCanvasRoute, params.showId, requestedArtId, workspace.documentsLoaded]);
 
-  const handleImageUpload = useCallback(
-    ({ file, signal, onProgress, onSuccess, onError }: ImageInputOnUploadProps) => {
-      void imageUpload
-        .mutateAsync({ file, signal, onProgress })
-        .then((asset) => {
-          const resolvedValue = {
-            assetId: asset.id,
-            revision: asset.revision,
-            url: resolveApiUrl(asset.url),
-            width: asset.width,
-            height: asset.height,
-            alt: asset.alt,
-            mimeType: asset.mimeType,
-            blurHash: asset.blurHash,
-          } as ResolvedImageValue & { revision: string };
-          onSuccess(resolvedValue);
-        })
-        .catch((error: unknown) => {
-          if (signal.aborted) return;
-          onError({
-            code: "NETWORK_FAILURE",
-            message: error instanceof Error ? error.message : "The image upload failed.",
-            cause: error,
-          });
-        });
-    },
-    [imageUpload],
-  );
-  const deviceQrImages = useMemo(() => {
-    const images: Record<string, ResolvedImageValue & Pick<ImageAssetReference, "revision">> = {};
-    const nodesById = new Map(graphEditing.command.graph.nodes.map((node) => [node.id, node]));
-    for (const edge of graphEditing.command.graph.edges) {
-      if (edge.kind !== "wiring" || edge.sourcePath[0] !== DEVICE_SOURCE_HANDLES.qrCode) continue;
-      const variableId = edge.targetPath[0];
-      const device = nodesById.get(edge.sourceId);
-      if (!variableId || device?.kind !== "device" || !device.pairingCode) continue;
-      images[variableId] = deviceQrImageValue(device.id, device.pairingCode);
-    }
-    return images;
-  }, [graphEditing.command.graph]);
-  const blockVariableEditing = useBlockVariableEditing(focused, graphEditing);
   if (showId === null || show.isError || !show.data) {
     return (
       <p className="p-6" role="alert">
@@ -371,71 +77,24 @@ function CanvasWorkspaceRoute() {
       </p>
     );
   }
-  if (show.isPending || workspace.isPending || draft.isPending) {
+  if (show.isPending || workspace.pending) {
     return <p className="p-6 text-muted-foreground">Loading Canvas workspace…</p>;
   }
-  const focusedNode = graphEditing.command.graph.nodes.find((node) => node.id === focused?.artId);
-  const focusedBlock = graphEditing.command.graph.blocks?.find(
-    (block) => block.id === focused?.artId,
-  );
-  const focusedVariables =
-    focusedNode?.kind === "scene"
-      ? focusedNode.variables
-      : (focusedBlock?.variables.map(({ id, name, type, defaultValue }) => ({
-          id,
-          name,
-          type,
-          defaultValue,
-        })) ?? []);
-  const session: CanvasWorkspaceSession = {
-    canvas: {
-      focusArtboard: (artId) =>
-        void navigate({
-          to: "/shows/$showId/art/$artId",
-          params: { showId: params.showId, artId },
-          replace: true,
-        }),
-      beginMoveArtboard: canvasCommands.beginArtboardMove,
-      moveArtboard: canvasCommands.updateArtboardMove,
-      endMoveArtboard: canvasCommands.endArtboardMove,
-      createElement: canvasCommands.createElement,
-      moveElement: canvasCommands.moveElement,
-      moveElementBetweenCanvases: canvasCommands.moveElementBetweenCanvases,
-      updateElement: canvasCommands.updateElement,
-      updateElements: canvasCommands.updateElements,
-      placeBlock,
-      createBlockFromDrag: blockCreation.fromDrag,
-      createBlockFromSelection: blockCreation.fromSelection,
-      deleteElements: removeElements,
-      renameArtboard,
-    },
-    graph: {
-      createCue,
-      focusCue,
-      setEventBindingCue: changeBindingCue,
-      setEventBindingKey: changeBindingKey,
-      createEventBinding: createBinding,
-      removeEventBinding: removeBinding,
-      reorderEventBindings: reorderBindings,
-    },
-    assets: { imageUpload: handleImageUpload },
-    camera: { change: onCameraChange },
-  };
   return (
     <CanvasWorkspaceEditor
-      artboards={artboards}
-      initialCamera={initialCamera}
+      artboards={workspace.artboards}
+      initialCamera={workspace.initialCamera}
       focusedArtId={focused?.artId ?? null}
-      session={session}
-      variables={focusedVariables}
-      blockVariableEditing={blockVariableEditing}
-      blocks={blocks}
-      cues={graphEditing.command.graph.cues ?? []}
-      actions={graphEditing.command.graph.actions ?? []}
-      eventBindings={graphEditing.command.graph.eventBindings ?? []}
-      shapes={graphEditing.command.graph.shapes ?? []}
-      deviceQrImages={deviceQrImages}
-      imageAssets={imageAssets.data ?? []}
+      session={workspace.session}
+      variables={workspace.variables}
+      blockVariableEditing={workspace.blockVariableEditing}
+      blocks={workspace.blocks}
+      cues={workspace.cues}
+      actions={workspace.actions}
+      eventBindings={workspace.eventBindings}
+      shapes={workspace.shapes}
+      deviceQrImages={workspace.deviceQrImages}
+      imageAssets={workspace.imageAssets}
     />
   );
 }

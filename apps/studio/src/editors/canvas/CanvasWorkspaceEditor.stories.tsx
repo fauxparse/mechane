@@ -403,10 +403,7 @@ const meta: Meta<typeof CanvasWorkspaceEditor> = {
   args: {
     artboards,
     focusedArtId: "scene-lobby",
-    onFocusArtboard: noOp,
-    onBeginMoveArtboard: noOp,
-    onMoveArtboard: noOp,
-    onEndMoveArtboard: noOp,
+    session: storySession(),
   },
 };
 
@@ -434,32 +431,28 @@ export const SelectionReviewAtZoom: Story = {
 };
 export const StatefulCreationTools: Story = {
   args: {
-    onCreateElement: (canvasId, element, parentId, rank) =>
-      console.info("create canvas element", { canvasId, element, parentId, rank }),
+    session: storySession({
+      createElement: (canvasId, element, parentId, rank) =>
+        console.info("create canvas element", { canvasId, element, parentId, rank }),
+    }),
   },
 };
 
-export const CreationToolCancellation: Story = {
-  args: {
-    onCreateElement: noOp,
-  },
-};
+export const CreationToolCancellation: Story = {};
 export const DragAcrossLayoutParents: Story = {
   args: {
-    onMoveElement: (canvasId, elementId, parentId, rank) =>
-      console.info("move canvas element", { canvasId, elementId, parentId, rank }),
+    session: storySession({
+      moveElement: (canvasId, elementId, parentId, rank) =>
+        console.info("move canvas element", { canvasId, elementId, parentId, rank }),
+    }),
   },
 };
 
-export const InvalidDragTargets: Story = {
-  args: { onMoveElement: noOp },
-};
+export const InvalidDragTargets: Story = {};
 export const KeyboardNudgeAndReorder: Story = {
   args: {
     selectedArtId: "scene-lobby",
     selectedElementIds: ["Lobby-title"],
-    onUpdateElement: noOp,
-    onMoveElement: noOp,
   },
 };
 /** The Layers navigator as a tree: nested Frames, disclosure, icons, and drag targets (#222). */
@@ -469,8 +462,6 @@ export const LayersNestedTree: Story = {
     focusedArtId: "reparent-review",
     selectedArtId: "reparent-review",
     selectedElementIds: ["reparent-source"],
-    onUpdateElement: noOp,
-    onMoveElement: noOp,
   },
 };
 
@@ -478,14 +469,12 @@ export const LayersSearchAndNestedTree: Story = {
   args: {
     selectedArtId: "scene-lobby",
     selectedElementIds: ["Lobby-title"],
-    onUpdateElement: noOp,
   },
 };
 export const InspectorControls: Story = {
   args: {
     selectedArtId: "scene-lobby",
     selectedElementIds: ["Lobby-title"],
-    onUpdateElement: noOp,
   },
 };
 
@@ -553,9 +542,6 @@ export const CrossCuttingReviewMatrix: Story = {
     focusedArtId: "scene-nested",
     selectedArtId: "scene-nested",
     selectedElementIds: ["Nested-copy"],
-    onCreateElement: noOp,
-    onMoveElement: noOp,
-    onUpdateElement: noOp,
   },
 };
 

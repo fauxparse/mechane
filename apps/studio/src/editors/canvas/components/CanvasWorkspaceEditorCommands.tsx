@@ -9,6 +9,7 @@ import type { CanvasArtboardDocument } from "../../../api/canvas";
 import type {
   CanvasBlockCreationResult,
   CanvasWorkspaceEditorProps,
+  CanvasWorkspaceSession,
 } from "../canvas-workspace-types";
 import type { CanvasSelection } from "./canvas-selection";
 import type { CanvasTool } from "../Toolbar/Toolbar";
@@ -27,9 +28,9 @@ interface CanvasWorkspaceEditorCommandsProps {
   frameCreatedBlock(result: CanvasBlockCreationResult): void;
   setSelection(selection: CanvasSelection): void;
   blocks?: CanvasWorkspaceEditorProps["blocks"];
-  onPlaceBlock: CanvasWorkspaceEditorProps["onPlaceBlock"];
-  onCreateBlockFromSelection: CanvasWorkspaceEditorProps["onCreateBlockFromSelection"];
-  onDeleteElements: CanvasWorkspaceEditorProps["onDeleteElements"];
+  onPlaceBlock: CanvasWorkspaceSession["canvas"]["placeBlock"];
+  onCreateBlockFromSelection: CanvasWorkspaceSession["canvas"]["createBlockFromSelection"];
+  onDeleteElements: CanvasWorkspaceSession["canvas"]["deleteElements"];
 }
 
 /** Owns the Canvas editor's command palette and keyboard command wiring. */

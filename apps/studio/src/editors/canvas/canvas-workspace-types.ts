@@ -31,75 +31,20 @@ export interface CanvasBlockCreationResult {
 export interface CanvasWorkspaceEditorProps {
   artboards: readonly CanvasArtboardDocument[];
   focusedArtId: string | null;
-  onFocusArtboard(artId: string): void;
-  onBeginMoveArtboard(canvasId: string): void;
-  onMoveArtboard(canvasId: string, position: Position): void;
-  onEndMoveArtboard(canvasId: string, cancel?: boolean): void;
   selectedArtId?: string | null;
   selectedElementIds?: readonly string[];
-  onSelectionChange?(selection: CanvasSelection): void;
   initialCamera?: CanvasCamera;
-  onCameraChange?(camera: CanvasCamera): void;
-  onCreateElement?(canvasId: string, element: NewElement, parentId: string, rank: string): void;
-  onMoveElement?(
-    canvasId: string,
-    elementId: string,
-    parentId: string,
-    rank: string,
-    properties?: Record<string, unknown>,
-    unsetProperties?: readonly string[],
-  ): void;
-  onMoveElementBetweenCanvases?(
-    sourceCanvasId: string,
-    targetCanvasId: string,
-    elementId: string,
-    parentId: string,
-    rank: string,
-    properties?: Record<string, unknown>,
-    unsetProperties?: readonly string[],
-  ): void;
-  onUpdateElement?(
-    canvasId: string,
-    elementId: string,
-    properties: Record<string, unknown>,
-    unsetProperties?: readonly string[],
-  ): void;
-  onUpdateElements?(
-    canvasId: string,
-    updates: readonly {
-      readonly elementId: string;
-      readonly properties: Record<string, unknown>;
-      readonly unsetProperties?: readonly string[];
-    }[],
-  ): void;
   variables?: readonly SceneVariable[];
   shapes?: readonly Shape[];
   blocks?: readonly Block[];
   blockVariableEditing?: VariableInspectorEditing;
-  onPlaceBlock?(blockId: string): void;
-  onCreateBlockFromDrag?(
-    request: CanvasBlockCreationRequest,
-  ): CanvasBlockCreationResult | null | undefined;
-  /** Replaces the selection with a Slot holding a new Block made from it (#426). */
-  onCreateBlockFromSelection?(
-    canvasId: string,
-    elementIds: readonly string[],
-  ): CanvasBlockCreationResult | null | undefined;
   imageAssets?: readonly ImageAsset[];
   deviceQrImages?: Readonly<Record<string, DeviceQrImage>>;
-  onImageUpload?(props: ImageInputOnUploadProps): void;
-  onDeleteElements?(canvasId: string, elementIds: readonly string[]): void;
   cues?: readonly Cue[];
   actions?: readonly Action[];
   eventBindings?: readonly EventBinding[];
-  onCreateCue?(owner: InteractionOwner): string | undefined;
-  onFocusCue?(cueId: string): void;
-  onSetEventBindingCue?(bindingId: string, cueId: string): void;
-  onSetEventBindingKey?(bindingId: string, key: string | null): void;
-  onCreateEventBinding?(binding: EventBinding): void;
-  onRemoveEventBinding?(bindingId: string): void;
-  onReorderEventBindings?(bindingIds: readonly string[]): void;
-  onRenameArtboard?(artId: string, name: string): void;
+  /** Every mutation the editor can cause, in domain terms. */
+  readonly session: CanvasWorkspaceSession;
 }
 export interface CanvasArtboardDimensions {
   readonly width: number;
@@ -172,31 +117,3 @@ export interface CanvasWorkspaceSession {
   };
 }
 
-export type CanvasWorkspaceSessionEditorProps = Omit<
-  CanvasWorkspaceEditorProps,
-  | "onFocusArtboard"
-  | "onBeginMoveArtboard"
-  | "onMoveArtboard"
-  | "onEndMoveArtboard"
-  | "onCameraChange"
-  | "onCreateElement"
-  | "onMoveElement"
-  | "onMoveElementBetweenCanvases"
-  | "onUpdateElement"
-  | "onUpdateElements"
-  | "onPlaceBlock"
-  | "onCreateBlockFromDrag"
-  | "onCreateBlockFromSelection"
-  | "onImageUpload"
-  | "onDeleteElements"
-  | "onCreateCue"
-  | "onFocusCue"
-  | "onSetEventBindingCue"
-  | "onSetEventBindingKey"
-  | "onCreateEventBinding"
-  | "onRemoveEventBinding"
-  | "onReorderEventBindings"
-  | "onRenameArtboard"
-> & {
-  readonly session: CanvasWorkspaceSession;
-};
