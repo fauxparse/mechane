@@ -226,12 +226,19 @@ export const connectionFormulaSource = (
   if (!variable?.type) return null;
   let type: Type = variable.type;
   const parts = [variable.name];
+  const fieldsByShapeId = new Map<string, Map<string, Shape["fields"][number]>>();
+  for (const shape of shapes) {
+    if (fieldsByShapeId.has(shape.id)) continue;
+    const fieldsById = new Map<string, Shape["fields"][number]>();
+    for (const field of shape.fields) {
+      if (!fieldsById.has(field.id)) fieldsById.set(field.id, field);
+    }
+    fieldsByShapeId.set(shape.id, fieldsById);
+  }
   for (const fieldId of value.fieldPath ?? []) {
     if (typeof type !== "object" || type.kind !== "shape") return null;
     const { shapeId } = type;
-    const field = shapes
-      .find((shape) => shape.id === shapeId)
-      ?.fields.find((candidate) => candidate.id === fieldId);
+    const field = fieldsByShapeId.get(shapeId)?.get(fieldId);
     if (!field) return null;
     parts.push(field.name);
     type = field.type;

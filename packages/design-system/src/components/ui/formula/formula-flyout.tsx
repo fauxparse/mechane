@@ -79,9 +79,11 @@ export function FormulaFlyout({
   const analysis = draft.trim() === "" ? null : analyse(draft, scope);
   const popupRef = useRef<HTMLDivElement | null>(null);
   const applyRef = useRef(onApply);
-  applyRef.current = onApply;
   const triggerRef = useRef(trigger);
-  triggerRef.current = trigger;
+  useEffect(() => {
+    applyRef.current = onApply;
+    triggerRef.current = trigger;
+  }, [onApply, trigger]);
   const onTrigger = (target: EventTarget | null) =>
     target instanceof Node && Boolean(triggerRef.current?.()?.contains(target));
   // Enter and Esc hand focus back to the row; a press elsewhere keeps the focus it moved. The

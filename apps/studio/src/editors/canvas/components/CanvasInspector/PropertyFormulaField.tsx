@@ -64,8 +64,7 @@ export function PropertyFormulaField({
   const { selected, update, updateElements } = useCanvasInspectorContext();
   const rowRef = useRef<HTMLDivElement | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const sessionRef = useRef(session);
-  sessionRef.current = session;
+  const sessionRef = useRef<Session | null>(null);
   const selectionKey = selected.map((element) => element.id).join("|");
   const open =
     session !== null && session.targets.map((element) => element.id).join("|") === selectionKey;
