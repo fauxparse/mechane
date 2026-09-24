@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useToastManager } from "@mechane/design-system";
 import { canvasElementParent, findCanvasElement } from "@mechane/commands";
-import type { FrameElement } from "@mechane/domain";
+import type { FrameElement } from "@mechane/domain/canvas";
 
 import type { CanvasArtboardDocument } from "../../api/canvas";
 import { EditorSlot } from "../../components/EditorLayout/editor-slots";

@@ -2,7 +2,7 @@ import { Position, type HandleProps } from "@xyflow/react";
 import type { ReactNode, ComponentType } from "react";
 
 import { cn } from "@mechane/design-system";
-import { typeLabel } from "@mechane/domain";
+import { typeLabel } from "@mechane/domain/shapes";
 
 import type { ShowFlowNode } from "../graph-to-flow";
 import { handleFor } from "../handle-ids";

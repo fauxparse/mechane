@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { emptyShowGraph } from "@mechane/domain";
+import { emptyShowGraph } from "@mechane/domain/graph";
 
 import { createBlockFromDrag } from "./block-drag-creation";
 

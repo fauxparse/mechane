@@ -2,7 +2,7 @@ import { cva, VariantProps } from "class-variance-authority";
 import { ImageOffIcon, ImagePlusIcon, Trash2Icon, XIcon } from "lucide-react";
 import type { ChangeEvent, RefObject } from "react";
 
-import type { ResolvedImageValue } from "@mechane/domain";
+import type { ResolvedImageValue } from "@mechane/domain/shapes";
 import { useVibe } from "../../inspector-vibe";
 import { Button } from "../button";
 import type { ImageInputValue } from "./types";

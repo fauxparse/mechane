@@ -6,8 +6,12 @@
 // `beforeLoad` (_authenticated/route.tsx, issue #30) redirects them to
 // /sign-in before it renders.
 import { ThemeSwitcher } from "@mechane/design-system";
-import type { ThemeMode, ThemePalette } from "@mechane/domain";
-import { DEFAULT_THEME_MODE, DEFAULT_THEME_PALETTE } from "@mechane/domain";
+import {
+  type ThemeMode,
+  type ThemePalette,
+  DEFAULT_THEME_MODE,
+  DEFAULT_THEME_PALETTE,
+} from "@mechane/domain/theme-settings";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { useUserSettings } from "../../api/settings";

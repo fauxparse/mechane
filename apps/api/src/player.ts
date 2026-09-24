@@ -1,9 +1,6 @@
-import {
-  PAIRING_CODE_PATTERN,
-  transformerSnapshot,
-  type GraphNode,
-  type ShowGraph,
-} from "@mechane/domain";
+import type { GraphNode, ShowGraph } from "@mechane/domain/graph";
+import { PAIRING_CODE_PATTERN } from "@mechane/domain/pairing-code";
+import { transformerSnapshot } from "@mechane/domain/scene-variable-values";
 import { and, eq, isNull } from "drizzle-orm";
 
 import { readCanvas } from "./db/canvas";

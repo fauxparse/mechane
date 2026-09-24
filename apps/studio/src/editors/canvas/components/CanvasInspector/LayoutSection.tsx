@@ -24,7 +24,13 @@ import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { SizeFields } from "./SizeFields";
 import { isVariableInput } from "./canvas-inspector-values";
 import { AlignmentSelector } from "./AlignmentSelector";
-import type { Element, FrameElement, Padding, SlotElement, TextElement } from "@mechane/domain";
+import type {
+  Element,
+  FrameElement,
+  Padding,
+  SlotElement,
+  TextElement,
+} from "@mechane/domain/canvas";
 import { useState } from "react";
 
 type LayoutContainer = FrameElement | SlotElement;

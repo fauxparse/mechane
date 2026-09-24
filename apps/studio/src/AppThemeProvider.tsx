@@ -4,8 +4,12 @@
 // GraphQL error — `useUserSettings` is skipped entirely until `useMe`
 // confirms a session exists.
 import { ThemeProvider } from "@mechane/design-system";
-import type { ThemeMode, ThemePalette } from "@mechane/domain";
-import { DEFAULT_THEME_MODE, DEFAULT_THEME_PALETTE } from "@mechane/domain";
+import {
+  type ThemeMode,
+  type ThemePalette,
+  DEFAULT_THEME_MODE,
+  DEFAULT_THEME_PALETTE,
+} from "@mechane/domain/theme-settings";
 import type { ReactNode } from "react";
 
 import { useMe } from "./api/me";

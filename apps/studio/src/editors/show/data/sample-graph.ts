@@ -8,7 +8,7 @@
 //
 // Between them the nodes and edges cover all five node kinds and all three
 // edge kinds, so the placeholder bodies and the mapper are both exercised.
-import type { GraphEdge, GraphNode, ShowGraph } from "@mechane/domain";
+import type { GraphEdge, GraphNode, ShowGraph } from "@mechane/domain/graph";
 
 type Graph = Pick<ShowGraph, "nodes" | "edges">;
 type NodeShape = {

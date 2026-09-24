@@ -1,7 +1,7 @@
 import { applyCanvasEdits, CANVAS_COMMAND_TYPES } from "@mechane/commands";
 import { describe, expect, it } from "vitest";
 
-import type { FrameElement } from "@mechane/domain";
+import type { FrameElement } from "@mechane/domain/canvas";
 
 import {
   layerDropPlacement,

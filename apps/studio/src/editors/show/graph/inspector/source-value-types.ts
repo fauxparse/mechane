@@ -1,5 +1,5 @@
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
-import type { ImageAssetReference, ResolvedImageValue, Shape, Type } from "@mechane/domain";
+import type { ImageAssetReference, ResolvedImageValue, Shape, Type } from "@mechane/domain/shapes";
 import type { ReactNode } from "react";
 
 export type SourceImageAsset = ResolvedImageValue &

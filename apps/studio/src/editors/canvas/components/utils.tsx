@@ -1,4 +1,4 @@
-import { ElementKind } from "@mechane/domain";
+import { ElementKind } from "@mechane/domain/canvas";
 import {
   Blocks as BlocksIcon,
   CircleIcon,

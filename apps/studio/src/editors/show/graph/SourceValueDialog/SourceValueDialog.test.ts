@@ -2,7 +2,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ToastProvider } from "@mechane/design-system";
-import { generateId, type Shape } from "@mechane/domain";
+import { generateId } from "@mechane/domain/id";
+import type { Shape } from "@mechane/domain/shapes";
 
 import { ArrayTable } from "./ArrayValueEditor/ArrayTable";
 import { recordIdentifier } from "./ArrayValueEditor/types";

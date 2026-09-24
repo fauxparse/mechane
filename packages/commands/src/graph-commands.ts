@@ -28,45 +28,47 @@
 // children. Validating each atom would reject the very sequences that make
 // the composite correct.
 
+import {
+  type Block,
+  type BlockVariable,
+  BlockReferenceError,
+  assertValidBlockName,
+  duplicateBlock as duplicateBlockResource,
+  renameBlock as renameBlockResource,
+} from "@mechane/domain/blocks";
+import type { Element } from "@mechane/domain/canvas";
+import type { EdgeLayout } from "@mechane/domain/edge-layout";
+import { normalizeFormulaIdentifier } from "@mechane/domain/formula";
+import { renameFormulaIdentifier } from "@mechane/domain/formula-runtime";
 import type {
-  EdgeLayout,
   FlowSize,
-  Block,
-  BlockVariable,
   DeviceNode,
-  Element,
   FlowColor,
   GraphEdge,
   GraphNode,
   Position,
   SceneNode,
   SceneVariable,
-  Shape,
-  ShapeField,
   ShowGraph,
   SourceFieldDefault,
-  Type,
   TransformerInputPort,
   TransformerNode,
   TransformerTransform,
-} from "@mechane/domain";
+} from "@mechane/domain/graph";
+import { navigateEdgeActionId } from "@mechane/domain/interactions";
+import { typeAtPath } from "@mechane/domain/property-values";
 import {
-  BlockReferenceError,
+  type Shape,
+  type ShapeField,
+  type Type,
   InvalidShapeError,
   assertShapeCanBeRemoved,
   assertShapeFieldNameAvailable,
-  assertValidBlockName,
   assertValidShapeType,
   assertValidShapes,
-  duplicateBlock as duplicateBlockResource,
-  normalizeFormulaIdentifier,
-  normalizeStructuredValueTemplate,
-  navigateEdgeActionId,
-  renameBlock as renameBlockResource,
   shapeReferencesShape,
-  typeAtPath,
-  renameFormulaIdentifier,
-} from "@mechane/domain";
+} from "@mechane/domain/shapes";
+import { normalizeStructuredValueTemplate } from "@mechane/domain/structured-values";
 
 import type { Command } from "./command";
 import { capturing } from "./command";

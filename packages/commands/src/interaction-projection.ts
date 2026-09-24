@@ -7,8 +7,14 @@
 // interaction commands, because dragging an edge is a graph command that
 // changes an Action.
 
-import type { Action, Cue, EventBinding, GraphEdge, ShowGraph } from "@mechane/domain";
-import { projectNavigateEdges, projectUpdateEdges } from "@mechane/domain";
+import type { GraphEdge, ShowGraph } from "@mechane/domain/graph";
+import {
+  type Action,
+  type Cue,
+  type EventBinding,
+  projectNavigateEdges,
+  projectUpdateEdges,
+} from "@mechane/domain/interactions";
 
 export type InteractionState = Pick<ShowGraph, "cues" | "actions" | "eventBindings">;
 

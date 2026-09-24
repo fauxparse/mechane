@@ -18,7 +18,7 @@ import type {
 } from "./react-flow";
 import type { MouseEvent } from "react";
 
-import type { Position } from "@mechane/domain";
+import type { Position } from "@mechane/domain/graph";
 import { FLOW_NODE_TYPE, NODE_TYPE_BY_KIND } from "./graph-to-flow";
 import type { ShowFlowEdge, ShowFlowNode } from "./graph-to-flow";
 import { ShowEdgeRoutingProvider } from "./ShowEdgeRoutingProvider";

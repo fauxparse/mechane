@@ -10,7 +10,7 @@ import {
 import type { FitViewOptions } from "../graph/react-flow";
 import type { CreatableNode } from "../graph/node-kinds";
 import { CREATABLE_NODES } from "../graph/node-kinds";
-import type { GraphNode, Position } from "@mechane/domain";
+import type { GraphNode, Position } from "@mechane/domain/graph";
 import { useMemo } from "react";
 
 import type { GraphCommands } from "./use-graph-commands";

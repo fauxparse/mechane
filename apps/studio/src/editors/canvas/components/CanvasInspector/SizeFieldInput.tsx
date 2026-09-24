@@ -3,8 +3,9 @@ import {
   type PropertyInputConstraints,
   type PropertyInputValue,
 } from "@mechane/design-system";
-import { joinFormulaUnit } from "@mechane/domain";
-import type { AxisSize, PropertyFormula } from "@mechane/domain";
+import type { AxisSize } from "@mechane/domain/canvas";
+import { joinFormulaUnit } from "@mechane/domain/formula";
+import type { PropertyFormula } from "@mechane/domain/property-values";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import {

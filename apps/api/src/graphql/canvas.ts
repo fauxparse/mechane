@@ -8,7 +8,7 @@
 // reaches a person — because nothing in the codec imports GraphQL. The
 // hand-written `parseCanvasEdit` switch that used to live here was the second
 // half of a pair nothing checked for agreement (#436).
-import type { Element } from "@mechane/domain";
+import type { Element } from "@mechane/domain/canvas";
 import type { StoredCanvas } from "../db/canvas";
 
 const ELEMENT_TYPE_NAMES = {

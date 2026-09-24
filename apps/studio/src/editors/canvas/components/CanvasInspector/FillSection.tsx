@@ -1,4 +1,4 @@
-import type { GradientFill } from "@mechane/domain";
+import type { GradientFill } from "@mechane/domain/canvas";
 import {
   BanIcon,
   Button,

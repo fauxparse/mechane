@@ -9,7 +9,7 @@
 // behind each card's preview, which belong to the components that display them
 // (components/Dashboard/use-show-dossier.ts).
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import type { ShowId } from "@mechane/domain";
+import type { ShowId } from "@mechane/domain/id";
 import { GraphQLRequestError } from "@mechane/graphql-schema";
 
 import { useSignOut } from "../../api/auth";

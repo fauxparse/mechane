@@ -1,4 +1,4 @@
-import type { ResolvedImageValue } from "@mechane/domain";
+import type { ResolvedImageValue } from "@mechane/domain/shapes";
 import type { ChangeEvent, CSSProperties, DragEvent, ReactNode, RefObject } from "react";
 
 import { cn } from "../../../lib/utils";

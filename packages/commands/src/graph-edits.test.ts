@@ -1,15 +1,15 @@
-import type {
-  DeviceEdge,
-  DeviceNode,
-  FlowNode,
-  NavigateEdge,
-  SceneNode,
-  Shape,
-  ShowGraph,
-  SourceNode,
-  WiringEdge,
-} from "@mechane/domain";
-import { assertValidShowGraph } from "@mechane/domain";
+import {
+  type DeviceEdge,
+  type DeviceNode,
+  type FlowNode,
+  type NavigateEdge,
+  type SceneNode,
+  type ShowGraph,
+  type SourceNode,
+  type WiringEdge,
+  assertValidShowGraph,
+} from "@mechane/domain/graph";
+import type { Shape } from "@mechane/domain/shapes";
 import { describe, expect, it } from "vitest";
 
 import type { Command } from "./command";

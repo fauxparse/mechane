@@ -1,9 +1,9 @@
-import {
-  composeInstanceView,
-  resolveCueParameters,
-  type BlockInstancePathSegment,
-  type RuntimeEventObservation,
-} from "@mechane/domain";
+import { resolveCueParameters } from "@mechane/domain/cue-parameters";
+import type {
+  BlockInstancePathSegment,
+  RuntimeEventObservation,
+} from "@mechane/domain/interactions";
+import { composeInstanceView } from "@mechane/domain/structured-values";
 import { resolvePlayerEvent } from "./player-event-dispatch";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PlayerSession, PlayerState } from "./api";

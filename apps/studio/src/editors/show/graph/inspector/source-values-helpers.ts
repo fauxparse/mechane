@@ -3,7 +3,7 @@ import {
   propertyInputValidationMessage,
   type PropertyInputType,
 } from "@mechane/design-system";
-import type { Type } from "@mechane/domain";
+import type { Type } from "@mechane/domain/shapes";
 
 export const INLINE_STRING_LIMIT = 200;
 

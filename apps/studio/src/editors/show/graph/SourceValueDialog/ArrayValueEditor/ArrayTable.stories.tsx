@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { generateId, type Shape } from "@mechane/domain";
+import { generateId } from "@mechane/domain/id";
+import type { Shape } from "@mechane/domain/shapes";
 import { useState } from "react";
 
 import { ArrayTable } from "./ArrayTable";

@@ -1,5 +1,5 @@
 import { Combobox as ComboboxPrimitive } from "@base-ui/react";
-import type { ShapeValue } from "@mechane/domain";
+import type { ShapeValue } from "@mechane/domain/shapes";
 import { isFunction, isObject } from "es-toolkit/compat";
 import type { LucideIcon } from "lucide-react";
 import type { PointerEventHandler, ReactNode } from "react";

@@ -1,13 +1,11 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import {
-  defaultSourceValueTemplates,
-  materializeRunState,
-  type Block,
-  type Canvas,
-  type ShowGraph,
-} from "@mechane/domain";
+import type { Block } from "@mechane/domain/blocks";
+import type { Canvas } from "@mechane/domain/canvas";
+import type { ShowGraph } from "@mechane/domain/graph";
+import { defaultSourceValueTemplates } from "@mechane/domain/source-defaults";
+import { materializeRunState } from "@mechane/domain/structured-values";
 
 import { usePlayerSession, type PlayerSession } from "../api";
 import { PlayerView } from "./PlayerView";

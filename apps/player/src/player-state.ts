@@ -1,18 +1,20 @@
+import type { ShowGraph } from "@mechane/domain/graph";
+import type { Action } from "@mechane/domain/interactions";
+import { PAIRING_CODE_PATTERN } from "@mechane/domain/pairing-code";
+import { defaultSourceValueTemplates } from "@mechane/domain/source-defaults";
 import {
-  PAIRING_CODE_PATTERN,
-  applyUpdateWrites,
   composeInstanceView,
-  defaultSourceValueTemplates,
   materializeInstanceState,
-  planUpdate,
-  resolveUpdateHolderScope,
-  type Action,
   type RunState,
-  type ShowGraph,
   type SourceValues,
   type StructuredValues,
-} from "@mechane/domain";
-export { sceneVariableValues } from "@mechane/domain";
+} from "@mechane/domain/structured-values";
+import {
+  applyUpdateWrites,
+  planUpdate,
+  resolveUpdateHolderScope,
+} from "@mechane/domain/update-plan";
+export { sceneVariableValues } from "@mechane/domain/scene-variable-values";
 
 const STORAGE_PREFIX = "mechane.player:";
 const CLAIM_PREFIX = "mechane.player-claim:";

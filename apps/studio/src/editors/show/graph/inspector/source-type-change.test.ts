@@ -1,4 +1,5 @@
-import type { GraphEdge, SceneNode, Shape, ShowGraph, SourceNode } from "@mechane/domain";
+import type { GraphEdge, SceneNode, ShowGraph, SourceNode } from "@mechane/domain/graph";
+import type { Shape } from "@mechane/domain/shapes";
 import { describe, expect, it } from "vitest";
 
 import { planSourceTypeChange } from "./source-type-change";

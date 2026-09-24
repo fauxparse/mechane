@@ -1,10 +1,7 @@
 import { commandForEdit, composite } from "@mechane/commands";
-import {
-  defaultSourceValues,
-  planConnection,
-  type ShowGraph,
-  type SourceNode,
-} from "@mechane/domain";
+import { planConnection } from "@mechane/domain/connect";
+import type { ShowGraph, SourceNode } from "@mechane/domain/graph";
+import { defaultSourceValues } from "@mechane/domain/source-defaults";
 import { describe, expect, it } from "vitest";
 
 const graph: ShowGraph = {

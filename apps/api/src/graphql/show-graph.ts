@@ -18,13 +18,15 @@
 import type { FlatGraphEdit, GraphEdit } from "@mechane/commands";
 import { decodeGraphEdit, encodeGraphEdit, GraphEditCodecError } from "@mechane/commands";
 import { GRAPH_COMMAND_TYPES } from "@mechane/commands";
-import type { Block, GraphEdge, GraphNode } from "@mechane/domain";
+import type { Block } from "@mechane/domain/blocks";
 import {
-  sourceDefaultsFor,
+  type GraphEdge,
+  type GraphNode,
   transformerInputType,
   transformerOutputType,
   wiringTargetVariableId,
-} from "@mechane/domain";
+} from "@mechane/domain/graph";
+import { sourceDefaultsFor } from "@mechane/domain/source-defaults";
 import { GraphQLError } from "graphql";
 
 import type { StoredShowGraph } from "../db/show-graph";
@@ -255,7 +257,7 @@ export function serializeShowGraph(graph: StoredShowGraph) {
   };
 }
 
-function serializeShape(shape: import("@mechane/domain").Shape) {
+function serializeShape(shape: import("@mechane/domain/shapes").Shape) {
   return {
     id: shape.id,
     name: shape.name,

@@ -1,4 +1,4 @@
-import { PAIRING_CODE_PATTERN } from "@mechane/domain";
+import { PAIRING_CODE_PATTERN } from "@mechane/domain/pairing-code";
 import { Button } from "@mechane/design-system";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";

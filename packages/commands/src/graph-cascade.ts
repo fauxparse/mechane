@@ -26,7 +26,7 @@ import { composite } from "./command";
 import { removeAction, removeCue } from "./interaction-commands";
 import { removeEdge, removeNode } from "./graph-commands";
 import type { ShowGraphCommand } from "./graph-commands";
-import type { GraphNode, ShowGraph } from "@mechane/domain";
+import type { GraphNode, ShowGraph } from "@mechane/domain/graph";
 /**
  * Everything a delete of `nodeIds` would destroy — the whole point being that
  * a director can be told the blast radius *before* it happens, since #27

@@ -1,7 +1,9 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import type { Block, SceneVariable, Shape } from "@mechane/domain";
+import type { Block } from "@mechane/domain/blocks";
+import type { SceneVariable } from "@mechane/domain/graph";
+import type { Shape } from "@mechane/domain/shapes";
 import type { CanvasArtboardDocument } from "../../../../api/canvas";
 import type { CanvasInspectorModel } from "./canvas-inspector-types";
 import { CanvasInspectorProvider } from "./CanvasInspectorContext";

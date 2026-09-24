@@ -1,4 +1,4 @@
-import type { ShowGraph } from "@mechane/domain";
+import type { ShowGraph } from "@mechane/domain/graph";
 import { and, eq } from "drizzle-orm";
 
 import { db } from "./client";

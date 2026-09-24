@@ -10,7 +10,7 @@ import {
   blockNameForSelection,
   createBlockFromSelection,
 } from "@mechane/commands";
-import type { ShowGraph } from "@mechane/domain";
+import type { ShowGraph } from "@mechane/domain/graph";
 import { useCallback } from "react";
 import type { CanvasArtboardDocument } from "../../../api/canvas";
 import {

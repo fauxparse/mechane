@@ -29,36 +29,31 @@
 //     no name") throw `GraphEditCodecError`. The api adapter turns that into
 //     a `BAD_USER_INPUT` GraphQLError; nothing here imports GraphQL.
 
-import type {
-  Action,
-  Block,
-  BlockVariable,
-  Cue,
-  EdgeLayout,
-  EventBinding,
-  FlowColor,
-  FlowSize,
-  GraphEdge,
-  GraphNode,
-  Position,
-  SceneVariable,
-  Shape,
-  ShapeField,
-  SuggestedImageDimensions,
-  Type,
-  TransformerInputPort,
-  TransformerTransform,
-  WiringConversion,
-} from "@mechane/domain";
+import type { Block, BlockVariable } from "@mechane/domain/blocks";
+import { type EdgeLayout, pruneEdgeLayout } from "@mechane/domain/edge-layout";
 import {
+  type FlowColor,
+  type FlowSize,
+  type GraphEdge,
+  type GraphNode,
+  type Position,
+  type SceneVariable,
+  type SuggestedImageDimensions,
+  type TransformerInputPort,
+  type TransformerTransform,
   assertValidFlowColor,
-  decodeEventBinding as decodeBinding,
-  InvalidInteractionError,
   isEdgeKind,
   isNodeKind,
-  isWiringConversion,
-  pruneEdgeLayout,
-} from "@mechane/domain";
+} from "@mechane/domain/graph";
+import {
+  type Action,
+  type Cue,
+  type EventBinding,
+  decodeEventBinding as decodeBinding,
+  InvalidInteractionError,
+} from "@mechane/domain/interactions";
+import type { Shape, ShapeField, Type } from "@mechane/domain/shapes";
+import { type WiringConversion, isWiringConversion } from "@mechane/domain/wiring-conversion";
 import {
   addBlock,
   addEdge,

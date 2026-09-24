@@ -26,7 +26,7 @@ import {
   SettingsIcon,
   SunIcon,
 } from "@mechane/design-system";
-import { DEFAULT_THEME_MODE, type ThemeMode } from "@mechane/domain";
+import { DEFAULT_THEME_MODE, type ThemeMode } from "@mechane/domain/theme-settings";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 

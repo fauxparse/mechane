@@ -2,7 +2,7 @@ import type { Ref } from "react";
 import { ReactFlowProvider } from "./graph/react-flow";
 import type { ShowGraphViewport } from "./graph/react-flow";
 import type { GraphEdit } from "@mechane/commands";
-import type { ShowGraph } from "@mechane/domain";
+import type { ShowGraph } from "@mechane/domain/graph";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 
 import type { SourceImageAsset } from "./graph/inspector/source-value-types";

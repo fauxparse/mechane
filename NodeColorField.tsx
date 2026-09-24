@@ -6,8 +6,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@mechane/design-system";
-import { DEFAULT_FLOW_COLOR, FLOW_COLORS, isFlowColor } from "@mechane/domain";
-import type { FlowColor, GraphNode } from "@mechane/domain";
+import {
+  DEFAULT_FLOW_COLOR,
+  FLOW_COLORS,
+  isFlowColor,
+  type FlowColor,
+  type GraphNode,
+} from "@mechane/domain/graph";
 
 import type { GraphEditing } from "../commands/use-graph-editing";
 

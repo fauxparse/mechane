@@ -1,12 +1,10 @@
 import {
-  isPropertyFormula,
-  joinFormulaUnit,
   materializePercentageChildrenForHug,
-  splitFormulaUnit,
   type AxisSize,
   type Element,
-  type FormulaScope,
-} from "@mechane/domain";
+} from "@mechane/domain/canvas";
+import { joinFormulaUnit, splitFormulaUnit, type FormulaScope } from "@mechane/domain/formula";
+import { isPropertyFormula } from "@mechane/domain/property-values";
 import type { PropertyInputConstraints } from "@mechane/design-system";
 import { useMemo, useState } from "react";
 

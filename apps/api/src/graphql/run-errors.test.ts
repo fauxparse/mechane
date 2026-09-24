@@ -1,4 +1,4 @@
-import { generateId } from "@mechane/domain";
+import { generateId } from "@mechane/domain/id";
 import { createYoga } from "graphql-yoga";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";

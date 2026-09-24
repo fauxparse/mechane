@@ -1,7 +1,7 @@
 import type { PointerEvent } from "react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import type { Position } from "@mechane/domain";
+import type { Position } from "@mechane/domain/graph";
 
 import { focusContext } from "../../show/keyboard/focus-context";
 import { viewportIntentFor } from "../../show/keyboard/viewport-keys";

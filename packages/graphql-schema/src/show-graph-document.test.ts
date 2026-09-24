@@ -1,5 +1,10 @@
-import type { FlowNode, NavigateEdge, SceneNode, WiringEdge } from "@mechane/domain";
-import { assertValidShowGraph } from "@mechane/domain";
+import {
+  type FlowNode,
+  type NavigateEdge,
+  type SceneNode,
+  type WiringEdge,
+  assertValidShowGraph,
+} from "@mechane/domain/graph";
 import { describe, expect, it } from "vitest";
 
 import { decodeShowGraphDocument, ShowGraphDocumentError } from "./show-graph-document";

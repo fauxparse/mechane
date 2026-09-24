@@ -4,7 +4,7 @@ import {
   SectionRow,
   type PropertyInputValue,
 } from "@mechane/design-system";
-import type { SlotInputSource } from "@mechane/domain";
+import type { SlotInputSource } from "@mechane/domain/canvas";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import {

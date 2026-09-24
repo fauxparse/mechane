@@ -1,4 +1,5 @@
-import type { ImageValue, VariableReference } from "@mechane/domain";
+import type { VariableReference } from "@mechane/domain/property-values";
+import type { ImageValue } from "@mechane/domain/shapes";
 import { PlugIcon } from "lucide-react";
 
 import { Button } from "../button";

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { FrameElement } from "@mechane/domain";
+import type { FrameElement } from "@mechane/domain/canvas";
 
 import { arrangeIntentFor, arrangeWithinParent, inStackingOrder } from "./canvas-arrange";
 

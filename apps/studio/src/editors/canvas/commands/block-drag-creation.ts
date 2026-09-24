@@ -1,7 +1,8 @@
 import { addBlock, addCanvasArtboard, addCanvasElement, composite } from "@mechane/commands";
 import type { CanvasWorkspaceCommand, NewElement, ShowGraphCommand } from "@mechane/commands";
-import { emptyBlock, generateId } from "@mechane/domain";
-import type { Block, ShowGraph } from "@mechane/domain";
+import { emptyBlock, type Block } from "@mechane/domain/blocks";
+import type { ShowGraph } from "@mechane/domain/graph";
+import { generateId } from "@mechane/domain/id";
 
 import type { CanvasBlockCreationRequest } from "../canvas-workspace-types";
 import { uniqueBlockName } from "../data/canvas-workspace";

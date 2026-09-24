@@ -1,6 +1,6 @@
 import { PlusIcon, Trash2Icon } from "@mechane/design-system";
-import type { Shape, ShapeField, Type } from "@mechane/domain";
-import { defaultValueForType, typeLabel } from "@mechane/domain";
+import { type Shape, type ShapeField, type Type, typeLabel } from "@mechane/domain/shapes";
+import { defaultValueForType } from "@mechane/domain/source-defaults";
 
 export type ShapeDefaultEditorProps = {
   field: ShapeField;

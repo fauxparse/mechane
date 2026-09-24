@@ -3,45 +3,40 @@
 // This module owns the graph tables, their domain mapping, and the version
 // lock. Canvas reconciliation, Device identity, publication, and live Run
 // effects are coordinated by show-graph.ts around this seam.
-import type {
-  Action,
-  Block,
-  BlockState,
-  BlockVariable,
-  Cue,
-  CueParameter,
-  EdgeLayout,
-  EventBinding,
-  FlowColor,
-  FlowSize,
-  GraphEdge,
-  GraphNode,
-  GraphState,
-  InteractionCollections,
-  SceneVariable,
-  Shape,
-  ShapeField,
-  ShowGraph,
-  SlotEventBinding,
-  Type,
-  UpdateOperation,
-  TransformerInputPort,
-  TransformerTransform,
-} from "@mechane/domain";
+import type { Block, BlockState, BlockVariable } from "@mechane/domain/blocks";
+import { type EdgeLayout, pruneEdgeLayout } from "@mechane/domain/edge-layout";
 import {
+  type FlowColor,
+  type FlowSize,
+  type GraphEdge,
+  type GraphNode,
+  type GraphState,
+  type SceneVariable,
+  type ShowGraph,
+  type TransformerInputPort,
+  type TransformerTransform,
   assertValidShowGraph,
-  decodeEventBinding,
   emptyShowGraph,
-  generateId,
-  InvalidInteractionError,
   isEdgeKind,
-  isWiringConversion,
-  normalizeStructuredValueTemplate,
+} from "@mechane/domain/graph";
+import { generateId } from "@mechane/domain/id";
+import {
+  type Action,
+  type Cue,
+  type CueParameter,
+  type EventBinding,
+  type InteractionCollections,
+  type SlotEventBinding,
+  type UpdateOperation,
+  decodeEventBinding,
+  InvalidInteractionError,
   projectNavigateEdges,
   projectUpdateEdges,
-  pruneEdgeLayout,
-  typeAtPath,
-} from "@mechane/domain";
+} from "@mechane/domain/interactions";
+import { typeAtPath } from "@mechane/domain/property-values";
+import type { Shape, ShapeField, Type } from "@mechane/domain/shapes";
+import { normalizeStructuredValueTemplate } from "@mechane/domain/structured-values";
+import { isWiringConversion } from "@mechane/domain/wiring-conversion";
 import { and, eq, notInArray, sql } from "drizzle-orm";
 
 import { db } from "./client";

@@ -33,7 +33,21 @@
 //     was composed from, not as "delete Flow, recursively". The server
 //     applies what it is told; blast radius is the editor's policy (#42).
 
-import type { ShowGraph } from "@mechane/domain";
+import type { Block, BlockVariable } from "@mechane/domain/blocks";
+import type { EdgeLayout } from "@mechane/domain/edge-layout";
+import type {
+  FlowSize,
+  FlowColor,
+  GraphEdge,
+  GraphNode,
+  Position,
+  SceneVariable,
+  ShowGraph,
+  TransformerInputPort,
+  TransformerTransform,
+} from "@mechane/domain/graph";
+import type { Action, Cue, EventBinding } from "@mechane/domain/interactions";
+import type { Shape, ShapeField, Type } from "@mechane/domain/shapes";
 import { graphEditDescriptor } from "./graph-edit-codec";
 import type { GraphEdit } from "./graph-edit-codec";
 import type { ShowGraphCommand } from "./graph-commands";

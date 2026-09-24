@@ -1,9 +1,9 @@
+import type { VariableReference } from "@mechane/domain/property-values";
 import {
   isResolvedImageValue,
   type ImageValue,
   type ResolvedImageValue,
-  type VariableReference,
-} from "@mechane/domain";
+} from "@mechane/domain/shapes";
 import { ChangeEvent, DragEvent, useCallback, useEffect, useReducer, useRef } from "react";
 
 import { validateImageFile } from "./validation";

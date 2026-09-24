@@ -1,4 +1,4 @@
-import type { FlowNode, SceneNode } from "@mechane/domain";
+import type { FlowNode, SceneNode } from "@mechane/domain/graph";
 import { describe, expect, it } from "vitest";
 
 import { graphNodeInsertValues } from "./graph-node-values";

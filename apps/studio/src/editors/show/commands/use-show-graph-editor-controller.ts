@@ -1,11 +1,7 @@
 import { composite, moveNode, setFlowSize } from "@mechane/commands";
 import type { DeletionScope } from "@mechane/commands";
-import {
-  defaultSourceValues,
-  type GraphEdge,
-  type GraphNode,
-  type Position,
-} from "@mechane/domain";
+import type { GraphEdge, GraphNode, Position } from "@mechane/domain/graph";
+import { defaultSourceValues } from "@mechane/domain/source-defaults";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useEdgesState, useNodesInitialized, useNodesState, useReactFlow } from "../graph/react-flow";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";

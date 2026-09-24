@@ -1,18 +1,17 @@
 import {
   assertValidGraphState,
-  assertValidImageName,
-  assertValidShowName,
+  InvalidGraphStateError,
+  type GraphState,
+} from "@mechane/domain/graph";
+import { assertValidImageName, InvalidImageNameError } from "@mechane/domain/images";
+import { isRunErrorCategory, type RunErrorCategory } from "@mechane/domain/run-errors";
+import { assertValidShowName, InvalidShowNameError } from "@mechane/domain/show";
+import {
   assertValidThemeMode,
   assertValidThemePalette,
-  InvalidGraphStateError,
-  InvalidImageNameError,
-  InvalidShowNameError,
   InvalidThemeModeError,
   InvalidThemePaletteError,
-  isRunErrorCategory,
-  type GraphState,
-  type RunErrorCategory,
-} from "@mechane/domain";
+} from "@mechane/domain/theme-settings";
 import { GraphQLError } from "graphql";
 import { ImageProcessingError } from "../images";
 

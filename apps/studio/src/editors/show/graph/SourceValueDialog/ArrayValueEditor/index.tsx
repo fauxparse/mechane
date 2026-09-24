@@ -15,14 +15,14 @@ import {
   TabsList,
   TabsTrigger,
 } from "@mechane/design-system";
+import type { Shape } from "@mechane/domain/shapes";
+import { defaultValueForType } from "@mechane/domain/source-defaults";
 import {
-  defaultValueForType,
   isArrayStructuredValueTemplate,
   isShapeStructuredValueTemplate,
   normalizeStructuredValueTemplate,
-  type Shape,
   type StructuredValueTemplate,
-} from "@mechane/domain";
+} from "@mechane/domain/structured-values";
 import { useEffect, useMemo, useState } from "react";
 
 import { pluralize } from "../../../../../utils/pluralize";

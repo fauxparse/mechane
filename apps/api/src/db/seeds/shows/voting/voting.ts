@@ -5,18 +5,11 @@ import { imageAssets, blobs } from "../../../schema";
 import { processImage } from "../../../../images";
 import { blobStore } from "../../../../storage/blob-store";
 import { seedShowData, type SeedCanvases, type SeedShow } from "../../utils/seed-utils";
-import {
-  projectNavigateEdges,
-  projectUpdateEdges,
-  type Block,
-  type FrameElement,
-  type PropertyConnection,
-  type PropertyFormula,
-  type ShowGraph,
-  type SlotElement,
-  type TextAlign,
-  type TextElement,
-} from "@mechane/domain";
+import type { Block } from "@mechane/domain/blocks";
+import type { FrameElement, SlotElement, TextAlign, TextElement } from "@mechane/domain/canvas";
+import type { ShowGraph } from "@mechane/domain/graph";
+import { projectNavigateEdges, projectUpdateEdges } from "@mechane/domain/interactions";
+import type { PropertyConnection, PropertyFormula } from "@mechane/domain/property-values";
 
 export const CANDIDATE_SHAPE_ID = "shape_candidate";
 export const CANDIDATE_NAME_FIELD_ID = "field_candidate_name";

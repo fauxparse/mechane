@@ -1,6 +1,6 @@
-import { BlockCycleError, emptyBlock } from "@mechane/domain";
+import { BlockCycleError, emptyBlock } from "@mechane/domain/blocks";
+import type { ShowGraph } from "@mechane/domain/graph";
 import type { GraphEdit } from "@mechane/commands";
-import type { ShowGraph } from "@mechane/domain";
 import { and, eq, isNull } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 

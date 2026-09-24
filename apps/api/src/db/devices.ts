@@ -11,8 +11,8 @@
 // writes the `devices` table.
 import { randomInt } from "node:crypto";
 
-import { CODE_ALPHABET } from "@mechane/domain";
-import type { DeviceNode, GraphNode } from "@mechane/domain";
+import type { DeviceNode, GraphNode } from "@mechane/domain/graph";
+import { CODE_ALPHABET } from "@mechane/domain/pairing-code";
 import { and, eq, inArray, isNotNull, isNull, notInArray } from "drizzle-orm";
 
 import { devices, graphNodes, showGraphs } from "./schema";

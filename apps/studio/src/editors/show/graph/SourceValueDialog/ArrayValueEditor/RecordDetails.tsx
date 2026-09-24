@@ -1,6 +1,8 @@
 import { Button, Separator, Trash2 } from "@mechane/design-system";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
-import { isShapeStructuredValueTemplate, setValueAtPath, type Shape } from "@mechane/domain";
+import type { Shape } from "@mechane/domain/shapes";
+import { setValueAtPath } from "@mechane/domain/source-defaults";
+import { isShapeStructuredValueTemplate } from "@mechane/domain/structured-values";
 
 import { ValueEditor } from "../ValueEditor";
 import type { ErrorPath, SourceImageAsset } from "../../inspector/source-value-types";

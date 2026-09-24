@@ -1,5 +1,5 @@
-import { emptyBlock } from "@mechane/domain";
-import type { ShowGraph } from "@mechane/domain";
+import { emptyBlock } from "@mechane/domain/blocks";
+import type { ShowGraph } from "@mechane/domain/graph";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 

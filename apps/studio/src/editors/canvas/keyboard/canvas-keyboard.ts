@@ -1,4 +1,4 @@
-import type { LayoutDirection, LayoutAlignment } from "@mechane/domain";
+import type { LayoutDirection, LayoutAlignment } from "@mechane/domain/canvas";
 
 import type { DomFocusContext } from "../../show/keyboard/focus-context";
 import type { CanvasTool } from "../Toolbar/Toolbar";

@@ -10,8 +10,8 @@
 // edit whose fixture leaves a field out proves nothing about that field.
 
 import { describe, expect, it } from "vitest";
-import type { SceneNode } from "@mechane/domain";
-import { emptyBlock } from "@mechane/domain";
+import { emptyBlock } from "@mechane/domain/blocks";
+import type { SceneNode } from "@mechane/domain/graph";
 import type { GraphEdit } from "./graph-edits";
 import {
   decodeGraphEdit,

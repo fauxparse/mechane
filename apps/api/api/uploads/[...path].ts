@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { eq } from "drizzle-orm";
 
-import { DEFAULT_IMAGE_UPLOAD_POLICY } from "@mechane/domain";
+import { DEFAULT_IMAGE_UPLOAD_POLICY } from "@mechane/domain/images";
 
 import { auth } from "../../src/auth";
 import { db } from "../../src/db/client";

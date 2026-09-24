@@ -1,4 +1,4 @@
-import { LayoutAlignment, LayoutDirection } from "@mechane/domain";
+import { LayoutAlignment, LayoutDirection } from "@mechane/domain/canvas";
 import { cn, DotIcon, Toggle, ToggleGroup } from "@mechane/design-system";
 
 type AlignmentSelectorProps = {

@@ -23,7 +23,7 @@
 // reports every edit as it happens.
 import { CommandStack, commandForEdit } from "@mechane/commands";
 import type { GraphEdit, Gesture, ShowGraphCommand } from "@mechane/commands";
-import type { ShowGraph } from "@mechane/domain";
+import type { ShowGraph } from "@mechane/domain/graph";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const EMPTY_GRAPH: ShowGraph = { shapes: [], nodes: [], edges: [] };

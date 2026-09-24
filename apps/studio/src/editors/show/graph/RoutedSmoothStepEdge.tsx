@@ -7,7 +7,7 @@
 // Storybook.
 
 import { Position, useInternalNode, useStore, type EdgeProps } from "@xyflow/react";
-import { pruneEdgeLayout } from "@mechane/domain";
+import { pruneEdgeLayout } from "@mechane/domain/edge-layout";
 import { useCallback } from "react";
 
 import { RoutedEdge } from "./RoutedEdge";

@@ -15,8 +15,14 @@ import {
   Plus,
   Trash2,
 } from "@mechane/design-system";
-import { DEFAULT_FLOW_COLOR, FLOW_COLORS, isFlowColor } from "@mechane/domain";
-import type { FlowColor, GraphNode, Position } from "@mechane/domain";
+import {
+  DEFAULT_FLOW_COLOR,
+  FLOW_COLORS,
+  isFlowColor,
+  type FlowColor,
+  type GraphNode,
+  type Position,
+} from "@mechane/domain/graph";
 import type { MutableRefObject } from "react";
 
 import type { GraphConnectionEditing, GraphCreationEditing } from "./commands/use-graph-editing";

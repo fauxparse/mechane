@@ -1,5 +1,5 @@
 import type { GraphEdit } from "@mechane/commands";
-import type { ShowGraph } from "@mechane/domain";
+import type { ShowGraph } from "@mechane/domain/graph";
 import { describe, expect, it } from "vitest";
 
 import { applyShowEdits, readShowGraph, writeShowGraph } from "./show-graph";

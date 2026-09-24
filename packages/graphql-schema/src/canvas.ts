@@ -24,8 +24,15 @@
 // Artboards at all. They stay on the `Artboard` document beside the Canvas,
 // where a caller that wants them reads them directly.
 
-import type { Canvas, Element, ElementKind, FrameElement } from "@mechane/domain";
-import { assertValidCanvas, ELEMENT_KINDS, InvalidCanvasError } from "@mechane/domain";
+import {
+  type Canvas,
+  type Element,
+  type ElementKind,
+  type FrameElement,
+  assertValidCanvas,
+  ELEMENT_KINDS,
+  InvalidCanvasError,
+} from "@mechane/domain/canvas";
 import type { TadaDocumentNode } from "gql.tada";
 import { graphql } from "./graphql";
 import { isRecord } from "./type-guards";

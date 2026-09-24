@@ -15,16 +15,13 @@ import {
   decodeCanvasWorkspaceEdit,
   isCanvasWorkspaceEditType,
 } from "@mechane/commands";
-import type { RunError } from "@mechane/domain";
-import {
-  assertOwnedBy,
-  DEFAULT_IMAGE_UPLOAD_POLICY,
-  defaultThemeSettings,
-  describeRunError,
-  findShowVariableReferences,
-  InvalidInteractionError,
-  isId,
-} from "@mechane/domain";
+import { findShowVariableReferences } from "@mechane/domain/graph";
+import { isId } from "@mechane/domain/id";
+import { DEFAULT_IMAGE_UPLOAD_POLICY } from "@mechane/domain/images";
+import { InvalidInteractionError } from "@mechane/domain/interactions";
+import { assertOwnedBy } from "@mechane/domain/ownership";
+import { type RunError, describeRunError } from "@mechane/domain/run-errors";
+import { defaultThemeSettings } from "@mechane/domain/theme-settings";
 import { and, eq } from "drizzle-orm";
 import { GraphQLError, GraphQLScalarType, Kind } from "graphql";
 import { createSchema } from "graphql-yoga";

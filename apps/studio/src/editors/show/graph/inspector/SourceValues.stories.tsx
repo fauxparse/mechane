@@ -1,6 +1,7 @@
 import { setSourceFieldDefault as setSourceFieldDefaultCommand } from "@mechane/commands";
 import { Sidebar, SidebarContent, SidebarProvider } from "@mechane/design-system";
-import { type Shape, type ShowGraph, type SourceNode } from "@mechane/domain";
+import type { ShowGraph, SourceNode } from "@mechane/domain/graph";
+import type { Shape } from "@mechane/domain/shapes";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 

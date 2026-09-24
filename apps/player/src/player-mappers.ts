@@ -18,8 +18,9 @@ import {
   decodeShowGraphDocument,
   decodeCanvasDocument,
 } from "@mechane/graphql-schema";
-import type { GraphNode, ShowGraph, SourceValues, StructuredValues, Type } from "@mechane/domain";
-import { PRIMITIVE_TYPES } from "@mechane/domain";
+import type { GraphNode, ShowGraph } from "@mechane/domain/graph";
+import { type Type, PRIMITIVE_TYPES } from "@mechane/domain/shapes";
+import type { SourceValues, StructuredValues } from "@mechane/domain/structured-values";
 import { resolveApiUrl } from "./api-url";
 import type { PlayerSession } from "./api";
 

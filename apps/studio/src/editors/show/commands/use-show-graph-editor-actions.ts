@@ -6,7 +6,8 @@ import {
   setFlowSize,
 } from "@mechane/commands";
 import type { ShowGraphCommand } from "@mechane/commands";
-import { generateId, type GraphNode, type Position, type ShowGraph } from "@mechane/domain";
+import type { GraphNode, Position, ShowGraph } from "@mechane/domain/graph";
+import { generateId } from "@mechane/domain/id";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { Connection, FitViewOptions, OnNodeDrag, XYPosition } from "../graph/react-flow";
 import type { MouseEvent as ReactMouseEvent } from "react";

@@ -5,7 +5,7 @@
 // has to arrive through context, exactly as ./node-interaction carries the
 // equivalent for node bodies.
 import { createContext, useContext } from "react";
-import type { EdgeLayout } from "@mechane/domain";
+import type { EdgeLayout } from "@mechane/domain/edge-layout";
 
 export interface EdgeInteraction {
   /**

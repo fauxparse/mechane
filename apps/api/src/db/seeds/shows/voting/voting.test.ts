@@ -1,18 +1,16 @@
+import { assertValidCanvas, type Element } from "@mechane/domain/canvas";
+import { resolveCueParameters } from "@mechane/domain/cue-parameters";
+import { assertValidShowGraph } from "@mechane/domain/graph";
+import { resolveRuntimeEvent } from "@mechane/domain/interactions";
+import { sceneVariableResolution } from "@mechane/domain/scene-variable-values";
+import { resolveSlotInstances } from "@mechane/domain/slots";
+import { defaultSourceValueTemplates, defaultSourceValues } from "@mechane/domain/source-defaults";
 import {
-  assertValidCanvas,
-  assertValidShowGraph,
   composeInstanceView,
-  defaultSourceValueTemplates,
-  defaultSourceValues,
   materializeInstanceState,
   materializeRunState,
   isStructuredValueReference,
-  resolveCueParameters,
-  resolveRuntimeEvent,
-  resolveSlotInstances,
-  sceneVariableResolution,
-} from "@mechane/domain";
-import type { Element } from "@mechane/domain";
+} from "@mechane/domain/structured-values";
 import { describe, expect, it } from "vitest";
 
 import {

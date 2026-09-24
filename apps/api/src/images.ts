@@ -4,7 +4,7 @@ import {
   DEFAULT_IMAGE_UPLOAD_POLICY,
   IMAGE_UPLOAD_ERROR_CODES,
   type ImageUploadErrorCode,
-} from "@mechane/domain";
+} from "@mechane/domain/images";
 
 import { digestBytes } from "./storage/blob-store";
 

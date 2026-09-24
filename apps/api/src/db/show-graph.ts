@@ -7,18 +7,19 @@
 // call one of the lifecycle functions below.
 import { applyGraphEdits } from "@mechane/commands";
 import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
+import { assertBlockReferencesExist } from "@mechane/domain/blocks";
 import {
-  assertBlockReferencesExist,
-  defaultValueForType,
   diagnoseCanvasFormulas,
-  generateId,
-  normaliseShowGraphVariableNames,
   type ElementPropertyResolutionContext,
-  type RuntimeValue,
-  type StructuredValueId,
-  type StructuredValues,
-} from "@mechane/domain";
-import type { GraphState, ShowGraph } from "@mechane/domain";
+} from "@mechane/domain/element-properties";
+import {
+  normaliseShowGraphVariableNames,
+  type GraphState,
+  type ShowGraph,
+} from "@mechane/domain/graph";
+import { generateId, type StructuredValueId } from "@mechane/domain/id";
+import { defaultValueForType } from "@mechane/domain/source-defaults";
+import type { RuntimeValue, StructuredValues } from "@mechane/domain/structured-values";
 import { eq } from "drizzle-orm";
 import type { StoredCanvas } from "./canvas";
 import { persistCanvases, readCanvasById, readCanvasWorkspace } from "./canvas";

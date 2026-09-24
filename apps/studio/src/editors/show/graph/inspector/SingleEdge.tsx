@@ -16,7 +16,8 @@ import {
   SelectValue,
   SidebarContent,
 } from "@mechane/design-system";
-import type { EdgeKind, GraphEdge, ShowGraph, UpdateOperation, ValuePath } from "@mechane/domain";
+import type { EdgeKind, GraphEdge, ShowGraph, ValuePath } from "@mechane/domain/graph";
+import type { UpdateOperation } from "@mechane/domain/interactions";
 import type { GraphInspectorEditing } from "../../commands/use-graph-editing";
 const KIND_LABEL: Record<EdgeKind, string> = {
   wiring: "Wiring",

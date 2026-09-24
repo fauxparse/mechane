@@ -1,4 +1,4 @@
-import { assertValidShowGraph } from "@mechane/domain";
+import { assertValidShowGraph } from "@mechane/domain/graph";
 import { describe, expect, it } from "vitest";
 
 import { readPlayerSession } from "../../../../player";

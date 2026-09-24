@@ -1,4 +1,4 @@
-import type { Element, FrameElement } from "@mechane/domain";
+import type { Element, FrameElement } from "@mechane/domain/canvas";
 
 export interface CanvasLayerEntry {
   readonly element: Element;

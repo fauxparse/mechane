@@ -1,18 +1,10 @@
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 
 import type { NewElement } from "@mechane/commands";
-import type {
-  Action,
-  Block,
-  Cue,
-  EventBinding,
-  ImageAssetReference,
-  InteractionOwner,
-  Position,
-  ResolvedImageValue,
-  SceneVariable,
-  Shape,
-} from "@mechane/domain";
+import type { Block } from "@mechane/domain/blocks";
+import type { Position, SceneVariable } from "@mechane/domain/graph";
+import type { Action, Cue, EventBinding, InteractionOwner } from "@mechane/domain/interactions";
+import type { ImageAssetReference, ResolvedImageValue, Shape } from "@mechane/domain/shapes";
 import type { ImageAsset } from "@mechane/graphql-schema";
 import type { CanvasArtboardDocument } from "../../api/canvas";
 import type { VariableInspectorEditing } from "../../components/VariableInspector";

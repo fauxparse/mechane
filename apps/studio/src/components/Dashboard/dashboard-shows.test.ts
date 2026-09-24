@@ -1,4 +1,4 @@
-import type { ShowId } from "@mechane/domain";
+import type { ShowId } from "@mechane/domain/id";
 import { describe, expect, it } from "vitest";
 
 import {

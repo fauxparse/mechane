@@ -1,4 +1,4 @@
-import { ObjectPosition } from "@mechane/domain";
+import { ObjectPosition } from "@mechane/domain/canvas";
 import { cn, DotIcon, ImageIcon, Toggle, ToggleGroup } from "@mechane/design-system";
 import { upperFirst } from "es-toolkit";
 

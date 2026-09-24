@@ -1,4 +1,4 @@
-import { ColorValue } from "@mechane/domain";
+import { ColorValue } from "@mechane/domain/shapes";
 import { cn } from "../../lib/utils";
 import { CSSProperties } from "react";
 

@@ -9,23 +9,14 @@ import {
   setEventBindingOrder,
 } from "@mechane/commands";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
-import type {
-  BlockVariable,
-  EventBinding,
-  ImageAssetReference,
-  InteractionOwner,
-  ResolvedImageValue,
-  ShowId,
-  Type,
-} from "@mechane/domain";
-import {
-  DEVICE_SOURCE_HANDLES,
-  defaultValueForType,
-  deviceQrImageValue,
-  generateId,
-  isId,
-  normalizeFormulaIdentifier,
-} from "@mechane/domain";
+import type { BlockVariable } from "@mechane/domain/blocks";
+import { deviceQrImageValue } from "@mechane/domain/device-qr";
+import { normalizeFormulaIdentifier } from "@mechane/domain/formula";
+import { DEVICE_SOURCE_HANDLES } from "@mechane/domain/graph";
+import { type ShowId, generateId, isId } from "@mechane/domain/id";
+import type { EventBinding, InteractionOwner } from "@mechane/domain/interactions";
+import type { ImageAssetReference, ResolvedImageValue, Type } from "@mechane/domain/shapes";
+import { defaultValueForType } from "@mechane/domain/source-defaults";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 

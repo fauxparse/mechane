@@ -1,5 +1,5 @@
-import type { ShowGraph } from "@mechane/domain";
-import { describeRunError } from "@mechane/domain";
+import type { ShowGraph } from "@mechane/domain/graph";
+import { describeRunError } from "@mechane/domain/run-errors";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 

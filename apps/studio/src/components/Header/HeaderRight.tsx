@@ -24,7 +24,7 @@ import {
   SquareIcon,
   SunIcon,
 } from "@mechane/design-system";
-import { DEFAULT_THEME_MODE, type ThemeMode } from "@mechane/domain";
+import { DEFAULT_THEME_MODE, type ThemeMode } from "@mechane/domain/theme-settings";
 import type { MouseEvent } from "react";
 
 import { useUserSettings } from "../../api/settings";

@@ -1,9 +1,6 @@
-import type {
-  ImageUploadErrorCode,
-  ImageValue,
-  ResolvedImageValue,
-  VariableReference,
-} from "@mechane/domain";
+import type { ImageUploadErrorCode } from "@mechane/domain/images";
+import type { VariableReference } from "@mechane/domain/property-values";
+import type { ImageValue, ResolvedImageValue } from "@mechane/domain/shapes";
 
 export type ImageInputValue = ResolvedImageValue | VariableReference<ImageValue>;
 

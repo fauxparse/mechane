@@ -8,8 +8,12 @@
 import { createContext, useContext, useEffect, useMemo } from "react";
 import type { ReactNode } from "react";
 
-import { DEFAULT_THEME_MODE, DEFAULT_THEME_PALETTE } from "@mechane/domain";
-import type { ThemeMode, ThemePalette } from "@mechane/domain";
+import {
+  DEFAULT_THEME_MODE,
+  DEFAULT_THEME_PALETTE,
+  type ThemeMode,
+  type ThemePalette,
+} from "@mechane/domain/theme-settings";
 
 export interface ThemeContextValue {
   mode: ThemeMode;

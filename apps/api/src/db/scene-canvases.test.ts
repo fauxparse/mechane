@@ -1,5 +1,5 @@
 import { ARTBOARD_COMMAND_TYPES, type CanvasWorkspaceEdit } from "@mechane/commands";
-import type { ShowGraph } from "@mechane/domain";
+import type { ShowGraph } from "@mechane/domain/graph";
 import { describe, expect, it } from "vitest";
 
 import { latestCanvasFills, readCanvasWorkspace } from "./canvas";

@@ -16,7 +16,7 @@ import {
   updateCanvasElements,
 } from "@mechane/commands";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Position } from "@mechane/domain";
+import type { Position } from "@mechane/domain/graph";
 
 import type { CanvasArtboardDocument } from "../../../api/canvas";
 

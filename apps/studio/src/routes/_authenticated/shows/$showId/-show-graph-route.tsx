@@ -1,5 +1,6 @@
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
-import type { ResolvedImageValue, ShowId } from "@mechane/domain";
+import type { ShowId } from "@mechane/domain/id";
+import type { ResolvedImageValue } from "@mechane/domain/shapes";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 

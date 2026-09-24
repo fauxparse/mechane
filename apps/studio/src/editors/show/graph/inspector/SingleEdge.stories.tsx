@@ -1,10 +1,9 @@
 import { InspectorProvider } from "@mechane/design-system";
+import type { GraphEdge, ShowGraph } from "@mechane/domain/graph";
 import type {
-  GraphEdge,
-  ShowGraph,
   UpdateOperand as UpdateOperandType,
   UpdateOperation as UpdateOperationType,
-} from "@mechane/domain";
+} from "@mechane/domain/interactions";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useMemo, useState } from "react";
 

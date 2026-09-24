@@ -6,7 +6,8 @@
 // and resolvers, decodes it with the decoder Studio and Player share, and
 // expects the Canvas that went in.
 import { CANVAS_COMMAND_TYPES, type CanvasWorkspaceEdit } from "@mechane/commands";
-import type { Element, FrameElement, ShowGraph } from "@mechane/domain";
+import type { Element, FrameElement } from "@mechane/domain/canvas";
+import type { ShowGraph } from "@mechane/domain/graph";
 import { decodeCanvasDocument, GetShowCanvasesQuery } from "@mechane/graphql-schema";
 import { print } from "graphql";
 import { createYoga } from "graphql-yoga";

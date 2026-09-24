@@ -1,11 +1,11 @@
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 
-import type { ImageAssetReference, ResolvedImageValue, Shape, Type } from "@mechane/domain";
+import type { ImageAssetReference, ResolvedImageValue, Shape, Type } from "@mechane/domain/shapes";
 import {
   isArrayStructuredValueTemplate,
   isShapeStructuredValueTemplate,
   normalizeStructuredValueTemplate,
-} from "@mechane/domain";
+} from "@mechane/domain/structured-values";
 import type { SourceValueRow } from "../inspector/source-value-types";
 import { INLINE_STRING_LIMIT } from "../inspector/source-values-helpers";
 import { recordIdentifier, type ArrayValueSelection } from "./ArrayValueEditor/types";

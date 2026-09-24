@@ -8,7 +8,7 @@ import {
   SidebarHeader,
   SquareDashedIcon,
 } from "@mechane/design-system";
-import type { EdgeKind, GraphEdge, GraphNode } from "@mechane/domain";
+import type { EdgeKind, GraphEdge, GraphNode } from "@mechane/domain/graph";
 import type { GraphInspectorEditing } from "@show-editor/commands/use-graph-editing";
 import { pluralize } from "../../../../utils/pluralize";
 import type { ShowGraphValueLocation } from "../../ShowGraphEditor";

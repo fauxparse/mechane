@@ -2,7 +2,7 @@
 // (@mechane/graphql-schema). Keeps the "how do we talk to the API" concern
 // out of the route components, which only care about the resulting data
 // and mutation callbacks.
-import type { ShowId } from "@mechane/domain";
+import type { ShowId } from "@mechane/domain/id";
 import {
   CreateShowMutation,
   DeleteShowMutation,

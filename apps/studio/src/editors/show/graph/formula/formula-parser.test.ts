@@ -1,4 +1,4 @@
-import { parse } from "@mechane/domain";
+import { parse } from "@mechane/domain/formula";
 import { describe, expect, it } from "vitest";
 import { parser } from "./formula-parser";
 

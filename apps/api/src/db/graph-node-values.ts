@@ -1,4 +1,4 @@
-import type { GraphNode } from "@mechane/domain";
+import type { GraphNode } from "@mechane/domain/graph";
 
 export function graphNodeInsertValues(node: GraphNode, graphId: string) {
   return {

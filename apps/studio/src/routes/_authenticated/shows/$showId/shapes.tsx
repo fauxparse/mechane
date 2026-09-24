@@ -1,5 +1,4 @@
-import type { ShowId } from "@mechane/domain";
-import { isId } from "@mechane/domain";
+import { type ShowId, isId } from "@mechane/domain/id";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 
 import { useActiveRun } from "../../../../api/runs";

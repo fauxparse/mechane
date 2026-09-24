@@ -1,13 +1,12 @@
 import { PropertyInput, type LucideIcon, type PropertyInputPreset } from "@mechane/design-system";
 import {
-  analyse,
   elementPropertyDescriptor,
-  formulaType,
   isElementPropertyFormulaable,
-  isPropertyFormula,
   type ElementPropertyName,
-  type FormulaScope,
-} from "@mechane/domain";
+} from "@mechane/domain/element-properties";
+import { analyse, type FormulaScope } from "@mechane/domain/formula";
+import { formulaType } from "@mechane/domain/formula-runtime";
+import { isPropertyFormula } from "@mechane/domain/property-values";
 import { useMemo, useState } from "react";
 import { FormulaEditor } from "../../../show/graph/formula/FormulaEditor";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";

@@ -1,4 +1,4 @@
-import type { Element as CanvasElement } from "@mechane/domain";
+import type { Element as CanvasElement } from "@mechane/domain/canvas";
 
 import { fixedFillSizing } from "./canvas-creation";
 import { roundToLogicalPixel } from "../components/canvas-pixels";

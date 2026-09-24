@@ -1,4 +1,5 @@
-import type { SceneNode, Shape, Type } from "@mechane/domain";
+import type { SceneNode } from "@mechane/domain/graph";
+import type { Shape, Type } from "@mechane/domain/shapes";
 import { useMemo } from "react";
 
 import {

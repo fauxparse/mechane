@@ -42,7 +42,8 @@ import {
   TypeIcon,
   UnderlineIcon,
 } from "@mechane/design-system";
-import type { ShapeValue, TextOverflow } from "@mechane/domain";
+import type { TextOverflow } from "@mechane/domain/canvas";
+import type { ShapeValue } from "@mechane/domain/shapes";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   GOOGLE_FONTS_API_KEY,

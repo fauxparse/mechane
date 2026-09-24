@@ -1,10 +1,5 @@
-import {
-  generateId,
-  type Cue,
-  type EventBinding,
-  type EventKind,
-  type InteractionOwner,
-} from "@mechane/domain";
+import { generateId } from "@mechane/domain/id";
+import type { Cue, EventBinding, EventKind, InteractionOwner } from "@mechane/domain/interactions";
 
 type AddInteractionOptions = {
   eventKind: EventKind;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import type { SceneVariable, Shape } from "@mechane/domain";
+import type { SceneVariable } from "@mechane/domain/graph";
+import type { Shape } from "@mechane/domain/shapes";
 import {
   sizeConstraintKey,
   sizeValueNumber,

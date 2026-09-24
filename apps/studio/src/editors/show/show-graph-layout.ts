@@ -16,7 +16,7 @@
 //
 // Everything here is pure and works on rendered React Flow nodes, so the
 // rules are testable without a canvas.
-import type { FlowSize, GraphEdge, Position } from "@mechane/domain";
+import type { FlowSize, GraphEdge, Position } from "@mechane/domain/graph";
 
 import type { FlowDimensions, ShowFlowNode } from "./graph/graph-to-flow";
 import {

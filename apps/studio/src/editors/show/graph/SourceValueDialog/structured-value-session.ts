@@ -1,4 +1,4 @@
-import { formatValuePath } from "@mechane/domain";
+import { formatValuePath } from "@mechane/domain/graph";
 import { sourceValuesEqual } from "../inspector/source-values-helpers";
 import { useState } from "react";
 import type { ArrayValueFocus } from "./ArrayValueEditor/types";

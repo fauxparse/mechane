@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
-import type { ShowGraph, Shape } from "@mechane/domain";
+import type { ShowGraph } from "@mechane/domain/graph";
+import type { Shape } from "@mechane/domain/shapes";
 
 import { ShapeWorkspace } from "./ShapeWorkspace";
 import type { ShapeEditing } from "../commands/use-graph-editing";

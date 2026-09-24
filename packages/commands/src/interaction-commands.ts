@@ -1,12 +1,12 @@
+import type { ShowGraph } from "@mechane/domain/graph";
 import type {
   Action,
   Cue,
   EventBinding,
-  ShowGraph,
   UpdateOperand,
   UpdateOperation,
-} from "@mechane/domain";
-import { isBindableKey } from "@mechane/domain";
+} from "@mechane/domain/interactions";
+import { isBindableKey } from "@mechane/domain/keys";
 
 import { capturing, composite } from "./command";
 import type { ShowGraphCommand } from "./graph-commands";

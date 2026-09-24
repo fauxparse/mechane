@@ -26,7 +26,7 @@ import {
 } from "@mechane/design-system";
 import { useMemo, useRef, useState, type RefObject } from "react";
 
-import type { Element as CanvasElement } from "@mechane/domain";
+import type { Element as CanvasElement } from "@mechane/domain/canvas";
 import type { CanvasArtboardDocument } from "../../../api/canvas";
 import { fixedFillSizing } from "../commands/canvas-creation";
 import type { LayerDropZone } from "../data/canvas-layer-drop";

@@ -1,4 +1,4 @@
-import { generateId } from "@mechane/domain";
+import { generateId } from "@mechane/domain/id";
 import { eq } from "drizzle-orm";
 import { afterEach } from "vitest";
 

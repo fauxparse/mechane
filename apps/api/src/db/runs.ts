@@ -1,17 +1,14 @@
-import type {
-  Run,
-  RunStatus,
-  RunState,
-  ShowGraph,
-  SourceValues,
-  StructuredValueRecord,
-  StructuredValueTemplate,
-  StructuredValues,
-} from "@mechane/domain";
+import type { ShowGraph } from "@mechane/domain/graph";
+import type { Run, RunStatus } from "@mechane/domain/runs";
+import { coerceShapeValue } from "@mechane/domain/shapes";
+import { defaultSourceValueTemplates, sourceDefaultsFor } from "@mechane/domain/source-defaults";
 import {
+  type RunState,
+  type SourceValues,
+  type StructuredValueRecord,
+  type StructuredValueTemplate,
+  type StructuredValues,
   assertValidRunState,
-  coerceShapeValue,
-  defaultSourceValueTemplates,
   materializeInstanceState,
   materializeRunState,
   materializeStructuredValue,
@@ -19,8 +16,7 @@ import {
   preserveStructuredValueTemplateIds,
   resolveRuntimeValue,
   resolveStructuredValueTemplate,
-  sourceDefaultsFor,
-} from "@mechane/domain";
+} from "@mechane/domain/structured-values";
 import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "./client";

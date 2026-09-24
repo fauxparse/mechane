@@ -7,7 +7,7 @@ import {
   VibeProvider,
   type ImageInputOnUploadProps,
 } from "@mechane/design-system";
-import type { Shape } from "@mechane/domain";
+import type { Shape } from "@mechane/domain/shapes";
 import { AnimatePresence, domAnimation, LazyMotion } from "motion/react";
 import { useMemo, useRef } from "react";
 

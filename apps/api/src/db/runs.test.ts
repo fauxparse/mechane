@@ -1,9 +1,6 @@
-import {
-  defaultSourceValueTemplates,
-  materializeRunState,
-  resolveRuntimeValue,
-  type ShowGraph,
-} from "@mechane/domain";
+import type { ShowGraph } from "@mechane/domain/graph";
+import { defaultSourceValueTemplates } from "@mechane/domain/source-defaults";
+import { materializeRunState, resolveRuntimeValue } from "@mechane/domain/structured-values";
 import { describe, expect, it } from "vitest";
 
 import { runStateForEditedSources } from "./runs";

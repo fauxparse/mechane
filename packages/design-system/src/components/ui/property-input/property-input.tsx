@@ -1,5 +1,5 @@
 import { useState, type FocusEvent, type KeyboardEvent } from "react";
-import type { ShapeValue } from "@mechane/domain";
+import type { ShapeValue } from "@mechane/domain/shapes";
 
 import { Combobox, ComboboxInput } from "../combobox";
 import { Popover, PopoverContent } from "../popover";

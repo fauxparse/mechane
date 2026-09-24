@@ -1,4 +1,4 @@
-import { CODE_ALPHABET } from "@mechane/domain";
+import { CODE_ALPHABET } from "@mechane/domain/pairing-code";
 import { useRef } from "react";
 
 type CodeInputProps = {

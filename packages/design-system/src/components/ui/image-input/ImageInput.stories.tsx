@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import type { ImageValue, ResolvedImageValue, VariableReference } from "@mechane/domain";
+import type { VariableReference } from "@mechane/domain/property-values";
+import type { ImageValue, ResolvedImageValue } from "@mechane/domain/shapes";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ImageInput, type ImageInputOnUploadProps, type ImageInputValue } from "./ImageInput";

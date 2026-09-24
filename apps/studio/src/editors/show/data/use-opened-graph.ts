@@ -1,4 +1,4 @@
-import type { ShowGraph } from "@mechane/domain";
+import type { ShowGraph } from "@mechane/domain/graph";
 import { decodeShowGraphDocument } from "@mechane/graphql-schema";
 import { useEffect, useState } from "react";
 

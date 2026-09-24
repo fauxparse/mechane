@@ -28,17 +28,15 @@ import {
   Trash2Icon,
   ZapIcon,
 } from "@mechane/design-system";
+import { generateId } from "@mechane/domain/id";
 import {
-  bindableKeyFor,
   EVENT_KINDS,
-  generateId,
-  keyAccessibleName,
-  keyDisplayName,
   type Cue,
   type EventBinding,
   type EventKind,
   type InteractionOwner,
-} from "@mechane/domain";
+} from "@mechane/domain/interactions";
+import { bindableKeyFor, keyAccessibleName, keyDisplayName } from "@mechane/domain/keys";
 
 import { sortBy } from "es-toolkit";
 import { useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";

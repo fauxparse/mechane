@@ -1,5 +1,5 @@
-import { isPropertyConnection } from "@mechane/domain";
-import type { Position } from "@mechane/domain";
+import type { Position } from "@mechane/domain/graph";
+import { isPropertyConnection } from "@mechane/domain/property-values";
 import type { CanvasArtboardDocument } from "../../../api/canvas";
 
 const SCENE_PREVIEW_SIZE = { width: 720, height: 420 };
