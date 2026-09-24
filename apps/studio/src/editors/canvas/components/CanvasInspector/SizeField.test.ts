@@ -64,12 +64,13 @@ const render = (selected: readonly Element[]) =>
   );
 
 describe("SizeField", () => {
-  it("reads at rest as what the Artboard renders, keeping the Formula out of the sidebar", () => {
+  it("reads at rest as what the Artboard renders, with the Formula button and no editor", () => {
     const html = render([bar]);
 
     expect(html).toContain('title="item.votes / Total * 100%"');
-    expect(html).toMatch(/>0%<\/span>/);
-    expect(html).toContain('data-slot="formula-badge"');
+    expect(html).toContain('value="0%"');
+    expect(html).toContain('data-connector="formula"');
+    expect(html).toContain('aria-label="Edit Formula"');
     expect(html).not.toContain("Loading Formula editor");
   });
 

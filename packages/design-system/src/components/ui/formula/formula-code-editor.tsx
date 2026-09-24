@@ -6,7 +6,7 @@ import {
   type FormulaScope,
   type FormulaType,
 } from "@mechane/domain/formula";
-import { cn } from "@mechane/design-system";
+import { cn } from "../../../lib/utils";
 import {
   autocompletion,
   closeBrackets,

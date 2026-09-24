@@ -1,45 +1,30 @@
 import {
-  Button,
   cn,
-  Trash2Icon,
-  XIcon,
-  type LucideIcon,
+  FormulaFlyout,
+  type FormulaFlyoutAnchor,
+  type PropertyInputFormula,
   type PropertyInputMenuItem,
 } from "@mechane/design-system";
 import type { Element } from "@mechane/domain/canvas";
-import {
-  analyse,
-  previewText,
-  type FormulaAnalysis,
-  type FormulaScope,
-} from "@mechane/domain/formula";
+import { analyse, type FormulaAnalysis, type FormulaScope } from "@mechane/domain/formula";
 import type { PropertyFormula } from "@mechane/domain/property-values";
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type ReactNode,
-  type RefObject,
-} from "react";
-import { createPortal } from "react-dom";
+import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
-import { FormulaEditor } from "../../../show/graph/formula/FormulaEditor";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 
-const FLYOUT_WIDTH = 420;
-const GUTTER = 12;
 const WRITE_A_FORMULA = "write-a-formula";
+const EDIT_FORMULA = "edit-formula";
+const REMOVE_FORMULA = "remove-formula";
 
 /** How one Property reads, writes and displays a Formula on each selected Element. */
 export interface PropertyFormulaBinding {
   readonly label: string;
-  readonly icon?: LucideIcon | string;
   readonly scope: FormulaScope;
   formulaOf(element: Element): PropertyFormula | null;
   /** The text an author edits for a stored Formula. */
   sourceOf(formula: PropertyFormula): string;
+  /** Where a new Formula starts on this Element: what its Variable connection reads, if any. */
+  seedOf(element: Element): string | null;
   /** What the row reads at rest: what the Artboard renders for this Formula. */
   restingText(formula: PropertyFormula, analysis: FormulaAnalysis): string;
   /** Suffix the `=` line appends to a draft's result, such as a size's `%`. */
@@ -50,20 +35,22 @@ export interface PropertyFormulaBinding {
   remove(element: Element, formula: PropertyFormula): Record<string, unknown>;
 }
 
-/** Wires Formula entry into the ordinary `PropertyInput` while the Property is a literal. */
+/** What the row's `PropertyInput` needs to carry a Formula, or to start one. */
 export interface PropertyFormulaEntry {
+  readonly formula: PropertyInputFormula | null;
   readonly menuItems: readonly PropertyInputMenuItem[];
   onMenuItemSelect(value: string): void;
   onKeyDown(event: KeyboardEvent<HTMLInputElement>): void;
 }
 
-type Session = { readonly selectionKey: string; readonly draft: string };
+/** The Elements a draft was opened for, so a press that reselects cannot redirect it. */
+type Session = { readonly targets: readonly Element[]; readonly draft: string };
 
 /**
- * A Property row that can carry a Formula (#711 Variant D, #733). Typing `=` over
- * the whole entry or choosing *Write a Formula* opens a flyout beside the
- * sidebar; the draft commits on Enter or blur as one edit, so the Artboard
- * recomputes once. At rest the row keeps its icon, badged, and reads the result.
+ * A Property row that can carry a Formula (#711 Variant D, #733). Typing `=` over the whole entry,
+ * choosing *Write a Formula*, or pressing the row's Formula button opens the design-system
+ * flyout beside the sidebar; the draft applies on Enter, blur or a press outside as one edit, so
+ * the Artboard recomputes once.
  */
 export function PropertyFormulaField({
   binding,
@@ -75,12 +62,13 @@ export function PropertyFormulaField({
   children(entry: PropertyFormulaEntry): ReactNode;
 }) {
   const { selected, update, updateElements } = useCanvasInspectorContext();
-  const anchorRef = useRef<HTMLDivElement | null>(null);
-  const selectionKey = selected.map((element) => element.id).join("|");
+  const rowRef = useRef<HTMLDivElement | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const sessionRef = useRef(session);
   sessionRef.current = session;
-  const open = session?.selectionKey === selectionKey;
+  const selectionKey = selected.map((element) => element.id).join("|");
+  const open =
+    session !== null && session.targets.map((element) => element.id).join("|") === selectionKey;
 
   const carriers = selected.flatMap((element) => {
     const formula = binding.formulaOf(element);
@@ -89,10 +77,12 @@ export function PropertyFormulaField({
   const sources = [...new Set(carriers.map(({ formula }) => binding.sourceOf(formula)))];
   const everyElementCarries = carriers.length === selected.length;
   const mixed = sources.length > 1 || (carriers.length > 0 && !everyElementCarries);
-  const source = !mixed ? (sources[0] ?? null) : null;
+  const source = mixed ? null : (sources[0] ?? null);
   const first = carriers[0]?.formula ?? null;
   const analysis = source === null ? null : analyse(source, binding.scope);
-  const blocking = analysis?.diagnostics.find((diagnostic) => diagnostic.severity === "blocking");
+  // The row only marks a blocked Formula; its message is the flyout's, one click away.
+  const blocked =
+    analysis?.diagnostics.some((diagnostic) => diagnostic.severity === "blocking") === true;
 
   const write = (updates: readonly { element: Element; properties: Record<string, unknown> }[]) => {
     if (updateElements) {
@@ -104,411 +94,140 @@ export function PropertyFormulaField({
       update(updates[0].properties);
     }
   };
-  const removal = () =>
-    carriers.map(({ element, formula }) => ({
-      element,
-      properties: binding.remove(element, formula),
-    }));
-  const writeSource = (next: string) =>
-    write(selected.map((element) => ({ element, properties: binding.write(element, next) })));
+  const removal = (targets: readonly Element[]) =>
+    targets.flatMap((element) => {
+      const formula = binding.formulaOf(element);
+      return formula ? [{ element, properties: binding.remove(element, formula) }] : [];
+    });
 
-  const begin = (draft = source ?? "") => {
-    const next = { selectionKey, draft };
+  const begin = (draft: string) => {
+    const next = { targets: selected, draft };
     sessionRef.current = next;
     setSession(next);
   };
-
-  const finish = (commit: boolean) => {
+  // The row's Formula button toggles: pressing it on an open flyout applies the draft and closes.
+  const start = () => {
+    if (sessionRef.current) apply();
+    else begin(source ?? (selected[0] ? binding.seedOf(selected[0]) : null) ?? "");
+  };
+  const changeDraft = (draft: string) => {
     const current = sessionRef.current;
-    if (!current || current.selectionKey !== selectionKey) return;
+    if (!current) return;
+    const next = { ...current, draft };
+    sessionRef.current = next;
+    setSession(next);
+  };
+  const end = () => {
+    const current = sessionRef.current;
     sessionRef.current = null;
     setSession(null);
-    if (!commit || mixed) return;
-    if (current.draft.trim() === "") write(removal());
-    else if (!everyElementCarries || current.draft !== source) writeSource(current.draft);
+    return current;
   };
+  // The Elements as they are now, for the ones the session was opened on.
+  const current = (targets: readonly Element[]) =>
+    targets.map((target) => selected.find((element) => element.id === target.id) ?? target);
 
+  const apply = () => {
+    const ended = end();
+    // Mixed opens no editor, so there is no draft to apply.
+    if (!ended || mixed) return;
+    const targets = current(ended.targets);
+    const { draft } = ended;
+    if (draft.trim() === "") {
+      write(removal(targets));
+      return;
+    }
+    const unchanged = targets.every((element) => {
+      const formula = binding.formulaOf(element);
+      return formula !== null && binding.sourceOf(formula) === draft;
+    });
+    if (!unchanged)
+      write(targets.map((element) => ({ element, properties: binding.write(element, draft) })));
+  };
   const remove = () => {
-    sessionRef.current = null;
-    setSession(null);
-    write(removal());
+    const ended = end();
+    write(removal(ended ? current(ended.targets) : selected));
   };
-
   const replaceAll = () => {
     const replacement = sources[0];
     if (replacement === undefined) return;
-    writeSource(replacement);
+    write(
+      selected.map((element) => ({ element, properties: binding.write(element, replacement) })),
+    );
     begin(replacement);
   };
 
+  const formula: PropertyInputFormula | null =
+    carriers.length > 0
+      ? {
+          text: mixed
+            ? everyElementCarries
+              ? `${sources.length} Formulas`
+              : "Mixed"
+            : first && analysis
+              ? binding.restingText(first, analysis)
+              : "",
+          source: source ?? undefined,
+          blocked,
+          onOpen: start,
+        }
+      : null;
+
   const entry: PropertyFormulaEntry = {
-    menuItems: [{ value: WRITE_A_FORMULA, label: "Write a Formula", icon: <FormulaGlyph /> }],
+    formula,
+    menuItems: formula
+      ? [
+          { value: EDIT_FORMULA, label: "Edit Formula" },
+          { value: REMOVE_FORMULA, label: "Remove Formula" },
+        ]
+      : [{ value: WRITE_A_FORMULA, label: "Write a Formula" }],
     onMenuItemSelect(value) {
-      if (value === WRITE_A_FORMULA) begin();
+      if (value === WRITE_A_FORMULA || value === EDIT_FORMULA) start();
+      else if (value === REMOVE_FORMULA) remove();
     },
     onKeyDown(event) {
-      if (event.key !== "=") return;
+      if (formula || event.key !== "=") return;
       const input = event.currentTarget;
       const wholeEntry =
         input.value === "" ||
         (input.selectionStart === 0 && input.selectionEnd === input.value.length);
       if (!wholeEntry) return;
       event.preventDefault();
-      begin("");
+      start();
     },
   };
 
-  const restingText = mixed
-    ? everyElementCarries
-      ? `${sources.length} Formulas`
-      : "Mixed"
-    : first && analysis
-      ? binding.restingText(first, analysis)
-      : null;
-
-  return (
-    <div className={cn("flex min-w-0 flex-col gap-1", className)}>
-      <div ref={anchorRef} className="min-w-0">
-        {carriers.length > 0 || open ? (
-          <button
-            type="button"
-            aria-label={`${binding.label} Formula`}
-            aria-expanded={open}
-            title={source ?? undefined}
-            className={cn(
-              "flex h-7 w-full min-w-0 items-center rounded-sm bg-muted/50 pr-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
-              open && "ring-1 ring-ring/40",
-              blocking && "ring-1 ring-destructive",
-            )}
-            onClick={() => {
-              if (!open) begin();
-            }}
-          >
-            <BadgedPropertyIcon icon={binding.icon} blocked={blocking !== undefined} />
-            <span
-              className={cn(
-                "min-w-0 flex-1 truncate px-1 text-sm",
-                restingText === null && "text-muted-foreground",
-                blocking && "text-destructive",
-              )}
-            >
-              {restingText ?? "New Formula"}
-            </span>
-          </button>
-        ) : (
-          children(entry)
-        )}
-      </div>
-      {blocking ? (
-        <p role="alert" className="text-xs text-destructive">
-          {blocking.message}
-        </p>
-      ) : null}
-      {open && session ? (
-        <FormulaFlyout
-          anchorRef={anchorRef}
-          binding={binding}
-          draft={session.draft}
-          mixed={mixed}
-          sources={sources}
-          carriers={carriers.length}
-          selectionCount={selected.length}
-          onDraftChange={(draft) => begin(draft)}
-          onFinish={finish}
-          onRemove={remove}
-          onReplaceAll={replaceAll}
-        />
-      ) : null}
-    </div>
-  );
-}
-
-function FormulaFlyout({
-  anchorRef,
-  binding,
-  draft,
-  mixed,
-  sources,
-  carriers,
-  selectionCount,
-  onDraftChange,
-  onFinish,
-  onRemove,
-  onReplaceAll,
-}: {
-  anchorRef: RefObject<HTMLDivElement | null>;
-  binding: PropertyFormulaBinding;
-  draft: string;
-  mixed: boolean;
-  sources: readonly string[];
-  carriers: number;
-  selectionCount: number;
-  onDraftChange(draft: string): void;
-  onFinish(commit: boolean): void;
-  onRemove(): void;
-  onReplaceAll(): void;
-}) {
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const position = useFlyoutPosition(anchorRef);
-  const analysis = draft.trim() === "" ? null : analyse(draft, binding.scope);
-
-  const finishRef = useRef(onFinish);
-  finishRef.current = onFinish;
-  useEffect(() => {
-    const onPointerDown = (event: PointerEvent) => {
-      if (isInside(event.target, panelRef, anchorRef)) return;
-      finishRef.current(true);
-    };
-    window.addEventListener("pointerdown", onPointerDown, true);
-    return () => window.removeEventListener("pointerdown", onPointerDown, true);
-  }, [anchorRef]);
-
-  const close = (commit: boolean) => {
-    onFinish(commit);
-    // The row re-renders once the session ends; focus whichever control it became.
-    requestAnimationFrame(() =>
-      anchorRef.current?.querySelector<HTMLElement>("button, input")?.focus(),
-    );
+  // Clear of the sidebar, not just the row: an H row's flyout must not cover W. Level with the
+  // row, at the sidebar's edge; outside a sidebar (Storybook) the row itself.
+  const anchor: FormulaFlyoutAnchor = {
+    getBoundingClientRect: () => {
+      const row = rowRef.current?.getBoundingClientRect() ?? new DOMRect();
+      const column = rowRef.current?.closest("[data-slot=sidebar-inner]")?.getBoundingClientRect();
+      return column ? new DOMRect(column.left, row.top, 0, row.height) : row;
+    },
   };
 
-  if (!position) return null;
-
-  return createPortal(
-    <div
-      ref={panelRef}
-      role="dialog"
-      aria-label={`${binding.label} Formula`}
-      style={{ top: position.top, left: position.left, width: FLYOUT_WIDTH }}
-      className="fixed z-50 flex flex-col gap-2 rounded-lg bg-popover p-3 text-popover-foreground shadow-xl ring-1 ring-foreground/10"
-      onKeyDown={(event) => {
-        if (event.key !== "Escape") return;
-        // The flyout owns Escape; the Canvas would otherwise read it as "clear selection".
-        event.preventDefault();
-        event.stopPropagation();
-        close(false);
-      }}
-      onBlur={(event) => {
-        if (event.relatedTarget && !isInside(event.relatedTarget, panelRef, anchorRef))
-          onFinish(true);
-      }}
-    >
-      <div className="flex items-center gap-2">
-        <FormulaGlyph />
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">{binding.label}</span>
-        <span className="text-xs text-muted-foreground">
-          {selectionCount === 1 ? "1 Element" : `${selectionCount} Elements`}
-        </span>
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          aria-label="Close the Formula editor"
-          onClick={() => close(true)}
-        >
-          <XIcon />
-        </Button>
-      </div>
-      {mixed ? (
-        <MixedFormulas
-          sources={sources}
-          carriers={carriers}
-          selectionCount={selectionCount}
-          onReplaceAll={onReplaceAll}
-        />
-      ) : (
-        <>
-          <FormulaEditor
-            autoFocus
-            value={draft}
-            scope={binding.scope}
-            onChange={onDraftChange}
-            onSubmit={() => close(true)}
-          />
-          <ResultLine analysis={analysis} suffix={binding.resultSuffix?.(draft) ?? ""} />
-          <DiagnosticsList analysis={analysis} />
-          <ReadingNow scope={binding.scope} />
-        </>
-      )}
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs text-muted-foreground">
-          {mixed ? null : "Enter applies · Esc cancels"}
-        </span>
-        {carriers > 0 ? (
-          <Button size="sm" variant="ghost" className="text-destructive" onClick={onRemove}>
-            <Trash2Icon /> Remove Formula
-          </Button>
-        ) : null}
-      </div>
-    </div>,
-    document.body,
-  );
-}
-
-/** Beside its row and clear of the sidebar; the sidebar's own layout never moves. */
-function useFlyoutPosition(anchorRef: RefObject<HTMLDivElement | null>) {
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
-  useLayoutEffect(() => {
-    const place = () => {
-      const anchor = anchorRef.current;
-      if (!anchor) return;
-      const rect = anchor.getBoundingClientRect();
-      // Clear of the sidebar, not just the row: an H row's flyout must not cover W.
-      const column = (
-        anchor.closest("[data-slot=sidebar-inner]") ?? anchor
-      ).getBoundingClientRect();
-      const left =
-        column.left - FLYOUT_WIDTH - GUTTER >= GUTTER
-          ? column.left - FLYOUT_WIDTH - GUTTER
-          : Math.min(column.right + GUTTER, window.innerWidth - FLYOUT_WIDTH - GUTTER);
-      setPosition({ top: Math.max(GUTTER, Math.min(rect.top, window.innerHeight - 320)), left });
-    };
-    place();
-    window.addEventListener("resize", place);
-    window.addEventListener("scroll", place, true);
-    return () => {
-      window.removeEventListener("resize", place);
-      window.removeEventListener("scroll", place, true);
-    };
-  }, [anchorRef]);
-  return position;
-}
-
-/** CodeMirror portals completion and lint tooltips to the body; they belong to the flyout. */
-function isInside(
-  target: EventTarget | null,
-  panelRef: RefObject<HTMLDivElement | null>,
-  anchorRef: RefObject<HTMLDivElement | null>,
-): boolean {
-  if (!(target instanceof Node)) return false;
-  if (panelRef.current?.contains(target) || anchorRef.current?.contains(target)) return true;
-  const element = target instanceof HTMLElement ? target : target.parentElement;
-  return Boolean(element?.closest(".cm-tooltip"));
-}
-
-function FormulaGlyph() {
   return (
-    <span
-      aria-hidden="true"
-      className="w-4 text-center font-mono text-[0.65rem] font-semibold italic tracking-tight text-primary"
-    >
-      fx
-    </span>
-  );
-}
-
-/** The Property keeps its own icon and carries a dot saying it is computed. */
-function BadgedPropertyIcon({ icon, blocked }: { icon?: LucideIcon | string; blocked: boolean }) {
-  const Icon = typeof icon === "string" || icon === undefined ? null : icon;
-  return (
-    <span className="relative flex size-7 shrink-0 items-center justify-center select-none">
-      {Icon ? (
-        <Icon aria-hidden="true" className="size-4" />
-      ) : (
-        <span aria-hidden="true">{typeof icon === "string" ? icon : null}</span>
-      )}
-      <span
-        aria-hidden="true"
-        data-slot="formula-badge"
-        className={cn(
-          "absolute top-1 right-1 size-1.5 rounded-full ring-1 ring-background",
-          blocked ? "bg-destructive" : "bg-primary",
-        )}
+    <div ref={rowRef} className={cn("flex min-w-0 flex-col gap-1", className)}>
+      {children(entry)}
+      <FormulaFlyout
+        open={open}
+        anchor={anchor}
+        returnFocus={() => rowRef.current?.querySelector("input")}
+        trigger={() => rowRef.current}
+        label={binding.label}
+        selectionCount={selected.length}
+        scope={binding.scope}
+        draft={session?.draft ?? ""}
+        onDraftChange={changeDraft}
+        resultSuffix={session ? binding.resultSuffix?.(session.draft) : undefined}
+        mixed={mixed ? { sources, carriers: carriers.length } : null}
+        canRemove={carriers.length > 0}
+        onApply={apply}
+        onCancel={end}
+        onRemove={remove}
+        onReplaceAll={replaceAll}
       />
-    </span>
-  );
-}
-
-function ResultLine({ analysis, suffix }: { analysis: FormulaAnalysis | null; suffix: string }) {
-  const value = analysis?.value ?? null;
-  const present = value !== null && value.kind !== "absent" && value.kind !== "failure";
-  return (
-    <div className="grid grid-cols-[auto_1fr] items-baseline gap-2">
-      <span className="font-mono text-xs text-muted-foreground">=</span>
-      <span
-        className={cn(
-          "truncate text-xs",
-          analysis?.blocked ? "text-destructive" : "text-foreground",
-        )}
-      >
-        {analysis?.blocked
-          ? "can't be evaluated yet"
-          : `${previewText(value)}${present ? suffix : ""}`}
-      </span>
-    </div>
-  );
-}
-
-function DiagnosticsList({ analysis }: { analysis: FormulaAnalysis | null }) {
-  if (!analysis?.diagnostics.length) return null;
-  return (
-    <ul className="space-y-1">
-      {analysis.diagnostics.map((diagnostic, index) => (
-        <li
-          key={`${diagnostic.category}-${diagnostic.from}-${index}`}
-          className={cn(
-            "text-xs leading-snug",
-            diagnostic.severity === "blocking" ? "text-destructive" : "text-muted-foreground",
-          )}
-        >
-          {diagnostic.message}
-          <span className="ml-1 opacity-60">
-            · {diagnostic.severity === "blocking" ? "blocks publishing" : "right now"}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function ReadingNow({ scope }: { scope: FormulaScope }) {
-  const entries = [...(scope.itemBinding ? [scope.itemBinding] : []), ...scope.ports];
-  return (
-    <div className="space-y-1 text-xs">
-      <span className="font-medium">Reading now</span>
-      {entries.length === 0 ? (
-        <p className="text-muted-foreground">This Scene has no Variables to read.</p>
-      ) : (
-        <ul className="space-y-0.5 text-muted-foreground">
-          {entries.map((entry) => (
-            <li key={entry.name} className="truncate">
-              <span className="font-mono text-foreground">{entry.name}</span>:{" "}
-              {previewText(entry.value)}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-/** Mixed opens no editor: a controlled editor handed one Formula would overwrite the rest. */
-function MixedFormulas({
-  sources,
-  carriers,
-  selectionCount,
-  onReplaceAll,
-}: {
-  sources: readonly string[];
-  carriers: number;
-  selectionCount: number;
-  onReplaceAll(): void;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <p className="text-xs text-muted-foreground">
-        {carriers === selectionCount
-          ? `${sources.length} different Formulas across this selection.`
-          : `${carriers} of ${selectionCount} Elements carry a Formula.`}
-      </p>
-      <ul className="space-y-0.5">
-        {sources.map((source) => (
-          <li key={source} className="truncate font-mono text-xs text-foreground">
-            = {source}
-          </li>
-        ))}
-      </ul>
-      <Button size="sm" variant="outline" className="h-6 text-xs" onClick={onReplaceAll}>
-        Replace all with the first
-      </Button>
     </div>
   );
 }

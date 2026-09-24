@@ -33,11 +33,25 @@ export type PropertyInputMenuItem = {
   readonly icon?: ReactNode;
 };
 
+/** A Formula driving the Property. The row reads its result; the trailing button opens it. */
+export type PropertyInputFormula = {
+  /** What the row reads: the value the Formula renders, or `Mixed` / `2 Formulas`. */
+  readonly text: string;
+  /** The source, shown on hover. */
+  readonly source?: string;
+  /** A blocking diagnostic: the button and row turn destructive. */
+  readonly blocked?: boolean;
+  /** Opens the host's Formula editor. */
+  onOpen(): void;
+};
+
 export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   className?: string;
   icon?: LucideIcon | string;
   value?: PropertyInputValue<T> | null;
   type?: PropertyInputType;
+  /** A Formula drives the value: the row is read-only and the button opens the editor. */
+  formula?: PropertyInputFormula | null;
   /** Render the current value in place of the input while it is inactive. */
   renderInactiveValue?: (value: ShapeValue | null) => ReactNode;
   /** Render controls inside the input's trailing addon. */

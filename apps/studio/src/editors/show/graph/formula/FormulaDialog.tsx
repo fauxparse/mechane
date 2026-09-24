@@ -13,6 +13,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogTitle,
+  FormulaEditor,
   XIcon,
   cn,
 } from "@mechane/design-system";
@@ -28,7 +29,6 @@ import type { ShowGraph } from "@mechane/domain/graph";
 import { typeLabel, type Shape } from "@mechane/domain/shapes";
 import type { ReactNode } from "react";
 
-import { FormulaEditor } from "./FormulaEditor";
 import {
   useTransformerPreview,
   type StudioTransformerNode,

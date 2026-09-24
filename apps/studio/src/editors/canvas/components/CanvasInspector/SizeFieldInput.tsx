@@ -62,10 +62,11 @@ export const SizeFieldInput = ({
     value={
       previewing
         ? literalValue("number", previewValue)
-        : sizeMixed
+        : sizeMixed || entry?.formula
           ? null
           : sizeInputValue(size, sizeVariables, shapes)
     }
+    formula={previewing ? null : entry?.formula}
     sizing={mode}
     variables={sizeVariables}
     min={0}

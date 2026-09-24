@@ -21,7 +21,6 @@ export function Addons<T extends ShapeValue>({
   inputType,
   colorText,
   linkedVariable,
-  allowLink = true,
   onScrubPointerDown,
   onScrubPointerMove,
   onScrubPointerEnd,
@@ -32,10 +31,10 @@ export function Addons<T extends ShapeValue>({
   inputType: PropertyInputType;
   colorText: string;
   linkedVariable: VariableReference<T> | null;
-  allowLink?: boolean;
   onScrubPointerDown: PointerEventHandler<HTMLDivElement>;
   onScrubPointerMove?: PointerEventHandler<HTMLDivElement>;
   onScrubPointerEnd?: PointerEventHandler<HTMLDivElement>;
+  /** The trailing button, or nothing when the Property has no menu to offer. */
   connector: ReactNode;
   actions?: ReactNode;
 }) {
@@ -83,7 +82,7 @@ export function Addons<T extends ShapeValue>({
           </span>
         </InputGroupAddon>
       )}
-      {allowLink && connector}
+      {connector}
       {actions ? (
         <InputGroupAddon align="inline-end" className="h-full gap-0 pr-1 has-[>button]:mr-0">
           {actions}

@@ -211,6 +211,34 @@ export const slotInputOptions = (
   return runtimeItem ? [runtimeItem, ...options] : options;
 };
 
+/**
+ * The Formula that reads what a Variable connection reads: `Total`, or `Candidate.votes` through a
+ * Shape field. Writing a Formula over a connected Property starts here, so the value on screen does
+ * not change until the author edits it.
+ */
+export const connectionFormulaSource = (
+  value: unknown,
+  variables: readonly SceneVariable[],
+  shapes: readonly Shape[],
+): string | null => {
+  if (!isPropertyConnection(value)) return null;
+  const variable = variables.find((candidate) => candidate.id === value.variableId);
+  if (!variable?.type) return null;
+  let type: Type = variable.type;
+  const parts = [variable.name];
+  for (const fieldId of value.fieldPath ?? []) {
+    if (typeof type !== "object" || type.kind !== "shape") return null;
+    const { shapeId } = type;
+    const field = shapes
+      .find((shape) => shape.id === shapeId)
+      ?.fields.find((candidate) => candidate.id === fieldId);
+    if (!field) return null;
+    parts.push(field.name);
+    type = field.type;
+  }
+  return parts.join(".");
+};
+
 export const isVariableInput = (value: PropertyInputValue | null): value is VariableReference =>
   value !== null && typeof value === "object" && "id" in value && "name" in value;
 
@@ -233,19 +261,20 @@ export const sizeInputValue = (
   return null;
 };
 
+/**
+ * Switching to Fill or Hug drops the value, whatever it was: those modes take their size from
+ * the layout. Switching to fixed measures what is on screen; staying fixed keeps the value, so
+ * a Formula or Variable survives re-choosing the mode it is already in.
+ */
 export const sizingForMode = (
   size: AxisSize | undefined,
   mode: SizeMode,
   currentValue?: number,
-): AxisSize => ({
-  ...size,
-  mode,
-  ...(mode === "fixed" && currentValue !== undefined
-    ? { value: currentValue }
-    : mode === "fixed" && size?.value === undefined
-      ? { value: 100 }
-      : {}),
-});
+): AxisSize => {
+  if (mode !== "fixed") return { mode };
+  if (size?.mode === "fixed") return size;
+  return { mode, value: currentValue ?? 100 };
+};
 
 export const SIZE_CONSTRAINT_KEYS = {
   width: { min: "minWidth", max: "maxWidth" },

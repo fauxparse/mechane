@@ -58,7 +58,7 @@ describe("Canvas camera session state", () => {
 });
 
 describe("Canvas workspace artboard sizing", () => {
-  it("uses measured root bounds for Hug and design bounds for Fixed and Fill", () => {
+  it("uses measured bounds for Hug, authored bounds for Fixed, and the default for Fill", () => {
     const scene = {
       ...artboards[0]!,
       canvas: {
@@ -99,8 +99,8 @@ describe("Canvas workspace artboard sizing", () => {
         root: {
           ...scene.canvas.root,
           sizing: {
-            width: { mode: "fill" as const, value: 960 },
-            height: { mode: "fill" as const, value: 540 },
+            width: { mode: "fill" as const },
+            height: { mode: "fill" as const },
           },
         },
       },
@@ -116,8 +116,8 @@ describe("Canvas workspace artboard sizing", () => {
       height: 540,
     });
     expect(canvasArtboardSize(fillRoot, { width: 1, height: 2 })).toEqual({
-      width: 960,
-      height: 540,
+      width: 720,
+      height: 420,
     });
   });
 });

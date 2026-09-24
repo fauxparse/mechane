@@ -11,6 +11,7 @@ import { isPropertyConnection, isPropertyFormula } from "@mechane/domain/propert
 import { useMemo } from "react";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import {
+  connectionFormulaSource,
   elementFormulaScope,
   inputType,
   isVariableInput,
@@ -72,7 +73,8 @@ export const PropertyField = ({
     <PropertyInput
       className={inputClassName}
       type={type}
-      value={value}
+      value={entry?.formula ? null : value}
+      formula={entry?.formula}
       placeholder={isAuto ? "Auto" : placeholder}
       unit={descriptor.unit}
       step={descriptor.step}
@@ -119,13 +121,13 @@ export const PropertyField = ({
   };
   const binding: PropertyFormulaBinding = {
     label: propertyLabel(descriptor),
-    icon,
     scope: formulaScope,
     formulaOf: (element) => {
       const stored: unknown = Reflect.get(element, name);
       return isPropertyFormula(stored) ? stored : null;
     },
     sourceOf: (formula) => formula.formula,
+    seedOf: (element) => connectionFormulaSource(Reflect.get(element, name), variables, shapes),
     restingText: (formula, analysis) => {
       const result = analysis.blocked ? null : analysis.value;
       return displayText(

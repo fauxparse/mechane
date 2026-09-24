@@ -82,6 +82,22 @@ describe("Canvas model", () => {
         },
       },
     ],
+    [
+      "a Fill size carrying a Formula",
+      {
+        root: {
+          id: "root",
+          type: "frame",
+          sizing: {
+            width: {
+              mode: "fill",
+              value: { kind: "formula", formula: "Total * 2", fallback: 40 },
+            },
+          },
+          children: [],
+        },
+      },
+    ],
   ])("rejects %s", (_reason, canvas) => {
     expect(() => assertValidCanvas(canvas as Canvas)).toThrow(InvalidCanvasError);
   });

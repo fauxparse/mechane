@@ -104,6 +104,13 @@ export {
   dropdownMenuItemVariants,
   type DropdownMenuHandle,
 } from "./components/ui/dropdown-menu";
+export { FormulaEditor, type FormulaEditorProps } from "./components/ui/formula/formula-editor";
+export {
+  FORMULA_FLYOUT_WIDTH,
+  FormulaFlyout,
+  type FormulaFlyoutAnchor,
+  type FormulaFlyoutProps,
+} from "./components/ui/formula/formula-flyout";
 export { ImageCropper } from "./components/ui/image-input/ImageCropper";
 export type { ImageCropperProps } from "./components/ui/image-input/ImageCropper";
 export {
@@ -139,8 +146,9 @@ export {
   PropertyInput,
   type PropertyInputConstraint,
   type PropertyInputConstraints,
-  type PropertyInputPreset,
+  type PropertyInputFormula,
   type PropertyInputMenuItem,
+  type PropertyInputPreset,
   type PropertyInputProps,
   type PropertyInputSizing,
   type PropertyInputType,
@@ -258,3 +266,4 @@ export { TextAlignVerticalBottomIcon } from "./icons/TextAlignVerticalBottomIcon
 export { TextAlignVerticalCenterIcon } from "./icons/TextAlignVerticalCenterIcon";
 export { TextAlignVerticalTopIcon } from "./icons/TextAlignVerticalTopIcon";
 export * from "lucide-react";
+export { FlaskConicalIcon as FormulaIcon } from "lucide-react";

@@ -16,10 +16,17 @@ export const SIZE_MODES = ["hug", "fill", "fixed"] as const;
 export type SizeMode = (typeof SIZE_MODES)[number];
 export type SizeUnit = "px" | "%";
 export type SizeValue = number | { value: number; unit: SizeUnit };
-export interface AxisSize {
-  mode: SizeMode;
-  value?: SizeValue | PropertyConnection<SizeValue> | PropertyFormula<SizeValue>;
-}
+/**
+ * A fixed size carries its value — a literal, a Variable connection or a Formula. Fill and Hug
+ * take their size from the layout, so they carry none: the modes are mutually exclusive with a
+ * value, and switching to Fill or Hug drops it.
+ */
+export type AxisSize =
+  | {
+      mode: "fixed";
+      value: SizeValue | PropertyConnection<SizeValue> | PropertyFormula<SizeValue>;
+    }
+  | { mode: "fill" | "hug"; value?: never };
 
 export type Rotation = 0 | 90 | 180 | 270;
 export type BlendMode =
@@ -274,14 +281,18 @@ function assertAxisSize(size: AxisSize | undefined, context: string): void {
   if (!SIZE_MODES.includes(size.mode)) {
     throw new InvalidCanvasError(`${context} has an unknown sizing mode.`);
   }
-  if (size.mode === "fixed" && size.value === undefined) {
+  if (size.mode !== "fixed") {
+    const { mode } = size;
+    // Persisted rows arrive untyped, so the exclusivity the type states is checked here too.
+    if (size.value !== undefined) {
+      throw new InvalidCanvasError(`${context} ${mode} sizing cannot carry a value.`);
+    }
+    return;
+  }
+  if (size.value === undefined) {
     throw new InvalidCanvasError(`${context} fixed sizing requires a value.`);
   }
-  if (
-    size.value !== undefined &&
-    !isPropertyConnection(size.value) &&
-    !isPropertyFormula(size.value)
-  ) {
+  if (!isPropertyConnection(size.value) && !isPropertyFormula(size.value)) {
     assertSizeValue(size.value, `${context} value`);
   }
 }

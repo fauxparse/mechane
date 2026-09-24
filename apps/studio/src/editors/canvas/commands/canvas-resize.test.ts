@@ -210,11 +210,8 @@ describe("Canvas fixed resize properties", () => {
           id: "root",
           type: "frame",
           layout: { rotation: 90 },
-          sizing: {
-            width: { mode: "fill", value: 1 },
-            height: { mode: "fill", value: 1 },
-          },
-        } as Element,
+          sizing: { width: { mode: "fill" }, height: { mode: "fill" } },
+        },
         { width: 320, height: 180 },
       ),
     ).toEqual({

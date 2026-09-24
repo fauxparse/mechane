@@ -1,7 +1,7 @@
 import type { FormulaScope } from "@mechane/domain/formula";
 import { lazy, Suspense } from "react";
 
-const FormulaCodeEditor = lazy(() => import("./FormulaCodeEditor"));
+const FormulaCodeEditor = lazy(() => import("./formula-code-editor"));
 
 export interface FormulaEditorProps {
   value: string;

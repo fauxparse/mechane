@@ -1,4 +1,4 @@
-import type { AxisSize, Element, Element as CanvasElement } from "@mechane/domain/canvas";
+import type { Element, Element as CanvasElement } from "@mechane/domain/canvas";
 import { isPropertyFormula } from "@mechane/domain/property-values";
 import { roundToLogicalPixel } from "../components/canvas-pixels";
 
@@ -103,11 +103,7 @@ export function fixedResizeProperties(
     if (value === undefined) continue;
     const current = sizing[axis]?.value;
     sizing[axis] = isPropertyFormula(current)
-      ? ({
-          ...sizing[axis],
-          mode: "fixed",
-          value: { ...current, fallback: { value, unit: "px" } },
-        } as AxisSize)
+      ? { mode: "fixed", value: { ...current, fallback: { value, unit: "px" } } }
       : { mode: "fixed", value };
   }
   const properties: Record<string, unknown> = { sizing };

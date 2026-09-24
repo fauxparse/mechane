@@ -10,6 +10,7 @@ import { useMemo } from "react";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import {
+  connectionFormulaSource,
   elementFormulaScope,
   variableOptions,
   type SizeConstraint,
@@ -129,13 +130,13 @@ export const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldPr
     0;
   const binding: PropertyFormulaBinding = {
     label: axis === "width" ? "Width" : "Height",
-    icon: axis === "width" ? "W" : "H",
     scope: formulaScope,
     formulaOf: (element) => {
       const stored = element.sizing?.[axis]?.value;
       return isPropertyFormula(stored) ? stored : null;
     },
     sourceOf: (formula) => joinFormulaUnit(formula.formula, formula.unit),
+    seedOf: (element) => connectionFormulaSource(element.sizing?.[axis]?.value, variables, shapes),
     restingText: (formula, analysis) => {
       const result = analysis.blocked ? null : analysis.value;
       if (result?.kind === "number")
@@ -149,8 +150,7 @@ export const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldPr
     resultSuffix: (source) => (splitFormulaUnit(source).unit === "%" ? "%" : ""),
     write: (element, source) => {
       const typed = splitFormulaUnit(source);
-      const current = element.sizing?.[axis];
-      const stored = current?.value;
+      const stored = element.sizing?.[axis]?.value;
       const fallback = isPropertyFormula(stored)
         ? stored.fallback
         : isPropertyConnection(stored)
@@ -160,7 +160,6 @@ export const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldPr
         sizing: {
           ...element.sizing,
           [axis]: {
-            ...current,
             mode: "fixed",
             value: { kind: "formula", formula: typed.formula, fallback, unit: typed.unit },
           },
@@ -170,11 +169,7 @@ export const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldPr
     remove: (element, formula) => ({
       sizing: {
         ...element.sizing,
-        [axis]: {
-          ...element.sizing?.[axis],
-          mode: "fixed",
-          value: formula.fallback ?? measured(element),
-        },
+        [axis]: { mode: "fixed", value: formula.fallback ?? measured(element) },
       },
     }),
   };

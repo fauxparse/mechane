@@ -1,11 +1,11 @@
-import { useState, type FocusEvent, type KeyboardEvent } from "react";
+import { useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import type { ShapeValue } from "@mechane/domain/shapes";
 
 import { Combobox, ComboboxInput } from "../combobox";
 import { Popover, PopoverContent } from "../popover";
 import { Addons } from "./addons";
-import { Connector } from "./connector";
-import { Menu } from "./menu";
+import { Connector, type ConnectorState } from "./connector";
+import { hasMenuContent, Menu } from "./menu";
 import { VariablePicker } from "./variable-picker";
 import { usePropertyInput } from "./use-property-input";
 import type { PropertyInputProps } from "./property-input-types";
@@ -22,6 +22,7 @@ export const PropertyInput = <T extends ShapeValue>({
   className,
   icon,
   value,
+  formula,
   type = "text",
   renderInactiveValue,
   actions,
@@ -51,6 +52,7 @@ export const PropertyInput = <T extends ShapeValue>({
 }: PropertyInputProps<T> & { vibe?: Vibe }) => {
   const vibe = useVibe(vibeProp);
   const [inputActive, setInputActive] = useState(false);
+  const rowRef = useRef<HTMLDivElement | null>(null);
   const input = usePropertyInput({
     value,
     type,
@@ -75,7 +77,11 @@ export const PropertyInput = <T extends ShapeValue>({
   });
   const inactiveValue = renderInactiveValue?.(input.currentValue);
   const hasInactiveValue =
-    !inputActive && !input.linkedVariable && inactiveValue !== null && inactiveValue !== undefined;
+    !formula &&
+    !inputActive &&
+    !input.linkedVariable &&
+    inactiveValue !== null &&
+    inactiveValue !== undefined;
   const activateInput = () => {
     input.inputElementRef.current?.focus();
   };
@@ -84,27 +90,41 @@ export const PropertyInput = <T extends ShapeValue>({
     event.preventDefault();
     activateInput();
   };
-  const connectorLabel = input.linkedVariable
-    ? "Disconnect variable"
-    : input.currentSizing === "fixed"
-      ? "Connect variable"
-      : `${input.currentSizing === "fill" ? "Fill" : "Hug"} ${dimension}`;
+  const connector: ConnectorState | null = formula
+    ? { kind: "formula", blocked: formula.blocked === true, onOpen: formula.onOpen }
+    : dimension && input.currentSizing !== "fixed"
+      ? { kind: "sizing", sizing: input.currentSizing, dimension }
+      : input.linkedVariable
+        ? { kind: "variable" }
+        : hasMenuContent({
+              inputType: input.inputType,
+              dimension,
+              presets,
+              menuItems,
+              allowAuto,
+              allowLink,
+            })
+          ? { kind: "menu" }
+          : null;
 
   return (
     <Popover open={input.variablesOpen} onOpenChange={input.setVariablesOpen}>
       <div
+        ref={rowRef}
         className={cn("group/property-input w-full min-w-0", className)}
         data-linked={input.linkedVariable ? true : undefined}
+        data-formula={formula ? (formula.blocked ? "blocked" : "active") : undefined}
         data-vibe={vibe}
       >
         <Combobox
           value={null}
-          inputValue={input.inputText}
+          inputValue={formula ? formula.text : input.inputText}
           onValueChange={input.handleMenuValueChange}
           onOpenChange={(open) => {
             if (!open) input.commitDraftInput();
           }}
           onInputValueChange={(nextValue, eventDetails) => {
+            if (formula) return;
             if (
               eventDetails.reason === "input-change" &&
               eventDetails.event.target instanceof HTMLInputElement &&
@@ -120,6 +140,10 @@ export const PropertyInput = <T extends ShapeValue>({
             inputMode={input.inputType === "number" ? "decimal" : undefined}
             aria-label={ariaLabel ?? placeholder ?? input.inputType}
             placeholder={placeholder}
+            // A Formula-driven row reads its result; the Formula is edited in the host's editor.
+            readOnly={formula ? true : undefined}
+            title={formula?.source}
+            onClick={formula ? formula.onOpen : undefined}
             className={cn(
               "w-full min-w-0 border-0 *:data-[slot=combobox-input]:px-1 rounded-sm h-7 data-[slot=combobox-input]:h-7",
               vibe === "table"
@@ -127,6 +151,9 @@ export const PropertyInput = <T extends ShapeValue>({
                 : "bg-muted/50 dark:bg-muted/50",
               vibe === "table" && "data-[slot=combobox-input]:h-full",
               !icon && "pl-2",
+              formula && "*:data-[slot=combobox-input]:cursor-pointer",
+              formula?.blocked &&
+                "ring-1 ring-destructive *:data-[slot=combobox-input]:text-destructive",
               hasInactiveValue &&
                 "[&>input]:pointer-events-none [&>input]:w-0 [&>input]:flex-none *:data-[slot=combobox-input]:p-0 [&>input]:opacity-0",
             )}
@@ -140,6 +167,11 @@ export const PropertyInput = <T extends ShapeValue>({
               setInputActive(false);
             }}
             onKeyDown={(event) => {
+              if (formula && event.key === "Enter") {
+                event.preventDefault();
+                formula.onOpen();
+                return;
+              }
               if (input.handleInputKeyDown(event)) onKeyDown?.(event);
             }}
           >
@@ -164,19 +196,11 @@ export const PropertyInput = <T extends ShapeValue>({
               inputType={input.inputType}
               colorText={input.colorText}
               linkedVariable={input.linkedVariable}
-              allowLink={allowLink}
               onScrubPointerDown={input.handleScrubPointerDown}
               onScrubPointerMove={input.isScrubbing ? input.handleScrubPointerMove : undefined}
               onScrubPointerEnd={input.isScrubbing ? input.handleScrubPointerEnd : undefined}
               actions={actions}
-              connector={
-                <Connector
-                  dimension={dimension}
-                  sizing={input.currentSizing}
-                  label={connectorLabel}
-                  linkedVariable={input.linkedVariable}
-                />
-              }
+              connector={connector ? <Connector state={connector} /> : null}
             />
           </ComboboxInput>
           <Menu
@@ -195,6 +219,7 @@ export const PropertyInput = <T extends ShapeValue>({
         </Combobox>
       </div>
       <PopoverContent
+        anchor={rowRef}
         align="end"
         sideOffset={10}
         alignOffset={-4}
