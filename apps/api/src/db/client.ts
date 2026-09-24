@@ -25,6 +25,6 @@ function requireDatabaseUrl(): string {
   return url;
 }
 
-const pool = new Pool({ connectionString: requireDatabaseUrl() });
+export const pool = new Pool({ connectionString: requireDatabaseUrl() });
 
 export const db = drizzle(pool, { schema });
