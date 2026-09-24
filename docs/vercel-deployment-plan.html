@@ -300,7 +300,7 @@
 <header class="hero">
   <div class="eyebrow">Deployment plan</div>
   <h1>Deploying Mechanē to Vercel</h1>
-  <p class="lede">What it takes to get Studio, Player and the API running on <code>mechane.live</code> this weekend, backed by Neon Postgres, Cloudflare R2 and Ably. The email verification switch and the 2 MB image cap are built. The two remaining code blockers are <a href="https://github.com/fauxparse/mechane/issues/762">#762</a> and <a href="https://github.com/fauxparse/mechane/issues/763">#763</a>. Nothing is deployed.</p>
+  <p class="lede">What it takes to get Studio, Player and the API running on <code>mechane.live</code> this weekend, backed by Neon Postgres, Cloudflare R2 and Ably. The email verification switch, the 2 MB image cap and the API bundle are built. The remaining code blocker is <a href="https://github.com/fauxparse/mechane/issues/763">#763</a>. Nothing is deployed.</p>
   <div class="meta">
     <span class="chip">studio.mechane.live</span>
     <span class="chip">show.mechane.live</span>
@@ -311,19 +311,19 @@
 
 <section id="summary">
   <h2>Summary</h2>
-  <p>Studio and Player are close. They're plain Vite SPAs and need a rewrite rule and some environment variables. The API is further off: two code problems still block a working production deploy, and two more are handled.</p>
+  <p>Studio and Player are close. They're plain Vite SPAs and need a rewrite rule and some environment variables. The API still has one code problem blocking a working production deploy, and three are handled.</p>
 
   <div class="cards">
-    <div class="card red"><div class="num">2</div><div class="cap">code blockers left (#762, #763)</div></div>
-    <div class="card green"><div class="num">2</div><div class="cap">handled: email switch, 2 MB image cap</div></div>
+    <div class="card red"><div class="num">1</div><div class="cap">code blocker left (#763)</div></div>
+    <div class="card green"><div class="num">3</div><div class="cap">handled: API bundle, email switch, 2 MB image cap</div></div>
     <div class="card blue"><div class="num">3</div><div class="cap">Vercel projects</div></div>
     <div class="card amber"><div class="num">4</div><div class="cap">outside services to sign up for</div></div>
   </div>
 
   <ol class="blockers">
-    <li>
-      <strong>The API won't build on Vercel.</strong> <a href="https://github.com/fauxparse/mechane/issues/762">#762</a>
-      <p><code>@vercel/node</code> 5.9.5 transpiles functions with whatever <code>typescript</code> package the project has installed, and calls <code>ts.sys.readFile</code> and <code>ts.transpileModule</code>. This repo is on TypeScript 7.0.2, which has neither. In <code>apps/api</code>, <code>require('typescript').transpileModule</code> is <code>undefined</code>.</p>
+    <li class="done">
+      <strong>The API is bundled for Vercel.</strong> <span class="badge done">Handled</span> <a href="https://github.com/fauxparse/mechane/issues/762">#762</a>
+      <p>The API uses an esbuild Build Output API bundle instead of <code>@vercel/node</code>'s TypeScript transpiler, avoiding the TypeScript 7 incompatibility and keeping one request handler for local and Vercel execution.</p>
     </li>
     <li>
       <strong>The Cron drain from ADR-0015 doesn't exist.</strong> <a href="https://github.com/fauxparse/mechane/issues/763">#763</a>, blocked by #762
@@ -449,11 +449,11 @@ flowchart LR
 
 <section id="code">
   <h2>Code changes</h2>
-  <p>Do these in order. Items 1 and 2 block the deploy, items 3 and 4 are done, and the rest are config.</p>
+  <p>Do these in order. Item 2 blocks the deploy, items 1, 3 and 4 are done, and the rest is config.</p>
 
   <div class="step">
-    <h3><span class="badge blocker">Blocker</span>1. Bundle the API yourself <a href="https://github.com/fauxparse/mechane/issues/762">#762</a></h3>
-    <p>Replace Vercel's automatic handling of <code>apps/api/api/*.ts</code> with a build step. It bundles the API with esbuild and writes <a href="https://vercel.com/docs/build-output-api">Build Output API</a> files. That gets around the TypeScript 7 crash. I expect it also avoids two other failures, though I haven't reproduced them:</p>
+    <h3><span class="badge done">Done</span>1. Bundle the API yourself <a href="https://github.com/fauxparse/mechane/issues/762">#762</a></h3>
+    <p>Vercel's automatic handling of <code>apps/api/api/*.ts</code> has been replaced with a build step. It bundles the API with esbuild and writes <a href="https://vercel.com/docs/build-output-api">Build Output API</a> files, avoiding the TypeScript 7 crash and the ESM and workspace-<code>.ts</code> runtime risks:</p>
     <ul>
       <li>The package is <code>"type": "module"</code> but its imports have no file extensions (<code>../src/graphql/server</code>). Node's ESM loader can't resolve those at runtime.</li>
       <li>The workspace packages (<code>@mechane/domain</code>, <code>@mechane/realtime</code>, <code>@mechane/commands</code>) export raw <code>.ts</code> files.</li>
@@ -465,13 +465,13 @@ flowchart LR
         <ul>
           <li>bundles that entry into <code>.vercel/output/functions/api.func/index.mjs</code> (platform <code>node</code>, format <code>esm</code>, with <code>pg-native</code>, <code>bufferutil</code> and <code>utf-8-validate</code> marked external);</li>
           <li>writes <code>.vc-config.json</code> next to it with <code>{ "runtime": "nodejs22.x", "handler": "index.mjs", "launcherType": "Nodejs" }</code>;</li>
-          <li>writes <code>.vercel/output/config.json</code> containing <code>version: 3</code>, a route that sends <code>/api/(.*)</code> to <code>/api</code>, and a <code>crons</code> entry whose schedule comes from <code>CRON_SCHEDULE</code> (default <code>0 4 * * *</code>).</li>
+          <li>writes <code>.vercel/output/config.json</code> containing <code>version: 3</code> and a route that sends <code>/api/(.*)</code> to <code>/api</code>; #763 will add the <code>crons</code> entry.</li>
         </ul>
       </li>
-      <li>Delete <code>apps/api/api/</code>. Its five entry files copy <code>dev-server.ts</code>, and they've already drifted from it: the dev server has a publish route the functions lack.</li>
+      <li>The old five entry files under <code>apps/api/api/</code> have been deleted. They copied <code>dev-server.ts</code> and had already drifted from it.</li>
     </ol>
     <div class="callout blue">
-      <p>Check that <code>req.url</code> inside the function still carries the original path (<code>/api/graphql</code>, not <code>/api</code>). The router depends on it. Log it once on the first deploy.</p>
+      <p>Vercel's routing docs say the destination selects the function, and that a <code>request.path</code> transform is what changes the path the runtime observes. A Vercel maintainer-confirmed regular-function example preserves the original path, so the bundled handler dispatches on <code>/api/graphql</code>, not <code>/api</code>. See <code>docs/vercel-request-url-research.md</code> for the source links.</p>
     </div>
     <p>A cheaper option is to pin <code>apps/api</code> to <code>typescript@5.9.3</code>, as <code>packages/graphql-schema</code> already does. That fixes the crash but leaves the ESM and workspace-<code>.ts</code> risks untested. If you try it, run <code>vercel build</code> locally before relying on it.</p>
   </div>
@@ -636,10 +636,10 @@ flowchart LR
       <h3>Saturday</h3>
       <div class="when">Code, then the first deploy</div>
       <ul class="checklist">
-        <li><input type="checkbox" id="sat-1"><span>Land <a href="https://github.com/fauxparse/mechane/issues/762">#762</a>, then <a href="https://github.com/fauxparse/mechane/issues/763">#763</a>. Then add the Studio and Player <code>vercel.json</code> files and the rest of item 7. Items 3 and 4 are already in the working tree, so ship them in the same PR or an earlier one.</span></li>
+        <li><input type="checkbox" id="sat-1"><span>Land <a href="https://github.com/fauxparse/mechane/issues/763">#763</a>. Then add the Studio and Player <code>vercel.json</code> files and the rest of item 7. Items 1, 3 and 4 are already in the working tree, so ship them in the same PR or an earlier one.</span></li>
         <li><input type="checkbox" id="sat-2"><span>Apply migrations from your laptop:
 <pre><code>DATABASE_URL='&lt;neon unpooled url&gt;' pnpm --filter @mechane/api db:migrate</code></pre></span></li>
-        <li><input type="checkbox" id="sat-3"><span>Build the API locally first. In <code>apps/api</code>, run <code>vercel link</code>, <code>vercel pull</code>, then <code>vercel build --prod</code>. Check that <code>.vercel/output/config.json</code> has the route and the cron.</span></li>
+        <li><input type="checkbox" id="sat-3"><span>Build the API locally first. In <code>apps/api</code>, run <code>vercel link</code>, <code>vercel pull</code>, then <code>vercel build --prod</code>. Check that <code>.vercel/output/config.json</code> has the route; #763 will add the cron.</span></li>
         <li><input type="checkbox" id="sat-4"><span>Enter the env vars, deploy the API, and run the API checks.</span></li>
         <li><input type="checkbox" id="sat-5"><span>Deploy Studio and Player.</span></li>
       </ul>
