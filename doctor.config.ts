@@ -20,15 +20,6 @@ export default {
   // gated. Tighten to "error" once we trust the signal (issue #69).
   blocking: "none",
 
-  // The Formula editor is already a React.lazy chunk; the detector cannot trace
-  // that boundary through the design-system package. Keep the finding in local
-  // scans, but do not repeat this known false positive in PR comments.
-  surfaces: {
-    prComment: {
-      excludeRules: ["react-doctor/prefer-dynamic-import"],
-    },
-  },
-
   ignore: {
     files: [
       "**/routeTree.gen.ts",
@@ -49,7 +40,7 @@ export default {
         // emits CodeMirror in its own FormulaCodeEditor-*.js chunk, absent from
         // the entry bundle. The rule only sees the static imports inside that
         // already-split chunk (#687).
-        files: ["src/editors/show/graph/formula/FormulaCodeEditor.tsx"],
+        files: ["src/components/ui/formula/formula-code-editor.tsx"],
         rules: ["react-doctor/prefer-dynamic-import"],
       },
     ],
