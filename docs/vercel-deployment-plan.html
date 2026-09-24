@@ -1,0 +1,726 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deploying Mechanē to Vercel</title>
+<style>
+  :root {
+    --bg: #fbfaf7;
+    --surface: #ffffff;
+    --text: #1d1b18;
+    --muted: #6b665d;
+    --border: #e6e1d8;
+    --accent: #5b4bdb;
+    --accent-soft: #eeebff;
+    --red: #c2362b;
+    --red-soft: #fdecea;
+    --amber: #a86400;
+    --amber-soft: #fff4de;
+    --green: #217a44;
+    --green-soft: #e5f5ea;
+    --blue: #1f5fae;
+    --blue-soft: #e7f0fb;
+    --code-bg: #f3f0ea;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151412;
+      --surface: #1d1c19;
+      --text: #ece8e1;
+      --muted: #a39d92;
+      --border: #34312c;
+      --accent: #a497ff;
+      --accent-soft: #29254a;
+      --red: #ff8a7f;
+      --red-soft: #3a1f1c;
+      --amber: #ffc266;
+      --amber-soft: #36290f;
+      --green: #7fd69e;
+      --green-soft: #17301f;
+      --blue: #8cbcff;
+      --blue-soft: #172a42;
+      --code-bg: #26241f;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 820px);
+    gap: 56px;
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 48px 32px 96px;
+  }
+  nav.toc {
+    position: sticky;
+    top: 32px;
+    align-self: start;
+    max-height: calc(100vh - 64px);
+    overflow: auto;
+    font-size: 14px;
+  }
+  nav.toc .label {
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; }
+  nav.toc li { margin: 2px 0; }
+  nav.toc a {
+    display: block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    color: var(--muted);
+    text-decoration: none;
+  }
+  nav.toc a:hover { background: var(--accent-soft); color: var(--text); }
+  @media (max-width: 960px) {
+    .layout { grid-template-columns: 1fr; gap: 24px; padding: 28px 18px 72px; }
+    nav.toc { position: static; max-height: none; }
+  }
+
+  header.hero { margin-bottom: 40px; }
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  h1 { font-size: 40px; line-height: 1.15; margin: 8px 0 12px; letter-spacing: -.02em; }
+  .lede { font-size: 18px; color: var(--muted); margin: 0 0 20px; max-width: 680px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+  }
+
+  section { margin-top: 56px; }
+  h2 {
+    font-size: 26px;
+    letter-spacing: -.01em;
+    margin: 0 0 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 19px; margin: 32px 0 10px; }
+  h4 { font-size: 15px; margin: 20px 0 6px; }
+  p { margin: 0 0 14px; }
+  ul, ol { margin: 0 0 14px; padding-left: 22px; }
+  li { margin: 4px 0; }
+  a { color: var(--accent); }
+  strong { font-weight: 650; }
+
+  code {
+    font-family: var(--mono);
+    font-size: .86em;
+    background: var(--code-bg);
+    padding: .12em .38em;
+    border-radius: 5px;
+    word-break: break-word;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    overflow: auto;
+    font-size: 13.5px;
+    line-height: 1.55;
+    margin: 0 0 16px;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin: 24px 0 8px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .card .num { font-size: 30px; font-weight: 700; line-height: 1; }
+  .card .cap { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .card.red .num { color: var(--red); }
+  .card.green .num { color: var(--green); }
+  .card.blue .num { color: var(--blue); }
+  .card.amber .num { color: var(--amber); }
+
+  .callout {
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin: 0 0 16px;
+    border: 1px solid transparent;
+  }
+  .callout > :last-child { margin-bottom: 0; }
+  .callout.red { background: var(--red-soft); border-color: color-mix(in srgb, var(--red) 25%, transparent); }
+  .callout.amber { background: var(--amber-soft); border-color: color-mix(in srgb, var(--amber) 25%, transparent); }
+  .callout.green { background: var(--green-soft); border-color: color-mix(in srgb, var(--green) 25%, transparent); }
+  .callout.blue { background: var(--blue-soft); border-color: color-mix(in srgb, var(--blue) 25%, transparent); }
+  .callout .title { font-weight: 650; margin-bottom: 4px; }
+
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 5px;
+    vertical-align: 2px;
+    margin-right: 6px;
+  }
+  .badge.blocker { background: var(--red-soft); color: var(--red); }
+  .badge.done { background: var(--green-soft); color: var(--green); }
+  .badge.config { background: var(--blue-soft); color: var(--blue); }
+  .badge.human { background: var(--amber-soft); color: var(--amber); }
+
+  .blockers { counter-reset: blk; list-style: none; padding: 0; }
+  .blockers li {
+    counter-increment: blk;
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px 14px 56px;
+    margin: 0 0 10px;
+  }
+  .blockers li::before {
+    content: counter(blk);
+    position: absolute;
+    left: 16px;
+    top: 14px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--red-soft);
+    color: var(--red);
+    font-weight: 700;
+    font-size: 14px;
+    display: grid;
+    place-items: center;
+  }
+  .blockers li.done::before { content: "✓"; background: var(--green-soft); color: var(--green); }
+  .blockers li p { margin: 4px 0 0; color: var(--muted); }
+
+  .table-wrap { overflow-x: auto; margin: 0 0 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; background: color-mix(in srgb, var(--code-bg) 55%, transparent); }
+  tr:last-child td { border-bottom: 0; }
+  td code { white-space: nowrap; }
+  td.wrap code { white-space: normal; }
+
+  .step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px 20px 8px;
+    margin: 0 0 14px;
+  }
+  .step h3 { margin-top: 16px; }
+
+  .checklist { list-style: none; padding: 0; }
+  .checklist li { display: flex; gap: 10px; align-items: flex-start; margin: 8px 0; }
+  .checklist input { margin-top: 5px; accent-color: var(--accent); width: 16px; height: 16px; flex: none; }
+  .checklist li.checked > span { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent); }
+
+  .days { display: grid; gap: 14px; }
+  .day {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 12px;
+    padding: 14px 20px 6px;
+  }
+  .day h3 { margin: 0 0 6px; }
+  .day .when { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+
+  .mermaid-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    margin: 0 0 16px;
+    text-align: center;
+  }
+  pre.mermaid { background: none; border: 0; margin: 0; text-align: left; }
+
+  footer { margin-top: 72px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--border); padding-top: 16px; }
+  @media print {
+    nav.toc { display: none; }
+    .layout { display: block; padding: 0; }
+    section { break-inside: avoid-page; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="toc" aria-label="Contents">
+  <div class="label">Contents</div>
+  <ol>
+    <li><a href="#summary">Summary</a></li>
+    <li><a href="#decisions">Decisions</a></li>
+    <li><a href="#architecture">Target setup</a></li>
+    <li><a href="#services">Accounts and services</a></li>
+    <li><a href="#code">Code changes</a></li>
+    <li><a href="#projects">Vercel projects</a></li>
+    <li><a href="#env">Environment variables</a></li>
+    <li><a href="#weekend">Weekend order of work</a></li>
+    <li><a href="#smoke">Smoke test</a></li>
+    <li><a href="#limits">Limits at launch</a></li>
+    <li><a href="#later">Not this weekend</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="hero">
+  <div class="eyebrow">Deployment plan</div>
+  <h1>Deploying Mechanē to Vercel</h1>
+  <p class="lede">What it takes to get Studio, Player and the API running on <code>mechane.live</code> this weekend, backed by Neon Postgres, Cloudflare R2 and Ably. Only the email verification switch has been built. Nothing is deployed.</p>
+  <div class="meta">
+    <span class="chip">studio.mechane.live</span>
+    <span class="chip">show.mechane.live</span>
+    <span class="chip">api.mechane.live</span>
+    <span class="chip">Vercel Hobby + Ably Free to start</span>
+  </div>
+</header>
+
+<section id="summary">
+  <h2>Summary</h2>
+  <p>Studio and Player are close. They're plain Vite SPAs and need a rewrite rule and some environment variables. The API is further off: three code problems still block a working production deploy, and a fourth is now handled.</p>
+
+  <div class="cards">
+    <div class="card red"><div class="num">3</div><div class="cap">code blockers left</div></div>
+    <div class="card green"><div class="num">1</div><div class="cap">blocker handled (email flag)</div></div>
+    <div class="card blue"><div class="num">3</div><div class="cap">Vercel projects</div></div>
+    <div class="card amber"><div class="num">4</div><div class="cap">outside services to sign up for</div></div>
+  </div>
+
+  <ol class="blockers">
+    <li>
+      <strong>The API won't build on Vercel.</strong>
+      <p><code>@vercel/node</code> 5.9.5 transpiles functions with whatever <code>typescript</code> package the project has installed, and calls <code>ts.sys.readFile</code> and <code>ts.transpileModule</code>. This repo is on TypeScript 7.0.2, which has neither. In <code>apps/api</code>, <code>require('typescript').transpileModule</code> is <code>undefined</code>.</p>
+    </li>
+    <li>
+      <strong>The Cron drain from ADR-0015 doesn't exist.</strong>
+      <p>The ADR and PRD §4.4 both say production needs a protected drain endpoint on a Vercel Cron schedule. No such route exists, and there's no <code>vercel.json</code> in the repo. The drain that runs right after each change does exist, so the normal case works. A publish that fails is never retried.</p>
+    </li>
+    <li>
+      <strong>Images go through functions, and Vercel caps function bodies at 4.5 MB.</strong>
+      <p>The cap covers both request and response (<a href="https://vercel.com/docs/functions/limitations">Vercel function limits</a>). <code>DEFAULT_IMAGE_UPLOAD_POLICY</code> allows 25 MB uploads and 10 MB processed images. Both <code>PUT /api/uploads/*</code> and <code>GET /api/images/*</code> go through functions, so anything over 4.5 MB fails either way.</p>
+    </li>
+    <li class="done">
+      <strong>No email gets sent.</strong> <span class="badge done">Handled</span>
+      <p><code>sendEmail</code> only writes to the log. Verification can now be switched off with <code>REQUIRE_EMAIL_VERIFICATION=false</code>. Real email is tracked in <a href="https://github.com/fauxparse/mechane/issues/759">#759</a>.</p>
+    </li>
+  </ol>
+  <p>There are also smaller config issues: DNS, SPA rewrites, the Player's hardcoded API URL default, pnpm 11 on Vercel, and the Node version. Each is covered below.</p>
+</section>
+
+<section id="decisions">
+  <h2>Decisions</h2>
+
+  <h3>Domain: <code>mechane.live</code></h3>
+  <p>The three apps have to share one registrable domain. Studio calls the API with <code>credentials: "include"</code> and relies on Better Auth's session cookie. Browsers treat <code>*.vercel.app</code> as a public suffix, so two <code>vercel.app</code> URLs count as different sites and sign-in fails. Subdomains of <code>mechane.live</code> are the same site, so the cookie is sent.</p>
+  <div class="callout green">
+    <div class="title">No clash with local dev</div>
+    <p>Local dev stays on <code>mechane.dev</code>. Your Mac's dnsmasq and <code>/etc/resolver/mechane.dev</code> send that name to 127.0.0.1, and neither touches <code>.live</code>. Leave the local setup alone.</p>
+  </div>
+
+  <h4>DNS records to create</h4>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Name</th><th>Type</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td><code>studio</code></td><td>CNAME</td><td>The target Vercel shows in the Studio project's Domains tab</td></tr>
+      <tr><td><code>show</code></td><td>CNAME</td><td>The target Vercel shows in the Player project's Domains tab</td></tr>
+      <tr><td><code>api</code></td><td>CNAME</td><td>The target Vercel shows in the API project's Domains tab</td></tr>
+      <tr><td><code>@</code> <em>(optional)</em></td><td>A</td><td>The IP Vercel shows when you add the apex to the Studio project. Set the apex to redirect to <code>studio.mechane.live</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>If the zone already has CAA records, add <code>0 issue "letsencrypt.org"</code>. Vercel gets its certificates from Let's Encrypt, and a CAA record that doesn't allow it blocks them. Email DNS records for <a href="https://github.com/fauxparse/mechane/issues/759">#759</a> go on a subdomain such as <code>send.mechane.live</code>.</p>
+
+  <h3>Plans: start free, upgrade when you hit a trigger</h3>
+  <p>Launch on Vercel Hobby and Ably Free, then upgrade when you hit one of these:</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Upgrade</th><th>When</th><th>What changes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Vercel Pro</strong></td>
+        <td class="wrap">
+          <ul>
+            <li>Before a real show. Hobby runs cron jobs only once a day (<a href="https://vercel.com/docs/cron-jobs/usage-and-pricing">cron pricing</a>), so a Player that misses a change stays stale until it reconnects, reloads, or the next daily run.</li>
+            <li>Before you charge for anything. Hobby is for non-commercial use only.</li>
+            <li>When the Usage tab gets close to Hobby's limits. Image delivery is the likeliest cause.</li>
+          </ul>
+        </td>
+        <td class="wrap">Set <code>CRON_SCHEDULE=* * * * *</code> on the API project and redeploy. No code change.</td>
+      </tr>
+      <tr>
+        <td><strong>Ably paid plan</strong></td>
+        <td class="wrap">
+          <ul>
+            <li>When a show might have close to 200 Players open at once. The free plan allows 200 peak connections and 6M messages a month (<a href="https://ably.com/docs/platform/pricing/free">Ably free package</a>). Each open Player is one connection.</li>
+            <li>When monthly messages get close to 6M.</li>
+          </ul>
+        </td>
+        <td class="wrap">Nothing. The same <code>ABLY_API_KEY</code> keeps working.</td>
+      </tr>
+    </tbody>
+  </table></div>
+  <div class="callout amber">
+    <div class="title">Why the cron schedule is an env var</div>
+    <p>A per-minute cron expression fails deployment on Hobby. The API build reads its schedule from <code>CRON_SCHEDULE</code> and defaults to daily. After upgrading, you only change that variable.</p>
+  </div>
+  <p>I haven't confirmed what Ably does when you go over the connection limit. Expect extra Players to fail to connect. Check the Ably dashboard's stats after rehearsals.</p>
+
+  <h3>Email: off for launch <span class="badge done">Done</span></h3>
+  <p>Production runs with <code>REQUIRE_EMAIL_VERIFICATION=false</code>. New email/password accounts are signed in right after sign-up, and no verification email is sent. Leaving the variable unset keeps verification required, so local dev and CI behave as before.</p>
+  <p>Setting up a provider, the Studio UX changes, and turning verification back on are tracked in <a href="https://github.com/fauxparse/mechane/issues/759">#759</a>. The issue also covers accounts created while verification is off: they have <code>email_verified = false</code>, and Better Auth would block their password sign-in the moment verification comes back on.</p>
+
+  <h3>Image size</h3>
+  <p>For the weekend, lower the limits to 4 MB so they fit under Vercel's cap. The proper fix is to have <code>ImageUploadPlan.url</code> return a presigned S3 PUT URL and serve images from the bucket or a CDN. The GraphQL shape (<code>method</code>, <code>url</code>, <code>requiredHeaders</code>) already allows that, but it's too much for a weekend.</p>
+</section>
+
+<section id="architecture">
+  <h2>Target setup</h2>
+  <div class="mermaid-box">
+<pre class="mermaid">
+flowchart LR
+  subgraph Vercel
+    S[Studio SPA<br/>studio.mechane.live]
+    P[Player SPA<br/>show.mechane.live]
+    A[API function<br/>api.mechane.live]
+    C[Cron] --> A
+  end
+  S -- GraphQL + auth cookie --> A
+  P -- GraphQL + pairing code --> A
+  A --> DB[(Neon Postgres)]
+  A --> R2[(Cloudflare R2)]
+  A -- publish --> Ably
+  P -- subscribe, token from /api/realtime/auth --> Ably
+</pre>
+  </div>
+  <p>Production doesn't need the local <code>worker</code> process from <code>Procfile.dev</code> or the <code>/api/realtime/internal/publish</code> route. Both exist so the local worker can reach the in-process WebSocket server. In production, both drain paths publish straight to Ably.</p>
+</section>
+
+<section id="services">
+  <h2>Accounts and services</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Service</th><th>Create</th><th>You get</th></tr></thead>
+    <tbody>
+      <tr><td>DNS for <code>mechane.live</code></td><td>The records under <a href="#decisions">Domain</a></td><td>Certificates issued by Vercel</td></tr>
+      <tr><td>Vercel</td><td>Three projects linked to <code>fauxparse/mechane</code></td><td>Builds and hosting</td></tr>
+      <tr><td>Neon, through the Vercel Marketplace</td><td>One database, attached to the API project</td><td>Pooled and unpooled connection strings, added as env vars. Check the exact names the integration creates</td></tr>
+      <tr><td>Cloudflare R2</td><td>Bucket <code>mechane</code>, plus an API token with Object Read &amp; Write on that bucket</td><td>Access key ID, secret, and the endpoint <code>https://&lt;account-id&gt;.r2.cloudflarestorage.com</code></td></tr>
+      <tr><td>Ably</td><td>An app, and an API key with publish and subscribe</td><td><code>ABLY_API_KEY</code></td></tr>
+      <tr><td>Google Cloud <em>(optional)</em></td><td class="wrap">OAuth client with redirect URI <code>https://api.mechane.live/api/auth/callback/google</code>, and a Fonts API key restricted to <code>https://studio.mechane.live/*</code></td><td><code>GOOGLE_CLIENT_ID</code>, <code>GOOGLE_CLIENT_SECRET</code>, <code>VITE_GOOGLE_FONTS_API_KEY</code></td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li>The R2 bucket can stay private. The API reads blobs server-side (<code>MinioBlobStore</code> in <code>apps/api/src/storage/blob-store.ts</code>) and serves them through <code>/api/images/*</code>. Browsers never touch the bucket, so it needs no CORS config.</li>
+    <li>Any S3-compatible store works, because the client uses <code>forcePathStyle: true</code>. I picked R2 because it doesn't charge for egress. Vercel Blob isn't S3-compatible and would need a new adapter.</li>
+    <li>Local dev runs Postgres 18. I didn't find anything in <code>apps/api/drizzle/</code> that needs 18, such as <code>uuidv7()</code> or virtual columns, so Neon's 17 or 18 should both work.</li>
+  </ul>
+</section>
+
+<section id="code">
+  <h2>Code changes</h2>
+  <p>Do these in order. Items 1 to 3 block the deploy, item 4 is done, and the rest are config.</p>
+
+  <div class="step">
+    <h3><span class="badge blocker">Blocker</span>1. Bundle the API yourself</h3>
+    <p>Replace Vercel's automatic handling of <code>apps/api/api/*.ts</code> with a build step. It bundles the API with esbuild and writes <a href="https://vercel.com/docs/build-output-api">Build Output API</a> files. That gets around the TypeScript 7 crash. I expect it also avoids two other failures, though I haven't reproduced them:</p>
+    <ul>
+      <li>The package is <code>"type": "module"</code> but its imports have no file extensions (<code>../src/graphql/server</code>). Node's ESM loader can't resolve those at runtime.</li>
+      <li>The workspace packages (<code>@mechane/domain</code>, <code>@mechane/realtime</code>, <code>@mechane/commands</code>) export raw <code>.ts</code> files.</li>
+    </ul>
+    <ol>
+      <li>Move the request routing out of <code>apps/api/src/dev-server.ts</code> into a shared <code>src/http-handler.ts</code> that exports <code>(req, res) =&gt; Promise&lt;void&gt;</code>. It covers auth, GraphQL, uploads, images and realtime auth. <code>dev-server.ts</code> already routes everything in one <code>createServer</code> callback, so this is mostly moving code. The WebSocket <code>upgrade</code> listener and the internal publish route stay dev-only.</li>
+      <li>Add a Vercel entry file that imports the handler and calls <code>attachDatabasePool(pool)</code> from <code>@vercel/functions</code> (see item 5).</li>
+      <li>Add a <code>build:vercel</code> script that:
+        <ul>
+          <li>bundles that entry into <code>.vercel/output/functions/api.func/index.mjs</code> (platform <code>node</code>, format <code>esm</code>, with <code>pg-native</code>, <code>bufferutil</code> and <code>utf-8-validate</code> marked external);</li>
+          <li>writes <code>.vc-config.json</code> next to it with <code>{ "runtime": "nodejs22.x", "handler": "index.mjs", "launcherType": "Nodejs" }</code>;</li>
+          <li>writes <code>.vercel/output/config.json</code> containing <code>version: 3</code>, a route that sends <code>/api/(.*)</code> to <code>/api</code>, and a <code>crons</code> entry whose schedule comes from <code>CRON_SCHEDULE</code> (default <code>0 4 * * *</code>).</li>
+        </ul>
+      </li>
+      <li>Delete <code>apps/api/api/</code>. Its five entry files copy <code>dev-server.ts</code>, and they've already drifted from it: the dev server has a publish route the functions lack.</li>
+    </ol>
+    <div class="callout blue">
+      <p>Check that <code>req.url</code> inside the function still carries the original path (<code>/api/graphql</code>, not <code>/api</code>). The router depends on it. Log it once on the first deploy.</p>
+    </div>
+    <p>A cheaper option is to pin <code>apps/api</code> to <code>typescript@5.9.3</code>, as <code>packages/graphql-schema</code> already does. That fixes the crash but leaves the ESM and workspace-<code>.ts</code> risks untested. If you try it, run <code>vercel build</code> locally before relying on it.</p>
+  </div>
+
+  <div class="step">
+    <h3><span class="badge blocker">Blocker</span>2. Add the cron drain</h3>
+    <p>Add <code>GET /api/cron/player-invalidations</code> to the handler.</p>
+    <ul>
+      <li>Reject the request unless <code>Authorization</code> equals <code>Bearer ${CRON_SECRET}</code>. Once that env var is set, Vercel sends the header on every cron call.</li>
+      <li>Call <code>drainPlayerInvalidations()</code> from <code>src/db/player-invalidation-outbox.ts</code> in a loop until a batch claims nothing or a time budget runs out. Then return the counts. ADR-0015 requires bounded batches because functions have a maximum duration.</li>
+      <li>Take the schedule from <code>CRON_SCHEDULE</code> at build time. The default is <code>0 4 * * *</code>, which Hobby accepts. Switch to <code>* * * * *</code> after upgrading to Pro.</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <h3><span class="badge blocker">Blocker</span>3. Lower the image limits</h3>
+    <p>In <code>packages/domain/src/images.ts</code>, set <code>maxSourceBytes</code> and <code>maxNormalizedBytes</code> to <code>4 * 1024 * 1024</code>. Studio gets these limits from GraphQL's <code>ImageUploadConstraints</code> and the design-system validator, so the "must be smaller than N MB" message updates without further changes. Update any tests that check the old numbers.</p>
+  </div>
+
+  <div class="step">
+    <h3><span class="badge done">Done</span>4. Email verification switch</h3>
+    <p><code>apps/api/src/auth.ts</code> now reads <code>REQUIRE_EMAIL_VERIFICATION</code>. Only the exact value <code>false</code> turns verification off, and that setting also stops verification emails going out on sign-up. <code>apps/api/.env.example</code> documents the variable. Checked against the test database:</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th><code>REQUIRE_EMAIL_VERIFICATION</code></th><th>Sign-up</th><th>Password sign-in before verifying</th></tr></thead>
+      <tbody>
+        <tr><td><code>false</code></td><td>Session issued</td><td>200</td></tr>
+        <tr><td>unset</td><td>No session</td><td>403 <code>EMAIL_NOT_VERIFIED</code></td></tr>
+        <tr><td><code>true</code></td><td>No session</td><td>403 <code>EMAIL_NOT_VERIFIED</code></td></tr>
+      </tbody>
+    </table></div>
+    <p>Studio's sign-up already navigates to <code>/</code> on success, so with verification off the user lands in the app signed in.</p>
+  </div>
+
+  <div class="step">
+    <h3><span class="badge config">Config</span>5. Postgres connections</h3>
+    <p><code>src/db/client.ts</code> creates a <code>pg</code> <code>Pool</code> when the module loads. On Vercel:</p>
+    <ul>
+      <li>Point the runtime <code>DATABASE_URL</code> at Neon's pooled connection string.</li>
+      <li>Call <code>attachDatabasePool(pool)</code> from <code>@vercel/functions</code>, so idle clients close before an instance suspends. Otherwise connections leak slowly.</li>
+      <li>Run migrations with the unpooled string.</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <h3><span class="badge config">Config</span>6. Studio and Player</h3>
+    <ul>
+      <li>Add a <code>vercel.json</code> to <code>apps/studio</code> and <code>apps/player</code> with <code>{ "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }</code>. Without it, deep links and reloads on TanStack Router paths return 404.</li>
+      <li>The Player's default API URL in production is <code>https://api.mechane.dev</code> (<code>apps/player/src/api-url.ts:1</code>). Local dev uses the same constant when the Caddy proxy is on, so leave it. Set <code>VITE_API_URL=https://api.mechane.live</code> on the Player project instead.</li>
+      <li>Don't set <code>VITE_DEV_PROXY</code> on Vercel. In a production build it switches the Player from Ably back to the local WebSocket (<code>shouldUseRealtimeSocket</code>).</li>
+    </ul>
+  </div>
+
+  <div class="step">
+    <h3><span class="badge config">Config</span>7. Housekeeping</h3>
+    <ul>
+      <li>Add <code>.vercel</code> to <code>.gitignore</code>. <code>vercel link</code> creates that folder.</li>
+      <li><code>.tool-versions</code> pins Node 26.8.1, but CI uses 22. Set Node 22.x on all three Vercel projects, matching CI and the runtime in <code>.vc-config.json</code>.</li>
+      <li>Vercel doesn't officially support pnpm 11. Set <code>ENABLE_EXPERIMENTAL_COREPACK=1</code> on every project so Vercel uses the <code>"packageManager": "pnpm@11.5.2"</code> pin (<a href="https://vercel.com/changelog/corepack-experimental-is-now-available">Vercel corepack changelog</a>). Some users report Corepack still picking an older pnpm. If the install then fails on <code>pnpm-workspace.yaml</code> (<code>allowBuilds</code> is pnpm 11 syntax), override the Install Command with <code>npx pnpm@11.5.2 install --frozen-lockfile</code>.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="projects">
+  <h2>Vercel projects</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Project</th><th>Root</th><th>Preset</th><th>Build command</th><th>Output</th><th>Domain</th></tr></thead>
+    <tbody>
+      <tr><td><code>mechane-api</code></td><td><code>apps/api</code></td><td>Other</td><td><code>pnpm build:vercel</code></td><td><code>.vercel/output</code></td><td><code>api.mechane.live</code></td></tr>
+      <tr><td><code>mechane-studio</code></td><td><code>apps/studio</code></td><td>Vite</td><td><code>pnpm build</code></td><td><code>dist</code></td><td><code>studio.mechane.live</code>, plus the apex redirect if you add it</td></tr>
+      <tr><td><code>mechane-player</code></td><td><code>apps/player</code></td><td>Vite</td><td><code>pnpm build</code></td><td><code>dist</code></td><td><code>show.mechane.live</code></td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li>Keep "Include files outside the root directory" turned on. All three projects import workspace packages.</li>
+    <li>The API's existing <code>build</code> script is <code>tsc --noEmit</code> on TypeScript 7. It produces no output, so the table overrides the build command.</li>
+  </ul>
+  <div class="callout red">
+    <div class="title">Turn preview deployments off for now</div>
+    <p>Previews get <code>*.vercel.app</code> URLs. Those aren't in the CORS allowlist (<code>apps/api/src/lib/cors.ts</code> matches exact origins) and hit the cookie problem above. Worse, a preview that inherits the production <code>DATABASE_URL</code> lets a branch build write to production data. If you keep previews, scope every env var to Production only.</p>
+  </div>
+</section>
+
+<section id="env">
+  <h2>Environment variables</h2>
+  <p><code>VITE_*</code> values are fixed when the app builds. After you change one, redeploy that project.</p>
+
+  <h3>API</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Variable</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td><code>DATABASE_URL</code></td><td>Neon pooled connection string</td></tr>
+      <tr><td><code>BETTER_AUTH_SECRET</code></td><td><code>openssl rand -base64 32</code>. It also signs Player realtime grants (<code>src/realtime-grants.ts</code>), so changing it logs everyone out and invalidates those grants</td></tr>
+      <tr><td><code>BETTER_AUTH_URL</code></td><td><code>https://api.mechane.live</code></td></tr>
+      <tr><td><code>APP_STUDIO_URL</code></td><td><code>https://studio.mechane.live</code></td></tr>
+      <tr><td><code>APP_PLAYER_URL</code></td><td><code>https://show.mechane.live</code></td></tr>
+      <tr><td><code>REQUIRE_EMAIL_VERIFICATION</code></td><td><code>false</code> until <a href="https://github.com/fauxparse/mechane/issues/759">#759</a> is done</td></tr>
+      <tr><td><code>REALTIME_PROVIDER</code></td><td><code>ably</code>. That's already the default when <code>NODE_ENV=production</code>; set it anyway</td></tr>
+      <tr><td><code>ABLY_API_KEY</code></td><td>From Ably</td></tr>
+      <tr><td><code>BLOB_STORAGE_DRIVER</code></td><td><code>minio</code>. Any value except <code>local</code> selects the S3 client; the name is historical</td></tr>
+      <tr><td><code>BLOB_STORAGE_ENDPOINT</code></td><td><code>https://&lt;account-id&gt;.r2.cloudflarestorage.com</code></td></tr>
+      <tr><td><code>BLOB_STORAGE_BUCKET</code></td><td><code>mechane</code></td></tr>
+      <tr><td><code>BLOB_STORAGE_ACCESS_KEY</code></td><td>R2 access key ID</td></tr>
+      <tr><td><code>BLOB_STORAGE_SECRET_KEY</code></td><td>R2 secret</td></tr>
+      <tr><td><code>BLOB_STORAGE_REGION</code></td><td><code>auto</code></td></tr>
+      <tr><td><code>CRON_SECRET</code></td><td>Random string</td></tr>
+      <tr><td><code>CRON_SCHEDULE</code></td><td>Leave unset on Hobby. Set to <code>* * * * *</code> after upgrading to Pro</td></tr>
+      <tr><td><code>GOOGLE_CLIENT_ID</code>, <code>GOOGLE_CLIENT_SECRET</code></td><td>Optional</td></tr>
+      <tr><td><code>ENABLE_EXPERIMENTAL_COREPACK</code></td><td><code>1</code></td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout amber">
+    <div class="title">Some missing values only fail on the first request</div>
+    <ul>
+      <li>Every <code>BLOB_STORAGE_*</code> variable falls back to MinIO's <code>localhost:9000</code> and <code>minioadmin</code> defaults. A missing one shows up as a failed upload, not a failed deploy.</li>
+      <li>A missing <code>ABLY_API_KEY</code> or <code>DATABASE_URL</code> throws when the module loads, so every API request fails.</li>
+    </ul>
+  </div>
+  <p>Not needed on Vercel: <code>BLOB_PUBLIC_URL</code> (nothing reads it), <code>REALTIME_WORKER_SECRET</code> and <code>REALTIME_API_URL</code>.</p>
+
+  <h3>Studio</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Variable</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td><code>VITE_API_URL</code></td><td><code>https://api.mechane.live</code></td></tr>
+      <tr><td><code>VITE_PLAYER_URL</code></td><td><code>https://show.mechane.live</code></td></tr>
+      <tr><td><code>VITE_GOOGLE_FONTS_API_KEY</code></td><td>Optional. The key ships in the bundle, so restrict it to the Studio domain</td></tr>
+      <tr><td><code>VITE_GOOGLE_OAUTH_ENABLED</code></td><td><code>true</code> only after the Google client is set up on the API</td></tr>
+      <tr><td><code>ENABLE_EXPERIMENTAL_COREPACK</code></td><td><code>1</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Player</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Variable</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td><code>VITE_API_URL</code></td><td><code>https://api.mechane.live</code></td></tr>
+      <tr><td><code>ENABLE_EXPERIMENTAL_COREPACK</code></td><td><code>1</code></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="weekend">
+  <h2>Weekend order of work</h2>
+  <p>Checkboxes save in this browser, so you can tick things off as you go.</p>
+  <div class="days">
+    <div class="day">
+      <h3>Friday evening</h3>
+      <div class="when">Accounts, and anything that waits on DNS</div>
+      <ul class="checklist">
+        <li><input type="checkbox" id="fri-1"><span>Create the three Vercel projects and add their <code>mechane.live</code> subdomains. Then create the CNAMEs (and a CAA record, if needed). Certificates can't be issued until DNS resolves, so do this first.</span></li>
+        <li><input type="checkbox" id="fri-2"><span>Configure the projects, but don't deploy yet. Set root directories, turn off previews, and set <code>ENABLE_EXPERIMENTAL_COREPACK</code>.</span></li>
+        <li><input type="checkbox" id="fri-3"><span>Create the Neon database through the Marketplace and attach it to the API project.</span></li>
+        <li><input type="checkbox" id="fri-4"><span>Create the R2 bucket and token, and the Ably app and key.</span></li>
+      </ul>
+    </div>
+    <div class="day">
+      <h3>Saturday</h3>
+      <div class="when">Code, then the first deploy</div>
+      <ul class="checklist">
+        <li><input type="checkbox" id="sat-1"><span>Make code changes 1 to 3 and 5 to 7 on a branch. Open a PR and merge once CI passes. The email switch (item 4) is already in the working tree.</span></li>
+        <li><input type="checkbox" id="sat-2"><span>Apply migrations from your laptop:
+<pre><code>DATABASE_URL='&lt;neon unpooled url&gt;' pnpm --filter @mechane/api db:migrate</code></pre></span></li>
+        <li><input type="checkbox" id="sat-3"><span>Build the API locally first. In <code>apps/api</code>, run <code>vercel link</code>, <code>vercel pull</code>, then <code>vercel build --prod</code>. Check that <code>.vercel/output/config.json</code> has the route and the cron.</span></li>
+        <li><input type="checkbox" id="sat-4"><span>Enter the env vars, deploy the API, and run the API checks.</span></li>
+        <li><input type="checkbox" id="sat-5"><span>Deploy Studio and Player.</span></li>
+      </ul>
+      <div class="callout red">
+        <div class="title">Never run <code>pnpm db:seed</code> against production</div>
+        <p><code>apps/api/src/db/seeds.ts:51</code> truncates <code>user</code>, <code>session</code>, <code>account</code> and <code>shows</code>.</p>
+      </div>
+    </div>
+    <div class="day">
+      <h3>Sunday</h3>
+      <div class="when">Smoke test and a rehearsal</div>
+      <ul class="checklist">
+        <li><input type="checkbox" id="sun-1"><span>Run the <a href="#smoke">smoke test</a> below.</span></li>
+        <li><input type="checkbox" id="sun-2"><span>Rehearse a scene or two on real phones over cellular. ADR-0001 expects your audience to be on cellular.</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="smoke">
+  <h2>Smoke test</h2>
+  <h3>API</h3>
+  <ul class="checklist">
+    <li><input type="checkbox" id="smk-api-1"><span><code>curl -i https://api.mechane.live/api/graphql -H 'content-type: application/json' -d '{"query":"{ __typename }"}'</code> returns 200.</span></li>
+    <li><input type="checkbox" id="smk-api-2"><span><code>curl -i -X OPTIONS https://api.mechane.live/api/graphql -H 'Origin: https://studio.mechane.live' -H 'Access-Control-Request-Method: POST'</code> echoes the origin in <code>Access-Control-Allow-Origin</code>.</span></li>
+    <li><input type="checkbox" id="smk-api-3"><span><code>curl -i https://api.mechane.live/api/cron/player-invalidations -H "Authorization: Bearer $CRON_SECRET"</code> returns drain counts. Without the header it returns 401.</span></li>
+    <li><input type="checkbox" id="smk-api-4"><span>The Vercel dashboard lists the cron job under the API project.</span></li>
+  </ul>
+  <h3>Studio</h3>
+  <ul class="checklist">
+    <li><input type="checkbox" id="smk-studio-1"><span>Sign up. You land in Studio signed in, with no verification step. Reload, and you're still signed in. That shows the session cookie works across subdomains.</span></li>
+    <li><input type="checkbox" id="smk-studio-2"><span>Open a Show's URL directly and reload. It loads instead of returning 404.</span></li>
+    <li><input type="checkbox" id="smk-studio-3"><span>Upload an image of about 3 MB and check that it shows. Then upload a 6 MB image: you should get the size error, not a 413 from Vercel.</span></li>
+  </ul>
+  <h3>Player and realtime</h3>
+  <ul class="checklist">
+    <li><input type="checkbox" id="smk-player-1"><span>Publish a Show and start a Run. On a phone, open the Player with the pairing code or QR code.</span></li>
+    <li><input type="checkbox" id="smk-player-2"><span>Change a live value in Studio. The phone updates without a reload, and the Ably dashboard shows the connection.</span></li>
+    <li><input type="checkbox" id="smk-player-3"><span>Put the phone in airplane mode, make a change, then reconnect. The Player catches up.</span></li>
+  </ul>
+</section>
+
+<section id="limits">
+  <h2>Limits at launch</h2>
+  <ul>
+    <li><strong>No email.</strong> Anyone can sign up with an address they don't own. Password reset links only appear in the Vercel logs, so resetting a password means you fetch the link by hand. <a href="https://github.com/fauxparse/mechane/issues/759">#759</a> fixes both.</li>
+    <li><strong>Images up to 4 MB.</strong> Each uncached image request runs a function. Browsers cache the response for a year, but function calls and bandwidth still count against the plan.</li>
+    <li><strong>200 Players at once</strong> on Ably Free.</li>
+    <li><strong>Up to a day</strong> to recover a missed update, until you move to Vercel Pro.</li>
+    <li><strong>Cold starts.</strong> The first request after a quiet spell waits for a new instance to start and open a Postgres connection.</li>
+    <li><strong>ADR-0001 still applies.</strong> If the venue's internet goes down, the show stops.</li>
+  </ul>
+</section>
+
+<section id="later">
+  <h2>Not this weekend</h2>
+  <p>Storybook hosting, preview and staging environments, a separate staging database, error monitoring, presigned uploads with images served from a CDN, and transactional email (<a href="https://github.com/fauxparse/mechane/issues/759">#759</a>).</p>
+</section>
+
+<footer>Plan written 25 September 2026. Source: repository at <code>main</code>, plus the Vercel and Ably docs linked inline.</footer>
+</main>
+</div>
+
+<script type="module">
+  const boxes = document.querySelectorAll('.checklist input[type="checkbox"]');
+  const key = "mechane-vercel-plan-checks";
+  const saved = new Set(JSON.parse(localStorage.getItem(key) ?? "[]"));
+  const sync = (box) => box.closest("li").classList.toggle("checked", box.checked);
+  for (const box of boxes) {
+    box.checked = saved.has(box.id);
+    sync(box);
+    box.addEventListener("change", () => {
+      box.checked ? saved.add(box.id) : saved.delete(box.id);
+      localStorage.setItem(key, JSON.stringify([...saved]));
+      sync(box);
+    });
+  }
+
+  try {
+    const { default: mermaid } = await import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs");
+    const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+    mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "neutral" });
+    await mermaid.run({ querySelector: "pre.mermaid" });
+  } catch {
+    // Offline: the diagram source stays visible as plain text.
+  }
+</script>
+</body>
+</html>
