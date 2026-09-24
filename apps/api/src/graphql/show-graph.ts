@@ -1,6 +1,9 @@
-// The GraphQL ⇄ domain boundary for the Show graph (issue #38): turning
-// loosely-typed mutation input into @mechane/domain's `ShowGraph`, and a
-// stored graph back into the shape the schema's types describe.
+// The Show graph/graph-edits slice (issue #38): the GraphQL ⇄ domain
+// boundary for the Show graph — the SDL for its node, edge, Shape, Block and
+// interaction vocabulary, the queries and mutations that serve it, and the
+// serialization that turns loosely-typed mutation input into
+// @mechane/domain's `ShowGraph` and a stored graph back into the shape the
+// schema's types describe.
 //
 // GraphQL can express "a node has a kind" but not "a Flow never has a
 // parent" — so the input types are one flat node/edge shape each, and this
@@ -15,22 +18,46 @@
 // over it. What stays here is what is genuinely GraphQL's: turning a codec
 // refusal into BAD_USER_INPUT, and refusing on the way *in* the one edit
 // that only ever travels out (#111).
-import type { FlatGraphEdit, GraphEdit } from "@mechane/commands";
-import { decodeGraphEdit, encodeGraphEdit, GraphEditCodecError } from "@mechane/commands";
+import type { CanvasWorkspaceEdit, FlatCanvasEdit, FlatGraphEdit, GraphEdit } from "@mechane/commands";
+import {
+  CanvasEditCodecError,
+  CanvasEditError,
+  decodeCanvasWorkspaceEdit,
+  decodeGraphEdit,
+  encodeGraphEdit,
+  GraphEditCodecError,
+  isCanvasWorkspaceEditType,
+} from "@mechane/commands";
 import { GRAPH_COMMAND_TYPES } from "@mechane/commands";
 import type { Block } from "@mechane/domain/blocks";
 import {
+  findShowVariableReferences,
   type GraphEdge,
   type GraphNode,
   transformerInputType,
   transformerOutputType,
   wiringTargetVariableId,
 } from "@mechane/domain/graph";
+import { InvalidInteractionError } from "@mechane/domain/interactions";
 import { sourceDefaultsFor } from "@mechane/domain/source-defaults";
+import { eq } from "drizzle-orm";
 import { GraphQLError } from "graphql";
 
+import { db } from "../db/client";
+import { readCanvasWorkspace } from "../db/canvas";
+import { shows } from "../db/schema";
+import {
+  applyShowEdits as applyShowEditsToDb,
+  CanvasFormulaPublicationError,
+  GraphVersionConflictError,
+  publishShowGraph,
+  readShowGraph,
+} from "../db/show-graph";
 import type { StoredShowGraph } from "../db/show-graph";
 import { flattenCanvasElements } from "./canvas";
+import type { Resolvers } from "./context";
+import { requireUserId } from "./context";
+import { findOwnShowOrThrow, validGraphState } from "./show";
 
 interface SerializedBlock {
   id: string;
@@ -332,3 +359,795 @@ function serializeEdge(edge: GraphEdge) {
     actionId: edge.kind === "navigate" || edge.kind === "update" ? edge.actionId : null,
   };
 }
+
+function toShapeValue(value: unknown, type: unknown): unknown {
+  if (typeof type === "string") return { kind: type, value };
+  if (type && typeof type === "object" && "kind" in type) {
+    if (type.kind === "array") return { kind: "array", value };
+    if (type.kind === "shape") return { kind: "object", value };
+  }
+  return null;
+}
+
+export const typeDefs = /* GraphQL */ `
+    "Free-form canvas coordinates for a graph node (issue #25 — no auto-layout)."
+    type Position {
+      x: Float!
+      y: Float!
+    }
+
+    "A named port on a Scene. A wiring edge targets one of these, not the Scene as a whole."
+    type SceneVariable {
+      id: ID!
+      name: String!
+      rank: String
+      type: Type
+      defaultValue: JSON
+      suggestedDimensions: SuggestedImageDimensions
+    }
+
+    type SuggestedImageDimensions {
+      width: Int!
+      height: Int!
+    }
+
+    "A recursive Type descriptor: primitive, array, or a named Shape reference."
+    type Type {
+      kind: String!
+      of: Type
+      shapeId: ID
+    }
+
+    input TypeInput {
+      kind: String!
+      of: TypeInput
+      shapeId: ID
+    }
+
+    type TextValue {
+      value: String!
+    }
+    type NumberValue {
+      value: Float!
+    }
+    type BooleanValue {
+      value: Boolean!
+    }
+    type ColorValue {
+      value: String!
+    }
+    type DateValue {
+      value: String!
+    }
+    type DateTimeValue {
+      value: String!
+    }
+    type ObjectValue {
+      value: JSON!
+    }
+    type ArrayValue {
+      value: JSON!
+    }
+    union ShapeValue =
+      | TextValue
+      | NumberValue
+      | BooleanValue
+      | ImageValue
+      | ColorValue
+      | DateValue
+      | DateTimeValue
+      | ObjectValue
+      | ArrayValue
+
+    input ImageValueInput {
+      assetId: ID!
+    }
+
+    input ShapeValueInput @oneOf {
+      text: String
+      number: Float
+      boolean: Boolean
+      image: ImageValueInput
+      color: String
+      date: String
+      datetime: String
+      array: JSON
+    }
+
+    type ShapeField {
+      id: ID!
+      name: String!
+      type: Type!
+      position: Int!
+      required: Boolean!
+      default: ShapeValue
+    }
+
+    input ShapeFieldInput {
+      id: ID!
+      name: String!
+      type: TypeInput!
+      position: Int!
+      required: Boolean!
+      defaultValue: JSON
+    }
+
+    type Shape {
+      id: ID!
+      name: String!
+      fields: [ShapeField!]!
+    }
+    type BlockVariable {
+      id: ID!
+      name: String!
+      type: Type!
+      required: Boolean!
+      defaultValue: JSON
+    }
+
+    type BlockStateOverride {
+      elementId: ID!
+      property: String!
+      value: JSON
+    }
+
+    type BlockState {
+      id: ID!
+      name: String!
+      isDefault: Boolean!
+      overrides: [BlockStateOverride!]!
+    }
+
+    type Block {
+      id: ID!
+      name: String!
+      canvas: Canvas!
+      variables: [BlockVariable!]!
+      states: [BlockState!]!
+      stateSelectorVariableId: ID
+    }
+
+    input ShapeInput {
+      id: ID!
+      name: String!
+      fields: [ShapeFieldInput!]!
+    }
+
+    type SourceFieldDefault {
+      nodeId: ID!
+      fieldPath: [ID!]!
+      value: JSON
+    }
+
+    """
+    The fields shared by every node on the Show graph. Kind-specific data is
+    exposed by the concrete node types below; clients use __typename rather
+    than a nullable field bag and a string discriminator.
+    """
+    interface GraphNode {
+      id: ID!
+      name: String!
+      "The Flow containing this node, or null if it's Show-level."
+      parentId: ID
+      position: Position!
+      "The node editor colorway; absent values are neutral or inherit their Flow."
+      color: String
+      "Persisted UI-only state for editor surfaces."
+      editorMetadata: JSON
+    }
+    type SceneNode implements GraphNode {
+      id: ID!
+      name: String!
+      parentId: ID
+      position: Position!
+      color: String
+      editorMetadata: JSON
+      "The Variables wiring edges can target."
+      variables: [SceneVariable!]!
+    }
+
+    type FlowNode implements GraphNode {
+      id: ID!
+      name: String!
+      parentId: ID
+      color: String
+      editorMetadata: JSON
+      position: Position!
+      "The Flow's authored design-time size; absent means fit around children."
+      size: JSON
+      "The Flow's design-time entry Scene, if one is set."
+      defaultSceneId: ID
+    }
+
+    type SourceNode implements GraphNode {
+      id: ID!
+      name: String!
+      parentId: ID
+      position: Position!
+      color: String
+      editorMetadata: JSON
+      type: Type!
+      "Sparse default overrides for Source fields, keyed by stable field ids."
+      fieldDefaults: [SourceFieldDefault!]!
+    }
+    type TransformerPort {
+      id: ID!
+      name: String!
+      rank: String
+      "The effective Type delivered by the connected producer."
+      type: Type
+    }
+    interface TransformerTransform {
+      kind: String!
+    }
+    type CalculateTransform implements TransformerTransform {
+      kind: String!
+      formula: String
+      outputType: Type
+    }
+    type FilterTransform implements TransformerTransform {
+      kind: String!
+      formula: String!
+    }
+    type ShuffleTransform implements TransformerTransform {
+      kind: String!
+    }
+    type TransformerNode implements GraphNode {
+      id: ID!
+      name: String!
+      parentId: ID
+      position: Position!
+      color: String
+      editorMetadata: JSON
+      "The effective output Type; derived for Filter and Shuffle."
+      type: Type
+      ports: [TransformerPort!]!
+      transform: TransformerTransform!
+    }
+
+    type DeviceNode implements GraphNode {
+      id: ID!
+      name: String!
+      parentId: ID
+      position: Position!
+      color: String
+      editorMetadata: JSON
+      "Whether each connection is its own logical instance."
+      perConnection: Boolean!
+      "The server-minted pairing code, absent before the first save."
+      pairingCode: String
+    }
+
+    """
+    The fields shared by every edge on the Show graph. Edge-specific data is
+    exposed by the concrete edge types below; clients use __typename rather
+    than a nullable field bag and a string discriminator.
+    """
+    interface GraphEdge {
+      id: ID!
+      sourceId: ID!
+      targetId: ID!
+      sourcePath: [String!]!
+      targetPath: [String!]!
+      "Where the author has dragged this edge's runs, keyed by route shape (#475)."
+      layout: JSON
+    }
+
+    type WiringEdge implements GraphEdge {
+      id: ID!
+      sourceId: ID!
+      targetId: ID!
+      sourcePath: [String!]!
+      targetPath: [String!]!
+      "Where the author has dragged this edge's runs, keyed by route shape (#475)."
+      layout: JSON
+      "Resolved stable field-id mapping."
+      fieldMapping: JSON
+      "The value conversion this edge declares before its types are compared (#532)."
+      conversion: String
+      "The Scene Variable this edge feeds — the head of targetPath."
+      targetVariableId: ID
+    }
+
+    type NavigateEdge implements GraphEdge {
+      id: ID!
+      sourceId: ID!
+      targetId: ID!
+      sourcePath: [String!]!
+      targetPath: [String!]!
+      "Where the author has dragged this edge's runs, keyed by route shape (#475)."
+      layout: JSON
+      "The Cue/Action pairing this transition represents."
+      cueId: ID
+      actionId: ID
+    }
+
+    type UpdateEdge implements GraphEdge {
+      id: ID!
+      sourceId: ID!
+      targetId: ID!
+      sourcePath: [String!]!
+      targetPath: [String!]!
+      layout: JSON
+      cueId: ID
+      actionId: ID
+    }
+    type DeviceEdge implements GraphEdge {
+      id: ID!
+      sourceId: ID!
+      targetId: ID!
+      sourcePath: [String!]!
+      targetPath: [String!]!
+      "Where the author has dragged this edge's runs, keyed by route shape (#475)."
+      layout: JSON
+    }
+
+    type EventBinding {
+      id: ID!
+      canvasId: ID!
+      elementId: ID!
+      eventKind: String!
+      "Per-kind payload. Null for kinds that take no parameters."
+      params: JSON
+      parameterMappings: JSON!
+      cueId: ID!
+      position: Int!
+    }
+    type CueParameter {
+      id: ID!
+      name: String!
+      type: JSON!
+      position: Int!
+    }
+    type Cue {
+      id: ID!
+      name: String!
+      ownerKind: String!
+      sceneId: ID
+      blockId: ID
+      actionIds: [ID!]!
+      parameters: [CueParameter!]!
+    }
+    type SlotEventBinding {
+      id: ID!
+      slotElementId: ID!
+      sourceCueId: ID!
+      targetCueId: ID!
+      position: Int!
+      parameterMappings: JSON!
+    }
+    interface Action {
+      id: ID!
+      cueId: ID!
+      kind: String!
+      targetSceneId: ID
+      targetSourceId: ID
+      params: JSON
+      layout: JSON
+    }
+    type NavigateAction implements Action {
+      id: ID!
+      cueId: ID!
+      kind: String!
+      targetSceneId: ID!
+      targetSourceId: ID
+      params: JSON
+      layout: JSON
+    }
+    type UpdateAction implements Action {
+      id: ID!
+      cueId: ID!
+      kind: String!
+      targetSceneId: ID
+      targetSourceId: ID!
+      params: JSON!
+      layout: JSON
+    }
+
+    type PublishLoss {
+      sourceId: ID!
+      fieldId: ID!
+      fieldName: String!
+      path: [String!]!
+      reason: String!
+    }
+    "A Show's graph in one state. Draft and published are independently readable (ADR-0002)."
+    type ShowGraph {
+      showId: ID!
+      "Either draft or published."
+      state: String!
+      nodes: [GraphNode!]!
+      edges: [GraphEdge!]!
+      shapes: [Shape!]!
+      blocks: [Block!]!
+      cues: [Cue!]!
+      actions: [Action!]!
+      eventBindings: [EventBinding!]!
+      slotEventBindings: [SlotEventBinding!]!
+      "Sparse graph-owned Source values, keyed by Source node and field path."
+      sourceFieldDefaults: [SourceFieldDefault!]!
+      updatedAt: String!
+      """
+      How many times this graph has been written. An edit batch names the
+      version it was composed against, and is refused if that isn't the
+      version stored — see \`applyShowEdits\`.
+      """
+      version: Int!
+      "Fields that lost data while this graph was published."
+      losses: [PublishLoss!]!
+    }
+    type VariableReference {
+      kind: String!
+      ownerId: ID!
+      path: [String!]!
+    }
+
+    input PositionInput {
+      x: Float!
+      y: Float!
+    }
+
+    input SuggestedImageDimensionsInput {
+      width: Int!
+      height: Int!
+    }
+    input SceneVariableInput {
+      id: ID!
+      name: String!
+      rank: String
+      type: TypeInput
+      defaultValue: JSON
+      suggestedDimensions: SuggestedImageDimensionsInput
+    }
+    input TransformerPortInput {
+      id: ID!
+      name: String!
+      rank: String
+    }
+
+    input GraphNodeInput {
+      id: ID!
+      kind: String!
+      name: String!
+      parentId: ID
+      defaultSceneId: ID
+      color: String
+      type: TypeInput
+      position: PositionInput!
+      variables: [SceneVariableInput!]
+      ports: [TransformerPortInput!]
+      transformKind: String
+      formula: String
+      outputType: TypeInput
+      size: JSON
+      """
+      Device nodes only: whether each connection is its own instance.
+      Defaults to false for a new Device. There is no pairingCode input:
+      codes are minted server-side.
+      """
+      perConnection: Boolean
+    }
+    input GraphEdgeInput {
+      id: ID!
+      kind: String!
+      sourceId: ID!
+      targetId: ID!
+      sourcePath: [String!]
+      targetPath: [String!]
+      fieldMapping: JSON
+      "The value conversion this edge declares before its types are compared (#532)."
+      conversion: String
+      "Where the author has dragged this edge's runs, keyed by route shape (#475)."
+      layout: JSON
+      cueId: ID
+      actionId: ID
+    }
+    input CueInput {
+      id: ID!
+      name: String!
+      ownerKind: String!
+      sceneId: ID
+      blockId: ID
+      actionIds: [ID!]!
+    }
+    input ActionInput {
+      id: ID!
+      cueId: ID!
+      kind: String!
+      targetSceneId: ID
+      targetSourceId: ID
+      params: JSON
+      layout: JSON
+    }
+    input EventBindingInput {
+      id: ID!
+      canvasId: ID!
+      elementId: ID!
+      eventKind: String!
+      params: JSON
+      parameterMappings: JSON
+      cueId: ID!
+      position: Int!
+    }
+    type GraphEdit {
+      type: String!
+      nodeId: ID
+      node: GraphNode
+      edgeId: ID
+      edge: GraphEdge
+      position: Position
+      parentId: ID
+      "The Shape target for shape commands."
+      shapeId: ID
+      shape: Shape
+      "The Shape Field target for shape commands."
+      fieldId: ID
+      field: ShapeField
+      fieldType: Type
+      defaultValue: JSON
+      required: Boolean
+      "The Show node editor colorway for graph.setNodeColor."
+      color: String
+      "The Source node Type, for graph.setSourceType."
+      sourceType: Type
+      "The graph-owned Source field path for graph.setSourceFieldDefault."
+      fieldPath: [ID!]
+      "The wiring edge's stable source-field to target-field mapping."
+      fieldMapping: JSON
+      "The edge layout, for graph.setEdgeLayout; null clears it."
+      layout: JSON
+      "The authored Flow size for graph.setFlowSize; null clears it."
+      size: JSON
+      "Persisted Source table column widths for graph.setSourceColumnSizes."
+      columnSizes: JSON
+      "The graph-owned Source field value; null clears the override."
+      value: JSON
+      "The Block target for Block lifecycle and variable commands."
+      block: Block
+      blockId: ID
+      blockVariables: JSON
+      "Interaction command payloads."
+      cue: Cue
+      action: Action
+      binding: EventBinding
+      "Event Binding key payloads: graph.setEventBindingKey."
+      key: String
+      cueId: ID
+      actionId: ID
+      bindingId: ID
+      bindingIds: [ID!]
+      actionIds: [ID!]
+      targetSceneId: ID
+      "Devices only: the code the server minted for a Device this batch created (#45)."
+      pairingCode: String
+      "Devices only: whether each connection is its own instance, for graph.setDevicePerConnection."
+      perConnection: Boolean
+    }
+    """
+    One serialisable Show edit. \`type\` selects a graph or Canvas command;
+    Canvas commands additionally name the Canvas they target.
+    """
+    input ShowEditInput {
+      type: String!
+      canvasId: ID
+      nodeId: ID
+      node: GraphNodeInput
+      edgeId: ID
+      edge: GraphEdgeInput
+      color: String
+      "Block lifecycle and variable payloads are validated by the domain boundary."
+      block: JSON
+      blockId: ID
+      blockVariables: JSON
+      position: PositionInput
+      parentId: ID
+      name: String
+      flowId: ID
+      "Transformer command payloads."
+      portId: ID
+      portIds: [ID!]
+      port: TransformerPortInput
+      ports: [TransformerPortInput!]
+      transformKind: String
+      formula: String
+      outputType: TypeInput
+      sceneId: ID
+      variableId: ID
+      variableIds: [ID!]
+      variable: SceneVariableInput
+      "Shape command target and materialised payloads."
+      shapeId: ID
+      shape: ShapeInput
+      fieldId: ID
+      field: ShapeFieldInput
+      fieldType: TypeInput
+      defaultValue: JSON
+      required: Boolean
+      "The Variable's Type, for graph.setSceneVariableType. Null clears it."
+      shapes: [ShapeInput!]
+      "The Variable's Type, for graph.setSceneVariableType. Null clears it."
+      variableType: TypeInput
+      "The Source node Type, for graph.setSourceType."
+      sourceType: TypeInput
+      "The Source field path, for graph.setSourceFieldDefault."
+      fieldPath: [ID!]
+      "The Source field default value, for graph.setSourceFieldDefault."
+      value: JSON
+      "The wiring edge's stable source-field to target-field mapping."
+      fieldMapping: JSON
+      "The edge layout, for graph.setEdgeLayout; null clears it."
+      layout: JSON
+      "The authored Flow size for graph.setFlowSize; null clears it."
+      size: JSON
+      "Persisted Source table column widths for graph.setSourceColumnSizes."
+      columnSizes: JSON
+      "The interaction payloads selected by type."
+      cue: CueInput
+      action: ActionInput
+      binding: EventBindingInput
+      "Event Binding key payloads: graph.setEventBindingKey."
+      key: String
+      cueId: ID
+      actionId: ID
+      bindingId: ID
+      bindingIds: [ID!]
+      actionIds: [ID!]
+      "Update Action target and operation payloads."
+      target: JSON
+      operation: JSON
+      operand: JSON
+      targetSceneId: ID
+      elementId: ID
+      rank: String
+      element: JSON
+      properties: JSON
+      unsetProperties: [String!]
+      "Devices only: whether each connection is its own instance, for graph.setDevicePerConnection."
+      perConnection: Boolean
+    }
+
+    type AppliedShowEdits {
+      showId: ID!
+      state: String!
+      updatedAt: String!
+      version: Int!
+      amendments: [GraphEdit!]!
+    }
+
+    type Query {
+      variableReferences(showId: ID!, variableId: ID!, state: String): [VariableReference!]!
+      showGraph(showId: ID!, state: String): ShowGraph!
+    }
+
+    type Mutation {
+      applyShowEdits(showId: ID!, baseVersion: Int!, edits: [ShowEditInput!]!): AppliedShowEdits!
+      publishShowGraph(showId: ID!): ShowGraph!
+    }
+`;
+
+export const resolvers: Resolvers = {
+  GraphNode: {
+    __resolveType: resolveGraphNodeType,
+  },
+  GraphEdge: {
+    __resolveType: resolveGraphEdgeType,
+  },
+  TransformerTransform: {
+    __resolveType: (transform: { __typename: string }) => transform.__typename,
+  },
+  Action: {
+    __resolveType: (value: { kind: string }) =>
+      value.kind === "update" ? "UpdateAction" : "NavigateAction",
+  },
+  ShapeValue: {
+    __resolveType: (value: { kind: string }) =>
+      `${value.kind[0]?.toUpperCase()}${value.kind.slice(1)}Value`,
+  },
+  Type: {
+    kind: (type: string | { kind: "array" | "shape"; of?: unknown; shapeId?: string }) =>
+      typeof type === "string" ? type : type.kind,
+    of: (type: { kind: "array"; of: unknown }) => (type.kind === "array" ? type.of : null),
+    shapeId: (type: { kind: "shape"; shapeId: string }) =>
+      type.kind === "shape" ? type.shapeId : null,
+  },
+  ShapeField: {
+    position: (field: { position?: number }) => field.position ?? 0,
+    default: (field: { defaultValue?: unknown; type: unknown }) =>
+      field.defaultValue === null || field.defaultValue === undefined
+        ? null
+        : toShapeValue(field.defaultValue, field.type),
+  },
+  Query: {
+    showGraph: async (
+      _parent,
+      { showId, state }: { showId: string; state?: string | null },
+      context,
+    ) => {
+      const userId = requireUserId(context);
+      // Ownership first: the graph is part of the Show, so it's readable
+      // only to its owner.
+      await findOwnShowOrThrow(showId, userId);
+      const graphState = validGraphState(state ?? "draft");
+      return serializeShowGraph(await readShowGraph(showId, graphState));
+    },
+    variableReferences: async (
+      _parent,
+      {
+        showId,
+        variableId,
+        state,
+      }: { showId: string; variableId: string; state?: string | null },
+      context,
+    ) => {
+      const userId = requireUserId(context);
+      await findOwnShowOrThrow(showId, userId);
+      const graphState = validGraphState(state ?? "draft");
+      const graph = await readShowGraph(showId, graphState);
+      const canvases = (await readCanvasWorkspace(showId, graphState)).canvases;
+      return findShowVariableReferences(graph, variableId, canvases);
+    },
+  },
+  Mutation: {
+    applyShowEdits: async (
+      _parent,
+      { showId, baseVersion, edits }: { showId: string; baseVersion: number; edits: unknown[] },
+      context,
+    ) => {
+      const userId = requireUserId(context);
+      await findOwnShowOrThrow(showId, userId);
+      const graphEdits: GraphEdit[] = [];
+      const canvasEdits: CanvasWorkspaceEdit[] = [];
+      try {
+        for (const input of edits) {
+          if (input === null || typeof input !== "object" || Array.isArray(input)) {
+            throw new CanvasEditError("Show edit must be an object.");
+          }
+          const record = input as Record<string, unknown>;
+          const type = record.type;
+          if (typeof type !== "string") throw new CanvasEditError("Show edit type is required.");
+          // Which vocabulary an edit belongs to is the codec's to say, not a
+          // prefix test's: Canvas content and Artboard framing are separate
+          // variants with separate prefixes (#436).
+          if (isCanvasWorkspaceEditType(type)) {
+            canvasEdits.push(decodeCanvasWorkspaceEdit(record as unknown as FlatCanvasEdit));
+          } else {
+            graphEdits.push(parseGraphEdit(record as unknown as FlatGraphEdit));
+          }
+        }
+        const applied = await applyShowEditsToDb(showId, graphEdits, canvasEdits, baseVersion);
+        await db.update(shows).set({ updatedAt: new Date() }).where(eq(shows.id, showId));
+        return applied;
+      } catch (error) {
+        if (error instanceof GraphVersionConflictError) {
+          throw new GraphQLError(error.message, { extensions: { code: "CONFLICT" } });
+        }
+        if (error instanceof InvalidInteractionError) {
+          throw new GraphQLError(error.message, {
+            extensions: { code: "BAD_USER_INPUT", reason: error.reason },
+          });
+        }
+        if (error instanceof CanvasEditError || error instanceof CanvasEditCodecError) {
+          throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
+        }
+        throw error;
+      }
+    },
+    publishShowGraph: async (_parent, { showId }: { showId: string }, context) => {
+      const userId = requireUserId(context);
+      await findOwnShowOrThrow(showId, userId);
+      try {
+        return serializeShowGraph(await publishShowGraph(showId));
+      } catch (error) {
+        if (error instanceof CanvasFormulaPublicationError) {
+          throw new GraphQLError(error.message, {
+            extensions: {
+              code: "BAD_USER_INPUT",
+              diagnostics: error.diagnostics,
+            },
+          });
+        }
+        throw error;
+      }
+    },
+  },
+};
