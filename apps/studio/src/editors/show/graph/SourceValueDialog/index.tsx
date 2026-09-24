@@ -7,12 +7,8 @@ import {
   normalizeStructuredValueTemplate,
 } from "@mechane/domain";
 import type { SourceValueRow } from "../inspector/source-value-types";
-import { INLINE_STRING_LIMIT, sourceValuesEqual } from "../inspector/source-values-helpers";
-import {
-  recordIdentifier,
-  type ArrayValueFocus,
-  type ArrayValueSelection,
-} from "./ArrayValueEditor/types";
+import { INLINE_STRING_LIMIT } from "../inspector/source-values-helpers";
+import { recordIdentifier, type ArrayValueSelection } from "./ArrayValueEditor/types";
 import { SourceValueView } from "./SourceValueView";
 import { useStructuredValueSession } from "./structured-value-session";
 
@@ -88,12 +84,10 @@ export function SourceValueDialog({
     onImmediateChange,
   });
   const draft = session.value;
-  const savedDraft = session.savedValue;
   const errors = session.errors;
   const arrayFocus = session.focus;
   const pendingFocus = session.pendingFocus;
   const navigationError = session.navigationError;
-  const isDirty = session.dirty;
   const updateDraft = session.change;
   const commitImmediate = session.changeImmediately;
   const updateErrors = session.reportValidity;
