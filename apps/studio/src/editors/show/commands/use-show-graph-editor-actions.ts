@@ -8,7 +8,7 @@ import {
 import type { ShowGraphCommand } from "@mechane/commands";
 import { generateId, type GraphNode, type Position, type ShowGraph } from "@mechane/domain";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import type { Connection, FitViewOptions, OnNodeDrag, XYPosition } from "@xyflow/react";
+import type { Connection, FitViewOptions, OnNodeDrag, XYPosition } from "../graph/react-flow";
 import type { MouseEvent as ReactMouseEvent } from "react";
 
 import {
@@ -118,14 +118,14 @@ interface Options {
   selectedNodes: GraphNode[];
   selectedNodeIds: string[];
   selectedEdgeIds: string[];
-  getNodes: ReturnType<typeof import("@xyflow/react").useReactFlow>["getNodes"];
-  getZoom: ReturnType<typeof import("@xyflow/react").useReactFlow>["getZoom"];
-  setCenter: ReturnType<typeof import("@xyflow/react").useReactFlow>["setCenter"];
-  fitView: ReturnType<typeof import("@xyflow/react").useReactFlow>["fitView"];
+  getNodes: ReturnType<typeof import("../graph/react-flow").useReactFlow>["getNodes"];
+  getZoom: ReturnType<typeof import("../graph/react-flow").useReactFlow>["getZoom"];
+  setCenter: ReturnType<typeof import("../graph/react-flow").useReactFlow>["setCenter"];
+  fitView: ReturnType<typeof import("../graph/react-flow").useReactFlow>["fitView"];
   /** Inset-aware framing options, decided once in ../graph/use-fit-view-options. */
   fitViewOptions: FitViewOptions;
   screenToFlowPosition: ReturnType<
-    typeof import("@xyflow/react").useReactFlow
+    typeof import("../graph/react-flow").useReactFlow
   >["screenToFlowPosition"];
   say(text: string): void;
   setPendingDelete: Dispatch<SetStateAction<DeletionScope | null>>;

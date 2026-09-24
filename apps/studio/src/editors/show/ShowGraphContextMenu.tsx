@@ -25,15 +25,16 @@ import {
   PanOnScrollMode,
   ReactFlow,
   SelectionMode,
-} from "@xyflow/react";
+} from "./graph/react-flow";
 import type {
   Connection,
   FitViewOptions,
   OnEdgesChange,
   OnNodeDrag,
   OnNodesChange,
+  ShowGraphViewport,
   XYPosition,
-} from "@xyflow/react";
+} from "./graph/react-flow";
 import type { MutableRefObject } from "react";
 
 import type { GraphConnectionEditing, GraphCreationEditing } from "./commands/use-graph-editing";
@@ -66,8 +67,8 @@ export interface ShowGraphContextMenuProps {
   create(creatable: CreatableNode, site: CreationSite): unknown;
   fitView(options: FitViewOptions): void;
   fitViewOptions: FitViewOptions;
-  initialViewport?: { x: number; y: number; zoom: number };
-  onViewportChange?(viewport: { x: number; y: number; zoom: number }): void;
+  initialViewport?: ShowGraphViewport;
+  onViewportChange?(viewport: ShowGraphViewport): void;
   selectedNodeIds: string[];
   selectedEdgeIds: string[];
   tidy(): void;

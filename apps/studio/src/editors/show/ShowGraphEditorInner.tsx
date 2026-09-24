@@ -29,9 +29,8 @@
 //     computed once at drag start; the affordance itself is #35's dashed
 //     outline plus dimming, painted by the graph node adapters.
 import { cn } from "@mechane/design-system";
-import type { Connection } from "@xyflow/react";
+import type { Connection } from "./graph/react-flow";
 
-import "@xyflow/react/dist/style.css";
 import "./graph/show-graph-editor.css";
 
 import { EdgeInteractionProvider } from "./graph/edge-interaction";

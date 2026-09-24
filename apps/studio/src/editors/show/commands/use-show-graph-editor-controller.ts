@@ -7,9 +7,9 @@ import {
   type Position,
 } from "@mechane/domain";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { useEdgesState, useNodesInitialized, useNodesState, useReactFlow } from "@xyflow/react";
+import { useEdgesState, useNodesInitialized, useNodesState, useReactFlow } from "../graph/react-flow";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import type { OnEdgesChange, OnNodesChange } from "@xyflow/react";
+import type { OnEdgesChange, OnNodesChange } from "../graph/react-flow";
 
 import { absolutePosition, graphToFlow, NODE_HEIGHT, NODE_WIDTH } from "../graph/graph-to-flow";
 import type { FlowResizeParams, ShowFlowEdge, ShowFlowNode } from "../graph/graph-to-flow";
