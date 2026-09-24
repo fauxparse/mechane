@@ -140,6 +140,7 @@ export {
   type PropertyInputConstraint,
   type PropertyInputConstraints,
   type PropertyInputPreset,
+  type PropertyInputMenuItem,
   type PropertyInputProps,
   type PropertyInputSizing,
   type PropertyInputType,

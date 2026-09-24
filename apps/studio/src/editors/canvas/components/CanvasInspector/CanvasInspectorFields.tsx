@@ -2,13 +2,13 @@ import { PropertyInput, type LucideIcon, type PropertyInputPreset } from "@mecha
 import {
   elementPropertyDescriptor,
   isElementPropertyFormulaable,
+  type ElementPropertyDescriptor,
   type ElementPropertyName,
 } from "@mechane/domain/element-properties";
-import { analyse, type FormulaScope } from "@mechane/domain/formula";
+import type { FormulaScope } from "@mechane/domain/formula";
 import { formulaType } from "@mechane/domain/formula-runtime";
-import { isPropertyFormula } from "@mechane/domain/property-values";
-import { useMemo, useState } from "react";
-import { FormulaEditor } from "../../../show/graph/formula/FormulaEditor";
+import { isPropertyConnection, isPropertyFormula } from "@mechane/domain/property-values";
+import { useMemo } from "react";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import {
   elementFormulaScope,
@@ -17,6 +17,11 @@ import {
   variableInput,
   variableOptions,
 } from "./canvas-inspector-values";
+import {
+  PropertyFormulaField,
+  type PropertyFormulaBinding,
+  type PropertyFormulaEntry,
+} from "./PropertyFormulaField";
 
 type PropertyFieldProps = {
   name: ElementPropertyName;
@@ -36,7 +41,6 @@ export const PropertyField = ({
   const { focused, target, elements, selected, variables, shapes, common, update } =
     useCanvasInspectorContext();
   const descriptor = elementPropertyDescriptor(name, target);
-  const [formulaOpen, setFormulaOpen] = useState(false);
   const formulaScope = useMemo<FormulaScope>(
     () =>
       elementFormulaScope(
@@ -51,11 +55,6 @@ export const PropertyField = ({
   if (elements.length > 0 && !elements.every((element) => elementPropertyDescriptor(name, element)))
     return null;
   const rawValue = common(name);
-  const formula = isPropertyFormula(rawValue) ? rawValue : null;
-  const formulaDiagnostics = formula ? analyse(formula.formula, formulaScope).diagnostics : [];
-  const blockingFormulaDiagnostic = formulaDiagnostics.find(
-    (diagnostic) => diagnostic.severity === "blocking",
-  );
   const isUnset =
     rawValue === undefined &&
     selected.length > 0 &&
@@ -69,74 +68,93 @@ export const PropertyField = ({
   if (!type) return null;
   const availableVariables = variableOptions(descriptor.targetType, variables, shapes);
 
+  const input = (entry?: PropertyFormulaEntry, inputClassName?: string) => (
+    <PropertyInput
+      className={inputClassName}
+      type={type}
+      value={value}
+      placeholder={isAuto ? "Auto" : placeholder}
+      unit={descriptor.unit}
+      step={descriptor.step}
+      presets={presets}
+      variables={availableVariables}
+      menuItems={entry?.menuItems}
+      onMenuItemSelect={entry?.onMenuItemSelect}
+      onKeyDown={entry?.onKeyDown}
+      allowAuto={descriptor.allowAuto}
+      auto={isAuto}
+      onAutoChange={
+        descriptor.allowAuto
+          ? (nextAuto) => update({ [name]: nextAuto ? descriptor.defaultValue : 0 })
+          : undefined
+      }
+      icon={icon}
+      min={descriptor.min}
+      max={descriptor.max}
+      onChange={(next) => {
+        if (isVariableInput(next)) {
+          update({
+            [name]: {
+              kind: "variable",
+              variableId: next.id,
+              fieldPath: next.fieldPath ?? [],
+              fallback: next.current?.value ?? descriptor.defaultValue,
+            },
+          });
+        } else if (next === null) {
+          update({}, [name]);
+        } else {
+          update({ [name]: descriptor.fromInput(next.value) });
+        }
+      }}
+    />
+  );
+
+  if (!isElementPropertyFormulaable(descriptor)) return input(undefined, className);
+
+  const displayText = (raw: unknown): string => {
+    const shown = descriptor.toInput(variableInput(raw, descriptor.targetType, variables, shapes));
+    if (!shown || isVariableInput(shown)) return "—";
+    return `${String(shown.value)}${descriptor.unit === "%" && shown.kind === "number" ? "%" : ""}`;
+  };
+  const binding: PropertyFormulaBinding = {
+    label: propertyLabel(descriptor),
+    icon,
+    scope: formulaScope,
+    formulaOf: (element) => {
+      const stored: unknown = Reflect.get(element, name);
+      return isPropertyFormula(stored) ? stored : null;
+    },
+    sourceOf: (formula) => formula.formula,
+    restingText: (formula, analysis) => {
+      const result = analysis.blocked ? null : analysis.value;
+      return displayText(
+        result?.kind === "number" || result?.kind === "text" || result?.kind === "boolean"
+          ? result.value
+          : formula.fallback,
+      );
+    },
+    write: (element, source) => {
+      const stored: unknown = Reflect.get(element, name);
+      const fallback = isPropertyFormula(stored)
+        ? stored.fallback
+        : isPropertyConnection(stored)
+          ? (stored.fallback ?? descriptor.defaultValue)
+          : (stored ?? descriptor.defaultValue);
+      return { [name]: { kind: "formula", formula: source, fallback } };
+    },
+    remove: (_element, formula) => ({ [name]: formula.fallback }),
+  };
+
   return (
-    <div className="flex min-w-0 flex-col gap-1">
-      <PropertyInput
-        className={className}
-        type={type}
-        value={value}
-        placeholder={isAuto ? "Auto" : placeholder}
-        unit={descriptor.unit}
-        step={descriptor.step}
-        presets={presets}
-        variables={availableVariables}
-        menuItems={
-          isElementPropertyFormulaable(descriptor)
-            ? [{ value: "formula", label: "Write formula" }]
-            : undefined
-        }
-        onMenuItemSelect={(item) => {
-          if (item === "formula") setFormulaOpen(true);
-        }}
-        allowAuto={descriptor.allowAuto}
-        auto={isAuto}
-        onAutoChange={
-          descriptor.allowAuto
-            ? (nextAuto) => update({ [name]: nextAuto ? descriptor.defaultValue : 0 })
-            : undefined
-        }
-        icon={icon}
-        min={descriptor.min}
-        max={descriptor.max}
-        onChange={(next) => {
-          if (isVariableInput(next)) {
-            update({
-              [name]: {
-                kind: "variable",
-                variableId: next.id,
-                fieldPath: next.fieldPath ?? [],
-                fallback: next.current?.value ?? descriptor.defaultValue,
-              },
-            });
-          } else if (next === null) {
-            update({}, [name]);
-          } else {
-            update({ [name]: descriptor.fromInput(next.value) });
-          }
-        }}
-      />
-      {(formulaOpen || formula) && isElementPropertyFormulaable(descriptor) ? (
-        <FormulaEditor
-          className="min-h-[4.5rem] text-xs"
-          value={formula?.formula ?? ""}
-          scope={formulaScope}
-          autoFocus={!formula}
-          onChange={(next) =>
-            update({
-              [name]: {
-                kind: "formula",
-                formula: next,
-                fallback: formula?.fallback ?? descriptor.defaultValue,
-              },
-            })
-          }
-        />
-      ) : null}
-      {blockingFormulaDiagnostic ? (
-        <p role="alert" className="text-xs text-destructive">
-          {blockingFormulaDiagnostic.message}
-        </p>
-      ) : null}
-    </div>
+    <PropertyFormulaField binding={binding} className={className}>
+      {input}
+    </PropertyFormulaField>
   );
 };
+
+/** `fontSize` → `Font size`, for the Formula flyout's heading. */
+function propertyLabel(descriptor: ElementPropertyDescriptor): string {
+  const words = descriptor.name.replace(/[A-Z]/g, (letter) => ` ${letter.toLowerCase()}`);
+  return `${words.charAt(0).toUpperCase()}${words.slice(1)}`;
+}

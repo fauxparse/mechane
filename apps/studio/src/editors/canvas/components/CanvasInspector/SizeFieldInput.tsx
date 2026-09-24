@@ -4,8 +4,6 @@ import {
   type PropertyInputValue,
 } from "@mechane/design-system";
 import type { AxisSize } from "@mechane/domain/canvas";
-import { joinFormulaUnit } from "@mechane/domain/formula";
-import type { PropertyFormula } from "@mechane/domain/property-values";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import {
@@ -16,6 +14,7 @@ import {
   variableOptions,
   type SizeConstraint,
 } from "./canvas-inspector-values";
+import type { PropertyFormulaEntry } from "./PropertyFormulaField";
 import type { SizeFieldProps } from "./SizeField";
 
 type SizeFieldInputProps = {
@@ -29,11 +28,11 @@ type SizeFieldInputProps = {
   previewing: boolean;
   mode: AxisSize["mode"] | undefined;
   unit: "px" | "%";
-  formula: PropertyFormula | null;
   sizeVariables: ReturnType<typeof variableOptions>;
   shapes: ReturnType<typeof useCanvasInspectorContext>["shapes"];
   updateSize(next: AxisSize): void;
-  onWriteFormula(): void;
+  /** Formula entry, when the row can carry one: `=` and the menu item. */
+  entry?: PropertyFormulaEntry;
 };
 
 export const SizeFieldInput = ({
@@ -47,11 +46,10 @@ export const SizeFieldInput = ({
   previewing,
   mode,
   unit,
-  formula,
   sizeVariables,
   shapes,
   updateSize,
-  onWriteFormula,
+  entry,
 }: SizeFieldInputProps) => (
   <PropertyInput
     icon={axis === "width" ? "W" : "H"}
@@ -59,15 +57,7 @@ export const SizeFieldInput = ({
     dimension={axis}
     unit={unit}
     placeholder={
-      sizeMixed
-        ? "Mixed"
-        : formula
-          ? joinFormulaUnit(formula.formula, formula.unit)
-          : mode === "fill"
-            ? "Fill"
-            : mode === "hug"
-              ? "Hug"
-              : undefined
+      sizeMixed ? "Mixed" : mode === "fill" ? "Fill" : mode === "hug" ? "Hug" : undefined
     }
     value={
       previewing
@@ -81,10 +71,9 @@ export const SizeFieldInput = ({
     min={0}
     constraints={constraints}
     onConstraintToggle={onConstraintToggle}
-    menuItems={[{ value: "formula", label: "Write formula" }]}
-    onMenuItemSelect={(item) => {
-      if (item === "formula") onWriteFormula();
-    }}
+    menuItems={entry?.menuItems}
+    onMenuItemSelect={entry?.onMenuItemSelect}
+    onKeyDown={entry?.onKeyDown}
     onSizingChange={(nextMode) => {
       updateSize(sizingForMode(sizeMixed ? undefined : size, nextMode, currentValue));
     }}

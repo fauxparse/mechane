@@ -33,11 +33,11 @@ const focused: CanvasArtboardDocument = {
   position: { x: 0, y: 0 },
 };
 
-const model: CanvasInspectorModel = {
+const modelFor = (selected: readonly Element[]): CanvasInspectorModel => ({
   focused,
-  target: bar,
-  elements: [bar],
-  selected: [bar],
+  target: selected[0] ?? bar,
+  elements: selected,
+  selected,
   blocks: [],
   variables: [],
   shapes: [],
@@ -47,29 +47,47 @@ const model: CanvasInspectorModel = {
   inspectorPreview: null,
   currentDimensions: null,
   absolute: false,
-  common: (property) =>
-    property
-      .split(".")
-      .reduce<unknown>(
-        (value, key) => (value && typeof value === "object" ? Reflect.get(value, key) : undefined),
-        bar,
-      ),
+  common: () => undefined,
   update: () => {},
   text: () => "",
   isAspectRatioLocked: false,
   setAspectRatioLock: () => {},
-};
+});
+
+const render = (selected: readonly Element[]) =>
+  renderToStaticMarkup(
+    createElement(
+      CanvasInspectorProvider,
+      { value: modelFor(selected) },
+      createElement(SizeField, { axis: "width" }),
+    ),
+  );
 
 describe("SizeField", () => {
-  it("shows the Formula and the unit it sets, as one expression", () => {
-    const html = renderToStaticMarkup(
-      createElement(
-        CanvasInspectorProvider,
-        { value: model },
-        createElement(SizeField, { axis: "width" }),
-      ),
-    );
+  it("reads at rest as what the Artboard renders, keeping the Formula out of the sidebar", () => {
+    const html = render([bar]);
 
-    expect(html).toContain("item.votes / Total * 100%");
+    expect(html).toContain('title="item.votes / Total * 100%"');
+    expect(html).toMatch(/>0%<\/span>/);
+    expect(html).toContain('data-slot="formula-badge"');
+    expect(html).not.toContain("Loading Formula editor");
+  });
+
+  it("counts different Formulas across a selection instead of showing one", () => {
+    const other: Element = {
+      ...bar,
+      id: "other",
+      sizing: {
+        width: {
+          mode: "fixed",
+          value: { kind: "formula", formula: "50", fallback: 10, unit: "px" },
+        },
+      },
+    };
+
+    const html = render([bar, other]);
+
+    expect(html).toContain("2 Formulas");
+    expect(html).not.toContain("title=");
   });
 });

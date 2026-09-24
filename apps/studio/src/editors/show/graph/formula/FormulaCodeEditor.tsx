@@ -13,6 +13,7 @@ import {
   closeBracketsKeymap,
   completionKeymap,
   completionStatus,
+  currentCompletions,
   type Completion,
   type CompletionContext,
 } from "@codemirror/autocomplete";
@@ -165,6 +166,8 @@ export interface FormulaCodeEditorProps {
   value: string;
   scope: FormulaScope;
   onChange(value: string): void;
+  /** Enter, when completion is not claiming it. Without it Enter inserts a newline. */
+  onSubmit?(): void;
   placeholder?: string;
   className?: string;
   autoFocus?: boolean;
@@ -174,6 +177,7 @@ export default function FormulaCodeEditor({
   value,
   scope,
   onChange,
+  onSubmit,
   placeholder = "Write a Formula…",
   className,
   autoFocus = false,
@@ -182,6 +186,7 @@ export default function FormulaCodeEditor({
   const view = useRef<EditorView | null>(null);
   const scopeRef = useRef(scope);
   const changeRef = useRef(onChange);
+  const submitRef = useRef(onSubmit);
   const initialValue = useRef(value);
   const completionOpen = useRef(false);
 
@@ -190,6 +195,7 @@ export default function FormulaCodeEditor({
   useEffect(() => {
     scopeRef.current = scope;
     changeRef.current = onChange;
+    submitRef.current = onSubmit;
   });
 
   useEffect(() => {
@@ -203,6 +209,14 @@ export default function FormulaCodeEditor({
           keymap.of([
             ...closeBracketsKeymap,
             ...completionKeymap,
+            {
+              key: "Enter",
+              run: () => {
+                if (!submitRef.current) return false;
+                submitRef.current();
+                return true;
+              },
+            },
             ...defaultKeymap,
             ...historyKeymap,
           ]),
@@ -285,7 +299,11 @@ export default function FormulaCodeEditor({
       onKeyDownCapture={(event) => {
         if (event.key !== "Escape") return;
         const state = view.current?.state;
-        completionOpen.current = state ? completionStatus(state) !== null : false;
+        // An active completion with nothing to offer shows no tooltip, so it
+        // must not swallow the Escape a host is waiting for.
+        completionOpen.current = state
+          ? completionStatus(state) !== null && currentCompletions(state).length > 0
+          : false;
       }}
       onKeyDown={(event) => {
         // React Flow reads Backspace and the arrows as canvas commands, so the
