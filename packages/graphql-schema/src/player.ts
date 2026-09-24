@@ -1,153 +1,26 @@
+// The Player's session document (#42).
+//
+// The graph selection is `ShowGraphFields`, shared with the Show Editor
+// (#742, ADR-0020). The Player used to spell out its own reduced graph
+// selection, which is how it came to be missing Shape Field defaults, Scene
+// Variable defaults, and every Transformer's transform — each invisible from
+// this side alone.
+//
+// What is still Player-only is the session *around* the graph: which Device
+// this is, its realtime grant, the Run's materialized values, the Flow
+// bundle a per-connection Device navigates locally (ADR-0018), the active
+// Scene and Canvas, and resolved image assets.
 import { graphql } from "./graphql";
 import { CanvasElementFields } from "./canvas";
-import type { TadaDocumentNode } from "gql.tada";
-const PlayerGraphFields = graphql(`
-  fragment PlayerGraphFields on ShowGraph {
-    showId
-    state
-    updatedAt
-    version
-    cues {
-      id
-      name
-      ownerKind
-      sceneId
-      blockId
-      actionIds
-      parameters {
-        id
-        name
-        type
-        position
-      }
-    }
-    actions {
-      id
-      cueId
-      kind
-      targetSceneId
-      targetSourceId
-      params
-      layout
-    }
-    eventBindings {
-      id
-      canvasId
-      elementId
-      eventKind
-      params
-      parameterMappings
-      cueId
-      position
-    }
-    slotEventBindings {
-      id
-      slotElementId
-      sourceCueId
-      targetCueId
-      position
-      parameterMappings
-    }
-    sourceFieldDefaults {
-      nodeId
-      fieldPath
-      value
-    }
-    nodes {
-      __typename
-      id
-      name
-      parentId
-      position {
-        x
-        y
-      }
-      color
-      ... on SceneNode {
-        variables {
-          id
-          name
-          rank
-          type {
-            kind
-            shapeId
-            of {
-              kind
-              shapeId
-            }
-          }
-          suggestedDimensions {
-            width
-            height
-          }
-        }
-      }
-      ... on FlowNode {
-        defaultSceneId
-      }
-      ... on SourceNode {
-        sourceType: type {
-          kind
-          shapeId
-          of {
-            kind
-            shapeId
-          }
-        }
-      }
-      ... on TransformerNode {
-        transformerType: type {
-          kind
-          shapeId
-          of {
-            kind
-            shapeId
-          }
-        }
-      }
-      ... on DeviceNode {
-        perConnection
-        pairingCode
-      }
-    }
-    edges {
-      __typename
-      id
-      sourceId
-      targetId
-      sourcePath
-      targetPath
-      ... on WiringEdge {
-        fieldMapping
-        conversion
-        targetVariableId
-      }
-      ... on NavigateEdge {
-        cueId
-        actionId
-      }
-    }
-    shapes {
-      id
-      name
-      fields {
-        id
-        name
-        position
-        required
-        type {
-          kind
-          shapeId
-          of {
-            kind
-            shapeId
-          }
-        }
-      }
-    }
-  }
-`);
+import { ShowGraphFields } from "./show-graph-document";
 
+/**
+ * A Scene inside the Flow bundle a per-connection Device navigates locally.
+ *
+ * Selected apart from the graph because the bundle carries each Scene's
+ * Canvas with it; the fields themselves match `ShowGraphFields`' Scene
+ * Variables so both decode the same way.
+ */
 const PlayerFlowSceneFields = graphql(`
   fragment PlayerFlowSceneFields on SceneNode {
     __typename
@@ -163,6 +36,7 @@ const PlayerFlowSceneFields = graphql(`
       id
       name
       rank
+      defaultValue
       type {
         kind
         shapeId
@@ -179,7 +53,7 @@ const PlayerFlowSceneFields = graphql(`
   }
 `);
 
-export const GetPlayerSessionQuery: TadaDocumentNode<any, any> = graphql(
+export const GetPlayerSessionQuery = graphql(
   `
     query GetPlayerSession {
       playerSession {
@@ -203,7 +77,7 @@ export const GetPlayerSessionQuery: TadaDocumentNode<any, any> = graphql(
           structuredValues
         }
         graph {
-          ...PlayerGraphFields
+          ...ShowGraphFields
         }
         flow {
           flowId
@@ -305,42 +179,6 @@ export const GetPlayerSessionQuery: TadaDocumentNode<any, any> = graphql(
             ...CanvasElementFields
           }
         }
-        blocks {
-          id
-          name
-          canvas {
-            id
-            kind
-            elements {
-              ...CanvasElementFields
-            }
-          }
-          variables {
-            id
-            name
-            required
-            type {
-              kind
-              shapeId
-              of {
-                kind
-                shapeId
-              }
-            }
-            defaultValue
-          }
-          states {
-            id
-            name
-            isDefault
-            overrides {
-              elementId
-              property
-              value
-            }
-          }
-          stateSelectorVariableId
-        }
         imageAssets {
           id
           revision
@@ -354,10 +192,10 @@ export const GetPlayerSessionQuery: TadaDocumentNode<any, any> = graphql(
       }
     }
   `,
-  [PlayerGraphFields, PlayerFlowSceneFields, CanvasElementFields],
+  [ShowGraphFields, PlayerFlowSceneFields, CanvasElementFields],
 );
 
-export const SubmitPlayerEventMutation: TadaDocumentNode<any, any> = graphql(`
+export const SubmitPlayerEventMutation = graphql(`
   mutation SubmitPlayerEvent($input: PlayerEventInput!) {
     submitPlayerEvent(input: $input) {
       __typename

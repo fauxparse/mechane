@@ -8,22 +8,31 @@
 //
 // Between them the nodes and edges cover all five node kinds and all three
 // edge kinds, so the placeholder bodies and the mapper are both exercised.
-import type { ShowGraph } from "@mechane/graphql-schema";
+import type { GraphEdge, GraphNode, ShowGraph } from "@mechane/domain";
 
 type Graph = Pick<ShowGraph, "nodes" | "edges">;
-type ShowGraphNodeShape = {
+type NodeShape = {
   id: string;
-  kind: string;
+  kind: GraphNode["kind"];
   name?: string;
   parentId?: string | null;
   defaultSceneId?: string | null;
-  type?: { kind: string; shapeId: string | null; of: unknown } | null;
   position?: { x: number; y: number };
   variables?: unknown[];
   perConnection?: boolean;
   pairingCode?: string | null;
 };
-type ShowGraphEdgeShape = Graph["edges"][number];
+type EdgeShape = {
+  id: string;
+  kind: GraphEdge["kind"];
+  sourceId: string;
+  targetId: string;
+  sourcePath?: string[];
+  targetPath?: string[];
+  targetVariableId?: string | null;
+  cueId?: string | null;
+  actionId?: string | null;
+};
 
 const VOTE_FLOW = "flow_vote";
 const WAITING = "scene_waiting";
@@ -41,44 +50,27 @@ const HOUSE_VARIABLE = "variable_house";
 /** The nodes inside the vote Flow — a set worth framing on its own. */
 export const VOTE_FLOW_NODE_IDS = [VOTE_FLOW, WAITING, VOTING, RESULTS];
 
-function node(overrides: Partial<ShowGraphNodeShape> & Pick<ShowGraphNodeShape, "id" | "kind">) {
-  const { kind, ...rest } = overrides;
-  const typeName =
-    {
-      scene: "SceneNode",
-      flow: "FlowNode",
-      source: "SourceNode",
-      transformer: "TransformerNode",
-      device: "DeviceNode",
-    }[kind] ?? kind;
+function node(overrides: Partial<NodeShape> & Pick<NodeShape, "id" | "kind">): GraphNode {
+  const { kind } = overrides;
   return {
-    __typename: typeName,
     name: overrides.id,
     parentId: null,
-    defaultSceneId: null,
-    sourceType: kind === "source" ? { kind: "text", shapeId: null, of: null } : undefined,
-    transformerType: kind === "transformer" ? null : undefined,
-    variables: [],
-    fieldDefaults: [],
-    perConnection: false,
-    pairingCode: null,
-    ...rest,
-  } as unknown as Graph["nodes"][number];
+    position: { x: 0, y: 0 },
+    ...(kind === "scene" ? { variables: [] } : {}),
+    ...(kind === "flow" ? { defaultSceneId: null } : {}),
+    ...(kind === "source" ? { type: "text" } : {}),
+    ...(kind === "transformer" ? { ports: [], transform: { kind: "shuffle" } } : {}),
+    ...(kind === "device" ? { perConnection: false, pairingCode: null } : {}),
+    ...overrides,
+  } as GraphNode;
 }
 
-function edge(overrides: Partial<ShowGraphEdgeShape> & { id: string; kind: string }) {
-  const { kind, ...rest } = overrides;
-  const typeName =
-    { wiring: "WiringEdge", navigate: "NavigateEdge", device: "DeviceEdge" }[kind] ?? kind;
+function edge(overrides: Partial<EdgeShape> & Pick<EdgeShape, "id" | "kind">): GraphEdge {
   return {
-    __typename: typeName,
     sourcePath: [],
     targetPath: [],
-    targetVariableId: null,
-    cueId: null,
-    actionId: null,
-    ...rest,
-  } as unknown as Graph["edges"][number];
+    ...overrides,
+  } as GraphEdge;
 }
 
 export const SAMPLE_GRAPH: Graph = {

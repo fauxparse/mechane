@@ -6,6 +6,7 @@ import { useActiveRun } from "../../../../api/runs";
 import { useShowGraph, useShowGraphEdits } from "../../../../api/show-graph";
 import { useGraphEditing } from "../../../../editors/show/commands/use-graph-editing";
 import { ShapeWorkspace } from "../../../../editors/show/shapes/ShapeWorkspace";
+import { useOpenedShowGraph } from "../../../../editors/show/data/use-opened-graph";
 
 export const Route = createFileRoute("/_authenticated/shows/$showId/shapes")({
   component: ShapesRoute,
@@ -25,7 +26,8 @@ function ShapesRoute() {
   });
   const draft = useShowGraph(showId, "draft");
   const save = useShowGraphEdits(showId, draft.data?.version);
-  const editing = useGraphEditing(draft.data, (edits) => save.enqueue(edits));
+  const openedGraph = useOpenedShowGraph(draft.data);
+  const editing = useGraphEditing(openedGraph, (edits) => save.enqueue(edits));
 
   if (showId === null || draft.isError) {
     return (

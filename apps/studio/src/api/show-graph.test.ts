@@ -1,5 +1,4 @@
 import type { GraphEdit } from "@mechane/commands";
-import type { ShowGraph } from "@mechane/graphql-schema";
 import { describe, expect, it } from "vitest";
 
 import { patchShowGraphQueryData } from "./show-graph";
@@ -20,7 +19,7 @@ const graph = {
   cues: [],
   actions: [],
   eventBindings: [],
-} as unknown as ShowGraph;
+} as unknown as Parameters<typeof patchShowGraphQueryData>[0];
 
 const reorder: GraphEdit = {
   type: "graph.reorderSceneVariables",
@@ -61,7 +60,7 @@ const interactionGraph = {
       position: 0,
     },
   ],
-} as unknown as ShowGraph;
+} as unknown as Parameters<typeof patchShowGraphQueryData>[0];
 
 const newCue: GraphEdit = {
   type: "graph.addCue",
@@ -80,13 +79,10 @@ const removeCachedCue: GraphEdit = {
 describe("patchShowGraphQueryData", () => {
   it("reorders the cached Scene Variables without refetching", () => {
     const patched = patchShowGraphQueryData(graph, [reorder]);
-    const scene = patched?.nodes.find(
-      (node): node is Extract<ShowGraph["nodes"][number], { __typename: "SceneNode" }> =>
-        node.id === "scene-a" && node.__typename === "SceneNode",
-    );
+    const scene = patched?.nodes.find((node) => node.id === "scene-a");
 
     expect(scene?.variables?.map((variable) => variable.id)).toEqual(["variable-b", "variable-a"]);
-    expect(patched?.nodes.find((node) => node.id === "source-a")).toBe(graph.nodes[1]);
+    expect(patched?.nodes.find((node) => node.id === "source-a")).toBe(graph?.nodes[1]);
   });
 
   it("leaves the cache unchanged for an invalid cached order", () => {

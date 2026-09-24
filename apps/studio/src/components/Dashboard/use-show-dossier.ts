@@ -21,7 +21,7 @@ import { useCanvasWorkspace } from "../../api/canvas";
 import { useImageAssets } from "../../api/images";
 import { useShowGraph } from "../../api/show-graph";
 import { canvasArtboardSize } from "../../editors/canvas/data/canvas-workspace";
-import { toShowGraph } from "../../editors/show/data/api-graph";
+import { decodeShowGraphDocument } from "@mechane/graphql-schema";
 
 /** One Scene of a Show, ready to paint at any size. */
 export interface ScenePreview {
@@ -75,7 +75,7 @@ export function useShowDossier(showId: ShowId): ShowDossier {
       return { scenes: [], devices: [], hero: null, counts: NO_COUNTS, pending };
     }
 
-    const graph = toShowGraph(apiGraph.data);
+    const graph = decodeShowGraphDocument(apiGraph.data).graph;
     // `assetId` is what a resolved image value is keyed by; the query calls it `id`.
     const imageAssets = (images.data ?? []).map((asset) => ({ ...asset, assetId: asset.id }));
     const sourceValues = defaultSourceValues(graph);

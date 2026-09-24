@@ -5,7 +5,6 @@ import type { GraphEdit } from "@mechane/commands";
 import type { ShowGraph } from "@mechane/domain";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 
-import type { ApiGraph } from "./data/api-graph";
 import type { SourceImageAsset } from "./graph/inspector/source-value-types";
 import { ShowGraphEditorInner } from "./ShowGraphEditorInner";
 
@@ -22,7 +21,7 @@ export interface ShowGraphValueLocation {
 }
 
 export interface ShowGraphEditorProps {
-  graph: ApiGraph | null | undefined;
+  graph: ShowGraph | null | undefined;
   imageAssets?: readonly SourceImageAsset[];
   onImageUpload?: (props: ImageInputOnUploadProps) => void;
   onEdit?: (edits: readonly GraphEdit[], graph: ShowGraph) => void;

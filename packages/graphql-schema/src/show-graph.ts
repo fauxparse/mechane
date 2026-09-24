@@ -1,281 +1,41 @@
-// Typed Show-graph documents (issue #38), following the pattern in
-// ./show.ts: the field set is spelled out per document rather than shared
-// through a fragment, so callers get a plain object instead of a masked
-// fragment to unwrap.
+// Typed Show-graph documents (issue #38).
 //
-// `ShowGraph` and its parts are derived from the query's own result type,
-// so they can't drift from what's actually selected — and, transitively,
-// from apps/api's schema.
-import { graphql } from "./graphql";
+// The graph selection is no longer spelled out here: it is `ShowGraphFields`
+// in ./show-graph-document.ts, shared with the Player (#742, ADR-0020).
+// Spelling it out per document is what let Studio and the Player select
+// different fields and then disagree about what the wire means.
+//
+// What is still spelled out is the handful of fields only an editor can
+// consume — persisted UI metadata, a Flow's authored size, and where an
+// author dragged an edge's or an Action's route. They are selected inline
+// rather than as a second fragment because gql.tada types two selections of
+// the same field as an intersection of arrays, which nothing can be assigned
+// to; inline keeps one flat result type for the query cache to work in.
 import type { ResultOf } from "gql.tada";
-import { CanvasElementFields } from "./canvas";
+import { graphql } from "./graphql";
+import { ShowGraphFields } from "./show-graph-document";
 
 export const GetShowGraphQuery = graphql(
   `
     query GetShowGraph($showId: ID!, $state: String) {
       showGraph(showId: $showId, state: $state) {
-        showId
-        state
-        updatedAt
-        version
-        sourceFieldDefaults {
-          nodeId
-          fieldPath
-          value
-        }
-        blocks {
-          id
-          name
-          canvas {
-            id
-            kind
-            elements {
-              ...CanvasElementFields
-            }
-          }
-          stateSelectorVariableId
-          variables {
-            id
-            name
-            required
-            type {
-              kind
-              shapeId
-              of {
-                kind
-                shapeId
-              }
-            }
-            defaultValue
-          }
-          states {
-            id
-            name
-            isDefault
-            overrides {
-              elementId
-              property
-              value
-            }
-          }
-        }
+        ...ShowGraphFields
         nodes {
-          __typename
-          id
-          name
-          parentId
-          position {
-            x
-            y
-          }
-          color
           editorMetadata
-          ... on SceneNode {
-            variables {
-              id
-              name
-              rank
-              type {
-                kind
-                shapeId
-                of {
-                  kind
-                  shapeId
-                }
-              }
-              defaultValue
-              suggestedDimensions {
-                width
-                height
-              }
-            }
-          }
           ... on FlowNode {
-            defaultSceneId
             size
-          }
-          ... on SourceNode {
-            sourceType: type {
-              kind
-              shapeId
-              of {
-                kind
-                shapeId
-              }
-            }
-            fieldDefaults {
-              fieldPath
-              value
-            }
-          }
-          ... on TransformerNode {
-            transformerType: type {
-              kind
-              shapeId
-              of {
-                kind
-                shapeId
-              }
-            }
-            ports {
-              id
-              name
-              rank
-            }
-            transform {
-              __typename
-              kind
-              ... on CalculateTransform {
-                calculateFormula: formula
-                outputType {
-                  kind
-                  shapeId
-                  of {
-                    kind
-                    shapeId
-                  }
-                }
-              }
-              ... on FilterTransform {
-                filterFormula: formula
-              }
-            }
-          }
-          ... on DeviceNode {
-            perConnection
-            pairingCode
           }
         }
         edges {
-          __typename
-          id
-          sourceId
-          targetId
-          sourcePath
-          targetPath
           layout
-          ... on WiringEdge {
-            fieldMapping
-            conversion
-            targetVariableId
-          }
-          ... on NavigateEdge {
-            cueId
-            actionId
-          }
-          ... on UpdateEdge {
-            cueId
-            actionId
-          }
-        }
-        cues {
-          id
-          name
-          ownerKind
-          sceneId
-          blockId
-          actionIds
-          parameters {
-            id
-            name
-            type
-            position
-          }
         }
         actions {
-          __typename
-          ... on NavigateAction {
-            id
-            cueId
-            kind
-            targetSceneId
-            layout
-          }
-          ... on UpdateAction {
-            id
-            cueId
-            kind
-            targetSourceId
-            params
-            layout
-          }
-        }
-        eventBindings {
-          id
-          canvasId
-          elementId
-          eventKind
-          params
-          cueId
-          position
-          parameterMappings
-        }
-        slotEventBindings {
-          id
-          slotElementId
-          sourceCueId
-          targetCueId
-          position
-          parameterMappings
-        }
-        shapes {
-          id
-          name
-          fields {
-            id
-            name
-            position
-            required
-            default {
-              __typename
-              ... on TextValue {
-                textValue: value
-              }
-              ... on NumberValue {
-                numberValue: value
-              }
-              ... on BooleanValue {
-                booleanValue: value
-              }
-              ... on ImageValue {
-                assetId
-                url
-                width
-                height
-                alt
-                mimeType
-                blurHash
-              }
-              ... on ColorValue {
-                colorValue: value
-              }
-              ... on DateValue {
-                dateValue: value
-              }
-              ... on DateTimeValue {
-                datetimeValue: value
-              }
-              ... on ObjectValue {
-                objectValue: value
-              }
-              ... on ArrayValue {
-                arrayValue: value
-              }
-            }
-            type {
-              kind
-              shapeId
-              of {
-                kind
-                shapeId
-              }
-            }
-          }
+          layout
         }
       }
     }
   `,
-  [CanvasElementFields],
+  [ShowGraphFields],
 );
 
 /**
@@ -327,7 +87,4 @@ export const PublishShowGraphMutation = graphql(`
   }
 `);
 
-export type ShowGraph = ResultOf<typeof GetShowGraphQuery>["showGraph"];
 export type ApplyShowEditsResult = ResultOf<typeof ApplyShowEditsMutation>["applyShowEdits"];
-export type ShowGraphNode = ShowGraph["nodes"][number];
-export type ShowGraphEdge = ShowGraph["edges"][number];

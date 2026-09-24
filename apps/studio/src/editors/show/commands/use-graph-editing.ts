@@ -94,7 +94,6 @@ import {
 } from "../graph/inspector/source-type-change";
 import { sourceLabelFor } from "../graph/source-label";
 
-import type { ApiGraph } from "../data/api-graph";
 import { handleFor, readHandle, type HandleId } from "../graph/handle-ids";
 import { createNode } from "../graph/node-kinds";
 import type { GraphCommands } from "./use-graph-commands";
@@ -333,7 +332,7 @@ export function graphInspectorEditing(
  * or batch; this hook just reports.
  */
 export function useGraphEditing(
-  source: ApiGraph | null | undefined,
+  source: ShowGraph | null | undefined,
   save?: (edits: readonly GraphEdit[], graph: ShowGraph) => void,
 ): GraphEditing {
   const commands = useGraphCommands(source, save);

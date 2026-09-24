@@ -57,6 +57,7 @@ import {
   type GraphEditing,
 } from "../../../../editors/show/commands/use-graph-editing";
 import { useUndoKeys } from "../../../../editors/show/keyboard/use-undo-keys";
+import { useOpenedShowGraph } from "../../../../editors/show/data/use-opened-graph";
 
 export const Route = createFileRoute("/_authenticated/shows/$showId/art")({
   component: CanvasWorkspaceRoute,
@@ -168,7 +169,8 @@ function CanvasWorkspaceRoute() {
     undoHistory.record("canvas");
     save.enqueue(edits);
   });
-  const graphEditing = useGraphEditing(draft.data, (edits) => {
+  const openedGraph = useOpenedShowGraph(draft.data);
+  const graphEditing = useGraphEditing(openedGraph, (edits) => {
     undoHistory.record("graph");
     save.enqueue(edits);
   });
