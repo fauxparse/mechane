@@ -77,7 +77,9 @@ if (!redGreenCue || !redGreenAction || !redGreenBinding) throw new Error("Fixtur
  * Block's tap Binding names the Block Canvas, which is what makes a Scene
  * Canvas match impossible and the relay necessary.
  */
-const relayBlocks = [{ id: "block_swatch", canvas: { id: "canvas_swatch" } }];
+const relayBlocks = [
+  { id: "block_swatch", canvas: { id: "canvas_swatch", root: { id: "swatch_root" } } },
+];
 
 const relayCues: Cue[] = [
   ...cues,
@@ -116,6 +118,18 @@ const relayEventBindings: EventBinding[] = [
     eventKind: "tap",
     cueId: "cue_swatch_picked",
     position: 0,
+    parameterMappings: [
+      { parameterId: "swatch", source: { kind: "variable", variableId: "swatch_label" } },
+    ],
+  },
+  {
+    id: "binding_swatch_keypress",
+    canvasId: "canvas_swatch",
+    elementId: "swatch_root",
+    eventKind: "keypress",
+    params: { key: "k" },
+    cueId: "cue_swatch_picked",
+    position: 1,
     parameterMappings: [
       { parameterId: "swatch", source: { kind: "variable", variableId: "swatch_label" } },
     ],
@@ -164,6 +178,18 @@ describe("Slot Event Binding relay", () => {
         hops: [[{ sourceParameterId: "swatch", targetParameterId: "picked" }]],
       },
     });
+  });
+  it("resolves a keypress against the Block root inside a Slot instance", () => {
+    const plan = resolveRuntimeEvent(relayGraph, {
+      sceneId: "scene_red",
+      canvasId: "canvas_red",
+      elementId: "scene_red_root",
+      eventKind: "keypress",
+      params: { key: "k" },
+      slotInstancePath: [{ slotElementId: "swatch_slot", index: 2 }],
+    });
+    expect(plan.kind).toBe("planned");
+    expect(plan.kind === "planned" && plan.cue.id).toBe("cue_red_pick");
   });
 
   it("leaves the same Element unbound without the Slot instance path", () => {
