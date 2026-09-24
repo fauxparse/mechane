@@ -3,7 +3,7 @@
 // imperative viewport API. All of the *deciding* lives next door, in a pure
 // module with tests; this file is the wiring, and stays boring on purpose.
 import { useEffect } from "react";
-import { useReactFlow } from "@xyflow/react";
+import { useReactFlow } from "../graph/react-flow";
 
 import { focusContext } from "./focus-context";
 import { viewportIntentFor } from "./viewport-keys";
