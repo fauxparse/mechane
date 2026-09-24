@@ -15,26 +15,15 @@ import {
   decodeCanvasWorkspaceEdit,
   isCanvasWorkspaceEditType,
 } from "@mechane/commands";
-import type { GraphState, RunError, RunErrorCategory } from "@mechane/domain";
+import type { RunError } from "@mechane/domain";
 import {
   assertOwnedBy,
-  assertValidGraphState,
-  assertValidImageName,
-  assertValidShowName,
-  assertValidThemeMode,
-  assertValidThemePalette,
   DEFAULT_IMAGE_UPLOAD_POLICY,
   defaultThemeSettings,
   describeRunError,
   findShowVariableReferences,
-  InvalidGraphStateError,
-  InvalidImageNameError,
   InvalidInteractionError,
-  InvalidShowNameError,
-  InvalidThemeModeError,
-  InvalidThemePaletteError,
   isId,
-  isRunErrorCategory,
 } from "@mechane/domain";
 import { and, eq } from "drizzle-orm";
 import { GraphQLError, GraphQLScalarType, Kind } from "graphql";
@@ -109,97 +98,16 @@ function serializeRunError(error: RunError) {
   };
 }
 
-// Mirrors `validGraphState` below: an unknown category is a client mistake
-// worth naming, not an empty result set the caller has to puzzle over.
-function validRunErrorCategory(value: string): RunErrorCategory {
-  if (!isRunErrorCategory(value)) {
-    throw new GraphQLError(`Unknown Run error category: "${value}".`, {
-      extensions: { code: "BAD_USER_INPUT" },
-    });
-  }
-  return value;
-}
-
-// graphql-yoga masks any thrown error that isn't a GraphQLError as a generic
-// "Unexpected error" (sound default — it stops internal error messages
-// leaking to clients). @mechane/domain's validation errors are plain
-// Errors so they stay usable outside a GraphQL context, so translate them
-// here into a GraphQLError the client can actually read.
-function toShapeValue(value: unknown, type: unknown): unknown {
-  if (typeof type === "string") return { kind: type, value };
-  if (type && typeof type === "object" && "kind" in type) {
-    if (type.kind === "array") return { kind: "array", value };
-    if (type.kind === "shape") return { kind: "object", value };
-  }
-  return null;
-}
-
-function validShowName(name: string): string {
-  try {
-    return assertValidShowName(name);
-  } catch (error) {
-    if (error instanceof InvalidShowNameError) {
-      throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
-    }
-    throw error;
-  }
-}
-
-function validImageName(name: string): string {
-  try {
-    return assertValidImageName(name);
-  } catch (error) {
-    if (error instanceof InvalidImageNameError) {
-      throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
-    }
-    throw error;
-  }
-}
-
-// Mirrors `validShowName` above: @mechane/domain's validators are plain
-// Errors so they stay usable outside a GraphQL context, so translate them
-// into a GraphQLError the client can read rather than the generic
-// "Unexpected error" graphql-yoga masks non-GraphQLErrors as.
-function validThemeMode(value: string): string {
-  try {
-    return assertValidThemeMode(value);
-  } catch (error) {
-    if (error instanceof InvalidThemeModeError) {
-      throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
-    }
-    throw error;
-  }
-}
-
-function validThemePalette(value: string): string {
-  try {
-    return assertValidThemePalette(value);
-  } catch (error) {
-    if (error instanceof InvalidThemePaletteError) {
-      throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
-    }
-    throw error;
-  }
-}
-
-// Same translation again, for the two Show-graph domain errors (#38).
-function validGraphState(value: string): GraphState {
-  try {
-    return assertValidGraphState(value);
-  } catch (error) {
-    if (error instanceof InvalidGraphStateError) {
-      throw new GraphQLError(error.message, { extensions: { code: "BAD_USER_INPUT" } });
-    }
-    throw error;
-  }
-}
-
-function imageUploadError(error: unknown): never {
-  if (error instanceof ImageProcessingError) {
-    throw new GraphQLError(error.message, { extensions: { code: error.code } });
-  }
-  throw error;
-}
+import {
+  imageUploadError,
+  toShapeValue,
+  validGraphState,
+  validImageName,
+  validRunErrorCategory,
+  validShowName,
+  validThemeMode,
+  validThemePalette,
+} from "./validation";
 
 function imageUploadSession(session: typeof blobUploadSessions.$inferSelect) {
   return {
