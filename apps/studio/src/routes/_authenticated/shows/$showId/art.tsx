@@ -36,6 +36,7 @@ import { useImageAssets, useImageUpload } from "../../../../api/images";
 import { useShowGraph, useShowGraphEdits } from "../../../../api/show-graph";
 import { useShow } from "../../../../api/shows";
 import { CanvasWorkspaceEditor } from "../../../../editors/canvas/CanvasWorkspaceEditor";
+import type { CanvasWorkspaceSession } from "../../../../editors/canvas/canvas-workspace-types";
 import { UndoCoordinator } from "../../../../editors/canvas/commands/undo-coordinator";
 import {
   useBlockCreation,
@@ -406,49 +407,55 @@ function CanvasWorkspaceRoute() {
           type,
           defaultValue,
         })) ?? []);
+  const session: CanvasWorkspaceSession = {
+    canvas: {
+      focusArtboard: (artId) =>
+        void navigate({
+          to: "/shows/$showId/art/$artId",
+          params: { showId: params.showId, artId },
+          replace: true,
+        }),
+      beginMoveArtboard: canvasCommands.beginArtboardMove,
+      moveArtboard: canvasCommands.updateArtboardMove,
+      endMoveArtboard: canvasCommands.endArtboardMove,
+      createElement: canvasCommands.createElement,
+      moveElement: canvasCommands.moveElement,
+      moveElementBetweenCanvases: canvasCommands.moveElementBetweenCanvases,
+      updateElement: canvasCommands.updateElement,
+      updateElements: canvasCommands.updateElements,
+      placeBlock,
+      createBlockFromDrag,
+      createBlockFromSelection: createBlock,
+      deleteElements: removeElements,
+      renameArtboard,
+    },
+    graph: {
+      createCue,
+      focusCue,
+      setEventBindingCue: changeBindingCue,
+      setEventBindingKey: changeBindingKey,
+      createEventBinding: createBinding,
+      removeEventBinding: removeBinding,
+      reorderEventBindings: reorderBindings,
+    },
+    assets: { imageUpload: handleImageUpload },
+    camera: { change: onCameraChange },
+  };
   return (
     <CanvasWorkspaceEditor
       artboards={artboards}
       initialCamera={initialCamera}
       focusedArtId={focused?.artId ?? null}
-      onCameraChange={onCameraChange}
+      session={session}
       variables={focusedVariables}
       blockVariableEditing={blockVariableEditing}
       blocks={blocks}
-      onPlaceBlock={placeBlock}
-      onCreateBlockFromDrag={createBlockFromDrag}
-      onCreateBlockFromSelection={createBlock}
       cues={graphEditing.command.graph.cues ?? []}
       actions={graphEditing.command.graph.actions ?? []}
       eventBindings={graphEditing.command.graph.eventBindings ?? []}
-      onCreateCue={createCue}
-      onFocusCue={focusCue}
-      onSetEventBindingCue={changeBindingCue}
-      onSetEventBindingKey={changeBindingKey}
-      onCreateEventBinding={createBinding}
-      onRemoveEventBinding={removeBinding}
-      onReorderEventBindings={reorderBindings}
       shapes={graphEditing.command.graph.shapes ?? []}
       deviceQrImages={deviceQrImages}
       imageAssets={imageAssets.data ?? []}
-      onImageUpload={handleImageUpload}
-      onFocusArtboard={(artId) =>
-        void navigate({
-          to: "/shows/$showId/art/$artId",
-          params: { showId: params.showId, artId },
-          replace: true,
-        })
-      }
-      onBeginMoveArtboard={canvasCommands.beginArtboardMove}
-      onMoveArtboard={canvasCommands.updateArtboardMove}
-      onEndMoveArtboard={canvasCommands.endArtboardMove}
-      onCreateElement={canvasCommands.createElement}
-      onMoveElement={canvasCommands.moveElement}
-      onMoveElementBetweenCanvases={canvasCommands.moveElementBetweenCanvases}
-      onUpdateElement={canvasCommands.updateElement}
-      onUpdateElements={canvasCommands.updateElements}
-      onDeleteElements={removeElements}
-      onRenameArtboard={renameArtboard}
     />
   );
 }
