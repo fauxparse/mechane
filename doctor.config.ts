@@ -20,6 +20,15 @@ export default {
   // gated. Tighten to "error" once we trust the signal (issue #69).
   blocking: "none",
 
+  // The Formula editor is already a React.lazy chunk; the detector cannot trace
+  // that boundary through the design-system package. Keep the finding in local
+  // scans, but do not repeat this known false positive in PR comments.
+  surfaces: {
+    prComment: {
+      excludeRules: ["react-doctor/prefer-dynamic-import"],
+    },
+  },
+
   ignore: {
     files: [
       "**/routeTree.gen.ts",
