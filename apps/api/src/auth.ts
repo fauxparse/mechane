@@ -13,6 +13,11 @@ import * as schema from "./db/schema";
 import { sendEmail } from "./lib/email";
 import { ALLOWED_ORIGINS } from "./lib/cors";
 
+// No email provider is wired up yet (lib/email.ts only logs), so a deployment
+// can switch verification off with REQUIRE_EMAIL_VERIFICATION=false until
+// #759 lands. Anything else, including unset, keeps verification required.
+const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION !== "false";
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -24,7 +29,7 @@ export const auth = betterAuth({
   trustedOrigins: ALLOWED_ORIGINS,
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: true,
+    requireEmailVerification,
     sendResetPassword: async ({ user, url }) => {
       await sendEmail({
         to: user.email,
@@ -34,7 +39,7 @@ export const auth = betterAuth({
     },
   },
   emailVerification: {
-    sendOnSignUp: true,
+    sendOnSignUp: requireEmailVerification,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
       await sendEmail({
