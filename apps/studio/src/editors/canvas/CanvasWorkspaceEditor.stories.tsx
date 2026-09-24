@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { CanvasWorkspaceEditor } from "./CanvasWorkspaceEditor";
+import type { CanvasWorkspaceSession } from "./canvas-workspace-types";
 import { MockEditorChrome } from "../../components/EditorLayout/MockEditorChrome";
 import type { GoogleFont } from "./google-fonts";
 import { StaticGoogleFontsProvider } from "./google-fonts-provider";
@@ -238,23 +239,21 @@ function StatefulImageResizeReview() {
       focusedArtId={artboard.artId}
       selectedArtId={artboard.artId}
       selectedElementIds={["resize-image"]}
-      onFocusArtboard={noOp}
-      onBeginMoveArtboard={noOp}
-      onMoveArtboard={noOp}
-      onEndMoveArtboard={noOp}
-      onUpdateElement={(canvasId, elementId, properties, unsetProperties) => {
-        setArtboard((current) => ({
-          ...current,
-          canvas: applyCanvasEdits(current.canvas, [
-            {
-              type: CANVAS_COMMAND_TYPES.updateElement,
-              elementId,
-              properties: properties as ElementProperties,
-              unsetProperties: unsetProperties ?? [],
-            },
-          ]),
-        }));
-      }}
+      session={storySession({
+        updateElement: (canvasId, elementId, properties, unsetProperties) => {
+          setArtboard((current) => ({
+            ...current,
+            canvas: applyCanvasEdits(current.canvas, [
+              {
+                type: CANVAS_COMMAND_TYPES.updateElement,
+                elementId,
+                properties: properties as ElementProperties,
+                unsetProperties: unsetProperties ?? [],
+              },
+            ]),
+          }));
+        },
+      })}
     />
   );
 }
@@ -266,43 +265,41 @@ function StatefulSelectionReview() {
     <CanvasWorkspaceEditor
       artboards={[artboard]}
       focusedArtId={artboard.artId}
-      onFocusArtboard={noOp}
-      onBeginMoveArtboard={noOp}
-      onMoveArtboard={noOp}
-      onEndMoveArtboard={noOp}
-      onMoveElement={(canvasId, elementId, parentId, rank, properties, unsetProperties) => {
-        if (canvasId !== artboard.canvasId) return;
-        setArtboard((current) => ({
-          ...current,
-          canvas: applyCanvasEdits(current.canvas, [
-            { type: CANVAS_COMMAND_TYPES.reparentElement, elementId, parentId, rank },
-            ...(Object.keys(properties ?? {}).length > 0 || (unsetProperties ?? []).length > 0
-              ? [
-                  {
-                    type: CANVAS_COMMAND_TYPES.updateElement,
-                    elementId,
-                    properties: (properties ?? {}) as ElementProperties,
-                    unsetProperties: unsetProperties ?? [],
-                  },
-                ]
-              : []),
-          ]),
-        }));
-      }}
-      onUpdateElement={(canvasId, elementId, properties, unsetProperties) => {
-        if (canvasId !== artboard.canvasId) return;
-        setArtboard((current) => ({
-          ...current,
-          canvas: applyCanvasEdits(current.canvas, [
-            {
-              type: CANVAS_COMMAND_TYPES.updateElement,
-              elementId,
-              properties: properties as ElementProperties,
-              unsetProperties: unsetProperties ?? [],
-            },
-          ]),
-        }));
-      }}
+      session={storySession({
+        moveElement: (canvasId, elementId, parentId, rank, properties, unsetProperties) => {
+          if (canvasId !== artboard.canvasId) return;
+          setArtboard((current) => ({
+            ...current,
+            canvas: applyCanvasEdits(current.canvas, [
+              { type: CANVAS_COMMAND_TYPES.reparentElement, elementId, parentId, rank },
+              ...(Object.keys(properties ?? {}).length > 0 || (unsetProperties ?? []).length > 0
+                ? [
+                    {
+                      type: CANVAS_COMMAND_TYPES.updateElement,
+                      elementId,
+                      properties: (properties ?? {}) as ElementProperties,
+                      unsetProperties: unsetProperties ?? [],
+                    },
+                  ]
+                : []),
+            ]),
+          }));
+        },
+        updateElement: (canvasId, elementId, properties, unsetProperties) => {
+          if (canvasId !== artboard.canvasId) return;
+          setArtboard((current) => ({
+            ...current,
+            canvas: applyCanvasEdits(current.canvas, [
+              {
+                type: CANVAS_COMMAND_TYPES.updateElement,
+                elementId,
+                properties: properties as ElementProperties,
+                unsetProperties: unsetProperties ?? [],
+              },
+            ]),
+          }));
+        },
+      })}
     />
   );
 }
@@ -341,11 +338,7 @@ function StatefulReparentReview() {
     <CanvasWorkspaceEditor
       artboards={[renderedStoryArtboard(artboard)]}
       focusedArtId={artboard.artId}
-      onFocusArtboard={noOp}
-      onBeginMoveArtboard={noOp}
-      onMoveArtboard={noOp}
-      onEndMoveArtboard={noOp}
-      onMoveElement={updateCanvas}
+      session={storySession({ moveElement: updateCanvas })}
     />
   );
 }
@@ -365,7 +358,24 @@ const storyGoogleFonts = [
   { family: "Inter", variants: ["regular", "500", "600", "700", "italic"] },
 ] satisfies readonly GoogleFont[];
 const storyQueryClient = new QueryClient();
-const noOp = () => {};
+const noOp = (..._args: unknown[]) => {};
+function storySession(
+  overrides: Partial<CanvasWorkspaceSession["canvas"]> = {},
+): CanvasWorkspaceSession {
+  return {
+    canvas: {
+      focusArtboard: noOp,
+      beginMoveArtboard: noOp,
+      moveArtboard: noOp,
+      endMoveArtboard: noOp,
+      createElement: noOp,
+      ...overrides,
+    },
+    graph: {},
+    assets: {},
+    camera: {},
+  };
+}
 const meta: Meta<typeof CanvasWorkspaceEditor> = {
   title: "studio/Editors/Canvas/CanvasWorkspaceEditor",
   component: CanvasWorkspaceEditor,

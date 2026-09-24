@@ -57,20 +57,30 @@ vi.mock("./components/canvas-geometry", async () => {
 });
 
 import { CanvasWorkspaceEditor } from "./CanvasWorkspaceEditor";
+import type { CanvasWorkspaceSession } from "./canvas-workspace-types";
 
 describe("CanvasWorkspaceEditor", () => {
   it("preserves the composite Inspector update callback at the editor boundary", () => {
     const onUpdateElements = vi.fn();
 
+    const session: CanvasWorkspaceSession = {
+      canvas: {
+        focusArtboard: vi.fn(),
+        beginMoveArtboard: vi.fn(),
+        moveArtboard: vi.fn(),
+        endMoveArtboard: vi.fn(),
+        createElement: vi.fn(),
+        updateElements: onUpdateElements,
+      },
+      graph: {},
+      assets: {},
+      camera: {},
+    };
     renderToStaticMarkup(
       createElement(CanvasWorkspaceEditor, {
         artboards: [],
         focusedArtId: null,
-        onFocusArtboard: vi.fn(),
-        onBeginMoveArtboard: vi.fn(),
-        onMoveArtboard: vi.fn(),
-        onEndMoveArtboard: vi.fn(),
-        onUpdateElements,
+        session,
       }),
     );
 
