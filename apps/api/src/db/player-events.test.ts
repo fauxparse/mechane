@@ -16,13 +16,66 @@ import {
   runStructuredValues,
 } from "./schema";
 import { setupPostgresTest } from "./test-helpers";
-import { seedShow } from "./seeds/shows/navigation-proof/navigation-proof";
+import { seedShowData } from "./seeds/utils/seed-utils";
+import {
+  navigationProofCanvases,
+  navigationProofGraph,
+} from "./seeds/shows/navigation-proof/navigation-proof";
 
 const { showId, createShow: createUserAndShow } = setupPostgresTest("player-events-db-test");
+const SMALL_SCENE_IDS: Record<string, true> = { scene_red: true, scene_green: true };
 
-async function createShow(): Promise<void> {
+function smallNavigationGraph(): ShowGraph {
+  const graph = navigationProofGraph();
+  const nodes = graph.nodes.filter(
+    (node) =>
+      node.id === "flow_navigation" ||
+      node.id === "scene_red" ||
+      node.id === "scene_green" ||
+      node.id === "device_navigation",
+  );
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const candidateCues = (graph.cues ?? []).filter(
+    (cue) => cue.owner.kind === "scene" && SMALL_SCENE_IDS[cue.owner.sceneId] === true,
+  );
+  const candidateCueIds = new Set(candidateCues.map((cue) => cue.id));
+  const candidateActions = (graph.actions ?? []).filter(
+    (action) =>
+      candidateCueIds.has(action.cueId) &&
+      action.kind === "navigate" &&
+      SMALL_SCENE_IDS[action.targetSceneId] === true,
+  );
+  const actionIds = new Set(candidateActions.map((action) => action.id));
+  const cues = candidateCues.filter((cue) =>
+    cue.actionIds.every((actionId) => actionIds.has(actionId)),
+  );
+  const cueIds = new Set(cues.map((cue) => cue.id));
+  const actions = candidateActions.filter((action) => cueIds.has(action.cueId));
+  return {
+    ...graph,
+    nodes,
+    edges: graph.edges.filter((edge) => nodeIds.has(edge.sourceId) && nodeIds.has(edge.targetId)),
+    cues,
+    actions,
+    eventBindings: (graph.eventBindings ?? []).filter((binding) => cueIds.has(binding.cueId)),
+  };
+}
+
+function smallNavigationCanvases() {
+  const canvases = navigationProofCanvases();
+  const sceneRed = canvases.scene_red;
+  const sceneGreen = canvases.scene_green;
+  if (!sceneRed || !sceneGreen) throw new Error("Navigation canvases are incomplete.");
+  return { scene_red: sceneRed, scene_green: sceneGreen };
+}
+
+async function createShow(fullNavigation = false): Promise<void> {
   await createUserAndShow("Player Events DB Test");
-  await seedShow.seed(showId);
+  await seedShowData(
+    showId,
+    fullNavigation ? navigationProofGraph : smallNavigationGraph,
+    fullNavigation ? navigationProofCanvases : smallNavigationCanvases,
+  );
 }
 
 async function proofDevice(): Promise<{ id: string; pairingCode: string }> {
@@ -45,7 +98,7 @@ function event(eventId: string, sceneId: string, destinationId: string) {
 
 describe("dispatchPlayerEvent", () => {
   it("applies all six Navigation Proof transitions", async () => {
-    await createShow();
+    await createShow(true);
     const device = await proofDevice();
     const run = await startRun(showId);
     const transitions = [

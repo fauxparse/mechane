@@ -16,9 +16,9 @@ import { seedShow } from "./seeds/shows/navigation-proof/navigation-proof";
 
 const { showId, createShow: createUserAndShow } = setupPostgresTest("run-errors-db-test");
 
-async function createShow(): Promise<void> {
+async function createShow(seed = false): Promise<void> {
   await createUserAndShow("Run Errors DB Test");
-  await seedShow.seed(showId);
+  if (seed) await seedShow.seed(showId);
 }
 
 async function proofDevice(): Promise<{ id: string; pairingCode: string }> {
@@ -70,7 +70,7 @@ describe("the Run error log", () => {
   });
 
   it("filters by Run and by category", async () => {
-    await createShow();
+    await createShow(true);
     const run = await startRun(showId);
     const inRun = await recordRunError({
       showId,
@@ -92,7 +92,7 @@ describe("the Run error log", () => {
   });
 
   it("outlives the Event ledger that ending a Run drops", async () => {
-    await createShow();
+    await createShow(true);
     const device = await proofDevice();
     const run = await startRun(showId);
     await db.insert(playerEvents).values({
