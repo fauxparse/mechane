@@ -1200,13 +1200,13 @@ export interface GraphEditSuperseder {
  * and codec descriptor because lifetime and coalescing are part of what an
  * edit means, not a property of the transport.
  */
-export interface GraphEditMetadata {
-  readonly structuralIds: (edit: GraphEdit) => readonly string[];
-  readonly supersedes: (edit: GraphEdit) => GraphEditSuperseder | null;
+export interface GraphEditMetadata<T extends GraphEdit["type"]> {
+  readonly structuralIds: (edit: EditOf<T>) => readonly string[];
+  readonly supersedes: (edit: EditOf<T>) => GraphEditSuperseder | null;
 }
 
 export type GraphEditDescriptor<T extends GraphEdit["type"]> = GraphEditCodec<T> &
-  GraphEditMetadata;
+  GraphEditMetadata<T>;
 
 /**
  * One descriptor per edit type. The mapped type is the exhaustiveness check:
