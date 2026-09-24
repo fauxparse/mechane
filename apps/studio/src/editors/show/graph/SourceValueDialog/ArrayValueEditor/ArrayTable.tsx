@@ -9,7 +9,7 @@ import {
 } from "@mechane/design-system";
 import type { Shape } from "@mechane/domain";
 import { AnimatePresence, domAnimation, LazyMotion } from "motion/react";
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 
 import type { ErrorPath, SourceImageAsset } from "../../inspector/source-value-types";
 import {
@@ -38,7 +38,7 @@ const tableSensors = (defaults: typeof defaultPreset.sensors) =>
       : sensor,
   );
 
-type ArrayTableProps = {
+export type ArrayTableModel = {
   records: ShapeRecord[];
   fields: Shape["fields"];
   readOnly: boolean;
@@ -55,22 +55,23 @@ type ArrayTableProps = {
   onCreateRecord?(): string | null;
 };
 
-export function ArrayTable({
-  records,
-  fields,
-  readOnly,
-  columnSizes,
-  imageAssets,
-  path,
-  onColumnSizesChange,
-  onImageUpload,
-  onReorder,
-  onRecordChange,
-  onValidityChange,
-  onOpenRecord,
-  onDeleteRecord,
-  onCreateRecord,
-}: ArrayTableProps) {
+export function ArrayTable({ model }: { model: ArrayTableModel }) {
+  const {
+    records,
+    fields,
+    readOnly,
+    columnSizes,
+    imageAssets,
+    path,
+    onColumnSizesChange,
+    onImageUpload,
+    onReorder,
+    onRecordChange,
+    onValidityChange,
+    onOpenRecord,
+    onDeleteRecord,
+    onCreateRecord,
+  } = model;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const recordMenu = useMemo(() => createDropdownMenuHandle<RecordMenuPayload>(), []);
 
@@ -101,42 +102,25 @@ export function ArrayTable({
     onCreateRow: onCreateRecord,
   });
 
-  // Rows and cells are memoized, so every callback they receive has to keep the
-  // same identity for the life of the table. They call through this box instead
-  // of closing over props directly.
-  const latestRef = useRef({
-    onRecordChange,
-    onValidityChange,
-    onOpenRecord,
-    onDeleteRecord,
-    onImageUpload,
-    onCellKeyDown,
-    path,
-  });
-  useEffect(() => {
-    latestRef.current = {
-      onRecordChange,
-      onValidityChange,
-      onOpenRecord,
-      onDeleteRecord,
-      onImageUpload,
-      onCellKeyDown,
-      path,
-    };
-  });
-
   const callbacks = useMemo<ArrayTableCallbacks>(
     () => ({
-      changeRecord: (record) => latestRef.current.onRecordChange(record),
+      changeRecord: onRecordChange,
       reportValidity: (recordId, fieldId, error) =>
-        latestRef.current.onValidityChange([...latestRef.current.path, recordId, fieldId], error),
-      keyDownInCell: (event, recordId, fieldId) =>
-        latestRef.current.onCellKeyDown(event, recordId, fieldId),
-      openRecord: (recordId) => latestRef.current.onOpenRecord(recordId),
-      deleteRecord: (recordId) => latestRef.current.onDeleteRecord(recordId),
-      uploadImage: (props) => latestRef.current.onImageUpload?.(props),
+        onValidityChange([...path, recordId, fieldId], error),
+      keyDownInCell: onCellKeyDown,
+      openRecord: onOpenRecord,
+      deleteRecord: onDeleteRecord,
+      uploadImage: (props) => onImageUpload?.(props),
     }),
-    [],
+    [
+      onCellKeyDown,
+      onDeleteRecord,
+      onImageUpload,
+      onOpenRecord,
+      onRecordChange,
+      onValidityChange,
+      path,
+    ],
   );
 
   const columns = useMemo<ArrayTableColumn[]>(() => {

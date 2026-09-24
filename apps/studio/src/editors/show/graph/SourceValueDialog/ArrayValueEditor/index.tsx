@@ -219,20 +219,22 @@ export function ArrayValueEditor({
       />
       {viewMode === "table" ? (
         <ArrayTable
-          columnSizes={columnSizes}
-          onColumnSizesChange={onColumnSizesChange}
-          records={visibleRecords}
-          fields={shape.fields}
-          readOnly={readOnly}
-          path={path}
-          onRecordChange={updateRecord}
-          onValidityChange={onValidityChange}
-          onImageUpload={onImageUpload}
-          imageAssets={imageAssets}
-          onOpenRecord={openRecord}
-          onDeleteRecord={removeRecord}
-          onCreateRecord={query.trim() ? undefined : addRecordFromTable}
-          onReorder={reorderRecords}
+          model={{
+            columnSizes,
+            onColumnSizesChange,
+            records: visibleRecords,
+            fields: shape.fields,
+            readOnly,
+            path,
+            onRecordChange: updateRecord,
+            onValidityChange,
+            onImageUpload,
+            imageAssets,
+            onOpenRecord: openRecord,
+            onDeleteRecord: removeRecord,
+            onCreateRecord: query.trim() ? undefined : addRecordFromTable,
+            onReorder: reorderRecords,
+          }}
         />
       ) : (
         <RecordDetails

@@ -95,38 +95,40 @@ describe("ValueEditor", () => {
     ];
     const html = renderToStaticMarkup(
       createElement(ArrayTable, {
-        records: [
-          {
-            id: generateId("structuredValue"),
-            kind: "shape",
-            fields: {
-              headline: "Welcome",
-              score: 7,
-              image: { assetId: "asset-alice", revision: "revision-1" },
+        model: {
+          records: [
+            {
+              id: generateId("structuredValue"),
+              kind: "shape",
+              fields: {
+                headline: "Welcome",
+                score: 7,
+                image: { assetId: "asset-alice", revision: "revision-1" },
+              },
             },
-          },
-        ],
-        fields,
-        readOnly: false,
-        imageAssets: [
-          {
-            assetId: "asset-alice",
-            revision: "revision-1",
-            url: "/alice.png",
-            width: 128,
-            height: 128,
-            name: "alice.png",
-            alt: "Alice",
-            mimeType: "image/png",
-            blurHash: null,
-          },
-        ],
-        path: [],
-        onReorder: () => {},
-        onRecordChange: () => {},
-        onValidityChange: () => {},
-        onOpenRecord: () => {},
-        onDeleteRecord: () => {},
+          ],
+          fields,
+          readOnly: false,
+          imageAssets: [
+            {
+              assetId: "asset-alice",
+              revision: "revision-1",
+              url: "/alice.png",
+              width: 128,
+              height: 128,
+              name: "alice.png",
+              alt: "Alice",
+              mimeType: "image/png",
+              blurHash: null,
+            },
+          ],
+          path: [],
+          onReorder: () => {},
+          onRecordChange: () => {},
+          onValidityChange: () => {},
+          onOpenRecord: () => {},
+          onDeleteRecord: () => {},
+        },
       }),
     );
 
@@ -141,23 +143,25 @@ describe("ValueEditor", () => {
   it("keeps empty table inputs named after their field", () => {
     const html = renderToStaticMarkup(
       createElement(ArrayTable, {
-        records: [
-          {
-            id: generateId("structuredValue"),
-            kind: "shape",
-            fields: { headline: "" },
-          },
-        ],
-        fields: [
-          { id: "headline", name: "Headline", type: "text", required: true, defaultValue: "" },
-        ],
-        readOnly: false,
-        path: [],
-        onReorder: () => {},
-        onRecordChange: () => {},
-        onValidityChange: () => {},
-        onOpenRecord: () => {},
-        onDeleteRecord: () => {},
+        model: {
+          records: [
+            {
+              id: generateId("structuredValue"),
+              kind: "shape",
+              fields: { headline: "" },
+            },
+          ],
+          fields: [
+            { id: "headline", name: "Headline", type: "text", required: true, defaultValue: "" },
+          ],
+          readOnly: false,
+          path: [],
+          onReorder: () => {},
+          onRecordChange: () => {},
+          onValidityChange: () => {},
+          onOpenRecord: () => {},
+          onDeleteRecord: () => {},
+        },
       }),
     );
 
