@@ -109,3 +109,18 @@ Sources (all accessed 2026-09-25):
 1. **Dev capture:** Mailpit as a docker-compose service; `lib/email.ts` sends via `SMTP_URL` (nodemailer) when set, logs otherwise. Keep `REQUIRE_EMAIL_VERIFICATION` on in dev and click real links from the Mailpit UI.
 2. **Seeds:** keep the existing direct `emailVerified = true` update inside the dev-only, database-nuking seed script; do not add a `databaseHooks` auto-verify path to `auth.ts` (it would ship to prod and a leaked env var would silently disable verification). Optionally seed a second, unverified user to keep the verification flow exercised.
 3. **Production sending:** Resend free tier from `noreply@mechane.live` (DNS-verified via DKIM/SPF records), plus free Cloudflare Email Routing catch-all for inbound if DNS is on Cloudflare. No hosted mailbox needed.
+
+## 4. Vercel is optional
+
+Resend is a separate service. You can create the Resend account, verify `mechane.live` or its sending subdomain, and create an API key before the Vercel project exists. The domain verification happens through DNS, at the current DNS provider.
+
+The Vercel Marketplace integration is only a convenience layer. It creates or links a Resend account, connects it to an existing Vercel project, and provisions `RESEND_API_KEY` in that project's environment. It requires a Vercel project, so it is unavailable until the project is created.
+
+Recommended order for this repo:
+
+1. Create the Resend account independently.
+2. Verify the chosen sending domain and add the required DNS records.
+3. Implement and test the local Mailpit path without Resend credentials.
+4. When the Vercel API project exists, add `RESEND_API_KEY` to its Production environment, either manually or through the Marketplace integration.
+
+Sources: [Resend Vercel Marketplace integration](https://resend.com/docs/guides/vercel-marketplace-integration) and [Vercel's email setup guide](https://vercel.com/kb/guide/set-up-email-with-your-vercel-domain).

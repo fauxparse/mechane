@@ -31,12 +31,14 @@ cp apps/api/.env.example apps/api/.env
 cp apps/api/.env.test.example apps/api/.env.test
 cp apps/studio/.env.example apps/studio/.env
 overmind start -f Procfile.dev   # starts the app services, infrastructure, and local HTTPS proxy
+# Mailpit is available at http://localhost:8025 for verification and reset messages.
+# SMTP is local by default; no email provider credentials are needed for development.
 # In another terminal, after Postgres and MinIO report ready:
 pnpm --filter @mechane/api db:migrate   # apply the development database schema
 pnpm db:test:migrate                         # apply the test database schema
-pnpm db:seed      # wipe + recreate a default dev account (test@example.com)
+pnpm db:seed      # wipe + recreate a pre-verified default dev account (test@example.com)
 # The API persistence tests use mechane_test on the same Postgres server, not the dev database.
-# Storybook is included in Procfile.dev.
+# The seed command refuses to run with NODE_ENV=production.
 pnpm test         # unit and database-backed API tests
 pnpm lint
 pnpm typecheck

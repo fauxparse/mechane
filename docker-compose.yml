@@ -29,6 +29,16 @@ services:
       "if ! psql -h postgres -U mechane -d mechane -tAc
       \"SELECT 1 FROM pg_database WHERE datname = 'mechane_test'\" | grep -q 1;
       then createdb -h postgres -U mechane mechane_test; fi"
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    command: ["--database", "/data/mailpit.db"]
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    volumes:
+      - mechane-mailpit-data:/data
+
   minio:
     image: minio/minio:latest
     restart: unless-stopped
@@ -87,6 +97,7 @@ services:
 
 volumes:
   mechane-minio-data:
+  mechane-mailpit-data:
   mechane-postgres-18-data:
   mechane-caddy-data:
   mechane-caddy-config:

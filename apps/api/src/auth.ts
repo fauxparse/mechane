@@ -13,9 +13,8 @@ import * as schema from "./db/schema";
 import { sendEmail } from "./lib/email";
 import { ALLOWED_ORIGINS } from "./lib/cors";
 
-// No email provider is wired up yet (lib/email.ts only logs), so a deployment
-// can switch verification off with REQUIRE_EMAIL_VERIFICATION=false until
-// #759 lands. Anything else, including unset, keeps verification required.
+// Email delivery is local SMTP, Resend, or log-only depending on the environment.
+// Production must use Resend; local development can use Mailpit without credentials.
 const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION !== "false";
 
 export const auth = betterAuth({
@@ -39,6 +38,7 @@ export const auth = betterAuth({
     },
   },
   emailVerification: {
+    sendOnSignIn: requireEmailVerification,
     sendOnSignUp: requireEmailVerification,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
