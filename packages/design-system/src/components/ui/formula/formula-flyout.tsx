@@ -8,6 +8,7 @@ import {
 import { Trash2Icon, XIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 
+import { FormulaIcon } from "../../..";
 import { cn } from "../../../lib/utils";
 import { Button } from "../button";
 import { Popover, PopoverContent } from "../popover";
@@ -146,18 +147,16 @@ export function FormulaFlyout({
         finalFocus={false}
         aria-label={`${label} Formula`}
         data-slot="formula-flyout"
-        className="gap-2 p-3"
+        className="gap-0 p-0 rounded-md ring-border"
         style={{ width: FORMULA_FLYOUT_WIDTH }}
       >
-        <div className="flex items-center gap-2">
-          <FormulaGlyph />
-          <span className="min-w-0 flex-1 truncate text-sm font-medium">{label}</span>
-          <span className="text-xs text-muted-foreground">
-            {selectionCount === 1 ? "1 Element" : `${selectionCount} Elements`}
-          </span>
+        <div className="flex items-center gap-2 p-1 pl-2">
+          <FormulaIcon className="text-muted-foreground size-4" />
+          <span className="min-w-0 flex-1 truncate label">{label}</span>
           <Button
             size="icon-sm"
             variant="ghost"
+            className="opacity-50 hover:opacity-100 hover:bg-transparent"
             aria-label="Close the Formula editor"
             onClick={onApply}
           >
@@ -175,21 +174,21 @@ export function FormulaFlyout({
           <>
             <FormulaEditor
               autoFocus
+              className="rounded-none border-l-0 border-r-0 border-border focus-within:ring-0"
               value={draft}
               scope={scope}
               onChange={onDraftChange}
               onSubmit={submit}
             />
             <ResultLine analysis={analysis} suffix={resultSuffix} />
-            <DiagnosticsList analysis={analysis} />
           </>
         )}
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 p-2">
           <span className="text-xs text-muted-foreground">
             {mixed ? null : "Enter applies · Esc cancels"}
           </span>
           {canRemove ? (
-            <Button size="sm" variant="ghost" className="text-destructive" onClick={onRemove}>
+            <Button size="sm" variant="destructive" className="text-destructive" onClick={onRemove}>
               <Trash2Icon /> Remove Formula
             </Button>
           ) : null}
@@ -205,22 +204,11 @@ function isInCodeMirrorTooltip(target: EventTarget | null): boolean {
   return Boolean(element?.closest(".cm-tooltip"));
 }
 
-function FormulaGlyph() {
-  return (
-    <span
-      aria-hidden="true"
-      className="w-4 text-center font-mono text-[0.65rem] font-semibold italic tracking-tight text-primary"
-    >
-      fx
-    </span>
-  );
-}
-
 function ResultLine({ analysis, suffix }: { analysis: FormulaAnalysis | null; suffix: string }) {
   const value = analysis?.value ?? null;
   const present = value !== null && value.kind !== "absent" && value.kind !== "failure";
   return (
-    <div className="grid grid-cols-[auto_1fr] items-baseline gap-2">
+    <div className="grid grid-cols-[auto_1fr] items-baseline gap-2 p-2 pb-0">
       <span className="font-mono text-xs text-muted-foreground">=</span>
       <span
         className={cn(
@@ -236,7 +224,7 @@ function ResultLine({ analysis, suffix }: { analysis: FormulaAnalysis | null; su
   );
 }
 
-function DiagnosticsList({ analysis }: { analysis: FormulaAnalysis | null }) {
+function _DiagnosticsList({ analysis }: { analysis: FormulaAnalysis | null }) {
   if (!analysis?.diagnostics.length) return null;
   return (
     <ul className="space-y-1">
