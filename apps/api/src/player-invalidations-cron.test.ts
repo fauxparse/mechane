@@ -57,7 +57,7 @@ async function requestCron(
   authorization?: string,
 ): Promise<{ status: number; body: unknown }> {
   const server = createServer((req, res) => {
-    void handlePlayerInvalidationCronRoute(req, res, { ...options, provider });
+    void handlePlayerInvalidationCronRoute(req, res, { ...options, provider, showId });
   });
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
