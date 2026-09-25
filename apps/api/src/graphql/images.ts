@@ -41,19 +41,21 @@ function imageUploadError(error: unknown): never {
   throw error;
 }
 
-function imageUploadSession(session: typeof blobUploadSessions.$inferSelect) {
+async function imageUploadSession(session: typeof blobUploadSessions.$inferSelect) {
+  if (session.byteLength === null) {
+    throw new GraphQLError("Upload session has no declared byte length.");
+  }
+  const plan = await blobStore.presignUpload(
+    session.id,
+    session.declaredMimeType ?? "application/octet-stream",
+    session.byteLength,
+    Math.ceil(DEFAULT_IMAGE_UPLOAD_POLICY.sessionTtlMs / 1000),
+  );
   return {
     id: session.id,
     expiresAt: session.expiresAt.toISOString(),
     constraints: DEFAULT_IMAGE_UPLOAD_POLICY,
-    plan: {
-      method: "PUT",
-      url: `/api/uploads/${encodeURIComponent(session.id)}`,
-      requiredHeaders: {
-        "content-type": session.declaredMimeType,
-        "content-length": String(session.byteLength),
-      },
-    },
+    plan,
   };
 }
 
@@ -140,7 +142,7 @@ export const resolvers: Resolvers = {
         .then(([row]) => row);
       if (!asset)
         throw new GraphQLError("Image asset not found.", { extensions: { code: "NOT_FOUND" } });
-      return imageDeliveryUrl(asset.id, asset.revision);
+      return imageDeliveryUrl(asset.id, asset.revision, asset.blobDigest);
     },
     width: async (value: { value: { assetId: string; revision: string } }) => {
       const [asset] = await db
@@ -221,6 +223,11 @@ export const resolvers: Resolvers = {
       if (!Number.isInteger(byteLength) || byteLength < 1) {
         throw new GraphQLError("byteLength must be a positive integer.", {
           extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      if (byteLength > DEFAULT_IMAGE_UPLOAD_POLICY.maxSourceBytes) {
+        throw new GraphQLError("The source image exceeds the upload size limit.", {
+          extensions: { code: "SOURCE_TOO_LARGE" },
         });
       }
       const id = randomUUID();

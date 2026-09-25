@@ -14,6 +14,7 @@ import {
   S3Client,
   S3ServiceException,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const DEFAULT_BLOB_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../.data/blobs");
 
@@ -23,7 +24,19 @@ export interface BlobCandidate {
   mimeType: string;
 }
 
+export interface BlobUploadPlan {
+  method: "PUT";
+  url: string;
+  requiredHeaders: Record<string, string>;
+}
+
 export interface BlobStore {
+  presignUpload(
+    sessionId: string,
+    mimeType: string,
+    byteLength: number,
+    expiresInSeconds: number,
+  ): Promise<BlobUploadPlan>;
   putUpload(sessionId: string, bytes: Uint8Array): Promise<void>;
   readUpload(sessionId: string): Promise<Buffer>;
   commitUpload(sessionId: string, candidate: BlobCandidate): Promise<void>;
@@ -44,6 +57,21 @@ export class LocalBlobStore implements BlobStore {
 
   private blobPath(digest: string): string {
     return join(this.root, "committed", digest);
+  }
+
+  async presignUpload(
+    sessionId: string,
+    mimeType: string,
+    byteLength: number,
+  ): Promise<BlobUploadPlan> {
+    return {
+      method: "PUT",
+      url: `/api/uploads/${encodeURIComponent(sessionId)}`,
+      requiredHeaders: {
+        "content-type": mimeType,
+        "content-length": String(byteLength),
+      },
+    };
   }
 
   async putUpload(sessionId: string, bytes: Uint8Array): Promise<void> {
@@ -139,6 +167,33 @@ export class MinioBlobStore implements BlobStore {
     return `blobs/${digest}`;
   }
 
+  async presignUpload(
+    sessionId: string,
+    mimeType: string,
+    byteLength: number,
+    expiresInSeconds: number,
+  ): Promise<BlobUploadPlan> {
+    await this.ensureBucket();
+    const url = await getSignedUrl(
+      this.client,
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: this.uploadKey(sessionId),
+        ContentType: mimeType,
+        ContentLength: byteLength,
+      }),
+      { expiresIn: expiresInSeconds },
+    );
+    return {
+      method: "PUT",
+      url,
+      requiredHeaders: {
+        "content-type": mimeType,
+        "content-length": String(byteLength),
+      },
+    };
+  }
+
   async putUpload(sessionId: string, bytes: Uint8Array): Promise<void> {
     await this.ensureBucket();
     await this.client.send(
@@ -173,6 +228,7 @@ export class MinioBlobStore implements BlobStore {
           Key: key,
           CopySource: encodeURIComponent(`${this.bucket}/${this.uploadKey(sessionId)}`),
           ContentType: candidate.mimeType,
+          CacheControl: "public, max-age=31536000, immutable",
           MetadataDirective: "REPLACE",
         }),
       );

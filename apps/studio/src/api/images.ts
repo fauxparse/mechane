@@ -9,7 +9,7 @@ import {
 } from "@mechane/graphql-schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { GRAPHQL_ENDPOINT, resolveApiUrl } from "./client";
+import { API_BASE_URL, GRAPHQL_ENDPOINT, resolveApiUrl } from "./client";
 
 export const imageAssetsQueryKey = (showId: ShowId) => ["image-assets", showId] as const;
 
@@ -54,8 +54,9 @@ const putUpload = async ({
       return;
     }
 
-    request.open(method, resolveApiUrl(url));
-    request.withCredentials = true;
+    const uploadUrl = new URL(url, `${API_BASE_URL}/`);
+    request.open(method, uploadUrl.toString());
+    request.withCredentials = uploadUrl.origin === new URL(API_BASE_URL).origin;
     Object.entries(headers).forEach(([name, value]) => request.setRequestHeader(name, value));
     request.upload.onprogress = (event) => {
       if (event.lengthComputable) onProgress?.((event.loaded / event.total) * 100);

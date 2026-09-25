@@ -49,7 +49,11 @@ const beginResponse = {
         sessionTtlMs: 1,
         candidateTtlMs: 1,
       },
-      plan: { method: "PUT", url: "/uploads/session-1", requiredHeaders: {} },
+      plan: {
+        method: "PUT",
+        url: "http://localhost:9000/mechane/uploads/session-1?signature=test",
+        requiredHeaders: { "content-type": "image/png", "content-length": "5" },
+      },
     },
   },
 };
@@ -102,7 +106,19 @@ describe("uploadImageFile", () => {
     });
 
     expect(result.id).toBe("asset-1");
-    expect((uploadRequest as FakeRequest | null)?.withCredentials).toBe(true);
+    expect((uploadRequest as FakeRequest | null)?.withCredentials).toBe(false);
+    expect((uploadRequest as FakeRequest | null)?.open).toHaveBeenCalledWith(
+      "PUT",
+      "http://localhost:9000/mechane/uploads/session-1?signature=test",
+    );
+    expect((uploadRequest as FakeRequest | null)?.setRequestHeader).toHaveBeenCalledWith(
+      "content-type",
+      "image/png",
+    );
+    expect((uploadRequest as FakeRequest | null)?.setRequestHeader).toHaveBeenCalledWith(
+      "content-length",
+      "5",
+    );
     expect(progress).toEqual([50, 100]);
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(JSON.stringify(fetchMock.mock.calls[2])).toContain('\\"name\\":\\"photo.png\\"');

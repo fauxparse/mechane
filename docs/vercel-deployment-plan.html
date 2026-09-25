@@ -300,7 +300,7 @@
 <header class="hero">
   <div class="eyebrow">Deployment plan</div>
   <h1>Deploying Mechanē to Vercel</h1>
-  <p class="lede">What it takes to get Studio, Player and the API running on <code>mechane.live</code> this weekend, backed by Neon Postgres, Cloudflare R2 and Ably. The email verification switch, the 2 MB image cap and the API bundle are built. The remaining code blocker is <a href="https://github.com/fauxparse/mechane/issues/763">#763</a>. Nothing is deployed.</p>
+  <p class="lede">What it takes to get Studio, Player and the API running on <code>mechane.live</code> this weekend, backed by Neon Postgres, Cloudflare R2 and Ably. The email verification switch, direct image storage and the API bundle are built. The remaining code blocker is <a href="https://github.com/fauxparse/mechane/issues/763">#763</a>. Nothing is deployed.</p>
   <div class="meta">
     <span class="chip">studio.mechane.live</span>
     <span class="chip">show.mechane.live</span>
@@ -315,7 +315,7 @@
 
   <div class="cards">
     <div class="card red"><div class="num">1</div><div class="cap">code blocker left (#763)</div></div>
-    <div class="card green"><div class="num">3</div><div class="cap">handled: API bundle, email switch, 2 MB image cap</div></div>
+    <div class="card green"><div class="num">3</div><div class="cap">handled: API bundle, email switch, direct image storage</div></div>
     <div class="card blue"><div class="num">3</div><div class="cap">Vercel projects</div></div>
     <div class="card amber"><div class="num">4</div><div class="cap">outside services to sign up for</div></div>
   </div>
@@ -330,8 +330,8 @@
       <p>The ADR and PRD §4.4 both say production needs a protected drain endpoint on a Vercel Cron schedule. No such route exists, and there's no <code>vercel.json</code> in the repo. The drain that runs right after each change does exist, so the normal case works. A publish that fails is never retried.</p>
     </li>
     <li class="done">
-      <strong>Images go through functions, and Vercel caps function bodies at 4.5 MB.</strong> <span class="badge done">Handled</span>
-      <p>The cap covers both request and response (<a href="https://vercel.com/docs/functions/limitations">Vercel function limits</a>). Uploads (<code>PUT /api/uploads/*</code>) and delivery (<code>GET /api/images/*</code>) both go through functions. Images are now capped at 2 MB. <a href="https://github.com/fauxparse/mechane/issues/764">#764</a> tracks lifting the cap.</p>
+      <strong>Images bypass functions for upload and delivery.</strong> <span class="badge done">Handled</span>
+      <p>Studio asks the API for a presigned <code>PUT</code>, uploads directly to the bucket, and receives immutable images from the public <code>BLOB_PUBLIC_URL</code> host. The legacy <code>GET /api/images/*</code> route remains available for cached URLs from before the cutover. <a href="https://vercel.com/docs/functions/limitations">Vercel function limits</a> no longer cap image bodies.</p>
     </li>
     <li class="done">
       <strong>Email delivery has local and production transports.</strong> <span class="badge done">Code done</span>
@@ -401,8 +401,8 @@
   <p>Local development uses the Mailpit SMTP sink, so verification and password-reset links are available at <code>http://localhost:8025</code> without provider credentials. Production uses Resend with <code>REQUIRE_EMAIL_VERIFICATION</code> left unset or set to <code>true</code>. Existing unverified accounts receive a fresh verification link on a blocked password sign-in.</p>
   <p>Verify the chosen sending domain in Resend, add its DKIM/SPF/DMARC records wherever <code>mechane.live</code> DNS is managed, then add <code>RESEND_API_KEY</code> and <code>EMAIL_FROM</code> to the API project's Production environment. The Vercel Marketplace integration is optional and requires an existing Vercel project.</p>
 
-  <h3>Image size: 2 MB <span class="badge done">Done</span></h3>
-  <p><code>DEFAULT_IMAGE_UPLOAD_POLICY</code> now caps <code>maxSourceBytes</code> and <code>maxNormalizedBytes</code> at 2 MB, down from 25 MB and 10 MB. That leaves plenty of room under Vercel's 4.5 MB limit. The proper fix is <a href="https://github.com/fauxparse/mechane/issues/764">#764</a>: Studio uploads straight to the bucket with a presigned PUT URL, images are served from a CDN-cached public host, and the cap comes back up.</p>
+  <h3>Image size: 25 MB source, 10 MB normalized <span class="badge done">Done</span></h3>
+  <p><code>DEFAULT_IMAGE_UPLOAD_POLICY</code> allows 25 MB source files and 10 MB normalized images. Studio's <code>beginImageUpload</code> request is rejected against the source limit before a presigned URL is issued. The direct bucket upload avoids Vercel's 4.5 MB function request and response limit; committed objects receive a one-year immutable cache policy.</p>
 </section>
 
 <section id="architecture">
@@ -442,8 +442,8 @@ flowchart LR
     </tbody>
   </table></div>
   <ul>
-    <li>The R2 bucket can stay private. The API reads blobs server-side (<code>MinioBlobStore</code> in <code>apps/api/src/storage/blob-store.ts</code>) and serves them through <code>/api/images/*</code>. Browsers never touch the bucket, so it needs no CORS config.</li>
-    <li>Any S3-compatible store works, because the client uses <code>forcePathStyle: true</code>. I picked R2 because it doesn't charge for egress. Vercel Blob isn't S3-compatible and would need a new adapter.</li>
+    <li>The R2 bucket must expose the upload and public delivery paths to Studio. <code>MinioBlobStore</code> presigns <code>uploads/&lt;session-id&gt;</code>, then moves the digest-addressed object to <code>blobs/&lt;digest&gt;</code>. Configure <code>BLOB_PUBLIC_URL</code> to the bucket's public or CDN base and allow the Studio origin in bucket CORS.</li>
+    <li>Any S3-compatible store works, because the server uses <code>forcePathStyle: true</code> and the browser uses the returned presigned URL. I picked R2 because it doesn't charge for egress. Vercel Blob isn't S3-compatible and would need a new adapter.</li>
     <li>Local dev runs Postgres 18. I didn't find anything in <code>apps/api/drizzle/</code> that needs 18, such as <code>uuidv7()</code> or virtual columns, so Neon's 17 or 18 should both work.</li>
   </ul>
 </section>
@@ -488,13 +488,9 @@ flowchart LR
   </div>
 
   <div class="step">
-    <h3><span class="badge done">Done</span>3. Cap images at 2 MB</h3>
-    <p><code>packages/domain/src/images.ts</code> sets <code>maxSourceBytes</code> and <code>maxNormalizedBytes</code> to <code>2 * 1024 * 1024</code>. Studio reads the limit from GraphQL's <code>ImageUploadConstraints</code>, and the design-system validator falls back to the same policy, so the error message updated by itself. Checked with a throwaway script:</p>
-    <ul>
-      <li>The server accepts an image of exactly 2,097,152 bytes and rejects one byte more with <code>SOURCE_TOO_LARGE</code>.</li>
-      <li>Studio's validator rejects the larger file with "Image files must be smaller than 2 MB."</li>
-    </ul>
-    <p>The cap only applies to new uploads. Images already stored keep working at any size, as long as they're under 4.5 MB when served.</p>
+    <h3><span class="badge done">Done</span>3. Upload images directly to storage</h3>
+    <p>Studio requests a presigned <code>PUT</code> URL from GraphQL, sends the file to that URL without API credentials, then calls <code>completeImageUpload</code> and <code>finalizeImageUpload</code>. The API validates the declared source byte length before issuing the URL and validates the stored bytes again when completing the upload.</p>
+    <p><code>imageDeliveryUrl</code> uses <code>BLOB_PUBLIC_URL/&lt;digest&gt;</code> for new GraphQL assets. Objects are immutable and copied with <code>Cache-Control: public, max-age=31536000, immutable</code>. The API image route remains for URLs already cached by clients.</p>
   </div>
 
   <div class="step">
@@ -597,7 +593,7 @@ flowchart LR
       <li>A missing <code>ABLY_API_KEY</code> or <code>DATABASE_URL</code> throws when the module loads, so every API request fails.</li>
     </ul>
   </div>
-  <p>Not needed on Vercel: <code>BLOB_PUBLIC_URL</code> (nothing reads it), <code>REALTIME_WORKER_SECRET</code> and <code>REALTIME_API_URL</code>.</p>
+  <p>Set <code>BLOB_PUBLIC_URL</code> to the public or CDN base ending in the bucket's <code>blobs</code> prefix, for example <code>https://images.mechane.live/blobs</code>. It is required for direct image delivery. <code>REALTIME_WORKER_SECRET</code> and <code>REALTIME_API_URL</code> are not needed on Vercel.</p>
 
   <h3>Studio</h3>
   <div class="table-wrap"><table>
@@ -675,7 +671,7 @@ flowchart LR
   <ul class="checklist">
     <li><input type="checkbox" id="smk-studio-1"><span>Sign up. The Studio shows a check-your-inbox state. Open the message in Mailpit locally, or Resend in production, click the verification link, and land back in Studio signed in.</span></li>
     <li><input type="checkbox" id="smk-studio-2"><span>Open a Show's URL directly and reload. It loads instead of returning 404.</span></li>
-    <li><input type="checkbox" id="smk-studio-3"><span>Upload an image of about 1.5 MB and check that it shows. Then try a 3 MB image: you should get "Image files must be smaller than 2 MB."</span></li>
+    <li><input type="checkbox" id="smk-studio-3"><span>Upload an image of about 10 MB and check that it shows in Studio and Player. Confirm the browser's upload request targets the bucket host rather than <code>/api/uploads/*</code>, and image responses from the public host include long-lived <code>Cache-Control</code>.</span></li>
   </ul>
   <h3>Player and realtime</h3>
   <ul class="checklist">
@@ -689,7 +685,7 @@ flowchart LR
   <h2>Limits at launch</h2>
   <ul>
     <li><strong>Email provider setup.</strong> Local Mailpit is included in the repository. Production still needs a Resend account, verified sending DNS, <code>RESEND_API_KEY</code>, <code>EMAIL_FROM</code>, and a real-inbox check. <a href="https://github.com/fauxparse/mechane/issues/759">#759</a> covers the code.</li>
-    <li><strong>Images up to 2 MB.</strong> Every image request the browser hasn't cached runs a function. Browsers keep images for a year, but function calls and bandwidth still count against the plan. <a href="https://github.com/fauxparse/mechane/issues/764">#764</a> fixes both.</li>
+    <li><strong>Images up to 25 MB source and 10 MB normalized.</strong> Uploads and delivery bypass functions through presigned storage URLs and the public CDN host. The old <code>/api/images/*</code> route remains for cached URLs.</li>
     <li><strong>200 Players at once</strong> on Ably Free.</li>
     <li><strong>Up to a day</strong> to recover a missed update, until you move to Vercel Pro.</li>
     <li><strong>Cold starts.</strong> The first request after a quiet spell waits for a new instance to start and open a Postgres connection.</li>
