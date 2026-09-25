@@ -5,7 +5,7 @@
 // Kept out of the resolvers so the GraphQL layer stays a thin adapter: the
 // resolvers authenticate, check ownership, validate through the domain, and
 // call one of the lifecycle functions below.
-import { applyGraphEdits, deletionScope } from "@mechane/commands";
+import { applyGraphEdits, deletionScope, interactionDeletionIds } from "@mechane/commands";
 import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
 import { assertBlockReferencesExist } from "@mechane/domain/blocks";
 import {
@@ -331,6 +331,7 @@ function sceneInteractionCleanupEdits(
 
   const scope = deletionScope(graph, nodeIds);
   const doomed = new Set(scope.nodes.map((node) => node.id));
+  const { cueIds: allCueIds, actionIds: allActionIds } = interactionDeletionIds(graph, doomed);
   const removedCueIds = new Set(
     graphEdits
       .filter(
@@ -347,24 +348,16 @@ function sceneInteractionCleanupEdits(
       )
       .map((edit) => edit.actionId),
   );
-  const cueIds = (graph.cues ?? [])
-    .filter(
-      (cue) =>
-        cue.owner.kind === "scene" &&
-        doomed.has(cue.owner.sceneId) &&
-        !removedCueIds.has(cue.id),
-    )
-    .map((cue) => cue.id);
+  const cueIds = allCueIds.filter((cueId) => !removedCueIds.has(cueId));
   const allRemovedCueIds = new Set([...removedCueIds, ...cueIds]);
-  const actionIds = (graph.actions ?? [])
-    .filter(
-      (action) =>
-        action.kind === "navigate" &&
-        doomed.has(action.targetSceneId) &&
-        !allRemovedCueIds.has(action.cueId) &&
-        !removedActionIds.has(action.id),
-    )
-    .map((action) => action.id);
+  const actionIds = allActionIds.filter((actionId) => {
+    const action = graph.actions?.find((candidate) => candidate.id === actionId);
+    return (
+      action !== undefined &&
+      !allRemovedCueIds.has(action.cueId) &&
+      !removedActionIds.has(action.id)
+    );
+  });
   return [
     ...cueIds.map((cueId) => ({ type: "graph.removeCue" as const, cueId })),
     ...actionIds.map((actionId) => ({ type: "graph.removeAction" as const, actionId })),
