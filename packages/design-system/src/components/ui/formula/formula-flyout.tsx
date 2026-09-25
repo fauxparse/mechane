@@ -5,10 +5,8 @@ import {
   type FormulaAnalysis,
   type FormulaScope,
 } from "@mechane/domain/formula";
-import { Trash2Icon, XIcon } from "lucide-react";
+import { FlaskConicalIcon as FormulaIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
-
-import { FormulaIcon } from "../../..";
 import { cn } from "../../../lib/utils";
 import { Button } from "../button";
 import { Popover, PopoverContent } from "../popover";
