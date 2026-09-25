@@ -7,8 +7,9 @@ import { auth } from "./auth";
 import { db } from "./db/client";
 import { imageAssets } from "./db/schema";
 import { yoga } from "./graphql/server";
-import { handleRealtimeAuthRoute } from "./realtime-auth";
 import { applyCorsHeaders } from "./lib/cors";
+import { handlePlayerInvalidationCronRoute } from "./player-invalidations-cron";
+import { handleRealtimeAuthRoute } from "./realtime-auth";
 import { blobStore } from "./storage/blob-store";
 
 const authHandler = toNodeHandler(auth);
@@ -80,6 +81,7 @@ async function handleBinaryRoute(req: IncomingMessage, res: ServerResponse): Pro
 }
 
 export async function httpHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  if (await handlePlayerInvalidationCronRoute(req, res)) return;
   if (await handleRealtimeAuthRoute(req, res)) return;
   if (await handleBinaryRoute(req, res)) return;
   if (req.url?.startsWith("/api/auth")) {
