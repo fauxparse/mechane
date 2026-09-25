@@ -4,11 +4,11 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import { db } from "./client";
-import { readCanvas } from "./canvas";
+import { readCanvas, writeCanvas } from "./canvas";
 import { dispatchPlayerEvent } from "./player-events";
 import { listRunErrors, RunConfigurationError } from "./run-errors";
 import { endRun, readActiveRun, readRunDeviceState, startRun } from "./runs";
-import { publishShowGraph, readShowGraph, writeShowGraph } from "./show-graph";
+import { applyShowEdits, publishShowGraph, readShowGraph, writeShowGraph } from "./show-graph";
 import {
   playerEvents,
   playerInvalidationOutbox,
@@ -198,6 +198,100 @@ describe("dispatchPlayerEvent", () => {
     expect((await readActiveRun(showId))?.sourceValues[sourceId]).toBe(1);
     expect((await readRunDeviceState(run.id, device.id))?.activeSceneId).toBe("scene_red");
   });
+  it("dispatches an Update Action from a top-level Scene on a shared Device", async () => {
+    await createShow();
+    const draft = await readShowGraph(showId, "draft");
+    const scene = draft.nodes.find((node) => node.id === "scene_red");
+    const device = draft.nodes.find((node) => node.kind === "device");
+    const canvas = await readCanvas(showId, "draft", { sceneNodeId: "scene_red" });
+    if (scene?.kind !== "scene" || device?.kind !== "device" || !canvas) {
+      throw new Error("Direct Device fixture is incomplete.");
+    }
+
+    const sourceId = "source_direct_counter";
+    const cueId = "cue_direct_counter";
+    const actionId = "action_direct_counter";
+    await writeShowGraph(showId, "draft", {
+      ...draft,
+      nodes: [
+        { ...scene, parentId: null, name: "Direct Counter" },
+        device,
+        {
+          id: sourceId,
+          kind: "source",
+          name: "Counter",
+          position: { x: 0, y: 0 },
+          parentId: null,
+          type: "number",
+        },
+      ],
+      edges: [
+        {
+          id: "edge_direct_counter_device",
+          kind: "device",
+          sourceId: scene.id,
+          targetId: device.id,
+          sourcePath: [],
+          targetPath: [],
+        },
+      ],
+      cues: [
+        {
+          id: cueId,
+          name: "Increment",
+          owner: { kind: "scene", sceneId: scene.id },
+          actionIds: [actionId],
+        },
+      ],
+      actions: [
+        {
+          id: actionId,
+          cueId,
+          kind: "update",
+          target: { sourceId, fieldPath: [] },
+          operation: {
+            kind: "adjust",
+            operand: { kind: "literal", value: { kind: "number", value: 1 } },
+          },
+        },
+      ],
+      eventBindings: [],
+    });
+    const directCanvas = await writeCanvas(showId, "draft", { sceneNodeId: scene.id }, canvas);
+    const graphWithCanvas = await readShowGraph(showId, "draft");
+    await applyShowEdits(
+      showId,
+      [
+        {
+          type: "graph.addEventBinding",
+          binding: {
+            id: "binding_direct_counter",
+            canvasId: directCanvas.id,
+            elementId: directCanvas.root.id,
+            eventKind: "tap",
+            cueId,
+            position: 0,
+          },
+        },
+      ],
+      [],
+      graphWithCanvas.version,
+    );
+    const published = await publishShowGraph(showId);
+    await startRun(showId);
+    const pairedDevice = await proofDevice();
+
+    const result = await dispatchPlayerEvent(pairedDevice.pairingCode, {
+      eventId: crypto.randomUUID(),
+      publishedGraphVersion: published.version,
+      sceneId: scene.id,
+      elementId: directCanvas.root.id,
+      eventKind: "tap",
+    });
+
+    expect(result).toMatchObject({ kind: "accepted" });
+    expect((await readActiveRun(showId))?.sourceValues[sourceId]).toBe(1);
+  });
   it("adjusts a nested Field without re-keying any Structured Value (#635)", async () => {
     await createShow();
     const draft = await readShowGraph(showId, "draft");
@@ -366,19 +460,11 @@ describe("dispatchPlayerEvent", () => {
     ).resolves.toMatchObject({ kind: "ignored", reason: "not-ready" });
   });
 
-  it("records ignored Events for a Device without navigation state", async () => {
+  it("records ignored Events for a shared Device without a driver", async () => {
     await createShow();
     const device = await proofDevice();
-    const directGraph: ShowGraph = {
+    await writeShowGraph(showId, "draft", {
       nodes: [
-        {
-          id: "scene_direct",
-          kind: "scene",
-          name: "Direct",
-          position: { x: 0, y: 0 },
-          parentId: null,
-          variables: [],
-        },
         {
           id: "device_navigation",
           kind: "device",
@@ -389,18 +475,8 @@ describe("dispatchPlayerEvent", () => {
           pairingCode: null,
         },
       ],
-      edges: [
-        {
-          id: "edge_direct_device",
-          kind: "device",
-          sourceId: "scene_direct",
-          targetId: "device_navigation",
-          sourcePath: [],
-          targetPath: [],
-        },
-      ],
-    };
-    await writeShowGraph(showId, "draft", directGraph);
+      edges: [],
+    });
     await publishShowGraph(showId);
     const run = await startRun(showId);
     await expect(

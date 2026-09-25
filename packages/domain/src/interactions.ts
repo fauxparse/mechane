@@ -252,7 +252,7 @@ export function resolveRuntimeEvent(
   const scene = graph.nodes.find(
     (node) => node.id === observation.sceneId && node.kind === "scene",
   );
-  if (!scene || scene.parentId === null) {
+  if (!scene) {
     return { kind: "unbound", reason: "stale-scene" };
   }
   const instancePath = observation.slotInstancePath ?? [];

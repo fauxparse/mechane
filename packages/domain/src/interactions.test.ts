@@ -441,6 +441,57 @@ describe("interaction aggregate", () => {
       parameters: { instancePath: [], bindingMappings: [], hops: [] },
     });
   });
+  it("resolves an update Event on a top-level Scene", () => {
+    const cue: Cue = {
+      id: "cue_shared",
+      name: "Increment",
+      owner: { kind: "scene", sceneId: "scene_shared" },
+      actionIds: ["action_shared"],
+    };
+    const action: Action = {
+      id: "action_shared",
+      cueId: cue.id,
+      kind: "update",
+      target: { sourceId: "source_shared", fieldPath: [] },
+      operation: {
+        kind: "adjust",
+        operand: { kind: "literal", value: { kind: "number", value: 1 } },
+      },
+    };
+    const graph = {
+      nodes: [
+        { id: "source_shared", kind: "source", parentId: null },
+        { id: "scene_shared", kind: "scene", parentId: null },
+      ],
+      cues: [cue],
+      actions: [action],
+      eventBindings: [
+        {
+          id: "binding_shared",
+          canvasId: "canvas_shared",
+          elementId: "button_shared",
+          eventKind: "tap" as const,
+          cueId: cue.id,
+          position: 0,
+        },
+      ],
+    };
+
+    expect(
+      resolveRuntimeEvent(graph, {
+        sceneId: "scene_shared",
+        canvasId: "canvas_shared",
+        elementId: "button_shared",
+        eventKind: "tap",
+      }),
+    ).toEqual({
+      kind: "planned",
+      sceneId: "scene_shared",
+      cue,
+      actions: [action],
+      parameters: { instancePath: [], bindingMappings: [], hops: [] },
+    });
+  });
 
   it("returns data for stale and unbound runtime observations", () => {
     const graph = { nodes, cues, actions, eventBindings };

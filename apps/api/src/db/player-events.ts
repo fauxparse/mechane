@@ -581,23 +581,122 @@ export async function dispatchPlayerEvent(
           .from(runDeviceStates)
           .where(and(eq(runDeviceStates.runId, run.id), eq(runDeviceStates.deviceId, device.id)))
           .for("update");
+        const [existing] = await tx
+          .select()
+          .from(playerEvents)
+          .where(
+            and(
+              eq(playerEvents.runId, run.id),
+              eq(playerEvents.deviceId, device.id),
+              eq(playerEvents.eventId, input.eventId),
+            ),
+          );
+        if (existing) return duplicateResult(existing);
+
         if (!state) {
-          const [existing] = await tx
-            .select()
-            .from(playerEvents)
-            .where(
-              and(
-                eq(playerEvents.runId, run.id),
-                eq(playerEvents.deviceId, device.id),
-                eq(playerEvents.eventId, input.eventId),
-              ),
-            );
-          if (existing) return duplicateResult(existing);
           const graph = await readShowGraph(device.showId, "published", tx);
           const driver = graph.edges.find(
             (edge) => edge.kind === "device" && edge.targetId === device.id,
           );
           const source = driver ? graph.nodes.find((node) => node.id === driver.sourceId) : null;
+          if (source?.kind === "scene") {
+            const canvas = await readCanvas(
+              device.showId,
+              "published",
+              { sceneNodeId: source.id },
+              tx,
+            );
+            if (!canvas) {
+              throw new RunConfigurationError({
+                showId: device.showId,
+                runId: run.id,
+                category: "missingSceneCanvas",
+                deviceId: device.id,
+                sceneId: source.id,
+                publishedGraphVersion: graph.version,
+              });
+            }
+            const observation = observationFor(input, source.id, canvas.id);
+            if (!observation) {
+              const result: PlayerEventResult = {
+                kind: "rejected",
+                eventId: input.eventId,
+                reason: "invalid-event",
+              };
+              await recordEvent(tx, run.id, device.showId, device.id, input, result);
+              return result;
+            }
+            let plan: RuntimeEventPlan;
+            try {
+              plan = resolveRuntimeEvent(graph, observation);
+            } catch (error) {
+              if (error instanceof InvalidInteractionError) {
+                throw new RunConfigurationError({
+                  showId: device.showId,
+                  runId: run.id,
+                  category: "invalidInteractions",
+                  deviceId: device.id,
+                  sceneId: source.id,
+                  elementId: input.elementId,
+                  publishedGraphVersion: graph.version,
+                });
+              }
+              throw error;
+            }
+            if (plan.kind === "unbound") {
+              const result: PlayerEventResult = {
+                kind: "ignored",
+                eventId: input.eventId,
+                reason: plan.reason === "stale-scene" ? "stale-scene" : "unbound-event",
+              };
+              await recordEvent(tx, run.id, device.showId, device.id, input, result);
+              return result;
+            }
+            const action = plan.actions[0];
+            if (!action || action.kind !== "update") {
+              throw new RunConfigurationError({
+                showId: device.showId,
+                runId: run.id,
+                category: "invalidNavigateAction",
+                deviceId: device.id,
+                sceneId: source.id,
+                elementId: input.elementId,
+                cueId: plan.cue.id,
+                actionId: action?.id,
+                publishedGraphVersion: graph.version,
+              });
+            }
+            const resolved = resolveCueParameters({
+              graph,
+              canvas,
+              sceneId: source.id,
+              state: await readRunState(run.id, tx),
+              blocks: graph.blocks ?? [],
+              parameters: plan.parameters,
+            });
+            if (resolved.kind === "failed") {
+              const result: PlayerEventResult = {
+                kind: "failed",
+                eventId: input.eventId,
+                actionId: action.id,
+                reason: resolved.reason,
+              };
+              await recordEvent(tx, run.id, device.showId, device.id, input, result);
+              return result;
+            }
+            const update = await dispatchUpdateAction(
+              tx,
+              device,
+              run,
+              graph,
+              source.id,
+              action,
+              input,
+              resolved.values,
+            );
+            if (update.changed) invalidationScope = { showId: device.showId, deviceId: device.id };
+            return update.result;
+          }
           if (source?.kind !== "flow") {
             const result: PlayerEventResult = {
               kind: "ignored",
@@ -615,17 +714,6 @@ export async function dispatchPlayerEvent(
             publishedGraphVersion: graph.version,
           });
         }
-        const [existing] = await tx
-          .select()
-          .from(playerEvents)
-          .where(
-            and(
-              eq(playerEvents.runId, run.id),
-              eq(playerEvents.deviceId, device.id),
-              eq(playerEvents.eventId, input.eventId),
-            ),
-          );
-        if (existing) return duplicateResult(existing);
         if (!validSlotInstancePath(input.slotInstancePath)) {
           const result: PlayerEventResult = {
             kind: "ignored",
