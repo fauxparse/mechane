@@ -11,6 +11,8 @@ export interface PlayerInvalidationCronOptions {
   budgetMs?: number;
   now?: () => number;
   provider?: RealtimeProvider;
+  /** Restricts the drain to one Show. The deployed cron drains every Show. */
+  showId?: string;
 }
 
 export interface PlayerInvalidationCronResult {
@@ -41,6 +43,7 @@ export async function drainPlayerInvalidationsForCron(
     const batch = await drainPlayerInvalidations({
       batchSize: options.batchSize,
       provider: options.provider,
+      showId: options.showId,
     });
     claimed += batch.claimed;
     delivered += batch.delivered;

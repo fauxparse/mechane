@@ -106,7 +106,7 @@ describe.sequential("player invalidation outbox", () => {
       messages.push({ channel, type, payload });
     });
 
-    expect(await drainPlayerInvalidations({ batchSize: 10, provider })).toMatchObject({
+    expect(await drainPlayerInvalidations({ batchSize: 10, provider, showId })).toMatchObject({
       claimed: 2,
       delivered: 2,
       failed: 0,
@@ -118,16 +118,12 @@ describe.sequential("player invalidation outbox", () => {
     });
     expect((await outboxRows()).filter((row) => row.status === "delivered")).toHaveLength(2);
 
-    const pendingBeforeSecondDrain = await outboxRows();
-    const secondDrainCount = pendingBeforeSecondDrain.filter(
-      (row) => row.status === "pending",
-    ).length;
-    expect(await drainPlayerInvalidations({ batchSize: 10, provider })).toMatchObject({
-      claimed: secondDrainCount,
-      delivered: secondDrainCount,
+    expect(await drainPlayerInvalidations({ batchSize: 10, provider, showId })).toMatchObject({
+      claimed: 1,
+      delivered: 1,
       failed: 0,
     });
-    expect(messages).toHaveLength(2 + secondDrainCount);
+    expect(messages).toHaveLength(3);
   });
 
   it("reschedules provider failures and reclaims expired leases", async () => {
@@ -137,7 +133,7 @@ describe.sequential("player invalidation outbox", () => {
     const failing = providerFor(async () => {
       throw new Error("provider unavailable");
     });
-    expect(await drainPlayerInvalidations({ provider: failing, now })).toMatchObject({
+    expect(await drainPlayerInvalidations({ provider: failing, now, showId })).toMatchObject({
       claimed: 2,
       delivered: 0,
       failed: 2,
@@ -151,7 +147,7 @@ describe.sequential("player invalidation outbox", () => {
       .set({ nextAttemptAt: new Date(now.getTime() - 1) })
       .where(eq(playerInvalidationOutbox.id, failed.id));
     const successful = providerFor(async () => undefined);
-    expect(await drainPlayerInvalidations({ provider: successful, now })).toMatchObject({
+    expect(await drainPlayerInvalidations({ provider: successful, now, showId })).toMatchObject({
       claimed: 1,
       delivered: 1,
       failed: 0,
@@ -168,9 +164,10 @@ describe.sequential("player invalidation outbox", () => {
         leaseExpiresAt: new Date(now.getTime() - 1),
       })
       .where(eq(playerInvalidationOutbox.id, leased.id));
-    const reclaimed = await drainPlayerInvalidations({ provider: successful, now });
-    expect(reclaimed.claimed).toBeGreaterThanOrEqual(1);
-    expect(reclaimed.delivered).toBe(reclaimed.claimed);
-    expect(reclaimed.failed).toBe(0);
+    expect(await drainPlayerInvalidations({ provider: successful, now, showId })).toMatchObject({
+      claimed: 1,
+      delivered: 1,
+      failed: 0,
+    });
   });
 });
