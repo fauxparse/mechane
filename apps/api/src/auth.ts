@@ -13,6 +13,10 @@ import * as schema from "./db/schema";
 import { sendEmail } from "./lib/email";
 import { ALLOWED_ORIGINS } from "./lib/cors";
 
+// Email delivery is local SMTP, Resend, or log-only depending on the environment.
+// Production must use Resend; local development can use Mailpit without credentials.
+const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION !== "false";
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -24,7 +28,7 @@ export const auth = betterAuth({
   trustedOrigins: ALLOWED_ORIGINS,
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: true,
+    requireEmailVerification,
     sendResetPassword: async ({ user, url }) => {
       await sendEmail({
         to: user.email,
@@ -34,7 +38,8 @@ export const auth = betterAuth({
     },
   },
   emailVerification: {
-    sendOnSignUp: true,
+    sendOnSignIn: requireEmailVerification,
+    sendOnSignUp: requireEmailVerification,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
       await sendEmail({

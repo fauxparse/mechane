@@ -13,6 +13,12 @@ const DEFAULT_USER = {
   password: "P4$$w0rd!",
 };
 
+function assertDevelopmentSeed(): void {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Refusing to run the development seed with NODE_ENV=production.");
+  }
+}
+
 function isSeedShow(value: unknown): value is SeedShow {
   if (value === null || typeof value !== "object" || !("name" in value) || !("seed" in value))
     return false;
@@ -70,9 +76,9 @@ async function seedShows(userId: string, showSeeds: readonly SeedShow[]): Promis
 }
 
 async function main(): Promise<void> {
+  assertDevelopmentSeed();
   console.log("Nuking local dev database...");
   await nukeDatabase();
-
   console.log(`Seeding default user (${DEFAULT_USER.email})...`);
   const userId = await seedDefaultUser();
   const showSeeds = await discoverShowSeeds();

@@ -334,8 +334,8 @@
       <p>The cap covers both request and response (<a href="https://vercel.com/docs/functions/limitations">Vercel function limits</a>). Uploads (<code>PUT /api/uploads/*</code>) and delivery (<code>GET /api/images/*</code>) both go through functions. Images are now capped at 2 MB. <a href="https://github.com/fauxparse/mechane/issues/764">#764</a> tracks lifting the cap.</p>
     </li>
     <li class="done">
-      <strong>No email gets sent.</strong> <span class="badge done">Handled</span>
-      <p><code>sendEmail</code> only writes to the log. Verification can now be switched off with <code>REQUIRE_EMAIL_VERIFICATION=false</code>. Real email is tracked in <a href="https://github.com/fauxparse/mechane/issues/759">#759</a>.</p>
+      <strong>Email delivery has local and production transports.</strong> <span class="badge done">Code done</span>
+      <p>Local development sends through Mailpit at <code>localhost:1025</code> and shows messages at <code>localhost:8025</code>. Production sends through Resend using <code>RESEND_API_KEY</code> and <code>EMAIL_FROM</code>; missing production credentials fail loudly. Domain DNS verification and the final real-inbox smoke test remain human setup in <a href="https://github.com/fauxparse/mechane/issues/759">#759</a>.</p>
     </li>
   </ol>
   <p>There are also smaller config issues: DNS, SPA rewrites, the Player's hardcoded API URL default, pnpm 11 on Vercel, and the Node version. Each is covered below.</p>
@@ -397,9 +397,9 @@
   </div>
   <p>I haven't confirmed what Ably does when you go over the connection limit. Expect extra Players to fail to connect. Check the Ably dashboard's stats after rehearsals.</p>
 
-  <h3>Email: off for launch <span class="badge done">Done</span></h3>
-  <p>Production runs with <code>REQUIRE_EMAIL_VERIFICATION=false</code>. New email/password accounts are signed in right after sign-up, and no verification email is sent. Leaving the variable unset keeps verification required, so local dev and CI behave as before.</p>
-  <p>Setting up a provider, the Studio UX changes, and turning verification back on are tracked in <a href="https://github.com/fauxparse/mechane/issues/759">#759</a>. The issue also covers accounts created while verification is off: they have <code>email_verified = false</code>, and Better Auth would block their password sign-in the moment verification comes back on.</p>
+  <h3>Email: Mailpit locally, Resend in production</h3>
+  <p>Local development uses the Mailpit SMTP sink, so verification and password-reset links are available at <code>http://localhost:8025</code> without provider credentials. Production uses Resend with <code>REQUIRE_EMAIL_VERIFICATION</code> left unset or set to <code>true</code>. Existing unverified accounts receive a fresh verification link on a blocked password sign-in.</p>
+  <p>Verify the chosen sending domain in Resend, add its DKIM/SPF/DMARC records wherever <code>mechane.live</code> DNS is managed, then add <code>RESEND_API_KEY</code> and <code>EMAIL_FROM</code> to the API project's Production environment. The Vercel Marketplace integration is optional and requires an existing Vercel project.</p>
 
   <h3>Image size: 2 MB <span class="badge done">Done</span></h3>
   <p><code>DEFAULT_IMAGE_UPLOAD_POLICY</code> now caps <code>maxSourceBytes</code> and <code>maxNormalizedBytes</code> at 2 MB, down from 25 MB and 10 MB. That leaves plenty of room under Vercel's 4.5 MB limit. The proper fix is <a href="https://github.com/fauxparse/mechane/issues/764">#764</a>: Studio uploads straight to the bucket with a presigned PUT URL, images are served from a CDN-cached public host, and the cap comes back up.</p>
@@ -437,6 +437,7 @@ flowchart LR
       <tr><td>Neon, through the Vercel Marketplace</td><td>One database, attached to the API project</td><td>Pooled and unpooled connection strings, added as env vars. Check the exact names the integration creates</td></tr>
       <tr><td>Cloudflare R2</td><td>Bucket <code>mechane</code>, plus an API token with Object Read &amp; Write on that bucket</td><td>Access key ID, secret, and the endpoint <code>https://&lt;account-id&gt;.r2.cloudflarestorage.com</code></td></tr>
       <tr><td>Ably</td><td>An app, and an API key with publish and subscribe</td><td><code>ABLY_API_KEY</code></td></tr>
+      <tr><td>Resend</td><td>Create an account, verify <code>send.mechane.live</code> or <code>mechane.live</code>, and create a sending API key</td><td>Transactional email for verification and password reset</td></tr>
       <tr><td>Google Cloud <em>(optional)</em></td><td class="wrap">OAuth client with redirect URI <code>https://api.mechane.live/api/auth/callback/google</code>, and a Fonts API key restricted to <code>https://studio.mechane.live/*</code></td><td><code>GOOGLE_CLIENT_ID</code>, <code>GOOGLE_CLIENT_SECRET</code>, <code>VITE_GOOGLE_FONTS_API_KEY</code></td></tr>
     </tbody>
   </table></div>
@@ -572,7 +573,7 @@ flowchart LR
       <tr><td><code>BETTER_AUTH_URL</code></td><td><code>https://api.mechane.live</code></td></tr>
       <tr><td><code>APP_STUDIO_URL</code></td><td><code>https://studio.mechane.live</code></td></tr>
       <tr><td><code>APP_PLAYER_URL</code></td><td><code>https://show.mechane.live</code></td></tr>
-      <tr><td><code>REQUIRE_EMAIL_VERIFICATION</code></td><td><code>false</code> until <a href="https://github.com/fauxparse/mechane/issues/759">#759</a> is done</td></tr>
+      <tr><td><code>REQUIRE_EMAIL_VERIFICATION</code></td><td><code>true</code> or unset after Resend and DNS are ready</td></tr>
       <tr><td><code>REALTIME_PROVIDER</code></td><td><code>ably</code>. That's already the default when <code>NODE_ENV=production</code>; set it anyway</td></tr>
       <tr><td><code>ABLY_API_KEY</code></td><td>From Ably</td></tr>
       <tr><td><code>BLOB_STORAGE_DRIVER</code></td><td><code>minio</code>. Any value except <code>local</code> selects the S3 client; the name is historical</td></tr>
@@ -583,6 +584,8 @@ flowchart LR
       <tr><td><code>BLOB_STORAGE_REGION</code></td><td><code>auto</code></td></tr>
       <tr><td><code>CRON_SECRET</code></td><td>Random string</td></tr>
       <tr><td><code>CRON_SCHEDULE</code></td><td>Leave unset on Hobby. Set to <code>* * * * *</code> after upgrading to Pro</td></tr>
+      <tr><td><code>RESEND_API_KEY</code></td><td>Resend sending key. Required in Production.</td></tr>
+      <tr><td><code>EMAIL_FROM</code></td><td><code>Mechanē &lt;noreply@send.mechane.live&gt;</code> or an address on the verified domain</td></tr>
       <tr><td><code>GOOGLE_CLIENT_ID</code>, <code>GOOGLE_CLIENT_SECRET</code></td><td>Optional</td></tr>
       <tr><td><code>ENABLE_EXPERIMENTAL_COREPACK</code></td><td><code>1</code></td></tr>
     </tbody>
@@ -645,7 +648,7 @@ flowchart LR
       </ul>
       <div class="callout red">
         <div class="title">Never run <code>pnpm db:seed</code> against production</div>
-        <p><code>apps/api/src/db/seeds.ts:51</code> truncates <code>user</code>, <code>session</code>, <code>account</code> and <code>shows</code>.</p>
+        <p><code>apps/api/src/db/seeds.ts</code> refuses <code>NODE_ENV=production</code>, and otherwise truncates <code>user</code>, <code>session</code>, <code>account</code> and <code>shows</code> before recreating the local fixtures.</p>
       </div>
     </div>
     <div class="day">
@@ -670,7 +673,7 @@ flowchart LR
   </ul>
   <h3>Studio</h3>
   <ul class="checklist">
-    <li><input type="checkbox" id="smk-studio-1"><span>Sign up. You land in Studio signed in, with no verification step. Reload, and you're still signed in. That shows the session cookie works across subdomains.</span></li>
+    <li><input type="checkbox" id="smk-studio-1"><span>Sign up. The Studio shows a check-your-inbox state. Open the message in Mailpit locally, or Resend in production, click the verification link, and land back in Studio signed in.</span></li>
     <li><input type="checkbox" id="smk-studio-2"><span>Open a Show's URL directly and reload. It loads instead of returning 404.</span></li>
     <li><input type="checkbox" id="smk-studio-3"><span>Upload an image of about 1.5 MB and check that it shows. Then try a 3 MB image: you should get "Image files must be smaller than 2 MB."</span></li>
   </ul>
@@ -685,7 +688,7 @@ flowchart LR
 <section id="limits">
   <h2>Limits at launch</h2>
   <ul>
-    <li><strong>No email.</strong> Anyone can sign up with an address they don't own. Password reset links only appear in the Vercel logs, so resetting a password means you fetch the link by hand. <a href="https://github.com/fauxparse/mechane/issues/759">#759</a> fixes both.</li>
+    <li><strong>Email provider setup.</strong> Local Mailpit is included in the repository. Production still needs a Resend account, verified sending DNS, <code>RESEND_API_KEY</code>, <code>EMAIL_FROM</code>, and a real-inbox check. <a href="https://github.com/fauxparse/mechane/issues/759">#759</a> covers the code.</li>
     <li><strong>Images up to 2 MB.</strong> Every image request the browser hasn't cached runs a function. Browsers keep images for a year, but function calls and bandwidth still count against the plan. <a href="https://github.com/fauxparse/mechane/issues/764">#764</a> fixes both.</li>
     <li><strong>200 Players at once</strong> on Ably Free.</li>
     <li><strong>Up to a day</strong> to recover a missed update, until you move to Vercel Pro.</li>
@@ -696,7 +699,7 @@ flowchart LR
 
 <section id="later">
   <h2>Not this weekend</h2>
-  <p>Storybook hosting, preview and staging environments, a separate staging database, error monitoring, direct-to-storage uploads (<a href="https://github.com/fauxparse/mechane/issues/764">#764</a>), and transactional email (<a href="https://github.com/fauxparse/mechane/issues/759">#759</a>).</p>
+  <p>Storybook hosting, preview and staging environments, a separate staging database, error monitoring, and direct-to-storage uploads (<a href="https://github.com/fauxparse/mechane/issues/764">#764</a>).</p>
 </section>
 
 <footer>Plan written 25 September 2026. Source: repository at <code>main</code>, plus the Vercel and Ably docs linked inline.</footer>

@@ -1,7 +1,7 @@
-db: docker compose up postgres postgres-init minio minio-init
+db: docker compose up postgres postgres-init minio minio-init mailpit
 proxy: docker compose up caddy dnsmasq
 studio: VITE_DEV_PROXY=true pnpm dev:studio --host 0.0.0.0 --port 5173
 player: VITE_DEV_PROXY=true pnpm dev:player --host 0.0.0.0 --port 5174
-api: PORT=4000 pnpm dev:api
+api: SMTP_URL=smtp://localhost:1025 EMAIL_FROM="Mechanē <noreply@localhost>" PORT=4000 pnpm dev:api
 worker: pnpm --filter @mechane/api realtime:worker
 storybook: pnpm storybook
