@@ -4,8 +4,17 @@ import type { ImageAsset } from "@mechane/domain/images";
 import { db } from "./client";
 import { blobs, imageAssets } from "./schema";
 
-export const imageDeliveryUrl = (assetId: string, revision: string): string =>
-  `/api/images/${encodeURIComponent(assetId)}/${encodeURIComponent(revision)}`;
+export const imageDeliveryUrl = (
+  assetId: string,
+  revision: string,
+  blobDigest?: string,
+): string => {
+  const publicBaseUrl = process.env.BLOB_PUBLIC_URL?.replace(/\/+$/, "");
+  if (publicBaseUrl && blobDigest) {
+    return `${publicBaseUrl}/${encodeURIComponent(blobDigest)}`;
+  }
+  return `/api/images/${encodeURIComponent(assetId)}/${encodeURIComponent(revision)}`;
+};
 
 export type ImageAssetRow = typeof imageAssets.$inferSelect;
 
@@ -23,7 +32,7 @@ export function toImageAsset(row: ImageAssetRow): ImageAsset & { url: string } {
     blurHash: row.blurHash,
     state: row.state as ImageAsset["state"],
     sourceAssetId: row.sourceAssetId as ImageAsset["sourceAssetId"],
-    url: imageDeliveryUrl(row.id, row.revision),
+    url: imageDeliveryUrl(row.id, row.revision, row.blobDigest),
   };
 }
 
