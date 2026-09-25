@@ -48,10 +48,10 @@ export const GetShowGraphQuery = graphql(
  *
  * Deliberately not the graph (#111): the editor composed these edits against
  * its own copy and already applied them. What it can't know is the version to
- * build on next, and anything the server decided for itself — which today is
- * only a new Device's pairing code, so those are the amendment fields
- * selected here. A wider amendment vocabulary (ADR-0003's realtime push)
- * would widen this selection.
+ * build on next, and anything the server decided for itself — currently device
+ * pairing codes and cleanup edits for invalidated interactions — is selected here.
+ * A wider amendment vocabulary (ADR-0003's realtime push) would widen this
+ * selection.
  */
 export const ApplyShowEditsMutation = graphql(`
   mutation ApplyShowEdits($showId: ID!, $baseVersion: Int!, $edits: [ShowEditInput!]!) {
@@ -64,6 +64,8 @@ export const ApplyShowEditsMutation = graphql(`
         type
         nodeId
         pairingCode
+        cueId
+        actionId
       }
     }
   }

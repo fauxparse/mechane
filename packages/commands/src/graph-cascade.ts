@@ -122,6 +122,31 @@ function list(parts: string[]): string {
   return `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;
 }
 
+export interface InteractionDeletionIds {
+  readonly cueIds: readonly string[];
+  readonly actionIds: readonly string[];
+}
+
+/** Interaction rows that must not outlive the deleted Scene nodes. */
+export function interactionDeletionIds(
+  graph: ShowGraph,
+  doomed: ReadonlySet<string>,
+): InteractionDeletionIds {
+  const cueIds = (graph.cues ?? [])
+    .filter((cue) => cue.owner.kind === "scene" && doomed.has(cue.owner.sceneId))
+    .map((cue) => cue.id);
+  const cueIdSet = new Set(cueIds);
+  const actionIds = (graph.actions ?? [])
+    .filter(
+      (action) =>
+        action.kind === "navigate" &&
+        doomed.has(action.targetSceneId) &&
+        !cueIdSet.has(action.cueId),
+    )
+    .map((action) => action.id);
+  return { cueIds, actionIds };
+}
+
 /**
  * The command that performs a deletion: one composite, one undo entry,
  * however wide the cascade (#28, #36).
@@ -139,17 +164,7 @@ export function deleteGraphElements(
 ): ShowGraphCommand {
   const scope = deletionScope(graph, nodeIds, edgeIds);
   const doomed = new Set(scope.nodes.map((node) => node.id));
-  const cueIds = (graph.cues ?? [])
-    .filter((cue) => cue.owner.kind === "scene" && doomed.has(cue.owner.sceneId))
-    .map((cue) => cue.id);
-  const actionIds = (graph.actions ?? [])
-    .filter(
-      (action) =>
-        action.kind === "navigate" &&
-        doomed.has(action.targetSceneId) &&
-        !cueIds.includes(action.cueId),
-    )
-    .map((action) => action.id);
+  const { cueIds, actionIds } = interactionDeletionIds(graph, doomed);
   const edgeIdsToRemove = scope.edgeIds.filter((edgeId) => {
     const edge = graph.edges.find((candidate) => candidate.id === edgeId);
     return (
