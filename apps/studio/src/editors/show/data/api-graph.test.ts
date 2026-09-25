@@ -112,6 +112,8 @@ describe("toGraphEdit", () => {
         type: "graph.setDevicePairingCode",
         nodeId: "device_phone",
         pairingCode: "AB12C",
+        cueId: null,
+        actionId: null,
       }),
     ).toEqual({
       type: "graph.setDevicePairingCode",
@@ -123,9 +125,15 @@ describe("toGraphEdit", () => {
   it("refuses an amendment this build doesn't understand", () => {
     // A server ahead of this client. Applying half of what it sent would put
     // the editor on a graph neither of them believes in.
-    expect(() => toGraphEdit({ type: "graph.explode", nodeId: null, pairingCode: null })).toThrow(
-      /Unknown Show graph edit/,
-    );
+    expect(() =>
+      toGraphEdit({
+        type: "graph.explode",
+        nodeId: null,
+        pairingCode: null,
+        cueId: null,
+        actionId: null,
+      }),
+    ).toThrow(/Unknown Show graph edit/);
   });
 
   it("won't send a pairing code back the other way", () => {

@@ -442,15 +442,15 @@ describe("interaction aggregate", () => {
     });
   });
   it("resolves an update Event on a top-level Scene", () => {
-    const cue: Cue = {
+    const sharedCue: Cue = {
       id: "cue_shared",
       name: "Increment",
       owner: { kind: "scene", sceneId: "scene_shared" },
       actionIds: ["action_shared"],
     };
-    const action: Action = {
+    const sharedAction: Action = {
       id: "action_shared",
-      cueId: cue.id,
+      cueId: sharedCue.id,
       kind: "update",
       target: { sourceId: "source_shared", fieldPath: [] },
       operation: {
@@ -458,23 +458,22 @@ describe("interaction aggregate", () => {
         operand: { kind: "literal", value: { kind: "number", value: 1 } },
       },
     };
+    const sharedBinding: EventBinding = {
+      id: "binding_shared",
+      canvasId: "canvas_shared",
+      elementId: "button_shared",
+      eventKind: "tap",
+      cueId: sharedCue.id,
+      position: 0,
+    };
     const graph = {
       nodes: [
         { id: "source_shared", kind: "source", parentId: null },
         { id: "scene_shared", kind: "scene", parentId: null },
       ],
-      cues: [cue],
-      actions: [action],
-      eventBindings: [
-        {
-          id: "binding_shared",
-          canvasId: "canvas_shared",
-          elementId: "button_shared",
-          eventKind: "tap" as const,
-          cueId: cue.id,
-          position: 0,
-        },
-      ],
+      cues: [sharedCue],
+      actions: [sharedAction],
+      eventBindings: [sharedBinding],
     };
 
     expect(
@@ -487,8 +486,8 @@ describe("interaction aggregate", () => {
     ).toEqual({
       kind: "planned",
       sceneId: "scene_shared",
-      cue,
-      actions: [action],
+      cue: sharedCue,
+      actions: [sharedAction],
       parameters: { instancePath: [], bindingMappings: [], hops: [] },
     });
   });
