@@ -5,7 +5,7 @@
 // Kept out of the resolvers so the GraphQL layer stays a thin adapter: the
 // resolvers authenticate, check ownership, validate through the domain, and
 // call one of the lifecycle functions below.
-import { applyGraphEdits } from "@mechane/commands";
+import { applyGraphEdits, deletionScope } from "@mechane/commands";
 import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
 import { assertBlockReferencesExist } from "@mechane/domain/blocks";
 import {
@@ -312,6 +312,65 @@ export interface AppliedShowEdits {
   canvas: StoredCanvas | null;
 }
 
+/**
+ * A raw node deletion can arrive without the Studio cascade when an older
+ * client or a batched Canvas edit removes a Scene. Remove the interaction edits
+ * that would otherwise keep referring to that Scene before graph validation.
+ */
+function sceneInteractionCleanupEdits(
+  graph: ShowGraph,
+  graphEdits: readonly GraphEdit[],
+): GraphEdit[] {
+  const nodeIds = graphEdits
+    .filter(
+      (edit): edit is Extract<GraphEdit, { type: "graph.removeNode" }> =>
+        edit.type === "graph.removeNode",
+    )
+    .map((edit) => edit.nodeId);
+  if (nodeIds.length === 0) return [];
+
+  const scope = deletionScope(graph, nodeIds);
+  const doomed = new Set(scope.nodes.map((node) => node.id));
+  const removedCueIds = new Set(
+    graphEdits
+      .filter(
+        (edit): edit is Extract<GraphEdit, { type: "graph.removeCue" }> =>
+          edit.type === "graph.removeCue",
+      )
+      .map((edit) => edit.cueId),
+  );
+  const removedActionIds = new Set(
+    graphEdits
+      .filter(
+        (edit): edit is Extract<GraphEdit, { type: "graph.removeAction" }> =>
+          edit.type === "graph.removeAction",
+      )
+      .map((edit) => edit.actionId),
+  );
+  const cueIds = (graph.cues ?? [])
+    .filter(
+      (cue) =>
+        cue.owner.kind === "scene" &&
+        doomed.has(cue.owner.sceneId) &&
+        !removedCueIds.has(cue.id),
+    )
+    .map((cue) => cue.id);
+  const allRemovedCueIds = new Set([...removedCueIds, ...cueIds]);
+  const actionIds = (graph.actions ?? [])
+    .filter(
+      (action) =>
+        action.kind === "navigate" &&
+        doomed.has(action.targetSceneId) &&
+        !allRemovedCueIds.has(action.cueId) &&
+        !removedActionIds.has(action.id),
+    )
+    .map((action) => action.id);
+  return [
+    ...cueIds.map((cueId) => ({ type: "graph.removeCue" as const, cueId })),
+    ...actionIds.map((actionId) => ({ type: "graph.removeAction" as const, actionId })),
+  ];
+}
+
 /** Applies graph and Canvas edits against one shared Show version transaction.
  *
  * Source value edits also update the active Run and notify paired Players after
@@ -328,20 +387,20 @@ export async function applyShowEdits(
     if (current.version !== baseVersion) {
       throw new GraphVersionConflictError(baseVersion, current.version);
     }
-    const nextGraph = applyGraphEdits(
-      {
-        shapes: current.shapes ?? [],
-        sourceFieldDefaults: current.sourceFieldDefaults ?? [],
-        blocks: current.blocks ?? [],
-        cues: current.cues ?? [],
-        actions: current.actions ?? [],
-        eventBindings: current.eventBindings ?? [],
-        slotEventBindings: current.slotEventBindings ?? [],
-        nodes: current.nodes,
-        edges: current.edges,
-      },
-      graphEdits,
-    );
+    const currentGraph: ShowGraph = {
+      shapes: current.shapes ?? [],
+      sourceFieldDefaults: current.sourceFieldDefaults ?? [],
+      blocks: current.blocks ?? [],
+      cues: current.cues ?? [],
+      actions: current.actions ?? [],
+      eventBindings: current.eventBindings ?? [],
+      slotEventBindings: current.slotEventBindings ?? [],
+      nodes: current.nodes,
+      edges: current.edges,
+    };
+    const cleanupEdits = sceneInteractionCleanupEdits(currentGraph, graphEdits);
+    const appliedGraphEdits = [...cleanupEdits, ...graphEdits];
+    const nextGraph = applyGraphEdits(currentGraph, appliedGraphEdits);
     const written = await writeGraph(tx, showId, "draft", nextGraph, baseVersion, {
       canvasEdits,
       forceBlockCanvasWrites: false,
@@ -365,7 +424,7 @@ export async function applyShowEdits(
       state: written.state,
       updatedAt: written.updatedAt,
       version: written.version,
-      amendments: amendments(nextGraph, written),
+      amendments: [...cleanupEdits, ...amendments(nextGraph, written)],
       canvas: storedCanvas,
       playerUpdated,
     };
