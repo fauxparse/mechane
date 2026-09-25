@@ -1,0 +1,96 @@
+import type { IncomingMessage, ServerResponse } from "node:http";
+
+import { and, eq } from "drizzle-orm";
+import { toNodeHandler } from "better-auth/node";
+
+import { auth } from "./auth";
+import { db } from "./db/client";
+import { imageAssets } from "./db/schema";
+import { yoga } from "./graphql/server";
+import { handleRealtimeAuthRoute } from "./realtime-auth";
+import { applyCorsHeaders } from "./lib/cors";
+import { blobStore } from "./storage/blob-store";
+
+const authHandler = toNodeHandler(auth);
+
+async function readBody(request: IncomingMessage): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of request)
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  return Buffer.concat(chunks);
+}
+
+async function handleBinaryRoute(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
+  const url = new URL(req.url ?? "/", "http://localhost");
+  const parts = url.pathname.split("/").filter(Boolean);
+  if (parts[0] !== "api") return false;
+  const isPreflight = applyCorsHeaders(res, req.headers.origin, req.method);
+  if (isPreflight) {
+    res.statusCode = 204;
+    res.end();
+    return true;
+  }
+  if (parts[1] === "uploads" && parts[2] && req.method === "PUT") {
+    const session = await auth.api.getSession({
+      headers: new Headers(req.headers as Record<string, string>),
+    });
+    if (!session) {
+      res.statusCode = 401;
+      res.end("Authentication required.");
+      return true;
+    }
+    const bytes = await readBody(req);
+    await blobStore.putUpload(parts[2], bytes);
+    res.statusCode = 204;
+    res.end();
+    return true;
+  }
+  if (parts[1] === "images" && parts[2] && parts[3] && req.method === "GET") {
+    const [asset] = await db
+      .select()
+      .from(imageAssets)
+      .where(
+        and(
+          eq(imageAssets.id, parts[2]),
+          eq(imageAssets.revision, parts[3]),
+          eq(imageAssets.state, "active"),
+        ),
+      );
+    if (!asset) {
+      res.statusCode = 404;
+      res.end();
+      return true;
+    }
+    const bytes = await blobStore.readBlob(asset.blobDigest);
+    if (!bytes) {
+      res.statusCode = 404;
+      res.end();
+      return true;
+    }
+    res.setHeader("Content-Type", asset.mimeType);
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    res.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    res.statusCode = 200;
+    res.end(bytes);
+    return true;
+  }
+  return false;
+}
+
+export async function httpHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  if (await handleRealtimeAuthRoute(req, res)) return;
+  if (await handleBinaryRoute(req, res)) return;
+  if (req.url?.startsWith("/api/auth")) {
+    const isPreflight = applyCorsHeaders(res, req.headers.origin, req.method);
+    if (isPreflight) {
+      res.statusCode = 204;
+      res.end();
+      return;
+    }
+    await authHandler(req, res);
+    return;
+  }
+  await yoga(req, res);
+}

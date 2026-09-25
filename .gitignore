@@ -14,3 +14,4 @@ coverage/
 .claude/settings.local.json
 *.afdesign~lock~
 .data/
+.vercel
