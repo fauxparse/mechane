@@ -19,11 +19,27 @@ const { showId, createShow } = setupPostgresTest("graph-canvas-delete-order-test
 const graph: ShowGraph = {
   nodes: [
     {
+      id: "flow_one",
+      kind: "flow",
+      name: "One",
+      position: { x: 0, y: 0 },
+      parentId: null,
+      defaultSceneId: "scene_two",
+    },
+    {
       id: "scene_one",
       kind: "scene",
       name: "One",
       position: { x: 0, y: 0 },
-      parentId: null,
+      parentId: "flow_one",
+      variables: [],
+    },
+    {
+      id: "scene_two",
+      kind: "scene",
+      name: "Two",
+      position: { x: 100, y: 0 },
+      parentId: "flow_one",
       variables: [],
     },
   ],
@@ -35,15 +51,31 @@ const graph: ShowGraph = {
       owner: { kind: "scene", sceneId: "scene_one" },
       actionIds: [],
     },
+    {
+      id: "cue_scene_two",
+      name: "Scene Two Cue",
+      owner: { kind: "scene", sceneId: "scene_two" },
+      actionIds: ["action_to_scene_one"],
+    },
+  ],
+  actions: [
+    {
+      id: "action_to_scene_one",
+      cueId: "cue_scene_two",
+      kind: "navigate",
+      targetSceneId: "scene_one",
+    },
   ],
 };
 
 describe("a Canvas edit batched with the deletion of its own owner (#594, #773)", () => {
-  it("drops the orphaned Canvas edit and Cue instead of failing the whole batch", async () => {
+  it("drops orphaned interactions and the Canvas edit instead of failing the whole batch", async () => {
     await createShow("Delete Order Test");
     await writeShowGraph(showId, "draft", graph);
 
-    const sceneCanvas = (await readCanvasWorkspace(showId, "draft")).canvases[0];
+    const sceneCanvas = (await readCanvasWorkspace(showId, "draft")).canvases.find(
+      (canvas) => canvas.ownerId === "scene_one",
+    );
     if (!sceneCanvas) throw new Error("The Scene Canvas was not created.");
     const draft = await readShowGraph(showId, "draft");
 
@@ -63,11 +95,15 @@ describe("a Canvas edit batched with the deletion of its own owner (#594, #773)"
     expect(applied.version).toBe(draft.version + 1);
     expect(applied.amendments).toEqual([
       { type: "graph.removeCue", cueId: "cue_scene_one" },
+      { type: "graph.removeAction", actionId: "action_to_scene_one" },
     ]);
 
     const reread = await readShowGraph(showId, "draft");
-    expect(reread.nodes).toEqual([]);
-    expect((await readCanvasWorkspace(showId, "draft")).canvases).toEqual([]);
-    expect(reread.cues).toEqual([]);
+    expect(reread.nodes.map((node) => node.id)).toEqual(["flow_one", "scene_two"]);
+    expect((await readCanvasWorkspace(showId, "draft")).canvases).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: sceneCanvas.id })]),
+    );
+    expect((reread.cues ?? []).map((cue) => cue.id)).toEqual(["cue_scene_two"]);
+    expect(reread.actions).toEqual([]);
   });
 });
