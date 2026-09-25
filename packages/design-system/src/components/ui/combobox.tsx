@@ -12,6 +12,7 @@ import {
   InputGroupInput,
   InputGroupText,
 } from "./input-group";
+import { menuItemClass, menuLabelClass, menuPopupClass, menuSeparatorClass } from "./menu-styles";
 
 const ComboboxAnchorContext = createContext<RefObject<HTMLDivElement | null> | null>(null);
 
@@ -159,7 +160,8 @@ function ComboboxContent({
         <ComboboxPrimitive.Popup
           data-slot="combobox-content"
           className={cn(
-            "group/combobox-content relative max-h-(--available-height) w-(--anchor-width) max-w-(--available-width) min-w-(--anchor-width) origin-(--transform-origin) overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 transition-opacity duration-100 data-ending-style:opacity-0 data-starting-style:opacity-0",
+            "group/combobox-content relative max-h-(--available-height) w-(--anchor-width) max-w-(--available-width) min-w-(--anchor-width) overflow-hidden",
+            menuPopupClass,
             className,
           )}
           {...props}
@@ -174,7 +176,7 @@ function ComboboxList({ className, ...props }: ComboboxPrimitive.List.Props) {
     <ComboboxPrimitive.List
       data-slot="combobox-list"
       className={cn(
-        "max-h-[min(calc(--spacing(72)---spacing(9)),calc(var(--available-height)---spacing(9)))] scroll-py-1 overflow-x-hidden overflow-y-auto overscroll-contain p-1 data-empty:p-0",
+        "max-h-[min(calc(--spacing(72)---spacing(9)),calc(var(--available-height)---spacing(9)))] scroll-py-1 overflow-x-hidden overflow-y-auto overscroll-contain data-empty:p-0",
         className,
       )}
       {...props}
@@ -186,10 +188,7 @@ function ComboboxItem({ className, children, ...props }: ComboboxPrimitive.Item.
   return (
     <ComboboxPrimitive.Item
       data-slot="combobox-item"
-      className={cn(
-        "relative flex w-full cursor-default items-center gap-2 rounded-sm py-1 pr-8 pl-1.5 text-sm outline-none select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className,
-      )}
+      className={cn(menuItemClass, "relative w-full pr-8", className)}
       {...props}
     >
       {children}
@@ -214,7 +213,7 @@ function ComboboxLabel({ className, ...props }: ComboboxPrimitive.GroupLabel.Pro
   return (
     <ComboboxPrimitive.GroupLabel
       data-slot="combobox-label"
-      className={cn("px-2 py-1.5 text-xs text-muted-foreground", className)}
+      className={cn(menuLabelClass, className)}
       {...props}
     />
   );
@@ -241,7 +240,7 @@ function ComboboxSeparator({ className, ...props }: ComboboxPrimitive.Separator.
   return (
     <ComboboxPrimitive.Separator
       data-slot="combobox-separator"
-      className={cn("-mx-1 my-1 h-px bg-border", className)}
+      className={cn(menuSeparatorClass, className)}
       {...props}
     />
   );

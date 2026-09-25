@@ -19,7 +19,7 @@ export function FormulaEditor(props: FormulaEditorProps) {
   return (
     <Suspense
       fallback={
-        <div className="min-h-[4.5rem] rounded-sm border border-input bg-background p-2 font-mono text-xs text-muted-foreground">
+        <div className="min-h-[3lh] rounded-sm border border-input bg-background p-2 font-mono text-xs text-muted-foreground">
           Loading Formula editor…
         </div>
       }

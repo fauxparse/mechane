@@ -1,13 +1,4 @@
 import {
-  CATALOGUE,
-  analyse,
-  previewText,
-  typeName,
-  type FormulaScope,
-  type FormulaType,
-} from "@mechane/domain/formula";
-import { cn } from "../../../lib/utils";
-import {
   autocompletion,
   closeBrackets,
   closeBracketsKeymap,
@@ -18,9 +9,9 @@ import {
   type CompletionContext,
 } from "@codemirror/autocomplete";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
-import { LRLanguage, syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language";
-import { Annotation, EditorState } from "@codemirror/state";
+import { LRLanguage, defaultHighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { forceLinting, linter, type Diagnostic } from "@codemirror/lint";
+import { Annotation, EditorState } from "@codemirror/state";
 import {
   EditorView,
   keymap,
@@ -28,7 +19,16 @@ import {
   tooltips,
 } from "@codemirror/view";
 import { styleTags, tags } from "@lezer/highlight";
+import {
+  CATALOGUE,
+  analyse,
+  previewText,
+  typeName,
+  type FormulaScope,
+  type FormulaType,
+} from "@mechane/domain/formula";
 import { useEffect, useRef } from "react";
+import { cn } from "../../../lib/utils";
 import { parser } from "./formula-parser";
 
 const formulaLanguage = LRLanguage.define({
@@ -290,7 +290,7 @@ export default function FormulaCodeEditor({
     <div
       ref={host}
       className={cn(
-        "nodrag nowheel overflow-hidden rounded-sm border border-input bg-background focus-within:ring-2 focus-within:ring-ring/40",
+        "nodrag nowheel overflow-hidden rounded-sm border border-input bg-background focus-within:ring-2 focus-within:ring-ring/40 field-sizing-content",
         className,
       )}
       // Escape is decided in the capture phase because CodeMirror's own
