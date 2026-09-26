@@ -223,19 +223,25 @@ export function usePropertyInput<T extends ShapeValue>({
       setEditingVariable(null);
     }
   };
+  /** Backspace over a Variable swaps it for its value, ready to type over; Esc restores it. */
+  const editVariableValue = (): boolean => {
+    if (!linkedVariable || !connectedVariable) return false;
+    setEditingVariable(connectedVariable);
+    updateDraftInput(formatValueText(connectedVariable.current, dimension, unit));
+    commit((connectedVariable.current ?? null) as PropertyInputValue<T> | null);
+    return true;
+  };
   const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>): boolean => {
     if (event.nativeEvent.isComposing) return true;
     if (event.key === "Enter") {
       event.preventDefault();
-      (event as KeyboardEvent<HTMLInputElement> & { preventBaseUIHandler?: () => void })
-        .preventBaseUIHandler?.();
+      (
+        event as KeyboardEvent<HTMLInputElement> & { preventBaseUIHandler?: () => void }
+      ).preventBaseUIHandler?.();
       return commitDraftInput();
     }
-    if (event.key === "Backspace" && linkedVariable && connectedVariable) {
+    if (event.key === "Backspace" && editVariableValue()) {
       event.preventDefault();
-      setEditingVariable(connectedVariable);
-      updateDraftInput(formatValueText(connectedVariable.current, dimension, unit));
-      commit((connectedVariable.current ?? null) as PropertyInputValue<T> | null);
       return true;
     }
     handleEscapeKey(event, cancelDraft);
@@ -389,6 +395,7 @@ export function usePropertyInput<T extends ShapeValue>({
     updateDraftInput,
     commitDraftInput,
     handleInputKeyDown,
+    editVariableValue,
     handleScrubPointerDown,
     handleScrubPointerMove,
     handleScrubPointerEnd,

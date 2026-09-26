@@ -73,7 +73,7 @@ const RadiusInput = ({
     icon={icon}
     type="number"
     value={mixed ? undefined : { kind: "number", value }}
-    placeholder={mixed ? "Mixed" : undefined}
+    placeholder={mixed ? "(mixed)" : undefined}
     min={0}
     onChange={(next) => {
       if (!isVariableInput(next) && next?.kind === "number") onChange(next.value);

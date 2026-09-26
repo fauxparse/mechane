@@ -57,14 +57,17 @@ export const SizeFieldInput = ({
     dimension={axis}
     unit={unit}
     placeholder={
-      sizeMixed ? "Mixed" : mode === "fill" ? "Fill" : mode === "hug" ? "Hug" : undefined
+      sizeMixed ? "(mixed)" : mode === "fill" ? "Fill" : mode === "hug" ? "Hug" : undefined
     }
     value={
       previewing
         ? literalValue("number", previewValue)
         : sizeMixed || entry?.formula
           ? null
-          : sizeInputValue(size, sizeVariables, shapes)
+          : mode === "fill" || mode === "hug"
+            ? // Fill and Hug store no size; the chip reads the laid-out one.
+              literalValue("number", currentValue)
+            : sizeInputValue(size, sizeVariables, shapes)
     }
     formula={previewing ? null : entry?.formula}
     sizing={mode}

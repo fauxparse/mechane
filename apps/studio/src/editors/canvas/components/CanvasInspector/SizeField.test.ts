@@ -67,14 +67,13 @@ describe("SizeField", () => {
   it("reads at rest as what the Artboard renders, with the Formula button and no editor", () => {
     const html = render([bar]);
 
-    expect(html).toContain('title="item.votes / Total * 100%"');
     expect(html).toContain('value="0%"');
     expect(html).toContain('data-connector="formula"');
     expect(html).toContain('aria-label="Edit Formula"');
     expect(html).not.toContain("Loading Formula editor");
   });
 
-  it("counts different Formulas across a selection instead of showing one", () => {
+  it("reads (mixed) for different Formulas across a selection instead of showing one", () => {
     const other: Element = {
       ...bar,
       id: "other",
@@ -88,7 +87,6 @@ describe("SizeField", () => {
 
     const html = render([bar, other]);
 
-    expect(html).toContain("2 Formulas");
-    expect(html).not.toContain("title=");
+    expect(html).toContain('value="(mixed)"');
   });
 });

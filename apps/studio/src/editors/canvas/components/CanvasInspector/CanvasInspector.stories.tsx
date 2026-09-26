@@ -576,7 +576,7 @@ export const MixedImageSelection: Story = {
   ),
   play: async ({ canvasElement }) => {
     const fit = canvasElement.querySelector<HTMLElement>('[aria-label="Object fit"]');
-    if (!fit?.textContent?.trim().startsWith("Mixed"))
+    if (!fit?.textContent?.trim().startsWith("(mixed)"))
       throw new Error("Object fit should be mixed");
     const position = canvasElement.querySelector<HTMLElement>(
       '[aria-label="Mixed object position"]',

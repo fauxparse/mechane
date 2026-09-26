@@ -1,5 +1,5 @@
-import { readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
@@ -522,7 +522,7 @@ function semanticValues(
     primary: primaryValue,
     "primary-foreground": primaryForeground,
     destructive: hue("red", 500),
-    "destructive-foreground": foreground,
+    "destructive-foreground": hue("red", dark ? 50 : 950),
     success: hue("green", 500),
     // green-50, not `foreground`: `foreground` is neutral-100 in dark mode but
     // neutral-900 in light, so pairing it with a saturated green-500 fill put
@@ -543,6 +543,9 @@ function semanticValues(
     "live-foreground": hue("green", 50),
     border: neutral(dark ? 600 : 300),
     input: neutral(dark ? 500 : 400),
+    // A value chip, laid at 25% over a field and read in `foreground`. Step 400 in both modes:
+    // `muted-foreground` is 400 in dark but 600 in light, which darkens a light-mode chip.
+    chip: neutral(400),
     ring: primaryValue,
     sidebar: surface,
     "sidebar-foreground": foreground,
@@ -669,7 +672,7 @@ function cssThemeBlock(theme: GeneratedTheme, defaultPalette: string): string {
     primary: hue(primary, 500),
     "primary-foreground": hue(primary, 50),
     destructive: hue("red", 500),
-    "destructive-foreground": foreground,
+    "destructive-foreground": hue("red", dark ? 50 : 950),
     success: hue("green", 500),
     // green-50, not `foreground`; see semanticValues() for why.
     "success-foreground": hue("green", 50),
@@ -679,6 +682,8 @@ function cssThemeBlock(theme: GeneratedTheme, defaultPalette: string): string {
     "live-foreground": hue("green", 50),
     border: neutral(dark ? 600 : 300),
     input: neutral(dark ? 500 : 400),
+    // See semanticValues() for why the chip is step 400 in both modes.
+    chip: neutral(400),
     ring: hue(primary, 500),
     sidebar: surface,
     "sidebar-foreground": foreground,
@@ -724,6 +729,7 @@ function themeAliases(): string {
     "live-foreground": "live-foreground",
     border: "border",
     input: "input",
+    chip: "chip",
     ring: "ring",
     sidebar: "sidebar",
     "sidebar-foreground": "sidebar-foreground",

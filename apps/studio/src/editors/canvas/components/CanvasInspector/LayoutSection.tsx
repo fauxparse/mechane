@@ -268,7 +268,7 @@ function AutoLayoutFields({
             ? null
             : { kind: "number", value: typeof gap === "number" ? gap : 0 }
         }
-        placeholder={gapMixed ? "Mixed" : gap === "auto" ? "Auto" : undefined}
+        placeholder={gapMixed ? "(mixed)" : gap === "auto" ? "Auto" : undefined}
         allowAuto
         auto={gap === "auto"}
         onAutoChange={(auto) => update({ gap: auto ? "auto" : 0 })}
@@ -315,7 +315,7 @@ const PaddingInput = ({
     icon={icon}
     type="number"
     value={mixed ? undefined : { kind: "number", value }}
-    placeholder={mixed ? "Mixed" : undefined}
+    placeholder={mixed ? "(mixed)" : undefined}
     min={0}
     onChange={(next) => {
       if (!isVariableInput(next) && next?.kind === "number") onChange(next.value);

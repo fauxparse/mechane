@@ -38,6 +38,18 @@ export const rgbaToHex = ({ r, g, b, a }: RgbaColor): string => {
   return a >= 1 ? channels : `${channels}${alphaToHex(a)}`;
 };
 
+/**
+ * Whether black reads better than white over the color: WCAG relative luminance above 0.179,
+ * where the two contrast ratios cross. Alpha is ignored.
+ */
+export const isLightColor = ({ r, g, b }: RgbaColor): boolean => {
+  const linear = (channel: number) => {
+    const value = channel / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b) > 0.179;
+};
+
 export const colorToHsv = ({ r, g, b }: RgbaColor): HsvColor => {
   const red = r / 255;
   const green = g / 255;
