@@ -61,7 +61,10 @@ export const LayoutSection = () => {
   const selectionKey = `${focused?.artId ?? ""}:${selected.map((element) => element.id).join(",")}`;
   const alignPrimary = common("alignPrimary");
   const alignCounter = common("alignCounter");
-  const clipStates = new Set(selected.filter(isLayoutContainer).map(clipsChildren));
+  const clipStates = new Set<boolean>();
+  for (const element of selected) {
+    if (isLayoutContainer(element)) clipStates.add(clipsChildren(element));
+  }
   const clipChildren = clipStates.size === 1 ? clipStates.has(true) : undefined;
   const padding = common("padding") as PaddingValue;
   const paddingMixed =
