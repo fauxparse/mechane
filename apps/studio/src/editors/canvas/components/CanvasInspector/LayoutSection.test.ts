@@ -46,12 +46,31 @@ const model: CanvasInspectorModel = {
   setAspectRatioLock: () => {},
 };
 
+function renderLayoutSection(selected: CanvasInspectorModel["selected"]): string {
+  return renderToStaticMarkup(
+    createElement(
+      CanvasInspectorProvider,
+      { value: { ...model, elements: selected, selected } },
+      createElement(LayoutSection),
+    ),
+  );
+}
+
+function clipSwitch(html: string): string {
+  return html.match(/<[^>]*aria-label="Clip children"[^>]*>/)?.[0] ?? "";
+}
+
 describe("LayoutSection", () => {
   it("shows Frame layout controls for a selected Slot", () => {
-    const html = renderToStaticMarkup(
-      createElement(CanvasInspectorProvider, { value: model }, createElement(LayoutSection)),
-    );
+    expect(renderLayoutSection([slot])).toContain("Clip children");
+  });
 
-    expect(html).toContain("Clip children");
+  it("shows an unset clip as on, and only mixed clips as indeterminate", () => {
+    const unset = clipSwitch(renderLayoutSection([slot]));
+    expect(unset).toContain('aria-checked="true"');
+    expect(unset).not.toContain('data-indeterminate=""');
+
+    const mixed = clipSwitch(renderLayoutSection([slot, { ...slot, id: "other", clip: false }]));
+    expect(mixed).toContain('data-indeterminate=""');
   });
 });

@@ -351,6 +351,34 @@ describe("CanvasRenderer", () => {
     expect(html).toContain("overflow:hidden");
     expect(html).toContain("width:100%");
   });
+
+  it("clips auto and absolute frames unless clip is explicitly false", () => {
+    const html = markup({
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        children: [
+          { id: "auto-default", type: "frame", rank: "a", layoutMode: "auto" },
+          { id: "auto-unclipped", type: "frame", rank: "b", layoutMode: "auto", clip: false },
+          { id: "absolute-default", type: "frame", rank: "c", layoutMode: "absolute" },
+          {
+            id: "absolute-unclipped",
+            type: "frame",
+            rank: "d",
+            layoutMode: "absolute",
+            clip: false,
+          },
+        ],
+      },
+    });
+
+    expect(html).toMatch(/data-element-id="auto-default"[^>]*overflow:hidden/);
+    expect(html).toMatch(/data-element-id="auto-unclipped"[^>]*overflow:visible/);
+    expect(html).toMatch(/data-element-id="absolute-default"[^>]*overflow:hidden/);
+    expect(html).toMatch(/data-element-id="absolute-unclipped"[^>]*overflow:visible/);
+  });
+
   it("applies authored padding to text elements", () => {
     const html = markup({
       kind: "scene",
