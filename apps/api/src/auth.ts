@@ -13,6 +13,8 @@ import * as schema from "./db/schema";
 import { sendEmail } from "./lib/email";
 import { ALLOWED_ORIGINS } from "./lib/cors";
 
+const studioOrigin = process.env.APP_STUDIO_URL ?? "http://localhost:5173";
+
 // Email delivery is local SMTP, Resend, or log-only depending on the environment.
 // Production must use Resend; local development can use Mailpit without credentials.
 const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION !== "false";
@@ -30,10 +32,12 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification,
     sendResetPassword: async ({ user, url }) => {
+      const resetUrl = new URL(url);
+      const studioResetUrl = new URL(resetUrl.pathname + resetUrl.search + resetUrl.hash, studioOrigin);
       await sendEmail({
         to: user.email,
         subject: "Reset your Mechanē password",
-        text: `Reset your password: ${url}`,
+        text: `Reset your password: ${studioResetUrl}`,
       });
     },
   },
