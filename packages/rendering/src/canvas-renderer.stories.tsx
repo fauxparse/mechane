@@ -469,6 +469,7 @@ const gradientOverflowCanvas: Canvas = {
         id: "overflow-frame",
         type: "frame",
         layoutMode: "absolute",
+        clip: false,
         sizing: {
           width: { mode: "fixed", value: 220 },
           height: { mode: "fixed", value: 160 },

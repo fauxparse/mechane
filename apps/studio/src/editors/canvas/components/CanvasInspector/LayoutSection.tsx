@@ -20,18 +20,19 @@ import {
   ToggleGroupItem,
 } from "@mechane/design-system";
 
+import {
+  clipsChildren,
+  type Element,
+  type FrameElement,
+  type Padding,
+  type SlotElement,
+  type TextElement,
+} from "@mechane/domain/canvas";
+import { useState } from "react";
+import { AlignmentSelector } from "./AlignmentSelector";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { SizeFields } from "./SizeFields";
 import { isVariableInput } from "./canvas-inspector-values";
-import { AlignmentSelector } from "./AlignmentSelector";
-import type {
-  Element,
-  FrameElement,
-  Padding,
-  SlotElement,
-  TextElement,
-} from "@mechane/domain/canvas";
-import { useState } from "react";
 
 type LayoutContainer = FrameElement | SlotElement;
 
@@ -60,7 +61,11 @@ export const LayoutSection = () => {
   const selectionKey = `${focused?.artId ?? ""}:${selected.map((element) => element.id).join(",")}`;
   const alignPrimary = common("alignPrimary");
   const alignCounter = common("alignCounter");
-  const clipChildren = common("clip");
+  const clipStates = selected.reduce((set, el) => {
+    if (isLayoutContainer(el)) set.add(clipsChildren(el));
+    return set;
+  }, new Set<boolean>());
+  const clipChildren = clipStates.size === 1 ? clipStates.has(true) : undefined;
   const padding = common("padding") as PaddingValue;
   const paddingMixed =
     canEditPadding &&
@@ -99,7 +104,7 @@ type LayoutSectionContentProps = {
   gapMixed: boolean;
   alignPrimary: unknown;
   alignCounter: unknown;
-  clipChildren: unknown;
+  clipChildren: boolean | undefined;
   padding: PaddingValue;
   paddingMixed: boolean;
   update(properties: Record<string, unknown>): void;

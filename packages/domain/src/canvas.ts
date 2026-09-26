@@ -216,6 +216,11 @@ export function isContainerElement(element: Element): element is FrameElement {
   return element.type === "frame";
 }
 
+/** Frames and Slots clip their children unless `clip` is explicitly false. */
+export function clipsChildren(container: { readonly clip?: boolean }): boolean {
+  return container.clip ?? true;
+}
+
 export interface AnchorPosition {
   horizontal?: Extract<Anchor, "left" | "center" | "centre" | "right">;
   vertical?: Extract<Anchor, "top" | "center" | "centre" | "bottom">;

@@ -6,6 +6,7 @@ import type {
   ReactNode,
 } from "react";
 import { createElement } from "react";
+import { clipsChildren } from "@mechane/domain/canvas";
 import type {
   AnchorPosition,
   AspectRatioLock,
@@ -223,8 +224,8 @@ function isAutoLayout(element: LayoutParent): boolean {
 }
 
 function frameStyle(frame: LayoutParent): CSSProperties {
-  const auto = isAutoLayout(frame);
-  if (auto) {
+  const overflow = clipsChildren(frame) ? "hidden" : "visible";
+  if (isAutoLayout(frame)) {
     const automaticGap = frame.gap === "auto";
     return {
       display: "flex",
@@ -233,7 +234,7 @@ function frameStyle(frame: LayoutParent): CSSProperties {
       padding: paddingValue(frame.padding),
       justifyContent: automaticGap ? "space-between" : justify(frame.alignPrimary),
       alignItems: align(frame.alignCounter),
-      overflow: frame.clip ? "hidden" : "visible",
+      overflow,
     };
   }
   return {
@@ -241,6 +242,7 @@ function frameStyle(frame: LayoutParent): CSSProperties {
     gridTemplateColumns: "minmax(0, 1fr)",
     gridTemplateRows: "minmax(0, 1fr)",
     padding: paddingValue(frame.padding),
+    overflow,
   };
 }
 
