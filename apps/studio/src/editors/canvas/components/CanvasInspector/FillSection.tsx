@@ -233,7 +233,7 @@ export const FillSection = () => {
         </ToggleGroupItem>
       </ToggleGroup>
       {hasMixedFill ? (
-        <span className="col-span-full text-xs text-muted-foreground">Mixed</span>
+        <span className="col-span-full text-xs text-muted-foreground">(mixed)</span>
       ) : gradient ? (
         <SectionRow>
           <GradientEditor fill={gradient} update={update} />

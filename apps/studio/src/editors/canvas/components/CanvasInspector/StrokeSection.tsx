@@ -76,7 +76,7 @@ export const StrokeSection = () => {
               value={width === undefined ? undefined : { kind: "number", value: width }}
               min={0}
               unit="px"
-              placeholder={width === undefined ? "Mixed" : "Stroke width"}
+              placeholder={width === undefined ? "(mixed)" : "Stroke width"}
               onChange={(next) => {
                 if (!next || isVariableInput(next) || next.kind !== "number") return;
                 updateStroke({ width: next.value });
@@ -90,7 +90,7 @@ export const StrokeSection = () => {
               }}
             >
               <SelectTrigger>
-                <SelectValue placeholder={style === undefined ? "Mixed" : undefined} />
+                <SelectValue placeholder={style === undefined ? "(mixed)" : undefined} />
               </SelectTrigger>
               <SelectContent>
                 {STROKE_STYLES.map((style) => (
@@ -115,7 +115,7 @@ export const StrokeSection = () => {
               icon={PenToolIcon}
               className="col-span-2"
               value={color === undefined ? undefined : { kind: "color", value: color }}
-              placeholder={color === undefined ? "Mixed" : "Stroke color"}
+              placeholder={color === undefined ? "(mixed)" : "Stroke color"}
               onChange={(next) => {
                 if (!next || isVariableInput(next) || next.kind !== "color") return;
                 if (typeof next.value === "string") updateStroke({ color: next.value });

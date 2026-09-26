@@ -1,8 +1,8 @@
-import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useState } from "react";
 
-import type { NumberValue, ShapeValue } from "@mechane/domain/shapes";
 import { InspectorProvider, PaintBucketIcon, VariableIcon } from "@mechane/design-system";
+import type { NumberValue, ShapeValue } from "@mechane/domain/shapes";
 
 import { PropertyInput, type PropertyInputValue, type VariableReference } from "./property-input";
 
@@ -289,5 +289,84 @@ export const InspectorVibe: Story = {
         />
       </div>
     </InspectorProvider>
+  ),
+};
+
+const formula = (text: string, blocked = false) => ({
+  text,
+  source: "Candidates * 10",
+  blocked,
+  onOpen: () => {},
+});
+const widthVariable: VariableReference<ShapeValue> = {
+  id: "width",
+  name: "Layout / Width",
+  current: { kind: "number", value: 123 },
+};
+const colorVariable: VariableReference<ShapeValue> = {
+  id: "accent",
+  name: "Color / Accent",
+  current: { kind: "color", value: "#e66f07" },
+};
+const width = { type: "number", icon: "W", dimension: "width" } as const;
+const color = { type: "color", icon: PaintBucketIcon } as const;
+const literalWidth = { kind: "number", value: 123 } as const;
+const literalColor = { kind: "color", value: "#e66f07" } as const;
+
+/** Every state in the Figma file, at its drawn width, in the inspector and in a table cell. */
+const STATES = [
+  ["Normal", 114, <PropertyInput {...width} value={literalWidth} />],
+  ["Disabled", 114, <PropertyInput {...width} value={literalWidth} disabled />],
+  ["Mixed", 114, <PropertyInput {...width} value={null} placeholder="(mixed)" />],
+  ["Empty", 114, <PropertyInput {...width} value={null} />],
+  ["Fill", 114, <PropertyInput {...width} sizing="fill" value={literalWidth} placeholder="Fill" />],
+  [
+    "Hug height",
+    114,
+    <PropertyInput {...width} icon="H" dimension="height" sizing="hug" value={literalWidth} />,
+  ],
+  ["Formula", 114, <PropertyInput {...width} formula={formula("123")} />],
+  ["Broken Formula", 114, <PropertyInput {...width} formula={formula("123", true)} />],
+  ["Variable", 114, <PropertyInput {...width} value={widthVariable} variables={[widthVariable]} />],
+  [
+    "Broken Variable",
+    114,
+    <PropertyInput {...width} value={widthVariable} variables={[widthVariable]} brokenVariable />,
+  ],
+  ["Color", 174, <PropertyInput {...color} value={literalColor} />],
+  [
+    "Color Variable",
+    174,
+    <PropertyInput {...color} value={colorVariable} variables={[colorVariable]} />,
+  ],
+  [
+    "Broken Color Variable",
+    174,
+    <PropertyInput {...color} value={colorVariable} variables={[colorVariable]} brokenVariable />,
+  ],
+  ["Color Formula", 174, <PropertyInput {...color} formula={formula("#e66f07")} />],
+  ["Broken Color Formula", 174, <PropertyInput {...color} formula={formula("#e66f07", true)} />],
+] as const;
+
+export const States: Story = {
+  render: () => (
+    <div className="grid grid-cols-[10rem_auto_auto] items-center gap-x-6 gap-y-2 bg-sidebar p-4">
+      <span />
+      <span className="text-xs text-muted-foreground">Inspector</span>
+      <span className="text-xs text-muted-foreground">Table</span>
+      {STATES.map(([label, cellWidth, row]) => (
+        <div key={label} className="contents" data-row={label}>
+          <span className="text-xs text-muted-foreground">{label}</span>
+          <InspectorProvider>
+            <div style={{ width: cellWidth }}>{row}</div>
+          </InspectorProvider>
+          <InspectorProvider vibe="table">
+            <div className="h-8.5 border border-border" style={{ width: cellWidth }}>
+              {row}
+            </div>
+          </InspectorProvider>
+        </div>
+      ))}
+    </div>
   ),
 };

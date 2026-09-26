@@ -48,13 +48,14 @@ const scope: FormulaScope = {
   diagnosticSubject: "Element Property",
 };
 
-const connector = (root: HTMLElement, row: string) =>
-  root.querySelector(`[data-row="${row}"] [data-connector]`)?.getAttribute("data-connector");
+const connectorIn = (root: HTMLElement, row: string) =>
+  root.querySelector<HTMLElement>(`[data-row="${row}"] [data-connector]`);
 
 /**
- * The trailing button says what the value is: a chevron onto the menu for a literal (on hover
- * or focus), the plug for a Variable, the Formula mark for a Formula, and the sizing icon for
- * Fill/Hug. Those states are mutually exclusive; the last three sit on the accent.
+ * Where the value comes from: a literal keeps its entry, with a chevron onto the menu on hover or
+ * focus; a Variable, a Formula, and Fill/Hug each draw a chip that reads the resolved value, marked
+ * with a plug, the Formula mark, or the sizing icon. The states are mutually exclusive. A broken
+ * Variable or a blocked Formula turns its mark destructive; the value still reads.
  */
 export const TriggerStates: Story = {
   render: () => (
@@ -62,6 +63,15 @@ export const TriggerStates: Story = {
       <div className="flex flex-col gap-2">
         <Cell label="Empty">
           <PropertyInput type="number" icon={OpacityIcon} value={null} onChange={() => {}} />
+        </Cell>
+        <Cell label="Mixed">
+          <PropertyInput
+            type="number"
+            icon={OpacityIcon}
+            value={null}
+            placeholder="(mixed)"
+            onChange={() => {}}
+          />
         </Cell>
         <Cell label="Literal">
           <PropertyInput
@@ -81,14 +91,21 @@ export const TriggerStates: Story = {
             onChange={() => {}}
           />
         </Cell>
+        <Cell label="Broken Variable">
+          <PropertyInput
+            type="number"
+            icon={OpacityIcon}
+            value={variables[0]}
+            variables={variables}
+            brokenVariable
+            onChange={() => {}}
+          />
+        </Cell>
         <Cell label="Formula">
           <PropertyInput type="number" icon={OpacityIcon} formula={formula("50")} />
         </Cell>
         <Cell label="Blocked Formula">
           <PropertyInput type="number" icon={OpacityIcon} formula={formula("100", true)} />
-        </Cell>
-        <Cell label="Mixed Formulas">
-          <PropertyInput type="number" icon={OpacityIcon} formula={formula("2 Formulas")} />
         </Cell>
         <Cell label="Fill width">
           <PropertyInput
@@ -97,10 +114,27 @@ export const TriggerStates: Story = {
             dimension="width"
             sizing="fill"
             placeholder="Fill"
+            value={{ kind: "number", value: 240 }}
           />
         </Cell>
         <Cell label="Hug height">
-          <PropertyInput type="number" icon="H" dimension="height" sizing="hug" placeholder="Hug" />
+          <PropertyInput
+            type="number"
+            icon="H"
+            dimension="height"
+            sizing="hug"
+            placeholder="Hug"
+            value={{ kind: "number", value: 48 }}
+          />
+        </Cell>
+        <Cell label="Fill across a selection">
+          <PropertyInput
+            type="number"
+            icon="W"
+            dimension="width"
+            sizing="fill"
+            placeholder="Fill"
+          />
         </Cell>
         <Cell label="Fixed width">
           <PropertyInput
@@ -124,25 +158,41 @@ export const TriggerStates: Story = {
     </InspectorProvider>
   ),
   play: async ({ canvasElement }) => {
-    const expected: Record<string, string> = {
-      Empty: "menu",
-      Literal: "menu",
-      Variable: "variable",
-      Formula: "formula",
-      "Blocked Formula": "formula",
-      "Mixed Formulas": "formula",
-      "Fill width": "sizing",
-      "Hug height": "sizing",
-      "Fixed width": "menu",
-      "Formula width": "formula",
+    // Each row's connector, and what a chip reads: the resolved value, never the Variable's name.
+    const expected: Record<string, readonly [string, string | null]> = {
+      Empty: ["menu", null],
+      Mixed: ["menu", null],
+      Literal: ["menu", null],
+      Variable: ["variable", "40"],
+      "Broken Variable": ["variable", "40"],
+      Formula: ["formula", "50"],
+      "Blocked Formula": ["formula", "100"],
+      "Fill width": ["sizing", "240"],
+      "Hug height": ["sizing", "48"],
+      "Fill across a selection": ["sizing", "Fill"],
+      "Fixed width": ["menu", null],
+      "Formula width": ["formula", "50%"],
     };
-    for (const [row, state] of Object.entries(expected)) {
-      const actual = connector(canvasElement, row);
-      if (actual !== state) throw new Error(`${row} shows the ${actual} button, not ${state}`);
+    for (const [row, [state, reads]] of Object.entries(expected)) {
+      const connector = connectorIn(canvasElement, row);
+      const actual = connector?.getAttribute("data-connector");
+      if (actual !== state) throw new Error(`${row} shows the ${actual} connector, not ${state}`);
+      if (reads !== null && connector?.textContent?.trim() !== reads)
+        throw new Error(`${row} reads "${connector?.textContent?.trim()}", not "${reads}"`);
     }
+    for (const row of ["Broken Variable", "Blocked Formula"])
+      if (!connectorIn(canvasElement, row)?.hasAttribute("data-broken"))
+        throw new Error(`${row} must mark its chip destructive`);
+    for (const row of ["Variable", "Formula"])
+      if (connectorIn(canvasElement, row)?.hasAttribute("data-broken"))
+        throw new Error(`${row} must not mark its chip destructive`);
     const blocked = canvasElement.querySelector('[data-row="Blocked Formula"] [data-formula]');
     if (blocked?.getAttribute("data-formula") !== "blocked")
       throw new Error("A blocked Formula must mark its row");
+    const empty = canvasElement.querySelector<HTMLInputElement>(
+      '[data-row="Empty"] [data-slot="combobox-input"]',
+    );
+    if (empty?.placeholder !== "(none)") throw new Error("An empty row must read (none)");
     const formulaInput = canvasElement.querySelector<HTMLInputElement>(
       '[data-row="Formula"] [data-slot="combobox-input"]',
     );

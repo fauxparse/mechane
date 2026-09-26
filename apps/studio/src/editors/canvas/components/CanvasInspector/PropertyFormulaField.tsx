@@ -159,13 +159,7 @@ export function PropertyFormulaField({
   const formula: PropertyInputFormula | null =
     carriers.length > 0
       ? {
-          text: mixed
-            ? everyElementCarries
-              ? `${sources.length} Formulas`
-              : "Mixed"
-            : first && analysis
-              ? binding.restingText(first, analysis)
-              : "",
+          text: mixed ? "(mixed)" : first && analysis ? binding.restingText(first, analysis) : "",
           source: source ?? undefined,
           blocked,
           onOpen: start,

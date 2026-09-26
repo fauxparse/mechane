@@ -35,7 +35,7 @@ export type PropertyInputMenuItem = {
 
 /** A Formula driving the Property. The row reads its result; the trailing button opens it. */
 export type PropertyInputFormula = {
-  /** What the row reads: the value the Formula renders, or `Mixed` / `2 Formulas`. */
+  /** What the row reads: the value the Formula renders, or `(mixed)` across differing Formulas. */
   readonly text: string;
   /** The source, shown on hover. */
   readonly source?: string;
@@ -58,6 +58,7 @@ export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   actions?: ReactNode;
   /** Accessible name for the input when it differs from the visible placeholder. */
   ariaLabel?: string;
+  /** Read while the row has no value, e.g. `(mixed)` across a selection; `(none)` when absent. */
   placeholder?: string;
   dimension?: "width" | "height";
   unit?: PropertyInputUnit;
@@ -72,6 +73,10 @@ export type PropertyInputProps<T extends ShapeValue = ShapeValue> = {
   allowAuto?: boolean;
   allowLink?: boolean;
   auto?: boolean;
+  /** Shows the value without offering to change it: no entry, scrub, chip press, or menu. */
+  disabled?: boolean;
+  /** The connected Variable can no longer supply a value; its chip marks it destructive. */
+  brokenVariable?: boolean;
   /** Number of pixels required for one scrub step. Higher values scrub more slowly. */
   scrubScale?: number;
   onChange?: (value: PropertyInputValue<T> | null) => void;

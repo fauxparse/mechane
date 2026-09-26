@@ -30,7 +30,7 @@ export const PositionSection = () => {
             kind: "number",
             value: previewValue?.x ?? offsetX ?? 0,
           }}
-          placeholder={offsetX === undefined ? "Mixed" : undefined}
+          placeholder={offsetX === undefined ? "(mixed)" : undefined}
           onChange={(next) => {
             if (!isVariableInput(next) && next?.kind === "number") {
               update({ anchor: { ...target.anchor, offsetX: next.value } });
@@ -44,7 +44,7 @@ export const PositionSection = () => {
             kind: "number",
             value: previewValue?.y ?? offsetY ?? 0,
           }}
-          placeholder={offsetY === undefined ? "Mixed" : undefined}
+          placeholder={offsetY === undefined ? "(mixed)" : undefined}
           onChange={(next) => {
             if (!isVariableInput(next) && next?.kind === "number") {
               update({ anchor: { ...target.anchor, offsetY: next.value } });

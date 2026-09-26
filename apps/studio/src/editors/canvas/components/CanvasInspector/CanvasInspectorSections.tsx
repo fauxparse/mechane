@@ -270,7 +270,7 @@ function ImageSectionContent({
             <SelectValue
               placeholder={
                 objectFitMixed
-                  ? "Mixed"
+                  ? "(mixed)"
                   : OBJECT_FIT_OPTIONS.find((option) => option.value === objectFitValue)?.label
               }
             />

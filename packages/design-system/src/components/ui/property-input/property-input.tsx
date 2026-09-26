@@ -4,7 +4,7 @@ import type { ShapeValue } from "@mechane/domain/shapes";
 import { Combobox, ComboboxInput } from "../combobox";
 import { Popover, PopoverContent } from "../popover";
 import { Addons } from "./addons";
-import { Connector, type ConnectorState } from "./connector";
+import { ConnectionChip, MenuChevron, type ChipState } from "./connector";
 import { hasMenuContent, Menu } from "./menu";
 import { VariablePicker } from "./variable-picker";
 import { usePropertyInput } from "./use-property-input";
@@ -32,6 +32,7 @@ export const PropertyInput = <T extends ShapeValue>({
   unit = "px",
   sizing,
   variables,
+  min,
   max,
   step,
   presets,
@@ -41,6 +42,8 @@ export const PropertyInput = <T extends ShapeValue>({
   allowAuto,
   allowLink = true,
   auto,
+  disabled = false,
+  brokenVariable = false,
   vibe: vibeProp,
   onChange,
   onSizingChange,
@@ -60,6 +63,7 @@ export const PropertyInput = <T extends ShapeValue>({
     unit,
     sizing,
     variables,
+    min,
     max,
     step,
     presets,
@@ -75,13 +79,33 @@ export const PropertyInput = <T extends ShapeValue>({
     constraints,
     onConstraintToggle,
   });
+  const chip: ChipState | null = formula
+    ? {
+        kind: "formula",
+        blocked: formula.blocked === true,
+        source: formula.source,
+        onOpen: formula.onOpen,
+      }
+    : dimension && input.currentSizing !== "fixed"
+      ? { kind: "sizing", sizing: input.currentSizing, dimension }
+      : input.linkedVariable
+        ? { kind: "variable", name: input.linkedVariable.name, broken: brokenVariable }
+        : null;
   const inactiveValue = renderInactiveValue?.(input.currentValue);
   const hasInactiveValue =
-    !formula &&
-    !inputActive &&
-    !input.linkedVariable &&
-    inactiveValue !== null &&
-    inactiveValue !== undefined;
+    !chip && !inputActive && inactiveValue !== null && inactiveValue !== undefined;
+  const showMenuChevron =
+    !chip &&
+    !disabled &&
+    hasMenuContent({
+      inputType: input.inputType,
+      dimension,
+      presets,
+      menuItems,
+      allowAuto,
+      allowLink,
+    });
+  const scrubbable = input.inputType === "number" && !chip && !disabled;
   const activateInput = () => {
     input.inputElementRef.current?.focus();
   };
@@ -90,22 +114,6 @@ export const PropertyInput = <T extends ShapeValue>({
     event.preventDefault();
     activateInput();
   };
-  const connector: ConnectorState | null = formula
-    ? { kind: "formula", blocked: formula.blocked === true, onOpen: formula.onOpen }
-    : dimension && input.currentSizing !== "fixed"
-      ? { kind: "sizing", sizing: input.currentSizing, dimension }
-      : input.linkedVariable
-        ? { kind: "variable" }
-        : hasMenuContent({
-              inputType: input.inputType,
-              dimension,
-              presets,
-              menuItems,
-              allowAuto,
-              allowLink,
-            })
-          ? { kind: "menu" }
-          : null;
 
   return (
     <Popover open={input.variablesOpen} onOpenChange={input.setVariablesOpen}>
@@ -118,6 +126,7 @@ export const PropertyInput = <T extends ShapeValue>({
       >
         <Combobox
           value={null}
+          disabled={disabled}
           inputValue={formula ? formula.text : input.inputText}
           onValueChange={input.handleMenuValueChange}
           onOpenChange={(open) => {
@@ -139,23 +148,22 @@ export const PropertyInput = <T extends ShapeValue>({
             ref={input.inputElementRef}
             inputMode={input.inputType === "number" ? "decimal" : undefined}
             aria-label={ariaLabel ?? placeholder ?? input.inputType}
-            placeholder={placeholder}
-            // A Formula-driven row reads its result; the Formula is edited in the host's editor.
-            readOnly={formula ? true : undefined}
-            title={formula?.source}
-            onClick={formula ? formula.onOpen : undefined}
+            placeholder={placeholder ?? "(none)"}
+            disabled={disabled}
+            // A chip stands in for the entry: the row reads its value and the chip edits it.
+            readOnly={chip ? true : undefined}
+            tabIndex={chip ? -1 : undefined}
             className={cn(
-              "w-full min-w-0 border-0 *:data-[slot=combobox-input]:px-1 rounded-sm h-7 data-[slot=combobox-input]:h-7",
+              "h-7 w-full min-w-0 gap-0 rounded-sm border-0 p-0.5",
+              // Disabled dims the row as a whole; a disabled action inside an enabled row does not.
+              disabled ? "has-disabled:opacity-50" : "has-disabled:opacity-100",
               vibe === "table"
-                ? "h-full rounded-none bg-transparent dark:bg-transparent"
-                : "bg-muted/50 dark:bg-muted/50",
-              vibe === "table" && "data-[slot=combobox-input]:h-full",
-              !icon && "pl-2",
-              formula && "*:data-[slot=combobox-input]:cursor-pointer",
-              formula?.blocked &&
-                "ring-1 ring-destructive *:data-[slot=combobox-input]:text-destructive",
-              hasInactiveValue &&
-                "[&>input]:pointer-events-none [&>input]:w-0 [&>input]:flex-none *:data-[slot=combobox-input]:p-0 [&>input]:opacity-0",
+                ? "h-full rounded-none bg-transparent has-disabled:bg-transparent dark:bg-transparent"
+                : "bg-muted/50 has-disabled:bg-muted/50 dark:bg-muted/50",
+              "*:data-[slot=combobox-input]:h-full *:data-[slot=combobox-input]:px-1 *:data-[slot=combobox-input]:text-sm *:data-[slot=combobox-input]:tabular-nums *:data-[slot=combobox-input]:text-foreground *:data-[slot=combobox-input]:placeholder:text-muted-foreground/50",
+              "*:data-[slot=combobox-input]:disabled:opacity-100",
+              (hasInactiveValue || chip) &&
+                "[&>input]:pointer-events-none [&>input]:absolute [&>input]:w-0 *:data-[slot=combobox-input]:p-0 [&>input]:opacity-0 [&>input]:disabled:opacity-0",
             )}
             showTrigger={false}
             onFocus={(event) => {
@@ -179,9 +187,8 @@ export const PropertyInput = <T extends ShapeValue>({
               <button
                 type="button"
                 aria-label={ariaLabel ?? placeholder ?? `Edit ${input.inputType}`}
-                className={cn(
-                  "min-w-0 flex-1 truncate border-0 bg-transparent px-1 py-0 text-left text-sm",
-                )}
+                disabled={disabled}
+                className="min-w-0 flex-1 truncate border-0 bg-transparent px-1 py-0 text-left text-sm tabular-nums text-foreground"
                 onPointerDown={(event) => {
                   event.preventDefault();
                   activateInput();
@@ -191,17 +198,42 @@ export const PropertyInput = <T extends ShapeValue>({
                 {inactiveValue}
               </button>
             )}
+            {chip ? (
+              <ConnectionChip
+                state={chip}
+                inputType={input.inputType}
+                // A Variable with no single value to read (a runtime item) is named instead.
+                text={
+                  formula
+                    ? formula.text
+                    : input.displayText || (chip.kind === "variable" ? chip.name : "")
+                }
+                placeholder={placeholder ?? "(none)"}
+                disabled={disabled}
+                onKeyDown={(event) => {
+                  if (event.key !== "Backspace" || !input.editVariableValue()) return;
+                  event.preventDefault();
+                  activateInput();
+                }}
+              />
+            ) : null}
             <Addons
               icon={icon}
-              inputType={input.inputType}
-              colorText={input.colorText}
-              linkedVariable={input.linkedVariable}
-              onScrubPointerDown={input.handleScrubPointerDown}
-              onScrubPointerMove={input.isScrubbing ? input.handleScrubPointerMove : undefined}
-              onScrubPointerEnd={input.isScrubbing ? input.handleScrubPointerEnd : undefined}
+              swatch={
+                input.inputType === "color" && !chip
+                  ? { colorText: input.colorText, disabled }
+                  : null
+              }
+              onScrubPointerDown={scrubbable ? input.handleScrubPointerDown : undefined}
+              onScrubPointerMove={
+                scrubbable && input.isScrubbing ? input.handleScrubPointerMove : undefined
+              }
+              onScrubPointerEnd={
+                scrubbable && input.isScrubbing ? input.handleScrubPointerEnd : undefined
+              }
               actions={actions}
-              connector={connector ? <Connector state={connector} /> : null}
             />
+            {showMenuChevron ? <MenuChevron /> : null}
           </ComboboxInput>
           <Menu
             inputType={input.inputType}
