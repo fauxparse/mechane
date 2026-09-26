@@ -2093,10 +2093,7 @@ export function structuralIds(edit: GraphEdit): readonly string[] {
  */
 export function graphEditDescriptor(type: string): GraphEditDescriptor<GraphEdit["type"]> | null {
   const descriptor = (
-    GRAPH_EDIT_DESCRIPTORS as Record<
-      string,
-      GraphEditDescriptor<GraphEdit["type"]> | undefined
-    >
+    GRAPH_EDIT_DESCRIPTORS as Record<string, GraphEditDescriptor<GraphEdit["type"]> | undefined>
   )[type];
   return descriptor ?? null;
 }

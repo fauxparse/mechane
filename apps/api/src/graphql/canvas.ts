@@ -77,190 +77,190 @@ export function serializeArtboard(canvas: StoredCanvas) {
 }
 
 export const typeDefs = /* GraphQL */ `
-    """
-    A persisted Scene or Block Canvas (ADR-0014).
+  """
+  A persisted Scene or Block Canvas (ADR-0014).
 
-    Elements arrive flat, each naming its parent and its rank, because a
-    Canvas hierarchy has no authored depth limit and a recursive selection
-    always has one. Clients rebuild the tree; \`@mechane/graphql-schema\`'s
-    \`decodeCanvasDocument\` is the one decoder that does it. Element stays an
-    interface so clients can select the primitive-specific content without a
-    nullable field bag.
-    """
-    type Canvas {
-      id: ID!
-      kind: String!
-      "Exactly one Element has no parent, and it is the root Frame."
-      elements: [Element!]!
-    }
+  Elements arrive flat, each naming its parent and its rank, because a
+  Canvas hierarchy has no authored depth limit and a recursive selection
+  always has one. Clients rebuild the tree; \`@mechane/graphql-schema\`'s
+  \`decodeCanvasDocument\` is the one decoder that does it. Element stays an
+  interface so clients can select the primitive-specific content without a
+  nullable field bag.
+  """
+  type Canvas {
+    id: ID!
+    kind: String!
+    "Exactly one Element has no parent, and it is the root Frame."
+    elements: [Element!]!
+  }
 
-    """
-    One Canvas as it is placed on the Canvas Editor's plane.
+  """
+  One Canvas as it is placed on the Canvas Editor's plane.
 
-    Framing, not content: an Artboard has a place and a size, while the Canvas
-    it presents has an Element tree (CONTEXT.md). Owner identity lives here for
-    the same reason — the Canvas editor works on a Canvas without knowing
-    whether a Scene or a Block owns it.
-    """
-    type Artboard {
-      canvas: Canvas!
-      ownerId: ID!
-      ownerName: String!
-      position: Position!
-    }
+  Framing, not content: an Artboard has a place and a size, while the Canvas
+  it presents has an Element tree (CONTEXT.md). Owner identity lives here for
+  the same reason — the Canvas editor works on a Canvas without knowing
+  whether a Scene or a Block owns it.
+  """
+  type Artboard {
+    canvas: Canvas!
+    ownerId: ID!
+    ownerName: String!
+    position: Position!
+  }
 
-    interface Element {
-      id: ID!
-      name: String
-      parentId: ID
-      rank: String!
-      hidden: JSON!
-      layout: JSON
-      sizing: JSON
-      opacity: JSON
-      blendMode: String
-      fill: JSON
-      stroke: JSON
-      anchor: JSON
-      alignSelf: String
-    }
+  interface Element {
+    id: ID!
+    name: String
+    parentId: ID
+    rank: String!
+    hidden: JSON!
+    layout: JSON
+    sizing: JSON
+    opacity: JSON
+    blendMode: String
+    fill: JSON
+    stroke: JSON
+    anchor: JSON
+    alignSelf: String
+  }
 
-    type RectElement implements Element {
-      id: ID!
-      name: String
-      parentId: ID
-      rank: String!
-      hidden: JSON!
-      layout: JSON
-      sizing: JSON
-      opacity: JSON
-      blendMode: String
-      fill: JSON
-      stroke: JSON
-      anchor: JSON
-      alignSelf: String
-      cornerRadius: JSON
-    }
+  type RectElement implements Element {
+    id: ID!
+    name: String
+    parentId: ID
+    rank: String!
+    hidden: JSON!
+    layout: JSON
+    sizing: JSON
+    opacity: JSON
+    blendMode: String
+    fill: JSON
+    stroke: JSON
+    anchor: JSON
+    alignSelf: String
+    cornerRadius: JSON
+  }
 
-    type EllipseElement implements Element {
-      id: ID!
-      name: String
-      parentId: ID
-      rank: String!
-      hidden: JSON!
-      layout: JSON
-      sizing: JSON
-      opacity: JSON
-      blendMode: String
-      fill: JSON
-      stroke: JSON
-      anchor: JSON
-      alignSelf: String
-    }
+  type EllipseElement implements Element {
+    id: ID!
+    name: String
+    parentId: ID
+    rank: String!
+    hidden: JSON!
+    layout: JSON
+    sizing: JSON
+    opacity: JSON
+    blendMode: String
+    fill: JSON
+    stroke: JSON
+    anchor: JSON
+    alignSelf: String
+  }
 
-    type TextElement implements Element {
-      id: ID!
-      name: String
-      parentId: ID
-      rank: String!
-      hidden: JSON!
-      layout: JSON
-      sizing: JSON
-      opacity: JSON
-      blendMode: String
-      fill: JSON
-      stroke: JSON
-      anchor: JSON
-      alignSelf: String
-      content: JSON
-      color: JSON
-      fontFamily: JSON
-      fontSize: JSON
-      fontWeight: JSON
-      fontStyle: JSON
-      textDecoration: JSON
-      lineHeight: JSON
-      letterSpacing: JSON
-      textAlign: JSON
-      textVerticalAlign: JSON
-      textOverflow: String
-      padding: JSON
-    }
+  type TextElement implements Element {
+    id: ID!
+    name: String
+    parentId: ID
+    rank: String!
+    hidden: JSON!
+    layout: JSON
+    sizing: JSON
+    opacity: JSON
+    blendMode: String
+    fill: JSON
+    stroke: JSON
+    anchor: JSON
+    alignSelf: String
+    content: JSON
+    color: JSON
+    fontFamily: JSON
+    fontSize: JSON
+    fontWeight: JSON
+    fontStyle: JSON
+    textDecoration: JSON
+    lineHeight: JSON
+    letterSpacing: JSON
+    textAlign: JSON
+    textVerticalAlign: JSON
+    textOverflow: String
+    padding: JSON
+  }
 
-    type ImageElement implements Element {
-      id: ID!
-      name: String
-      parentId: ID
-      rank: String!
-      hidden: JSON!
-      layout: JSON
-      sizing: JSON
-      opacity: JSON
-      blendMode: String
-      fill: JSON
-      stroke: JSON
-      anchor: JSON
-      alignSelf: String
-      image: JSON
-      alt: JSON
-      objectFit: JSON
-      objectPosition: JSON
-      cornerRadius: JSON
-    }
+  type ImageElement implements Element {
+    id: ID!
+    name: String
+    parentId: ID
+    rank: String!
+    hidden: JSON!
+    layout: JSON
+    sizing: JSON
+    opacity: JSON
+    blendMode: String
+    fill: JSON
+    stroke: JSON
+    anchor: JSON
+    alignSelf: String
+    image: JSON
+    alt: JSON
+    objectFit: JSON
+    objectPosition: JSON
+    cornerRadius: JSON
+  }
 
-    type FrameElement implements Element {
-      id: ID!
-      name: String
-      parentId: ID
-      rank: String!
-      hidden: JSON!
-      layout: JSON
-      sizing: JSON
-      opacity: JSON
-      blendMode: String
-      fill: JSON
-      stroke: JSON
-      anchor: JSON
-      alignSelf: String
-      cornerRadius: JSON
-      layoutMode: String
-      direction: String
-      gap: JSON
-      padding: JSON
-      alignPrimary: String
-      alignCounter: String
-      clip: Boolean
-    }
+  type FrameElement implements Element {
+    id: ID!
+    name: String
+    parentId: ID
+    rank: String!
+    hidden: JSON!
+    layout: JSON
+    sizing: JSON
+    opacity: JSON
+    blendMode: String
+    fill: JSON
+    stroke: JSON
+    anchor: JSON
+    alignSelf: String
+    cornerRadius: JSON
+    layoutMode: String
+    direction: String
+    gap: JSON
+    padding: JSON
+    alignPrimary: String
+    alignCounter: String
+    clip: Boolean
+  }
 
-    type SlotElement implements Element {
-      id: ID!
-      name: String
-      parentId: ID
-      rank: String!
-      hidden: JSON!
-      layout: JSON
-      sizing: JSON
-      opacity: JSON
-      blendMode: String
-      fill: JSON
-      stroke: JSON
-      anchor: JSON
-      alignSelf: String
-      layoutMode: String
-      direction: String
-      gap: JSON
-      padding: JSON
-      alignPrimary: String
-      alignCounter: String
-      clip: Boolean
-      blockId: ID!
-      assignments: JSON
-      expansion: JSON
-    }
+  type SlotElement implements Element {
+    id: ID!
+    name: String
+    parentId: ID
+    rank: String!
+    hidden: JSON!
+    layout: JSON
+    sizing: JSON
+    opacity: JSON
+    blendMode: String
+    fill: JSON
+    stroke: JSON
+    anchor: JSON
+    alignSelf: String
+    layoutMode: String
+    direction: String
+    gap: JSON
+    padding: JSON
+    alignPrimary: String
+    alignCounter: String
+    clip: Boolean
+    blockId: ID!
+    assignments: JSON
+    expansion: JSON
+  }
 
-    type Query {
-      showCanvases(showId: ID!, state: String): [Artboard!]!
-    }
+  type Query {
+    showCanvases(showId: ID!, state: String): [Artboard!]!
+  }
 `;
 
 export const resolvers: Resolvers = {

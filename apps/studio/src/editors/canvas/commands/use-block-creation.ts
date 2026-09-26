@@ -37,10 +37,7 @@ export interface BlockCreationInput {
 }
 
 export interface BlockCreationSession {
-  fromSelection(
-    canvasId: string,
-    elementIds: readonly string[],
-  ): CanvasBlockCreationResult | null;
+  fromSelection(canvasId: string, elementIds: readonly string[]): CanvasBlockCreationResult | null;
   fromDrag(request: CanvasBlockCreationRequest): CanvasBlockCreationResult;
 }
 

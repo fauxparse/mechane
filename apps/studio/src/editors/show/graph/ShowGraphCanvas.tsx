@@ -52,11 +52,7 @@ export interface ShowGraphCanvasProps {
   endConnect(): void;
   onConnect(connection: Connection): void;
   isValidConnection(connection: Connection | ShowFlowEdge): boolean;
-  createFromConnection(
-    sourceId: string,
-    sourceHandle: string,
-    position: Position,
-  ): void;
+  createFromConnection(sourceId: string, sourceHandle: string, position: Position): void;
   readonly initialViewport?: ShowGraphViewport;
   onViewportChange?(viewport: ShowGraphViewport): void;
   readonly fitViewOptions: ShowGraphFitViewOptions;
@@ -99,11 +95,7 @@ export function ShowGraphCanvas({
         }}
         onConnectEnd={(event, connectionState) => {
           endConnect();
-          if (
-            connectionState.toNode ||
-            !connectionState.fromNode ||
-            !connectionState.fromHandle
-          ) {
+          if (connectionState.toNode || !connectionState.fromNode || !connectionState.fromHandle) {
             return;
           }
           const point = "changedTouches" in event ? event.changedTouches[0] : event;
@@ -138,14 +130,8 @@ export function ShowGraphCanvas({
       >
         <Background variant={BackgroundVariant.Dots} gap={24} size={1} />
         <Controls fitViewOptions={fitViewOptions} />
-        <MiniMap
-          pannable
-          zoomable
-          onClick={jumpToMinimapPoint}
-          ariaLabel="Show graph minimap"
-        />
+        <MiniMap pannable zoomable onClick={jumpToMinimapPoint} ariaLabel="Show graph minimap" />
       </ReactFlow>
     </ShowEdgeRoutingProvider>
   );
 }
-

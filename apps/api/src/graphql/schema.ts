@@ -34,7 +34,9 @@ const jsonScalar = new GraphQLScalarType({
 
 export const schema = createSchema<GraphQLContext>({
   typeDefs: [
-    /* GraphQL */ `scalar JSON`,
+    /* GraphQL */ `
+      scalar JSON
+    `,
     user.typeDefs,
     show.typeDefs,
     runs.typeDefs,

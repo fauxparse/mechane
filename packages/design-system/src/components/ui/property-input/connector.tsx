@@ -74,11 +74,11 @@ function ChipSwatch({ state, text, broken }: { state: ChipState; text: string; b
       <svg aria-hidden="true" viewBox="0 0 16 16" className="size-4 shrink-0">
         <path
           className="fill-destructive"
-          d="M14.4867 12L9.15333 2.66665C9.03704 2.46146 8.8684 2.29078 8.66462 2.17203C8.46083 2.05329 8.22919 1.99072 7.99333 1.99072C7.75748 1.99072 7.52584 2.05329 7.32205 2.17203C7.11827 2.29078 6.94962 2.46146 6.83333 2.66665L1.5 12C1.38246 12.2036 1.32082 12.4346 1.32134 12.6697C1.32186 12.9047 1.38452 13.1355 1.50296 13.3385C1.62141 13.5416 1.79143 13.7097 1.9958 13.8259C2.20016 13.942 2.43161 14.0021 2.66667 14H13.3333C13.5673 13.9997 13.797 13.938 13.9995 13.8208C14.202 13.7037 14.3701 13.5354 14.487 13.3327C14.6039 13.1301 14.6654 12.9002 14.6653 12.6663C14.6652 12.4324 14.6036 12.2026 14.4867 12Z"
+          d="M14.49 12L9.15 2.67C9.04 2.46 8.87 2.29 8.66 2.17C8.46 2.05 8.23 1.99 7.99 1.99C7.76 1.99 7.53 2.05 7.32 2.17C7.12 2.29 6.95 2.46 6.83 2.67L1.5 12C1.38 12.2 1.32 12.43 1.32 12.67C1.32 12.9 1.38 13.14 1.5 13.34C1.62 13.54 1.79 13.71 2 13.83C2.2 13.94 2.43 14 2.67 14H13.33C13.57 14 13.8 13.94 14 13.82C14.2 13.7 14.37 13.54 14.49 13.33C14.6 13.13 14.67 12.9 14.67 12.67C14.67 12.43 14.6 12.2 14.49 12Z"
         />
         <path
           className="fill-destructive-foreground"
-          d="M7.33333 8.66668V6.00001C7.33333 5.63182 7.63181 5.33334 8 5.33334C8.36819 5.33334 8.66667 5.63182 8.66667 6.00001V8.66668C8.66667 9.03487 8.36819 9.33334 8 9.33334C7.63181 9.33334 7.33333 9.03487 7.33333 8.66668ZM8.00651 10.6667C8.3747 10.6667 8.67318 10.9651 8.67318 11.3333C8.67318 11.7015 8.3747 12 8.00651 12H8C7.63181 12 7.33333 11.7015 7.33333 11.3333C7.33333 10.9651 7.63181 10.6667 8 10.6667H8.00651Z"
+          d="M7.33 8.67V6C7.33 5.63 7.63 5.33 8 5.33C8.37 5.33 8.67 5.63 8.67 6V8.67C8.67 9.03 8.37 9.33 8 9.33C7.63 9.33 7.33 9.03 7.33 8.67ZM8.01 10.67C8.37 10.67 8.67 10.97 8.67 11.33C8.67 11.7 8.37 12 8.01 12H8C7.63 12 7.33 11.7 7.33 11.33C7.33 10.97 7.63 10.67 8 10.67H8.01Z"
         />
       </svg>
     );
@@ -174,12 +174,18 @@ export function ConnectionChip({
     </button>
   );
   // The tooltip names what the chip no longer shows: the Formula's source, the Variable's name.
-  const [trigger, tooltip] =
-    state.kind === "formula"
-      ? [button("Edit Formula"), state.source ?? "Edit Formula"]
-      : state.kind === "variable"
-        ? [<PopoverTrigger render={button("Change variable")} />, state.name]
-        : [<ComboboxPrimitive.Trigger render={button("Change sizing")} />, "Change sizing"];
+  let trigger: ReactNode;
+  let tooltip: string;
+  if (state.kind === "formula") {
+    trigger = button("Edit Formula");
+    tooltip = state.source ?? "Edit Formula";
+  } else if (state.kind === "variable") {
+    trigger = <PopoverTrigger render={button("Change variable")} />;
+    tooltip = state.name;
+  } else {
+    trigger = <ComboboxPrimitive.Trigger render={button("Change sizing")} />;
+    tooltip = "Change sizing";
+  }
 
   return (
     <Tooltip>

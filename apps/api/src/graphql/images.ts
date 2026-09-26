@@ -60,69 +60,69 @@ async function imageUploadSession(session: typeof blobUploadSessions.$inferSelec
 }
 
 export const typeDefs = /* GraphQL */ `
-    type ImageValue {
-      assetId: ID!
-      url: String!
-      width: Int!
-      height: Int!
-      alt: String!
-      mimeType: String!
-      blurHash: String
-    }
+  type ImageValue {
+    assetId: ID!
+    url: String!
+    width: Int!
+    height: Int!
+    alt: String!
+    mimeType: String!
+    blurHash: String
+  }
 
-    type ImageUploadConstraints {
-      maxSourceBytes: Int!
-      maxPixels: Int!
-      maxAxis: Int!
-      maxNormalizedBytes: Int!
-      sessionTtlMs: Int!
-      candidateTtlMs: Int!
-    }
+  type ImageUploadConstraints {
+    maxSourceBytes: Int!
+    maxPixels: Int!
+    maxAxis: Int!
+    maxNormalizedBytes: Int!
+    sessionTtlMs: Int!
+    candidateTtlMs: Int!
+  }
 
-    type ImageUploadPlan {
-      method: String!
-      url: String!
-      requiredHeaders: JSON!
-    }
+  type ImageUploadPlan {
+    method: String!
+    url: String!
+    requiredHeaders: JSON!
+  }
 
-    type ImageUploadSession {
-      id: ID!
-      expiresAt: String!
-      constraints: ImageUploadConstraints!
-      plan: ImageUploadPlan!
-    }
+  type ImageUploadSession {
+    id: ID!
+    expiresAt: String!
+    constraints: ImageUploadConstraints!
+    plan: ImageUploadPlan!
+  }
 
-    type ImageUploadCandidate {
-      sessionId: ID!
-      digest: String!
-      byteLength: Int!
-      mimeType: String!
-    }
+  type ImageUploadCandidate {
+    sessionId: ID!
+    digest: String!
+    byteLength: Int!
+    mimeType: String!
+  }
 
-    type ImageAsset {
-      id: ID!
-      revision: String!
-      url: String!
-      width: Int!
-      height: Int!
-      mimeType: String!
-      name: String!
-      alt: String!
-      blurHash: String
-    }
+  type ImageAsset {
+    id: ID!
+    revision: String!
+    url: String!
+    width: Int!
+    height: Int!
+    mimeType: String!
+    name: String!
+    alt: String!
+    blurHash: String
+  }
 
-    type Query {
-      imageAssets(showId: ID!): [ImageAsset!]!
-    }
+  type Query {
+    imageAssets(showId: ID!): [ImageAsset!]!
+  }
 
-    type Mutation {
-      beginImageUpload(showId: ID!, mimeType: String!, byteLength: Int!): ImageUploadSession!
-      completeImageUpload(sessionId: ID!): ImageUploadCandidate!
-      finalizeImageUpload(sessionId: ID!, name: String!): ImageAsset!
-      renameImageAsset(showId: ID!, assetId: ID!, name: String!): ImageAsset!
-      abortImageUpload(sessionId: ID!): Boolean!
-      deleteImageAsset(showId: ID!, assetId: ID!): Boolean!
-    }
+  type Mutation {
+    beginImageUpload(showId: ID!, mimeType: String!, byteLength: Int!): ImageUploadSession!
+    completeImageUpload(sessionId: ID!): ImageUploadCandidate!
+    finalizeImageUpload(sessionId: ID!, name: String!): ImageAsset!
+    renameImageAsset(showId: ID!, assetId: ID!, name: String!): ImageAsset!
+    abortImageUpload(sessionId: ID!): Boolean!
+    deleteImageAsset(showId: ID!, assetId: ID!): Boolean!
+  }
 `;
 
 export const resolvers: Resolvers = {
@@ -393,4 +393,3 @@ export const resolvers: Resolvers = {
     },
   },
 };
-

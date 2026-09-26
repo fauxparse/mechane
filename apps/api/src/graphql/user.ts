@@ -41,31 +41,31 @@ function validThemePalette(value: string): string {
 }
 
 export const typeDefs = /* GraphQL */ `
-    type User {
-      id: ID!
-      name: String!
-      email: String!
-      emailVerified: Boolean!
-    }
+  type User {
+    id: ID!
+    name: String!
+    email: String!
+    emailVerified: Boolean!
+  }
 
-    "The signed-in user's design-system preference (PRD.md §7)."
-    type UserSettings {
-      "Display mode: light or dark."
-      themeMode: String!
-      "Which built-in theme is active."
-      themePalette: String!
-    }
+  "The signed-in user's design-system preference (PRD.md §7)."
+  type UserSettings {
+    "Display mode: light or dark."
+    themeMode: String!
+    "Which built-in theme is active."
+    themePalette: String!
+  }
 
-    type Query {
-      "The signed-in user, or null if the request has no valid session."
-      me: User
-      "The signed-in user's theme settings, or PRD.md §7 defaults if they haven't set any yet."
-      userSettings: UserSettings!
-    }
+  type Query {
+    "The signed-in user, or null if the request has no valid session."
+    me: User
+    "The signed-in user's theme settings, or PRD.md §7 defaults if they haven't set any yet."
+    userSettings: UserSettings!
+  }
 
-    type Mutation {
-      updateUserSettings(themeMode: String, themePalette: String): UserSettings!
-    }
+  type Mutation {
+    updateUserSettings(themeMode: String, themePalette: String): UserSettings!
+  }
 `;
 
 export const resolvers: Resolvers = {
