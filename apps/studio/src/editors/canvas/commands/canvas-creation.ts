@@ -42,7 +42,6 @@ export function newElementForCanvasCreation(input: {
       width: { mode: "fixed", value: width },
       height: { mode: "fixed", value: height },
     },
-    ...(tool === "frame" ? { clip: true } : {}),
     ...(tool === "rect" || tool === "ellipse" ? { fill: "#cbd5e1" } : {}),
     ...(tool === "text"
       ? { content: "Text", fontSize: 16, lineHeight: "auto", color: "#000000" }

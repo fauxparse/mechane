@@ -70,7 +70,6 @@ describe("newElementForCanvasCreation", () => {
       "fill",
       "#cbd5e1",
     );
-    expect(newElementForCanvasCreation({ ...input, tool: "frame" })).toHaveProperty("clip", true);
     expect(newElementForCanvasCreation({ ...input, tool: "text" })).toMatchObject({
       content: "Text",
       fontSize: 16,
