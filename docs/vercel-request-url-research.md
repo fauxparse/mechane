@@ -27,24 +27,24 @@ to `req.url` (see "Safest pattern").
 
 1. **Exact scenario, Vercel maintainer confirmed** — vercel/vercel discussion #8329 (Aug 2022):
    Build Output v3 routes `{"src": "/direct/(.*)", "dest": "/direct"}` and `{"src": "/(.*)", "dest": "/default"}`.
-   The reporter: *"my `/direct` function just gets the original `src` URL like I would want/expect"*; only the
+   The reporter: _"my `/direct` function just gets the original `src` URL like I would want/expect"_; only the
    **prerender** function (`default.func` + `default.prerender-config.json`) got `req.url === "/default"`.
-   Vercel maintainer TooTallNate: *"I do agree though that this is inconsistent behavior compared to how a
-   'regular' Serverless Function behaves, and I would like to have that discrepancy be fixed."*
+   Vercel maintainer TooTallNate: _"I do agree though that this is inconsistent behavior compared to how a
+   'regular' Serverless Function behaves, and I would like to have that discrepancy be fixed."_
    https://github.com/vercel/vercel/discussions/8329
 
 2. **Routing model: destination = selection, observed path is separate** — `vercel.json` docs,
-   "Request path transform": *"The `request.path` transform overrides the path that the target runtime
+   "Request path transform": _"The `request.path` transform overrides the path that the target runtime
    observes for a request. This is the URL path your Function reads from `req.url`. It does not change
-   route selection or the destination... Adjusting the path and rewriting are separate steps."*
-   Example: *"A request to `/articles/42` reaches the same destination, but the Function reads
-   `/posts/42` from `req.url`"* (i.e., the function observes the transform value, not the destination).
+   route selection or the destination... Adjusting the path and rewriting are separate steps."_
+   Example: _"A request to `/articles/42` reaches the same destination, but the Function reads
+   `/posts/42` from `req.url`"_ (i.e., the function observes the transform value, not the destination).
    https://vercel.com/docs/project-configuration/vercel-json
 
-3. **Same model stated explicitly for Services** — Services routing docs: *"The service receives the
-   original request path. `GET /api/users` reaches `my_backend` as `/api/users`, not `/users`"* and
-   *"the destination `path` only selects which route runs... not the path your code sees. To change the
-   path your service code observes, add a `request.path` transform."*
+3. **Same model stated explicitly for Services** — Services routing docs: _"The service receives the
+   original request path. `GET /api/users` reaches `my_backend` as `/api/users`, not `/users`"_ and
+   _"the destination `path` only selects which route runs... not the path your code sees. To change the
+   path your service code observes, add a `request.path` transform."_
    https://vercel.com/docs/services/routing
 
 4. **The rewrites-docs line that looks contradictory is about `dest`, not `req.url`** —
@@ -60,14 +60,14 @@ to `req.url` (see "Safest pattern").
    `vercel/vercel` `packages/node/src/build.ts` (behind `VERCEL_API_FUNCTION_BUNDLING=1`) emits
    `handle: 'hit'` routes that inject the **original path** into a header:
    `{"src":"/((?!index$).*?)(?:/)?","transforms":[{"type":"request.headers","op":"set","target":{"key":"x-matched-path"},"args":"/$1"}],"continue":true,"important":true}`.
-   The shared handler (`bundling-handler.js`) *"reads x-matched-path to determine which entrypoint to
-   invoke"* and then passes `req` to user code unchanged (`return handler(req, res)`); current
+   The shared handler (`bundling-handler.js`) _"reads x-matched-path to determine which entrypoint to
+   invoke"_ and then passes `req` to user code unchanged (`return handler(req, res)`); current
    `@vercel/node` runtime code performs no `x-matched-path` → `req.url` rewriting.
    https://github.com/vercel/vercel/tree/main/packages/node/src
 
 6. **`x-matched-path` is the platform→function signal for the matched route (dest side)** —
-   Next.js PR #77994 (Vercel maintainer): *"When rendering the page on Vercel, we send the
-   x-matched-path header to indicate which route should be rendered."*
+   Next.js PR #77994 (Vercel maintainer): _"When rendering the page on Vercel, we send the
+   x-matched-path header to indicate which route should be rendered."_
    https://github.com/vercel/next.js/pull/77994
 
 ## Inference (labeled)

@@ -3,11 +3,7 @@
   "mcpServers": {
     "figma": {
       "command": "npx",
-      "args": [
-        "-y",
-        "figma-developer-mcp@0.13.2",
-        "--stdio"
-      ],
+      "args": ["-y", "figma-developer-mcp@0.13.2", "--stdio"],
       "env": {
         "FIGMA_API_KEY": "!security find-generic-password -s figma-api-key -w"
       }

@@ -19,101 +19,101 @@ import { requirePlayerPairingCode } from "./context";
 import { serializeBlock, serializeGraphNode, serializeShowGraph } from "./show-graph";
 
 export const typeDefs = /* GraphQL */ `
-    type PlayerDevice {
-      name: String!
-      perConnection: Boolean!
-    }
-    type PlayerRealtime {
-      channel: String!
-      grant: String!
-      expiresAt: String!
-    }
+  type PlayerDevice {
+    name: String!
+    perConnection: Boolean!
+  }
+  type PlayerRealtime {
+    channel: String!
+    grant: String!
+    expiresAt: String!
+  }
 
-    input BlockInstancePathInput {
-      slotElementId: ID!
-      index: Int!
-    }
-    input PlayerEventInput {
-      eventId: ID!
-      publishedGraphVersion: Int!
-      sceneId: ID!
-      elementId: ID!
-      eventKind: String!
-      slotInstancePath: [BlockInstancePathInput!]
-      "Per-kind payload as observed; a keypress carries { key }."
-      params: JSON
-      "Resolved Instance values and Cue Parameters used by a per-connection Player."
-      evidence: JSON
-    }
-    type PlayerEventApplied {
-      eventId: ID!
-      resultingSceneId: ID!
-      changed: Boolean!
-    }
-    type PlayerEventDuplicate {
-      eventId: ID!
-      outcome: String!
-      changed: Boolean!
-      resultingSceneId: ID
-      reason: String
-    }
-    type PlayerEventIgnored {
-      eventId: ID!
-      reason: String!
-    }
-    type PlayerEventFailed {
-      eventId: ID!
-      actionId: ID!
-      reason: String!
-    }
-    type PlayerEventAccepted {
-      eventId: ID!
-    }
-    type PlayerEventRejected {
-      eventId: ID!
-      reason: String!
-    }
-    union PlayerEventResult =
-      | PlayerEventApplied
-      | PlayerEventDuplicate
-      | PlayerEventIgnored
-      | PlayerEventFailed
-      | PlayerEventAccepted
-      | PlayerEventRejected
+  input BlockInstancePathInput {
+    slotElementId: ID!
+    index: Int!
+  }
+  input PlayerEventInput {
+    eventId: ID!
+    publishedGraphVersion: Int!
+    sceneId: ID!
+    elementId: ID!
+    eventKind: String!
+    slotInstancePath: [BlockInstancePathInput!]
+    "Per-kind payload as observed; a keypress carries { key }."
+    params: JSON
+    "Resolved Instance values and Cue Parameters used by a per-connection Player."
+    evidence: JSON
+  }
+  type PlayerEventApplied {
+    eventId: ID!
+    resultingSceneId: ID!
+    changed: Boolean!
+  }
+  type PlayerEventDuplicate {
+    eventId: ID!
+    outcome: String!
+    changed: Boolean!
+    resultingSceneId: ID
+    reason: String
+  }
+  type PlayerEventIgnored {
+    eventId: ID!
+    reason: String!
+  }
+  type PlayerEventFailed {
+    eventId: ID!
+    actionId: ID!
+    reason: String!
+  }
+  type PlayerEventAccepted {
+    eventId: ID!
+  }
+  type PlayerEventRejected {
+    eventId: ID!
+    reason: String!
+  }
+  union PlayerEventResult =
+    | PlayerEventApplied
+    | PlayerEventDuplicate
+    | PlayerEventIgnored
+    | PlayerEventFailed
+    | PlayerEventAccepted
+    | PlayerEventRejected
 
-    type PlayerFlowScene {
-      scene: SceneNode!
-      canvas: Canvas!
-    }
-    type PlayerFlowBundle {
-      flowId: ID!
-      defaultSceneId: ID
-      scenes: [PlayerFlowScene!]!
-      transformers: [TransformerNode!]!
-    }
-    type PlayerSession {
-      device: PlayerDevice!
-      realtime: PlayerRealtime!
-      run: Run
-      graph: ShowGraph!
-      flow: PlayerFlowBundle
-      scene: SceneNode
-      canvas: Canvas
-      blocks: [Block!]!
-      imageAssets: [ImageAsset!]!
-    }
+  type PlayerFlowScene {
+    scene: SceneNode!
+    canvas: Canvas!
+  }
+  type PlayerFlowBundle {
+    flowId: ID!
+    defaultSceneId: ID
+    scenes: [PlayerFlowScene!]!
+    transformers: [TransformerNode!]!
+  }
+  type PlayerSession {
+    device: PlayerDevice!
+    realtime: PlayerRealtime!
+    run: Run
+    graph: ShowGraph!
+    flow: PlayerFlowBundle
+    scene: SceneNode
+    canvas: Canvas
+    blocks: [Block!]!
+    imageAssets: [ImageAsset!]!
+  }
 
-    type Query {
-      """
-      A public Device snapshot resolved by the pairing bearer credential.
-      Invalid credentials return null.
-      """
-      playerSession: PlayerSession
-    }
+  type Query {
+    """
+    A public Device snapshot resolved by the pairing bearer credential.
+    Invalid credentials return null.
+    """
+    playerSession: PlayerSession
+  }
 
-    type Mutation {
-      submitPlayerEvent(input: PlayerEventInput!): PlayerEventResult!
-    }
+  type Mutation {
+    submitPlayerEvent(input: PlayerEventInput!): PlayerEventResult!
+  }
 `;
 
 export const resolvers: Resolvers = {

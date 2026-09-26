@@ -20,10 +20,7 @@ export interface GraphQLContext {
  * `__resolveType`) resolvers. Slice modules export one of these alongside
  * their `typeDefs`; ./schema.ts assembles them into the served schema.
  */
-export type Resolvers = Record<
-  string,
-  Record<string, GraphQLFieldResolver<never, GraphQLContext>>
->;
+export type Resolvers = Record<string, Record<string, GraphQLFieldResolver<never, GraphQLContext>>>;
 function bearerCredential(request: Request): string | null {
   const header = request.headers.get("authorization");
   if (!header?.startsWith("Bearer ")) return null;

@@ -3,7 +3,12 @@ import type { DeletionScope } from "@mechane/commands";
 import type { GraphEdge, GraphNode, Position } from "@mechane/domain/graph";
 import { defaultSourceValues } from "@mechane/domain/source-defaults";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { useEdgesState, useNodesInitialized, useNodesState, useReactFlow } from "../graph/react-flow";
+import {
+  useEdgesState,
+  useNodesInitialized,
+  useNodesState,
+  useReactFlow,
+} from "../graph/react-flow";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { OnEdgesChange, OnNodesChange } from "../graph/react-flow";
 

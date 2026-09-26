@@ -114,4 +114,3 @@ export function coalesceGraphEdits(edits: readonly GraphEdit[]): GraphEdit[] {
 export function applyGraphEdits(graph: ShowGraph, edits: readonly GraphEdit[]): ShowGraph {
   return edits.reduce((next, edit) => commandForEdit(edit).apply(next).state, graph);
 }
-

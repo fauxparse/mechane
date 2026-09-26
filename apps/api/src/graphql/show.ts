@@ -69,33 +69,31 @@ export async function findOwnShowOrThrow(id: string, userId: string) {
 }
 
 export const typeDefs = /* GraphQL */ `
-    type Show {
-      id: ID!
-      name: String!
-      createdAt: String!
-      updatedAt: String!
-    }
+  type Show {
+    id: ID!
+    name: String!
+    createdAt: String!
+    updatedAt: String!
+  }
 
-    type Query {
-      "The signed-in user's own Shows, most recently updated first."
-      shows: [Show!]!
-      "A single Show owned by the signed-in user, or null if it doesn't exist or isn't theirs."
-      show(id: ID!): Show
-    }
+  type Query {
+    "The signed-in user's own Shows, most recently updated first."
+    shows: [Show!]!
+    "A single Show owned by the signed-in user, or null if it doesn't exist or isn't theirs."
+    show(id: ID!): Show
+  }
 
-    type Mutation {
-      createShow(name: String!): Show!
-      renameShow(id: ID!, name: String!): Show!
-      deleteShow(id: ID!): Boolean!
-    }
+  type Mutation {
+    createShow(name: String!): Show!
+    renameShow(id: ID!, name: String!): Show!
+    deleteShow(id: ID!): Boolean!
+  }
 `;
 
 export const resolvers: Resolvers = {
   Show: {
-    createdAt: (show: Pick<typeof shows.$inferSelect, "createdAt">) =>
-      show.createdAt.toISOString(),
-    updatedAt: (show: Pick<typeof shows.$inferSelect, "updatedAt">) =>
-      show.updatedAt.toISOString(),
+    createdAt: (show: Pick<typeof shows.$inferSelect, "createdAt">) => show.createdAt.toISOString(),
+    updatedAt: (show: Pick<typeof shows.$inferSelect, "updatedAt">) => show.updatedAt.toISOString(),
   },
   Query: {
     shows: async (_parent, _args, context) => {

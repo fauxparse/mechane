@@ -8,7 +8,9 @@ const graph = {
     { id: "scene", kind: "scene" as const, parentId: "flow" },
   ],
   blocks: [],
-  cues: [{ id: "cue", name: "Cue", owner: { kind: "scene" as const, sceneId: "scene" }, actionIds: [] }],
+  cues: [
+    { id: "cue", name: "Cue", owner: { kind: "scene" as const, sceneId: "scene" }, actionIds: [] },
+  ],
   actions: [],
   eventBindings: [
     {

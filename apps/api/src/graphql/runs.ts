@@ -6,7 +6,11 @@
 // never reach these fields.
 import type { Run } from "@mechane/domain/runs";
 import type { RunError } from "@mechane/domain/run-errors";
-import { describeRunError, isRunErrorCategory, type RunErrorCategory } from "@mechane/domain/run-errors";
+import {
+  describeRunError,
+  isRunErrorCategory,
+  type RunErrorCategory,
+} from "@mechane/domain/run-errors";
 import { GraphQLError } from "graphql";
 
 import { listRunErrors } from "../db/run-errors";
@@ -60,60 +64,60 @@ function validRunErrorCategory(value: string): RunErrorCategory {
 }
 
 export const typeDefs = /* GraphQL */ `
-    type Run {
-      id: ID!
-      showId: ID!
-      status: String!
-      startedAt: String!
-      endedAt: String
-      stateSequence: Int!
-      sourceValues: JSON!
-      structuredValues: JSON!
-    }
+  type Run {
+    id: ID!
+    showId: ID!
+    status: String!
+    startedAt: String!
+    endedAt: String
+    stateSequence: Int!
+    sourceValues: JSON!
+    structuredValues: JSON!
+  }
 
+  """
+  One configuration failure a live Show hit, recorded for its operator.
+
+  A Run Error is not an Event ledger entry and not crash telemetry: it names
+  something in this Show that cannot be executed, in terms the person running
+  the show can act on. \`category\` is the stable discriminator to filter and
+  group by; \`message\` is that category rendered for a human. Identifiers are
+  present when the category names them, and nothing else is recorded, so the
+  log carries no request payloads or credentials.
+  """
+  type RunError {
+    id: ID!
+    "The Run underway when this happened, or null if none was."
+    runId: ID
+    category: String!
+    message: String!
+    occurredAt: String!
+    deviceId: ID
+    sceneId: ID
+    elementId: ID
+    cueId: ID
+    actionId: ID
+    eventId: ID
+    transformerId: ID
+    publishedGraphVersion: Int
+  }
+
+  type Query {
+    "The active Run for a Show, or null when the Show is stopped."
+    activeRun(showId: ID!): Run
     """
-    One configuration failure a live Show hit, recorded for its operator.
-
-    A Run Error is not an Event ledger entry and not crash telemetry: it names
-    something in this Show that cannot be executed, in terms the person running
-    the show can act on. \`category\` is the stable discriminator to filter and
-    group by; \`message\` is that category rendered for a human. Identifiers are
-    present when the category names them, and nothing else is recorded, so the
-    log carries no request payloads or credentials.
+    A Show's Run error log, newest first. Covers failures from every Run and
+    from before any Run started; \`runId\` narrows it to one Run and \`category\`
+    to one kind of failure.
     """
-    type RunError {
-      id: ID!
-      "The Run underway when this happened, or null if none was."
-      runId: ID
-      category: String!
-      message: String!
-      occurredAt: String!
-      deviceId: ID
-      sceneId: ID
-      elementId: ID
-      cueId: ID
-      actionId: ID
-      eventId: ID
-      transformerId: ID
-      publishedGraphVersion: Int
-    }
+    runErrors(showId: ID!, runId: ID, category: String, limit: Int): [RunError!]!
+  }
 
-    type Query {
-      "The active Run for a Show, or null when the Show is stopped."
-      activeRun(showId: ID!): Run
-      """
-      A Show's Run error log, newest first. Covers failures from every Run and
-      from before any Run started; \`runId\` narrows it to one Run and \`category\`
-      to one kind of failure.
-      """
-      runErrors(showId: ID!, runId: ID, category: String, limit: Int): [RunError!]!
-    }
-
-    type Mutation {
-      endRun(showId: ID!): Run
-      startRun(showId: ID!): Run!
-      reshuffleTransformer(showId: ID!, transformerId: ID!, deviceId: ID): Boolean!
-    }
+  type Mutation {
+    endRun(showId: ID!): Run
+    startRun(showId: ID!): Run!
+    reshuffleTransformer(showId: ID!, transformerId: ID!, deviceId: ID): Boolean!
+  }
 `;
 
 export const resolvers: Resolvers = {
@@ -147,9 +151,7 @@ export const resolvers: Resolvers = {
       const errors = await listRunErrors(showId, {
         runId: runId ?? undefined,
         category:
-          category === null || category === undefined
-            ? undefined
-            : validRunErrorCategory(category),
+          category === null || category === undefined ? undefined : validRunErrorCategory(category),
         limit: limit ?? undefined,
       });
       return errors.map(serializeRunError);
