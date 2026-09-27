@@ -1,17 +1,6 @@
-// A QR code as inline SVG (issue #45).
-//
-// The only thing that touches the `qrcode` package. It's used through its
-// synchronous `create()` — the module matrix — rather than its rendering
-// helpers, which are async and would turn a render into an effect. Drawing
-// the squares ourselves is a dozen lines, and it buys three things worth
-// more than that: the component renders in one pass, it works unchanged on
-// the server (where a Device's QR eventually becomes an image value it can
-// wire into a Scene), and swapping the generator later means editing this
-// file and nothing else.
-//
-// It's a plain SVG with `currentColor`, so it themes like text, stays
-// crisp at any size, and scans in both light and dark.
-import { create as createQrCode } from "qrcode";
+// An inline SVG QR code. Path generation lives in the domain package so Studio
+// and Scene images use the same matrix orientation.
+import { qrCodeSvgPath } from "@mechane/domain/device-qr";
 import { useMemo } from "react";
 
 import { cn } from "../../lib/utils";
@@ -31,18 +20,7 @@ export interface QrCodeProps extends React.ComponentProps<"svg"> {
 export function QrCode({ value, margin = 4, label, className, ...props }: QrCodeProps) {
   // A QR's contents only change when its value does, and the encoding is
   // the expensive part of rendering one.
-  const path = useMemo(() => {
-    const { modules } = createQrCode(value, { errorCorrectionLevel: "M" });
-    const segments: string[] = [];
-    for (let y = 0; y < modules.size; y += 1) {
-      for (let x = 0; x < modules.size; x += 1) {
-        // `M x y h1 v1 h-1 z` — one module as its own subpath, so the
-        // whole code is a single fillable shape rather than N elements.
-        if (modules.get(x, y)) segments.push(`M${x + margin} ${y + margin}h1v1h-1z`);
-      }
-    }
-    return { d: segments.join(""), extent: modules.size + margin * 2 };
-  }, [value, margin]);
+  const path = useMemo(() => qrCodeSvgPath(value, margin), [value, margin]);
 
   return (
     <svg
