@@ -237,6 +237,14 @@ export const userSettings = pgTable("user_settings", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// Prospective users who asked to hear when Mechanē opens up, collected by the
+// holding page at the apex domain (apps/site). Keyed on the normalized email
+// address (see graphql/waitlist.ts) so repeat sign-ups collapse to one row.
+export const waitlistEntries = pgTable("waitlist_entries", {
+  email: text("email").primaryKey(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // The Show graph (issue #38) — the unified node graph that is both the
 // Scene/Flow state machine and the Show-level wiring graph (PRD.md §6.2).
 // Modelled relationally rather than as one JSON blob per Show so the

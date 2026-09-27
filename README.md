@@ -12,6 +12,7 @@ An application for building interactive tech for live theatre shows across multi
 apps/
   studio/       Authoring + show-running app (directors/technicians)
   player/       Device client — renders Scenes, emits Events (audience phones, projectors, laptops)
+  site/         Holding page at the apex domain — Studio sign-in link and waitlist form
   api/          GraphQL API (graphql-yoga) + Better Auth, deployed as Vercel serverless functions
   storybook/      Repository-level Storybook host for Studio and shared packages
 packages/
@@ -30,6 +31,7 @@ pnpm install
 cp apps/api/.env.example apps/api/.env
 cp apps/api/.env.test.example apps/api/.env.test
 cp apps/studio/.env.example apps/studio/.env
+cp apps/site/.env.example apps/site/.env
 overmind start -f Procfile.dev   # starts the app services, infrastructure, and local HTTPS proxy
 # Mailpit is available at https://mail.mechane.dev for verification and reset messages.
 # Open a captured message to preview its HTML or inspect its plain-text alternative.
@@ -69,7 +71,7 @@ pnpm mechane:up
 ```
 
 Secondary worktrees use direct HTTP and automatically receive their own Studio,
-Player, API, Overmind socket, and OMP profile. They reuse the primary
+Player, holding page, API, Overmind socket, and OMP profile. They reuse the primary
 Postgres/MinIO stack; Caddy and DNSMasq remain single-host services.
 
 Useful commands from a worktree:
@@ -106,9 +108,12 @@ The development proxy runs in Docker with Caddy's internal certificate
 authority. Overmind starts it through the `proxy` process in `Procfile.dev`.
 The aliases are:
 
+- `https://mechane.dev` → holding page on `localhost:5175`
 - `https://studio.mechane.dev` → Studio on `localhost:5173`
 - `https://show.mechane.dev` → Player on `localhost:5174`
 - `https://api.mechane.dev` → API on `localhost:4000`
+
+The resolver below covers `mechane.dev` itself as well as its subdomains.
 
 On macOS, configure the project resolver once:
 
@@ -142,7 +147,7 @@ Linux hosts without a resolver-file integration can use these equivalent
 entries in `/etc/hosts` as a fallback:
 
 ```text
-127.0.0.1 studio.mechane.dev show.mechane.dev api.mechane.dev
+127.0.0.1 mechane.dev studio.mechane.dev show.mechane.dev api.mechane.dev
 ```
 
 To remove the macOS resolver configuration:
@@ -152,8 +157,9 @@ sudo rm /etc/resolver/mechane.dev
 ```
 
 The direct HTTP services remain available at `localhost:5173`, `localhost:5174`,
-and `localhost:4000` when the proxy is unavailable. Run the Vite process
-directly with `VITE_DEV_PROXY=false` when using that fallback so HMR uses HTTP.
+`localhost:5175`, and `localhost:4000` when the proxy is unavailable. Run the
+Vite process directly with `VITE_DEV_PROXY=false` when using that fallback so
+HMR uses HTTP.
 
 When Google sign-in is enabled, register
 `https://api.mechane.dev/api/auth/callback/google` as the local OAuth redirect

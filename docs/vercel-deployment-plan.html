@@ -639,11 +639,14 @@
                   <td>The target Vercel shows in the API project's Domains tab</td>
                 </tr>
                 <tr>
-                  <td><code>@</code> <em>(optional)</em></td>
+                  <td><code>@</code></td>
                   <td>A</td>
                   <td>
-                    The IP Vercel shows when you add the apex to the Studio project. Set the apex to
-                    redirect to <code>studio.mechane.live</code>
+                    The IP Vercel shows when you add the apex to the site project
+                    (<code>apps/site</code>, the holding page). Set its
+                    <code>VITE_API_URL</code> to <code>https://api.mechane.live</code> and
+                    <code>VITE_STUDIO_URL</code> to <code>https://studio.mechane.live</code>, and
+                    the API's <code>APP_SITE_URL</code> to <code>https://mechane.live</code>
                   </td>
                 </tr>
               </tbody>

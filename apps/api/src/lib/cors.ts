@@ -1,15 +1,22 @@
-// apps/studio and apps/player are served from different origins than
-// apps/api (even in local dev — Vite runs on :5173 and :5174), so their
-// browser requests need CORS headers. Studio also needs credentialed
-// requests for its Better Auth session; Player only uses the pairing code.
-// Keep both origins in one explicit allowlist so the handlers cannot drift.
+// apps/studio, apps/player and apps/site are served from different origins
+// than apps/api (even in local dev — Vite runs on :5173, :5174 and :5175), so
+// their browser requests need CORS headers. Studio needs credentialed
+// requests for its Better Auth session; the holding page (apps/site) sends
+// the same cookie to show signed-in visitors a dashboard link; Player only
+// uses the pairing code. Keep the origins in one explicit allowlist so the
+// handlers cannot drift.
 const configuredStudioOrigin = process.env.APP_STUDIO_URL ?? "http://localhost:5173";
 const configuredPlayerOrigins = [
   process.env.APP_PLAYER_URL ?? "https://show.mechane.dev",
   "http://localhost:5174",
 ];
+const configuredSiteOrigin = process.env.APP_SITE_URL ?? "http://localhost:5175";
 
-export const ALLOWED_ORIGINS = [configuredStudioOrigin, ...configuredPlayerOrigins];
+export const ALLOWED_ORIGINS = [
+  configuredStudioOrigin,
+  ...configuredPlayerOrigins,
+  configuredSiteOrigin,
+];
 export function isAllowedOrigin(origin: string | undefined): origin is string {
   return origin !== undefined && ALLOWED_ORIGINS.includes(origin);
 }

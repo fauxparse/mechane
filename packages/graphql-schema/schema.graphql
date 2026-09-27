@@ -71,6 +71,13 @@ type Mutation {
   renameImageAsset(showId: ID!, assetId: ID!, name: String!): ImageAsset!
   abortImageUpload(sessionId: ID!): Boolean!
   deleteImageAsset(showId: ID!, assetId: ID!): Boolean!
+
+  """
+  Adds an email address to the waitlist. Always true on success, including
+  when the address is already listed, so the response does not reveal who
+  else has signed up.
+  """
+  joinWaitlist(email: String!): Boolean!
 }
 
 type Show {

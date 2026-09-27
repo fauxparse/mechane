@@ -1,3 +1,8 @@
+mechane.dev {
+	tls internal
+	reverse_proxy host.docker.internal:5175
+}
+
 studio.mechane.dev {
 	tls internal
 	reverse_proxy host.docker.internal:5173

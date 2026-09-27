@@ -1,19 +1,17 @@
 {
-  "name": "@mechane/storybook",
+  "name": "@mechane/site",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "storybook": "storybook dev -p 6007",
-    "build-storybook": "storybook build",
+    "dev": "vite",
+    "build": "vite build",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@mechane/design-system": "workspace:*",
-    "@mechane/domain": "workspace:*",
-    "@mechane/rendering": "workspace:*",
-    "@mechane/site": "workspace:*",
-    "@mechane/studio": "workspace:*",
+    "@mechane/graphql-schema": "workspace:*",
+    "@tanstack/react-query": "^5.90.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
@@ -22,6 +20,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
     "storybook": "^10.6.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",

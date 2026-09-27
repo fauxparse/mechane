@@ -11,10 +11,10 @@
 import type { ReactDoctorConfig } from "react-doctor/api";
 
 export default {
-  // The three React workspaces. `apps/api`, `packages/commands`,
+  // The React workspaces. `apps/api`, `packages/commands`,
   // `packages/domain`, `packages/graphql-schema` and `packages/realtime` hold
   // no React, so scanning them only produces noise.
-  projects: ["@mechane/studio", "@mechane/player", "@mechane/design-system"],
+  projects: ["@mechane/studio", "@mechane/player", "@mechane/site", "@mechane/design-system"],
 
   // Advisory locally and in CI for now: findings are reported, nothing is
   // gated. Tighten to "error" once we trust the signal (issue #69).
