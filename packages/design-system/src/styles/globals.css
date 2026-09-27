@@ -8,6 +8,7 @@
 @source "../icons";
 @source "../../../../apps/studio/src";
 @source "../../../../apps/player/src";
+@source "../../../../apps/site/src";
 
 @custom-variant dark (&:is([data-theme-mode="dark"] *));
 

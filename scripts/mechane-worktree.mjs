@@ -107,19 +107,28 @@ async function allocatePorts(instances) {
     const ports = {
       studio: 5273 + block * 100,
       player: 5274 + block * 100,
+      site: 5275 + block * 100,
       api: 4100 + block * 100,
     };
     if (Object.values(ports).some((port) => used.has(port))) continue;
     const available = await Promise.all(Object.values(ports).map(canListen));
     if (available.every(Boolean)) return ports;
   }
-  fail("could not find an unused Studio/Player/API port block");
+  fail("could not find an unused Studio/Player/Site/API port block");
 }
 
 async function ensureRecord(root) {
   const instances = loadInstances();
   const existing = instanceRecord(root, instances);
-  if (existing) return existing;
+  if (existing) {
+    // Instances recorded before apps/site existed have no site port; its
+    // slot in their block (studio + 2) was never handed out.
+    if (existing.ports.site === undefined) {
+      existing.ports.site = existing.ports.studio + 2;
+      saveInstances(instances);
+    }
+    return existing;
+  }
 
   const record = {
     root,
@@ -134,12 +143,13 @@ async function ensureRecord(root) {
 
 function writeProcfile(record) {
   ensureDirectories();
-  const { studio, player, api } = record.ports;
+  const { studio, player, site, api } = record.ports;
   const procfile = path.join(PROCFILE_DIR, `${record.slug}.Procfile`);
   const contents = [
     `studio: VITE_DEV_PROXY=false VITE_API_URL=http://localhost:${api} pnpm dev:studio --host 0.0.0.0 --port ${studio}`,
     `player: VITE_DEV_PROXY=false VITE_API_URL=http://localhost:${api} pnpm dev:player --host 0.0.0.0 --port ${player}`,
-    `api: PORT=${api} SMTP_URL=smtp://localhost:1025 EMAIL_FROM="Mechanē <noreply@localhost>" APP_STUDIO_URL=http://localhost:${studio} APP_PLAYER_URL=http://localhost:${player} BETTER_AUTH_URL=http://localhost:${api} pnpm dev:api`,
+    `site: VITE_DEV_PROXY=false VITE_API_URL=http://localhost:${api} VITE_STUDIO_URL=http://localhost:${studio} pnpm dev:site --host 0.0.0.0 --port ${site}`,
+    `api: PORT=${api} SMTP_URL=smtp://localhost:1025 EMAIL_FROM="Mechanē <noreply@localhost>" APP_STUDIO_URL=http://localhost:${studio} APP_PLAYER_URL=http://localhost:${player} APP_SITE_URL=http://localhost:${site} BETTER_AUTH_URL=http://localhost:${api} pnpm dev:api`,
   ].join("\n");
   fs.writeFileSync(procfile, `${contents}\n`);
   return procfile;
@@ -165,7 +175,7 @@ function primaryRecord(root) {
   return {
     root,
     slug: "main",
-    ports: { studio: 5173, player: 5174, api: 4000 },
+    ports: { studio: 5173, player: 5174, site: 5175, api: 4000 },
     socket: path.join(SOCKET_DIR, "main.sock"),
   };
 }
@@ -191,6 +201,7 @@ function printUrls(record, primary) {
   console.log(`\nMechanē ${primary ? "primary" : "worktree"} instance: ${record.slug}`);
   console.log(`  Studio:   http://localhost:${record.ports.studio}`);
   console.log(`  Player:   http://localhost:${record.ports.player}`);
+  console.log(`  Site:     http://localhost:${record.ports.site}`);
   console.log(`  API:      http://localhost:${record.ports.api}`);
   console.log(`  OMP:      ${profileName(record)}`);
   console.log(`  Overmind: ${record.socket}`);

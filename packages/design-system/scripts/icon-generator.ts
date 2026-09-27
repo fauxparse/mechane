@@ -51,6 +51,12 @@ const APPS: App[] = [
     shortName: "Mechanē",
     description: "Take part in an interactive live-theatre show.",
   },
+  {
+    dir: "site",
+    name: "Mechanē",
+    shortName: "Mechanē",
+    description: "Interactive tech for live theatre.",
+  },
 ];
 
 /** The glyph on its own, scaled to fill `size` with `padding` units of margin. */

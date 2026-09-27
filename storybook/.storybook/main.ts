@@ -15,6 +15,7 @@ const studioCanvasSrc = fileURLToPath(
 const config: StorybookConfig = {
   stories: [
     "../../apps/studio/src/**/*.stories.@(ts|tsx)",
+    "../../apps/site/src/**/*.stories.@(ts|tsx)",
     "../../packages/design-system/src/**/*.stories.@(ts|tsx)",
     "../../packages/rendering/src/**/*.stories.@(ts|tsx)",
   ],

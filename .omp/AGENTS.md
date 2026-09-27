@@ -20,7 +20,7 @@ The helper records instance assignments under `~/.omp/mechane-worktrees`, outsid
 
 ## Browser verification against the dev proxy
 
-`https://studio.mechane.dev`, `show.mechane.dev`, and `api.mechane.dev` are served through the checked-in Caddy proxy with `tls internal` — Caddy's own local CA, already trusted in the macOS System keychain (see the README's "Trust the certificate" step; verify with `security find-certificate -c "Caddy" /Library/Keychains/System.keychain`). Reaching these hosts to verify Studio/Player changes needs a browser that honors that trust.
+`https://mechane.dev`, `studio.mechane.dev`, `show.mechane.dev`, and `api.mechane.dev` are served through the checked-in Caddy proxy with `tls internal` — Caddy's own local CA, already trusted in the macOS System keychain (see the README's "Trust the certificate" step; verify with `security find-certificate -c "Caddy" /Library/Keychains/System.keychain`). Reaching these hosts to verify Studio/Player/holding-page changes needs a browser that honors that trust.
 
 The `browser` tool's default headless device launches with `--use-mock-keychain`, so it never sees the Keychain entry and fails with `Failed to fetch` against any `*.mechane.dev` URL. Fix: open a dedicated instance instead of the default device, pointed at the browser tool's own managed Chrome binary (glob `~/.omp/puppeteer/chrome/*/chrome-mac-arm64/*.app/Contents/MacOS/*`) with a scratch `--user-data-dir`:
 
