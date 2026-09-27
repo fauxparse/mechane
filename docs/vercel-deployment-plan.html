@@ -1138,27 +1138,33 @@ flowchart LR
                   <td><code>api.mechane.live</code></td>
                 </tr>
                 <tr>
+                  <td><code>mechane-site</code></td>
+                  <td><code>apps/site</code></td>
+                  <td>Vite</td>
+                  <td><code>pnpm build</code></td>
+                  <td><code>dist</code></td>
+                  <td><code>mechane.live</code></td>
+                </tr>
+                <tr>
                   <td><code>mechane-studio</code></td>
                   <td><code>apps/studio</code></td>
                   <td>Vite</td>
                   <td><code>pnpm build</code></td>
                   <td><code>dist</code></td>
-                  <td><code>studio.mechane.live</code>, plus the apex redirect if you add it</td>
+                  <td><code>studio.mechane.live</code></td>
                 </tr>
                 <tr>
                   <td><code>mechane-player</code></td>
                   <td><code>apps/player</code></td>
                   <td>Vite</td>
                   <td><code>pnpm build</code></td>
-                  <td><code>dist</code></td>
-                  <td><code>show.mechane.live</code></td>
                 </tr>
               </tbody>
             </table>
           </div>
           <ul>
             <li>
-              Keep "Include files outside the root directory" turned on. All three projects import
+              Keep "Include files outside the root directory" turned on. All four projects import
               workspace packages.
             </li>
             <li>
@@ -1219,6 +1225,10 @@ flowchart LR
                 <tr>
                   <td><code>APP_PLAYER_URL</code></td>
                   <td><code>https://show.mechane.live</code></td>
+                </tr>
+                <tr>
+                  <td><code>APP_SITE_URL</code></td>
+                  <td><code>https://mechane.live</code></td>
                 </tr>
                 <tr>
                   <td><code>REQUIRE_EMAIL_VERIFICATION</code></td>
@@ -1351,6 +1361,32 @@ flowchart LR
             </table>
           </div>
 
+          <h3>Site</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Variable</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>VITE_API_URL</code></td>
+                  <td><code>https://api.mechane.live</code></td>
+                </tr>
+                <tr>
+                  <td><code>VITE_STUDIO_URL</code></td>
+                  <td><code>https://studio.mechane.live</code></td>
+                </tr>
+                <tr>
+                  <td><code>ENABLE_EXPERIMENTAL_COREPACK</code></td>
+                  <td><code>1</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
           <h3>Player</h3>
           <div class="table-wrap">
             <table>
@@ -1384,7 +1420,7 @@ flowchart LR
               <ul class="checklist">
                 <li>
                   <input type="checkbox" id="fri-1" /><span
-                    >Create the three Vercel projects and add their
+                    >Create the four Vercel projects and add their
                     <code>mechane.live</code> subdomains. Then create the CNAMEs (and a CAA record,
                     if needed). Certificates can't be issued until DNS resolves, so do this
                     first.</span
