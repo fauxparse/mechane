@@ -334,9 +334,6 @@ importers:
       '@codemirror/view':
         specifier: ^6.43.12
         version: 6.43.12
-      '@dicebear/core':
-        specifier: ^10.5.0
-        version: 10.5.0
       '@dicebear/styles':
         specifier: ^10.5.0
         version: 10.5.0
@@ -887,10 +884,6 @@ packages:
 
   '@codemirror/view@6.43.12':
     resolution: {integrity: sha512-Nv0vxQ19NAqvB/c2pFzjIzFlzzJl7jmdtNkwOwGbn0Ks9mFAzibvumz7cQem5cRsFA2cEw2fg+uHZGbcHupLQQ==}
-
-  '@dicebear/core@10.5.0':
-    resolution: {integrity: sha512-FaBohsNT+/8z2C2jowlzNVbx4B+x6wVLK4HeQT35bJTV4LeV6xXl4zyPvxCm4HvG6PoN+100hNBbnj7Bumo18Q==}
-    engines: {node: '>=22.0.0'}
 
   '@dicebear/styles@10.5.0':
     resolution: {integrity: sha512-CV5rBIe/wECQua/jct3oJCN7aNNMb7H1TUFQr5x0DWMI+82KZDeLOgw50OzEjDIW0qGHfwvfz9tRh61ZEyardA==}
@@ -7107,8 +7100,6 @@ snapshots:
       crelt: 1.0.7
       style-mod: 4.1.4
       w3c-keyname: 2.2.8
-
-  '@dicebear/core@10.5.0': {}
 
   '@dicebear/styles@10.5.0': {}
 
