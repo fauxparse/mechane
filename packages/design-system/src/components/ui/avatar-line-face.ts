@@ -90,8 +90,13 @@ export function lineFaceSvg(seed: string, backgroundColors: readonly string[]): 
       const next = random(`${name}Color`);
       for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(next() * (i + 1));
-        // 0 <= j <= i < length, so both reads are in bounds.
-        [shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!];
+        const a = shuffled[i];
+        const b = shuffled[j];
+        // 0 <= j <= i < length, so this never skips; it narrows for Studio's
+        // noUncheckedIndexedAccess.
+        if (a === undefined || b === undefined) continue;
+        shuffled[i] = b;
+        shuffled[j] = a;
       }
       picked = shuffled[0] ?? "none";
       colors.set(name, picked);
