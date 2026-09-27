@@ -3,6 +3,7 @@
 import { GraphQLError, type GraphQLFieldResolver } from "graphql";
 
 import { auth } from "../auth";
+import { clientAddress } from "../lib/client-address";
 
 export interface GraphQLContext {
   userId: string | null;
@@ -13,6 +14,8 @@ export interface GraphQLContext {
     emailVerified: boolean;
   } | null;
   playerPairingCode?: string | null;
+  /** Rate-limit key for the caller's network; see ../lib/client-address.ts. */
+  clientAddress?: string | null;
 }
 
 /**
@@ -34,6 +37,7 @@ export async function createContext(request: Request): Promise<GraphQLContext> {
     userId: session?.user.id ?? null,
     user: session?.user ?? null,
     playerPairingCode: bearerCredential(request),
+    clientAddress: clientAddress(request.headers),
   };
 }
 

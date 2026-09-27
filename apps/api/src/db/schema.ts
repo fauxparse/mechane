@@ -245,6 +245,18 @@ export const waitlistEntries = pgTable("waitlist_entries", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Waitlist sign-up attempts per client network in the current window (see
+// graphql/waitlist.ts). One row per client, pruned once its window lapses.
+export const waitlistRateLimits = pgTable(
+  "waitlist_rate_limits",
+  {
+    clientAddress: text("client_address").primaryKey(),
+    windowStartedAt: timestamp("window_started_at").notNull().defaultNow(),
+    attempts: integer("attempts").notNull().default(1),
+  },
+  (table) => [index("waitlist_rate_limits_window_idx").on(table.windowStartedAt)],
+);
+
 // The Show graph (issue #38) — the unified node graph that is both the
 // Scene/Flow state machine and the Show-level wiring graph (PRD.md §6.2).
 // Modelled relationally rather than as one JSON blob per Show so the

@@ -75,7 +75,8 @@ type Mutation {
   """
   Adds an email address to the waitlist. Always true on success, including
   when the address is already listed, so the response does not reveal who
-  else has signed up.
+  else has signed up. Refused with the RATE_LIMITED error code once one
+  client network has made too many attempts within the hour.
   """
   joinWaitlist(email: String!): Boolean!
 }

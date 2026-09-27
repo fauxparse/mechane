@@ -26,8 +26,13 @@ export function useStudioSession(): StudioSession {
   return { kind: "signed-in", name: me.data.name };
 }
 
+// These codes carry a message written for the visitor: a malformed address,
+// or too many sign-ups from their network.
 function failureMessage(error: Error): string {
-  if (error instanceof GraphQLRequestError && error.code === "BAD_USER_INPUT") {
+  if (
+    error instanceof GraphQLRequestError &&
+    (error.code === "BAD_USER_INPUT" || error.code === "RATE_LIMITED")
+  ) {
     return error.message;
   }
   return "We couldn't add you just now. Try again in a moment.";
