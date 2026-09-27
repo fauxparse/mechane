@@ -22,7 +22,8 @@ const loadScheme = async (path: string) =>
   parseScheme(await readFile(join(VENDOR_ROOT, path), "utf8"), path);
 
 const chroma = (hex: string) => {
-  const [r, g, b] = [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16) / 255);
+  const channel = (offset: number) => parseInt(hex.slice(offset, offset + 2), 16) / 255;
+  const [r, g, b] = [channel(1), channel(3), channel(5)];
   const toLinear = (value: number) =>
     value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
   const [lin, mid, high] = [toLinear(r), toLinear(g), toLinear(b)];
