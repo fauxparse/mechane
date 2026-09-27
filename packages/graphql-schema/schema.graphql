@@ -73,12 +73,14 @@ type Mutation {
   deleteImageAsset(showId: ID!, assetId: ID!): Boolean!
 
   """
-  Adds an email address to the waitlist. Always true on success, including
-  when the address is already listed, so the response does not reveal who
-  else has signed up. Refused with the RATE_LIMITED error code once one
-  client network has made too many attempts within the hour.
+  Adds a person to the waitlist. Always true on success, including when the
+  address is already listed, so the response does not reveal who else has
+  signed up; a repeat sign-up keeps the name given first, so knowing an
+  address is not enough to rename its entry. Refused with the RATE_LIMITED
+  error code once one client network has made too many attempts within the
+  hour.
   """
-  joinWaitlist(email: String!): Boolean!
+  joinWaitlist(name: String!, email: String!): Boolean!
 }
 
 type Show {

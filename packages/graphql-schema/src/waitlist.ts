@@ -3,7 +3,7 @@
 import { graphql } from "./graphql";
 
 export const JoinWaitlistMutation = graphql(`
-  mutation JoinWaitlist($email: String!) {
-    joinWaitlist(email: $email)
+  mutation JoinWaitlist($name: String!, $email: String!) {
+    joinWaitlist(name: $name, email: $email)
   }
 `);

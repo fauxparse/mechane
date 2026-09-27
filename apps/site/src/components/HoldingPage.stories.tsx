@@ -43,7 +43,10 @@ export const Joining: Story = {
 
 export const Joined: Story = {
   args: {
-    waitlist: { status: { kind: "joined", email: "ada@example.com" }, onJoin: () => {} },
+    waitlist: {
+      status: { kind: "joined", name: "Ada Lovelace", email: "ada@example.com" },
+      onJoin: () => {},
+    },
   },
 };
 

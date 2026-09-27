@@ -21,7 +21,7 @@ beforeEach(() => {
   network = `2001:db8:${a.toString(16)}:${b.toString(16)}`;
 });
 
-async function joinWaitlist(address: string, host = "1") {
+async function joinWaitlist(address: string, { host = "1", name = "Ada Lovelace" } = {}) {
   const yoga = createYoga({
     schema,
     context: ({ request }) => createContext(request),
@@ -33,8 +33,9 @@ async function joinWaitlist(address: string, host = "1") {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Forwarded-For": `${network}::${host}` },
     body: JSON.stringify({
-      query: "mutation ($email: String!) { joinWaitlist(email: $email) }",
-      variables: { email: address },
+      query:
+        "mutation ($name: String!, $email: String!) { joinWaitlist(name: $name, email: $email) }",
+      variables: { name, email: address },
     }),
   });
   return (await response.json()) as {
@@ -55,17 +56,25 @@ afterEach(async () => {
 });
 
 describe("joinWaitlist", () => {
-  it("stores one normalized entry however often the address is submitted", async () => {
-    const first = await joinWaitlist(`  ${email.toUpperCase()} `);
-    const second = await joinWaitlist(email);
+  it("stores one normalized entry however often the address is submitted, keeping the first name", async () => {
+    const first = await joinWaitlist(`  ${email.toUpperCase()} `, { name: "  Ada Lovelace " });
+    const second = await joinWaitlist(email, { name: "Someone Else" });
 
     expect(first.data?.joinWaitlist).toBe(true);
     expect(second.data?.joinWaitlist).toBe(true);
     const rows = await db
-      .select({ email: waitlistEntries.email })
+      .select({ email: waitlistEntries.email, name: waitlistEntries.name })
       .from(waitlistEntries)
       .where(eq(waitlistEntries.email, email));
-    expect(rows).toEqual([{ email }]);
+    expect(rows).toEqual([{ email, name: "Ada Lovelace" }]);
+  });
+
+  it("rejects a blank name and stores nothing", async () => {
+    const body = await joinWaitlist(email, { name: "   " });
+
+    expect(body.errors?.[0]?.extensions?.code).toBe("BAD_USER_INPUT");
+    const rows = await db.select().from(waitlistEntries).where(eq(waitlistEntries.email, email));
+    expect(rows).toEqual([]);
   });
 
   it("rejects an address without a domain", async () => {
@@ -82,12 +91,12 @@ describe("joinWaitlist", () => {
 
   it("refuses a network past its limit, even from a new address in the same /64, and stores nothing", async () => {
     for (let n = 0; n < WAITLIST_SIGNUPS_PER_WINDOW; n += 1) {
-      const body = await joinWaitlist(emailNumber(n), n.toString(16));
+      const body = await joinWaitlist(emailNumber(n), { host: n.toString(16) });
       expect(body.data?.joinWaitlist).toBe(true);
     }
 
     const refused = emailNumber(WAITLIST_SIGNUPS_PER_WINDOW);
-    const body = await joinWaitlist(refused, "ffff");
+    const body = await joinWaitlist(refused, { host: "ffff" });
 
     expect(body.errors?.[0]?.extensions?.code).toBe("RATE_LIMITED");
     const rows = await db.select().from(waitlistEntries).where(eq(waitlistEntries.email, refused));
