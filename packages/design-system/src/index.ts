@@ -2,6 +2,11 @@
 // and shared component primitives (Tailwind + Base UI + shadcn/ui). Every new
 // visual component added here needs a Storybook story in the same change —
 // see PRD.md §9 "Component convention".
+//
+// package.json declares only CSS files as having side effects, so bundlers
+// drop every module an app doesn't import from this barrel. A module that
+// does work at import time (registering something, touching `document`)
+// would be silently dropped too: keep that work inside components or hooks.
 
 export { cn } from "./lib/utils";
 
