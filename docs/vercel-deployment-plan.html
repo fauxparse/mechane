@@ -934,7 +934,13 @@ flowchart LR
                   <li>
                     writes <code>.vercel/output/config.json</code> containing
                     <code>version: 3</code> and a route that sends <code>/api/(.*)</code> to
-                    <code>/api</code>; #763 will add the <code>crons</code> entry.
+                    <code>/api</code>; #763 will add the <code>crons</code> entry;
+                  </li>
+                  <li>
+                    in production builds only, applies pending migrations as its last step (<a
+                      href="https://github.com/fauxparse/mechane/issues/819"
+                      >#819</a
+                    >).
                   </li>
                 </ul>
               </li>
@@ -1061,7 +1067,10 @@ flowchart LR
                 idle clients close before an instance suspends. Otherwise connections leak slowly.
                 This is part of <a href="https://github.com/fauxparse/mechane/issues/762">#762</a>.
               </li>
-              <li>Run migrations with the unpooled string.</li>
+              <li>
+                Run migrations with the unpooled string. The production build does this itself with
+                <code>DATABASE_URL_UNPOOLED</code>, after bundling.
+              </li>
             </ul>
           </div>
 
@@ -1459,8 +1468,11 @@ flowchart LR
                 </li>
                 <li>
                   <input type="checkbox" id="sat-2" /><span
-                    >Apply migrations from your laptop:
-                    <pre><code>DATABASE_URL='&lt;neon unpooled url&gt;' pnpm --filter @mechane/api db:migrate</code></pre>
+                    >Migrations apply themselves: each production API build runs
+                    <code>db:migrate</code> against <code>DATABASE_URL_UNPOOLED</code> once the
+                    bundle has built, and a failed migration fails the deploy. Each migration must
+                    work with the code deployed before it, which keeps serving until the new build
+                    is promoted.
                   </span>
                 </li>
                 <li>
@@ -1468,8 +1480,8 @@ flowchart LR
                     >Build the API locally first. In <code>apps/api</code>, run
                     <code>vercel link</code>, <code>vercel pull</code>, then
                     <code>vercel build --prod</code>. Check that
-                    <code>.vercel/output/config.json</code> has the route; #763 will add the
-                    cron.</span
+                    <code>.vercel/output/config.json</code> has the route; #763 will add the cron.
+                    This build applies pending migrations to production too.</span
                   >
                 </li>
                 <li>
