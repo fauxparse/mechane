@@ -4,10 +4,13 @@
 //
 // Single-user ownership model, no orgs/teams (PRD.md §1, §9): Better Auth's
 // own tables (user/session/account/verification) are all this app needs —
-// no organization plugin is enabled.
+// no organization plugin is enabled. System-wide roles come from the admin
+// plugin; ./access-control.ts defines the roles and what each may do.
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { admin } from "better-auth/plugins/admin";
 
+import { ac, ADMIN_ROLES, DEFAULT_ROLE, roles } from "./access-control";
 import { db } from "./db/client";
 import * as schema from "./db/schema";
 import { buildStudioResetUrl } from "./lib/auth-links";
@@ -78,6 +81,7 @@ export const auth = betterAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
     },
   },
+  plugins: [admin({ ac, roles, defaultRole: DEFAULT_ROLE, adminRoles: ADMIN_ROLES })],
 });
 
 export type Auth = typeof auth;

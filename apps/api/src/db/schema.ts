@@ -1,8 +1,9 @@
 // Drizzle schema for Better Auth's own tables (user/session/account/verification).
 //
 // Field/table shapes follow Better Auth's core schema exactly — see
-// https://www.better-auth.com/docs/concepts/database#core-schema — so that
-// the drizzle adapter can be pointed at this schema with no field mapping.
+// https://www.better-auth.com/docs/concepts/database#core-schema — plus the
+// admin plugin's fields (https://www.better-auth.com/docs/plugins/admin#schema),
+// so that the drizzle adapter can be pointed at this schema with no field mapping.
 //
 // Application resources (Show, etc.) are added by later tickets. Every such
 // table is expected to carry a `userId` column referencing `user.id`, per the
@@ -36,6 +37,11 @@ export const user = pgTable("user", {
   image: text("image"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  // Admin plugin fields (issue #810); valid roles live in ../access-control.ts.
+  role: text("role").notNull().default("user"),
+  banned: boolean("banned").notNull().default(false),
+  banReason: text("ban_reason"),
+  banExpires: timestamp("ban_expires"),
 });
 
 export const session = pgTable("session", {
@@ -49,6 +55,8 @@ export const session = pgTable("session", {
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
+  // Admin plugin: the admin who started this impersonation session, if any.
+  impersonatedBy: text("impersonated_by"),
 });
 
 export const account = pgTable("account", {

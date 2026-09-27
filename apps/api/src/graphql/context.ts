@@ -2,6 +2,7 @@
 // Better Auth session cookie on the incoming request.
 import { GraphQLError, type GraphQLFieldResolver } from "graphql";
 
+import { statements } from "../access-control";
 import { auth } from "../auth";
 import { clientAddress } from "../lib/client-address";
 
@@ -55,6 +56,31 @@ export function requireUserId(context: GraphQLContext): string {
     });
   }
   return context.userId;
+}
+
+/** Resource → actions, as declared in ../access-control.ts. */
+export type Permissions = {
+  [Resource in keyof typeof statements]?: (typeof statements)[Resource][number][];
+};
+
+/**
+ * Role-based authorization for resolvers (issue #810): signed in *and* the
+ * user's role (../access-control.ts) grants every listed action. The role is
+ * read from the database on each check, so a role change takes effect on the
+ * next request rather than when the session expires.
+ */
+export async function requirePermission(
+  context: GraphQLContext,
+  permissions: Permissions,
+): Promise<string> {
+  const userId = requireUserId(context);
+  const { success } = await auth.api.userHasPermission({ body: { userId, permissions } });
+  if (!success) {
+    throw new GraphQLError("You are not allowed to do that.", {
+      extensions: { code: "FORBIDDEN" },
+    });
+  }
+  return userId;
 }
 
 export function requirePlayerPairingCode(context: GraphQLContext): string {

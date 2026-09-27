@@ -2,16 +2,34 @@ import { readdir } from "node:fs/promises";
 
 import { sql } from "drizzle-orm";
 
+import type { Role } from "../access-control";
 import { auth } from "../auth";
 import { db } from "./client";
 import { shows, user } from "./schema";
 import type { SeedShow } from "./seeds/utils/seed-utils";
 
+const PASSWORD = "P4$$w0rd!";
+
 const DEFAULT_USER = {
   name: "Lauren Ipsum",
   email: "test@example.com",
-  password: "P4$$w0rd!",
-};
+  password: PASSWORD,
+  role: "user",
+} satisfies SeedUser;
+
+const ADMIN_USER = {
+  name: "Addie Minh",
+  email: "admin@example.com",
+  password: PASSWORD,
+  role: "admin",
+} satisfies SeedUser;
+
+interface SeedUser {
+  name: string;
+  email: string;
+  password: string;
+  role: Role;
+}
 
 function assertDevelopmentSeed(): void {
   if (process.env.NODE_ENV === "production") {
@@ -58,12 +76,14 @@ async function nukeDatabase(): Promise<void> {
   );
 }
 
-async function seedDefaultUser(): Promise<string> {
-  const { user: createdUser } = await auth.api.signUpEmail({ body: DEFAULT_USER });
+// Sign-up assigns the default role, and `role` is not a sign-up input, so the
+// seed sets it directly — the same way it pre-verifies the email address.
+async function seedUser({ role, ...account }: SeedUser): Promise<string> {
+  const { user: createdUser } = await auth.api.signUpEmail({ body: account });
   await db
     .update(user)
-    .set({ emailVerified: true })
-    .where(sql`${user.email} = ${DEFAULT_USER.email}`);
+    .set({ emailVerified: true, role })
+    .where(sql`${user.email} = ${account.email}`);
   return createdUser.id;
 }
 
@@ -80,7 +100,9 @@ async function main(): Promise<void> {
   console.log("Nuking local dev database...");
   await nukeDatabase();
   console.log(`Seeding default user (${DEFAULT_USER.email})...`);
-  const userId = await seedDefaultUser();
+  const userId = await seedUser(DEFAULT_USER);
+  console.log(`Seeding admin user (${ADMIN_USER.email})...`);
+  await seedUser(ADMIN_USER);
   const showSeeds = await discoverShowSeeds();
 
   console.log(`Seeding default Shows for ${DEFAULT_USER.email}...`);
