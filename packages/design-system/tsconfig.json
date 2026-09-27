@@ -3,8 +3,7 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": ".",
-    "types": ["node", "react", "react-dom"],
-    "noUncheckedIndexedAccess": false
+    "types": ["node", "react", "react-dom"]
   },
   "exclude": ["src/**/*.stories.tsx"]
 }

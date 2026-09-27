@@ -8,6 +8,8 @@ export const STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] as c
 export type Step = (typeof STEPS)[number];
 export const COLOR_KEYS = ["red", "orange", "yellow", "green", "aqua", "blue", "purple"] as const;
 export type ColorKey = (typeof COLOR_KEYS)[number];
+const SCALE_KEYS = ["neutral", ...COLOR_KEYS] as const;
+type ScaleKey = (typeof SCALE_KEYS)[number];
 export type Mode = "dark" | "light";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -31,10 +33,47 @@ interface Oklch {
   h: number;
 }
 
+type Triple = readonly [number, number, number];
+// Mapping over a type parameter keeps tuple shape; `keyof typeof STEPS` alone
+// would map every array member instead.
+type Replace<Tuple extends readonly unknown[], T> = { readonly [K in keyof Tuple]: T };
+type StepTuple<T> = Replace<typeof STEPS, T>;
+type OklchScale = Record<Step, Oklch>;
+
+const PALETTE_KEYS = [
+  "base00",
+  "base01",
+  "base02",
+  "base03",
+  "base04",
+  "base05",
+  "base06",
+  "base07",
+  "base08",
+  "base09",
+  "base0a",
+  "base0b",
+  "base0c",
+  "base0d",
+  "base0e",
+] as const;
+type PaletteKey = (typeof PALETTE_KEYS)[number];
+type Palette = Record<PaletteKey, string>;
+
+const HUE_SOURCES: Record<ColorKey, PaletteKey> = {
+  red: "base08",
+  orange: "base09",
+  yellow: "base0a",
+  green: "base0b",
+  aqua: "base0c",
+  blue: "base0d",
+  purple: "base0e",
+};
+
 interface Scheme {
   name: string;
   variant: Mode;
-  palette: Record<string, string>;
+  palette: Palette;
   source: string;
 }
 
@@ -48,7 +87,7 @@ export interface ThemeManifestEntry {
 
 interface Manifest {
   sourceCommit: string;
-  themes: ThemeManifestEntry[];
+  themes: [ThemeManifestEntry, ...ThemeManifestEntry[]];
 }
 
 export interface GeneratedTheme {
@@ -56,12 +95,92 @@ export interface GeneratedTheme {
   label: string;
   primary: ColorKey;
   mode: Mode;
-  scales: Record<string, Record<Step, string>>;
-  semantic: Record<string, string>;
+  scales: Record<ScaleKey, Record<Step, string>>;
+  semantic: Record<SemanticToken, string>;
 }
 
-const TAILWIND: Record<string, Oklch[]> = {
-  red: [
+type SemanticToken =
+  | "background"
+  | "sunken"
+  | "foreground"
+  | "card"
+  | "card-foreground"
+  | "popover"
+  | "popover-foreground"
+  | "secondary"
+  | "secondary-foreground"
+  | "muted"
+  | "muted-foreground"
+  | "accent"
+  | "accent-foreground"
+  | "primary"
+  | "primary-foreground"
+  | "destructive"
+  | "destructive-foreground"
+  | "success"
+  | "success-foreground"
+  | "live"
+  | "live-foreground"
+  | "border"
+  | "input"
+  | "chip"
+  | "ring"
+  | "sidebar"
+  | "sidebar-foreground"
+  | "sidebar-primary"
+  | "sidebar-primary-foreground"
+  | "sidebar-accent"
+  | "sidebar-accent-foreground"
+  | "sidebar-border"
+  | "sidebar-ring";
+
+function byStep<T>(value: (step: Step) => T): Record<Step, T> {
+  return {
+    50: value(50),
+    100: value(100),
+    200: value(200),
+    300: value(300),
+    400: value(400),
+    500: value(500),
+    600: value(600),
+    700: value(700),
+    800: value(800),
+    900: value(900),
+    950: value(950),
+  };
+}
+
+function curve([
+  p50,
+  p100,
+  p200,
+  p300,
+  p400,
+  p500,
+  p600,
+  p700,
+  p800,
+  p900,
+  p950,
+]: StepTuple<Triple>): OklchScale {
+  const oklch = ([l, c, h]: Triple): Oklch => ({ l, c, h });
+  return {
+    50: oklch(p50),
+    100: oklch(p100),
+    200: oklch(p200),
+    300: oklch(p300),
+    400: oklch(p400),
+    500: oklch(p500),
+    600: oklch(p600),
+    700: oklch(p700),
+    800: oklch(p800),
+    900: oklch(p900),
+    950: oklch(p950),
+  };
+}
+
+const TAILWIND: Record<ColorKey, OklchScale> = {
+  red: curve([
     [0.971, 0.013, 17.38],
     [0.936, 0.032, 17.717],
     [0.885, 0.062, 18.334],
@@ -73,8 +192,8 @@ const TAILWIND: Record<string, Oklch[]> = {
     [0.444, 0.177, 26.899],
     [0.396, 0.141, 25.723],
     [0.258, 0.092, 26.042],
-  ].map(([l, c, h]) => ({ l, c, h })),
-  orange: [
+  ]),
+  orange: curve([
     [0.98, 0.016, 73.684],
     [0.954, 0.038, 75.164],
     [0.901, 0.076, 70.697],
@@ -86,8 +205,8 @@ const TAILWIND: Record<string, Oklch[]> = {
     [0.47, 0.157, 37.304],
     [0.408, 0.123, 38.172],
     [0.266, 0.079, 36.259],
-  ].map(([l, c, h]) => ({ l, c, h })),
-  yellow: [
+  ]),
+  yellow: curve([
     [0.987, 0.026, 102.212],
     [0.973, 0.071, 103.193],
     [0.945, 0.129, 101.54],
@@ -99,8 +218,8 @@ const TAILWIND: Record<string, Oklch[]> = {
     [0.476, 0.114, 61.907],
     [0.421, 0.095, 57.708],
     [0.286, 0.066, 53.813],
-  ].map(([l, c, h]) => ({ l, c, h })),
-  green: [
+  ]),
+  green: curve([
     [0.982, 0.018, 155.826],
     [0.962, 0.044, 156.743],
     [0.925, 0.084, 155.995],
@@ -112,8 +231,8 @@ const TAILWIND: Record<string, Oklch[]> = {
     [0.448, 0.119, 151.328],
     [0.393, 0.095, 152.535],
     [0.266, 0.065, 152.934],
-  ].map(([l, c, h]) => ({ l, c, h })),
-  aqua: [
+  ]),
+  aqua: curve([
     [0.984, 0.019, 200.873],
     [0.956, 0.045, 203.388],
     [0.917, 0.08, 205.041],
@@ -125,8 +244,8 @@ const TAILWIND: Record<string, Oklch[]> = {
     [0.45, 0.085, 224.283],
     [0.398, 0.07, 227.392],
     [0.302, 0.056, 229.695],
-  ].map(([l, c, h]) => ({ l, c, h })),
-  blue: [
+  ]),
+  blue: curve([
     [0.97, 0.014, 254.604],
     [0.932, 0.032, 255.585],
     [0.882, 0.059, 254.128],
@@ -138,8 +257,8 @@ const TAILWIND: Record<string, Oklch[]> = {
     [0.424, 0.199, 265.638],
     [0.379, 0.146, 265.522],
     [0.282, 0.091, 267.935],
-  ].map(([l, c, h]) => ({ l, c, h })),
-  purple: [
+  ]),
+  purple: curve([
     [0.977, 0.014, 308.299],
     [0.946, 0.033, 307.174],
     [0.902, 0.063, 306.703],
@@ -151,16 +270,14 @@ const TAILWIND: Record<string, Oklch[]> = {
     [0.438, 0.218, 303.724],
     [0.381, 0.176, 304.987],
     [0.291, 0.149, 302.717],
-  ].map(([l, c, h]) => ({ l, c, h })),
+  ]),
 };
 
-const NEUTRAL_REFERENCE = TAILWIND.blue.map((point) => ({ ...point, c: point.c * 0.08 }));
+const NEUTRAL_REFERENCE = byStep((step) => ({
+  ...TAILWIND.blue[step],
+  c: TAILWIND.blue[step].c * 0.08,
+}));
 
-// Base16 nominally reserves base06/base07 for lighter foreground shades, but
-// plenty of schemes (Catppuccin's rosewater/lavender being the worst offender)
-// put accent hues there. Only base00-base05 can be trusted to be neutral, so
-// the extreme steps are extrapolated from the reference curve instead.
-const NEUTRAL_ANCHOR_KEYS = ["base00", "base01", "base02", "base03", "base04", "base05"] as const;
 const NEUTRAL_MAX_CHROMA = 0.035;
 const NEUTRAL_LIGHTNESS_FLOOR = 0.09;
 const NEUTRAL_LIGHTNESS_CEILING = 0.985;
@@ -266,41 +383,42 @@ function toHex(color: Oklch): string {
     .join("")}`;
 }
 
-function nearestReferenceIndex(seed: Oklch, curve: Oklch[]): number {
-  return curve.reduce(
-    (best, point, index) =>
-      Math.abs(point.l - seed.l) < Math.abs(curve[best].l - seed.l) ? index : best,
-    0,
+function nearestReferenceStep(seed: Oklch, reference: OklchScale): Step {
+  return STEPS.reduce<Step>(
+    (best, step) =>
+      Math.abs(reference[step].l - seed.l) < Math.abs(reference[best].l - seed.l) ? step : best,
+    STEPS[0],
   );
+}
+
+// Steps run from light to dark. Clamp, in place, any step that comes out
+// lighter than the one before it so the ramp never reverses.
+function flattenLightnessReversals(colors: OklchScale): void {
+  let previous = colors[STEPS[0]];
+  for (const step of STEPS) {
+    const current = colors[step];
+    if (current.l > previous.l) current.l = previous.l;
+    previous = current;
+  }
 }
 
 export function generateScale(seedHex: string, key: ColorKey): Record<Step, string> {
   const seed = rgbToOklch(parseHex(seedHex));
-  const curve = seed.c < NEUTRAL_THRESHOLD ? NEUTRAL_REFERENCE : TAILWIND[key];
-  const anchor = nearestReferenceIndex(seed, curve);
-  const values = STEPS.map((step, index) => {
-    const reference = curve[index];
-    const anchorReference = curve[anchor];
-    const hueDelta = seed.c < NEUTRAL_THRESHOLD ? 0 : reference.h - anchorReference.h;
-    return {
-      step,
-      color: gamutMap({
-        l: seed.l + reference.l - anchorReference.l,
-        c: Math.max(0, seed.c + reference.c - anchorReference.c),
-        h: seed.h + hueDelta,
-      }),
-    };
+  const reference = seed.c < NEUTRAL_THRESHOLD ? NEUTRAL_REFERENCE : TAILWIND[key];
+  const anchor = nearestReferenceStep(seed, reference);
+  const anchorReference = reference[anchor];
+  const colors = byStep((step) => {
+    const point = reference[step];
+    const hueDelta = seed.c < NEUTRAL_THRESHOLD ? 0 : point.h - anchorReference.h;
+    return gamutMap({
+      l: seed.l + point.l - anchorReference.l,
+      c: Math.max(0, seed.c + point.c - anchorReference.c),
+      h: seed.h + hueDelta,
+    });
   });
-  values[anchor].color = seed;
-  for (let index = 1; index < values.length; index += 1) {
-    if (values[index].color.l > values[index - 1].color.l)
-      values[index].color.l = values[index - 1].color.l;
-  }
-  values[anchor].color = seed;
-  return Object.fromEntries(values.map(({ step, color }) => [step, toHex(color)])) as Record<
-    Step,
-    string
-  >;
+  colors[anchor] = seed;
+  flattenLightnessReversals(colors);
+  return byStep((step) => toHex(colors[step]));
 }
 
 function interpolate(a: Oklch, b: Oklch, fraction: number): Oklch {
@@ -333,125 +451,143 @@ function desaturateNeutral(color: Oklch): Oklch {
 
 // Continue the reference curve's lightness rolloff past the outermost trusted
 // anchor, compressed so the run lands exactly on `limit` when it would
-// otherwise overshoot into clipping.
+// otherwise overshoot into clipping. `targets` leads with the outermost step,
+// the one that would land on `limit`.
 function extrapolateNeutral(
   anchor: Oklch,
-  anchorIndex: number,
-  targetIndices: number[],
+  anchorStep: Step,
+  targets: readonly [outermost: Step, ...inner: Step[]],
   limit: number,
-): Map<number, Oklch> {
-  const furthest = targetIndices[targetIndices.length - 1];
-  const needed = NEUTRAL_REFERENCE[furthest].l - NEUTRAL_REFERENCE[anchorIndex].l;
+): Map<Step, Oklch> {
+  const [outermost] = targets;
+  const needed = NEUTRAL_REFERENCE[outermost].l - NEUTRAL_REFERENCE[anchorStep].l;
   const available = limit - anchor.l;
   const factor = needed === 0 ? 0 : Math.min(1, available / needed);
   return new Map(
-    targetIndices.map((index) => [
-      STEPS[index],
+    targets.map((step) => [
+      step,
       {
         ...anchor,
-        l: clamp(
-          anchor.l + (NEUTRAL_REFERENCE[index].l - NEUTRAL_REFERENCE[anchorIndex].l) * factor,
-        ),
+        l: clamp(anchor.l + (NEUTRAL_REFERENCE[step].l - NEUTRAL_REFERENCE[anchorStep].l) * factor),
       },
     ]),
   );
 }
 
+function interpolateGap(known: Map<Step, Oklch>, step: Step): Oklch {
+  let lower: [Step, Oklch] | undefined;
+  let upper: [Step, Oklch] | undefined;
+  for (const [candidate, color] of known) {
+    if (candidate < step && (!lower || candidate > lower[0])) lower = [candidate, color];
+    if (candidate > step && (!upper || candidate < upper[0])) upper = [candidate, color];
+  }
+  if (!lower || !upper) throw new Error(`Neutral step ${step} has no anchor on both sides`);
+  const [lowerStep, lowerColor] = lower;
+  const [upperStep, upperColor] = upper;
+  return interpolate(upperColor, lowerColor, (upperStep - step) / (upperStep - lowerStep));
+}
+
 export function generateNeutralScale(scheme: Scheme): Record<Step, string> {
-  const source = Object.fromEntries(
-    Object.entries(scheme.palette).map(([key, value]) => [key, rgbToOklch(parseHex(value))]),
-  );
+  // Base16 nominally reserves base06/base07 for lighter foreground shades, but
+  // plenty of schemes (Catppuccin's rosewater/lavender being the worst offender)
+  // put accent hues there. Only base00-base05 can be trusted to be neutral, so
+  // the extreme steps are extrapolated from the reference curve instead.
+  const trusted = (key: PaletteKey) => rgbToOklch(parseHex(scheme.palette[key]));
+  const base00 = trusted("base00");
+  const base01 = trusted("base01");
+  const base02 = trusted("base02");
+  const base03 = trusted("base03");
+  const base04 = trusted("base04");
+  const base05 = trusted("base05");
   const dark = scheme.variant === "dark";
   // base00 is the background either way, but base01 sits on either side of it
   // depending on the scheme: Gruvbox's bg1 is lighter, Catppuccin's mantle is
   // darker. Anchor a darker base01 at the bottom of the scale rather than
   // letting the monotonic pass flatten 800-950 into one color.
-  const mantle = dark && source.base01.l < source.base00.l;
-  const anchorSteps = dark
-    ? [900, mantle ? 950 : 800, 700, 600, 500, 300]
-    : [50, 100, 200, 300, 500, 700];
-  const result = new Map<number, Oklch>(
-    NEUTRAL_ANCHOR_KEYS.map((key, index) => [anchorSteps[index], source[key]]),
+  const mantle = dark && base01.l < base00.l;
+  const result = new Map<Step, Oklch>(
+    dark
+      ? [
+          [900, base00],
+          [mantle ? 950 : 800, base01],
+          [700, base02],
+          [600, base03],
+          [500, base04],
+          [300, base05],
+        ]
+      : [
+          [50, base00],
+          [100, base01],
+          [200, base02],
+          [300, base03],
+          [500, base04],
+          [700, base05],
+        ],
   );
   if (dark) {
-    if (!mantle) {
-      const base00 = result.get(900)!;
-      const base01 = result.get(800)!;
-      result.set(950, { ...base00, l: clamp(base00.l - Math.abs(base01.l - base00.l)) });
-    }
+    if (!mantle) result.set(950, { ...base00, l: clamp(base00.l - Math.abs(base01.l - base00.l)) });
     // base05 anchors step 300; 100 and 50 continue upward toward white.
     for (const [step, color] of extrapolateNeutral(
-      result.get(300)!,
-      STEPS.indexOf(300),
-      [1, 0],
+      base05,
+      300,
+      [50, 100],
       NEUTRAL_LIGHTNESS_CEILING,
     ))
       result.set(step, color);
   } else {
     // base05 anchors step 700; 800, 900 and 950 continue downward toward black.
     for (const [step, color] of extrapolateNeutral(
-      result.get(700)!,
-      STEPS.indexOf(700),
-      [8, 9, 10],
+      base05,
+      700,
+      [950, 800, 900],
       NEUTRAL_LIGHTNESS_FLOOR,
     ))
       result.set(step, color);
   }
-  for (let index = 0; index < STEPS.length; index += 1) {
-    const step = STEPS[index];
-    if (result.has(step)) continue;
-    const lower = [...result.keys()]
-      .filter((candidate) => candidate < step)
-      .sort((a, b) => b - a)[0];
-    const upper = [...result.keys()]
-      .filter((candidate) => candidate > step)
-      .sort((a, b) => a - b)[0];
-    result.set(
-      step,
-      interpolate(result.get(upper)!, result.get(lower)!, (upper - step) / (upper - lower)),
-    );
-  }
-  const ordered = [...STEPS];
-  for (let index = 1; index < ordered.length; index += 1) {
-    const current = result.get(ordered[index])!;
-    const previous = result.get(ordered[index - 1])!;
-    if (current.l > previous.l) current.l = previous.l;
-  }
-  return Object.fromEntries(
-    STEPS.map((step) => [step, toHex(desaturateNeutral(result.get(step)!))]),
-  ) as Record<Step, string>;
+  const colors = byStep((step) => result.get(step) ?? interpolateGap(result, step));
+  flattenLightnessReversals(colors);
+  return byStep((step) => toHex(desaturateNeutral(colors[step])));
 }
 
 export function parseScheme(source: string, sourcePath = "inline"): Scheme {
   const document = parseYaml(source) as {
     name?: string;
     variant?: string;
-    palette?: Record<string, string>;
+    palette?: Record<string, unknown>;
   };
   if (!document.palette || typeof document.palette !== "object")
     throw new Error(`${sourcePath}: missing palette mapping`);
-  const palette = Object.fromEntries(
+  const entries = new Map(
     Object.entries(document.palette).map(([key, value]) => [key.toLowerCase(), value]),
   );
-  for (const key of [
-    "base00",
-    "base01",
-    "base02",
-    "base03",
-    "base04",
-    "base05",
-    "base06",
-    "base07",
-  ]) {
-    if (!(key in palette)) throw new Error(`${sourcePath}: missing ${key}`);
-  }
+  const color = (key: PaletteKey): string => {
+    const value = entries.get(key);
+    if (value === undefined) throw new Error(`${sourcePath}: missing ${key}`);
+    if (typeof value !== "string")
+      throw new Error(`${sourcePath}: ${key} must be a hex color string`);
+    parseHex(value);
+    return value;
+  };
+  const palette: Palette = {
+    base00: color("base00"),
+    base01: color("base01"),
+    base02: color("base02"),
+    base03: color("base03"),
+    base04: color("base04"),
+    base05: color("base05"),
+    base06: color("base06"),
+    base07: color("base07"),
+    base08: color("base08"),
+    base09: color("base09"),
+    base0a: color("base0a"),
+    base0b: color("base0b"),
+    base0c: color("base0c"),
+    base0d: color("base0d"),
+    base0e: color("base0e"),
+  };
   const variant =
     document.variant === "light" ? "light" : document.variant === "dark" ? "dark" : null;
   if (!variant) throw new Error(`${sourcePath}: variant must be dark or light`);
-  for (const key of ["base08", "base09", "base0a", "base0b", "base0c", "base0d", "base0e"]) {
-    if (!(key in palette)) throw new Error(`${sourcePath}: missing ${key}`);
-    parseHex(palette[key]);
-  }
   return { name: document.name ?? sourcePath, variant, palette, source: sourcePath };
 }
 
@@ -483,10 +619,10 @@ function deltaEok(first: string, second: string): number {
 }
 
 function semanticValues(
-  scales: Record<string, Record<Step, string>>,
+  scales: Record<ScaleKey, Record<Step, string>>,
   primary: ColorKey,
   mode: Mode,
-): Record<string, string> {
+): Record<SemanticToken, string> {
   const dark = mode === "dark";
   const neutral = (step: Step) => scales.neutral[step];
   const hue = (key: ColorKey, step: Step) => scales[key][step];
@@ -555,26 +691,19 @@ function semanticValues(
     "sidebar-accent-foreground": foreground,
     "sidebar-border": neutral(dark ? 600 : 300),
     "sidebar-ring": primaryValue,
-    ...Object.fromEntries(
-      COLOR_KEYS.flatMap((key) => [
-        [`palette-${key}-fill`, hue(key, dark ? 700 : 200)],
-        [`palette-${key}-border`, hue(key, 500)],
-        [`palette-${key}-text`, hue(key, dark ? 300 : 700)],
-        [`palette-${key}-on-fill`, hue(key, dark ? 50 : 950)],
-      ]),
-    ),
   };
 }
 
 async function loadManifest(): Promise<Manifest> {
-  const manifest = JSON.parse(
-    await readFile(join(THEMES_ROOT, "manifest.json"), "utf8"),
-  ) as Manifest;
+  const manifest = JSON.parse(await readFile(join(THEMES_ROOT, "manifest.json"), "utf8")) as {
+    sourceCommit: string;
+    themes: ThemeManifestEntry[];
+  };
   if (manifest.sourceCommit !== SOURCE_COMMIT)
     throw new Error(`manifest sourceCommit must be ${SOURCE_COMMIT}`);
-  if (!Array.isArray(manifest.themes) || manifest.themes.length === 0)
-    throw new Error("manifest must declare themes");
-  return manifest;
+  const [defaultTheme, ...otherThemes] = Array.isArray(manifest.themes) ? manifest.themes : [];
+  if (!defaultTheme) throw new Error("manifest must declare themes");
+  return { sourceCommit: manifest.sourceCommit, themes: [defaultTheme, ...otherThemes] };
 }
 
 async function loadThemes(manifest: Manifest): Promise<GeneratedTheme[]> {
@@ -599,16 +728,17 @@ async function loadThemes(manifest: Manifest): Promise<GeneratedTheme[]> {
     const scheme = parseScheme(sourceText, relative(PACKAGE_ROOT, sourcePath));
     if (scheme.variant !== mode)
       throw new Error(`${sourcePath}: expected ${mode} scheme, got ${scheme.variant}`);
-    const scales: Record<string, Record<Step, string>> = {
+    const hue = (key: ColorKey) => generateScale(scheme.palette[HUE_SOURCES[key]], key);
+    const scales = {
       neutral: generateNeutralScale(scheme),
+      red: hue("red"),
+      orange: hue("orange"),
+      yellow: hue("yellow"),
+      green: hue("green"),
+      aqua: hue("aqua"),
+      blue: hue("blue"),
+      purple: hue("purple"),
     };
-    for (const key of COLOR_KEYS)
-      scales[key] = generateScale(
-        scheme.palette[
-          `base${key === "red" ? "08" : key === "orange" ? "09" : key === "yellow" ? "0a" : key === "green" ? "0b" : key === "aqua" ? "0c" : key === "blue" ? "0d" : "0e"}`
-        ],
-        key,
-      );
     generated.push({
       key: entry.key,
       label: entry.label,
@@ -625,7 +755,7 @@ function cssThemeBlock(theme: GeneratedTheme, defaultPalette: string): string {
   const selector = theme.mode === "dark" && theme.key === defaultPalette ? ":root,\n" : "";
   const blockSelector = `${selector}[data-theme-palette="${theme.key}"][data-theme-mode="${theme.mode}"]`;
   const lines = [`${blockSelector} {`];
-  for (const scale of ["neutral", ...COLOR_KEYS]) {
+  for (const scale of SCALE_KEYS) {
     for (const step of STEPS)
       lines.push(`  --palette-${scale}-${step}: ${theme.scales[scale][step]};`);
   }
@@ -780,7 +910,7 @@ function buildReport(themes: GeneratedTheme[]): {
   const records: ReportRecord[] = [];
   for (const theme of themes) {
     const surfaceSteps = STEPS;
-    const semanticPairs: Array<[string, string]> = [
+    const semanticPairs: Array<[SemanticToken, SemanticToken]> = [
       ["foreground", "background"],
       ["card-foreground", "card"],
       ["popover-foreground", "popover"],
@@ -842,13 +972,14 @@ function buildReport(themes: GeneratedTheme[]): {
         status: Math.abs(lc) >= 60 ? "pass" : "violation",
       });
     }
-    for (let left = 0; left < COLOR_KEYS.length; left += 1)
-      for (let right = left + 1; right < COLOR_KEYS.length; right += 1) {
-        const first = theme.scales[COLOR_KEYS[left]][theme.mode === "dark" ? 700 : 200];
-        const second = theme.scales[COLOR_KEYS[right]][theme.mode === "dark" ? 700 : 200];
-        const delta = deltaEok(first, second);
+    for (const [index, first] of COLOR_KEYS.entries())
+      for (const second of COLOR_KEYS.slice(index + 1)) {
+        const delta = deltaEok(
+          theme.scales[first][theme.mode === "dark" ? 700 : 200],
+          theme.scales[second][theme.mode === "dark" ? 700 : 200],
+        );
         records.push({
-          id: `${theme.key}.${theme.mode}.distinguishability.${COLOR_KEYS[left]}-${COLOR_KEYS[right]}`,
+          id: `${theme.key}.${theme.mode}.distinguishability.${first}-${second}`,
           palette: theme.key,
           mode: theme.mode,
           kind: "distinguishability",
@@ -877,7 +1008,7 @@ function generatedMetadata(): string {
   return `// Generated by scripts/theme-generator.ts.\nexport const THEME_COLOR_METADATA = ${JSON.stringify(
     COLOR_KEYS.map((key, order) => ({
       key,
-      label: key[0].toUpperCase() + key.slice(1),
+      label: key.charAt(0).toUpperCase() + key.slice(1),
       order,
       swatchToken: `--palette-${key}-fill`,
     })),
