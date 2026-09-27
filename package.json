@@ -28,10 +28,13 @@
     "format": "oxfmt .",
     "typecheck": "pnpm -r typecheck",
     "codegen": "pnpm --filter @mechane/graphql-schema codegen",
-    "react-doctor": "react-doctor"
+    "react-doctor": "react-doctor",
+    "prepare": "husky"
   },
   "devDependencies": {
     "graphql-language-service-cli": "^3.5.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0",
     "oxfmt": "^0.62.0",
     "oxlint": "^1.77.0",
     "react-doctor": "^0.9.5",
@@ -39,6 +42,9 @@
     "typescript-language-server": "^5.3.0",
     "typescript-lsp": "npm:typescript@5.9.3",
     "vitest": "^3.2.0"
+  },
+  "lint-staged": {
+    "*": "oxfmt --check --no-error-on-unmatched-pattern"
   },
   "packageManager": "pnpm@11.5.2"
 }
