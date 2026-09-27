@@ -40,8 +40,8 @@ export function WaitlistForm({ status, onJoin }: WaitlistFormProps) {
       <CardHeader>
         <CardTitle className="text-lg">Join the waitlist</CardTitle>
         <CardDescription className="text-base">
-          We're letting people in a few at a time. Leave your email and we'll write when there's
-          room for you.
+          We’re still working on getting Mechanē ready for use in real shows. Join the waitlist and
+          we’ll keep you updated.
         </CardDescription>
       </CardHeader>
       <CardContent>
