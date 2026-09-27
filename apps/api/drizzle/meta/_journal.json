@@ -379,6 +379,13 @@
       "when": 1790494092327,
       "tag": "0053_waitlist_entries",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1790496978917,
+      "tag": "0054_waitlist_rate_limits",
+      "breakpoints": true
     }
   ]
 }
