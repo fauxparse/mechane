@@ -15,6 +15,8 @@ import {
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { useUserSettings } from "../../api/settings";
+// PROTOTYPE #818 — the Domains library (variant A); renders nothing without `?variant=`.
+import { SettingsDomainsPrototype } from "../../components/prototype-custom-domains";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsRoute,
@@ -42,6 +44,8 @@ function SettingsRoute() {
           onPaletteChange={(nextPalette) => updateSettings({ themePalette: nextPalette })}
         />
       </section>
+      {/* PROTOTYPE #818 */}
+      <SettingsDomainsPrototype />
     </main>
   );
 }

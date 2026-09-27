@@ -7,6 +7,8 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
 import { meQueryOptions } from "../../api/me";
+// PROTOTYPE #818 — variant bar and checker state panel; render nothing without `?variant=`.
+import { PrototypeChrome } from "../../components/prototype-custom-domains";
 
 export const Route = createFileRoute("/_authenticated")({
   beforeLoad: async ({ context }) => {
@@ -15,5 +17,10 @@ export const Route = createFileRoute("/_authenticated")({
       throw redirect({ to: "/sign-in" });
     }
   },
-  component: () => <Outlet />,
+  component: () => (
+    <>
+      <Outlet />
+      <PrototypeChrome />
+    </>
+  ),
 });

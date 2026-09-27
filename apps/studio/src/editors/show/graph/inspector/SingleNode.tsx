@@ -26,6 +26,8 @@ import type { SourceImageAsset } from "./source-value-types";
 import { SourceTypeSection } from "./SourceTypeSection";
 import { Variables } from "./Variables";
 import { TransformerInspector } from "./TransformerInspector";
+// PROTOTYPE #818 — Custom Domain authoring variants; renders nothing without `?variant=`.
+import { DeviceDomainPrototype } from "../../../../components/prototype-custom-domains";
 
 function CueRow({ cue, editing }: { cue: Cue; editing: GraphInspectorEditing }) {
   const [name, setName] = useState(cue.name);
@@ -205,6 +207,8 @@ export function SingleNode({
               </SectionHelperText>
             </Section>
           )}
+          {/* PROTOTYPE #818 */}
+          <DeviceDomainPrototype node={node} graphNodes={editing.graph.nodes} />
         </>
       )}
 
