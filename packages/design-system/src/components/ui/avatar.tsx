@@ -1,9 +1,8 @@
 import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar";
 import { useId, useMemo, type ComponentProps } from "react";
-import { Style, Avatar as DiceBearAvatar } from "@dicebear/core";
-import definition from "@dicebear/styles/line-face.json" with { type: "json" };
 
 import { cn } from "../../lib/utils";
+import { lineFaceSvg } from "./avatar-line-face";
 
 function Avatar({
   className,
@@ -35,7 +34,7 @@ function AvatarImage({ className, ...props }: AvatarPrimitive.Image.Props) {
   );
 }
 
-const AVATAR_STYLE = new Style(definition);
+const BACKGROUND_COLORS = ["#ffe3ea", "#e3edff", "#e2f5e9", "#fdf1d4", "#efe6ff"];
 
 function AvatarFallback({
   className,
@@ -50,12 +49,9 @@ function AvatarFallback({
   const fallbackId = useId();
   const id = providedId || (typeof children === "string" ? children : fallbackId);
 
-  const avatar = useMemo(
+  const src = useMemo(
     () =>
-      new DiceBearAvatar(AVATAR_STYLE, {
-        seed: id,
-        backgroundColor: ["ffe3ea", "e3edff", "e2f5e9", "fdf1d4", "efe6ff"],
-      }),
+      `data:image/svg+xml;charset=utf-8,${encodeURIComponent(lineFaceSvg(id, BACKGROUND_COLORS))}`,
     [id],
   );
 
@@ -66,7 +62,7 @@ function AvatarFallback({
         <img
           data-slot="avatar-fallback"
           className={cn("flex size-full rounded-full", className)}
-          src={avatar.toDataUri()}
+          src={src}
           alt=""
           {...props}
         />
