@@ -31,8 +31,9 @@ cp apps/api/.env.example apps/api/.env
 cp apps/api/.env.test.example apps/api/.env.test
 cp apps/studio/.env.example apps/studio/.env
 overmind start -f Procfile.dev   # starts the app services, infrastructure, and local HTTPS proxy
-# Mailpit is available at http://localhost:8025 for verification and reset messages.
-# SMTP is local by default; no email provider credentials are needed for development.
+# Mailpit is available at https://mail.mechane.dev for verification and reset messages.
+# Open a captured message to preview its HTML or inspect its plain-text alternative.
+# Local development SMTP uses Mailpit; no email provider credentials are needed.
 # In another terminal, after Postgres and MinIO report ready:
 pnpm --filter @mechane/api db:migrate   # apply the development database schema
 pnpm db:test:migrate                         # apply the test database schema

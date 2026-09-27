@@ -139,7 +139,7 @@ function writeProcfile(record) {
   const contents = [
     `studio: VITE_DEV_PROXY=false VITE_API_URL=http://localhost:${api} pnpm dev:studio --host 0.0.0.0 --port ${studio}`,
     `player: VITE_DEV_PROXY=false VITE_API_URL=http://localhost:${api} pnpm dev:player --host 0.0.0.0 --port ${player}`,
-    `api: PORT=${api} APP_STUDIO_URL=http://localhost:${studio} APP_PLAYER_URL=http://localhost:${player} BETTER_AUTH_URL=http://localhost:${api} pnpm dev:api`,
+    `api: PORT=${api} SMTP_URL=smtp://localhost:1025 EMAIL_FROM="Mechanē <noreply@localhost>" APP_STUDIO_URL=http://localhost:${studio} APP_PLAYER_URL=http://localhost:${player} BETTER_AUTH_URL=http://localhost:${api} pnpm dev:api`,
   ].join("\n");
   fs.writeFileSync(procfile, `${contents}\n`);
   return procfile;

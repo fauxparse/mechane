@@ -12,9 +12,9 @@ import {
 } from "@mechane/design-system";
 import { useState, type FormEvent, type MouseEvent } from "react";
 
-import { Logo } from "./Logo";
 import type { HeaderDestination, HeaderProps } from "./Header";
 import { navigationIntentFor } from "./header-navigation";
+import { Logo } from "./Logo";
 
 type HeaderLeftProps = Pick<
   HeaderProps,
@@ -55,7 +55,7 @@ export function HeaderLeft({
   return (
     <div className="editor-chrome-header-left flex w-fit items-start justify-self-start gap-2">
       {draftName === null ? (
-        <div className="pointer-events-auto flex w-fit items-center gap-1 rounded-full bg-muted/50 backdrop-blur-[2px]">
+        <div className="pointer-events-auto flex w-fit items-center gap-1 pl-1 rounded-full bg-muted/50 backdrop-blur-[2px]">
           <Logo className="size-6" />
           <DropdownMenu>
             <DropdownMenuTrigger

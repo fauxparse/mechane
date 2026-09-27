@@ -111,6 +111,15 @@ function SignInRoute() {
       <div className="flex w-full max-w-sm flex-col items-center gap-3">
         <AuthForm
           className="w-full"
+          footerAction={
+            mode === "sign-in" ? (
+              <Button
+                variant="link"
+                className="text-base"
+                render={<Link to="/forgot-password">Forgot your password?</Link>}
+              />
+            ) : null
+          }
           mode={mode}
           onToggleMode={() => {
             setMode(mode === "sign-in" ? "sign-up" : "sign-in");
@@ -149,11 +158,6 @@ function SignInRoute() {
               </p>
             ) : null}
           </div>
-        ) : null}
-        {mode === "sign-in" ? (
-          <Link to="/forgot-password" className="text-sm text-muted-foreground hover:underline">
-            Forgot your password?
-          </Link>
         ) : null}
       </div>
     </GuestAuthLayout>

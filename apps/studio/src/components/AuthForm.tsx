@@ -7,13 +7,6 @@
 // @mechane/design-system primitives — no raw <input>/<button>.
 import {
   Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-  cn,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -21,10 +14,10 @@ import {
   MailIcon,
   UserRoundIcon,
 } from "@mechane/design-system";
-import type { SubmitEvent } from "react";
+import type { ReactNode, SubmitEvent } from "react";
 import { useId, useState } from "react";
 
-import "./AuthForm.css";
+import { AuthCard } from "./AuthCard";
 
 function runViewTransition(update: () => void) {
   if (typeof document === "undefined" || typeof window === "undefined") {
@@ -66,6 +59,7 @@ export interface AuthFormProps {
   onGoogleSignIn?: () => void;
   googlePending?: boolean;
   className?: string;
+  footerAction?: ReactNode;
 }
 
 const COPY: Record<
@@ -96,6 +90,7 @@ export function AuthForm({
   onGoogleSignIn,
   googlePending,
   className,
+  footerAction,
 }: AuthFormProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -109,127 +104,117 @@ export function AuthForm({
   };
 
   return (
-    <Card
-      size="lg"
-      className={cn(
-        "auth-form-card rounded-xl bg-muted/30 p-2 shadow-xl gap-0 backdrop-blur-lg",
-        className,
-      )}
+    <AuthCard
+      title={copy.title}
+      description={copy.description}
+      className={className}
+      footer={
+        <div className="flex flex-col items-center gap-2">
+          <Button
+            type="button"
+            variant="link"
+            className="text-base"
+            onClick={() => runViewTransition(onToggleMode)}
+          >
+            <span>{copy.switchLabel}</span>
+          </Button>
+          {footerAction}
+        </div>
+      }
     >
-      <CardContent className="flex flex-col gap-5 bg-muted/30 rounded-md shadow-md inset-shadow-[0_1px_0_0_rgba(255,255,255,0.15)] pb-(--card-spacing)">
-        <CardHeader className="px-0 pt-(--card-spacing)">
-          <CardTitle className="auth-form-title text-xl">
-            <span>{copy.title}</span>
-          </CardTitle>
-          <CardDescription className="auth-form-description">
-            <span>{copy.description}</span>
-          </CardDescription>
-        </CardHeader>
-        {googleEnabled ? (
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              className="w-full rounded-md h-10 text-base border-2"
-              onClick={onGoogleSignIn}
-              disabled={googlePending}
-            >
-              <GoogleIcon />
-              {googlePending ? "Connecting…" : "Continue with Google"}
-            </Button>
+      {googleEnabled ? (
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="w-full rounded-md h-10 text-base border-2"
+            onClick={onGoogleSignIn}
+            disabled={googlePending}
+          >
+            <GoogleIcon />
+            {googlePending ? "Connecting…" : "Continue with Google"}
+          </Button>
 
-            <div className="flex items-center gap-3 text-sm uppercase tracking-widest text-muted-foreground">
-              <span className="h-px flex-1 bg-border" />
-              or
-              <span className="h-px flex-1 bg-border" />
-            </div>
-          </>
+          <div className="flex items-center gap-3 text-sm uppercase tracking-widest text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            or
+            <span className="h-px flex-1 bg-border" />
+          </div>
+        </>
+      ) : null}
+
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        {mode === "sign-up" ? (
+          <InputGroup size="lg" className="auth-form-name-field">
+            <InputGroupAddon className="w-8">
+              <UserRoundIcon className="size-5 text-muted-foreground" />
+            </InputGroupAddon>
+            <InputGroupInput
+              id={`${formId}-name`}
+              type="text"
+              autoComplete="name"
+              placeholder="Name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              disabled={pending}
+              required
+            />
+          </InputGroup>
         ) : null}
 
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-          {mode === "sign-up" ? (
-            <InputGroup size="lg" className="auth-form-name-field">
-              <InputGroupAddon className="w-8">
-                <UserRoundIcon className="size-5 text-muted-foreground" />
-              </InputGroupAddon>
-              <InputGroupInput
-                id={`${formId}-name`}
-                type="text"
-                autoComplete="name"
-                placeholder="Name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                disabled={pending}
-                required
-              />
-            </InputGroup>
-          ) : null}
-
-          <InputGroup size="lg" className="auth-form-email-field">
-            <InputGroupAddon className="w-8">
-              <MailIcon className="size-5 text-muted-foreground" />
-            </InputGroupAddon>
-            <InputGroupInput
-              id={`${formId}-email`}
-              type="email"
-              placeholder="Email address"
-              autoComplete="email"
-              autoFocus={mode === "sign-in" || undefined}
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              disabled={pending}
-              aria-invalid={error ? true : undefined}
-              required
-            />
-          </InputGroup>
-
-          <InputGroup size="lg" className="auth-form-password-field">
-            <InputGroupAddon className="w-8">
-              <LockIcon className="size-5 text-muted-foreground" />
-            </InputGroupAddon>
-            <InputGroupInput
-              id={`${formId}-password`}
-              type="password"
-              placeholder="Password"
-              autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              disabled={pending}
-              aria-invalid={error ? true : undefined}
-              required
-              minLength={8}
-            />
-          </InputGroup>
-
-          {error ? (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          ) : null}
-
-          <Button
-            type="submit"
-            size="lg"
-            className="auth-form-submit w-full rounded-md h-10 text-lg"
+        <InputGroup size="lg" className="auth-form-email-field">
+          <InputGroupAddon className="w-8">
+            <MailIcon className="size-5 text-muted-foreground" />
+          </InputGroupAddon>
+          <InputGroupInput
+            id={`${formId}-email`}
+            type="email"
+            placeholder="Email address"
+            autoComplete="email"
+            autoFocus={mode === "sign-in" || undefined}
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
             disabled={pending}
-          >
-            <span>{pending ? "One moment…" : copy.submitLabel}</span>
-          </Button>
-        </form>
-      </CardContent>
+            aria-invalid={error ? true : undefined}
+            required
+          />
+        </InputGroup>
 
-      <CardFooter className="auth-form-footer flex-col p-(--card-spacing) border-t-0 bg-transparent">
+        <InputGroup size="lg" className="auth-form-password-field">
+          <InputGroupAddon className="w-8">
+            <LockIcon className="size-5 text-muted-foreground" />
+          </InputGroupAddon>
+          <InputGroupInput
+            id={`${formId}-password`}
+            type="password"
+            placeholder="Password"
+            autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            disabled={pending}
+            aria-invalid={error ? true : undefined}
+            required
+            minLength={8}
+          />
+        </InputGroup>
+
+        {error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ) : null}
+
         <Button
-          type="button"
-          variant="link"
-          className="text-base"
-          onClick={() => runViewTransition(onToggleMode)}
+          type="submit"
+          size="lg"
+          className="auth-form-submit w-full rounded-md h-10 text-lg"
+          disabled={pending}
         >
-          <span>{copy.switchLabel}</span>
+          <span>{pending ? "One moment…" : copy.submitLabel}</span>
         </Button>
-      </CardFooter>
-    </Card>
+      </form>
+    </AuthCard>
   );
 }
 

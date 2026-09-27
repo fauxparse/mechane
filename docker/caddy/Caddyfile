@@ -12,3 +12,8 @@ api.mechane.dev {
 	tls internal
 	reverse_proxy host.docker.internal:4000
 }
+
+mail.mechane.dev {
+	tls internal
+	reverse_proxy host.docker.internal:8025
+}
