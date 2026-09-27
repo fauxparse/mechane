@@ -6,6 +6,7 @@ const message = {
   to: "person@example.com",
   subject: "Verify your Mechanē email",
   text: "Verify your email: https://example.com/verify",
+  html: "<p>Verify your email</p>",
 };
 
 afterEach(() => {
@@ -14,9 +15,9 @@ afterEach(() => {
 });
 
 describe("sendEmail", () => {
-  it("logs locally when no transport is configured", async () => {
-    vi.stubEnv("NODE_ENV", "development");
-    vi.stubEnv("SMTP_URL", "");
+  it("does not deliver through configured SMTP in test mode", async () => {
+    vi.stubEnv("NODE_ENV", "test");
+    vi.stubEnv("SMTP_URL", "smtp://127.0.0.1:1");
     vi.stubEnv("RESEND_API_KEY", "");
     const log = vi.spyOn(console, "info").mockImplementation(() => undefined);
 
@@ -57,6 +58,7 @@ describe("sendEmail", () => {
           to: [message.to],
           subject: message.subject,
           text: message.text,
+          html: message.html,
         }),
       }),
     );

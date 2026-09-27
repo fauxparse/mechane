@@ -4,6 +4,7 @@ export interface EmailMessage {
   to: string;
   subject: string;
   text: string;
+  html: string;
 }
 
 const DEFAULT_FROM = "Mechanē <noreply@localhost>";
@@ -36,6 +37,7 @@ async function sendWithSmtp(message: EmailMessage, smtpUrl: string): Promise<voi
     to: message.to,
     subject: message.subject,
     text: message.text,
+    html: message.html,
   });
 }
 
@@ -51,9 +53,9 @@ async function sendWithResend(message: EmailMessage, apiKey: string): Promise<vo
       to: [message.to],
       subject: message.subject,
       text: message.text,
+      html: message.html,
     }),
   });
-
   if (response.ok) return;
 
   const details = await response.text();
@@ -61,7 +63,15 @@ async function sendWithResend(message: EmailMessage, apiKey: string): Promise<vo
 }
 
 export async function sendEmail(message: EmailMessage): Promise<void> {
-  const smtpUrl = process.env.SMTP_URL;
+  const isTest = process.env.NODE_ENV === "test";
+  if (isTest) {
+    console.info(
+      `[email] to=${message.to} subject=${JSON.stringify(message.subject)}\n${message.text}`,
+    );
+    return;
+  }
+
+  const smtpUrl = process.env.SMTP_URL || "smtp://localhost:1025";
   const resendApiKey = process.env.RESEND_API_KEY;
 
   if (process.env.NODE_ENV !== "production" && smtpUrl) {
