@@ -242,6 +242,7 @@ export const userSettings = pgTable("user_settings", {
 // address (see graphql/waitlist.ts) so repeat sign-ups collapse to one row.
 export const waitlistEntries = pgTable("waitlist_entries", {
   email: text("email").primaryKey(),
+  name: text("name").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

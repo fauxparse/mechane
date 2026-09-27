@@ -1,5 +1,5 @@
 // The waitlist sign-up for prospective users. Presentational: the caller
-// sends the address and reports back through `status`.
+// sends the name and address and reports back through `status`.
 import {
   Button,
   Card,
@@ -11,28 +11,36 @@ import {
   InputGroupAddon,
   InputGroupInput,
   MailIcon,
+  UserIcon,
 } from "@mechane/design-system";
 import type { SubmitEvent } from "react";
 import { useState } from "react";
 
+export interface WaitlistEntry {
+  name: string;
+  email: string;
+}
+
 export type WaitlistStatus =
   | { kind: "idle" }
   | { kind: "submitting" }
-  | { kind: "joined"; email: string }
+  | ({ kind: "joined" } & WaitlistEntry)
   | { kind: "failed"; message: string };
 
 export interface WaitlistFormProps {
   status: WaitlistStatus;
-  onJoin: (email: string) => void;
+  onJoin: (entry: WaitlistEntry) => void;
 }
 
 export function WaitlistForm({ status, onJoin }: WaitlistFormProps) {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const submitting = status.kind === "submitting";
+  const invalid = status.kind === "failed" || undefined;
 
   const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
-    onJoin(email);
+    onJoin({ name, email });
   };
 
   return (
@@ -47,29 +55,46 @@ export function WaitlistForm({ status, onJoin }: WaitlistFormProps) {
       <CardContent>
         {status.kind === "joined" ? (
           <p role="status" className="text-base">
-            You're on the list. We'll write to <strong>{status.email}</strong>.
+            You're on the list, {status.name}. We'll write to <strong>{status.email}</strong>.
           </p>
         ) : (
-          <form className="flex flex-col gap-3 sm:flex-row" onSubmit={handleSubmit}>
-            <InputGroup size="lg" className="flex-1">
+          <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
+            <InputGroup size="lg">
               <InputGroupAddon className="w-8">
-                <MailIcon className="size-5 text-muted-foreground" />
+                <UserIcon className="size-5 text-muted-foreground" />
               </InputGroupAddon>
               <InputGroupInput
-                type="email"
-                aria-label="Email address"
-                placeholder="Email address"
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                aria-label="Name"
+                placeholder="Name"
+                autoComplete="name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
                 disabled={submitting}
-                aria-invalid={status.kind === "failed" || undefined}
+                aria-invalid={invalid}
                 required
               />
             </InputGroup>
-            <Button type="submit" size="lg" className="h-10 px-4 text-base" disabled={submitting}>
-              {submitting ? "Joining…" : "Join"}
-            </Button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <InputGroup size="lg" className="flex-1">
+                <InputGroupAddon className="w-8">
+                  <MailIcon className="size-5 text-muted-foreground" />
+                </InputGroupAddon>
+                <InputGroupInput
+                  type="email"
+                  aria-label="Email address"
+                  placeholder="Email address"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  disabled={submitting}
+                  aria-invalid={invalid}
+                  required
+                />
+              </InputGroup>
+              <Button type="submit" size="lg" className="h-10 px-4 text-base" disabled={submitting}>
+                {submitting ? "Joining…" : "Join"}
+              </Button>
+            </div>
           </form>
         )}
         {status.kind === "failed" ? (

@@ -38,6 +38,19 @@ function normalizedEmail(value: string): string {
   return email;
 }
 
+// Generous for any real name; only bounds what one request can store.
+const MAX_NAME_LENGTH = 200;
+
+function trimmedName(value: string): string {
+  const name = value.trim();
+  if (name.length === 0 || name.length > MAX_NAME_LENGTH) {
+    throw new GraphQLError("Enter your name.", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+  return name;
+}
+
 /**
  * Counts one attempt against `client`'s window, refusing it past the limit.
  * Deleting lapsed windows first is also what resets a returning client: its
@@ -65,21 +78,23 @@ async function assertWithinRateLimit(client: string): Promise<void> {
 export const typeDefs = /* GraphQL */ `
   type Mutation {
     """
-    Adds an email address to the waitlist. Always true on success, including
-    when the address is already listed, so the response does not reveal who
-    else has signed up. Refused with the RATE_LIMITED error code once one
-    client network has made too many attempts within the hour.
+    Adds a person to the waitlist. Always true on success, including when the
+    address is already listed, so the response does not reveal who else has
+    signed up; a repeat sign-up keeps the name given first, so knowing an
+    address is not enough to rename its entry. Refused with the RATE_LIMITED
+    error code once one client network has made too many attempts within the
+    hour.
     """
-    joinWaitlist(email: String!): Boolean!
+    joinWaitlist(name: String!, email: String!): Boolean!
   }
 `;
 
 export const resolvers: Resolvers = {
   Mutation: {
-    joinWaitlist: async (_parent, { email }: { email: string }, context) => {
-      const address = normalizedEmail(email);
+    joinWaitlist: async (_parent, { name, email }: { name: string; email: string }, context) => {
+      const entry = { name: trimmedName(name), email: normalizedEmail(email) };
       await assertWithinRateLimit(context.clientAddress ?? UNKNOWN_CLIENT);
-      await db.insert(waitlistEntries).values({ email: address }).onConflictDoNothing();
+      await db.insert(waitlistEntries).values(entry).onConflictDoNothing();
       return true;
     },
   },
