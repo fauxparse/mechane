@@ -8,6 +8,11 @@
     "apps/studio/src/routeTree.gen.ts",
     "apps/player/src/routeTree.gen.ts",
     "packages/graphql-schema/src/graphql-env.d.ts",
-    "packages/graphql-schema/schema.graphql"
+    "packages/graphql-schema/schema.graphql",
+    "packages/design-system/src/styles/generated-theme.css",
+    "packages/design-system/src/styles/contrast-report.json",
+    "packages/design-system/src/styles/contrast-acknowledgements.json",
+    "packages/design-system/src/themes/generated.ts",
+    "packages/domain/src/theme-catalog.generated.ts"
   ]
 }
