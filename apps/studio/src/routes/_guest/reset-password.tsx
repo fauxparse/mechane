@@ -27,10 +27,7 @@ function ResetPasswordRoute() {
       pending={resetPassword.isPending}
       error={resetPassword.isError ? resetPassword.error.message : null}
       onSubmit={(newPassword) => {
-        resetPassword.mutate(
-          { newPassword, token },
-          { onSuccess: () => setCompleted(true) },
-        );
+        resetPassword.mutate({ newPassword, token }, { onSuccess: () => setCompleted(true) });
       }}
     />
   );

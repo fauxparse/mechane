@@ -22,7 +22,13 @@ type PasswordResetPageProps = {
   children?: ReactNode;
 };
 
-function PasswordResetPage({ title, description, footerLabel, footerTo, children }: PasswordResetPageProps) {
+function PasswordResetPage({
+  title,
+  description,
+  footerLabel,
+  footerTo,
+  children,
+}: PasswordResetPageProps) {
   return (
     <GuestAuthLayout>
       <div className="flex w-full max-w-sm flex-col items-center gap-3">
