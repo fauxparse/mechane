@@ -12,11 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as GuestRouteRouteImport } from './routes/_guest/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as GuestForgotPasswordRouteImport } from './routes/_guest/forgot-password'
 import { Route as GuestResetPasswordRouteImport } from './routes/_guest/reset-password'
 import { Route as GuestSignInRouteImport } from './routes/_guest/sign-in'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedShowsShowIdRouteImport } from './routes/_authenticated/shows/$showId'
+import { Route as AuthenticatedAdminUsersUserIdRouteImport } from './routes/_authenticated/admin/users/$userId'
 import { Route as AuthenticatedShowsShowIdIndexRouteImport } from './routes/_authenticated/shows/$showId/index'
 import { Route as AuthenticatedShowsShowIdArtRouteImport } from './routes/_authenticated/shows/$showId/art'
 import { Route as AuthenticatedShowsShowIdShapesRouteImport } from './routes/_authenticated/shows/$showId/shapes'
@@ -35,6 +38,11 @@ const GuestRouteRoute = GuestRouteRouteImport.update({
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
@@ -57,11 +65,22 @@ const GuestSignInRoute = GuestSignInRouteImport.update({
   path: '/sign-in',
   getParentRoute: () => GuestRouteRoute,
 } as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRouteRoute,
+} as any)
 const AuthenticatedShowsShowIdRoute =
   AuthenticatedShowsShowIdRouteImport.update({
     id: '/shows/$showId',
     path: '/shows/$showId',
     getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminUsersUserIdRoute =
+  AuthenticatedAdminUsersUserIdRouteImport.update({
+    id: '/users/$userId',
+    path: '/users/$userId',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
 const AuthenticatedShowsShowIdIndexRoute =
   AuthenticatedShowsShowIdIndexRouteImport.update({
@@ -102,11 +121,14 @@ const AuthenticatedShowsShowIdSourceSourceIdFieldIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
+  '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/forgot-password': typeof GuestForgotPasswordRoute
   '/reset-password': typeof GuestResetPasswordRoute
   '/sign-in': typeof GuestSignInRoute
   '/shows/$showId': typeof AuthenticatedShowsShowIdRouteWithChildren
+  '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/shows/$showId/art': typeof AuthenticatedShowsShowIdArtRouteWithChildren
   '/shows/$showId/shapes': typeof AuthenticatedShowsShowIdShapesRouteWithChildren
   '/shows/$showId/': typeof AuthenticatedShowsShowIdIndexRoute
@@ -120,6 +142,8 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof GuestForgotPasswordRoute
   '/reset-password': typeof GuestResetPasswordRoute
   '/sign-in': typeof GuestSignInRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
+  '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/shows/$showId/art': typeof AuthenticatedShowsShowIdArtRouteWithChildren
   '/shows/$showId/shapes': typeof AuthenticatedShowsShowIdShapesRouteWithChildren
   '/shows/$showId': typeof AuthenticatedShowsShowIdIndexRoute
@@ -131,12 +155,15 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/_guest': typeof GuestRouteRouteWithChildren
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_guest/forgot-password': typeof GuestForgotPasswordRoute
   '/_guest/reset-password': typeof GuestResetPasswordRoute
   '/_guest/sign-in': typeof GuestSignInRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/shows/$showId': typeof AuthenticatedShowsShowIdRouteWithChildren
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/_authenticated/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/_authenticated/shows/$showId/art': typeof AuthenticatedShowsShowIdArtRouteWithChildren
   '/_authenticated/shows/$showId/shapes': typeof AuthenticatedShowsShowIdShapesRouteWithChildren
   '/_authenticated/shows/$showId/': typeof AuthenticatedShowsShowIdIndexRoute
@@ -148,11 +175,14 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/settings'
     | '/forgot-password'
     | '/reset-password'
     | '/sign-in'
     | '/shows/$showId'
+    | '/admin/'
+    | '/admin/users/$userId'
     | '/shows/$showId/art'
     | '/shows/$showId/shapes'
     | '/shows/$showId/'
@@ -166,6 +196,8 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/reset-password'
     | '/sign-in'
+    | '/admin'
+    | '/admin/users/$userId'
     | '/shows/$showId/art'
     | '/shows/$showId/shapes'
     | '/shows/$showId'
@@ -176,12 +208,15 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/_guest'
+    | '/_authenticated/admin'
     | '/_authenticated/settings'
     | '/_guest/forgot-password'
     | '/_guest/reset-password'
     | '/_guest/sign-in'
     | '/_authenticated/'
     | '/_authenticated/shows/$showId'
+    | '/_authenticated/admin/'
+    | '/_authenticated/admin/users/$userId'
     | '/_authenticated/shows/$showId/art'
     | '/_authenticated/shows/$showId/shapes'
     | '/_authenticated/shows/$showId/'
@@ -218,6 +253,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings': {
       id: '/_authenticated/settings'
       path: '/settings'
@@ -246,12 +288,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GuestSignInRouteImport
       parentRoute: typeof GuestRouteRoute
     }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
     '/_authenticated/shows/$showId': {
       id: '/_authenticated/shows/$showId'
       path: '/shows/$showId'
       fullPath: '/shows/$showId'
       preLoaderRoute: typeof AuthenticatedShowsShowIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/users/$userId': {
+      id: '/_authenticated/admin/users/$userId'
+      path: '/users/$userId'
+      fullPath: '/admin/users/$userId'
+      preLoaderRoute: typeof AuthenticatedAdminUsersUserIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
     }
     '/_authenticated/shows/$showId/': {
       id: '/_authenticated/shows/$showId/'
@@ -297,6 +353,22 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AuthenticatedAdminRouteRouteChildren {
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+  AuthenticatedAdminUsersUserIdRoute: typeof AuthenticatedAdminUsersUserIdRoute
+}
+
+const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
+  {
+    AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+    AuthenticatedAdminUsersUserIdRoute: AuthenticatedAdminUsersUserIdRoute,
+  }
+
+const AuthenticatedAdminRouteRouteWithChildren =
+  AuthenticatedAdminRouteRoute._addFileChildren(
+    AuthenticatedAdminRouteRouteChildren,
+  )
 
 interface AuthenticatedShowsShowIdArtRouteChildren {
   AuthenticatedShowsShowIdArtArtIdRoute: typeof AuthenticatedShowsShowIdArtArtIdRoute
@@ -352,12 +424,14 @@ const AuthenticatedShowsShowIdRouteWithChildren =
   )
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRouteRoute: typeof AuthenticatedAdminRouteRouteWithChildren
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedShowsShowIdRoute: typeof AuthenticatedShowsShowIdRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRouteRoute: AuthenticatedAdminRouteRouteWithChildren,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedShowsShowIdRoute: AuthenticatedShowsShowIdRouteWithChildren,

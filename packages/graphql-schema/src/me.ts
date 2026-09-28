@@ -11,6 +11,7 @@ export const MeQuery = graphql(`
       id
       name
       email
+      role
     }
   }
 `);

@@ -36,12 +36,12 @@ describe("GraphQL HTTP authentication", () => {
     const response = await yoga.fetch("http://localhost/api/graphql", {
       method: "POST",
       headers: { "Content-Type": "application/json", Cookie: cookie },
-      body: JSON.stringify({ query: "{ me { email } }" }),
+      body: JSON.stringify({ query: "{ me { email role } }" }),
     });
     const body = (await response.json()) as {
-      data?: { me?: { email: string } | null };
+      data?: { me?: { email: string; role: string } | null };
     };
     expect(response.ok).toBe(true);
-    expect(body.data?.me).toEqual({ email });
+    expect(body.data?.me).toEqual({ email, role: "user" });
   });
 });

@@ -14,7 +14,7 @@ export class AuthRequestError extends Error {
   }
 }
 
-function toAuthRequestError(error: unknown, fallback: string): AuthRequestError {
+export function toAuthRequestError(error: unknown, fallback: string): AuthRequestError {
   if (error !== null && typeof error === "object") {
     const message =
       "message" in error && typeof error.message === "string" ? error.message : fallback;

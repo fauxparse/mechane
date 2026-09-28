@@ -8,14 +8,15 @@ import { type GraphQLContext, requirePermission } from "./context";
 
 const createdUserIds: string[] = [];
 
-async function createUser(role?: string): Promise<{ id: string; context: GraphQLContext }> {
+async function createUser(role = "user"): Promise<{ id: string; context: GraphQLContext }> {
   const id = `permissions-test-${crypto.randomUUID()}`;
   const email = `${id}@example.test`;
-  await db.insert(user).values({ id, name: "Permissions Test", email, emailVerified: true, role });
+  const name = "Permissions Test";
+  await db.insert(user).values({ id, name, email, emailVerified: true, role });
   createdUserIds.push(id);
   return {
     id,
-    context: { userId: id, user: { id, name: "Permissions Test", email, emailVerified: true } },
+    context: { userId: id, user: { id, name, email, emailVerified: true, role } },
   };
 }
 

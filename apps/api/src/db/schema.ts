@@ -37,7 +37,7 @@ export const user = pgTable("user", {
   image: text("image"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-  // Admin plugin fields (issue #810); valid roles live in ../access-control.ts.
+  // Admin plugin fields (issue #810); valid roles live in @mechane/domain/access-control.
   role: text("role").notNull().default("user"),
   banned: boolean("banned").notNull().default(false),
   banReason: text("ban_reason"),

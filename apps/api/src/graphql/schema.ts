@@ -7,6 +7,7 @@ import { GraphQLScalarType, Kind } from "graphql";
 import { createSchema } from "graphql-yoga";
 
 import type { GraphQLContext } from "./context";
+import * as admin from "./admin";
 import * as canvas from "./canvas";
 import * as images from "./images";
 import * as playerSession from "./player-session";
@@ -46,6 +47,7 @@ export const schema = createSchema<GraphQLContext>({
     canvas.typeDefs,
     images.typeDefs,
     waitlist.typeDefs,
+    admin.typeDefs,
   ],
   resolvers: [
     { JSON: jsonScalar },
@@ -57,5 +59,6 @@ export const schema = createSchema<GraphQLContext>({
     canvas.resolvers,
     images.resolvers,
     waitlist.resolvers,
+    admin.resolvers,
   ],
 });
