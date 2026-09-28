@@ -32,6 +32,8 @@ export interface CanvasPresentationInput {
   readonly imageAssets: readonly (ResolvedImageValue & Pick<ImageAssetReference, "revision">)[];
   readonly owner: CanvasPresentationOwner;
   readonly mode: CanvasPresentationMode;
+  /** Where the Player is served from; a Device QR image encodes a URL on it. */
+  readonly playerOrigin: string;
 }
 export interface PreparedSlotInstance {
   readonly id?: StructuredValueId;
@@ -165,6 +167,7 @@ export function prepareCanvasPresentation(input: CanvasPresentationInput): Canva
   let structuredValues: StructuredValues = {};
   if (owner.kind === "scene") {
     const resolution = sceneVariableResolution(input.graph, owner.scene.id, owner.sourceValues, {
+      playerOrigin: input.playerOrigin,
       structuredValues: owner.structuredValues,
       shuffleSeeds:
         owner.shuffleSeeds ??
@@ -210,6 +213,7 @@ export function prepareCanvasPresentation(input: CanvasPresentationInput): Canva
         }));
   const canvas = resolveCanvasProperties(input.canvas, {
     graph: input.graph,
+    playerOrigin: input.playerOrigin,
     variables: sceneVariables,
     values,
     structuredValues,

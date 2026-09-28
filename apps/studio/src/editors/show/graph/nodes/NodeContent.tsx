@@ -6,10 +6,11 @@ import {
   QrCode,
   variableTypeIcon,
 } from "@mechane/design-system";
+import { devicePlayerUrl } from "@mechane/domain/device-qr";
 import { DEVICE_SOURCE_HANDLES } from "@mechane/domain/graph";
 import { Position, type HandleProps } from "@xyflow/react";
 import type { ComponentType } from "react";
-import { playerSessionUrl } from "../../../../api/client";
+import { PLAYER_BASE_URL } from "../../../../api/client";
 import type { ShowFlowNode } from "../graph-to-flow";
 import { handleFor } from "../handle-ids";
 import { HANDLE_CLASS } from "../handle-styles";
@@ -174,6 +175,7 @@ export function DevicePairing({
   handle: HandleComponent = DummyHandle,
 }: DevicePairingProps) {
   if (!pairingCode) return null;
+  const playerUrl = devicePlayerUrl(PLAYER_BASE_URL, pairingCode);
 
   const qrCodeHandleId = handleFor({ kind: "deviceSource", name: DEVICE_SOURCE_HANDLES.qrCode });
   const pairingCodeHandleId = handleFor({
@@ -185,7 +187,7 @@ export function DevicePairing({
     <div className="pt-2 pb-4">
       <div className="flex items-center justify-center relative">
         <QrCode
-          value={pairingCode}
+          value={playerUrl}
           className="size-24"
           label={`QR code for pairing code ${pairingCode}`}
         />
@@ -194,7 +196,7 @@ export function DevicePairing({
             buttonVariants({ variant: "ghost", size: "icon-sm" }),
             "absolute right-4 top-1/2 -translate-y-1/2",
           )}
-          href={playerSessionUrl(pairingCode)}
+          href={playerUrl}
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Open player session"

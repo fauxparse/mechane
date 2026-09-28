@@ -274,11 +274,16 @@ describe("sceneVariableValues", () => {
   });
 
   it("resolves Device pairing and QR virtual values", () => {
-    const values = sceneVariableValues(deviceGraph, "scene_device", {});
+    const values = sceneVariableValues(
+      deviceGraph,
+      "scene_device",
+      {},
+      { playerOrigin: "https://show.mechane.dev" },
+    );
     expect(values.variable_pairing).toBe("PAIR5");
     expect(values.variable_qr).toMatchObject({
       assetId: "device-qr:device_audience",
-      revision: "PAIR5",
+      revision: "https://show.mechane.dev/s/PAIR5",
     });
   });
 });

@@ -92,6 +92,7 @@ describe("Canvas presentation", () => {
         sourceValues: { source: "Prepared" },
       },
       mode: "player",
+      playerOrigin: "https://show.mechane.dev",
     });
     const html = renderToStaticMarkup(createElement(CanvasRenderer, { presentation }));
 
@@ -241,6 +242,7 @@ describe("Element Formulas inside a repeated Slot", () => {
         structuredValues,
       },
       mode: "player",
+      playerOrigin: "https://show.mechane.dev",
     });
     const widths = presentation.root.children[0]?.slot?.instances.map(
       (instance) => instance.element?.children[0]?.element.sizing?.width?.value,

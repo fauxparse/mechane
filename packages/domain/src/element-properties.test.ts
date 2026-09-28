@@ -186,12 +186,13 @@ describe("resolveCanvasProperties", () => {
     };
     const first = resolveCanvasProperties(imageCanvas, {
       graph,
+      playerOrigin: "https://show.mechane.dev",
       variables: graph.nodes[1]?.kind === "scene" ? graph.nodes[1].variables : [],
     });
     const firstImage = first.root.children?.[0];
     expect(firstImage && "image" in firstImage ? firstImage.image : undefined).toMatchObject({
       assetId: "device-qr:device_qr",
-      revision: "AB23C",
+      revision: "https://show.mechane.dev/s/AB23C",
       mimeType: "image/svg+xml",
     });
     const firstUrl =
@@ -211,6 +212,7 @@ describe("resolveCanvasProperties", () => {
     };
     const changed = resolveCanvasProperties(imageCanvas, {
       graph: changedGraph,
+      playerOrigin: "https://show.mechane.dev",
       variables: graph.nodes[1]?.kind === "scene" ? graph.nodes[1].variables : [],
     });
     const changedImage = changed.root.children?.[0];

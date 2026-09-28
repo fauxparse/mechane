@@ -36,7 +36,7 @@ import { defaultValueForType } from "@mechane/domain/source-defaults";
 import type { ImageAsset } from "@mechane/graphql-schema";
 import { useCallback, useMemo, useRef } from "react";
 
-import { resolveApiUrl } from "../../../api/client";
+import { PLAYER_BASE_URL, resolveApiUrl } from "../../../api/client";
 import type { CanvasArtboardDocument } from "../../../api/canvas";
 import { useCanvasWorkspace } from "../../../api/canvas";
 import { useImageAssets, useImageUpload } from "../../../api/images";
@@ -377,7 +377,7 @@ export function useCanvasWorkspaceSession({
       const variableId = edge.targetPath[0];
       const device = nodesById.get(edge.sourceId);
       if (!variableId || device?.kind !== "device" || !device.pairingCode) continue;
-      images[variableId] = deviceQrImageValue(device.id, device.pairingCode);
+      images[variableId] = deviceQrImageValue(device.id, device.pairingCode, PLAYER_BASE_URL);
     }
     return images;
   }, [graphEditing.command.graph]);

@@ -3,7 +3,7 @@ import { expect, it } from "vitest";
 
 import { deviceQrImageValue } from "./device-qr";
 
-it("draws QR matrix rows as SVG rows", () => {
+it("encodes the Device's Player URL as SVG rows", () => {
   const value = "https://show.mechane.dev/s/RTS8F";
   const margin = 4;
   const { modules } = createQrCode(value, { errorCorrectionLevel: "M" });
@@ -15,8 +15,16 @@ it("draws QR matrix rows as SVG rows", () => {
     }
   }
 
-  const image = deviceQrImageValue("device-1", value);
+  const image = deviceQrImageValue("device-1", "RTS8F", "https://show.mechane.dev");
   const svg = decodeURIComponent(image.url);
 
   expect(svg).toContain(`<path d="${expectedSquares.join("")}"`);
+});
+
+it("revises the image when the Player origin changes, not only the pairing code", () => {
+  const canonical = deviceQrImageValue("device-1", "RTS8F", "https://show.mechane.dev");
+  const local = deviceQrImageValue("device-1", "RTS8F", "http://localhost:5174");
+
+  expect(local.revision).not.toBe(canonical.revision);
+  expect(local.url).not.toBe(canonical.url);
 });

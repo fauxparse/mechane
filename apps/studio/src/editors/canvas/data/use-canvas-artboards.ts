@@ -15,6 +15,7 @@ import { useMemo } from "react";
 
 import type { ImageAsset } from "@mechane/graphql-schema";
 import type { CanvasArtboardDocument } from "../../../api/canvas";
+import { PLAYER_BASE_URL } from "../../../api/client";
 
 export interface CanvasArtboardsInput {
   /** The persisted Artboards, as last read from the server. */
@@ -110,6 +111,7 @@ export function useCanvasArtboards({
               imageAssets: assets,
               owner: { kind: "scene", scene: owner, sourceValues },
               mode: "studio",
+              playerOrigin: PLAYER_BASE_URL,
             })
           : block
             ? prepareCanvasPresentation({
@@ -119,6 +121,7 @@ export function useCanvasArtboards({
                 imageAssets: assets,
                 owner: { kind: "block", block },
                 mode: "studio",
+                playerOrigin: PLAYER_BASE_URL,
               })
             : undefined;
       return {
