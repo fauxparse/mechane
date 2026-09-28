@@ -6,7 +6,7 @@ import {
   QrCode,
   variableTypeIcon,
 } from "@mechane/design-system";
-import { devicePlayerUrl } from "@mechane/domain/device-qr";
+import { deviceAddress } from "@mechane/domain/device-address";
 import { DEVICE_SOURCE_HANDLES } from "@mechane/domain/graph";
 import { Position, type HandleProps } from "@xyflow/react";
 import type { ComponentType } from "react";
@@ -165,32 +165,33 @@ export function NodeCueList({
 
 export interface DevicePairingProps {
   pairingCode: string | null;
+  /** The hostname of the Device's live Custom Domain, which its QR code and Address use. */
+  liveDomain?: string | null;
   connectedHandleIds?: ReadonlySet<string>;
   handle?: ComponentType<HandleProps>;
 }
 
 export function DevicePairing({
   pairingCode,
+  liveDomain = null,
   connectedHandleIds,
   handle: HandleComponent = DummyHandle,
 }: DevicePairingProps) {
   if (!pairingCode) return null;
-  const playerUrl = devicePlayerUrl(PLAYER_BASE_URL, pairingCode);
+  const address = deviceAddress({ pairingCode, liveDomain }, PLAYER_BASE_URL);
+  const playerUrl = address.url;
 
   const qrCodeHandleId = handleFor({ kind: "deviceSource", name: DEVICE_SOURCE_HANDLES.qrCode });
   const pairingCodeHandleId = handleFor({
     kind: "deviceSource",
     name: DEVICE_SOURCE_HANDLES.pairingCode,
   });
+  const addressHandleId = handleFor({ kind: "deviceSource", name: DEVICE_SOURCE_HANDLES.address });
 
   return (
     <div className="pt-2 pb-4">
       <div className="flex items-center justify-center relative">
-        <QrCode
-          value={playerUrl}
-          className="size-24"
-          label={`QR code for pairing code ${pairingCode}`}
-        />
+        <QrCode value={playerUrl} className="size-24" label={`QR code for ${address.text}`} />
         <a
           className={cn(
             buttonVariants({ variant: "ghost", size: "icon-sm" }),
@@ -222,6 +223,20 @@ export function DevicePairing({
           className={HANDLE_CLASS}
           style={{ zIndex: 10 }}
           data-connected={connectedHandleIds?.has(pairingCodeHandleId) ?? false}
+          isConnectableEnd={false}
+        />
+      </div>
+      <div className="relative flex items-center justify-center px-10">
+        <span className="truncate font-mono text-xs text-muted-foreground" title={address.url}>
+          {address.text}
+        </span>
+        <HandleComponent
+          id={addressHandleId}
+          type="source"
+          position={Position.Right}
+          className={HANDLE_CLASS}
+          style={{ zIndex: 10 }}
+          data-connected={connectedHandleIds?.has(addressHandleId) ?? false}
           isConnectableEnd={false}
         />
       </div>

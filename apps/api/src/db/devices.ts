@@ -24,6 +24,8 @@ type Tx = Parameters<Parameters<typeof import("./client").db.transaction>[0]>[0]
 export interface StoredDevice {
   pairingCode: string;
   perConnection: boolean;
+  /** The hostname of the Device's live Custom Domain, when the reader looked it up. */
+  liveDomain?: string | null;
 }
 
 const CODE_LENGTH = 5;

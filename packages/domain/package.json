@@ -10,6 +10,7 @@
     "./canvas": "./src/canvas.ts",
     "./connect": "./src/connect.ts",
     "./cue-parameters": "./src/cue-parameters.ts",
+    "./device-address": "./src/device-address.ts",
     "./device-qr": "./src/device-qr.ts",
     "./edge-layout": "./src/edge-layout.ts",
     "./element-properties": "./src/element-properties.ts",

@@ -129,3 +129,62 @@ describe("Player session runtime Scene", () => {
     ]);
   });
 });
+
+describe("Player session graph", () => {
+  it("carries a Device another Device's Scene reads from, with its live address", async () => {
+    await createShow();
+    const wiredGraph: ShowGraph = {
+      nodes: [
+        ...graph.nodes.map((node) =>
+          node.id === "scene_red"
+            ? {
+                ...node,
+                variables: [{ id: "variable_address", name: "Address", type: "text" as const }],
+              }
+            : node,
+        ),
+        {
+          id: "device_audience",
+          kind: "device",
+          name: "Audience",
+          position: { x: 0, y: 0 },
+          parentId: null,
+          perConnection: true,
+          pairingCode: null,
+        },
+        {
+          id: "device_unwired",
+          kind: "device",
+          name: "Unwired",
+          position: { x: 0, y: 0 },
+          parentId: null,
+          perConnection: false,
+          pairingCode: null,
+        },
+      ],
+      edges: [
+        ...graph.edges,
+        {
+          id: "edge_audience_address",
+          kind: "wiring",
+          sourceId: "device_audience",
+          targetId: "scene_red",
+          sourcePath: ["address"],
+          targetPath: ["variable_address"],
+        },
+      ],
+    };
+    await writeShowGraph(showId, "draft", wiredGraph);
+    await publishShowGraph(showId);
+    const published = await readShowGraph(showId, "published");
+    const projector = published.nodes.find((node) => node.id === "device_navigation");
+    if (projector?.kind !== "device" || !projector.pairingCode) throw new Error("No code.");
+
+    const session = await readPlayerSession(projector.pairingCode);
+    const devices = session?.graph.nodes.filter((node) => node.kind === "device") ?? [];
+
+    expect(devices.map((node) => node.id)).toEqual(["device_audience"]);
+    expect(devices[0]).toMatchObject({ pairingCode: expect.any(String), liveDomain: null });
+    expect(session?.graph.edges.some((edge) => edge.kind === "device")).toBe(false);
+  });
+});

@@ -43,6 +43,8 @@ export interface DevicePreview {
   readonly id: string;
   readonly name: string;
   readonly pairingCode: string | null;
+  /** The hostname of the Device's live Custom Domain, which its link uses. */
+  readonly liveDomain: string | null;
   /** True for an Audience Device: one instance per connection. */
   readonly perConnection: boolean;
 }
@@ -119,6 +121,7 @@ export function useShowDossier(showId: ShowId): ShowDossier {
               id: node.id,
               name: node.name.trim() || "Untitled Device",
               pairingCode: node.pairingCode,
+              liveDomain: node.liveDomain ?? null,
               perConnection: node.perConnection,
             },
           ]

@@ -627,6 +627,7 @@ describe("structural queries", () => {
   it("types Device virtual outputs as image and text values", () => {
     expect(deviceSourceType(DEVICE_SOURCE_HANDLES.qrCode)).toBe("image");
     expect(deviceSourceType(DEVICE_SOURCE_HANDLES.pairingCode)).toBe("text");
+    expect(deviceSourceType(DEVICE_SOURCE_HANDLES.address)).toBe("text");
   });
 
   it("reads a Device's instance cardinality from perConnection", () => {

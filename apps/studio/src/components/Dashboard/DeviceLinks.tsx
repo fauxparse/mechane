@@ -2,11 +2,11 @@
 //
 // The Player is a different destination from the editor — it is what an
 // audience or a projector sees — so it gets one secondary link per Device
-// rather than being folded into an ambiguous "open". A Device's pairing code
-// resolves to a Player session at `/s/<code>`.
+// rather than being folded into an ambiguous "open". A Device opens at its
+// live Custom Domain, or at `/s/<code>` on the Player (deviceAddress).
 import { buttonVariants } from "@mechane/design-system";
 
-import { devicePlayerUrl } from "@mechane/domain/device-qr";
+import { deviceAddress } from "@mechane/domain/device-address";
 import { PLAYER_BASE_URL } from "../../api/client";
 // The Show graph's own icon table, so a Device's link wears the same icon as
 // the Device node does in the editor: Smartphone for an Audience Device,
@@ -36,7 +36,12 @@ export function DeviceLinks({ devices }: DeviceLinksProps) {
               <a
                 // New tab because the Player is where the performance is: you
                 // are putting it on another screen, not leaving the Studio.
-                href={devicePlayerUrl(PLAYER_BASE_URL, device.pairingCode)}
+                href={
+                  deviceAddress(
+                    { pairingCode: device.pairingCode, liveDomain: device.liveDomain },
+                    PLAYER_BASE_URL,
+                  ).url
+                }
                 target="_blank"
                 rel="noreferrer noopener"
                 className={buttonVariants({ variant: "secondary", size: "sm" })}

@@ -82,6 +82,24 @@ async function flowBundleForDevice(
   };
 }
 /** Returns the authoritative snapshot a paired Player needs to render. */
+/**
+ * The graph a Player session carries. Scene assignment edges and the
+ * Devices nothing reads from stay on the server, so a phone doesn't learn
+ * every other Device's pairing code. A Device whose outputs are wired into
+ * the graph (its QR Code, Join code or Address, #836) stays: its address is
+ * on show by design, and a projector draws it for that Device.
+ */
+export function playerSessionGraph<T extends ShowGraph>(graph: T): T {
+  const wiredDevices = new Set(
+    graph.edges.flatMap((edge) => (edge.kind === "wiring" ? [edge.sourceId] : [])),
+  );
+  return {
+    ...graph,
+    nodes: graph.nodes.filter((node) => node.kind !== "device" || wiredDevices.has(node.id)),
+    edges: graph.edges.filter((edge) => edge.kind !== "device"),
+  };
+}
+
 export async function readPlayerSession(pairingCode: string) {
   const normalizedCode = pairingCode.trim().toUpperCase();
   if (!PAIRING_CODE_PATTERN.test(normalizedCode)) return null;
@@ -145,11 +163,7 @@ export async function readPlayerSession(pairingCode: string) {
       ),
     );
   }
-  const playerGraph = {
-    ...graph,
-    nodes: graph.nodes.filter((node) => node.kind !== "device"),
-    edges: graph.edges.filter((edge) => edge.kind !== "device"),
-  };
+  const playerGraph = playerSessionGraph(graph);
   const grant = issueRealtimeGrant(device.id);
   return {
     device: {

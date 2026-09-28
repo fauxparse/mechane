@@ -29,6 +29,7 @@ export function DeviceNode({ id, data, selected }: NodeProps<ShowFlowNode>) {
     >
       <DevicePairing
         pairingCode={data.pairingCode}
+        liveDomain={data.liveDomain ?? null}
         connectedHandleIds={node.connectedHandleIds}
         handle={node.handle}
       />

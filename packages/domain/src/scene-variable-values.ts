@@ -7,6 +7,7 @@ import {
 } from "./graph";
 import { typeAtPath } from "./property-values";
 import { defaultSourceValues } from "./source-defaults";
+import { deviceAddress } from "./device-address";
 import { deviceQrImageValue } from "./device-qr";
 import { resolveShapeFieldMapping } from "./shapes";
 import { applyWiringConversion, convertedSourceType } from "./wiring-conversion";
@@ -201,7 +202,13 @@ function deviceValue(
     case DEVICE_SOURCE_HANDLES.pairingCode:
       return node.pairingCode;
     case DEVICE_SOURCE_HANDLES.qrCode:
-      return playerOrigin ? deviceQrImageValue(node.id, node.pairingCode, playerOrigin) : undefined;
+      return playerOrigin
+        ? deviceQrImageValue({ ...node, pairingCode: node.pairingCode }, playerOrigin)
+        : undefined;
+    case DEVICE_SOURCE_HANDLES.address:
+      return playerOrigin
+        ? deviceAddress({ ...node, pairingCode: node.pairingCode }, playerOrigin).text
+        : undefined;
     default:
       return undefined;
   }

@@ -11,6 +11,7 @@ export function sourceLabelFor(
   if (source.kind === "device") {
     if (sourceHandle === DEVICE_SOURCE_HANDLES.qrCode) return "QR Code";
     if (sourceHandle === DEVICE_SOURCE_HANDLES.pairingCode) return "Join code";
+    if (sourceHandle === DEVICE_SOURCE_HANDLES.address) return "Address";
   }
 
   if (source.kind === "scene") {

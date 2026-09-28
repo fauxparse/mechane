@@ -442,7 +442,7 @@ function deviceQrValueForVariable(
   if (!edge) return undefined;
   const device = graph.nodes.find((node) => node.id === edge.sourceId);
   if (device?.kind !== "device" || !device.pairingCode) return undefined;
-  return deviceQrImageValue(device.id, device.pairingCode, playerOrigin);
+  return deviceQrImageValue({ ...device, pairingCode: device.pairingCode }, playerOrigin);
 }
 
 function resolveImageAsset(

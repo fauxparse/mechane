@@ -578,6 +578,11 @@ type DeviceNode implements GraphNode {
 
   """The server-minted pairing code, absent before the first save."""
   pairingCode: String
+
+  """
+  The hostname of the Device's live Custom Domain, which its link, QR code and Address use.
+  """
+  liveDomain: String
 }
 
 """
