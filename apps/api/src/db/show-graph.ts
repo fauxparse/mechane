@@ -24,6 +24,10 @@ import { eq } from "drizzle-orm";
 import type { StoredCanvas } from "./canvas";
 import { persistCanvases, readCanvasById, readCanvasWorkspace } from "./canvas";
 import { db } from "./client";
+import { customDomainsProvider } from "../custom-domains/active-provider";
+import { unbindDomainsOfDevices } from "../custom-domains/bindings";
+import { evictResolvedHostnames } from "../custom-domains/live-address-effects";
+import type { CustomDomainsProvider } from "../custom-domains/provider";
 import { retireUnreferencedDevices, syncDevices } from "./devices";
 import {
   GraphVersionConflictError,
@@ -468,6 +472,7 @@ function amendments(intended: ShowGraph, written: StoredShowGraph): GraphEdit[] 
  */
 export async function publishShowGraph(
   showId: string,
+  options: { customDomainsProvider?: CustomDomainsProvider } = {},
 ): Promise<
   StoredShowGraph & { losses: Awaited<ReturnType<typeof reconcileActiveRunValues>>["losses"] }
 > {
@@ -505,11 +510,17 @@ export async function publishShowGraph(
     );
     await reconcileActiveRunDeviceStates(showId, published, published.version, tx);
     // Publish is the only moment a Device may be retired (#45). Keeping this
-    // in the same transaction preserves the all-or-nothing cutover.
-    await retireUnreferencedDevices(tx, showId);
+    // in the same transaction preserves the all-or-nothing cutover. A
+    // retired Device's Custom Domain is released with it.
+    const retired = await retireUnreferencedDevices(tx, showId);
+    const unboundLiveHostnames = await unbindDomainsOfDevices(tx, showId, retired);
     await enqueuePlayerInvalidations(tx, showId);
-    return { published, reconciled };
+    return { published, reconciled, unboundLiveHostnames };
   });
+  await evictResolvedHostnames(
+    options.customDomainsProvider ?? customDomainsProvider,
+    result.unboundLiveHostnames,
+  );
   try {
     await drainPlayerInvalidations({ showId });
   } catch {

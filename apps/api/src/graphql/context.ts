@@ -4,6 +4,7 @@ import { DEFAULT_ROLE, type Permissions } from "@mechane/domain/access-control";
 import { GraphQLError, type GraphQLFieldResolver } from "graphql";
 
 import { auth } from "../auth";
+import type { CustomDomainsProvider } from "../custom-domains/provider";
 import { clientAddress } from "../lib/client-address";
 
 export interface GraphQLContext {
@@ -25,6 +26,13 @@ export interface GraphQLContext {
   playerPairingCode?: string | null;
   /** Rate-limit key for the caller's network; see ../lib/client-address.ts. */
   clientAddress?: string | null;
+  /**
+   * The domains provider and global provider-budget key the Custom Domain
+   * operations use. Unset in production, where they are the process's
+   * provider (custom-domains/active-provider.ts) and the shared budget; tests
+   * inject the in-memory fake and their own budget.
+   */
+  customDomains?: { provider: CustomDomainsProvider; budgetKey?: string };
 }
 
 /**

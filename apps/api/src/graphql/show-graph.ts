@@ -1137,7 +1137,11 @@ export const resolvers: Resolvers = {
       const userId = requireUserId(context);
       await findOwnShowOrThrow(showId, userId);
       try {
-        return serializeShowGraph(await publishShowGraph(showId));
+        return serializeShowGraph(
+          await publishShowGraph(showId, {
+            customDomainsProvider: context.customDomains?.provider,
+          }),
+        );
       } catch (error) {
         if (error instanceof CanvasFormulaPublicationError) {
           throw new GraphQLError(error.message, {

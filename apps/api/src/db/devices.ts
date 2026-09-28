@@ -147,7 +147,7 @@ export async function syncDevices(
 
 /**
  * Retires every Device on the Show that no graph state names any more, and
- * un-retires any that a state names again.
+ * un-retires any that a state names again. Returns the ids it retired.
  *
  * Called from publish, and only from publish. A Device deleted from the
  * draft is still referenced by the published graph until the director
@@ -155,7 +155,7 @@ export async function syncDevices(
  * way — which is the whole point of ADR-0002's split, and the difference
  * between an edit and an outage.
  */
-export async function retireUnreferencedDevices(tx: Tx, showId: string): Promise<void> {
+export async function retireUnreferencedDevices(tx: Tx, showId: string): Promise<string[]> {
   const referenced = tx
     .select({ id: graphNodes.id })
     .from(graphNodes)
@@ -163,7 +163,7 @@ export async function retireUnreferencedDevices(tx: Tx, showId: string): Promise
     .where(and(eq(showGraphs.showId, showId), eq(graphNodes.kind, "device")));
 
   const now = new Date();
-  await tx
+  const retired = await tx
     .update(devices)
     .set({ retiredAt: now, updatedAt: now })
     .where(
@@ -172,7 +172,8 @@ export async function retireUnreferencedDevices(tx: Tx, showId: string): Promise
         isNull(devices.retiredAt),
         notInArray(devices.id, referenced),
       ),
-    );
+    )
+    .returning({ id: devices.id });
   await tx
     .update(devices)
     .set({ retiredAt: null, updatedAt: now })
@@ -183,4 +184,5 @@ export async function retireUnreferencedDevices(tx: Tx, showId: string): Promise
         inArray(devices.id, referenced),
       ),
     );
+  return retired.map((device) => device.id);
 }

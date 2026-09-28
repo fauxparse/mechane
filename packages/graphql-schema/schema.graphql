@@ -68,6 +68,16 @@ type Query {
   Every Show the given user owns, most recently updated first. Requires the show:list permission.
   """
   userShows(userId: ID!): [Show!]!
+
+  """
+  The signed-in user's Custom Domains, or only those bound to one of their Show's Devices.
+  """
+  customDomains(showId: ID): [CustomDomain!]!
+
+  """
+  The signed-in user's Custom Domains bound to no Device, for bringing one to a Device.
+  """
+  unboundCustomDomains: [CustomDomain!]!
 }
 
 type Mutation {
@@ -100,6 +110,30 @@ type Mutation {
 
   """Deletes any user's Show. Requires the show:delete permission."""
   adminDeleteShow(id: ID!): Boolean!
+
+  """
+  Adds a Custom Domain bound to a saved Device of one of the user's Shows.
+  Refused with HOSTNAME_REFUSED (extensions.reason), HOSTNAME_BLOCKED,
+  CUSTOM_DOMAIN_CAP_REACHED, or RATE_LIMITED (extensions.hoursLeft).
+  """
+  addCustomDomain(hostname: String!, showId: ID!, deviceId: ID!): CustomDomain!
+
+  """
+  Binds a domain to a saved Device straight away, outside the draft. A
+  domain the Device already has is unbound. Revoked domains can't be bound.
+  """
+  bindCustomDomain(id: ID!, showId: ID!, deviceId: ID!): CustomDomain!
+  unbindCustomDomain(id: ID!): CustomDomain!
+
+  """
+  Removes the domain from the hosting provider and deletes it, freeing the hostname.
+  """
+  removeCustomDomain(id: ID!): Boolean!
+
+  """
+  Checks the domain now, dormant or not. RATE_LIMITED within 30 seconds of the last.
+  """
+  checkCustomDomainNow(id: ID!): CustomDomain!
 }
 
 type Show {
@@ -1232,4 +1266,60 @@ type ImageAsset {
   name: String!
   alt: String!
   blurHash: String
+}
+
+"""A DNS record the user creates at their DNS provider."""
+type DnsRecord {
+  """TXT, A or CNAME."""
+  type: String!
+  name: String!
+  value: String!
+}
+
+"""The Show and Device a Custom Domain opens."""
+type CustomDomainBinding {
+  showId: ID!
+  showName: String!
+  deviceId: ID!
+  deviceName: String!
+}
+
+"""
+A hostname a user controls, which opens one of their Devices in the Player once it is live.
+"""
+type CustomDomain {
+  id: ID!
+  hostname: String!
+
+  """unverified, connecting, securing, live, needs_attention or revoked."""
+  status: String!
+
+  """
+  The failing check and its remedy while the domain is stuck or needs attention.
+  """
+  reason: String
+
+  """
+  The records to create: the _mechane TXT Ownership Proof, plus the A or
+  CNAME record and any _vercel TXT challenge once the domain is Connecting.
+  """
+  records: [DnsRecord!]!
+
+  """Pending for 72 hours without progress; only Check now checks it again."""
+  dormant: Boolean!
+
+  """Proven, and waiting its turn to be added to the hosting provider."""
+  queued: Boolean!
+
+  """Another Mechanē account holds this hostname proven."""
+  inUseByAnotherAccount: Boolean!
+
+  """The Show and Device it opens, or null when it is not in use."""
+  binding: CustomDomainBinding
+  revocationReason: String
+  addedAt: String!
+  provenAt: String
+  wentLiveAt: String
+  statusChangedAt: String!
+  lastCheckedAt: String
 }
