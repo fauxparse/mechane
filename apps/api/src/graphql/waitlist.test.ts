@@ -3,7 +3,7 @@ import { createYoga } from "graphql-yoga";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { db } from "../db/client";
-import { waitlistEntries, waitlistRateLimits } from "../db/schema";
+import { rateLimits, waitlistEntries } from "../db/schema";
 import { createContext } from "./context";
 import { schema } from "./schema";
 import { WAITLIST_SIGNUPS_PER_WINDOW } from "./waitlist";
@@ -50,9 +50,7 @@ afterEach(async () => {
     ...Array.from({ length: WAITLIST_SIGNUPS_PER_WINDOW + 1 }, (_, n) => emailNumber(n)),
   ];
   await db.delete(waitlistEntries).where(inArray(waitlistEntries.email, emails));
-  await db
-    .delete(waitlistRateLimits)
-    .where(eq(waitlistRateLimits.clientAddress, `${network}::/64`));
+  await db.delete(rateLimits).where(eq(rateLimits.key, `${network}::/64`));
 });
 
 describe("joinWaitlist", () => {
@@ -106,9 +104,9 @@ describe("joinWaitlist", () => {
   it("starts a new window once the last one lapses", async () => {
     for (let n = 0; n <= WAITLIST_SIGNUPS_PER_WINDOW; n += 1) await joinWaitlist(emailNumber(n));
     await db
-      .update(waitlistRateLimits)
+      .update(rateLimits)
       .set({ windowStartedAt: new Date(Date.now() - 2 * 60 * 60 * 1000) })
-      .where(eq(waitlistRateLimits.clientAddress, `${network}::/64`));
+      .where(eq(rateLimits.key, `${network}::/64`));
 
     const body = await joinWaitlist(email);
 
