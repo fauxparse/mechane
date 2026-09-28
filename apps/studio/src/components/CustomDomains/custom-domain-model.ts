@@ -105,3 +105,17 @@ export function bindConsequence(
     ) ?? null;
   return { moves, displaces };
 }
+
+/** The message for whoever runs the domain's DNS. */
+export function dnsHandOff(domain: CustomDomain): string {
+  return [
+    `Hi — could you add these DNS records for ${domain.hostname}?`,
+    "",
+    ...domain.records.map((record) => `  ${record.type}  ${record.name}  →  ${record.value}`),
+    "",
+    "If the domain is on Cloudflare, please set them to “DNS only” (grey cloud), and remove any AAAA records for this name.",
+    "The _mechane record needs to stay in place for as long as the address is used.",
+    "",
+    "Thanks!",
+  ].join("\n");
+}
