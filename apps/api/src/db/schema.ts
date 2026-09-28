@@ -10,6 +10,7 @@
 // single-user ownership model (PRD.md §1, §9) — see @mechane/domain's
 // `ownership` module for the shared invariant this schema exists to support.
 import type { CustomDomainStatus } from "../custom-domains/hostname";
+import type { CustomDomainDnsRecords } from "../custom-domains/provider";
 import { generateId } from "@mechane/domain/id";
 import { PAIRING_CODE_PATTERN } from "@mechane/domain/pairing-code";
 import { DEFAULT_THEME_PALETTE } from "@mechane/domain/theme-settings";
@@ -1224,18 +1225,32 @@ export const customDomains = pgTable(
     // The DNS records the provider last returned for this hostname, rendered
     // as the remedy that accompanies `status_reason`. Null until the domain
     // first reaches a status that has any.
-    dnsRecords: jsonb("dns_records"),
+    dnsRecords: jsonb("dns_records").$type<CustomDomainDnsRecords>(),
     addedAt: timestamp("added_at").notNull().defaultNow(),
     // When the Ownership Proof was first found: orders the global provider
     // queue and starts the 72-hour window to go live.
     provenAt: timestamp("proven_at"),
+    // When the status last changed, for the domain's history.
+    statusChangedAt: timestamp("status_changed_at").notNull().defaultNow(),
+    // Start of the current window of frequent checks (issue #833): set on
+    // add, when the proof is found, when the domain returns to Unverified,
+    // and by Check now. 72 hours later a pending domain goes dormant.
+    checkWindowStartedAt: timestamp("check_window_started_at").notNull().defaultNow(),
     lastCheckedAt: timestamp("last_checked_at"),
+    // Null while the domain is dormant or Revoked: only Check now or an
+    // admin checks it then.
     nextCheckDueAt: timestamp("next_check_due_at"),
+    // When the hostname was added to the Player project. A Connecting domain
+    // without one is queued behind the global provider budget.
+    providerAddedAt: timestamp("provider_added_at"),
+    // The last verify call, which runs at most once every 5 minutes.
+    lastVerifiedAt: timestamp("last_verified_at"),
     // When the domain first served the Player over HTTPS.
     wentLiveAt: timestamp("went_live_at"),
     // When the Ownership Proof stopped being found, which starts the lapse.
     proofWentMissingAt: timestamp("proof_went_missing_at"),
-    // The reason shown with its remedy while the domain needs attention.
+    // The failing check and its remedy, in words, while the domain is stuck
+    // or needs attention.
     statusReason: text("status_reason"),
     revocationReason: text("revocation_reason"),
     // The Device this domain is bound to, if any. Both columns are set or

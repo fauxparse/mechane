@@ -5,7 +5,7 @@
 // the dev server's checker picks a change up on its next pass.
 import { parseArgs } from "node:util";
 
-import { and, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, ne, or, sql } from "drizzle-orm";
 
 import { db } from "../db/client";
 import { customDomainOverrides, customDomains } from "../db/schema";
@@ -60,7 +60,22 @@ export async function runDevDomains(argv: readonly string[]): Promise<string> {
   const hostname = normaliseHostname(rawHostname);
   if (hostname === null) throw new Error(`"${rawHostname}" is not a hostname.`);
 
-  switch (command as DevDomainsCommand) {
+  const message = await applyOverride(hostname, command as DevDomainsCommand, values);
+  // Make the hostname's domains due now, so the dev server's next pass sees
+  // the change instead of waiting out a Live domain's daily recheck.
+  await db
+    .update(customDomains)
+    .set({ nextCheckDueAt: new Date() })
+    .where(and(eq(customDomains.hostname, hostname), ne(customDomains.status, "revoked")));
+  return message;
+}
+
+async function applyOverride(
+  hostname: string,
+  command: DevDomainsCommand,
+  values: { keep?: string; since?: string },
+): Promise<string> {
+  switch (command) {
     case "proof": {
       await upsertOverride(hostname, {
         withholdProof: true,

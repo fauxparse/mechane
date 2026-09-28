@@ -4,6 +4,8 @@ import { and, eq } from "drizzle-orm";
 import { toNodeHandler } from "better-auth/node";
 
 import { auth } from "./auth";
+import { customDomainsProvider } from "./custom-domains/active-provider";
+import { handleCustomDomainCronRoute } from "./custom-domains/cron";
 import { handlePlayerDomainResolveRoute } from "./custom-domains/resolve";
 import { db } from "./db/client";
 import { imageAssets } from "./db/schema";
@@ -83,6 +85,7 @@ async function handleBinaryRoute(req: IncomingMessage, res: ServerResponse): Pro
 
 export async function httpHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (await handlePlayerInvalidationCronRoute(req, res)) return;
+  if (await handleCustomDomainCronRoute(req, res, customDomainsProvider)) return;
   if (await handleRealtimeAuthRoute(req, res)) return;
   if (await handlePlayerDomainResolveRoute(req, res)) return;
   if (await handleBinaryRoute(req, res)) return;

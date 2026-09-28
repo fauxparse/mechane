@@ -10,6 +10,7 @@ import { db } from "../db/client";
 import { customDomainOverrides, customDomains, user } from "../db/schema";
 import { PROVEN_CUSTOM_DOMAIN_STATUSES } from "./hostname";
 import type { CustomDomainsProvider, DomainConfig, ProjectDomain } from "./provider";
+import { ownershipProofRecord } from "./records";
 
 const VERIFIED: ProjectDomain = { verified: true, verification: [] };
 
@@ -33,7 +34,7 @@ export const localCustomDomainsProvider: CustomDomainsProvider = {
     const keep = override?.withholdProof ? override.keepProofForEmail : undefined;
     if (keep === null) return [];
     const rows = await db
-      .select({ token: customDomains.proofToken })
+      .select({ token: customDomains.proofToken, hostname: customDomains.hostname })
       .from(customDomains)
       .innerJoin(user, eq(user.id, customDomains.userId))
       .where(
@@ -42,7 +43,7 @@ export const localCustomDomainsProvider: CustomDomainsProvider = {
           keep === undefined ? undefined : eq(user.email, keep),
         ),
       );
-    return rows.map((row) => row.token);
+    return rows.map((row) => ownershipProofRecord(row.hostname, row.token).value);
   },
 
   async addProjectDomain() {

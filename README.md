@@ -182,6 +182,8 @@ never misconfigured, and the HTTPS check passes, so a domain added in Studio
 walks to Live on its own. Add `.localhost` hostnames such as
 `vote.voting.localhost`; they open the Player at
 `http://vote.voting.localhost:5174/`. Only the local provider accepts them.
+The dev server runs the Custom Domain checker every 15 seconds; deployed, it
+runs from `/api/cron/custom-domains` on `CRON_SCHEDULE`.
 
 `pnpm dev:domains` overrides those facts for one hostname:
 
@@ -195,7 +197,8 @@ pnpm dev:domains vote.voting.localhost drift               # both, for a Live do
 pnpm dev:domains vote.voting.localhost clear               # remove the overrides
 ```
 
-Production refuses to start unless `CUSTOM_DOMAINS_PROVIDER=vercel`.
+Each command also makes the hostname's domains due, so the next pass picks the
+change up. Production refuses to start unless `CUSTOM_DOMAINS_PROVIDER=vercel`.
 
 ## Adding a built-in color theme
 

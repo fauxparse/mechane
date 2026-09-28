@@ -59,7 +59,9 @@ describe("the local provider", () => {
     const hostname = localHostname("fresh");
     const domain = await insertCustomDomain({ userId, hostname });
 
-    expect(await local.lookupOwnershipProof(hostname)).toEqual([domain.proofToken]);
+    expect(await local.lookupOwnershipProof(hostname)).toEqual([
+      `mechane-proof=${domain.proofToken}`,
+    ]);
     expect(await local.addProjectDomain(hostname)).toEqual({
       kind: "added",
       domain: { verified: true, verification: [] },
@@ -106,11 +108,13 @@ describe("the local provider", () => {
     expect(await local.lookupOwnershipProof(hostname)).toEqual([]);
 
     await runDevDomains([hostname, "proof", "--keep", `${challenger}@example.com`]);
-    expect(await local.lookupOwnershipProof(hostname)).toEqual([challenge.proofToken]);
+    expect(await local.lookupOwnershipProof(hostname)).toEqual([
+      `mechane-proof=${challenge.proofToken}`,
+    ]);
 
     await runDevDomains([hostname, "clear"]);
     expect([...(await local.lookupOwnershipProof(hostname))].sort()).toEqual(
-      [held.proofToken, challenge.proofToken].sort(),
+      [held.proofToken, challenge.proofToken].map((token) => `mechane-proof=${token}`).sort(),
     );
   });
 

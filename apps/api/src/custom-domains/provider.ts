@@ -16,6 +16,14 @@ export interface DnsRecord {
   readonly value: string;
 }
 
+/** The provider's records for one domain, stored on `custom_domains.dns_records`. */
+export interface CustomDomainDnsRecords {
+  /** The A or CNAME record that points the hostname at the Player. */
+  readonly recommended: readonly DnsRecord[];
+  /** Any outstanding `_vercel` TXT challenge. */
+  readonly verification: readonly DnsRecord[];
+}
+
 /** The Player project's view of one of its domains. */
 export interface ProjectDomain {
   readonly verified: boolean;

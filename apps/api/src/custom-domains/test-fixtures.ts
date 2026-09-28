@@ -6,6 +6,7 @@ import { generateId } from "@mechane/domain/id";
 
 import { db } from "../db/client";
 import { customDomains, devices, user } from "../db/schema";
+import { generateProofToken } from "./records";
 
 export function randomPairingCode(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(5));
@@ -34,7 +35,7 @@ export async function insertCustomDomain(
 ): Promise<typeof customDomains.$inferSelect> {
   const [row] = await db
     .insert(customDomains)
-    .values({ status: "unverified", proofToken: `proof-${values.hostname}`, ...values })
+    .values({ status: "unverified", proofToken: generateProofToken(), ...values })
     .returning();
   return row!;
 }
