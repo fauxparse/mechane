@@ -254,16 +254,22 @@ export const waitlistEntries = pgTable("waitlist_entries", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-// Waitlist sign-up attempts per client network in the current window (see
-// graphql/waitlist.ts). One row per client, pruned once its window lapses.
-export const waitlistRateLimits = pgTable(
-  "waitlist_rate_limits",
+// Attempts per (bucket, key) in the current fixed window (see
+// lib/rate-limit.ts). A bucket names one limit, e.g. waitlist sign-ups per
+// client network; its window length lives in code, not here. Rows are pruned
+// per bucket once their window lapses.
+export const rateLimits = pgTable(
+  "rate_limits",
   {
-    clientAddress: text("client_address").primaryKey(),
+    bucket: text("bucket").notNull(),
+    key: text("key").notNull(),
     windowStartedAt: timestamp("window_started_at").notNull().defaultNow(),
     attempts: integer("attempts").notNull().default(1),
   },
-  (table) => [index("waitlist_rate_limits_window_idx").on(table.windowStartedAt)],
+  (table) => [
+    primaryKey({ columns: [table.bucket, table.key] }),
+    index("rate_limits_bucket_window_idx").on(table.bucket, table.windowStartedAt),
+  ],
 );
 
 // The Show graph (issue #38) — the unified node graph that is both the
