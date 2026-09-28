@@ -1076,9 +1076,14 @@ flowchart LR
               </li>
               <li>
                 The Player's default API URL in production is
-                <code>https://api.mechane.dev</code> (<code>apps/player/src/api-url.ts:1</code>).
-                Local dev uses the same constant when the Caddy proxy is on, so leave it. Set
-                <code>VITE_API_URL=https://api.mechane.live</code> on the Player project instead.
+                <code>https://api.mechane.dev</code> (<code>apps/player/src/api-url.ts:1</code>),
+                and its default Player origin is <code>https://show.mechane.dev</code>
+                (<code>apps/player/src/player-origin.ts</code>). Local dev uses the same constants
+                when the Caddy proxy is on, so leave them. Set
+                <code>VITE_API_URL=https://api.mechane.live</code> and
+                <code>VITE_PLAYER_URL=https://show.mechane.live</code> on the Player project
+                instead: Device QR codes encode the Player origin, so a wrong one sends phones to
+                the wrong host.
               </li>
               <li>
                 Don't set <code>VITE_DEV_PROXY</code> on Vercel. In a production build it switches
@@ -1400,6 +1405,10 @@ flowchart LR
                 <tr>
                   <td><code>VITE_API_URL</code></td>
                   <td><code>https://api.mechane.live</code></td>
+                </tr>
+                <tr>
+                  <td><code>VITE_PLAYER_URL</code></td>
+                  <td><code>https://show.mechane.live</code></td>
                 </tr>
                 <tr>
                   <td><code>ENABLE_EXPERIMENTAL_COREPACK</code></td>

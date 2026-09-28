@@ -143,6 +143,15 @@ export interface TransformerRuntimeState {
   readonly shuffleSeeds?: Readonly<Record<string, string>>;
 }
 
+export interface GraphResolutionOptions extends TransformerRuntimeState {
+  /**
+   * Where the Player is served from. A Device's QR output encodes its Player
+   * URL, so without an origin that output carries nothing rather than a code
+   * no phone can open.
+   */
+  readonly playerOrigin?: string;
+}
+
 function runtimeValue(value: unknown): RuntimeValue | undefined {
   if (
     value === null ||
@@ -182,13 +191,17 @@ function carriedValue(
   return result.value;
 }
 
-function deviceValue(node: DeviceNode, sourcePath: readonly string[]): unknown {
+function deviceValue(
+  node: DeviceNode,
+  sourcePath: readonly string[],
+  playerOrigin: string | undefined,
+): unknown {
   if (!node.pairingCode) return undefined;
   switch (sourcePath[0]) {
     case DEVICE_SOURCE_HANDLES.pairingCode:
       return node.pairingCode;
     case DEVICE_SOURCE_HANDLES.qrCode:
-      return deviceQrImageValue(node.id, node.pairingCode);
+      return playerOrigin ? deviceQrImageValue(node.id, node.pairingCode, playerOrigin) : undefined;
     default:
       return undefined;
   }
@@ -224,7 +237,7 @@ function portInputValues(
 function resolveGraph(
   graph: ShowGraph,
   sourceValues: Readonly<Record<string, unknown>>,
-  runtime: TransformerRuntimeState = {},
+  runtime: GraphResolutionOptions = {},
 ): {
   wiringEdges: readonly WiringEdge[];
   diagnostics: WiringDiagnostic[];
@@ -256,7 +269,7 @@ function resolveGraph(
   const resolveValue = (nodeId: string, sourcePath: readonly string[] = []): unknown => {
     const node = graph.nodes.find((candidate) => candidate.id === nodeId);
     if (!node) return undefined;
-    if (node.kind === "device") return deviceValue(node, sourcePath);
+    if (node.kind === "device") return deviceValue(node, sourcePath, runtime.playerOrigin);
     if (resolvedNodes.has(nodeId)) return valueAtPath(resolvedNodeValues[nodeId], sourcePath);
     if (node.kind !== "source" && node.kind !== "transformer") return undefined;
     if (resolvingNodes.has(nodeId)) return undefined;
@@ -387,7 +400,7 @@ export function sceneVariableValues(
   graph: ShowGraph,
   sceneId: string,
   sourceValues: Readonly<Record<string, unknown>>,
-  runtime: TransformerRuntimeState = {},
+  runtime: GraphResolutionOptions = {},
 ): Record<string, unknown> {
   return sceneVariableResolution(graph, sceneId, sourceValues, runtime).values;
 }
@@ -402,7 +415,7 @@ export function sceneVariableResolution(
   graph: ShowGraph,
   sceneId: string,
   sourceValues: Readonly<Record<string, unknown>>,
-  runtime: TransformerRuntimeState = {},
+  runtime: GraphResolutionOptions = {},
 ): SceneVariableResolution {
   const { wiringEdges, diagnostics, formulaDiagnostics, computedStructuredValues, resolveValue } =
     resolveGraph(graph, sourceValues, runtime);

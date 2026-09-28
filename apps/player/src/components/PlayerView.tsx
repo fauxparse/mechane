@@ -2,6 +2,7 @@ import type { BlockInstancePathSegment } from "@mechane/domain/interactions";
 import { CanvasRenderer, prepareCanvasPresentation } from "@mechane/rendering";
 import { useCallback, useMemo } from "react";
 import { usePlayerSession, type PlayerSession } from "../api";
+import { PLAYER_ORIGIN } from "../player-origin";
 import { usePlayerKeypress } from "../player-keypress";
 import { usePlayerNavigation } from "../player-navigation";
 import { dispatchSharedPlayerEvent } from "../player-event-dispatch";
@@ -40,6 +41,7 @@ function PlayerCanvas({
         shuffleSeeds: session.run.shuffleSeeds ?? {},
       },
       mode: "player",
+      playerOrigin: PLAYER_ORIGIN,
     });
   }, [session]);
 

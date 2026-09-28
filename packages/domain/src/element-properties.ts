@@ -430,8 +430,9 @@ function defaultAtPath(type: Type, path: readonly string[], shapes: readonly Sha
 function deviceQrValueForVariable(
   variableId: string,
   graph: ShowGraph | undefined,
+  playerOrigin: string | undefined,
 ): (ResolvedImageValue & Pick<ImageAssetReference, "revision">) | undefined {
-  if (!graph) return undefined;
+  if (!graph || !playerOrigin) return undefined;
   const edge = graph.edges.find(
     (candidate) =>
       candidate.kind === "wiring" &&
@@ -441,7 +442,7 @@ function deviceQrValueForVariable(
   if (!edge) return undefined;
   const device = graph.nodes.find((node) => node.id === edge.sourceId);
   if (device?.kind !== "device" || !device.pairingCode) return undefined;
-  return deviceQrImageValue(device.id, device.pairingCode);
+  return deviceQrImageValue(device.id, device.pairingCode, playerOrigin);
 }
 
 function resolveImageAsset(
@@ -464,6 +465,8 @@ export interface ElementPropertyRuntimeContext {
 
 export interface ElementPropertyResolutionContext {
   readonly graph?: ShowGraph;
+  /** Where the Player is served from; a Device QR image encodes a URL on it. */
+  readonly playerOrigin?: string;
   readonly variables: readonly SceneVariable[];
   readonly values?: Readonly<Record<string, unknown>>;
   readonly structuredValues?: StructuredValues;
@@ -503,7 +506,9 @@ function resolveConnection(
 
   const structuredValues = context.structuredValues ?? {};
   const qrValue =
-    fieldPath.length === 0 ? deviceQrValueForVariable(variable.id, context.graph) : undefined;
+    fieldPath.length === 0
+      ? deviceQrValueForVariable(variable.id, context.graph, context.playerOrigin)
+      : undefined;
   const read = runtimeValueAtPath(
     rawValue(context.values?.[variable.id]),
     fieldPath,

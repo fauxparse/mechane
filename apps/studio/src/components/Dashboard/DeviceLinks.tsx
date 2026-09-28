@@ -6,7 +6,8 @@
 // resolves to a Player session at `/s/<code>`.
 import { buttonVariants } from "@mechane/design-system";
 
-import { playerSessionUrl } from "../../api/client";
+import { devicePlayerUrl } from "@mechane/domain/device-qr";
+import { PLAYER_BASE_URL } from "../../api/client";
 // The Show graph's own icon table, so a Device's link wears the same icon as
 // the Device node does in the editor: Smartphone for an Audience Device,
 // Projector for a shared one. Reusing it means they cannot drift apart.
@@ -35,7 +36,7 @@ export function DeviceLinks({ devices }: DeviceLinksProps) {
               <a
                 // New tab because the Player is where the performance is: you
                 // are putting it on another screen, not leaving the Studio.
-                href={playerSessionUrl(device.pairingCode)}
+                href={devicePlayerUrl(PLAYER_BASE_URL, device.pairingCode)}
                 target="_blank"
                 rel="noreferrer noopener"
                 className={buttonVariants({ variant: "secondary", size: "sm" })}

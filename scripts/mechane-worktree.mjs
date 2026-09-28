@@ -146,8 +146,8 @@ function writeProcfile(record) {
   const { studio, player, site, api } = record.ports;
   const procfile = path.join(PROCFILE_DIR, `${record.slug}.Procfile`);
   const contents = [
-    `studio: VITE_DEV_PROXY=false VITE_API_URL=http://localhost:${api} pnpm dev:studio --host 0.0.0.0 --port ${studio}`,
-    `player: VITE_DEV_PROXY=false VITE_API_URL=http://localhost:${api} pnpm dev:player --host 0.0.0.0 --port ${player}`,
+    `studio: VITE_DEV_PROXY=false VITE_API_URL=http://localhost:${api} VITE_PLAYER_URL=http://localhost:${player} pnpm dev:studio --host 0.0.0.0 --port ${studio}`,
+    `player: VITE_DEV_PROXY=false VITE_API_URL=http://localhost:${api} VITE_PLAYER_URL=http://localhost:${player} pnpm dev:player --host 0.0.0.0 --port ${player}`,
     `site: VITE_DEV_PROXY=false VITE_API_URL=http://localhost:${api} VITE_STUDIO_URL=http://localhost:${studio} pnpm dev:site --host 0.0.0.0 --port ${site}`,
     `api: PORT=${api} SMTP_URL=smtp://localhost:1025 EMAIL_FROM="Mechanē <noreply@localhost>" APP_STUDIO_URL=http://localhost:${studio} APP_PLAYER_URL=http://localhost:${player} APP_SITE_URL=http://localhost:${site} BETTER_AUTH_URL=http://localhost:${api} pnpm dev:api`,
   ].join("\n");

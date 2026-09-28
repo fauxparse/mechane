@@ -18,6 +18,7 @@ import type { CanvasPresentation } from "@mechane/rendering";
 import { useMemo } from "react";
 
 import { useCanvasWorkspace } from "../../api/canvas";
+import { PLAYER_BASE_URL } from "../../api/client";
 import { useImageAssets } from "../../api/images";
 import { useShowGraph } from "../../api/show-graph";
 import { canvasArtboardSize } from "../../editors/canvas/data/canvas-workspace";
@@ -99,6 +100,7 @@ export function useShowDossier(showId: ShowId): ShowDossier {
             imageAssets,
             owner: { kind: "scene", scene: owner, sourceValues },
             mode: "studio",
+            playerOrigin: PLAYER_BASE_URL,
           }),
         },
       ];
