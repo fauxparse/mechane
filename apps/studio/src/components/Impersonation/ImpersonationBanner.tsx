@@ -16,10 +16,12 @@ export interface ImpersonationBannerProps {
 
 export function ImpersonationBanner({ user, onStop, stopping, error }: ImpersonationBannerProps) {
   return (
+    // A fixed light yellow rather than `palette-yellow-fill`, which goes brown
+    // in dark mode: the banner should read as a caution, not an alarm, in both.
     <aside
       data-impersonation-banner
       aria-label="Impersonation"
-      className="sticky top-0 z-40 flex h-(--impersonation-banner-height) shrink-0 items-center justify-center gap-3 border-b border-palette-orange-border bg-palette-orange-fill px-4 text-sm text-palette-orange-on-fill"
+      className="sticky top-0 z-40 flex h-(--impersonation-banner-height) shrink-0 items-center justify-center gap-3 border-b border-(--palette-yellow-500) bg-(--palette-yellow-300) px-4 text-sm text-(--palette-yellow-950)"
     >
       <HatGlassesIcon aria-hidden="true" className="size-4 shrink-0" />
       <p className="min-w-0 truncate">
