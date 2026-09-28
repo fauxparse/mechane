@@ -1,0 +1,11 @@
+{
+  "status": 409,
+  "headers": {},
+  "body": {
+    "error": {
+      "code": "domain_already_in_use",
+      "message": "Cannot add vote.knifefight.nz since it's already in use by another Vercel account.",
+      "domain": { "name": "vote.knifefight.nz" }
+    }
+  }
+}

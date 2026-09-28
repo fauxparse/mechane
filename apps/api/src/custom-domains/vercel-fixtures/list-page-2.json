@@ -1,0 +1,8 @@
+{
+  "status": 200,
+  "headers": {},
+  "body": {
+    "domains": [{ "name": "orphan.example.nz", "verified": true }],
+    "pagination": { "count": 1, "next": null, "prev": 1790553600000 }
+  }
+}

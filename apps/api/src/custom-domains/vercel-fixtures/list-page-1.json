@@ -1,0 +1,11 @@
+{
+  "status": 200,
+  "headers": {},
+  "body": {
+    "domains": [
+      { "name": "show.mechane.live", "verified": true },
+      { "name": "vote.knifefight.nz", "verified": true }
+    ],
+    "pagination": { "count": 2, "next": 1790553500000, "prev": null }
+  }
+}

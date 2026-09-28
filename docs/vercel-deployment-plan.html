@@ -1297,6 +1297,24 @@ flowchart LR
                   </td>
                 </tr>
                 <tr>
+                  <td><code>CUSTOM_DOMAINS_PROVIDER</code></td>
+                  <td>
+                    <code>vercel</code>. Required: the API refuses to start in production without it
+                  </td>
+                </tr>
+                <tr>
+                  <td><code>VERCEL_TOKEN</code></td>
+                  <td>A token that can manage the team's project domains</td>
+                </tr>
+                <tr>
+                  <td><code>VERCEL_TEAM_ID</code></td>
+                  <td>The team that owns the Player project</td>
+                </tr>
+                <tr>
+                  <td><code>VERCEL_PLAYER_PROJECT_ID</code></td>
+                  <td>The Player project's id, which Custom Domains are added to</td>
+                </tr>
+                <tr>
                   <td><code>RESEND_API_KEY</code></td>
                   <td>Resend sending key. Required in Production.</td>
                 </tr>
@@ -1328,7 +1346,9 @@ flowchart LR
               </li>
               <li>
                 A missing <code>ABLY_API_KEY</code> or <code>DATABASE_URL</code> throws when the
-                module loads, so every API request fails.
+                module loads, so every API request fails. So does a
+                <code>CUSTOM_DOMAINS_PROVIDER</code> other than <code>vercel</code>, or a missing
+                <code>VERCEL_*</code> variable once it is.
               </li>
             </ul>
           </div>

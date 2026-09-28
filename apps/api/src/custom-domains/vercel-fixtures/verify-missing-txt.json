@@ -1,0 +1,10 @@
+{
+  "status": 400,
+  "headers": {},
+  "body": {
+    "error": {
+      "code": "missing_txt_record",
+      "message": "Domain _vercel.knifefight.nz is missing required TXT Record \"vc-domain-verify=vote.knifefight.nz,5f3c9e1a2b7d4c60a8e1\""
+    }
+  }
+}
