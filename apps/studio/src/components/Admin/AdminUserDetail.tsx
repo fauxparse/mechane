@@ -3,9 +3,15 @@
 // request (../../api/admin.ts), and the API checks each one against the
 // caller's role whatever this screen offers.
 //
-// An admin cannot change their own role, ban themselves, or delete their own
-// account from here: each would be a one-click way to lock the last admin out.
-// Better Auth refuses self-bans and self-removal anyway; the role is ours.
+// An admin cannot change their own role, ban themselves, impersonate
+// themselves, or delete their own account from here: each would be a
+// one-click way to lock the last admin out, or pointless. Better Auth refuses
+// self-bans and self-removal anyway; the role is ours.
+//
+// Impersonating (issue #845) signs the admin in as this user until they stop
+// from the banner. Banned users cannot be impersonated (Better Auth refuses to
+// open a session for them), nor can admins by an admin whose role lacks
+// `impersonate-admins` (`mayImpersonate`).
 import {
   AlertDialog,
   AlertDialogClose,
@@ -15,6 +21,7 @@ import {
   AlertDialogTitle,
   ArrowLeftIcon,
   Button,
+  HatGlassesIcon,
   Select,
   SelectContent,
   SelectItem,
@@ -52,6 +59,10 @@ export interface AdminUserDetailProps {
   readonly banPending: boolean;
   onRemove(): void;
   readonly removing: boolean;
+  /** The viewer's role lets them impersonate this account (`roleCanImpersonate`). */
+  readonly mayImpersonate: boolean;
+  onImpersonate(): void;
+  readonly impersonating: boolean;
   /** Why the last account action failed, if it did. */
   readonly actionError?: string;
   readonly shows: readonly AdminShow[];
@@ -76,6 +87,9 @@ export function AdminUserDetail({
   banPending,
   onRemove,
   removing,
+  mayImpersonate,
+  onImpersonate,
+  impersonating,
   actionError,
   shows,
   showsPending,
@@ -88,6 +102,14 @@ export function AdminUserDetail({
     if (!open) setConfirming(null);
   };
   const showCount = `${shows.length} ${shows.length === 1 ? "Show" : "Shows"}`;
+  // Self is already explained alongside the other self-protections.
+  let impersonationBlocker: string | null = null;
+  if (user && !isSelf) {
+    if (user.banned) impersonationBlocker = "Banned users can't be impersonated.";
+    else if (!mayImpersonate) {
+      impersonationBlocker = `You can't impersonate a user with the ${user.role} role.`;
+    }
+  }
 
   return (
     <section className="flex flex-col gap-6">
@@ -156,6 +178,14 @@ export function AdminUserDetail({
                 </Button>
               )}
               <Button
+                variant="outline"
+                disabled={isSelf || impersonationBlocker !== null || impersonating}
+                onClick={onImpersonate}
+              >
+                <HatGlassesIcon />
+                {impersonating ? "Impersonating…" : "Impersonate"}
+              </Button>
+              <Button
                 variant="destructive"
                 disabled={isSelf || removing}
                 onClick={() => setConfirming({ kind: "remove" })}
@@ -165,8 +195,12 @@ export function AdminUserDetail({
             </div>
             {isSelf ? (
               <p className="text-sm text-muted-foreground">
-                You can't change your own role, ban yourself, or delete your own account here.
+                You can't change your own role, ban or impersonate yourself, or delete your own
+                account here.
               </p>
+            ) : null}
+            {impersonationBlocker ? (
+              <p className="text-sm text-muted-foreground">{impersonationBlocker}</p>
             ) : null}
             {actionError ? (
               <p role="alert" className="text-sm text-destructive">

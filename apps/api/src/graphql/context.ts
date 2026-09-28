@@ -16,6 +16,12 @@ export interface GraphQLContext {
     /** Display only; authorization goes through `requirePermission`. */
     role: string;
   } | null;
+  /**
+   * The admin impersonating `user` in this session (Better Auth admin
+   * plugin's `session.impersonatedBy`), or null for an ordinary session.
+   * Everything else in the request runs as `user`, with `user`'s role.
+   */
+  impersonatorId?: string | null;
   playerPairingCode?: string | null;
   /** Rate-limit key for the caller's network; see ../lib/client-address.ts. */
   clientAddress?: string | null;
@@ -39,6 +45,7 @@ export async function createContext(request: Request): Promise<GraphQLContext> {
   return {
     userId: session?.user.id ?? null,
     user: session ? { ...session.user, role: session.user.role ?? DEFAULT_ROLE } : null,
+    impersonatorId: session?.session.impersonatedBy ?? null,
     playerPairingCode: bearerCredential(request),
     clientAddress: clientAddress(request.headers),
   };

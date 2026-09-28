@@ -1,6 +1,7 @@
 // One account in the admin area ("/admin/users/$userId", issue #826): wiring
 // only — the account and its Shows come from ../../../../api/admin.ts, and
 // components/Admin/AdminUserDetail.tsx draws them.
+import { roleCanImpersonate } from "@mechane/domain/access-control";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
 import {
@@ -12,6 +13,7 @@ import {
   useUnbanUser,
   useUserShows,
 } from "../../../../api/admin";
+import { useImpersonateUser } from "../../../../api/impersonation";
 import { useMe } from "../../../../api/me";
 import { AdminUserDetail } from "../../../../components/Admin/AdminUserDetail";
 
@@ -30,10 +32,12 @@ function AdminUserRoute() {
   const unban = useUnbanUser();
   const remove = useRemoveUser();
   const deleteShow = useAdminDeleteShow(userId);
+  const impersonate = useImpersonateUser();
 
   const backToUsers = () => void navigate({ to: "/admin" });
-  const actionError = [setRole, ban, unban, remove, deleteShow].find((mutation) => mutation.isError)
-    ?.error?.message;
+  const actionError = [setRole, ban, unban, remove, impersonate, deleteShow].find(
+    (mutation) => mutation.isError,
+  )?.error?.message;
 
   return (
     <AdminUserDetail
@@ -49,6 +53,11 @@ function AdminUserRoute() {
       banPending={ban.isPending || unban.isPending}
       onRemove={() => remove.mutate(userId, { onSuccess: backToUsers })}
       removing={remove.isPending}
+      mayImpersonate={Boolean(
+        me.data && user.data && roleCanImpersonate(me.data.role, user.data.role),
+      )}
+      onImpersonate={() => impersonate.mutate(userId)}
+      impersonating={impersonate.isPending || impersonate.isSuccess}
       actionError={actionError}
       shows={shows.data ?? []}
       showsPending={shows.isPending}

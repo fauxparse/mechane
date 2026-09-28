@@ -56,3 +56,16 @@ export function isRole(value: string): value is Role {
 export function roleCan(role: string, permissions: Permissions): boolean {
   return isRole(role) && roles[role].authorize(permissions).success;
 }
+
+/**
+ * Whether `role` may impersonate an account whose role is `targetRole`: the
+ * admin plugin's rule, which needs `user.impersonate`, plus
+ * `user.impersonate-admins` when the target holds an admin role. Like
+ * `roleCan`, this only decides what Studio offers.
+ */
+export function roleCanImpersonate(role: string, targetRole: string): boolean {
+  const targetIsAdmin = isRole(targetRole) && ADMIN_ROLES.includes(targetRole);
+  return roleCan(role, {
+    user: targetIsAdmin ? ["impersonate", "impersonate-admins"] : ["impersonate"],
+  });
+}
