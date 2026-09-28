@@ -1,4 +1,5 @@
 import { build } from "esbuild";
+import { execFileSync } from "node:child_process";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
@@ -53,3 +54,18 @@ await writeFile(
 );
 
 console.log(`Vercel function written to ${functionFile}`);
+
+// Production deploys apply pending migrations as the build's last step, so a
+// build that fails to bundle never changes the schema, and one whose migration
+// fails is never promoted. The previous deployment keeps serving until this
+// one is promoted, so each migration must work with the code before it.
+// Previews have no database variables and never migrate.
+if (process.env.VERCEL_ENV === "production") {
+  // Neon's direct connection, which Neon recommends for schema changes.
+  const databaseUrl = process.env.DATABASE_URL_UNPOOLED;
+  if (!databaseUrl) throw new Error("DATABASE_URL_UNPOOLED is not set; cannot migrate.");
+  execFileSync("pnpm", ["db:migrate"], {
+    env: { ...process.env, DATABASE_URL: databaseUrl },
+    stdio: "inherit",
+  });
+}
