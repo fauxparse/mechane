@@ -3,7 +3,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { createAblyTokenRequest } from "@mechane/realtime/ably";
 import { playerChannel } from "@mechane/realtime";
 
-import { applyCorsHeaders } from "./lib/cors";
+import { applySplitHorizonCorsHeaders } from "./lib/cors";
 import { verifyRealtimeGrant } from "./realtime-grants";
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
@@ -21,7 +21,7 @@ export async function handleRealtimeAuthRoute(
   const url = new URL(req.url ?? "/", "http://localhost");
   if (url.pathname !== "/api/realtime/auth") return false;
 
-  const isPreflight = applyCorsHeaders(res, req.headers.origin, req.method);
+  const isPreflight = applySplitHorizonCorsHeaders(res, req.headers.origin, req.method);
   if (isPreflight) {
     res.statusCode = 204;
     res.end();

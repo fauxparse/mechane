@@ -6,7 +6,7 @@
 // exercising it indirectly through the HTTP handlers.
 import { describe, expect, it } from "vitest";
 
-import { applyCorsHeaders, isAllowedOrigin } from "./cors";
+import { applyCorsHeaders, applySplitHorizonCorsHeaders, isAllowedOrigin } from "./cors";
 
 describe("isAllowedOrigin", () => {
   it("accepts the configured studio origin", () => {
@@ -53,5 +53,29 @@ describe("applyCorsHeaders", () => {
   it("reports non-OPTIONS requests as not preflight", () => {
     const res = fakeResponse();
     expect(applyCorsHeaders(res, "http://localhost:5173", "POST")).toBe(false);
+  });
+});
+
+describe("applySplitHorizonCorsHeaders", () => {
+  function fakeResponse() {
+    const headers = new Map<string, string>();
+    return { headers, setHeader: (name: string, value: string) => headers.set(name, value) };
+  }
+
+  it("keeps the credentialed exact-origin echo for an allowed origin", () => {
+    const res = fakeResponse();
+    applySplitHorizonCorsHeaders(res, "http://localhost:5173", "POST");
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("http://localhost:5173");
+    expect(res.headers.get("Access-Control-Allow-Credentials")).toBe("true");
+  });
+
+  it("answers any other origin with * and never with credentials", () => {
+    for (const method of ["OPTIONS", "POST"]) {
+      const res = fakeResponse();
+      applySplitHorizonCorsHeaders(res, "http://vote.x.localhost:5174", method);
+      expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+      expect(res.headers.get("Access-Control-Allow-Credentials")).toBeUndefined();
+      expect(res.headers.get("Access-Control-Allow-Headers")).toContain("Authorization");
+    }
   });
 });
