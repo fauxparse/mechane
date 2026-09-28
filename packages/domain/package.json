@@ -5,6 +5,7 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
+    "./access-control": "./src/access-control.ts",
     "./blocks": "./src/blocks.ts",
     "./canvas": "./src/canvas.ts",
     "./connect": "./src/connect.ts",
@@ -42,6 +43,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "better-auth": "^1.6.26",
     "qrcode": "^1.5.4"
   },
   "devDependencies": {

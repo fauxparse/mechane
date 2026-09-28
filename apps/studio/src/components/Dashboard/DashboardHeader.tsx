@@ -24,6 +24,7 @@ import {
   LogOutIcon,
   MoonIcon,
   SettingsIcon,
+  ShieldIcon,
   SunIcon,
 } from "@mechane/design-system";
 import { DEFAULT_THEME_MODE, type ThemeMode } from "@mechane/domain/theme-settings";
@@ -43,12 +44,20 @@ export interface DashboardHeaderUser {
 export interface DashboardHeaderProps {
   user: DashboardHeaderUser;
   onLogOut(): void;
+  /** Whether the account menu offers the admin area (issue #826). */
+  canAdminister?: boolean;
   /** Anything the page wants left of the account menu. */
   actions?: ReactNode;
   className?: string;
 }
 
-export function DashboardHeader({ user, onLogOut, actions, className }: DashboardHeaderProps) {
+export function DashboardHeader({
+  user,
+  onLogOut,
+  canAdminister = false,
+  actions,
+  className,
+}: DashboardHeaderProps) {
   const { settings, updateSettings } = useUserSettings();
   const mode = (settings?.themeMode ?? DEFAULT_THEME_MODE) as ThemeMode;
 
@@ -87,6 +96,16 @@ export function DashboardHeader({ user, onLogOut, actions, className }: Dashboar
                 </Link>
               }
             />
+            {canAdminister ? (
+              <DropdownMenuItem
+                render={
+                  <Link to="/admin">
+                    <ShieldIcon />
+                    <span>Admin</span>
+                  </Link>
+                }
+              />
+            ) : null}
             <DropdownMenuItem
               onClick={() => updateSettings({ themeMode: mode === "dark" ? "light" : "dark" })}
             >

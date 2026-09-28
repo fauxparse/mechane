@@ -40,6 +40,7 @@ overmind start -f Procfile.dev   # starts the app services, infrastructure, and 
 pnpm --filter @mechane/api db:migrate   # apply the development database schema
 pnpm db:test:migrate                         # apply the test database schema
 pnpm db:seed      # wipe + recreate pre-verified dev accounts: test@example.com (user) and admin@example.com (admin)
+# Sign in as admin@example.com to reach the admin area at https://studio.mechane.dev/admin.
 # The API persistence tests use mechane_test on the same Postgres server, not the dev database.
 # The seed command refuses to run with NODE_ENV=production.
 pnpm test         # unit and database-backed API tests

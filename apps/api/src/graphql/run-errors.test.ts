@@ -51,6 +51,7 @@ function contextFor(userId: string): GraphQLContext {
       name: "Run Errors Test",
       email: `${userId}@example.test`,
       emailVerified: true,
+      role: "user",
     },
   };
 }

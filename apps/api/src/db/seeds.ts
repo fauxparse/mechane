@@ -1,8 +1,8 @@
 import { readdir } from "node:fs/promises";
 
+import type { Role } from "@mechane/domain/access-control";
 import { sql } from "drizzle-orm";
 
-import type { Role } from "../access-control";
 import { auth } from "../auth";
 import { db } from "./client";
 import { shows, user } from "./schema";

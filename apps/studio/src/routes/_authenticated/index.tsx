@@ -8,9 +8,10 @@
 // data and callbacks. What it deliberately does not own are the per-Show reads
 // behind each card's preview, which belong to the components that display them
 // (components/Dashboard/use-show-dossier.ts).
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ADMIN_AREA_PERMISSIONS, roleCan } from "@mechane/domain/access-control";
 import type { ShowId } from "@mechane/domain/id";
 import { GraphQLRequestError } from "@mechane/graphql-schema";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
 import { useSignOut } from "../../api/auth";
 import { useMe } from "../../api/me";
@@ -42,6 +43,7 @@ function DashboardRoute() {
         email: me.data?.email ?? "",
         avatarUrl: null,
       }}
+      canAdminister={me.data ? roleCan(me.data.role, ADMIN_AREA_PERMISSIONS) : false}
       onLogOut={() => signOut.mutate()}
       onOpenShow={openShow}
       onOpenScene={(showId, artId) =>

@@ -46,6 +46,8 @@ export const typeDefs = /* GraphQL */ `
     name: String!
     email: String!
     emailVerified: Boolean!
+    "The user's system role (@mechane/domain/access-control), e.g. user or admin."
+    role: String!
   }
 
   "The signed-in user's design-system preference (PRD.md §7)."

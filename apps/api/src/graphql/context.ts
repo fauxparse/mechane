@@ -1,8 +1,8 @@
 // GraphQL request context: who (if anyone) is signed in, resolved from the
 // Better Auth session cookie on the incoming request.
+import { DEFAULT_ROLE, type Permissions } from "@mechane/domain/access-control";
 import { GraphQLError, type GraphQLFieldResolver } from "graphql";
 
-import { statements } from "../access-control";
 import { auth } from "../auth";
 import { clientAddress } from "../lib/client-address";
 
@@ -13,6 +13,8 @@ export interface GraphQLContext {
     name: string;
     email: string;
     emailVerified: boolean;
+    /** Display only; authorization goes through `requirePermission`. */
+    role: string;
   } | null;
   playerPairingCode?: string | null;
   /** Rate-limit key for the caller's network; see ../lib/client-address.ts. */
@@ -36,7 +38,7 @@ export async function createContext(request: Request): Promise<GraphQLContext> {
   const session = await auth.api.getSession({ headers: request.headers });
   return {
     userId: session?.user.id ?? null,
-    user: session?.user ?? null,
+    user: session ? { ...session.user, role: session.user.role ?? DEFAULT_ROLE } : null,
     playerPairingCode: bearerCredential(request),
     clientAddress: clientAddress(request.headers),
   };
@@ -58,16 +60,11 @@ export function requireUserId(context: GraphQLContext): string {
   return context.userId;
 }
 
-/** Resource → actions, as declared in ../access-control.ts. */
-export type Permissions = {
-  [Resource in keyof typeof statements]?: (typeof statements)[Resource][number][];
-};
-
 /**
  * Role-based authorization for resolvers (issue #810): signed in *and* the
- * user's role (../access-control.ts) grants every listed action. The role is
- * read from the database on each check, so a role change takes effect on the
- * next request rather than when the session expires.
+ * user's role (@mechane/domain/access-control) grants every listed action. The
+ * role is read from the database on each check, so a role change takes effect
+ * on the next request rather than when the session expires.
  */
 export async function requirePermission(
   context: GraphQLContext,

@@ -83,6 +83,7 @@ type TestUser = {
   name: string;
   email: string;
   emailVerified: boolean;
+  role: string;
 };
 
 let testUser: TestUser;
@@ -135,6 +136,7 @@ beforeEach(async () => {
     name: "Persistence Test User",
     email: `api-test-${crypto.randomUUID()}@example.com`,
     emailVerified: true,
+    role: "user",
   };
   await db.insert(user).values(testUser);
 });

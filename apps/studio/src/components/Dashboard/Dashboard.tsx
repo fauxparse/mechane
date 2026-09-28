@@ -30,6 +30,8 @@ export interface DashboardProps {
   readonly pending: boolean;
   readonly loadError?: string;
   readonly user: DashboardHeaderUser;
+  /** Whether the account menu offers the admin area. */
+  readonly canAdminister?: boolean;
   onLogOut(): void;
   onOpenShow(showId: ShowId): void;
   /** Straight to one Scene's Artboard in the Canvas editor. */
@@ -46,6 +48,7 @@ export function Dashboard({
   pending,
   loadError,
   user,
+  canAdminister,
   onLogOut,
   onOpenShow,
   onOpenScene,
@@ -91,7 +94,7 @@ export function Dashboard({
         a third surface lightness competing with the cards' `bg-card`.
       */}
       <div className="border-b border-border bg-background">
-        <DashboardHeader user={user} onLogOut={onLogOut} />
+        <DashboardHeader user={user} canAdminister={canAdminister} onLogOut={onLogOut} />
 
         {loadError ? (
           <p role="alert" className="mx-auto w-full max-w-368 px-6 pb-6 text-destructive">
