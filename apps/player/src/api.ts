@@ -91,7 +91,11 @@ export async function fetchPlayerSession(
     GRAPHQL_ENDPOINT,
     GetPlayerSessionQuery,
     {},
-    { signal, headers: { Authorization: `Bearer ${code.trim().toUpperCase()}` } },
+    {
+      signal,
+      credentials: "omit",
+      headers: { Authorization: `Bearer ${code.trim().toUpperCase()}` },
+    },
   );
   if (!result.playerSession) {
     throw new PlayerRequestError("That pairing code is not active.", 404);
@@ -149,7 +153,7 @@ export async function submitPlayerEvent(
         slotInstancePath: input.slotInstancePath ? [...input.slotInstancePath] : undefined,
       },
     },
-    { headers: { Authorization: `Bearer ${code.trim().toUpperCase()}` } },
+    { credentials: "omit", headers: { Authorization: `Bearer ${code.trim().toUpperCase()}` } },
   );
   const event = result.submitPlayerEvent;
   if (!event) throw new PlayerRequestError("Unable to process that Event.", 500);

@@ -85,6 +85,15 @@ describe("GET /api/player-domains/resolve", () => {
     expect(response.headers.get("access-control-allow-credentials")).toBeNull();
   });
 
+  it("ignores the port a development host carries", async () => {
+    const { host, device } = await liveDomainOnDevice();
+
+    const response = await resolve(`${host}:5174`);
+
+    expect(await response.json()).toEqual({ pairingCode: device.pairingCode });
+    expectCacheHeaders(response, host);
+  });
+
   it("keeps resolving while the domain needs attention", async () => {
     const { host, device } = await liveDomainOnDevice("needs_attention");
 

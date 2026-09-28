@@ -101,7 +101,8 @@ export async function handlePlayerDomainResolveRoute(
   }
 
   res.setHeader("Cache-Control", RESOLVE_CACHE_CONTROL);
-  const host = normaliseHostname(url.searchParams.get("host") ?? "");
+  // The Player sends `location.host`, which carries a port in development.
+  const host = normaliseHostname((url.searchParams.get("host") ?? "").replace(/:\d+$/, ""));
   if (host === null) {
     sendJson(res, 404, { error: "Not found." });
     return true;

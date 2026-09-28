@@ -2,6 +2,7 @@ import { PAIRING_CODE_PATTERN } from "@mechane/domain/pairing-code";
 import { Button } from "@mechane/design-system";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { HostEntryScreen } from "../components/HostEntry";
 import { CodeInput } from "../components/join/CodeInput";
 import { SplashScreen } from "../components/join/SplashScreen";
 
@@ -11,7 +12,13 @@ export const Route = createFileRoute("/")({
   component: PlayerHome,
 });
 
+// On a Custom Domain, `/` opens the Device the domain is bound to; on the
+// Player's own host it is the pairing code form (host-entry.ts).
 function PlayerHome() {
+  return <HostEntryScreen host={window.location.host} pairingForm={<PairingCodeForm />} />;
+}
+
+function PairingCodeForm() {
   const navigate = useNavigate();
   const [code, setCode] = useState("");
   const normalizedCode = code.trim().toUpperCase();
