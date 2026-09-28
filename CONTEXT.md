@@ -43,6 +43,21 @@ many connections it has; a per-connection Device has one per connection. Which
 it is decides where that state lives, not what it means.
 _Avoid_: Connection (one Instance may outlive many), session, client
 
+### Custom Domain
+
+A hostname a user has entered in Mechanē so that visiting it opens a Device in the Player. It belongs to the user, not the Device, and is bound to at most one Device at a time; the binding can move between Devices and Shows. It is an additional way in alongside the Device's pairing code, never a replacement for it. It becomes _proven_ when its Ownership Proof is found in the hostname's DNS and stays proven until that proof lapses or another user's proof displaces it; only a proven Custom Domain can be served. It becomes _live_ once Mechanē has seen it serve the Player over HTTPS, and stays live through failed rechecks until it lapses or is revoked or removed; a bound, live Custom Domain is the address its Device's link, QR code and Address show in place of the pairing-code URL.
+_Avoid_: Vanity URL, alias, endpoint, domain claim (an unproven hostname is still a Custom Domain, just not a proven one)
+
+### Ownership Proof
+
+The Mechanē-issued DNS record that shows a user currently controls a Custom Domain's hostname. Each Custom Domain has its own; it must stay in place for as long as the domain is served, because it proves control now, not once.
+_Avoid_: Verification (Vercel's word for its own, narrower check), domain validation
+
+### Blocked Hostname
+
+A hostname, together with all of its subdomains, that Mechanē refuses to serve or accept as a Custom Domain, placed by an admin with a reason. It is separate from any Custom Domain: it can exist before anyone adds the hostname, and it outlives the removal of the domain it was placed on. Revoking a Custom Domain means blocking its hostname.
+_Avoid_: Ban (Better Auth's word for a user account), blacklist
+
 ### Flow
 
 A named group of Scenes that behaves as a state machine. Its optional default Scene initializes Flow-driven Device runtime state for a Run; the active runtime Scene belongs to the Run-scoped Device instance. Navigate Actions transition that instance from one Scene to another.
@@ -398,7 +413,10 @@ _Avoid_: Binding (acceptable as a synonym), linking
 - A **Source**, a **Variable** and a **Transformer**'s output each have a **Type**
 - A **Shape** is a **Type**, made of an ordered list of **Fields**, each of which has its own **Type**
 - A **Shape** may be reused by any number of **Sources**, **Variables** and **Transformers** within its **Show**
-- Audience members connect their phones to a **Device** by scanning a QR code or entering an alphanumeric code; their individual sessions are not tracked — interactions are aggregated
+- Audience members connect their phones to a **Device** by scanning a QR code, entering an alphanumeric code, or visiting the Device's **Custom Domain**; their individual sessions are not tracked — interactions are aggregated
+- A **Custom Domain** belongs to one user and is bound to at most one **Device** at a time; a **Device** has at most one Custom Domain, and its pairing code keeps working alongside it
+- Any number of users may hold an unproven **Custom Domain** for the same hostname, but at most one Custom Domain per hostname is proven; binding is independent of proof, and a binding reaches visitors only once its domain is live
+- A **Blocked Hostname** covers every subdomain beneath it; no **Custom Domain** under it can be added, proven or served until an admin lifts the block, which returns any Revoked domains there to unproven
 - A **Show** has zero or more **Runs**; starting a **Run** resets live data to defaults, and **Devices** connect to the active **Run**
 - A **Show** has zero or more **Run Errors**; each names the **Run** it happened in, or none when it preceded one, and outlives that Run
 - An **Artboard** presents exactly one **Canvas**; the **Canvas Editor** shows one or more **Artboards** on its infinite plane
