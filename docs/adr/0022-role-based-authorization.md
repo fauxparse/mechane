@@ -1,7 +1,7 @@
 # System roles come from Better Auth's admin plugin
 
 - Status: Accepted
-- Issue: #810; amended by #826, #845
+- Issue: #810; amended by #826, #845, #839
 
 ## Decision
 
@@ -21,4 +21,5 @@ Alternatives considered:
 - Show ownership is unchanged: `requireUserId` plus `assertOwnedBy` still decide who may touch a Show through the Show slice. Roles grant system-wide capabilities; they do not replace ownership checks. The `show` statement (`list`, `delete`) covers other users' Shows, and only the admin slice (`userShows`, `adminDeleteShow`) checks it.
 - Admins can ban users and impersonate non-admin users. The plugin rejects sign-in for banned users and marks impersonation sessions with `impersonated_by`.
 - Impersonation (#845) uses the plugin's own endpoints: `impersonate-user` swaps the admin's session cookie for a one-hour session as the target, and `stop-impersonating` restores the admin's. An impersonation session is the target's session in every respect, so GraphQL resolves `me`, ownership and `requirePermission` as the target, with the target's role; an admin impersonating a user loses the admin area until they stop. GraphQL `impersonator` names the admin behind the session, and Studio shows a banner across every signed-in screen while it is set. Starting and stopping both reload Studio, so no cached data or realtime connection outlives the identity it was loaded as. Studio offers impersonation according to `roleCanImpersonate`, which mirrors the plugin's `impersonate`/`impersonate-admins` rule.
+- The `customDomain` statement (`list`, `revoke`, `block`, `unblock`) covers moderating any user's Custom Domains and the Blocked Hostnames over them (#839). Only `admin` holds it, and only the admin Custom Domain slice (`adminCustomDomains`, `revokeCustomDomain`, `blockHostname`, `unblockHostname`) checks it.
 - The definition lives in the domain package, not in `apps/api`, because Studio needs it too (#826). Studio loads the plugin's client with the same `ac` and `roles`, reads the signed-in user's role from GraphQL `me.role`, and uses `roleCan` to decide whether to offer the admin area at `/admin`. That check only shapes the UI. The API checks every admin request again.

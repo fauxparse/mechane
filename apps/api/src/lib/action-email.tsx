@@ -8,7 +8,7 @@ interface ActionEmailProps {
   message: string;
   actionLabel: string;
   actionUrl: string;
-  expiryNote: string;
+  note: string;
 }
 
 function ActionEmail({
@@ -17,7 +17,7 @@ function ActionEmail({
   message,
   actionLabel,
   actionUrl,
-  expiryNote,
+  note,
 }: ActionEmailProps) {
   return (
     <html lang="en">
@@ -71,7 +71,7 @@ function ActionEmail({
                             </tr>
                           </tbody>
                         </table>
-                        <p style={styles.expiry}>{expiryNote}</p>
+                        <p style={styles.note}>{note}</p>
                         <hr style={styles.rule} />
                         <p style={styles.fallback}>
                           Button not working? Copy and paste this link into your browser:
@@ -135,7 +135,7 @@ const styles = {
     fontWeight: "bold",
     textDecoration: "none",
   },
-  expiry: { color: "#5b524c", fontSize: "14px", lineHeight: "1.5", margin: "22px 0" },
+  note: { color: "#5b524c", fontSize: "14px", lineHeight: "1.5", margin: "22px 0" },
   rule: { border: "0", borderTop: "1px solid #b9af9b", margin: "24px 0" },
   fallback: { color: "#5b524c", fontSize: "13px", lineHeight: "1.5", margin: "0 0 8px" },
   url: {

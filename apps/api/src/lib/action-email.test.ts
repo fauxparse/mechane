@@ -11,7 +11,7 @@ describe("renderActionEmail", () => {
       message: "We received a password reset request.",
       actionLabel: "Reset password",
       actionUrl: url,
-      expiryNote: "This link expires in 1 hour.",
+      note: "This link expires in 1 hour.",
     });
 
     expect(email.html).toContain('alt="Mechanē"');

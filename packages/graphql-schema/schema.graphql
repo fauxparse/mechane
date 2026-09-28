@@ -78,6 +78,17 @@ type Query {
   The signed-in user's Custom Domains bound to no Device, for bringing one to a Device.
   """
   unboundCustomDomains: [CustomDomain!]!
+
+  """
+  Custom Domains at or under a hostname, or owned by the user with an email
+  address. Requires the customDomain:list permission.
+  """
+  adminCustomDomains(hostname: String, ownerEmail: String): [AdminCustomDomain!]!
+
+  """
+  The active block covering a hostname, if any. Requires customDomain:list.
+  """
+  hostnameBlock(hostname: String!): BlockedHostname
 }
 
 type Mutation {
@@ -134,6 +145,24 @@ type Mutation {
   Checks the domain now, dormant or not. RATE_LIMITED within 30 seconds of the last.
   """
   checkCustomDomainNow(id: ID!): CustomDomain!
+
+  """
+  Blocks a hostname and revokes every Custom Domain at or under it, removing
+  each from the hosting provider and emailing its owner the reason.
+  Requires customDomain:revoke.
+  """
+  revokeCustomDomain(hostname: String!, reason: String!): [AdminCustomDomain!]!
+
+  """
+  Blocks a hostname and its subdomains, added or not. Requires customDomain:block.
+  """
+  blockHostname(hostname: String!, reason: String!): BlockedHostname!
+
+  """
+  Lifts the block on a hostname, returning the Revoked domains beneath it to
+  Unverified. Requires customDomain:unblock.
+  """
+  unblockHostname(hostname: String!): BlockedHostname!
 }
 
 type Show {
@@ -1322,4 +1351,37 @@ type CustomDomain {
   wentLiveAt: String
   statusChangedAt: String!
   lastCheckedAt: String
+}
+
+"""
+A hostname, with everything beneath it, that Mechanē refuses to accept or serve.
+"""
+type BlockedHostname {
+  id: ID!
+  hostname: String!
+  reason: String!
+  placedBy: ID!
+  placedAt: String!
+  liftedBy: ID
+  liftedAt: String
+}
+
+"""Any user's Custom Domain, as moderation sees it."""
+type AdminCustomDomain {
+  id: ID!
+  hostname: String!
+  status: String!
+  reason: String
+  revocationReason: String
+  ownerId: ID!
+  ownerName: String!
+  ownerEmail: String!
+  binding: CustomDomainBinding
+  addedAt: String!
+  provenAt: String
+  wentLiveAt: String
+  statusChangedAt: String!
+
+  """The active block covering this hostname, if any."""
+  block: BlockedHostname
 }

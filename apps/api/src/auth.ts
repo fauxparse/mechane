@@ -44,8 +44,7 @@ export const auth = betterAuth({
         message: "We received a request to reset the password for your Mechanē account.",
         actionLabel: "Reset password",
         actionUrl: studioResetUrl,
-        expiryNote:
-          "This link expires in 1 hour. If you did not request a password reset, you can ignore this email.",
+        note: "This link expires in 1 hour. If you did not request a password reset, you can ignore this email.",
       });
       await sendEmail({
         to: user.email,
@@ -65,8 +64,7 @@ export const auth = betterAuth({
         message: "Confirm your email address to finish setting up your Mechanē account.",
         actionLabel: "Verify email",
         actionUrl: url,
-        expiryNote:
-          "This link expires in 1 hour. If you did not create a Mechanē account, you can ignore this email.",
+        note: "This link expires in 1 hour. If you did not create a Mechanē account, you can ignore this email.",
       });
       await sendEmail({
         to: user.email,
