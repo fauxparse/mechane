@@ -26,6 +26,12 @@ type Query {
   me: User
 
   """
+  The admin impersonating the signed-in user in this session, or null when the
+  session is the user's own. While impersonating, `me` is the impersonated user.
+  """
+  impersonator: User
+
+  """
   The signed-in user's theme settings, or PRD.md §7 defaults if they haven't set any yet.
   """
   userSettings: UserSettings!

@@ -25,6 +25,9 @@ const meta: Meta<typeof AdminUserDetail> = {
     banPending: false,
     onRemove: () => {},
     removing: false,
+    mayImpersonate: true,
+    onImpersonate: () => {},
+    impersonating: false,
     shows: MOCK_SHOWS,
     showsPending: false,
     onDeleteShow: () => {},
@@ -51,6 +54,15 @@ export const Banned: Story = {
 /** An admin looking at their own account: nothing that could lock them out. */
 export const Self: Story = {
   args: { user: MOCK_ADMIN, isSelf: true },
+};
+
+/** An admin looking at another admin: their role cannot impersonate admins. */
+export const OtherAdmin: Story = {
+  args: { user: MOCK_ADMIN, mayImpersonate: false },
+};
+
+export const Impersonating: Story = {
+  args: { impersonating: true },
 };
 
 export const DeletingShow: Story = {

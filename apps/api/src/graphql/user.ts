@@ -1,5 +1,6 @@
 // The signed-in user's slice: who they are (the Better Auth session user,
-// resolved in ./context.ts) and their design-system preference (PRD.md §7).
+// resolved in ./context.ts), who is impersonating them if anyone (issue #845),
+// and their design-system preference (PRD.md §7).
 // Theme values are validated here — the GraphQL error translation of
 // @mechane/domain's theme assertions — because "which theme modes exist" is
 // policy this slice's mutations own.
@@ -14,7 +15,7 @@ import { eq } from "drizzle-orm";
 import { GraphQLError } from "graphql";
 
 import { db } from "../db/client";
-import { userSettings } from "../db/schema";
+import { user, userSettings } from "../db/schema";
 import type { Resolvers } from "./context";
 import { requireUserId } from "./context";
 
@@ -61,6 +62,11 @@ export const typeDefs = /* GraphQL */ `
   type Query {
     "The signed-in user, or null if the request has no valid session."
     me: User
+    """
+    The admin impersonating the signed-in user in this session, or null when the
+    session is the user's own. While impersonating, \`me\` is the impersonated user.
+    """
+    impersonator: User
     "The signed-in user's theme settings, or PRD.md §7 defaults if they haven't set any yet."
     userSettings: UserSettings!
   }
@@ -73,6 +79,20 @@ export const typeDefs = /* GraphQL */ `
 export const resolvers: Resolvers = {
   Query: {
     me: (_parent, _args, context) => context.user,
+    impersonator: async (_parent, _args, context) => {
+      if (!context.impersonatorId) return null;
+      const [impersonator] = await db
+        .select({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          emailVerified: user.emailVerified,
+          role: user.role,
+        })
+        .from(user)
+        .where(eq(user.id, context.impersonatorId));
+      return impersonator ?? null;
+    },
     userSettings: async (_parent, _args, context) => {
       const userId = requireUserId(context);
       const [settings] = await db

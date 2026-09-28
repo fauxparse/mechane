@@ -1,0 +1,6 @@
+/* While the impersonation banner is on the page it takes this much off the top
+   of the viewport. Layouts sized to the viewport (EditorLayout) subtract it,
+   falling back to 0px when there is no banner. */
+:root:has([data-impersonation-banner]) {
+  --impersonation-banner-height: 2.5rem;
+}

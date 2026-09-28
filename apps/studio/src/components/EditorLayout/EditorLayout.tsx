@@ -26,6 +26,12 @@ const DEFAULT_SIDEBAR_WIDTH = "20rem";
 /** The `py-2` the Chrome keeps between itself and the viewport edge, in px. */
 const CHROME_GUTTER = 8;
 
+/**
+ * The sidebars are fixed to the viewport, so they start below the
+ * impersonation banner themselves rather than inheriting the Chrome's height.
+ */
+const BELOW_BANNER = "top-[var(--impersonation-banner-height,0px)] h-auto";
+
 export interface EditorLayoutProps extends PropsWithChildren {
   /** Everything the top bar needs; forwarded verbatim. */
   header: Omit<HeaderProps, "className">;
@@ -84,11 +90,13 @@ function EditorChrome({
     };
   }, []);
 
+  // The impersonation banner, when present, takes the top of the viewport
+  // (components/Impersonation/impersonation-banner.css); the Chrome fills the rest.
   return (
     <SidebarProvider
       open={open}
       onOpenChange={setOpen}
-      className="relative h-screen w-screen overflow-hidden"
+      className="relative h-[calc(100vh-var(--impersonation-banner-height,0px))] w-screen overflow-hidden"
       style={{ "--sidebar-width": sidebarWidth } as CSSProperties}
     >
       <EditableAreaProvider
@@ -117,13 +125,13 @@ function EditorChrome({
             variant="floating"
             collapsible="offcanvas"
             aria-label="Layers"
-            className="editor-chrome-sidebar-left"
+            className={`editor-chrome-sidebar-left ${BELOW_BANNER}`}
           >
             <div ref={leftRef} className="flex min-h-0 flex-1 flex-col" />
           </Sidebar>
         ) : null}
 
-        <SidebarInset className="pointer-events-none grid h-screen grid-rows-[auto_1fr_auto] py-2">
+        <SidebarInset className="pointer-events-none grid h-full grid-rows-[auto_1fr_auto] py-2">
           <div ref={headerRef}>
             <Header {...header} className="px-2" />
           </div>
@@ -144,7 +152,7 @@ function EditorChrome({
             side="right"
             collapsible="offcanvas"
             aria-label="Properties"
-            className="editor-chrome-sidebar-right"
+            className={`editor-chrome-sidebar-right ${BELOW_BANNER}`}
           >
             <div ref={rightRef} className="flex min-h-0 flex-1 flex-col" />
           </Sidebar>
