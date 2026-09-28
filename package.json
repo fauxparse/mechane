@@ -7,6 +7,7 @@
     "dev:player": "pnpm --filter @mechane/player dev",
     "dev:site": "pnpm --filter @mechane/site dev",
     "dev:api": "pnpm --filter @mechane/api dev",
+    "dev:domains": "pnpm --filter @mechane/api dev:domains",
     "dev:worktree": "node scripts/mechane-worktree.mjs up",
     "dev:worktree:start": "node scripts/mechane-worktree.mjs start",
     "dev:worktree:status": "node scripts/mechane-worktree.mjs status",

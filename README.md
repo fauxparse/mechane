@@ -174,6 +174,29 @@ The development bucket is `mechane`, and image URLs point directly to its public
 `mechane/blobs/` objects. Default local credentials are `minioadmin` /
 `minioadmin`; change them before using a shared or deployed environment.
 
+## Custom Domains in development
+
+The API uses the local domains provider unless `CUSTOM_DOMAINS_PROVIDER=vercel`.
+It never touches DNS or Vercel: every Ownership Proof is found, the hostname is
+never misconfigured, and the HTTPS check passes, so a domain added in Studio
+walks to Live on its own. Add `.localhost` hostnames such as
+`vote.voting.localhost`; they open the Player at
+`http://vote.voting.localhost:5174/`. Only the local provider accepts them.
+
+`pnpm dev:domains` overrides those facts for one hostname:
+
+```
+pnpm dev:domains vote.voting.localhost proof               # withhold the Ownership Proof
+pnpm dev:domains vote.voting.localhost proof --keep a@b.nz # keep only that user's proof
+pnpm dev:domains vote.voting.localhost proof --since 8d    # and backdate when it went missing
+pnpm dev:domains vote.voting.localhost point               # DNS misconfigured
+pnpm dev:domains vote.voting.localhost cert                # HTTPS check fails
+pnpm dev:domains vote.voting.localhost drift               # both, for a Live domain
+pnpm dev:domains vote.voting.localhost clear               # remove the overrides
+```
+
+Production refuses to start unless `CUSTOM_DOMAINS_PROVIDER=vercel`.
+
 ## Adding a built-in color theme
 
 Built-in themes are generated from checked-in Base16/Base24 scheme files. Do not

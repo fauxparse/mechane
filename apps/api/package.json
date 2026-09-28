@@ -13,7 +13,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/db/seeds.ts",
     "db:reset": "pnpm db:migrate && pnpm db:seed",
-    "realtime:worker": "tsx src/realtime-worker.ts"
+    "realtime:worker": "tsx src/realtime-worker.ts",
+    "dev:domains": "tsx src/dev-domains.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1139.0",

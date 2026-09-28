@@ -1295,3 +1295,20 @@ export const blockedHostnames = pgTable(
       .where(sql`${table.liftedAt} is null`),
   ],
 );
+
+// The local Custom Domains provider's simulated facts (issues #824, #832),
+// one row per hostname, written by `pnpm dev:domains` and read by the local
+// provider on every check, so the dev server and the script agree. With no
+// row every check passes. Nothing reads this table with any other provider.
+export const customDomainOverrides = pgTable("custom_domain_overrides", {
+  hostname: text("hostname").primaryKey(),
+  // `proof`: withhold the Ownership Proof, except the domain of the user
+  // with `keep_proof_for_email` when it is set (a contested takeover).
+  withholdProof: boolean("withhold_proof").notNull().default(false),
+  keepProofForEmail: text("keep_proof_for_email"),
+  // `point`: the hosting provider reports the hostname misconfigured.
+  misconfigured: boolean("misconfigured").notNull().default(false),
+  // `cert`: the HTTPS check fails.
+  failHttps: boolean("fail_https").notNull().default(false),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
