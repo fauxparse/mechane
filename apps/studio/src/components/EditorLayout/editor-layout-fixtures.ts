@@ -17,6 +17,7 @@ export const MOCK_HEADER: Omit<HeaderProps, "className"> = {
     showEditor: nowhere,
     canvasEditor: nowhere,
     shapes: nowhere,
+    showSettings: nowhere,
   },
   user: { id: "1", name: "Prospero Milan", email: "prospero@example.com" },
   onLogOut: noOp,
