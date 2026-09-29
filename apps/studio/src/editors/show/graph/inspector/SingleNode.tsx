@@ -19,6 +19,7 @@ import { FLOW_COLORS, type FlowColor, type GraphNode } from "@mechane/domain/gra
 import type { Cue } from "@mechane/domain/interactions";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import { useEffect, useState } from "react";
+import { DeviceShareButton } from "../../../../components/CustomDomains/DeviceShare";
 import type { ShowGraphValueLocation } from "../../ShowGraphEditor";
 import type { GraphInspectorEditing } from "../../commands/use-graph-editing";
 import { SourceValues } from "./SourceValues";
@@ -203,6 +204,13 @@ export function SingleNode({
                   ? "Give this code to your audience to join the session."
                   : "Enter this code on each device you want to connect."}
               </SectionHelperText>
+              <SectionRow>
+                <DeviceShareButton
+                  deviceId={node.id}
+                  deviceName={node.name}
+                  pairingCode={node.pairingCode}
+                />
+              </SectionRow>
             </Section>
           )}
         </>

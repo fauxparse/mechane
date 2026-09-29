@@ -35,6 +35,8 @@ export interface HeaderNavigation {
   showEditor: HeaderDestination;
   canvasEditor: HeaderDestination;
   shapes: HeaderDestination;
+  /** This Show's settings, where its Custom domains live. */
+  showSettings: HeaderDestination;
 }
 
 export interface HeaderUser {

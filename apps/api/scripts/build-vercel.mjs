@@ -46,6 +46,10 @@ await writeFile(
           path: "/api/cron/player-invalidations",
           schedule: process.env.CRON_SCHEDULE ?? "0 4 * * *",
         },
+        {
+          path: "/api/cron/custom-domains",
+          schedule: process.env.CRON_SCHEDULE ?? "0 4 * * *",
+        },
       ],
     },
     null,

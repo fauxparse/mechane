@@ -4,10 +4,13 @@ import { and, eq } from "drizzle-orm";
 import { toNodeHandler } from "better-auth/node";
 
 import { auth } from "./auth";
+import { customDomainsProvider } from "./custom-domains/active-provider";
+import { handleCustomDomainCronRoute } from "./custom-domains/cron";
+import { handlePlayerDomainResolveRoute } from "./custom-domains/resolve";
 import { db } from "./db/client";
 import { imageAssets } from "./db/schema";
 import { yoga } from "./graphql/server";
-import { applyCorsHeaders } from "./lib/cors";
+import { applyCorsHeaders, applySplitHorizonCorsHeaders } from "./lib/cors";
 import { handlePlayerInvalidationCronRoute } from "./player-invalidations-cron";
 import { handleRealtimeAuthRoute } from "./realtime-auth";
 import { blobStore } from "./storage/blob-store";
@@ -24,7 +27,7 @@ async function readBody(request: IncomingMessage): Promise<Buffer> {
 async function handleBinaryRoute(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
   const url = new URL(req.url ?? "/", "http://localhost");
   const parts = url.pathname.split("/").filter(Boolean);
-  if (parts[0] !== "api") return false;
+  if (parts[0] !== "api" || (parts[1] !== "uploads" && parts[1] !== "images")) return false;
   const isPreflight = applyCorsHeaders(res, req.headers.origin, req.method);
   if (isPreflight) {
     res.statusCode = 204;
@@ -82,7 +85,9 @@ async function handleBinaryRoute(req: IncomingMessage, res: ServerResponse): Pro
 
 export async function httpHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (await handlePlayerInvalidationCronRoute(req, res)) return;
+  if (await handleCustomDomainCronRoute(req, res, customDomainsProvider)) return;
   if (await handleRealtimeAuthRoute(req, res)) return;
+  if (await handlePlayerDomainResolveRoute(req, res)) return;
   if (await handleBinaryRoute(req, res)) return;
   if (req.url?.startsWith("/api/auth")) {
     const isPreflight = applyCorsHeaders(res, req.headers.origin, req.method);
@@ -92,6 +97,14 @@ export async function httpHandler(req: IncomingMessage, res: ServerResponse): Pr
       return;
     }
     await authHandler(req, res);
+    return;
+  }
+  // Yoga runs with its own CORS off (graphql/server.ts): a Player on a
+  // Custom Domain calls GraphQL from an origin no allowlist knows.
+  const isPreflight = applySplitHorizonCorsHeaders(res, req.headers.origin, req.method);
+  if (isPreflight) {
+    res.statusCode = 204;
+    res.end();
     return;
   }
   await yoga(req, res);

@@ -13,7 +13,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/db/seeds.ts",
     "db:reset": "pnpm db:migrate && pnpm db:seed",
-    "realtime:worker": "tsx src/realtime-worker.ts"
+    "realtime:worker": "tsx src/realtime-worker.ts",
+    "dev:domains": "tsx src/dev-domains.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1139.0",
@@ -30,7 +31,8 @@
     "graphql-yoga": "^5.21.2",
     "nodemailer": "^10.0.10",
     "pg": "^8.22.0",
-    "react": "^19.2.8"
+    "react": "^19.2.8",
+    "tldts": "^7.4.16"
   },
   "devDependencies": {
     "@mechane/graphql-schema": "workspace:*",

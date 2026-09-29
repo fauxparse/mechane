@@ -225,6 +225,13 @@ export interface DeviceNode extends BaseNode {
    * it lives.
    */
   pairingCode: string | null;
+  /**
+   * The hostname of the live Custom Domain bound to this Device (#836), or
+   * null. Like `pairingCode` it is read-through server state: the binding
+   * belongs to the user's Custom Domain, never to the graph, and no edit
+   * authors it. A Device a client has only just created has none.
+   */
+  liveDomain?: string | null;
 }
 
 export type GraphNode = SceneNode | FlowNode | SourceNode | TransformerNode | DeviceNode;
@@ -247,6 +254,7 @@ export type ValuePath = string[];
 export const DEVICE_SOURCE_HANDLES = {
   qrCode: "qr-code",
   pairingCode: "pairing-code",
+  address: "address",
 } as const;
 
 export type DeviceSourceHandle = (typeof DEVICE_SOURCE_HANDLES)[keyof typeof DEVICE_SOURCE_HANDLES];
@@ -254,6 +262,7 @@ export type DeviceSourceHandle = (typeof DEVICE_SOURCE_HANDLES)[keyof typeof DEV
 export function deviceSourceType(handle: string | null | undefined): Type | null {
   if (handle === DEVICE_SOURCE_HANDLES.qrCode) return "image";
   if (handle === DEVICE_SOURCE_HANDLES.pairingCode) return "text";
+  if (handle === DEVICE_SOURCE_HANDLES.address) return "text";
   return null;
 }
 

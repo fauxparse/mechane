@@ -20,10 +20,15 @@ import {
 import { generateId, type StructuredValueId } from "@mechane/domain/id";
 import { defaultValueForType } from "@mechane/domain/source-defaults";
 import type { RuntimeValue, StructuredValues } from "@mechane/domain/structured-values";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { StoredCanvas } from "./canvas";
 import { persistCanvases, readCanvasById, readCanvasWorkspace } from "./canvas";
 import { db } from "./client";
+import { customDomainsProvider } from "../custom-domains/active-provider";
+import { unbindDomainsOfDevices } from "../custom-domains/bindings";
+import { LIVE_CUSTOM_DOMAIN_STATUSES } from "../custom-domains/hostname";
+import { evictResolvedHostnames } from "../custom-domains/live-address-effects";
+import type { CustomDomainsProvider } from "../custom-domains/provider";
 import { retireUnreferencedDevices, syncDevices } from "./devices";
 import {
   GraphVersionConflictError,
@@ -37,7 +42,7 @@ import {
   reconcileActiveRunValues,
   syncActiveRunSourceValues,
 } from "./runs";
-import { devices, shows } from "./schema";
+import { customDomains, devices, shows } from "./schema";
 import { withUniqueId } from "./ids";
 export interface PublishLoss {
   sourceId: string;
@@ -188,10 +193,25 @@ export async function readShowGraph(
   executor: Executor = db,
 ): Promise<StoredShowGraph> {
   const deviceRows = await executor.select().from(devices).where(eq(devices.showId, showId));
+  // A Device's live Custom Domain is read through like its pairing code, so
+  // links, QR codes and Address outputs in Studio and every Player agree.
+  const liveDomains = await executor
+    .select({ deviceId: customDomains.deviceId, hostname: customDomains.hostname })
+    .from(customDomains)
+    .where(
+      and(
+        eq(customDomains.deviceShowId, showId),
+        inArray(customDomains.status, [...LIVE_CUSTOM_DOMAIN_STATUSES]),
+      ),
+    );
   const deviceIdentities = new Map(
     deviceRows.map((device) => [
       device.id,
-      { pairingCode: device.pairingCode, perConnection: device.perConnection },
+      {
+        pairingCode: device.pairingCode,
+        perConnection: device.perConnection,
+        liveDomain: liveDomains.find((domain) => domain.deviceId === device.id)?.hostname ?? null,
+      },
     ]),
   );
   return readGraphRows(showId, state, deviceIdentities, executor);
@@ -468,6 +488,7 @@ function amendments(intended: ShowGraph, written: StoredShowGraph): GraphEdit[] 
  */
 export async function publishShowGraph(
   showId: string,
+  options: { customDomainsProvider?: CustomDomainsProvider } = {},
 ): Promise<
   StoredShowGraph & { losses: Awaited<ReturnType<typeof reconcileActiveRunValues>>["losses"] }
 > {
@@ -505,11 +526,17 @@ export async function publishShowGraph(
     );
     await reconcileActiveRunDeviceStates(showId, published, published.version, tx);
     // Publish is the only moment a Device may be retired (#45). Keeping this
-    // in the same transaction preserves the all-or-nothing cutover.
-    await retireUnreferencedDevices(tx, showId);
+    // in the same transaction preserves the all-or-nothing cutover. A
+    // retired Device's Custom Domain is released with it.
+    const retired = await retireUnreferencedDevices(tx, showId);
+    const unboundLiveHostnames = await unbindDomainsOfDevices(tx, showId, retired);
     await enqueuePlayerInvalidations(tx, showId);
-    return { published, reconciled };
+    return { published, reconciled, unboundLiveHostnames };
   });
+  await evictResolvedHostnames(
+    options.customDomainsProvider ?? customDomainsProvider,
+    result.unboundLiveHostnames,
+  );
   try {
     await drainPlayerInvalidations({ showId });
   } catch {

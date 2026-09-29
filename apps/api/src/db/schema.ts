@@ -9,6 +9,8 @@
 // table is expected to carry a `userId` column referencing `user.id`, per the
 // single-user ownership model (PRD.md §1, §9) — see @mechane/domain's
 // `ownership` module for the shared invariant this schema exists to support.
+import type { CustomDomainStatus } from "../custom-domains/hostname";
+import type { CustomDomainDnsRecords } from "../custom-domains/provider";
 import { generateId } from "@mechane/domain/id";
 import { PAIRING_CODE_PATTERN } from "@mechane/domain/pairing-code";
 import { DEFAULT_THEME_PALETTE } from "@mechane/domain/theme-settings";
@@ -1193,3 +1195,135 @@ export const graphSlotEventBindings = pgTable(
     }).onDelete("cascade"),
   ],
 );
+
+// A Custom Domain (issue #829, parent #827): a hostname a user has entered so
+// that visiting it opens the Device it's bound to in the Player. The hostname
+// is stored already normalised (custom-domains/hostname.ts: trimmed,
+// lowercased, punycode), and `status` is plain text whose valid values live
+// with the hostname rules — the module every other slice reads — the same way
+// `runs.status` defers to its domain module.
+//
+// The primary key is the usual generated id, because owner operations and
+// admin tooling address a domain by id; one domain per user per hostname is
+// the first unique index below. Unproven duplicates across users are allowed
+// (CONTEXT.md), so "at most one proven domain per hostname" is the partial
+// unique index, not a key.
+export const customDomains = pgTable(
+  "custom_domains",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateId("customDomain")),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    hostname: text("hostname").notNull(),
+    status: text("status").$type<CustomDomainStatus>().notNull(),
+    // The per-domain Ownership Proof token (CONTEXT.md): issued when the
+    // domain is added and compared against the hostname's DNS from then on.
+    proofToken: text("proof_token").notNull(),
+    // The DNS records the provider last returned for this hostname, rendered
+    // as the remedy that accompanies `status_reason`. Null until the domain
+    // first reaches a status that has any.
+    dnsRecords: jsonb("dns_records").$type<CustomDomainDnsRecords>(),
+    addedAt: timestamp("added_at").notNull().defaultNow(),
+    // When the Ownership Proof was first found: orders the global provider
+    // queue and starts the 72-hour window to go live.
+    provenAt: timestamp("proven_at"),
+    // When the status last changed, for the domain's history.
+    statusChangedAt: timestamp("status_changed_at").notNull().defaultNow(),
+    // Start of the current window of frequent checks (issue #833): set on
+    // add, when the proof is found, when the domain returns to Unverified,
+    // and by Check now. 72 hours later a pending domain goes dormant.
+    checkWindowStartedAt: timestamp("check_window_started_at").notNull().defaultNow(),
+    lastCheckedAt: timestamp("last_checked_at"),
+    // Null while the domain is dormant or Revoked: only Check now or an
+    // admin checks it then.
+    nextCheckDueAt: timestamp("next_check_due_at"),
+    // When the hostname was added to the Player project. A Connecting domain
+    // without one is queued behind the global provider budget.
+    providerAddedAt: timestamp("provider_added_at"),
+    // The last verify call, which runs at most once every 5 minutes.
+    lastVerifiedAt: timestamp("last_verified_at"),
+    // When the domain first served the Player over HTTPS.
+    wentLiveAt: timestamp("went_live_at"),
+    // When the Ownership Proof stopped being found, which starts the lapse.
+    proofWentMissingAt: timestamp("proof_went_missing_at"),
+    // The failing check and its remedy, in words, while the domain is stuck
+    // or needs attention.
+    statusReason: text("status_reason"),
+    revocationReason: text("revocation_reason"),
+    // The Device this domain is bound to, if any. Both columns are set or
+    // cleared together, so one unique index on the pair is "a Device has at
+    // most one domain", and the ON DELETE SET NULL below is "deleting a Show
+    // unbinds its domains" — the domain belongs to the user, not the Device.
+    deviceShowId: text("device_show_id"),
+    deviceId: text("device_id"),
+  },
+  (table) => [
+    unique("custom_domains_user_hostname_unique").on(table.userId, table.hostname),
+    uniqueIndex("custom_domains_hostname_proven_unique")
+      .on(table.hostname)
+      .where(
+        // PROVEN_CUSTOM_DOMAIN_STATUSES, inlined: drizzle-kit loads this
+        // file standalone, so it deliberately imports nothing at runtime
+        // from the hostname rules (only the type above). The custom-domains
+        // tests pin the set to that constant, one status at a time.
+        sql`${table.status} in ('connecting', 'securing', 'live', 'needs_attention')`,
+      ),
+    foreignKey({
+      name: "custom_domains_device_fk",
+      columns: [table.deviceShowId, table.deviceId],
+      foreignColumns: [devices.showId, devices.id],
+    }).onDelete("set null"),
+    uniqueIndex("custom_domains_device_unique").on(table.deviceShowId, table.deviceId),
+  ],
+);
+
+// A Blocked Hostname (issues #823, #829): a hostname, together with all of
+// its subdomains, that Mechanē refuses to serve or accept as a Custom
+// Domain. A block is active while `lifted_at` is null — coveringBlock in
+// custom-domains/blocks.ts is the one lookup, and the partial unique index
+// keeps at most one active block per hostname. Rows are never deleted:
+// lifting is an update, and blocking the same hostname again after a lift
+// adds a row, so who placed and lifted each block stays on record forever.
+// That is also why `placed_by`/`lifted_by` carry user ids without foreign
+// keys, like `run_errors`' identifier columns: an audit trail that deleted
+// itself when an admin's account went would erase the evidence of the very
+// block that was placed.
+export const blockedHostnames = pgTable(
+  "blocked_hostnames",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateId("blockedHostname")),
+    hostname: text("hostname").notNull(),
+    reason: text("reason").notNull(),
+    placedBy: text("placed_by").notNull(),
+    placedAt: timestamp("placed_at").notNull().defaultNow(),
+    liftedBy: text("lifted_by"),
+    liftedAt: timestamp("lifted_at"),
+  },
+  (table) => [
+    uniqueIndex("blocked_hostnames_hostname_active_unique")
+      .on(table.hostname)
+      .where(sql`${table.liftedAt} is null`),
+  ],
+);
+
+// The local Custom Domains provider's simulated facts (issues #824, #832),
+// one row per hostname, written by `pnpm dev:domains` and read by the local
+// provider on every check, so the dev server and the script agree. With no
+// row every check passes. Nothing reads this table with any other provider.
+export const customDomainOverrides = pgTable("custom_domain_overrides", {
+  hostname: text("hostname").primaryKey(),
+  // `proof`: withhold the Ownership Proof, except the domain of the user
+  // with `keep_proof_for_email` when it is set (a contested takeover).
+  withholdProof: boolean("withhold_proof").notNull().default(false),
+  keepProofForEmail: text("keep_proof_for_email"),
+  // `point`: the hosting provider reports the hostname misconfigured.
+  misconfigured: boolean("misconfigured").notNull().default(false),
+  // `cert`: the HTTPS check fails.
+  failHttps: boolean("fail_https").notNull().default(false),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});

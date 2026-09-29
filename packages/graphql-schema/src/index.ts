@@ -17,3 +17,4 @@ export * from "./player";
 export * from "./images";
 export * from "./waitlist";
 export * from "./admin";
+export * from "./custom-domains";

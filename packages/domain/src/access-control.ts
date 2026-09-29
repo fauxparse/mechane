@@ -18,6 +18,8 @@ export const statements = {
   ...defaultStatements,
   /** Any user's Shows, as opposed to the caller's own (those need ownership, not a role). */
   show: ["list", "delete"],
+  /** Moderating any user's Custom Domains and the Blocked Hostnames that cover them. */
+  customDomain: ["list", "revoke", "block", "unblock"],
 } as const;
 
 export const ac = createAccessControl(statements);
@@ -25,8 +27,12 @@ export const ac = createAccessControl(statements);
 export const roles = {
   /** Every account; owns its Shows but administers nothing. */
   user: ac.newRole({ ...userAc.statements }),
-  /** System administrator: manages users, their sessions, and their Shows. */
-  admin: ac.newRole({ ...adminAc.statements, show: ["list", "delete"] }),
+  /** System administrator: manages users, their sessions, their Shows and their Custom Domains. */
+  admin: ac.newRole({
+    ...adminAc.statements,
+    show: ["list", "delete"],
+    customDomain: ["list", "revoke", "block", "unblock"],
+  }),
 };
 
 export type Role = keyof typeof roles;

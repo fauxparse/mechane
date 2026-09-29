@@ -190,6 +190,7 @@ const deviceGraph: ShowGraph = {
       variables: [
         { id: "variable_pairing", name: "Pairing", type: "text" },
         { id: "variable_qr", name: "QR", type: "image" },
+        { id: "variable_address", name: "Address", type: "text" },
       ],
     },
   ],
@@ -209,6 +210,14 @@ const deviceGraph: ShowGraph = {
       targetId: "scene_device",
       sourcePath: [],
       targetPath: ["variable_pairing"],
+    },
+    {
+      id: "edge_address",
+      kind: "wiring",
+      sourceId: "device_audience",
+      targetId: "scene_device",
+      sourcePath: ["address"],
+      targetPath: ["variable_address"],
     },
     {
       id: "edge_qr",
@@ -285,6 +294,24 @@ describe("sceneVariableValues", () => {
       assetId: "device-qr:device_audience",
       revision: "https://show.mechane.dev/s/PAIR5",
     });
+    expect(values.variable_address).toBe("show.mechane.dev/s/PAIR5");
+  });
+
+  it("resolves a Device's live Custom Domain into its QR code and Address", () => {
+    const withDomain: ShowGraph = {
+      ...deviceGraph,
+      nodes: deviceGraph.nodes.map((node) =>
+        node.kind === "device" ? { ...node, liveDomain: "vote.knifefight.nz" } : node,
+      ),
+    };
+    const values = sceneVariableValues(
+      withDomain,
+      "scene_device",
+      {},
+      { playerOrigin: "https://show.mechane.dev" },
+    );
+    expect(values.variable_address).toBe("vote.knifefight.nz");
+    expect(values.variable_qr).toMatchObject({ revision: "https://vote.knifefight.nz/" });
   });
 });
 class MemoryStorage implements PlayerStorageAdapter {

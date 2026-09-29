@@ -99,6 +99,8 @@ type ShowNodeDataBase = {
   driven: boolean;
   /** Devices only: the Show-level pairing code. */
   pairingCode: string | null;
+  /** Devices only: the hostname of the Device's live Custom Domain. */
+  liveDomain?: string | null;
 };
 
 type FlowNodeData = ShowNodeDataBase & {
@@ -453,6 +455,7 @@ function nodeData({
         childCount: 0,
         perConnection: node.perConnection,
         pairingCode: node.pairingCode,
+        liveDomain: node.liveDomain ?? null,
         driven: facts.driven,
       };
   }

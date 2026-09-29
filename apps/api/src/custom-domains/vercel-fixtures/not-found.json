@@ -1,0 +1,10 @@
+{
+  "status": 404,
+  "headers": {},
+  "body": {
+    "error": {
+      "code": "not_found",
+      "message": "The domain \"vote.knifefight.nz\" was not found"
+    }
+  }
+}

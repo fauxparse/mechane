@@ -4,6 +4,8 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { isRealtimeChannelName } from "@mechane/realtime";
 
+import { customDomainsProvider } from "./custom-domains/active-provider";
+import { runCustomDomainCron } from "./custom-domains/cron";
 import { httpHandler } from "./http-handler";
 import { localRealtimeServer, realtimeProvider } from "./realtime";
 
@@ -82,6 +84,20 @@ server.on("upgrade", (request, socket, head) => {
   }
   localRealtimeServer.handleUpgrade(request, socket, head);
 });
+
+// The Custom Domain checker runs every 15 seconds in development, where no
+// cron calls /api/cron/custom-domains. A pass that overruns skips a beat.
+const CUSTOM_DOMAIN_CHECK_INTERVAL_MS = 15_000;
+let customDomainPassRunning = false;
+setInterval(() => {
+  if (customDomainPassRunning) return;
+  customDomainPassRunning = true;
+  runCustomDomainCron(customDomainsProvider)
+    .catch((error: unknown) => console.error("Custom Domain check failed:", error))
+    .finally(() => {
+      customDomainPassRunning = false;
+    });
+}, CUSTOM_DOMAIN_CHECK_INTERVAL_MS);
 
 const port = Number(process.env.PORT ?? 4000);
 server.listen(port, "0.0.0.0", () => {

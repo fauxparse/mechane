@@ -341,6 +341,7 @@ export function serializeGraphNode(node: GraphNode, graph?: StoredShowGraph) {
     fieldDefaults: node.kind === "source" && graph ? sourceDefaultsFor(graph, node.id) : [],
     perConnection: node.kind === "device" && node.perConnection,
     pairingCode: node.kind === "device" ? node.pairingCode : null,
+    liveDomain: node.kind === "device" ? (node.liveDomain ?? null) : null,
   };
 }
 
@@ -621,6 +622,8 @@ export const typeDefs = /* GraphQL */ `
     perConnection: Boolean!
     "The server-minted pairing code, absent before the first save."
     pairingCode: String
+    "The hostname of the Device's live Custom Domain, which its link, QR code and Address use."
+    liveDomain: String
   }
 
   """
@@ -1137,7 +1140,11 @@ export const resolvers: Resolvers = {
       const userId = requireUserId(context);
       await findOwnShowOrThrow(showId, userId);
       try {
-        return serializeShowGraph(await publishShowGraph(showId));
+        return serializeShowGraph(
+          await publishShowGraph(showId, {
+            customDomainsProvider: context.customDomains?.provider,
+          }),
+        );
       } catch (error) {
         if (error instanceof CanvasFormulaPublicationError) {
           throw new GraphQLError(error.message, {

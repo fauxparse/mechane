@@ -5,6 +5,8 @@ export interface EmailMessage {
   subject: string;
   text: string;
   html: string;
+  /** Where replies go instead of the no-reply sender, such as the admin who acted. */
+  replyTo?: string;
 }
 
 const DEFAULT_FROM = "Mechanē <noreply@localhost>";
@@ -35,6 +37,7 @@ async function sendWithSmtp(message: EmailMessage, smtpUrl: string): Promise<voi
   await transporter.sendMail({
     from: fromAddress(),
     to: message.to,
+    replyTo: message.replyTo,
     subject: message.subject,
     text: message.text,
     html: message.html,
@@ -51,6 +54,7 @@ async function sendWithResend(message: EmailMessage, apiKey: string): Promise<vo
     body: JSON.stringify({
       from: fromAddress(),
       to: [message.to],
+      ...(message.replyTo ? { reply_to: message.replyTo } : {}),
       subject: message.subject,
       text: message.text,
       html: message.html,

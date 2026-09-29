@@ -17,6 +17,7 @@ import {
   rememberedShowViewport,
   rememberShowViewport,
 } from "../../../../editors/show/data/show-session";
+import { DeviceShareProvider } from "../../../../components/CustomDomains/DeviceShare";
 import { useOpenedShowGraph } from "../../../../editors/show/data/use-opened-graph";
 export interface ShowGraphRouteProps {
   initialSourceValue?: ShowGraphValueLocation;
@@ -110,7 +111,7 @@ export function ShowGraphRoute({
   const [edited, setEdited] = useState(false);
 
   return (
-    <>
+    <DeviceShareProvider showId={showId}>
       <ShowGraphEditor
         ref={editor}
         graph={openedWith}
@@ -148,6 +149,6 @@ export function ShowGraphRoute({
           Nothing here yet. Right-click the canvas, or press ⌘K, to create something.
         </p>
       ) : null}
-    </>
+    </DeviceShareProvider>
   );
 }

@@ -210,6 +210,7 @@ export const ShowGraphFields = graphql(
         ... on DeviceNode {
           perConnection
           pairingCode
+          liveDomain
         }
       }
       edges {
@@ -645,6 +646,7 @@ export function decodeGraphNode(value: unknown): GraphNode {
         parentId: null,
         perConnection: input.perConnection === true,
         pairingCode: orNull(input.pairingCode as string | null | undefined),
+        liveDomain: orNull(input.liveDomain as string | null | undefined),
       };
     case "source":
       return { ...base, kind: "source", type: toType(input.sourceType, id) };

@@ -279,6 +279,7 @@ function toNode(
         parentId: null,
         perConnection: identity?.perConnection ?? false,
         pairingCode: identity?.pairingCode ?? null,
+        liveDomain: identity?.liveDomain ?? null,
       };
     }
     default:

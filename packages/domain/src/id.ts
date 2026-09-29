@@ -49,6 +49,10 @@ export const ID_PREFIXES = {
   action: "j",
   eventBinding: "k",
   runError: "z",
+  // Custom Domains (issue #829): `m` because `d` is already the Device
+  // prefix a domain is bound to; `h` for the hostname a block covers.
+  customDomain: "m",
+  blockedHostname: "h",
 } as const;
 export type EntityName = keyof typeof ID_PREFIXES;
 export type IdPrefix = (typeof ID_PREFIXES)[EntityName];
@@ -75,6 +79,8 @@ const ENTITY_BY_PREFIX = {
   j: "action",
   k: "eventBinding",
   z: "runError",
+  m: "customDomain",
+  h: "blockedHostname",
 } as const satisfies Record<IdPrefix, EntityName>;
 // ...and this asserts the other direction: every entity is reachable from
 // some prefix. Together the two make `ID_PREFIXES` a proven bijection.
@@ -110,6 +116,8 @@ export type CueId = Id<"cue">;
 export type ActionId = Id<"action">;
 export type EventBindingId = Id<"eventBinding">;
 export type RunErrorId = Id<"runError">;
+export type CustomDomainId = Id<"customDomain">;
+export type BlockedHostnameId = Id<"blockedHostname">;
 
 export class InvalidIdError extends Error {
   constructor(entity: EntityName, reason: string) {

@@ -8,6 +8,7 @@ import {
   HouseIcon,
   Input,
   PencilIcon,
+  SettingsIcon,
   ShapesIcon,
 } from "@mechane/design-system";
 import { useState, type FormEvent, type MouseEvent } from "react";
@@ -76,6 +77,17 @@ export function HeaderLeft({
                   <a href={navigation.shapes.href} onClick={activate(navigation.shapes)}>
                     <ShapesIcon />
                     <span>Shapes</span>
+                  </a>
+                }
+              />
+              <DropdownMenuItem
+                render={
+                  <a
+                    href={navigation.showSettings.href}
+                    onClick={activate(navigation.showSettings)}
+                  >
+                    <SettingsIcon />
+                    <span>Settings</span>
                   </a>
                 }
               />

@@ -2,9 +2,9 @@
 // gql.tada's `TadaDocumentNode` (issue #15) rather than a raw string, so
 // callers get `TResult`/`TVariables` inferred straight from the typed
 // document they pass in — no more separately-specified, hand-kept-in-sync
-// generics. The transport itself is unchanged: still a plain
-// `fetch`/`credentials: "include"` POST, still throwing `GraphQLRequestError`
-// on a GraphQL-level error and a plain `Error` on a transport-level failure.
+// generics. The transport is a plain `fetch` POST, `credentials: "include"`
+// unless the caller says otherwise, throwing `GraphQLRequestError` on a
+// GraphQL-level error and a plain `Error` on a transport-level failure.
 import { print } from "graphql";
 import type { TadaDocumentNode } from "gql.tada";
 
@@ -25,11 +25,18 @@ export class GraphQLRequestError extends Error {
   }
 }
 
-export type GraphQLRequestOptions = Pick<RequestInit, "signal" | "headers">;
+/**
+ * `credentials` defaults to `"include"`, so Studio's Better Auth session
+ * cookie travels with every request. The Player passes `"omit"`: it
+ * authenticates with its pairing code, and a Player on a Custom Domain is
+ * answered with `Access-Control-Allow-Origin: *`, which browsers refuse for
+ * credentialed requests (ADR-0023).
+ */
+export type GraphQLRequestOptions = Pick<RequestInit, "signal" | "headers" | "credentials">;
 
 /**
- * Sends a GraphQL request to `endpoint`, including credentials so the
- * Better Auth session cookie travels with it. Throws `GraphQLRequestError`
+ * Sends a GraphQL request to `endpoint`, with credentials unless the options
+ * say otherwise. Throws `GraphQLRequestError`
  * on a GraphQL-level error and a plain `Error` on a transport-level failure
  * (non-2xx, network error).
  *

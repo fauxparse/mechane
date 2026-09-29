@@ -377,7 +377,10 @@ export function useCanvasWorkspaceSession({
       const variableId = edge.targetPath[0];
       const device = nodesById.get(edge.sourceId);
       if (!variableId || device?.kind !== "device" || !device.pairingCode) continue;
-      images[variableId] = deviceQrImageValue(device.id, device.pairingCode, PLAYER_BASE_URL);
+      images[variableId] = deviceQrImageValue(
+        { ...device, pairingCode: device.pairingCode },
+        PLAYER_BASE_URL,
+      );
     }
     return images;
   }, [graphEditing.command.graph]);
