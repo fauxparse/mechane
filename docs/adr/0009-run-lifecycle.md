@@ -9,7 +9,7 @@ A Run is a database row belonging to a Show. It has an `active`/`ended` lifecycl
 
 The published graph is the source of defaults. Draft-only structural changes cannot affect a Run until publication. Source values are copied into the Run at start time so a live performance is isolated from later graph edits.
 
-The API exposes `activeRun`, `startRun`, and `endRun`. Studio exposes Start Run/End Run controls in the Show editor chrome and reflects the active state after mutation.
+The API exposes `activeRun`, `startRun`, and `endRun`. Studio exposes Go live/End run controls in the Show editor chrome and reflects the active state after mutation. Go live publishes the draft first when it has unpublished changes, and starts the Run only if that publication succeeds; `startRun` itself never publishes.
 
 ## Consequences
 
