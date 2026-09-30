@@ -10,15 +10,7 @@
 // strictly semantic and hue is reserved for *state* (selection, a dangling
 // input) rather than type — and PRD §7 wants the chrome recessive.
 import type { LucideIcon } from "@mechane/design-system";
-import {
-  Bot,
-  Box,
-  Projector,
-  Smartphone,
-  TvMinimal,
-  variableTypeIcon,
-  Workflow,
-} from "@mechane/design-system";
+import { Bot, Box, Projector, Smartphone, TvMinimal, Workflow } from "@mechane/design-system";
 import {
   type FlowColor,
   type GraphNode,
@@ -27,7 +19,7 @@ import {
   NODE_ID_ENTITIES,
 } from "@mechane/domain/graph";
 import { generateId } from "@mechane/domain/id";
-import type { ShapeValue, Type } from "@mechane/domain/shapes";
+import type { Type } from "@mechane/domain/shapes";
 import { DEFAULT_FLOW_DIMENSIONS } from "./graph-to-flow";
 
 export interface NodeKindMeta {
@@ -125,21 +117,13 @@ export const CREATABLE_NODES: CreatableNode[] = [
 ];
 
 /**
- * The icon a node shows. Two kinds don't answer with a constant:
- *
- *   - **Device** resolves by instance cardinality (#35, #45): a
- *     `Smartphone` for a per-connection (Audience) Device, a `Projector`
- *     for a shared one.
- *   - **Source** resolves by data type, via `variableTypeIcon` — a Source's
- *     icon reflects the type of data it holds (#35) rather than "Source" in
- *     general.
+ * The icon a node kind shows. A Device resolves by instance cardinality
+ * (#35, #45): a `Smartphone` for a per-connection (Audience) Device, a
+ * `Projector` for a shared one. A Source's drawn icon goes by data type
+ * instead; `NodeIcon` handles that.
  */
-export function nodeIcon(
-  kind: NodeKind,
-  hints: { perConnection?: boolean; sourceType?: string } = {},
-) {
+export function nodeIcon(kind: NodeKind, hints: { perConnection?: boolean } = {}) {
   if (kind === "device" && hints.perConnection) return Smartphone;
-  if (kind === "source") return variableTypeIcon(hints.sourceType as ShapeValue["kind"]);
   return NODE_KIND_META[kind].icon;
 }
 

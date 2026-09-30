@@ -7,7 +7,7 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "
 import type { VariableReference } from "./property-input-types";
 import { cn } from "../../../lib/utils";
 import { getValueText } from "./use-property-input";
-import { VARIABLE_TYPE_ICONS, variableTypeKind } from "./variable-type-icons";
+import { VariableTypeIcon } from "./variable-type-icon";
 import { Swatch } from "../swatch";
 
 export function VariablePicker<T extends ShapeValue>({
@@ -159,13 +159,13 @@ export function VariablePicker<T extends ShapeValue>({
   );
 }
 
-const VariableIcon = <T extends ShapeValue>({ variable }: { variable: VariableReference<T> }) => {
-  const Icon =
-    VARIABLE_TYPE_ICONS[
-      variableTypeKind(variable.fieldType ?? variable.current?.kind ?? variable.type)
-    ];
-  return <Icon />;
-};
+// Explicit size: the Button sizes bare svgs, not the badged-array wrapper.
+const VariableIcon = <T extends ShapeValue>({ variable }: { variable: VariableReference<T> }) => (
+  <VariableTypeIcon
+    type={variable.fieldType ?? variable.current?.kind ?? variable.type}
+    className="size-4"
+  />
+);
 
 const representableKinds = new Set(["text", "number", "boolean", "color"]);
 

@@ -4,7 +4,7 @@ import {
   CopyButton,
   ExternalLinkIcon,
   QrCode,
-  variableTypeIcon,
+  VariableTypeIcon,
 } from "@mechane/design-system";
 import { deviceAddress } from "@mechane/domain/device-address";
 import { DEVICE_SOURCE_HANDLES } from "@mechane/domain/graph";
@@ -36,7 +36,6 @@ export function NodeFieldList({
   return (
     <div className="grid grid-cols-[2.5rem_1fr] gap-x-2">
       {fields.map((field) => {
-        const Icon = variableTypeIcon(field.type);
         const handleId = handleFor({ kind: "field", id: field.id });
         return (
           <div
@@ -52,7 +51,10 @@ export function NodeFieldList({
               data-connected={connectedHandleIds?.has(handleId) ?? false}
               isConnectable={isConnectable}
             />
-            <Icon className="size-4 shrink-0 justify-self-center ml-2 text-(--flow-muted-foreground)" />
+            <VariableTypeIcon
+              type={field.type}
+              className="size-4 shrink-0 justify-self-center ml-2 text-(--flow-muted-foreground)"
+            />
             <div className="flex min-w-0 items-baseline justify-between gap-2 pr-4">
               <div className="min-w-0 truncate">
                 {field.value === undefined || field.value === null ? (
@@ -96,7 +98,6 @@ export function NodeVariableList({
   return (
     <div className="grid grid-cols-[2.5rem_1fr] gap-x-2 gap-y-0">
       {variables.map((variable) => {
-        const Icon = variableTypeIcon(variable.type);
         const handleId = handleFor({ kind: "variable", id: variable.id });
         return (
           <div
@@ -112,7 +113,10 @@ export function NodeVariableList({
               data-connected={connectedHandleIds?.has(handleId) ?? false}
               isConnectableStart={false}
             />
-            <Icon className="size-4 inline-block justify-self-center ml-2" />
+            <VariableTypeIcon
+              type={variable.type}
+              className="size-4 inline-block justify-self-center ml-2"
+            />
             <div className="flex items-center gap-2 w-full justify-between pr-2">
               <div className="truncate">{variable.name}</div>
             </div>

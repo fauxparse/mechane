@@ -172,6 +172,10 @@ export {
   variableTypeLabel,
   type VariableTypeIconKind,
 } from "./components/ui/property-input/variable-type-icons";
+export {
+  VariableTypeIcon,
+  type VariableTypeIconProps,
+} from "./components/ui/property-input/variable-type-icon";
 export { QrCode } from "./components/ui/qr-code";
 export { SearchInput } from "./components/ui/search-input";
 export {

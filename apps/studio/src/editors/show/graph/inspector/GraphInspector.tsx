@@ -12,7 +12,8 @@ import type { EdgeKind, GraphEdge, GraphNode } from "@mechane/domain/graph";
 import type { GraphInspectorEditing } from "@show-editor/commands/use-graph-editing";
 import { pluralize } from "../../../../utils/pluralize";
 import type { ShowGraphValueLocation } from "../../ShowGraphEditor";
-import { NODE_KIND_META, nodeIcon } from "../node-kinds";
+import { NODE_KIND_META } from "../node-kinds";
+import { NodeIcon } from "../nodes/NodeIcon";
 import { SingleEdge } from "./SingleEdge";
 import { SingleNode } from "./SingleNode";
 import type { SourceImageAsset } from "./source-value-types";
@@ -54,16 +55,22 @@ function InspectorHeader({
   const perConnection = common(selected, (node) =>
     node.kind === "device" ? node.perConnection : false,
   );
-  const sourceType = common(selected, (node) =>
-    node.kind === "source" && typeof node.type === "string" ? node.type : undefined,
-  );
-  const Icon = kind
-    ? nodeIcon(kind, {
-        perConnection: perConnection ?? false,
-        sourceType: sourceType ?? undefined,
-      })
-    : SquareDashedIcon;
   const [first] = selected;
+  // Types are structured, so compare them by value rather than identity.
+  const sourceTypeKey = common(selected, (node) =>
+    node.kind === "source" ? JSON.stringify(node.type) : undefined,
+  );
+  const sourceType = sourceTypeKey && first?.kind === "source" ? first.type : null;
+  const icon = kind ? (
+    <NodeIcon
+      kind={kind}
+      perConnection={perConnection ?? false}
+      sourceType={sourceType}
+      className="size-4 shrink-0"
+    />
+  ) : (
+    <SquareDashedIcon className="size-4 shrink-0" />
+  );
   const name = selected.length === 1 ? (first?.name ?? "") : null;
   const label =
     perConnection && kind === "device"
@@ -95,12 +102,12 @@ function InspectorHeader({
             onCancel={editing.cancelRename}
           >
             <InputGroupAddon align="inline-start" className="px-1 mr-0">
-              <Icon className="size-4 shrink-0" />
+              {icon}
             </InputGroupAddon>
           </EditableName>
         ) : (
           <>
-            <Icon className="size-4 shrink-0" />
+            {icon}
             <span className="truncate grow">{pluralize(label, selected.length)}</span>
           </>
         )}

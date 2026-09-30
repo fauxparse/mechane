@@ -9,7 +9,7 @@ import {
   RotateCcwIcon,
   Section,
   SectionRow,
-  variableTypeIcon,
+  VariableTypeIcon,
 } from "@mechane/design-system";
 import { formatValuePath, type SourceNode } from "@mechane/domain/graph";
 import { valueAtPath } from "@mechane/domain/property-values";
@@ -150,7 +150,6 @@ export const SourceValues = ({
   return (
     <Section label="Source values">
       {rows.map((row) => {
-        const Icon = variableTypeIcon(row.type);
         const modal = usesModal(row.type, row.value);
         const actions = (
           <SourceValueActions
@@ -163,7 +162,7 @@ export const SourceValues = ({
         return (
           <SectionRow key={formatValuePath([...row.fieldPath]) || "root"}>
             <span className="flex items-center gap-2" title={row.label}>
-              <Icon className="size-4 text-muted-foreground" />
+              <VariableTypeIcon type={row.type} className="size-4 text-muted-foreground" />
               <span className="truncate">{row.label}</span>
             </span>
             <div className="col-span-2 min-w-0">
