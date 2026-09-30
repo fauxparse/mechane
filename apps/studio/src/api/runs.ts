@@ -26,19 +26,6 @@ export function useActiveRun(showId: ShowId | null) {
   });
 }
 
-export function useStartRun() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (showId: ShowId) => {
-      const data = await graphqlRequest(GRAPHQL_ENDPOINT, StartRunMutation, { showId });
-      return data.startRun;
-    },
-    onSuccess: (run) => {
-      void queryClient.invalidateQueries({ queryKey: activeRunQueryKey(run.showId as ShowId) });
-    },
-  });
-}
-
 /**
  * Starts a Run over the current draft. A Run reads only the published graph
  * (ADR-0009), so unpublished changes are published first; a failed publish
@@ -46,11 +33,15 @@ export function useStartRun() {
  */
 export function useGoLive() {
   const publish = usePublishShowGraph();
-  const startRun = useStartRun();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ showId, publishFirst }: { showId: ShowId; publishFirst: boolean }) => {
       if (publishFirst) await publish.mutateAsync(showId);
-      return startRun.mutateAsync(showId);
+      const data = await graphqlRequest(GRAPHQL_ENDPOINT, StartRunMutation, { showId });
+      return data.startRun;
+    },
+    onSuccess: (run) => {
+      void queryClient.invalidateQueries({ queryKey: activeRunQueryKey(run.showId as ShowId) });
     },
   });
 }

@@ -11,6 +11,8 @@ The published graph is the source of defaults. Draft-only structural changes can
 
 The API exposes `activeRun`, `startRun`, and `endRun`. Studio exposes Go live/End run controls in the Show editor chrome and reflects the active state after mutation. Go live publishes the draft first when it has unpublished changes, and starts the Run only if that publication succeeds; `startRun` itself never publishes.
 
+Studio's Go live mutation owns the start request and invalidates the active-Run query after success. Publication updates and invalidates the published graph independently, so a successful publication still refreshes Studio if starting the Run then fails.
+
 ## Consequences
 
 - At most one Run is active per Show by application-level serialisation on the Show row lock.
