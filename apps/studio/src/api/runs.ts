@@ -9,6 +9,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { GRAPHQL_ENDPOINT } from "./client";
+import { usePublishShowGraph } from "./show-graph";
 
 export const activeRunQueryKey = (showId: ShowId) => ["shows", showId, "active-run"] as const;
 
@@ -25,10 +26,17 @@ export function useActiveRun(showId: ShowId | null) {
   });
 }
 
-export function useStartRun() {
+/**
+ * Starts a Run over the current draft. A Run reads only the published graph
+ * (ADR-0009), so unpublished changes are published first; a failed publish
+ * leaves no Run started.
+ */
+export function useGoLive() {
+  const publish = usePublishShowGraph();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (showId: ShowId) => {
+    mutationFn: async ({ showId, publishFirst }: { showId: ShowId; publishFirst: boolean }) => {
+      if (publishFirst) await publish.mutateAsync(showId);
       const data = await graphqlRequest(GRAPHQL_ENDPOINT, StartRunMutation, { showId });
       return data.startRun;
     },

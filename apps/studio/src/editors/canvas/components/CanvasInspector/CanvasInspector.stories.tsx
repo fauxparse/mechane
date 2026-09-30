@@ -362,6 +362,27 @@ const mixedStrokeRoot: FrameElement = {
   ),
 };
 
+const sceneFillRoot: FrameElement = {
+  ...connectedRoot,
+  id: "scene-fill-root",
+  name: "Responsive scene",
+  children: [
+    {
+      id: "fill-headline",
+      type: "text",
+      name: "Headline",
+      rank: "a",
+      content: "Live results",
+      color: "#f8fafc",
+      fontSize: 24,
+      sizing: {
+        width: { mode: "fill" },
+        height: { mode: "hug" },
+      },
+    },
+  ],
+};
+
 function applyUpdates(
   current: ApiCanvasArtboardDocument,
   updates: readonly {
@@ -491,6 +512,20 @@ export const CanvasBlockRoot: Story = {
       initialSelection={{ artId: ART_ID, elementIds: [] }}
       storyBlocks={[block]}
       blockVariableEditing={blockVariableEditing}
+    />
+  ),
+};
+
+/**
+ * The Scene root can fill the player viewport per axis; each filled axis keeps its minimum
+ * visible (seeded from the measured size on entering fill) so the editor has dimensions.
+ */
+export const SceneRootFill: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(sceneFillRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: ["scene-fill-root"] }}
+      currentDimensions={{ elementId: "scene-fill-root", width: 640, height: 360 }}
     />
   ),
 };

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { createElement } from "react";
 
 import type { Canvas, FrameElement } from "@mechane/domain/canvas";
 import { prepareCanvasForRender } from "./canvas-presentation";
@@ -590,6 +591,148 @@ const imageCanvas: Canvas = {
   },
 };
 
+const responsiveSceneCanvas: Canvas = {
+  kind: "scene",
+  root: {
+    id: "responsive-scene-root",
+    type: "frame",
+    layoutMode: "auto",
+    direction: "vertical",
+    gap: 12,
+    padding: 16,
+    fill: "#191724",
+    sizing: {
+      width: { mode: "fill" },
+      height: { mode: "fill" },
+      minWidth: { value: 320, unit: "px" },
+      minHeight: { value: 240, unit: "px" },
+    },
+    children: [
+      {
+        id: "responsive-header",
+        type: "frame",
+        layoutMode: "auto",
+        direction: "horizontal",
+        gap: 12,
+        padding: { top: 12, right: 16, bottom: 12, left: 16 },
+        alignPrimary: "space-between",
+        alignCounter: "center",
+        sizing: { width: { mode: "fill" }, height: { mode: "hug" } },
+        fill: "#31748f",
+        children: [
+          {
+            id: "responsive-title",
+            type: "text",
+            content: "Responsive scene",
+            color: "#f6f1f4",
+            fontSize: 18,
+            fontWeight: 700,
+            sizing: { width: { mode: "hug" }, height: { mode: "hug" } },
+          },
+          {
+            id: "responsive-status",
+            type: "text",
+            content: "fill × fill",
+            color: "#9ccfd8",
+            fontSize: 13,
+            sizing: { width: { mode: "hug" }, height: { mode: "hug" } },
+          },
+        ],
+      },
+      {
+        id: "responsive-body",
+        type: "frame",
+        layoutMode: "auto",
+        direction: "horizontal",
+        gap: 12,
+        padding: 12,
+        fill: "#26233a",
+        sizing: { width: { mode: "fill" }, height: { mode: "fill" } },
+        children: [
+          {
+            id: "responsive-panel",
+            type: "frame",
+            layoutMode: "auto",
+            direction: "vertical",
+            gap: 8,
+            padding: 16,
+            alignPrimary: "center",
+            alignCounter: "center",
+            sizing: { width: { mode: "fill" }, height: { mode: "fill" } },
+            fill: "#393552",
+            children: [
+              {
+                id: "responsive-panel-copy",
+                type: "text",
+                content:
+                  "In the Player this scene tracks the viewport on both axes. Drag the dashed corner to resize.",
+                color: "#e0def4",
+                fontSize: 15,
+                textAlign: "center",
+                sizing: { width: { mode: "fill" }, height: { mode: "hug" } },
+              },
+            ],
+          },
+          {
+            id: "responsive-fixed-card",
+            type: "rect",
+            sizing: { width: { mode: "fixed", value: 96 }, height: { mode: "fixed", value: 96 } },
+            cornerRadius: 16,
+            fill: "#eb6f92",
+          },
+        ],
+      },
+      {
+        id: "responsive-footer",
+        type: "text",
+        content:
+          "Root minimums (320 × 240) feed the editor preview; the Player never enforces them.",
+        color: "#908caa",
+        fontSize: 12,
+        sizing: { width: { mode: "fill" }, height: { mode: "hug" } },
+      },
+    ],
+  },
+};
+
+const responsiveMixedCanvas: Canvas = {
+  kind: "scene",
+  root: {
+    id: "responsive-mixed-root",
+    type: "frame",
+    layoutMode: "absolute",
+    fill: "#26233a",
+    sizing: {
+      width: { mode: "fill" },
+      height: { mode: "fixed", value: 320 },
+      minWidth: { value: 280, unit: "px" },
+      minHeight: { value: 200, unit: "px" },
+    },
+    children: [
+      {
+        id: "mixed-axis-label",
+        type: "text",
+        rank: "a",
+        content: "Fill width, fixed 320px height",
+        color: "#f6f1f4",
+        fontSize: 18,
+        lineHeight: 1.4,
+        sizing: { width: { mode: "fixed", value: 300 }, height: { mode: "hug" } },
+        anchor: { horizontal: "left", vertical: "top", offsetX: 24, offsetY: 24 },
+      },
+      {
+        id: "mixed-fixed-square",
+        type: "rect",
+        rank: "b",
+        sizing: { width: { mode: "fixed", value: 120 }, height: { mode: "fixed", value: 120 } },
+        cornerRadius: 20,
+        fill: "#f6c177",
+        anchor: { horizontal: "right", vertical: "bottom", offsetX: 24, offsetY: 24 },
+      },
+    ],
+  },
+};
+
 const directFrame: FrameElement = {
   id: "direct-frame",
   type: "frame",
@@ -626,15 +769,33 @@ const directFrame: FrameElement = {
     },
   ],
 };
-function storyPresentation(canvas: Canvas | FrameElement) {
+function storyPresentation(canvas: Canvas | FrameElement, mode: "studio" | "player" = "studio") {
   return prepareCanvasForRender({
     canvas: "root" in canvas ? canvas : { root: canvas },
     variables: [],
     shapes: [],
     blocks: [],
     imageAssets: [],
-    mode: "studio",
+    mode,
   });
+}
+
+function playerViewport(canvas: Canvas, width: number, height: number) {
+  return createElement(
+    "div",
+    {
+      style: {
+        width,
+        height,
+        minWidth: 200,
+        minHeight: 140,
+        resize: "both",
+        overflow: "hidden",
+        border: "1px dashed #6e6a86",
+      },
+    },
+    createElement(CanvasRenderer, { presentation: storyPresentation(canvas, "player") }),
+  );
 }
 
 const meta: Meta<typeof CanvasRenderer> = {
@@ -693,4 +854,12 @@ export const DirectFrame: Story = {
     presentation: storyPresentation(directFrame),
     style: { width: 420, height: 220 },
   },
+};
+
+export const PlayerResponsiveScene: Story = {
+  render: () => playerViewport(responsiveSceneCanvas, 480, 360),
+};
+
+export const PlayerMixedSceneAxes: Story = {
+  render: () => playerViewport(responsiveMixedCanvas, 480, 320),
 };

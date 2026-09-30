@@ -217,6 +217,15 @@ const resizeImageReviewArtboard: CanvasArtboardDocument = {
   position: { x: 64, y: 96 },
 };
 
+const sceneFillReviewArtboard: CanvasArtboardDocument = {
+  canvasId: "canvas-scene-fill-review",
+  artId: "scene-fill-review",
+  kind: "scene",
+  name: "Fill review",
+  canvas: { kind: "scene", root: root("FillReview", "#e2e8f0") },
+  position: { x: 64, y: 96 },
+};
+
 function renderedStoryArtboard(artboard: CanvasArtboardDocument): CanvasArtboardDocument {
   return {
     ...artboard,
@@ -241,6 +250,55 @@ function StatefulImageResizeReview() {
       selectedElementIds={["resize-image"]}
       session={storySession({
         updateElement: (canvasId, elementId, properties, unsetProperties) => {
+          setArtboard((current) => ({
+            ...current,
+            canvas: applyCanvasEdits(current.canvas, [
+              {
+                type: CANVAS_COMMAND_TYPES.updateElement,
+                elementId,
+                properties: properties as ElementProperties,
+                unsetProperties: unsetProperties ?? [],
+              },
+            ]),
+          }));
+        },
+      })}
+    />
+  );
+}
+
+/**
+ * Scene-root fill authoring: choosing Fill on the root seeds a minimum in the same update, and
+ * editing that minimum visibly resizes the artboard preview. Selection starts on the root but
+ * stays uncontrolled, so every inspector gesture works against the live workspace.
+ */
+function StatefulSceneRootFillReview() {
+  const [artboard, setArtboard] = useState(sceneFillReviewArtboard);
+  return (
+    <CanvasWorkspaceEditor
+      artboards={[renderedStoryArtboard(artboard)]}
+      focusedArtId={artboard.artId}
+      initialSelection={{ artId: artboard.artId, elementIds: ["FillReview-root"] }}
+      session={storySession({
+        // The workspace inspector commits through updateElements; element-by-element edits
+        // from the stage still land through updateElement.
+        updateElements: (canvasId, updates) => {
+          if (canvasId !== artboard.canvasId) return;
+          setArtboard((current) => ({
+            ...current,
+            canvas: applyCanvasEdits(
+              current.canvas,
+              updates.map((update) => ({
+                type: CANVAS_COMMAND_TYPES.updateElement,
+                elementId: update.elementId,
+                properties: update.properties as ElementProperties,
+                unsetProperties: update.unsetProperties ?? [],
+              })),
+            ),
+          }));
+        },
+        updateElement: (canvasId, elementId, properties, unsetProperties) => {
+          if (canvasId !== artboard.canvasId) return;
           setArtboard((current) => ({
             ...current,
             canvas: applyCanvasEdits(current.canvas, [
@@ -454,6 +512,10 @@ export const KeyboardNudgeAndReorder: Story = {
     selectedArtId: "scene-lobby",
     selectedElementIds: ["Lobby-title"],
   },
+};
+
+export const StatefulSceneRootFillStory: Story = {
+  render: () => <StatefulSceneRootFillReview />,
 };
 /** The Layers navigator as a tree: nested Frames, disclosure, icons, and drag targets (#222). */
 export const LayersNestedTree: Story = {

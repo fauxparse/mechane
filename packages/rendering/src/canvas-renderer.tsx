@@ -23,7 +23,11 @@ import type {
 } from "@mechane/domain/canvas";
 import type { BlockInstancePathSegment } from "@mechane/domain/interactions";
 import type { CanvasRendererProps } from "./canvas-render";
-import type { CanvasPresentation, PreparedCanvasElement } from "./canvas-presentation";
+import type {
+  CanvasPresentation,
+  CanvasPresentationMode,
+  PreparedCanvasElement,
+} from "./canvas-presentation";
 
 type LayoutParent = Extract<ResolvedElement, { type: "frame" | "slot" }>;
 
@@ -95,6 +99,16 @@ function dimensionFor(
     return sizeValue(transposed?.value);
   }
   return sizeValue(authored?.value);
+}
+/** Studio scene roots fill their preview wrapper; Player axes follow authored sizing. */
+function sceneRootSize(
+  element: ResolvedElement,
+  axis: "width" | "height",
+  rotation: Rotation,
+  mode: CanvasPresentationMode,
+): string {
+  if (mode === "studio") return "100%";
+  return dimensionFor(element, axis, rotation) ?? "100%";
 }
 function constraintFor(
   element: ResolvedElement,
@@ -187,7 +201,12 @@ function anchorStyles(anchor: AnchorPosition | undefined): CSSProperties {
     bottom: vertical === "bottom" ? `${anchor.offsetY ?? 0}px` : undefined,
   };
 }
-function elementStyle(element: ResolvedElement, root: boolean, sceneRoot: boolean): CSSProperties {
+function elementStyle(
+  element: ResolvedElement,
+  root: boolean,
+  sceneRoot: boolean,
+  mode: CanvasPresentationMode,
+): CSSProperties {
   const rotation = root ? 0 : rotationFor(element);
   const ratio = ratioFor(element);
   const physicalRatio =
@@ -196,8 +215,14 @@ function elementStyle(element: ResolvedElement, root: boolean, sceneRoot: boolea
   const emptyText = element.type === "text" && contentFor(element) === "";
   const style: CSSProperties = {
     boxSizing: "border-box",
-    width: root && sceneRoot ? "100%" : dimensionFor(element, "width", rotation),
-    height: root && sceneRoot ? "100%" : dimensionFor(element, "height", rotation),
+    width:
+      root && sceneRoot
+        ? sceneRootSize(element, "width", rotation, mode)
+        : dimensionFor(element, "width", rotation),
+    height:
+      root && sceneRoot
+        ? sceneRootSize(element, "height", rotation, mode)
+        : dimensionFor(element, "height", rotation),
     minWidth: root ? undefined : constraintFor(element, "minWidth", rotation),
     maxWidth: root ? undefined : constraintFor(element, "maxWidth", rotation),
     minHeight: emptyText ? "1lh" : root ? undefined : constraintFor(element, "minHeight", rotation),
@@ -330,7 +355,7 @@ function renderElement({
   const fixedMainAxis = parentIsAuto && sizeFor(element, mainAxis)?.mode === "fixed";
   const editing = element.type === "text" && element.id === editingElementId;
   const style = {
-    ...elementStyle(element, root, sceneRoot),
+    ...elementStyle(element, root, sceneRoot, mode),
     ...(element.type === "frame" || element.type === "slot" ? frameStyle(element) : {}),
     ...typeStyle(element),
     ...(editing ? { userSelect: "text" as const } : {}),

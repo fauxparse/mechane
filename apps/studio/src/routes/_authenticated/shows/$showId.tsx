@@ -10,13 +10,13 @@
 // plain data and callbacks. That is what lets the whole Chrome be reviewed in
 // Storybook with no router and no query client.
 import { isId, type ShowId } from "@mechane/domain/id";
-import { publishState } from "@mechane/domain/publish";
+import { hasUnpublishedChanges, publishState } from "@mechane/domain/publish";
 import { GraphQLRequestError } from "@mechane/graphql-schema";
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { usePublishShowGraph, useShowGraph } from "../../../api/show-graph";
-import { useActiveRun, useEndRun, useStartRun } from "../../../api/runs";
+import { useActiveRun, useEndRun, useGoLive } from "../../../api/runs";
 import { useRenameShow, useShow } from "../../../api/shows";
 import { useMe } from "../../../api/me";
 import { useSignOut } from "../../../api/auth";
@@ -44,7 +44,7 @@ function ShowEditorLayout() {
   const activeRun = useActiveRun(showId);
   const renameShow = useRenameShow();
   const publish = usePublishShowGraph();
-  const startRun = useStartRun();
+  const goLive = useGoLive();
   const endRun = useEndRun();
   const signOut = useSignOut();
   const [sidebarsOpen, setSidebarsOpen] = useStoredSidebarState();
@@ -151,11 +151,12 @@ function ShowEditorLayout() {
             return;
           publish.mutate(currentShow.id);
         },
-        publishing: publish.isPending,
+        publishing: publish.isPending || goLive.isPending,
         runActive: activeRun.data !== null && activeRun.data !== undefined,
-        onStartRun: () => startRun.mutate(currentShow.id),
+        onStartRun: () =>
+          goLive.mutate({ showId: currentShow.id, publishFirst: hasUnpublishedChanges(state) }),
         onEndRun: () => endRun.mutate(currentShow.id),
-        runPending: startRun.isPending || endRun.isPending,
+        runPending: goLive.isPending || endRun.isPending,
         onRename: (name) => renameShow.mutate({ id: currentShow.id, name }),
         renaming: renameShow.isPending,
         renameError:
