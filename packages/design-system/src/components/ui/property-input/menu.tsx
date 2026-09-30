@@ -16,6 +16,10 @@ import {
   ComboboxList,
   ComboboxSeparator,
 } from "../combobox";
+import { MaxHeightIcon } from "../../../icons/MaxHeightIcon";
+import { MaxWidthIcon } from "../../../icons/MaxWidthIcon";
+import { MinHeightIcon } from "../../../icons/MinHeightIcon";
+import { MinWidthIcon } from "../../../icons/MinWidthIcon";
 import { InlineColorPicker } from "./color-picker";
 import { cn } from "../../../lib/utils";
 import type {
@@ -143,11 +147,11 @@ function DimensionMenu({
       <ComboboxSeparator />
       <ComboboxGroup>
         <ComboboxItem value="add-min">
-          Add min {dimension}
+          {dimension === "width" ? <MinWidthIcon /> : <MinHeightIcon />}Add min {dimension}
           <CheckIcon className={cn("ml-auto", constraints?.min ? "opacity-100" : "opacity-0")} />
         </ComboboxItem>
         <ComboboxItem value="add-max">
-          Add max {dimension}
+          {dimension === "width" ? <MaxWidthIcon /> : <MaxHeightIcon />}Add max {dimension}
           <CheckIcon className={cn("ml-auto", constraints?.max ? "opacity-100" : "opacity-0")} />
         </ComboboxItem>
       </ComboboxGroup>
