@@ -9,6 +9,11 @@ An application for building interactive tech for live theatre shows across multi
 A top-level project a director or technician builds in Mechanē. A Show is a directed graph of Scenes, Devices, Flows, Sources, Transformers, and their wiring, plus reusable Blocks.
 _Avoid_: Project, production
 
+### Auto-publish
+
+A Show setting, on by default, under which every accepted edit is also published as it lands, so the Show's Devices always show its latest publishable version and the director never sees a draft. With it off, the Show stages edits in its draft until the director publishes them together. An edit that leaves the draft unpublishable — a Transformer still missing its Formula — is kept either way; with Auto-publish on, Devices stay on the last publishable version until a later edit makes the draft publishable again.
+_Avoid_: Autosave (every edit is saved either way; this is about publishing), live editing
+
 ### Run
 
 A discrete live instance of a Show. Starting a Run resets all live data (the values held by Sources) to their defaults and initializes each Flow-driven Shared Device's runtime Scene from the published Flow default; Devices connect to a Run, not directly to the Show, when a performance is underway. A Show has zero or more Runs, but at most one Run is active at a time.

@@ -7,11 +7,18 @@ import { describe, expect, it } from "vitest";
 import { db } from "./client";
 import { readCanvas } from "./canvas";
 import { endRun, readActiveRun, readRunDeviceState, startRun } from "./runs";
-import { applyShowEdits, publishShowGraph, readShowGraph, writeShowGraph } from "./show-graph";
+import {
+  applyShowEdits,
+  createShowWithDefaults,
+  publishShowGraph,
+  readShowGraph,
+  setShowAutoPublish,
+  writeShowGraph,
+} from "./show-graph";
 import { canvasElements, devices } from "./schema";
 import { setupPostgresTest } from "./test-helpers";
 
-const { showId, createShow: createUserAndShow } = setupPostgresTest("show-lifecycle-test");
+const { showId, userId, createShow: createUserAndShow } = setupPostgresTest("show-lifecycle-test");
 
 const graph: ShowGraph = {
   nodes: [
@@ -118,6 +125,9 @@ describe("Show graph lifecycle", () => {
       fieldPath: [],
       value: 2,
     };
+    // A Show that stages its changes: the edit reaches the live Run but not
+    // the published graph.
+    await setShowAutoPublish(showId, false);
     const applied = await applyShowEdits(showId, [edit], [], draftBeforePublish.version);
     expect(applied.version).toBe(draftBeforePublish.version + 1);
     expect((await readActiveRun(showId))?.sourceValues).toEqual({ source_score: 2 });
@@ -397,5 +407,101 @@ describe("Show graph lifecycle", () => {
         blocks: [firstWithSlot, secondWithSlot],
       }),
     ).rejects.toThrow(BlockCycleError);
+  });
+});
+
+describe("Show auto-publication (#856)", () => {
+  const setScore = (value: number): GraphEdit => ({
+    type: "graph.setSourceFieldDefault",
+    nodeId: "source_score",
+    fieldPath: [],
+    value,
+  });
+
+  it("publishes every accepted edit batch in the same transaction", async () => {
+    await createShow();
+    await writeShowGraph(showId, "draft", graph);
+    const draft = await readShowGraph(showId, "draft");
+
+    const applied = await applyShowEdits(showId, [setScore(5)], [], draft.version);
+
+    const published = await readShowGraph(showId, "published");
+    expect(applied.published).toEqual({
+      updatedAt: published.updatedAt,
+      version: published.version,
+    });
+    expect(published.sourceFieldDefaults).toEqual([
+      { nodeId: "source_score", fieldPath: [], value: 5 },
+    ]);
+    expect(published.updatedAt.getTime()).toBeGreaterThanOrEqual(applied.updatedAt.getTime());
+  });
+
+  it("keeps an edit whose draft cannot be published, and leaves the published graph alone", async () => {
+    await createShow();
+    await writeShowGraph(showId, "draft", graph);
+    const draft = await readShowGraph(showId, "draft");
+    const first = await applyShowEdits(showId, [setScore(3)], [], draft.version);
+    const run = await startRun(showId);
+    expect(run.sourceValues).toEqual({ source_score: 3 });
+
+    // A Calculate Transformer with no Formula is a legal draft but cannot be
+    // published (assertValidShowGraph with `publication`).
+    const applied = await applyShowEdits(
+      showId,
+      [
+        setScore(4),
+        {
+          type: "graph.addNode",
+          node: {
+            id: "transformer_total",
+            kind: "transformer",
+            name: "Total",
+            position: { x: 200, y: 0 },
+            parentId: null,
+            ports: [{ id: "port_total_input", name: "input", rank: "a" }],
+            transform: { kind: "calculate", formula: null, outputType: "number" },
+          },
+        },
+      ],
+      [],
+      first.version,
+    );
+
+    expect(applied.published).toBeNull();
+    expect((await readShowGraph(showId, "draft")).nodes.map((node) => node.id)).toContain(
+      "transformer_total",
+    );
+    const published = await readShowGraph(showId, "published");
+    expect(published.version).toBe(first.published?.version);
+    expect(published.nodes.map((node) => node.id)).not.toContain("transformer_total");
+    // The Source default still reaches the live Run, as it does without publishing.
+    expect((await readActiveRun(showId))?.sourceValues).toEqual({ source_score: 4 });
+  });
+
+  it("publishes a pending draft when auto-publication is turned on", async () => {
+    await createShow();
+    await setShowAutoPublish(showId, false);
+    await writeShowGraph(showId, "draft", graph);
+    const draft = await readShowGraph(showId, "draft");
+    const applied = await applyShowEdits(showId, [setScore(7)], [], draft.version);
+    expect(applied.published).toBeNull();
+    expect((await readShowGraph(showId, "published")).version).toBe(0);
+
+    const show = await setShowAutoPublish(showId, true);
+
+    expect(show.autoPublish).toBe(true);
+    expect((await readShowGraph(showId, "published")).sourceFieldDefaults).toEqual([
+      { nodeId: "source_score", fieldPath: [], value: 7 },
+    ]);
+  });
+
+  it("publishes the starter graph of a new Show", async () => {
+    await createShow();
+    const show = await createShowWithDefaults("Fresh", userId);
+
+    const draft = await readShowGraph(show.id, "draft");
+    const published = await readShowGraph(show.id, "published");
+    expect(published.nodes).toEqual(draft.nodes);
+    expect(published.updatedAt.getTime()).toBeGreaterThanOrEqual(draft.updatedAt.getTime());
   });
 });

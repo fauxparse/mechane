@@ -139,6 +139,7 @@ function ShowEditorLayout() {
           avatarUrl: null,
         },
         onLogOut: () => signOut.mutate(),
+        autoPublish: currentShow.autoPublish,
         publishState: state,
         publishDisabledReason: shapeEditorStatus.invalidReason ?? undefined,
         onPublish: () => {

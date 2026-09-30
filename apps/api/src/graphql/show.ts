@@ -20,7 +20,7 @@ import { GraphQLError } from "graphql";
 
 import { db } from "../db/client";
 import { shows } from "../db/schema";
-import { createShowWithDefaults } from "../db/show-graph";
+import { createShowWithDefaults, setShowAutoPublish } from "../db/show-graph";
 import type { Resolvers } from "./context";
 import { requireUserId } from "./context";
 
@@ -74,6 +74,11 @@ export const typeDefs = /* GraphQL */ `
     name: String!
     createdAt: String!
     updatedAt: String!
+    """
+    Whether every accepted draft edit is published immediately. When false,
+    edits wait in the draft for an explicit publishShowGraph.
+    """
+    autoPublish: Boolean!
   }
 
   type Query {
@@ -86,6 +91,8 @@ export const typeDefs = /* GraphQL */ `
   type Mutation {
     createShow(name: String!): Show!
     renameShow(id: ID!, name: String!): Show!
+    "Turns auto-publication on or off. Turning it on publishes any unpublished draft."
+    setShowAutoPublish(id: ID!, autoPublish: Boolean!): Show!
     deleteShow(id: ID!): Boolean!
   }
 `;
@@ -128,6 +135,17 @@ export const resolvers: Resolvers = {
         .where(eq(shows.id, id))
         .returning();
       return updated;
+    },
+    setShowAutoPublish: async (
+      _parent,
+      { id, autoPublish }: { id: string; autoPublish: boolean },
+      context,
+    ) => {
+      const userId = requireUserId(context);
+      await findOwnShowOrThrow(id, userId);
+      return setShowAutoPublish(id, autoPublish, {
+        customDomainsProvider: context.customDomains?.provider,
+      });
     },
     deleteShow: async (_parent, { id }: { id: string }, context) => {
       const userId = requireUserId(context);

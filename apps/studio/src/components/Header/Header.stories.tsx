@@ -50,20 +50,30 @@ export const CanvasEditorActive: Story = {
   args: { activeEditor: "canvas" },
 };
 
+/** Auto-publishing (the default): the menu exists only to end the Run. */
 export const RunActive: Story = {
-  args: { runActive: true, publishState: "published" },
+  args: { runActive: true },
+};
+
+/** A Show that stages its changes, with a draft ahead of what Devices show. */
+export const UnpublishedChanges: Story = {
+  args: { autoPublish: false, publishState: "unpublished-changes" },
 };
 
 export const NothingToPublish: Story = {
-  args: { publishState: "published" },
+  args: { autoPublish: false, publishState: "published" },
 };
 
 export const NeverPublished: Story = {
-  args: { publishState: "empty" },
+  args: { autoPublish: false, publishState: "empty" },
 };
 
 export const Publishing: Story = {
-  args: { publishing: true },
+  args: { autoPublish: false, publishState: "unpublished-changes", publishing: true },
+};
+
+export const StagedRunActive: Story = {
+  args: { autoPublish: false, runActive: true, publishState: "published" },
 };
 
 export const RunPending: Story = {

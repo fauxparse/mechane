@@ -111,9 +111,9 @@ export const RunActive: Story = {
   render: ShowEditor.render,
 };
 
-/** Nothing published yet, so the menu offers no changes to publish. */
+/** A Show that stages its changes, with nothing published yet. */
 export const NeverPublished: Story = {
-  args: { header: { ...MOCK_HEADER, publishState: "empty" } },
+  args: { header: { ...MOCK_HEADER, autoPublish: false, publishState: "empty" } },
   render: ShowEditor.render,
 };
 

@@ -50,6 +50,8 @@ export const GetShowGraphQuery = graphql(
  * its own copy and already applied them. What it can't know is the version to
  * build on next, and anything the server decided for itself — currently device
  * pairing codes and cleanup edits for invalidated interactions — is selected here.
+ * So is `published`, set when an auto-publishing Show (#856) published the
+ * batch: the published graph moved without the editor asking for it.
  * A wider amendment vocabulary (ADR-0003's realtime push) would widen this
  * selection.
  */
@@ -66,6 +68,10 @@ export const ApplyShowEditsMutation = graphql(`
         pairingCode
         cueId
         actionId
+      }
+      published {
+        updatedAt
+        version
       }
     }
   }

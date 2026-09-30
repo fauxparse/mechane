@@ -10,10 +10,12 @@ import {
   graphqlRequest,
   ListShowsQuery,
   RenameShowMutation,
+  SetShowAutoPublishMutation,
 } from "@mechane/graphql-schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { GRAPHQL_ENDPOINT } from "./client";
+import { showGraphQueryKey } from "./show-graph";
 
 export const showsQueryKey = ["shows"] as const;
 export const showQueryKey = (id: ShowId) => ["shows", id] as const;
@@ -77,6 +79,28 @@ export function useRenameShow() {
     onSuccess: (show) => {
       void queryClient.invalidateQueries({ queryKey: showsQueryKey });
       queryClient.setQueryData(showQueryKey(show.id), show);
+    },
+  });
+}
+
+/**
+ * Turns a Show's auto-publication on or off (#856). Turning it on can publish
+ * a pending draft server-side, so the published graph's cache is refreshed.
+ */
+export function useSetShowAutoPublish() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, autoPublish }: { id: ShowId; autoPublish: boolean }) => {
+      const data = await graphqlRequest(GRAPHQL_ENDPOINT, SetShowAutoPublishMutation, {
+        id,
+        autoPublish,
+      });
+      return asShow(data.setShowAutoPublish);
+    },
+    onSuccess: (show) => {
+      void queryClient.invalidateQueries({ queryKey: showsQueryKey, exact: true });
+      queryClient.setQueryData(showQueryKey(show.id), show);
+      void queryClient.invalidateQueries({ queryKey: showGraphQueryKey(show.id, "published") });
     },
   });
 }

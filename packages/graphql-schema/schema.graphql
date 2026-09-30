@@ -95,6 +95,11 @@ type Mutation {
   updateUserSettings(themeMode: String, themePalette: String): UserSettings!
   createShow(name: String!): Show!
   renameShow(id: ID!, name: String!): Show!
+
+  """
+  Turns auto-publication on or off. Turning it on publishes any unpublished draft.
+  """
+  setShowAutoPublish(id: ID!, autoPublish: Boolean!): Show!
   deleteShow(id: ID!): Boolean!
   endRun(showId: ID!): Run
   startRun(showId: ID!): Run!
@@ -170,6 +175,12 @@ type Show {
   name: String!
   createdAt: String!
   updatedAt: String!
+
+  """
+  Whether every accepted draft edit is published immediately. When false,
+  edits wait in the draft for an explicit publishShowGraph.
+  """
+  autoPublish: Boolean!
 }
 
 type Run {
@@ -1067,6 +1078,17 @@ type AppliedShowEdits {
   updatedAt: String!
   version: Int!
   amendments: [GraphEdit!]!
+
+  """
+  Set when the Show auto-publishes and this batch's draft was published with it.
+  """
+  published: AutoPublication
+}
+
+"""The published graph an auto-published edit batch produced."""
+type AutoPublication {
+  updatedAt: String!
+  version: Int!
 }
 
 """

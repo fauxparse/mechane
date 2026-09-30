@@ -54,6 +54,11 @@ export interface HeaderProps {
   navigation: HeaderNavigation;
   user: HeaderUser;
   onLogOut(): void;
+  /**
+   * The Show publishes every edit as it lands (#856), so there is nothing to
+   * publish and no publish state to report: the publish controls are hidden.
+   */
+  autoPublish: boolean;
   publishState: PublishState;
   onPublish(): void;
   publishDisabledReason?: string;
@@ -88,6 +93,7 @@ export const Header = ({ className, ...props }: HeaderProps) => (
       navigation={props.navigation}
       user={props.user}
       onLogOut={props.onLogOut}
+      autoPublish={props.autoPublish}
       publishState={props.publishState}
       onPublish={props.onPublish}
       publishDisabledReason={props.publishDisabledReason}

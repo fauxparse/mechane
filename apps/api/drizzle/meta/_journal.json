@@ -428,6 +428,13 @@
       "when": 1790634892498,
       "tag": "0060_custom_domain_checks",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1790808096732,
+      "tag": "0061_show_auto_publish",
+      "breakpoints": true
     }
   ]
 }

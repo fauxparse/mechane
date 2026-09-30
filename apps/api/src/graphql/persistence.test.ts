@@ -225,6 +225,85 @@ describe("GraphQL persistence", () => {
     expect(persistedRows).toHaveLength(0);
   });
 
+  it("auto-publishes edits until the Show is switched to staged publishing", async () => {
+    const context = contextFor(testUser);
+    const created = await request<{ createShow: { id: string; autoPublish: boolean } }>(
+      /* GraphQL */ `
+        mutation ($name: String!) {
+          createShow(name: $name) {
+            id
+            autoPublish
+          }
+        }
+      `,
+      context,
+      { name: "Auto" },
+    );
+    const showId = created.createShow.id;
+    expect(created.createShow.autoPublish).toBe(true);
+    const scene = (await readShowGraph(showId, "draft")).nodes.find(
+      (node) => node.kind === "scene",
+    );
+    const applyEdits = async (version: number, name: string) =>
+      (
+        await request<{
+          applyShowEdits: {
+            updatedAt: string;
+            version: number;
+            published: { updatedAt: string; version: number } | null;
+          };
+        }>(
+          /* GraphQL */ `
+            mutation ($showId: ID!, $baseVersion: Int!, $edits: [ShowEditInput!]!) {
+              applyShowEdits(showId: $showId, baseVersion: $baseVersion, edits: $edits) {
+                updatedAt
+                version
+                published {
+                  updatedAt
+                  version
+                }
+              }
+            }
+          `,
+          context,
+          {
+            showId,
+            baseVersion: version,
+            edits: [{ type: "graph.renameNode", nodeId: scene?.id, name }],
+          },
+        )
+      ).applyShowEdits;
+
+    const draftVersion = (await readShowGraph(showId, "draft")).version;
+    const auto = await applyEdits(draftVersion, "Welcome");
+    const published = await readShowGraph(showId, "published");
+    expect(auto.published).toEqual({
+      updatedAt: published.updatedAt.toISOString(),
+      version: published.version,
+    });
+    expect(published.nodes.find((node) => node.id === scene?.id)?.name).toBe("Welcome");
+    // Studio derives the publish state from these two timestamps.
+    expect(Date.parse(auto.published?.updatedAt ?? "")).toBeGreaterThanOrEqual(
+      Date.parse(auto.updatedAt),
+    );
+
+    const staged = await request<{ setShowAutoPublish: { autoPublish: boolean } }>(
+      /* GraphQL */ `
+        mutation ($id: ID!, $autoPublish: Boolean!) {
+          setShowAutoPublish(id: $id, autoPublish: $autoPublish) {
+            autoPublish
+          }
+        }
+      `,
+      context,
+      { id: showId, autoPublish: false },
+    );
+    expect(staged.setShowAutoPublish.autoPublish).toBe(false);
+    const draftOnly = await applyEdits(auto.version, "Goodbye");
+    expect(draftOnly.published).toBeNull();
+    expect((await readShowGraph(showId, "published")).version).toBe(published.version);
+  });
+
   it("persists settings for the signed-in user", async () => {
     const context = contextFor(testUser);
     const defaults = await request<{ userSettings: { themeMode: string; themePalette: string } }>(
