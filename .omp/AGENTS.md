@@ -1,3 +1,5 @@
+@../AGENTS.md
+
 # OMP worktree workflow
 
 This repository supports concurrent Git worktrees and app instances.
