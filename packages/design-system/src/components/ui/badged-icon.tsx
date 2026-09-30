@@ -4,7 +4,7 @@ import { ComponentProps } from "react";
 import { cn } from "../../lib/utils";
 
 const BadgeVariants = cva(
-  "absolute bg-(--badge-bg) text-(--badge-fg) rounded-full size-2/3 right-0 bottom-0 translate-1/4 shadow-[0_0_0_2px_var(--color-background)] **:stroke-3 **:[path]:scale-[0.75] **:[path]:origin-center",
+  "absolute bg-(--badge-bg) text-(--badge-fg) rounded-full size-2/3 right-0 bottom-0 translate-1/4 shadow-[0_0_0_2px_var(--color-background)] *:stroke-3 *:scale-[0.75] *:origin-center",
   {
     variants: {
       badgeColor: {

@@ -4,6 +4,8 @@ import { ComponentProps } from "react";
 
 import { BaseNode } from "./BaseNode";
 import { NodeCueList, NodeVariableList } from "./NodeContent";
+// DummyHandle relies on React Flow's handle positioning; the canvas loads this CSS, the story must too.
+import "@xyflow/react/dist/style.css";
 import "../show-graph-editor.css";
 
 type BaseNodeStoryArgs = ComponentProps<typeof BaseNode> & {
