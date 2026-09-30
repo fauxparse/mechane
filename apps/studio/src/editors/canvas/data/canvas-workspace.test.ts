@@ -120,6 +120,64 @@ describe("Canvas workspace artboard sizing", () => {
       height: 420,
     });
   });
+
+  it("uses scene Fill minimums instead of measured viewport bounds in the editor", () => {
+    const scene: CanvasArtboardDocument = {
+      canvasId: "responsive-canvas",
+      artId: "responsive-scene",
+      kind: "scene",
+      name: "Responsive",
+      position: { x: 0, y: 0 },
+      canvas: {
+        kind: "scene",
+        root: {
+          id: "responsive-root",
+          type: "frame",
+          sizing: {
+            width: { mode: "fill" },
+            height: { mode: "fill" },
+            minWidth: 360,
+            minHeight: { value: 640, unit: "px" },
+          },
+        },
+      },
+    };
+
+    expect(canvasArtboardSize(scene, { width: 1080, height: 1920 })).toEqual({
+      width: 360,
+      height: 640,
+    });
+    expect(
+      canvasArtboardSize({
+        ...scene,
+        canvas: {
+          ...scene.canvas,
+          root: {
+            ...scene.canvas.root,
+            sizing: {
+              ...scene.canvas.root.sizing,
+              height: { mode: "fixed", value: 240 },
+            },
+          },
+        },
+      }),
+    ).toEqual({ width: 360, height: 240 });
+    expect(
+      canvasArtboardSize({
+        ...scene,
+        canvas: {
+          ...scene.canvas,
+          root: {
+            ...scene.canvas.root,
+            sizing: {
+              ...scene.canvas.root.sizing,
+              width: { mode: "fixed", value: 480 },
+            },
+          },
+        },
+      }),
+    ).toEqual({ width: 480, height: 640 });
+  });
 });
 
 describe("isCanvasPath", () => {

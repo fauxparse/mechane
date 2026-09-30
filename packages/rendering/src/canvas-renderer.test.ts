@@ -352,6 +352,67 @@ describe("CanvasRenderer", () => {
     expect(html).toContain("width:100%");
   });
 
+  it("sizes player scene roots per axis while studio roots fill the wrapper", () => {
+    const scene: Canvas = {
+      kind: "scene",
+      root: {
+        id: "root",
+        type: "frame",
+        sizing: {
+          width: { mode: "fill" },
+          height: { mode: "fixed", value: 480 },
+          minWidth: { value: 320, unit: "px" },
+          minHeight: { value: 240, unit: "px" },
+        },
+        children: [{ id: "child", type: "rect" }],
+      },
+    };
+
+    const playerHtml = markup(scene, { mode: "player" });
+    expect(playerHtml).toMatch(/data-element-root="true"[^>]*width:100%;height:480px/);
+    expect(playerHtml).not.toContain("min-width:320px");
+    expect(playerHtml).not.toContain("min-height:240px");
+
+    const heightFill: Canvas = {
+      ...scene,
+      root: {
+        ...scene.root,
+        sizing: {
+          ...scene.root.sizing,
+          width: { mode: "fixed", value: 320 },
+          height: { mode: "fill" },
+        },
+      },
+    };
+    expect(markup(heightFill, { mode: "player" })).toMatch(
+      /data-element-root="true"[^>]*width:320px;height:100%/,
+    );
+
+    const studioHtml = markup(scene, { mode: "studio" });
+    expect(studioHtml).toMatch(/data-element-root="true"[^>]*width:100%;height:100%/);
+
+    const unsetSizing: Canvas = {
+      kind: "scene",
+      root: { id: "bare-root", type: "frame", children: [{ id: "bare-child", type: "rect" }] },
+    };
+    expect(markup(unsetSizing, { mode: "player" })).toMatch(
+      /data-element-root="true"[^>]*width:100%;height:100%/,
+    );
+
+    const block: Canvas = {
+      kind: "block",
+      root: {
+        id: "block-root",
+        type: "frame",
+        sizing: { width: { mode: "fixed", value: 720 }, height: { mode: "fixed", value: 360 } },
+        children: [{ id: "block-child", type: "rect" }],
+      },
+    };
+    expect(markup(block, { mode: "player" })).toMatch(
+      /data-element-root="true"[^>]*width:720px;height:360px/,
+    );
+  });
+
   it("clips auto and absolute frames unless clip is explicitly false", () => {
     const html = markup({
       kind: "scene",

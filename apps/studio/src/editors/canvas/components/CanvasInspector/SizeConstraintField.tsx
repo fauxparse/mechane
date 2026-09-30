@@ -14,14 +14,16 @@ const CONSTRAINT_ICONS: Record<SizeConstraint, string> = { min: "≥", max: "≤
 type SizeConstraintFieldProps = {
   axis: "width" | "height";
   constraint: SizeConstraint;
+  /** Shown when nothing is stored, so a constraint the editor must see still reads a size. */
+  fallback?: number;
 };
 
-export const SizeConstraintField = ({ axis, constraint }: SizeConstraintFieldProps) => {
+export const SizeConstraintField = ({ axis, constraint, fallback }: SizeConstraintFieldProps) => {
   const { target, update } = useCanvasInspectorContext();
   const key = sizeConstraintKey(axis, constraint);
   const stored = target.sizing?.[key];
   const unit = sizeValueUnit(stored);
-  const value = sizeValueNumber(stored);
+  const value = sizeValueNumber(stored) ?? fallback ?? null;
   const label = `${constraint === "min" ? "Min" : "Max"} ${axis}`;
 
   return (

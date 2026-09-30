@@ -167,6 +167,15 @@ When Google sign-in is enabled, register
 URI. The corresponding API and Studio values are in the checked-in
 `.env.example` files.
 
+## Scene artboard sizing
+
+Set a Scene root's width or height to **Fill container** to use the available
+Player viewport on that axis. Fixed axes keep their authored dimensions.
+Each filled root axis always shows its minimum-size input in the inspector.
+Switching to Fill initializes a missing minimum from the current artboard size.
+These minimums size the Canvas editor preview, not the Player, so a smaller
+Device can still display a filled Scene without a minimum forcing overflow.
+
 ## Local image storage
 
 MinIO runs at `http://localhost:9000` with its console at `http://localhost:9001`.

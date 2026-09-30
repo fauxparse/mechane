@@ -12,6 +12,9 @@ import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import {
   connectionFormulaSource,
   elementFormulaScope,
+  sizeConstraintKey,
+  sizeValueNumber,
+  sizeValueUnit,
   variableOptions,
   type SizeConstraint,
 } from "./canvas-inspector-values";
@@ -34,6 +37,22 @@ function flattenSizing(elements: readonly Element[], into = new Map<string, unkn
     flattenSizing(element.children ?? [], into);
   }
   return into;
+}
+
+/** Preserve the editor size when a Scene-root axis starts filling the Player viewport. */
+function sceneRootFillMinimum(
+  target: Element,
+  axis: "width" | "height",
+  measured: number | undefined,
+): number | undefined {
+  if (target.sizing?.[sizeConstraintKey(axis, "min")] !== undefined) return undefined;
+  if (measured !== undefined) return measured;
+  const authored = target.sizing?.[axis];
+  if (authored?.mode === "fixed" && sizeValueUnit(authored.value) === "px") {
+    const pixels = sizeValueNumber(authored.value);
+    if (pixels !== null) return pixels;
+  }
+  return 100;
 }
 
 export const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldProps) => {
@@ -61,8 +80,30 @@ export const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldPr
   );
   const sizeMixed =
     size === undefined && selected.some((element) => element.sizing?.[axis] !== undefined);
+  const previewValue =
+    selected.length === 1 && inspectorPreview?.elementId === target.id
+      ? inspectorPreview[axis]
+      : undefined;
+  const currentValue =
+    previewValue ??
+    (selected.length === 1 && currentDimensions?.elementId === target.id
+      ? currentDimensions[axis]
+      : undefined);
+  const previewing = previewValue !== undefined;
+  const sceneRoot =
+    focused?.kind === "scene" &&
+    selected.length === 1 &&
+    selected[0]?.id === focused.canvas.root.id;
   const updateSize = (next: AxisSize) => {
-    const nextSizing = { ...target.sizing, [axis]: next };
+    const seededMinimum =
+      sceneRoot && next.mode === "fill"
+        ? sceneRootFillMinimum(target, axis, currentValue)
+        : undefined;
+    const nextSizing = {
+      ...target.sizing,
+      [axis]: next,
+      ...(seededMinimum !== undefined ? { [sizeConstraintKey(axis, "min")]: seededMinimum } : {}),
+    };
     if (next.mode === "hug" && target.type === "frame" && updateElements && currentDimensionsById) {
       const converted = materializePercentageChildrenForHug(
         { ...target, sizing: nextSizing },
@@ -83,16 +124,6 @@ export const SizeField = ({ axis, constraints, onConstraintToggle }: SizeFieldPr
     }
     update({ sizing: nextSizing });
   };
-  const previewValue =
-    selected.length === 1 && inspectorPreview?.elementId === target.id
-      ? inspectorPreview[axis]
-      : undefined;
-  const currentValue =
-    previewValue ??
-    (selected.length === 1 && currentDimensions?.elementId === target.id
-      ? currentDimensions[axis]
-      : undefined);
-  const previewing = previewValue !== undefined;
   const mode = previewing ? "fixed" : sizeMixed ? undefined : (size?.mode ?? "hug");
   const unit = previewing
     ? "px"
