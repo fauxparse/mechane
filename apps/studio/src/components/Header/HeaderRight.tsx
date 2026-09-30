@@ -151,7 +151,7 @@ export function HeaderRight({
           <Button
             className="rounded-r-none border-0"
             size="sm"
-            disabled={runPending}
+            disabled={runPending || (dirty && Boolean(publishDisabledReason))}
             onClick={onStartRun}
           >
             <PlayIcon />
