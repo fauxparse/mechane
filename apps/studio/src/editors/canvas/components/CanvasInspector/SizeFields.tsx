@@ -10,13 +10,12 @@ import { SizeField } from "./SizeField";
 const AXES = ["width", "height"] as const;
 const CONSTRAINTS = ["min", "max"] as const;
 
-/**
- * Width/height inputs plus the min/max constraints the user has revealed from
- * each dimension's menu. Constraints stay hidden until requested (Figma-style).
- */
+/** Filled Scene-root axes require minimum inputs for editor preview dimensions. */
 export const SizeFields = () => {
   const {
+    focused,
     target,
+    selected,
     inspectorPreview,
     currentDimensions,
     update,
@@ -25,9 +24,16 @@ export const SizeFields = () => {
   } = useCanvasInspectorContext();
   const [revealed, setRevealed] = useState<Partial<Record<string, boolean>>>({});
 
+  const fillsSceneRootAxis = (axis: "width" | "height") =>
+    focused?.kind === "scene" &&
+    selected.length === 1 &&
+    selected[0]?.id === focused.canvas.root.id &&
+    target.sizing?.[axis]?.mode === "fill";
+
   const isRevealed = (axis: "width" | "height", constraint: SizeConstraint) =>
-    revealed[`${axis}.${constraint}`] ??
-    target.sizing?.[sizeConstraintKey(axis, constraint)] !== undefined;
+    (constraint === "min" && fillsSceneRootAxis(axis)) ||
+    (revealed[`${axis}.${constraint}`] ??
+      target.sizing?.[sizeConstraintKey(axis, constraint)] !== undefined);
 
   const constraintsFor = (axis: "width" | "height"): PropertyInputConstraints => ({
     min: isRevealed(axis, "min"),
@@ -46,6 +52,7 @@ export const SizeFields = () => {
     constraint: SizeConstraint,
     enabled: boolean,
   ) => {
+    if (!enabled && constraint === "min" && fillsSceneRootAxis(axis)) return;
     const key = sizeConstraintKey(axis, constraint);
     setRevealed((current) => ({ ...current, [`${axis}.${constraint}`]: enabled }));
     const nextValue = enabled ? (constraint === "min" ? 0 : computedSize(axis)) : undefined;
@@ -83,7 +90,16 @@ export const SizeFields = () => {
             <div key={axis} className="flex flex-col gap-2">
               {CONSTRAINTS.map((constraint) =>
                 isRevealed(axis, constraint) ? (
-                  <SizeConstraintField key={constraint} axis={axis} constraint={constraint} />
+                  <SizeConstraintField
+                    key={constraint}
+                    axis={axis}
+                    constraint={constraint}
+                    fallback={
+                      constraint === "min" && fillsSceneRootAxis(axis)
+                        ? computedSize(axis)
+                        : undefined
+                    }
+                  />
                 ) : null,
               )}
             </div>
