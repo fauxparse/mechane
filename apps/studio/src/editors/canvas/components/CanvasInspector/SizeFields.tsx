@@ -1,14 +1,73 @@
-import { Link2Icon, SectionRow, Toggle, Unlink2Icon } from "@mechane/design-system";
+import {
+  Link2Icon,
+  SectionRow,
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+  Toggle,
+  Unlink2Icon,
+} from "@mechane/design-system";
 import type { PropertyInputConstraints } from "@mechane/design-system";
 import { useState } from "react";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import { sizeConstraintKey, sizeValueNumber, type SizeConstraint } from "./canvas-inspector-values";
+import {
+  SCENE_SIZE_PRESET_GROUPS,
+  SCENE_SIZE_PRESETS,
+  matchingSceneSizePreset,
+  sceneSizePresetProperties,
+} from "./scene-size-presets";
 import { SizeConstraintField } from "./SizeConstraintField";
 import { SizeField } from "./SizeField";
 
 const AXES = ["width", "height"] as const;
 const CONSTRAINTS = ["min", "max"] as const;
+const PRESET_ITEMS = SCENE_SIZE_PRESETS.map((preset) => ({
+  value: preset.id,
+  label: preset.label,
+}));
+
+/** Common Device sizes for a Scene root; the width and height fields stay free for custom sizes. */
+const SceneSizePresetField = () => {
+  const { target, update } = useCanvasInspectorContext();
+  const matching = matchingSceneSizePreset(target.sizing);
+  return (
+    <SectionRow>
+      <Select
+        items={PRESET_ITEMS}
+        value={matching?.id ?? null}
+        onValueChange={(id) => {
+          const preset = SCENE_SIZE_PRESETS.find((candidate) => candidate.id === id);
+          if (preset) update(sceneSizePresetProperties(target, preset));
+        }}
+      >
+        <SelectTrigger aria-label="Size preset" className="col-span-2">
+          <SelectValue placeholder="Custom size" />
+        </SelectTrigger>
+        <SelectContent>
+          {SCENE_SIZE_PRESET_GROUPS.map((group) => (
+            <SelectGroup key={group.label}>
+              <SelectLabel>{group.label}</SelectLabel>
+              {group.presets.map((preset) => (
+                <SelectItem key={preset.id} value={preset.id}>
+                  {preset.label}
+                  <span className="ml-auto text-muted-foreground tabular-nums">
+                    {preset.width} × {preset.height}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          ))}
+        </SelectContent>
+      </Select>
+    </SectionRow>
+  );
+};
 
 /** Filled Scene-root axes require minimum inputs for editor preview dimensions. */
 export const SizeFields = () => {
@@ -24,11 +83,13 @@ export const SizeFields = () => {
   } = useCanvasInspectorContext();
   const [revealed, setRevealed] = useState<Partial<Record<string, boolean>>>({});
 
-  const fillsSceneRootAxis = (axis: "width" | "height") =>
+  const sceneRoot =
     focused?.kind === "scene" &&
     selected.length === 1 &&
-    selected[0]?.id === focused.canvas.root.id &&
-    target.sizing?.[axis]?.mode === "fill";
+    selected[0]?.id === focused.canvas.root.id;
+
+  const fillsSceneRootAxis = (axis: "width" | "height") =>
+    sceneRoot && target.sizing?.[axis]?.mode === "fill";
 
   const isRevealed = (axis: "width" | "height", constraint: SizeConstraint) =>
     (constraint === "min" && fillsSceneRootAxis(axis)) ||
@@ -65,6 +126,7 @@ export const SizeFields = () => {
 
   return (
     <>
+      {sceneRoot && <SceneSizePresetField />}
       <SectionRow>
         {AXES.map((axis) => (
           <SizeField

@@ -1,4 +1,4 @@
-import type { AxisSize, SizeValue } from "@mechane/domain/canvas";
+import type { AxisSize, ElementSizing, SizeValue } from "@mechane/domain/canvas";
 import type { Position } from "@mechane/domain/graph";
 import { isPropertyConnection } from "@mechane/domain/property-values";
 import type { CanvasArtboardDocument } from "../../../api/canvas";
@@ -22,6 +22,21 @@ function authoredPixels(value: AxisSize["value"] | SizeValue | undefined): numbe
   return undefined;
 }
 
+/**
+ * The literal pixel size a root authors on one axis. A filled Scene root has no size of its
+ * own — it takes the Player's viewport — so it is designed at its minimum.
+ */
+export function authoredRootPixels(
+  sizing: ElementSizing | undefined,
+  axis: "width" | "height",
+  kind: CanvasArtboardDocument["kind"],
+): number | undefined {
+  const size = sizing?.[axis];
+  if (kind === "scene" && size?.mode === "fill")
+    return authoredPixels(sizing?.[axis === "width" ? "minWidth" : "minHeight"]);
+  return size?.mode === "fixed" ? authoredPixels(size.value) : undefined;
+}
+
 export interface MeasuredCanvasRoot {
   readonly width: number;
   readonly height: number;
@@ -36,20 +51,8 @@ export function canvasArtboardSize(
 } {
   const root = artboard.canvas.root;
   const fallback = artboard.kind === "scene" ? SCENE_PREVIEW_SIZE : DEFAULT_BLOCK_SIZE;
-  const designWidth = authoredPixels(
-    artboard.kind === "scene" && root.sizing?.width?.mode === "fill"
-      ? root.sizing.minWidth
-      : root.sizing?.width?.mode === "fixed"
-        ? root.sizing.width.value
-        : undefined,
-  );
-  const designHeight = authoredPixels(
-    artboard.kind === "scene" && root.sizing?.height?.mode === "fill"
-      ? root.sizing.minHeight
-      : root.sizing?.height?.mode === "fixed"
-        ? root.sizing.height.value
-        : undefined,
-  );
+  const designWidth = authoredRootPixels(root.sizing, "width", artboard.kind);
+  const designHeight = authoredRootPixels(root.sizing, "height", artboard.kind);
   return {
     width:
       root.sizing?.width?.mode === "hug"
