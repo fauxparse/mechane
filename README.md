@@ -176,6 +176,11 @@ Switching to Fill initializes a missing minimum from the current artboard size.
 These minimums size the Canvas editor preview, not the Player, so a smaller
 Device can still display a filled Scene without a minimum forcing overflow.
 
+With a Scene root selected, the size preset menu above the width and height
+fields lists common screen, phone, and tablet sizes. Choosing a preset sets
+fixed axes to its size and sets filled axes' minimums to it. The menu reads
+**Custom size** when the root matches no preset; the fields still take any size.
+
 ## Local image storage
 
 MinIO runs at `http://localhost:9000` with its console at `http://localhost:9001`.
