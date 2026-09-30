@@ -1,4 +1,12 @@
-import { PropertyInput, type PropertyInputValue } from "@mechane/design-system";
+import {
+  MaxHeightIcon,
+  MaxWidthIcon,
+  MinHeightIcon,
+  MinWidthIcon,
+  PropertyInput,
+  type LucideIcon,
+  type PropertyInputValue,
+} from "@mechane/design-system";
 
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
 import {
@@ -9,7 +17,10 @@ import {
   type SizeConstraint,
 } from "./canvas-inspector-values";
 
-const CONSTRAINT_ICONS: Record<SizeConstraint, string> = { min: "≥", max: "≤" };
+const CONSTRAINT_ICONS: Record<"width" | "height", Record<SizeConstraint, LucideIcon>> = {
+  width: { min: MinWidthIcon, max: MaxWidthIcon },
+  height: { min: MinHeightIcon, max: MaxHeightIcon },
+};
 
 type SizeConstraintFieldProps = {
   axis: "width" | "height";
@@ -28,7 +39,7 @@ export const SizeConstraintField = ({ axis, constraint, fallback }: SizeConstrai
 
   return (
     <PropertyInput
-      icon={CONSTRAINT_ICONS[constraint]}
+      icon={CONSTRAINT_ICONS[axis][constraint]}
       type="number"
       unit={unit}
       placeholder={label}
