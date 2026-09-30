@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "./dropdown-menu";
 import { variableTypeIcon } from "./property-input/variable-type-icons";
+import { VariableTypeIcon } from "./property-input/variable-type-icon";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
 export type TypeSelectOption = {
   value: Type;
@@ -27,7 +28,6 @@ export type TypeSelectOption = {
 export type TypeSelectTriggerProps = {
   value: Type | null;
   label: string;
-  icon: LucideIcon;
 };
 export type TypeSelectProps = {
   value: Type | null | undefined;
@@ -99,8 +99,7 @@ export function TypeSelect({
   const resolvedTriggerSize = triggerSize ?? (vibe === "inspector" ? "sm" : "default");
   const currentValue = value ?? null;
   const label = currentValue ? typeLabel(currentValue, shapes) : "Choose a Type";
-  const Icon = currentValue ? typeIcon(currentValue) : variableTypeIcon("object");
-  const customTrigger = renderTrigger?.({ value: currentValue, label, icon: Icon });
+  const customTrigger = renderTrigger?.({ value: currentValue, label });
   const shapeTypeOptions = shapeOptions(shapes);
   const ArrayIcon = variableTypeIcon("array");
 
@@ -145,7 +144,7 @@ export function TypeSelect({
         triggerClassName,
       )}
     >
-      <Icon className="size-4 shrink-0" />
+      <VariableTypeIcon type={currentValue} className="size-4 shrink-0" />
       {showLabel ? <span className="flex-1 text-left truncate">{label}</span> : null}
       {showLabel ? <ChevronRightIcon className="size-4 rotate-90 text-muted-foreground" /> : null}
     </button>

@@ -112,16 +112,9 @@ describe("nodeIcon", () => {
     for (const kind of CREATABLE_KINDS) expect(nodeIcon(kind)).toBeTruthy();
   });
 
-  // #35: a Device's icon resolves by role, a Source's by the type of data it
-  // holds. Roles arrive with #45 and Shapes with the Source slice, so both fall
-  // back for now — but the by-role and by-type principle is wired.
-  it("resolves a Device by role and a Source by data type", () => {
+  // #35: a Device's icon resolves by role.
+  it("resolves a Device by role", () => {
     expect(nodeIcon("device", { perConnection: true })).not.toBe(nodeIcon("device"));
-    expect(nodeIcon("source", { sourceType: "number" })).not.toBe(
-      nodeIcon("source", { sourceType: "text" }),
-    );
-    // An unknown (or absent) type is an object, not a crash.
-    expect(nodeIcon("source", { sourceType: "hologram" })).toBe(nodeIcon("source"));
   });
 });
 

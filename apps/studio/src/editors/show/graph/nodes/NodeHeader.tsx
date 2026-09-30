@@ -7,7 +7,7 @@ import { typeLabel } from "@mechane/domain/shapes";
 import type { ShowFlowNode } from "../graph-to-flow";
 import { handleFor } from "../handle-ids";
 import { HANDLE_CLASS } from "../handle-styles";
-import { nodeIcon } from "../node-kinds";
+import { NodeIcon } from "./NodeIcon";
 import { upperFirst } from "es-toolkit";
 import { DummyHandle } from "./DummyHandle";
 
@@ -42,11 +42,6 @@ export function NodeHeader({
   actions,
   handle: HandleComponent = DummyHandle,
 }: NodeHeaderProps) {
-  const Icon = nodeIcon(data.kind, {
-    perConnection: data.perConnection,
-    sourceType: data.kind === "source" && typeof data.type === "string" ? data.type : undefined,
-  });
-
   return (
     <div
       className={cn(
@@ -54,7 +49,12 @@ export function NodeHeader({
         className,
       )}
     >
-      <Icon className="row-span-2 justify-self-center text-(--flow-muted-foreground) size-5" />
+      <NodeIcon
+        kind={data.kind}
+        perConnection={data.perConnection}
+        sourceType={data.kind === "source" ? data.type : null}
+        className="row-span-2 justify-self-center text-(--flow-muted-foreground) size-5"
+      />
       <div className="col-start-2 pt-1 flex min-w-0">
         {renaming ? (
           <input

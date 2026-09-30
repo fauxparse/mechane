@@ -10,7 +10,7 @@ import {
   SectionHelperText,
   SectionRow,
   TypeSelect,
-  variableTypeIcon,
+  VariableTypeIcon,
 } from "@mechane/design-system";
 import type { SourceNode } from "@mechane/domain/graph";
 import { typeLabel, type Shape, type Type } from "@mechane/domain/shapes";
@@ -32,8 +32,6 @@ function SourceTypeImpactDialog({
   onCancel(): void;
   onConfirm(): void;
 }) {
-  const FromIcon = variableTypeIcon(plan.from);
-  const ToIcon = variableTypeIcon(plan.to);
   return (
     <AlertDialog open onOpenChange={(open) => !open && onCancel()}>
       <AlertDialogContent>
@@ -41,9 +39,9 @@ function SourceTypeImpactDialog({
           Change {node.name ? `“${node.name}”` : "source"} to {typeLabel(plan.to, shapes)}?
         </AlertDialogTitle>
         <div className="flex gap-2 items-center justify-center  p-4 rounded-md bg-muted/25">
-          <FromIcon className="size-8" />
+          <VariableTypeIcon type={plan.from} className="size-8" />
           <ArrowRightIcon className="size-4 text-muted-foreground" />
-          <ToIcon className="size-8" />
+          <VariableTypeIcon type={plan.to} className="size-8" />
         </div>
         <AlertDialogDescription>
           The new type is not completely compatible, and you may lose some data or connections as a
