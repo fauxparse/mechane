@@ -10,8 +10,12 @@
 // the page's timers while its leave dialog is up, so the question appears only
 // once the director has chosen to stay; a browser that lets it fire sooner
 // shows it behind the leave dialog, where it waits for the same answer.
+//
+// Studio reloading itself to pick up a new build is not a close, so it is let
+// through without asking (see ../../stale-build.ts).
 import { useEffect, useRef, useState } from "react";
 
+import { isReloadingForNewBuild } from "../../stale-build";
 import { createShowWindowPresence, type ShowWindowPresence } from "./show-window-presence";
 
 export function useLastWindowRunPrompt({
@@ -64,7 +68,7 @@ export function useLastWindowRunPrompt({
     if (!enabled || activeRunId === null) return;
     let prompt: number | undefined;
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (presence.current?.otherWindows() !== 0) return;
+      if (isReloadingForNewBuild() || presence.current?.otherWindows() !== 0) return;
       event.preventDefault();
       window.clearTimeout(prompt);
       prompt = window.setTimeout(() => setPromptedRunId(activeRunId));

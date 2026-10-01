@@ -1,8 +1,7 @@
 import { Tabs, TabsList, TabsTrigger, TvMinimalIcon, WorkflowIcon } from "@mechane/design-system";
-import type { MouseEvent } from "react";
 
 import type { HeaderProps } from "./Header";
-import { navigationIntentFor } from "./header-navigation";
+import { followHeaderLink } from "./header-navigation";
 
 export function HeaderTabs({
   activeEditor,
@@ -16,7 +15,7 @@ export function HeaderTabs({
           className="rounded-[100vw] border-0 px-3"
           nativeButton={false}
           render={
-            <a href={navigation.showEditor.href} onClick={activate(navigation.showEditor)}>
+            <a href={navigation.showEditor.href} onClick={followHeaderLink(navigation.showEditor)}>
               <WorkflowIcon />
               Show
             </a>
@@ -27,7 +26,10 @@ export function HeaderTabs({
           className="rounded-[100vw] border-0 px-3"
           nativeButton={false}
           render={
-            <a href={navigation.canvasEditor.href} onClick={activate(navigation.canvasEditor)}>
+            <a
+              href={navigation.canvasEditor.href}
+              onClick={followHeaderLink(navigation.canvasEditor)}
+            >
               <TvMinimalIcon />
               Scenes
             </a>
@@ -36,19 +38,4 @@ export function HeaderTabs({
       </TabsList>
     </Tabs>
   );
-}
-
-function activate(destination: HeaderProps["navigation"]["showEditor"]) {
-  return (event: MouseEvent<HTMLAnchorElement>) => {
-    switch (navigationIntentFor(event)) {
-      case "navigate":
-        destination.onSelect();
-        return;
-      case "new-tab":
-        window.open(destination.href, "_blank", "noopener");
-        return;
-      case "ignore":
-        return;
-    }
-  };
 }

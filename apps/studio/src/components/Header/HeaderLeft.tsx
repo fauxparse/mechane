@@ -11,32 +11,16 @@ import {
   SettingsIcon,
   ShapesIcon,
 } from "@mechane/design-system";
-import { useState, type FormEvent, type MouseEvent } from "react";
+import { useState, type FormEvent } from "react";
 
-import type { HeaderDestination, HeaderProps } from "./Header";
-import { navigationIntentFor } from "./header-navigation";
+import type { HeaderProps } from "./Header";
+import { followHeaderLink } from "./header-navigation";
 import { Logo } from "./Logo";
 
 type HeaderLeftProps = Pick<
   HeaderProps,
   "name" | "navigation" | "onRename" | "renaming" | "renameError"
 >;
-
-function activate(destination: HeaderDestination) {
-  return (event: MouseEvent<HTMLAnchorElement>) => {
-    switch (navigationIntentFor(event)) {
-      case "navigate":
-        event.preventDefault();
-        destination.onSelect();
-        return;
-      case "new-tab":
-        window.open(destination.href, "_blank", "noopener");
-        return;
-      case "ignore":
-        return;
-    }
-  };
-}
 
 export function HeaderLeft({
   name,
@@ -74,7 +58,7 @@ export function HeaderLeft({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 render={
-                  <a href={navigation.shapes.href} onClick={activate(navigation.shapes)}>
+                  <a href={navigation.shapes.href} onClick={followHeaderLink(navigation.shapes)}>
                     <ShapesIcon />
                     <span>Shapes</span>
                   </a>
@@ -84,7 +68,7 @@ export function HeaderLeft({
                 render={
                   <a
                     href={navigation.showSettings.href}
-                    onClick={activate(navigation.showSettings)}
+                    onClick={followHeaderLink(navigation.showSettings)}
                   >
                     <SettingsIcon />
                     <span>Settings</span>
@@ -93,7 +77,7 @@ export function HeaderLeft({
               />
               <DropdownMenuItem
                 render={
-                  <a href={navigation.home.href} onClick={activate(navigation.home)}>
+                  <a href={navigation.home.href} onClick={followHeaderLink(navigation.home)}>
                     <HouseIcon />
                     <span>Home</span>
                   </a>
