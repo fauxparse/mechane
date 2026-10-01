@@ -1,5 +1,7 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
+import { userSettingsQueryKey } from "../../api/settings";
 import { StoryRouter } from "../StoryRouter";
 import { EditorLayout, EditorPanel } from "./EditorLayout";
 import { EditorSlot } from "./editor-slots";
@@ -44,17 +46,33 @@ function ToolbarStandIn() {
   );
 }
 
+// The Header's account menu reads the theme setting; seeding it keeps the
+// query from ever reaching the network.
+const storyQueryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: Infinity },
+  },
+});
+
 const meta: Meta<typeof EditorLayout> = {
   title: "studio/Components/EditorLayout",
   component: EditorLayout,
   parameters: { layout: "fullscreen" },
   args: { header: MOCK_HEADER },
   decorators: [
-    (Story) => (
-      <StoryRouter>
-        <Story />
-      </StoryRouter>
-    ),
+    (Story, context) => {
+      storyQueryClient.setQueryData(userSettingsQueryKey, {
+        themeMode: context.globals.mode === "light" ? "light" : "dark",
+      });
+
+      return (
+        <QueryClientProvider client={storyQueryClient}>
+          <StoryRouter>
+            <Story />
+          </StoryRouter>
+        </QueryClientProvider>
+      );
+    },
   ],
 };
 
