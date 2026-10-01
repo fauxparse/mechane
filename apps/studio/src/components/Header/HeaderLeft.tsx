@@ -11,20 +11,20 @@ import {
   SettingsIcon,
   ShapesIcon,
 } from "@mechane/design-system";
+import { Link } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 
 import type { HeaderProps } from "./Header";
-import { followHeaderLink } from "./header-navigation";
-import { Logo } from "./Logo";
+import { HeaderBrand } from "./HeaderBrand";
 
 type HeaderLeftProps = Pick<
   HeaderProps,
-  "name" | "navigation" | "onRename" | "renaming" | "renameError"
+  "name" | "showId" | "onRename" | "renaming" | "renameError"
 >;
 
 export function HeaderLeft({
   name,
-  navigation,
+  showId,
   onRename,
   renaming = false,
   renameError,
@@ -40,8 +40,7 @@ export function HeaderLeft({
   return (
     <div className="editor-chrome-header-left flex w-fit items-start justify-self-start gap-2">
       {draftName === null ? (
-        <div className="pointer-events-auto flex w-fit items-center gap-1 pl-1 rounded-full bg-muted/50 backdrop-blur-[2px]">
-          <Logo className="size-6" />
+        <HeaderBrand className="pointer-events-auto">
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
@@ -58,34 +57,31 @@ export function HeaderLeft({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 render={
-                  <a href={navigation.shapes.href} onClick={followHeaderLink(navigation.shapes)}>
+                  <Link to="/shows/$showId/shapes" params={{ showId }}>
                     <ShapesIcon />
                     <span>Shapes</span>
-                  </a>
+                  </Link>
                 }
               />
               <DropdownMenuItem
                 render={
-                  <a
-                    href={navigation.showSettings.href}
-                    onClick={followHeaderLink(navigation.showSettings)}
-                  >
+                  <Link to="/shows/$showId/settings" params={{ showId }}>
                     <SettingsIcon />
                     <span>Settings</span>
-                  </a>
+                  </Link>
                 }
               />
               <DropdownMenuItem
                 render={
-                  <a href={navigation.home.href} onClick={followHeaderLink(navigation.home)}>
+                  <Link to="/">
                     <HouseIcon />
                     <span>Home</span>
-                  </a>
+                  </Link>
                 }
               />
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
+        </HeaderBrand>
       ) : (
         <form className="pointer-events-auto flex items-center gap-2" onSubmit={submitRename}>
           <Input

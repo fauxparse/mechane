@@ -12,7 +12,7 @@
 import { isId, type ShowId } from "@mechane/domain/id";
 import { hasUnpublishedChanges, publishState } from "@mechane/domain/publish";
 import { GraphQLRequestError } from "@mechane/graphql-schema";
-import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { usePublishShowGraph, useShowGraph } from "../../../api/show-graph";
@@ -39,7 +39,6 @@ function ShowEditorLayout() {
   // The one place a Show id arrives from outside the system, so the one
   // place it gets validated (issue #47).
   const showId: ShowId | null = isId("show", params.showId) ? params.showId : null;
-  const navigate = useNavigate();
   const show = useShow(showId);
   const me = useMe();
   // Both graph states feed the publish badge. The index child owns the draft
@@ -105,9 +104,6 @@ function ShowEditorLayout() {
       ? publishState(draft.data.updatedAt, published.data.updatedAt)
       : "empty";
 
-  const canvasPath = rememberedArtId
-    ? `/shows/${params.showId}/art/${rememberedArtId}`
-    : `/shows/${params.showId}/art`;
   const startRun = () =>
     goLive.mutate({ showId: currentShow.id, publishFirst: hasUnpublishedChanges(state) });
   // The header's Go live is disabled for the same reason.
@@ -122,35 +118,8 @@ function ShowEditorLayout() {
       header={{
         name: currentShow.name,
         activeEditor,
-        navigation: {
-          home: { href: "/", onSelect: () => void navigate({ to: "/" }) },
-          settings: { href: "/settings", onSelect: () => void navigate({ to: "/settings" }) },
-          showEditor: {
-            href: `/shows/${params.showId}`,
-            onSelect: () =>
-              void navigate({ to: "/shows/$showId", params: { showId: params.showId } }),
-          },
-          shapes: {
-            href: `/shows/${params.showId}/shapes`,
-            onSelect: () =>
-              void navigate({ to: "/shows/$showId/shapes", params: { showId: params.showId } }),
-          },
-          showSettings: {
-            href: `/shows/${params.showId}/settings`,
-            onSelect: () =>
-              void navigate({ to: "/shows/$showId/settings", params: { showId: params.showId } }),
-          },
-          canvasEditor: {
-            href: canvasPath,
-            onSelect: () =>
-              void (rememberedArtId
-                ? navigate({
-                    to: "/shows/$showId/art/$artId",
-                    params: { showId: params.showId, artId: rememberedArtId },
-                  })
-                : navigate({ to: "/shows/$showId/art", params: { showId: params.showId } })),
-          },
-        },
+        showId,
+        sceneArtId: rememberedArtId,
         user: {
           id: me.data?.id ?? "unknown",
           name: me.data?.name,

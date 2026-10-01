@@ -15,9 +15,9 @@ import { SearchInput, ToggleGroup, ToggleGroupItem } from "@mechane/design-syste
 import type { ShowId } from "@mechane/domain/id";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
+import type { HeaderUser } from "../Header/Header";
 import type { DashboardShow } from "./dashboard-shows";
 import { byLiveThenRecency, isFiltering, matchesShowFilter } from "./dashboard-shows";
-import type { DashboardHeaderUser } from "./DashboardHeader";
 import { DashboardHeader } from "./DashboardHeader";
 import { NewShowCard } from "./NewShowCard";
 import { NoShowsFound } from "./NoShowsFound";
@@ -29,7 +29,7 @@ export interface DashboardProps {
   readonly shows: readonly DashboardShow[];
   readonly pending: boolean;
   readonly loadError?: string;
-  readonly user: DashboardHeaderUser;
+  readonly user: HeaderUser;
   /** Whether the account menu offers the admin area. */
   readonly canAdminister?: boolean;
   onLogOut(): void;

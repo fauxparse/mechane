@@ -34,14 +34,12 @@ function AdminUserRoute() {
   const deleteShow = useAdminDeleteShow(userId);
   const impersonate = useImpersonateUser();
 
-  const backToUsers = () => void navigate({ to: "/admin" });
   const actionError = [setRole, ban, unban, remove, impersonate, deleteShow].find(
     (mutation) => mutation.isError,
   )?.error?.message;
 
   return (
     <AdminUserDetail
-      back={{ href: "/admin", onSelect: backToUsers }}
       user={user.data}
       pending={user.isPending}
       loadError={user.isError ? user.error.message : undefined}
@@ -51,7 +49,7 @@ function AdminUserRoute() {
       onBan={() => ban.mutate(userId)}
       onUnban={() => unban.mutate(userId)}
       banPending={ban.isPending || unban.isPending}
-      onRemove={() => remove.mutate(userId, { onSuccess: backToUsers })}
+      onRemove={() => remove.mutate(userId, { onSuccess: () => void navigate({ to: "/admin" }) })}
       removing={remove.isPending}
       mayImpersonate={Boolean(
         me.data && user.data && roleCanImpersonate(me.data.role, user.data.role),

@@ -1,73 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import {
-  createMemoryHistory,
-  createRootRoute,
-  createRoute,
-  createRouter,
-  Outlet,
-  RouterProvider,
-} from "@tanstack/react-router";
-import {
-  createContext,
-  useContext,
-  useMemo,
-  useState,
-  type PropsWithChildren,
-  type ReactNode,
-} from "react";
+import { useState } from "react";
 import { fn } from "storybook/test";
 
 import { ForgotPasswordScreen, ResetPasswordScreen } from "./PasswordResetScreens";
-
-const StoryContentContext = createContext<ReactNode>(null);
-
-function StoryContent() {
-  return useContext(StoryContentContext);
-}
-
-function createStoryRouter() {
-  const rootRoute = createRootRoute({ component: Outlet });
-  const rootPage = createRoute({
-    getParentRoute: () => rootRoute,
-    path: "/",
-    component: StoryContent,
-  });
-  const signInRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: "sign-in",
-    component: StoryContent,
-  });
-  const forgotPasswordRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: "forgot-password",
-    component: StoryContent,
-  });
-  const resetPasswordRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: "reset-password",
-    component: StoryContent,
-  });
-  const routeTree = rootRoute.addChildren([
-    rootPage,
-    signInRoute,
-    forgotPasswordRoute,
-    resetPasswordRoute,
-  ]);
-
-  return createRouter({
-    routeTree,
-    history: createMemoryHistory({ initialEntries: ["/"] }),
-  });
-}
-
-function StoryRouter({ children }: PropsWithChildren) {
-  const router = useMemo(createStoryRouter, []);
-  return (
-    <StoryContentContext.Provider value={children}>
-      <RouterProvider router={router} />
-    </StoryContentContext.Provider>
-  );
-}
+import { StoryRouter } from "./StoryRouter";
 
 function RequestResetFlow() {
   const [sent, setSent] = useState(false);

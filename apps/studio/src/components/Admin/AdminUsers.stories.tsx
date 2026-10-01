@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
-import { MOCK_ADMIN, MOCK_DESTINATION, MOCK_USERS } from "./admin-fixtures";
+import { StoryRouter } from "../StoryRouter";
+import { MOCK_ADMIN, MOCK_USERS } from "./admin-fixtures";
 import { AdminUsers } from "./AdminUsers";
 
 const meta: Meta<typeof AdminUsers> = {
@@ -17,13 +18,14 @@ const meta: Meta<typeof AdminUsers> = {
     pageSize: 50,
     onPageChange: () => {},
     currentUserId: MOCK_ADMIN.id,
-    linkToUser: () => MOCK_DESTINATION,
   },
   decorators: [
     (Story) => (
-      <div className="min-h-screen bg-sunken p-6 text-foreground">
-        <Story />
-      </div>
+      <StoryRouter>
+        <div className="min-h-screen bg-sunken p-6 text-foreground">
+          <Story />
+        </div>
+      </StoryRouter>
     ),
   ],
 };

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
+import { StoryRouter } from "../StoryRouter";
 import { EditorLayout, EditorPanel } from "./EditorLayout";
 import { EditorSlot } from "./editor-slots";
 import { useEditableArea } from "./editable-area";
@@ -48,6 +49,13 @@ const meta: Meta<typeof EditorLayout> = {
   component: EditorLayout,
   parameters: { layout: "fullscreen" },
   args: { header: MOCK_HEADER },
+  decorators: [
+    (Story) => (
+      <StoryRouter>
+        <Story />
+      </StoryRouter>
+    ),
+  ],
 };
 
 export default meta;

@@ -2,15 +2,11 @@
 // tabs, the user menu, the live-run control, and the sidebar trigger.
 //
 // Presentational, like the rest of this folder — the route wires the callbacks
-// to navigation and to the rename/publish/run mutations, which keeps the whole
-// Chrome renderable in Storybook without a router or a network.
-//
-// Navigation arrives as `href` + `onSelect` pairs rather than `<Link>`s. The
-// href keeps cmd-click and middle-click working as real links; onSelect does
-// the SPA navigation. Neither needs a router in scope, so a story can point
-// them all at "#".
+// to the rename/publish/run mutations. Navigation is plain router `<Link>`s:
+// the Header only needs to know which Show it belongs to.
 import { cn } from "@mechane/design-system";
 import type { PublishState } from "@mechane/domain/publish";
+import type { ShowId } from "@mechane/domain/id";
 import type { ThemeMode } from "@mechane/domain/theme-settings";
 
 import { HeaderLeft } from "./HeaderLeft";
@@ -19,25 +15,6 @@ import { HeaderTabs } from "./HeaderTabs";
 
 /** Which editor the Chrome is currently wrapped around. */
 export type EditorKind = "show" | "canvas";
-
-/**
- * A navigable destination. `href` exists so the control is a real link;
- * `onSelect` performs the client-side navigation.
- */
-export interface HeaderDestination {
-  href: string;
-  onSelect(): void;
-}
-
-export interface HeaderNavigation {
-  home: HeaderDestination;
-  settings: HeaderDestination;
-  showEditor: HeaderDestination;
-  canvasEditor: HeaderDestination;
-  shapes: HeaderDestination;
-  /** This Show's settings, where its Custom domains live. */
-  showSettings: HeaderDestination;
-}
 
 export interface HeaderUser {
   id: string;
@@ -51,7 +28,9 @@ export interface HeaderProps {
   /** The Show's name — the label on the title menu, and what rename edits. */
   name: string;
   activeEditor: EditorKind;
-  navigation: HeaderNavigation;
+  showId: ShowId;
+  /** The Scene the Scenes tab returns to; without one it opens the Scene list. */
+  sceneArtId?: string | null;
   user: HeaderUser;
   onLogOut(): void;
   /**
@@ -83,14 +62,17 @@ export const Header = ({ className, ...props }: HeaderProps) => (
   >
     <HeaderLeft
       name={props.name}
-      navigation={props.navigation}
+      showId={props.showId}
       onRename={props.onRename}
       renaming={props.renaming}
       renameError={props.renameError}
     />
-    <HeaderTabs activeEditor={props.activeEditor} navigation={props.navigation} />
+    <HeaderTabs
+      activeEditor={props.activeEditor}
+      showId={props.showId}
+      sceneArtId={props.sceneArtId}
+    />
     <HeaderRight
-      navigation={props.navigation}
       user={props.user}
       onLogOut={props.onLogOut}
       autoPublish={props.autoPublish}

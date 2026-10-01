@@ -1,12 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
-import {
-  MOCK_ADMIN,
-  MOCK_BANNED,
-  MOCK_DESTINATION,
-  MOCK_DIRECTOR,
-  MOCK_SHOWS,
-} from "./admin-fixtures";
+import { StoryRouter } from "../StoryRouter";
+import { MOCK_ADMIN, MOCK_BANNED, MOCK_DIRECTOR, MOCK_SHOWS } from "./admin-fixtures";
 import { AdminUserDetail } from "./AdminUserDetail";
 
 const meta: Meta<typeof AdminUserDetail> = {
@@ -14,7 +9,6 @@ const meta: Meta<typeof AdminUserDetail> = {
   component: AdminUserDetail,
   parameters: { layout: "fullscreen" },
   args: {
-    back: MOCK_DESTINATION,
     user: MOCK_DIRECTOR,
     pending: false,
     isSelf: false,
@@ -35,9 +29,11 @@ const meta: Meta<typeof AdminUserDetail> = {
   },
   decorators: [
     (Story) => (
-      <div className="min-h-screen bg-sunken p-6 text-foreground">
-        <Story />
-      </div>
+      <StoryRouter>
+        <div className="min-h-screen bg-sunken p-6 text-foreground">
+          <Story />
+        </div>
+      </StoryRouter>
     ),
   ],
 };

@@ -4,6 +4,7 @@ import { useGlobals } from "storybook/preview-api";
 
 import { userSettingsQueryKey } from "../../api/settings";
 import { MOCK_HEADER } from "../EditorLayout/editor-layout-fixtures";
+import { StoryRouter } from "../StoryRouter";
 import { Header } from "./Header";
 
 const storyQueryClient = new QueryClient({
@@ -32,9 +33,11 @@ const meta: Meta<typeof Header> = {
 
       return (
         <QueryClientProvider client={storyQueryClient}>
-          <div className="bg-background p-2">
-            <Story />
-          </div>
+          <StoryRouter>
+            <div className="bg-background p-2">
+              <Story />
+            </div>
+          </StoryRouter>
         </QueryClientProvider>
       );
     },
