@@ -23,6 +23,12 @@ export interface NodeInteraction {
   commitRename(): void;
   /** Ends the rename, discarding it: Escape. */
   cancelRename(): void;
+  /**
+   * Renames a Transformer input in place, from its row in the node body. One
+   * commit per edit — the command rewrites the Formula, so it isn't coalesced
+   * keystroke by keystroke the way a node rename is.
+   */
+  renameTransformerPort(nodeId: string, portId: string, name: string): void;
   /** True while a connection is being dragged from a handle. */
   connecting: boolean;
   /** What that drag may land on (`connectionTargets`), or null when idle. */
@@ -54,6 +60,7 @@ const IDLE: NodeInteraction = {
   renameTo: () => {},
   commitRename: () => {},
   cancelRename: () => {},
+  renameTransformerPort: () => {},
   connecting: false,
   targets: null,
   formulaEditorNodeId: null,

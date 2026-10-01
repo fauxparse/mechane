@@ -7,9 +7,9 @@ import {
   VariableTypeIcon,
 } from "@mechane/design-system";
 import { deviceAddress } from "@mechane/domain/device-address";
-import { DEVICE_SOURCE_HANDLES } from "@mechane/domain/graph";
+import { DEVICE_SOURCE_HANDLES, type TransformerInputPort } from "@mechane/domain/graph";
 import { Position, type HandleProps } from "@xyflow/react";
-import type { ComponentType } from "react";
+import { useState, type ComponentType } from "react";
 import { PLAYER_BASE_URL } from "../../../../api/client";
 import type { ShowFlowNode } from "../graph-to-flow";
 import { handleFor } from "../handle-ids";
@@ -124,6 +124,106 @@ export function NodeVariableList({
         );
       })}
     </div>
+  );
+}
+
+export interface NodeInputListProps {
+  ports: readonly TransformerInputPort[];
+  targetable?: boolean;
+  connectedHandleIds?: ReadonlySet<string>;
+  handle?: ComponentType<HandleProps>;
+  /**
+   * Makes each name editable in place (double-click, like the node's own
+   * name). Absent where the name is fixed: Filter and Shuffle read `input`.
+   */
+  onRename?(portId: string, name: string): void;
+}
+
+export function NodeInputList({
+  ports,
+  targetable = false,
+  connectedHandleIds,
+  handle: HandleComponent = DummyHandle,
+  onRename,
+}: NodeInputListProps) {
+  return (
+    <div className="grid grid-cols-[2.5rem_1fr] gap-x-2">
+      {ports.map((port) => {
+        const handleId = handleFor({ kind: "field", id: port.id });
+        return (
+          <div
+            key={port.id}
+            className="relative col-span-full grid grid-cols-subgrid items-center border-t border-(--flow-border)/50 py-1.5"
+          >
+            <HandleComponent
+              id={handleId}
+              type="target"
+              position={Position.Left}
+              className={HANDLE_CLASS}
+              data-targetable={targetable}
+              data-connected={connectedHandleIds?.has(handleId) ?? false}
+              isConnectableStart={false}
+            />
+            <div className="col-start-2 flex min-w-0 items-baseline justify-between gap-2 pr-3">
+              <InputName
+                name={port.name}
+                onRename={onRename ? (name) => onRename(port.id, name) : undefined}
+              />
+              <span className="truncate text-[10px] text-(--flow-muted-foreground)">input</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function InputName({ name, onRename }: { name: string; onRename?(name: string): void }) {
+  const [editing, setEditing] = useState(false);
+
+  if (!onRename || !editing) {
+    return (
+      <span
+        className="truncate font-mono text-xs"
+        title={onRename ? "Double-click to rename" : undefined}
+        onDoubleClick={
+          onRename
+            ? (event) => {
+                // Rename this input, not the node the row sits in.
+                event.stopPropagation();
+                setEditing(true);
+              }
+            : undefined
+        }
+      >
+        {name}
+      </span>
+    );
+  }
+
+  return (
+    <input
+      className="nodrag nokey min-w-0 flex-1 rounded-sm border-0 bg-transparent px-1 -ml-1 font-mono text-xs outline-0 focus-visible:border-0"
+      defaultValue={name}
+      aria-label={`Input name ${name}`}
+      autoFocus
+      onFocus={(event) => event.target.select()}
+      onBlur={(event) => {
+        setEditing(false);
+        // A blank name would orphan the Formula's references; keep the old one.
+        const next = event.target.value.trim();
+        if (next && next !== name) onRename(next);
+      }}
+      onKeyDown={(event) => {
+        event.stopPropagation();
+        if (event.key === "Enter") event.currentTarget.blur();
+        if (event.key === "Escape") {
+          event.currentTarget.value = name;
+          event.currentTarget.blur();
+        }
+      }}
+      onDoubleClick={(event) => event.stopPropagation()}
+    />
   );
 }
 

@@ -1,9 +1,9 @@
 import { Meta, StoryObj } from "@storybook/react-vite";
-import { FLOW_COLORS, type FlowColor } from "@mechane/domain/graph";
-import { ComponentProps } from "react";
+import { FLOW_COLORS, type FlowColor, type TransformerInputPort } from "@mechane/domain/graph";
+import { ComponentProps, useState } from "react";
 
 import { BaseNode } from "./BaseNode";
-import { NodeCueList, NodeVariableList } from "./NodeContent";
+import { NodeCueList, NodeInputList, NodeVariableList } from "./NodeContent";
 // DummyHandle relies on React Flow's handle positioning; the canvas loads this CSS, the story must too.
 import "@xyflow/react/dist/style.css";
 import "../show-graph-editor.css";
@@ -88,4 +88,50 @@ export const WiredScene: Story = {
       driven: false,
     },
   },
+};
+
+function CalculateTransformer({ color, data: _scene, ...args }: BaseNodeStoryArgs) {
+  const [ports, setPorts] = useState<TransformerInputPort[]>([
+    { id: "port_home", name: "home" },
+    { id: "port_away", name: "away" },
+  ]);
+  return (
+    <div className="mechane-show-graph" data-flow-theme="neutral">
+      <BaseNode
+        {...args}
+        data={{
+          kind: "transformer",
+          name: "Total",
+          color,
+          type: "number",
+          ports,
+          transform: { kind: "calculate", formula: "home + away", outputType: "number" },
+          fields: [],
+          cues: [],
+          variables: [],
+          wiredVariableIds: [],
+          defaultSceneId: null,
+          isDefaultScene: false,
+          childCount: 0,
+          perConnection: false,
+          driven: false,
+          pairingCode: null,
+        }}
+      >
+        <NodeInputList
+          ports={ports}
+          onRename={(portId, name) =>
+            setPorts((current) =>
+              current.map((port) => (port.id === portId ? { ...port, name } : port)),
+            )
+          }
+        />
+      </BaseNode>
+    </div>
+  );
+}
+
+/** Double-click an input's name to rename it in place. */
+export const TransformerInputs: Story = {
+  render: (args) => <CalculateTransformer {...args} />,
 };

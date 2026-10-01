@@ -340,6 +340,7 @@ export function useShowGraphEditorController({
       renameTo: gestures.renameTo,
       commitRename: gestures.commitRename,
       cancelRename: gestures.cancelRename,
+      renameTransformerPort: editing.renameTransformerPort,
       connecting: connections.connecting,
       targets: connections.targets,
       formulaEditorNodeId,
@@ -348,7 +349,14 @@ export function useShowGraphEditorController({
       toggleCollapse,
       resizeFlow,
     }),
-    [connections, formulaEditorNodeId, gestures, resizeFlow, toggleCollapse],
+    [
+      connections,
+      editing.renameTransformerPort,
+      formulaEditorNodeId,
+      gestures,
+      resizeFlow,
+      toggleCollapse,
+    ],
   );
   const edgeInteraction = useMemo<EdgeInteraction>(
     () => ({ moveEdge: editing.edges.moveEdge }),
