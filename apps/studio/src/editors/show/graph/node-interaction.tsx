@@ -23,6 +23,15 @@ export interface NodeInteraction {
   commitRename(): void;
   /** Ends the rename, discarding it: Escape. */
   cancelRename(): void;
+  /*
+   * Renames for the named rows on a node body (#851): Transformer inputs,
+   * Scene Variables, and Cues. Called once per committed edit, not per
+   * keystroke — an input rename rewrites its Formula, so a half-typed name
+   * must never land.
+   */
+  renameTransformerPort(nodeId: string, portId: string, name: string): void;
+  renameVariable(sceneId: string, variableId: string, name: string): void;
+  renameCue(cueId: string, name: string): void;
   /** True while a connection is being dragged from a handle. */
   connecting: boolean;
   /** What that drag may land on (`connectionTargets`), or null when idle. */
@@ -54,6 +63,9 @@ const IDLE: NodeInteraction = {
   renameTo: () => {},
   commitRename: () => {},
   cancelRename: () => {},
+  renameTransformerPort: () => {},
+  renameVariable: () => {},
+  renameCue: () => {},
   connecting: false,
   targets: null,
   formulaEditorNodeId: null,

@@ -17,6 +17,9 @@ export interface ReactFlowNodeState {
   onRenameChange(name: string): void;
   onRenameCommit(): void;
   onRenameCancel(): void;
+  renameTransformerPort(nodeId: string, portId: string, name: string): void;
+  renameVariable(sceneId: string, variableId: string, name: string): void;
+  renameCue(cueId: string, name: string): void;
   openFormulaEditor(nodeId: string): void;
   handle: ComponentType<HandleProps>;
 }
@@ -24,8 +27,17 @@ export interface ReactFlowNodeState {
 export function useReactFlowNode(id: string, data: ShowFlowNode["data"]): ReactFlowNodeState {
   const { targetable, dimmed, variableIds, fieldIds } = useDragState(id);
   const connectedHandleIds = useConnectedHandleIds(id);
-  const { renaming, beginRename, renameTo, commitRename, cancelRename, openFormulaEditor } =
-    useNodeInteraction();
+  const {
+    renaming,
+    beginRename,
+    renameTo,
+    commitRename,
+    cancelRename,
+    renameTransformerPort,
+    renameVariable,
+    renameCue,
+    openFormulaEditor,
+  } = useNodeInteraction();
   const updateNodeInternals = useUpdateNodeInternals();
   const variableHandleKey = data.variables.map((variable) => variable.id).join("|");
   const fieldHandleKey = data.fields.map((field) => field.id).join("|");
@@ -45,6 +57,9 @@ export function useReactFlowNode(id: string, data: ShowFlowNode["data"]): ReactF
     onRenameChange: renameTo,
     onRenameCommit: commitRename,
     onRenameCancel: cancelRename,
+    renameTransformerPort,
+    renameVariable,
+    renameCue,
     openFormulaEditor,
     handle: Handle,
   };
