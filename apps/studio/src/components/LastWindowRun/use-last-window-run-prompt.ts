@@ -58,13 +58,18 @@ export function useLastWindowRunPrompt({
 
   useEffect(() => {
     if (activeRunId === null) return;
+    let prompt: number | undefined;
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
       if (presence.current?.otherWindows() !== 0) return;
       event.preventDefault();
-      setTimeout(() => setPromptedRunId(activeRunId));
+      window.clearTimeout(prompt);
+      prompt = window.setTimeout(() => setPromptedRunId(activeRunId));
     };
     window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      window.clearTimeout(prompt);
+    };
   }, [activeRunId]);
 
   return {
