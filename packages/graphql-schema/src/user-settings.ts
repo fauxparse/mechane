@@ -12,15 +12,25 @@ export const GetUserSettingsQuery = graphql(`
     userSettings {
       themeMode
       themePalette
+      askToEndRunOnClose
     }
   }
 `);
 
 export const UpdateUserSettingsMutation = graphql(`
-  mutation UpdateUserSettings($themeMode: String, $themePalette: String) {
-    updateUserSettings(themeMode: $themeMode, themePalette: $themePalette) {
+  mutation UpdateUserSettings(
+    $themeMode: String
+    $themePalette: String
+    $askToEndRunOnClose: Boolean
+  ) {
+    updateUserSettings(
+      themeMode: $themeMode
+      themePalette: $themePalette
+      askToEndRunOnClose: $askToEndRunOnClose
+    ) {
       themeMode
       themePalette
+      askToEndRunOnClose
     }
   }
 `);

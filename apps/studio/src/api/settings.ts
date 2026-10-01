@@ -29,7 +29,7 @@ export function useUserSettings(options: { enabled?: boolean } = {}) {
   });
 
   const update = useMutation({
-    mutationFn: async (patch: { themeMode?: string; themePalette?: string }) => {
+    mutationFn: async (patch: Partial<UserSettings>) => {
       const data = await graphqlRequest(GRAPHQL_ENDPOINT, UpdateUserSettingsMutation, patch);
       return data.updateUserSettings;
     },

@@ -17,9 +17,13 @@ import { createShowWindowPresence, type ShowWindowPresence } from "./show-window
 export function useLastWindowRunPrompt({
   showId,
   activeRunId,
+  enabled,
 }: {
   showId: string | null;
   activeRunId: string | null;
+  /** The user's `askToEndRunOnClose` preference. Presence is kept either way,
+   * so this window still counts for the others. */
+  enabled: boolean;
 }): { open: boolean; dismiss(): void } {
   const presence = useRef<ShowWindowPresence | null>(null);
   // The Run the question was asked about. Tying it to a Run, rather than
@@ -57,7 +61,7 @@ export function useLastWindowRunPrompt({
   }, [showId]);
 
   useEffect(() => {
-    if (activeRunId === null) return;
+    if (!enabled || activeRunId === null) return;
     let prompt: number | undefined;
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
       if (presence.current?.otherWindows() !== 0) return;
@@ -70,10 +74,10 @@ export function useLastWindowRunPrompt({
       window.removeEventListener("beforeunload", onBeforeUnload);
       window.clearTimeout(prompt);
     };
-  }, [activeRunId]);
+  }, [activeRunId, enabled]);
 
   return {
-    open: promptedRunId !== null && promptedRunId === activeRunId,
+    open: enabled && promptedRunId !== null && promptedRunId === activeRunId,
     dismiss: () => setPromptedRunId(null),
   };
 }

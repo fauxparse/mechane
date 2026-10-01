@@ -1,10 +1,10 @@
-// Minimal Settings screen ("/settings", issue #14) — currently just the
-// theme switcher (PRD.md §7). Reads/writes the signed-in user's
-// UserSettings via GraphQL (api/settings.ts); ThemeSwitcher itself is
-// presentational and knows nothing about persistence. Signed-out visitors
-// never reach this component — the parent `_authenticated` layout's
-// `beforeLoad` (_authenticated/route.tsx, issue #30) redirects them to
-// /sign-in before it renders.
+// Minimal Settings screen ("/settings", issue #14): the theme switcher
+// (PRD.md §7) and how Studio behaves around live Runs (#857). Reads/writes
+// the signed-in user's UserSettings via GraphQL (api/settings.ts); the
+// sections themselves are presentational and know nothing about persistence.
+// Signed-out visitors never reach this component — the parent
+// `_authenticated` layout's `beforeLoad` (_authenticated/route.tsx, issue
+// #30) redirects them to /sign-in before it renders.
 import { ThemeSwitcher } from "@mechane/design-system";
 import {
   type ThemeMode,
@@ -15,6 +15,7 @@ import {
 import { createFileRoute, Link } from "@tanstack/react-router";
 
 import { useUserSettings } from "../../api/settings";
+import { LiveRunsSection } from "../../components/Settings/LiveRunsSection";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsRoute,
@@ -42,6 +43,11 @@ function SettingsRoute() {
           onPaletteChange={(nextPalette) => updateSettings({ themePalette: nextPalette })}
         />
       </section>
+
+      <LiveRunsSection
+        askToEndRunOnClose={settings.askToEndRunOnClose ?? true}
+        onAskToEndRunOnCloseChange={(askToEndRunOnClose) => updateSettings({ askToEndRunOnClose })}
+      />
     </main>
   );
 }

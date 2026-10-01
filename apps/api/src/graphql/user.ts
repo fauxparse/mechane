@@ -1,6 +1,6 @@
 // The signed-in user's slice: who they are (the Better Auth session user,
 // resolved in ./context.ts), who is impersonating them if anyone (issue #845),
-// and their design-system preference (PRD.md §7).
+// their design-system preference (PRD.md §7), and their Studio preferences.
 // Theme values are validated here — the GraphQL error translation of
 // @mechane/domain's theme assertions — because "which theme modes exist" is
 // policy this slice's mutations own.
@@ -51,12 +51,14 @@ export const typeDefs = /* GraphQL */ `
     role: String!
   }
 
-  "The signed-in user's design-system preference (PRD.md §7)."
+  "The signed-in user's preferences: their design-system theme (PRD.md §7) and Studio behavior."
   type UserSettings {
     "Display mode: light or dark."
     themeMode: String!
     "Which built-in theme is active."
     themePalette: String!
+    "Whether closing the last Studio window on a live Show asks to end its Run first."
+    askToEndRunOnClose: Boolean!
   }
 
   type Query {
@@ -67,12 +69,16 @@ export const typeDefs = /* GraphQL */ `
     session is the user's own. While impersonating, \`me\` is the impersonated user.
     """
     impersonator: User
-    "The signed-in user's theme settings, or PRD.md §7 defaults if they haven't set any yet."
+    "The signed-in user's settings, or defaults if they haven't set any yet."
     userSettings: UserSettings!
   }
 
   type Mutation {
-    updateUserSettings(themeMode: String, themePalette: String): UserSettings!
+    updateUserSettings(
+      themeMode: String
+      themePalette: String
+      askToEndRunOnClose: Boolean
+    ): UserSettings!
   }
 `;
 
@@ -105,7 +111,11 @@ export const resolvers: Resolvers = {
         // side effect, and updateUserSettings creates the row on first
         // actual change (see below).
         const defaults = defaultThemeSettings();
-        return { themeMode: defaults.mode, themePalette: defaults.palette };
+        return {
+          themeMode: defaults.mode,
+          themePalette: defaults.palette,
+          askToEndRunOnClose: true,
+        };
       }
       return settings;
     },
@@ -113,7 +123,15 @@ export const resolvers: Resolvers = {
   Mutation: {
     updateUserSettings: async (
       _parent,
-      { themeMode, themePalette }: { themeMode?: string | null; themePalette?: string | null },
+      {
+        themeMode,
+        themePalette,
+        askToEndRunOnClose,
+      }: {
+        themeMode?: string | null;
+        themePalette?: string | null;
+        askToEndRunOnClose?: boolean | null;
+      },
       context,
     ) => {
       const userId = requireUserId(context);
@@ -129,15 +147,22 @@ export const resolvers: Resolvers = {
         themePalette != null
           ? validThemePalette(themePalette)
           : (existing?.themePalette ?? defaults.palette);
+      const nextAskToEndRunOnClose = askToEndRunOnClose ?? existing?.askToEndRunOnClose ?? true;
 
       const [updated] = await db
         .insert(userSettings)
-        .values({ userId, themeMode: nextThemeMode, themePalette: nextThemePalette })
+        .values({
+          userId,
+          themeMode: nextThemeMode,
+          themePalette: nextThemePalette,
+          askToEndRunOnClose: nextAskToEndRunOnClose,
+        })
         .onConflictDoUpdate({
           target: userSettings.userId,
           set: {
             themeMode: nextThemeMode,
             themePalette: nextThemePalette,
+            askToEndRunOnClose: nextAskToEndRunOnClose,
             updatedAt: new Date(),
           },
         })
