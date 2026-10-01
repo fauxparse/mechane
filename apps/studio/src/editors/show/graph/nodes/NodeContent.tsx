@@ -85,6 +85,8 @@ export interface NodeVariableListProps {
   variableIds?: ReadonlySet<string>;
   connectedHandleIds?: ReadonlySet<string>;
   handle?: ComponentType<HandleProps>;
+  /** Makes each Variable's name editable in place. */
+  onRename?(variableId: string, name: string): void;
 }
 
 export function NodeVariableList({
@@ -92,6 +94,7 @@ export function NodeVariableList({
   variableIds,
   connectedHandleIds,
   handle: HandleComponent = DummyHandle,
+  onRename,
 }: NodeVariableListProps) {
   if (variables.length === 0) return null;
 
@@ -118,7 +121,12 @@ export function NodeVariableList({
               className="size-4 inline-block justify-self-center ml-2"
             />
             <div className="flex items-center gap-2 w-full justify-between pr-2">
-              <div className="truncate">{variable.name}</div>
+              <RowName
+                name={variable.name}
+                label="Variable name"
+                className="truncate"
+                onRename={onRename ? (name) => onRename(variable.id, name) : undefined}
+              />
             </div>
           </div>
         );
@@ -132,10 +140,7 @@ export interface NodeInputListProps {
   targetable?: boolean;
   connectedHandleIds?: ReadonlySet<string>;
   handle?: ComponentType<HandleProps>;
-  /**
-   * Makes each name editable in place (double-click, like the node's own
-   * name). Absent where the name is fixed: Filter and Shuffle read `input`.
-   */
+  /** Makes each name editable in place. Absent where the name is fixed: Filter and Shuffle read `input`. */
   onRename?(portId: string, name: string): void;
 }
 
@@ -165,8 +170,10 @@ export function NodeInputList({
               isConnectableStart={false}
             />
             <div className="col-start-2 flex min-w-0 items-baseline justify-between gap-2 pr-3">
-              <InputName
+              <RowName
                 name={port.name}
+                label="Input name"
+                className="truncate font-mono text-xs"
                 onRename={onRename ? (name) => onRename(port.id, name) : undefined}
               />
               <span className="truncate text-[10px] text-(--flow-muted-foreground)">input</span>
@@ -178,18 +185,33 @@ export function NodeInputList({
   );
 }
 
-function InputName({ name, onRename }: { name: string; onRename?(name: string): void }) {
+/**
+ * A row's name on a node body. With `onRename`, double-click edits it in place
+ * — the same gesture as the node's own name. Enter or blur keeps the edit,
+ * Escape discards it, and a blank name keeps the old one.
+ */
+function RowName({
+  name,
+  label,
+  className,
+  onRename,
+}: {
+  name: string;
+  label: string;
+  className?: string;
+  onRename?(name: string): void;
+}) {
   const [editing, setEditing] = useState(false);
 
   if (!onRename || !editing) {
     return (
       <span
-        className="truncate font-mono text-xs"
+        className={cn("min-w-0", className)}
         title={onRename ? "Double-click to rename" : undefined}
         onDoubleClick={
           onRename
             ? (event) => {
-                // Rename this input, not the node the row sits in.
+                // Rename this row, not the node it sits in.
                 event.stopPropagation();
                 setEditing(true);
               }
@@ -203,14 +225,16 @@ function InputName({ name, onRename }: { name: string; onRename?(name: string): 
 
   return (
     <input
-      className="nodrag nokey min-w-0 flex-1 rounded-sm border-0 bg-transparent px-1 -ml-1 font-mono text-xs outline-0 focus-visible:border-0"
+      className={cn(
+        "nodrag nokey min-w-0 flex-1 rounded-sm border-0 bg-transparent px-1 -ml-1 outline-0 focus-visible:border-0",
+        className,
+      )}
       defaultValue={name}
-      aria-label={`Input name ${name}`}
+      aria-label={`${label} ${name}`}
       autoFocus
       onFocus={(event) => event.target.select()}
       onBlur={(event) => {
         setEditing(false);
-        // A blank name would orphan the Formula's references; keep the old one.
         const next = event.target.value.trim();
         if (next && next !== name) onRename(next);
       }}
@@ -231,12 +255,15 @@ export interface NodeCueListProps {
   cues: ShowFlowNode["data"]["cues"];
   connectedHandleIds?: ReadonlySet<string>;
   handle?: ComponentType<HandleProps>;
+  /** Makes each Cue's name editable in place. */
+  onRename?(cueId: string, name: string): void;
 }
 
 export function NodeCueList({
   cues,
   connectedHandleIds,
   handle: HandleComponent = DummyHandle,
+  onRename,
 }: NodeCueListProps) {
   if (cues.length === 0) return null;
 
@@ -246,8 +273,13 @@ export function NodeCueList({
         const handleId = handleFor({ kind: "cue", id: cue.id });
         return (
           <div key={cue.id} className="relative flex items-center justify-between gap-2 px-3 py-2">
-            <div className="min-w-0">
-              <div className="truncate text-xs font-medium">{cue.name}</div>
+            <div className="flex min-w-0 flex-col">
+              <RowName
+                name={cue.name}
+                label="Cue name"
+                className="truncate text-xs font-medium"
+                onRename={onRename ? (name) => onRename(cue.id, name) : undefined}
+              />
               <div className="text-[10px] text-(--flow-muted-foreground)">
                 {cue.actionCount} {cue.actionCount === 1 ? "Action" : "Actions"}
               </div>

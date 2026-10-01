@@ -35,11 +35,13 @@ export function SceneNode({ id, data, selected }: NodeProps<ShowFlowNode>) {
         variableIds={node.variableIds}
         connectedHandleIds={node.connectedHandleIds}
         handle={node.handle}
+        onRename={(variableId, name) => node.renameVariable(id, variableId, name)}
       />
       <NodeCueList
         cues={data.cues}
         connectedHandleIds={node.connectedHandleIds}
         handle={node.handle}
+        onRename={node.renameCue}
       />
     </BaseNode>
   );

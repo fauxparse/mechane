@@ -12,6 +12,32 @@ type BaseNodeStoryArgs = ComponentProps<typeof BaseNode> & {
   color: FlowColor;
 };
 
+function renamed<T extends { id: string; name: string }>(rows: T[], id: string, name: string) {
+  return rows.map((row) => (row.id === id ? { ...row, name } : row));
+}
+
+/** Double-click a Variable or Cue name to rename it in place. */
+function SceneStory({ color, data, ...args }: BaseNodeStoryArgs) {
+  const [variables, setVariables] = useState(data.variables);
+  const [cues, setCues] = useState(data.cues);
+  const wiredVariableIds = new Set(data.wiredVariableIds);
+  const warning = variables.some((variable) => !wiredVariableIds.has(variable.id));
+  return (
+    <div className="mechane-show-graph" data-flow-theme="neutral">
+      <BaseNode {...args} data={{ ...data, color }} warning={warning}>
+        <NodeVariableList
+          variables={variables}
+          onRename={(id, name) => setVariables((rows) => renamed(rows, id, name))}
+        />
+        <NodeCueList
+          cues={cues}
+          onRename={(id, name) => setCues((rows) => renamed(rows, id, name))}
+        />
+      </BaseNode>
+    </div>
+  );
+}
+
 const meta: Meta<BaseNodeStoryArgs> = {
   title: "studio/Editors/Show/Graph/Nodes",
   component: BaseNode,
@@ -43,18 +69,7 @@ const meta: Meta<BaseNodeStoryArgs> = {
     },
     data: { control: false },
   },
-  render: ({ color, data, ...args }: BaseNodeStoryArgs) => {
-    const wiredVariableIds = new Set(data.wiredVariableIds);
-    const warning = data.variables.some((variable) => !wiredVariableIds.has(variable.id));
-    return (
-      <div className="mechane-show-graph" data-flow-theme="neutral">
-        <BaseNode {...args} data={{ ...data, color }} warning={warning}>
-          <NodeVariableList variables={data.variables} />
-          <NodeCueList cues={data.cues} />
-        </BaseNode>
-      </div>
-    );
-  },
+  render: (args: BaseNodeStoryArgs) => <SceneStory {...args} />,
 };
 
 export default meta;
@@ -120,11 +135,7 @@ function CalculateTransformer({ color, data: _scene, ...args }: BaseNodeStoryArg
       >
         <NodeInputList
           ports={ports}
-          onRename={(portId, name) =>
-            setPorts((current) =>
-              current.map((port) => (port.id === portId ? { ...port, name } : port)),
-            )
-          }
+          onRename={(id, name) => setPorts((rows) => renamed(rows, id, name))}
         />
       </BaseNode>
     </div>

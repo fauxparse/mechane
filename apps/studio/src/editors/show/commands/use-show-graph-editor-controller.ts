@@ -341,6 +341,8 @@ export function useShowGraphEditorController({
       commitRename: gestures.commitRename,
       cancelRename: gestures.cancelRename,
       renameTransformerPort: editing.renameTransformerPort,
+      renameVariable: variables.renameVariable,
+      renameCue: editing.interaction.renameCue,
       connecting: connections.connecting,
       targets: connections.targets,
       formulaEditorNodeId,
@@ -351,11 +353,13 @@ export function useShowGraphEditorController({
     }),
     [
       connections,
+      editing.interaction.renameCue,
       editing.renameTransformerPort,
       formulaEditorNodeId,
       gestures,
       resizeFlow,
       toggleCollapse,
+      variables.renameVariable,
     ],
   );
   const edgeInteraction = useMemo<EdgeInteraction>(
