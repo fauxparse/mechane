@@ -65,18 +65,30 @@ const USER_SETTINGS = /* GraphQL */ `
     userSettings {
       themeMode
       themePalette
+      askToEndRunOnClose
     }
   }
 `;
 
 const UPDATE_USER_SETTINGS = /* GraphQL */ `
-  mutation UpdateUserSettings($themeMode: String, $themePalette: String) {
-    updateUserSettings(themeMode: $themeMode, themePalette: $themePalette) {
+  mutation UpdateUserSettings(
+    $themeMode: String
+    $themePalette: String
+    $askToEndRunOnClose: Boolean
+  ) {
+    updateUserSettings(
+      themeMode: $themeMode
+      themePalette: $themePalette
+      askToEndRunOnClose: $askToEndRunOnClose
+    ) {
       themeMode
       themePalette
+      askToEndRunOnClose
     }
   }
 `;
+
+type UserSettingsResult = { themeMode: string; themePalette: string; askToEndRunOnClose: boolean };
 
 type TestUser = {
   id: string;
@@ -306,20 +318,37 @@ describe("GraphQL persistence", () => {
 
   it("persists settings for the signed-in user", async () => {
     const context = contextFor(testUser);
-    const defaults = await request<{ userSettings: { themeMode: string; themePalette: string } }>(
-      USER_SETTINGS,
-      context,
-    );
-    expect(defaults.userSettings).toEqual({ themeMode: "dark", themePalette: "gruvbox" });
+    const defaults = await request<{ userSettings: UserSettingsResult }>(USER_SETTINGS, context);
+    expect(defaults.userSettings).toEqual({
+      themeMode: "dark",
+      themePalette: "gruvbox",
+      askToEndRunOnClose: true,
+    });
 
-    const updated = await request<{
-      updateUserSettings: { themeMode: string; themePalette: string };
-    }>(UPDATE_USER_SETTINGS, context, { themeMode: "dark", themePalette: "catppuccin" });
-    expect(updated.updateUserSettings).toEqual({ themeMode: "dark", themePalette: "catppuccin" });
+    const updated = await request<{ updateUserSettings: UserSettingsResult }>(
+      UPDATE_USER_SETTINGS,
+      context,
+      { themeMode: "dark", themePalette: "catppuccin" },
+    );
+    expect(updated.updateUserSettings).toEqual({
+      themeMode: "dark",
+      themePalette: "catppuccin",
+      askToEndRunOnClose: true,
+    });
     const persistedRows = await db
       .select()
       .from(userSettings)
       .where(and(eq(userSettings.userId, testUser.id), eq(userSettings.themeMode, "dark")));
     expect(persistedRows).toHaveLength(1);
+
+    // Each setting changes on its own; the others keep their stored values.
+    await request(UPDATE_USER_SETTINGS, context, { askToEndRunOnClose: false });
+    await request(UPDATE_USER_SETTINGS, context, { themeMode: "light" });
+    const reread = await request<{ userSettings: UserSettingsResult }>(USER_SETTINGS, context);
+    expect(reread.userSettings).toEqual({
+      themeMode: "light",
+      themePalette: "catppuccin",
+      askToEndRunOnClose: false,
+    });
   });
 });

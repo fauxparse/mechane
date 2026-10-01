@@ -12,13 +12,20 @@ type User {
   role: String!
 }
 
-"""The signed-in user's design-system preference (PRD.md §7)."""
+"""
+The signed-in user's preferences: their design-system theme (PRD.md §7) and Studio behavior.
+"""
 type UserSettings {
   """Display mode: light or dark."""
   themeMode: String!
 
   """Which built-in theme is active."""
   themePalette: String!
+
+  """
+  Whether closing the last Studio window on a live Show asks to end its Run first.
+  """
+  askToEndRunOnClose: Boolean!
 }
 
 type Query {
@@ -32,7 +39,7 @@ type Query {
   impersonator: User
 
   """
-  The signed-in user's theme settings, or PRD.md §7 defaults if they haven't set any yet.
+  The signed-in user's settings, or defaults if they haven't set any yet.
   """
   userSettings: UserSettings!
 
@@ -92,7 +99,7 @@ type Query {
 }
 
 type Mutation {
-  updateUserSettings(themeMode: String, themePalette: String): UserSettings!
+  updateUserSettings(themeMode: String, themePalette: String, askToEndRunOnClose: Boolean): UserSettings!
   createShow(name: String!): Show!
   renameShow(id: ID!, name: String!): Show!
 

@@ -1,0 +1,1 @@
+ALTER TABLE "user_settings" ADD COLUMN "ask_to_end_run_on_close" boolean DEFAULT true NOT NULL;

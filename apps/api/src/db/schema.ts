@@ -247,6 +247,10 @@ export const userSettings = pgTable("user_settings", {
     .references(() => user.id, { onDelete: "cascade" }),
   themeMode: text("theme_mode").notNull().default("dark"),
   themePalette: text("theme_palette").notNull().default(DEFAULT_THEME_PALETTE),
+  // Whether closing the last Studio window on a live Show asks to end its
+  // Run first (#857). On by default: a Run left behind keeps every Device
+  // connected with nobody watching the End run control.
+  askToEndRunOnClose: boolean("ask_to_end_run_on_close").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

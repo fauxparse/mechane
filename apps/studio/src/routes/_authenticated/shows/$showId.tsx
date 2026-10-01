@@ -19,10 +19,13 @@ import { usePublishShowGraph, useShowGraph } from "../../../api/show-graph";
 import { useActiveRun, useEndRun, useGoLive } from "../../../api/runs";
 import { useRenameShow, useShow } from "../../../api/shows";
 import { useMe } from "../../../api/me";
+import { useUserSettings } from "../../../api/settings";
 import { useSignOut } from "../../../api/auth";
 import { EditorLayout } from "../../../components/EditorLayout/EditorLayout";
 import { useStoredSidebarState } from "../../../components/EditorLayout/use-stored-sidebar-state";
 import type { EditorKind } from "../../../components/Header/Header";
+import { LastWindowRunDialog } from "../../../components/LastWindowRun/LastWindowRunDialog";
+import { useLastWindowRunPrompt } from "../../../components/LastWindowRun/use-last-window-run-prompt";
 import { useShapeEditorStatus } from "../../../editors/show/shapes/shape-editor-status";
 
 export const Route = createFileRoute("/_authenticated/shows/$showId")({
@@ -49,6 +52,12 @@ function ShowEditorLayout() {
   const signOut = useSignOut();
   const [sidebarsOpen, setSidebarsOpen] = useStoredSidebarState();
   const shapeEditorStatus = useShapeEditorStatus();
+  const { settings } = useUserSettings();
+  const lastWindowRunPrompt = useLastWindowRunPrompt({
+    showId,
+    activeRunId: activeRun.data?.id ?? null,
+    enabled: settings.askToEndRunOnClose ?? true,
+  });
 
   // Which editor the tabs should show as current. Derived from the matched
   // route rather than the pathname, so the Canvas editor's nested `$artId`
@@ -165,6 +174,15 @@ function ShowEditorLayout() {
       }}
     >
       <Outlet />
+      <LastWindowRunDialog
+        showName={currentShow.name}
+        open={lastWindowRunPrompt.open}
+        onEndRun={() => {
+          lastWindowRunPrompt.dismiss();
+          endRun.mutate(currentShow.id);
+        }}
+        onKeepRunning={lastWindowRunPrompt.dismiss}
+      />
     </EditorLayout>
   );
 }
