@@ -26,11 +26,10 @@ import {
   SunIcon,
 } from "@mechane/design-system";
 import { DEFAULT_THEME_MODE, type ThemeMode } from "@mechane/domain/theme-settings";
-import type { MouseEvent } from "react";
 
 import { useUserSettings } from "../../api/settings";
 import type { HeaderProps } from "./Header";
-import { navigationIntentFor } from "./header-navigation";
+import { followHeaderLink } from "./header-navigation";
 
 type HeaderRightProps = Pick<
   HeaderProps,
@@ -48,22 +47,6 @@ type HeaderRightProps = Pick<
   | "runPending"
   | "onThemeModeChange"
 >;
-
-function activate(destination: HeaderRightProps["navigation"]["settings"]) {
-  return (event: MouseEvent<HTMLAnchorElement>) => {
-    switch (navigationIntentFor(event)) {
-      case "navigate":
-        event.preventDefault();
-        destination.onSelect();
-        return;
-      case "new-tab":
-        window.open(destination.href, "_blank", "noopener");
-        return;
-      case "ignore":
-        return;
-    }
-  };
-}
 
 export function HeaderRight({
   navigation,
@@ -109,7 +92,7 @@ export function HeaderRight({
         <DropdownMenuContent>
           <DropdownMenuItem
             render={
-              <a href={navigation.settings.href} onClick={activate(navigation.settings)}>
+              <a href={navigation.settings.href} onClick={followHeaderLink(navigation.settings)}>
                 <SettingsIcon />
                 Settings
               </a>

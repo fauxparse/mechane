@@ -1,26 +1,24 @@
 // What a click on one of the Header's navigation controls should do.
 //
 // Pure, like the editors' keybinding tables: a click's shape maps to an
-// *intent*, and the component does the rest. That's what makes "cmd-click still
-// opens a new tab" a unit test.
+// *intent*, and `followHeaderLink` does the rest. That's what makes "cmd-click
+// still opens a new tab" a unit test.
 //
-// The subtlety this module exists to record: the Header's destinations render as
-// anchors inside Base UI's `Tabs.Tab` and `DropdownMenu.Item`, **both of which
-// call `preventDefault()` when they activate**. So two things that look obvious
-// are wrong here:
-//
-//   - Skipping our own handling when `event.defaultPrevented` is set. Base UI has
-//     already set it by the time our handler runs, so the guard fires on every
-//     click and nothing ever navigates.
-//   - Returning early on a modified click and trusting the browser to follow the
-//     href. It will not — the default is already prevented — so a cmd-click has
-//     to be opened explicitly.
+// The Header's destinations render as real anchors inside Base UI's `Tabs.Tab`
+// and `DropdownMenu.Item`, so they work as links (middle click, "Copy link").
+// Base UI does not stop an anchor's default action, so a plain click has to
+// call `preventDefault()` itself. Without it the browser follows the href after
+// the client-side navigation: a full page load inside the same Show, which asks
+// "Leave site?" whenever a Run is live (see ../LastWindowRun).
+import type { MouseEvent } from "react";
+
+import type { HeaderDestination } from "./Header";
 
 /** Where a click should be handled. */
 export type NavigationIntent =
   /** Navigate in place, client-side. */
   | "navigate"
-  /** Open the destination in a new tab, because the browser will not. */
+  /** Open the destination in a new tab. */
   | "new-tab"
   /** Not ours: leave it to the browser. */
   | "ignore";
@@ -49,4 +47,21 @@ export function navigationIntentFor({
   if (altKey) return "ignore";
   if (metaKey || ctrlKey || shiftKey) return "new-tab";
   return "navigate";
+}
+
+/** The click handler for one of the Header's destination anchors. */
+export function followHeaderLink(destination: HeaderDestination) {
+  return (event: MouseEvent<HTMLAnchorElement>) => {
+    switch (navigationIntentFor(event)) {
+      case "navigate":
+        event.preventDefault();
+        destination.onSelect();
+        return;
+      case "new-tab":
+        window.open(destination.href, "_blank", "noopener");
+        return;
+      case "ignore":
+        return;
+    }
+  };
 }

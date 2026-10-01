@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import type { MouseEvent } from "react";
+import { describe, expect, it, vi } from "vitest";
 
-import { navigationIntentFor } from "./header-navigation";
+import { followHeaderLink, navigationIntentFor } from "./header-navigation";
 import type { Activation } from "./header-navigation";
 
 const click = (overrides: Partial<Activation> = {}): Activation => ({
@@ -17,20 +18,11 @@ describe("navigationIntentFor", () => {
     expect(navigationIntentFor(click())).toBe("navigate");
   });
 
-  // The regression this module was extracted for: Base UI's Tabs.Tab and
-  // DropdownMenu.Item preventDefault on activation, so a plain click must be
-  // handled here or the Header's tabs and menu links do nothing at all.
-  it("navigates regardless of the event already being default-prevented", () => {
-    // `defaultPrevented` is deliberately not part of Activation — consulting it
-    // is what broke every Header destination.
-    expect(Object.keys(click())).not.toContain("defaultPrevented");
-  });
-
   it.each([
     ["cmd", { metaKey: true }],
     ["ctrl", { ctrlKey: true }],
     ["shift", { shiftKey: true }],
-  ])("opens a new tab on %s-click, since the browser will not", (_name, modifier) => {
+  ])("opens a new tab on %s-click", (_name, modifier) => {
     expect(navigationIntentFor(click(modifier))).toBe("new-tab");
   });
 
@@ -51,5 +43,21 @@ describe("navigationIntentFor", () => {
 
   it("ignores a modified non-primary click rather than opening a tab twice", () => {
     expect(navigationIntentFor(click({ button: 1, metaKey: true }))).toBe("ignore");
+  });
+});
+
+describe("followHeaderLink", () => {
+  // Base UI leaves the anchor's default alone. If the handler does too, the
+  // browser reloads the whole page after the client-side navigation, and a live
+  // Run asks the director to confirm leaving the Show they are still in.
+  it("navigates client-side on a plain click and stops the browser following the href", () => {
+    const onSelect = vi.fn();
+    const preventDefault = vi.fn();
+    const event = { ...click(), preventDefault } as unknown as MouseEvent<HTMLAnchorElement>;
+
+    followHeaderLink({ href: "/shows/s1/art", onSelect })(event);
+
+    expect(onSelect).toHaveBeenCalledOnce();
+    expect(preventDefault).toHaveBeenCalledOnce();
   });
 });

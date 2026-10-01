@@ -9,9 +9,12 @@ import { ToastProvider, ToastViewport, TooltipProvider } from "@mechane/design-s
 import { AppThemeProvider } from "./AppThemeProvider";
 import { GoogleFontsProvider } from "./editors/canvas/google-fonts-provider";
 import { queryClient, router } from "./router";
+import { reloadOnStaleBuild } from "./stale-build";
 
 // Authoring + show-running app: Show/Flow editor, Scene/Canvas editor,
 // Device/Run management, going live. See /PRD.md.
+
+reloadOnStaleBuild();
 
 function App() {
   return (
