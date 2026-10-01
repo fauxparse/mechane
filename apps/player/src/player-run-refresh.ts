@@ -34,14 +34,16 @@ export type PlayerRunSnapshotMerge =
  * Reads resolve out of order, so one at a lower `stateSequence` than the
  * session's changes nothing. One at the same sequence still applies when its
  * values differ, because not every Show write advances the sequence yet
- * (#882). A null read means the Run has gone or the pairing code has; the
- * session read that follows says which.
+ * (#882). A null read means no Run is active (or the pairing code has gone):
+ * nothing new for a session already waiting for one, and a reason to read the
+ * whole session for one that had a Run.
  */
 export function mergePlayerRunSnapshot(
   session: PlayerSession,
   runState: PlayerRunSnapshot | null,
 ): PlayerRunSnapshotMerge {
   const run = session.run;
+  if (!run && !runState) return { kind: "stale" };
   if (runState && run && runState.stateSequence < run.stateSequence) return { kind: "stale" };
   if (!runState || !run || runState.sessionKey !== session.sessionKey) {
     return { kind: "session-changed" };
@@ -91,6 +93,26 @@ export function holdsInvalidatedState(
       : undefined;
   const held = session?.run?.stateSequence;
   return typeof sequence === "number" && held !== undefined && sequence <= held;
+}
+
+/**
+ * How long before it expires a held grant stops being worth presenting: a
+ * grant checked on arrival must not lapse on the way there.
+ */
+const GRANT_EXPIRY_MARGIN_MS = 10_000;
+
+/**
+ * The grant a session already carries, if it will still be good when the
+ * server checks it. A subscriber asks for a grant on every (re)connection, and
+ * a grant that came with the session just read needs no request of its own.
+ */
+export function usableRealtimeGrant(
+  realtime: PlayerSession["realtime"] | null,
+  now: number,
+): string | null {
+  return realtime && Date.parse(realtime.expiresAt) - now > GRANT_EXPIRY_MARGIN_MS
+    ? realtime.grant
+    : null;
 }
 
 /**

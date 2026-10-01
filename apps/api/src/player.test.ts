@@ -16,7 +16,7 @@ import {
   seedShow as seedCounter,
 } from "./db/seeds/shows/simple-counter/simple-counter";
 import { setupPostgresTest } from "./db/test-helpers";
-import { readPlayerRunState, readPlayerSession } from "./player";
+import { readPlayerRealtimeGrant, readPlayerRunState, readPlayerSession } from "./player";
 import { realtimeProvider } from "./realtime";
 import { verifyRealtimeGrant } from "./realtime-grants";
 const { showId, createShow } = setupPostgresTest("player-state-test");
@@ -360,5 +360,22 @@ describe("Player run state (#881)", () => {
 
     await endRun(showId);
     expect(await readPlayerRunState(pairingCode)).toBeNull();
+  });
+
+  it("grants a renewal for the paired Device's own channel only", async () => {
+    await createShow();
+    await writeShowGraph(showId, "draft", graph);
+    const published = await publishShowGraph(showId);
+    const device = published.nodes.find((node) => node.kind === "device");
+    if (device?.kind !== "device" || !device.pairingCode) throw new Error("Pairing code missing.");
+
+    const renewal = await readPlayerRealtimeGrant(device.pairingCode);
+
+    expect(renewal?.channel).toBe((await readPlayerSession(device.pairingCode))?.realtime.channel);
+    expect(renewal ? verifyRealtimeGrant(renewal.grant) : null).toMatchObject({
+      kind: "player",
+      deviceId: device.id,
+    });
+    expect(await readPlayerRealtimeGrant("ZZZZZ")).toBeNull();
   });
 });

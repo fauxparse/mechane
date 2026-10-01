@@ -204,6 +204,16 @@ function playerSessionKey(
     .digest("base64url");
 }
 
+/** A realtime grant for a Device's Player channel, in the shape a Player reads. */
+function playerRealtimeGrant(deviceId: string) {
+  const grant = issueRealtimeGrant({ kind: "player", deviceId });
+  return {
+    channel: grant.channel,
+    grant: grant.token,
+    expiresAt: new Date(grant.expiresAt).toISOString(),
+  };
+}
+
 /** Returns the authoritative snapshot a paired Player needs to render. */
 export async function readPlayerSession(
   pairingCode: string,
@@ -240,17 +250,12 @@ export async function readPlayerSession(
       payload: { deviceId: device.id, deviceName },
     });
   }
-  const grant = issueRealtimeGrant({ kind: "player", deviceId: device.id });
   return {
     device: {
       name: deviceName,
       perConnection: device.perConnection,
     },
-    realtime: {
-      channel: grant.channel,
-      grant: grant.token,
-      expiresAt: new Date(grant.expiresAt).toISOString(),
-    },
+    realtime: playerRealtimeGrant(device.id),
     sessionKey: playerSessionKey(graph, run, scene),
     run:
       run && values
@@ -290,4 +295,14 @@ export async function readPlayerRunState(pairingCode: string) {
     stateSequence: run.stateSequence,
     ...(await playerRunValues(device, graph, run)),
   };
+}
+
+/**
+ * A fresh realtime grant, read without the session around it. A grant lasts a
+ * minute, and a subscriber asks for one on every (re)connection; renewing it
+ * used to cost a whole session read.
+ */
+export async function readPlayerRealtimeGrant(pairingCode: string) {
+  const device = await readPairedDevice(pairingCode);
+  return device ? playerRealtimeGrant(device.id) : null;
 }

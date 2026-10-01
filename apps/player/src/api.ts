@@ -4,6 +4,7 @@ import type { SourceValues, StructuredValues } from "@mechane/domain/structured-
 import type { RealtimeSubscriber, RealtimeSubscription } from "@mechane/realtime";
 import { AblyRealtimeSubscriber, WebSocketRealtimeSubscriber } from "@mechane/realtime/browser";
 import {
+  GetPlayerRealtimeGrantQuery,
   GetPlayerRunStateQuery,
   GetPlayerSessionQuery,
   SubmitPlayerEventMutation,
@@ -18,6 +19,7 @@ import {
   mergePlayerRunSnapshot,
   predatesPlayerSession,
   type PlayerRunSnapshot,
+  usableRealtimeGrant,
 } from "./player-run-refresh";
 
 export const API_BASE_URL =
@@ -140,6 +142,24 @@ export async function fetchPlayerRunState(
         structuredValues: runState.structuredValues as StructuredValues,
       }
     : null;
+}
+
+/** A fresh realtime grant, without the rest of the session. */
+export async function fetchPlayerRealtimeGrant(
+  code: string,
+  { signal }: { signal?: AbortSignal } = {},
+): Promise<PlayerSession["realtime"] | null> {
+  const result = await graphqlRequest(
+    GRAPHQL_ENDPOINT,
+    GetPlayerRealtimeGrantQuery,
+    {},
+    {
+      signal,
+      credentials: "omit",
+      headers: { Authorization: `Bearer ${code.trim().toUpperCase()}` },
+    },
+  );
+  return result.playerRealtimeGrant;
 }
 
 export type BlockInstancePathSegment = {
@@ -289,6 +309,8 @@ export function usePlayerSession(code: string): PlayerState {
   useEffect(() => {
     const controller = new AbortController();
     let held: PlayerSession | null = null;
+    // The newest grant this Player has: its session's, or a renewal's.
+    let grant: PlayerSession["realtime"] | null = null;
     let subscription: RealtimeSubscription | null = null;
     let subscriber: PlayerRealtimeSubscriber | null = null;
     let currentChannel: string | null = null;
@@ -314,7 +336,10 @@ export function usePlayerSession(code: string): PlayerState {
           connecting,
         });
         if (controller.signal.aborted) return null;
-        if (!predatesPlayerSession(held, session)) show(session);
+        if (!predatesPlayerSession(held, session)) {
+          show(session);
+          grant = session.realtime;
+        }
         return session;
       } catch (error) {
         const requestError = error instanceof PlayerRequestError ? error : null;
@@ -346,7 +371,7 @@ export function usePlayerSession(code: string): PlayerState {
     // Most invalidations move only the Run's values, so only those are read
     // again; the whole session follows when they say it has to (#881).
     const readRunState = coalesced(async () => {
-      if (!held?.run) {
+      if (!held) {
         await reload();
         return;
       }
@@ -371,7 +396,27 @@ export function usePlayerSession(code: string): PlayerState {
 
       clearRealtime();
       currentChannel = session.realtime.channel;
-      const renewGrant = async () => (await reload())?.realtime.grant ?? null;
+      // A subscriber asks for a grant on every (re)connection. Whatever
+      // changed while it was not subscribed has no invalidation left to
+      // announce it, so every ask is also a run-state read.
+      const renewGrant = async () => {
+        readRunState();
+        const usable = usableRealtimeGrant(grant, Date.now());
+        if (usable) return usable;
+        try {
+          const fresh = await fetchPlayerRealtimeGrant(normalizedCode, {
+            signal: controller.signal,
+          });
+          if (fresh) {
+            grant = fresh;
+            return fresh.grant;
+          }
+        } catch {
+          if (controller.signal.aborted) return null;
+        }
+        // No grant means no Device, or no network; the session read reports which.
+        return (await reload())?.realtime.grant ?? null;
+      };
       subscriber = USE_REALTIME_SOCKET
         ? new WebSocketRealtimeSubscriber(realtimeUrl(), renewGrant)
         : new AblyRealtimeSubscriber(
@@ -387,9 +432,7 @@ export function usePlayerSession(code: string): PlayerState {
 
     const connect = async () => {
       const session = await load(true);
-      // Anything that changed between that read and the subscription has no
-      // invalidation left to announce it, so read once more.
-      if (session && attach(session)) readRunState();
+      if (session) attach(session);
     };
 
     void connect();

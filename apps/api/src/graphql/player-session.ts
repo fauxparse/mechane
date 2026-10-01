@@ -6,7 +6,7 @@
 // an error, so a Player can tell a transport failure from a semantic one.
 import { GraphQLError } from "graphql";
 
-import { readPlayerRunState, readPlayerSession } from "../player";
+import { readPlayerRealtimeGrant, readPlayerRunState, readPlayerSession } from "../player";
 import {
   dispatchPlayerEvent,
   PlayerEventInputError,
@@ -132,6 +132,11 @@ export const typeDefs = /* GraphQL */ `
     no Run is active; a Player reads its whole session to find out which.
     """
     playerRunState: PlayerRunState
+    """
+    A fresh realtime grant for the Device the pairing bearer credential
+    names, without the rest of its session. Null when the credential is invalid.
+    """
+    playerRealtimeGrant: RealtimeGrant
   }
 
   type Mutation {
@@ -188,6 +193,8 @@ export const resolvers: Resolvers = {
     },
     playerRunState: async (_parent, _args, context) =>
       context.playerPairingCode ? readPlayerRunState(context.playerPairingCode) : null,
+    playerRealtimeGrant: async (_parent, _args, context) =>
+      context.playerPairingCode ? readPlayerRealtimeGrant(context.playerPairingCode) : null,
   },
   Mutation: {
     submitPlayerEvent: async (

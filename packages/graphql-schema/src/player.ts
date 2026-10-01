@@ -212,6 +212,17 @@ export const GetPlayerRunStateQuery = graphql(`
   }
 `);
 
+/** A fresh realtime grant alone, for a subscriber whose session grant has run out. */
+export const GetPlayerRealtimeGrantQuery = graphql(`
+  query GetPlayerRealtimeGrant {
+    playerRealtimeGrant {
+      channel
+      grant
+      expiresAt
+    }
+  }
+`);
+
 export const SubmitPlayerEventMutation = graphql(`
   mutation SubmitPlayerEvent($input: PlayerEventInput!) {
     submitPlayerEvent(input: $input) {
