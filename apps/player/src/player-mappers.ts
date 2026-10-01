@@ -145,6 +145,7 @@ export function normalizePlayerSession(value: unknown, apiBaseUrl?: string): Pla
       grant: String(realtime.grant),
       expiresAt: String(realtime.expiresAt),
     },
+    sessionKey: String(input.sessionKey),
     run: run
       ? {
           id: String(run.id),

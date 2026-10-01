@@ -4,11 +4,19 @@ import { and, eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { db } from "./db/client";
+import { dispatchPlayerEvent } from "./db/player-events";
 import { endRun, readRunDeviceState, startRun } from "./db/runs";
 import { publishShowGraph, readShowGraph, writeShowGraph } from "./db/show-graph";
 import { runDeviceStates } from "./db/schema";
+import {
+  COUNTER_BUTTON_ID,
+  COUNTER_DEVICE_ID,
+  COUNTER_SCENE_ID,
+  COUNTER_SOURCE_ID,
+  seedShow as seedCounter,
+} from "./db/seeds/shows/simple-counter/simple-counter";
 import { setupPostgresTest } from "./db/test-helpers";
-import { readPlayerSession } from "./player";
+import { readPlayerRunState, readPlayerSession } from "./player";
 import { realtimeProvider } from "./realtime";
 import { verifyRealtimeGrant } from "./realtime-grants";
 const { showId, createShow } = setupPostgresTest("player-state-test");
@@ -253,5 +261,104 @@ describe("Player session on a stopped Show", () => {
     await readPlayerSession(device.pairingCode, { connecting: true });
 
     expect(waiting).toEqual([]);
+  });
+});
+
+describe("Player run state (#881)", () => {
+  const DOUBLED_ID = "transformer_doubled";
+
+  /** The Simple Counter, with a Show-level Transformer reading the count. */
+  async function counterWithTransformer() {
+    await createShow();
+    await seedCounter.seed(showId);
+    const draft = await readShowGraph(showId, "draft");
+    await writeShowGraph(showId, "draft", {
+      ...draft,
+      nodes: [
+        ...draft.nodes,
+        {
+          id: DOUBLED_ID,
+          kind: "transformer",
+          name: "Doubled",
+          parentId: null,
+          position: { x: 0, y: 200 },
+          ports: [{ id: "port_count", name: "count", rank: "a" }],
+          transform: { kind: "calculate", formula: "count * 2", outputType: "number" },
+        },
+      ],
+      edges: [
+        ...draft.edges,
+        {
+          id: "edge_counter_doubled",
+          kind: "wiring",
+          sourceId: COUNTER_SOURCE_ID,
+          targetId: DOUBLED_ID,
+          sourcePath: [],
+          targetPath: ["port_count"],
+        },
+      ],
+    });
+    const published = await publishShowGraph(showId);
+    const device = published.nodes.find((node) => node.id === COUNTER_DEVICE_ID);
+    if (device?.kind !== "device" || !device.pairingCode) throw new Error("Pairing code missing.");
+    return { pairingCode: device.pairingCode, graphVersion: published.version };
+  }
+
+  it("reads the Run values its session carries, Transformer outputs included", async () => {
+    const { pairingCode, graphVersion } = await counterWithTransformer();
+    await startRun(showId);
+    await dispatchPlayerEvent(pairingCode, {
+      eventId: crypto.randomUUID(),
+      publishedGraphVersion: graphVersion,
+      sceneId: COUNTER_SCENE_ID,
+      elementId: COUNTER_BUTTON_ID,
+      eventKind: "tap",
+    });
+
+    const session = await readPlayerSession(pairingCode);
+    const runState = await readPlayerRunState(pairingCode);
+
+    expect(runState).toEqual({
+      sessionKey: session?.sessionKey,
+      stateSequence: session?.run?.stateSequence,
+      sourceValues: session?.run?.sourceValues,
+      structuredValues: session?.run?.structuredValues,
+    });
+    expect(runState?.sourceValues).toMatchObject({ [COUNTER_SOURCE_ID]: 1, [DOUBLED_ID]: 2 });
+  });
+
+  it("keeps the session key until the session itself has to be read again", async () => {
+    await createShow();
+    await writeShowGraph(showId, "draft", graph);
+    await publishShowGraph(showId);
+    const run = await startRun(showId);
+    const published = await readShowGraph(showId, "published");
+    const device = published.nodes.find((node) => node.kind === "device");
+    if (device?.kind !== "device" || !device.pairingCode) throw new Error("Pairing code missing.");
+    const pairingCode = device.pairingCode;
+    const session = await readPlayerSession(pairingCode);
+
+    expect((await readPlayerRunState(pairingCode))?.sessionKey).toBe(session?.sessionKey);
+
+    // A Shared Device's Scene belongs to its session, not to its Run values.
+    await db
+      .update(runDeviceStates)
+      .set({ activeSceneId: "scene_green" })
+      .where(and(eq(runDeviceStates.runId, run.id), eq(runDeviceStates.deviceId, device.id)));
+    const navigated = await readPlayerRunState(pairingCode);
+    expect(navigated?.sessionKey).not.toBe(session?.sessionKey);
+    expect(navigated?.sessionKey).toBe((await readPlayerSession(pairingCode))?.sessionKey);
+
+    await writeShowGraph(showId, "draft", {
+      ...graph,
+      nodes: graph.nodes.map((node) =>
+        node.id === "scene_green" ? { ...node, name: "Emerald" } : node,
+      ),
+    });
+    await publishShowGraph(showId);
+    expect((await readPlayerRunState(pairingCode))?.sessionKey).not.toBe(navigated?.sessionKey);
+
+    await endRun(showId);
+    expect(await readPlayerRunState(pairingCode)).toBeNull();
   });
 });

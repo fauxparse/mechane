@@ -4,13 +4,21 @@ import type { SourceValues, StructuredValues } from "@mechane/domain/structured-
 import type { RealtimeSubscriber, RealtimeSubscription } from "@mechane/realtime";
 import { AblyRealtimeSubscriber, WebSocketRealtimeSubscriber } from "@mechane/realtime/browser";
 import {
+  GetPlayerRunStateQuery,
   GetPlayerSessionQuery,
   SubmitPlayerEventMutation,
   graphqlRequest,
 } from "@mechane/graphql-schema";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { defaultApiBaseUrl, shouldUseRealtimeSocket } from "./api-url";
 import { normalizePlayerSession } from "./player-mappers";
+import {
+  coalesced,
+  holdsInvalidatedState,
+  mergePlayerRunSnapshot,
+  predatesPlayerSession,
+  type PlayerRunSnapshot,
+} from "./player-run-refresh";
 
 export const API_BASE_URL =
   import.meta.env.VITE_API_URL ??
@@ -31,6 +39,11 @@ export type PlayerSession = {
     grant: string;
     expiresAt: string;
   };
+  /**
+   * Opaque. Changes whenever anything here other than the Run's values does,
+   * which is how a Player knows a run-state read is enough (#881).
+   */
+  sessionKey: string;
   run: {
     id: string;
     showId: string;
@@ -101,6 +114,32 @@ export async function fetchPlayerSession(
     throw new PlayerRequestError("That pairing code is not active.", 404);
   }
   return normalizePlayerSession(result.playerSession, API_BASE_URL);
+}
+
+/** The Run values alone, without the rest of the session (#881). */
+export async function fetchPlayerRunState(
+  code: string,
+  { signal }: { signal?: AbortSignal } = {},
+): Promise<PlayerRunSnapshot | null> {
+  const result = await graphqlRequest(
+    GRAPHQL_ENDPOINT,
+    GetPlayerRunStateQuery,
+    {},
+    {
+      signal,
+      credentials: "omit",
+      headers: { Authorization: `Bearer ${code.trim().toUpperCase()}` },
+    },
+  );
+  const runState = result.playerRunState;
+  return runState
+    ? {
+        sessionKey: runState.sessionKey,
+        stateSequence: runState.stateSequence,
+        sourceValues: runState.sourceValues as SourceValues,
+        structuredValues: runState.structuredValues as StructuredValues,
+      }
+    : null;
 }
 
 export type BlockInstancePathSegment = {
@@ -229,54 +268,67 @@ export type PlayerState = {
 export function usePlayerSession(code: string): PlayerState {
   const normalizedCode = code.trim().toUpperCase();
   const [state, setState] = useState<PlayerState>({ status: "idle" });
+  // Owned by the effect below, which holds the session it compares against.
+  // An Event result asks for the same refresh an invalidation does.
+  const refreshRunState = useRef<() => void>(() => undefined);
 
-  // `connecting` is the first read, the one that joins the Device; every
-  // later read is a refresh. Only the first shows a loading state, and only
-  // it tells the API someone is trying to connect (#467).
-  const load = useCallback(
-    async (signal: AbortSignal, connecting: boolean) => {
-      if (connecting)
-        setState((current) => ({
-          status: "loading",
-          session: current.status === "ready" ? current.session : null,
-        }));
-      try {
-        const session = await fetchPlayerSession(normalizedCode, { signal, connecting });
-        if (!signal.aborted) setState({ status: "ready", session });
-        return session;
-      } catch (error) {
-        if (signal.aborted) return null;
-        const requestError = error instanceof PlayerRequestError ? error : null;
-        setState({
-          status: "error",
-          message: requestError?.message ?? "Unable to connect. Check your network and try again.",
-          notFound: requestError?.status === 404,
-        });
-        return null;
-      }
-    },
-    [normalizedCode],
-  );
   const submitEvent = useCallback<PlayerEventSubmitter>(
     async (input) => {
       const result = await submitPlayerEvent(normalizedCode, input);
-      if (result.kind === "applied" || result.kind === "accepted") {
-        const session = await fetchPlayerSession(normalizedCode);
-        setState({ status: "ready", session });
-      }
+      if (result.kind === "applied" || result.kind === "accepted") refreshRunState.current();
       return result;
     },
     [normalizedCode],
   );
   // The subscription is created after the GraphQL snapshot resolves and is
   // closed explicitly below; React Doctor cannot follow that nested ownership.
-  // react-doctor-disable-next-line react-doctor/effect-needs-cleanup
+  // Every state update after an `await` in here returns early on
+  // `controller.signal.aborted`, which the cleanup sets, but inside nested
+  // closures React Doctor cannot see that guard either.
+  // react-doctor-disable-next-line react-doctor/effect-needs-cleanup, react-doctor/no-set-state-after-await-in-effect
   useEffect(() => {
     const controller = new AbortController();
+    let held: PlayerSession | null = null;
     let subscription: RealtimeSubscription | null = null;
     let subscriber: PlayerRealtimeSubscriber | null = null;
     let currentChannel: string | null = null;
     let closed = false;
+
+    const show = (session: PlayerSession) => {
+      held = session;
+      setState({ status: "ready", session });
+    };
+
+    // `connecting` is the first read, the one that joins the Device; every
+    // later read is a refresh. Only the first shows a loading state, and only
+    // it tells the API someone is trying to connect (#467).
+    const load = async (connecting: boolean) => {
+      if (connecting)
+        setState((current) => ({
+          status: "loading",
+          session: current.status === "ready" ? current.session : null,
+        }));
+      try {
+        const session = await fetchPlayerSession(normalizedCode, {
+          signal: controller.signal,
+          connecting,
+        });
+        if (controller.signal.aborted) return null;
+        if (!predatesPlayerSession(held, session)) show(session);
+        return session;
+      } catch (error) {
+        const requestError = error instanceof PlayerRequestError ? error : null;
+        if (!controller.signal.aborted) {
+          setState({
+            status: "error",
+            message:
+              requestError?.message ?? "Unable to connect. Check your network and try again.",
+            notFound: requestError?.status === 404,
+          });
+        }
+        return null;
+      }
+    };
 
     const clearRealtime = () => {
       subscription?.close();
@@ -285,51 +337,70 @@ export function usePlayerSession(code: string): PlayerState {
       subscriber = null;
     };
 
+    const reload = async () => {
+      const fresh = await load(false);
+      if (fresh) attach(fresh);
+      return fresh;
+    };
+
+    // Most invalidations move only the Run's values, so only those are read
+    // again; the whole session follows when they say it has to (#881).
+    const readRunState = coalesced(async () => {
+      if (!held?.run) {
+        await reload();
+        return;
+      }
+      let runState: PlayerRunSnapshot | null;
+      try {
+        runState = await fetchPlayerRunState(normalizedCode, { signal: controller.signal });
+      } catch {
+        // The whole-session read is the one that reports what went wrong.
+        if (!controller.signal.aborted) await reload();
+        return;
+      }
+      if (controller.signal.aborted || !held) return;
+      const merge = mergePlayerRunSnapshot(held, runState);
+      if (merge.kind === "updated") show(merge.session);
+      if (merge.kind === "session-changed") await reload();
+    });
+    refreshRunState.current = readRunState;
+
     const attach = (session: PlayerSession): boolean => {
       if (closed) return false;
       if (session.realtime.channel === currentChannel && subscriber) return false;
 
       clearRealtime();
       currentChannel = session.realtime.channel;
+      const renewGrant = async () => (await reload())?.realtime.grant ?? null;
       subscriber = USE_REALTIME_SOCKET
-        ? new WebSocketRealtimeSubscriber(realtimeUrl(), async () => {
-            const fresh = await load(controller.signal, false);
-            if (fresh) attach(fresh);
-            return fresh?.realtime.grant ?? null;
-          })
+        ? new WebSocketRealtimeSubscriber(realtimeUrl(), renewGrant)
         : new AblyRealtimeSubscriber(
             realtimeAuthUrl(session.realtime.grant),
             session.realtime.channel,
-            async () => {
-              const fresh = await load(controller.signal, false);
-              if (fresh) attach(fresh);
-              return fresh?.realtime.grant ?? null;
-            },
+            renewGrant,
           );
-      subscription = subscriber.subscribe(() => {
-        void refresh(false, false);
+      subscription = subscriber.subscribe((message) => {
+        if (!holdsInvalidatedState(held, message)) readRunState();
       });
       return true;
     };
 
-    const refresh = async (connecting: boolean, closeSnapshotRace: boolean) => {
-      const session = await load(controller.signal, connecting);
-      if (!session) return;
-      const attached = attach(session);
-      if (attached && closeSnapshotRace) {
-        const latest = await load(controller.signal, false);
-        if (latest) attach(latest);
-      }
+    const connect = async () => {
+      const session = await load(true);
+      // Anything that changed between that read and the subscription has no
+      // invalidation left to announce it, so read once more.
+      if (session && attach(session)) readRunState();
     };
 
-    void refresh(true, true);
+    void connect();
     return () => {
       closed = true;
+      refreshRunState.current = () => undefined;
       controller.abort();
       subscription?.close();
       subscriber?.close();
     };
-  }, [load, normalizedCode]);
+  }, [normalizedCode]);
 
   return { ...state, submitEvent };
 }

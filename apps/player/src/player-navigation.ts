@@ -5,7 +5,7 @@ import type {
 } from "@mechane/domain/interactions";
 import { composeInstanceView } from "@mechane/domain/structured-values";
 import { resolvePlayerEvent } from "./player-event-dispatch";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PlayerSession, PlayerState } from "./api";
 import {
   applyPlayerCue,
@@ -29,6 +29,27 @@ type NavigationRuntime =
       store: PlayerStateStore | null;
     };
 
+/**
+ * Where this connection's Instance store stands. The session it renders is
+ * composed from this and the latest Show state on every render, so a change
+ * to the Run's values reaches the Canvas without reopening the store (#881).
+ */
+type NavigationState =
+  | { status: "inactive" | "loading" | "unwired" }
+  | {
+      status: "superseded" | "not-ready" | "playing";
+      store: PlayerStateStore;
+      instance: PlayerRunState;
+    };
+
+function settled(store: PlayerStateStore, instance: PlayerRunState): NavigationState {
+  return {
+    status: instance.navigation.kind === "scene" ? "playing" : "not-ready",
+    store,
+    instance,
+  };
+}
+
 export function usePlayerNavigation(
   baseState: PlayerState,
   pairingCode: string,
@@ -37,72 +58,87 @@ export function usePlayerNavigation(
   onKeyPress: (key: string) => boolean;
   onTakeOver: () => void;
 } {
-  const [runtime, setRuntime] = useState<NavigationRuntime>({ status: "inactive", session: null });
+  const [navigation, setNavigation] = useState<NavigationState>({ status: "inactive" });
   const session = baseState.status === "ready" ? baseState.session : null;
+  // What the store depends on. A run-state refresh replaces the session's Run
+  // values and keeps these, so it never reopens the store.
+  const runId = session?.run?.id ?? null;
+  const flow = session?.flow ?? null;
+  const graph = session?.graph ?? null;
+  const graphVersion = session?.graphVersion ?? null;
 
   useEffect(() => {
-    if (!session) {
-      setRuntime({ status: "inactive", session: null });
+    if (!graph || graphVersion === null) {
+      setNavigation({ status: "inactive" });
       return;
     }
-    if (!session.run) {
+    if (!runId) {
       clearPlayerDeviceState(pairingCode);
-      setRuntime({ status: "loading", session });
+      setNavigation({ status: "loading" });
       return;
     }
-    if (!session.flow) {
-      setRuntime({ status: "unwired", session, store: null });
+    if (!flow) {
+      setNavigation({ status: "unwired" });
       return;
     }
-    const scope = playerRunScope(pairingCode, session.run.id);
+    const scope = playerRunScope(pairingCode, runId);
     const store = openPlayerStateStore(scope);
     const flowSourceIds = new Set<string>();
-    for (const node of session.graph.nodes) {
-      if (node.kind === "source" && node.parentId === session.flow.flowId) {
+    for (const node of graph.nodes) {
+      if (node.kind === "source" && node.parentId === flow.flowId) {
         flowSourceIds.add(node.id);
       }
     }
     const driver = {
       kind: "flow",
-      flowId: session.flow.flowId,
-      defaultSceneId: session.flow.defaultSceneId,
-      sceneIds: new Set(session.flow.scenes.map(({ scene }) => scene.id)),
+      flowId: flow.flowId,
+      defaultSceneId: flow.defaultSceneId,
+      sceneIds: new Set(flow.scenes.map(({ scene }) => scene.id)),
       flowSourceIds,
-      publishedGraphVersion: session.graphVersion,
+      publishedGraphVersion: graphVersion,
     } satisfies PlayerDriver;
     const reconciliation = reconcilePlayerRunState(store.read(), driver);
     if (reconciliation.kind === "stale-snapshot") {
-      setRuntime({ status: "loading", session });
+      setNavigation({ status: "loading" });
       store.close();
       return;
     }
     if (reconciliation.kind === "discard") {
-      setRuntime({ status: "unwired", session, store: null });
+      setNavigation({ status: "unwired" });
       store.close();
       return;
     }
-    const playerState = initializePlayerInstanceState(reconciliation.state, session.graph);
+    const playerState = initializePlayerInstanceState(reconciliation.state, graph);
     store.replace(playerState);
     store.claim();
-    setRuntime({
-      status: playerState.navigation.kind === "scene" ? "playing" : "not-ready",
-      session: sessionForState(session, playerState),
-      store,
-    });
+    setNavigation(settled(store, playerState));
     const unsubscribe = store.subscribe(() => {
       if (store.getStatus().ownership === "superseded") {
-        setRuntime({
-          status: "superseded",
-          session: sessionForState(session, playerState),
-          store,
-        });
+        setNavigation({ status: "superseded", store, instance: playerState });
       }
     });
     return () => {
       unsubscribe();
       store.close();
     };
-  }, [pairingCode, session]);
+  }, [pairingCode, runId, flow, graph, graphVersion]);
+
+  const runtime = useMemo((): NavigationRuntime => {
+    if (!session) return { status: "inactive", session: null };
+    switch (navigation.status) {
+      case "inactive":
+      case "loading":
+        return { status: navigation.status, session };
+      case "unwired":
+        return { status: "unwired", session, store: null };
+      default:
+        return {
+          status: navigation.status,
+          session: sessionForState(session, navigation.instance),
+          store: navigation.store,
+        };
+    }
+  }, [navigation, session]);
 
   // One local resolver for both kinds: a keypress differs only in what it
   // observes, never in how the resolved plan is applied.
@@ -111,20 +147,21 @@ export function usePlayerNavigation(
     (observe: (sceneId: string, canvasId: string) => RuntimeEventObservation): boolean => {
       if (
         runtime.status !== "playing" ||
-        !runtime.store ||
+        navigation.status !== "playing" ||
         !runtime.session.scene ||
         !runtime.session.canvas
       ) {
         return false;
       }
-      if (runtime.store.getStatus().ownership !== "active") {
-        setRuntime({ status: "superseded", session: runtime.session, store: runtime.store });
+      const store = navigation.store;
+      if (store.getStatus().ownership !== "active") {
+        setNavigation({ ...navigation, status: "superseded" });
         return false;
       }
       const observation = observe(runtime.session.scene.id, runtime.session.canvas.id);
       const plan = resolvePlayerEvent(runtime.session.graph, observation);
       if (plan.kind !== "planned") return false;
-      const currentState = runtime.store.read();
+      const currentState = store.read();
       if (!currentState) return false;
       // The base session, never the runtime one: `sessionForState` has already
       // composed the Instance layer into that, and composing it twice would
@@ -175,15 +212,11 @@ export function usePlayerNavigation(
         ...execution.state,
         publishedGraphVersion: runtime.session.graphVersion,
       };
-      if (!runtime.store.replace(nextState)) {
-        setRuntime({ status: "superseded", session: runtime.session, store: runtime.store });
+      if (!store.replace(nextState)) {
+        setNavigation({ ...navigation, status: "superseded" });
         return false;
       }
-      setRuntime({
-        status: "playing",
-        session: sessionForState(runtime.session, nextState),
-        store: runtime.store,
-      });
+      setNavigation(settled(store, nextState));
       const eventId = retryEventId.current ?? crypto.randomUUID();
       if (execution.showActions.length > 0) retryEventId.current = eventId;
       // Built field by field rather than spread from the observation: the
@@ -215,29 +248,17 @@ export function usePlayerNavigation(
               retryEventId.current = null;
               return;
             }
-            if (runtime.store?.replace(currentState)) {
-              setRuntime({
-                status: currentState.navigation.kind === "scene" ? "playing" : "not-ready",
-                session: sessionForState(runtime.session, currentState),
-                store: runtime.store,
-              });
-            }
+            if (store.replace(currentState)) setNavigation(settled(store, currentState));
           })
           .catch(() => {
-            if (runtime.store?.replace(currentState)) {
-              setRuntime({
-                status: currentState.navigation.kind === "scene" ? "playing" : "not-ready",
-                session: sessionForState(runtime.session, currentState),
-                store: runtime.store,
-              });
-            }
+            if (store.replace(currentState)) setNavigation(settled(store, currentState));
           });
       } else {
         void submission?.catch(() => undefined);
       }
       return true;
     },
-    [baseState, runtime],
+    [baseState, navigation, runtime],
   );
 
   const onElementTap = useCallback(
@@ -267,16 +288,11 @@ export function usePlayerNavigation(
   );
 
   const onTakeOver = useCallback(() => {
-    if (runtime.status !== "superseded") return;
-    runtime.store.takeOver();
-    const currentState = runtime.store.read();
-    if (!currentState) return;
-    setRuntime({
-      status: currentState.navigation.kind === "scene" ? "playing" : "not-ready",
-      session: sessionForState(runtime.session, currentState),
-      store: runtime.store,
-    });
-  }, [runtime]);
+    if (navigation.status !== "superseded") return;
+    navigation.store.takeOver();
+    const currentState = navigation.store.read();
+    if (currentState) setNavigation(settled(navigation.store, currentState));
+  }, [navigation]);
 
   return { ...runtime, onElementTap, onKeyPress, onTakeOver };
 }

@@ -185,6 +185,7 @@ function sessionWithRepeatedCandidate(): PlayerSession {
   return {
     device: { name: "Audience", perConnection: true },
     realtime: { channel: "player:test", grant: "grant", expiresAt: "2026-01-01T00:01:00.000Z" },
+    sessionKey: "session_1",
     run: {
       id: "run_1",
       showId: "show_1",

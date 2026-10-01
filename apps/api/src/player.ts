@@ -1,5 +1,8 @@
+import { createHash } from "node:crypto";
+
 import type { GraphNode, ShowGraph } from "@mechane/domain/graph";
 import { PAIRING_CODE_PATTERN } from "@mechane/domain/pairing-code";
+import type { Run } from "@mechane/domain/runs";
 import { transformerSnapshot } from "@mechane/domain/scene-variable-values";
 import { and, eq, isNull } from "drizzle-orm";
 
@@ -82,7 +85,7 @@ async function flowBundleForDevice(
     transformers,
   };
 }
-/** Returns the authoritative snapshot a paired Player needs to render. */
+
 /**
  * The graph a Player session carries. Scene assignment edges and the
  * Devices nothing reads from stay on the server, so a phone doesn't learn
@@ -101,26 +104,119 @@ export function playerSessionGraph<T extends ShowGraph>(graph: T): T {
   };
 }
 
-export async function readPlayerSession(
-  pairingCode: string,
-  { connecting = false }: { connecting?: boolean } = {},
-) {
+type DeviceRow = typeof devices.$inferSelect;
+
+async function readPairedDevice(pairingCode: string): Promise<DeviceRow | null> {
   const normalizedCode = pairingCode.trim().toUpperCase();
   if (!PAIRING_CODE_PATTERN.test(normalizedCode)) return null;
-
   const [device] = await db
     .select()
     .from(devices)
     .where(and(eq(devices.pairingCode, normalizedCode), isNull(devices.retiredAt)));
+  return device ?? null;
+}
+
+/**
+ * The published graph, the active Run and this Device's Run state, read as
+ * of one moment.
+ *
+ * A Run's `stateSequence` is a promise about the values it is read with, so
+ * both come from one `REPEATABLE READ` snapshot (#573). A sequence newer than
+ * its values would make a Player discard the snapshot that holds a write.
+ */
+function readDeviceRunSnapshot(device: DeviceRow) {
+  return db.transaction(
+    async (tx) => {
+      const graph = await readShowGraph(device.showId, "published", tx);
+      const run = await readActiveRun(device.showId, tx);
+      const state = run ? await readRunDeviceState(run.id, device.id, tx) : null;
+      return { graph, run, state };
+    },
+    { isolationLevel: "repeatable read", accessMode: "read only" },
+  );
+}
+
+/**
+ * The Run values a Player renders: stored values, plus the outputs of every
+ * Transformer the server owns for this Device (ADR-0004).
+ */
+async function playerRunValues(device: DeviceRow, graph: StoredShowGraph, run: Run) {
+  const shuffleSeeds = await readOrCreateTransformerSeeds(
+    run.id,
+    device.id,
+    graph,
+    !device.perConnection,
+  );
+  const transformerRuntime = transformerSnapshot(
+    graph,
+    run.sourceValues,
+    { structuredValues: run.structuredValues, shuffleSeeds },
+    new Set(
+      graph.nodes
+        .filter(
+          (node) =>
+            node.kind === "transformer" && (!device.perConnection || node.parentId === null),
+        )
+        .map((node) => node.id),
+    ),
+  );
+  const failedTransformerIds = new Set(
+    transformerRuntime.diagnostics.flatMap((diagnostic) =>
+      diagnostic.transformerId ? [diagnostic.transformerId] : [],
+    ),
+  );
+  await Promise.all(
+    [...failedTransformerIds].map((transformerId) =>
+      recordRunError({
+        showId: run.showId,
+        runId: run.id,
+        category: "formulaEvaluationFailure",
+        transformerId,
+        publishedGraphVersion: graph.version,
+      }).catch(() => undefined),
+    ),
+  );
+  return {
+    sourceValues: { ...run.sourceValues, ...transformerRuntime.values },
+    structuredValues: { ...run.structuredValues, ...transformerRuntime.computedStructuredValues },
+  };
+}
+
+/**
+ * Changes whenever anything a session carries, apart from the Run's values,
+ * changes: the Run, the published graph, the Scene a Shared Device shows, and
+ * the identities of the Devices the graph keeps. That last one moves without
+ * a publication, because a Custom Domain going live rewrites a Device's
+ * address in place (#836).
+ *
+ * A Player holding a session can refresh only the Run's values for as long
+ * as this stays the same (#881); when it differs, the Player reads the whole
+ * session again.
+ */
+function playerSessionKey(
+  graph: StoredShowGraph,
+  run: Run | null,
+  scene: GraphNode | null,
+): string {
+  const devicesShown = playerSessionGraph(graph).nodes.filter((node) => node.kind === "device");
+  return createHash("sha256")
+    .update(JSON.stringify([graph.version, run?.id ?? null, scene?.id ?? null, devicesShown]))
+    .digest("base64url");
+}
+
+/** Returns the authoritative snapshot a paired Player needs to render. */
+export async function readPlayerSession(
+  pairingCode: string,
+  { connecting = false }: { connecting?: boolean } = {},
+) {
+  const device = await readPairedDevice(pairingCode);
   if (!device) return null;
 
-  const [graph, run, imageAssets] = await Promise.all([
-    readShowGraph(device.showId, "published"),
-    readActiveRun(device.showId),
+  const [{ graph, run, state }, imageAssets] = await Promise.all([
+    readDeviceRunSnapshot(device),
     listImageAssets(device.showId),
   ]);
   const deviceNode = graph.nodes.find((node) => node.id === device.id);
-  const state = run ? await readRunDeviceState(run.id, device.id) : null;
   // A per-connection Device carries its whole Flow, so this is where an
   // unrenderable Scene surfaces — and it surfaces whether or not a Run has
   // started, which is exactly the pre-Run failure the log has to cover.
@@ -131,42 +227,7 @@ export async function readPlayerSession(
   const canvas = scene
     ? await readCanvas(device.showId, "published", { sceneNodeId: scene.id })
     : null;
-  const shuffleSeeds = run
-    ? await readOrCreateTransformerSeeds(run.id, device.id, graph, !device.perConnection)
-    : {};
-  const transformerRuntime = run
-    ? transformerSnapshot(
-        graph,
-        run.sourceValues,
-        { structuredValues: run.structuredValues, shuffleSeeds },
-        new Set(
-          graph.nodes
-            .filter(
-              (node) =>
-                node.kind === "transformer" && (!device.perConnection || node.parentId === null),
-            )
-            .map((node) => node.id),
-        ),
-      )
-    : null;
-  if (run && transformerRuntime) {
-    const failedTransformerIds = new Set(
-      transformerRuntime.diagnostics.flatMap((diagnostic) =>
-        diagnostic.transformerId ? [diagnostic.transformerId] : [],
-      ),
-    );
-    await Promise.all(
-      [...failedTransformerIds].map((transformerId) =>
-        recordRunError({
-          showId: run.showId,
-          runId: run.id,
-          category: "formulaEvaluationFailure",
-          transformerId,
-          publishedGraphVersion: graph.version,
-        }).catch(() => undefined),
-      ),
-    );
-  }
+  const values = run ? await playerRunValues(device, graph, run) : null;
   const playerGraph = playerSessionGraph(graph);
   const deviceName = deviceNode?.name ?? device.id;
   // A Device that connects to a stopped Show only waits. Whoever is editing
@@ -190,26 +251,43 @@ export async function readPlayerSession(
       grant: grant.token,
       expiresAt: new Date(grant.expiresAt).toISOString(),
     },
-    run: run
-      ? {
-          id: run.id,
-          showId: run.showId,
-          status: run.status,
-          startedAt: run.startedAt.toISOString(),
-          endedAt: run.endedAt?.toISOString() ?? null,
-          stateSequence: run.stateSequence,
-          sourceValues: { ...run.sourceValues, ...transformerRuntime?.values },
-          structuredValues: {
-            ...run.structuredValues,
-            ...transformerRuntime?.computedStructuredValues,
-          },
-        }
-      : null,
+    sessionKey: playerSessionKey(graph, run, scene),
+    run:
+      run && values
+        ? {
+            id: run.id,
+            showId: run.showId,
+            status: run.status,
+            startedAt: run.startedAt.toISOString(),
+            endedAt: run.endedAt?.toISOString() ?? null,
+            stateSequence: run.stateSequence,
+            ...values,
+          }
+        : null,
     flow,
     graph: playerGraph,
     scene,
     canvas,
     blocks: playerGraph.blocks ?? [],
     imageAssets,
+  };
+}
+
+/**
+ * The part of a Player session that changes when Show state does (#881).
+ *
+ * Null when the pairing code is not active or no Run is. Either way the
+ * Player reads its whole session again, which is what tells it which.
+ */
+export async function readPlayerRunState(pairingCode: string) {
+  const device = await readPairedDevice(pairingCode);
+  if (!device) return null;
+  const { graph, run, state } = await readDeviceRunSnapshot(device);
+  if (!run) return null;
+  const scene = device.perConnection ? null : sceneForDevice(graph, device.id, state);
+  return {
+    sessionKey: playerSessionKey(graph, run, scene),
+    stateSequence: run.stateSequence,
+    ...(await playerRunValues(device, graph, run)),
   };
 }
