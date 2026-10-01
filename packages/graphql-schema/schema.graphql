@@ -62,10 +62,18 @@ type Query {
   runErrors(showId: ID!, runId: ID, category: String, limit: Int): [RunError!]!
 
   """
-  A public Device snapshot resolved by the pairing bearer credential.
-  Invalid credentials return null.
+  A grant to the Show's realtime channel, where a Studio window hears that
+  a Device is waiting for the Show to start and that a Run started or ended.
   """
-  playerSession: PlayerSession
+  showRealtime(showId: ID!): RealtimeGrant!
+
+  """
+  A public Device snapshot resolved by the pairing bearer credential.
+  Invalid credentials return null. `connecting` marks the read a Player
+  makes as it connects, as opposed to a refresh; a Device connecting to a
+  Show with no Run asks the Show's Studio windows to start it.
+  """
+  playerSession(connecting: Boolean): PlayerSession
   variableReferences(showId: ID!, variableId: ID!, state: String): [VariableReference!]!
   showGraph(showId: ID!, state: String): ShowGraph!
   showCanvases(showId: ID!, state: String): [Artboard!]!
@@ -234,7 +242,8 @@ type PlayerDevice {
   perConnection: Boolean!
 }
 
-type PlayerRealtime {
+"""A short-lived grant to subscribe to one realtime channel."""
+type RealtimeGrant {
   channel: String!
   grant: String!
   expiresAt: String!
@@ -312,7 +321,7 @@ type PlayerFlowBundle {
 
 type PlayerSession {
   device: PlayerDevice!
-  realtime: PlayerRealtime!
+  realtime: RealtimeGrant!
   run: Run
   graph: ShowGraph!
   flow: PlayerFlowBundle

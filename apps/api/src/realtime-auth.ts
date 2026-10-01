@@ -1,7 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { createAblyTokenRequest } from "@mechane/realtime/ably";
-import { playerChannel } from "@mechane/realtime";
 
 import { applySplitHorizonCorsHeaders } from "./lib/cors";
 import { verifyRealtimeGrant } from "./realtime-grants";
@@ -47,8 +46,8 @@ export async function handleRealtimeAuthRoute(
 
   const tokenRequest = await createAblyTokenRequest({
     key,
-    clientId: `player:${grant.deviceId}`,
-    capability: JSON.stringify({ [playerChannel(grant.deviceId)]: ["subscribe"] }),
+    clientId: grant.kind === "player" ? `player:${grant.deviceId}` : `show:${grant.showId}`,
+    capability: JSON.stringify({ [grant.channel]: ["subscribe"] }),
   });
   sendJson(res, 200, tokenRequest);
   return true;

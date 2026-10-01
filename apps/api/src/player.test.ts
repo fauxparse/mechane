@@ -1,13 +1,15 @@
 import type { ShowGraph } from "@mechane/domain/graph";
+import { showChannel, type RealtimeMessage, type RealtimeSubscription } from "@mechane/realtime";
 import { and, eq } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { db } from "./db/client";
-import { readRunDeviceState, startRun } from "./db/runs";
+import { endRun, readRunDeviceState, startRun } from "./db/runs";
 import { publishShowGraph, readShowGraph, writeShowGraph } from "./db/show-graph";
 import { runDeviceStates } from "./db/schema";
 import { setupPostgresTest } from "./db/test-helpers";
 import { readPlayerSession } from "./player";
+import { realtimeProvider } from "./realtime";
 import { verifyRealtimeGrant } from "./realtime-grants";
 const { showId, createShow } = setupPostgresTest("player-state-test");
 
@@ -76,6 +78,7 @@ describe("Player session runtime Scene", () => {
     expect(
       session?.realtime.grant ? verifyRealtimeGrant(session.realtime.grant) : null,
     ).toMatchObject({
+      kind: "player",
       deviceId: device.id,
     });
     await db
@@ -186,5 +189,69 @@ describe("Player session graph", () => {
     expect(devices.map((node) => node.id)).toEqual(["device_audience"]);
     expect(devices[0]).toMatchObject({ pairingCode: expect.any(String), liveDomain: null });
     expect(session?.graph.edges.some((edge) => edge.kind === "device")).toBe(false);
+  });
+});
+
+describe("Player session on a stopped Show", () => {
+  const subscriptions: RealtimeSubscription[] = [];
+  afterEach(() => {
+    for (const subscription of subscriptions.splice(0)) subscription.close();
+  });
+
+  /** Device waiting notices published on the Show's channel from here on. */
+  function listenForWaitingDevices(): RealtimeMessage[] {
+    const messages: RealtimeMessage[] = [];
+    // The test adapter replays its history to a new subscriber, synchronously.
+    let live = false;
+    subscriptions.push(
+      realtimeProvider.channel(showChannel(showId)).subscribe((message) => {
+        if (live && message.type === "device.waiting") messages.push(message);
+      }),
+    );
+    live = true;
+    return messages;
+  }
+
+  async function pairedDevice() {
+    await createShow();
+    await writeShowGraph(showId, "draft", graph);
+    await publishShowGraph(showId);
+    const published = await readShowGraph(showId, "published");
+    const device = published.nodes.find((node) => node.kind === "device");
+    if (device?.kind !== "device" || !device.pairingCode) throw new Error("Pairing code missing.");
+    return { id: device.id, pairingCode: device.pairingCode };
+  }
+
+  it("asks the Show's Studio windows to start it when a Device connects", async () => {
+    const device = await pairedDevice();
+    const waiting = listenForWaitingDevices();
+
+    const session = await readPlayerSession(device.pairingCode, { connecting: true });
+
+    expect(session?.run).toBeNull();
+    expect(waiting.map((message) => message.payload)).toEqual([
+      { deviceId: device.id, deviceName: "Navigation Device" },
+    ]);
+  });
+
+  it("does not ask when a connected Player refreshes after its Run ends", async () => {
+    const device = await pairedDevice();
+    await startRun(showId);
+    await endRun(showId);
+    const waiting = listenForWaitingDevices();
+
+    await readPlayerSession(device.pairingCode);
+
+    expect(waiting).toEqual([]);
+  });
+
+  it("does not ask when the Show is already running", async () => {
+    const device = await pairedDevice();
+    await startRun(showId);
+    const waiting = listenForWaitingDevices();
+
+    await readPlayerSession(device.pairingCode, { connecting: true });
+
+    expect(waiting).toEqual([]);
   });
 });

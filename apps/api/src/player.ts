@@ -12,6 +12,7 @@ import { readOrCreateTransformerSeeds } from "./db/transformer-seeds";
 import { devices } from "./db/schema";
 import { readShowGraph, type StoredShowGraph } from "./db/show-graph";
 import { issueRealtimeGrant } from "./realtime-grants";
+import { publishShowEvent } from "./show-events";
 
 function sceneForDevice(
   graph: ShowGraph,
@@ -100,7 +101,10 @@ export function playerSessionGraph<T extends ShowGraph>(graph: T): T {
   };
 }
 
-export async function readPlayerSession(pairingCode: string) {
+export async function readPlayerSession(
+  pairingCode: string,
+  { connecting = false }: { connecting?: boolean } = {},
+) {
   const normalizedCode = pairingCode.trim().toUpperCase();
   if (!PAIRING_CODE_PATTERN.test(normalizedCode)) return null;
 
@@ -164,10 +168,21 @@ export async function readPlayerSession(pairingCode: string) {
     );
   }
   const playerGraph = playerSessionGraph(graph);
-  const grant = issueRealtimeGrant(device.id);
+  const deviceName = deviceNode?.name ?? device.id;
+  // A Device that connects to a stopped Show only waits. Whoever is editing
+  // the Show is asked to start it, since that step is easy to forget (#467).
+  // Only a connection asks: a Player refreshing because a Run ended or the
+  // Show was published is not someone trying to join.
+  if (connecting && !run) {
+    await publishShowEvent(device.showId, {
+      type: "device.waiting",
+      payload: { deviceId: device.id, deviceName },
+    });
+  }
+  const grant = issueRealtimeGrant({ kind: "player", deviceId: device.id });
   return {
     device: {
-      name: deviceNode?.name ?? device.id,
+      name: deviceName,
       perConnection: device.perConnection,
     },
     realtime: {

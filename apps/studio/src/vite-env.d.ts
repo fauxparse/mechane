@@ -7,6 +7,7 @@ interface ImportMetaEnv {
   readonly VITE_PLAYER_URL?: string;
   readonly VITE_GOOGLE_FONTS_API_KEY?: string;
   readonly VITE_GOOGLE_OAUTH_ENABLED?: string;
+  readonly VITE_DEV_PROXY?: string;
 }
 
 interface ImportMeta {

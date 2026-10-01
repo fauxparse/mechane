@@ -17,6 +17,7 @@
     "@mechane/design-system": "workspace:*",
     "@mechane/domain": "workspace:*",
     "@mechane/graphql-schema": "workspace:*",
+    "@mechane/realtime": "workspace:*",
     "@mechane/rendering": "workspace:*",
     "@tanstack/react-form": "^1.33.5",
     "@tanstack/react-query": "^5.90.0",
