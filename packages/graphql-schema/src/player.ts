@@ -55,8 +55,8 @@ const PlayerFlowSceneFields = graphql(`
 
 export const GetPlayerSessionQuery = graphql(
   `
-    query GetPlayerSession {
-      playerSession {
+    query GetPlayerSession($connecting: Boolean) {
+      playerSession(connecting: $connecting) {
         device {
           name
           perConnection

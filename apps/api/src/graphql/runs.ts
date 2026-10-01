@@ -15,6 +15,7 @@ import { GraphQLError } from "graphql";
 
 import { listRunErrors } from "../db/run-errors";
 import { endRun, readActiveRun, startRun } from "../db/runs";
+import { issueRealtimeGrant } from "../realtime-grants";
 import { readShowGraph } from "../db/show-graph";
 import { reshuffleTransformer } from "../db/transformer-seeds";
 import type { Resolvers } from "./context";
@@ -111,6 +112,11 @@ export const typeDefs = /* GraphQL */ `
     to one kind of failure.
     """
     runErrors(showId: ID!, runId: ID, category: String, limit: Int): [RunError!]!
+    """
+    A grant to the Show's realtime channel, where a Studio window hears that
+    a Device is waiting for the Show to start and that a Run started or ended.
+    """
+    showRealtime(showId: ID!): RealtimeGrant!
   }
 
   type Mutation {
@@ -155,6 +161,16 @@ export const resolvers: Resolvers = {
         limit: limit ?? undefined,
       });
       return errors.map(serializeRunError);
+    },
+    showRealtime: async (_parent, { showId }: { showId: string }, context) => {
+      const userId = requireUserId(context);
+      await findOwnShowOrThrow(showId, userId);
+      const grant = issueRealtimeGrant({ kind: "show", showId });
+      return {
+        channel: grant.channel,
+        grant: grant.token,
+        expiresAt: new Date(grant.expiresAt).toISOString(),
+      };
     },
   },
   Mutation: {

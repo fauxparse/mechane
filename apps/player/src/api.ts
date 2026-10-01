@@ -85,12 +85,12 @@ export class PlayerRequestError extends Error {
 
 export async function fetchPlayerSession(
   code: string,
-  signal?: AbortSignal,
+  { signal, connecting = false }: { signal?: AbortSignal; connecting?: boolean } = {},
 ): Promise<PlayerSession> {
   const result = await graphqlRequest(
     GRAPHQL_ENDPOINT,
     GetPlayerSessionQuery,
-    {},
+    { connecting },
     {
       signal,
       credentials: "omit",
@@ -230,15 +230,18 @@ export function usePlayerSession(code: string): PlayerState {
   const normalizedCode = code.trim().toUpperCase();
   const [state, setState] = useState<PlayerState>({ status: "idle" });
 
+  // `connecting` is the first read, the one that joins the Device; every
+  // later read is a refresh. Only the first shows a loading state, and only
+  // it tells the API someone is trying to connect (#467).
   const load = useCallback(
-    async (signal: AbortSignal, showLoading: boolean) => {
-      if (showLoading)
+    async (signal: AbortSignal, connecting: boolean) => {
+      if (connecting)
         setState((current) => ({
           status: "loading",
           session: current.status === "ready" ? current.session : null,
         }));
       try {
-        const session = await fetchPlayerSession(normalizedCode, signal);
+        const session = await fetchPlayerSession(normalizedCode, { signal, connecting });
         if (!signal.aborted) setState({ status: "ready", session });
         return session;
       } catch (error) {
@@ -309,8 +312,8 @@ export function usePlayerSession(code: string): PlayerState {
       return true;
     };
 
-    const refresh = async (showLoading: boolean, closeSnapshotRace: boolean) => {
-      const session = await load(controller.signal, showLoading);
+    const refresh = async (connecting: boolean, closeSnapshotRace: boolean) => {
+      const session = await load(controller.signal, connecting);
       if (!session) return;
       const attached = attach(session);
       if (attached && closeSnapshotRace) {

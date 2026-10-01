@@ -23,7 +23,8 @@ export const typeDefs = /* GraphQL */ `
     name: String!
     perConnection: Boolean!
   }
-  type PlayerRealtime {
+  "A short-lived grant to subscribe to one realtime channel."
+  type RealtimeGrant {
     channel: String!
     grant: String!
     expiresAt: String!
@@ -93,7 +94,7 @@ export const typeDefs = /* GraphQL */ `
   }
   type PlayerSession {
     device: PlayerDevice!
-    realtime: PlayerRealtime!
+    realtime: RealtimeGrant!
     run: Run
     graph: ShowGraph!
     flow: PlayerFlowBundle
@@ -106,9 +107,11 @@ export const typeDefs = /* GraphQL */ `
   type Query {
     """
     A public Device snapshot resolved by the pairing bearer credential.
-    Invalid credentials return null.
+    Invalid credentials return null. \`connecting\` marks the read a Player
+    makes as it connects, as opposed to a refresh; a Device connecting to a
+    Show with no Run asks the Show's Studio windows to start it.
     """
-    playerSession: PlayerSession
+    playerSession(connecting: Boolean): PlayerSession
   }
 
   type Mutation {
@@ -138,9 +141,11 @@ export const resolvers: Resolvers = {
     },
   },
   Query: {
-    playerSession: async (_parent, _args, context) => {
+    playerSession: async (_parent, { connecting }: { connecting?: boolean | null }, context) => {
       if (!context.playerPairingCode) return null;
-      const session = await readPlayerSession(context.playerPairingCode);
+      const session = await readPlayerSession(context.playerPairingCode, {
+        connecting: connecting ?? false,
+      });
       if (!session) return null;
       return {
         ...session,

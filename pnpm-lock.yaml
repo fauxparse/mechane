@@ -242,6 +242,9 @@ importers:
       '@mechane/graphql-schema':
         specifier: workspace:*
         version: link:../../packages/graphql-schema
+      '@mechane/realtime':
+        specifier: workspace:*
+        version: link:../../packages/realtime
       '@mechane/rendering':
         specifier: workspace:*
         version: link:../../packages/rendering

@@ -26,6 +26,8 @@ import { useStoredSidebarState } from "../../../components/EditorLayout/use-stor
 import type { EditorKind } from "../../../components/Header/Header";
 import { LastWindowRunDialog } from "../../../components/LastWindowRun/LastWindowRunDialog";
 import { useLastWindowRunPrompt } from "../../../components/LastWindowRun/use-last-window-run-prompt";
+import { StartRunPromptDialog } from "../../../components/StartRunPrompt/StartRunPromptDialog";
+import { useStartRunPrompt } from "../../../components/StartRunPrompt/use-start-run-prompt";
 import { useShapeEditorStatus } from "../../../editors/show/shapes/shape-editor-status";
 
 export const Route = createFileRoute("/_authenticated/shows/$showId")({
@@ -58,6 +60,8 @@ function ShowEditorLayout() {
     activeRunId: activeRun.data?.id ?? null,
     enabled: settings.askToEndRunOnClose ?? true,
   });
+  const runActive = activeRun.data !== null && activeRun.data !== undefined;
+  const startRunPrompt = useStartRunPrompt({ showId, runActive });
 
   // Which editor the tabs should show as current. Derived from the matched
   // route rather than the pathname, so the Canvas editor's nested `$artId`
@@ -104,6 +108,12 @@ function ShowEditorLayout() {
   const canvasPath = rememberedArtId
     ? `/shows/${params.showId}/art/${rememberedArtId}`
     : `/shows/${params.showId}/art`;
+  const startRun = () =>
+    goLive.mutate({ showId: currentShow.id, publishFirst: hasUnpublishedChanges(state) });
+  // The header's Go live is disabled for the same reason.
+  const goLiveDisabledReason = hasUnpublishedChanges(state)
+    ? (shapeEditorStatus.invalidReason ?? undefined)
+    : undefined;
 
   return (
     <EditorLayout
@@ -162,9 +172,8 @@ function ShowEditorLayout() {
           publish.mutate(currentShow.id);
         },
         publishing: publish.isPending || goLive.isPending,
-        runActive: activeRun.data !== null && activeRun.data !== undefined,
-        onStartRun: () =>
-          goLive.mutate({ showId: currentShow.id, publishFirst: hasUnpublishedChanges(state) }),
+        runActive,
+        onStartRun: startRun,
         onEndRun: () => endRun.mutate(currentShow.id),
         runPending: goLive.isPending || endRun.isPending,
         onRename: (name) => renameShow.mutate({ id: currentShow.id, name }),
@@ -182,6 +191,17 @@ function ShowEditorLayout() {
           endRun.mutate(currentShow.id);
         }}
         onKeepRunning={lastWindowRunPrompt.dismiss}
+      />
+      <StartRunPromptDialog
+        showName={currentShow.name}
+        open={startRunPrompt.open}
+        devices={startRunPrompt.devices}
+        goLiveDisabledReason={goLiveDisabledReason}
+        onGoLive={() => {
+          startRunPrompt.accept();
+          startRun();
+        }}
+        onNotNow={startRunPrompt.decline}
       />
     </EditorLayout>
   );

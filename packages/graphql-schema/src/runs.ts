@@ -51,6 +51,16 @@ export const ReshuffleTransformerMutation = graphql(`
   }
 `);
 
+export const GetShowRealtimeQuery = graphql(`
+  query GetShowRealtime($showId: ID!) {
+    showRealtime(showId: $showId) {
+      channel
+      grant
+      expiresAt
+    }
+  }
+`);
+
 export const GetRunErrorsQuery = graphql(`
   query GetRunErrors($showId: ID!, $runId: ID, $category: String, $limit: Int) {
     runErrors(showId: $showId, runId: $runId, category: $category, limit: $limit) {

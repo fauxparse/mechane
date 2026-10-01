@@ -19,6 +19,7 @@ import {
 } from "@mechane/domain/structured-values";
 import { and, desc, eq } from "drizzle-orm";
 
+import { publishShowEvent } from "../show-events";
 import { db } from "./client";
 import { drainPlayerInvalidations, enqueuePlayerInvalidations } from "./player-invalidation-outbox";
 import { readShowGraph } from "./show-graph";
@@ -374,6 +375,7 @@ export async function startRun(showId: string): Promise<Run> {
   } catch {
     // The worker retries the committed outbox row if the provider is down.
   }
+  await publishShowEvent(showId, { type: "run.started", payload: { runId: run.id } });
   return run;
 }
 
@@ -505,6 +507,7 @@ export async function endRun(showId: string): Promise<Run | null> {
     } catch {
       // The worker retries the committed outbox row if the provider is down.
     }
+    await publishShowEvent(showId, { type: "run.ended", payload: { runId: run.id } });
   }
   return run;
 }

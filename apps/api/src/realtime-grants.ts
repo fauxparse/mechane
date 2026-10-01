@@ -1,14 +1,35 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-import { playerChannel } from "@mechane/realtime";
+import { playerChannel, showChannel, type RealtimeChannelName } from "@mechane/realtime";
 
 const GRANT_TTL_MS = 60_000;
 
-type RealtimeGrantPayload = {
-  deviceId: string;
-  channel: string;
+/**
+ * Who a grant lets subscribe: a paired Player to its Device's channel, or a
+ * Studio window to the channel of a Show its user owns. Ownership is checked
+ * where the grant is issued; the grant itself only names the channel.
+ */
+export type RealtimeGrantSubject =
+  | { kind: "player"; deviceId: string }
+  | { kind: "show"; showId: string };
+
+export type RealtimeGrantPayload = RealtimeGrantSubject & {
+  channel: RealtimeChannelName;
   expiresAt: number;
 };
+
+function channelForSubject(subject: RealtimeGrantSubject): RealtimeChannelName {
+  switch (subject.kind) {
+    case "player":
+      return playerChannel(subject.deviceId);
+    case "show":
+      return showChannel(subject.showId);
+    default: {
+      const _exhaustive: never = subject;
+      return _exhaustive;
+    }
+  }
+}
 
 function secret(): string {
   const value = process.env.BETTER_AUTH_SECRET;
@@ -25,16 +46,27 @@ function sign(payload: string): string {
 }
 
 export function issueRealtimeGrant(
-  deviceId: string,
+  subject: RealtimeGrantSubject,
   now = Date.now(),
 ): RealtimeGrantPayload & { token: string } {
   const payload: RealtimeGrantPayload = {
-    deviceId,
-    channel: playerChannel(deviceId),
+    ...subject,
+    channel: channelForSubject(subject),
     expiresAt: now + GRANT_TTL_MS,
   };
   const encoded = encode(JSON.stringify(payload));
   return { ...payload, token: `${encoded}.${sign(encoded)}` };
+}
+
+function readSubject(payload: object): RealtimeGrantSubject | null {
+  if (!("kind" in payload)) return null;
+  if (payload.kind === "player" && "deviceId" in payload && typeof payload.deviceId === "string") {
+    return { kind: "player", deviceId: payload.deviceId };
+  }
+  if (payload.kind === "show" && "showId" in payload && typeof payload.showId === "string") {
+    return { kind: "show", showId: payload.showId };
+  }
+  return null;
 }
 
 export function verifyRealtimeGrant(token: string, now = Date.now()): RealtimeGrantPayload | null {
@@ -56,20 +88,17 @@ export function verifyRealtimeGrant(token: string, now = Date.now()): RealtimeGr
   if (
     payload === null ||
     typeof payload !== "object" ||
-    !("deviceId" in payload) ||
     !("channel" in payload) ||
     !("expiresAt" in payload) ||
-    typeof payload.deviceId !== "string" ||
     typeof payload.channel !== "string" ||
     typeof payload.expiresAt !== "number" ||
-    payload.expiresAt <= now ||
-    payload.channel !== playerChannel(payload.deviceId)
+    payload.expiresAt <= now
   ) {
     return null;
   }
-  return {
-    deviceId: payload.deviceId,
-    channel: payload.channel,
-    expiresAt: payload.expiresAt,
-  };
+  const subject = readSubject(payload);
+  if (!subject) return null;
+  const channel = channelForSubject(subject);
+  if (payload.channel !== channel) return null;
+  return { ...subject, channel, expiresAt: payload.expiresAt };
 }
