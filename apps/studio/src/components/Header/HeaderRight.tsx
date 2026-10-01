@@ -2,38 +2,27 @@ import {
   Alert,
   AlertTitle,
   AlertTriangleIcon,
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
   Button,
   CheckIcon,
   ChevronDownIcon,
   cn,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   InsideSidebar,
-  LogOutIcon,
-  MoonIcon,
   PlayIcon,
-  SettingsIcon,
   SidebarIcon,
   SidebarTrigger,
   SquareIcon,
-  SunIcon,
 } from "@mechane/design-system";
-import { DEFAULT_THEME_MODE, type ThemeMode } from "@mechane/domain/theme-settings";
 
-import { useUserSettings } from "../../api/settings";
+import { AccountMenu } from "./AccountMenu";
 import type { HeaderProps } from "./Header";
-import { followHeaderLink } from "./header-navigation";
 
 type HeaderRightProps = Pick<
   HeaderProps,
-  | "navigation"
   | "user"
   | "onLogOut"
   | "autoPublish"
@@ -49,7 +38,6 @@ type HeaderRightProps = Pick<
 >;
 
 export function HeaderRight({
-  navigation,
   user,
   onLogOut,
   autoPublish,
@@ -63,8 +51,6 @@ export function HeaderRight({
   runPending = false,
   onThemeModeChange,
 }: HeaderRightProps) {
-  const { settings, updateSettings } = useUserSettings();
-  const mode = (settings?.themeMode ?? DEFAULT_THEME_MODE) as ThemeMode;
   const dirty = publishState === "unpublished-changes";
   // An auto-publishing Show has nothing to publish, so the menu only exists
   // to end a Run.
@@ -72,60 +58,7 @@ export function HeaderRight({
 
   return (
     <div className="editor-chrome-header-right pointer-events-auto flex w-fit items-center justify-self-end gap-2">
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button
-              variant="ghost"
-              className="h-auto rounded-full border-0 p-0"
-              aria-label="Account"
-            >
-              <Avatar>
-                {user.avatarUrl ? (
-                  <AvatarImage src={user.avatarUrl} alt={user.name ?? user.email} />
-                ) : null}
-                <AvatarFallback id={user.id} />
-              </Avatar>
-            </Button>
-          }
-        />
-        <DropdownMenuContent>
-          <DropdownMenuItem
-            render={
-              <a href={navigation.settings.href} onClick={followHeaderLink(navigation.settings)}>
-                <SettingsIcon />
-                Settings
-              </a>
-            }
-          />
-          <DropdownMenuItem
-            onClick={() => {
-              const nextMode = mode === "dark" ? "light" : "dark";
-              onThemeModeChange?.(nextMode);
-              if (!onThemeModeChange) updateSettings({ themeMode: nextMode });
-            }}
-          >
-            {mode === "dark" ? (
-              <>
-                <SunIcon />
-                <span>Light mode</span>
-              </>
-            ) : (
-              <>
-                <MoonIcon className="size-4" />
-                <span>Dark mode</span>
-              </>
-            )}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DropdownMenuItem variant="destructive" onClick={onLogOut}>
-              <LogOutIcon />
-              Log out
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <AccountMenu user={user} onLogOut={onLogOut} onThemeModeChange={onThemeModeChange} />
 
       <div className="flex items-center">
         {runActive ? (

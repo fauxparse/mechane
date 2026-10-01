@@ -1,12 +1,12 @@
 // The admin area's front page (issue #826): every account, newest first, one
 // page at a time. Presentational — the route owns the search and page state's
-// persistence, the requests, and where each row leads.
+// persistence and the requests.
 import { Button, ChevronLeftIcon, ChevronRightIcon, SearchInput } from "@mechane/design-system";
+import { Link } from "@tanstack/react-router";
 
 import { relativeTime } from "../Dashboard/elapsed";
 import { AccountBadges } from "./AccountBadges";
-import { AdminLink } from "./AdminLink";
-import type { AdminDestination, AdminUser } from "./admin-user";
+import type { AdminUser } from "./admin-user";
 
 export interface AdminUsersProps {
   readonly users: readonly AdminUser[];
@@ -21,7 +21,6 @@ export interface AdminUsersProps {
   readonly pageSize: number;
   onPageChange(page: number): void;
   readonly currentUserId: string;
-  linkToUser(userId: string): AdminDestination;
 }
 
 export function AdminUsers({
@@ -35,7 +34,6 @@ export function AdminUsers({
   pageSize,
   onPageChange,
   currentUserId,
-  linkToUser,
 }: AdminUsersProps) {
   const first = page * pageSize + 1;
   const last = page * pageSize + users.length;
@@ -82,10 +80,14 @@ export function AdminUsers({
                 className="border-b border-border last:border-b-0 hover:bg-muted/40"
               >
                 <td className="px-4 py-2">
-                  <AdminLink to={linkToUser(user.id)} className="flex flex-col hover:underline">
+                  <Link
+                    to="/admin/users/$userId"
+                    params={{ userId: user.id }}
+                    className="flex flex-col hover:underline"
+                  >
                     <span className="font-medium">{user.name || user.email}</span>
                     <span className="text-muted-foreground">{user.email}</span>
-                  </AdminLink>
+                  </Link>
                 </td>
                 <td className="px-4 py-2">
                   <AccountBadges user={user} isSelf={user.id === currentUserId} />

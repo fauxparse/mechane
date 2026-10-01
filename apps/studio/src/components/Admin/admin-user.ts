@@ -9,9 +9,3 @@ export interface AdminUser {
   banned: boolean;
   createdAt: string;
 }
-
-/** A link that is a real `href` for new tabs, and a client-side navigation on a plain click. */
-export interface AdminDestination {
-  href: string;
-  onSelect(): void;
-}

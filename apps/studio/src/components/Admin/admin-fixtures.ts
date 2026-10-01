@@ -1,9 +1,7 @@
 import type { AdminShow } from "./AdminUserDetail";
-import type { AdminDestination, AdminUser } from "./admin-user";
+import type { AdminUser } from "./admin-user";
 
 const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
-
-export const MOCK_DESTINATION: AdminDestination = { href: "#", onSelect: () => {} };
 
 export const MOCK_ADMIN: AdminUser = {
   id: "admin-1",

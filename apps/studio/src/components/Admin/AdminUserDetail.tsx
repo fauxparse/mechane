@@ -30,13 +30,13 @@ import {
   Trash2Icon,
 } from "@mechane/design-system";
 import { isRole, type Role, ROLES } from "@mechane/domain/access-control";
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { DeleteShowDialog } from "../Dashboard/DeleteShowDialog";
 import { relativeTime } from "../Dashboard/elapsed";
 import { AccountBadges } from "./AccountBadges";
-import { AdminLink } from "./AdminLink";
-import type { AdminDestination, AdminUser } from "./admin-user";
+import type { AdminUser } from "./admin-user";
 
 export interface AdminShow {
   id: string;
@@ -46,7 +46,6 @@ export interface AdminShow {
 }
 
 export interface AdminUserDetailProps {
-  readonly back: AdminDestination;
   readonly user: AdminUser | undefined;
   readonly pending: boolean;
   readonly loadError?: string;
@@ -75,7 +74,6 @@ export interface AdminUserDetailProps {
 type Confirming = { kind: "ban" } | { kind: "remove" } | { kind: "show"; show: AdminShow };
 
 export function AdminUserDetail({
-  back,
   user,
   pending,
   loadError,
@@ -113,13 +111,13 @@ export function AdminUserDetail({
 
   return (
     <section className="flex flex-col gap-6">
-      <AdminLink
-        to={back}
+      <Link
+        to="/admin"
         className="flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeftIcon className="size-4" />
         All users
-      </AdminLink>
+      </Link>
 
       {loadError ? (
         <p role="alert" className="text-destructive">

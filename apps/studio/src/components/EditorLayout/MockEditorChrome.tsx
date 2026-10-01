@@ -8,6 +8,7 @@ import type { PropsWithChildren } from "react";
 import { EditorLayout } from "./EditorLayout";
 import { MOCK_HEADER } from "./editor-layout-fixtures";
 import type { EditorKind, HeaderProps } from "../Header/Header";
+import { StoryRouter } from "../StoryRouter";
 
 export interface MockEditorChromeProps extends PropsWithChildren {
   activeEditor?: EditorKind;
@@ -23,11 +24,13 @@ export function MockEditorChrome({
   children,
 }: MockEditorChromeProps) {
   return (
-    <EditorLayout
-      defaultSidebarsOpen={sidebarsOpen}
-      header={{ ...MOCK_HEADER, activeEditor, ...header }}
-    >
-      {children}
-    </EditorLayout>
+    <StoryRouter>
+      <EditorLayout
+        defaultSidebarsOpen={sidebarsOpen}
+        header={{ ...MOCK_HEADER, activeEditor, ...header }}
+      >
+        {children}
+      </EditorLayout>
+    </StoryRouter>
   );
 }

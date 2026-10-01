@@ -2,7 +2,7 @@
 // components/Admin/AdminUsers.tsx). The search box is local state, not a URL
 // search param: a controlled input fed back through the router drops
 // keystrokes typed faster than a navigation settles.
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { ADMIN_USERS_PAGE_SIZE, useAdminUsers } from "../../../api/admin";
@@ -14,7 +14,6 @@ export const Route = createFileRoute("/_authenticated/admin/")({
 });
 
 function AdminUsersRoute() {
-  const navigate = useNavigate();
   const me = useMe();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -36,10 +35,6 @@ function AdminUsersRoute() {
       pageSize={ADMIN_USERS_PAGE_SIZE}
       onPageChange={setPage}
       currentUserId={me.data?.id ?? ""}
-      linkToUser={(userId) => ({
-        href: `/admin/users/${encodeURIComponent(userId)}`,
-        onSelect: () => void navigate({ to: "/admin/users/$userId", params: { userId } }),
-      })}
     />
   );
 }
