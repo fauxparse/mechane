@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-ro
 
 import { useActiveRun } from "../../../../api/runs";
 import { useShowGraph, useShowGraphEdits } from "../../../../api/show-graph";
+import { useShow } from "../../../../api/shows";
 import { useGraphEditing } from "../../../../editors/show/commands/use-graph-editing";
 import { ShapeWorkspace } from "../../../../editors/show/shapes/ShapeWorkspace";
 import { useOpenedShowGraph } from "../../../../editors/show/data/use-opened-graph";
@@ -15,6 +16,7 @@ function ShapesRoute() {
   const params = Route.useParams();
   const showId: ShowId | null = isId("show", params.showId) ? params.showId : null;
   const activeRun = useActiveRun(showId);
+  const show = useShow(showId);
   const navigate = useNavigate();
   const shapeId = useRouterState({
     select: ({ matches }) =>
@@ -50,6 +52,7 @@ function ShapesRoute() {
       saveError={save.error}
       retrySave={save.retry}
       runActive={activeRun.data !== null && activeRun.data !== undefined}
+      autoPublish={show.data?.autoPublish ?? true}
       onOpenShape={(nextShapeId) =>
         void navigate({
           to: "/shows/$showId/shapes/$shapeId",

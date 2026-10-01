@@ -1020,6 +1020,14 @@ export const typeDefs = /* GraphQL */ `
     updatedAt: String!
     version: Int!
     amendments: [GraphEdit!]!
+    "Set when the Show auto-publishes and this batch's draft was published with it."
+    published: AutoPublication
+  }
+
+  "The published graph an auto-published edit batch produced."
+  type AutoPublication {
+    updatedAt: String!
+    version: Int!
   }
 
   type Query {
@@ -1064,6 +1072,14 @@ export const resolvers: Resolvers = {
       field.defaultValue === null || field.defaultValue === undefined
         ? null
         : toShapeValue(field.defaultValue, field.type),
+  },
+  // A `Date` through the String scalar serialises as epoch milliseconds, which
+  // Studio's publish state cannot parse.
+  AppliedShowEdits: {
+    updatedAt: (applied: { updatedAt: Date }) => applied.updatedAt.toISOString(),
+  },
+  AutoPublication: {
+    updatedAt: (publication: { updatedAt: Date }) => publication.updatedAt.toISOString(),
   },
   Query: {
     showGraph: async (
@@ -1118,7 +1134,9 @@ export const resolvers: Resolvers = {
             graphEdits.push(parseGraphEdit(record as unknown as FlatGraphEdit));
           }
         }
-        const applied = await applyShowEditsToDb(showId, graphEdits, canvasEdits, baseVersion);
+        const applied = await applyShowEditsToDb(showId, graphEdits, canvasEdits, baseVersion, {
+          customDomainsProvider: context.customDomains?.provider,
+        });
         await db.update(shows).set({ updatedAt: new Date() }).where(eq(shows.id, showId));
         return applied;
       } catch (error) {

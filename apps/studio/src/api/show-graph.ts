@@ -334,6 +334,21 @@ export function useShowGraphEdits(
               : undefined;
           },
         );
+        if (result.published) {
+          // An auto-publishing Show (#856) published this batch too. Only the
+          // publish state reads the published graph here, so stamp its
+          // metadata and mark it stale rather than refetch it per batch.
+          const published = result.published;
+          queryClient.setQueryData(
+            showGraphQueryKey(result.showId as ShowId, "published"),
+            (previous: CachedShowGraph | undefined) =>
+              previous ? { ...previous, ...published } : undefined,
+          );
+          void queryClient.invalidateQueries({
+            queryKey: showGraphQueryKey(result.showId as ShowId, "published"),
+            refetchType: "none",
+          });
+        }
         if (result.amendments.length > 0) {
           amend.current?.(result.amendments.map(toGraphEdit));
         }

@@ -609,7 +609,11 @@ export async function persistGraphRows(
   const version = currentVersion + 1;
   const [row] = await tx
     .insert(showGraphs)
-    .values({ id: generateId("graph"), showId, state, version })
+    // `updatedAt` is the same `now` the caller is told, not the database's
+    // transaction-start default: publication compares draft and published
+    // timestamps, and a first publish in the same transaction as an edit
+    // (#856) would otherwise read as older than the draft it copied.
+    .values({ id: generateId("graph"), showId, state, version, updatedAt: now })
     .onConflictDoUpdate({
       target: [showGraphs.showId, showGraphs.state],
       set: { updatedAt: now, version },

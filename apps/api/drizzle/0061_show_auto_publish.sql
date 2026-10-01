@@ -1,0 +1,1 @@
+ALTER TABLE "shows" ADD COLUMN "auto_publish" boolean DEFAULT true NOT NULL;

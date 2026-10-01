@@ -59,6 +59,7 @@ const meta = {
     saveError: null,
     retrySave: noop,
     runActive: false,
+    autoPublish: true,
     onOpenShape: noop,
     onBack: noop,
   },
@@ -79,6 +80,11 @@ export const Editor: Story = {
 
 export const SaveFailed: Story = {
   args: { shapeId: "shape_vote", saveError: new Error("The draft server is unavailable.") },
+};
+
+/** A Show that stages its changes: saves land in the draft. */
+export const StagedEditor: Story = {
+  args: { shapeId: "shape_vote", autoPublish: false },
 };
 
 export const ActiveRun: Story = {

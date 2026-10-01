@@ -108,6 +108,10 @@ export const shows = pgTable("shows", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   stateSequence: integer("state_sequence").notNull().default(0),
+  // Whether every accepted draft edit is also published in the same
+  // transaction (#856). On by default: the explicit draft/publish split is
+  // the opt-in, for directors who want to stage structural changes.
+  autoPublish: boolean("auto_publish").notNull().default(true),
 });
 
 /** Provider-neutral durable binary identity and lifecycle. */

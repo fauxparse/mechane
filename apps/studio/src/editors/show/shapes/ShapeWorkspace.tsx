@@ -58,6 +58,8 @@ type ShapeWorkspaceProps = {
   saveError: Error | null;
   retrySave(): void;
   runActive: boolean;
+  /** The Show publishes every save (#856), so there is no draft to speak of. */
+  autoPublish: boolean;
   onOpenShape(shapeId: string): void;
   onBack(): void;
 };
@@ -103,6 +105,7 @@ export function ShapeWorkspace({
   saveError,
   retrySave,
   runActive,
+  autoPublish,
   onOpenShape,
   onBack,
 }: ShapeWorkspaceProps) {
@@ -191,8 +194,15 @@ export function ShapeWorkspace({
           />
         ) : (
           <div className="flex flex-col gap-4">
-            <SaveStatus saving={saving} error={saveError} retry={retrySave} />
-            {invalidReason ? <ValidationSummary reason={invalidReason} /> : null}
+            <SaveStatus
+              saving={saving}
+              error={saveError}
+              retry={retrySave}
+              autoPublish={autoPublish}
+            />
+            {invalidReason ? (
+              <ValidationSummary reason={invalidReason} autoPublish={autoPublish} />
+            ) : null}
             <ShapeEditor
               key={selected.id}
               shape={selected}
@@ -212,10 +222,12 @@ function SaveStatus({
   saving,
   error,
   retry,
+  autoPublish,
 }: {
   saving: boolean;
   error: Error | null;
   retry(): void;
+  autoPublish: boolean;
 }) {
   if (saving)
     return (
@@ -237,18 +249,18 @@ function SaveStatus({
     );
   return (
     <p className="text-xs text-muted-foreground" aria-live="polite">
-      Saved as draft
+      {autoPublish ? "Saved" : "Saved as draft"}
     </p>
   );
 }
 
-function ValidationSummary({ reason }: { reason: string }) {
+function ValidationSummary({ reason, autoPublish }: { reason: string; autoPublish: boolean }) {
   return (
     <div
       className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
       role="alert"
     >
-      <strong>Publish unavailable.</strong> {reason}
+      <strong>{autoPublish ? "Invalid Shapes." : "Publish unavailable."}</strong> {reason}
     </div>
   );
 }

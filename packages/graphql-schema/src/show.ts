@@ -16,6 +16,7 @@ export const ListShowsQuery = graphql(`
       name
       createdAt
       updatedAt
+      autoPublish
     }
   }
 `);
@@ -27,6 +28,7 @@ export const GetShowQuery = graphql(`
       name
       createdAt
       updatedAt
+      autoPublish
     }
   }
 `);
@@ -38,6 +40,7 @@ export const CreateShowMutation = graphql(`
       name
       createdAt
       updatedAt
+      autoPublish
     }
   }
 `);
@@ -49,6 +52,19 @@ export const RenameShowMutation = graphql(`
       name
       createdAt
       updatedAt
+      autoPublish
+    }
+  }
+`);
+
+export const SetShowAutoPublishMutation = graphql(`
+  mutation SetShowAutoPublish($id: ID!, $autoPublish: Boolean!) {
+    setShowAutoPublish(id: $id, autoPublish: $autoPublish) {
+      id
+      name
+      createdAt
+      updatedAt
+      autoPublish
     }
   }
 `);

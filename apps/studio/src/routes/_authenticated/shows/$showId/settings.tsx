@@ -1,20 +1,21 @@
-// Show settings ("/shows/$showId/settings", issue #837). Its one section so
-// far is Custom domains: which of the user's addresses open this Show's
-// Devices. The section is presentational; this route supplies the data and
-// the owner operations.
+// Show settings ("/shows/$showId/settings", issue #837): how the Show
+// publishes (#856), and Custom domains — which of the user's addresses open
+// this Show's Devices. The sections are presentational; this route supplies
+// the data and the owner operations.
 import { isId, type ShowId } from "@mechane/domain/id";
-import { decodeShowGraphDocument } from "@mechane/graphql-schema";
+import { decodeShowGraphDocument, GraphQLRequestError } from "@mechane/graphql-schema";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 
 import { useCustomDomainMutations, useCustomDomains } from "../../../../api/custom-domains";
 import { useShowGraph } from "../../../../api/show-graph";
-import { useShow } from "../../../../api/shows";
+import { useSetShowAutoPublish, useShow } from "../../../../api/shows";
 import type { DeviceOption } from "../../../../components/CustomDomains/custom-domain-model";
 import {
   CustomDomainsSection,
   type CustomDomainActions,
 } from "../../../../components/CustomDomains/CustomDomainsSection";
+import { PublishingSection } from "../../../../components/ShowSettings/PublishingSection";
 
 export const Route = createFileRoute("/_authenticated/shows/$showId/settings")({
   component: ShowSettingsRoute,
@@ -27,6 +28,7 @@ function ShowSettingsRoute() {
   const draft = useShowGraph(showId, "draft");
   const domains = useCustomDomains();
   const mutations = useCustomDomainMutations();
+  const setAutoPublish = useSetShowAutoPublish();
 
   const devices = useMemo<DeviceOption[]>(() => {
     if (!draft.data || !show.data) return [];
@@ -72,10 +74,27 @@ function ShowSettingsRoute() {
     },
   };
 
+  const currentShow = show.data;
   return (
     <main className="h-full overflow-y-auto bg-background">
       <div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 pt-20 pb-12">
         <h1 className="text-2xl font-semibold">Settings</h1>
+        {currentShow ? (
+          <PublishingSection
+            autoPublish={currentShow.autoPublish}
+            saving={setAutoPublish.isPending}
+            error={
+              setAutoPublish.error instanceof GraphQLRequestError
+                ? setAutoPublish.error.message
+                : setAutoPublish.error
+                  ? "The publishing setting could not be saved."
+                  : undefined
+            }
+            onAutoPublishChange={(autoPublish) =>
+              setAutoPublish.mutate({ id: currentShow.id, autoPublish })
+            }
+          />
+        ) : null}
         {domains.isError ? (
           <p role="alert" className="text-sm text-destructive">
             Custom domains could not be loaded.
