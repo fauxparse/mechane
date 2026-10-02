@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Portable clipboard handoff prototype</title>
+    <style>
+      body {
+        font:
+          15px/1.5 system-ui,
+          sans-serif;
+        color: #17212b;
+        background: #f3f5f8;
+        max-width: 1080px;
+        margin: 32px auto;
+        padding: 0 20px;
+      }
+      h1 {
+        font-size: 28px;
+      }
+      h2 {
+        font-size: 19px;
+      }
+      section {
+        background: white;
+        border: 1px solid #dbe1e9;
+        border-radius: 8px;
+        padding: 18px;
+        margin: 16px 0;
+      }
+      button,
+      select {
+        font: inherit;
+        padding: 8px 12px;
+        margin: 4px;
+        border: 1px solid #b8c3d1;
+        border-radius: 5px;
+        background: white;
+        color: #17212b;
+      }
+      button:hover {
+        border-color: #245bbc;
+      }
+      button:focus-visible,
+      textarea:focus-visible {
+        outline: 3px solid #245bbc;
+      }
+      textarea {
+        box-sizing: border-box;
+        width: 100%;
+        min-height: 110px;
+        font: 13px/1.5 monospace;
+        padding: 10px;
+      }
+      pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        font: 12px/1.5 monospace;
+      }
+      small {
+        color: #526074;
+      }
+      .tabs button[aria-selected="true"] {
+        background: #245bbc;
+        color: white;
+      }
+      #status {
+        font-weight: 600;
+      }
+      dl {
+        display: grid;
+        grid-template-columns: 160px 1fr;
+        gap: 6px;
+      }
+      dd {
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Portable clipboard handoff prototype</h1>
+    <p>
+      Throwaway experiment. Can graph and typed/plain Source value JSON survive native and async
+      browser clipboard handoffs while cold preparation, cancellation and failures leave an existing
+      clipboard untouched?
+    </p>
+    <p>
+      <small
+        >No Show/API access, codecs, asset adoption, Cut authority or live writes. Envelope member
+        layouts below are illustrative, not the final strict schema. Open through HTTPS for async
+        APIs. Running this fixture changes the system clipboard; it never reads or restores your
+        prior clipboard automatically.</small
+      >
+    </p>
+    <section>
+      <h2>Current state</h2>
+      <p id="status" role="status"></p>
+      <dl id="state"></dl>
+      <details>
+        <summary>Prepared snapshot and decoded last handoff</summary>
+        <pre id="details"></pre>
+      </details>
+    </section>
+    <section>
+      <h2>Free play</h2>
+      <label
+        >Fixture
+        <select id="fixture">
+          <option value="graph">Show graph version 1</option>
+          <option value="typed">Typed Source value version 1</option>
+          <option value="plain">Plain value JSON</option>
+          <option value="quoted">JSON text, quoting and Unicode</option>
+          <option value="number">JSON number</option>
+          <option value="absence">Plain Typed Absence</option>
+        </select></label
+      >
+      <div>
+        <button id="prepare">Prepare selected snapshot</button
+        ><button id="cold">Cold preparation, 2 seconds</button>
+        <button id="fail">Fail preparation, 2 seconds</button
+        ><button id="cancel">Cancel / invalidate preparation</button>
+      </div>
+      <div>
+        <button id="write">Write prepared snapshot now</button
+        ><button id="custom">Write text plus optional custom format</button>
+        <button id="conflict">Write disagreeing text/custom representations</button
+        ><button id="sentinel">Write preservation sentinel</button>
+      </div>
+      <div>
+        <button id="read">Read text explicitly now</button
+        ><button id="readCustom">Read exposed representations explicitly now</button>
+        <button id="delayed">Read after 6 seconds</button
+        ><button id="delayedWrite">Write after 6 seconds</button>
+      </div>
+      <p>
+        <small
+          >For native Copy/Paste, focus the area below and press the system shortcuts. An unready
+          controlled Copy prevents the default and starts preparation without setting any data. Once
+          ready, invoke Copy again. Native Paste uses only that event's clipboardData; it never
+          calls the async read API. Text in the separate field below retains ordinary browser
+          editing behavior.</small
+        >
+      </p>
+      <textarea
+        id="native"
+        aria-label="Controlled native clipboard area"
+        placeholder="Focus here for native Copy and Paste. This area is not a Show edit target."
+      ></textarea>
+      <label
+        >Ordinary text field
+        <textarea id="ordinary" placeholder="Native text editing control"></textarea>
+      </label>
+    </section>
+    <section>
+      <h2>Guided walkthroughs</h2>
+      <div id="tabs" class="tabs" role="tablist"></div>
+      <p id="scenario"></p>
+      <div id="steps"></div>
+      <p>
+        <small
+          >Starting a walkthrough resets only fixture preparation/observations, never the OS
+          clipboard. Permission denial must be performed through browser controls or a recorded
+          browser permission override, not simulated in fixture code. Focus loss must be real
+          tab/window focus loss.</small
+        >
+      </p>
+    </section>
+    <section>
+      <h2>Evidence</h2>
+      <p>
+        Every row records the mechanism, focus, activation and exposed formats. A native Copy row
+        proves only that the trusted event accepted setData; confirm with a receiving Paste/read.
+        Async write resolution proves browser API handoff, not permanent ownership or rollback.
+      </p>
+      <button id="export">Export observations as JSON</button>
+      <pre id="log"></pre>
+    </section>
+    <script>
+      // Transport fixtures deliberately do not implement the future strict codecs.
+      const samples = {
+        graph: {
+          format: "mechane/show-graph",
+          version: 1,
+          source: { showId: "fixture-show", draftVersion: 7 },
+          nodes: [
+            {
+              id: "source-a",
+              kind: "source",
+              name: "Cue “go” 🎭\nCafé",
+              default: {
+                note: '"5" \\ newline\n東京',
+                absent: null,
+                ordered: [0, false, "", null],
+              },
+            },
+          ],
+          connections: [],
+          definitions: [],
+          assets: [],
+        },
+        typed: {
+          format: "mechane/source-value",
+          version: 1,
+          origin: { showId: "fixture-show", kind: "current" },
+          rootType: { kind: "array", itemType: { kind: "shape", shapeId: "shape-a" } },
+          root: { ref: "array-a" },
+          shapes: [
+            {
+              id: "shape-a",
+              name: "Entry",
+              fields: [
+                { id: "field-text", name: "text", type: "text", required: true },
+                { id: "field-absent", name: "nickname", type: "text", required: false },
+              ],
+            },
+          ],
+          records: [
+            { id: "array-a", kind: "array", items: [{ ref: "entry-a" }, { ref: "entry-a" }] },
+            {
+              id: "entry-a",
+              kind: "shape",
+              shapeId: "shape-a",
+              fields: { text: '"5" \\ 🎭 東京 Café\nsecond line', nickname: null },
+            },
+          ],
+        },
+        plain: [
+          { text: '"5" \\ 🎭 東京 Café\nsecond line', nickname: null },
+          { text: '"5" \\ 🎭 東京 Café\nsecond line', nickname: null },
+        ],
+        quoted: '5 "quotes" \\ 🎭 東京 Café\nsecond line',
+        number: 5,
+        absence: null,
+      };
+      const sentinel = "MECHANE CLIPBOARD PRESERVATION SENTINEL 🎭";
+      const customType = "web application/x-mechane-clipboard+json";
+      const canonical = (value) => {
+        if (Array.isArray(value)) return "[" + value.map(canonical).join(",") + "]";
+        if (value && typeof value === "object")
+          return (
+            "{" +
+            Object.keys(value)
+              .sort()
+              .map((key) => JSON.stringify(key) + ":" + canonical(value[key]))
+              .join(",") +
+            "}"
+          );
+        return JSON.stringify(value);
+      };
+      const compare = (text, expected) => {
+        try {
+          const decoded = JSON.parse(text);
+          return {
+            decoded,
+            logicalMatch: canonical(decoded) === canonical(expected),
+            exactText: text === JSON.stringify(expected),
+            bytes: new TextEncoder().encode(text).length,
+          };
+        } catch (error) {
+          return { parseError: error.message, text };
+        }
+      };
+      let generation = 0,
+        prepared = null,
+        phase = "idle",
+        pendingWrite = false,
+        status = "Select a fixture and prepare it.",
+        last = null,
+        observations = [],
+        asyncReads = 0;
+      const $ = (id) => document.getElementById(id);
+      const context = () => ({
+        at: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        secureContext: isSecureContext,
+        focused: document.hasFocus(),
+        visibility: document.visibilityState,
+        activation: {
+          active: navigator.userActivation?.isActive,
+          hasBeenActive: navigator.userActivation?.hasBeenActive,
+        },
+      });
+      function record(mechanism, result) {
+        const row = { ...context(), mechanism, ...result };
+        observations.push(row);
+        render();
+        return row;
+      }
+      function render() {
+        $("status").textContent = status;
+        const entries = {
+          preparation: phase,
+          selectedFixture: $("fixture").value,
+          preparedFixture: prepared?.name ?? "none",
+          requestGeneration: generation,
+          writeInFlight: pendingWrite,
+          explicitAsyncReads: asyncReads,
+          secureContext: isSecureContext,
+          focused: document.hasFocus(),
+          asyncTextRead: !!navigator.clipboard?.readText,
+          asyncTextWrite: !!navigator.clipboard?.writeText,
+          asyncMultiRead: !!navigator.clipboard?.read,
+          optionalCustomSupport:
+            typeof ClipboardItem !== "undefined" && typeof ClipboardItem.supports === "function"
+              ? ClipboardItem.supports(customType)
+              : "feature unavailable",
+          observations: observations.length,
+        };
+        $("state").replaceChildren(
+          ...Object.entries(entries).flatMap(([key, value]) => {
+            const dt = document.createElement("dt"),
+              dd = document.createElement("dd");
+            dt.textContent = key;
+            dd.textContent = String(value);
+            return [dt, dd];
+          }),
+        );
+        $("details").textContent = JSON.stringify({ prepared, last }, null, 2);
+        $("log").textContent = observations
+          .slice(-12)
+          .map((row) => JSON.stringify(row, null, 2))
+          .join("\n");
+      }
+      function prepare(delay = 0, fail = false) {
+        const request = ++generation,
+          name = $("fixture").value;
+        prepared = null;
+        phase = "preparing";
+        status = "Preparing. No clipboard write has been requested.";
+        record("preparation-start", { request, name, delay, fail });
+        const finish = () => {
+          if (request !== generation) {
+            record("preparation-late-result-discarded", { request });
+            return;
+          }
+          if (fail) {
+            phase = "failed";
+            status = "Preparation failed. Clipboard untouched; prepare again explicitly.";
+            record("preparation-failed", { request });
+            return;
+          }
+          prepared = { name, text: JSON.stringify(samples[name]), generation: request };
+          phase = "ready";
+          status = "Ready. Invoke Copy again or click Write prepared snapshot now.";
+          record("preparation-ready", { request, clipboardWriteRequested: false });
+        };
+        if (delay) setTimeout(finish, delay);
+        else finish();
+      }
+      function cancel() {
+        generation++;
+        prepared = null;
+        phase = "cancelled";
+        status = pendingWrite
+          ? "Preparation invalidated. A submitted browser write is not cancellable."
+          : "Preparation cancelled. Clipboard untouched.";
+        record("preparation-cancelled", {});
+      }
+      function acceptRepresentations(text, custom, mechanism, types, extra = {}) {
+        const expected = samples[$("fixture").value];
+        last = compare(text, expected);
+        if (custom !== undefined) {
+          const other = compare(custom, expected);
+          if (
+            last.parseError ||
+            other.parseError ||
+            canonical(last.decoded) !== canonical(other.decoded)
+          ) {
+            status =
+              "Rejected: exposed text and custom representations disagree or cannot be decoded.";
+            record(mechanism, {
+              ...extra,
+              types,
+              outcome: "conflicting-representations",
+              text,
+              custom,
+              ...last,
+            });
+            return;
+          }
+        }
+        status = last.logicalMatch
+          ? "Logical data matches the selected fixture."
+          : "Received data does not match the selected fixture. No Show mutation.";
+        record(mechanism, {
+          ...extra,
+          types,
+          outcome: last.parseError ? "not-json" : "decoded",
+          custom,
+          text,
+          ...last,
+        });
+      }
+      async function write(mode = "plain", textOverride) {
+        if (pendingWrite) {
+          status = "Another browser write is in flight. No racing write submitted.";
+          record("write-refused-in-flight", {});
+          return;
+        }
+        const snapshot = prepared;
+        if (textOverride === undefined && !snapshot) {
+          status = "Not ready. Prepare first; no clipboard write submitted.";
+          record("write-refused-unready", {});
+          return;
+        }
+        const text = textOverride ?? snapshot.text,
+          submission = context();
+        pendingWrite = true;
+        status = "Browser write submitted. Cancellation and rollback are not promised.";
+        render();
+        try {
+          if (mode === "plain") await navigator.clipboard.writeText(text);
+          else {
+            if (typeof ClipboardItem === "undefined" || !ClipboardItem.supports?.(customType)) {
+              status = "Optional custom format unavailable. Use explicit portable text Copy.";
+              record("async-custom-unavailable", { submission });
+              return;
+            }
+            const custom =
+              mode === "conflict"
+                ? JSON.stringify({ format: "mechane/source-value", version: 1, different: true })
+                : text;
+            await navigator.clipboard.write([
+              new ClipboardItem({
+                "text/plain": new Blob([text], { type: "text/plain" }),
+                [customType]: new Blob([custom], { type: "application/x-mechane-clipboard+json" }),
+              }),
+            ]);
+          }
+          status =
+            "Browser write resolved. Confirm at the receiving handoff; no permanent clipboard ownership claim.";
+          record("async-write-" + mode, {
+            outcome: "resolved",
+            submission,
+            fixture: snapshot?.name,
+            text,
+          });
+        } catch (error) {
+          status = "Browser write failed: " + error.name + ". No rollback or success claim.";
+          record("async-write-" + mode, {
+            outcome: "rejected",
+            submission,
+            error: { name: error.name, message: error.message },
+          });
+        } finally {
+          pendingWrite = false;
+          render();
+        }
+      }
+      async function readClipboard(multi = false) {
+        const submission = context();
+        asyncReads++;
+        render();
+        try {
+          if (!multi) {
+            const text = await navigator.clipboard.readText();
+            acceptRepresentations(text, undefined, "async-read-text", ["text/plain"], {
+              submission,
+            });
+            return;
+          }
+          const items = await navigator.clipboard.read();
+          if (items.length !== 1) {
+            status = "This fixture requires one clipboard item for comparison.";
+            record("async-read-representations", {
+              submission,
+              itemTypes: items.map((item) => item.types),
+              outcome: "unexpected-item-count",
+            });
+            return;
+          }
+          const item = items[0],
+            types = [...item.types];
+          const text = types.includes("text/plain")
+            ? await (await item.getType("text/plain")).text()
+            : "";
+          const custom = types.includes(customType)
+            ? await (await item.getType(customType)).text()
+            : undefined;
+          acceptRepresentations(text, custom, "async-read-representations", types, { submission });
+        } catch (error) {
+          status =
+            "Clipboard read failed: " +
+            error.name +
+            ". Use native Paste explicitly. No automatic reread.";
+          record(multi ? "async-read-representations" : "async-read-text", {
+            submission,
+            outcome: "rejected",
+            error: { name: error.name, message: error.message },
+          });
+        }
+      }
+      $("native").addEventListener("copy", (event) => {
+        event.preventDefault();
+        if (!prepared) {
+          record("native-copy-unready", { trusted: event.isTrusted, dataWritten: false });
+          prepare(2000);
+          return;
+        }
+        if (pendingWrite) {
+          status = "Write in flight. Native Copy refused without a racing write.";
+          record("native-copy-refused-in-flight", { trusted: event.isTrusted });
+          return;
+        }
+        try {
+          event.clipboardData.setData("text/plain", prepared.text);
+          status = "Native Copy event accepted text. Confirm through a receiving handoff.";
+          record("native-copy", {
+            trusted: event.isTrusted,
+            types: [...event.clipboardData.types],
+            text: prepared.text,
+            fixture: prepared.name,
+            outcome: "event-data-set",
+          });
+        } catch (error) {
+          status = "Native Copy failed.";
+          record("native-copy", { error: { name: error.name, message: error.message } });
+        }
+      });
+      $("native").addEventListener("paste", (event) => {
+        event.preventDefault();
+        const types = [...event.clipboardData.types],
+          text = event.clipboardData.getData("text/plain");
+        // Optional custom formats are compared only if this same event actually exposes them.
+        const custom = types.includes(customType)
+          ? event.clipboardData.getData(customType)
+          : undefined;
+        acceptRepresentations(text, custom, "native-paste", types, {
+          trusted: event.isTrusted,
+          asyncReads,
+        });
+      });
+      $("fixture").onchange = cancel;
+      $("prepare").onclick = () => prepare();
+      $("cold").onclick = () => prepare(2000);
+      $("fail").onclick = () => prepare(2000, true);
+      $("cancel").onclick = cancel;
+      $("write").onclick = () => write();
+      $("custom").onclick = () => write("custom");
+      $("conflict").onclick = () => write("conflict");
+      $("sentinel").onclick = () => write("plain", sentinel);
+      $("read").onclick = () => readClipboard();
+      $("readCustom").onclick = () => readClipboard(true);
+      $("delayed").onclick = () => {
+        record("delayed-read-scheduled", { delayMs: 6000 });
+        setTimeout(() => readClipboard(), 6000);
+      };
+      $("delayedWrite").onclick = () => {
+        record("delayed-write-scheduled", { delayMs: 6000 });
+        setTimeout(() => write(), 6000);
+      };
+      window.addEventListener("focus", () => record("focus-return-no-write", {}));
+      window.addEventListener("blur", () => record("focus-lost", {}));
+      const scenarios = [
+        [
+          "Portable round trip",
+          "Choose a fixture, prepare, copy using either mechanism, then paste using the other. Repeat in another tab or browser with the same selected fixture.",
+          [
+            ["Prepare", () => prepare()],
+            ["Async write", () => write()],
+            ["Explicit read", () => readClipboard()],
+          ],
+        ],
+        [
+          "Cold and cancelled",
+          "Write a sentinel, start cold preparation, and read before/after readiness. The sentinel must remain until a fresh explicit write. Repeat with failure and cancellation. Deliberate failure/delay is fixture logic, not a server capture test.",
+          [
+            ["Write sentinel", () => write("plain", sentinel)],
+            ["Cold prepare", () => prepare(2000)],
+            ["Read sentinel", () => readClipboard()],
+            ["Fresh write", () => write()],
+            ["Read snapshot", () => readClipboard()],
+          ],
+        ],
+        [
+          "Permission and focus",
+          "Deny clipboard read in browser controls, then use explicit read and native Paste. For focus loss, schedule a delayed read/write and switch tabs. Observe real errors and activation, not a simulated rejection.",
+          [
+            ["Prepare", () => prepare()],
+            ["Write", () => write()],
+            ["Delayed read", () => $("delayed").click()],
+            ["Delayed write", () => $("delayedWrite").click()],
+          ],
+        ],
+        [
+          "Optional representations",
+          "Write both formats, inspect what async read exposes, then inspect native Paste separately. A conflicting pair must reject if both are exposed by that one handoff. Text alone stays portable.",
+          [
+            ["Prepare", () => prepare()],
+            ["Write custom plus text", () => write("custom")],
+            ["Read exposed formats", () => readClipboard(true)],
+            ["Write conflict", () => write("conflict")],
+            ["Read conflicting pair", () => readClipboard(true)],
+          ],
+        ],
+      ];
+      function startScenario(index) {
+        cancel();
+        last = null;
+        const [name, description, steps] = scenarios[index];
+        $("scenario").textContent = description;
+        [...$("tabs").children].forEach((tab, i) =>
+          tab.setAttribute("aria-selected", String(i === index)),
+        );
+        $("steps").replaceChildren(
+          ...steps.map(([label, action], i) => {
+            const button = document.createElement("button");
+            button.textContent = i + 1 + ". " + label;
+            button.onclick = action;
+            return button;
+          }),
+        );
+        status = "Walkthrough: " + name + ". OS clipboard unchanged by starting it.";
+        render();
+      }
+      scenarios.forEach(([name], index) => {
+        const button = document.createElement("button");
+        button.role = "tab";
+        button.textContent = name;
+        button.onclick = () => startScenario(index);
+        $("tabs").append(button);
+      });
+      $("export").onclick = () => {
+        const blob = new Blob(
+          [JSON.stringify({ prototype: "clipboard-handoff", customType, observations }, null, 2)],
+          { type: "application/json" },
+        );
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "clipboard-handoff-observations.json";
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      };
+      window.clipboardPrototype = {
+        samples,
+        observations,
+        get state() {
+          return { phase, prepared, last, asyncReads, pendingWrite, generation };
+        },
+      };
+      record("fixture-loaded", { customType });
+      startScenario(0);
+    </script>
+  </body>
+</html>
