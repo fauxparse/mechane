@@ -1,10 +1,10 @@
 # Portable clipboard handoff prototype evidence
 
-Status: experiment complete for the recorded Chrome probes; developer verdict and acceptance of remaining gaps pending. This is a throwaway transport experiment, not production clipboard implementation or a completed browser certification matrix.
+Status: the developer accepted bounded evidence with no policy change and explicitly accepted the verification gaps below. This is a throwaway transport experiment, not production clipboard implementation or a completed browser certification matrix.
 
 ## Scope and running the fixture
 
-The developer selected macOS 26.6.2 as the representative OS and allowed explicitly accepted gaps. That permission to report gaps is not yet acceptance of the particular gaps below.
+The developer selected macOS 26.6.2 as the representative OS, then reviewed the fixture results and selected "Accept bounded evidence". The listed missing cells are accepted limits for this planning decision, not runtime passes or a reduced product support policy.
 
 - Fixture: `apps/studio/public/clipboard-handoff-prototype.html`.
 - With the existing development stack running, open `https://studio.mechane.dev/clipboard-handoff-prototype.html`. If the stack is stopped, use the existing `overmind start -f Procfile.dev` workflow, not a separate fixture server.
@@ -71,7 +71,7 @@ All rows below refer to Chrome for Testing 154.0.8037.92 on the exact OS above u
 
 The optional custom-format feature being wholly unsupported was not exercised in a browser without that feature. Native non-exposure was exercised, and text-only transport was exercised independently. This distinction remains a missing cell, not a blanket custom-format fallback certification.
 
-## Proposed adapter conclusions for developer review
+## Agreed adapter conclusions
 
 1. Keep portable JSON in `text/plain` mandatory. Optional web custom formats are supplementary.
 2. Native Paste consumes only its event handoff. Compare recognized representations only when that one handoff actually exposes both. A text-only native handoff cannot detect a hidden conflicting custom representation, and must not trigger an async read to look for one.
@@ -80,8 +80,8 @@ The optional custom-format feature being wholly unsupported was not exercised in
 5. An async write resolution proves that browser's API handoff completed. A native `setData` row alone is not a confirmed receiving round trip. Neither proves continued global clipboard ownership or rollback rights.
 6. Preserve the fresh-gesture policy even when granted Chromium permissions happen to permit a delayed write. Browser permissiveness is not the product interaction contract.
 
-No change to graph/value semantics, live safety, Cut authority or compatibility policy is proposed. Final strict codecs, byte/record boundaries, target reconciliation and production application are deliberately not proved by this fixture.
+No change to graph/value semantics, live safety, Cut authority or compatibility policy was needed. Final strict codecs, byte/record boundaries, target reconciliation and production application are deliberately not proved by this fixture.
 
-## Acceptance still required
+## Accepted verification limits
 
-The developer must review the concrete fixture and explicitly accept or reject the retail/current-previous browser gaps, absent cross-browser-family proof, headless automation and native-command limitations, untested permission prompts, and untested wholly missing custom-format support. Until that exchange, the ticket remains open and this document is provisional evidence rather than its resolution.
+The developer explicitly accepted the retail/current-previous browser gaps, absent cross-browser-family proof, headless automation and native-command limitations, untested permission prompts, and untested wholly missing custom-format support. The decision can close without changing the fixed policy or certifying those missing cells. The resolution comment on the decision ticket is the canonical verdict; this document holds the linked experiment evidence.
