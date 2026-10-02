@@ -218,7 +218,8 @@ export function usePlayerNavigation(
       }
       setNavigation(settled(store, nextState));
       const eventId = retryEventId.current ?? crypto.randomUUID();
-      if (execution.showActions.length > 0) retryEventId.current = eventId;
+      const reachesShow = Object.keys(execution.evidence).length > 0;
+      if (reachesShow) retryEventId.current = eventId;
       // Built field by field rather than spread from the observation: the
       // observation carries `canvasId`, which `PlayerEventInput` does not
       // declare, and an undeclared input field makes the server reject the
@@ -232,16 +233,9 @@ export function usePlayerNavigation(
         ...(observation.eventKind === "keypress"
           ? { eventKind: "keypress" as const, params: observation.params }
           : { eventKind: "tap" as const }),
-        ...(execution.showActions.length > 0
-          ? {
-              evidence: {
-                sourceValues: nextState.flowSourceValues,
-                cueParameters: parameters.values,
-              },
-            }
-          : {}),
+        ...(reachesShow ? { evidence: execution.evidence } : {}),
       });
-      if (submission && execution.showActions.length > 0) {
+      if (submission && reachesShow) {
         void submission
           .then((result) => {
             if (result.kind !== "failed" && result.kind !== "rejected") {

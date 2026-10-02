@@ -14,6 +14,9 @@ import {
   planUpdate,
   resolveUpdateHolderScope,
 } from "@mechane/domain/update-plan";
+
+import type { PlayerActionEvidence } from "./api";
+
 export { sceneVariableValues } from "@mechane/domain/scene-variable-values";
 
 const STORAGE_PREFIX = "mechane.player:";
@@ -98,7 +101,8 @@ export type PlayerCueExecution =
   | {
       readonly kind: "applied";
       readonly state: PlayerRunState;
-      readonly showActions: readonly Extract<Action, { kind: "update" }>[];
+      /** One entry per Show Action, keyed by Action id, in declared order. */
+      readonly evidence: Readonly<Record<string, PlayerActionEvidence>>;
     }
   | { readonly kind: "failed"; readonly actionId: string; readonly reason: string };
 
@@ -112,6 +116,10 @@ export type PlayerCueExecution =
  * server however Flow-local the Source naming it is. `showState` is what
  * makes the holder reachable; without it such an Action would resolve against
  * Instance scope alone and be applied locally, where nobody else can see it.
+ *
+ * A Show Action's evidence is the staged Instance state at the point it runs
+ * (#628), so the server resolves its holder through the value an earlier
+ * Action wrote, and a later Action's write cannot change what it read.
  */
 export function applyPlayerCue(
   state: PlayerRunState,
@@ -122,7 +130,7 @@ export function applyPlayerCue(
   showState: RunState = { sourceValues: {}, structuredValues: {} },
 ): PlayerCueExecution {
   let next = state;
-  const showActions: Extract<Action, { kind: "update" }>[] = [];
+  const evidence: Record<string, PlayerActionEvidence> = {};
   for (const action of actions) {
     if (action.kind === "navigate") {
       next = { ...next, navigation: { kind: "scene", sceneId: action.targetSceneId } };
@@ -134,7 +142,10 @@ export function applyPlayerCue(
     };
     const composed = composeInstanceView(showState, instanceState);
     if (resolveUpdateHolderScope(graph, composed, action) === "show") {
-      showActions.push(action);
+      evidence[action.id] = {
+        sourceValues: next.flowSourceValues,
+        cueParameters: cueParameterValues,
+      };
       continue;
     }
     // Reads may reach Show scope; only the writes are confined to the
@@ -150,7 +161,7 @@ export function applyPlayerCue(
       flowStructuredValues: updated.structuredValues,
     };
   }
-  return { kind: "applied", state: next, showActions };
+  return { kind: "applied", state: next, evidence };
 }
 
 export type PlayerStoreStatus = {
