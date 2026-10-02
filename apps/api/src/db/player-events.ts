@@ -694,7 +694,10 @@ export async function dispatchPlayerEvent(
               input,
               resolved.values,
             );
-            if (update.changed) invalidationScope = { showId: device.showId, deviceId: device.id };
+            if (update.changed) {
+              await enqueuePlayerInvalidations(tx, device.showId);
+              invalidationScope = { showId: device.showId, deviceId: device.id };
+            }
             return update.result;
           }
           if (source?.kind !== "flow") {
@@ -844,7 +847,10 @@ export async function dispatchPlayerEvent(
             input,
             resolved.values,
           );
-          if (update.changed) invalidationScope = { showId: device.showId, deviceId: device.id };
+          if (update.changed) {
+            await enqueuePlayerInvalidations(tx, device.showId);
+            invalidationScope = { showId: device.showId, deviceId: device.id };
+          }
           return update.result;
         }
         const target = graph.nodes.find((node) => node.id === action.targetSceneId);
