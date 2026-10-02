@@ -29,7 +29,7 @@ import {
   useToastManager,
 } from "@mechane/design-system";
 import type { Position, ShowGraph } from "@mechane/domain/graph";
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 import type { ReactNode, RefObject } from "react";
 
 import { MockEditorChrome } from "../../components/EditorLayout/MockEditorChrome";
@@ -65,8 +65,8 @@ const VARIANT_NAMES: Record<Variant, string> = {
 const MOD = typeof navigator !== "undefined" && /Mac/.test(navigator.platform) ? "⌘" : "Ctrl+";
 const CASCADE = 24;
 const SESSION = typeof crypto !== "undefined" ? crypto.randomUUID() : "session";
-const INTENTS_KEY = "prototype-875:cut-intents";
-const HEARTBEAT_PREFIX = "prototype-875:session:";
+const INTENTS_KEY = "prototype-875:cut-intents:v1";
+const HEARTBEAT_PREFIX = "prototype-875:session:v1:";
 
 type Op = "copy" | "cut";
 type Outcome = "committed" | "unpublished" | "rejected" | "unknown";
@@ -269,6 +269,28 @@ interface Model {
   flowAt(screen: Position): string | null;
   revokeOwnCut(message: string | null): void;
   onUserEdit(next: ShowGraph): void;
+}
+
+function describePlan(verb: string, snapshot: GraphSnapshot, plan: PastePlan) {
+  const where =
+    plan.containment === "explicit-flow" || plan.containment === "original-parent"
+      ? ` into “${plan.containerName}”`
+      : plan.containment === "whole-flow"
+        ? ""
+        : " at Show level";
+  const parts = [
+    plan.reconnected ? `Reconnected ${plan.reconnected} to the original targets.` : "",
+    plan.disconnected.length
+      ? `${plan.disconnected.length} input left disconnected: ${plan.disconnected
+          .map((input) => `${input.consumer} (was ${input.producer})`)
+          .join(", ")}.`
+      : "",
+  ];
+  return {
+    title: `${verb} ${snapshotSummary(snapshot)}${where}`,
+    detail: parts.filter(Boolean).join(" "),
+    warning: plan.disconnected.length > 0,
+  };
 }
 
 function useClipboardModel({
@@ -657,28 +679,6 @@ function useClipboardModel({
         return _exhaustive;
       }
     }
-  };
-
-  const describePlan = (verb: string, snapshot: GraphSnapshot, plan: PastePlan) => {
-    const where =
-      plan.containment === "explicit-flow" || plan.containment === "original-parent"
-        ? ` into “${plan.containerName}”`
-        : plan.containment === "whole-flow"
-          ? ""
-          : " at Show level";
-    const parts = [
-      plan.reconnected ? `Reconnected ${plan.reconnected} to the original targets.` : "",
-      plan.disconnected.length
-        ? `${plan.disconnected.length} input left disconnected: ${plan.disconnected
-            .map((input) => `${input.consumer} (was ${input.producer})`)
-            .join(", ")}.`
-        : "",
-    ];
-    return {
-      title: `${verb} ${snapshotSummary(snapshot)}${where}`,
-      detail: parts.filter(Boolean).join(" "),
-      warning: plan.disconnected.length > 0,
-    };
   };
 
   const pasteCopy = (
@@ -1124,21 +1124,23 @@ function useClipboardModel({
     flowAt,
     set,
   });
-  latest.current = {
-    requestCopy,
-    requestPaste,
-    duplicate,
-    cancelActivity,
-    revokeOwnCut,
-    placeGhost,
-    bumpRevision,
-    invalidatePreparation,
-    prepare,
-    applyEdits,
-    notify,
-    flowAt,
-    set,
-  };
+  useLayoutEffect(() => {
+    latest.current = {
+      requestCopy,
+      requestPaste,
+      duplicate,
+      cancelActivity,
+      revokeOwnCut,
+      placeGhost,
+      bumpRevision,
+      invalidatePreparation,
+      prepare,
+      applyEdits,
+      notify,
+      flowAt,
+      set,
+    };
+  });
 
   // Browser clipboard events and the Duplicate/Escape keys.
   useEffect(() => {
@@ -1981,16 +1983,14 @@ export function GraphClipboardPrototype() {
       if (focusContext().inTextInput) return;
       event.preventDefault();
       const delta = event.key === "ArrowRight" ? 1 : -1;
-      setVariant((current) => {
-        const next =
-          VARIANTS[(VARIANTS.indexOf(current) + delta + VARIANTS.length) % VARIANTS.length] ?? "A";
-        setParam("variant", next);
-        return next;
-      });
+      const next =
+        VARIANTS[(VARIANTS.indexOf(variant) + delta + VARIANTS.length) % VARIANTS.length] ?? "A";
+      setParam("variant", next);
+      setVariant(next);
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [variant]);
 
   return (
     <>

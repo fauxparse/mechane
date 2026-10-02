@@ -378,14 +378,14 @@ export function planPaste({
   let reconnected = 0;
   const disconnected: DisconnectedInput[] = [];
   const repairs: RequiredRepair[] = [];
+  const copiedName = new Map(snapshot.nodes.map((node) => [node.id, node.name]));
   for (const edge of snapshot.boundary) {
     const copiedSource = idMap.get(edge.sourceId);
     const copiedTarget = idMap.get(edge.targetId);
     if (edge.kind === "navigate" || edge.kind === "update") {
       // A copied Scene's own Action pointing outside the copied content.
       if (!copiedSource) continue;
-      const owner =
-        snapshot.nodes.find((node) => node.id === edge.sourceId)?.name ?? "A copied Scene";
+      const owner = copiedName.get(edge.sourceId) ?? "A copied Scene";
       const original = nodesById.get(edge.targetId);
       if (!sameShow || !original) {
         repairs.push({
@@ -417,7 +417,7 @@ export function planPaste({
       reconnected += 1;
     } else {
       disconnected.push({
-        consumer: snapshot.nodes.find((node) => node.id === edge.targetId)?.name ?? "A copied node",
+        consumer: copiedName.get(edge.targetId) ?? "A copied node",
         producer: sameShow ? "an unavailable producer" : `a ${snapshot.source.showName} node`,
       });
     }
@@ -558,17 +558,19 @@ export function removalConsequences(
       });
     }
   }
-  const retiredDevices = graph.nodes
-    .filter((node) => closure.has(node.id) && node.kind === "device" && node.pairingCode)
-    .map((node) => node.name);
+  const retiredDevices = graph.nodes.flatMap((node) =>
+    closure.has(node.id) && node.kind === "device" && node.pairingCode ? [node.name] : [],
+  );
   return { blockers, lostWiring, retiredDevices };
 }
 
 export function removalEdits(graph: ShowGraph, nodeIds: readonly string[]) {
   const closure = new Set(nodeIds);
-  const edgeEdits = graph.edges
-    .filter((edge) => closure.has(edge.sourceId) || closure.has(edge.targetId))
-    .map((edge) => ({ type: "graph.removeEdge" as const, edgeId: edge.id }));
+  const edgeEdits = graph.edges.flatMap((edge) =>
+    closure.has(edge.sourceId) || closure.has(edge.targetId)
+      ? [{ type: "graph.removeEdge" as const, edgeId: edge.id }]
+      : [],
+  );
   const children = graph.nodes.filter((node) => closure.has(node.id) && node.parentId);
   const parents = graph.nodes.filter((node) => closure.has(node.id) && !node.parentId);
   const nodeEdits = [...children, ...parents].map((node) => ({
