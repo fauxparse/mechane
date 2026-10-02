@@ -66,6 +66,7 @@ export const GetPlayerSessionQuery = graphql(
           grant
           expiresAt
         }
+        sessionKey
         run {
           id
           showId
@@ -194,6 +195,33 @@ export const GetPlayerSessionQuery = graphql(
   `,
   [ShowGraphFields, PlayerFlowSceneFields, CanvasElementFields],
 );
+
+/**
+ * The Run values alone (#881). An invalidation changes these far more often
+ * than anything else in the session, which is all the Player reads again
+ * while `sessionKey` still matches the one its session came with.
+ */
+export const GetPlayerRunStateQuery = graphql(`
+  query GetPlayerRunState {
+    playerRunState {
+      sessionKey
+      stateSequence
+      sourceValues
+      structuredValues
+    }
+  }
+`);
+
+/** A fresh realtime grant alone, for a subscriber whose session grant has run out. */
+export const GetPlayerRealtimeGrantQuery = graphql(`
+  query GetPlayerRealtimeGrant {
+    playerRealtimeGrant {
+      channel
+      grant
+      expiresAt
+    }
+  }
+`);
 
 export const SubmitPlayerEventMutation = graphql(`
   mutation SubmitPlayerEvent($input: PlayerEventInput!) {

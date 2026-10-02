@@ -6,7 +6,7 @@
 // an error, so a Player can tell a transport failure from a semantic one.
 import { GraphQLError } from "graphql";
 
-import { readPlayerSession } from "../player";
+import { readPlayerRealtimeGrant, readPlayerRunState, readPlayerSession } from "../player";
 import {
   dispatchPlayerEvent,
   PlayerEventInputError,
@@ -95,6 +95,11 @@ export const typeDefs = /* GraphQL */ `
   type PlayerSession {
     device: PlayerDevice!
     realtime: RealtimeGrant!
+    """
+    Opaque. Changes whenever anything in this session other than the Run's
+    values changes, so a Player can tell whether \`playerRunState\` is enough.
+    """
+    sessionKey: String!
     run: Run
     graph: ShowGraph!
     flow: PlayerFlowBundle
@@ -102,6 +107,15 @@ export const typeDefs = /* GraphQL */ `
     canvas: Canvas
     blocks: [Block!]!
     imageAssets: [ImageAsset!]!
+  }
+
+  "The part of a Player session that changes when Show state does."
+  type PlayerRunState {
+    "Equal to the session's \`sessionKey\` while the rest of the session still holds."
+    sessionKey: String!
+    stateSequence: Int!
+    sourceValues: JSON!
+    structuredValues: JSON!
   }
 
   type Query {
@@ -112,6 +126,17 @@ export const typeDefs = /* GraphQL */ `
     Show with no Run asks the Show's Studio windows to start it.
     """
     playerSession(connecting: Boolean): PlayerSession
+    """
+    The Run values for the Device the pairing bearer credential names, read
+    without the rest of its session. Null when the credential is invalid or
+    no Run is active; a Player reads its whole session to find out which.
+    """
+    playerRunState: PlayerRunState
+    """
+    A fresh realtime grant for the Device the pairing bearer credential
+    names, without the rest of its session. Null when the credential is invalid.
+    """
+    playerRealtimeGrant: RealtimeGrant
   }
 
   type Mutation {
@@ -166,6 +191,10 @@ export const resolvers: Resolvers = {
         blocks: session.blocks.map(serializeBlock),
       };
     },
+    playerRunState: async (_parent, _args, context) =>
+      context.playerPairingCode ? readPlayerRunState(context.playerPairingCode) : null,
+    playerRealtimeGrant: async (_parent, _args, context) =>
+      context.playerPairingCode ? readPlayerRealtimeGrant(context.playerPairingCode) : null,
   },
   Mutation: {
     submitPlayerEvent: async (
