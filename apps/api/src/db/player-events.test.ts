@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest";
 
 import { db } from "./client";
 import { readCanvas, writeCanvas } from "./canvas";
-import { dispatchPlayerEvent } from "./player-events";
+import { createDevice } from "../custom-domains/test-fixtures";
+import { dispatchPlayerEvent, type PlayerEventInput } from "./player-events";
 import { listRunErrors, RunConfigurationError } from "./run-errors";
 import { endRun, readActiveRun, readRunDeviceState, startRun } from "./runs";
 import { applyShowEdits, publishShowGraph, readShowGraph, writeShowGraph } from "./show-graph";
@@ -14,6 +15,7 @@ import {
   playerInvalidationOutbox,
   runDeviceStates,
   runStructuredValues,
+  shows,
 } from "./schema";
 import { setupPostgresTest } from "./test-helpers";
 import { seedShowData } from "./seeds/utils/seed-utils";
@@ -96,6 +98,190 @@ function event(eventId: string, sceneId: string, destinationId: string) {
   } as const;
 }
 
+interface CounterFixture {
+  sourceId: string;
+  tap: Omit<PlayerEventInput, "eventId">;
+}
+
+/** Publishes a Counter Source that a tap on the Flow's Red Scene adjusts by `delta`. */
+async function publishFlowCounter(delta: number): Promise<CounterFixture> {
+  const draft = await readShowGraph(showId, "draft");
+  const redCanvas = await readCanvas(showId, "draft", { sceneNodeId: "scene_red" });
+  if (!redCanvas) throw new Error("Red Scene Canvas is missing.");
+  const sourceId = "source_counter";
+  const cueId = "cue_counter";
+  const actionId = "action_counter";
+  await writeShowGraph(showId, "draft", {
+    ...draft,
+    nodes: [
+      ...draft.nodes,
+      {
+        id: sourceId,
+        kind: "source",
+        name: "Counter",
+        position: { x: 0, y: 0 },
+        parentId: null,
+        type: "number",
+      },
+    ],
+    cues: [
+      ...(draft.cues ?? []),
+      {
+        id: cueId,
+        name: "Increment",
+        owner: { kind: "scene", sceneId: "scene_red" },
+        actionIds: [actionId],
+      },
+    ],
+    actions: [
+      ...(draft.actions ?? []),
+      {
+        id: actionId,
+        cueId,
+        kind: "update",
+        target: { sourceId, fieldPath: [] },
+        operation: {
+          kind: "adjust",
+          operand: { kind: "literal", value: { kind: "number", value: delta } },
+        },
+      },
+    ],
+    eventBindings: [
+      ...(draft.eventBindings ?? []),
+      {
+        id: "binding_counter",
+        canvasId: redCanvas.id,
+        elementId: "scene_red_root",
+        eventKind: "tap",
+        cueId,
+        position: 5,
+      },
+    ],
+  });
+  const published = await publishShowGraph(showId);
+  return {
+    sourceId,
+    tap: {
+      publishedGraphVersion: published.version,
+      sceneId: "scene_red",
+      elementId: "scene_red_root",
+      eventKind: "tap",
+    },
+  };
+}
+
+/** Publishes a Counter Source that a tap on a top-level Scene adjusts by `delta`. */
+async function publishDirectCounter(delta: number): Promise<CounterFixture> {
+  const draft = await readShowGraph(showId, "draft");
+  const scene = draft.nodes.find((node) => node.id === "scene_red");
+  const device = draft.nodes.find((node) => node.kind === "device");
+  const canvas = await readCanvas(showId, "draft", { sceneNodeId: "scene_red" });
+  if (scene?.kind !== "scene" || device?.kind !== "device" || !canvas) {
+    throw new Error("Direct Device fixture is incomplete.");
+  }
+
+  const sourceId = "source_direct_counter";
+  const cueId = "cue_direct_counter";
+  const actionId = "action_direct_counter";
+  await writeShowGraph(showId, "draft", {
+    ...draft,
+    nodes: [
+      { ...scene, parentId: null, name: "Direct Counter" },
+      device,
+      {
+        id: sourceId,
+        kind: "source",
+        name: "Counter",
+        position: { x: 0, y: 0 },
+        parentId: null,
+        type: "number",
+      },
+    ],
+    edges: [
+      {
+        id: "edge_direct_counter_device",
+        kind: "device",
+        sourceId: scene.id,
+        targetId: device.id,
+        sourcePath: [],
+        targetPath: [],
+      },
+    ],
+    cues: [
+      {
+        id: cueId,
+        name: "Increment",
+        owner: { kind: "scene", sceneId: scene.id },
+        actionIds: [actionId],
+      },
+    ],
+    actions: [
+      {
+        id: actionId,
+        cueId,
+        kind: "update",
+        target: { sourceId, fieldPath: [] },
+        operation: {
+          kind: "adjust",
+          operand: { kind: "literal", value: { kind: "number", value: delta } },
+        },
+      },
+    ],
+    eventBindings: [],
+  });
+  const directCanvas = await writeCanvas(showId, "draft", { sceneNodeId: scene.id }, canvas);
+  const graphWithCanvas = await readShowGraph(showId, "draft");
+  await applyShowEdits(
+    showId,
+    [
+      {
+        type: "graph.addEventBinding",
+        binding: {
+          id: "binding_direct_counter",
+          canvasId: directCanvas.id,
+          elementId: directCanvas.root.id,
+          eventKind: "tap",
+          cueId,
+          position: 0,
+        },
+      },
+    ],
+    [],
+    graphWithCanvas.version,
+  );
+  const published = await publishShowGraph(showId);
+  return {
+    sourceId,
+    tap: {
+      publishedGraphVersion: published.version,
+      sceneId: scene.id,
+      elementId: directCanvas.root.id,
+      eventKind: "tap",
+    },
+  };
+}
+
+async function showStateSequence(): Promise<number> {
+  const [show] = await db
+    .select({ stateSequence: shows.stateSequence })
+    .from(shows)
+    .where(eq(shows.id, showId));
+  if (!show) throw new Error("Show is missing.");
+  return show.stateSequence;
+}
+
+async function showOutbox() {
+  return db
+    .select()
+    .from(playerInvalidationOutbox)
+    .where(eq(playerInvalidationOutbox.showId, showId));
+}
+
+const sharedUpdateBranches = [
+  ["a Flow", publishFlowCounter],
+  ["a top-level Scene", publishDirectCounter],
+] as const;
+
 describe("dispatchPlayerEvent", () => {
   it("applies all six Navigation Proof transitions", async () => {
     await createShow(true);
@@ -129,69 +315,13 @@ describe("dispatchPlayerEvent", () => {
   });
   it("dispatches Adjust Update Actions and updates the Run value", async () => {
     await createShow();
-    const draft = await readShowGraph(showId, "draft");
-    const redCanvas = await readCanvas(showId, "draft", { sceneNodeId: "scene_red" });
-    if (!redCanvas) throw new Error("Red Scene Canvas is missing.");
-    const sourceId = "source_counter";
-    const cueId = "cue_counter";
-    const actionId = "action_counter";
-    await writeShowGraph(showId, "draft", {
-      ...draft,
-      nodes: [
-        ...draft.nodes,
-        {
-          id: sourceId,
-          kind: "source",
-          name: "Counter",
-          position: { x: 0, y: 0 },
-          parentId: null,
-          type: "number",
-        },
-      ],
-      cues: [
-        ...(draft.cues ?? []),
-        {
-          id: cueId,
-          name: "Increment",
-          owner: { kind: "scene", sceneId: "scene_red" },
-          actionIds: [actionId],
-        },
-      ],
-      actions: [
-        ...(draft.actions ?? []),
-        {
-          id: actionId,
-          cueId,
-          kind: "update",
-          target: { sourceId, fieldPath: [] },
-          operation: {
-            kind: "adjust",
-            operand: { kind: "literal", value: { kind: "number", value: 1 } },
-          },
-        },
-      ],
-      eventBindings: [
-        ...(draft.eventBindings ?? []),
-        {
-          id: "binding_counter",
-          canvasId: redCanvas.id,
-          elementId: "scene_red_root",
-          eventKind: "tap",
-          cueId,
-          position: 5,
-        },
-      ],
-    });
-    const published = await publishShowGraph(showId);
+    const { sourceId, tap } = await publishFlowCounter(1);
     const run = await startRun(showId);
     const device = await proofDevice();
 
     const result = await dispatchPlayerEvent(device.pairingCode, {
       eventId: crypto.randomUUID(),
-      publishedGraphVersion: published.version,
-      sceneId: "scene_red",
-      elementId: "scene_red_root",
-      eventKind: "tap",
+      ...tap,
     });
 
     expect(result).toMatchObject({ kind: "accepted" });
@@ -200,98 +330,63 @@ describe("dispatchPlayerEvent", () => {
   });
   it("dispatches an Update Action from a top-level Scene on a shared Device", async () => {
     await createShow();
-    const draft = await readShowGraph(showId, "draft");
-    const scene = draft.nodes.find((node) => node.id === "scene_red");
-    const device = draft.nodes.find((node) => node.kind === "device");
-    const canvas = await readCanvas(showId, "draft", { sceneNodeId: "scene_red" });
-    if (scene?.kind !== "scene" || device?.kind !== "device" || !canvas) {
-      throw new Error("Direct Device fixture is incomplete.");
-    }
-
-    const sourceId = "source_direct_counter";
-    const cueId = "cue_direct_counter";
-    const actionId = "action_direct_counter";
-    await writeShowGraph(showId, "draft", {
-      ...draft,
-      nodes: [
-        { ...scene, parentId: null, name: "Direct Counter" },
-        device,
-        {
-          id: sourceId,
-          kind: "source",
-          name: "Counter",
-          position: { x: 0, y: 0 },
-          parentId: null,
-          type: "number",
-        },
-      ],
-      edges: [
-        {
-          id: "edge_direct_counter_device",
-          kind: "device",
-          sourceId: scene.id,
-          targetId: device.id,
-          sourcePath: [],
-          targetPath: [],
-        },
-      ],
-      cues: [
-        {
-          id: cueId,
-          name: "Increment",
-          owner: { kind: "scene", sceneId: scene.id },
-          actionIds: [actionId],
-        },
-      ],
-      actions: [
-        {
-          id: actionId,
-          cueId,
-          kind: "update",
-          target: { sourceId, fieldPath: [] },
-          operation: {
-            kind: "adjust",
-            operand: { kind: "literal", value: { kind: "number", value: 1 } },
-          },
-        },
-      ],
-      eventBindings: [],
-    });
-    const directCanvas = await writeCanvas(showId, "draft", { sceneNodeId: scene.id }, canvas);
-    const graphWithCanvas = await readShowGraph(showId, "draft");
-    await applyShowEdits(
-      showId,
-      [
-        {
-          type: "graph.addEventBinding",
-          binding: {
-            id: "binding_direct_counter",
-            canvasId: directCanvas.id,
-            elementId: directCanvas.root.id,
-            eventKind: "tap",
-            cueId,
-            position: 0,
-          },
-        },
-      ],
-      [],
-      graphWithCanvas.version,
-    );
-    const published = await publishShowGraph(showId);
+    const { sourceId, tap } = await publishDirectCounter(1);
     await startRun(showId);
     const pairedDevice = await proofDevice();
 
     const result = await dispatchPlayerEvent(pairedDevice.pairingCode, {
       eventId: crypto.randomUUID(),
-      publishedGraphVersion: published.version,
-      sceneId: scene.id,
-      elementId: directCanvas.root.id,
-      eventKind: "tap",
+      ...tap,
     });
 
     expect(result).toMatchObject({ kind: "accepted" });
     expect((await readActiveRun(showId))?.sourceValues[sourceId]).toBe(1);
   });
+  it.each(sharedUpdateBranches)(
+    "invalidates every Device on the Show when a shared Update from %s changes a Source (#882)",
+    async (_branch, publishCounter) => {
+      await createShow();
+      const { tap } = await publishCounter(1);
+      await startRun(showId);
+      const device = await proofDevice();
+      const peer = await createDevice(showId);
+      const sequenceBefore = await showStateSequence();
+
+      const result = await dispatchPlayerEvent(device.pairingCode, {
+        eventId: crypto.randomUUID(),
+        ...tap,
+      });
+
+      expect(result).toMatchObject({ kind: "accepted" });
+      const sequenceAfter = await showStateSequence();
+      expect(sequenceAfter).toBeGreaterThan(sequenceBefore);
+      const peerRows = (await showOutbox()).filter((row) => row.deviceId === peer.id);
+      expect(peerRows).toEqual([
+        expect.objectContaining({ status: "pending", stateSequence: sequenceAfter }),
+      ]);
+    },
+  );
+  it.each(sharedUpdateBranches)(
+    "leaves Players alone when a shared Update from %s changes nothing (#882)",
+    async (_branch, publishCounter) => {
+      await createShow();
+      const { tap } = await publishCounter(0);
+      await startRun(showId);
+      const device = await proofDevice();
+      await createDevice(showId);
+      const sequenceBefore = await showStateSequence();
+      const outboxBefore = await showOutbox();
+
+      const result = await dispatchPlayerEvent(device.pairingCode, {
+        eventId: crypto.randomUUID(),
+        ...tap,
+      });
+
+      expect(result).toMatchObject({ kind: "accepted" });
+      expect(await showStateSequence()).toBe(sequenceBefore);
+      expect(await showOutbox()).toHaveLength(outboxBefore.length);
+    },
+  );
   it("adjusts a nested Field without re-keying any Structured Value (#635)", async () => {
     await createShow();
     const draft = await readShowGraph(showId, "draft");
