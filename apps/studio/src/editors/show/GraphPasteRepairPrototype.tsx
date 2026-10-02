@@ -1,5 +1,5 @@
 // Throwaway: three repair layouts inside the Show Editor, shareable via ?variant=A/B/C.
-import { Button } from "@mechane/design-system";
+import { Button, Dialog, DialogContent, DialogTitle } from "@mechane/design-system";
 import { createContext, useCallback, useContext, useEffect, useReducer } from "react";
 import type { PropsWithChildren } from "react";
 import { MockEditorChrome } from "../../components/EditorLayout/MockEditorChrome";
@@ -30,6 +30,8 @@ interface PrototypeState {
   reuseReviewed: boolean;
   message: string;
   showState: boolean;
+  operationOutcome: "unknown" | "committed" | "rejected";
+  operationSequence: number;
 }
 const INITIAL_STATE: PrototypeState = {
   variant: "A",
@@ -49,6 +51,8 @@ const INITIAL_STATE: PrototypeState = {
   message:
     "Nothing has been added to The Tempest. Resolve the required items, then paste explicitly.",
   showState: true,
+  operationOutcome: "unknown",
+  operationSequence: 0,
 };
 const FixtureContext = createContext<PasteRepairFixture | null>(null);
 const VARIANTS: readonly Variant[] = ["A", "B", "C"];
@@ -148,11 +152,20 @@ function usePrototypeModel(fixture: PasteRepairFixture) {
         "Preview refreshed explicitly. Still-valid choices were retained; unavailable choices were cleared. Review before pasting again.",
     });
   }
+  function cancel() {
+    if (state.stage === "submitted" || state.stage === "unknown") return;
+    update({
+      stage: "cancelled",
+      message:
+        "Cancelled before submission. No graph/catalog entries created; existing and independently adopted assets remain.",
+    });
+  }
   return {
     state,
     update,
     changeVariant,
     refresh,
+    cancel,
     fixture,
     source,
     chosenField,
@@ -169,6 +182,7 @@ interface Model {
   update(patch: Partial<PrototypeState>): void;
   changeVariant(next: Variant): void;
   refresh(): void;
+  cancel(): void;
   fixture: PasteRepairFixture;
   source: RepairSource | undefined;
   chosenField: RepairTarget | undefined;
@@ -193,6 +207,13 @@ function TargetSelect({
   disabled: boolean;
   onChange(value: string): void;
 }) {
+  const groups = new Map<string, RepairTarget[]>();
+  for (const option of options) {
+    const group = option.scope ?? "Compatible Fields";
+    const entries = groups.get(group);
+    if (entries) entries.push(option);
+    else groups.set(group, [option]);
+  }
   return (
     <label className="block text-sm font-medium">
       {label}
@@ -203,11 +224,19 @@ function TargetSelect({
         onChange={(event) => onChange(event.target.value)}
       >
         <option value="">Choose a destination</option>
-        {options.map((option) => (
-          <option key={option.id} value={option.id} disabled={Boolean(option.unavailableReason)}>
-            {option.label}
-            {option.unavailableReason ? ` · ${option.unavailableReason}` : ""}
-          </option>
+        {[...groups].map(([scope, entries]) => (
+          <optgroup key={scope} label={scope}>
+            {entries.map((option) => (
+              <option
+                key={option.id}
+                value={option.id}
+                disabled={Boolean(option.unavailableReason)}
+              >
+                {option.label}
+                {option.unavailableReason ? ` · ${option.unavailableReason}` : ""}
+              </option>
+            ))}
+          </optgroup>
         ))}
       </select>
     </label>
@@ -239,6 +268,10 @@ function ActionRepairs({ model }: { model: Model }) {
       <p className="text-xs">
         Copied Scene: Opening cue → Audience vote. Navigate stays inside that Flow.
       </p>
+      <p className="text-xs text-muted-foreground">
+        Original Navigate target: Closing cue, outside this snapshot. Original Update target: Vote
+        tally.total; copied Field vote.tally supplies Number.
+      </p>
       <TargetSelect
         label="Navigate · Continue → destination Scene"
         value={state.navigateId}
@@ -255,7 +288,7 @@ function ActionRepairs({ model }: { model: Model }) {
       />
       {source ? (
         <TargetSelect
-          label="Update · copied Number → destination Field/path"
+          label="Update · vote.tally Number → destination Field/path"
           value={state.fieldId}
           options={source.fields}
           disabled={locked}
@@ -307,14 +340,24 @@ function ImageRepairs({ model }: { model: Model }) {
         Replace all 3 copied uses of Backdrop, including its nested Block, with this exact revision.
         No public URL or new upload.
       </p>
+      <details className="text-xs">
+        <summary className="cursor-pointer">
+          Inspect 3 copied uses of Backdrop · source rev_3
+        </summary>
+        <ul className="mt-2 list-disc pl-4">
+          <li>Opening cue · Canvas background</li>
+          <li>Card 2 · base image</li>
+          <li>Card 2 · Night State image override</li>
+        </ul>
+      </details>
     </RepairGroup>
   );
 }
 function OptionalInputs({ model }: { model: Model }) {
   return (
     <RepairGroup
-      title="Optional input · disconnected"
-      detail="Opening cue.message used a producer outside the copied content. This warning is not a required repair."
+      title={model.state.inputId ? "Optional input · mapped" : "Optional input · disconnected"}
+      detail="Copied consumer: Opening cue.message. Original producer: House message.output, Text. Leaving it disconnected does not require acknowledgement."
     >
       <label className="block text-sm font-medium">
         Destination producer/port
@@ -396,9 +439,15 @@ function RepairHeader({ model }: { model: Model }) {
   return (
     <div className="border-b border-border p-5">
       <p className="text-xs font-medium text-muted-foreground">Pending graph paste · The Tempest</p>
-      <h2 id="repair-title" className="mt-1 text-xl font-semibold">
-        Resolve before pasting
-      </h2>
+      {model.state.variant === "A" ? (
+        <DialogTitle id="repair-title" className="mt-1 text-xl font-semibold">
+          Resolve before pasting
+        </DialogTitle>
+      ) : (
+        <h2 id="repair-title" className="mt-1 text-xl font-semibold">
+          Resolve before pasting
+        </h2>
+      )}
       <p className="mt-2 text-sm text-muted-foreground">
         Opening cue from The Winter's Tale · 1 Scene, 2 Blocks, 1 Shape · destination Flow: Audience
         vote
@@ -428,24 +477,46 @@ function RepairActions({ model }: { model: Model }) {
       ) : null}
       {submitted ? (
         <p className="text-xs text-muted-foreground">
-          Operation prototype-paste-1 is pinned. Cancellation cannot promise rollback. Fixture
-          controls establish its exact outcome.
+          Operation prototype-paste-{state.operationSequence} is pinned. Cancellation cannot promise
+          rollback. Check its authoritative fixture outcome before any dependent action.
         </p>
       ) : null}
       <div className="flex flex-wrap justify-end gap-2">
         <Button
           variant="ghost"
           disabled={submitted || state.stage === "committed" || state.stage === "cancelled"}
-          onClick={() =>
-            update({
-              stage: "cancelled",
-              message:
-                "Cancelled before submission. No graph/catalog entries created; existing and independently adopted assets remain.",
-            })
-          }
+          onClick={model.cancel}
         >
           Cancel paste
         </Button>
+        {submitted ? (
+          <Button
+            variant="outline"
+            onClick={() =>
+              update(
+                state.operationOutcome === "committed"
+                  ? {
+                      stage: "committed",
+                      message:
+                        "Fixture lookup: draft accepted atomically; not published. Devices keep the previous publication. Adopted catalog entries remain on graph Undo.",
+                    }
+                  : state.operationOutcome === "rejected"
+                    ? {
+                        stage: "stale",
+                        message:
+                          "Fixture lookup: definitive rejection. No graph, imported definitions or staged catalog entries were created.",
+                      }
+                    : {
+                        stage: "unknown",
+                        message:
+                          "Fixture lookup: the exact operation outcome is still unknown. No resubmission or source deletion is permitted.",
+                      },
+              )
+            }
+          >
+            Check paste result
+          </Button>
+        ) : null}
         {state.stage === "stale" ? (
           <Button variant="outline" onClick={model.refresh}>
             Refresh preview
@@ -456,6 +527,8 @@ function RepairActions({ model }: { model: Model }) {
           onClick={() =>
             update({
               stage: "submitted",
+              operationSequence: state.operationSequence + 1,
+              operationOutcome: "unknown",
               message: "Submitted in the fixture only. No API request or real paste has occurred.",
             })
           }
@@ -553,29 +626,17 @@ function PrototypeControls({ model }: { model: Model }) {
           size="sm"
           variant="outline"
           disabled={!submitted}
-          onClick={() =>
-            update({
-              stage: "committed",
-              message:
-                "Fixture outcome: draft accepted atomically. Publication blocked; Devices keep the previous publication. Adopted assets remain on graph Undo.",
-            })
-          }
+          onClick={() => update({ operationOutcome: "committed" })}
         >
-          Confirm exact operation committed
+          Fixture server outcome: committed
         </Button>
         <Button
           size="sm"
           variant="outline"
           disabled={!submitted}
-          onClick={() =>
-            update({
-              stage: "stale",
-              message:
-                "Fixture outcome: definitive commit rejection. No graph, imported definitions, or staged asset entries were created.",
-            })
-          }
+          onClick={() => update({ operationOutcome: "rejected" })}
         >
-          Confirm exact operation rejected
+          Fixture server outcome: rejected
         </Button>
         <Button
           size="sm"
@@ -602,7 +663,10 @@ function PrototypeControls({ model }: { model: Model }) {
               imageRevision: model.chosenImage?.revision ?? null,
               requiredRemaining: model.requiredRemaining,
               ready: model.ready,
-              operationId: submitted || state.stage === "committed" ? "prototype-paste-1" : null,
+              operationId:
+                submitted || state.stage === "committed"
+                  ? `prototype-paste-${state.operationSequence}`
+                  : null,
               actualGraphWrites: 0,
               actualCatalogWrites: 0,
             },
@@ -614,13 +678,19 @@ function PrototypeControls({ model }: { model: Model }) {
     </details>
   );
 }
-function PrototypeSwitcher({ model }: { model: Model }) {
+function PrototypeSwitcher({
+  model,
+  insideDialog = false,
+}: {
+  model: Model;
+  insideDialog?: boolean;
+}) {
   const { variant } = model.state;
   if (!import.meta.env.DEV) return null;
   return (
     <nav
       aria-label="Prototype variants"
-      className="fixed bottom-3 left-1/2 z-[80] flex -translate-x-1/2 items-center gap-3 rounded-full border border-border bg-foreground px-4 py-2 text-background shadow-xl"
+      className={`${insideDialog ? "absolute -bottom-16" : "fixed bottom-3"} left-1/2 z-[80] flex -translate-x-1/2 items-center gap-3 rounded-full border border-border bg-foreground px-4 py-2 text-background shadow-xl`}
     >
       <button
         type="button"
@@ -646,24 +716,44 @@ function PrototypeSwitcher({ model }: { model: Model }) {
 }
 function RepairLayouts({ model }: { model: Model }) {
   const { variant, step } = model.state;
+  if (model.state.stage === "cancelled" || model.state.stage === "committed") {
+    return (
+      <section className="fixed inset-x-5 top-20 z-40 rounded-xl border border-border bg-card shadow-xl">
+        <RepairActions model={model} />
+        <PrototypeControls model={model} />
+      </section>
+    );
+  }
   if (variant === "A")
     return (
-      <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/65 px-4 pt-16 pb-20">
-        <section
-          aria-labelledby="repair-title"
-          className="flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
-        >
+      <Dialog
+        open
+        disablePointerDismissal
+        onOpenChange={(open) => {
+          if (!open) model.cancel();
+        }}
+      >
+        <DialogContent className="max-h-[calc(100dvh-10rem)] w-[min(48rem,calc(100vw-2rem))] gap-0 p-0">
           <RepairHeader model={model} />
           <div className="min-h-0 space-y-4 overflow-auto p-5">
             <ActionRepairs model={model} />
             <ImageRepairs model={model} />
-            <OptionalInputs model={model} />
+            <details>
+              <summary className="cursor-pointer text-sm font-medium">
+                {model.state.inputId ? "Optional input mapped" : "1 optional input disconnected"} ·
+                inspect or reconnect
+              </summary>
+              <div className="mt-3">
+                <OptionalInputs model={model} />
+              </div>
+            </details>
             <RepairReview model={model} />
             <PrototypeControls model={model} />
           </div>
           <RepairActions model={model} />
-        </section>
-      </div>
+          <PrototypeSwitcher model={model} insideDialog />
+        </DialogContent>
+      </Dialog>
     );
   if (variant === "B")
     return (
@@ -734,16 +824,22 @@ function RepairLayouts({ model }: { model: Model }) {
 function RepairWorkspace({ fixture }: { fixture: PasteRepairFixture }) {
   const model = usePrototypeModel(fixture);
   return (
-    <MockEditorChrome header={{ name: "The Tempest" }}>
-      <div inert className="size-full">
-        <ShowGraphEditor graph={fixture.graph} imageAssets={[]} />
+    <>
+      <div inert>
+        <MockEditorChrome header={{ name: "The Tempest" }}>
+          <ShowGraphEditor graph={fixture.graph} imageAssets={[]} />
+        </MockEditorChrome>
       </div>
-      <div className="absolute top-20 left-5 z-30 rounded-md border border-border bg-card px-3 py-2 text-xs shadow">
+      <div className="fixed top-20 left-5 z-30 rounded-md border border-border bg-card px-3 py-2 text-xs shadow">
         <strong>PROTOTYPE</strong> · simulated paste, no clipboard or API access
       </div>
       <RepairLayouts model={model} />
-      <PrototypeSwitcher model={model} />
-    </MockEditorChrome>
+      {model.state.variant !== "A" ||
+      model.state.stage === "cancelled" ||
+      model.state.stage === "committed" ? (
+        <PrototypeSwitcher model={model} />
+      ) : null}
+    </>
   );
 }
 export function GraphPasteRepairPrototype() {

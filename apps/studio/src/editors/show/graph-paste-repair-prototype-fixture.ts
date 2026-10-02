@@ -4,6 +4,7 @@ import { SAMPLE_GRAPH } from "./data/sample-graph";
 export interface RepairTarget {
   id: string;
   label: string;
+  scope?: string;
   unavailableReason?: string;
 }
 
@@ -64,11 +65,12 @@ export const STATIC_PASTE_REPAIR_FIXTURE: PasteRepairFixture = {
     ],
   },
   navigateTargets: [
-    { id: "scene_results", label: "The house has spoken · Audience vote" },
-    { id: "scene_voting", label: "Cast your vote · Audience vote" },
+    { id: "scene_results", label: "The house has spoken · Audience vote", scope: "Audience vote" },
+    { id: "scene_voting", label: "Cast your vote · Audience vote", scope: "Audience vote" },
     {
       id: "scene_lobby",
       label: "Foyer holding slide · Show-level",
+      scope: "Show-level",
       unavailableReason: "Navigate must stay in Audience vote, the destination Flow.",
     },
   ],
@@ -76,6 +78,7 @@ export const STATIC_PASTE_REPAIR_FIXTURE: PasteRepairFixture = {
     {
       id: "source_tally",
       label: "Vote tally · Audience vote",
+      scope: "Audience vote",
       fields: [
         { id: "field_count", label: "count · Number" },
         {
@@ -88,10 +91,17 @@ export const STATIC_PASTE_REPAIR_FIXTURE: PasteRepairFixture = {
     {
       id: "source_total",
       label: "House total · Show-level",
+      scope: "Show-level",
       fields: [{ id: "root", label: "Whole Source · Number" }],
     },
   ],
-  optionalInputs: [{ id: "source_message", label: "House message · output · Text · Show-level" }],
+  optionalInputs: [
+    {
+      id: "source_message",
+      label: "House message · output · Text · Show-level",
+      scope: "Show-level",
+    },
+  ],
   replacementImages: [
     { id: "asset_wash", revision: "rev_2", name: "Evening wash", color: "#596a9d" },
     { id: "asset_warm", revision: "rev_4", name: "Warm backdrop", color: "#9c7652" },
