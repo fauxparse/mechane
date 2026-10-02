@@ -15,6 +15,8 @@ A Player composes Show scope and Instance scope as a disjoint union before resol
 
 A per-connection Event submits only the resolved evidence needed for a Show write. The server validates that evidence against current Show state and never treats it as authoritative instance storage.
 
+Updates that create Structured Value Instances, including structured resets and sets from non-reference operands, derive each fresh stored identity from the Event id, Action id, and structural path. `planUpdate` requires the Event id; the Player creates or reuses it before applying the Cue, and the server uses the submitted Event id. Retries retain that seed. The `x:` namespace separates these stored identities from computed `y:` identities, so independent plans name the same instances without making them read-only. Run initialization, seeds, and Studio authoring retain random identities.
+
 ## Consequences
 
 Per-connection state survives Show snapshots and does not require server-side connection tracking. A browser reset or a second browser creates a distinct anonymous instance. A stale client-held Structured Value reference degrades to typed absence when the snapshot no longer contains it. Client authority requires the server to validate every Show-scoped reference, type, and reachability before applying a write.

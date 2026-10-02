@@ -9,7 +9,14 @@ import {
 export type ComputedStructuredValueId = StructuredValueId & {
   readonly __computedStructuredValue: true;
 };
-export type AnyStructuredValueId = StructuredValueId | ComputedStructuredValueId;
+/** Stored identity derived from an Event, Action, and structural path. */
+export type EventStructuredValueId = StructuredValueId & {
+  readonly __eventStructuredValue: true;
+};
+export type AnyStructuredValueId =
+  | StructuredValueId
+  | ComputedStructuredValueId
+  | EventStructuredValueId;
 
 export interface StructuredValueReference {
   readonly ref: AnyStructuredValueId;
@@ -102,12 +109,46 @@ export function computedStructuredValueId(
   return id;
 }
 
+export function isEventStructuredValueId(value: string): value is EventStructuredValueId {
+  const [namespace, eventKey, actionKey, pathKey, extra] = value.split(":");
+  return (
+    namespace === "x" &&
+    eventKey !== undefined &&
+    eventKey.length > 0 &&
+    actionKey !== undefined &&
+    actionKey.length > 0 &&
+    pathKey !== undefined &&
+    extra === undefined
+  );
+}
+
+/** Encodes Event, Action, and path in the stored namespace, separate from computed ids. */
+export function eventStructuredValueId(
+  eventId: string,
+  actionId: string,
+  path: readonly string[],
+): EventStructuredValueId {
+  const eventKey = encodeURIComponent(eventId);
+  const actionKey = encodeURIComponent(actionId);
+  const pathKey = path.map((segment) => encodeURIComponent(segment)).join("/");
+  const id = `x:${eventKey}:${actionKey}:${pathKey}`;
+  if (!isEventStructuredValueId(id)) {
+    throw new InvalidStructuredValueError("Could not encode an Event Structured Value id.");
+  }
+  return id;
+}
+
+/** Stored record keys may be random or Event-derived, never computed. */
+function isStoredStructuredValueId(value: string): value is StructuredValueId {
+  return isId("structuredValue", value) || isEventStructuredValueId(value);
+}
+
 export function isStructuredValueReference(value: unknown): value is StructuredValueReference {
   const candidate = object(value);
   return (
     candidate !== null &&
     typeof candidate.ref === "string" &&
-    (isId("structuredValue", candidate.ref) || isComputedStructuredValueId(candidate.ref))
+    (isStoredStructuredValueId(candidate.ref) || isComputedStructuredValueId(candidate.ref))
   );
 }
 
@@ -119,7 +160,7 @@ export function isShapeStructuredValueTemplate(
     candidate !== null &&
     candidate.kind === "shape" &&
     typeof candidate.id === "string" &&
-    isId("structuredValue", candidate.id) &&
+    isStoredStructuredValueId(candidate.id) &&
     object(candidate.fields) !== null
   );
 }
@@ -132,16 +173,30 @@ export function isArrayStructuredValueTemplate(
     candidate !== null &&
     candidate.kind === "array" &&
     typeof candidate.id === "string" &&
-    isId("structuredValue", candidate.id) &&
+    isStoredStructuredValueId(candidate.id) &&
     Array.isArray(candidate.items)
   );
 }
 
-/** Adds stable identity to every structured node in an authored value. */
+/**
+ * Normalizes authored templates, preserving existing ids by default.
+ * A derivation creates fresh ids at every node, including nested authored defaults.
+ */
 export function normalizeStructuredValueTemplate(
   value: unknown,
   type: Type,
   shapes: readonly Shape[] = [],
+  deriveNodeId?: (path: readonly string[]) => StructuredValueId,
+): StructuredValueTemplate {
+  return normalizeTemplateNode(value, type, shapes, deriveNodeId, []);
+}
+
+function normalizeTemplateNode(
+  value: unknown,
+  type: Type,
+  shapes: readonly Shape[],
+  deriveNodeId: ((path: readonly string[]) => StructuredValueId) | undefined,
+  path: readonly string[],
 ): StructuredValueTemplate {
   if (value === null) return null;
   if (typeof type === "string") return value as SimpleValue;
@@ -149,9 +204,17 @@ export function normalizeStructuredValueTemplate(
     const existing = isArrayStructuredValueTemplate(value) ? value : null;
     const items = existing?.items ?? (Array.isArray(value) ? value : []);
     return {
-      id: existing?.id ?? generateId("structuredValue"),
+      id: deriveNodeId?.(path) ?? existing?.id ?? generateId("structuredValue"),
       kind: "array",
-      items: items.map((item) => normalizeStructuredValueTemplate(item, type.of, shapes)),
+      items: items.map((item, index) =>
+        normalizeTemplateNode(
+          item,
+          type.of,
+          shapes,
+          deriveNodeId,
+          deriveNodeId ? [...path, String(index)] : path,
+        ),
+      ),
     };
   }
 
@@ -166,11 +229,17 @@ export function normalizeStructuredValueTemplate(
         : Object.prototype.hasOwnProperty.call(raw, field.name)
           ? raw[field.name]
           : field.defaultValue;
-      fields[field.id] = normalizeStructuredValueTemplate(rawValue, field.type, shapes);
+      fields[field.id] = normalizeTemplateNode(
+        rawValue,
+        field.type,
+        shapes,
+        deriveNodeId,
+        deriveNodeId ? [...path, field.id] : path,
+      );
     }
   }
   return {
-    id: existing?.id ?? generateId("structuredValue"),
+    id: deriveNodeId?.(path) ?? existing?.id ?? generateId("structuredValue"),
     kind: "shape",
     fields,
   };
@@ -486,7 +555,7 @@ function assertRuntimeValue(
 /** Validates id syntax, record/key agreement, complete closure, acyclicity and Type conformance. */
 export function assertValidRunState(state: RunState, graph: ShowGraph): void {
   for (const [id, record] of Object.entries(state.structuredValues)) {
-    if (!isId("structuredValue", id) || record.id !== id) {
+    if (!isStoredStructuredValueId(id) || record.id !== id) {
       throw new InvalidStructuredValueError(`Invalid Structured Value record key "${id}".`);
     }
   }

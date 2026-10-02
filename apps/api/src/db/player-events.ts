@@ -297,11 +297,16 @@ type CueUpdatePlan =
  * Action reads an earlier one's write. Nothing touches a row until every
  * Update has planned, which is what makes Show scope all-or-nothing: a
  * failure part-way leaves the Run exactly as the Cue found it.
+ *
+ * The `eventId` names the Event these Updates run for: it is what a reset's
+ * fresh Structured Value identities derive from, so a Player planning the
+ * same Event mints the same ones (#884).
  */
 function planCueUpdates(
   graph: ShowGraph,
   state: RunState,
   sceneId: string,
+  eventId: string,
   updates: readonly UpdateAction[],
   routing: CueUpdateRouting,
 ): CueUpdatePlan {
@@ -337,7 +342,7 @@ function planCueUpdates(
       }
       cueParameters = evidence?.cueParameters ?? {};
     }
-    const plan = planUpdate(graph, routed, sceneId, action, cueParameters);
+    const plan = planUpdate(graph, routed, sceneId, action, eventId, cueParameters);
     if (plan.kind === "failed") {
       return { kind: "failed", actionId: action.id, reason: plan.reason };
     }
@@ -392,6 +397,7 @@ async function executeSharedCueUpdates(
   graph: ShowGraph,
   canvas: Parameters<typeof resolveCueParameters>[0]["canvas"],
   sceneId: string,
+  eventId: string,
   plan: Extract<RuntimeEventPlan, { kind: "planned" }>,
 ): Promise<CueUpdatePlan> {
   const updates = plan.actions.filter((action): action is UpdateAction => action.kind === "update");
@@ -409,7 +415,7 @@ async function executeSharedCueUpdates(
   if (resolved.kind === "failed") {
     return { kind: "failed", actionId: first.id, reason: resolved.reason };
   }
-  const planned = planCueUpdates(graph, state, sceneId, updates, {
+  const planned = planCueUpdates(graph, state, sceneId, eventId, updates, {
     kind: "shared",
     cueParameters: resolved.values,
   });
@@ -623,6 +629,7 @@ async function dispatchPerConnectionEvent(
       graph,
       await readRunState(run.id, tx),
       observedScene.id,
+      input.eventId,
       updates,
       { kind: "perConnection", input },
     );
@@ -776,6 +783,7 @@ export async function dispatchPlayerEvent(
               graph,
               canvas,
               source.id,
+              input.eventId,
               plan,
             );
             if (updates.kind === "failed") {
@@ -918,6 +926,7 @@ export async function dispatchPlayerEvent(
           graph,
           canvas,
           state.activeSceneId,
+          input.eventId,
           plan,
         );
         if (updates.kind === "failed") {

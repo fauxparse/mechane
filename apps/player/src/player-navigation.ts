@@ -192,11 +192,13 @@ export function usePlayerNavigation(
           action.kind === "navigate" &&
           runtime.session.flow?.scenes.some(({ scene }) => scene.id === action.targetSceneId),
       );
+      const eventId = retryEventId.current ?? crypto.randomUUID();
       const execution = applyPlayerCue(
         currentState,
         runtime.session.graph,
         plan.actions,
         plan.sceneId,
+        eventId,
         parameters.values,
         showState,
       );
@@ -217,7 +219,6 @@ export function usePlayerNavigation(
         return false;
       }
       setNavigation(settled(store, nextState));
-      const eventId = retryEventId.current ?? crypto.randomUUID();
       const reachesShow = Object.keys(execution.evidence).length > 0;
       if (reachesShow) retryEventId.current = eventId;
       // Built field by field rather than spread from the observation: the
