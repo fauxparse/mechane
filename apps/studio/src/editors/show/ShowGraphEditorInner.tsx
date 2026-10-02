@@ -113,6 +113,7 @@ export function ShowGraphEditorInner(props: ShowGraphEditorProps) {
             onConnect={onConnect}
             isValidConnection={(connection) => isValidConnection(connection as Connection)}
             jumpToMinimapPoint={jumpToMinimapPoint}
+            contextMenuItems={props.contextMenuItems}
           />
 
           <ShowGraphEditorOverlays

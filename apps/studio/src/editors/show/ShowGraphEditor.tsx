@@ -1,4 +1,4 @@
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import { ReactFlowProvider } from "./graph/react-flow";
 import type { ShowGraphViewport } from "./graph/react-flow";
 import type { GraphEdit } from "@mechane/commands";
@@ -13,6 +13,10 @@ export interface ShowGraphEditorHandle {
   zoomToSelection(): boolean;
   fitToGraph(): void;
   applyAmendments(edits: readonly GraphEdit[]): void;
+  // PROTOTYPE (#875): throwaway hooks for the graph clipboard gesture prototype.
+  selectedNodeIds(): string[];
+  selectNodes(nodeIds: readonly string[]): void;
+  toFlowPosition(screen: { x: number; y: number }): { x: number; y: number };
 }
 
 export interface ShowGraphValueLocation {
@@ -33,6 +37,8 @@ export interface ShowGraphEditorProps {
   reshufflingTransformerId?: string | null;
   onReshuffleTransformer?(transformerId: string, deviceId?: string): void;
   className?: string;
+  /** PROTOTYPE (#875): extra items at the top of the canvas context menu. */
+  contextMenuItems?: ReactNode;
   ref?: Ref<ShowGraphEditorHandle>;
 }
 

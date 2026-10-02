@@ -23,7 +23,7 @@ import {
   type GraphNode,
   type Position,
 } from "@mechane/domain/graph";
-import type { MutableRefObject } from "react";
+import type { MutableRefObject, ReactNode } from "react";
 
 import type { GraphConnectionEditing, GraphCreationEditing } from "./commands/use-graph-editing";
 import type { CreationSite } from "./show-graph-layout";
@@ -63,6 +63,7 @@ export interface ShowGraphContextMenuProps {
   createFromConnection: ShowGraphCanvasProps["createFromConnection"];
   isValidConnection: ShowGraphCanvasProps["isValidConnection"];
   jumpToMinimapPoint: ShowGraphCanvasProps["jumpToMinimapPoint"];
+  contextMenuItems?: ReactNode;
 }
 
 export function ShowGraphContextMenu({
@@ -92,6 +93,7 @@ export function ShowGraphContextMenu({
   onConnect,
   isValidConnection,
   jumpToMinimapPoint,
+  contextMenuItems,
 }: ShowGraphContextMenuProps) {
   const editing = { ...creation, ...connections, setNodeColor };
   const selectedNode = selectedNodes.length === 1 ? (selectedNodes[0] ?? null) : null;
@@ -125,6 +127,7 @@ export function ShowGraphContextMenu({
       </ContextMenuTrigger>
 
       <ContextMenuContent>
+        {contextMenuItems}
         <ContextMenuGroup>
           <ContextMenuLabel>Canvas</ContextMenuLabel>
         </ContextMenuGroup>

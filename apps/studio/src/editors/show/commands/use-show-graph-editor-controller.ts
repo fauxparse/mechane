@@ -374,8 +374,27 @@ export function useShowGraphEditorController({
       zoomToSelection: actions.zoomToSelection,
       fitToGraph: () => fitView(fitViewOptions),
       applyAmendments: command.amend,
+      selectedNodeIds: () => getNodes().flatMap((node) => (node.selected ? [node.id] : [])),
+      selectNodes: (nodeIds) => {
+        const chosen = new Set(nodeIds);
+        setNodes((previous) =>
+          previous.map((node) => ({ ...node, selected: chosen.has(node.id) })),
+        );
+        setEdges((previous) => previous.map((edge) => ({ ...edge, selected: false })));
+      },
+      toFlowPosition: (screen) => screenToFlowPosition(screen),
     }),
-    [actions.fitToNodes, actions.zoomToSelection, command.amend, fitView, fitViewOptions],
+    [
+      actions.fitToNodes,
+      actions.zoomToSelection,
+      command.amend,
+      fitView,
+      fitViewOptions,
+      getNodes,
+      screenToFlowPosition,
+      setEdges,
+      setNodes,
+    ],
   );
 
   return {
