@@ -43,7 +43,7 @@ export const typeDefs = /* GraphQL */ `
     slotInstancePath: [BlockInstancePathInput!]
     "Per-kind payload as observed; a keypress carries { key }."
     params: JSON
-    "Resolved Instance values and Cue Parameters used by a per-connection Player."
+    "Per-connection evidence: one entry per Show Action, keyed by Action id, holding the Instance values and Cue Parameters as they stood when that Action ran."
     evidence: JSON
   }
   type PlayerEventApplied {

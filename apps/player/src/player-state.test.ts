@@ -569,7 +569,7 @@ describe("applyPlayerCue action routing", () => {
     if (execution.kind !== "applied") return;
     // The Source naming the holder is Flow-local, but the holder itself is a
     // Show-owned record, so the increment is the server's to apply.
-    expect(execution.showActions.map((action) => action.id)).toEqual(["action_confirm_yes"]);
+    expect(Object.keys(execution.evidence)).toEqual(["action_confirm_yes"]);
     expect(execution.state.flowStructuredValues).toEqual({});
   });
 
@@ -592,7 +592,72 @@ describe("applyPlayerCue action routing", () => {
     );
     expect(execution.kind).toBe("applied");
     if (execution.kind !== "applied") return;
-    expect(execution.showActions).toEqual([]);
+    expect(execution.evidence).toEqual({});
     expect(execution.state.flowSourceValues["source_selected"]).not.toEqual({ ref: CANDIDATE });
+  });
+
+  it("records each Show Action's evidence as the Cue stood when it ran (#628)", () => {
+    const other = "xcand567";
+    const candidates = {
+      sourceValues: { source_candidates: { ref: "xarr2345" } },
+      structuredValues: {
+        xarr2345: {
+          id: "xarr2345",
+          kind: "array",
+          type: { kind: "array", of: { kind: "shape", shapeId: "candidate" } },
+          items: [{ ref: CANDIDATE }, { ref: other }],
+        },
+        [CANDIDATE]: {
+          id: CANDIDATE,
+          kind: "shape",
+          type: { kind: "shape", shapeId: "candidate" },
+          fields: { votes: 3 },
+        },
+        [other]: {
+          id: other,
+          kind: "shape",
+          type: { kind: "shape", shapeId: "candidate" },
+          fields: { votes: 5 },
+        },
+      },
+    } as never;
+    const execution = applyPlayerCue(
+      votedState,
+      routingGraph,
+      [
+        {
+          id: "action_select",
+          cueId: "cue_confirm",
+          kind: "update",
+          target: { sourceId: "source_selected", fieldPath: [] },
+          operation: {
+            kind: "set",
+            operand: { kind: "cueParameter", parameterId: "candidate", fieldPath: [] },
+          },
+        },
+        adjustVotes,
+        {
+          id: "action_clear",
+          cueId: "cue_confirm",
+          kind: "update",
+          target: { sourceId: "source_selected", fieldPath: [] },
+          operation: { kind: "reset" },
+        },
+      ],
+      "scene_confirm",
+      { candidate: { ref: other } },
+      candidates,
+    );
+    expect(execution.kind).toBe("applied");
+    if (execution.kind !== "applied") return;
+    // Neither the value before the tap nor the one the Cue ends with: the
+    // adjust reads the Candidate the Action before it selected.
+    expect(execution.evidence).toEqual({
+      action_confirm_yes: {
+        sourceValues: { source_selected: { ref: other } },
+        cueParameters: { candidate: { ref: other } },
+      },
+    });
+    expect(execution.state.flowSourceValues["source_selected"]).not.toEqual({ ref: other });
   });
 });

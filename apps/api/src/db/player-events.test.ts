@@ -1,19 +1,26 @@
 import type { ShowGraph } from "@mechane/domain/graph";
+import type { Action } from "@mechane/domain/interactions";
 import { describeRunError } from "@mechane/domain/run-errors";
+import {
+  isStructuredValueReference,
+  type RunState,
+  type StructuredValueReference,
+} from "@mechane/domain/structured-values";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import { db } from "./client";
 import { readCanvas, writeCanvas } from "./canvas";
-import { dispatchPlayerEvent } from "./player-events";
+import { dispatchPlayerEvent, type PlayerActionEvidence } from "./player-events";
 import { listRunErrors, RunConfigurationError } from "./run-errors";
-import { endRun, readActiveRun, readRunDeviceState, startRun } from "./runs";
+import { endRun, readActiveRun, readRunDeviceState, readRunState, startRun } from "./runs";
 import { applyShowEdits, publishShowGraph, readShowGraph, writeShowGraph } from "./show-graph";
 import {
   playerEvents,
   playerInvalidationOutbox,
   runDeviceStates,
   runStructuredValues,
+  shows,
 } from "./schema";
 import { setupPostgresTest } from "./test-helpers";
 import { seedShowData } from "./seeds/utils/seed-utils";
@@ -94,6 +101,149 @@ function event(eventId: string, sceneId: string, destinationId: string) {
     elementId: `button_${sceneId}_${destinationId}`,
     eventKind: "tap",
   } as const;
+}
+
+const MULTI_CUE_ID = "cue_multi";
+const CANDIDATE_TYPE = { kind: "shape", shapeId: "shape_candidate" } as const;
+
+function adjust(id: string, sourceId: string, fieldPath: string[], value: number): Action {
+  return {
+    id,
+    cueId: MULTI_CUE_ID,
+    kind: "update",
+    target: { sourceId, fieldPath },
+    operation: { kind: "adjust", operand: { kind: "literal", value: { kind: "number", value } } },
+  };
+}
+
+/**
+ * Publishes one Cue, bound to a tap on Red's root, over a Show-scoped Counter
+ * and Candidates and a Flow-local Selected, then starts a Run.
+ */
+async function publishMultiActionCue(actions: Action[], perConnection: boolean) {
+  await createShow();
+  const draft = await readShowGraph(showId, "draft");
+  const redCanvas = await readCanvas(showId, "draft", { sceneNodeId: "scene_red" });
+  if (!redCanvas) throw new Error("Red Scene Canvas is missing.");
+  await writeShowGraph(showId, "draft", {
+    ...draft,
+    shapes: [
+      ...(draft.shapes ?? []),
+      {
+        id: CANDIDATE_TYPE.shapeId,
+        name: "Candidate",
+        fields: [
+          { id: "f_name", name: "Name", type: "text", required: true, defaultValue: "" },
+          { id: "f_votes", name: "Votes", type: "number", required: true, defaultValue: 0 },
+        ],
+      },
+    ],
+    sourceFieldDefaults: [
+      ...(draft.sourceFieldDefaults ?? []),
+      {
+        nodeId: "source_candidates",
+        fieldPath: [],
+        value: [
+          { f_name: "X", f_votes: 0 },
+          { f_name: "Y", f_votes: 0 },
+        ],
+      },
+      { nodeId: "source_selected", fieldPath: [], value: null },
+    ],
+    nodes: [
+      ...draft.nodes.map((node) => (node.kind === "device" ? { ...node, perConnection } : node)),
+      {
+        id: "source_counter",
+        kind: "source",
+        name: "Counter",
+        position: { x: 0, y: 0 },
+        parentId: null,
+        type: "number",
+      },
+      {
+        id: "source_candidates",
+        kind: "source",
+        name: "Candidates",
+        position: { x: 0, y: 0 },
+        parentId: null,
+        type: { kind: "array", of: CANDIDATE_TYPE },
+      },
+      {
+        id: "source_selected",
+        kind: "source",
+        name: "Selected",
+        position: { x: 0, y: 0 },
+        parentId: "flow_navigation",
+        type: CANDIDATE_TYPE,
+      },
+    ],
+    cues: [
+      ...(draft.cues ?? []),
+      {
+        id: MULTI_CUE_ID,
+        name: "Multi",
+        owner: { kind: "scene", sceneId: "scene_red" },
+        actionIds: actions.map((action) => action.id),
+        parameters: [{ id: "candidate", name: "Candidate", type: CANDIDATE_TYPE, position: 0 }],
+      },
+    ],
+    actions: [...(draft.actions ?? []), ...actions],
+    eventBindings: [
+      ...(draft.eventBindings ?? []),
+      {
+        id: "binding_multi",
+        canvasId: redCanvas.id,
+        elementId: "scene_red_root",
+        eventKind: "tap",
+        cueId: MULTI_CUE_ID,
+        position: 5,
+        // A per-connection Player resolves this itself and sends it as
+        // evidence; the literal only satisfies the one-mapping-per-Parameter rule.
+        parameterMappings: [{ parameterId: "candidate", source: { kind: "literal", value: null } }],
+      },
+    ],
+  });
+  const published = await publishShowGraph(showId);
+  const run = await startRun(showId);
+  const device = await proofDevice();
+  const state = await readRunState(run.id, db);
+  const listRef = state.sourceValues.source_candidates;
+  const list = isStructuredValueReference(listRef) ? state.structuredValues[listRef.ref] : null;
+  if (list?.kind !== "array") throw new Error("Candidates were not materialized.");
+  const [x, y] = list.items;
+  if (!isStructuredValueReference(x) || !isStructuredValueReference(y)) {
+    throw new Error("Candidates are incomplete.");
+  }
+  return { published, run, device, x, y };
+}
+
+async function tapRed(
+  pairingCode: string,
+  publishedGraphVersion: number,
+  evidence?: Record<string, PlayerActionEvidence>,
+) {
+  return dispatchPlayerEvent(pairingCode, {
+    eventId: crypto.randomUUID(),
+    publishedGraphVersion,
+    sceneId: "scene_red",
+    elementId: "scene_red_root",
+    eventKind: "tap",
+    ...(evidence ? { evidence } : {}),
+  });
+}
+
+async function stateSequence(): Promise<number> {
+  const [show] = await db
+    .select({ stateSequence: shows.stateSequence })
+    .from(shows)
+    .where(eq(shows.id, showId));
+  if (!show) throw new Error("Show is missing.");
+  return show.stateSequence;
+}
+
+function votes(state: RunState, ref: StructuredValueReference): unknown {
+  const record = state.structuredValues[ref.ref];
+  return record?.kind === "shape" ? record.fields.f_votes : undefined;
 }
 
 describe("dispatchPlayerEvent", () => {
@@ -399,6 +549,122 @@ describe("dispatchPlayerEvent", () => {
     // write landed inside that record rather than replacing it.
     expect((values.sourceValues[sourceId] as { ref: string }).ref).toBe(beforeIds[0]);
     expect((candidate.payload as { f_votes: number }).f_votes).toBe(1);
+  });
+
+  describe("a Cue with several Actions (#883)", () => {
+    it("adjusts the Candidate the Cue selected, not the one selected before the tap", async () => {
+      const { published, run, device, x, y } = await publishMultiActionCue(
+        [
+          {
+            id: "action_select",
+            cueId: MULTI_CUE_ID,
+            kind: "update",
+            target: { sourceId: "source_selected", fieldPath: [] },
+            operation: {
+              kind: "set",
+              operand: { kind: "cueParameter", parameterId: "candidate", fieldPath: [] },
+            },
+          },
+          adjust("action_vote", "source_selected", ["f_votes"], 1),
+          {
+            id: "action_thanks",
+            cueId: MULTI_CUE_ID,
+            kind: "navigate",
+            targetSceneId: "scene_green",
+          },
+        ],
+        true,
+      );
+
+      // The Player held Y before the tap; the vote's evidence is what
+      // `selected` held once the set before it had run.
+      const result = await tapRed(device.pairingCode, published.version, {
+        action_vote: { sourceValues: { source_selected: x }, cueParameters: { candidate: x } },
+      });
+
+      expect(result).toMatchObject({ kind: "accepted" });
+      const state = await readRunState(run.id, db);
+      expect(votes(state, x)).toBe(1);
+      expect(votes(state, y)).toBe(0);
+      // `selected` is the Player's; the server never stored the set.
+      expect(state.sourceValues.source_selected ?? null).toBeNull();
+      const [row] = await db.select().from(playerEvents).where(eq(playerEvents.runId, run.id));
+      expect(row).toMatchObject({ outcome: "accepted", resultingSceneId: "scene_green" });
+    });
+
+    it("applies every Show Update in order and advances stateSequence once", async () => {
+      const { published, run, device } = await publishMultiActionCue(
+        [
+          adjust("action_first", "source_counter", [], 1),
+          adjust("action_second", "source_counter", [], 2),
+        ],
+        true,
+      );
+      const before = await stateSequence();
+
+      const result = await tapRed(device.pairingCode, published.version);
+
+      expect(result).toMatchObject({ kind: "accepted" });
+      expect((await readRunState(run.id, db)).sourceValues.source_counter).toBe(3);
+      expect(await stateSequence()).toBe(before + 1);
+      expect(
+        await db.select().from(playerEvents).where(eq(playerEvents.runId, run.id)),
+      ).toHaveLength(1);
+    });
+
+    it("commits none of the Cue's Show writes when a later one fails", async () => {
+      const { published, run, device } = await publishMultiActionCue(
+        [
+          adjust("action_first", "source_counter", [], 1),
+          // An array is not a number, so this one cannot plan.
+          adjust("action_broken", "source_candidates", [], 1),
+        ],
+        true,
+      );
+      const counterBefore = (await readRunState(run.id, db)).sourceValues.source_counter;
+      const before = await stateSequence();
+
+      const result = await tapRed(device.pairingCode, published.version);
+
+      expect(result).toMatchObject({
+        kind: "failed",
+        actionId: "action_broken",
+        reason: "update-current-value-not-numeric",
+      });
+      expect((await readRunState(run.id, db)).sourceValues.source_counter).toBe(counterBefore);
+      expect(await stateSequence()).toBe(before);
+      const rows = await db.select().from(playerEvents).where(eq(playerEvents.runId, run.id));
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ outcome: "failed", failingActionId: "action_broken" });
+    });
+
+    it("runs a Shared Device's Updates on both sides of its Navigate", async () => {
+      const { published, run, device } = await publishMultiActionCue(
+        [
+          adjust("action_before", "source_counter", [], 1),
+          {
+            id: "action_go_green",
+            cueId: MULTI_CUE_ID,
+            kind: "navigate",
+            targetSceneId: "scene_green",
+          },
+          adjust("action_after", "source_counter", [], 2),
+        ],
+        false,
+      );
+      const before = await stateSequence();
+
+      const result = await tapRed(device.pairingCode, published.version);
+
+      expect(result).toMatchObject({
+        kind: "applied",
+        resultingSceneId: "scene_green",
+        changed: true,
+      });
+      expect((await readRunState(run.id, db)).sourceValues.source_counter).toBe(3);
+      expect((await readRunDeviceState(run.id, device.id))?.activeSceneId).toBe("scene_green");
+      expect(await stateSequence()).toBe(before + 1);
+    });
   });
 
   it("ignores Events when there is no active Run", async () => {

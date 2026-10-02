@@ -175,12 +175,14 @@ export type PlayerEventInput = {
   elementId: string;
   /** Root-to-leaf Slot instance indices; the server re-resolves them. */
   slotInstancePath?: readonly BlockInstancePathSegment[];
-  /** Values resolved by the Player at the point a Show Action runs. */
-  evidence?: {
-    sourceValues: Record<string, unknown>;
-    cueParameters: Record<string, unknown>;
-  };
+  /** Per Show Action, keyed by Action id: values resolved at the point it ran. */
+  evidence?: Readonly<Record<string, PlayerActionEvidence>>;
 } & ({ eventKind: "tap" } | { eventKind: "keypress"; params: { key: string } });
+
+export type PlayerActionEvidence = {
+  readonly sourceValues: Readonly<Record<string, unknown>>;
+  readonly cueParameters: Readonly<Record<string, unknown>>;
+};
 
 export type PlayerEventResult =
   | { kind: "applied"; eventId: string; resultingSceneId: string; changed: boolean }
