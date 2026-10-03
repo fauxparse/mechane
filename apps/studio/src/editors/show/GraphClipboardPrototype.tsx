@@ -36,6 +36,7 @@ import { MockEditorChrome } from "../../components/EditorLayout/MockEditorChrome
 import { ShowGraphEditor, type ShowGraphEditorHandle } from "./ShowGraphEditor";
 import { FLOW_PADDING, NODE_HEIGHT, NODE_WIDTH } from "./graph/graph-to-flow";
 import { focusContext } from "./keyboard/focus-context";
+import type { PaletteCommand } from "./commands/palette-commands";
 import {
   PROTOTYPE_SHOWS,
   captureSnapshot,
@@ -250,7 +251,11 @@ function ask(
   });
 }
 
-type Placement = { kind: "gesture" } | { kind: "point"; screen: Position } | { kind: "in-place" };
+type Placement =
+  | { kind: "gesture" }
+  | { kind: "point"; screen: Position }
+  | { kind: "center" }
+  | { kind: "in-place" };
 
 interface Model {
   state: ModelState;
@@ -573,7 +578,11 @@ function useClipboardModel({
   const requestCopy = (op: Op, event: ClipboardEvent | null) => {
     const ids = editor()?.selectedNodeIds() ?? [];
     if (ids.length === 0) {
-      if (!event) notify("info", "Select nodes to copy", "Selecting only edges copies nothing.");
+      const edgesOnly = document.querySelector(".react-flow__edge.selected") !== null;
+      if (edgesOnly) event?.preventDefault();
+      if (!event || edgesOnly) {
+        notify("info", "Select nodes to copy", "Edges come along with their nodes.");
+      }
       return;
     }
     if (state.current.scenarios.unfinishedGesture) {
@@ -977,8 +986,9 @@ function useClipboardModel({
       set({ lastPaste: { key, base, count } });
       return { x: base.x + CASCADE * count, y: base.y + CASCADE * count };
     };
-    if (placement.kind === "point") {
-      return { at: cascade(toFlow(placement.screen), 0), explicitFlowId: flowAt(placement.screen) };
+    if (placement.kind === "point" || placement.kind === "center") {
+      const screen = placement.kind === "point" ? placement.screen : center();
+      return { at: cascade(toFlow(screen), 0), explicitFlowId: flowAt(screen) };
     }
     if (variant === "B" || placement.kind === "in-place") {
       if (sameShow) {
@@ -1032,9 +1042,11 @@ function useClipboardModel({
       const screen =
         placement.kind === "point"
           ? placement.screen
-          : pointer.current.inside
-            ? pointer.current.screen
-            : center();
+          : placement.kind === "center"
+            ? center()
+            : pointer.current.inside
+              ? pointer.current.screen
+              : center();
       set({ ghost: { snapshot: value, screen, flowId: flowAt(screen) } });
       return;
     }
@@ -1344,6 +1356,48 @@ function RepairList({ items }: { items: RequiredRepair[] }) {
 
 function Kbd({ children }: { children: ReactNode }) {
   return <span className="ml-auto pl-6 text-xs text-muted-foreground">{children}</span>;
+}
+
+/** The same four gestures in the ⌘K palette; a palette pick is a user activation. */
+function clipboardPaletteCommands(model: Model): PaletteCommand[] {
+  const noSelection = model.state.selection.length === 0 ? "Select nodes first." : undefined;
+  return [
+    {
+      id: "prototype-875-cut",
+      label: "Cut selection",
+      scope: "selection",
+      icon: Scissors,
+      shortcut: `${MOD}X`,
+      disabledReason: noSelection,
+      run: () => model.requestCopy("cut", null),
+    },
+    {
+      id: "prototype-875-copy",
+      label: "Copy selection",
+      scope: "selection",
+      icon: Copy,
+      shortcut: `${MOD}C`,
+      disabledReason: noSelection,
+      run: () => model.requestCopy("copy", null),
+    },
+    {
+      id: "prototype-875-paste",
+      label: "Paste",
+      scope: "canvas",
+      icon: ClipboardPaste,
+      shortcut: `${MOD}V`,
+      run: () => model.requestPaste({ kind: "menu" }, { kind: "center" }),
+    },
+    {
+      id: "prototype-875-duplicate",
+      label: "Duplicate selection",
+      scope: "selection",
+      icon: CopyPlus,
+      shortcut: `${MOD}D`,
+      disabledReason: noSelection,
+      run: model.duplicate,
+    },
+  ];
 }
 
 function ClipboardMenuItems({ model, variant }: { model: Model; variant: Variant }) {
@@ -2108,6 +2162,7 @@ export function GraphClipboardPrototype() {
             imageAssets={[]}
             onEdit={(_edits, next) => model.onUserEdit(next)}
             contextMenuItems={<ClipboardMenuItems model={model} variant={variant} />}
+            extraPaletteCommands={clipboardPaletteCommands(model)}
           />
           <style>{pendingCutCss(ownCut?.nodeIds ?? [])}</style>
           {variant === "B" ? <ClipboardDock model={model} showName={show.name} /> : null}

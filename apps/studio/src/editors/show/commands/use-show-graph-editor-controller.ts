@@ -87,6 +87,7 @@ export function useShowGraphEditorController({
   initialViewport,
   initialSourceValue,
   ref,
+  extraPaletteCommands,
 }: ShowGraphEditorProps): ShowGraphEditorController {
   const editing = useGraphEditing(graph, onEdit);
   const { command, gestures, creation, deletion, connections, variables } = editing;
@@ -315,7 +316,7 @@ export function useShowGraphEditorController({
       [actions, deselect, fitView, fitViewOptions, renameSelected, selectAll],
     ),
   );
-  const paletteCommands = useShowGraphEditorPalette({
+  const builtInPaletteCommands = useShowGraphEditorPalette({
     commands,
     selectedNodes,
     selectedEdgeIds,
@@ -333,6 +334,11 @@ export function useShowGraphEditorController({
     requestDelete: actions.requestDelete,
     nodes,
   });
+  // PROTOTYPE (#875): clipboard commands supplied by the gesture prototype.
+  const paletteCommands = useMemo(
+    () => [...(extraPaletteCommands ?? []), ...builtInPaletteCommands],
+    [builtInPaletteCommands, extraPaletteCommands],
+  );
   const interaction = useMemo<NodeInteraction>(
     () => ({
       renaming: gestures.renaming,

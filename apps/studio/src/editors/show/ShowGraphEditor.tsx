@@ -7,6 +7,7 @@ import type { ImageInputOnUploadProps } from "@mechane/design-system";
 
 import type { SourceImageAsset } from "./graph/inspector/source-value-types";
 import { ShowGraphEditorInner } from "./ShowGraphEditorInner";
+import type { PaletteCommand } from "./commands/palette-commands";
 
 export interface ShowGraphEditorHandle {
   fitToNodes(nodeIds: string[]): void;
@@ -39,6 +40,8 @@ export interface ShowGraphEditorProps {
   className?: string;
   /** PROTOTYPE (#875): extra items at the top of the canvas context menu. */
   contextMenuItems?: ReactNode;
+  /** PROTOTYPE (#875): extra command palette rows. */
+  extraPaletteCommands?: PaletteCommand[];
   ref?: Ref<ShowGraphEditorHandle>;
 }
 
