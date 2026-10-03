@@ -665,6 +665,8 @@ function useClipboardModel({
             kind: "unknown",
             summary: label,
             check: () => {
+              // The lookup reads one authoritative result; a second click must not re-apply it.
+              if (!state.current.pinned) return;
               set({ pinned: null });
               if (state.current.scenarios.unknownResolvesTo === "committed") commit(true);
               else reject();
