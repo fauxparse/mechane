@@ -1,0 +1,1302 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Source value clipboard interaction prototype · #876</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font:
+          14px/1.5 system-ui,
+          sans-serif;
+        color: #24302f;
+        background: #f3f5f4;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      body {
+        margin: 0;
+      }
+      header {
+        padding: 20px 28px;
+        background: #fff;
+        border-bottom: 1px solid #dce3df;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 6px;
+      }
+      h2 {
+        font-size: 17px;
+        margin: 0 0 12px;
+      }
+      h3 {
+        font-size: 14px;
+        margin: 14px 0 6px;
+      }
+      p {
+        margin: 6px 0 12px;
+      }
+      small,
+      .muted {
+        color: #596b63;
+      }
+      code,
+      pre {
+        font:
+          13px/1.5 ui-monospace,
+          monospace;
+      }
+      main {
+        max-width: 1340px;
+        margin: auto;
+        padding: 24px;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: 210px minmax(300px, 1fr) minmax(280px, 0.85fr);
+        gap: 18px;
+        align-items: start;
+      }
+      section,
+      aside {
+        background: white;
+        padding: 18px;
+        border: 1px solid #dce3df;
+        border-radius: 9px;
+      }
+      button,
+      select,
+      textarea,
+      input {
+        font: inherit;
+      }
+      button {
+        cursor: pointer;
+        background: #fff;
+        color: inherit;
+        border: 1px solid #b8c7bf;
+        border-radius: 5px;
+        padding: 7px 11px;
+      }
+      button:hover {
+        background: #eaf1ee;
+      }
+      button:disabled {
+        cursor: default;
+        opacity: 0.5;
+      }
+      button.primary {
+        background: #17644c;
+        color: white;
+        border-color: #17644c;
+      }
+      button[aria-pressed="true"],
+      button[aria-selected="true"] {
+        background: #deeee6;
+        border-color: #17644c;
+      }
+      :focus-visible {
+        outline: 3px solid #177c59;
+        outline-offset: 3px;
+      }
+      select,
+      textarea,
+      input[type="text"] {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #b8c7bf;
+        border-radius: 5px;
+        background: #fff;
+      }
+      textarea {
+        min-height: 110px;
+        resize: vertical;
+        font-family: ui-monospace, monospace;
+      }
+      label {
+        display: block;
+        margin: 10px 0;
+      }
+      label.check {
+        display: flex;
+        gap: 8px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      .stack {
+        display: grid;
+        gap: 8px;
+      }
+      .stack button {
+        text-align: left;
+      }
+      .tag {
+        padding: 3px 8px;
+        border-radius: 4px;
+        background: #eaf1ee;
+        font-size: 12px;
+      }
+      #value-region {
+        padding: 14px;
+        border: 2px solid #b8c7bf;
+        border-radius: 6px;
+        margin: 14px 0;
+        background: #fafcfb;
+      }
+      #value-region:focus-within {
+        border-color: #17644c;
+      }
+      #value-region.live {
+        background: #fff7e9;
+        border-color: #b18a47;
+      }
+      pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        margin: 8px 0;
+      }
+      #notice {
+        padding: 12px;
+        border-left: 4px solid #17644c;
+        background: #eaf1ee;
+        margin: 16px 0;
+      }
+      #notice.error {
+        border-color: #b34038;
+        background: #fff0ee;
+      }
+      #notice.unknown {
+        border-color: #b18a47;
+        background: #fff7e9;
+      }
+      dl {
+        display: grid;
+        grid-template-columns: 135px 1fr;
+        gap: 6px 12px;
+        margin: 12px 0;
+      }
+      dt {
+        color: #596b63;
+      }
+      dd {
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+      .scenario {
+        margin: 20px 0;
+      }
+      .scenario button {
+        font-size: 13px;
+      }
+      dialog {
+        width: min(680px, 94vw);
+        max-height: 90vh;
+        border: 1px solid #b8c7bf;
+        border-radius: 10px;
+        padding: 24px;
+      }
+      dialog::backdrop {
+        background: #182c2466;
+      }
+      #replacement {
+        background: #f0f5f2;
+        padding: 12px;
+      }
+      .warning {
+        color: #824a13;
+      }
+      .detail {
+        border-top: 1px solid #dce3df;
+        margin-top: 16px;
+        padding-top: 12px;
+      }
+      #steps {
+        margin: 10px 0;
+      }
+      footer {
+        margin-top: 16px;
+        font-size: 12px;
+        color: #596b63;
+      }
+      @media (max-width: 950px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+        main {
+          padding: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Source value clipboard interactions</h1>
+      <p>
+        Throwaway interaction-state prototype for #876. Can you tell which value gets replaced,
+        where shortcuts go, and what a live write affects?
+      </p>
+      <small
+        >Simulated Show, Run, permissions and commits. No Show API, persistence or live-data editor.
+        Clipboard buttons use real browser APIs on HTTPS; walkthrough fixtures do not touch the OS
+        clipboard. Typed wire layout is illustrative, pending #877.</small
+      >
+    </header>
+    <main>
+      <section class="scenario">
+        <h2>Guided walkthroughs</h2>
+        <div class="row" id="scenarios" role="tablist" aria-label="Walkthroughs"></div>
+        <p id="scenario-description"></p>
+        <div id="steps" class="row"></div>
+        <small
+          >Each walkthrough resets in-memory state. Free-play controls below remain available.
+          Guided input is explicitly simulated, never a clipboard success claim.</small
+        >
+      </section>
+      <div class="layout">
+        <aside>
+          <h2>The Tempest</h2>
+          <p class="muted">Show editor · simulated</p>
+          <div class="stack">
+            <button id="select-level">Level · Show-level</button>
+            <button id="select-profile">Profile · Arrival Flow</button>
+            <button id="graph-focus">Focus graph selection</button>
+          </div>
+          <p id="graph-route" class="detail">
+            Graph shortcuts stay separate. This demo does not implement graph transfer.
+          </p>
+          <label
+            >Ordinary text field<input id="ordinary-text" type="text" value="Stage manager notes"
+          /></label>
+          <small
+            >Text selection keeps native Copy, Cut and Paste. It never becomes a value or graph
+            operation.</small
+          >
+        </aside>
+        <section>
+          <h2 id="source-title"></h2>
+          <div class="row" aria-label="Value target plane">
+            <button id="default-plane">Default</button>
+            <button id="current-plane">Current</button>
+          </div>
+          <p id="plane-help"></p>
+          <label id="instance-label"
+            >Shared Device Instance
+            <select id="instance">
+              <option value="">Choose an Instance</option>
+              <option value="a">Foyer projector · Shared · no browser connected</option>
+              <option value="b">Stage monitor · Shared · connected</option>
+              <option value="audience">
+                Audience phones · per-connection · unavailable remotely
+              </option>
+            </select>
+          </label>
+          <label id="field-label"
+            >Selected value
+            <select id="field">
+              <option value="">Whole Source</option>
+              <option value="name">Field · name</option>
+              <option value="score">Field · score</option>
+              <option value="nickname">Field · nickname · optional</option>
+            </select>
+          </label>
+          <div id="value-region" tabindex="0" role="region" aria-label="Selected Source value">
+            <div class="row">
+              <span id="target-tag" class="tag"></span><strong id="target-name"></strong>
+            </div>
+            <pre id="value-preview"></pre>
+            <small
+              >Focus here for value ⌘/Ctrl+C and ⌘/Ctrl+V. Text selection keeps native text Copy.
+              Value Cut/Duplicate are unavailable.</small
+            >
+            <div class="row" style="margin-top: 12px">
+              <button id="copy-value">Copy value</button
+              ><button id="copy-json">Copy plain JSON</button
+              ><button id="paste-value">Paste value…</button>
+            </div>
+          </div>
+          <p id="eligibility" class="warning"></p>
+          <div class="row">
+            <button id="native-paste">Focus for native Paste</button
+            ><button id="undo">Undo Default paste</button
+            ><button id="redo">Redo Default paste</button>
+          </div>
+          <div id="notice" role="status" aria-live="polite"></div>
+          <div class="detail">
+            <h3>Fixture input / external JSON workbench</h3>
+            <p class="muted">
+              Paste plain JSON into an external editor, change it, then copy it back. This text area
+              is a stand-in for that editor, not evidence of an external application round trip.
+            </p>
+            <textarea id="exchange" aria-label="JSON workbench" spellcheck="false">42</textarea>
+            <div class="row">
+              <button id="preview-input">Use fixture input</button
+              ><button id="export-fixture">Inspect copy text</button>
+            </div>
+            <pre id="copy-inspection" hidden></pre>
+            <small
+              >Normal Copy value uses a typed envelope. Plain JSON uses Field names, loses declared
+              Types and internal sharing, and keeps strings quoted. Paste replaces, never merges or
+              appends.</small
+            >
+          </div>
+        </section>
+        <section>
+          <h2>State and failure controls</h2>
+          <dl id="state-summary"></dl>
+          <div class="row">
+            <button id="change-selected">Change selected live value</button
+            ><button id="change-sibling">Change sibling Field</button>
+            <button id="change-publication">Publish changed version</button
+            ><button id="end-run">End Run</button>
+            <button id="reconcile">Check submitted outcome</button
+            ><button id="reset">Reset demo</button>
+          </div>
+          <label class="check"
+            ><input id="wired" type="checkbox" /> Incoming-wired Source, copy-only</label
+          >
+          <label class="check"
+            ><input id="show-owned" type="checkbox" /> Flow-local Field resolves to Show-owned
+            holder</label
+          >
+          <label class="check"
+            ><input id="absent" type="checkbox" /> Profile ancestor is absent</label
+          >
+          <label class="check"
+            ><input id="denied" type="checkbox" /> Owner authorization unavailable</label
+          >
+          <label class="check"
+            ><input id="evaluation" type="checkbox" /> Current evaluation unavailable</label
+          >
+          <label class="check"
+            ><input id="lost-response" type="checkbox" /> Lose next submitted response</label
+          >
+          <p class="muted">
+            These controls simulate authoritative rejection and unknown outcomes. They do not verify
+            backend checks.
+          </p>
+          <details>
+            <summary>Operation log</summary>
+            <pre id="log"></pre>
+          </details>
+        </section>
+      </div>
+      <footer>
+        Fixed inputs: #871 representations, #872 targets, #873 safety, #874 validation, #890 bounded
+        browser evidence. This fixture only decodes its number/Profile examples; it is not the
+        strict production codec, a complete limit probe or a new browser-support certification.
+      </footer>
+    </main>
+    <dialog id="confirmation" aria-labelledby="confirmation-title">
+      <h2 id="confirmation-title">Replace Current Source Value?</h2>
+      <p class="warning">
+        This changes live data immediately. No live Undo. Source Default will not change.
+      </p>
+      <dl id="confirmation-context"></dl>
+      <h3>Replacement value</h3>
+      <pre id="replacement"></pre>
+      <p id="shared-effects"></p>
+      <p id="representation"></p>
+      <p class="muted">
+        This confirmation is bound to the displayed target and value snapshot. A target change
+        cancels it before submission. A changed selected value or publication rejects it; sibling
+        changes alone do not reject a Field write.
+      </p>
+      <div class="row">
+        <button id="cancel">Cancel</button
+        ><button id="confirm" class="primary">Replace Current value</button>
+      </div>
+      <details class="detail">
+        <summary>Prototype failure controls</summary>
+        <div class="row">
+          <button id="dialog-selected">Change selected live value</button
+          ><button id="dialog-sibling">Change sibling Field</button>
+          <button id="dialog-publication">Change publication</button
+          ><button id="dialog-run">End Run</button>
+          <button id="dialog-target">Select Default before submission</button>
+          <button id="dialog-unknown">Submit with lost response</button>
+        </div>
+      </details>
+    </dialog>
+    <script>
+      // Portable in-memory interaction model. No DOM, clipboard, network or persistence.
+      const model = (() => {
+        const clone = (value) => structuredClone(value);
+        const profile = (name, score) => ({ name, score, nickname: null });
+        const initial = () => ({
+          selection: { source: "level", plane: "default", field: "", instance: "" },
+          defaults: { level: 0, profile: profile("Guest", 5) },
+          level: 12,
+          roots: { a: "profile-a", b: "profile-b", mirror: "profile-a" },
+          records: { "profile-a": profile("Ariel", 7), "profile-b": profile("Caliban", 9) },
+          run: "Dress rehearsal · run-42",
+          active: true,
+          draft: 6,
+          publication: 4,
+          wired: false,
+          showOwned: false,
+          absent: false,
+          denied: false,
+          evaluation: false,
+          lostResponse: false,
+          sequence: 0,
+          history: [],
+          redo: [],
+          pending: null,
+          notice: {
+            kind: "idle",
+            stage: "Selection",
+            path: "Level / Default",
+            message: "Choose a value target. Default operations remain authored during a Run.",
+            next: "Focus the value region or use an explicit action.",
+          },
+          log: [],
+        });
+        const path = (t) =>
+          `${t.source === "level" ? "Level" : "Profile"}${t.field ? "." + t.field : ""} / ${t.plane === "default" ? "Default" : "Current"}${t.source === "profile" && t.plane === "current" ? " / " + (t.instance === "a" ? "Foyer projector" : t.instance === "b" ? "Stage monitor" : "No eligible Instance") : ""}`;
+        const value = (s, t) => {
+          const root =
+            t.plane === "default"
+              ? s.defaults[t.source]
+              : t.source === "level"
+                ? s.level
+                : s.absent
+                  ? null
+                  : s.records[s.roots[t.instance]];
+          return t.field ? root?.[t.field] : root;
+        };
+        const issue = (s, kind, stage, message, next, t = s.selection) => {
+          s.notice = { kind, stage, path: path(t), message, next };
+          s.log.push(`${kind} · ${stage} · ${path(t)} · ${message}`);
+          return s;
+        };
+        const eligibility = (s, t, writing = true) => {
+          if (s.denied) return "Target unavailable or not authorized.";
+          if (writing && s.wired)
+            return "Incoming-wired Sources are copy-only. Paste cannot disconnect wiring or change a producer.";
+          if (t.plane === "current") {
+            if (!s.active)
+              return "The selected Run has ended. No replacement Run or Default fallback.";
+            if (t.source === "profile" && !["a", "b"].includes(t.instance))
+              return "Explicitly choose an existing Shared Device Instance. Remote per-connection values are unavailable.";
+            if (s.evaluation)
+              return "Current evaluated value is unavailable. No default or absence substitute.";
+            if (writing && t.source === "profile" && t.field && s.showOwned)
+              return "This Field holder is Show-owned. Choose an eligible Show-level target or explicitly replace the whole Flow-local Source.";
+          }
+          if (t.field && value(s, { ...t, field: "" }) == null)
+            return "Ancestor Shape is absent. Select an addressable ancestor; paste will not construct parents.";
+          return null;
+        };
+        const type = (t) =>
+          t.source === "level" || t.field === "score" ? "number" : t.field ? "text" : "profile";
+        const fields = [
+          { id: "field-name", name: "name", type: "text", required: true },
+          { id: "field-score", name: "score", type: "number", required: true },
+          { id: "field-nickname", name: "nickname", type: "text", required: false },
+        ];
+        const encode = (s, plain) => {
+          const t = s.selection;
+          const error = eligibility(s, t, false);
+          if (error) return { error };
+          const data = value(s, t);
+          const kind = type(t);
+          return {
+            text: JSON.stringify(
+              plain
+                ? data
+                : {
+                    format: "mechane/source-value",
+                    version: 1,
+                    origin: { show: "prototype-show", plane: t.plane },
+                    rootType: kind === "profile" ? { shape: "shape-profile" } : kind,
+                    rootValue: kind === "profile" && data !== null ? { ref: "p1" } : data,
+                    records:
+                      kind === "profile" && data !== null
+                        ? [{ token: "p1", shape: "shape-profile", value: data }]
+                        : [],
+                    shapes:
+                      kind === "profile" ? [{ id: "shape-profile", name: "Profile", fields }] : [],
+                  },
+              null,
+              2,
+            ),
+          };
+        };
+        const decode = (text, t) => {
+          if (new TextEncoder().encode(text).length > 10 * 1024 * 1024)
+            throw new Error("Input exceeds 10 MiB. Copy a smaller value.");
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch {
+            throw new Error("Invalid JSON. Quote text strings; CSV and TSV are not supported.");
+          }
+          let representation =
+            "Plain JSON. Destination Type supplies meaning; internal sharing is flattened.";
+          if (data && typeof data === "object" && data.format === "mechane/show-graph")
+            throw new Error(
+              "Graph content cannot replace a value. Focus the graph for graph Paste.",
+            );
+          if (data && typeof data === "object" && data.format === "mechane/source-value") {
+            if (data.version !== 1)
+              throw new Error("Unsupported typed value version. Re-copy using version 1.");
+            const keys = [
+              "format",
+              "version",
+              "origin",
+              "rootType",
+              "rootValue",
+              "records",
+              "shapes",
+            ];
+            if (
+              Object.keys(data).some((key) => !keys.includes(key)) ||
+              keys.some((key) => !Object.hasOwn(data, key))
+            )
+              throw new Error("Malformed typed envelope. No plain JSON fallback.");
+            const expected = type(t);
+            if (expected === "profile") {
+              const shape = data.shapes?.[0];
+              if (
+                data.rootType?.shape !== "shape-profile" ||
+                data.shapes?.length !== 1 ||
+                shape?.fields?.length !== 3 ||
+                !fields.every((field) =>
+                  shape.fields.some(
+                    (f) =>
+                      f.name === field.name &&
+                      f.type === field.type &&
+                      f.required === field.required,
+                  ),
+                )
+              )
+                throw new Error(
+                  "Declared Shape contract does not match the fixture destination. No Field mapping or coercion.",
+                );
+              if (
+                data.rootValue !== null &&
+                (data.records?.length !== 1 ||
+                  data.rootValue?.ref !== "p1" ||
+                  data.records[0]?.token !== "p1")
+              )
+                throw new Error("Malformed fixture record references. No plain JSON fallback.");
+              data = data.rootValue === null ? null : data.records[0].value;
+            } else {
+              if (
+                data.rootType !== expected ||
+                data.records?.length !== 0 ||
+                data.shapes?.length !== 0
+              )
+                throw new Error(`Declared Type mismatch. Expected ${expected}; no coercion.`);
+              data = data.rootValue;
+            }
+            representation =
+              "Typed Mechanē value. Fresh structured identities; payload sharing is preserved by the agreed production contract. Provenance never selects a target.";
+          }
+          const scalar = (v, kind, optional) =>
+            v === null
+              ? optional
+              : kind === "number"
+                ? typeof v === "number" && Number.isFinite(v)
+                : typeof v === "string";
+          if (type(t) === "profile") {
+            if (
+              data !== null &&
+              (!data ||
+                typeof data !== "object" ||
+                Array.isArray(data) ||
+                Object.keys(data).some((k) => !fields.some((f) => f.name === k)) ||
+                !fields.every((f) =>
+                  scalar(Object.hasOwn(data, f.name) ? data[f.name] : null, f.type, !f.required),
+                ))
+            )
+              throw new Error(
+                "Profile needs required text name and finite number score. Extra Fields are rejected; nickname is optional.",
+              );
+            if (data !== null)
+              data = {
+                name: data.name,
+                score: data.score,
+                nickname: Object.hasOwn(data, "nickname") ? data.nickname : null,
+              };
+          } else if (!scalar(data, type(t), t.field === "nickname"))
+            throw new Error(
+              `Type mismatch at ${t.field || "root"}. Expected ${type(t)}${t.field === "nickname" ? " or null for Typed Absence" : ""}. No coercion or default filling.`,
+            );
+          return { data, representation };
+        };
+        const capture = (s) => ({
+          target: clone(s.selection),
+          run: s.run,
+          draft: s.draft,
+          publication: s.publication,
+          selected: JSON.stringify(value(s, s.selection)),
+          holder:
+            s.selection.source === "profile" && s.selection.plane === "current" && s.selection.field
+              ? s.roots[s.selection.instance]
+              : null,
+        });
+        const prepare = (s, text, snapshot) => {
+          const t = snapshot.target;
+          if (path(t) !== path(s.selection))
+            return issue(
+              s,
+              "cancelled",
+              "Before submission",
+              "Selection changed while reading. Pending paste cancelled.",
+              "Choose the target and invoke Paste again.",
+              t,
+            );
+          const error = eligibility(s, t);
+          if (error)
+            return issue(
+              s,
+              "rejected",
+              "Target",
+              error,
+              "Choose an eligible target; no data changed.",
+              t,
+            );
+          try {
+            const result = decode(text, t);
+            s.pending = {
+              ...snapshot,
+              ...result,
+              sharedEffects: effects(s, t),
+              status: "confirming",
+            };
+          } catch (error) {
+            return issue(
+              s,
+              "rejected",
+              "Input",
+              error.message,
+              "Correct or re-copy input, then explicitly Paste again.",
+              t,
+            );
+          }
+          if (t.plane === "default") return commit(s);
+          return issue(
+            s,
+            "ready",
+            "Confirmation",
+            "Review the pinned Current target, replacement and shared effects.",
+            "Confirm or cancel. Nothing has been written yet.",
+            t,
+          );
+        };
+        const commit = (s) => {
+          const p = s.pending;
+          if (!p) return s;
+          const t = p.target;
+          const error =
+            eligibility(s, t) ||
+            (t.plane === "default" && p.draft !== s.draft
+              ? "Authored base version changed."
+              : t.plane === "current" && (p.run !== s.run || p.publication !== s.publication)
+                ? "Run or published version changed."
+                : t.plane === "current" &&
+                    (p.selected !== JSON.stringify(value(s, t)) ||
+                      (t.field && p.holder !== s.roots[t.instance]))
+                  ? "Selected live value or holder binding changed. Sibling changes alone do not invalidate a Field write."
+                  : null);
+          s.pending = null;
+          if (error)
+            return issue(
+              s,
+              "rejected",
+              "Commit",
+              error,
+              "Fresh read and explicit confirmation required. Nothing from this paste was applied.",
+              t,
+            );
+          if (t.plane === "default") {
+            s.history.push(clone(s.defaults));
+            s.redo = [];
+            if (t.field) s.defaults[t.source][t.field] = clone(p.data);
+            else s.defaults[t.source] = clone(p.data);
+            s.draft++;
+          } else if (t.source === "level") s.level = p.data;
+          else if (t.field) s.records[s.roots[t.instance]][t.field] = clone(p.data);
+          else {
+            const id = `paste-${++s.sequence}`;
+            s.records[id] = clone(p.data);
+            s.roots[t.instance] = id;
+            s.absent = false;
+          }
+          return issue(
+            s,
+            "committed",
+            "Commit",
+            t.plane === "default"
+              ? "Default saved as one authored history entry. Current unchanged. Publication is not simulated."
+              : "Current replacement committed. Default unchanged. No editor history entry.",
+            t.plane === "default"
+              ? "Authored Undo is available."
+              : "Restoring a prior value requires another explicit live operation.",
+            t,
+          );
+        };
+        const effects = (s, t) =>
+          t.source === "level"
+            ? "Show-owned value. Every consumer of Level in this Run observes the replacement."
+            : t.field
+              ? `Field replacement changes its containing instance. ${s.roots[t.instance] === s.roots.mirror ? "Profile mirror aliases this holder and observes the replacement. " : "No other fixture holder aliases this instance. "}Direct holders of the old Field value remain unchanged. The other Shared Instance's separate holder is unchanged.`
+              : "Whole-Source replacement rebinds only the selected Shared Instance's Profile to a fresh clone. Profile mirror keeps its old holder; the other Shared Instance is unchanged.";
+        const reduce = (state, action) => {
+          const s = clone(state);
+          if (action.kind === "select") {
+            s.selection = { ...s.selection, ...action.target };
+            if (s.pending?.status === "confirming") {
+              s.pending = null;
+              return issue(
+                s,
+                "cancelled",
+                "Before submission",
+                "Target changed. Pending paste cancelled.",
+                "Invoke Paste again at the new target.",
+              );
+            }
+            return s;
+          }
+          if (action.kind === "flag") {
+            s[action.key] = action.value;
+            return s;
+          }
+          if (action.kind === "prepare")
+            return prepare(s, action.text, action.snapshot || capture(s));
+          if (action.kind === "notice")
+            return issue(s, action.category, action.stage, action.message, action.next);
+          if (action.kind === "cancel") {
+            if (s.pending?.status === "confirming") s.pending = null;
+            return issue(
+              s,
+              "cancelled",
+              "Before submission",
+              "Pending paste cancelled. No write or history entry.",
+              "Choose a target and Paste explicitly.",
+            );
+          }
+          if (action.kind === "submit") {
+            if (s.pending?.status !== "confirming") return s;
+            if (!s.lostResponse) return commit(s);
+            s.pending.status = "unknown";
+            s.pending.operation = `operation-${++s.sequence}`;
+            return issue(
+              s,
+              "unknown",
+              "Submitted",
+              "Response lost. This request is pinned and may commit; selection cannot cancel it.",
+              "Check the exact submitted operation. Do not Paste or use history again.",
+              s.pending.target,
+            );
+          }
+          if (action.kind === "reconcile") {
+            if (s.pending?.status !== "unknown") return s;
+            const operation = s.pending.operation;
+            const result = commit(s);
+            result.notice.message = `${operation} reconciled. ${result.notice.message}`;
+            return result;
+          }
+          if (action.kind === "undo" || action.kind === "redo") {
+            if (s.pending?.status === "unknown") return s;
+            const from = action.kind === "undo" ? s.history : s.redo;
+            const to = action.kind === "undo" ? s.redo : s.history;
+            if (!from.length) return s;
+            to.push(clone(s.defaults));
+            s.defaults = from.pop();
+            s.draft++;
+            return issue(
+              s,
+              "committed",
+              "Authored history",
+              `${action.kind === "undo" ? "Undo" : "Redo"} changed Default only. Current unchanged.`,
+              "Live writes never enter this history.",
+            );
+          }
+          if (action.kind === "change") {
+            if (action.what === "publication") s.publication++;
+            else if (action.what === "run") s.active = false;
+            else {
+              const t = { ...s.selection, plane: "current" };
+              if (t.source === "level") s.level++;
+              else if (["a", "b"].includes(t.instance) && s.records[s.roots[t.instance]]) {
+                const record = s.records[s.roots[t.instance]];
+                if (action.what === "sibling") {
+                  if (t.field === "name") record.score++;
+                  else record.name += "!";
+                } else if (t.field === "name") record.name += "!";
+                else if (t.field === "nickname") record.nickname = "Changed";
+                else record.score++;
+              }
+            }
+            return issue(
+              s,
+              "changed",
+              "Simulated runtime",
+              `Changed ${action.what}. Pending comparison snapshot remains pinned.`,
+              "Try the pending confirmation to see whether this change invalidates it.",
+            );
+          }
+          return s;
+        };
+        return { initial, reduce, value, path, eligibility, encode, capture, effects };
+      })();
+
+      // Thin throwaway page shell. Real clipboard calls stay outside the model.
+      const $ = (id) => document.getElementById(id);
+      let state = model.initial();
+      let selectionEpoch = 0;
+      let clipboardBusy = false;
+      let reading = false;
+      let returnFocus = null;
+      const busy = () => clipboardBusy || state.pending?.status === "unknown";
+      const dispatch = (action) => {
+        if (action.kind === "select") selectionEpoch++;
+        state = model.reduce(state, action);
+        render();
+      };
+      const notify = (category, stage, message, next) =>
+        dispatch({ kind: "notice", category, stage, message, next });
+      const pair = (dl, name, value) => {
+        const dt = document.createElement("dt");
+        const dd = document.createElement("dd");
+        dt.textContent = name;
+        dd.textContent = value;
+        dl.append(dt, dd);
+      };
+      const json = (value) =>
+        value === undefined ? "Unavailable. No fallback value." : JSON.stringify(value, null, 2);
+      const render = () => {
+        const t = state.selection;
+        const p = state.pending;
+        $("source-title").textContent = t.source === "level" ? "Level · number" : "Profile · Shape";
+        $("default-plane").setAttribute("aria-pressed", t.plane === "default");
+        $("current-plane").setAttribute("aria-pressed", t.plane === "current");
+        $("plane-help").textContent =
+          t.plane === "default"
+            ? "Authored Source Default. Ordinary draft/Auto-publish rules; never writes Current."
+            : `Read-only Current summary · ${state.run}${state.active ? " · active" : " · ended"}. Paste is an explicit live operation.`;
+        $("instance-label").hidden = t.source !== "profile" || t.plane !== "current";
+        $("field-label").hidden = t.source !== "profile";
+        $("instance").value = t.instance;
+        $("field").value = t.field;
+        $("target-tag").textContent =
+          t.plane === "default" ? "DEFAULT · authored" : "CURRENT · live";
+        $("target-name").textContent = model.path(t);
+        $("value-region").classList.toggle("live", t.plane === "current");
+        const unavailable = model.eligibility(state, t, false);
+        $("value-preview").textContent = unavailable || json(model.value(state, t));
+        $("eligibility").textContent =
+          model.eligibility(state, t) ||
+          "Whole-value replacement only. No Cut, Duplicate, merge, append or reset.";
+        $("copy-value").disabled = $("copy-json").disabled = busy() || !!unavailable;
+        $("paste-value").disabled = busy() || !!model.eligibility(state, t);
+        $("preview-input").disabled = busy();
+        $("undo").disabled = busy() || !state.history.length;
+        $("redo").disabled = busy() || !state.redo.length;
+        $("reconcile").disabled = p?.status !== "unknown";
+        $("reset").disabled = p?.status === "unknown";
+        for (const [id, key] of [
+          ["wired", "wired"],
+          ["show-owned", "showOwned"],
+          ["absent", "absent"],
+          ["denied", "denied"],
+          ["evaluation", "evaluation"],
+          ["lost-response", "lostResponse"],
+        ])
+          $(id).checked = state[key];
+        const n = state.notice;
+        $("notice").className =
+          n.kind === "rejected" || n.kind === "browser"
+            ? "error"
+            : n.kind === "unknown"
+              ? "unknown"
+              : "";
+        $("notice").textContent = `${n.kind} · ${n.stage} · ${n.path}\n${n.message} ${n.next}`;
+        const summary = $("state-summary");
+        summary.replaceChildren();
+        for (const [name, v] of [
+          ["Run", `${state.run} · ${state.active ? "active" : "ended"}`],
+          ["Versions", `draft ${state.draft} / published ${state.publication}`],
+          ["Level Default", json(state.defaults.level)],
+          ["Level Current", json(state.level)],
+          ["Profile Default", json(state.defaults.profile)],
+          ["Foyer Current", json(state.records[state.roots.a])],
+          ["Stage Current", json(state.records[state.roots.b])],
+          ["Profile mirror", `${state.roots.mirror} · ${json(state.records[state.roots.mirror])}`],
+          [
+            "History",
+            `${state.history.length} authored entries · ${state.redo.length} redo · 0 live entries`,
+          ],
+          [
+            "Pending",
+            p
+              ? `${p.status} · ${model.path(p.target)}${p.operation ? " · " + p.operation : ""}`
+              : reading
+                ? "Reading clipboard at captured target"
+                : "None",
+          ],
+        ])
+          pair(summary, name, v);
+        $("log").textContent = state.log.join("\n");
+        if (p?.status === "confirming") {
+          const context = $("confirmation-context");
+          context.replaceChildren();
+          for (const [name, v] of [
+            ["Show", "The Tempest"],
+            ["Active Run", p.run],
+            ["Source / Field", model.path(p.target)],
+            [
+              "Storage scope",
+              p.target.source === "level"
+                ? "Show-level · Run-owned"
+                : `${p.target.instance === "a" ? "Foyer projector" : "Stage monitor"} · Shared Device Instance · Arrival Flow`,
+            ],
+            [
+              "Snapshot",
+              `publication ${p.publication} · selected value and holder binding captured`,
+            ],
+            ["Previous value", p.selected],
+          ])
+            pair(context, name, v);
+          $("replacement").textContent = json(p.data);
+          $("shared-effects").textContent = p.sharedEffects;
+          $("representation").textContent = p.representation;
+          $("confirmation").append($("steps"));
+          if (!$("confirmation").open) {
+            returnFocus = document.activeElement;
+            $("confirmation").showModal();
+            $("cancel").focus();
+          }
+        } else if ($("confirmation").open) {
+          $("confirmation").close();
+          document
+            .querySelector(".scenario")
+            .insertBefore($("steps"), document.querySelector(".scenario small"));
+          if (returnFocus?.isConnected) returnFocus.focus();
+        }
+      };
+      const reset = (target = {}) => {
+        if (busy()) return;
+        selectionEpoch++;
+        state = model.initial();
+        state.selection = { ...state.selection, ...target };
+        render();
+      };
+      const prepare = (text, snapshot = model.capture(state)) => {
+        if (state.pending?.status === "unknown") return;
+        dispatch({ kind: "prepare", text, snapshot });
+      };
+      const copy = async (plain) => {
+        if (busy()) return;
+        const payload = model.encode(state, plain);
+        if (payload.error)
+          return notify("rejected", "Copy target", payload.error, "Choose an eligible value.");
+        if (!window.isSecureContext || !navigator.clipboard?.writeText)
+          return notify(
+            "browser",
+            "Copy handoff",
+            "Async clipboard write unavailable.",
+            "Focus the value region and use native Copy for the typed value, or inspect and select the serialized text.",
+          );
+        clipboardBusy = true;
+        render();
+        try {
+          await navigator.clipboard.writeText(payload.text);
+          notify(
+            "copied",
+            "Browser handoff",
+            `${plain ? "Plain JSON" : "Typed value"} snapshot copied. No graph content or live relationship.`,
+            "Paste explicitly at another value target or external application.",
+          );
+        } catch (error) {
+          notify(
+            "browser",
+            "Copy handoff",
+            `${error.name}: clipboard write failed.`,
+            "Try a fresh native Copy gesture in the value region. No automatic retry or clipboard restoration.",
+          );
+        } finally {
+          clipboardBusy = false;
+          render();
+        }
+      };
+      $("copy-value").onclick = () => copy(false);
+      $("copy-json").onclick = () => copy(true);
+      $("paste-value").onclick = async () => {
+        if (busy()) return;
+        const snapshot = model.capture(state);
+        const epoch = selectionEpoch;
+        if (!window.isSecureContext || !navigator.clipboard?.readText)
+          return notify(
+            "browser",
+            "Paste handoff",
+            "Async clipboard read unavailable.",
+            "Use Focus for native Paste, then ⌘/Ctrl+V. No automatic read.",
+          );
+        clipboardBusy = reading = true;
+        render();
+        try {
+          const text = await navigator.clipboard.readText();
+          if (epoch !== selectionEpoch)
+            notify(
+              "cancelled",
+              "Before submission",
+              "Target changed during clipboard reading. Pending paste cancelled.",
+              "Invoke Paste again at the new target.",
+            );
+          else prepare(text, snapshot);
+        } catch (error) {
+          notify(
+            "browser",
+            "Paste handoff",
+            `${error.name}: clipboard read failed.`,
+            "Use Focus for native Paste, then ⌘/Ctrl+V. No automatic reread.",
+          );
+        } finally {
+          clipboardBusy = reading = false;
+          render();
+        }
+      };
+      const editable = (element) =>
+        !!element.closest('input, textarea, select, [contenteditable="true"]');
+      const selectedText = () => !window.getSelection().isCollapsed;
+      const ownsValueGesture = (event) =>
+        event.target.closest("#value-region") && !editable(event.target) && !selectedText();
+      document.addEventListener("copy", (event) => {
+        if (!ownsValueGesture(event)) return;
+        event.preventDefault();
+        if (busy()) return;
+        const payload = model.encode(state, false);
+        if (payload.error)
+          return notify("rejected", "Copy target", payload.error, "Choose an eligible target.");
+        if (!event.clipboardData)
+          return notify(
+            "browser",
+            "Native Copy",
+            "Clipboard event data unavailable.",
+            "Use an explicit supported Copy path.",
+          );
+        event.clipboardData.setData("text/plain", payload.text);
+        notify(
+          "prepared",
+          "Native Copy",
+          "Typed value supplied to this native clipboard event.",
+          "A receiving handoff is needed before claiming a round trip.",
+        );
+      });
+      document.addEventListener("paste", (event) => {
+        if (!ownsValueGesture(event)) return;
+        event.preventDefault();
+        if (busy()) return;
+        const snapshot = model.capture(state);
+        if (!event.clipboardData)
+          return notify(
+            "browser",
+            "Native Paste",
+            "Clipboard event data unavailable.",
+            "Use an explicit supported Paste path.",
+          );
+        prepare(event.clipboardData.getData("text/plain"), snapshot);
+      });
+      document.addEventListener("cut", (event) => {
+        if (!ownsValueGesture(event)) return;
+        event.preventDefault();
+        notify(
+          "rejected",
+          "Value Cut",
+          "Standalone values support Copy/Paste only. No clipboard write or deletion.",
+          "Use Copy value. Authored reset remains separate.",
+        );
+      });
+      $("native-paste").onclick = () => {
+        $("value-region").focus();
+        notify(
+          "ready",
+          "Native Paste",
+          "Value region focused. Target is visible above.",
+          "Press ⌘/Ctrl+V or use the browser Paste command.",
+        );
+      };
+      $("graph-focus").onkeydown = (event) => {
+        if (
+          (event.metaKey || event.ctrlKey) &&
+          ["c", "v", "x", "d"].includes(event.key.toLowerCase())
+        )
+          $("graph-route").textContent =
+            "Graph gesture belongs to graph content. Value target and values unchanged; graph operations are outside this demo.";
+      };
+      $("default-plane").onclick = () => dispatch({ kind: "select", target: { plane: "default" } });
+      $("current-plane").onclick = () => dispatch({ kind: "select", target: { plane: "current" } });
+      $("select-level").onclick = () =>
+        dispatch({ kind: "select", target: { source: "level", field: "", instance: "" } });
+      $("select-profile").onclick = () =>
+        dispatch({ kind: "select", target: { source: "profile", field: "", instance: "" } });
+      $("instance").onchange = (event) =>
+        dispatch({ kind: "select", target: { instance: event.target.value } });
+      $("field").onchange = (event) =>
+        dispatch({ kind: "select", target: { field: event.target.value } });
+      for (const [id, key] of [
+        ["wired", "wired"],
+        ["show-owned", "showOwned"],
+        ["absent", "absent"],
+        ["denied", "denied"],
+        ["evaluation", "evaluation"],
+        ["lost-response", "lostResponse"],
+      ])
+        $(id).onchange = (event) => dispatch({ kind: "flag", key, value: event.target.checked });
+      for (const [id, what] of [
+        ["change-selected", "selected value"],
+        ["change-sibling", "sibling"],
+        ["change-publication", "publication"],
+        ["end-run", "run"],
+      ])
+        $(id).onclick = () => dispatch({ kind: "change", what });
+      $("confirm").onclick = () => dispatch({ kind: "submit" });
+      $("cancel").onclick = () => dispatch({ kind: "cancel" });
+      for (const [id, what] of [
+        ["dialog-selected", "selected value"],
+        ["dialog-sibling", "sibling"],
+        ["dialog-publication", "publication"],
+        ["dialog-run", "run"],
+      ])
+        $(id).onclick = () => dispatch({ kind: "change", what });
+      $("dialog-target").onclick = () => dispatch({ kind: "select", target: { plane: "default" } });
+      $("dialog-unknown").onclick = () => {
+        dispatch({ kind: "flag", key: "lostResponse", value: true });
+        dispatch({ kind: "submit" });
+      };
+      $("confirmation").addEventListener("cancel", (event) => {
+        event.preventDefault();
+        dispatch({ kind: "cancel" });
+      });
+      $("reconcile").onclick = () => dispatch({ kind: "reconcile" });
+      $("undo").onclick = () => dispatch({ kind: "undo" });
+      $("redo").onclick = () => dispatch({ kind: "redo" });
+      $("reset").onclick = () => reset();
+      $("preview-input").onclick = () => prepare($("exchange").value);
+      $("export-fixture").onclick = () => {
+        const result = model.encode(state, false);
+        $("copy-inspection").hidden = false;
+        $("copy-inspection").textContent = result.error || result.text;
+      };
+      const scenarios = [
+        {
+          name: "Scalar Default",
+          description:
+            "Paste number 42 into authored Level while a Run is active. Undo restores Default without changing Current 12. A JSON string is not a number.",
+          target: {},
+          steps: [
+            ["Paste fixture 42", () => prepare("42")],
+            ["Undo Default", () => dispatch({ kind: "undo" })],
+            ['Try text "42"', () => prepare('"42"')],
+          ],
+        },
+        {
+          name: "Structured exchange",
+          description:
+            "Inspect typed copy, then exchange plain JSON with an external editor. Omitted optional nickname becomes explicit Typed Absence, never Guest or inheritance. This walkthrough uses fixture input; real Copy/Paste buttons exercise the browser.",
+          target: { source: "profile" },
+          steps: [
+            ["Inspect typed text", () => $("export-fixture").click()],
+            [
+              "Load external JSON",
+              () => {
+                $("exchange").value = '{"name":"Miranda","score":21}';
+              },
+            ],
+            ["Paste fixture JSON", () => prepare($("exchange").value)],
+            ["Try extra Field", () => prepare('{"name":"Miranda","score":21,"unknown":true}')],
+          ],
+        },
+        {
+          name: "Live Shared Instance",
+          description:
+            "No Instance is selected automatically. Foyer is eligible despite no connected browser. Replace only its Profile; Stage and the mirror's old holder stay unchanged. Every live paste asks for confirmation.",
+          target: { source: "profile", plane: "current" },
+          steps: [
+            ["Try before choosing Instance", () => prepare('{"name":"Miranda","score":21}')],
+            ["Choose Foyer", () => dispatch({ kind: "select", target: { instance: "a" } })],
+            ["Preview replacement", () => prepare('{"name":"Miranda","score":21}')],
+            ["Confirm live write", () => dispatch({ kind: "submit" })],
+          ],
+        },
+        {
+          name: "Shared Field and freshness",
+          description:
+            "Field score shares its containing holder with Profile mirror. Change a sibling name while confirmation is open; score paste still succeeds. Change score itself instead and commit rejects atomically.",
+          target: { source: "profile", plane: "current", instance: "a", field: "score" },
+          steps: [
+            ["Preview score 30", () => prepare("30")],
+            ["Change sibling name", () => dispatch({ kind: "change", what: "sibling" })],
+            ["Confirm score", () => dispatch({ kind: "submit" })],
+            ["Preview score 40", () => prepare("40")],
+            ["Change selected score", () => dispatch({ kind: "change", what: "selected value" })],
+            ["Confirm stale score", () => dispatch({ kind: "submit" })],
+          ],
+        },
+        {
+          name: "Pinned / unknown outcome",
+          description:
+            "A response can be lost after submission. Selection cannot retarget or cancel the submitted request. Paste and authored history wait for the exact operation's outcome.",
+          target: { source: "level", plane: "current" },
+          steps: [
+            ["Preview 50", () => prepare("50")],
+            [
+              "Lose response on submit",
+              () => {
+                dispatch({ kind: "flag", key: "lostResponse", value: true });
+                dispatch({ kind: "submit" });
+              },
+            ],
+            ["Select Default", () => dispatch({ kind: "select", target: { plane: "default" } })],
+            ["Reconcile original request", () => dispatch({ kind: "reconcile" })],
+          ],
+        },
+      ];
+      let scenarioIndex = 0;
+      let stepIndex = 0;
+      const renderSteps = () => {
+        $("steps").replaceChildren();
+        scenarios[scenarioIndex].steps.forEach(([label, action], index) => {
+          const button = document.createElement("button");
+          button.textContent = `${index + 1}. ${label}`;
+          button.disabled = index !== stepIndex;
+          button.onclick = () => {
+            action();
+            stepIndex++;
+            renderSteps();
+          };
+          $("steps").append(button);
+        });
+      };
+      scenarios.forEach((scenario, index) => {
+        const button = document.createElement("button");
+        button.setAttribute("role", "tab");
+        button.textContent = scenario.name;
+        button.onclick = () => {
+          if (busy()) return;
+          scenarioIndex = index;
+          stepIndex = 0;
+          reset(scenario.target);
+          $("scenario-description").textContent = scenario.description;
+          for (const b of $("scenarios").children) b.setAttribute("aria-selected", b === button);
+          renderSteps();
+        };
+        $("scenarios").append(button);
+      });
+      $("scenarios").firstElementChild.click();
+    </script>
+  </body>
+</html>
