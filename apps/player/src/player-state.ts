@@ -126,6 +126,7 @@ export function applyPlayerCue(
   graph: ShowGraph,
   actions: readonly Action[],
   sceneId: string,
+  eventId: string,
   cueParameterValues: Readonly<Record<string, unknown>> = {},
   showState: RunState = { sourceValues: {}, structuredValues: {} },
 ): PlayerCueExecution {
@@ -150,7 +151,7 @@ export function applyPlayerCue(
     }
     // Reads may reach Show scope; only the writes are confined to the
     // Instance layer, which is where an Instance-scoped holder lives.
-    const plan = planUpdate(graph, composed, sceneId, action, cueParameterValues);
+    const plan = planUpdate(graph, composed, sceneId, action, eventId, cueParameterValues);
     if (plan.kind === "failed") {
       return { kind: "failed", actionId: action.id, reason: plan.reason };
     }

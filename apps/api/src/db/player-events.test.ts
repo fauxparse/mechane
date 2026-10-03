@@ -1,11 +1,13 @@
-import type { ShowGraph } from "@mechane/domain/graph";
-import type { Action } from "@mechane/domain/interactions";
+import type { GraphNode, ShowGraph, SourceFieldDefault } from "@mechane/domain/graph";
+import type { Action, Cue } from "@mechane/domain/interactions";
 import { describeRunError } from "@mechane/domain/run-errors";
+import type { Shape } from "@mechane/domain/shapes";
 import {
   isStructuredValueReference,
   type RunState,
   type StructuredValueReference,
 } from "@mechane/domain/structured-values";
+import { applyUpdateWrites, planUpdate, type UpdateWrite } from "@mechane/domain/update-plan";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
@@ -425,6 +427,246 @@ function votes(state: RunState, ref: StructuredValueReference): unknown {
   const record = state.structuredValues[ref.ref];
   return record?.kind === "shape" ? record.fields.f_votes : undefined;
 }
+
+const RESET_CUE_ID = "cue_reset";
+const RESET_TALLY_SOURCE_ID = "source_reset_tally";
+const RESET_BALLOT_SOURCE_ID = "source_reset_ballot";
+const RESET_ADJUST_ACTION_ID = "action_reset_tally";
+const RESET_ACTION_ID = "action_reset_ballot";
+const BALLOT_DEFAULT = [
+  { f_name: "A", f_votes: 1 },
+  { f_name: "B", f_votes: 2 },
+];
+
+/** Every dispatch path that can run a Cue's Updates server-side. */
+const resetIdentityBranches = [
+  ["a Shared Device on a Flow", "shared-flow"],
+  ["a Shared Device on a top-level Scene", "shared-scene"],
+  ["a per-connection Device", "per-connection"],
+] as const;
+type ResetIdentityBranch = (typeof resetIdentityBranches)[number][1];
+
+interface ResetFixture {
+  run: { id: string };
+  device: { id: string; pairingCode: string };
+  tap: Omit<PlayerEventInput, "eventId">;
+}
+
+/** Publishes a multi-Action reset Cue for each server dispatch path. */
+async function publishStructuredReset(branch: ResetIdentityBranch): Promise<ResetFixture> {
+  await createShow();
+  const draft = await readShowGraph(showId, "draft");
+  const redCanvas = await readCanvas(showId, "draft", { sceneNodeId: "scene_red" });
+  if (!redCanvas) throw new Error("Red Scene Canvas is missing.");
+  const sources: GraphNode[] = [
+    {
+      id: RESET_TALLY_SOURCE_ID,
+      kind: "source",
+      name: "Tally",
+      position: { x: 0, y: 0 },
+      parentId: null,
+      type: "number",
+    },
+    {
+      id: RESET_BALLOT_SOURCE_ID,
+      kind: "source",
+      name: "Ballot",
+      position: { x: 0, y: 0 },
+      parentId: null,
+      type: { kind: "array", of: CANDIDATE_TYPE },
+    },
+  ];
+  const actions: Action[] = [
+    {
+      id: RESET_ADJUST_ACTION_ID,
+      cueId: RESET_CUE_ID,
+      kind: "update",
+      target: { sourceId: RESET_TALLY_SOURCE_ID, fieldPath: [] },
+      operation: {
+        kind: "adjust",
+        operand: { kind: "literal", value: { kind: "number", value: 5 } },
+      },
+    },
+    {
+      id: RESET_ACTION_ID,
+      cueId: RESET_CUE_ID,
+      kind: "update",
+      target: { sourceId: RESET_BALLOT_SOURCE_ID, fieldPath: [] },
+      operation: { kind: "reset" },
+    },
+  ];
+  const cue: Cue = {
+    id: RESET_CUE_ID,
+    name: "Reset Ballot",
+    owner: { kind: "scene", sceneId: "scene_red" },
+    actionIds: actions.map((action) => action.id),
+  };
+  const shapes: Shape[] = [
+    ...(draft.shapes ?? []),
+    {
+      id: CANDIDATE_TYPE.shapeId,
+      name: "Candidate",
+      fields: [
+        { id: "f_name", name: "Name", type: "text", required: true, defaultValue: "" },
+        { id: "f_votes", name: "Votes", type: "number", required: true, defaultValue: 0 },
+      ],
+    },
+  ];
+  const sourceFieldDefaults: SourceFieldDefault[] = [
+    ...(draft.sourceFieldDefaults ?? []),
+    { nodeId: RESET_BALLOT_SOURCE_ID, fieldPath: [], value: BALLOT_DEFAULT },
+  ];
+
+  if (branch === "shared-scene") {
+    const scene = draft.nodes.find((node) => node.id === "scene_red");
+    const device = draft.nodes.find((node) => node.kind === "device");
+    if (scene?.kind !== "scene" || device?.kind !== "device") {
+      throw new Error("Reset Stage fixture is incomplete.");
+    }
+    await writeShowGraph(showId, "draft", {
+      ...draft,
+      shapes,
+      sourceFieldDefaults,
+      nodes: [
+        { ...scene, parentId: null, name: "Reset Stage" },
+        { ...device, perConnection: false },
+        ...sources,
+      ],
+      edges: [
+        {
+          id: "edge_reset_stage_device",
+          kind: "device",
+          sourceId: scene.id,
+          targetId: device.id,
+          sourcePath: [],
+          targetPath: [],
+        },
+      ],
+      cues: [cue],
+      actions,
+      eventBindings: [],
+    });
+    const stageCanvas = await writeCanvas(showId, "draft", { sceneNodeId: scene.id }, redCanvas);
+    const graphWithCanvas = await readShowGraph(showId, "draft");
+    await applyShowEdits(
+      showId,
+      [
+        {
+          type: "graph.addEventBinding",
+          binding: {
+            id: "binding_reset",
+            canvasId: stageCanvas.id,
+            elementId: stageCanvas.root.id,
+            eventKind: "tap",
+            cueId: RESET_CUE_ID,
+            position: 0,
+          },
+        },
+      ],
+      [],
+      graphWithCanvas.version,
+    );
+    const published = await publishShowGraph(showId);
+    return {
+      run: await startRun(showId),
+      device: await proofDevice(),
+      tap: {
+        publishedGraphVersion: published.version,
+        sceneId: scene.id,
+        elementId: stageCanvas.root.id,
+        eventKind: "tap",
+      },
+    };
+  }
+
+  await writeShowGraph(showId, "draft", {
+    ...draft,
+    shapes,
+    sourceFieldDefaults,
+    nodes: [
+      ...draft.nodes.map((node) =>
+        node.kind === "device" ? { ...node, perConnection: branch === "per-connection" } : node,
+      ),
+      ...sources,
+    ],
+    cues: [...(draft.cues ?? []), cue],
+    actions: [...(draft.actions ?? []), ...actions],
+    eventBindings: [
+      ...(draft.eventBindings ?? []),
+      {
+        id: "binding_reset",
+        canvasId: redCanvas.id,
+        elementId: "scene_red_root",
+        eventKind: "tap",
+        cueId: RESET_CUE_ID,
+        position: 5,
+      },
+    ],
+  });
+  const published = await publishShowGraph(showId);
+  return {
+    run: await startRun(showId),
+    device: await proofDevice(),
+    tap: {
+      publishedGraphVersion: published.version,
+      sceneId: "scene_red",
+      elementId: "scene_red_root",
+      eventKind: "tap",
+    },
+  };
+}
+
+/** Independently plans the Player's writes from the same published graph and Event. */
+function planResetCue(graph: ShowGraph, state: RunState, sceneId: string, eventId: string) {
+  const actions = graph.actions ?? [];
+  const tallyAction = actions.find((action) => action.id === RESET_ADJUST_ACTION_ID);
+  const resetAction = actions.find((action) => action.id === RESET_ACTION_ID);
+  if (tallyAction?.kind !== "update" || resetAction?.kind !== "update") {
+    throw new Error("Reset Cue is missing from the published graph.");
+  }
+  const tally = planUpdate(graph, state, sceneId, tallyAction, eventId);
+  if (tally.kind === "failed") throw new Error(`Tally plan failed: ${tally.reason}.`);
+  const ballot = planUpdate(
+    graph,
+    applyUpdateWrites(state, tally.writes),
+    sceneId,
+    resetAction,
+    eventId,
+  );
+  if (ballot.kind === "failed") throw new Error(`Ballot plan failed: ${ballot.reason}.`);
+  return { tally, ballot };
+}
+
+/** The fresh records a plan mints, keyed by the identity each minted with. */
+function plannedRecords(writes: readonly UpdateWrite[]) {
+  return Object.fromEntries(
+    writes.flatMap((write) => {
+      if (write.kind !== "record") return [];
+      return [
+        [
+          write.record.id,
+          {
+            kind: write.record.kind,
+            type: write.record.type,
+            payload: write.record.kind === "array" ? write.record.items : write.record.fields,
+          },
+        ],
+      ];
+    }),
+  );
+}
+
+/** The records actually stored, keyed the same way for comparison. */
+function storedRecords(
+  rows: readonly { structuredValueId: string; kind: string; type: unknown; payload: unknown }[],
+) {
+  return Object.fromEntries(
+    rows.map((row) => [
+      row.structuredValueId,
+      { kind: row.kind, type: row.type, payload: row.payload },
+    ]),
+  );
+}
 describe("dispatchPlayerEvent", () => {
   it("applies all six Navigation Proof transitions", async () => {
     await createShow(true);
@@ -753,6 +995,85 @@ describe("dispatchPlayerEvent", () => {
       expect((await readRunDeviceState(run.id, device.id))?.activeSceneId).toBe("scene_green");
       expect(await showStateSequence()).toBe(before + 1);
     });
+  });
+
+  describe("a Cue that resets a structured Source (#884)", () => {
+    it.each(resetIdentityBranches)(
+      "stores exactly the Structured Values a Player plans for the same Event from %s",
+      async (_label, branch) => {
+        const { run, device, tap } = await publishStructuredReset(branch);
+        const graph = await readShowGraph(showId, "published");
+        const stateBefore = await readRunState(run.id, db);
+        const rowsBefore = await db
+          .select()
+          .from(runStructuredValues)
+          .where(eq(runStructuredValues.runId, run.id));
+        const seededIds = new Set(rowsBefore.map((row) => row.structuredValueId));
+
+        const eventId = crypto.randomUUID();
+        const result = await dispatchPlayerEvent(device.pairingCode, { eventId, ...tap });
+        expect(result).toMatchObject({ kind: "accepted" });
+
+        const rowsAfter = await db
+          .select()
+          .from(runStructuredValues)
+          .where(eq(runStructuredValues.runId, run.id));
+        const fresh = rowsAfter.filter((row) => !seededIds.has(row.structuredValueId));
+        const player = planResetCue(graph, stateBefore, tap.sceneId, eventId);
+        const planned = plannedRecords(player.ballot.writes);
+
+        expect(Object.keys(planned)).toHaveLength(3);
+        expect(storedRecords(fresh)).toEqual(planned);
+        for (const id of Object.keys(planned)) expect(seededIds.has(id)).toBe(false);
+
+        const stateAfter = await readRunState(run.id, db);
+        const ballotRef = stateAfter.sourceValues[RESET_BALLOT_SOURCE_ID];
+        const sourceRoot = player.ballot.writes.find(
+          (write): write is Extract<UpdateWrite, { kind: "sourceRoot" }> =>
+            write.kind === "sourceRoot",
+        );
+        if (!sourceRoot) throw new Error("Reset plan has no source root write.");
+        expect(ballotRef).toEqual(sourceRoot.value);
+        expect(stateAfter.sourceValues[RESET_TALLY_SOURCE_ID]).toBe(5);
+        const ballot = isStructuredValueReference(ballotRef)
+          ? stateAfter.structuredValues[ballotRef.ref]
+          : undefined;
+        expect(
+          ballot?.kind === "array"
+            ? ballot.items.map((item) =>
+                isStructuredValueReference(item) ? votes(stateAfter, item) : undefined,
+              )
+            : undefined,
+        ).toEqual([1, 2]);
+
+        const retry = await dispatchPlayerEvent(device.pairingCode, { eventId, ...tap });
+        expect(retry).toMatchObject({ kind: "duplicate", outcome: "accepted" });
+        expect(
+          await db.select().from(runStructuredValues).where(eq(runStructuredValues.runId, run.id)),
+        ).toHaveLength(rowsAfter.length);
+        expect((await readRunState(run.id, db)).sourceValues[RESET_BALLOT_SOURCE_ID]).toEqual(
+          ballotRef,
+        );
+
+        const otherEventId = crypto.randomUUID();
+        const second = await dispatchPlayerEvent(device.pairingCode, {
+          eventId: otherEventId,
+          ...tap,
+        });
+        expect(second).toMatchObject({ kind: "accepted" });
+        const rowsSecond = await db
+          .select()
+          .from(runStructuredValues)
+          .where(eq(runStructuredValues.runId, run.id));
+        const afterFirstIds = new Set(rowsAfter.map((row) => row.structuredValueId));
+        const freshSecond = rowsSecond.filter((row) => !afterFirstIds.has(row.structuredValueId));
+        const plannedSecond = plannedRecords(
+          planResetCue(graph, stateAfter, tap.sceneId, otherEventId).ballot.writes,
+        );
+        expect(storedRecords(freshSecond)).toEqual(plannedSecond);
+        for (const id of Object.keys(plannedSecond)) expect(afterFirstIds.has(id)).toBe(false);
+      },
+    );
   });
   it("ignores Events when there is no active Run", async () => {
     await createShow();

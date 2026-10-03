@@ -2,12 +2,16 @@ import { describe, expect, it } from "vitest";
 
 import type { StructuredValueTemplate } from "./structured-values";
 import type { ShowGraph } from "./graph";
-import { assertValidId } from "./id";
+import { assertValidId, isId } from "./id";
 import { expandSlotInstances } from "./slots";
 import {
   assertValidRunState,
+  computedStructuredValueId,
+  eventStructuredValueId,
   InvalidStructuredValueError,
   isArrayStructuredValueTemplate,
+  isComputedStructuredValueId,
+  isEventStructuredValueId,
   isShapeStructuredValueTemplate,
   isStructuredValueReference,
   materializeRunState,
@@ -168,5 +172,113 @@ describe("Structured Value identity", () => {
         graph,
       ),
     ).toThrow(/dangling reference/);
+  });
+});
+
+describe("Event-derived Structured Value identity", () => {
+  it("encodes Event, Action, and path reversibly with no delimiter collisions", () => {
+    // The wire format is the contract: both planning sides and every stored
+    // row agree on it, so it is pinned once, exactly.
+    expect(eventStructuredValueId("evt_1", "act_1", ["f_candidates", "0"])).toBe(
+      "x:evt_1:act_1:f_candidates/0",
+    );
+    // The root node's empty path is its own key, not a missing part.
+    expect(eventStructuredValueId("evt_1", "act_1", [])).toBe("x:evt_1:act_1:");
+
+    // Delimiter-bearing parts encode, so no triple can alias another by
+    // splitting differently.
+    expect(eventStructuredValueId("evt:1", "act", ["a/b"])).not.toBe(
+      eventStructuredValueId("evt", "1:act", ["a", "b"]),
+    );
+    expect(eventStructuredValueId("a:b", "c", [])).not.toBe(eventStructuredValueId("a", "b:c", []));
+    expect(eventStructuredValueId("e", "a", ["x/y"])).not.toBe(
+      eventStructuredValueId("e", "a", ["x", "y"]),
+    );
+
+    // Distinct triples stay distinct, and the guard recognizes every id the
+    // builder can produce.
+    const ids = [
+      eventStructuredValueId("evt_1", "act_1", []),
+      eventStructuredValueId("evt_2", "act_1", []),
+      eventStructuredValueId("evt_1", "act_2", []),
+      eventStructuredValueId("evt_1", "act_1", ["0"]),
+    ];
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const id of ids) expect(isEventStructuredValueId(id)).toBe(true);
+  });
+
+  it("keeps the stored namespace disjoint from computed and random ids", () => {
+    const stored = eventStructuredValueId("evt_1", "act_1", ["0"]);
+    expect(isComputedStructuredValueId(stored)).toBe(false);
+    expect(isId("structuredValue", stored)).toBe(false);
+    expect(isEventStructuredValueId(computedStructuredValueId("t_1", people, []))).toBe(false);
+    expect(isEventStructuredValueId(assertValidId("structuredValue", "x2345678"))).toBe(false);
+    // Missing path part, empty Event part, and trailing extra part.
+    expect(isEventStructuredValueId("x:evt_1:act_1")).toBe(false);
+    expect(isEventStructuredValueId("x::act_1:")).toBe(false);
+    expect(isEventStructuredValueId("x:evt_1:act_1:0:1")).toBe(false);
+  });
+
+  it("recognizes Event-derived templates and stores their ids as record keys", () => {
+    const derive = (path: readonly string[]) => eventStructuredValueId("evt_1", "act_1", path);
+    const template = normalizeStructuredValueTemplate(
+      [item("Ada"), item("Grace")],
+      people,
+      [person],
+      derive,
+    );
+    if (!isArrayStructuredValueTemplate(template)) throw new Error("Expected an array template.");
+    const [ada, grace] = template.items;
+    if (!isShapeStructuredValueTemplate(ada) || !isShapeStructuredValueTemplate(grace)) {
+      throw new Error("Expected Shape templates.");
+    }
+
+    expect(template.id).toBe(derive([]));
+    expect(ada.id).toBe(derive(["0"]));
+    expect(grace.id).toBe(derive(["1"]));
+
+    // Re-normalizing without a derivation keeps every Event-derived id, so
+    // materialization never re-mints over a seed.
+    expect(normalizeStructuredValueTemplate(template, people, [person])).toEqual(template);
+
+    const materialized = materializeStructuredValue(template, people, [person]);
+    expect(Object.keys(materialized.structuredValues).sort()).toEqual(
+      [derive([]), derive(["0"]), derive(["1"])].sort(),
+    );
+    expect(materialized.value).toEqual({ ref: derive([]) });
+    expect(isStructuredValueReference(materialized.value)).toBe(true);
+
+    // A run state holding only Event-derived records validates, while a key
+    // that is neither random nor Event-derived — computed, here — still
+    // does not.
+    const state = {
+      sourceValues: { people: materialized.value },
+      structuredValues: materialized.structuredValues,
+    };
+    assertValidRunState(state, graph);
+    const computed = computedStructuredValueId("t_1", people, []);
+    expect(() =>
+      assertValidRunState(
+        {
+          ...state,
+          structuredValues: {
+            ...state.structuredValues,
+            [computed]: { id: computed, kind: "array", type: people, items: [] },
+          },
+        },
+        graph,
+      ),
+    ).toThrow(InvalidStructuredValueError);
+  });
+
+  it("keeps authored normalization random", () => {
+    const template = normalizeStructuredValueTemplate([item("Ada")], people, [person]);
+    if (!isArrayStructuredValueTemplate(template)) throw new Error("Expected an array template.");
+    const [ada] = template.items;
+    if (!isShapeStructuredValueTemplate(ada)) throw new Error("Expected a Shape template.");
+    for (const id of [template.id, ada.id]) {
+      expect(isId("structuredValue", id)).toBe(true);
+      expect(isEventStructuredValueId(id)).toBe(false);
+    }
   });
 });

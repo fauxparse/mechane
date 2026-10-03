@@ -562,6 +562,7 @@ describe("applyPlayerCue action routing", () => {
       routingGraph,
       [adjustVotes],
       "scene_confirm",
+      "event_confirm",
       {},
       showState,
     );
@@ -587,6 +588,7 @@ describe("applyPlayerCue action routing", () => {
         },
       ],
       "scene_confirm",
+      "event_clear",
       {},
       showState,
     );
@@ -645,6 +647,7 @@ describe("applyPlayerCue action routing", () => {
         },
       ],
       "scene_confirm",
+      "event_select",
       { candidate: { ref: other } },
       candidates,
     );

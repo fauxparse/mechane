@@ -19,6 +19,9 @@
 // reference, so that one field rebinds and the previously-referenced record is
 // untouched. Write-through and rebind are the same operation seen from either
 // side of the slot.
+//
+// When an Update does mint, it names what it mints from the Event that caused
+// it, so the Player and the server mint identical ids independently (#884).
 import type { Action } from "./interactions";
 import type { StructuredValueId } from "./id";
 import type { ShowGraph } from "./graph";
@@ -27,6 +30,7 @@ import { defaultSourceValues } from "./source-defaults";
 import { sceneVariableValues } from "./scene-variable-values";
 import type { ShapeValue, Type } from "./shapes";
 import {
+  eventStructuredValueId,
   isStructuredValueReference,
   materializeStructuredValue,
   normalizeStructuredValueTemplate,
@@ -216,17 +220,17 @@ function isStructuredType(type: Type | null | undefined): boolean {
   return typeof type === "object" && type !== null;
 }
 
-/**
- * Materializes a value that is genuinely allowed to mint identities: a reset's
- * effective default, or a structured literal, which #540 rematerializes on
- * every evaluation.
- */
+/** Materializes fresh stored identities for this Event's reset or structured set. */
 function materializeFresh(
   value: unknown,
   type: Type,
   graph: ShowGraph,
+  eventId: string,
+  actionId: string,
 ): { value: RuntimeValue; records: readonly StructuredValueRecord[] } {
-  const template = normalizeStructuredValueTemplate(value, type, graph.shapes ?? []);
+  const template = normalizeStructuredValueTemplate(value, type, graph.shapes ?? [], (path) =>
+    eventStructuredValueId(eventId, actionId, path),
+  );
   const materialized = materializeStructuredValue(template, type, graph.shapes ?? []);
   return { value: materialized.value, records: Object.values(materialized.structuredValues) };
 }
@@ -239,17 +243,15 @@ function sameRuntimeValue(left: RuntimeValue | undefined, right: RuntimeValue): 
 }
 
 /**
- * Turns one Update Action into the targeted writes that carry it out.
- *
- * Pure, and isomorphic by construction: it reads state and never writes it, so
- * the server can apply the result as row operations while a Player applies the
- * same result to its own store.
+ * Plans targeted writes without mutating state. The Event seed gives independent
+ * Player and server plans the same identities for every fresh structured node.
  */
 export function planUpdate(
   graph: ShowGraph,
   state: RunState,
   sceneId: string,
   action: UpdateAction,
+  eventId: string,
   cueParameterValues: Readonly<Record<string, unknown>> = {},
 ): UpdatePlan {
   const source = graph.nodes.find((node) => node.id === action.target.sourceId);
@@ -273,7 +275,7 @@ export function planUpdate(
     );
     if (defaultValue === undefined) return failed("missing-update-default");
     if (isStructuredType(slotType)) {
-      const fresh = materializeFresh(defaultValue, slotType, graph);
+      const fresh = materializeFresh(defaultValue, slotType, graph, eventId, action.id);
       nextValue = fresh.value;
       records = fresh.records;
     } else {
@@ -316,7 +318,7 @@ export function planUpdate(
       if (action.operation.operand.kind === "cueParameter" && isStructuredValueReference(operand)) {
         nextValue = operand;
       } else {
-        const fresh = materializeFresh(operand, slotType, graph);
+        const fresh = materializeFresh(operand, slotType, graph, eventId, action.id);
         nextValue = fresh.value;
         records = fresh.records;
       }
