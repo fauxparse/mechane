@@ -170,6 +170,8 @@ interface ModelState {
   revision: number;
   lastPaste: { key: string; base: Position; count: number } | null;
   scenarios: Scenarios;
+  /** A submitted mutation whose outcome is unknown. Copy/Cut stay available; mutations wait. */
+  pinned: Extract<Activity, { kind: "unknown" }> | null;
 }
 
 type ChannelMessage =
@@ -316,6 +318,7 @@ function useClipboardModel({
     revision: 1,
     lastPaste: null,
     scenarios: DEFAULT_SCENARIOS,
+    pinned: null,
   });
   const graph = useRef<ShowGraph>(show.graph);
   const pointer = useRef<{ screen: Position; inside: boolean }>({
@@ -422,14 +425,6 @@ function useClipboardModel({
   };
 
   const prepare = (op: Op | "duplicate", ids: string[], silent: boolean, then?: () => void) => {
-    // Prototype simplification: the pinned unknown outcome shares the activity slot, so
-    // nothing new starts until its result is checked.
-    if (state.current.activity.kind === "unknown") {
-      if (!silent) {
-        notify("warning", "The last outcome is still unknown", "Check its result first.");
-      }
-      return;
-    }
     request.current += 1;
     const mine = request.current;
     const { scenarios } = state.current;
@@ -520,11 +515,14 @@ function useClipboardModel({
         session: SESSION,
         status: "active",
       });
-      notify(
-        "success",
-        `Cut ${snapshotSummary(snapshot)}`,
-        `Paste to move. The originals stay until a paste succeeds. Esc cancels the move.`,
-      );
+      // Variant A shows the live Cut as its own persistent toast with Cancel move.
+      if (variant !== "A") {
+        notify(
+          "success",
+          `Cut ${snapshotSummary(snapshot)}`,
+          `Paste to move. The originals stay until a paste succeeds. Esc cancels the move.`,
+        );
+      }
       return;
     }
     notify("success", `Copied ${snapshotSummary(snapshot)}`);
@@ -663,11 +661,11 @@ function useClipboardModel({
         return;
       case "unknown":
         set({
-          activity: {
+          pinned: {
             kind: "unknown",
             summary: label,
             check: () => {
-              set({ activity: { kind: "idle" } });
+              set({ pinned: null });
               if (state.current.scenarios.unknownResolvesTo === "committed") commit(true);
               else reject();
             },
@@ -1046,10 +1044,10 @@ function useClipboardModel({
     source: { kind: "native"; text: string } | { kind: "menu" },
     placement: Placement,
   ) => {
-    if (state.current.activity.kind === "unknown") {
+    if (state.current.pinned) {
       notify(
         "warning",
-        "The last paste's outcome is still unknown",
+        `The last ${state.current.pinned.summary.toLowerCase()}'s outcome is still unknown`,
         "Check its result before pasting again, so nothing is applied twice.",
       );
       return;
@@ -1083,6 +1081,14 @@ function useClipboardModel({
     const ids = editor()?.selectedNodeIds() ?? [];
     if (ids.length === 0) {
       notify("info", "Select nodes to duplicate");
+      return;
+    }
+    if (state.current.pinned) {
+      notify(
+        "warning",
+        `The last ${state.current.pinned.summary.toLowerCase()}'s outcome is still unknown`,
+        "Check its result before duplicating, so nothing races it.",
+      );
       return;
     }
     if (state.current.scenarios.unfinishedGesture) {
@@ -1158,6 +1164,20 @@ function useClipboardModel({
     }
     function onKeyDown(event: KeyboardEvent) {
       if (!graphOwnsGesture()) return;
+      const undoChord =
+        (event.metaKey || event.ctrlKey) &&
+        (event.key.toLowerCase() === "z" || (event.ctrlKey && event.key.toLowerCase() === "y"));
+      if (undoChord && state.current.pinned) {
+        // Capture phase: stop the editor's own Undo/Redo binding from racing the unknown outcome.
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        latest.current.notify(
+          "warning",
+          "Undo waits for the unknown outcome",
+          "Check the result first, so history doesn't race a submitted edit.",
+        );
+        return;
+      }
       const mod = event.metaKey || event.ctrlKey;
       if (mod && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "d") {
         event.preventDefault();
@@ -1184,12 +1204,12 @@ function useClipboardModel({
     document.addEventListener("copy", onCopy);
     document.addEventListener("cut", onCopy);
     document.addEventListener("paste", onPaste);
-    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKeyDown, true);
     return () => {
       document.removeEventListener("copy", onCopy);
       document.removeEventListener("cut", onCopy);
       document.removeEventListener("paste", onPaste);
-      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keydown", onKeyDown, true);
     };
   }, []);
 
@@ -1416,24 +1436,64 @@ function ActivityActions({ model, size = "sm" }: { model: Model; size?: "sm" | "
       </>
     );
   }
-  if (activity.kind === "unknown") {
-    return (
-      <Button size={size} onClick={activity.check}>
+  return null;
+}
+
+function PinnedOutcome({ model, className }: { model: Model; className: string }) {
+  const { pinned } = model.state;
+  const copy = pinned ? activityText(pinned) : null;
+  if (!pinned || !copy) return null;
+  return (
+    <section className={className}>
+      <p>
+        <strong>{copy.title}</strong>
+        <span className="block text-xs">{copy.detail}</span>
+      </p>
+      <Button size="xs" onClick={pinned.check}>
         Check result
       </Button>
-    );
-  }
-  return null;
+    </section>
+  );
+}
+
+interface PersistentToast {
+  title: string;
+  description: string;
+  type: Tone;
+  action?: { children: string; onClick: () => void };
+}
+
+/** One long-lived toast mirroring `source`; it updates only when `source` changes identity. */
+function usePersistentToast(source: unknown, content: PersistentToast | null) {
+  const toasts = useToastManager();
+  const id = useRef<string | null>(null);
+  // The toast manager changes identity whenever a toast changes, so only react to new sources.
+  const applied = useRef<unknown>(undefined);
+  useEffect(() => {
+    if (applied.current === source) return;
+    applied.current = source;
+    if (!content) {
+      if (id.current) toasts.close(id.current);
+      id.current = null;
+      return;
+    }
+    const options = {
+      title: content.title,
+      description: content.description,
+      type: content.type,
+      timeout: 0,
+      actionProps: content.action,
+    };
+    if (id.current) toasts.update(id.current, options);
+    else id.current = toasts.add(options);
+  }, [content, source, toasts]);
 }
 
 /** Variant A: toasts for activity and outcomes. */
 function ToastPresentation({ model }: { model: Model }) {
   const toasts = useToastManager();
   const shown = useRef(new Set<number>());
-  const activityToast = useRef<string | null>(null);
-  // The toast manager changes identity whenever a toast changes, so only react to new activity.
-  const appliedActivity = useRef<Activity | null>(null);
-  const { notices, activity } = model.state;
+  const { notices, activity, pinned, ownCut, clip } = model.state;
 
   useEffect(() => {
     for (const notice of notices) {
@@ -1451,33 +1511,54 @@ function ToastPresentation({ model }: { model: Model }) {
     }
   }, [notices, toasts]);
 
-  useEffect(() => {
-    if (appliedActivity.current === activity) return;
-    appliedActivity.current = activity;
-    const text = activityText(activity);
-    if (!text) {
-      if (activityToast.current) toasts.close(activityToast.current);
-      activityToast.current = null;
-      return;
-    }
-    const action =
-      activity.kind === "ready"
-        ? { children: activity.op === "cut" ? "Cut" : "Copy", onClick: model.copyPrepared }
-        : activity.kind === "unknown"
-          ? { children: "Check result", onClick: activity.check }
-          : activity.kind === "preparing" && activity.op !== "duplicate"
-            ? { children: "Cancel", onClick: model.cancelActivity }
-            : undefined;
-    const options = {
-      title: text.title,
-      description: text.detail,
-      type: activity.kind === "unknown" ? "warning" : "info",
-      timeout: 0,
-      actionProps: action,
-    };
-    if (activityToast.current) toasts.update(activityToast.current, options);
-    else activityToast.current = toasts.add(options);
-  }, [activity, model.cancelActivity, model.copyPrepared, toasts]);
+  const activityCopy = activityText(activity);
+  usePersistentToast(
+    activity,
+    activityCopy
+      ? {
+          title: activityCopy.title,
+          description: activityCopy.detail,
+          type: "info",
+          action:
+            activity.kind === "ready"
+              ? { children: activity.op === "cut" ? "Cut" : "Copy", onClick: model.copyPrepared }
+              : activity.kind === "preparing" && activity.op !== "duplicate"
+                ? { children: "Cancel", onClick: model.cancelActivity }
+                : undefined,
+        }
+      : null,
+  );
+
+  const pinnedCopy = pinned ? activityText(pinned) : null;
+  usePersistentToast(
+    pinned,
+    pinned && pinnedCopy
+      ? {
+          title: pinnedCopy.title,
+          description: pinnedCopy.detail,
+          type: "warning",
+          action: { children: "Check result", onClick: pinned.check },
+        }
+      : null,
+  );
+
+  usePersistentToast(
+    ownCut,
+    ownCut
+      ? {
+          title: `Cut ${clip?.op === "cut" ? snapshotSummary(clip.snapshot) : `${ownCut.nodeIds.length} nodes`}: paste to move`,
+          description:
+            ownCut.status === "reserved"
+              ? "A paste is moving them now."
+              : "The originals stay until a paste succeeds. Esc also cancels the move.",
+          type: "info",
+          action:
+            ownCut.status === "active"
+              ? { children: "Cancel move", onClick: () => model.revokeOwnCut("Move cancelled") }
+              : undefined,
+        }
+      : null,
+  );
 
   return null;
 }
@@ -1534,15 +1615,10 @@ function ClipboardDock({ model, showName }: { model: Model; showName: string }) 
           </div>
         </section>
       ) : null}
-      {activity.kind === "unknown" ? (
-        <section className="space-y-2 border-b border-border bg-amber-500/10 px-3 py-2">
-          <p className="font-medium">{activityText(activity)?.title}</p>
-          <p className="text-xs">{activityText(activity)?.detail}</p>
-          <div className="flex justify-end">
-            <ActivityActions model={model} size="xs" />
-          </div>
-        </section>
-      ) : null}
+      <PinnedOutcome
+        model={model}
+        className="flex items-start justify-between gap-2 border-b border-border bg-amber-500/10 px-3 py-2"
+      />
       <section className="space-y-2 border-b border-border px-3 py-2">
         {clip ? (
           <>
@@ -1620,6 +1696,10 @@ function CanvasHud({
   return (
     <>
       <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex flex-col items-center gap-2">
+        <PinnedOutcome
+          model={model}
+          className="pointer-events-auto flex max-w-xl items-center gap-3 rounded-full border border-amber-500 bg-card px-4 py-2 text-sm shadow-lg"
+        />
         {text ? (
           <div className="pointer-events-auto flex max-w-xl items-center gap-3 rounded-full border border-border bg-card px-4 py-2 text-sm shadow-lg">
             <span>
@@ -1821,9 +1901,8 @@ function ScenarioPanel({ model }: { model: Model }) {
     activity:
       state.activity.kind === "ready"
         ? { ...state.activity, snapshot: snapshotSummary(state.activity.snapshot) }
-        : state.activity.kind === "unknown"
-          ? { kind: "unknown", summary: state.activity.summary }
-          : state.activity,
+        : state.activity,
+    pinned: state.pinned?.summary ?? null,
     revision: state.revision,
     selection: state.selection,
     clip: state.clip
