@@ -39,11 +39,7 @@ import {
   readGraphRows,
 } from "./graph-persistence";
 import { drainPlayerInvalidations, enqueuePlayerInvalidations } from "./player-invalidation-outbox";
-import {
-  reconcileActiveRunDeviceStates,
-  reconcileActiveRunValues,
-  syncActiveRunSourceValues,
-} from "./runs";
+import { reconcileActiveRunDeviceStates, reconcileActiveRunValues } from "./runs";
 import { customDomains, devices, showGraphs, shows } from "./schema";
 import { withUniqueId } from "./ids";
 export interface PublishLoss {
@@ -405,8 +401,8 @@ function sceneInteractionCleanupEdits(
 
 /** Applies graph and Canvas edits against one shared Show version transaction.
  *
- * Source value edits also update the active Run and notify paired Players after
- * the transaction commits, so the editor and device views share live values.
+ * Source Default edits change authored state only. Current values remain owned
+ * by their Run or Device Instance until an explicit live operation changes them.
  * A Show that auto-publishes (#856) publishes the new draft in the same
  * transaction, so the edit and its cutover commit or fail together.
  */
@@ -417,7 +413,7 @@ export async function applyShowEdits(
   baseVersion: number,
   options: { customDomainsProvider?: CustomDomainsProvider } = {},
 ): Promise<AppliedShowEdits> {
-  const { applied, publication, playerUpdated } = await db.transaction(async (tx) => {
+  const { applied, publication } = await db.transaction(async (tx) => {
     // Taken before the draft row, in the order publication takes them, so an
     // edit batch and a concurrent publish cannot deadlock.
     const { autoPublish } = await lockShow(tx, showId);
@@ -447,18 +443,7 @@ export async function applyShowEdits(
     const storedCanvas = lastCanvasId
       ? ((await readCanvasById(showId, "draft", lastCanvasId, tx))?.canvas ?? null)
       : null;
-    const editedSourceIds = new Set(
-      graphEdits
-        .filter(
-          (edit): edit is Extract<GraphEdit, { type: "graph.setSourceFieldDefault" }> =>
-            edit.type === "graph.setSourceFieldDefault",
-        )
-        .map((edit) => edit.nodeId),
-    );
-    const playerUpdated = await syncActiveRunSourceValues(showId, nextGraph, editedSourceIds, tx);
     const publication = autoPublish ? await publishDraftIfPublishable(tx, showId) : null;
-    // Publication already notifies every Device.
-    if (playerUpdated && !publication) await enqueuePlayerInvalidations(tx, showId);
     return {
       applied: {
         showId,
@@ -473,17 +458,10 @@ export async function applyShowEdits(
         },
       },
       publication,
-      playerUpdated,
     };
   });
   if (publication) {
     await afterPublication(showId, publication, options.customDomainsProvider);
-  } else if (playerUpdated) {
-    try {
-      await drainPlayerInvalidations({ showId });
-    } catch {
-      // The worker retries the committed outbox row if the provider is down.
-    }
   }
   return applied;
 }
@@ -571,7 +549,7 @@ async function publishDraft(tx: Tx, showId: string): Promise<Publication> {
       forceBlockCanvasWrites: true,
     },
   );
-  await reconcileActiveRunDeviceStates(showId, published, published.version, tx);
+  await reconcileActiveRunDeviceStates(showId, publishedBefore, published, published.version, tx);
   // Publish is the only moment a Device may be retired (#45). Keeping this
   // in the same transaction preserves the all-or-nothing cutover. A
   // retired Device's Custom Domain is released with it.

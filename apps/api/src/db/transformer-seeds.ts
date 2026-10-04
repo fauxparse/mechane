@@ -4,6 +4,8 @@ import { and, eq } from "drizzle-orm";
 import { db } from "./client";
 import { runDeviceTransformerSeeds, runTransformerSeeds } from "./schema";
 
+type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 function shuffleTransformerIds(graph: ShowGraph, parent: "show" | "instance"): string[] {
   return graph.nodes.flatMap((node) =>
     node.kind === "transformer" &&
@@ -14,18 +16,23 @@ function shuffleTransformerIds(graph: ShowGraph, parent: "show" | "instance"): s
   );
 }
 
-async function showSeeds(runId: string, transformerIds: readonly string[]) {
-  await db
+async function showSeeds(runId: string, transformerIds: readonly string[], executor: Executor) {
+  await executor
     .insert(runTransformerSeeds)
     .values(
       transformerIds.map((transformerId) => ({ runId, transformerId, seed: crypto.randomUUID() })),
     )
     .onConflictDoNothing();
-  return db.select().from(runTransformerSeeds).where(eq(runTransformerSeeds.runId, runId));
+  return executor.select().from(runTransformerSeeds).where(eq(runTransformerSeeds.runId, runId));
 }
 
-async function deviceSeeds(runId: string, deviceId: string, transformerIds: readonly string[]) {
-  await db
+async function deviceSeeds(
+  runId: string,
+  deviceId: string,
+  transformerIds: readonly string[],
+  executor: Executor,
+) {
+  await executor
     .insert(runDeviceTransformerSeeds)
     .values(
       transformerIds.map((transformerId) => ({
@@ -36,7 +43,7 @@ async function deviceSeeds(runId: string, deviceId: string, transformerIds: read
       })),
     )
     .onConflictDoNothing();
-  return db
+  return executor
     .select()
     .from(runDeviceTransformerSeeds)
     .where(
@@ -53,12 +60,13 @@ export async function readOrCreateTransformerSeeds(
   deviceId: string,
   graph: ShowGraph,
   includeSharedInstance: boolean,
+  executor: Executor = db,
 ): Promise<Readonly<Record<string, string>>> {
   const showIds = shuffleTransformerIds(graph, "show");
   const instanceIds = includeSharedInstance ? shuffleTransformerIds(graph, "instance") : [];
   const [showRows, deviceRows] = await Promise.all([
-    showIds.length > 0 ? showSeeds(runId, showIds) : [],
-    instanceIds.length > 0 ? deviceSeeds(runId, deviceId, instanceIds) : [],
+    showIds.length > 0 ? showSeeds(runId, showIds, executor) : [],
+    instanceIds.length > 0 ? deviceSeeds(runId, deviceId, instanceIds, executor) : [],
   ]);
   const activeIds = new Set([...showIds, ...instanceIds]);
   return Object.fromEntries(
