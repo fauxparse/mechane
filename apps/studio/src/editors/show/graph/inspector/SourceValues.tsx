@@ -8,6 +8,7 @@ import {
   PencilIcon,
   RotateCcwIcon,
   Section,
+  SectionHelperText,
   SectionRow,
   VariableTypeIcon,
 } from "@mechane/design-system";
@@ -17,6 +18,7 @@ import { useMemo } from "react";
 import type { SourceValueEditing } from "../../commands/use-graph-editing";
 import { useNodeInteraction } from "../node-interaction";
 import { InlineValue, SourceImagePreview } from "../SourceValueDialog/ValueEditor";
+import { SourceValueClipboard } from "../value-transfer/SourceValueClipboard";
 import type { SourceImageAsset, SourceValueRow } from "./source-value-types";
 import { previewValue, sourceValueRows, usesModal } from "./source-values-helpers";
 const EMPTY_SOURCE_IMAGE_ASSETS: readonly SourceImageAsset[] = [];
@@ -78,6 +80,8 @@ export const SourceValues = ({
     openSourceValueEditor({ nodeId: node.id, fieldPath: row.fieldPath });
   return (
     <Section label="Source values">
+      <SourceValueClipboard node={node} editing={editing} />
+      <SectionHelperText>Authored Default</SectionHelperText>
       {rows.map((row) => {
         const modal = usesModal(row.type, row.value);
         const actions = (

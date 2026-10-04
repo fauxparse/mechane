@@ -920,6 +920,62 @@ export const playerInvalidationOutbox = pgTable(
     ),
   ],
 );
+
+// One clipboard value operation (#897–#900): the immutable binding between a
+// server-issued operation id and the exact prepared request that produced it.
+//
+// The row is the authority for "did my Paste land?" — the question a lost HTTP
+// response leaves unanswered. `prepareSourceValue` inserts it as `prepared`
+// with the actor, target, received handoff and derived replacement plan
+// frozen; `commitSourceValue` transitions it to `committed` (with its receipt)
+// or `rejected` (with its diagnostic) in the same transaction as the mutation
+// it describes. A repeated commit of the same id therefore returns the stored
+// outcome instead of reapplying, and a lookup that cannot see a row reports
+// `pending` rather than a definitive rejection.
+//
+// `id` is a UUID, not a generated short id: it is server-issued and opaque to
+// clients, like the outbox's, and never appears in a URL.
+//
+// There is deliberately no expiry. An operation whose outcome the client
+// never learned must stay addressable forever, because "unknown" must keep
+// blocking dependent writes (#873); ordinary retention cannot turn an
+// unknown into a safe-to-retry.
+export const valueOperations = pgTable(
+  "value_operations",
+  {
+    id: text("id").primaryKey(),
+    showId: text("show_id")
+      .notNull()
+      .references(() => shows.id, { onDelete: "cascade" }),
+    // The authenticated actor who prepared the operation. Ownership is
+    // rechecked against the Show at commit and at lookup, so a Show that
+    // changed hands between prepare and commit refuses rather than replays.
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    target: jsonb("target").notNull(),
+    // The received handoff representations, exactly as decoded. Immutable
+    // after prepare: a commit can never be retargeted or rebound to another
+    // request, so what was validated is what is applied.
+    request: jsonb("request").notNull(),
+    // The derived replacement: representation, replacement value, clone
+    // records, authored template and image references.
+    plan: jsonb("plan").notNull(),
+    // For live targets, the selected value/record closure and reference
+    // bindings the confirmation showed. Null for Default targets, whose
+    // freshness check is the draft version alone.
+    comparison: jsonb("comparison"),
+    status: text("status").notNull().default("prepared"),
+    receipt: jsonb("receipt"),
+    diagnostic: jsonb("diagnostic"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    resolvedAt: timestamp("resolved_at"),
+  },
+  (table) => [
+    check("value_operations_status", sql`${table.status} in ('prepared', 'committed', 'rejected')`),
+    index("value_operations_show_created_idx").on(table.showId, table.createdAt),
+  ],
+);
 // Blocks are Show-scoped definitions, but their structure belongs to each
 // draft/published graph just like Scene Canvases (#136). Block ids are
 // client-generated and therefore part of the composite graph key.

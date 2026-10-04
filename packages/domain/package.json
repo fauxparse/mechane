@@ -38,6 +38,7 @@
     "./theme-settings": "./src/theme-settings.ts",
     "./transformers": "./src/transformers.ts",
     "./update-plan": "./src/update-plan.ts",
+    "./value-transfer": "./src/value-transfer.ts",
     "./wiring-conversion": "./src/wiring-conversion.ts"
   },
   "scripts": {

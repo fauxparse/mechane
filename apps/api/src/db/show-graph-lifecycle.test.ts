@@ -94,7 +94,7 @@ async function createShow(): Promise<void> {
 }
 
 describe("Show graph lifecycle", () => {
-  it("publishes structure, preserves Device identity, and updates the active Run", async () => {
+  it("publishes structure, preserves Device identity, and isolates active Run values", async () => {
     await createShow();
     await writeShowGraph(showId, "draft", graph);
 
@@ -125,12 +125,11 @@ describe("Show graph lifecycle", () => {
       fieldPath: [],
       value: 2,
     };
-    // A Show that stages its changes: the edit reaches the live Run but not
-    // the published graph.
+    // A staged Default edit leaves the active Run and publication unchanged.
     await setShowAutoPublish(showId, false);
     const applied = await applyShowEdits(showId, [edit], [], draftBeforePublish.version);
     expect(applied.version).toBe(draftBeforePublish.version + 1);
-    expect((await readActiveRun(showId))?.sourceValues).toEqual({ source_score: 2 });
+    expect((await readActiveRun(showId))?.sourceValues).toEqual({ source_score: 1 });
     expect((await readShowGraph(showId, "published")).version).toBe(1);
   });
   it("copies Scene Canvas Elements before persisting Event Bindings", async () => {
@@ -474,8 +473,8 @@ describe("Show auto-publication (#856)", () => {
     const published = await readShowGraph(showId, "published");
     expect(published.version).toBe(first.published?.version);
     expect(published.nodes.map((node) => node.id)).not.toContain("transformer_total");
-    // The Source default still reaches the live Run, as it does without publishing.
-    expect((await readActiveRun(showId))?.sourceValues).toEqual({ source_score: 4 });
+    // Acceptance changes the Default, not the active Run, even when publication is blocked.
+    expect((await readActiveRun(showId))?.sourceValues).toEqual({ source_score: 3 });
   });
 
   it("publishes a pending draft when auto-publication is turned on", async () => {

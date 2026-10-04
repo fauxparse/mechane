@@ -159,7 +159,7 @@ describe("Navigation Proof seed", () => {
       value: 1,
     };
     await applyShowEdits(showId, [edit], [], beforeEdit.version);
-    expect((await readActiveRun(showId))?.sourceValues.source_counter).toBe(1);
+    expect((await readActiveRun(showId))?.sourceValues.source_counter).toBe(0);
 
     const published = await readShowGraph(showId, "published");
     expect(published.cues).toHaveLength(6);

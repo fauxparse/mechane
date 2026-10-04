@@ -89,6 +89,28 @@ type Query {
   playerRealtimeGrant: RealtimeGrant
   variableReferences(showId: ID!, variableId: ID!, state: String): [VariableReference!]!
   showGraph(showId: ID!, state: String): ShowGraph!
+
+  """
+  The explicit selection facts for one Source: the Show's name, the exact
+  active Run and its published version, and the configured Shared Device
+  Instances that already hold state for the Source's Flow. No connection is
+  required or consulted, and nothing is initialized.
+  """
+  sourceValueContext(showId: ID!, sourceId: ID!): JSON!
+
+  """
+  One coherent, owner-authorized read of the selected Default or Current
+  value: the version-1 typed envelope, its plain expansion, both copy texts,
+  and whether the Source is copy-only because it is fed by incoming wiring.
+  """
+  sourceValueRead(target: JSON!): JSON!
+
+  """
+  The authoritative outcome of one value operation: `pending` (including
+  when nothing definitive is observable), `committed` with its receipt, or
+  `rejected` with its diagnostic.
+  """
+  sourceValueOutcome(showId: ID!, operationId: ID!): JSON!
   showCanvases(showId: ID!, state: String): [Artboard!]!
   imageAssets(showId: ID!): [ImageAsset!]!
 
@@ -135,6 +157,21 @@ type Mutation {
   submitPlayerEvent(input: PlayerEventInput!): PlayerEventResult!
   applyShowEdits(showId: ID!, baseVersion: Int!, edits: [ShowEditInput!]!): AppliedShowEdits!
   publishShowGraph(showId: ID!): ShowGraph!
+
+  """
+  Pins one explicit destination to one received handoff and stores the
+  binding as a durable operation. Returns the operation id with the old and
+  replacement values, labels and alias effects for confirmation. Mutates
+  nothing.
+  """
+  prepareSourceValue(target: JSON!, handoff: JSON!): JSON!
+
+  """
+  Applies exactly the prepared operation the server-issued id binds, and
+  returns its outcome. A repeated identity returns the stored outcome
+  without reapplying; it never accepts an alternative request or target.
+  """
+  commitSourceValue(operationId: ID!): JSON!
   beginImageUpload(showId: ID!, mimeType: String!, byteLength: Int!): ImageUploadSession!
   completeImageUpload(sessionId: ID!): ImageUploadCandidate!
   finalizeImageUpload(sessionId: ID!, name: String!): ImageAsset!

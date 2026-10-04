@@ -1136,6 +1136,7 @@ export const resolvers: Resolvers = {
         }
         const applied = await applyShowEditsToDb(showId, graphEdits, canvasEdits, baseVersion, {
           customDomainsProvider: context.customDomains?.provider,
+          actorId: userId,
         });
         await db.update(shows).set({ updatedAt: new Date() }).where(eq(shows.id, showId));
         return applied;

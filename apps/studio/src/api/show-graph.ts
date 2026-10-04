@@ -283,6 +283,12 @@ export interface ShowGraphEdits {
    * gesture included, since the stack coalesces one (#28).
    */
   enqueue(edits: readonly (GraphEdit | CanvasWorkspaceEdit)[]): void;
+  persistDraft(): Promise<number>;
+  acceptExternal(receipt: {
+    version: number;
+    updatedAt: string;
+    published: { version: number; updatedAt: string } | null;
+  }): void;
   /** True while a batch is in flight. */
   saving: boolean;
   /**
@@ -326,13 +332,25 @@ export function useShowGraphEdits(
   }, [onAmend]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const pending = useRef<(GraphEdit | CanvasWorkspaceEdit)[]>([]);
+  const pending = useRef<
+    { watermark: number; edits: readonly (GraphEdit | CanvasWorkspaceEdit)[] }[]
+  >([]);
   const timer = useRef<number | null>(null);
   const inFlight = useRef(false);
   // Not state: the version is a fact about the last response, and re-rendering
   // on it would re-render the editor for something it never displays.
   const version = useRef<number | null>(null);
   const failed = useRef(false);
+  const accepted = useRef(0);
+  const acknowledged = useRef(0);
+  const failureReason = useRef<Error | null>(null);
+  const barriers = useRef<
+    {
+      cutoff: number;
+      resolve(version: number): void;
+      reject(error: Error): void;
+    }[]
+  >([]);
 
   useEffect(() => {
     if (version.current === null && baseVersion !== undefined) version.current = baseVersion;
@@ -341,9 +359,15 @@ export function useShowGraphEdits(
   const flush = useCallback(() => {
     timer.current = null;
     if (inFlight.current || failed.current) return;
-    const batch = pending.current.splice(0);
-    const graphEdits = batch.filter((edit): edit is GraphEdit => !("canvasId" in edit));
-    const canvasEdits = batch.filter((edit): edit is CanvasWorkspaceEdit => "canvasId" in edit);
+    const cutoff = barriers.current[0]?.cutoff ?? Infinity;
+    const boundary = pending.current.findIndex((entry) => entry.watermark > cutoff);
+    const batch = pending.current.splice(0, boundary < 0 ? pending.current.length : boundary);
+    const batchCutoff = batch.at(-1)?.watermark ?? acknowledged.current;
+    const batchEdits = batch.flatMap((entry) => entry.edits);
+    const graphEdits = batchEdits.filter((edit): edit is GraphEdit => !("canvasId" in edit));
+    const canvasEdits = batchEdits.filter(
+      (edit): edit is CanvasWorkspaceEdit => "canvasId" in edit,
+    );
     const edits = [...coalesceGraphEdits(graphEdits), ...coalesceCanvasWorkspaceEdits(canvasEdits)];
     const base = version.current;
     if (edits.length === 0 || !showId || base === null) {
@@ -361,6 +385,13 @@ export function useShowGraphEdits(
         setError(null);
         const result = data.applyShowEdits;
         version.current = result.version;
+        acknowledged.current = batchCutoff;
+        failureReason.current = null;
+        const waiting = barriers.current;
+        barriers.current = waiting.filter((barrier) => barrier.cutoff > batchCutoff);
+        for (const barrier of waiting) {
+          if (barrier.cutoff <= batchCutoff) barrier.resolve(result.version);
+        }
         queryClient.setQueryData(
           showGraphQueryKey(result.showId as ShowId, "draft"),
           (previous: CachedShowGraph | undefined) => {
@@ -393,7 +424,10 @@ export function useShowGraphEdits(
       .catch((reason: unknown) => {
         pending.current.unshift(...batch);
         failed.current = true;
-        setError(reason instanceof Error ? reason : new Error(String(reason)));
+        const error = reason instanceof Error ? reason : new Error(String(reason));
+        failureReason.current = error;
+        setError(error);
+        for (const barrier of barriers.current.splice(0)) barrier.reject(error);
       })
       .finally(() => {
         inFlight.current = false;
@@ -424,7 +458,8 @@ export function useShowGraphEdits(
           (previous: CachedShowGraph | undefined) => patchShowGraphQueryData(previous, graphEdits),
         );
       }
-      pending.current.push(...edits);
+      accepted.current += 1;
+      pending.current.push({ watermark: accepted.current, edits: [...edits] });
       if (timer.current !== null) window.clearTimeout(timer.current);
       timer.current = window.setTimeout(flush, SAVE_DEBOUNCE_MS);
     },
@@ -437,6 +472,56 @@ export function useShowGraphEdits(
     setError(null);
     flush();
   }, [flush]);
+  const persistDraft = useCallback((): Promise<number> => {
+    if (failureReason.current) return Promise.reject(failureReason.current);
+    if (!showId || version.current === null)
+      return Promise.reject(new Error("The draft is not ready."));
+    const cutoff = accepted.current;
+    if (acknowledged.current >= cutoff) return Promise.resolve(version.current);
+    const result = new Promise<number>((resolve, reject) => {
+      barriers.current.push({ cutoff, resolve, reject });
+    });
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    timer.current = null;
+    flush();
+    return result;
+  }, [flush, showId]);
 
-  return { enqueue, saving, error, retry };
+  const acceptExternal = useCallback(
+    (receipt: {
+      version: number;
+      updatedAt: string;
+      published: { version: number; updatedAt: string } | null;
+    }) => {
+      if (!showId || inFlight.current || pending.current.length > 0) {
+        throw new Error("Authored edits are still pending after the clipboard operation.");
+      }
+      version.current = receipt.version;
+      queryClient.setQueryData(
+        showGraphQueryKey(showId, "draft"),
+        (previous: CachedShowGraph | undefined) =>
+          previous
+            ? { ...previous, version: receipt.version, updatedAt: receipt.updatedAt }
+            : undefined,
+      );
+      void queryClient.invalidateQueries({
+        queryKey: showGraphQueryKey(showId, "draft"),
+        refetchType: "none",
+      });
+      if (receipt.published) {
+        queryClient.setQueryData(
+          showGraphQueryKey(showId, "published"),
+          (previous: CachedShowGraph | undefined) =>
+            previous ? { ...previous, ...receipt.published } : undefined,
+        );
+        void queryClient.invalidateQueries({
+          queryKey: showGraphQueryKey(showId, "published"),
+          refetchType: "none",
+        });
+      }
+    },
+    [queryClient, showId],
+  );
+
+  return { enqueue, persistDraft, acceptExternal, saving, error, retry };
 }

@@ -49,6 +49,47 @@ pnpm typecheck
 pnpm codegen      # regenerate packages/graphql-schema's schema.graphql + gql.tada types
 ```
 
+## Source value clipboard
+
+The Studio Source inspector offers **Default** and **Current** targets, **Copy value**,
+**Copy plain JSON**, and **Paste**. The editor below these controls always edits the
+authored Default. Editing, pasting, undoing, or redoing a Default does not change an
+active Run's Current values or their identities, including with Auto-publish on.
+Starting or resetting a Run materializes its published Defaults.
+
+Typed Copy writes a version-1 `mechane/source-value` envelope to `text/plain`.
+It preserves declared Types and sharing within the selected value; plain JSON
+expands sharing into independent occurrences. Paste requires compatible declared
+Types and exact Field names, keeps untouched Default overrides, and gives additional
+optional destination Fields explicit absence rather than their inherited Defaults.
+Pasted `null` means absence, not “reset to inherited.” Images must identify an
+existing, active destination-owned asset and its exact revision; Paste imports no assets.
+Intake is limited to 10 MiB of UTF-8 text and 100,000 logical records, inclusively.
+Malformed or unused supplied records are rejected.
+
+Focus the non-text value region for native Copy/Paste. An unprepared Copy prepares
+the value without changing the clipboard; a second gesture writes it. Ordinary
+inputs and selected text retain their native editing behavior. Values offer no Cut
+or Duplicate. A failed asynchronous clipboard read offers an explicit native-Paste
+path rather than another automatic read.
+
+Current Paste always requires confirmation of the exact Run, Source/Field, storage
+scope, old/replacement values, representation, and alias effects. Cancel starts
+focused; **Replace Current value** submits the live write. Current changes have no
+authored Undo and do not change Default. A Flow-scoped Current target additionally
+requires choosing an existing Shared Device Instance explicitly: no first-instance
+fallback, broadcast, state initialization, or per-connection target. A disconnected
+Shared Instance with existing state remains eligible.
+
+Default Paste is one atomic saved edit and one session-local Undo entry. If a
+submitted response is lost, Paste and authored history remain blocked while Copy
+stays available. **Check submitted result** looks up that exact server-issued
+operation identity; it does not replay the mutation. The unresolved identity
+survives a page reload, but authored history does not.
+
+See [the portable transfer contracts](./docs/issues/877-portable-transfer-contracts.md)
+for the envelope, compatibility, outcome, and scope rules.
+
 ## Parallel worktrees and OMP
 
 The primary checkout uses the normal stack:

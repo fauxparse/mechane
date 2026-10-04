@@ -58,7 +58,9 @@ function OpenSourceValueDialog({
 }: NodeSourceValueDialogProps & { node: SourceNode; openedRow: SourceValueRow }) {
   const { closeSourceValueEditor } = useNodeInteraction();
   // The row as it was when the dialog opened: Apply refuses to overwrite a
-  // value that changed elsewhere in the meantime.
+  // value that changed elsewhere in the meantime. Copying it once is the point;
+  // the parent keys this component by location, so a new value remounts it.
+  // react-doctor-disable-next-line react-doctor/no-derived-useState
   const [row] = useState(openedRow);
   const readOnly = editing.graph.edges.some(
     (edge) => edge.kind === "wiring" && edge.targetId === node.id,

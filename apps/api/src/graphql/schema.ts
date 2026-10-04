@@ -17,6 +17,7 @@ import * as runs from "./runs";
 import * as show from "./show";
 import * as showGraph from "./show-graph";
 import * as user from "./user";
+import * as valueTransfer from "./value-transfer";
 import * as waitlist from "./waitlist";
 
 const jsonScalar = new GraphQLScalarType({
@@ -46,6 +47,7 @@ export const schema = createSchema<GraphQLContext>({
     runs.typeDefs,
     playerSession.typeDefs,
     showGraph.typeDefs,
+    valueTransfer.typeDefs,
     canvas.typeDefs,
     images.typeDefs,
     waitlist.typeDefs,
@@ -60,6 +62,7 @@ export const schema = createSchema<GraphQLContext>({
     runs.resolvers,
     playerSession.resolvers,
     showGraph.resolvers,
+    valueTransfer.resolvers,
     canvas.resolvers,
     images.resolvers,
     waitlist.resolvers,
