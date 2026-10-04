@@ -35,6 +35,16 @@ import {
   navigationProofCanvases,
   navigationProofGraph,
 } from "./seeds/shows/navigation-proof/navigation-proof";
+import {
+  AUDIENCE_DEVICE_ID,
+  CANDIDATE_LIST_SCENE_ID,
+  CANDIDATE_ORDER_TRANSFORMER_ID,
+  CONFIRMATION_SCENE_ID,
+  SELECTED_SOURCE_ID,
+  votingCanvases,
+  votingGraph,
+} from "./seeds/shows/voting/voting";
+import { readPlayerRunState } from "../player";
 
 const { showId, createShow: createUserAndShow } = setupPostgresTest("player-events-db-test");
 const SMALL_SCENE_IDS: Record<string, true> = { scene_red: true, scene_green: true };
@@ -1092,6 +1102,50 @@ describe("dispatchPlayerEvent", () => {
         expect(storedRecords(freshSecond)).toEqual(plannedSecond);
         for (const id of Object.keys(plannedSecond)) expect(afterFirstIds.has(id)).toBe(false);
       },
+    );
+  });
+
+  it("resolves a Shared Device's Cue Parameters from the list order its snapshot shows (#887)", async () => {
+    await createUserAndShow("Player Events DB Test");
+    // The Voting Show with its Audience Flow on a Shared Device: the Candidate
+    // list is shuffled by a Flow-local Transformer, so its order is the
+    // Device's seed's.
+    await seedShowData(
+      showId,
+      () => {
+        const graph = votingGraph();
+        return {
+          ...graph,
+          nodes: graph.nodes.map((node) =>
+            node.id === AUDIENCE_DEVICE_ID ? { ...node, perConnection: false } : node,
+          ),
+        };
+      },
+      votingCanvases,
+    );
+    const run = await startRun(showId);
+    const published = await readShowGraph(showId, "published");
+    const audience = published.nodes.find((node) => node.id === AUDIENCE_DEVICE_ID);
+    if (audience?.kind !== "device" || !audience.pairingCode) {
+      throw new Error("Audience Device is incomplete.");
+    }
+    const snapshot = await readPlayerRunState(audience.pairingCode);
+    const order = snapshot?.sourceValues[CANDIDATE_ORDER_TRANSFORMER_ID];
+    const shown = isStructuredValueReference(order) ? snapshot?.structuredValues[order.ref] : null;
+    if (shown?.kind !== "array") throw new Error("The snapshot shows no Candidate order.");
+
+    const result = await dispatchPlayerEvent(audience.pairingCode, {
+      eventId: crypto.randomUUID(),
+      publishedGraphVersion: published.version,
+      sceneId: CANDIDATE_LIST_SCENE_ID,
+      elementId: "candidate-button-root",
+      eventKind: "tap",
+      slotInstancePath: [{ slotElementId: "candidate-list-slot", index: 1 }],
+    });
+
+    expect(result).toMatchObject({ kind: "applied", resultingSceneId: CONFIRMATION_SCENE_ID });
+    expect((await readRunState(run.id, db)).sourceValues[SELECTED_SOURCE_ID]).toEqual(
+      shown.items[1],
     );
   });
   it("ignores Events when there is no active Run", async () => {

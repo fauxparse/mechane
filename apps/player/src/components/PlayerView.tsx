@@ -1,11 +1,11 @@
 import type { BlockInstancePathSegment } from "@mechane/domain/interactions";
 import { CanvasRenderer, prepareCanvasPresentation } from "@mechane/rendering";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { usePlayerSession, type PlayerSession } from "../api";
 import { PLAYER_ORIGIN } from "../player-origin";
 import { usePlayerKeypress } from "../player-keypress";
 import { usePlayerNavigation } from "../player-navigation";
-import { dispatchSharedPlayerEvent } from "../player-event-dispatch";
+import { useSharedPlayerEvents, type SharedPlayerEvents } from "../shared-player-events";
 import { SplashScreen } from "./join/SplashScreen";
 function WaitingForRun({ session }: { session: PlayerSession }) {
   return (
@@ -93,76 +93,24 @@ function SupersededScreen({ onTakeOver }: { onTakeOver: () => void }) {
 export function PlayerView({ code }: { code: string }) {
   const state = usePlayerSession(code);
   const navigation = usePlayerNavigation(state, code);
-  const handleElementTap = useCallback(
-    (elementId: string, slotInstancePath: readonly BlockInstancePathSegment[]) => {
-      if (
-        state.status !== "ready" ||
-        state.session.device.perConnection ||
-        !state.submitEvent ||
-        !state.session.scene ||
-        !state.session.canvas
-      ) {
-        return;
-      }
-      dispatchSharedPlayerEvent({
-        graph: state.session.graph,
-        observation: {
-          sceneId: state.session.scene.id,
-          canvasId: state.session.canvas.id,
-          elementId,
-          eventKind: "tap",
-          slotInstancePath,
-        },
-        publishedGraphVersion: state.session.graphVersion,
-        submitEvent: state.submitEvent,
-      });
-    },
-    [state],
-  );
-
-  const handleKeyPress = useCallback(
-    (key: string) => {
-      if (
-        state.status !== "ready" ||
-        state.session.device.perConnection ||
-        !state.submitEvent ||
-        !state.session.scene ||
-        !state.session.canvas
-      ) {
-        return false;
-      }
-      return dispatchSharedPlayerEvent({
-        graph: state.session.graph,
-        observation: {
-          sceneId: state.session.scene.id,
-          canvasId: state.session.canvas.id,
-          elementId: state.session.canvas.root.id,
-          eventKind: "keypress",
-          params: { key },
-        },
-        publishedGraphVersion: state.session.graphVersion,
-        submitEvent: state.submitEvent,
-      });
-    },
-    [state],
-  );
+  const shared = useSharedPlayerEvents(state);
 
   const perConnection = state.status === "ready" && state.session.device.perConnection;
   usePlayerKeypress(
     state.status === "ready" && Boolean(state.session.run),
-    perConnection ? navigation.onKeyPress : handleKeyPress,
+    perConnection ? navigation.onKeyPress : shared.onKeyPress,
   );
 
-  return <PlayerStatusView state={state} navigation={navigation} onElementTap={handleElementTap} />;
+  return <PlayerStatusView state={state} navigation={navigation} shared={shared} />;
 }
 
 type PlayerStatusViewProps = {
   state: ReturnType<typeof usePlayerSession>;
   navigation: ReturnType<typeof usePlayerNavigation>;
-  onElementTap: (elementId: string, slotInstancePath: readonly BlockInstancePathSegment[]) => void;
+  shared: SharedPlayerEvents;
 };
 
-function PlayerStatusView({ state, navigation, onElementTap }: PlayerStatusViewProps) {
+function PlayerStatusView({ state, navigation, shared }: PlayerStatusViewProps) {
   if (state.status === "idle" || state.status === "loading") {
     return (
       <SplashScreen>
@@ -191,7 +139,9 @@ function PlayerStatusView({ state, navigation, onElementTap }: PlayerStatusViewP
 
   if (!state.session.run) return <WaitingForRun session={state.session} />;
   if (!state.session.device.perConnection) {
-    return <PlayerCanvas session={state.session} onElementTap={onElementTap} />;
+    return (
+      <PlayerCanvas session={shared.session ?? state.session} onElementTap={shared.onElementTap} />
+    );
   }
   if (navigation.status === "inactive" && state.session.scene && state.session.canvas) {
     return <PlayerCanvas session={state.session} onElementTap={navigation.onElementTap} />;

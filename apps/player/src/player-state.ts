@@ -1,5 +1,9 @@
+import {
+  resolveCueParameters,
+  type ResolveCueParametersInput,
+} from "@mechane/domain/cue-parameters";
 import type { ShowGraph } from "@mechane/domain/graph";
-import type { Action, UpdateAction } from "@mechane/domain/interactions";
+import type { Action, RuntimeEventPlan, UpdateAction } from "@mechane/domain/interactions";
 import { PAIRING_CODE_PATTERN } from "@mechane/domain/pairing-code";
 import { defaultSourceValueTemplates } from "@mechane/domain/source-defaults";
 import {
@@ -66,7 +70,10 @@ export interface PlayerRunState {
   readonly shuffleSeeds?: Readonly<Record<string, string>>;
 }
 
-/** A Show Action of a Cue, with the Instance values it read when it ran (#883). */
+/**
+ * A Show Action of a Cue, with the Instance values it read when it ran (#883).
+ * A Shared Device's carry none: its Instance values are in the snapshot (#887).
+ */
 export interface PendingShowAction {
   readonly action: UpdateAction;
   readonly evidence: PlayerActionEvidence;
@@ -182,6 +189,58 @@ export function displayedShowState(
     if (planned) show = staged;
   }
   return show;
+}
+
+/**
+ * The pending Event a Shared Device's Cue makes, or null when there is
+ * nothing to show ahead of the server (#887).
+ *
+ * A Shared Device Instance's state is the server's (ADR-0018), and its
+ * snapshot carries that Instance's Flow-local values with Show scope. Every
+ * Update therefore writes there, as `planCueUpdates` runs it for a Shared
+ * Device: with no Instance values to route, and the Cue Parameters resolved
+ * once as the Cue starts. Navigation stays the server's; the Scene changes
+ * when a snapshot says so.
+ *
+ * `state` is the Run as this Player displays it, pending Events included, so
+ * a second tap reads what the first one wrote, as the server will once it
+ * has run both. The snapshot holds the Device's Transformer outputs as the
+ * server evaluated them with the seeds it resolves the Cue through, so the
+ * Player needs no seeds to name the item the tap landed on.
+ */
+export function predictSharedCue({
+  graph,
+  canvas,
+  blocks,
+  state,
+  plan,
+  eventId,
+}: {
+  readonly graph: ShowGraph;
+  readonly canvas: ResolveCueParametersInput["canvas"];
+  readonly blocks: ResolveCueParametersInput["blocks"];
+  readonly state: RunState;
+  readonly plan: Extract<RuntimeEventPlan, { kind: "planned" }>;
+  readonly eventId: string;
+}): PendingShowEvent | null {
+  const updates = plan.actions.filter((action): action is UpdateAction => action.kind === "update");
+  if (updates.length === 0) return null;
+  const parameters = resolveCueParameters({
+    graph,
+    canvas,
+    sceneId: plan.sceneId,
+    state,
+    blocks,
+    parameters: plan.parameters,
+  });
+  // The server fails the Cue the same way; the snapshot shows that soon enough.
+  if (parameters.kind === "failed") return null;
+  const evidence: PlayerActionEvidence = { sourceValues: {}, cueParameters: parameters.values };
+  return {
+    eventId,
+    sceneId: plan.sceneId,
+    actions: updates.map((action) => ({ action, evidence })),
+  };
 }
 
 export type PlayerCueExecution =

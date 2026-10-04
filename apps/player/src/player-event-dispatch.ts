@@ -1,6 +1,8 @@
+import type { ShowGraph } from "@mechane/domain/graph";
 import { resolveRuntimeEvent, type RuntimeEventObservation } from "@mechane/domain/interactions";
+import type { RunState } from "@mechane/domain/structured-values";
 import type { PlayerEventInput, PlayerEventResult, PlayerEventSubmitter } from "./api";
-import type { ShowWriteOutcome } from "./player-state";
+import { predictSharedCue, type PendingShowEvent, type ShowWriteOutcome } from "./player-state";
 
 export function resolvePlayerEvent(
   graph: Parameters<typeof resolveRuntimeEvent>[0],
@@ -28,25 +30,54 @@ export function playerEventInput(
 /**
  * Resolve and submit a Shared Device event. Unbound observations stay local;
  * resolver failures submit so the server's Run Error policy records them.
+ *
+ * A Cue that writes shows its writes at once (#887): `onPending` receives
+ * them, predicted from `state`, before the request goes, and `onSettled`
+ * what the server's answer means for them. Retries keep the Event id, as a
+ * per-connection Player's do, so a lost acknowledgement counts once.
  */
 export function dispatchSharedPlayerEvent({
   graph,
+  canvas,
+  blocks,
+  state,
   observation,
   publishedGraphVersion,
   submitEvent,
+  onPending,
+  onSettled,
+  retry,
 }: {
-  graph: Parameters<typeof resolveRuntimeEvent>[0];
+  graph: ShowGraph;
+  canvas: Parameters<typeof predictSharedCue>[0]["canvas"];
+  blocks: Parameters<typeof predictSharedCue>[0]["blocks"];
+  /** The Run as this Player displays it, its pending Events included. */
+  state: RunState;
   observation: RuntimeEventObservation;
   publishedGraphVersion: number;
   submitEvent: PlayerEventSubmitter;
+  onPending: (event: PendingShowEvent) => void;
+  onSettled: (eventId: string, outcome: ShowWriteOutcome) => void;
+  retry?: Parameters<typeof submitPlayerEventWithRetry>[2];
 }): boolean {
+  const input = playerEventInput(observation, publishedGraphVersion);
+  let prediction: PendingShowEvent | null;
   try {
-    if (resolvePlayerEvent(graph, observation).kind === "unbound") return false;
+    const plan = resolvePlayerEvent(graph, observation);
+    if (plan.kind === "unbound") return false;
+    prediction = predictSharedCue({ graph, canvas, blocks, state, plan, eventId: input.eventId });
   } catch {
-    void submitEvent(playerEventInput(observation, publishedGraphVersion)).catch(() => undefined);
+    prediction = null;
+  }
+  if (!prediction) {
+    void submitEvent(input).catch(() => undefined);
     return true;
   }
-  void submitEvent(playerEventInput(observation, publishedGraphVersion)).catch(() => undefined);
+  onPending(prediction);
+  void submitPlayerEventWithRetry(submitEvent, input, retry).then(
+    (result) => onSettled(input.eventId, showWriteOutcome(result)),
+    () => onSettled(input.eventId, { kind: "rolled-back" }),
+  );
   return true;
 }
 
