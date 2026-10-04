@@ -186,7 +186,8 @@ export type PlayerActionEvidence = {
 
 /**
  * `stateSequence` on an applied or accepted result is the Show's sequence once
- * the Event committed: a snapshot at or past it already holds the Event.
+ * the Event committed: a snapshot at or past it already holds the Event. A
+ * duplicate reports the original's, or null when it had none.
  */
 export type PlayerEventResult =
   | {
@@ -203,6 +204,7 @@ export type PlayerEventResult =
       changed: boolean;
       resultingSceneId: string | null;
       reason: string | null;
+      stateSequence: number | null;
     }
   | { kind: "ignored"; eventId: string; reason: string }
   | { kind: "failed"; eventId: string; actionId: string; reason: string }
@@ -247,6 +249,7 @@ export async function submitPlayerEvent(
         ? String(event.duplicateResultingSceneId)
         : null,
       reason: event.duplicateReason ? String(event.duplicateReason) : null,
+      stateSequence: event.duplicateStateSequence ?? null,
     };
   }
   if (event.__typename === "PlayerEventIgnored") {
@@ -312,7 +315,7 @@ export function usePlayerSession(code: string): PlayerState {
   const submitEvent = useCallback<PlayerEventSubmitter>(
     async (input) => {
       const result = await submitPlayerEvent(normalizedCode, input);
-      if (result.kind === "applied" || result.kind === "accepted") {
+      if ("stateSequence" in result && result.stateSequence !== null) {
         refreshRunState.current(result.stateSequence);
       }
       return result;
