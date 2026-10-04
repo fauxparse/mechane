@@ -102,6 +102,15 @@ export function ShowGraphRoute({
     },
     [navigate, onSourceValueChange, showId],
   );
+  const openScene = useCallback(
+    (sceneId: string) => {
+      void navigate({
+        to: "/shows/$showId/art/$artId",
+        params: { showId, artId: sceneId },
+      });
+    },
+    [navigate, showId],
+  );
   const saveGraph = useShowGraphEdits(showId, draft.data?.version, {
     onAmend: (edits) => editor.current?.applyAmendments(edits),
   });
@@ -125,6 +134,7 @@ export function ShowGraphRoute({
         onViewportChange={onViewportChange}
         initialSourceValue={initialSourceValue}
         onSourceValueChange={openSourceValue}
+        onOpenScene={openScene}
         runActive={activeRun.data !== null && activeRun.data !== undefined}
         reshufflingTransformerId={
           reshuffleTransformer.isPending
