@@ -7,8 +7,8 @@
 // context. Both are *editor* state rather than graph data, which is why they
 // aren't in `ShowNodeData`: putting them there would rebuild every node's data
 // object on every frame of a connection drag.
-import { createContext, useContext } from "react";
 import type { ConnectionTargets } from "@mechane/domain/connect";
+import { createContext, useContext } from "react";
 
 import type { FlowResizeParams } from "./graph-to-flow";
 
@@ -46,6 +46,8 @@ export interface NodeInteraction {
    */
   openFormulaEditor(nodeId: string): void;
   closeFormulaEditor(): void;
+  /** Opens a Scene in the Canvas Editor. The route adapter owns navigation. */
+  openSceneEditor(sceneId: string): void;
   /** Toggles a Flow's local collapsed view state; not an edit command. */
   toggleCollapse(flowId: string): void;
   /**
@@ -71,6 +73,7 @@ const IDLE: NodeInteraction = {
   formulaEditorNodeId: null,
   openFormulaEditor: () => {},
   closeFormulaEditor: () => {},
+  openSceneEditor: () => {},
   toggleCollapse: () => {},
   resizeFlow: () => {},
 };
