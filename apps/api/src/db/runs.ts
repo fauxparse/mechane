@@ -1,6 +1,6 @@
 import type { ShowGraph } from "@mechane/domain/graph";
 import type { Run, RunStatus } from "@mechane/domain/runs";
-import { coerceShapeValue } from "@mechane/domain/shapes";
+import { coerceShapeValue, type Type } from "@mechane/domain/shapes";
 import { defaultSourceValueTemplates, sourceDefaultsFor } from "@mechane/domain/source-defaults";
 import {
   type RunState,
@@ -202,6 +202,7 @@ export async function initializeRunDeviceStates(
 
 export async function reconcileActiveRunDeviceStates(
   showId: string,
+  oldGraph: ShowGraph,
   graph: ShowGraph,
   publishedGraphVersion: number,
   executor: Executor = db,
@@ -241,20 +242,25 @@ export async function reconcileActiveRunDeviceStates(
       state.flowId === driver.flowId &&
       state.activeSceneId !== null &&
       scenes.get(state.activeSceneId)?.parentId === driver.flowId;
-    const instanceDefaults = materializeInstanceState(
-      graph,
-      driver.flowId,
-      defaultSourceValueTemplates(graph),
-    );
+    const instanceState: RunState =
+      state.flowId === driver.flowId
+        ? reconcileScopeValues(
+            {
+              sourceValues: state.instanceSourceValues as SourceValues,
+              structuredValues: state.instanceStructuredValues as StructuredValues,
+            },
+            oldGraph,
+            graph,
+            driver.flowId,
+          )
+        : materializeInstanceState(graph, driver.flowId, defaultSourceValueTemplates(graph));
     await executor
       .update(runDeviceStates)
       .set({
         flowId: driver.flowId,
         activeSceneId: preserve ? state.activeSceneId : driver.defaultSceneId,
-        instanceSourceValues: preserve ? state.instanceSourceValues : instanceDefaults.sourceValues,
-        instanceStructuredValues: preserve
-          ? state.instanceStructuredValues
-          : instanceDefaults.structuredValues,
+        instanceSourceValues: instanceState.sourceValues,
+        instanceStructuredValues: instanceState.structuredValues,
         publishedGraphVersion,
         updatedAt: new Date(),
       })
@@ -274,63 +280,6 @@ export async function reconcileActiveRunDeviceStates(
       })),
     );
   }
-}
-
-/** Replaces the live values for Sources edited in the director. */
-export function runStateForEditedSources(
-  current: RunState,
-  graph: ShowGraph,
-  sourceNodeIds: ReadonlySet<string>,
-): RunState {
-  const templates = defaultSourceValueTemplates(graph);
-  const next: RunState = {
-    sourceValues: { ...current.sourceValues },
-    structuredValues: { ...current.structuredValues },
-  };
-  for (const sourceNodeId of sourceNodeIds) {
-    const source = graph.nodes.find((node) => node.kind === "source" && node.id === sourceNodeId);
-    if (!source || source.kind !== "source") {
-      delete next.sourceValues[sourceNodeId];
-      continue;
-    }
-    const materialized = materializeStructuredValue(
-      templates[sourceNodeId] ?? null,
-      source.type,
-      graph.shapes ?? [],
-    );
-    next.sourceValues[sourceNodeId] = materialized.value;
-    Object.assign(next.structuredValues, materialized.structuredValues);
-  }
-  assertValidRunState(next, graph);
-  return next;
-}
-
-export async function syncActiveRunSourceValues(
-  showId: string,
-  graph: ShowGraph,
-  sourceNodeIds: ReadonlySet<string>,
-  executor: Executor = db,
-): Promise<boolean> {
-  if (sourceNodeIds.size === 0) return false;
-  if (executor === db) {
-    return db.transaction((tx) => syncActiveRunSourceValues(showId, graph, sourceNodeIds, tx));
-  }
-  const [row] = await executor
-    .select()
-    .from(runs)
-    .where(and(eq(runs.showId, showId), eq(runs.status, "active")))
-    .orderBy(desc(runs.startedAt))
-    .limit(1)
-    .for("update");
-  if (!row) return false;
-  const current = await readRunState(row.id, executor);
-  await replaceRunState(
-    executor,
-    row.id,
-    graph,
-    runStateForEditedSources(current, graph, sourceNodeIds),
-  );
-  return true;
 }
 
 export async function readActiveRun(showId: string, executor: Executor = db): Promise<Run | null> {
@@ -379,33 +328,45 @@ export async function startRun(showId: string): Promise<Run> {
   return run;
 }
 
-/**
- * Reconciles an active Run's Source values against a newly published graph.
- * The caller supplies its transaction so this update commits with publish.
- */
-export async function reconcileActiveRunValues(
-  showId: string,
+function unchangedValueContract(type: Type, oldGraph: ShowGraph, newGraph: ShowGraph): boolean {
+  const pending = [type];
+  const seen = new Set<string>();
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (!current || typeof current === "string") continue;
+    if (current.kind === "array") {
+      pending.push(current.of);
+      continue;
+    }
+    if (seen.has(current.shapeId)) continue;
+    seen.add(current.shapeId);
+    const before = oldGraph.shapes?.find((shape) => shape.id === current.shapeId);
+    const after = newGraph.shapes?.find((shape) => shape.id === current.shapeId);
+    if (!before || !after || before.fields.length !== after.fields.length) return false;
+    for (const field of before.fields) {
+      const next = after.fields.find((candidate) => candidate.id === field.id);
+      if (
+        !next ||
+        next.required !== field.required ||
+        JSON.stringify(next.type) !== JSON.stringify(field.type)
+      )
+        return false;
+      pending.push(field.type);
+    }
+  }
+  return true;
+}
+
+function reconcileScopeValues(
+  current: RunState,
   oldGraph: ShowGraph,
   newGraph: ShowGraph,
-  executor: Executor = db,
-): Promise<ReconciledRunValues> {
-  if (executor === db) {
-    return db.transaction((tx) => reconcileActiveRunValues(showId, oldGraph, newGraph, tx));
-  }
-  const [row] = await executor
-    .select()
-    .from(runs)
-    .where(and(eq(runs.showId, showId), eq(runs.status, "active")))
-    .orderBy(desc(runs.startedAt))
-    .limit(1)
-    .for("update");
-  if (!row) return { sourceValues: {}, structuredValues: {}, losses: [] };
-
-  const current = await readRunState(row.id, executor);
+  parentId: string | null,
+): ReconciledRunValues {
   const oldSources = new Map(
     oldGraph.nodes.filter((node) => node.kind === "source").map((node) => [node.id, node]),
   );
-  const templates = defaultSourceValueTemplates(newGraph);
+  let templates: Record<string, StructuredValueTemplate> | undefined;
   const next: RunState = {
     sourceValues: {},
     structuredValues: { ...current.structuredValues },
@@ -413,19 +374,20 @@ export async function reconcileActiveRunValues(
   const losses: RunValueLoss[] = [];
 
   for (const source of newGraph.nodes) {
-    if (source.kind !== "source") continue;
+    if (source.kind !== "source" || source.parentId !== parentId) continue;
     const previous = oldSources.get(source.id);
     const currentValue = current.sourceValues[source.id];
     if (
       previous?.kind === "source" &&
       currentValue !== undefined &&
-      (typeof source.type === "string" || source.type.kind === "array") &&
-      JSON.stringify(previous.type) === JSON.stringify(source.type)
+      JSON.stringify(previous.type) === JSON.stringify(source.type) &&
+      unchangedValueContract(source.type, oldGraph, newGraph)
     ) {
       next.sourceValues[source.id] = currentValue;
       continue;
     }
 
+    templates ??= defaultSourceValueTemplates(newGraph);
     let template: StructuredValueTemplate = templates[source.id] ?? null;
     const previousType = previous?.kind === "source" ? previous.type : null;
     const sourceType = source.type;
@@ -479,9 +441,35 @@ export async function reconcileActiveRunValues(
     next.sourceValues[source.id] = materialized.value;
     Object.assign(next.structuredValues, materialized.structuredValues);
   }
+  return { ...next, losses };
+}
 
+/**
+ * Reconciles an active Run's Source values against a newly published graph.
+ * The caller supplies its transaction so this update commits with publish.
+ */
+export async function reconcileActiveRunValues(
+  showId: string,
+  oldGraph: ShowGraph,
+  newGraph: ShowGraph,
+  executor: Executor = db,
+): Promise<ReconciledRunValues> {
+  if (executor === db) {
+    return db.transaction((tx) => reconcileActiveRunValues(showId, oldGraph, newGraph, tx));
+  }
+  const [row] = await executor
+    .select()
+    .from(runs)
+    .where(and(eq(runs.showId, showId), eq(runs.status, "active")))
+    .orderBy(desc(runs.startedAt))
+    .limit(1)
+    .for("update");
+  if (!row) return { sourceValues: {}, structuredValues: {}, losses: [] };
+
+  const current = await readRunState(row.id, executor);
+  const next = reconcileScopeValues(current, oldGraph, newGraph, null);
   await replaceRunState(executor, row.id, newGraph, next);
-  return { runId: row.id, ...next, losses };
+  return { runId: row.id, ...next };
 }
 
 /** Ends the active Run, if there is one, and returns the ended Run. */

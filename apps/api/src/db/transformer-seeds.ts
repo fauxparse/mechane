@@ -4,6 +4,8 @@ import { and, eq } from "drizzle-orm";
 import { db } from "./client";
 import { runDeviceTransformerSeeds, runTransformerSeeds } from "./schema";
 
+type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 function shuffleTransformerIds(graph: ShowGraph, parent: "show" | "instance"): string[] {
   return graph.nodes.flatMap((node) =>
     node.kind === "transformer" &&
@@ -13,9 +15,6 @@ function shuffleTransformerIds(graph: ShowGraph, parent: "show" | "instance"): s
       : [],
   );
 }
-
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-type Executor = Tx | typeof db;
 
 async function showSeeds(executor: Executor, runId: string, transformerIds: readonly string[]) {
   await executor

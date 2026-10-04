@@ -8,6 +8,11 @@ import { resolveApiUrl } from "../../../../api/client";
 import { useImageAssets, useImageUpload } from "../../../../api/images";
 import { useActiveRun, useReshuffleTransformer } from "../../../../api/runs";
 import { useShowGraph, useShowGraphEdits } from "../../../../api/show-graph";
+import { committedDefaultEdits } from "../../../../api/value-transfer";
+import {
+  SourceValueClipboardProvider,
+  type ValueTransferBridge,
+} from "../../../../editors/show/graph/value-transfer/value-transfer-context";
 import {
   ShowGraphEditor,
   type ShowGraphEditorHandle,
@@ -116,49 +121,74 @@ export function ShowGraphRoute({
   });
   // The graph the editor opens with, decoded once at the seam where the
   // transport stops (#750).
-  const openedWith = useOpenedShowGraph(draft.data);
+  const openedDocument = useOpenedShowGraph(draft.data);
+  const openedWith = openedDocument?.graph ?? null;
   const [edited, setEdited] = useState(false);
+  const valueTransferBridge = useMemo<ValueTransferBridge>(
+    () => ({
+      persistDraft: () => {
+        editor.current?.commitGesture();
+        return saveGraph.persistDraft();
+      },
+      acceptDefault: (receipt) => {
+        if (!editor.current)
+          throw new Error(
+            "The editor is not mounted. Reopen the Show and check the operation result.",
+          );
+        if (openedDocument && openedDocument.version >= receipt.version) return;
+        const { edits, amendments } = committedDefaultEdits(receipt);
+        editor.current.applyCommittedEdits(edits);
+        editor.current.applyAmendments(amendments);
+        saveGraph.acceptExternal(receipt);
+        setEdited(true);
+      },
+      setBlocked: (blocked) => editor.current?.setBlocked(blocked),
+    }),
+    [openedDocument, saveGraph],
+  );
 
   return (
     <DeviceShareProvider showId={showId}>
-      <ShowGraphEditor
-        ref={editor}
-        graph={openedWith}
-        imageAssets={resolvedImageAssets}
-        onImageUpload={handleImageUpload}
-        onEdit={(edits) => {
-          setEdited(true);
-          saveGraph.enqueue(edits);
-        }}
-        initialViewport={initialViewport}
-        onViewportChange={onViewportChange}
-        initialSourceValue={initialSourceValue}
-        onSourceValueChange={openSourceValue}
-        onOpenScene={openScene}
-        runActive={activeRun.data !== null && activeRun.data !== undefined}
-        reshufflingTransformerId={
-          reshuffleTransformer.isPending
-            ? (reshuffleTransformer.variables?.transformerId ?? null)
-            : null
-        }
-        onReshuffleTransformer={(transformerId, deviceId) =>
-          reshuffleTransformer.mutate({ showId, transformerId, deviceId })
-        }
-      />
-      {saveGraph.error ? (
-        <p
-          role="alert"
-          className="absolute inset-x-0 bottom-0 bg-destructive px-4 py-2 text-center text-sm text-destructive-foreground"
-        >
-          Your changes couldn't be saved: {saveGraph.error.message} Reload to pick up the stored
-          draft.
-        </p>
-      ) : null}
-      {openedWith && openedWith.nodes.length === 0 && !edited ? (
-        <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
-          Nothing here yet. Right-click the canvas, or press ⌘K, to create something.
-        </p>
-      ) : null}
+      <SourceValueClipboardProvider showId={showId} bridge={valueTransferBridge}>
+        <ShowGraphEditor
+          ref={editor}
+          graph={openedWith}
+          imageAssets={resolvedImageAssets}
+          onImageUpload={handleImageUpload}
+          onEdit={(edits) => {
+            setEdited(true);
+            saveGraph.enqueue(edits);
+          }}
+          initialViewport={initialViewport}
+          onViewportChange={onViewportChange}
+          initialSourceValue={initialSourceValue}
+          onSourceValueChange={openSourceValue}
+          onOpenScene={openScene}
+          runActive={activeRun.data !== null && activeRun.data !== undefined}
+          reshufflingTransformerId={
+            reshuffleTransformer.isPending
+              ? (reshuffleTransformer.variables?.transformerId ?? null)
+              : null
+          }
+          onReshuffleTransformer={(transformerId, deviceId) =>
+            reshuffleTransformer.mutate({ showId, transformerId, deviceId })
+          }
+        />
+        {saveGraph.error ? (
+          <p
+            role="alert"
+            className="absolute inset-x-0 bottom-0 bg-destructive px-4 py-2 text-center text-sm text-destructive-foreground"
+          >
+            Your changes couldn't be saved: {saveGraph.error.message} Reload to pick up the stored
+            draft.
+          </p>
+        ) : null}
+        {openedWith && openedWith.nodes.length === 0 && !edited ? (
+          <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
+            Nothing here yet. Right-click the canvas, or press ⌘K, to create something.
+          </p>
+        ) : null}
+      </SourceValueClipboardProvider>
     </DeviceShareProvider>
   );
 }

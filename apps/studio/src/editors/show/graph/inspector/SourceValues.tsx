@@ -8,6 +8,7 @@ import {
   PencilIcon,
   RotateCcwIcon,
   Section,
+  SectionHelperText,
   SectionRow,
   VariableTypeIcon,
 } from "@mechane/design-system";
@@ -21,6 +22,7 @@ import type { ShowGraphValueLocation } from "../../ShowGraphEditor";
 import type { SourceValueEditing } from "../../commands/use-graph-editing";
 import { InlineValue, SourceImagePreview } from "../SourceValueDialog/ValueEditor";
 import { SourceValueDialog } from "../SourceValueDialog";
+import { SourceValueClipboard } from "../value-transfer/SourceValueClipboard";
 import type { SourceImageAsset, SourceValueRow } from "./source-value-types";
 import { previewValue, sourceValuesEqual, usesModal } from "./source-values-helpers";
 const EMPTY_SOURCE_IMAGE_ASSETS: readonly SourceImageAsset[] = [];
@@ -149,6 +151,8 @@ export const SourceValues = ({
   };
   return (
     <Section label="Source values">
+      <SourceValueClipboard node={node} editing={editing} />
+      <SectionHelperText>Authored Default</SectionHelperText>
       {rows.map((row) => {
         const modal = usesModal(row.type, row.value);
         const actions = (

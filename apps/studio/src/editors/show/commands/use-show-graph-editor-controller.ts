@@ -1,5 +1,5 @@
-import { composite, moveNode, setFlowSize } from "@mechane/commands";
-import type { DeletionScope } from "@mechane/commands";
+import { commandForEdit, composite, moveNode, setFlowSize } from "@mechane/commands";
+import type { DeletionScope, GraphEdit } from "@mechane/commands";
 import type { GraphEdge, GraphNode, Position } from "@mechane/domain/graph";
 import { defaultSourceValues } from "@mechane/domain/source-defaults";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
@@ -377,8 +377,23 @@ export function useShowGraphEditorController({
       zoomToSelection: actions.zoomToSelection,
       fitToGraph: () => fitView(fitViewOptions),
       applyAmendments: command.amend,
+      applyCommittedEdits: (edits: readonly GraphEdit[]) =>
+        commands.executeCommitted(
+          composite({ label: "Paste Source Default", commands: edits.map(commandForEdit) }),
+        ),
+      commitGesture: commands.commitGesture,
+      setBlocked: commands.setBlocked,
     }),
-    [actions.fitToNodes, actions.zoomToSelection, command.amend, fitView, fitViewOptions],
+    [
+      actions.fitToNodes,
+      actions.zoomToSelection,
+      command.amend,
+      commands.executeCommitted,
+      commands.commitGesture,
+      commands.setBlocked,
+      fitView,
+      fitViewOptions,
+    ],
   );
 
   return {

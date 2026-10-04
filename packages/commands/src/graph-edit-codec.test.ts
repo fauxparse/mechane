@@ -52,6 +52,14 @@ const ADD_SCENE: Extract<GraphEdit, { type: "graph.addNode" }> = {
 
 const FIXTURES: { [T in GraphEdit["type"]]: Extract<GraphEdit, { type: T }> } = {
   "graph.addNode": ADD_SCENE,
+  "graph.replaceSourceDefaults": {
+    type: "graph.replaceSourceDefaults",
+    before: [{ nodeId: "source_votes", fieldPath: ["count"], value: 12 }],
+    after: [
+      { nodeId: "source_votes", fieldPath: ["count"], value: 0 },
+      { nodeId: "source_profile", fieldPath: ["nickname"], value: null },
+    ],
+  },
   "graph.removeNode": { type: "graph.removeNode", nodeId: "scene_lobby" },
   "graph.setEdgeLayout": {
     type: "graph.setEdgeLayout",

@@ -33,6 +33,9 @@ export interface GraphCommands {
   graph: ShowGraph;
   /** Applies one command as one undo entry. */
   execute(command: ShowGraphCommand): void;
+  executeCommitted(command: ShowGraphCommand): void;
+  commitGesture(): void;
+  setBlocked(blocked: boolean): void;
   /**
    * Applies edits that arrived from the server rather than from the user
    * (#111) — no undo entry, and nothing sent back. See `CommandStack.amend`.
@@ -78,6 +81,9 @@ export function useGraphCommands(
     edited.current = onEdit;
   }, [onEdit]);
   const [graph, setGraph] = useState<ShowGraph>(() => source ?? EMPTY_GRAPH);
+  const blocked = useRef(false);
+  const [blockedState, setBlockedState] = useState(false);
+  const committed = useRef(false);
   // Bumped whenever something changes that isn't visible in `graph` itself —
   // a gesture committing lands an entry without moving the state, and the
   // undo button has to notice.
@@ -88,7 +94,9 @@ export function useGraphCommands(
       new CommandStack<ShowGraph, GraphEdit>({
         state: source ?? EMPTY_GRAPH,
         onChange: setGraph,
-        dispatch: (_command, next, edits) => edited.current?.(edits, next),
+        dispatch: (_command, next, edits) => {
+          if (!committed.current) edited.current?.(edits, next);
+        },
       }),
     // Deliberately built from the first `source` only: replacing it later is
     // `reset`'s job below, so the stack instance (and the gesture that may be
@@ -109,13 +117,49 @@ export function useGraphCommands(
     stack.reset(source ?? EMPTY_GRAPH);
     changed();
   }, [changed, source, stack]);
+  const requireWritable = useCallback(() => {
+    if (blocked.current)
+      throw new Error("Check the submitted clipboard result before editing or using history.");
+  }, []);
 
-  const execute = useCallback(
-    (command: ShowGraphCommand) => {
-      stack.execute(command);
+  const commitGesture = useCallback(() => {
+    if (blocked.current) return;
+    stack.openGesture?.commit();
+    changed();
+  }, [changed, stack]);
+
+  const setBlocked = useCallback(
+    (value: boolean) => {
+      if (value && !blocked.current) {
+        stack.openGesture?.commit();
+      }
+      blocked.current = value;
+      setBlockedState(value);
       changed();
     },
     [changed, stack],
+  );
+
+  const executeCommitted = useCallback(
+    (command: ShowGraphCommand) => {
+      committed.current = true;
+      try {
+        stack.execute(command);
+        changed();
+      } finally {
+        committed.current = false;
+      }
+    },
+    [changed, stack],
+  );
+
+  const execute = useCallback(
+    (command: ShowGraphCommand) => {
+      requireWritable();
+      stack.execute(command);
+      changed();
+    },
+    [changed, requireWritable, stack],
   );
 
   const amend = useCallback(
@@ -128,6 +172,7 @@ export function useGraphCommands(
 
   const beginGesture = useCallback(
     (options: { key: string; label: string }): Gesture<ShowGraph, GraphEdit> => {
+      requireWritable();
       const gesture = stack.beginGesture(options);
       changed();
       // Wrapped so the ends of a gesture re-render too: committing changes
@@ -140,41 +185,51 @@ export function useGraphCommands(
         get isEmpty() {
           return gesture.isEmpty;
         },
+        update: (command) => {
+          requireWritable();
+          return gesture.update(command);
+        },
         commit: () => {
+          requireWritable();
           const landed = gesture.commit();
           changed();
           return landed;
         },
         abort: () => {
+          requireWritable();
           const next = gesture.abort();
           changed();
           return next;
         },
       };
     },
-    [changed, stack],
+    [changed, requireWritable, stack],
   );
 
   const undo = useCallback(() => {
+    if (blocked.current) return;
     stack.undo();
     changed();
   }, [changed, stack]);
 
   const redo = useCallback(() => {
+    if (blocked.current) return;
     stack.redo();
     changed();
   }, [changed, stack]);
-
   return {
     graph,
     execute,
     amend,
+    executeCommitted,
+    commitGesture,
+    setBlocked,
     beginGesture,
     hasOpenGesture: stack.openGesture !== null,
     undo,
     redo,
-    canUndo: stack.canUndo,
-    canRedo: stack.canRedo,
+    canUndo: !blockedState && stack.canUndo,
+    canRedo: !blockedState && stack.canRedo,
     undoLabel: stack.undoLabel,
     redoLabel: stack.redoLabel,
   };

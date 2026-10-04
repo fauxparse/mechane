@@ -240,8 +240,12 @@ function portInputValues(
  *
  * `resolveValue` memoizes each Source as it goes, so asking for the same
  * node twice costs nothing and its incoming edges are diagnosed once.
+ *
+ * Exported for the server's coherent Current reads (#897–#900): copying an
+ * incoming-wired Source's evaluated Current result uses this same resolution
+ * the Player renders from, rather than a second evaluator that could disagree.
  */
-function resolveGraph(
+export function resolveGraph(
   graph: ShowGraph,
   sourceValues: Readonly<Record<string, unknown>>,
   runtime: GraphResolutionOptions = {},

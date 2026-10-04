@@ -1,5 +1,6 @@
+import { generateId } from "./id";
 import type { GraphNode, ShowGraph, SourceFieldDefault, SourceNode } from "./graph";
-import type { Shape, ShapeField, Type } from "./shapes";
+import type { Shape, Type } from "./shapes";
 import {
   isArrayStructuredValueTemplate,
   isShapeStructuredValueTemplate,
@@ -29,51 +30,97 @@ function primitiveDefault(type: Type): unknown {
 
 export function defaultValueForType(type: Type, shapes: readonly Shape[] = []): unknown {
   if (typeof type === "string") return primitiveDefault(type);
-  if (type.kind === "array") return [];
-  const shape = shapes.find((candidate) => candidate.id === type.shapeId);
-  if (!shape) return null;
-  return Object.fromEntries(
-    shape.fields.map((field) => [field.id, defaultForField(field, shapes)]),
-  );
-}
-
-function defaultForField(field: ShapeField, shapes: readonly Shape[]): unknown {
-  if (field.defaultValue !== null && field.defaultValue !== undefined) return field.defaultValue;
-  return field.required ? defaultValueForType(field.type, shapes) : null;
-}
-
-export function setValueAtPath(value: unknown, path: readonly string[], next: unknown): unknown {
-  if (path.length === 0) return next;
-  const [segment, ...rest] = path;
-  if (segment === undefined) return next;
-  if (isShapeStructuredValueTemplate(value)) {
-    return {
-      ...value,
-      fields: {
-        ...value.fields,
-        [segment]: setValueAtPath(value.fields[segment], rest, next) as StructuredValueTemplate,
+  const byId = new Map(shapes.map((shape) => [shape.id, shape]));
+  let result: unknown = null;
+  const pending: Array<{ type: Type; emit: (value: unknown) => void }> = [
+    {
+      type,
+      emit: (value) => {
+        result = value;
       },
-    };
+    },
+  ];
+  while (pending.length > 0) {
+    const slot = pending.pop()!;
+    if (typeof slot.type === "string") {
+      slot.emit(primitiveDefault(slot.type));
+      continue;
+    }
+    if (slot.type.kind === "array") {
+      slot.emit([]);
+      continue;
+    }
+    const shape = byId.get(slot.type.shapeId);
+    if (!shape) {
+      slot.emit(null);
+      continue;
+    }
+    const fields: Record<string, unknown> = Object.create(null);
+    slot.emit(fields);
+    for (let index = shape.fields.length - 1; index >= 0; index -= 1) {
+      const field = shape.fields[index]!;
+      if (field.defaultValue !== null && field.defaultValue !== undefined)
+        fields[field.id] = field.defaultValue;
+      else if (!field.required) fields[field.id] = null;
+      else
+        pending.push({
+          type: field.type,
+          emit: (value) => {
+            fields[field.id] = value;
+          },
+        });
+    }
   }
-  if (isArrayStructuredValueTemplate(value)) {
-    const index = Number(segment);
-    if (!Number.isInteger(index) || index < 0 || index >= value.items.length) return value;
-    return {
-      ...value,
-      items: value.items.map((item, itemIndex) =>
-        itemIndex === index ? (setValueAtPath(item, rest, next) as StructuredValueTemplate) : item,
-      ),
-    };
-  }
-  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
-  return {
-    ...(value as Record<string, unknown>),
-    [segment]: setValueAtPath((value as Record<string, unknown>)[segment], rest, next),
-  };
+  return result;
 }
 
-function applyOverride(value: unknown, path: readonly string[], next: unknown): unknown {
-  return setValueAtPath(value, path, next);
+export function setValueAtPath(
+  value: unknown,
+  path: readonly string[],
+  next: unknown,
+  forkContainers = false,
+): unknown {
+  const parents: Array<{
+    value: Record<string, unknown> | Extract<StructuredValueTemplate, { kind: "shape" | "array" }>;
+    segment: string;
+  }> = [];
+  let current = value;
+  for (const segment of path) {
+    if (typeof current !== "object" || current === null) return value;
+    if (isShapeStructuredValueTemplate(current)) {
+      parents.push({ value: current, segment });
+      current = current.fields[segment];
+    } else if (isArrayStructuredValueTemplate(current)) {
+      const index = Number(segment);
+      if (!Number.isInteger(index) || index < 0 || index >= current.items.length) return value;
+      parents.push({ value: current, segment });
+      current = current.items[index];
+    } else if (!Array.isArray(current)) {
+      const object = current as Record<string, unknown>;
+      parents.push({ value: object, segment });
+      current = object[segment];
+    } else return value;
+  }
+  let result = next;
+  for (let index = parents.length - 1; index >= 0; index -= 1) {
+    const parent = parents[index]!;
+    if (isShapeStructuredValueTemplate(parent.value)) {
+      result = {
+        ...parent.value,
+        id: forkContainers ? generateId("structuredValue") : parent.value.id,
+        fields: { ...parent.value.fields, [parent.segment]: result },
+      };
+    } else if (isArrayStructuredValueTemplate(parent.value)) {
+      const items = [...parent.value.items];
+      items[Number(parent.segment)] = result as StructuredValueTemplate;
+      result = {
+        ...parent.value,
+        id: forkContainers ? generateId("structuredValue") : parent.value.id,
+        items,
+      };
+    } else result = { ...parent.value, [parent.segment]: result };
+  }
+  return result;
 }
 
 function applySourceOverrides(
@@ -82,7 +129,7 @@ function applySourceOverrides(
 ): unknown {
   let result = value;
   for (const override of overrides)
-    result = applyOverride(result, override.fieldPath, override.value);
+    result = setValueAtPath(result, override.fieldPath, override.value, true);
   return result;
 }
 
@@ -93,9 +140,17 @@ export function sourceDefaultsFor(
   return (graph.sourceFieldDefaults ?? []).filter((override) => override.nodeId === nodeId);
 }
 
-function sourceValueTemplate(source: SourceNode, graph: ShowGraph): StructuredValueTemplate {
+export function defaultSourceValueTemplate(
+  source: SourceNode,
+  graph: ShowGraph,
+): StructuredValueTemplate {
   const value = defaultValueForType(source.type, graph.shapes ?? []);
-  const withOverrides = applySourceOverrides(value, sourceDefaultsFor(graph, source.id));
+  const withOverrides = applySourceOverrides(
+    value,
+    sourceDefaultsFor(graph, source.id).sort(
+      (left, right) => left.fieldPath.length - right.fieldPath.length,
+    ),
+  );
   return normalizeStructuredValueTemplate(withOverrides, source.type, graph.shapes ?? []);
 }
 
@@ -105,7 +160,7 @@ export function defaultSourceValueTemplates(
 ): Record<string, StructuredValueTemplate> {
   const values: Record<string, StructuredValueTemplate> = {};
   for (const node of graph.nodes) {
-    if (node.kind === "source") values[node.id] = sourceValueTemplate(node, graph);
+    if (node.kind === "source") values[node.id] = defaultSourceValueTemplate(node, graph);
   }
   return values;
 }
@@ -143,7 +198,7 @@ export function defaultSourceRuntimeState(graph: ShowGraph): SourceRuntimeState 
   for (const node of graph.nodes) {
     if (node.kind !== "source") continue;
     const materialized = materializeStructuredValue(
-      sourceValueTemplate(node, graph),
+      defaultSourceValueTemplate(node, graph),
       node.type,
       shapes,
     );

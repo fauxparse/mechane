@@ -39,13 +39,10 @@ import {
   readGraphRows,
 } from "./graph-persistence";
 import { drainPlayerInvalidations, enqueuePlayerInvalidations } from "./player-invalidation-outbox";
-import {
-  reconcileActiveRunDeviceStates,
-  reconcileActiveRunValues,
-  syncActiveRunSourceValues,
-} from "./runs";
+import { reconcileActiveRunDeviceStates, reconcileActiveRunValues } from "./runs";
 import { customDomains, devices, showGraphs, shows } from "./schema";
 import { withUniqueId } from "./ids";
+import { assertSourceReplacementResources } from "./value-transfer-resources";
 export interface PublishLoss {
   sourceId: string;
   fieldId: string;
@@ -405,8 +402,8 @@ function sceneInteractionCleanupEdits(
 
 /** Applies graph and Canvas edits against one shared Show version transaction.
  *
- * Source value edits also update the active Run and notify paired Players after
- * the transaction commits, so the editor and device views share live values.
+ * Source Default edits change authored state only. Current values remain owned
+ * by their Run or Device Instance until an explicit live operation changes them.
  * A Show that auto-publishes (#856) publishes the new draft in the same
  * transaction, so the edit and its cutover commit or fail together.
  */
@@ -415,77 +412,84 @@ export async function applyShowEdits(
   graphEdits: readonly GraphEdit[],
   canvasEdits: readonly CanvasWorkspaceEdit[],
   baseVersion: number,
-  options: { customDomainsProvider?: CustomDomainsProvider } = {},
+  options: { customDomainsProvider?: CustomDomainsProvider; actorId?: string } = {},
 ): Promise<AppliedShowEdits> {
-  const { applied, publication, playerUpdated } = await db.transaction(async (tx) => {
-    // Taken before the draft row, in the order publication takes them, so an
-    // edit batch and a concurrent publish cannot deadlock.
-    const { autoPublish } = await lockShow(tx, showId);
-    const current = await readShowGraph(showId, "draft", tx);
-    if (current.version !== baseVersion) {
-      throw new GraphVersionConflictError(baseVersion, current.version);
-    }
-    const currentGraph: ShowGraph = {
-      shapes: current.shapes ?? [],
-      sourceFieldDefaults: current.sourceFieldDefaults ?? [],
-      blocks: current.blocks ?? [],
-      cues: current.cues ?? [],
-      actions: current.actions ?? [],
-      eventBindings: current.eventBindings ?? [],
-      slotEventBindings: current.slotEventBindings ?? [],
-      nodes: current.nodes,
-      edges: current.edges,
-    };
-    const cleanupEdits = sceneInteractionCleanupEdits(currentGraph, graphEdits);
-    const appliedGraphEdits = [...cleanupEdits, ...graphEdits];
-    const nextGraph = applyGraphEdits(currentGraph, appliedGraphEdits);
-    const written = await writeGraph(tx, showId, "draft", nextGraph, baseVersion, {
-      canvasEdits,
-      forceBlockCanvasWrites: false,
-    });
-    const lastCanvasId = canvasEdits.at(-1)?.canvasId;
-    const storedCanvas = lastCanvasId
-      ? ((await readCanvasById(showId, "draft", lastCanvasId, tx))?.canvas ?? null)
-      : null;
-    const editedSourceIds = new Set(
-      graphEdits
-        .filter(
-          (edit): edit is Extract<GraphEdit, { type: "graph.setSourceFieldDefault" }> =>
-            edit.type === "graph.setSourceFieldDefault",
-        )
-        .map((edit) => edit.nodeId),
-    );
-    const playerUpdated = await syncActiveRunSourceValues(showId, nextGraph, editedSourceIds, tx);
-    const publication = autoPublish ? await publishDraftIfPublishable(tx, showId) : null;
-    // Publication already notifies every Device.
-    if (playerUpdated && !publication) await enqueuePlayerInvalidations(tx, showId);
-    return {
-      applied: {
-        showId,
-        state: written.state,
-        updatedAt: written.updatedAt,
-        version: written.version,
-        amendments: [...cleanupEdits, ...amendments(nextGraph, written)],
-        canvas: storedCanvas,
-        published: publication && {
-          updatedAt: publication.published.updatedAt,
-          version: publication.published.version,
-        },
-      },
-      publication,
-      playerUpdated,
-    };
-  });
-  if (publication) {
-    await afterPublication(showId, publication, options.customDomainsProvider);
-  } else if (playerUpdated) {
-    try {
-      await drainPlayerInvalidations({ showId });
-    } catch {
-      // The worker retries the committed outbox row if the provider is down.
-    }
+  const result = await db.transaction((tx) =>
+    applyShowEditsTransaction(tx, showId, graphEdits, canvasEdits, baseVersion, options.actorId),
+  );
+  await afterShowEdits(showId, result, options.customDomainsProvider);
+  return result.applied;
+}
+
+export interface ShowEditsTransactionResult {
+  applied: AppliedShowEdits;
+  publication: Publication | null;
+}
+
+export async function applyShowEditsTransaction(
+  tx: Tx,
+  showId: string,
+  graphEdits: readonly GraphEdit[],
+  canvasEdits: readonly CanvasWorkspaceEdit[],
+  baseVersion: number,
+  actorId?: string,
+): Promise<ShowEditsTransactionResult> {
+  // Taken before the draft row, in the order publication takes them, so an
+  // edit batch and a concurrent publish cannot deadlock.
+  const { autoPublish, userId } = await lockShow(tx, showId);
+  if (actorId !== undefined && actorId !== userId)
+    throw new Error("Show unavailable or not authorized.");
+  const current = await readShowGraph(showId, "draft", tx);
+  if (current.version !== baseVersion) {
+    throw new GraphVersionConflictError(baseVersion, current.version);
   }
-  return applied;
+  const currentGraph: ShowGraph = {
+    shapes: current.shapes ?? [],
+    sourceFieldDefaults: current.sourceFieldDefaults ?? [],
+    blocks: current.blocks ?? [],
+    cues: current.cues ?? [],
+    actions: current.actions ?? [],
+    eventBindings: current.eventBindings ?? [],
+    slotEventBindings: current.slotEventBindings ?? [],
+    nodes: current.nodes,
+    edges: current.edges,
+  };
+  const cleanupEdits = sceneInteractionCleanupEdits(currentGraph, graphEdits);
+  const appliedGraphEdits = [...cleanupEdits, ...graphEdits];
+  const nextGraph = applyGraphEdits(currentGraph, appliedGraphEdits);
+  await assertSourceReplacementResources(tx, showId, currentGraph, appliedGraphEdits);
+  const written = await writeGraph(tx, showId, "draft", nextGraph, baseVersion, {
+    canvasEdits,
+    forceBlockCanvasWrites: false,
+  });
+  const lastCanvasId = canvasEdits.at(-1)?.canvasId;
+  const storedCanvas = lastCanvasId
+    ? ((await readCanvasById(showId, "draft", lastCanvasId, tx))?.canvas ?? null)
+    : null;
+  const publication = autoPublish ? await publishDraftIfPublishable(tx, showId) : null;
+  return {
+    applied: {
+      showId,
+      state: written.state,
+      updatedAt: written.updatedAt,
+      version: written.version,
+      amendments: [...cleanupEdits, ...amendments(nextGraph, written)],
+      canvas: storedCanvas,
+      published: publication && {
+        updatedAt: publication.published.updatedAt,
+        version: publication.published.version,
+      },
+    },
+    publication,
+  };
+}
+
+export async function afterShowEdits(
+  showId: string,
+  result: ShowEditsTransactionResult,
+  provider?: CustomDomainsProvider,
+): Promise<void> {
+  if (result.publication) await afterPublication(showId, result.publication, provider);
 }
 
 /**
@@ -524,9 +528,9 @@ interface Publication {
 }
 
 /** Takes the Show row lock that publication and Run start serialise on. */
-async function lockShow(tx: Tx, showId: string): Promise<{ autoPublish: boolean }> {
+async function lockShow(tx: Tx, showId: string): Promise<{ autoPublish: boolean; userId: string }> {
   const [show] = await tx
-    .select({ autoPublish: shows.autoPublish })
+    .select({ autoPublish: shows.autoPublish, userId: shows.userId })
     .from(shows)
     .where(eq(shows.id, showId))
     .for("update");
@@ -571,7 +575,7 @@ async function publishDraft(tx: Tx, showId: string): Promise<Publication> {
       forceBlockCanvasWrites: true,
     },
   );
-  await reconcileActiveRunDeviceStates(showId, published, published.version, tx);
+  await reconcileActiveRunDeviceStates(showId, publishedBefore, published, published.version, tx);
   // Publish is the only moment a Device may be retired (#45). Keeping this
   // in the same transaction preserves the all-or-nothing cutover. A
   // retired Device's Custom Domain is released with it.

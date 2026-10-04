@@ -212,7 +212,7 @@ export function useCanvasWorkspaceSession({
     undoHistory.record("canvas");
     save.enqueue(edits);
   });
-  const openedGraph = useOpenedShowGraph(draft.data);
+  const openedGraph = useOpenedShowGraph(draft.data)?.graph ?? null;
   const graphEditing = useGraphEditing(openedGraph, (edits) => {
     undoHistory.record("graph");
     save.enqueue(edits);

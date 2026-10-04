@@ -38,6 +38,7 @@ import {
   type GraphNode,
   type Position,
   type SceneVariable,
+  type SourceFieldDefault,
   type SuggestedImageDimensions,
   type TransformerInputPort,
   type TransformerTransform,
@@ -122,6 +123,7 @@ import {
   setUpdateTarget,
 } from "./interaction-commands";
 import type { ShowGraphCommand } from "./graph-commands";
+import { replaceSourceDefaults } from "./source-value-command";
 export type GraphEdit =
   | { readonly type: typeof GRAPH_COMMAND_TYPES.addNode; readonly node: GraphNode }
   | { readonly type: typeof GRAPH_COMMAND_TYPES.removeNode; readonly nodeId: string }
@@ -234,6 +236,11 @@ export type GraphEdit =
       readonly nodeId: string;
       readonly fieldPath: readonly string[];
       readonly value: unknown;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.replaceSourceDefaults;
+      readonly before: readonly SourceFieldDefault[];
+      readonly after: readonly SourceFieldDefault[];
     }
   | {
       readonly type: typeof GRAPH_COMMAND_TYPES.addSceneVariable;
@@ -627,6 +634,27 @@ function decodeColumnSizes(
     sizes[columnId] = size;
   }
   return sizes;
+}
+
+function decodeSourceDefaultEntries(value: unknown): SourceFieldDefault[] {
+  if (!Array.isArray(value)) throw new GraphEditCodecError("Source Defaults must be an array.");
+  return value.map((entry: unknown) => {
+    if (
+      !entry ||
+      typeof entry !== "object" ||
+      !("nodeId" in entry) ||
+      typeof entry.nodeId !== "string" ||
+      !("fieldPath" in entry) ||
+      !Array.isArray(entry.fieldPath) ||
+      !entry.fieldPath.every(
+        (segment: unknown): segment is string => typeof segment === "string",
+      ) ||
+      !Object.prototype.hasOwnProperty.call(entry, "value") ||
+      !("value" in entry)
+    )
+      throw new GraphEditCodecError("Malformed authored Source Default entry.");
+    return { nodeId: entry.nodeId, fieldPath: [...entry.fieldPath], value: entry.value };
+  });
 }
 
 function required<T>(flat: FlatGraphEdit, field: string, value: T | null | undefined): T {
@@ -1525,6 +1553,23 @@ export const GRAPH_EDIT_CODECS: { [T in GraphEdit["type"]]: GraphEditCodec<T> } 
       value: flat.value ?? null,
     }),
   },
+  [GRAPH_COMMAND_TYPES.replaceSourceDefaults]: {
+    command: (edit) => replaceSourceDefaults(edit.before, edit.after),
+    encode: (edit) => ({ type: edit.type, value: { before: edit.before, after: edit.after } }),
+    decode: (flat) => {
+      const value = flat.value;
+      if (!value || typeof value !== "object" || !("before" in value) || !("after" in value)) {
+        throw new GraphEditCodecError(
+          "Source replacement needs its before and after authored entries.",
+        );
+      }
+      return {
+        type: GRAPH_COMMAND_TYPES.replaceSourceDefaults,
+        before: decodeSourceDefaultEntries(value.before),
+        after: decodeSourceDefaultEntries(value.after),
+      };
+    },
+  },
   [GRAPH_COMMAND_TYPES.addSceneVariable]: {
     command: (edit) => addSceneVariable(edit.sceneId, edit.variable),
     encode: (edit) => ({
@@ -2081,6 +2126,8 @@ export function structuralIds(edit: GraphEdit): readonly string[] {
       return [edit.action.id];
     case GRAPH_COMMAND_TYPES.removeEventBinding:
       return [edit.bindingId];
+    case GRAPH_COMMAND_TYPES.replaceSourceDefaults:
+      return [...edit.before, ...edit.after].map((entry) => entry.nodeId);
     default:
       return [];
   }
