@@ -11,6 +11,7 @@ import type { Shape } from "@mechane/domain/shapes";
 import { AnimatePresence, domAnimation, LazyMotion } from "motion/react";
 import { useMemo, useRef } from "react";
 
+import { pluralize } from "../../../../../utils/pluralize";
 import type { ErrorPath, SourceImageAsset } from "../../inspector/source-value-types";
 import {
   DEFAULT_COLUMN_SIZE,
@@ -41,6 +42,8 @@ const tableSensors = (defaults: typeof defaultPreset.sensors) =>
 export type ArrayTableModel = {
   records: ShapeRecord[];
   fields: Shape["fields"];
+  /** What one row is called in menus and messages; defaults to "record". */
+  noun?: string;
   readOnly: boolean;
   columnSizes?: Record<string, number>;
   imageAssets?: readonly SourceImageAsset[];
@@ -50,7 +53,7 @@ export type ArrayTableModel = {
   onReorder(sourceId: string, targetId: string): void;
   onRecordChange(record: ShapeRecord): void;
   onValidityChange(path: ErrorPath, error: string | null): void;
-  onOpenRecord(id: string): void;
+  onOpenRecord?(id: string): void;
   onDeleteRecord(id: ShapeRecord["id"]): void;
   onCreateRecord?(): string | null;
 };
@@ -59,6 +62,7 @@ export function ArrayTable({ model }: { model: ArrayTableModel }) {
   const {
     records,
     fields,
+    noun = "record",
     readOnly,
     columnSizes,
     imageAssets,
@@ -159,7 +163,12 @@ export function ArrayTable({ model }: { model: ArrayTableModel }) {
       className="min-w-0 overflow-auto overscroll-x-contain overscroll-y-none border-t border-b border-border [--background:var(--color-popover)] [--row-hovered:var(--palette-neutral-600)]"
     >
       <VibeProvider vibe="table">
-        <RecordActionsMenu handle={recordMenu} readOnly={readOnly} callbacks={callbacks} />
+        <RecordActionsMenu
+          handle={recordMenu}
+          noun={noun}
+          readOnly={readOnly}
+          callbacks={callbacks}
+        />
         <LazyMotion features={domAnimation}>
           <DragDropProvider sensors={tableSensors} onDragEnd={finishDrag}>
             <table className="table-fixed text-left text-sm" style={{ width: tableWidth }}>
@@ -203,7 +212,7 @@ export function ArrayTable({ model }: { model: ArrayTableModel }) {
         </LazyMotion>
         {records.length === 0 ? (
           <p className="p-8 text-center text-sm text-muted-foreground">
-            No records match this filter.
+            No {pluralize(noun)} match this filter.
           </p>
         ) : null}
       </VibeProvider>

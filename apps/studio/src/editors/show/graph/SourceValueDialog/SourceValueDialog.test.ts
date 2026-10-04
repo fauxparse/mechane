@@ -5,6 +5,7 @@ import { ToastProvider } from "@mechane/design-system";
 import { generateId } from "@mechane/domain/id";
 import type { Shape } from "@mechane/domain/shapes";
 
+import { ArrayValueEditor } from "./ArrayValueEditor";
 import { ArrayTable } from "./ArrayValueEditor/ArrayTable";
 import { recordIdentifier } from "./ArrayValueEditor/types";
 import { SourceImagePreview, ValueEditor } from "./ValueEditor";
@@ -184,6 +185,32 @@ describe("ValueEditor", () => {
 
     expect(html).toContain("Incoming value");
     expect(html).not.toContain("combobox");
+  });
+});
+
+describe("ArrayValueEditor", () => {
+  it("edits an array of primitives as a table with no record view", () => {
+    const html = renderToStaticMarkup(
+      createElement(ArrayValueEditor, {
+        type: { kind: "array", of: "text" },
+        value: { id: generateId("structuredValue"), kind: "array", items: ["Red", "Green"] },
+        shapes: [],
+        path: [],
+        focus: { kind: "array" },
+        readOnly: false,
+        onChange: () => {},
+        onValidityChange: () => {},
+        onSelectionChange: () => {},
+      }),
+    );
+
+    expect(html.match(/aria-label="Text value"/g)).toHaveLength(2);
+    expect(html).toContain('value="Red"');
+    expect(html).toContain('value="Green"');
+    expect(html).toContain('aria-label="Red options"');
+    expect(html).toContain("Add item");
+    expect(html).not.toContain('role="tab"');
+    expect(html).not.toContain("Record");
   });
 });
 

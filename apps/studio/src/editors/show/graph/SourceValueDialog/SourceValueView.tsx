@@ -30,10 +30,12 @@ import {
 } from "@mechane/domain/shapes";
 import type { SourceValueRow } from "../inspector/source-value-types";
 import { ArrayValueEditor } from "./ArrayValueEditor";
-import { type ArrayValueFocus, type ArrayValueSelection } from "./ArrayValueEditor/types";
+import {
+  type ArrayType,
+  type ArrayValueFocus,
+  type ArrayValueSelection,
+} from "./ArrayValueEditor/types";
 import { ValueEditor } from "./ValueEditor";
-
-type ShapeArrayType = { kind: "array"; of: { kind: "shape"; shapeId: string } };
 
 type SourceValueBreadcrumb = {
   label: string;
@@ -42,7 +44,8 @@ type SourceValueBreadcrumb = {
 
 type SourceValueViewProps = {
   row: SourceValueRow;
-  shapeArrayType: ShapeArrayType | null;
+  /** Set when the value is edited as a table rather than with the standard value editor. */
+  arrayType: ArrayType | null;
   breadcrumbs: readonly SourceValueBreadcrumb[];
   open: boolean;
   onOpenChange(open: boolean): void;
@@ -72,7 +75,7 @@ type SourceValueViewProps = {
 
 export function SourceValueView({
   row,
-  shapeArrayType,
+  arrayType,
   breadcrumbs,
   open,
   onOpenChange,
@@ -105,7 +108,7 @@ export function SourceValueView({
         <DialogContent
           aria-label={`${readOnly ? "View" : "Edit"} ${row.label}`}
           className={
-            shapeArrayType
+            arrayType
               ? "h-[min(90vh,780px)] w-[min(76rem,calc(100vw-2rem))] max-w-none overflow-hidden p-0"
               : undefined
           }
@@ -127,7 +130,7 @@ export function SourceValueView({
                             {index > 0 ? (
                               <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
                             ) : null}
-                            {focus && shapeArrayType ? (
+                            {focus && arrayType ? (
                               <button
                                 type="button"
                                 className={`truncate rounded-sm px-1 -mx-1 py-0.5 ${isCurrent ? "text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
@@ -172,9 +175,9 @@ export function SourceValueView({
               }
             />
           </header>
-          {shapeArrayType ? (
+          {arrayType ? (
             <ArrayValueEditor
-              type={shapeArrayType}
+              type={arrayType}
               value={draft}
               shapes={shapes}
               columnSizes={columnSizes}

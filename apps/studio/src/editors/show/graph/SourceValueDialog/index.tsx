@@ -1,6 +1,12 @@
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 
-import type { ImageAssetReference, ResolvedImageValue, Shape, Type } from "@mechane/domain/shapes";
+import type {
+  ImageAssetReference,
+  PrimitiveType,
+  ResolvedImageValue,
+  Shape,
+  Type,
+} from "@mechane/domain/shapes";
 import {
   isArrayStructuredValueTemplate,
   isShapeStructuredValueTemplate,
@@ -8,24 +14,28 @@ import {
 } from "@mechane/domain/structured-values";
 import type { SourceValueRow } from "../inspector/source-value-types";
 import { INLINE_STRING_LIMIT } from "../inspector/source-values-helpers";
-import { recordIdentifier, type ArrayValueSelection } from "./ArrayValueEditor/types";
+import {
+  recordIdentifier,
+  type ArrayType,
+  type ArrayValueSelection,
+} from "./ArrayValueEditor/types";
 import { SourceValueView } from "./SourceValueView";
 import { useStructuredValueSession } from "./structured-value-session";
 
 type ShapeArrayType = { kind: "array"; of: { kind: "shape"; shapeId: string } };
+type TableArrayType = ShapeArrayType | { kind: "array"; of: PrimitiveType };
 
-function isShapeArrayType(type: Type): type is ShapeArrayType {
+/** Arrays of Shapes or primitives are edited as a table; nested arrays are not. */
+function isTableArrayType(type: Type): type is TableArrayType {
   return (
     typeof type !== "string" &&
     type.kind === "array" &&
-    typeof type.of !== "string" &&
-    type.of.kind === "shape"
+    (typeof type.of === "string" || type.of.kind === "shape")
   );
 }
-function draftForRow(row: SourceValueRow, shapes: readonly Shape[]) {
-  return isShapeArrayType(row.type)
-    ? normalizeStructuredValueTemplate(row.value, row.type, shapes)
-    : row.value;
+
+function isShapeArrayType(type: ArrayType): type is ShapeArrayType {
+  return typeof type.of !== "string" && type.of.kind === "shape";
 }
 
 function arraySelectionForValue(
@@ -76,8 +86,11 @@ export function SourceValueDialog({
     typeof row.type === "string" &&
     typeof row.value === "string" &&
     (row.value.includes("\n") || row.value.length > INLINE_STRING_LIMIT);
-  const shapeArrayType = isShapeArrayType(row.type) ? row.type : null;
-  const initialDraft = draftForRow(row, shapes);
+  const tableArrayType = isTableArrayType(row.type) ? row.type : null;
+  const shapeArrayType = tableArrayType && isShapeArrayType(tableArrayType) ? tableArrayType : null;
+  const initialDraft = tableArrayType
+    ? normalizeStructuredValueTemplate(row.value, tableArrayType, shapes)
+    : row.value;
   const session = useStructuredValueSession({
     initialValue: initialDraft,
     initialColumnSizes: columnSizes,
@@ -104,7 +117,7 @@ export function SourceValueDialog({
   const breadcrumbs = [
     { label: nodeName, focus: { kind: "array" } as const },
     ...(row.fieldPath.length > 0
-      ? [{ label: row.label, focus: shapeArrayType ? ({ kind: "array" } as const) : null }]
+      ? [{ label: row.label, focus: tableArrayType ? ({ kind: "array" } as const) : null }]
       : []),
     ...(selectedRecord && shapeArrayType
       ? [{ label: selectedRecord.label, focus: { kind: "record", id: selectedRecord.id } as const }]
@@ -114,7 +127,7 @@ export function SourceValueDialog({
   return (
     <SourceValueView
       row={row}
-      shapeArrayType={shapeArrayType}
+      arrayType={tableArrayType}
       breadcrumbs={breadcrumbs}
       open={open}
       onOpenChange={onOpenChange}
