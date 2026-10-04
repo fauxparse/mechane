@@ -20,13 +20,14 @@ import { Route as GuestSignInRouteImport } from './routes/_guest/sign-in'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedShowsShowIdRouteImport } from './routes/_authenticated/shows/$showId'
 import { Route as AuthenticatedAdminUsersUserIdRouteImport } from './routes/_authenticated/admin/users/$userId'
-import { Route as AuthenticatedShowsShowIdIndexRouteImport } from './routes/_authenticated/shows/$showId/index'
+import { Route as AuthenticatedShowsShowIdGraphRouteImport } from './routes/_authenticated/shows/$showId/_graph'
 import { Route as AuthenticatedShowsShowIdArtRouteImport } from './routes/_authenticated/shows/$showId/art'
 import { Route as AuthenticatedShowsShowIdSettingsRouteImport } from './routes/_authenticated/shows/$showId/settings'
 import { Route as AuthenticatedShowsShowIdShapesRouteImport } from './routes/_authenticated/shows/$showId/shapes'
+import { Route as AuthenticatedShowsShowIdGraphIndexRouteImport } from './routes/_authenticated/shows/$showId/_graph/index'
 import { Route as AuthenticatedShowsShowIdArtArtIdRouteImport } from './routes/_authenticated/shows/$showId/art/$artId'
 import { Route as AuthenticatedShowsShowIdShapesShapeIdRouteImport } from './routes/_authenticated/shows/$showId/shapes/$shapeId'
-import { Route as AuthenticatedShowsShowIdSourceSourceIdFieldIdRouteImport } from './routes/_authenticated/shows/$showId/source/$sourceId/$fieldId'
+import { Route as AuthenticatedShowsShowIdGraphSourceSourceIdFieldIdRouteImport } from './routes/_authenticated/shows/$showId/_graph/source/$sourceId/$fieldId'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -83,10 +84,9 @@ const AuthenticatedAdminUsersUserIdRoute =
     path: '/users/$userId',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
-const AuthenticatedShowsShowIdIndexRoute =
-  AuthenticatedShowsShowIdIndexRouteImport.update({
-    id: '/',
-    path: '/',
+const AuthenticatedShowsShowIdGraphRoute =
+  AuthenticatedShowsShowIdGraphRouteImport.update({
+    id: '/_graph',
     getParentRoute: () => AuthenticatedShowsShowIdRoute,
   } as any)
 const AuthenticatedShowsShowIdArtRoute =
@@ -107,6 +107,12 @@ const AuthenticatedShowsShowIdShapesRoute =
     path: '/shapes',
     getParentRoute: () => AuthenticatedShowsShowIdRoute,
   } as any)
+const AuthenticatedShowsShowIdGraphIndexRoute =
+  AuthenticatedShowsShowIdGraphIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedShowsShowIdGraphRoute,
+  } as any)
 const AuthenticatedShowsShowIdArtArtIdRoute =
   AuthenticatedShowsShowIdArtArtIdRouteImport.update({
     id: '/$artId',
@@ -119,11 +125,11 @@ const AuthenticatedShowsShowIdShapesShapeIdRoute =
     path: '/$shapeId',
     getParentRoute: () => AuthenticatedShowsShowIdShapesRoute,
   } as any)
-const AuthenticatedShowsShowIdSourceSourceIdFieldIdRoute =
-  AuthenticatedShowsShowIdSourceSourceIdFieldIdRouteImport.update({
+const AuthenticatedShowsShowIdGraphSourceSourceIdFieldIdRoute =
+  AuthenticatedShowsShowIdGraphSourceSourceIdFieldIdRouteImport.update({
     id: '/source/$sourceId/$fieldId',
     path: '/source/$sourceId/$fieldId',
-    getParentRoute: () => AuthenticatedShowsShowIdRoute,
+    getParentRoute: () => AuthenticatedShowsShowIdGraphRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -139,10 +145,10 @@ export interface FileRoutesByFullPath {
   '/shows/$showId/art': typeof AuthenticatedShowsShowIdArtRouteWithChildren
   '/shows/$showId/settings': typeof AuthenticatedShowsShowIdSettingsRoute
   '/shows/$showId/shapes': typeof AuthenticatedShowsShowIdShapesRouteWithChildren
-  '/shows/$showId/': typeof AuthenticatedShowsShowIdIndexRoute
   '/shows/$showId/art/$artId': typeof AuthenticatedShowsShowIdArtArtIdRoute
   '/shows/$showId/shapes/$shapeId': typeof AuthenticatedShowsShowIdShapesShapeIdRoute
-  '/shows/$showId/source/$sourceId/$fieldId': typeof AuthenticatedShowsShowIdSourceSourceIdFieldIdRoute
+  '/shows/$showId/': typeof AuthenticatedShowsShowIdGraphIndexRoute
+  '/shows/$showId/source/$sourceId/$fieldId': typeof AuthenticatedShowsShowIdGraphSourceSourceIdFieldIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
@@ -150,15 +156,15 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof GuestForgotPasswordRoute
   '/reset-password': typeof GuestResetPasswordRoute
   '/sign-in': typeof GuestSignInRoute
+  '/shows/$showId': typeof AuthenticatedShowsShowIdGraphIndexRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/shows/$showId/art': typeof AuthenticatedShowsShowIdArtRouteWithChildren
   '/shows/$showId/settings': typeof AuthenticatedShowsShowIdSettingsRoute
   '/shows/$showId/shapes': typeof AuthenticatedShowsShowIdShapesRouteWithChildren
-  '/shows/$showId': typeof AuthenticatedShowsShowIdIndexRoute
   '/shows/$showId/art/$artId': typeof AuthenticatedShowsShowIdArtArtIdRoute
   '/shows/$showId/shapes/$shapeId': typeof AuthenticatedShowsShowIdShapesShapeIdRoute
-  '/shows/$showId/source/$sourceId/$fieldId': typeof AuthenticatedShowsShowIdSourceSourceIdFieldIdRoute
+  '/shows/$showId/source/$sourceId/$fieldId': typeof AuthenticatedShowsShowIdGraphSourceSourceIdFieldIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -173,13 +179,14 @@ export interface FileRoutesById {
   '/_authenticated/shows/$showId': typeof AuthenticatedShowsShowIdRouteWithChildren
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
+  '/_authenticated/shows/$showId/_graph': typeof AuthenticatedShowsShowIdGraphRouteWithChildren
   '/_authenticated/shows/$showId/art': typeof AuthenticatedShowsShowIdArtRouteWithChildren
   '/_authenticated/shows/$showId/settings': typeof AuthenticatedShowsShowIdSettingsRoute
   '/_authenticated/shows/$showId/shapes': typeof AuthenticatedShowsShowIdShapesRouteWithChildren
-  '/_authenticated/shows/$showId/': typeof AuthenticatedShowsShowIdIndexRoute
   '/_authenticated/shows/$showId/art/$artId': typeof AuthenticatedShowsShowIdArtArtIdRoute
   '/_authenticated/shows/$showId/shapes/$shapeId': typeof AuthenticatedShowsShowIdShapesShapeIdRoute
-  '/_authenticated/shows/$showId/source/$sourceId/$fieldId': typeof AuthenticatedShowsShowIdSourceSourceIdFieldIdRoute
+  '/_authenticated/shows/$showId/_graph/': typeof AuthenticatedShowsShowIdGraphIndexRoute
+  '/_authenticated/shows/$showId/_graph/source/$sourceId/$fieldId': typeof AuthenticatedShowsShowIdGraphSourceSourceIdFieldIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -196,9 +203,9 @@ export interface FileRouteTypes {
     | '/shows/$showId/art'
     | '/shows/$showId/settings'
     | '/shows/$showId/shapes'
-    | '/shows/$showId/'
     | '/shows/$showId/art/$artId'
     | '/shows/$showId/shapes/$shapeId'
+    | '/shows/$showId/'
     | '/shows/$showId/source/$sourceId/$fieldId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -207,12 +214,12 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/reset-password'
     | '/sign-in'
+    | '/shows/$showId'
     | '/admin'
     | '/admin/users/$userId'
     | '/shows/$showId/art'
     | '/shows/$showId/settings'
     | '/shows/$showId/shapes'
-    | '/shows/$showId'
     | '/shows/$showId/art/$artId'
     | '/shows/$showId/shapes/$shapeId'
     | '/shows/$showId/source/$sourceId/$fieldId'
@@ -229,13 +236,14 @@ export interface FileRouteTypes {
     | '/_authenticated/shows/$showId'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/users/$userId'
+    | '/_authenticated/shows/$showId/_graph'
     | '/_authenticated/shows/$showId/art'
     | '/_authenticated/shows/$showId/settings'
     | '/_authenticated/shows/$showId/shapes'
-    | '/_authenticated/shows/$showId/'
     | '/_authenticated/shows/$showId/art/$artId'
     | '/_authenticated/shows/$showId/shapes/$shapeId'
-    | '/_authenticated/shows/$showId/source/$sourceId/$fieldId'
+    | '/_authenticated/shows/$showId/_graph/'
+    | '/_authenticated/shows/$showId/_graph/source/$sourceId/$fieldId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -322,11 +330,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminUsersUserIdRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
-    '/_authenticated/shows/$showId/': {
-      id: '/_authenticated/shows/$showId/'
-      path: '/'
-      fullPath: '/shows/$showId/'
-      preLoaderRoute: typeof AuthenticatedShowsShowIdIndexRouteImport
+    '/_authenticated/shows/$showId/_graph': {
+      id: '/_authenticated/shows/$showId/_graph'
+      path: ''
+      fullPath: '/shows/$showId'
+      preLoaderRoute: typeof AuthenticatedShowsShowIdGraphRouteImport
       parentRoute: typeof AuthenticatedShowsShowIdRoute
     }
     '/_authenticated/shows/$showId/art': {
@@ -350,6 +358,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShowsShowIdShapesRouteImport
       parentRoute: typeof AuthenticatedShowsShowIdRoute
     }
+    '/_authenticated/shows/$showId/_graph/': {
+      id: '/_authenticated/shows/$showId/_graph/'
+      path: '/'
+      fullPath: '/shows/$showId/'
+      preLoaderRoute: typeof AuthenticatedShowsShowIdGraphIndexRouteImport
+      parentRoute: typeof AuthenticatedShowsShowIdGraphRoute
+    }
     '/_authenticated/shows/$showId/art/$artId': {
       id: '/_authenticated/shows/$showId/art/$artId'
       path: '/$artId'
@@ -364,12 +379,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedShowsShowIdShapesShapeIdRouteImport
       parentRoute: typeof AuthenticatedShowsShowIdShapesRoute
     }
-    '/_authenticated/shows/$showId/source/$sourceId/$fieldId': {
-      id: '/_authenticated/shows/$showId/source/$sourceId/$fieldId'
+    '/_authenticated/shows/$showId/_graph/source/$sourceId/$fieldId': {
+      id: '/_authenticated/shows/$showId/_graph/source/$sourceId/$fieldId'
       path: '/source/$sourceId/$fieldId'
       fullPath: '/shows/$showId/source/$sourceId/$fieldId'
-      preLoaderRoute: typeof AuthenticatedShowsShowIdSourceSourceIdFieldIdRouteImport
-      parentRoute: typeof AuthenticatedShowsShowIdRoute
+      preLoaderRoute: typeof AuthenticatedShowsShowIdGraphSourceSourceIdFieldIdRouteImport
+      parentRoute: typeof AuthenticatedShowsShowIdGraphRoute
     }
   }
 }
@@ -388,6 +403,24 @@ const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren
 const AuthenticatedAdminRouteRouteWithChildren =
   AuthenticatedAdminRouteRoute._addFileChildren(
     AuthenticatedAdminRouteRouteChildren,
+  )
+
+interface AuthenticatedShowsShowIdGraphRouteChildren {
+  AuthenticatedShowsShowIdGraphIndexRoute: typeof AuthenticatedShowsShowIdGraphIndexRoute
+  AuthenticatedShowsShowIdGraphSourceSourceIdFieldIdRoute: typeof AuthenticatedShowsShowIdGraphSourceSourceIdFieldIdRoute
+}
+
+const AuthenticatedShowsShowIdGraphRouteChildren: AuthenticatedShowsShowIdGraphRouteChildren =
+  {
+    AuthenticatedShowsShowIdGraphIndexRoute:
+      AuthenticatedShowsShowIdGraphIndexRoute,
+    AuthenticatedShowsShowIdGraphSourceSourceIdFieldIdRoute:
+      AuthenticatedShowsShowIdGraphSourceSourceIdFieldIdRoute,
+  }
+
+const AuthenticatedShowsShowIdGraphRouteWithChildren =
+  AuthenticatedShowsShowIdGraphRoute._addFileChildren(
+    AuthenticatedShowsShowIdGraphRouteChildren,
   )
 
 interface AuthenticatedShowsShowIdArtRouteChildren {
@@ -421,24 +454,22 @@ const AuthenticatedShowsShowIdShapesRouteWithChildren =
   )
 
 interface AuthenticatedShowsShowIdRouteChildren {
+  AuthenticatedShowsShowIdGraphRoute: typeof AuthenticatedShowsShowIdGraphRouteWithChildren
   AuthenticatedShowsShowIdArtRoute: typeof AuthenticatedShowsShowIdArtRouteWithChildren
   AuthenticatedShowsShowIdSettingsRoute: typeof AuthenticatedShowsShowIdSettingsRoute
   AuthenticatedShowsShowIdShapesRoute: typeof AuthenticatedShowsShowIdShapesRouteWithChildren
-  AuthenticatedShowsShowIdIndexRoute: typeof AuthenticatedShowsShowIdIndexRoute
-  AuthenticatedShowsShowIdSourceSourceIdFieldIdRoute: typeof AuthenticatedShowsShowIdSourceSourceIdFieldIdRoute
 }
 
 const AuthenticatedShowsShowIdRouteChildren: AuthenticatedShowsShowIdRouteChildren =
   {
+    AuthenticatedShowsShowIdGraphRoute:
+      AuthenticatedShowsShowIdGraphRouteWithChildren,
     AuthenticatedShowsShowIdArtRoute:
       AuthenticatedShowsShowIdArtRouteWithChildren,
     AuthenticatedShowsShowIdSettingsRoute:
       AuthenticatedShowsShowIdSettingsRoute,
     AuthenticatedShowsShowIdShapesRoute:
       AuthenticatedShowsShowIdShapesRouteWithChildren,
-    AuthenticatedShowsShowIdIndexRoute: AuthenticatedShowsShowIdIndexRoute,
-    AuthenticatedShowsShowIdSourceSourceIdFieldIdRoute:
-      AuthenticatedShowsShowIdSourceSourceIdFieldIdRoute,
   }
 
 const AuthenticatedShowsShowIdRouteWithChildren =

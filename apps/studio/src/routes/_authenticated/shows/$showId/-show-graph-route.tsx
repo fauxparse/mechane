@@ -1,5 +1,5 @@
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
-import type { ShowId } from "@mechane/domain/id";
+import { isId, type ShowId } from "@mechane/domain/id";
 import type { ResolvedImageValue } from "@mechane/domain/shapes";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -19,21 +19,29 @@ import {
 } from "../../../../editors/show/data/show-session";
 import { DeviceShareProvider } from "../../../../components/CustomDomains/DeviceShare";
 import { useOpenedShowGraph } from "../../../../editors/show/data/use-opened-graph";
-export interface ShowGraphRouteProps {
-  initialSourceValue?: ShowGraphValueLocation;
-  onSourceValueChange?: (location: ShowGraphValueLocation | null) => void;
+
+/**
+ * The Show editor, rendered by the `_graph` layout over "/shows/$showId" and
+ * its masked source-value route. The child route's params say which value
+ * dialog is open; the editor itself stays mounted across them.
+ */
+export function ShowGraphPage() {
+  const { showId, sourceId, fieldId } = useParams({ strict: false });
+  if (showId === undefined || !isId("show", showId)) return null;
+  const initialSourceValue =
+    sourceId === undefined || fieldId === undefined
+      ? undefined
+      : { nodeId: sourceId, fieldPath: fieldId === "root" ? [] : [fieldId] };
+  return <ShowGraphRoute showId={showId} initialSourceValue={initialSourceValue} />;
 }
 
-export function ShowGraphIndexRoute() {
-  const params = useParams({ from: "/_authenticated/shows/$showId/" });
-  return <ShowGraphRoute showId={params.showId as ShowId} />;
-}
-
-export function ShowGraphRoute({
+function ShowGraphRoute({
   showId,
   initialSourceValue,
-  onSourceValueChange,
-}: ShowGraphRouteProps & { showId: ShowId }) {
+}: {
+  showId: ShowId;
+  initialSourceValue?: ShowGraphValueLocation;
+}) {
   const navigate = useNavigate();
   const draft = useShowGraph(showId, "draft");
   const imageAssets = useImageAssets(showId);
@@ -83,10 +91,6 @@ export function ShowGraphRoute({
   );
   const openSourceValue = useCallback(
     (location: ShowGraphValueLocation | null) => {
-      if (onSourceValueChange) {
-        onSourceValueChange(location);
-        return;
-      }
       if (!location) {
         void navigate({ to: "/shows/$showId", params: { showId } });
         return;
@@ -100,7 +104,7 @@ export function ShowGraphRoute({
         },
       });
     },
-    [navigate, onSourceValueChange, showId],
+    [navigate, showId],
   );
   const openScene = useCallback(
     (sceneId: string) => {

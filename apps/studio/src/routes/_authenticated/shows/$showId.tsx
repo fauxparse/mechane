@@ -1,8 +1,8 @@
 // The shared Show editor layout for "/shows/$showId" (issue #39).
 //
-// The index child owns the Show Editor, while art.tsx owns the Canvas editor.
-// Keeping those editors in sibling routes lets TanStack Router select the
-// correct surface instead of making the layout inspect pathname strings or
+// The `_graph` child owns the Show Editor, while art.tsx owns the Canvas
+// editor. Keeping those editors in sibling routes lets TanStack Router select
+// the correct surface instead of making the layout inspect pathname strings or
 // render one editor beside the other.
 //
 // This route is the only place in the editor that touches hooks: it reads the
