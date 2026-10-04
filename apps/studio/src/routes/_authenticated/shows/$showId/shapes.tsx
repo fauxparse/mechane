@@ -27,7 +27,7 @@ function ShapesRoute() {
   });
   const draft = useShowGraph(showId, "draft");
   const save = useShowGraphEdits(showId, draft.data?.version);
-  const openedGraph = useOpenedShowGraph(draft.data);
+  const openedGraph = useOpenedShowGraph(draft.data)?.graph ?? null;
   const editing = useGraphEditing(openedGraph, (edits) => save.enqueue(edits));
 
   if (showId === null || draft.isError) {

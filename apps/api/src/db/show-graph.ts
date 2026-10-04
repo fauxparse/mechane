@@ -42,6 +42,7 @@ import { drainPlayerInvalidations, enqueuePlayerInvalidations } from "./player-i
 import { reconcileActiveRunDeviceStates, reconcileActiveRunValues } from "./runs";
 import { customDomains, devices, showGraphs, shows } from "./schema";
 import { withUniqueId } from "./ids";
+import { assertSourceReplacementResources } from "./value-transfer-resources";
 export interface PublishLoss {
   sourceId: string;
   fieldId: string;
@@ -411,59 +412,84 @@ export async function applyShowEdits(
   graphEdits: readonly GraphEdit[],
   canvasEdits: readonly CanvasWorkspaceEdit[],
   baseVersion: number,
-  options: { customDomainsProvider?: CustomDomainsProvider } = {},
+  options: { customDomainsProvider?: CustomDomainsProvider; actorId?: string } = {},
 ): Promise<AppliedShowEdits> {
-  const { applied, publication } = await db.transaction(async (tx) => {
-    // Taken before the draft row, in the order publication takes them, so an
-    // edit batch and a concurrent publish cannot deadlock.
-    const { autoPublish } = await lockShow(tx, showId);
-    const current = await readShowGraph(showId, "draft", tx);
-    if (current.version !== baseVersion) {
-      throw new GraphVersionConflictError(baseVersion, current.version);
-    }
-    const currentGraph: ShowGraph = {
-      shapes: current.shapes ?? [],
-      sourceFieldDefaults: current.sourceFieldDefaults ?? [],
-      blocks: current.blocks ?? [],
-      cues: current.cues ?? [],
-      actions: current.actions ?? [],
-      eventBindings: current.eventBindings ?? [],
-      slotEventBindings: current.slotEventBindings ?? [],
-      nodes: current.nodes,
-      edges: current.edges,
-    };
-    const cleanupEdits = sceneInteractionCleanupEdits(currentGraph, graphEdits);
-    const appliedGraphEdits = [...cleanupEdits, ...graphEdits];
-    const nextGraph = applyGraphEdits(currentGraph, appliedGraphEdits);
-    const written = await writeGraph(tx, showId, "draft", nextGraph, baseVersion, {
-      canvasEdits,
-      forceBlockCanvasWrites: false,
-    });
-    const lastCanvasId = canvasEdits.at(-1)?.canvasId;
-    const storedCanvas = lastCanvasId
-      ? ((await readCanvasById(showId, "draft", lastCanvasId, tx))?.canvas ?? null)
-      : null;
-    const publication = autoPublish ? await publishDraftIfPublishable(tx, showId) : null;
-    return {
-      applied: {
-        showId,
-        state: written.state,
-        updatedAt: written.updatedAt,
-        version: written.version,
-        amendments: [...cleanupEdits, ...amendments(nextGraph, written)],
-        canvas: storedCanvas,
-        published: publication && {
-          updatedAt: publication.published.updatedAt,
-          version: publication.published.version,
-        },
-      },
-      publication,
-    };
-  });
-  if (publication) {
-    await afterPublication(showId, publication, options.customDomainsProvider);
+  const result = await db.transaction((tx) =>
+    applyShowEditsTransaction(tx, showId, graphEdits, canvasEdits, baseVersion, options.actorId),
+  );
+  await afterShowEdits(showId, result, options.customDomainsProvider);
+  return result.applied;
+}
+
+export interface ShowEditsTransactionResult {
+  applied: AppliedShowEdits;
+  publication: Publication | null;
+}
+
+export async function applyShowEditsTransaction(
+  tx: Tx,
+  showId: string,
+  graphEdits: readonly GraphEdit[],
+  canvasEdits: readonly CanvasWorkspaceEdit[],
+  baseVersion: number,
+  actorId?: string,
+): Promise<ShowEditsTransactionResult> {
+  // Taken before the draft row, in the order publication takes them, so an
+  // edit batch and a concurrent publish cannot deadlock.
+  const { autoPublish, userId } = await lockShow(tx, showId);
+  if (actorId !== undefined && actorId !== userId)
+    throw new Error("Show unavailable or not authorized.");
+  const current = await readShowGraph(showId, "draft", tx);
+  if (current.version !== baseVersion) {
+    throw new GraphVersionConflictError(baseVersion, current.version);
   }
-  return applied;
+  const currentGraph: ShowGraph = {
+    shapes: current.shapes ?? [],
+    sourceFieldDefaults: current.sourceFieldDefaults ?? [],
+    blocks: current.blocks ?? [],
+    cues: current.cues ?? [],
+    actions: current.actions ?? [],
+    eventBindings: current.eventBindings ?? [],
+    slotEventBindings: current.slotEventBindings ?? [],
+    nodes: current.nodes,
+    edges: current.edges,
+  };
+  const cleanupEdits = sceneInteractionCleanupEdits(currentGraph, graphEdits);
+  const appliedGraphEdits = [...cleanupEdits, ...graphEdits];
+  const nextGraph = applyGraphEdits(currentGraph, appliedGraphEdits);
+  await assertSourceReplacementResources(tx, showId, currentGraph, appliedGraphEdits);
+  const written = await writeGraph(tx, showId, "draft", nextGraph, baseVersion, {
+    canvasEdits,
+    forceBlockCanvasWrites: false,
+  });
+  const lastCanvasId = canvasEdits.at(-1)?.canvasId;
+  const storedCanvas = lastCanvasId
+    ? ((await readCanvasById(showId, "draft", lastCanvasId, tx))?.canvas ?? null)
+    : null;
+  const publication = autoPublish ? await publishDraftIfPublishable(tx, showId) : null;
+  return {
+    applied: {
+      showId,
+      state: written.state,
+      updatedAt: written.updatedAt,
+      version: written.version,
+      amendments: [...cleanupEdits, ...amendments(nextGraph, written)],
+      canvas: storedCanvas,
+      published: publication && {
+        updatedAt: publication.published.updatedAt,
+        version: publication.published.version,
+      },
+    },
+    publication,
+  };
+}
+
+export async function afterShowEdits(
+  showId: string,
+  result: ShowEditsTransactionResult,
+  provider?: CustomDomainsProvider,
+): Promise<void> {
+  if (result.publication) await afterPublication(showId, result.publication, provider);
 }
 
 /**
@@ -502,9 +528,9 @@ interface Publication {
 }
 
 /** Takes the Show row lock that publication and Run start serialise on. */
-async function lockShow(tx: Tx, showId: string): Promise<{ autoPublish: boolean }> {
+async function lockShow(tx: Tx, showId: string): Promise<{ autoPublish: boolean; userId: string }> {
   const [show] = await tx
-    .select({ autoPublish: shows.autoPublish })
+    .select({ autoPublish: shows.autoPublish, userId: shows.userId })
     .from(shows)
     .where(eq(shows.id, showId))
     .for("update");

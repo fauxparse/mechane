@@ -71,9 +71,10 @@ import {
 import { normalizeStructuredValueTemplate } from "@mechane/domain/structured-values";
 
 import type { Command } from "./command";
-import { capturing } from "./command";
+import { capturing, defineCommand, noop } from "./command";
 import type { GraphEdit } from "./graph-edits";
 import { interactionsOf, withInteractions } from "./interaction-projection";
+import { replaceSourceDefaults } from "./source-value-command";
 /** A command over the Show graph and its serialisable edit vocabulary. */
 export type ShowGraphCommand = Command<ShowGraph, GraphEdit>;
 
@@ -109,6 +110,7 @@ export const GRAPH_COMMAND_TYPES = {
   reorderShapeFields: "graph.reorderShapeFields",
   removeShapeField: "graph.removeShapeField",
   setSourceFieldDefault: "graph.setSourceFieldDefault",
+  replaceSourceDefaults: "graph.replaceSourceDefaults",
   addSceneVariable: "graph.addSceneVariable",
   renameSceneVariable: "graph.renameSceneVariable",
   setSceneVariableType: "graph.setSceneVariableType",
@@ -885,35 +887,42 @@ export function setSourceFieldDefault(
   label = "Set Source value",
 ): ShowGraphCommand {
   const path = [...fieldPath];
-  return capturing<ShowGraph, SourceFieldDefault | undefined, GraphEdit>({
+  return defineCommand<ShowGraph, GraphEdit>({
     type: GRAPH_COMMAND_TYPES.setSourceFieldDefault,
     label,
     scope: "selection",
     coalesceKey: `${GRAPH_COMMAND_TYPES.setSourceFieldDefault}:${nodeId}:${path.join(".")}`,
-    edits: [{ type: GRAPH_COMMAND_TYPES.setSourceFieldDefault, nodeId, fieldPath: path, value }],
-    restoreEdits: (captured) => [
-      {
-        type: GRAPH_COMMAND_TYPES.setSourceFieldDefault,
-        nodeId,
-        fieldPath: path,
-        value: captured?.value ?? null,
-      },
-    ],
-    capture: (graph) =>
-      graph.sourceFieldDefaults?.find(
-        (override) => override.nodeId === nodeId && samePath(override.fieldPath, path),
-      ),
-    isEmpty: (graph) => {
-      const current = graph.sourceFieldDefaults?.find(
-        (override) => override.nodeId === nodeId && samePath(override.fieldPath, path),
+    apply: (graph) => {
+      const source = graph.nodes.find((node) => node.id === nodeId);
+      const type =
+        source?.kind === "source" ? typeAtPath(source.type, path, graph.shapes ?? []) : null;
+      const normalized =
+        value === null || !type
+          ? value
+          : normalizeStructuredValueTemplate(value, type, graph.shapes ?? []);
+      const before = graph.sourceFieldDefaults ?? [];
+      const existing = before.find(
+        (entry) => entry.nodeId === nodeId && samePath(entry.fieldPath, path),
       );
-      return value === null
-        ? current === undefined
-        : current !== undefined && JSON.stringify(current.value) === JSON.stringify(value);
+      const unchanged =
+        normalized === null
+          ? existing === undefined
+          : existing !== undefined && JSON.stringify(existing.value) === JSON.stringify(normalized);
+      if (unchanged) return { state: graph, inverse: noop(label, "selection"), edits: [] };
+      const next = withSourceFieldDefault(graph, nodeId, path, normalized);
+      return {
+        state: next,
+        inverse: replaceSourceDefaults(next.sourceFieldDefaults ?? [], before, label),
+        edits: [
+          {
+            type: GRAPH_COMMAND_TYPES.setSourceFieldDefault,
+            nodeId,
+            fieldPath: path,
+            value: normalized,
+          },
+        ],
+      };
     },
-    apply: (graph) => withSourceFieldDefault(graph, nodeId, path, value),
-    restore: (graph, captured) =>
-      withSourceFieldDefault(graph, nodeId, path, captured?.value ?? null),
   });
 }
 

@@ -13,6 +13,9 @@ export interface ShowGraphEditorHandle {
   zoomToSelection(): boolean;
   fitToGraph(): void;
   applyAmendments(edits: readonly GraphEdit[]): void;
+  applyCommittedEdits(edits: readonly GraphEdit[]): void;
+  commitGesture(): void;
+  setBlocked(blocked: boolean): void;
 }
 
 export interface ShowGraphValueLocation {

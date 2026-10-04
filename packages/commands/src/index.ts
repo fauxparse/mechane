@@ -27,3 +27,5 @@ export * from "./canvas-commands";
 export * from "./block-extraction";
 export * from "./stack";
 export * from "./interaction-commands";
+export * from "./source-value-command";
+export * from "./value-codec";
