@@ -57,7 +57,7 @@ describe("dispatchSharedPlayerEvent", () => {
     },
   ])("submits a resolved shared $name event", ({ observation }) => {
     const submitEvent = vi.fn(() =>
-      Promise.resolve({ kind: "accepted" as const, eventId: "event-1" }),
+      Promise.resolve({ kind: "accepted" as const, eventId: "event-1", stateSequence: 1 }),
     );
 
     expect(
@@ -80,7 +80,7 @@ describe("dispatchSharedPlayerEvent", () => {
 
   it("does not submit an unbound keypress", () => {
     const submitEvent = vi.fn(() =>
-      Promise.resolve({ kind: "accepted" as const, eventId: "event-1" }),
+      Promise.resolve({ kind: "accepted" as const, eventId: "event-1", stateSequence: 1 }),
     );
 
     expect(

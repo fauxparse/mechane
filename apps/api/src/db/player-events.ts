@@ -33,6 +33,7 @@ import {
   runs,
   runSourceValues,
   runStructuredValues,
+  shows,
 } from "./schema";
 
 const EVENT_ID_PATTERN =
@@ -97,8 +98,20 @@ export type PlayerEventIgnoreReason =
   | "stale-scene"
   | "unbound-event"
   | "invalid-slot-path";
+/**
+ * `stateSequence` on an applied or accepted result is the Show's sequence
+ * once the Event committed: the one its own write produced, or the current
+ * one when it changed nothing. A Player holding a snapshot at or past it
+ * already has the Event's effect (#885).
+ */
 export type PlayerEventResult =
-  | { kind: "applied"; eventId: string; resultingSceneId: string; changed: boolean }
+  | {
+      kind: "applied";
+      eventId: string;
+      resultingSceneId: string;
+      changed: boolean;
+      stateSequence: number;
+    }
   | {
       kind: "duplicate";
       eventId: string;
@@ -106,10 +119,12 @@ export type PlayerEventResult =
       changed: boolean;
       resultingSceneId: string | null;
       reason: string | null;
+      /** The original result's; null for other outcomes and Events recorded before #885. */
+      stateSequence: number | null;
     }
   | { kind: "ignored"; eventId: string; reason: PlayerEventIgnoreReason }
   | { kind: "failed"; eventId: string; actionId: string; reason: string }
-  | { kind: "accepted"; eventId: string }
+  | { kind: "accepted"; eventId: string; stateSequence: number }
   | {
       kind: "rejected";
       eventId: string;
@@ -148,6 +163,7 @@ function duplicateResult(row: PlayerEventRow): PlayerEventResult {
       changed: row.changed,
       resultingSceneId: row.resultingSceneId,
       reason: row.reason,
+      stateSequence: row.stateSequence,
     };
   }
   if (row.outcome === "applied") {
@@ -168,6 +184,7 @@ function duplicateResult(row: PlayerEventRow): PlayerEventResult {
       changed: row.changed,
       resultingSceneId: row.resultingSceneId,
       reason: null,
+      stateSequence: row.stateSequence,
     };
   }
   return {
@@ -177,6 +194,7 @@ function duplicateResult(row: PlayerEventRow): PlayerEventResult {
     changed: row.changed,
     resultingSceneId: row.resultingSceneId,
     reason: row.reason,
+    stateSequence: row.stateSequence,
   };
 }
 function evidenceReferencesReachable(
@@ -251,7 +269,22 @@ async function recordEvent(
         : result.kind === "accepted"
           ? (resultingSceneId ?? null)
           : null,
+    stateSequence:
+      result.kind === "applied" || result.kind === "accepted" ? result.stateSequence : null,
   });
+}
+
+/**
+ * The sequence an Event that wrote nothing reports: the Show's as this
+ * transaction sees it, so any snapshot at or past it already holds the Event.
+ */
+async function currentStateSequence(tx: Tx, showId: string): Promise<number> {
+  const [show] = await tx
+    .select({ stateSequence: shows.stateSequence })
+    .from(shows)
+    .where(eq(shows.id, showId));
+  if (!show) throw new Error(`Show ${showId} is missing.`);
+  return show.stateSequence;
 }
 
 type DeviceRow = typeof devices.$inferSelect;
@@ -624,6 +657,7 @@ async function dispatchPerConnectionEvent(
     (candidate): candidate is UpdateAction =>
       candidate.kind === "update" && classifyUpdateActionScope(graph, candidate) !== "instance",
   );
+  let stateSequence: number | null = null;
   if (updates.length > 0) {
     const planned = planCueUpdates(
       graph,
@@ -644,9 +678,13 @@ async function dispatchPerConnectionEvent(
       return result;
     }
     await persistUpdateWrites(tx, run.id, planned.writes);
-    if (planned.changed) await enqueuePlayerInvalidations(tx, device.showId);
+    if (planned.changed) stateSequence = await enqueuePlayerInvalidations(tx, device.showId);
   }
-  const result: PlayerEventResult = { kind: "accepted", eventId: input.eventId };
+  const result: PlayerEventResult = {
+    kind: "accepted",
+    eventId: input.eventId,
+    stateSequence: stateSequence ?? (await currentStateSequence(tx, device.showId)),
+  };
   await recordEvent(tx, run.id, device.showId, device.id, input, result, navigation.targetSceneId);
   return result;
 }
@@ -796,11 +834,16 @@ export async function dispatchPlayerEvent(
               await recordEvent(tx, run.id, device.showId, device.id, input, result);
               return result;
             }
+            let stateSequence: number | null = null;
             if (updates.changed) {
               invalidationScope = { showId: device.showId, deviceId: device.id };
-              await enqueuePlayerInvalidations(tx, device.showId);
+              stateSequence = await enqueuePlayerInvalidations(tx, device.showId);
             }
-            const result: PlayerEventResult = { kind: "accepted", eventId: input.eventId };
+            const result: PlayerEventResult = {
+              kind: "accepted",
+              eventId: input.eventId,
+              stateSequence: stateSequence ?? (await currentStateSequence(tx, device.showId)),
+            };
             await recordEvent(tx, run.id, device.showId, device.id, input, result);
             return result;
           }
@@ -950,22 +993,25 @@ export async function dispatchPlayerEvent(
         // One enqueue per Cue, so `stateSequence` advances once however many
         // Actions it ran. A Show write reaches every Device; a Scene change
         // alone reaches only this one.
+        let stateSequence: number | null = null;
         if (updates.changed) {
-          await enqueuePlayerInvalidations(tx, device.showId);
+          stateSequence = await enqueuePlayerInvalidations(tx, device.showId);
         } else if (sceneChanged) {
-          await enqueuePlayerInvalidations(tx, device.showId, [device.id]);
+          stateSequence = await enqueuePlayerInvalidations(tx, device.showId, [device.id]);
         }
         if (updates.changed || sceneChanged) {
           invalidationScope = { showId: device.showId, deviceId: device.id };
         }
+        stateSequence ??= await currentStateSequence(tx, device.showId);
         const result: PlayerEventResult =
           targetSceneId === null
-            ? { kind: "accepted", eventId: input.eventId }
+            ? { kind: "accepted", eventId: input.eventId, stateSequence }
             : {
                 kind: "applied",
                 eventId: input.eventId,
                 resultingSceneId: targetSceneId,
                 changed: sceneChanged || updates.changed,
+                stateSequence,
               };
         await recordEvent(tx, run.id, device.showId, device.id, input, result);
         return result;

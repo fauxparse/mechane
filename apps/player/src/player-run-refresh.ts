@@ -78,21 +78,46 @@ export function predatesPlayerSession(held: PlayerSession | null, read: PlayerSe
   return Boolean(held?.run && read.run && read.run.stateSequence < held.run.stateSequence);
 }
 
-/**
- * Whether an invalidation names state the session already holds: the
- * echo of a change a Player has already read, which needs no read of its own.
- */
-export function holdsInvalidatedState(
-  session: PlayerSession | null,
-  message: RealtimeMessage,
-): boolean {
+/** The `stateSequence` an invalidation names, if it names one. */
+export function invalidatedStateSequence(message: RealtimeMessage): number | undefined {
   const payload = message.payload;
   const sequence =
     typeof payload === "object" && payload !== null && "stateSequence" in payload
       ? payload.stateSequence
       : undefined;
-  const held = session?.run?.stateSequence;
-  return typeof sequence === "number" && held !== undefined && sequence <= held;
+  return typeof sequence === "number" ? sequence : undefined;
+}
+
+/**
+ * Runs `read` (coalesced) for a change named by its `stateSequence`, unless
+ * the session already holds that sequence or a read that started after the
+ * change committed will bring it. A change with no sequence always reads.
+ *
+ * A Player's own write reaches it twice, as its Event result and as the
+ * realtime echo, in either order (#885); whichever comes second finds the
+ * first one's read in flight or done, so the write costs one read.
+ */
+export function sequencedReads(
+  read: () => Promise<void>,
+  heldSequence: () => number | undefined,
+): (stateSequence?: number) => void {
+  // The newest sequence a change has asked to be read.
+  let requested = -1;
+  // The newest sequence a started read is sure to reflect: every change that
+  // asked before it started had committed by then.
+  let covered = -1;
+  const run = coalesced(async () => {
+    covered = Math.max(covered, requested);
+    await read();
+  });
+  return (stateSequence) => {
+    if (stateSequence !== undefined) {
+      const held = heldSequence();
+      if ((held !== undefined && stateSequence <= held) || stateSequence <= covered) return;
+      requested = Math.max(requested, stateSequence);
+    }
+    run();
+  };
 }
 
 /**

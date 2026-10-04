@@ -14,11 +14,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { defaultApiBaseUrl, shouldUseRealtimeSocket } from "./api-url";
 import { normalizePlayerSession } from "./player-mappers";
 import {
-  coalesced,
-  holdsInvalidatedState,
+  invalidatedStateSequence,
   mergePlayerRunSnapshot,
   predatesPlayerSession,
   type PlayerRunSnapshot,
+  sequencedReads,
   usableRealtimeGrant,
 } from "./player-run-refresh";
 
@@ -184,8 +184,18 @@ export type PlayerActionEvidence = {
   readonly cueParameters: Readonly<Record<string, unknown>>;
 };
 
+/**
+ * `stateSequence` on an applied or accepted result is the Show's sequence once
+ * the Event committed: a snapshot at or past it already holds the Event.
+ */
 export type PlayerEventResult =
-  | { kind: "applied"; eventId: string; resultingSceneId: string; changed: boolean }
+  | {
+      kind: "applied";
+      eventId: string;
+      resultingSceneId: string;
+      changed: boolean;
+      stateSequence: number;
+    }
   | {
       kind: "duplicate";
       eventId: string;
@@ -196,7 +206,7 @@ export type PlayerEventResult =
     }
   | { kind: "ignored"; eventId: string; reason: string }
   | { kind: "failed"; eventId: string; actionId: string; reason: string }
-  | { kind: "accepted"; eventId: string }
+  | { kind: "accepted"; eventId: string; stateSequence: number }
   | { kind: "rejected"; eventId: string; reason: string };
 
 export async function submitPlayerEvent(
@@ -224,6 +234,7 @@ export async function submitPlayerEvent(
       eventId: String(event.eventId),
       resultingSceneId: String(event.appliedResultingSceneId),
       changed: event.changed,
+      stateSequence: event.stateSequence,
     };
   }
   if (event.__typename === "PlayerEventDuplicate") {
@@ -254,7 +265,11 @@ export async function submitPlayerEvent(
     };
   }
   if (event.__typename === "PlayerEventAccepted") {
-    return { kind: "accepted", eventId: String(event.eventId) };
+    return {
+      kind: "accepted",
+      eventId: String(event.eventId),
+      stateSequence: event.stateSequence,
+    };
   }
   if (event.__typename === "PlayerEventRejected") {
     return {
@@ -292,12 +307,14 @@ export function usePlayerSession(code: string): PlayerState {
   const [state, setState] = useState<PlayerState>({ status: "idle" });
   // Owned by the effect below, which holds the session it compares against.
   // An Event result asks for the same refresh an invalidation does.
-  const refreshRunState = useRef<() => void>(() => undefined);
+  const refreshRunState = useRef<(stateSequence: number) => void>(() => undefined);
 
   const submitEvent = useCallback<PlayerEventSubmitter>(
     async (input) => {
       const result = await submitPlayerEvent(normalizedCode, input);
-      if (result.kind === "applied" || result.kind === "accepted") refreshRunState.current();
+      if (result.kind === "applied" || result.kind === "accepted") {
+        refreshRunState.current(result.stateSequence);
+      }
       return result;
     },
     [normalizedCode],
@@ -372,24 +389,27 @@ export function usePlayerSession(code: string): PlayerState {
 
     // Most invalidations move only the Run's values, so only those are read
     // again; the whole session follows when they say it has to (#881).
-    const readRunState = coalesced(async () => {
-      if (!held) {
-        await reload();
-        return;
-      }
-      let runState: PlayerRunSnapshot | null;
-      try {
-        runState = await fetchPlayerRunState(normalizedCode, { signal: controller.signal });
-      } catch {
-        // The whole-session read is the one that reports what went wrong.
-        if (!controller.signal.aborted) await reload();
-        return;
-      }
-      if (controller.signal.aborted || !held) return;
-      const merge = mergePlayerRunSnapshot(held, runState);
-      if (merge.kind === "updated") show(merge.session);
-      if (merge.kind === "session-changed") await reload();
-    });
+    const readRunState = sequencedReads(
+      async () => {
+        if (!held) {
+          await reload();
+          return;
+        }
+        let runState: PlayerRunSnapshot | null;
+        try {
+          runState = await fetchPlayerRunState(normalizedCode, { signal: controller.signal });
+        } catch {
+          // The whole-session read is the one that reports what went wrong.
+          if (!controller.signal.aborted) await reload();
+          return;
+        }
+        if (controller.signal.aborted || !held) return;
+        const merge = mergePlayerRunSnapshot(held, runState);
+        if (merge.kind === "updated") show(merge.session);
+        if (merge.kind === "session-changed") await reload();
+      },
+      () => held?.run?.stateSequence,
+    );
     refreshRunState.current = readRunState;
 
     const attach = (session: PlayerSession): boolean => {
@@ -427,7 +447,7 @@ export function usePlayerSession(code: string): PlayerState {
             renewGrant,
           );
       subscription = subscriber.subscribe((message) => {
-        if (!holdsInvalidatedState(held, message)) readRunState();
+        readRunState(invalidatedStateSequence(message));
       });
       return true;
     };

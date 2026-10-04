@@ -1,0 +1,1 @@
+ALTER TABLE "player_events" ADD COLUMN "state_sequence" integer;
