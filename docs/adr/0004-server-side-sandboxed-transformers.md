@@ -10,6 +10,8 @@ Reference identity is part of the runtime contract. Selecting, filtering or shuf
 
 This boundary separates the original decision's two rationales. **Sandboxing** applies wherever a Formula runs because director-authored input is untrusted. **Determinism** keeps shared results identical by evaluating Show-level data centrally; a per-connection Flow-local result has no shared value to coordinate, and its inputs exist only in that browser. This is the same locality rule [[0010]] applies to Formulas authored inside Scenes and Blocks.
 
+A Player never predicts a server-owned Transformer's output. A pending write on the Player leaves that output at the server's last value until the next snapshot ([[0025]]).
+
 Persisted Formula meaning is a compatibility boundary. Later parser, operator or Function changes must preserve existing authored meaning or introduce an explicit migration or version boundary; silently reinterpreting a published Formula is not acceptable.
 
 **Considered and rejected**: evaluating every Transformer in each client (shared results could drift and server-owned inputs would be duplicated); evaluating every Transformer on the server (the server does not own per-connection Device Instance state); raw JavaScript `eval`/`new Function` (arbitrary code execution and host-language coercion); and an external JEXL dependency (its array member access silently selects the first item and its asynchronous path cannot serve the synchronous shared resolver).
