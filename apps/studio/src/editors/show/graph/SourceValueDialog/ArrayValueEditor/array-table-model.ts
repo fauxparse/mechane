@@ -28,7 +28,8 @@ export type ArrayTableCallbacks = {
     recordId: ShapeRecord["id"],
     fieldId: string,
   ): void;
-  openRecord(recordId: ShapeRecord["id"]): void;
+  /** Absent when entries have no detail view to open. */
+  openRecord?(recordId: ShapeRecord["id"]): void;
   deleteRecord(recordId: ShapeRecord["id"]): void;
   uploadImage(props: ImageInputOnUploadProps): void;
 };
