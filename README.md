@@ -235,6 +235,10 @@ The development bucket is `mechane`, and image URLs point directly to its public
 `mechane/blobs/` objects. Default local credentials are `minioadmin` /
 `minioadmin`; change them before using a shared or deployed environment.
 
+Image uploads in the Source table editor save the completed upload's asset id
+and exact revision. They do not wait for the image asset list to refresh before
+assigning the Field value.
+
 ## Custom Domains in development
 
 The API uses the local domains provider unless `CUSTOM_DOMAINS_PROVIDER=vercel`.
