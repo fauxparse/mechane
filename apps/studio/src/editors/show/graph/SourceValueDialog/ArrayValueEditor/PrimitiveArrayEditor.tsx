@@ -7,7 +7,7 @@ import {
   normalizeStructuredValueTemplate,
   type StructuredValueTemplate,
 } from "@mechane/domain/structured-values";
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type { ErrorPath, SourceImageAsset } from "../../inspector/source-value-types";
 import { previewValue } from "../../inspector/source-values-helpers";
@@ -83,6 +83,13 @@ export function PrimitiveArrayEditor({
   if (rows.length !== items.length || rows.some((row, index) => rowItem(row) !== items[index])) {
     setRows(rowsForItems(rows, items));
   }
+  // One event can make several edits: Enter in the last row commits the cell,
+  // then adds a row. Each edit must build on the one before it, not on the
+  // rows this render closed over.
+  const latestRows = useRef(rows);
+  useLayoutEffect(() => {
+    latestRows.current = rows;
+  });
 
   const [query, setQuery] = useState("");
   const fields = useMemo<ShapeField[]>(
@@ -107,7 +114,10 @@ export function PrimitiveArrayEditor({
     return <p className="text-sm text-destructive">This array value could not be opened.</p>;
   }
 
-  const commitRows = (nextRows: ShapeRecord[]) => {
+  const commitRows = (update: (current: ShapeRecord[]) => ShapeRecord[]) => {
+    const nextRows = update(latestRows.current);
+    if (nextRows === latestRows.current) return;
+    latestRows.current = nextRows;
     setRows(nextRows);
     const next = { ...normalized, items: nextRows.map(rowItem) };
     onChange(next);
@@ -115,23 +125,25 @@ export function PrimitiveArrayEditor({
   };
   const deleteRow = (id: string) => {
     if (readOnly) return;
-    commitRows(rows.filter((row) => row.id !== id));
+    commitRows((current) => current.filter((row) => row.id !== id));
   };
   const reorderRows = (sourceId: string, targetId: string) => {
     if (readOnly || sourceId === targetId) return;
-    const sourceIndex = rows.findIndex((row) => row.id === sourceId);
-    const targetIndex = rows.findIndex((row) => row.id === targetId);
-    if (sourceIndex < 0 || targetIndex < 0) return;
-    const nextRows = [...rows];
-    const [moved] = nextRows.splice(sourceIndex, 1);
-    if (!moved) return;
-    nextRows.splice(targetIndex, 0, moved);
-    commitRows(nextRows);
+    commitRows((current) => {
+      const sourceIndex = current.findIndex((row) => row.id === sourceId);
+      const targetIndex = current.findIndex((row) => row.id === targetId);
+      if (sourceIndex < 0 || targetIndex < 0) return current;
+      const nextRows = [...current];
+      const [moved] = nextRows.splice(sourceIndex, 1);
+      if (!moved) return current;
+      nextRows.splice(targetIndex, 0, moved);
+      return nextRows;
+    });
   };
   const addRow = (): string | null => {
     if (readOnly) return null;
     const row = itemRow(normalizeStructuredValueTemplate(defaultValueForType(itemType), itemType));
-    commitRows([...rows, row]);
+    commitRows((current) => [...current, row]);
     return row.id;
   };
 
@@ -155,7 +167,7 @@ export function PrimitiveArrayEditor({
           readOnly,
           path,
           onRecordChange: (nextRow) =>
-            commitRows(rows.map((row) => (row.id === nextRow.id ? nextRow : row))),
+            commitRows((current) => current.map((row) => (row.id === nextRow.id ? nextRow : row))),
           onValidityChange,
           onImageUpload,
           imageAssets,

@@ -7,6 +7,7 @@ import {
   type StructuredValueTemplate,
 } from "@mechane/domain/structured-values";
 import { useState } from "react";
+import { userEvent } from "storybook/test";
 
 import { PrimitiveArrayEditor } from "./PrimitiveArrayEditor";
 
@@ -78,6 +79,23 @@ export const TextItems: Story = {
     const items = renderedItems(canvasElement);
     if (JSON.stringify(items) !== JSON.stringify(["Red", "Green", "Blue", ""])) {
       throw new Error(`Adding an item did not append a default; received ${JSON.stringify(items)}`);
+    }
+  },
+};
+
+export const EnterInLastRow: Story = {
+  args: { itemType: "text", items: ["Red", "Green", ""] },
+  play: async ({ canvasElement }) => {
+    const inputs = canvasElement.querySelectorAll<HTMLInputElement>('[aria-label="Text value"]');
+    const lastInput = inputs[inputs.length - 1];
+    if (!lastInput) throw new Error("Each item should render as one editable table row");
+    // Enter commits the edit and adds a row in the same keystroke; the edit must survive both.
+    await userEvent.click(lastInput);
+    await userEvent.keyboard("Blue{Enter}");
+    await nextFrame();
+    const items = renderedItems(canvasElement);
+    if (JSON.stringify(items) !== JSON.stringify(["Red", "Green", "Blue", ""])) {
+      throw new Error(`Enter in the last row lost its edit; received ${JSON.stringify(items)}`);
     }
   },
 };
