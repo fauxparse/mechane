@@ -14,18 +14,26 @@ function shuffleTransformerIds(graph: ShowGraph, parent: "show" | "instance"): s
   );
 }
 
-async function showSeeds(runId: string, transformerIds: readonly string[]) {
-  await db
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type Executor = Tx | typeof db;
+
+async function showSeeds(executor: Executor, runId: string, transformerIds: readonly string[]) {
+  await executor
     .insert(runTransformerSeeds)
     .values(
       transformerIds.map((transformerId) => ({ runId, transformerId, seed: crypto.randomUUID() })),
     )
     .onConflictDoNothing();
-  return db.select().from(runTransformerSeeds).where(eq(runTransformerSeeds.runId, runId));
+  return executor.select().from(runTransformerSeeds).where(eq(runTransformerSeeds.runId, runId));
 }
 
-async function deviceSeeds(runId: string, deviceId: string, transformerIds: readonly string[]) {
-  await db
+async function deviceSeeds(
+  executor: Executor,
+  runId: string,
+  deviceId: string,
+  transformerIds: readonly string[],
+) {
+  await executor
     .insert(runDeviceTransformerSeeds)
     .values(
       transformerIds.map((transformerId) => ({
@@ -36,7 +44,7 @@ async function deviceSeeds(runId: string, deviceId: string, transformerIds: read
       })),
     )
     .onConflictDoNothing();
-  return db
+  return executor
     .select()
     .from(runDeviceTransformerSeeds)
     .where(
@@ -47,19 +55,24 @@ async function deviceSeeds(runId: string, deviceId: string, transformerIds: read
     );
 }
 
-/** Reuses scope-owned seeds across snapshots and compatible publications. */
+/**
+ * Reuses scope-owned seeds across snapshots and compatible publications. A
+ * Player's snapshot and the Events it submits read the same seeds, so both
+ * shuffle a list into the same order (#887).
+ */
 export async function readOrCreateTransformerSeeds(
   runId: string,
   deviceId: string,
   graph: ShowGraph,
   includeSharedInstance: boolean,
+  executor: Executor = db,
 ): Promise<Readonly<Record<string, string>>> {
   const showIds = shuffleTransformerIds(graph, "show");
   const instanceIds = includeSharedInstance ? shuffleTransformerIds(graph, "instance") : [];
-  const [showRows, deviceRows] = await Promise.all([
-    showIds.length > 0 ? showSeeds(runId, showIds) : [],
-    instanceIds.length > 0 ? deviceSeeds(runId, deviceId, instanceIds) : [],
-  ]);
+  // One after the other: a transaction is one connection, and runs one query at a time.
+  const showRows = showIds.length > 0 ? await showSeeds(executor, runId, showIds) : [];
+  const deviceRows =
+    instanceIds.length > 0 ? await deviceSeeds(executor, runId, deviceId, instanceIds) : [];
   const activeIds = new Set([...showIds, ...instanceIds]);
   return Object.fromEntries(
     [...showRows, ...deviceRows]
