@@ -26,6 +26,7 @@ import { drainPlayerInvalidations, enqueuePlayerInvalidations } from "./player-i
 import { RunConfigurationError, withRunErrorLog } from "./run-errors";
 import { readShowGraph } from "./show-graph";
 import { readRunState } from "./runs";
+import { readOrCreateTransformerSeeds } from "./transformer-seeds";
 import {
   devices,
   playerEvents,
@@ -423,10 +424,16 @@ function resolveCueNavigation(
  * Plans and persists a Shared Device Cue's Updates. A Shared Device's state is
  * the server's, so the Cue Parameters are resolved from the Canvas and the Run
  * as the Cue starts, the same point a per-connection Player resolves them.
+ *
+ * They resolve through the Device's Transformer seeds, the ones its snapshot
+ * was rendered with: without them a Shuffle produces nothing, and a tap on
+ * the third item of a shuffled list cannot name the item the Player drew
+ * there. The Player predicts the Cue from that snapshot (#887).
  */
 async function executeSharedCueUpdates(
   tx: Tx,
   runId: string,
+  deviceId: string,
   graph: ShowGraph,
   canvas: Parameters<typeof resolveCueParameters>[0]["canvas"],
   sceneId: string,
@@ -437,6 +444,7 @@ async function executeSharedCueUpdates(
   const [first] = updates;
   if (!first) return { kind: "planned", writes: [], changed: false };
   const state = await readRunState(runId, tx);
+  const shuffleSeeds = await readOrCreateTransformerSeeds(runId, deviceId, graph, true, tx);
   const resolved = resolveCueParameters({
     graph,
     canvas,
@@ -444,6 +452,7 @@ async function executeSharedCueUpdates(
     state,
     blocks: graph.blocks ?? [],
     parameters: plan.parameters,
+    transformerRuntime: { shuffleSeeds },
   });
   if (resolved.kind === "failed") {
     return { kind: "failed", actionId: first.id, reason: resolved.reason };
@@ -818,6 +827,7 @@ export async function dispatchPlayerEvent(
             const updates = await executeSharedCueUpdates(
               tx,
               run.id,
+              device.id,
               graph,
               canvas,
               source.id,
@@ -966,6 +976,7 @@ export async function dispatchPlayerEvent(
         const updates = await executeSharedCueUpdates(
           tx,
           run.id,
+          device.id,
           graph,
           canvas,
           state.activeSceneId,
