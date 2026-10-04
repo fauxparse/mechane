@@ -81,6 +81,10 @@ export function ArrayTable({ model }: { model: ArrayTableModel }) {
 
   const columnIds = useMemo(() => fields.map((field) => field.id), [fields]);
   const rowIds = useMemo(() => records.map((record) => record.id), [records]);
+  // A lone column fills whatever the drag and action columns leave, straight
+  // from CSS. Sizing it from a measured width would paint it at the default
+  // first, and there is no neighboring column to trade width with anyway.
+  const singleColumn = fields.length === 1;
 
   const {
     columnSizes: localColumnSizes,
@@ -94,7 +98,7 @@ export function ArrayTable({ model }: { model: ArrayTableModel }) {
     savedSizes: columnSizes,
     containerRef,
     fixedWidth: FIXED_COLUMN_SIZE,
-    enabled: !readOnly && Boolean(onColumnSizesChange),
+    enabled: !singleColumn && !readOnly && Boolean(onColumnSizesChange),
     onCommit: onColumnSizesChange,
   });
 
@@ -135,16 +139,18 @@ export function ArrayTable({ model }: { model: ArrayTableModel }) {
     return fields.map((field, index) => ({
       field,
       width: localColumnSizes[field.id] ?? DEFAULT_COLUMN_SIZE,
-      resizable: !readOnly && (index < fields.length - 1 || lastColumnResizable),
+      resizable: !singleColumn && !readOnly && (index < fields.length - 1 || lastColumnResizable),
     }));
-  }, [containerWidth, fields, localColumnSizes, readOnly]);
+  }, [containerWidth, fields, localColumnSizes, readOnly, singleColumn]);
 
-  const tableWidth = Math.max(
-    containerWidth,
-    columns.reduce((total, column) => total + column.width, 0) +
-      DRAG_HANDLE_COLUMN_SIZE +
-      OPEN_COLUMN_SIZE,
-  );
+  const tableWidth = singleColumn
+    ? "100%"
+    : Math.max(
+        containerWidth,
+        columns.reduce((total, column) => total + column.width, 0) +
+          DRAG_HANDLE_COLUMN_SIZE +
+          OPEN_COLUMN_SIZE,
+      );
 
   const finishDrag = (event: DragEndEvent) => {
     if (readOnly || event.canceled) return;
@@ -175,7 +181,10 @@ export function ArrayTable({ model }: { model: ArrayTableModel }) {
               <colgroup>
                 <col style={{ width: DRAG_HANDLE_COLUMN_SIZE }} />
                 {columns.map((column) => (
-                  <col key={column.field.id} style={{ width: column.width }} />
+                  <col
+                    key={column.field.id}
+                    style={singleColumn ? undefined : { width: column.width }}
+                  />
                 ))}
                 <col style={{ width: OPEN_COLUMN_SIZE }} />
               </colgroup>

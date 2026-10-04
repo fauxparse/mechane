@@ -30,7 +30,7 @@ export function DashboardHeader({
 }: DashboardHeaderProps) {
   return (
     <header className={cn("flex items-center justify-between gap-2 px-2 py-2", className)}>
-      <HeaderBrand className="pl-2 pr-3">
+      <HeaderBrand className="pr-2">
         <span className="px-1 py-1.5 text-sm font-semibold tracking-tight">Mechanē</span>
       </HeaderBrand>
 

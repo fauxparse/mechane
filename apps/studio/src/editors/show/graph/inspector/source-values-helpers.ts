@@ -3,9 +3,52 @@ import {
   propertyInputValidationMessage,
   type PropertyInputType,
 } from "@mechane/design-system";
-import type { Type } from "@mechane/domain/shapes";
+import type { SourceNode } from "@mechane/domain/graph";
+import { valueAtPath } from "@mechane/domain/property-values";
+import { fieldsForType, type Type } from "@mechane/domain/shapes";
+import { defaultSourceValues, sourceDefaultsFor } from "@mechane/domain/source-defaults";
+
+import type { SourceValueEditing } from "../../commands/use-graph-editing";
+import type { SourceValueRow } from "./source-value-types";
 
 export const INLINE_STRING_LIMIT = 200;
+
+function hasGraphOverride(
+  graph: SourceValueEditing["graph"],
+  nodeId: string,
+  fieldPath: readonly string[],
+): boolean {
+  return sourceDefaultsFor(graph, nodeId).some(
+    (override) =>
+      override.fieldPath.length === fieldPath.length &&
+      override.fieldPath.every((segment, index) => segment === fieldPath[index]),
+  );
+}
+
+/** One row per immediate Shape field, or a single root row for any other type. */
+export function sourceValueRows(node: SourceNode, editing: SourceValueEditing): SourceValueRow[] {
+  const value = defaultSourceValues(editing.graph)[node.id];
+  const shapes = editing.graph.shapes ?? [];
+  const fields = fieldsForType(node.type, shapes);
+  if (fields.length === 0) {
+    return [
+      {
+        label: "Value",
+        fieldPath: [],
+        type: node.type,
+        value,
+        hasOverride: hasGraphOverride(editing.graph, node.id, []),
+      },
+    ];
+  }
+  return fields.map((field) => ({
+    label: field.name,
+    fieldPath: [field.id],
+    type: field.type,
+    value: valueAtPath(value, [field.id]),
+    hasOverride: hasGraphOverride(editing.graph, node.id, [field.id]),
+  }));
+}
 
 export function usesModal(type: Type, value: unknown): boolean {
   if (typeof type !== "string") return true;

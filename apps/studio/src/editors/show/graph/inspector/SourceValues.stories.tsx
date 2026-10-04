@@ -5,7 +5,10 @@ import type { Shape } from "@mechane/domain/shapes";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 
+import type { ShowGraphValueLocation } from "../../ShowGraphEditor";
 import type { SourceValueEditing } from "../../commands/use-graph-editing";
+import { NodeInteractionProvider, useNodeInteraction } from "../node-interaction";
+import { NodeSourceValueDialog } from "../SourceValueDialog/NodeSourceValueDialog";
 import { SourceValues } from "./SourceValues";
 import type { SourceImageAsset } from "./source-value-types";
 
@@ -106,6 +109,8 @@ type Story = StoryObj<typeof meta>;
 
 function SourceValuesStory() {
   const [graph, setGraph] = useState(initialGraph);
+  const idle = useNodeInteraction();
+  const [sourceValueEditor, setSourceValueEditor] = useState<ShowGraphValueLocation | null>(null);
   const updateGraph = (command: { apply(current: ShowGraph): { state: ShowGraph } }) => {
     setGraph((current) => command.apply(current).state);
   };
@@ -123,14 +128,24 @@ function SourceValuesStory() {
   } as unknown as SourceValueEditing;
 
   return (
-    <SidebarProvider className="min-h-screen w-full bg-background">
-      <div className="min-h-screen flex-1 bg-background" />
-      <Sidebar collapsible="offcanvas" side="right" variant="floating" aria-label="Source values">
-        <SidebarContent className="p-0">
-          <SourceValues node={source} editing={editing} imageAssets={imageAssets} />
-        </SidebarContent>
-      </Sidebar>
-    </SidebarProvider>
+    <NodeInteractionProvider
+      value={{
+        ...idle,
+        sourceValueEditor,
+        openSourceValueEditor: setSourceValueEditor,
+        closeSourceValueEditor: () => setSourceValueEditor(null),
+      }}
+    >
+      <SidebarProvider className="min-h-screen w-full bg-background">
+        <div className="min-h-screen flex-1 bg-background" />
+        <Sidebar collapsible="offcanvas" side="right" variant="floating" aria-label="Source values">
+          <SidebarContent className="p-0">
+            <SourceValues node={source} editing={editing} imageAssets={imageAssets} />
+          </SidebarContent>
+        </Sidebar>
+      </SidebarProvider>
+      <NodeSourceValueDialog editing={editing} imageAssets={imageAssets} />
+    </NodeInteractionProvider>
   );
 }
 

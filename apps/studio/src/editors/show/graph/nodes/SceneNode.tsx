@@ -1,9 +1,10 @@
 import type { NodeProps } from "@xyflow/react";
 
-import { Button, PencilIcon } from "@mechane/design-system";
+import { PencilIcon } from "@mechane/design-system";
 import type { ShowFlowNode } from "../graph-to-flow";
 import { NODE_KIND_META } from "../node-kinds";
 import { BaseNode } from "./BaseNode";
+import { NodeActionButton } from "./NodeActionButton";
 import { NodeCueList, NodeVariableList } from "./NodeContent";
 import { useReactFlowNode } from "./use-react-flow-node";
 
@@ -45,19 +46,15 @@ export function SceneNode({ id, data, selected }: NodeProps<ShowFlowNode>) {
         onRename={node.renameCue}
       />
       <div className="flex justify-stretch p-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="nodrag w-full rounded-sm border-(--flow-border) text-(--flow-muted-foreground) hover:border-(--flow-border) hover:text-(--flow-muted-foreground) hover:bg-(--flow-area-background)"
+        <NodeActionButton
+          icon={PencilIcon}
           onClick={(event) => {
             event.stopPropagation();
             node.openSceneEditor(id);
           }}
         >
-          <PencilIcon />
           Edit scene
-        </Button>
+        </NodeActionButton>
       </div>
     </BaseNode>
   );

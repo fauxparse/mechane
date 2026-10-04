@@ -121,8 +121,6 @@ export function ShowGraphEditorInner(props: ShowGraphEditorProps) {
             imageAssets={props.imageAssets}
             onImageUpload={props.onImageUpload}
             inspector={inspector}
-            initialSourceValue={props.initialSourceValue}
-            onSourceValueChange={props.onSourceValueChange}
             runActive={props.runActive}
             reshufflingTransformerId={props.reshufflingTransformerId}
             onReshuffleTransformer={props.onReshuffleTransformer}

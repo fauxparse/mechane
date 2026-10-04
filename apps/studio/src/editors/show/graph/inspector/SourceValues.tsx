@@ -13,55 +13,15 @@ import {
   VariableTypeIcon,
 } from "@mechane/design-system";
 import { formatValuePath, type SourceNode } from "@mechane/domain/graph";
-import { valueAtPath } from "@mechane/domain/property-values";
-import { fieldsForType } from "@mechane/domain/shapes";
-import { defaultSourceValues, sourceDefaultsFor } from "@mechane/domain/source-defaults";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
-import type { ShowGraphValueLocation } from "../../ShowGraphEditor";
 import type { SourceValueEditing } from "../../commands/use-graph-editing";
+import { useNodeInteraction } from "../node-interaction";
 import { InlineValue, SourceImagePreview } from "../SourceValueDialog/ValueEditor";
-import { SourceValueDialog } from "../SourceValueDialog";
 import { SourceValueClipboard } from "../value-transfer/SourceValueClipboard";
 import type { SourceImageAsset, SourceValueRow } from "./source-value-types";
-import { previewValue, sourceValuesEqual, usesModal } from "./source-values-helpers";
+import { previewValue, sourceValueRows, usesModal } from "./source-values-helpers";
 const EMPTY_SOURCE_IMAGE_ASSETS: readonly SourceImageAsset[] = [];
-
-function hasGraphOverride(
-  graph: SourceValueEditing["graph"],
-  nodeId: string,
-  fieldPath: readonly string[],
-): boolean {
-  return sourceDefaultsFor(graph, nodeId).some(
-    (override) =>
-      override.fieldPath.length === fieldPath.length &&
-      override.fieldPath.every((segment, index) => segment === fieldPath[index]),
-  );
-}
-
-function sourceValueRows(node: SourceNode, editing: SourceValueEditing): SourceValueRow[] {
-  const value = defaultSourceValues(editing.graph)[node.id];
-  const shapes = editing.graph.shapes ?? [];
-  const fields = fieldsForType(node.type, shapes);
-  if (fields.length === 0) {
-    return [
-      {
-        label: "Value",
-        fieldPath: [],
-        type: node.type,
-        value,
-        hasOverride: hasGraphOverride(editing.graph, node.id, []),
-      },
-    ];
-  }
-  return fields.map((field) => ({
-    label: field.name,
-    fieldPath: [field.id],
-    type: field.type,
-    value: valueAtPath(value, [field.id]),
-    hasOverride: hasGraphOverride(editing.graph, node.id, [field.id]),
-  }));
-}
 function SourceValueActions({
   row,
   nodeId,
@@ -109,46 +69,15 @@ export const SourceValues = ({
   node,
   editing,
   imageAssets = EMPTY_SOURCE_IMAGE_ASSETS,
-  onImageUpload,
-  initialSourceValue,
-  onSourceValueChange,
 }: {
   node: SourceNode;
   editing: SourceValueEditing;
   imageAssets?: readonly SourceImageAsset[];
-  onImageUpload?: Parameters<typeof SourceValueDialog>[0]["onImageUpload"];
-  initialSourceValue?: ShowGraphValueLocation;
-  onSourceValueChange?: (location: ShowGraphValueLocation | null) => void;
 }) => {
   const rows = useMemo(() => sourceValueRows(node, editing), [editing, node]);
-  const shapes = editing.graph.shapes ?? [];
-  const readOnly = editing.graph.edges.some(
-    (edge) => edge.kind === "wiring" && edge.targetId === node.id,
-  );
-  const [activeRow, setActiveRow] = useState<SourceValueRow | null>(null);
-
-  useEffect(() => {
-    if (!initialSourceValue || initialSourceValue.nodeId !== node.id) return;
-    const target = rows.find(
-      (row) =>
-        row.fieldPath.length === initialSourceValue.fieldPath.length &&
-        row.fieldPath.every((segment, index) => segment === initialSourceValue.fieldPath[index]),
-    );
-    const alreadyOpen =
-      target &&
-      activeRow?.fieldPath.length === target.fieldPath.length &&
-      activeRow.fieldPath.every((segment, index) => segment === target.fieldPath[index]);
-    if (target && !alreadyOpen) setActiveRow(target);
-  }, [activeRow, initialSourceValue, node.id, rows]);
-
-  const openRow = (row: SourceValueRow) => {
-    setActiveRow(row);
-    onSourceValueChange?.({ nodeId: node.id, fieldPath: row.fieldPath });
-  };
-  const closeRow = () => {
-    setActiveRow(null);
-    onSourceValueChange?.(null);
-  };
+  const { openSourceValueEditor } = useNodeInteraction();
+  const openRow = (row: SourceValueRow) =>
+    openSourceValueEditor({ nodeId: node.id, fieldPath: row.fieldPath });
   return (
     <Section label="Source values">
       <SourceValueClipboard node={node} editing={editing} />
@@ -193,36 +122,6 @@ export const SourceValues = ({
           </SectionRow>
         );
       })}
-      {activeRow ? (
-        <SourceValueDialog
-          nodeName={node.name}
-          row={activeRow}
-          shapes={shapes}
-          columnSizes={node.editorMetadata?.columnSizes}
-          onColumnSizesChange={(columnSizes) => editing.setSourceColumnSizes(node.id, columnSizes)}
-          imageAssets={imageAssets}
-          onImageUpload={onImageUpload}
-          readOnly={readOnly}
-          open
-          onOpenChange={(open) => {
-            if (!open) closeRow();
-          }}
-          onImmediateChange={(value) =>
-            editing.setSourceFieldDefault(node.id, activeRow.fieldPath, value)
-          }
-          onSave={(value) => {
-            const currentValue = valueAtPath(
-              defaultSourceValues(editing.graph)[node.id],
-              activeRow.fieldPath,
-            );
-            if (!sourceValuesEqual(currentValue, activeRow.value)) {
-              return "This value changed elsewhere. Cancel and reopen it before applying.";
-            }
-            editing.setSourceFieldDefault(node.id, activeRow.fieldPath, value);
-            return null;
-          }}
-        />
-      ) : null}
     </Section>
   );
 };

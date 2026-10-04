@@ -17,10 +17,8 @@ import {
 } from "@mechane/design-system";
 import { FLOW_COLORS, type FlowColor, type GraphNode } from "@mechane/domain/graph";
 import type { Cue } from "@mechane/domain/interactions";
-import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import { useEffect, useState } from "react";
 import { DeviceShareButton } from "../../../../components/CustomDomains/DeviceShare";
-import type { ShowGraphValueLocation } from "../../ShowGraphEditor";
 import type { GraphInspectorEditing } from "../../commands/use-graph-editing";
 import { SourceValues } from "./SourceValues";
 import type { SourceImageAsset } from "./source-value-types";
@@ -119,9 +117,6 @@ export function SingleNode({
   node,
   editing,
   imageAssets,
-  onImageUpload,
-  initialSourceValue,
-  onSourceValueChange,
   runActive,
   reshufflingTransformerId,
   onReshuffleTransformer,
@@ -129,9 +124,6 @@ export function SingleNode({
   node: GraphNode;
   editing: GraphInspectorEditing;
   imageAssets?: readonly SourceImageAsset[];
-  onImageUpload?: (props: ImageInputOnUploadProps) => void;
-  initialSourceValue?: ShowGraphValueLocation;
-  onSourceValueChange?: (location: ShowGraphValueLocation | null) => void;
   runActive?: boolean;
   reshufflingTransformerId?: string | null;
   onReshuffleTransformer?(transformerId: string, deviceId?: string): void;
@@ -223,14 +215,7 @@ export function SingleNode({
       {node.kind === "source" ? (
         <>
           <SourceTypeSection node={node} editing={editing} />
-          <SourceValues
-            node={node}
-            editing={editing}
-            imageAssets={imageAssets}
-            onImageUpload={onImageUpload}
-            initialSourceValue={initialSourceValue}
-            onSourceValueChange={onSourceValueChange}
-          />
+          <SourceValues node={node} editing={editing} imageAssets={imageAssets} />
         </>
       ) : null}
       {node.kind === "transformer" ? (

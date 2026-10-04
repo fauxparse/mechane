@@ -36,7 +36,7 @@ import { useFitViewOptions, useInitialFrame } from "../graph/use-fit-view-option
 import { childrenPushedInside } from "../show-graph-layout";
 import { useShowGraphEditorPalette } from "./use-show-graph-editor-palette";
 import { MESSAGE_MS } from "../show-graph-editor-constants";
-import type { ShowGraphEditorProps } from "../ShowGraphEditor";
+import type { ShowGraphEditorProps, ShowGraphValueLocation } from "../ShowGraphEditor";
 import type { PaletteCommand } from "./palette-commands";
 import type { EdgeInteraction } from "../graph/edge-interaction";
 import type { NodeInteraction } from "../graph/node-interaction";
@@ -86,6 +86,7 @@ export function useShowGraphEditorController({
   onEdit,
   initialViewport,
   initialSourceValue,
+  onSourceValueChange,
   onOpenScene,
   ref,
 }: ShowGraphEditorProps): ShowGraphEditorController {
@@ -99,6 +100,20 @@ export function useShowGraphEditorController({
     [collapsedFlowIds, command.graph, sourceValues],
   );
   const [formulaEditorNodeId, setFormulaEditorNodeId] = useState<string | null>(null);
+  const [sourceValueEditor, setSourceValueEditor] = useState<ShowGraphValueLocation | null>(
+    initialSourceValue ?? null,
+  );
+  // The route hands the open value back as `initialSourceValue`, so a
+  // back/forward between two values arrives as a new prop. Compared by value:
+  // the route builds a fresh object on every render.
+  const initialSourceValueKey = initialSourceValue
+    ? JSON.stringify([initialSourceValue.nodeId, ...initialSourceValue.fieldPath])
+    : null;
+  const [adoptedSourceValueKey, setAdoptedSourceValueKey] = useState(initialSourceValueKey);
+  if (initialSourceValueKey !== adoptedSourceValueKey) {
+    setAdoptedSourceValueKey(initialSourceValueKey);
+    setSourceValueEditor(initialSourceValue ?? null);
+  }
   const toggleCollapse = useCallback((flowId: string) => {
     setCollapsedFlowIds((current) => {
       const next = new Set(current);
@@ -121,6 +136,28 @@ export function useShowGraphEditorController({
   );
   const displayEdges = useMemo(() => reconcileEdges(drawn.edges, edges), [drawn.edges, edges]);
   const { fitView, getNodes, getZoom, setCenter, screenToFlowPosition } = useReactFlow();
+  const openSourceValueEditor = useCallback(
+    (location: ShowGraphValueLocation) => {
+      // Editing a Source's value acts on that Source, so an unselected one
+      // becomes the selection. One already selected leaves the selection alone.
+      const alreadySelected = getNodes().some(
+        (node) => node.id === location.nodeId && node.selected,
+      );
+      if (!alreadySelected) {
+        setNodes((previous) =>
+          previous.map((node) => ({ ...node, selected: node.id === location.nodeId })),
+        );
+        setEdges((previous) => previous.map((edge) => ({ ...edge, selected: false })));
+      }
+      setSourceValueEditor(location);
+      onSourceValueChange?.(location);
+    },
+    [getNodes, onSourceValueChange, setEdges, setNodes],
+  );
+  const closeSourceValueEditor = useCallback(() => {
+    setSourceValueEditor(null);
+    onSourceValueChange?.(null);
+  }, [onSourceValueChange]);
 
   // A resize that shrinks a Flow past its contents moves the children, which
   // is a graph edit rather than view state. It runs as a gesture for the same
@@ -349,18 +386,24 @@ export function useShowGraphEditorController({
       formulaEditorNodeId,
       openFormulaEditor: setFormulaEditorNodeId,
       closeFormulaEditor: () => setFormulaEditorNodeId(null),
+      sourceValueEditor,
+      openSourceValueEditor,
+      closeSourceValueEditor,
       openSceneEditor: onOpenScene ?? (() => {}),
       toggleCollapse,
       resizeFlow,
     }),
     [
+      closeSourceValueEditor,
       connections,
       editing.interaction.renameCue,
       editing.renameTransformerPort,
       formulaEditorNodeId,
       gestures,
       onOpenScene,
+      openSourceValueEditor,
       resizeFlow,
+      sourceValueEditor,
       toggleCollapse,
       variables.renameVariable,
     ],

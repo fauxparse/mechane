@@ -21,7 +21,7 @@ import {
   normalizeStructuredValueTemplate,
   type StructuredValueTemplate,
 } from "@mechane/domain/structured-values";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { previewValue } from "../../inspector/source-values-helpers";
 import { ArrayEditorToolbar } from "./ArrayEditorToolbar";
@@ -100,6 +100,13 @@ function ShapeArrayEditor({
       ),
     );
   }, [query, records, shapeFields]);
+  // One event can make several edits: Enter in the last row commits the cell,
+  // then adds a record. Each edit must build on the one before it, not on the
+  // value this render closed over.
+  const latestValue = useRef(normalized);
+  useLayoutEffect(() => {
+    latestValue.current = normalized;
+  });
 
   if (normalized === null) {
     return <p className="text-sm text-destructive">This array value could not be opened.</p>;
@@ -149,32 +156,40 @@ function ShapeArrayEditor({
       reportSelection(null);
     }
   };
-  const updateArray = (items: readonly StructuredValueTemplate[]) => {
-    const next = { ...normalized, items };
+  const updateArray = (
+    update: (items: readonly StructuredValueTemplate[]) => readonly StructuredValueTemplate[],
+  ) => {
+    const current = latestValue.current ?? normalized;
+    const items = update(current.items);
+    if (items === current.items) return;
+    const next = { ...current, items };
+    latestValue.current = next;
     onChange(next);
     onImmediateChange?.(next);
   };
   const updateRecord = (nextRecord: ShapeRecord) => {
-    updateArray(
-      normalized.items.map((item) =>
+    updateArray((items) =>
+      items.map((item) =>
         isShapeStructuredValueTemplate(item) && item.id === nextRecord.id ? nextRecord : item,
       ),
     );
   };
   const reorderRecords = (sourceId: string, targetId: string) => {
     if (readOnly || sourceId === targetId) return;
-    const sourceIndex = normalized.items.findIndex(
-      (item) => isShapeStructuredValueTemplate(item) && item.id === sourceId,
-    );
-    const targetIndex = normalized.items.findIndex(
-      (item) => isShapeStructuredValueTemplate(item) && item.id === targetId,
-    );
-    if (sourceIndex < 0 || targetIndex < 0) return;
-    const items = [...normalized.items];
-    const [moved] = items.splice(sourceIndex, 1);
-    if (!moved) return;
-    items.splice(targetIndex, 0, moved);
-    updateArray(items);
+    updateArray((current) => {
+      const sourceIndex = current.findIndex(
+        (item) => isShapeStructuredValueTemplate(item) && item.id === sourceId,
+      );
+      const targetIndex = current.findIndex(
+        (item) => isShapeStructuredValueTemplate(item) && item.id === targetId,
+      );
+      if (sourceIndex < 0 || targetIndex < 0) return current;
+      const items = [...current];
+      const [moved] = items.splice(sourceIndex, 1);
+      if (!moved) return current;
+      items.splice(targetIndex, 0, moved);
+      return items;
+    });
   };
   const createRecord = (): string | null => {
     if (readOnly) return null;
@@ -184,7 +199,7 @@ function ShapeArrayEditor({
       shapes,
     );
     if (!isShapeStructuredValueTemplate(next)) return null;
-    updateArray([...normalized.items, next]);
+    updateArray((items) => [...items, next]);
     return next.id;
   };
   const addRecord = () => {
@@ -201,8 +216,10 @@ function ShapeArrayEditor({
   };
   const removeRecord = (recordId = activeRecord?.id) => {
     if (readOnly || !recordId) return;
-    const nextRecords = records.filter((record) => record.id !== recordId);
-    updateArray(nextRecords);
+    const nextRecords = (latestValue.current ?? normalized).items.filter(
+      (item): item is ShapeRecord => isShapeStructuredValueTemplate(item) && item.id !== recordId,
+    );
+    updateArray(() => nextRecords);
     if (viewMode === "table" || activeRecord?.id !== recordId) return;
     const nextRecord = nextRecords[Math.min(activeIndex, nextRecords.length - 1)] ?? null;
     if (nextRecord) {

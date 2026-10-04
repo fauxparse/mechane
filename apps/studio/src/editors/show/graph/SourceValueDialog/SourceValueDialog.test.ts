@@ -212,6 +212,29 @@ describe("ArrayValueEditor", () => {
     expect(html).not.toContain('role="tab"');
     expect(html).not.toContain("Record");
   });
+
+  it("stretches a single column across the table without a resize handle", () => {
+    const html = renderToStaticMarkup(
+      createElement(ArrayTable, {
+        model: {
+          records: [{ id: generateId("structuredValue"), kind: "shape", fields: { value: 1 } }],
+          fields: [
+            { id: "value", name: "Number", type: "number", required: true, defaultValue: 0 },
+          ],
+          readOnly: false,
+          path: [],
+          onColumnSizesChange: () => {},
+          onReorder: () => {},
+          onRecordChange: () => {},
+          onValidityChange: () => {},
+          onDeleteRecord: () => {},
+        },
+      }),
+    );
+
+    expect(html).toContain('style="width:100%"');
+    expect(html).not.toContain('role="separator"');
+  });
 });
 
 describe("array record identifiers", () => {

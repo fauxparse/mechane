@@ -2,7 +2,7 @@ import { Handle, useUpdateNodeInternals, type HandleProps } from "@xyflow/react"
 import { useEffect, type ComponentType, type MouseEventHandler } from "react";
 
 import type { ShowFlowNode } from "../graph-to-flow";
-import { useNodeInteraction } from "../node-interaction";
+import { useNodeInteraction, type NodeInteraction } from "../node-interaction";
 import { useConnectedHandleIds } from "../use-connected-handle-ids";
 import { useDragState } from "../use-drag-state";
 
@@ -21,6 +21,7 @@ export interface ReactFlowNodeState {
   renameVariable(sceneId: string, variableId: string, name: string): void;
   renameCue(cueId: string, name: string): void;
   openFormulaEditor(nodeId: string): void;
+  openSourceValueEditor: NodeInteraction["openSourceValueEditor"];
   openSceneEditor(nodeId: string): void;
   handle: ComponentType<HandleProps>;
 }
@@ -38,6 +39,7 @@ export function useReactFlowNode(id: string, data: ShowFlowNode["data"]): ReactF
     renameVariable,
     renameCue,
     openFormulaEditor,
+    openSourceValueEditor,
     openSceneEditor,
   } = useNodeInteraction();
   const updateNodeInternals = useUpdateNodeInternals();
@@ -63,6 +65,7 @@ export function useReactFlowNode(id: string, data: ShowFlowNode["data"]): ReactF
     renameVariable,
     renameCue,
     openFormulaEditor,
+    openSourceValueEditor,
     openSceneEditor,
     handle: Handle,
   };
