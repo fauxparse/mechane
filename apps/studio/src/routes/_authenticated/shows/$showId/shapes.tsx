@@ -1,6 +1,9 @@
+import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import { type ShowId, isId } from "@mechane/domain/id";
 import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 
+import { resolveApiUrl } from "../../../../api/client";
+import { useImageAssets, useImageUpload } from "../../../../api/images";
 import { useActiveRun } from "../../../../api/runs";
 import { useShowGraph, useShowGraphEdits } from "../../../../api/show-graph";
 import { useShow } from "../../../../api/shows";
@@ -17,6 +20,8 @@ function ShapesRoute() {
   const showId: ShowId | null = isId("show", params.showId) ? params.showId : null;
   const activeRun = useActiveRun(showId);
   const show = useShow(showId);
+  const images = useImageAssets(showId);
+  const upload = useImageUpload(showId);
   const navigate = useNavigate();
   const shapeId = useRouterState({
     select: ({ matches }) =>
@@ -29,6 +34,27 @@ function ShapesRoute() {
   const save = useShowGraphEdits(showId, draft.data?.version);
   const openedGraph = useOpenedShowGraph(draft.data)?.graph ?? null;
   const editing = useGraphEditing(openedGraph, (edits) => save.enqueue(edits));
+  const onImageUpload = ({
+    file,
+    signal,
+    onProgress,
+    onSuccess,
+    onError,
+  }: ImageInputOnUploadProps) => {
+    void upload
+      .mutateAsync({ file, signal, onProgress })
+      .then((asset) => {
+        onSuccess({ ...asset, assetId: asset.id, url: resolveApiUrl(asset.url) });
+      })
+      .catch((error: unknown) => {
+        if (signal.aborted) return;
+        onError({
+          code: "NETWORK_FAILURE",
+          message: error instanceof Error ? error.message : "The image upload failed.",
+          cause: error,
+        });
+      });
+  };
 
   if (showId === null || draft.isError) {
     return (
@@ -53,6 +79,8 @@ function ShapesRoute() {
       retrySave={save.retry}
       runActive={activeRun.data !== null && activeRun.data !== undefined}
       autoPublish={show.data?.autoPublish ?? true}
+      imageAssets={(images.data ?? []).map((asset) => ({ ...asset, assetId: asset.id }))}
+      onImageUpload={onImageUpload}
       onOpenShape={(nextShapeId) =>
         void navigate({
           to: "/shows/$showId/shapes/$shapeId",

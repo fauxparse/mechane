@@ -28,9 +28,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
 import type { ShapeEditing } from "../commands/use-graph-editing";
-import { ShapeDefaultEditor } from "./ShapeDefaultEditor";
+import { ShapeDefaultEditor, type ShapeDefaultEditorProps } from "./ShapeDefaultEditor";
 import { setShapeEditorStatus } from "./shape-editor-status";
 
+type ImageEditingProps = Pick<ShapeDefaultEditorProps, "imageAssets" | "onImageUpload">;
 const shapeNameSchema = z.string().trim().min(1, "Shape name is required.");
 const fieldNameSchema = z
   .string()
@@ -50,7 +51,7 @@ const sensors = (defaults: typeof defaultPreset.sensors) =>
       : sensor,
   );
 
-type ShapeWorkspaceProps = {
+type ShapeWorkspaceProps = ImageEditingProps & {
   graph: ShowGraph;
   shapeId: string | null;
   editing: ShapeEditing;
@@ -108,6 +109,8 @@ export function ShapeWorkspace({
   autoPublish,
   onOpenShape,
   onBack,
+  imageAssets,
+  onImageUpload,
 }: ShapeWorkspaceProps) {
   const shapes = useMemo(() => graph.shapes ?? [], [graph.shapes]);
   const [query, setQuery] = useState("");
@@ -210,6 +213,8 @@ export function ShapeWorkspace({
               editing={editing}
               onBack={onBack}
               onOpenShape={onOpenShape}
+              imageAssets={imageAssets}
+              onImageUpload={onImageUpload}
             />
           </div>
         )}
@@ -465,7 +470,9 @@ function ShapeEditor({
   editing,
   onBack,
   onOpenShape,
-}: {
+  imageAssets,
+  onImageUpload,
+}: ImageEditingProps & {
   shape: Shape;
   shapes: readonly Shape[];
   editing: ShapeEditing;
@@ -646,6 +653,8 @@ function ShapeEditor({
               onDuplicate={() => duplicateField(selectedField)}
               onDelete={() => deleteField(selectedField)}
               onOpenShape={onOpenShape}
+              imageAssets={imageAssets}
+              onImageUpload={onImageUpload}
             />
           ) : (
             <div className="flex h-full min-h-64 items-center justify-center text-center text-sm text-muted-foreground">
@@ -721,7 +730,9 @@ function FieldDetails({
   onDuplicate,
   onDelete,
   onOpenShape,
-}: {
+  imageAssets,
+  onImageUpload,
+}: ImageEditingProps & {
   field: ShapeField;
   shapes: readonly Shape[];
   currentShapeId: string;
@@ -863,6 +874,8 @@ function FieldDetails({
           onChange={onChange}
           shapes={shapes}
           onOpenShape={onOpenShape}
+          imageAssets={imageAssets}
+          onImageUpload={onImageUpload}
         />
       </div>
     </div>

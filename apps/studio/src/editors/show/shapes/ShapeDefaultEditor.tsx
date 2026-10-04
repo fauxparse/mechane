@@ -1,8 +1,27 @@
-import { PlusIcon, Trash2Icon } from "@mechane/design-system";
-import { type Shape, type ShapeField, type Type, typeLabel } from "@mechane/domain/shapes";
+import {
+  ImageInput,
+  PlusIcon,
+  Trash2Icon,
+  type ImageInputOnUploadProps,
+} from "@mechane/design-system";
+import {
+  type Shape,
+  type ShapeField,
+  type Type,
+  typeLabel,
+  isImageAssetReference,
+  isResolvedImageValue,
+} from "@mechane/domain/shapes";
 import { defaultValueForType } from "@mechane/domain/source-defaults";
+import { useState } from "react";
+import type { SourceImageAsset } from "../graph/inspector/source-value-types";
 
-export type ShapeDefaultEditorProps = {
+type ImageEditingProps = {
+  imageAssets?: readonly SourceImageAsset[];
+  onImageUpload?: (props: ImageInputOnUploadProps) => void;
+};
+
+export type ShapeDefaultEditorProps = ImageEditingProps & {
   field: ShapeField;
   shapes: readonly Shape[];
   onChange(update: Partial<ShapeField>): void;
@@ -14,8 +33,14 @@ export function ShapeDefaultEditor({
   shapes,
   onChange,
   onOpenShape,
+  imageAssets,
+  onImageUpload,
 }: ShapeDefaultEditorProps) {
-  if (!field.required && (field.defaultValue === null || field.defaultValue === undefined)) {
+  if (
+    field.type !== "image" &&
+    !field.required &&
+    (field.defaultValue === null || field.defaultValue === undefined)
+  ) {
     return (
       <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
         No starting value. This Field is optional.
@@ -23,14 +48,27 @@ export function ShapeDefaultEditor({
     );
   }
   return (
-    <ValueEditor
-      type={field.type}
-      value={field.defaultValue}
-      shapes={shapes}
-      label={`Default ${typeLabel(field.type, shapes)}`}
-      onChange={(value) => onChange({ defaultValue: value })}
-      onOpenShape={onOpenShape}
-    />
+    <div className="grid gap-3">
+      <ValueEditor
+        type={field.type}
+        value={field.defaultValue}
+        shapes={shapes}
+        imageAssets={imageAssets}
+        onImageUpload={onImageUpload}
+        label={`Default ${typeLabel(field.type, shapes)}`}
+        onChange={(value) => onChange({ defaultValue: value })}
+        onOpenShape={onOpenShape}
+      />
+      {field.type === "image" && !field.required && field.defaultValue != null ? (
+        <button
+          type="button"
+          className="justify-self-start text-xs font-medium text-primary hover:underline"
+          onClick={() => onChange({ defaultValue: null })}
+        >
+          Clear default
+        </button>
+      ) : null}
+    </div>
   );
 }
 
@@ -41,7 +79,9 @@ function ValueEditor({
   label,
   onChange,
   onOpenShape,
-}: {
+  imageAssets,
+  onImageUpload,
+}: ImageEditingProps & {
   type: Type;
   value: unknown;
   shapes: readonly Shape[];
@@ -50,7 +90,16 @@ function ValueEditor({
   onOpenShape(shapeId: string): void;
 }) {
   if (typeof type === "string")
-    return <PrimitiveEditor type={type} value={value} label={label} onChange={onChange} />;
+    return (
+      <PrimitiveEditor
+        type={type}
+        value={value}
+        label={label}
+        onChange={onChange}
+        imageAssets={imageAssets}
+        onImageUpload={onImageUpload}
+      />
+    );
   if (type.kind === "array")
     return (
       <ArrayEditor
@@ -60,6 +109,8 @@ function ValueEditor({
         label={label}
         onChange={onChange}
         onOpenShape={onOpenShape}
+        imageAssets={imageAssets}
+        onImageUpload={onImageUpload}
       />
     );
   if (type.kind === "shape") {
@@ -99,6 +150,8 @@ function ValueEditor({
               label={field.name}
               onChange={(next) => onChange({ ...objectValue, [field.id]: next })}
               onOpenShape={onOpenShape}
+              imageAssets={imageAssets}
+              onImageUpload={onImageUpload}
             />
           ))}
         </div>
@@ -115,7 +168,9 @@ function ArrayEditor({
   label,
   onChange,
   onOpenShape,
-}: {
+  imageAssets,
+  onImageUpload,
+}: ImageEditingProps & {
   type: Type;
   value: unknown;
   shapes: readonly Shape[];
@@ -162,6 +217,8 @@ function ArrayEditor({
                 )
               }
               onOpenShape={onOpenShape}
+              imageAssets={imageAssets}
+              onImageUpload={onImageUpload}
             />
           </div>
         ))}
@@ -175,12 +232,59 @@ function PrimitiveEditor({
   value,
   label,
   onChange,
-}: {
+  imageAssets,
+  onImageUpload,
+}: ImageEditingProps & {
   type: Extract<Type, string>;
   value: unknown;
   label: string;
   onChange(value: unknown): void;
 }) {
+  const [imageError, setImageError] = useState<string | null>(null);
+  if (type === "image") {
+    const resolved = isResolvedImageValue(value)
+      ? value
+      : isImageAssetReference(value)
+        ? (imageAssets?.find(
+            (asset) => asset.assetId === value.assetId && asset.revision === value.revision,
+          ) ?? null)
+        : null;
+    return (
+      <div className="grid gap-2" role="group" aria-label={label}>
+        <span className="text-sm font-medium">{label}</span>
+        <ImageInput
+          value={resolved}
+          imageAssets={imageAssets}
+          allowLink={false}
+          onUpload={onImageUpload}
+          onDelete={() => onChange(null)}
+          onChange={(next) => {
+            if (next === null) {
+              setImageError(null);
+              onChange(null);
+              return;
+            }
+            if (!isResolvedImageValue(next)) return;
+            const revision = isImageAssetReference(next)
+              ? next.revision
+              : imageAssets?.find((asset) => asset.assetId === next.assetId)?.revision;
+            if (!revision) {
+              setImageError("The selected image has no revision.");
+              return;
+            }
+            setImageError(null);
+            onChange({ assetId: next.assetId, revision });
+          }}
+          onError={(error) => setImageError(error.message)}
+        />
+        {imageError ? (
+          <p className="text-xs text-destructive" role="alert">
+            {imageError}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
   if (type === "boolean")
     return (
       <label className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm font-medium">

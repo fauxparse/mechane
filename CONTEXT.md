@@ -103,7 +103,9 @@ happens to sit: authored structure — a Show's graph, its Shapes, its Canvases 
 spells absence `null`, at rest and in transit alike, because JSON carries no
 `undefined`, while resolved evaluation values spell it as the missing key. How
 a value came to be absent is not recoverable from it and nothing downstream
-depends on knowing.
+depends on knowing. An image marks the boundary sharply: an image value is an
+asset reference with no blank form, so an image pointing at nothing is Typed
+Absence, never empty text.
 _Avoid_: Null, empty, missing, undefined (each names one spelling, not the concept)
 
 ### Current Source Value
