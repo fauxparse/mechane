@@ -75,6 +75,19 @@ const removeCachedCue: GraphEdit = {
   type: "graph.removeCue",
   cueId: "cue-old",
 };
+const sourceDefaultsGraph = {
+  ...graph,
+  sourceFieldDefaults: [
+    { nodeId: "source-a", fieldPath: ["headline"], value: "Before" },
+    { nodeId: "source-a", fieldPath: ["count"], value: 1 },
+  ],
+} as unknown as Parameters<typeof patchShowGraphQueryData>[0];
+const setHeadline = (value: unknown): GraphEdit => ({
+  type: "graph.setSourceFieldDefault",
+  nodeId: "source-a",
+  fieldPath: ["headline"],
+  value,
+});
 
 describe("patchShowGraphQueryData", () => {
   it("reorders the cached Scene Variables without refetching", () => {
@@ -117,5 +130,25 @@ describe("patchShowGraphQueryData", () => {
     expect(responsePatched?.cues).toEqual([]);
     expect(responsePatched?.actions).toEqual([]);
     expect(responsePatched?.eventBindings).toEqual([]);
+  });
+
+  it("replaces a cached Source default only once", () => {
+    const patched = patchShowGraphQueryData(sourceDefaultsGraph, [setHeadline("After")]);
+    const responsePatched = patchShowGraphQueryData(patched, [setHeadline("After")]);
+
+    expect(responsePatched).toBe(patched);
+    expect(responsePatched?.sourceFieldDefaults).toEqual([
+      { nodeId: "source-a", fieldPath: ["count"], value: 1 },
+      { nodeId: "source-a", fieldPath: ["headline"], value: "After" },
+    ]);
+  });
+
+  it("clears a cached Source default when the value is null", () => {
+    const patched = patchShowGraphQueryData(sourceDefaultsGraph, [setHeadline(null)]);
+
+    expect(patched?.sourceFieldDefaults).toEqual([
+      { nodeId: "source-a", fieldPath: ["count"], value: 1 },
+    ]);
+    expect(patchShowGraphQueryData(patched, [setHeadline(null)])).toBe(patched);
   });
 });

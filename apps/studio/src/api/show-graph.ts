@@ -41,7 +41,7 @@ interface CachedShowGraph {
   readonly actions: readonly { readonly cueId: string }[];
   readonly eventBindings: readonly { readonly cueId: string }[];
   readonly slotEventBindings: readonly unknown[];
-  readonly sourceFieldDefaults: readonly unknown[];
+  readonly sourceFieldDefaults: readonly CachedSourceFieldDefault[];
   readonly showId: string;
   readonly state: string;
   readonly updatedAt: string;
@@ -57,6 +57,12 @@ interface CachedNode {
 interface CachedEdge {
   readonly __typename: string;
   readonly cueId?: string | null;
+}
+
+interface CachedSourceFieldDefault {
+  readonly nodeId: string;
+  readonly fieldPath: readonly string[];
+  readonly value: unknown;
 }
 
 interface CachedCue {
@@ -139,6 +145,7 @@ export function patchShowGraphQueryData(
   let actions = previous.actions;
   let eventBindings = previous.eventBindings;
   let edges = previous.edges;
+  let sourceFieldDefaults = previous.sourceFieldDefaults;
   for (const edit of edits) {
     switch (edit.type) {
       case "graph.addCue":
@@ -166,12 +173,42 @@ export function patchShowGraphQueryData(
         changed = true;
         break;
       }
+      // Mirrors `setSourceFieldDefault`: one entry per path, appended on set,
+      // removed by null. The value stays as sent; reading a Source normalizes it.
+      case "graph.setSourceFieldDefault": {
+        const index = sourceFieldDefaults.findIndex(
+          (entry) =>
+            entry.nodeId === edit.nodeId &&
+            entry.fieldPath.length === edit.fieldPath.length &&
+            entry.fieldPath.every(
+              (segment, segmentIndex) => segment === edit.fieldPath[segmentIndex],
+            ),
+        );
+        const current = sourceFieldDefaults[index];
+        const unchanged =
+          edit.value === null
+            ? current === undefined
+            : current !== undefined && JSON.stringify(current.value) === JSON.stringify(edit.value);
+        if (unchanged) break;
+        const remaining = sourceFieldDefaults.filter((_, entryIndex) => entryIndex !== index);
+        sourceFieldDefaults =
+          edit.value === null
+            ? remaining
+            : [
+                ...remaining,
+                { nodeId: edit.nodeId, fieldPath: [...edit.fieldPath], value: edit.value },
+              ];
+        changed = true;
+        break;
+      }
       default:
         break;
     }
   }
 
-  return changed ? { ...previous, nodes, cues, actions, eventBindings, edges } : previous;
+  return changed
+    ? { ...previous, nodes, cues, actions, eventBindings, edges, sourceFieldDefaults }
+    : previous;
 }
 
 /**
