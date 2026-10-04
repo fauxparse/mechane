@@ -14,6 +14,7 @@ export interface BaseNodeProps {
   dimmed?: boolean;
   connectedHandleIds?: ReadonlySet<string>;
   renaming?: boolean;
+  className?: string;
   onDoubleClick?: MouseEventHandler<HTMLDivElement>;
   onRenameChange?(name: string): void;
   onRenameCommit?(): void;
@@ -33,6 +34,7 @@ export function BaseNode({
   dimmed = false,
   connectedHandleIds,
   renaming = false,
+  className,
   onDoubleClick,
   onRenameChange,
   onRenameCommit,
@@ -48,6 +50,9 @@ export function BaseNode({
       className={cn(
         "group/node border border-(--flow-border) rounded-md bg-(--flow-background)/10 text-(--flow-foreground) shadow-md data-[selected=true]:ring-4 data-[selected=true]:ring-(--flow-border)/50",
         dimmed && "opacity-25",
+        data.isDefaultScene &&
+          "ring-1 inset-ring-1 ring-(--flow-border) inset-ring-(--flow-border)",
+        className,
       )}
       data-id={id}
       data-flow-theme={data.color ?? "neutral"}
@@ -71,7 +76,7 @@ export function BaseNode({
             <Button
               variant="ghost"
               size="icon"
-              className="text-(--flow-muted-foreground) hover:text-(--flow-muted-foreground) bg-transparent hover:bg-transparent opacity-50 hover:opacity-100"
+              className="hidden text-(--flow-muted-foreground) hover:text-(--flow-muted-foreground) bg-transparent hover:bg-transparent opacity-50 hover:opacity-100"
             >
               <SettingsIcon />
             </Button>

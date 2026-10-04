@@ -12,6 +12,7 @@ import type { ArrayTableCallbacks, RecordMenuHandle, RecordMenuPayload } from ".
 
 type RecordActionsMenuProps = {
   handle: RecordMenuHandle;
+  noun: string;
   readOnly: boolean;
   callbacks: ArrayTableCallbacks;
 };
@@ -28,6 +29,7 @@ type RecordActionsMenuProps = {
  */
 export const RecordActionsMenu = memo(function RecordActionsMenu({
   handle,
+  noun,
   readOnly,
   callbacks,
 }: RecordActionsMenuProps) {
@@ -45,15 +47,21 @@ export const RecordActionsMenu = memo(function RecordActionsMenu({
     >
       {({ payload }) => (
         <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            onClick={() => {
-              if (payload) pendingActionRef.current = () => callbacks.openRecord(payload.recordId);
-            }}
-          >
-            <ExternalLinkIcon />
-            Open record
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
+          {callbacks.openRecord ? (
+            <>
+              <DropdownMenuItem
+                onClick={() => {
+                  const openRecord = callbacks.openRecord;
+                  if (payload && openRecord)
+                    pendingActionRef.current = () => openRecord(payload.recordId);
+                }}
+              >
+                <ExternalLinkIcon />
+                Open {noun}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          ) : null}
           <DropdownMenuItem
             variant="destructive"
             disabled={readOnly}
@@ -63,7 +71,7 @@ export const RecordActionsMenu = memo(function RecordActionsMenu({
             }}
           >
             <Trash2Icon />
-            Delete record
+            Delete {noun}
           </DropdownMenuItem>
         </DropdownMenuContent>
       )}

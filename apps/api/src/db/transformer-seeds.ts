@@ -16,7 +16,7 @@ function shuffleTransformerIds(graph: ShowGraph, parent: "show" | "instance"): s
   );
 }
 
-async function showSeeds(runId: string, transformerIds: readonly string[], executor: Executor) {
+async function showSeeds(executor: Executor, runId: string, transformerIds: readonly string[]) {
   await executor
     .insert(runTransformerSeeds)
     .values(
@@ -27,10 +27,10 @@ async function showSeeds(runId: string, transformerIds: readonly string[], execu
 }
 
 async function deviceSeeds(
+  executor: Executor,
   runId: string,
   deviceId: string,
   transformerIds: readonly string[],
-  executor: Executor,
 ) {
   await executor
     .insert(runDeviceTransformerSeeds)
@@ -54,7 +54,11 @@ async function deviceSeeds(
     );
 }
 
-/** Reuses scope-owned seeds across snapshots and compatible publications. */
+/**
+ * Reuses scope-owned seeds across snapshots and compatible publications. A
+ * Player's snapshot and the Events it submits read the same seeds, so both
+ * shuffle a list into the same order (#887).
+ */
 export async function readOrCreateTransformerSeeds(
   runId: string,
   deviceId: string,
@@ -64,10 +68,10 @@ export async function readOrCreateTransformerSeeds(
 ): Promise<Readonly<Record<string, string>>> {
   const showIds = shuffleTransformerIds(graph, "show");
   const instanceIds = includeSharedInstance ? shuffleTransformerIds(graph, "instance") : [];
-  const [showRows, deviceRows] = await Promise.all([
-    showIds.length > 0 ? showSeeds(runId, showIds, executor) : [],
-    instanceIds.length > 0 ? deviceSeeds(runId, deviceId, instanceIds, executor) : [],
-  ]);
+  // One after the other: a transaction is one connection, and runs one query at a time.
+  const showRows = showIds.length > 0 ? await showSeeds(executor, runId, showIds) : [];
+  const deviceRows =
+    instanceIds.length > 0 ? await deviceSeeds(executor, runId, deviceId, instanceIds) : [];
   const activeIds = new Set([...showIds, ...instanceIds]);
   return Object.fromEntries(
     [...showRows, ...deviceRows]

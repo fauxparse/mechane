@@ -1,15 +1,23 @@
 import { describe, expect, it } from "vitest";
 import type { ShowGraph } from "@mechane/domain/graph";
 
-import type { PlayerDriver, PlayerRunState, PlayerStorageAdapter } from "./player-state";
+import type {
+  PendingShowEvent,
+  PlayerDriver,
+  PlayerRunState,
+  PlayerStorageAdapter,
+} from "./player-state";
 import { sceneVariableValues } from "./player-state";
 import {
   applyPlayerCue,
-  mergePlayerSnapshot,
+  displayedShowState,
   openPlayerStateStore,
   playerRunScope,
   playerTransitionCoordinator,
   reconcilePlayerRunState,
+  resolvePendingShowEvent,
+  rollBackPlayerCue,
+  settlePendingShowEvents,
 } from "./player-state";
 
 const graph: ShowGraph = {
@@ -437,34 +445,6 @@ describe("per-connection Player state", () => {
     await expect(second).resolves.toBe("done");
     expect(order).toEqual(["first", "second"]);
   });
-  it("replaces Show state while preserving Instance state and newer overlays", () => {
-    const state: PlayerRunState = {
-      ...storedState,
-      flowSourceValues: { local: 1 },
-      showSourceValues: { shared: 1 },
-      showStructuredValues: {},
-      stateSequence: 4,
-      optimisticOverlay: {
-        state: { sourceValues: { shared: 2 }, structuredValues: {} },
-        appliedStateSequence: 6,
-      },
-    };
-    const merged = mergePlayerSnapshot(state, {
-      stateSequence: 5,
-      sourceValues: { shared: 3 },
-      structuredValues: {},
-    });
-    expect(merged.flowSourceValues).toEqual({ local: 1 });
-    expect(merged.showSourceValues).toEqual({ shared: 3 });
-    expect(merged.optimisticOverlay).toBeDefined();
-    expect(
-      mergePlayerSnapshot(merged, {
-        stateSequence: 6,
-        sourceValues: { shared: 4 },
-        structuredValues: {},
-      }).optimisticOverlay,
-    ).toBeUndefined();
-  });
 });
 
 // A Flow-local Source holding a reference into a Show-owned record: the shape
@@ -570,7 +550,7 @@ describe("applyPlayerCue action routing", () => {
     if (execution.kind !== "applied") return;
     // The Source naming the holder is Flow-local, but the holder itself is a
     // Show-owned record, so the increment is the server's to apply.
-    expect(Object.keys(execution.evidence)).toEqual(["action_confirm_yes"]);
+    expect(execution.showActions.map(({ action }) => action.id)).toEqual(["action_confirm_yes"]);
     expect(execution.state.flowStructuredValues).toEqual({});
   });
 
@@ -594,7 +574,7 @@ describe("applyPlayerCue action routing", () => {
     );
     expect(execution.kind).toBe("applied");
     if (execution.kind !== "applied") return;
-    expect(execution.evidence).toEqual({});
+    expect(execution.showActions).toEqual([]);
     expect(execution.state.flowSourceValues["source_selected"]).not.toEqual({ ref: CANDIDATE });
   });
 
@@ -655,12 +635,131 @@ describe("applyPlayerCue action routing", () => {
     if (execution.kind !== "applied") return;
     // Neither the value before the tap nor the one the Cue ends with: the
     // adjust reads the Candidate the Action before it selected.
-    expect(execution.evidence).toEqual({
-      action_confirm_yes: {
+    expect(execution.showActions.map(({ evidence }) => evidence)).toEqual([
+      {
         sourceValues: { source_selected: { ref: other } },
         cueParameters: { candidate: { ref: other } },
       },
-    });
+    ]);
     expect(execution.state.flowSourceValues["source_selected"]).not.toEqual({ ref: other });
+  });
+});
+
+describe("pending Show writes (#886)", () => {
+  const adjustVotes = {
+    id: "action_confirm_yes",
+    cueId: "cue_confirm",
+    kind: "update" as const,
+    target: { sourceId: "source_selected", fieldPath: ["votes"] },
+    operation: {
+      kind: "adjust" as const,
+      operand: { kind: "literal" as const, value: { kind: "number" as const, value: 1 } },
+    },
+  };
+  const thanks = { kind: "scene", sceneId: "scene_thanks" } as const;
+
+  /** The Show scope a snapshot carries when the Candidate has `count` votes. */
+  function snapshotWithVotes(count: number) {
+    const base = showState as unknown as {
+      sourceValues: Record<string, unknown>;
+      structuredValues: Record<string, { fields?: Record<string, unknown> }>;
+    };
+    return {
+      ...base,
+      structuredValues: {
+        ...base.structuredValues,
+        [CANDIDATE]: { ...base.structuredValues[CANDIDATE], fields: { votes: count } },
+      },
+    } as never;
+  }
+
+  function votes(show: { structuredValues: Record<string, unknown> }): unknown {
+    const record = show.structuredValues[CANDIDATE] as { fields: { votes: unknown } };
+    return record.fields.votes;
+  }
+
+  function vote(eventId: string): PendingShowEvent {
+    const execution = applyPlayerCue(
+      votedState,
+      routingGraph,
+      [adjustVotes],
+      "scene_confirm",
+      eventId,
+      {},
+      showState,
+    );
+    if (execution.kind !== "applied") throw new Error("expected the vote to apply");
+    return { eventId, sceneId: "scene_confirm", actions: execution.showActions };
+  }
+
+  it("shows a tap's Show write before the server has answered", () => {
+    expect(votes(displayedShowState(routingGraph, showState, 4, [vote("event_1")]))).toBe(4);
+  });
+
+  it("replays a pending write over a newer snapshot, so other votes never hide it", () => {
+    // Three other phones voted while this one's vote was in flight.
+    const pending = [vote("event_1")];
+    expect(votes(displayedShowState(routingGraph, snapshotWithVotes(6), 5, pending))).toBe(7);
+  });
+
+  it("replays pending writes in tap order", () => {
+    const pending = [vote("event_1"), vote("event_2")];
+    expect(votes(displayedShowState(routingGraph, snapshotWithVotes(6), 5, pending))).toBe(8);
+  });
+
+  it("drops a write once a snapshot reaches the sequence it was acknowledged at", () => {
+    const pending = resolvePendingShowEvent([vote("event_1")], "event_1", {
+      kind: "acknowledged",
+      stateSequence: 6,
+    });
+    // Below the acknowledged sequence the snapshot does not hold it yet.
+    expect(settlePendingShowEvents(pending, 5)).toBe(pending);
+    expect(votes(displayedShowState(routingGraph, snapshotWithVotes(6), 5, pending))).toBe(7);
+    // At it, the snapshot already counts the vote: counting it again would be two.
+    expect(settlePendingShowEvents(pending, 6)).toEqual([]);
+    expect(votes(displayedShowState(routingGraph, snapshotWithVotes(7), 6, pending))).toBe(7);
+  });
+
+  it("keeps an unacknowledged write through any snapshot", () => {
+    const pending = [vote("event_1")];
+    expect(settlePendingShowEvents(pending, 1_000)).toBe(pending);
+  });
+
+  it.each(["dropped", "rolled-back"] as const)("drops a write the server %s", (kind) => {
+    const pending = resolvePendingShowEvent([vote("event_1"), vote("event_2")], "event_1", {
+      kind,
+    });
+    expect(pending.map(({ eventId }) => eventId)).toEqual(["event_2"]);
+    expect(votes(displayedShowState(routingGraph, showState, 4, pending))).toBe(4);
+  });
+
+  describe("rolling back a failed Cue", () => {
+    const before = votedState;
+    const after: PlayerRunState = {
+      ...votedState,
+      navigation: thanks,
+      flowSourceValues: { source_selected: null },
+    };
+
+    it("restores Instance state and navigation while they are still what the Cue left", () => {
+      const current = { ...after, publishedGraphVersion: 2 };
+      expect(rollBackPlayerCue(current, before, after)).toEqual({
+        ...current,
+        navigation: before.navigation,
+        flowSourceValues: before.flowSourceValues,
+        flowStructuredValues: before.flowStructuredValues,
+      });
+    });
+
+    it("leaves Instance state alone once a later Cue has changed it", () => {
+      const later: PlayerRunState = {
+        ...after,
+        flowSourceValues: { source_selected: { ref: "xcand567" } } as never,
+      };
+      expect(rollBackPlayerCue(later, before, after)).toBeNull();
+      expect(
+        rollBackPlayerCue({ ...after, navigation: { kind: "not-ready" } }, before, after),
+      ).toBeNull();
+    });
   });
 });

@@ -3,8 +3,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ListIcon,
-  PlusIcon,
-  SearchInput,
   Select,
   SelectContent,
   SelectItem,
@@ -25,14 +23,37 @@ import {
 } from "@mechane/domain/structured-values";
 import { useEffect, useMemo, useState } from "react";
 
-import { pluralize } from "../../../../../utils/pluralize";
 import { previewValue } from "../../inspector/source-values-helpers";
+import { ArrayEditorToolbar } from "./ArrayEditorToolbar";
 import { ArrayTable } from "./ArrayTable";
+import { PrimitiveArrayEditor } from "./PrimitiveArrayEditor";
 import { RecordDetails } from "./RecordDetails";
 import type { ArrayValueEditorProps, ShapeRecord, ViewMode } from "./types";
 import { recordIdentifier } from "./types";
 
-export function ArrayValueEditor({
+export function ArrayValueEditor(props: ArrayValueEditorProps) {
+  const itemType = props.type.of;
+  if (typeof itemType === "string") {
+    return (
+      <PrimitiveArrayEditor
+        itemType={itemType}
+        value={props.value}
+        path={props.path}
+        readOnly={props.readOnly}
+        columnSizes={props.columnSizes}
+        onColumnSizesChange={props.onColumnSizesChange}
+        imageAssets={props.imageAssets}
+        onImageUpload={props.onImageUpload}
+        onChange={props.onChange}
+        onImmediateChange={props.onImmediateChange}
+        onValidityChange={props.onValidityChange}
+      />
+    );
+  }
+  return <ShapeArrayEditor {...props} />;
+}
+
+function ShapeArrayEditor({
   type,
   value,
   shapes,
@@ -199,24 +220,29 @@ export function ArrayValueEditor({
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       <ArrayEditorToolbar
-        recordsCount={records.length}
-        shapeName={shape.name}
+        noun="record"
+        count={records.length}
         readOnly={readOnly}
         query={query}
         setQuery={setQuery}
-        viewMode={viewMode}
-        setViewMode={changeViewMode}
-        addRecord={addRecord}
-        recordIndex={activeIndex}
-        recordId={activeRecordId}
-        recordLabel={activeRecord ? recordIdentifier(activeRecord, shape.fields, imageAssets) : ""}
-        onRecordSelect={openRecord}
-        records={records}
-        fields={shape.fields}
-        imageAssets={imageAssets}
-        onPrevious={() => selectAdjacentRecord(-1)}
-        onNext={() => selectAdjacentRecord(1)}
-      />
+        onAdd={addRecord}
+      >
+        <RecordViewControls
+          viewMode={viewMode}
+          setViewMode={changeViewMode}
+          recordIndex={activeIndex}
+          recordId={activeRecordId}
+          recordLabel={
+            activeRecord ? recordIdentifier(activeRecord, shape.fields, imageAssets) : ""
+          }
+          onRecordSelect={openRecord}
+          records={records}
+          fields={shape.fields}
+          imageAssets={imageAssets}
+          onPrevious={() => selectAdjacentRecord(-1)}
+          onNext={() => selectAdjacentRecord(1)}
+        />
+      </ArrayEditorToolbar>
       {viewMode === "table" ? (
         <ArrayTable
           model={{
@@ -256,15 +282,9 @@ export function ArrayValueEditor({
   );
 }
 
-type ArrayEditorToolbarProps = {
-  recordsCount: number;
-  shapeName: string;
-  readOnly: boolean;
-  query: string;
-  setQuery(value: string): void;
+type RecordViewControlsProps = {
   viewMode: ViewMode;
   setViewMode(value: ViewMode): void;
-  addRecord(): void;
   recordIndex: number;
   recordLabel: string;
   recordId: string | null;
@@ -276,14 +296,9 @@ type ArrayEditorToolbarProps = {
   onNext(): void;
 };
 
-function ArrayEditorToolbar({
-  recordsCount,
-  readOnly,
-  query,
-  setQuery,
+function RecordViewControls({
   viewMode,
   setViewMode,
-  addRecord,
   recordLabel,
   fields,
   imageAssets,
@@ -293,75 +308,62 @@ function ArrayEditorToolbar({
   onRecordSelect,
   onPrevious,
   onNext,
-}: ArrayEditorToolbarProps) {
+}: RecordViewControlsProps) {
   return (
     <>
-      <div className="flex flex-col px-4 gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <SearchInput
-          className="h-8! max-h-8"
-          placeholder={`Filter ${pluralize("record", recordsCount)}`}
-          value={query}
-          onValueChange={setQuery}
-        />
-        <div className="flex flex-wrap items-center gap-2">
-          {viewMode === "record" ? (
-            <>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                aria-label="Previous record"
-                disabled={recordIndex <= 0}
-                onClick={onPrevious}
-              >
-                <ChevronLeft />
-              </Button>
-              <Select
-                value={recordId ?? ""}
-                onValueChange={(value) => {
-                  if (value) onRecordSelect(value);
-                }}
-              >
-                <SelectTrigger className="w-44" aria-label="Choose record">
-                  <SelectValue placeholder="Choose record">{recordLabel}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {records.map((record, index) => (
-                    <SelectItem key={record.id} value={record.id}>
-                      {String(index + 1).padStart(2, "0")}{" "}
-                      {recordIdentifier(record, fields, imageAssets)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                variant="outline"
-                size="icon-sm"
-                aria-label="Next record"
-                disabled={recordIndex < 0 || recordIndex >= records.length - 1}
-                onClick={onNext}
-              >
-                <ChevronRight />
-              </Button>
-            </>
-          ) : null}
-          <Tabs
-            value={viewMode}
-            onValueChange={(value) => setViewMode(value === "record" ? "record" : "table")}
+      {viewMode === "record" ? (
+        <>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            aria-label="Previous record"
+            disabled={recordIndex <= 0}
+            onClick={onPrevious}
           >
-            <TabsList className="h-8">
-              <TabsTrigger value="table">
-                <Table2Icon /> Table
-              </TabsTrigger>
-              <TabsTrigger value="record">
-                <ListIcon /> Record
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <Button size="sm" onClick={addRecord} disabled={readOnly}>
-            <PlusIcon /> Add record
+            <ChevronLeft />
           </Button>
-        </div>
-      </div>
+          <Select
+            value={recordId ?? ""}
+            onValueChange={(value) => {
+              if (value) onRecordSelect(value);
+            }}
+          >
+            <SelectTrigger className="w-44" aria-label="Choose record">
+              <SelectValue placeholder="Choose record">{recordLabel}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {records.map((record, index) => (
+                <SelectItem key={record.id} value={record.id}>
+                  {String(index + 1).padStart(2, "0")}{" "}
+                  {recordIdentifier(record, fields, imageAssets)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            aria-label="Next record"
+            disabled={recordIndex < 0 || recordIndex >= records.length - 1}
+            onClick={onNext}
+          >
+            <ChevronRight />
+          </Button>
+        </>
+      ) : null}
+      <Tabs
+        value={viewMode}
+        onValueChange={(value) => setViewMode(value === "record" ? "record" : "table")}
+      >
+        <TabsList className="h-8">
+          <TabsTrigger value="table">
+            <Table2Icon /> Table
+          </TabsTrigger>
+          <TabsTrigger value="record">
+            <ListIcon /> Record
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
     </>
   );
 }

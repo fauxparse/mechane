@@ -239,6 +239,7 @@ export const SubmitPlayerEventMutation = graphql(`
         changed
         duplicateResultingSceneId: resultingSceneId
         duplicateReason: reason
+        duplicateStateSequence: stateSequence
       }
       ... on PlayerEventIgnored {
         eventId

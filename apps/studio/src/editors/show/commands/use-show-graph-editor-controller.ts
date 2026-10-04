@@ -86,6 +86,7 @@ export function useShowGraphEditorController({
   onEdit,
   initialViewport,
   initialSourceValue,
+  onOpenScene,
   ref,
 }: ShowGraphEditorProps): ShowGraphEditorController {
   const editing = useGraphEditing(graph, onEdit);
@@ -348,6 +349,7 @@ export function useShowGraphEditorController({
       formulaEditorNodeId,
       openFormulaEditor: setFormulaEditorNodeId,
       closeFormulaEditor: () => setFormulaEditorNodeId(null),
+      openSceneEditor: onOpenScene ?? (() => {}),
       toggleCollapse,
       resizeFlow,
     }),
@@ -357,6 +359,7 @@ export function useShowGraphEditorController({
       editing.renameTransformerPort,
       formulaEditorNodeId,
       gestures,
+      onOpenScene,
       resizeFlow,
       toggleCollapse,
       variables.renameVariable,

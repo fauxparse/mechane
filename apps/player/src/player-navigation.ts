@@ -3,17 +3,27 @@ import type {
   BlockInstancePathSegment,
   RuntimeEventObservation,
 } from "@mechane/domain/interactions";
-import { composeInstanceView } from "@mechane/domain/structured-values";
-import { resolvePlayerEvent } from "./player-event-dispatch";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { PlayerSession, PlayerState } from "./api";
+import { composeInstanceView, type RunState } from "@mechane/domain/structured-values";
+import {
+  resolvePlayerEvent,
+  showWriteOutcome,
+  submitPlayerEventWithRetry,
+} from "./player-event-dispatch";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { PlayerEventInput, PlayerSession, PlayerState } from "./api";
 import {
   applyPlayerCue,
   clearPlayerDeviceState,
+  displayedShowState,
   initializePlayerInstanceState,
   openPlayerStateStore,
   playerRunScope,
   reconcilePlayerRunState,
+  resolvePendingShowEvent,
+  rollBackPlayerCue,
+  settlePendingShowEvents,
+  type PendingShowEvent,
+  type ShowWriteOutcome,
   type PlayerDriver,
   type PlayerRunState,
   type PlayerStateStore,
@@ -59,6 +69,9 @@ export function usePlayerNavigation(
   onTakeOver: () => void;
 } {
   const [navigation, setNavigation] = useState<NavigationState>({ status: "inactive" });
+  // This connection's Show writes the latest snapshot does not hold yet. In
+  // memory only: a reload starts from the server's state (#886).
+  const [pending, setPending] = useState<readonly PendingShowEvent[]>([]);
   const session = baseState.status === "ready" ? baseState.session : null;
   // What the store depends on. A run-state refresh replaces the session's Run
   // values and keeps these, so it never reopens the store.
@@ -66,8 +79,26 @@ export function usePlayerNavigation(
   const flow = session?.flow ?? null;
   const graph = session?.graph ?? null;
   const graphVersion = session?.graphVersion ?? null;
+  const run = session?.run ?? null;
+
+  // The latest snapshot with this connection's pending writes replayed over
+  // it, recomputed whenever either changes.
+  const showState = useMemo(
+    (): RunState =>
+      run && graph
+        ? displayedShowState(
+            graph,
+            { sourceValues: run.sourceValues, structuredValues: run.structuredValues },
+            run.stateSequence,
+            pending,
+          )
+        : { sourceValues: {}, structuredValues: {} },
+    [graph, run, pending],
+  );
 
   useEffect(() => {
+    // Writes predicted against another store or graph are not this one's.
+    setPending([]);
     if (!graph || graphVersion === null) {
       setNavigation({ status: "inactive" });
       return;
@@ -134,15 +165,14 @@ export function usePlayerNavigation(
       default:
         return {
           status: navigation.status,
-          session: sessionForState(session, navigation.instance),
+          session: sessionForState(session, navigation.instance, showState),
           store: navigation.store,
         };
     }
-  }, [navigation, session]);
+  }, [navigation, session, showState]);
 
   // One local resolver for both kinds: a keypress differs only in what it
   // observes, never in how the resolved plan is applied.
-  const retryEventId = useRef<string | null>(null);
   const navigateFor = useCallback(
     (observe: (sceneId: string, canvasId: string) => RuntimeEventObservation): boolean => {
       if (
@@ -163,17 +193,10 @@ export function usePlayerNavigation(
       if (plan.kind !== "planned") return false;
       const currentState = store.read();
       if (!currentState) return false;
-      // The base session, never the runtime one: `sessionForState` has already
-      // composed the Instance layer into that, and composing it twice would
-      // hide a Source the current Instance state no longer has.
-      const baseRun = baseState.status === "ready" ? baseState.session.run : null;
-      const showState = {
-        sourceValues: baseRun?.sourceValues ?? {},
-        structuredValues: baseRun?.structuredValues ?? {},
-      };
-      // Show scope and Instance scope composed as ADR-0018 requires, so a
-      // Parameter relayed out of a Slot carries the reference the Player
-      // rendered rather than a copy of the value.
+      // Show scope as displayed, pending writes included, so a second tap
+      // reads what the first one wrote. Composed with Instance scope as
+      // ADR-0018 requires, so a Parameter relayed out of a Slot carries the
+      // reference the Player rendered rather than a copy of the value.
       const parameters = resolveCueParameters({
         graph: runtime.session.graph,
         canvas: runtime.session.canvas,
@@ -192,7 +215,7 @@ export function usePlayerNavigation(
           action.kind === "navigate" &&
           runtime.session.flow?.scenes.some(({ scene }) => scene.id === action.targetSceneId),
       );
-      const eventId = retryEventId.current ?? crypto.randomUUID();
+      const eventId = crypto.randomUUID();
       const execution = applyPlayerCue(
         currentState,
         runtime.session.graph,
@@ -219,13 +242,13 @@ export function usePlayerNavigation(
         return false;
       }
       setNavigation(settled(store, nextState));
-      const reachesShow = Object.keys(execution.evidence).length > 0;
-      if (reachesShow) retryEventId.current = eventId;
+      const submitEvent = baseState.submitEvent;
+      if (!submitEvent) return true;
       // Built field by field rather than spread from the observation: the
       // observation carries `canvasId`, which `PlayerEventInput` does not
       // declare, and an undeclared input field makes the server reject the
       // whole argument — reported, unhelpfully, as a null `input`.
-      const submission = baseState.submitEvent?.({
+      const input: PlayerEventInput = {
         eventId,
         publishedGraphVersion: runtime.session.graphVersion,
         sceneId: plan.sceneId,
@@ -234,26 +257,37 @@ export function usePlayerNavigation(
         ...(observation.eventKind === "keypress"
           ? { eventKind: "keypress" as const, params: observation.params }
           : { eventKind: "tap" as const }),
-        ...(reachesShow ? { evidence: execution.evidence } : {}),
-      });
-      if (submission && reachesShow) {
-        void submission
-          .then((result) => {
-            if (result.kind !== "failed" && result.kind !== "rejected") {
-              retryEventId.current = null;
-              return;
-            }
-            if (store.replace(currentState)) setNavigation(settled(store, currentState));
-          })
-          .catch(() => {
-            if (store.replace(currentState)) setNavigation(settled(store, currentState));
-          });
-      } else {
-        void submission?.catch(() => undefined);
+      };
+      if (execution.showActions.length === 0) {
+        void submitEvent(input).catch(() => undefined);
+        return true;
       }
+
+      // The Show write shows at once, ahead of the server (#886).
+      const heldSequence = runtime.session.run?.stateSequence ?? -1;
+      setPending((current) => [
+        ...settlePendingShowEvents(current, heldSequence),
+        { eventId, sceneId: plan.sceneId, actions: execution.showActions },
+      ]);
+      const settle = (outcome: ShowWriteOutcome) => {
+        setPending((current) => resolvePendingShowEvent(current, eventId, outcome));
+        if (outcome.kind !== "rolled-back") return;
+        const latest = store.read();
+        const restored = latest && rollBackPlayerCue(latest, currentState, nextState);
+        if (restored && store.replace(restored)) setNavigation(settled(store, restored));
+      };
+      const evidence = Object.fromEntries(
+        execution.showActions.map(({ action, evidence }) => [action.id, evidence]),
+      );
+      // Retries keep the Event id, so a lost acknowledgement counts once, and
+      // nothing rolls back while one is outstanding (#628).
+      void submitPlayerEventWithRetry(submitEvent, { ...input, evidence }).then(
+        (result) => settle(showWriteOutcome(result)),
+        () => settle({ kind: "rolled-back" }),
+      );
       return true;
     },
-    [baseState, navigation, runtime],
+    [baseState, navigation, runtime, showState],
   );
 
   const onElementTap = useCallback(
@@ -301,23 +335,21 @@ export function usePlayerNavigation(
  * empty until they are composed, which is what left the confirmation Screen
  * with no Candidate on it.
  */
-function sessionForState(session: PlayerSession, state: PlayerRunState): PlayerSession {
+function sessionForState(
+  session: PlayerSession,
+  state: PlayerRunState,
+  showState: RunState,
+): PlayerSession {
   const navigation = state.navigation;
   const composed = session.run
     ? {
         ...session,
         run: {
           ...session.run,
-          ...composeInstanceView(
-            {
-              sourceValues: session.run.sourceValues,
-              structuredValues: session.run.structuredValues,
-            },
-            {
-              sourceValues: state.flowSourceValues,
-              structuredValues: state.flowStructuredValues,
-            },
-          ),
+          ...composeInstanceView(showState, {
+            sourceValues: state.flowSourceValues,
+            structuredValues: state.flowStructuredValues,
+          }),
           shuffleSeeds: state.shuffleSeeds ?? {},
         },
       }
