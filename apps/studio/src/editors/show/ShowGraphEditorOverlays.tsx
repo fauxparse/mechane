@@ -11,7 +11,6 @@ import type { DeletionScope } from "@mechane/commands";
 import type { Dispatch, SetStateAction } from "react";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 
-import type { ShowGraphValueLocation } from "./ShowGraphEditor";
 import { EditorSlot } from "../../components/EditorLayout/editor-slots";
 import { CommandPalette } from "./commands/CommandPalette";
 import type { PaletteCommand } from "./commands/palette-commands";
@@ -21,6 +20,7 @@ import type { GraphInspectorEditing } from "./commands/use-graph-editing";
 import type { SourceImageAsset } from "./graph/inspector/source-value-types";
 import { FormulaDialog } from "./graph/formula/FormulaDialog";
 import { useNodeInteraction } from "./graph/node-interaction";
+import { NodeSourceValueDialog } from "./graph/SourceValueDialog/NodeSourceValueDialog";
 
 export interface ShowGraphEditorOverlaysProps {
   selectedNodes: GraphNode[];
@@ -28,8 +28,6 @@ export interface ShowGraphEditorOverlaysProps {
   inspector: GraphInspectorEditing;
   imageAssets?: readonly SourceImageAsset[];
   onImageUpload?: (props: ImageInputOnUploadProps) => void;
-  initialSourceValue?: ShowGraphValueLocation;
-  onSourceValueChange?: (location: ShowGraphValueLocation | null) => void;
   runActive?: boolean;
   reshufflingTransformerId?: string | null;
   onReshuffleTransformer?(transformerId: string, deviceId?: string): void;
@@ -48,8 +46,6 @@ export function ShowGraphEditorOverlays({
   inspector,
   imageAssets,
   onImageUpload,
-  initialSourceValue,
-  onSourceValueChange,
   runActive,
   reshufflingTransformerId,
   onReshuffleTransformer,
@@ -66,12 +62,9 @@ export function ShowGraphEditorOverlays({
       <EditorSlot name="right">
         <GraphInspector
           imageAssets={imageAssets}
-          onImageUpload={onImageUpload}
           selected={selectedNodes}
           selectedEdges={selectedEdges}
           editing={inspector}
-          initialSourceValue={initialSourceValue}
-          onSourceValueChange={onSourceValueChange}
           runActive={runActive}
           reshufflingTransformerId={reshufflingTransformerId}
           onReshuffleTransformer={onReshuffleTransformer}
@@ -91,6 +84,11 @@ export function ShowGraphEditorOverlays({
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} commands={paletteCommands} />
 
       <TransformerFormulaDialog inspector={inspector} />
+      <NodeSourceValueDialog
+        editing={inspector}
+        imageAssets={imageAssets}
+        onImageUpload={onImageUpload}
+      />
 
       <AlertDialog
         open={pendingDelete !== null}

@@ -1,4 +1,3 @@
-import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import {
   CableIcon,
   cn,
@@ -11,7 +10,6 @@ import {
 import type { EdgeKind, GraphEdge, GraphNode } from "@mechane/domain/graph";
 import type { GraphInspectorEditing } from "@show-editor/commands/use-graph-editing";
 import { pluralize } from "../../../../utils/pluralize";
-import type { ShowGraphValueLocation } from "../../ShowGraphEditor";
 import { NODE_KIND_META } from "../node-kinds";
 import { NodeIcon } from "../nodes/NodeIcon";
 import { SingleEdge } from "./SingleEdge";
@@ -28,9 +26,6 @@ export interface GraphInspectorProps {
    */
   editing: GraphInspectorEditing;
   imageAssets?: readonly SourceImageAsset[];
-  onImageUpload?: (props: ImageInputOnUploadProps) => void;
-  initialSourceValue?: ShowGraphValueLocation;
-  onSourceValueChange?: (location: ShowGraphValueLocation | null) => void;
   runActive?: boolean;
   reshufflingTransformerId?: string | null;
   onReshuffleTransformer?(transformerId: string, deviceId?: string): void;
@@ -169,9 +164,6 @@ export function GraphInspector({
   selectedEdges,
   editing,
   imageAssets,
-  onImageUpload,
-  initialSourceValue,
-  onSourceValueChange,
   runActive,
   reshufflingTransformerId,
   onReshuffleTransformer,
@@ -197,11 +189,8 @@ export function GraphInspector({
             ) : (
               <SingleNode
                 imageAssets={imageAssets}
-                onImageUpload={onImageUpload}
                 node={node}
                 editing={editing}
-                initialSourceValue={initialSourceValue}
-                onSourceValueChange={onSourceValueChange}
                 runActive={runActive}
                 reshufflingTransformerId={reshufflingTransformerId}
                 onReshuffleTransformer={onReshuffleTransformer}

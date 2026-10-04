@@ -10,6 +10,7 @@
 import type { ConnectionTargets } from "@mechane/domain/connect";
 import { createContext, useContext } from "react";
 
+import type { ShowGraphValueLocation } from "../ShowGraphEditor";
 import type { FlowResizeParams } from "./graph-to-flow";
 
 export interface NodeInteraction {
@@ -46,6 +47,15 @@ export interface NodeInteraction {
    */
   openFormulaEditor(nodeId: string): void;
   closeFormulaEditor(): void;
+  /** The Source value whose editor dialog is open, if any. */
+  sourceValueEditor: ShowGraphValueLocation | null;
+  /**
+   * Opens that dialog. Like the Formula editor, it lives here because both the
+   * Source node's Edit button and the inspector's Source values section open
+   * the same one dialog. The route adapter mirrors it into the URL.
+   */
+  openSourceValueEditor(location: ShowGraphValueLocation): void;
+  closeSourceValueEditor(): void;
   /** Opens a Scene in the Canvas Editor. The route adapter owns navigation. */
   openSceneEditor(sceneId: string): void;
   /** Toggles a Flow's local collapsed view state; not an edit command. */
@@ -73,6 +83,9 @@ const IDLE: NodeInteraction = {
   formulaEditorNodeId: null,
   openFormulaEditor: () => {},
   closeFormulaEditor: () => {},
+  sourceValueEditor: null,
+  openSourceValueEditor: () => {},
+  closeSourceValueEditor: () => {},
   openSceneEditor: () => {},
   toggleCollapse: () => {},
   resizeFlow: () => {},
