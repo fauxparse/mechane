@@ -711,6 +711,12 @@ export async function dispatchPlayerEvent(
           .from(devices)
           .where(and(eq(devices.pairingCode, normalizedCode), isNull(devices.retiredAt)));
         if (!device) return null;
+        // Show → Run → Instance is also the publication and owner Current-write lock order.
+        await tx
+          .select({ id: shows.id })
+          .from(shows)
+          .where(eq(shows.id, device.showId))
+          .for("update");
         if (device.perConnection) return dispatchPerConnectionEvent(tx, device, input);
 
         const [run] = await tx
