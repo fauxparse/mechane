@@ -282,3 +282,65 @@ describe("Event-derived Structured Value identity", () => {
     }
   });
 });
+
+describe("deep clipboard-backed structured values", () => {
+  it("materializes and expands a finite nested array without a call-stack depth limit", () => {
+    const depth = 6000;
+    let type: Type = "number";
+    let input: unknown = 12;
+    for (let index = 0; index < depth; index += 1) {
+      type = { kind: "array", of: type };
+      input = [input];
+    }
+    const template = normalizeStructuredValueTemplate(input, type);
+    const stored = materializeStructuredValue(template, type);
+    assertValidRunState(
+      { sourceValues: { nested: stored.value }, structuredValues: stored.structuredValues },
+      {
+        nodes: [
+          {
+            id: "nested",
+            kind: "source",
+            name: "Nested",
+            parentId: null,
+            position: { x: 0, y: 0 },
+            type,
+          },
+        ],
+        edges: [],
+      },
+    );
+    let expanded = resolveRuntimeValue(stored.value, stored.structuredValues);
+    for (let index = 0; index < depth; index += 1) {
+      if (!Array.isArray(expanded) || expanded.length !== 1)
+        throw new Error("Lost nested array content.");
+      expanded = expanded[0];
+    }
+    expect(expanded).toBe(12);
+  });
+
+  it("keeps prototype-looking Field IDs as own data in stored and expanded values", () => {
+    const shape: Shape = {
+      id: "prototype-fields",
+      name: "Fields",
+      fields: [
+        {
+          id: "__proto__",
+          name: "__proto__",
+          type: "text",
+          required: true,
+          defaultValue: "own value",
+        },
+      ],
+    };
+    const type: Type = { kind: "shape", shapeId: shape.id };
+    const stored = materializeStructuredValue(
+      normalizeStructuredValueTemplate({}, type, [shape]),
+      type,
+      [shape],
+    );
+    const expanded = resolveRuntimeValue(stored.value, stored.structuredValues);
+    expect(Object.getPrototypeOf(expanded)).toBe(Object.prototype);
+    expect(Object.getOwnPropertyDescriptor(expanded, "__proto__")?.value).toBe("own value");
+  });
+});

@@ -188,61 +188,82 @@ export function normalizeStructuredValueTemplate(
   shapes: readonly Shape[] = [],
   deriveNodeId?: (path: readonly string[]) => StructuredValueId,
 ): StructuredValueTemplate {
-  return normalizeTemplateNode(value, type, shapes, deriveNodeId, []);
-}
-
-function normalizeTemplateNode(
-  value: unknown,
-  type: Type,
-  shapes: readonly Shape[],
-  deriveNodeId: ((path: readonly string[]) => StructuredValueId) | undefined,
-  path: readonly string[],
-): StructuredValueTemplate {
-  if (value === null) return null;
-  if (typeof type === "string") return value as SimpleValue;
-  if (type.kind === "array") {
-    const existing = isArrayStructuredValueTemplate(value) ? value : null;
-    const items = existing?.items ?? (Array.isArray(value) ? value : []);
-    return {
-      id: deriveNodeId?.(path) ?? existing?.id ?? generateId("structuredValue"),
-      kind: "array",
-      items: items.map((item, index) =>
-        normalizeTemplateNode(
-          item,
-          type.of,
-          shapes,
-          deriveNodeId,
-          deriveNodeId ? [...path, String(index)] : path,
-        ),
-      ),
-    };
-  }
-
-  const existing = isShapeStructuredValueTemplate(value) ? value : null;
-  const raw = existing?.fields ?? object(value) ?? {};
-  const shape = shapes.find((candidate) => candidate.id === type.shapeId);
-  const fields: Record<string, StructuredValueTemplate> = {};
-  if (shape) {
-    for (const field of shape.fields) {
-      const rawValue = Object.prototype.hasOwnProperty.call(raw, field.id)
+  const byId = new Map(shapes.map((shape) => [shape.id, shape]));
+  let result: StructuredValueTemplate = null;
+  const pending: Array<{
+    value: unknown;
+    type: Type;
+    path: readonly string[];
+    emit: (value: StructuredValueTemplate) => void;
+  }> = [
+    {
+      value,
+      type,
+      path: [],
+      emit: (value) => {
+        result = value;
+      },
+    },
+  ];
+  while (pending.length > 0) {
+    const slot = pending.pop()!;
+    if (slot.value === null) {
+      slot.emit(null);
+      continue;
+    }
+    if (typeof slot.type === "string") {
+      slot.emit(slot.value as SimpleValue);
+      continue;
+    }
+    if (slot.type.kind === "array") {
+      const existing = isArrayStructuredValueTemplate(slot.value) ? slot.value : null;
+      const input = existing?.items ?? (Array.isArray(slot.value) ? slot.value : []);
+      const items: StructuredValueTemplate[] = [];
+      slot.emit({
+        id: deriveNodeId?.(slot.path) ?? existing?.id ?? generateId("structuredValue"),
+        kind: "array",
+        items,
+      });
+      for (let index = input.length - 1; index >= 0; index -= 1) {
+        pending.push({
+          value: input[index],
+          type: slot.type.of,
+          path: deriveNodeId ? [...slot.path, String(index)] : slot.path,
+          emit: (value) => {
+            items[index] = value;
+          },
+        });
+      }
+      continue;
+    }
+    const existing = isShapeStructuredValueTemplate(slot.value) ? slot.value : null;
+    const raw = existing?.fields ?? object(slot.value) ?? {};
+    const fields: Record<string, StructuredValueTemplate> = Object.create(null);
+    slot.emit({
+      id: deriveNodeId?.(slot.path) ?? existing?.id ?? generateId("structuredValue"),
+      kind: "shape",
+      fields,
+    });
+    const shape = byId.get(slot.type.shapeId);
+    if (!shape) continue;
+    for (let index = shape.fields.length - 1; index >= 0; index -= 1) {
+      const field = shape.fields[index]!;
+      const input = Object.hasOwn(raw, field.id)
         ? raw[field.id]
-        : Object.prototype.hasOwnProperty.call(raw, field.name)
+        : Object.hasOwn(raw, field.name)
           ? raw[field.name]
           : field.defaultValue;
-      fields[field.id] = normalizeTemplateNode(
-        rawValue,
-        field.type,
-        shapes,
-        deriveNodeId,
-        deriveNodeId ? [...path, field.id] : path,
-      );
+      pending.push({
+        value: input,
+        type: field.type,
+        path: deriveNodeId ? [...slot.path, field.id] : slot.path,
+        emit: (value) => {
+          fields[field.id] = value;
+        },
+      });
     }
   }
-  return {
-    id: deriveNodeId?.(path) ?? existing?.id ?? generateId("structuredValue"),
-    kind: "shape",
-    fields,
-  };
+  return result;
 }
 
 export function materializeStructuredValue(
@@ -305,16 +326,49 @@ export function preserveStructuredValueTemplateIds(
 }
 
 export function resolveStructuredValueTemplate(value: StructuredValueTemplate): unknown {
-  if (isArrayStructuredValueTemplate(value)) return value.items.map(resolveStructuredValueTemplate);
-  if (isShapeStructuredValueTemplate(value)) {
-    return Object.fromEntries(
-      Object.entries(value.fields).map(([fieldId, fieldValue]) => [
-        fieldId,
-        resolveStructuredValueTemplate(fieldValue),
-      ]),
-    );
+  let result: unknown;
+  const pending: Array<{ value: StructuredValueTemplate; emit: (value: unknown) => void }> = [
+    {
+      value,
+      emit: (value) => {
+        result = value;
+      },
+    },
+  ];
+  while (pending.length > 0) {
+    const slot = pending.pop()!;
+    if (isArrayStructuredValueTemplate(slot.value)) {
+      const items: unknown[] = [];
+      slot.emit(items);
+      for (let index = slot.value.items.length - 1; index >= 0; index -= 1) {
+        pending.push({
+          value: slot.value.items[index]!,
+          emit: (value) => {
+            items[index] = value;
+          },
+        });
+      }
+    } else if (isShapeStructuredValueTemplate(slot.value)) {
+      const fields: Record<string, unknown> = {};
+      slot.emit(fields);
+      const entries = Object.entries(slot.value.fields);
+      for (let index = entries.length - 1; index >= 0; index -= 1) {
+        const [fieldId, value] = entries[index]!;
+        pending.push({
+          value,
+          emit: (value) => {
+            Object.defineProperty(fields, fieldId, {
+              value,
+              enumerable: true,
+              configurable: true,
+              writable: true,
+            });
+          },
+        });
+      }
+    } else slot.emit(slot.value);
   }
-  return value;
+  return result;
 }
 
 function materialize(
@@ -323,41 +377,95 @@ function materialize(
   shapes: readonly Shape[],
   records: StructuredValues,
 ): RuntimeValue {
-  if (template === null) return null;
-  if (typeof type === "string") return template as SimpleValue;
-  const normalized = normalizeStructuredValueTemplate(template, type, shapes);
-  if (type.kind === "array") {
-    if (!isArrayStructuredValueTemplate(normalized)) {
-      throw new InvalidStructuredValueError("Expected an array Structured Value Template.");
-    }
-    const record: ArrayStructuredValueRecord = {
-      id: normalized.id,
-      kind: "array",
-      type,
-      items: normalized.items.map((item) => materialize(item, type.of, shapes, records)),
-    };
-    insertRecord(records, record);
-    return { ref: record.id };
-  }
-  if (!isShapeStructuredValueTemplate(normalized)) {
-    throw new InvalidStructuredValueError("Expected a Shape Structured Value Template.");
-  }
-  const shape = shapes.find((candidate) => candidate.id === type.shapeId);
-  if (!shape) throw new InvalidStructuredValueError(`Unknown Shape "${type.shapeId}".`);
-  const fields = Object.fromEntries(
-    shape.fields.map((field) => [
-      field.id,
-      materialize(normalized.fields[field.id] ?? null, field.type, shapes, records),
-    ]),
-  );
-  const record: ShapeStructuredValueRecord = {
-    id: normalized.id,
-    kind: "shape",
-    type,
-    fields,
+  type Slot = {
+    kind: "slot";
+    template: StructuredValueTemplate;
+    type: Type;
+    emit: (value: RuntimeValue) => void;
   };
-  insertRecord(records, record);
-  return { ref: record.id };
+  const byId = new Map(shapes.map((shape) => [shape.id, shape]));
+  let result: RuntimeValue = null;
+  const pending: Array<Slot | { kind: "record"; record: StructuredValueRecord }> = [
+    {
+      kind: "slot",
+      template: normalizeStructuredValueTemplate(template, type, shapes),
+      type,
+      emit: (value) => {
+        result = value;
+      },
+    },
+  ];
+  while (pending.length > 0) {
+    const slot = pending.pop()!;
+    if (slot.kind === "record") {
+      insertRecord(records, slot.record);
+      continue;
+    }
+    if (slot.template === null) {
+      slot.emit(null);
+      continue;
+    }
+    if (typeof slot.type === "string") {
+      slot.emit(slot.template as SimpleValue);
+      continue;
+    }
+    if (slot.type.kind === "array") {
+      if (!isArrayStructuredValueTemplate(slot.template)) {
+        throw new InvalidStructuredValueError("Expected an array Structured Value Template.");
+      }
+      const items: RuntimeValue[] = [];
+      const record: ArrayStructuredValueRecord = {
+        id: slot.template.id,
+        kind: "array",
+        type: slot.type,
+        items,
+      };
+      slot.emit({ ref: record.id });
+      pending.push({ kind: "record", record });
+      for (let index = slot.template.items.length - 1; index >= 0; index -= 1) {
+        pending.push({
+          kind: "slot",
+          template: slot.template.items[index]!,
+          type: slot.type.of,
+          emit: (value) => {
+            items[index] = value;
+          },
+        });
+      }
+      continue;
+    }
+    if (!isShapeStructuredValueTemplate(slot.template)) {
+      throw new InvalidStructuredValueError("Expected a Shape Structured Value Template.");
+    }
+    const shape = byId.get(slot.type.shapeId);
+    if (!shape) throw new InvalidStructuredValueError(`Unknown Shape "${slot.type.shapeId}".`);
+    const fields: Record<string, RuntimeValue> = {};
+    const record: ShapeStructuredValueRecord = {
+      id: slot.template.id,
+      kind: "shape",
+      type: slot.type,
+      fields,
+    };
+    slot.emit({ ref: record.id });
+    pending.push({ kind: "record", record });
+    for (let index = shape.fields.length - 1; index >= 0; index -= 1) {
+      const field = shape.fields[index]!;
+      pending.push({
+        kind: "slot",
+        template: slot.template.fields[field.id] ?? null,
+        type: field.type,
+        emit: (value) => {
+          Object.defineProperty(fields, field.id, {
+            value,
+            enumerable: true,
+            configurable: true,
+            writable: true,
+          });
+        },
+      });
+    }
+  }
+  return result;
 }
 
 function insertRecord(records: StructuredValues, record: StructuredValueRecord): void {
@@ -419,25 +527,71 @@ export function composeInstanceView(shared: RunState, instance: RunState): RunSt
 export function resolveRuntimeValue(
   value: RuntimeValue,
   structuredValues: Readonly<Record<string, StructuredValueRecord>>,
-  resolving: ReadonlySet<string> = new Set(),
+  resolving?: ReadonlySet<string>,
 ): unknown {
-  if (!isStructuredValueReference(value)) return value;
-  const record = structuredValues[value.ref];
-  if (!record) throw new InvalidStructuredValueError(`Dangling reference "${value.ref}".`);
-  if (resolving.has(value.ref)) {
-    throw new InvalidStructuredValueError(`Reference cycle through "${value.ref}".`);
+  type Slot = { kind: "slot"; value: RuntimeValue; emit: (value: unknown) => void };
+  let result: unknown;
+  const expanding = new Set(resolving);
+  const pending: Array<Slot | { kind: "leave"; ref: string }> = [
+    {
+      kind: "slot",
+      value,
+      emit: (value) => {
+        result = value;
+      },
+    },
+  ];
+  while (pending.length > 0) {
+    const slot = pending.pop()!;
+    if (slot.kind === "leave") {
+      expanding.delete(slot.ref);
+      continue;
+    }
+    if (!isStructuredValueReference(slot.value)) {
+      slot.emit(slot.value);
+      continue;
+    }
+    const record = structuredValues[slot.value.ref];
+    if (!record) throw new InvalidStructuredValueError(`Dangling reference "${slot.value.ref}".`);
+    if (expanding.has(slot.value.ref)) {
+      throw new InvalidStructuredValueError(`Reference cycle through "${slot.value.ref}".`);
+    }
+    expanding.add(slot.value.ref);
+    pending.push({ kind: "leave", ref: slot.value.ref });
+    if (record.kind === "array") {
+      const items: unknown[] = [];
+      slot.emit(items);
+      for (let index = record.items.length - 1; index >= 0; index -= 1) {
+        pending.push({
+          kind: "slot",
+          value: record.items[index]!,
+          emit: (value) => {
+            items[index] = value;
+          },
+        });
+      }
+    } else {
+      const fields: Record<string, unknown> = {};
+      slot.emit(fields);
+      const entries = Object.entries(record.fields);
+      for (let index = entries.length - 1; index >= 0; index -= 1) {
+        const [fieldId, value] = entries[index]!;
+        pending.push({
+          kind: "slot",
+          value,
+          emit: (value) => {
+            Object.defineProperty(fields, fieldId, {
+              value,
+              enumerable: true,
+              configurable: true,
+              writable: true,
+            });
+          },
+        });
+      }
+    }
   }
-  const nested = new Set(resolving);
-  nested.add(value.ref);
-  if (record.kind === "array") {
-    return record.items.map((item) => resolveRuntimeValue(item, structuredValues, nested));
-  }
-  return Object.fromEntries(
-    Object.entries(record.fields).map(([fieldId, fieldValue]) => [
-      fieldId,
-      resolveRuntimeValue(fieldValue, structuredValues, nested),
-    ]),
-  );
+  return result;
 }
 
 /**
@@ -486,69 +640,95 @@ function assertRuntimeValue(
   state: RunState,
   shapes: readonly Shape[],
   path: string,
-  ancestors: ReadonlySet<string>,
 ): void {
-  if (
-    value === null &&
-    typeof type !== "string" &&
-    path.startsWith("Source ") &&
-    !path.includes(".") &&
-    !path.includes("[")
-  ) {
-    return;
-  }
-  if (typeof type === "string") {
-    if (isStructuredValueReference(value)) {
+  type Slot = { kind: "slot"; value: RuntimeValue; type: Type; path: string };
+  const byId = new Map(shapes.map((shape) => [shape.id, shape]));
+  const ancestors = new Set<string>();
+  const pending: Array<Slot | { kind: "leave"; id: string }> = [
+    { kind: "slot", value, type, path },
+  ];
+  while (pending.length > 0) {
+    const slot = pending.pop()!;
+    if (slot.kind === "leave") {
+      ancestors.delete(slot.id);
+      continue;
+    }
+    if (
+      slot.value === null &&
+      typeof slot.type !== "string" &&
+      slot.path.startsWith("Source ") &&
+      !slot.path.includes(".") &&
+      !slot.path.includes("[")
+    )
+      continue;
+    if (typeof slot.type === "string") {
+      if (isStructuredValueReference(slot.value)) {
+        throw new InvalidStructuredValueError(
+          `${slot.path} references a Structured Value for scalar ${slot.type}.`,
+        );
+      }
+      try {
+        assertValueConformsToType(slot.value, slot.type, shapes);
+      } catch (error) {
+        throw new InvalidStructuredValueError(
+          `${slot.path} is invalid: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+      continue;
+    }
+    if (!isStructuredValueReference(slot.value)) {
+      throw new InvalidStructuredValueError(`${slot.path} must be a Structured Value reference.`);
+    }
+    const record = state.structuredValues[slot.value.ref];
+    if (!record)
       throw new InvalidStructuredValueError(
-        `${path} references a Structured Value for scalar ${type}.`,
+        `${slot.path} has dangling reference "${slot.value.ref}".`,
+      );
+    if (ancestors.has(record.id)) {
+      throw new InvalidStructuredValueError(
+        `${slot.path} introduces a reference cycle at "${record.id}".`,
       );
     }
-    try {
-      assertValueConformsToType(value, type, shapes);
-    } catch (error) {
+    ancestors.add(record.id);
+    pending.push({ kind: "leave", id: record.id });
+    if (slot.type.kind === "array") {
+      if (record.kind !== "array") {
+        throw new InvalidStructuredValueError(
+          `${slot.path} references a Shape where an array is required.`,
+        );
+      }
+      for (let index = record.items.length - 1; index >= 0; index -= 1) {
+        pending.push({
+          kind: "slot",
+          value: record.items[index]!,
+          type: slot.type.of,
+          path: `${slot.path}[${index}]`,
+        });
+      }
+      continue;
+    }
+    if (record.kind !== "shape" || record.type.shapeId !== slot.type.shapeId) {
+      throw new InvalidStructuredValueError(`${slot.path} references the wrong Shape type.`);
+    }
+    const shape = byId.get(slot.type.shapeId);
+    if (!shape)
       throw new InvalidStructuredValueError(
-        `${path} is invalid: ${error instanceof Error ? error.message : String(error)}`,
+        `${slot.path} references unknown Shape "${slot.type.shapeId}".`,
       );
+    for (let index = shape.fields.length - 1; index >= 0; index -= 1) {
+      const field = shape.fields[index]!;
+      if (!Object.prototype.hasOwnProperty.call(record.fields, field.id)) {
+        throw new InvalidStructuredValueError(`${slot.path} is missing Field "${field.id}".`);
+      }
+      const fieldValue = record.fields[field.id];
+      if (fieldValue === null && !field.required) continue;
+      pending.push({
+        kind: "slot",
+        value: fieldValue!,
+        type: field.type,
+        path: `${slot.path}.${field.id}`,
+      });
     }
-    return;
-  }
-  if (!isStructuredValueReference(value)) {
-    throw new InvalidStructuredValueError(`${path} must be a Structured Value reference.`);
-  }
-  const record = state.structuredValues[value.ref];
-  if (!record)
-    throw new InvalidStructuredValueError(`${path} has dangling reference "${value.ref}".`);
-  if (ancestors.has(record.id)) {
-    throw new InvalidStructuredValueError(
-      `${path} introduces a reference cycle at "${record.id}".`,
-    );
-  }
-  const nested = new Set(ancestors);
-  nested.add(record.id);
-  if (type.kind === "array") {
-    if (record.kind !== "array") {
-      throw new InvalidStructuredValueError(
-        `${path} references a Shape where an array is required.`,
-      );
-    }
-    record.items.forEach((item, index) =>
-      assertRuntimeValue(item, type.of, state, shapes, `${path}[${index}]`, nested),
-    );
-    return;
-  }
-  if (record.kind !== "shape" || record.type.shapeId !== type.shapeId) {
-    throw new InvalidStructuredValueError(`${path} references the wrong Shape type.`);
-  }
-  const shape = shapes.find((candidate) => candidate.id === type.shapeId);
-  if (!shape)
-    throw new InvalidStructuredValueError(`${path} references unknown Shape "${type.shapeId}".`);
-  for (const field of shape.fields) {
-    if (!Object.prototype.hasOwnProperty.call(record.fields, field.id)) {
-      throw new InvalidStructuredValueError(`${path} is missing Field "${field.id}".`);
-    }
-    const fieldValue = record.fields[field.id];
-    if (fieldValue === null && !field.required) continue;
-    assertRuntimeValue(fieldValue!, field.type, state, shapes, `${path}.${field.id}`, nested);
   }
 }
 
@@ -578,7 +758,6 @@ export function assertValidRunState(state: RunState, graph: ShowGraph): void {
       state,
       graph.shapes ?? [],
       `Source ${source.id}`,
-      new Set(),
     );
   }
   for (const sourceId of Object.keys(state.sourceValues)) {
