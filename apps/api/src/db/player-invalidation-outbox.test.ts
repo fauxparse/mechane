@@ -66,7 +66,7 @@ describe.sequential("player invalidation outbox", () => {
     expect(await outboxRows()).toHaveLength(0);
 
     await db.transaction((tx) => enqueuePlayerInvalidations(tx, showId));
-    expect(await db.transaction((tx) => enqueuePlayerInvalidations(tx, showId))).toBe(0);
+    await db.transaction((tx) => enqueuePlayerInvalidations(tx, showId));
     expect(await outboxRows()).toHaveLength(2);
   });
 
@@ -84,7 +84,7 @@ describe.sequential("player invalidation outbox", () => {
       })
       .where(eq(playerInvalidationOutbox.id, row.id));
 
-    expect(await db.transaction((tx) => enqueuePlayerInvalidations(tx, showId))).toBe(1);
+    await db.transaction((tx) => enqueuePlayerInvalidations(tx, showId));
     expect(await outboxRows()).toHaveLength(3);
   });
 

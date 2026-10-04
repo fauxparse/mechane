@@ -810,6 +810,9 @@ export const playerEvents = pgTable(
     reason: text("reason"),
     failingActionId: text("failing_action_id"),
     resultingSceneId: text("resulting_scene_id"),
+    // The Show's `stateSequence` once an applied or accepted Event committed,
+    // so a retry reports the same one (#885). Null for every other outcome.
+    stateSequence: integer("state_sequence"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [

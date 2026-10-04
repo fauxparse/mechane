@@ -15,12 +15,14 @@ const SUBMIT_PLAYER_EVENT = /* GraphQL */ `
       ... on PlayerEventApplied {
         eventId
         appliedResultingSceneId: resultingSceneId
+        stateSequence
       }
       ... on PlayerEventDuplicate {
         eventId
         outcome
         duplicateResultingSceneId: resultingSceneId
         duplicateReason: reason
+        duplicateStateSequence: stateSequence
       }
       ... on PlayerEventIgnored {
         eventId
@@ -28,6 +30,7 @@ const SUBMIT_PLAYER_EVENT = /* GraphQL */ `
       }
       ... on PlayerEventAccepted {
         eventId
+        stateSequence
       }
       ... on PlayerEventRejected {
         eventId
@@ -96,9 +99,11 @@ describe("submitPlayerEvent", () => {
       eventKind: "tap",
     };
 
-    await expect(request(context, { input })).resolves.toMatchObject({
+    const applied = await request(context, { input });
+    expect(applied).toMatchObject({
       __typename: "PlayerEventApplied",
       appliedResultingSceneId: "scene_green",
+      stateSequence: expect.any(Number),
     });
     expect((await readRunDeviceState(run.id, device.id))?.activeSceneId).toBe("scene_green");
     await expect(
@@ -109,6 +114,7 @@ describe("submitPlayerEvent", () => {
       __typename: "PlayerEventDuplicate",
       outcome: "applied",
       duplicateResultingSceneId: "scene_green",
+      duplicateStateSequence: applied.stateSequence,
     });
     await expect(
       request(context, {
@@ -152,6 +158,9 @@ describe("submitPlayerEvent", () => {
           eventKind: "tap",
         },
       }),
-    ).resolves.toMatchObject({ __typename: "PlayerEventAccepted" });
+    ).resolves.toMatchObject({
+      __typename: "PlayerEventAccepted",
+      stateSequence: expect.any(Number),
+    });
   });
 });

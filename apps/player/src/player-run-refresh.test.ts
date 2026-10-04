@@ -4,10 +4,11 @@ import { describe, expect, it } from "vitest";
 import type { PlayerSession } from "./api";
 import {
   coalesced,
-  holdsInvalidatedState,
+  invalidatedStateSequence,
   mergePlayerRunSnapshot,
   predatesPlayerSession,
   type PlayerRunSnapshot,
+  sequencedReads,
   usableRealtimeGrant,
 } from "./player-run-refresh";
 
@@ -125,21 +126,6 @@ describe("usableRealtimeGrant", () => {
   });
 });
 
-describe("holdsInvalidatedState", () => {
-  it("skips an invalidation for state the session already holds", () => {
-    expect(holdsInvalidatedState(session(5), invalidation({ stateSequence: 5 }))).toBe(true);
-    expect(holdsInvalidatedState(session(5), invalidation({ stateSequence: 6 }))).toBe(false);
-  });
-
-  it("reads again when the invalidation or the session gives no sequence to compare", () => {
-    expect(holdsInvalidatedState(session(5), invalidation(null))).toBe(false);
-    expect(
-      holdsInvalidatedState({ ...session(5), run: null }, invalidation({ stateSequence: 1 })),
-    ).toBe(false);
-    expect(holdsInvalidatedState(null, invalidation({ stateSequence: 1 }))).toBe(false);
-  });
-});
-
 /** `Promise.withResolvers`, which this package's ES2023 lib does not declare. */
 function deferred() {
   let resolve: () => void = () => undefined;
@@ -177,5 +163,112 @@ describe("coalesced", () => {
     await started.promise;
     expect(releases).toHaveLength(3);
     releases[2]?.();
+  });
+});
+
+describe("invalidatedStateSequence", () => {
+  it("reads the sequence an invalidation names, and nothing else", () => {
+    expect(invalidatedStateSequence(invalidation({ stateSequence: 5 }))).toBe(5);
+    expect(invalidatedStateSequence(invalidation({ stateSequence: "5" }))).toBeUndefined();
+    expect(invalidatedStateSequence(invalidation(null))).toBeUndefined();
+  });
+});
+
+describe("sequencedReads", () => {
+  /**
+   * A Player holding `heldAt`, whose run-state reads each wait for a release
+   * and then hold whatever the server had committed when they started.
+   */
+  function player(heldAt: number | undefined) {
+    let held = heldAt;
+    let committed = heldAt ?? 0;
+    const releases: Array<() => void> = [];
+    const runs: Array<Promise<void>> = [];
+    const request = sequencedReads(
+      () => {
+        const reading = committed;
+        const gate = deferred();
+        releases.push(gate.resolve);
+        const run = gate.promise.then(() => {
+          held = reading;
+        });
+        runs.push(run);
+        return run;
+      },
+      () => held,
+    );
+    return {
+      request,
+      reads: () => releases.length,
+      commit: (sequence: number) => {
+        committed = sequence;
+      },
+      /**
+       * Lets read `index` return. The runner awaited it before this does, so
+       * a read queued behind it has started by the time this resolves.
+       */
+      async finishRead(index: number) {
+        releases[index]?.();
+        await runs[index];
+      },
+    };
+  }
+
+  it.each([
+    { name: "during", finishFirst: false },
+    { name: "after", finishFirst: true },
+  ])(
+    "reads a Player's own write once when its second notice arrives $name the first one's read",
+    async ({ finishFirst }) => {
+      const tapping = player(5);
+      tapping.commit(6);
+      // The realtime echo and the Event result both name sequence 6.
+      tapping.request(6);
+      expect(tapping.reads()).toBe(1);
+      if (finishFirst) await tapping.finishRead(0);
+      tapping.request(6);
+      if (!finishFirst) await tapping.finishRead(0);
+      expect(tapping.reads()).toBe(1);
+    },
+  );
+
+  it("skips a sequence the session holds, and reads one it does not", async () => {
+    const held = player(5);
+    held.request(5);
+    held.request(4);
+    expect(held.reads()).toBe(0);
+
+    held.commit(6);
+    held.request(6);
+    expect(held.reads()).toBe(1);
+    await held.finishRead(0);
+  });
+
+  it("reads again for a change committed after the read in flight started", async () => {
+    const held = player(5);
+    held.commit(6);
+    held.request(6);
+    held.commit(7);
+    held.request(7);
+    expect(held.reads()).toBe(1);
+
+    await held.finishRead(0);
+    expect(held.reads()).toBe(2);
+    // The second read started after 7 committed, so 7's echo needs no third.
+    held.request(7);
+    await held.finishRead(1);
+    expect(held.reads()).toBe(2);
+  });
+
+  it("reads whenever there is no sequence to compare", async () => {
+    const unsequenced = player(5);
+    unsequenced.request();
+    expect(unsequenced.reads()).toBe(1);
+    await unsequenced.finishRead(0);
+
+    const runless = player(undefined);
+    runless.request(1);
+    expect(runless.reads()).toBe(1);
+    await runless.finishRead(0);
   });
 });

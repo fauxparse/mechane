@@ -231,6 +231,7 @@ export const SubmitPlayerEventMutation = graphql(`
         eventId
         appliedResultingSceneId: resultingSceneId
         changed
+        stateSequence
       }
       ... on PlayerEventDuplicate {
         eventId
@@ -250,6 +251,7 @@ export const SubmitPlayerEventMutation = graphql(`
       }
       ... on PlayerEventAccepted {
         eventId
+        stateSequence
       }
       ... on PlayerEventRejected {
         eventId

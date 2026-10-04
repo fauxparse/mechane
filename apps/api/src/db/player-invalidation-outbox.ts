@@ -40,18 +40,22 @@ function hasActiveLease(row: OutboxRow, now: Date): boolean {
   return row.leaseOwner !== null && row.leaseExpiresAt !== null && row.leaseExpiresAt > now;
 }
 
-/** Enqueues one invalidation per active Device, coalescing unleased work. */
+/**
+ * Advances the Show's `stateSequence` and enqueues one invalidation per active
+ * Device, coalescing unleased work. Returns the new sequence, or `null` when
+ * the Show does not exist.
+ */
 export async function enqueuePlayerInvalidations(
   tx: Tx,
   showId: string,
   deviceIds?: readonly string[],
-): Promise<number> {
+): Promise<number | null> {
   const [show] = await tx
     .update(shows)
     .set({ stateSequence: sql`${shows.stateSequence} + 1`, updatedAt: new Date() })
     .where(eq(shows.id, showId))
     .returning({ stateSequence: shows.stateSequence });
-  if (!show) return 0;
+  if (!show) return null;
   const ids =
     deviceIds ??
     (
@@ -61,7 +65,6 @@ export async function enqueuePlayerInvalidations(
         .where(and(eq(devices.showId, showId), isNull(devices.retiredAt)))
     ).map(({ id }) => id);
   const now = new Date();
-  let inserted = 0;
 
   for (const deviceId of ids) {
     const [pending] = await tx
@@ -99,17 +102,8 @@ export async function enqueuePlayerInvalidations(
       nextAttemptAt: now,
       stateSequence: show.stateSequence,
     });
-    inserted += 1;
   }
-  return inserted;
-}
-
-export async function enqueuePlayerInvalidation(
-  tx: Tx,
-  showId: string,
-  deviceId: string,
-): Promise<boolean> {
-  return (await enqueuePlayerInvalidations(tx, showId, [deviceId])) > 0;
+  return show.stateSequence;
 }
 
 async function claimBatch(

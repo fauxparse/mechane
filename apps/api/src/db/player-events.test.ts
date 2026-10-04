@@ -687,11 +687,25 @@ describe("dispatchPlayerEvent", () => {
         device.pairingCode,
         event(crypto.randomUUID(), sceneId, destinationId),
       );
-      expect(result).toMatchObject({ kind: "applied", resultingSceneId: destinationId });
+      expect(result).toMatchObject({
+        kind: "applied",
+        resultingSceneId: destinationId,
+        stateSequence: await showStateSequence(),
+      });
     }
-    expect((await readRunDeviceState(run.id, device.id))?.activeSceneId).toBe("scene_green");
+    const last = event(crypto.randomUUID(), "scene_green", "scene_red");
+    const applied = await dispatchPlayerEvent(device.pairingCode, last);
+    const sequenceAfter = await showStateSequence();
+    expect(applied).toMatchObject({ kind: "applied", stateSequence: sequenceAfter });
+    expect(await dispatchPlayerEvent(device.pairingCode, last)).toMatchObject({
+      kind: "duplicate",
+      outcome: "applied",
+      stateSequence: sequenceAfter,
+    });
+    expect(await showStateSequence()).toBe(sequenceAfter);
+    expect((await readRunDeviceState(run.id, device.id))?.activeSceneId).toBe("scene_red");
     expect(await db.select().from(playerEvents).where(eq(playerEvents.runId, run.id))).toHaveLength(
-      7,
+      8,
     );
     await endRun(showId);
     expect(await db.select().from(playerEvents).where(eq(playerEvents.runId, run.id))).toHaveLength(
@@ -737,18 +751,23 @@ describe("dispatchPlayerEvent", () => {
       const peer = await createDevice(showId);
       const sequenceBefore = await showStateSequence();
 
-      const result = await dispatchPlayerEvent(device.pairingCode, {
-        eventId: crypto.randomUUID(),
-        ...tap,
-      });
+      const eventId = crypto.randomUUID();
+      const result = await dispatchPlayerEvent(device.pairingCode, { eventId, ...tap });
 
-      expect(result).toMatchObject({ kind: "accepted" });
       const sequenceAfter = await showStateSequence();
       expect(sequenceAfter).toBeGreaterThan(sequenceBefore);
+      expect(result).toMatchObject({ kind: "accepted", stateSequence: sequenceAfter });
       const peerRows = (await showOutbox()).filter((row) => row.deviceId === peer.id);
       expect(peerRows).toEqual([
         expect.objectContaining({ status: "pending", stateSequence: sequenceAfter }),
       ]);
+      // A retry reports the sequence the original committed at, and moves nothing.
+      expect(await dispatchPlayerEvent(device.pairingCode, { eventId, ...tap })).toMatchObject({
+        kind: "duplicate",
+        outcome: "accepted",
+        stateSequence: sequenceAfter,
+      });
+      expect(await showStateSequence()).toBe(sequenceAfter);
     },
   );
   it.each(sharedUpdateBranches)(
@@ -767,7 +786,7 @@ describe("dispatchPlayerEvent", () => {
         ...tap,
       });
 
-      expect(result).toMatchObject({ kind: "accepted" });
+      expect(result).toMatchObject({ kind: "accepted", stateSequence: sequenceBefore });
       expect(await showStateSequence()).toBe(sequenceBefore);
       expect(await showOutbox()).toHaveLength(outboxBefore.length);
     },
@@ -1219,13 +1238,19 @@ describe("dispatchPlayerEvent", () => {
       .select()
       .from(playerInvalidationOutbox)
       .where(eq(playerInvalidationOutbox.showId, showId));
+    const sequenceBefore = await showStateSequence();
     const input = event(crypto.randomUUID(), "scene_red", "scene_green");
     const result = await dispatchPlayerEvent(device.pairingCode, {
       ...input,
       publishedGraphVersion: published.version,
     });
 
-    expect(result).toEqual({ kind: "accepted", eventId: input.eventId });
+    expect(result).toEqual({
+      kind: "accepted",
+      eventId: input.eventId,
+      stateSequence: sequenceBefore,
+    });
+    expect(await showStateSequence()).toBe(sequenceBefore);
     expect(await readRunDeviceState("missing", device.id)).toBeNull();
     expect(await readRunDeviceState(run.id, device.id)).toBeNull();
     const rows = await db.select().from(playerEvents).where(eq(playerEvents.runId, run.id));

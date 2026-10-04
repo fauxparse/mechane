@@ -50,6 +50,8 @@ export const typeDefs = /* GraphQL */ `
     eventId: ID!
     resultingSceneId: ID!
     changed: Boolean!
+    "The Show's state sequence once this Event committed; a snapshot at or past it holds the Event's effect."
+    stateSequence: Int!
   }
   type PlayerEventDuplicate {
     eventId: ID!
@@ -57,6 +59,8 @@ export const typeDefs = /* GraphQL */ `
     changed: Boolean!
     resultingSceneId: ID
     reason: String
+    "The original result's state sequence; null unless it was applied or accepted."
+    stateSequence: Int
   }
   type PlayerEventIgnored {
     eventId: ID!
@@ -69,6 +73,8 @@ export const typeDefs = /* GraphQL */ `
   }
   type PlayerEventAccepted {
     eventId: ID!
+    "The Show's state sequence once this Event committed; a snapshot at or past it holds the Event's effect."
+    stateSequence: Int!
   }
   type PlayerEventRejected {
     eventId: ID!
