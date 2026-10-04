@@ -1,5 +1,5 @@
 import type { ShowGraph } from "@mechane/domain/graph";
-import type { Action } from "@mechane/domain/interactions";
+import type { Action, UpdateAction } from "@mechane/domain/interactions";
 import { PAIRING_CODE_PATTERN } from "@mechane/domain/pairing-code";
 import { defaultSourceValueTemplates } from "@mechane/domain/source-defaults";
 import {
@@ -64,50 +64,138 @@ export interface PlayerRunState {
   readonly flowSourceValues: SourceValues;
   readonly flowStructuredValues: StructuredValues;
   readonly shuffleSeeds?: Readonly<Record<string, string>>;
-  readonly showSourceValues?: SourceValues;
-  readonly showStructuredValues?: StructuredValues;
-  readonly stateSequence?: number;
-  readonly optimisticOverlay?: {
-    readonly state: RunState;
-    readonly appliedStateSequence: number;
-  };
-}
-export interface PlayerSnapshot {
-  readonly stateSequence: number;
-  readonly sourceValues: SourceValues;
-  readonly structuredValues: StructuredValues;
 }
 
-/** Merges Show state without replacing the per-connection Instance layer. */
-export function mergePlayerSnapshot(
-  state: PlayerRunState,
-  snapshot: PlayerSnapshot,
-): PlayerRunState {
-  if ((state.stateSequence ?? -1) >= snapshot.stateSequence) return state;
-  const overlay =
-    state.optimisticOverlay && snapshot.stateSequence < state.optimisticOverlay.appliedStateSequence
-      ? state.optimisticOverlay
-      : undefined;
-  return {
-    ...state,
-    showSourceValues: snapshot.sourceValues,
-    showStructuredValues: snapshot.structuredValues,
-    stateSequence: snapshot.stateSequence,
-    optimisticOverlay: overlay,
+/** A Show Action of a Cue, with the Instance values it read when it ran (#883). */
+export interface PendingShowAction {
+  readonly action: UpdateAction;
+  readonly evidence: PlayerActionEvidence;
+}
+
+/**
+ * A Show write this Player has made that its latest snapshot does not hold yet
+ * (#886). The Player keeps these in memory, never in its store: after a
+ * reload the server's state is the truth.
+ */
+export interface PendingShowEvent {
+  readonly eventId: string;
+  readonly sceneId: string;
+  /** In declared order. */
+  readonly actions: readonly PendingShowAction[];
+  /** The Show's sequence once the Event committed; unknown until acknowledged (#885). */
+  readonly acknowledgedStateSequence?: number;
+}
+
+/**
+ * Runs one Show Action against a copy of Show scope the way the server does
+ * (#883): the holder resolves through the evidence's Instance values, and the
+ * writes land in Show scope. Seeded with the Event id, a fresh record gets
+ * the identity the server will give it (#884).
+ */
+function planShowAction(
+  graph: ShowGraph,
+  show: RunState,
+  sceneId: string,
+  eventId: string,
+  { action, evidence }: PendingShowAction,
+):
+  | { readonly kind: "planned"; readonly show: RunState }
+  | { readonly kind: "failed"; readonly reason: string } {
+  const routed: RunState = {
+    sourceValues: { ...show.sourceValues, ...(evidence.sourceValues as SourceValues) },
+    structuredValues: show.structuredValues,
   };
+  const plan = planUpdate(graph, routed, sceneId, action, eventId, evidence.cueParameters);
+  if (plan.kind === "failed") return plan;
+  return { kind: "planned", show: applyUpdateWrites(show, plan.writes) };
+}
+
+/**
+ * Drops the pending Events a snapshot at `stateSequence` already holds: those
+ * acknowledged at or below it. Until the server acknowledges an Event, no
+ * snapshot holds it.
+ */
+export function settlePendingShowEvents(
+  pending: readonly PendingShowEvent[],
+  stateSequence: number,
+): readonly PendingShowEvent[] {
+  const settled = pending.filter(
+    (event) =>
+      event.acknowledgedStateSequence === undefined ||
+      event.acknowledgedStateSequence > stateSequence,
+  );
+  return settled.length === pending.length ? pending : settled;
+}
+
+/**
+ * What the server's answer means for a Show write this Player predicted:
+ * keep it until a snapshot at `stateSequence` holds it, drop it because the
+ * server wrote nothing, or drop it and roll the Cue back because the server
+ * refused the Cue or never answered.
+ */
+export type ShowWriteOutcome =
+  | { readonly kind: "acknowledged"; readonly stateSequence: number }
+  | { readonly kind: "dropped" }
+  | { readonly kind: "rolled-back" };
+
+/** The pending queue once the server has answered for `eventId`. */
+export function resolvePendingShowEvent(
+  pending: readonly PendingShowEvent[],
+  eventId: string,
+  outcome: ShowWriteOutcome,
+): readonly PendingShowEvent[] {
+  if (outcome.kind !== "acknowledged") return pending.filter((event) => event.eventId !== eventId);
+  return pending.map((event) =>
+    event.eventId === eventId
+      ? { ...event, acknowledgedStateSequence: outcome.stateSequence }
+      : event,
+  );
+}
+
+/**
+ * Show scope as this Player displays it: the latest snapshot with every
+ * pending Event it does not hold yet replayed over it in tap order.
+ *
+ * The queue holds Events rather than a predicted state, so a vote someone
+ * else cast is never hidden behind one computed before it arrived: each
+ * snapshot is the new base, and only this Player's own writes go on top. An
+ * Event whose replay fails adds nothing, as it would on the server.
+ */
+export function displayedShowState(
+  graph: ShowGraph,
+  snapshot: RunState,
+  stateSequence: number,
+  pending: readonly PendingShowEvent[],
+): RunState {
+  let show = snapshot;
+  for (const event of settlePendingShowEvents(pending, stateSequence)) {
+    let staged = show;
+    let planned = true;
+    for (const entry of event.actions) {
+      const plan = planShowAction(graph, staged, event.sceneId, event.eventId, entry);
+      if (plan.kind === "failed") {
+        planned = false;
+        break;
+      }
+      staged = plan.show;
+    }
+    if (planned) show = staged;
+  }
+  return show;
 }
 
 export type PlayerCueExecution =
   | {
       readonly kind: "applied";
       readonly state: PlayerRunState;
-      /** One entry per Show Action, keyed by Action id, in declared order. */
-      readonly evidence: Readonly<Record<string, PlayerActionEvidence>>;
+      /** The Actions the server runs, in declared order. */
+      readonly showActions: readonly PendingShowAction[];
     }
   | { readonly kind: "failed"; readonly actionId: string; readonly reason: string };
 
 /**
- * Executes a Cue's Actions in declared order against one Player Instance.
+ * Executes a Cue's Actions in declared order against one Player Instance and
+ * its view of Show scope.
  *
  * Whether a write is the server's or this Player's is the *resolved* holder's
  * question, not the target Source's. A Flow-local Source addressed with a
@@ -119,7 +207,10 @@ export type PlayerCueExecution =
  *
  * A Show Action's evidence is the staged Instance state at the point it runs
  * (#628), so the server resolves its holder through the value an earlier
- * Action wrote, and a later Action's write cannot change what it read.
+ * Action wrote, and a later Action's write cannot change what it read. Its
+ * writes are staged into this Player's copy of Show scope, so a later Action
+ * reads them as it will on the server; that copy is only ever displayed
+ * through the pending queue (#886).
  */
 export function applyPlayerCue(
   state: PlayerRunState,
@@ -131,7 +222,8 @@ export function applyPlayerCue(
   showState: RunState = { sourceValues: {}, structuredValues: {} },
 ): PlayerCueExecution {
   let next = state;
-  const evidence: Record<string, PlayerActionEvidence> = {};
+  let show = showState;
+  const showActions: PendingShowAction[] = [];
   for (const action of actions) {
     if (action.kind === "navigate") {
       next = { ...next, navigation: { kind: "scene", sceneId: action.targetSceneId } };
@@ -141,12 +233,17 @@ export function applyPlayerCue(
       sourceValues: next.flowSourceValues,
       structuredValues: next.flowStructuredValues,
     };
-    const composed = composeInstanceView(showState, instanceState);
+    const composed = composeInstanceView(show, instanceState);
     if (resolveUpdateHolderScope(graph, composed, action) === "show") {
-      evidence[action.id] = {
-        sourceValues: next.flowSourceValues,
-        cueParameters: cueParameterValues,
+      const entry: PendingShowAction = {
+        action,
+        evidence: { sourceValues: next.flowSourceValues, cueParameters: cueParameterValues },
       };
+      const plan = planShowAction(graph, show, sceneId, eventId, entry);
+      if (plan.kind === "failed")
+        return { kind: "failed", actionId: action.id, reason: plan.reason };
+      show = plan.show;
+      showActions.push(entry);
       continue;
     }
     // Reads may reach Show scope; only the writes are confined to the
@@ -162,7 +259,37 @@ export function applyPlayerCue(
       flowStructuredValues: updated.structuredValues,
     };
   }
-  return { kind: "applied", state: next, evidence };
+  return { kind: "applied", state: next, showActions };
+}
+
+function sameInstanceState(left: PlayerRunState, right: PlayerRunState): boolean {
+  return (
+    JSON.stringify([left.navigation, left.flowSourceValues, left.flowStructuredValues]) ===
+    JSON.stringify([right.navigation, right.flowSourceValues, right.flowStructuredValues])
+  );
+}
+
+/**
+ * The Instance state a Cue whose Show write failed leaves behind (#886).
+ *
+ * The Cue's Instance writes and navigation are undone only while Instance
+ * state is still exactly what the Cue left. Once a later Cue has built on
+ * them they stay, so a failure never undoes a tap that came after it — at the
+ * cost of sometimes leaving the voter where the failed Cue sent them. `null`
+ * means leave the current state alone.
+ */
+export function rollBackPlayerCue(
+  current: PlayerRunState,
+  before: PlayerRunState,
+  after: PlayerRunState,
+): PlayerRunState | null {
+  if (!sameInstanceState(current, after)) return null;
+  return {
+    ...current,
+    navigation: before.navigation,
+    flowSourceValues: before.flowSourceValues,
+    flowStructuredValues: before.flowStructuredValues,
+  };
 }
 
 export type PlayerStoreStatus = {
