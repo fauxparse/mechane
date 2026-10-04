@@ -1,10 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useState } from "react";
 
 import type { ShowGraph } from "@mechane/domain/graph";
 import type { Shape } from "@mechane/domain/shapes";
 
 import { ShapeWorkspace } from "./ShapeWorkspace";
-import type { ShapeEditing } from "../commands/use-graph-editing";
+import { useGraphEditing, type ShapeEditing } from "../commands/use-graph-editing";
+import type { SourceImageAsset } from "../graph/inspector/source-value-types";
 
 const SHAPES: Shape[] = [
   {
@@ -89,4 +91,60 @@ export const StagedEditor: Story = {
 
 export const ActiveRun: Story = {
   args: { shapeId: "shape_vote", runActive: true },
+};
+
+const IMAGE: SourceImageAsset = {
+  assetId: "candidate-image",
+  revision: "revision-1",
+  name: "Candidate portrait",
+  url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%2331758f'/%3E%3C/svg%3E",
+  width: 64,
+  height: 64,
+  alt: "Candidate portrait",
+  mimeType: "image/svg+xml",
+  blurHash: null,
+};
+
+function ImageDefaultWorkspace({ invalid = false }: { invalid?: boolean }) {
+  const [initial] = useState<ShowGraph>(() => ({
+    nodes: [],
+    edges: [],
+    shapes: [
+      {
+        id: "shape_candidate",
+        name: "Candidate",
+        fields: [
+          {
+            id: "field_image",
+            name: "image",
+            type: "image",
+            required: false,
+            defaultValue: invalid ? "" : null,
+          },
+        ],
+      },
+    ],
+  }));
+  const editing = useGraphEditing(initial);
+  return (
+    <ShapeWorkspace
+      {...meta.args}
+      graph={editing.command.graph}
+      editing={editing.shapes}
+      shapeId="shape_candidate"
+      imageAssets={[IMAGE]}
+      onImageUpload={({ onProgress, onSuccess }) => {
+        onProgress(100);
+        onSuccess(IMAGE);
+      }}
+    />
+  );
+}
+
+export const ImageDefault: Story = {
+  render: () => <ImageDefaultWorkspace />,
+};
+
+export const InvalidImageDefault: Story = {
+  render: () => <ImageDefaultWorkspace invalid />,
 };

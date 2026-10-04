@@ -19,8 +19,11 @@ function primitiveDefault(type: Type): unknown {
       return 0;
     case "boolean":
       return false;
-    case "text":
     case "image":
+      // Image values are asset references; only typed absence (null) is a
+      // valid empty default, matching assertValueConformsToType.
+      return null;
+    case "text":
     case "color":
     case "date":
     case "datetime":

@@ -10,6 +10,7 @@ import { coalesceCanvasWorkspaceEdits, coalesceGraphEdits } from "@mechane/comma
 import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
 import type { GraphState } from "@mechane/domain/graph";
 import type { ShowId } from "@mechane/domain/id";
+import type { PrimitiveType, Shape, ShapeField, Type } from "@mechane/domain/shapes";
 import {
   ApplyShowEditsMutation,
   GetShowGraphQuery,
@@ -35,7 +36,7 @@ import { GRAPHQL_ENDPOINT } from "./client";
 interface CachedShowGraph {
   readonly nodes: readonly CachedNode[];
   readonly edges: readonly CachedEdge[];
-  readonly shapes: readonly unknown[];
+  readonly shapes: readonly CachedShape[];
   readonly blocks: readonly unknown[];
   readonly cues: readonly CachedCue[];
   readonly actions: readonly { readonly cueId: string }[];
@@ -80,6 +81,30 @@ interface CachedCue {
   }[];
 }
 
+interface CachedType {
+  readonly kind: PrimitiveType | "array" | "shape";
+  readonly shapeId: string | null;
+  readonly of: CachedType | null;
+}
+
+/** The `ShapeValue` union: a `__typename` beside a per-kind alias, or an ImageValue's own fields. */
+type CachedShapeValue = { readonly __typename: string } & Readonly<Record<string, unknown>>;
+
+interface CachedShapeField {
+  readonly id: string;
+  readonly name: string;
+  readonly position: number;
+  readonly required: boolean;
+  readonly type: CachedType;
+  readonly default: CachedShapeValue | null;
+}
+
+interface CachedShape {
+  readonly id: string;
+  readonly name: string;
+  readonly fields: readonly CachedShapeField[];
+}
+
 function toCachedCue(
   cue: Extract<GraphEdit, { type: "graph.addCue" }>["cue"],
 ): CachedShowGraph["cues"][number] {
@@ -108,6 +133,143 @@ function withoutCueEdges(
       (edge.__typename !== "NavigateEdge" && edge.__typename !== "UpdateEdge") ||
       edge.cueId !== cueId,
   );
+}
+
+function toCachedType(type: Type): CachedType {
+  if (typeof type === "string") return { kind: type, shapeId: null, of: null };
+  return type.kind === "array"
+    ? { kind: "array", shapeId: null, of: toCachedType(type.of) }
+    : { kind: "shape", shapeId: type.shapeId, of: null };
+}
+
+/** The `ShapeValue` member and the alias `ShowGraphFields` selects its value under, per Type kind. */
+const CACHED_SHAPE_VALUES: Readonly<
+  Record<Exclude<CachedType["kind"], "image">, readonly [typename: string, alias: string]>
+> = {
+  text: ["TextValue", "textValue"],
+  number: ["NumberValue", "numberValue"],
+  boolean: ["BooleanValue", "booleanValue"],
+  color: ["ColorValue", "colorValue"],
+  date: ["DateValue", "dateValue"],
+  datetime: ["DateTimeValue", "datetimeValue"],
+  shape: ["ObjectValue", "objectValue"],
+  array: ["ArrayValue", "arrayValue"],
+};
+
+function toCachedShapeValue(value: unknown, type: CachedType): CachedShapeValue | null {
+  if (value === null || value === undefined) return null;
+  if (type.kind === "image") {
+    return { ...(value as Readonly<Record<string, unknown>>), __typename: "ImageValue" };
+  }
+  const [typename, alias] = CACHED_SHAPE_VALUES[type.kind];
+  return { __typename: typename, [alias]: value };
+}
+
+function toCachedShapeField(field: ShapeField, position: number): CachedShapeField {
+  const type = toCachedType(field.type);
+  return {
+    id: field.id,
+    name: field.name,
+    position,
+    required: field.required,
+    type,
+    default: toCachedShapeValue(field.defaultValue, type),
+  };
+}
+
+function toCachedShape(shape: Shape): CachedShape {
+  return { id: shape.id, name: shape.name, fields: shape.fields.map(toCachedShapeField) };
+}
+
+/**
+ * Mirrors one Shape edit onto the cached Shapes as its command applies it, so
+ * an editor reopened from the cache offers the Shapes authored since the load.
+ * Adds skip ids already present: the save response re-patches a batch its
+ * enqueue already patched. Any other edit returns `shapes` itself.
+ */
+function patchCachedShapes(
+  shapes: readonly CachedShape[],
+  edit: GraphEdit,
+): readonly CachedShape[] {
+  const updateShape = (shapeId: string, update: (shape: CachedShape) => CachedShape) =>
+    shapes.map((shape) => (shape.id === shapeId ? update(shape) : shape));
+  const updateField = (
+    shapeId: string,
+    fieldId: string,
+    update: (field: CachedShapeField) => CachedShapeField,
+  ) =>
+    updateShape(shapeId, (shape) => ({
+      ...shape,
+      fields: shape.fields.map((field) => (field.id === fieldId ? update(field) : field)),
+    }));
+  switch (edit.type) {
+    case "graph.setShapes":
+      return edit.shapes.map(toCachedShape);
+    case "graph.addShape":
+    case "graph.duplicateShape":
+      return shapes.some((shape) => shape.id === edit.shape.id)
+        ? shapes
+        : [...shapes, toCachedShape(edit.shape)];
+    case "graph.renameShape":
+      return updateShape(edit.shapeId, (shape) => ({ ...shape, name: edit.name }));
+    case "graph.removeShape":
+      return shapes.filter((shape) => shape.id !== edit.shapeId);
+    case "graph.addShapeField":
+      return updateShape(edit.shapeId, (shape) =>
+        shape.fields.some((field) => field.id === edit.field.id)
+          ? shape
+          : {
+              ...shape,
+              fields: [
+                ...shape.fields,
+                toCachedShapeField(
+                  edit.field,
+                  Math.max(-1, ...shape.fields.map((field) => field.position)) + 1,
+                ),
+              ],
+            },
+      );
+    case "graph.renameShapeField":
+      return updateField(edit.shapeId, edit.fieldId, (field) => ({ ...field, name: edit.name }));
+    case "graph.setShapeFieldType":
+      return updateField(edit.shapeId, edit.fieldId, (field) => ({
+        ...field,
+        type: toCachedType(edit.fieldType),
+      }));
+    case "graph.setShapeFieldDefault":
+      return updateField(edit.shapeId, edit.fieldId, (field) => ({
+        ...field,
+        default: toCachedShapeValue(edit.defaultValue, field.type),
+      }));
+    case "graph.setShapeFieldRequired":
+      return updateField(edit.shapeId, edit.fieldId, (field) => ({
+        ...field,
+        required: edit.required,
+      }));
+    case "graph.reorderShapeFields": {
+      const positions = new Map(edit.fieldIds.map((fieldId, position) => [fieldId, position]));
+      // Like the command, refuse an order that doesn't name every Field once.
+      return updateShape(edit.shapeId, (shape) =>
+        positions.size === shape.fields.length &&
+        shape.fields.every((field) => positions.has(field.id))
+          ? {
+              ...shape,
+              fields: shape.fields.map((field) => ({
+                ...field,
+                position: positions.get(field.id) ?? field.position,
+              })),
+            }
+          : shape,
+      );
+    }
+    case "graph.removeShapeField":
+      return updateShape(edit.shapeId, (shape) => ({
+        ...shape,
+        fields: shape.fields.filter((field) => field.id !== edit.fieldId),
+      }));
+    default:
+      return shapes;
+  }
 }
 
 export const showGraphQueryKey = (id: ShowId, state: GraphState) =>
@@ -146,6 +308,7 @@ export function patchShowGraphQueryData(
   let eventBindings = previous.eventBindings;
   let edges = previous.edges;
   let sourceFieldDefaults = previous.sourceFieldDefaults;
+  let shapes = previous.shapes;
   for (const edit of edits) {
     switch (edit.type) {
       case "graph.addCue":
@@ -201,13 +364,18 @@ export function patchShowGraphQueryData(
         changed = true;
         break;
       }
-      default:
+      default: {
+        const nextShapes = patchCachedShapes(shapes, edit);
+        if (nextShapes === shapes) break;
+        shapes = nextShapes;
+        changed = true;
         break;
+      }
     }
   }
 
   return changed
-    ? { ...previous, nodes, cues, actions, eventBindings, edges, sourceFieldDefaults }
+    ? { ...previous, nodes, cues, actions, eventBindings, edges, sourceFieldDefaults, shapes }
     : previous;
 }
 
