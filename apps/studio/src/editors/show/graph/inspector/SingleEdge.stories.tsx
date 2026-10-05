@@ -41,6 +41,15 @@ const initialGraph: ShowGraph = {
     },
   ],
   edges: [edge],
+  cues: [
+    {
+      id: "cue-update",
+      name: "Update score",
+      owner: { kind: "scene", sceneId: "scene-red" },
+      actionIds: ["action-update"],
+      parameters: [{ id: "score", name: "Score", type: "number", position: 0 }],
+    },
+  ],
   actions: [
     {
       id: "action-update",

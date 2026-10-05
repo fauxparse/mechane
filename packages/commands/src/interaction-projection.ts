@@ -12,16 +12,21 @@ import {
   type Action,
   type Cue,
   type EventBinding,
+  type SlotEventBinding,
   projectNavigateEdges,
   projectUpdateEdges,
 } from "@mechane/domain/interactions";
 
-export type InteractionState = Pick<ShowGraph, "cues" | "actions" | "eventBindings">;
+export type InteractionState = Pick<
+  ShowGraph,
+  "cues" | "actions" | "eventBindings" | "slotEventBindings"
+>;
 
 export type RequiredInteractionState = {
   cues: readonly Cue[];
   actions: readonly Action[];
   eventBindings: readonly EventBinding[];
+  slotEventBindings: readonly SlotEventBinding[];
 };
 
 /** The graph's interactions, with the absent collections read as empty. */
@@ -30,10 +35,18 @@ export function interactionsOf(graph: ShowGraph): RequiredInteractionState {
     cues: graph.cues ?? [],
     actions: graph.actions ?? [],
     eventBindings: graph.eventBindings ?? [],
+    slotEventBindings: graph.slotEventBindings ?? [],
   };
 }
 
-/** The graph with `next` in it, and its navigate edges projected afresh. */
+/**
+ * The graph with `next` in it, and its navigate edges projected afresh.
+ *
+ * Slot Event Bindings have no projection of their own, so a caller that says
+ * nothing about them keeps what the graph already holds — the same courtesy
+ * the `...graph` spread extends to every collection this function does not
+ * own.
+ */
 export function withInteractions(graph: ShowGraph, next: InteractionState): ShowGraph {
   const projected = [
     ...projectNavigateEdges({ ...graph, cues: next.cues, actions: next.actions }),
@@ -48,6 +61,7 @@ export function withInteractions(graph: ShowGraph, next: InteractionState): Show
     cues: next.cues ?? [],
     actions: next.actions ?? [],
     eventBindings: next.eventBindings ?? [],
+    slotEventBindings: next.slotEventBindings ?? graph.slotEventBindings ?? [],
     edges,
   };
 }

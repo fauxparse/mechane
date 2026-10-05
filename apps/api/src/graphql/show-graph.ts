@@ -857,6 +857,7 @@ export const typeDefs = /* GraphQL */ `
     sceneId: ID
     blockId: ID
     actionIds: [ID!]!
+    parameters: JSON
   }
   input ActionInput {
     id: ID!
@@ -875,6 +876,14 @@ export const typeDefs = /* GraphQL */ `
     params: JSON
     parameterMappings: JSON
     cueId: ID!
+    position: Int!
+  }
+  input SlotEventBindingInput {
+    id: ID!
+    slotElementId: ID!
+    sourceCueId: ID!
+    targetCueId: ID!
+    parameterMappings: JSON!
     position: Int!
   }
   type GraphEdit {
@@ -918,6 +927,7 @@ export const typeDefs = /* GraphQL */ `
     cue: Cue
     action: Action
     binding: EventBinding
+    slotBinding: SlotEventBinding
     "Event Binding key payloads: graph.setEventBindingKey."
     key: String
     cueId: ID
@@ -993,6 +1003,7 @@ export const typeDefs = /* GraphQL */ `
     cue: CueInput
     action: ActionInput
     binding: EventBindingInput
+    slotBinding: SlotEventBindingInput
     "Event Binding key payloads: graph.setEventBindingKey."
     key: String
     cueId: ID

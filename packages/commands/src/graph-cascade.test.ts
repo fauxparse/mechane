@@ -9,9 +9,16 @@ import {
   type SourceNode,
   type WiringEdge,
 } from "@mechane/domain/graph";
+import {
+  navigateEdgeId,
+  projectNavigateEdges,
+  type Cue,
+  type NavigateAction,
+} from "@mechane/domain/interactions";
 import { describe, expect, it } from "vitest";
 
 import { deleteEdges, deleteGraphElements, deletionScope, describeDeletion } from "./graph-cascade";
+import { applyGraphEdits } from "./graph-edits";
 import { addSceneVariable, removeSceneVariable, renameSceneVariable } from "./graph-commands";
 import { CommandStack } from "./stack";
 
@@ -231,6 +238,44 @@ describe("deleteEdges", () => {
 
     commands.undo();
     expect(commands.state).toEqual(GRAPH);
+  });
+
+  it("deletes a Navigate edge for good by deleting the Action it projects", () => {
+    const cue: Cue = {
+      id: "cue_done",
+      name: "Done",
+      owner: { kind: "scene", sceneId: VOTING.id },
+      actionIds: ["action_to_results"],
+    };
+    const action: NavigateAction = {
+      id: "action_to_results",
+      cueId: cue.id,
+      kind: "navigate",
+      targetSceneId: RESULTS.id,
+    };
+    const interactive: ShowGraph = {
+      ...GRAPH,
+      edges: [WIRE, TO_PHONE],
+      cues: [cue],
+      actions: [action],
+      eventBindings: [],
+      slotEventBindings: [],
+    };
+    const graph: ShowGraph = {
+      ...interactive,
+      edges: [...interactive.edges, ...projectNavigateEdges(interactive)],
+    };
+    const edgeId = navigateEdgeId(action.id);
+
+    const applied = deleteEdges(graph, [edgeId]).apply(graph);
+    // The server replays the saved edits, then rebuilds every navigate edge from the Actions.
+    const saved = applyGraphEdits(graph, applied.edits ?? []);
+
+    expect(saved.actions).toEqual([]);
+    expect(saved.cues).toEqual([{ ...cue, actionIds: [] }]);
+    expect(projectNavigateEdges(saved)).toEqual([]);
+    expect(applied.state.edges.map((edge) => edge.id)).toEqual([WIRE.id, TO_PHONE.id]);
+    expect(applied.inverse.apply(applied.state).state).toEqual(graph);
   });
 });
 

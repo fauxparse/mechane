@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
 
+import type { BlockVariable } from "@mechane/domain/blocks";
+import type { SlotElement, SlotExpansion } from "@mechane/domain/canvas";
 import type { SceneVariable } from "@mechane/domain/graph";
-import type { Shape } from "@mechane/domain/shapes";
+import type { Shape, Type } from "@mechane/domain/shapes";
 import {
   sizeConstraintKey,
   sizeValueNumber,
   sizeValueUnit,
   sizingForMode,
+  slotExpansionOptions,
+  slotInputOptions,
+  slotInputReference,
   textValueForPreview,
   variableInput,
   variableOptions,
@@ -140,5 +145,297 @@ describe("canvas inspector values", () => {
   it("normalizes numeric values for text property previews", () => {
     expect(textValueForPreview({ kind: "number", value: 42 })).toBe("42");
     expect(textValueForPreview({ kind: "text", value: "Headline" })).toBe("Headline");
+  });
+});
+
+const candidateShape: Shape = {
+  id: "shape_candidate",
+  name: "Candidate",
+  fields: [
+    { id: "field_name", name: "name", type: "text", required: true, defaultValue: "" },
+    { id: "field_votes", name: "votes", type: "number", required: true, defaultValue: 0 },
+    { id: "field_photo", name: "photo", type: "image", required: false, defaultValue: null },
+  ],
+};
+
+const settingsShape: Shape = {
+  id: "shape_settings",
+  name: "settings",
+  fields: [
+    {
+      id: "field_candidates",
+      name: "candidates",
+      type: { kind: "array", of: { kind: "shape", shapeId: candidateShape.id } },
+      required: true,
+      defaultValue: [],
+    },
+  ],
+};
+
+// References itself: traversal must stop instead of recursing through `parent`.
+const sectionShape: Shape = {
+  id: "shape_section",
+  name: "Section",
+  fields: [
+    {
+      id: "field_items",
+      name: "items",
+      type: { kind: "array", of: "text" },
+      required: true,
+      defaultValue: [],
+    },
+    {
+      id: "field_parent",
+      name: "parent",
+      type: { kind: "shape", shapeId: "shape_section" },
+      required: false,
+      defaultValue: null,
+    },
+  ],
+};
+
+const slotShapes = [candidateShape, settingsShape, sectionShape];
+
+const slotVariables: SceneVariable[] = [
+  {
+    id: "variable_candidates",
+    name: "Candidates",
+    type: { kind: "array", of: { kind: "shape", shapeId: candidateShape.id } },
+  },
+  { id: "variable_settings", name: "settings", type: { kind: "shape", shapeId: settingsShape.id } },
+  { id: "variable_sections", name: "Sections", type: { kind: "shape", shapeId: sectionShape.id } },
+  { id: "variable_totals", name: "Totals", type: { kind: "array", of: "number" } },
+  { id: "variable_total", name: "Total", type: "number" },
+  { id: "variable_blank", name: "Blank" },
+];
+
+const slotWith = (expansion?: SlotExpansion): SlotElement => ({
+  id: "slot_list",
+  type: "slot",
+  blockId: "block_row",
+  ...(expansion ? { expansion } : {}),
+});
+
+const blockInput = (type: Type): BlockVariable => ({
+  id: "block_input",
+  name: "Input",
+  type,
+  required: true,
+});
+
+describe("slot input options", () => {
+  it("lists parent Variable arrays at the root and in nested Shape fields", () => {
+    const options = slotExpansionOptions(slotVariables, slotShapes);
+
+    expect(options).toHaveLength(4);
+    expect(options.map((option) => [option.id, option.name])).toEqual([
+      ["variable_candidates", "Candidates"],
+      ["variable_settings", "settings → candidates"],
+      ["variable_sections", "Sections → items"],
+      ["variable_totals", "Totals"],
+    ]);
+    for (const option of options) {
+      expect(option.source.kind).toBe("variable");
+    }
+    expect(options[0]).toMatchObject({
+      fieldPath: [],
+      fieldType: { kind: "array", of: { kind: "shape", shapeId: candidateShape.id } },
+      source: { kind: "variable", variableId: "variable_candidates", fieldPath: [] },
+    });
+    expect(options[1]).toMatchObject({
+      fieldPath: ["field_candidates"],
+      source: {
+        kind: "variable",
+        variableId: "variable_settings",
+        fieldPath: ["field_candidates"],
+      },
+    });
+  });
+
+  it("offers the current item of a Variable array expansion for a same-Shape Block input", () => {
+    const slot = slotWith({ source: { kind: "variable", variableId: "variable_candidates" } });
+
+    const options = slotInputOptions(
+      slot,
+      blockInput({ kind: "shape", shapeId: candidateShape.id }),
+      slotVariables,
+      slotShapes,
+    );
+
+    expect(options).toHaveLength(1);
+    expect(options[0]).toMatchObject({
+      id: "current-item",
+      name: "Current item",
+      fieldPath: [],
+      fieldType: { kind: "shape", shapeId: candidateShape.id },
+      source: { kind: "runtimeItem", fieldPath: [] },
+    });
+  });
+
+  it("supplies number and text Block inputs from a number-array current item", () => {
+    const slot = slotWith({ source: { kind: "variable", variableId: "variable_totals" } });
+
+    for (const input of ["number", "text"] as const) {
+      const options = slotInputOptions(slot, blockInput(input), slotVariables, slotShapes);
+      expect(options.map((option) => [option.id, option.name, option.fieldPath])).toEqual([
+        ["current-item", "Current item", []],
+        ["variable_total", "Total", []],
+      ]);
+      expect(options[0]).toMatchObject({
+        fieldType: "number",
+        source: { kind: "runtimeItem", fieldPath: [] },
+      });
+    }
+  });
+
+  it("offers only compatible current-item fields", () => {
+    const slot = slotWith({ source: { kind: "variable", variableId: "variable_candidates" } });
+
+    expect(
+      slotInputOptions(slot, blockInput("image"), slotVariables, slotShapes).map((option) => [
+        option.name,
+        option.fieldPath,
+        option.source,
+      ]),
+    ).toEqual([
+      [
+        "Current item → photo",
+        ["field_photo"],
+        { kind: "runtimeItem", fieldPath: ["field_photo"] },
+      ],
+    ]);
+    expect(slotInputOptions(slot, blockInput("color"), slotVariables, slotShapes)).toEqual([]);
+  });
+
+  it("expands a nested parent array and round-trips a nested item field through its persisted source", () => {
+    const expansion = slotExpansionOptions(slotVariables, slotShapes).find(
+      (option) => option.id === "variable_settings",
+    );
+    expect(expansion).toBeDefined();
+    // The parent UI persists `option.source` as the Slot's expansion.
+    const slot = slotWith({ source: expansion!.source });
+    const input = blockInput("number");
+
+    const options = slotInputOptions(slot, input, slotVariables, slotShapes);
+    const votes = options.find((option) => option.name === "Current item → votes");
+    expect(votes).toMatchObject({
+      name: "Current item → votes",
+      fieldPath: ["field_votes"],
+      fieldType: "number",
+      source: { kind: "runtimeItem", fieldPath: ["field_votes"] },
+    });
+
+    // Reading the persisted assignment back yields the same option identity.
+    expect(slotInputReference(slot, input, votes!.source, slotVariables, slotShapes)).toMatchObject(
+      {
+        id: "current-item",
+        name: "Current item → votes",
+        fieldPath: ["field_votes"],
+        source: { kind: "runtimeItem", fieldPath: ["field_votes"] },
+      },
+    );
+  });
+
+  it("keeps direct Variable choices distinct from the current item", () => {
+    const slot = slotWith({ source: { kind: "variable", variableId: "variable_candidates" } });
+    const input = blockInput("text");
+
+    expect(
+      slotInputOptions(slot, input, slotVariables, slotShapes).map((option) => [
+        option.id,
+        option.name,
+      ]),
+    ).toEqual([
+      ["current-item", "Current item → name"],
+      ["current-item", "Current item → votes"],
+      ["variable_total", "Total"],
+    ]);
+    expect(
+      slotInputReference(
+        slot,
+        input,
+        { kind: "variable", variableId: "variable_total" },
+        slotVariables,
+        slotShapes,
+      ),
+    ).toMatchObject({
+      id: "variable_total",
+      name: "Total",
+      fieldPath: [],
+      source: { kind: "variable", variableId: "variable_total", fieldPath: [] },
+    });
+  });
+
+  it("keeps unavailable assignments visible without offering them", () => {
+    const slot = slotWith({ source: { kind: "variable", variableId: "variable_candidates" } });
+    const input = blockInput("number");
+
+    expect(
+      slotInputReference(
+        slot,
+        input,
+        { kind: "runtimeItem", fieldPath: ["field_missing"] },
+        slotVariables,
+        slotShapes,
+      ),
+    ).toMatchObject({
+      id: "current-item",
+      name: "Current item → Unavailable",
+      fieldPath: ["field_missing"],
+      source: { kind: "runtimeItem", fieldPath: ["field_missing"] },
+    });
+    expect(
+      slotInputOptions(slot, input, slotVariables, slotShapes).some(
+        (option) => option.id === "current-item" && option.fieldPath!.includes("field_missing"),
+      ),
+    ).toBe(false);
+
+    // A Variable whose path no longer resolves still displays.
+    expect(
+      slotInputReference(
+        slot,
+        input,
+        { kind: "variable", variableId: "variable_settings", fieldPath: ["field_nope"] },
+        slotVariables,
+        slotShapes,
+      ),
+    ).toMatchObject({ id: "variable_settings", name: "settings → Unavailable" });
+    // A Variable that no longer exists has nothing to display.
+    expect(
+      slotInputReference(
+        slot,
+        input,
+        { kind: "variable", variableId: "variable_deleted" },
+        slotVariables,
+        slotShapes,
+      ),
+    ).toBeNull();
+  });
+
+  it("falls back to direct Variable options when the expansion is absent or not a Variable array", () => {
+    const input = blockInput("number");
+
+    expect(
+      slotInputOptions(slotWith(), input, slotVariables, slotShapes).map((option) => option.name),
+    ).toEqual(["Total"]);
+    expect(
+      slotInputOptions(
+        slotWith({ source: { kind: "literal", value: [1, 2] } }),
+        input,
+        slotVariables,
+        slotShapes,
+      ).map((option) => option.name),
+    ).toEqual(["Total"]);
+    expect(
+      slotInputOptions(
+        slotWith({ source: { kind: "variable", variableId: "variable_total" } }),
+        input,
+        slotVariables,
+        slotShapes,
+      ).map((option) => option.name),
+    ).toEqual(["Total"]);
+    expect(
+      slotInputReference(slotWith(), input, { kind: "runtimeItem" }, slotVariables, slotShapes),
+    ).toBeNull();
   });
 });

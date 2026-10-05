@@ -125,6 +125,82 @@ describe("Canvas artboard rendering inputs", () => {
   });
 });
 
+describe("Canvas artboard Slot rendering", () => {
+  const slotGraph = {
+    nodes: [
+      {
+        id: "scene_cards",
+        kind: "scene",
+        name: "Cards",
+        parentId: null,
+        position: { x: 0, y: 0 },
+        variables: [],
+      },
+    ],
+    edges: [],
+    blocks: [block],
+  } satisfies ShowGraph;
+  const slotSceneArtboard = {
+    canvasId: "canvas-cards",
+    artId: "scene_cards",
+    kind: "scene",
+    name: "Cards",
+    canvas: {
+      kind: "scene",
+      root: {
+        id: "cards-root",
+        type: "frame",
+        children: [
+          {
+            id: "card-slot",
+            type: "slot",
+            blockId: block.id,
+            assignments: [{ variableId: variable.id, source: { kind: "literal", value: "Hello" } }],
+          },
+        ],
+      },
+    },
+    position: { x: 0, y: 0 },
+  } satisfies CanvasArtboardDocument;
+
+  function slotInstanceChildIds(): string {
+    function Probe() {
+      const { artboards } = useCanvasArtboards({
+        documents: [slotSceneArtboard, artboard],
+        workspace: {
+          artboards: [
+            {
+              canvasId: artboard.canvasId,
+              position: artboard.position,
+              canvas: {
+                kind: "block",
+                root: {
+                  id: "card-root",
+                  type: "frame",
+                  children: [{ id: "card-badge", type: "frame", children: [] }],
+                },
+              },
+            },
+          ],
+        },
+        graph: slotGraph,
+        imageAssets: [],
+      });
+      const scene = artboards.find(
+        (candidate) => candidate.canvasId === slotSceneArtboard.canvasId,
+      );
+      const slot = scene?.renderPresentation?.root.children[0]?.slot;
+      const ids = slot?.instances[0]?.element?.children.map((child) => child.element.id) ?? [];
+      return createElement("output", null, ids.join(","));
+    }
+    return renderToStaticMarkup(createElement(Probe));
+  }
+
+  it("renders a Scene Slot from the edited Block Canvas, not the last-read graph", () => {
+    expect(slotInstanceChildIds()).toBe("<output>card-badge</output>");
+  });
+});
+
 describe("Canvas artboard Block summaries", () => {
   it("preserves Block variables and metadata for inspector and Slot rendering", () => {
     const [summary] = blocksForArtboards([artboard], graph);

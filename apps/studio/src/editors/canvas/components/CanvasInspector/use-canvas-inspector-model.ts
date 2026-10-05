@@ -5,6 +5,7 @@ import { canvasElementParent, findCanvasElement } from "@mechane/commands";
 import type { CanvasArtboardDocument } from "../../../../api/canvas";
 import { lockedAspectRatio } from "../../commands/canvas-resize";
 import { numericSizeValue } from "./canvas-inspector-values";
+import { cueValueSources } from "./cue-value-sources";
 import type {
   CanvasInspectorModel,
   CanvasInspectorProps,
@@ -31,6 +32,7 @@ const EMPTY_SHAPES = [] as const;
 const EMPTY_CUES = [] as const;
 const EMPTY_ACTIONS = [] as const;
 const EMPTY_EVENT_BINDINGS = [] as const;
+const EMPTY_SLOT_EVENT_BINDINGS = [] as const;
 
 function sameValue(left: unknown, right: unknown): boolean {
   if (Object.is(left, right)) return true;
@@ -136,12 +138,15 @@ export function useCanvasInspectorModel({
   focused,
   artboards,
   selection,
+  graph,
+  onPassCueValue,
   variables = EMPTY_VARIABLES,
   blocks = EMPTY_BLOCKS,
   shapes = EMPTY_SHAPES,
   cues = EMPTY_CUES,
   actions = EMPTY_ACTIONS,
   eventBindings = EMPTY_EVENT_BINDINGS,
+  slotEventBindings = EMPTY_SLOT_EVENT_BINDINGS,
   onCreateCue,
   onFocusCue,
   onSetEventBindingCue,
@@ -149,6 +154,10 @@ export function useCanvasInspectorModel({
   onCreateEventBinding,
   onRemoveEventBinding,
   onReorderEventBindings,
+  onAddSlotCueBinding,
+  onSetSlotEventBinding,
+  onRemoveSlotEventBinding,
+  onCreateSlotCueBinding,
   imageAssets = EMPTY_IMAGE_ASSETS,
   deviceQrImages = EMPTY_DEVICE_QR_IMAGES,
   onImageUpload,
@@ -222,6 +231,10 @@ export function useCanvasInspectorModel({
     parentInfo && focused ? findCanvasElement(focused.canvas.root, parentInfo.parentId) : null;
   const absolute = !parent || parent.type !== "frame" || parent.layoutMode !== "auto";
   const aspectRatioLock = useAspectRatioLock(selected, update);
+  const valueSources = useMemo(
+    () => cueValueSources(graph, focused, artboards, variables, shapes),
+    [graph, focused, artboards, variables, shapes],
+  );
 
   return useMemo(
     () =>
@@ -234,6 +247,12 @@ export function useCanvasInspectorModel({
             blocks,
             variables,
             shapes,
+            cues,
+            actions,
+            eventBindings,
+            slotEventBindings,
+            cueValueSources: valueSources,
+            onPassCueValue,
             currentDimensions,
             currentDimensionsById,
             absolute,
@@ -248,6 +267,10 @@ export function useCanvasInspectorModel({
             onCreateEventBinding,
             onRemoveEventBinding,
             onReorderEventBindings,
+            onAddSlotCueBinding,
+            onSetSlotEventBinding,
+            onRemoveSlotEventBinding,
+            onCreateSlotCueBinding,
             deviceQrImages,
             imageAssets,
             onImageUpload,
@@ -283,6 +306,9 @@ export function useCanvasInspectorModel({
       cues,
       actions,
       eventBindings,
+      slotEventBindings,
+      valueSources,
+      onPassCueValue,
       onCreateCue,
       onFocusCue,
       onSetEventBindingCue,
@@ -290,6 +316,10 @@ export function useCanvasInspectorModel({
       onCreateEventBinding,
       onRemoveEventBinding,
       onReorderEventBindings,
+      onAddSlotCueBinding,
+      onSetSlotEventBinding,
+      onRemoveSlotEventBinding,
+      onCreateSlotCueBinding,
       blockVariableEditing,
     ],
   );

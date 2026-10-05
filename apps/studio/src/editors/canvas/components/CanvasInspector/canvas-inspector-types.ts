@@ -1,8 +1,14 @@
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import type { Block } from "@mechane/domain/blocks";
 import type { Element } from "@mechane/domain/canvas";
-import type { SceneVariable } from "@mechane/domain/graph";
-import type { Action, Cue, EventBinding, InteractionOwner } from "@mechane/domain/interactions";
+import type { SceneVariable, ShowGraph } from "@mechane/domain/graph";
+import type {
+  Action,
+  Cue,
+  EventBinding,
+  InteractionOwner,
+  SlotEventBinding,
+} from "@mechane/domain/interactions";
 import type { Shape } from "@mechane/domain/shapes";
 import type { ImageAsset } from "@mechane/graphql-schema";
 
@@ -10,6 +16,7 @@ import type { CanvasArtboardDocument } from "../../../../api/canvas";
 import type { VariableInspectorEditing } from "../../../../components/VariableInspector";
 import type { DeviceQrImage } from "../../canvas-workspace-types";
 import type { CanvasSelection } from "../canvas-selection";
+import type { CueValueSource } from "../../commands/cue-value-binding";
 
 export type CanvasInspectorPreview = {
   elementId: string;
@@ -38,12 +45,15 @@ export type CanvasInspectorProps = {
   focused: CanvasArtboardDocument | null;
   artboards: readonly CanvasArtboardDocument[];
   selection: CanvasSelection;
+  graph?: ShowGraph;
+  onPassCueValue?(bindingId: string, value: CueValueSource, parameterId?: string): void;
   variables?: readonly SceneVariable[];
   blocks?: readonly Block[];
   shapes?: readonly Shape[];
   cues?: readonly Cue[];
   actions?: readonly Action[];
   eventBindings?: readonly EventBinding[];
+  slotEventBindings?: readonly SlotEventBinding[];
   imageAssets?: readonly ImageAsset[];
   deviceQrImages?: Readonly<Record<string, DeviceQrImage>>;
   onImageUpload?(props: ImageInputOnUploadProps): void;
@@ -54,6 +64,10 @@ export type CanvasInspectorProps = {
   onCreateEventBinding?(binding: EventBinding): void;
   onRemoveEventBinding?(bindingId: string): void;
   onReorderEventBindings?(bindingIds: readonly string[]): void;
+  onAddSlotCueBinding?(sourceCueId: string, slotElementId: string): void;
+  onSetSlotEventBinding?(binding: SlotEventBinding): void;
+  onRemoveSlotEventBinding?(bindingId: string): void;
+  onCreateSlotCueBinding?(sourceCueId: string, slotElementId: string, bindingId?: string): void;
   inspectorPreview?: CanvasInspectorPreview | null;
   currentDimensions?: CanvasInspectorDimensions | null;
   blockVariableEditing?: VariableInspectorEditing;
@@ -86,6 +100,9 @@ export type CanvasInspectorModel = {
   cues?: readonly Cue[];
   actions?: readonly Action[];
   eventBindings?: readonly EventBinding[];
+  slotEventBindings?: readonly SlotEventBinding[];
+  cueValueSources?: readonly CueValueSource[];
+  onPassCueValue?(bindingId: string, value: CueValueSource, parameterId?: string): void;
   deviceQrImages: Readonly<Record<string, DeviceQrImage>>;
   imageAssets: readonly ImageAsset[];
   onImageUpload?(props: ImageInputOnUploadProps): void;
@@ -96,6 +113,10 @@ export type CanvasInspectorModel = {
   onCreateEventBinding?(binding: EventBinding): void;
   onRemoveEventBinding?(bindingId: string): void;
   onReorderEventBindings?(bindingIds: readonly string[]): void;
+  onAddSlotCueBinding?(sourceCueId: string, slotElementId: string): void;
+  onSetSlotEventBinding?(binding: SlotEventBinding): void;
+  onRemoveSlotEventBinding?(bindingId: string): void;
+  onCreateSlotCueBinding?(sourceCueId: string, slotElementId: string, bindingId?: string): void;
   blockVariableEditing?: VariableInspectorEditing;
   onRenameArtboard?(artId: string, name: string): void;
   fontFamilies: readonly string[];

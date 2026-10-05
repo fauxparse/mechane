@@ -1,7 +1,13 @@
 import {
   PropertyInput,
   Section,
+  SectionHelperText,
   SectionRow,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   type PropertyInputValue,
 } from "@mechane/design-system";
 import type { SlotInputSource } from "@mechane/domain/canvas";
@@ -11,11 +17,17 @@ import {
   inputType,
   isVariableInput,
   literalValue,
+  slotExpansionOptions,
   slotInputOptions,
   slotInputReference,
-  variableInput,
-  variableOptions,
 } from "./canvas-inspector-values";
+
+const sourceKey = (source: SlotInputSource): string =>
+  source.kind === "variable"
+    ? JSON.stringify([source.kind, source.variableId, source.fieldPath ?? []])
+    : source.kind === "runtimeItem"
+      ? JSON.stringify([source.kind, source.fieldPath ?? []])
+      : source.kind;
 
 export const SlotInputsSection = () => {
   const { target, blocks, variables, shapes, update } = useCanvasInspectorContext();
@@ -23,6 +35,21 @@ export const SlotInputsSection = () => {
   const block = blocks.find((candidate) => candidate.id === target.blockId);
   if (!block) return null;
   const assignments = target.assignments ?? [];
+  const expansionOptions = slotExpansionOptions(variables, shapes);
+  const expansionSource = target.expansion?.source;
+  const expansionKey = expansionSource ? sourceKey(expansionSource) : "none";
+  const expansionUnavailable = Boolean(
+    expansionSource &&
+    !expansionOptions.some((option) => sourceKey(option.source) === expansionKey),
+  );
+  const repeatItems = [
+    { value: "none", label: "Don't repeat" },
+    ...expansionOptions.map((option) => ({
+      value: sourceKey(option.source),
+      label: option.name,
+    })),
+    ...(expansionUnavailable ? [{ value: expansionKey, label: "Unavailable source" }] : []),
+  ];
   const updateAssignment = (variableId: string, source: SlotInputSource) => {
     update({
       assignments: [
@@ -32,75 +59,153 @@ export const SlotInputsSection = () => {
     });
   };
   return (
-    <Section label="Block Inputs">
-      {block.variables.map((variable) => {
-        const assignment = assignments.find((item) => item.variableId === variable.id);
-        const type = inputType(variable.type);
-        const value =
-          type !== null
-            ? assignment?.source?.kind === "variable"
-              ? variableInput(
+    <>
+      <Section label="Repeat">
+        <SectionRow className="grid-cols-[1fr]">
+          <span className="min-w-0 flex-1 text-xs text-muted-foreground">Source</span>
+          <Select
+            items={repeatItems}
+            value={expansionKey}
+            onValueChange={(key) => {
+              if (key === "none") {
+                update(
                   {
-                    kind: "variable",
-                    variableId: assignment.source.variableId,
-                    fieldPath: assignment.source.fieldPath ?? [],
+                    assignments: assignments.map((assignment) =>
+                      assignment.source.kind === "runtimeItem"
+                        ? { variableId: assignment.variableId, source: { kind: "unset" } }
+                        : assignment,
+                    ),
                   },
-                  variable.type,
-                  variables,
-                  shapes,
-                )
-              : assignment?.source?.kind === "literal"
-                ? literalValue(variable.type, assignment.source.value)
-                : null
-            : slotInputReference(target, variable, assignment?.source, variables, shapes);
-        const options =
-          type !== null
-            ? variableOptions(variable.type, variables, shapes)
-            : slotInputOptions(target, variable, variables, shapes);
-        if (type === null && value === null && options.length === 0) return null;
-        return (
-          <SectionRow key={variable.id}>
-            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-              {variable.name}
-            </span>
-            <PropertyInput
-              className="min-w-0 flex-1"
-              type={type ?? "text"}
-              value={value}
-              variables={options}
-              onChange={(next: PropertyInputValue | null) => {
-                const runtimeReference =
-                  type === null
-                    ? slotInputReference(
-                        target,
-                        variable,
-                        { kind: "runtimeItem" },
-                        variables,
-                        shapes,
-                      )
-                    : null;
-                const nextSource: SlotInputSource = isVariableInput(next)
-                  ? runtimeReference &&
-                    next.id === runtimeReference.id &&
-                    JSON.stringify(next.fieldPath ?? []) ===
-                      JSON.stringify(runtimeReference.fieldPath ?? [])
-                    ? { kind: "runtimeItem" }
-                    : {
-                        kind: "variable",
-                        variableId: next.id,
-                        fieldPath: next.fieldPath ?? [],
-                      }
-                  : next
-                    ? type === null
-                      ? (assignment?.source ?? { kind: "unset" })
-                      : { kind: "literal", value: next.value }
-                    : { kind: "unset" };
-                updateAssignment(variable.id, nextSource);
-              }}
-            />
-          </SectionRow>
-        );
-      })}
-    </Section>
+                  ["expansion"],
+                );
+                return;
+              }
+              const option = expansionOptions.find(
+                (candidate) => sourceKey(candidate.source) === key,
+              );
+              if (option) update({ expansion: { source: option.source } });
+            }}
+          >
+            <SelectTrigger aria-label="Repeat source" className="w-full min-w-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {repeatItems.map((item) => (
+                <SelectItem
+                  key={item.value}
+                  value={item.value}
+                  disabled={expansionUnavailable && item.value === expansionKey}
+                >
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SectionRow>
+        <SectionHelperText>
+          Render one Block per array item, then map its inputs to Current item.
+        </SectionHelperText>
+      </Section>
+      <Section label="Block Inputs">
+        {block.variables.map((variable) => {
+          const assignment = assignments.find((item) => item.variableId === variable.id);
+          const type = inputType(variable.type);
+          const options = slotInputOptions(target, variable, variables, shapes);
+          const reference = slotInputReference(
+            target,
+            variable,
+            assignment?.source,
+            variables,
+            shapes,
+          );
+          const value =
+            assignment?.source.kind === "literal"
+              ? literalValue(variable.type, assignment.source.value)
+              : reference;
+          const selectedKey = assignment?.source ? sourceKey(assignment.source) : "unset";
+          const selectedOption = options.find((option) => sourceKey(option.source) === selectedKey);
+          const inputUnavailable = selectedKey !== "unset" && !selectedOption;
+          const inputItems = [
+            { value: "unset", label: "Default / unset" },
+            ...options.map((option) => ({ value: sourceKey(option.source), label: option.name })),
+            ...(inputUnavailable
+              ? [
+                  {
+                    value: selectedKey,
+                    label:
+                      assignment?.source.kind === "literal"
+                        ? "Literal value"
+                        : (reference?.name ?? "Unavailable input"),
+                  },
+                ]
+              : []),
+          ];
+          return (
+            <SectionRow key={variable.id} className="grid-cols-[1fr]">
+              <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                {variable.name}
+              </span>
+              {type !== null ? (
+                <PropertyInput
+                  className="min-w-0 flex-1"
+                  ariaLabel={`${variable.name} input`}
+                  type={type}
+                  value={value}
+                  variables={options}
+                  brokenVariable={Boolean(reference && !selectedOption)}
+                  onChange={(next: PropertyInputValue | null) => {
+                    if (isVariableInput(next)) {
+                      const option = options.find(
+                        (candidate) =>
+                          candidate.id === next.id &&
+                          JSON.stringify(candidate.fieldPath ?? []) ===
+                            JSON.stringify(next.fieldPath ?? []),
+                      );
+                      if (option) updateAssignment(variable.id, option.source);
+                    } else {
+                      updateAssignment(
+                        variable.id,
+                        next ? { kind: "literal", value: next.value } : { kind: "unset" },
+                      );
+                    }
+                  }}
+                />
+              ) : (
+                <Select
+                  items={inputItems}
+                  value={selectedKey}
+                  onValueChange={(key) => {
+                    if (key === "unset") {
+                      updateAssignment(variable.id, { kind: "unset" });
+                      return;
+                    }
+                    const option = options.find((candidate) => sourceKey(candidate.source) === key);
+                    if (option) updateAssignment(variable.id, option.source);
+                  }}
+                >
+                  <SelectTrigger
+                    aria-label={`${variable.name} input source`}
+                    className="w-full min-w-0"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {inputItems.map((item) => (
+                      <SelectItem
+                        key={item.value}
+                        value={item.value}
+                        disabled={inputUnavailable && item.value === selectedKey}
+                      >
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </SectionRow>
+          );
+        })}
+      </Section>
+    </>
   );
 };

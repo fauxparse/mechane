@@ -50,6 +50,8 @@ export function CanvasWorkspaceEditor(props: CanvasWorkspaceEditorProps) {
     cues,
     actions,
     eventBindings,
+    slotEventBindings,
+    graph,
     blockVariableEditing,
     imageAssets,
     deviceQrImages,
@@ -81,6 +83,11 @@ export function CanvasWorkspaceEditor(props: CanvasWorkspaceEditorProps) {
       createEventBinding: onCreateEventBinding,
       removeEventBinding: onRemoveEventBinding,
       reorderEventBindings: onReorderEventBindings,
+      addSlotCueBinding: onAddSlotCueBinding,
+      setSlotEventBinding: onSetSlotEventBinding,
+      removeSlotEventBinding: onRemoveSlotEventBinding,
+      createSlotCueBinding: onCreateSlotCueBinding,
+      passCueValue: onPassCueValue,
     },
     assets: { imageUpload: onImageUpload },
     camera: { change: onCameraChange },
@@ -438,6 +445,9 @@ export function CanvasWorkspaceEditor(props: CanvasWorkspaceEditorProps) {
           cues={cues}
           actions={actions}
           eventBindings={eventBindings}
+          slotEventBindings={slotEventBindings}
+          graph={graph}
+          onPassCueValue={onPassCueValue}
           onCreateCue={onCreateCue}
           onFocusCue={onFocusCue}
           onSetEventBindingCue={onSetEventBindingCue}
@@ -445,6 +455,10 @@ export function CanvasWorkspaceEditor(props: CanvasWorkspaceEditorProps) {
           onCreateEventBinding={onCreateEventBinding}
           onRemoveEventBinding={onRemoveEventBinding}
           onReorderEventBindings={onReorderEventBindings}
+          onAddSlotCueBinding={onAddSlotCueBinding}
+          onSetSlotEventBinding={onSetSlotEventBinding}
+          onRemoveSlotEventBinding={onRemoveSlotEventBinding}
+          onCreateSlotCueBinding={onCreateSlotCueBinding}
           blockVariableEditing={blockVariableEditing}
           deviceQrImages={deviceQrImages}
           imageAssets={imageAssets}

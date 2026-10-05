@@ -1,5 +1,11 @@
 import { generateId } from "@mechane/domain/id";
-import type { Cue, EventBinding, EventKind, InteractionOwner } from "@mechane/domain/interactions";
+import type {
+  Cue,
+  EventBinding,
+  EventKind,
+  EventParameterMapping,
+  InteractionOwner,
+} from "@mechane/domain/interactions";
 
 type AddInteractionOptions = {
   eventKind: EventKind;
@@ -24,12 +30,27 @@ export function addInteraction({
   onCreateEventBinding,
   onCapturingChange,
 }: AddInteractionOptions) {
-  const cueId = ownedCues[0]?.id ?? onCreateCue?.(owner);
+  const cue = ownedCues[0];
+  const cueId = cue?.id ?? onCreateCue?.(owner);
   if (!cueId) return;
   const position =
     bindings.reduce((highest, binding) => Math.max(highest, binding.position), -1) + 1;
   const id = generateId("eventBinding");
-  const base = { id, canvasId, elementId, cueId, position };
+  const parameterMappings = cue?.parameters?.map(
+    (parameter) =>
+      ({
+        parameterId: parameter.id,
+        source: { kind: "unset" },
+      }) satisfies EventParameterMapping,
+  );
+  const base = {
+    id,
+    canvasId,
+    elementId,
+    cueId,
+    position,
+    ...(parameterMappings ? { parameterMappings } : {}),
+  };
   if (eventKind === "keypress") {
     // Created before a key is captured: an unset key is valid and inert
     // (#517), so the row can exist while the author decides.

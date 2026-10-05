@@ -10,6 +10,7 @@ import { coalesceCanvasWorkspaceEdits, coalesceGraphEdits } from "@mechane/comma
 import type { CanvasWorkspaceEdit, GraphEdit } from "@mechane/commands";
 import type { GraphState } from "@mechane/domain/graph";
 import type { ShowId } from "@mechane/domain/id";
+import type { SlotEventBinding } from "@mechane/domain/interactions";
 import type { PrimitiveType, Shape, ShapeField, Type } from "@mechane/domain/shapes";
 import {
   ApplyShowEditsMutation,
@@ -22,6 +23,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { toEditInput, toGraphEdit } from "../editors/show/data/api-graph";
+import { draftSavesSettled, trackDraftSave } from "./draft-saves";
 import { GRAPHQL_ENDPOINT } from "./client";
 
 /**
@@ -40,8 +42,8 @@ interface CachedShowGraph {
   readonly blocks: readonly unknown[];
   readonly cues: readonly CachedCue[];
   readonly actions: readonly { readonly cueId: string }[];
-  readonly eventBindings: readonly { readonly cueId: string }[];
-  readonly slotEventBindings: readonly unknown[];
+  readonly eventBindings: readonly { readonly id: string; readonly cueId: string }[];
+  readonly slotEventBindings: readonly SlotEventBinding[];
   readonly sourceFieldDefaults: readonly CachedSourceFieldDefault[];
   readonly showId: string;
   readonly state: string;
@@ -306,6 +308,7 @@ export function patchShowGraphQueryData(
   let cues = previous.cues;
   let actions = previous.actions;
   let eventBindings = previous.eventBindings;
+  let slotEventBindings = previous.slotEventBindings;
   let edges = previous.edges;
   let sourceFieldDefaults = previous.sourceFieldDefaults;
   let shapes = previous.shapes;
@@ -316,15 +319,42 @@ export function patchShowGraphQueryData(
         cues = [...cues, toCachedCue(edit.cue)];
         changed = true;
         break;
+      case "graph.setCue":
+        cues = cues.map((cue) => (cue.id === edit.cue.id ? toCachedCue(edit.cue) : cue));
+        changed = true;
+        break;
+      case "graph.setEventBinding": {
+        const next = edit.binding;
+        eventBindings = eventBindings.map((binding) =>
+          binding.id === next.id
+            ? {
+                id: next.id,
+                canvasId: next.canvasId,
+                elementId: next.elementId,
+                eventKind: next.eventKind,
+                cueId: next.cueId,
+                position: next.position,
+                params: next.eventKind === "keypress" ? next.params : null,
+                parameterMappings: next.parameterMappings ?? [],
+              }
+            : binding,
+        );
+        changed = true;
+        break;
+      }
       case "graph.removeCue": {
         const nextCues = cues.filter((cue) => cue.id !== edit.cueId);
         const nextActions = actions.filter((action) => action.cueId !== edit.cueId);
         const nextEventBindings = eventBindings.filter((binding) => binding.cueId !== edit.cueId);
+        const nextSlotEventBindings = slotEventBindings.filter(
+          (binding) => binding.sourceCueId !== edit.cueId && binding.targetCueId !== edit.cueId,
+        );
         const nextEdges = withoutCueEdges(edges, edit.cueId);
         if (
           nextCues.length === cues.length &&
           nextActions.length === actions.length &&
           nextEventBindings.length === eventBindings.length &&
+          nextSlotEventBindings.length === slotEventBindings.length &&
           nextEdges.length === edges.length
         ) {
           break;
@@ -332,7 +362,26 @@ export function patchShowGraphQueryData(
         cues = nextCues;
         actions = nextActions;
         eventBindings = nextEventBindings;
+        slotEventBindings = nextSlotEventBindings;
         edges = nextEdges;
+        changed = true;
+        break;
+      }
+      case "graph.setSlotEventBinding": {
+        const current = slotEventBindings.find((binding) => binding.id === edit.binding.id);
+        if (current && JSON.stringify(current) === JSON.stringify(edit.binding)) break;
+        slotEventBindings = current
+          ? slotEventBindings.map((binding) =>
+              binding.id === edit.binding.id ? edit.binding : binding,
+            )
+          : [...slotEventBindings, edit.binding];
+        changed = true;
+        break;
+      }
+      case "graph.removeSlotEventBinding": {
+        const next = slotEventBindings.filter((binding) => binding.id !== edit.bindingId);
+        if (next.length === slotEventBindings.length) break;
+        slotEventBindings = next;
         changed = true;
         break;
       }
@@ -375,7 +424,17 @@ export function patchShowGraphQueryData(
   }
 
   return changed
-    ? { ...previous, nodes, cues, actions, eventBindings, edges, sourceFieldDefaults, shapes }
+    ? {
+        ...previous,
+        nodes,
+        cues,
+        actions,
+        eventBindings,
+        slotEventBindings,
+        edges,
+        sourceFieldDefaults,
+        shapes,
+      }
     : previous;
 }
 
@@ -392,6 +451,7 @@ export function useShowGraph(id: ShowId | null, state: GraphState) {
     // stack's base and clears undo, so returning to the window must not trigger one.
     refetchOnWindowFocus: false,
     queryFn: async () => {
+      if (state === "draft") await draftSavesSettled(id as ShowId);
       // `enabled` above means this only runs with a non-null id.
       const data = await graphqlRequest(GRAPHQL_ENDPOINT, GetShowGraphQuery, {
         showId: id as ShowId,
@@ -544,11 +604,13 @@ export function useShowGraphEdits(
     }
     inFlight.current = true;
     setSaving(true);
-    graphqlRequest(GRAPHQL_ENDPOINT, ApplyShowEditsMutation, {
+    const request = graphqlRequest(GRAPHQL_ENDPOINT, ApplyShowEditsMutation, {
       showId,
       baseVersion: base,
       edits: edits.map(toEditInput),
-    })
+    });
+    trackDraftSave(showId, request);
+    request
       .then((data) => {
         setError(null);
         const result = data.applyShowEdits;

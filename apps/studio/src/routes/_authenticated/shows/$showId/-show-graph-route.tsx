@@ -125,7 +125,7 @@ function ShowGraphRoute({
   });
   // The graph the editor opens with, decoded once at the seam where the
   // transport stops (#750).
-  const openedDocument = useOpenedShowGraph(draft.data);
+  const openedDocument = useOpenedShowGraph(draft);
   const openedWith = openedDocument?.graph ?? null;
   const [edited, setEdited] = useState(false);
   const valueTransferBridge = useMemo<ValueTransferBridge>(

@@ -101,6 +101,8 @@ function CanvasWorkspaceRoute() {
       cues={workspace.cues}
       actions={workspace.actions}
       eventBindings={workspace.eventBindings}
+      slotEventBindings={workspace.slotEventBindings}
+      graph={workspace.graph}
       shapes={workspace.shapes}
       deviceQrImages={workspace.deviceQrImages}
       imageAssets={workspace.imageAssets}

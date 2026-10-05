@@ -10,6 +10,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   InputGroup,
   InputGroupAddon,
@@ -41,8 +42,10 @@ import { bindableKeyFor, keyAccessibleName, keyDisplayName } from "@mechane/doma
 import { sortBy } from "es-toolkit";
 import { useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useCanvasInspectorContext } from "./CanvasInspectorContext";
+import { InteractionValues } from "./InteractionValues";
 import { addInteraction } from "./interaction-actions";
 import { keypressUnavailableReason } from "./keypress-availability";
+import { SlotEventsSection } from "./SlotEventsSection";
 
 function ownerKey(owner: InteractionOwner): string {
   return owner.kind === "scene" ? `scene:${owner.sceneId}` : `block:${owner.blockId}`;
@@ -275,6 +278,7 @@ function InteractionBindingRow({
           <Trash2Icon />
         </Button>
       </div>
+      <InteractionValues binding={binding} />
     </div>
   );
 }
@@ -284,6 +288,7 @@ export function InteractionSection() {
     focused,
     target,
     selected,
+    blocks = [],
     cues = [],
     eventBindings = [],
     onCreateCue,
@@ -292,6 +297,7 @@ export function InteractionSection() {
     onRemoveEventBinding,
     onReorderEventBindings,
     onSetEventBindingKey,
+    onAddSlotCueBinding,
   } = useCanvasInspectorContext();
 
   // Which Binding is listening for a keystroke. Owned here rather than per
@@ -330,6 +336,20 @@ export function InteractionSection() {
       .slice()
       .sort((left, right) => left.position - right.position || left.id.localeCompare(right.id));
   }, [eventBindings, focused, selected.length, target.id]);
+  const renderedBlock =
+    target.type === "slot" ? blocks.find((block) => block.id === target.blockId) : undefined;
+  const blockCues = useMemo(
+    () =>
+      target.type === "slot"
+        ? sortBy(
+            cues.filter(
+              (cue) => cue.owner.kind === "block" && cue.owner.blockId === target.blockId,
+            ),
+            [(cue) => cue.name],
+          )
+        : [],
+    [cues, target],
+  );
 
   if (!focused || selected.length !== 1 || !owner) return null;
   const duplicateBinding = (binding: (typeof bindings)[number]) => {
@@ -400,6 +420,7 @@ export function InteractionSection() {
           ))}
         </div>
       </DragDropProvider>
+      <SlotEventsSection />
       <SectionRow>
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -436,6 +457,20 @@ export function InteractionSection() {
                 </DropdownMenuItem>
               );
             })}
+            {blockCues.length > 0 && <DropdownMenuSeparator />}
+            {blockCues.map((cue) => (
+              <DropdownMenuItem
+                key={cue.id}
+                onClick={() => onAddSlotCueBinding?.(cue.id, target.id)}
+                className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-0"
+              >
+                <ZapIcon className="row-span-2" />
+                <span>{cue.name}</span>
+                <span className="text-xs text-muted-foreground">
+                  Event from {renderedBlock?.name ?? "Block"}
+                </span>
+              </DropdownMenuItem>
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
       </SectionRow>

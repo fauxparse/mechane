@@ -90,24 +90,43 @@ export function useCanvasArtboards({
     return created.length === 0 ? persisted : [...persisted, ...created];
   }, [documents, graph, workspace]);
 
-  const artboards = useMemo(() => {
+  // The command stack's edits laid over each Artboard. Blocks are derived from these, not from
+  // `graph.blocks`: the graph is only re-read on reload, so its Block canvases go stale the moment
+  // a Block Artboard is edited, and every Slot composing that Block would paint the stale copy.
+  const edited = useMemo(() => {
     const edits = new Map(
       workspace.artboards.map((artboard) => [artboard.canvasId, artboard] as const),
     );
     const nodes = new Map(graph.nodes.map((node) => [node.id, node] as const));
+    return all.map((artboard) => {
+      const edit = edits.get(artboard.canvasId);
+      const block = graph.blocks?.find((candidate) => candidate.id === artboard.artId);
+      return {
+        ...artboard,
+        name: nodes.get(artboard.artId)?.name ?? block?.name ?? artboard.name,
+        canvas: edit?.canvas ?? artboard.canvas,
+        position: edit?.position ?? artboard.position,
+      };
+    });
+  }, [all, graph, workspace.artboards]);
+
+  const blocks = useMemo(() => blocksForArtboards(edited, graph), [edited, graph]);
+
+  const artboards = useMemo(() => {
+    const nodes = new Map(graph.nodes.map((node) => [node.id, node] as const));
+    const editedBlocks = new Map(blocks.map((block) => [block.id, block] as const));
+    const renderBlocks = (graph.blocks ?? []).map((block) => editedBlocks.get(block.id) ?? block);
     const sourceValues = defaultSourceValues(graph);
     const assets = imageAssets.map((asset) => ({ ...asset, assetId: asset.id }));
-    return all.map((artboard) => {
-      const edited = edits.get(artboard.canvasId);
-      const canvas = edited?.canvas ?? artboard.canvas;
+    return edited.map((artboard) => {
       const owner = nodes.get(artboard.artId);
-      const block = graph.blocks?.find((candidate) => candidate.id === artboard.artId);
+      const block = renderBlocks.find((candidate) => candidate.id === artboard.artId);
       const renderPresentation =
         owner?.kind === "scene"
           ? prepareCanvasPresentation({
-              canvas,
+              canvas: artboard.canvas,
               graph,
-              blocks: graph.blocks ?? [],
+              blocks: renderBlocks,
               imageAssets: assets,
               owner: { kind: "scene", scene: owner, sourceValues },
               mode: "studio",
@@ -115,26 +134,18 @@ export function useCanvasArtboards({
             })
           : block
             ? prepareCanvasPresentation({
-                canvas,
+                canvas: artboard.canvas,
                 graph,
-                blocks: graph.blocks ?? [],
+                blocks: renderBlocks,
                 imageAssets: assets,
                 owner: { kind: "block", block },
                 mode: "studio",
                 playerOrigin: PLAYER_BASE_URL,
               })
             : undefined;
-      return {
-        ...artboard,
-        name: owner?.name ?? block?.name ?? artboard.name,
-        canvas,
-        renderPresentation,
-        position: edited?.position ?? artboard.position,
-      };
+      return { ...artboard, renderPresentation };
     });
-  }, [all, graph, imageAssets, workspace.artboards]);
-
-  const blocks = useMemo(() => blocksForArtboards(artboards, graph), [artboards, graph]);
+  }, [blocks, edited, graph, imageAssets]);
 
   return { artboards, blocks };
 }

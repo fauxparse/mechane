@@ -495,21 +495,16 @@ export function CanvasWorkspaceStage({
       setGesture({ ...current, offset: { x: dx, y: dy }, preview: null });
       return;
     }
-    const overSlot = document.elementsFromPoint(event.clientX, event.clientY).some((candidate) => {
-      if (!(candidate instanceof HTMLElement)) return false;
-      const slot = candidate.closest<HTMLElement>("[data-element-type='slot']");
-      return slot !== null && targetNode.contains(slot);
-    });
-    if (overSlot) {
-      setGesture({ ...current, offset: { x: dx, y: dy }, preview: null });
-      return;
-    }
+    // A Slot is never a drop parent, so no Frame its Block instance renders is either. Pointing
+    // at a Slot does not cancel the drop: the dragged element lands in the Slot's own parent, as
+    // it does when the dragged element is itself a Slot and therefore always under the pointer.
     const frames = [
       ...targetNode.querySelectorAll<HTMLElement>("[data-element-type='frame']"),
     ].flatMap((frame) => {
       const id = frame.dataset.elementId;
       const frameElement = id ? findCanvasElement(targetDocument.canvas.root, id) : null;
       if (!frameElement || !isContainerElement(frameElement) || element.contains(frame)) return [];
+      if (frame.closest("[data-element-type='slot']")) return [];
       const rect = measuredRect(frame);
       return event.clientX >= rect.x &&
         event.clientX <= rect.right &&

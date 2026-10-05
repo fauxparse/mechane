@@ -970,6 +970,7 @@ input CueInput {
   sceneId: ID
   blockId: ID
   actionIds: [ID!]!
+  parameters: JSON
 }
 
 input ActionInput {
@@ -990,6 +991,15 @@ input EventBindingInput {
   params: JSON
   parameterMappings: JSON
   cueId: ID!
+  position: Int!
+}
+
+input SlotEventBindingInput {
+  id: ID!
+  slotElementId: ID!
+  sourceCueId: ID!
+  targetCueId: ID!
+  parameterMappings: JSON!
   position: Int!
 }
 
@@ -1046,6 +1056,7 @@ type GraphEdit {
   cue: Cue
   action: Action
   binding: EventBinding
+  slotBinding: SlotEventBinding
 
   """Event Binding key payloads: graph.setEventBindingKey."""
   key: String
@@ -1144,6 +1155,7 @@ input ShowEditInput {
   cue: CueInput
   action: ActionInput
   binding: EventBindingInput
+  slotBinding: SlotEventBindingInput
 
   """Event Binding key payloads: graph.setEventBindingKey."""
   key: String
