@@ -405,6 +405,56 @@ const FIXTURES: { [T in GraphEdit["type"]]: Extract<GraphEdit, { type: T }> } = 
     type: "graph.removeEventBinding",
     bindingId: "binding_lobby",
   },
+  "graph.setSlotEventBinding": {
+    type: "graph.setSlotEventBinding",
+    binding: {
+      id: "slot-binding",
+      slotElementId: "slot_lobby",
+      sourceCueId: "cue_block_pressed",
+      targetCueId: "cue_lobby",
+      parameterMappings: [
+        {
+          sourceParameterId: "choice",
+          targetParameterId: "selected",
+          sourceFieldPath: ["field_name"],
+        },
+      ],
+      position: 0,
+    },
+  },
+  "graph.removeSlotEventBinding": {
+    type: "graph.removeSlotEventBinding",
+    bindingId: "slot-binding",
+  },
+  "graph.setCue": {
+    type: "graph.setCue",
+    cue: {
+      id: "cue_lobby",
+      name: "Choose",
+      owner: { kind: "scene", sceneId: "scene_lobby" },
+      actionIds: [],
+      parameters: [
+        {
+          id: "candidate",
+          name: "Candidate",
+          type: { kind: "shape", shapeId: "shape_candidate" },
+          position: 0,
+        },
+      ],
+    },
+  },
+  "graph.setEventBinding": {
+    type: "graph.setEventBinding",
+    binding: {
+      id: "binding_lobby",
+      canvasId: "canvas_lobby",
+      elementId: "button_open",
+      eventKind: "tap",
+      cueId: "cue_lobby",
+      position: 0,
+      parameterMappings: [{ parameterId: "candidate", source: { kind: "runtimeItem" } }],
+    },
+  },
 };
 describe("graph edit codec", () => {
   it("has a descriptor for every edit type", () => {

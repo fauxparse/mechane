@@ -90,6 +90,21 @@ survives a page reload, but authored history does not.
 See [the portable transfer contracts](./docs/issues/877-portable-transfer-contracts.md)
 for the envelope, compatibility, outcome, and scope rules.
 
+## Canvas interactions
+
+Select a Scene or Block Element in the Canvas Editor, open the inspector's
+**Interactions** tab, and choose **Add interaction → Tap**. The new binding
+appears in the inspector with its target Cue. If the owner has no Cues yet,
+Studio creates its first Cue; otherwise it uses an existing Cue, which you can
+change in the binding's Cue picker.
+
+For a Slot, **Add interaction** also lists the Cues exposed by the Block it
+renders. Choose one to connect that Block event to a Cue on the containing
+Scene or Block. The interaction row shows both ends of the link and any
+parameter mappings. Use its **Then** picker to select another compatible Cue
+or create a new one, and its delete button to disconnect the event. Each Slot
+has its own links, so instances of the same Block can have different handlers.
+
 ## Parallel worktrees and OMP
 
 The primary checkout uses the normal stack:
@@ -207,6 +222,23 @@ When Google sign-in is enabled, register
 `https://api.mechane.dev/api/auth/callback/google` as the local OAuth redirect
 URI. The corresponding API and Studio values are in the checked-in
 `.env.example` files.
+
+## Repeating Blocks in a Scene
+
+Select the Block's Slot in the Scene Canvas or Layers panel. In the sidebar,
+choose an array Variable under **Repeat → Source**, then map the Block's inputs
+under **Block Inputs** to **Current item** or one of its compatible fields.
+For the Voting example, choose `candidates` as the Repeat source and map the
+`candidate` input to Current item.
+
+The Repeat selector also lists arrays nested in Shape Variables. Other Block
+inputs can keep literal values or read parent Variables independently of the
+current item. Changing the Repeat source retains the input mappings; unavailable
+mappings remain visible so they can be repaired.
+
+Choose **Don't repeat** to render a single Block again. This clears current-item
+assignments back to their input defaults without changing literal or parent
+Variable assignments.
 
 ## Scene artboard sizing
 

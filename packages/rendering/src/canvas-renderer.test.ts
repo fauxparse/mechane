@@ -330,6 +330,37 @@ describe("CanvasRenderer", () => {
     expect(html).toMatch(/data-element-id="empty-frame"[^>]*data-element-painted="true"/);
   });
 
+  it("identifies a Slot's parent and rank so dragging it keeps its stacking order", () => {
+    const block: Block = {
+      id: "card",
+      name: "Card",
+      canvas: { id: "card-canvas", kind: "block", root: { id: "card-root", type: "frame" } },
+      variables: [],
+      states: [],
+    };
+    const html = markup(
+      {
+        kind: "scene",
+        root: {
+          id: "root",
+          type: "frame",
+          children: [
+            { id: "valid-slot", type: "slot", rank: "a", blockId: block.id },
+            { id: "invalid-slot", type: "slot", rank: "b", blockId: "missing" },
+          ],
+        },
+      },
+      { blocks: [block] },
+    );
+
+    expect(html).toMatch(
+      /data-element-id="valid-slot"[^>]*data-element-parent-id="root"[^>]*data-element-rank="a"/,
+    );
+    expect(html).toMatch(
+      /data-element-id="invalid-slot"[^>]*data-element-parent-id="root"[^>]*data-element-rank="b"/,
+    );
+  });
+
   it("uses flex layout, authored padding/gap, and the scene clipping boundary", () => {
     const html = markup({
       kind: "scene",

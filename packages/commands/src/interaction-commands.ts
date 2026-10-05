@@ -3,6 +3,7 @@ import type {
   Action,
   Cue,
   EventBinding,
+  SlotEventBinding,
   UpdateOperand,
   UpdateOperation,
 } from "@mechane/domain/interactions";
@@ -91,6 +92,56 @@ export function addCue(cue: Cue, label = "Create Cue"): ShowGraphCommand {
   });
 }
 
+export function setCue(cue: Cue): ShowGraphCommand {
+  return capturing<ShowGraph, Cue, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setCue,
+    label: "Change Cue parameters",
+    scope: "selection",
+    capture: (graph) => cueOrThrow(graph, cue.id),
+    apply: (graph) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        cues: (graph.cues ?? []).map((current) => (current.id === cue.id ? cue : current)),
+      }),
+    restore: (graph, previous) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        cues: (graph.cues ?? []).map((current) => (current.id === cue.id ? previous : current)),
+      }),
+    edits: [{ type: GRAPH_COMMAND_TYPES.setCue, cue }],
+    restoreEdits: (cue) => [{ type: GRAPH_COMMAND_TYPES.setCue, cue }],
+  });
+}
+
+export function setEventBinding(binding: EventBinding): ShowGraphCommand {
+  return capturing<ShowGraph, EventBinding, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setEventBinding,
+    label: "Change interaction values",
+    scope: "selection",
+    capture: (graph) => {
+      const previous = graph.eventBindings?.find((current) => current.id === binding.id);
+      if (!previous) throw new Error(`Show graph has no Event Binding "${binding.id}".`);
+      return previous;
+    },
+    apply: (graph) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        eventBindings: (graph.eventBindings ?? []).map((current) =>
+          current.id === binding.id ? binding : current,
+        ),
+      }),
+    restore: (graph, previous) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        eventBindings: (graph.eventBindings ?? []).map((current) =>
+          current.id === binding.id ? previous : current,
+        ),
+      }),
+    edits: [{ type: GRAPH_COMMAND_TYPES.setEventBinding, binding }],
+    restoreEdits: (binding) => [{ type: GRAPH_COMMAND_TYPES.setEventBinding, binding }],
+  });
+}
+
 export function renameCue(cueId: string, name: string, label = "Rename Cue"): ShowGraphCommand {
   return capturing<ShowGraph, string, GraphEdit>({
     type: GRAPH_COMMAND_TYPES.renameCue,
@@ -165,6 +216,7 @@ type RemovedCue = {
   cueIndex: number;
   actions: { value: Action; index: number }[];
   eventBindings: { value: EventBinding; index: number }[];
+  slotEventBindings: { value: SlotEventBinding; index: number }[];
 };
 
 function insertAt<T>(values: readonly T[], value: T, index: number): T[] {
@@ -190,6 +242,12 @@ export function removeCue(cueId: string, label = "Delete Cue"): ShowGraphCommand
         eventBindings: current.eventBindings.flatMap((value, index) =>
           value.cueId === cueId ? [{ value, index }] : [],
         ),
+        // A relay dies with either of its Cues, not just its source: a
+        // binding pointing at a Cue that no longer exists can never resolve,
+        // and only blocks the id from being reused.
+        slotEventBindings: current.slotEventBindings.flatMap((value, index) =>
+          value.sourceCueId === cueId || value.targetCueId === cueId ? [{ value, index }] : [],
+        ),
       };
     },
     apply: (graph) => {
@@ -198,6 +256,9 @@ export function removeCue(cueId: string, label = "Delete Cue"): ShowGraphCommand
         cues: current.cues.filter((cue) => cue.id !== cueId),
         actions: current.actions.filter((action) => action.cueId !== cueId),
         eventBindings: current.eventBindings.filter((binding) => binding.cueId !== cueId),
+        slotEventBindings: current.slotEventBindings.filter(
+          (binding) => binding.sourceCueId !== cueId && binding.targetCueId !== cueId,
+        ),
       });
     },
     restore: (graph, removed) => {
@@ -206,11 +267,15 @@ export function removeCue(cueId: string, label = "Delete Cue"): ShowGraphCommand
         cues: insertAt(current.cues, removed.cue, removed.cueIndex),
         actions: current.actions,
         eventBindings: current.eventBindings,
+        slotEventBindings: current.slotEventBindings,
       };
       for (const item of removed.actions)
         current.actions = insertAt(current.actions, item.value, item.index);
       for (const item of removed.eventBindings) {
         current.eventBindings = insertAt(current.eventBindings, item.value, item.index);
+      }
+      for (const item of removed.slotEventBindings) {
+        current.slotEventBindings = insertAt(current.slotEventBindings, item.value, item.index);
       }
       return withInteractions(graph, current);
     },
@@ -223,6 +288,10 @@ export function removeCue(cueId: string, label = "Delete Cue"): ShowGraphCommand
       ),
       ...removed.eventBindings.map((item) => ({
         type: GRAPH_COMMAND_TYPES.addEventBinding,
+        binding: item.value,
+      })),
+      ...removed.slotEventBindings.map((item) => ({
+        type: GRAPH_COMMAND_TYPES.setSlotEventBinding,
         binding: item.value,
       })),
     ],
@@ -510,7 +579,7 @@ export function setEventBindingCue(
   cueId: string,
   label = "Change Event Cue",
 ): ShowGraphCommand {
-  return capturing<ShowGraph, string, GraphEdit>({
+  return capturing<ShowGraph, EventBinding, GraphEdit>({
     type: GRAPH_COMMAND_TYPES.setEventBindingCue,
     label,
     scope: "selection",
@@ -518,26 +587,48 @@ export function setEventBindingCue(
       const binding = (graph.eventBindings ?? []).find((candidate) => candidate.id === bindingId);
       if (!binding) throw new Error(`Show graph has no Event Binding "${bindingId}".`);
       cueOrThrow(graph, cueId);
-      return binding.cueId;
+      return binding;
     },
-    apply: (graph) =>
+    apply: (graph) => {
+      const target = cueOrThrow(graph, cueId);
+      return withInteractions(graph, {
+        ...interactions(graph),
+        eventBindings: (graph.eventBindings ?? []).map((binding) => {
+          if (binding.id !== bindingId) return binding;
+          const source = cueOrThrow(graph, binding.cueId);
+          const parameterMappings = (target.parameters ?? []).map((parameter) => {
+            const previous = source.parameters?.find(
+              (candidate) =>
+                candidate.name === parameter.name &&
+                JSON.stringify(candidate.type) === JSON.stringify(parameter.type),
+            );
+            const mapping = binding.parameterMappings?.find(
+              (mapping) => mapping.parameterId === previous?.id,
+            );
+            return {
+              parameterId: parameter.id,
+              source: mapping?.source ?? { kind: "unset" },
+            } satisfies NonNullable<EventBinding["parameterMappings"]>[number];
+          });
+          return {
+            ...binding,
+            cueId,
+            ...(binding.parameterMappings || parameterMappings.length > 0
+              ? { parameterMappings }
+              : {}),
+          };
+        }),
+      });
+    },
+    restore: (graph, previous) =>
       withInteractions(graph, {
         ...interactions(graph),
         eventBindings: (graph.eventBindings ?? []).map((binding) =>
-          binding.id === bindingId ? { ...binding, cueId } : binding,
-        ),
-      }),
-    restore: (graph, previousCueId) =>
-      withInteractions(graph, {
-        ...interactions(graph),
-        eventBindings: (graph.eventBindings ?? []).map((binding) =>
-          binding.id === bindingId ? { ...binding, cueId: previousCueId } : binding,
+          binding.id === bindingId ? previous : binding,
         ),
       }),
     edits: [{ type: GRAPH_COMMAND_TYPES.setEventBindingCue, bindingId, cueId }],
-    restoreEdits: (previousCueId) => [
-      { type: GRAPH_COMMAND_TYPES.setEventBindingCue, bindingId, cueId: previousCueId },
-    ],
+    restoreEdits: (previous) => [{ type: GRAPH_COMMAND_TYPES.setEventBinding, binding: previous }],
   });
 }
 /**
@@ -633,5 +724,94 @@ export function createBindingWithCue(
     label: "Create Interaction",
     scope: "selection",
     commands: [addCue(cue), addNavigateAction(action), addEventBinding(binding)],
+  });
+}
+
+/**
+ * Upserts a Slot Event Binding — the authored relay that carries a Block
+ * Cue's Event to the Scene Cue that handles it.
+ *
+ * One command rather than add/remove pair because a relay's identity is
+ * stable while its wiring is not: the author reconnects a Slot to a different
+ * target Cue dozens of times for every relay they create or delete, and each
+ * of those is the same binding row with new ends. An update replaces the
+ * stored binding in place, so the collection's order — and every other
+ * binding's index — survives; a create appends.
+ */
+export function setSlotEventBinding(
+  binding: SlotEventBinding,
+  label = "Set Slot Event Binding",
+): ShowGraphCommand {
+  return capturing<ShowGraph, SlotEventBinding | null, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.setSlotEventBinding,
+    label,
+    scope: "selection",
+    capture: (graph) =>
+      (graph.slotEventBindings ?? []).find((candidate) => candidate.id === binding.id) ?? null,
+    apply: (graph) => {
+      const current = graph.slotEventBindings ?? [];
+      const known = current.some((candidate) => candidate.id === binding.id);
+      return withInteractions(graph, {
+        ...interactions(graph),
+        slotEventBindings: known
+          ? current.map((candidate) => (candidate.id === binding.id ? binding : candidate))
+          : [...current, binding],
+      });
+    },
+    restore: (graph, previous) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        slotEventBindings: previous
+          ? (graph.slotEventBindings ?? []).map((candidate) =>
+              candidate.id === previous.id ? previous : candidate,
+            )
+          : (graph.slotEventBindings ?? []).filter((candidate) => candidate.id !== binding.id),
+      }),
+    edits: [{ type: GRAPH_COMMAND_TYPES.setSlotEventBinding, binding }],
+    restoreEdits: (previous) =>
+      previous
+        ? [{ type: GRAPH_COMMAND_TYPES.setSlotEventBinding, binding: previous }]
+        : [{ type: GRAPH_COMMAND_TYPES.removeSlotEventBinding, bindingId: binding.id }],
+  });
+}
+
+export function removeSlotEventBinding(
+  bindingId: string,
+  label = "Remove Slot Event Binding",
+): ShowGraphCommand {
+  return capturing<ShowGraph, { binding: SlotEventBinding; index: number }, GraphEdit>({
+    type: GRAPH_COMMAND_TYPES.removeSlotEventBinding,
+    label,
+    scope: "selection",
+    capture: (graph) => {
+      const index = (graph.slotEventBindings ?? []).findIndex(
+        (candidate) => candidate.id === bindingId,
+      );
+      const binding = (graph.slotEventBindings ?? [])[index];
+      if (index < 0 || !binding) {
+        throw new Error(`Show graph has no Slot Event Binding "${bindingId}".`);
+      }
+      return { binding, index };
+    },
+    apply: (graph) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        slotEventBindings: (graph.slotEventBindings ?? []).filter(
+          (candidate) => candidate.id !== bindingId,
+        ),
+      }),
+    restore: (graph, captured) =>
+      withInteractions(graph, {
+        ...interactions(graph),
+        slotEventBindings: insertAt(
+          graph.slotEventBindings ?? [],
+          captured.binding,
+          captured.index,
+        ),
+      }),
+    edits: [{ type: GRAPH_COMMAND_TYPES.removeSlotEventBinding, bindingId }],
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.setSlotEventBinding, binding: captured.binding },
+    ],
   });
 }

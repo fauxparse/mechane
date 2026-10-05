@@ -17,20 +17,30 @@ import {
   addCue,
   addEventBinding,
   composite,
+  findCanvasElement,
   removeEventBinding,
+  removeSlotEventBinding,
   setBlockVariables,
   setEventBindingCue,
   setEventBindingKey,
   setEventBindingOrder,
+  setSlotEventBinding,
 } from "@mechane/commands";
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
 import type { Block, BlockVariable } from "@mechane/domain/blocks";
+import type { Element } from "@mechane/domain/canvas";
 import { deviceQrImageValue } from "@mechane/domain/device-qr";
 import { normalizeFormulaIdentifier } from "@mechane/domain/formula";
 import { DEVICE_SOURCE_HANDLES } from "@mechane/domain/graph";
-import type { SceneVariable } from "@mechane/domain/graph";
+import type { SceneVariable, ShowGraph } from "@mechane/domain/graph";
 import { type ShowId, generateId } from "@mechane/domain/id";
-import type { Action, Cue, EventBinding, InteractionOwner } from "@mechane/domain/interactions";
+import type {
+  Action,
+  Cue,
+  EventBinding,
+  InteractionOwner,
+  SlotEventBinding,
+} from "@mechane/domain/interactions";
 import type { ResolvedImageValue, Shape, Type } from "@mechane/domain/shapes";
 import { defaultValueForType } from "@mechane/domain/source-defaults";
 import type { ImageAsset } from "@mechane/graphql-schema";
@@ -39,6 +49,7 @@ import { useCallback, useMemo, useRef } from "react";
 import { PLAYER_BASE_URL, resolveApiUrl } from "../../../api/client";
 import type { CanvasArtboardDocument } from "../../../api/canvas";
 import { useCanvasWorkspace } from "../../../api/canvas";
+import { useOpenedQueryData } from "../../../api/use-opened-query-data";
 import { useImageAssets, useImageUpload } from "../../../api/images";
 import { useShowGraph, useShowGraphEdits } from "../../../api/show-graph";
 import type { VariableInspectorEditing } from "../../../components/VariableInspector";
@@ -60,6 +71,8 @@ import { UndoCoordinator } from "./undo-coordinator";
 import { useBlockCreationSession } from "./use-block-creation";
 import { useCanvasCommands } from "./use-canvas-commands";
 
+import { slotCueBindingCommand } from "./slot-cue-binding";
+import { passCueValueCommand, type CueValueSource } from "./cue-value-binding";
 export interface CanvasWorkspaceSessionOptions {
   readonly showId: ShowId | null;
   /** The Artboard (or Canvas) the URL names, already parsed by the route. */
@@ -83,6 +96,8 @@ export interface CanvasWorkspaceSessionState {
   readonly cues: readonly Cue[];
   readonly actions: readonly Action[];
   readonly eventBindings: readonly EventBinding[];
+  readonly slotEventBindings: readonly SlotEventBinding[];
+  readonly graph: ShowGraph;
   readonly shapes: readonly Shape[];
   readonly deviceQrImages: Readonly<Record<string, DeviceQrImage>>;
   readonly imageAssets: readonly ImageAsset[];
@@ -187,6 +202,9 @@ export function useCanvasWorkspaceSession({
   const imageUpload = useImageUpload(showId);
   const draft = useShowGraph(showId, "draft");
   const documents = useCanvasWorkspace(showId);
+  // Cached Artboards can predate a Scene another editor just created; the editor waits for the
+  // mount refetch rather than opening, and redirecting, from that copy.
+  const openedDocuments = useOpenedQueryData(documents);
   const initialCamera = showId ? rememberedCanvasCamera(showId) : undefined;
   const initialSelection = showId ? rememberedCanvasSelection(showId) : undefined;
   const onCameraChange = useCallback(
@@ -212,7 +230,7 @@ export function useCanvasWorkspaceSession({
     undoHistory.record("canvas");
     save.enqueue(edits);
   });
-  const openedGraph = useOpenedShowGraph(draft.data)?.graph ?? null;
+  const openedGraph = useOpenedShowGraph(draft)?.graph ?? null;
   const graphEditing = useGraphEditing(openedGraph, (edits) => {
     undoHistory.record("graph");
     save.enqueue(edits);
@@ -262,21 +280,59 @@ export function useCanvasWorkspaceSession({
     },
     [graphEditing.command.commands],
   );
+  const passCueValue = useCallback(
+    (bindingId: string, value: CueValueSource, parameterId?: string) => {
+      graphEditing.command.commands.execute(
+        passCueValueCommand(graphEditing.command.graph, bindingId, value, parameterId),
+      );
+    },
+    [graphEditing.command.commands, graphEditing.command.graph],
+  );
+  const changeSlotBinding = useCallback(
+    (binding: SlotEventBinding) => {
+      graphEditing.command.commands.execute(setSlotEventBinding(binding));
+    },
+    [graphEditing.command.commands],
+  );
+  const removeSlotBinding = useCallback(
+    (bindingId: string) => {
+      graphEditing.command.commands.execute(removeSlotEventBinding(bindingId));
+    },
+    [graphEditing.command.commands],
+  );
   const removeElements = useCallback(
     (canvasId: string, elementIds: readonly string[]) => {
-      const selectedElementIds = new Set(elementIds);
+      const selectedElementIds = new Set<string>();
+      const canvas = canvasCommands.workspace.artboards.find(
+        (artboard) => artboard.canvasId === canvasId,
+      )?.canvas;
+      const collect = (element: Element) => {
+        selectedElementIds.add(element.id);
+        element.children?.forEach(collect);
+      };
+      for (const elementId of elementIds) {
+        const element = canvas && findCanvasElement(canvas.root, elementId);
+        if (element) collect(element);
+      }
       const bindingIds: string[] = [];
       for (const binding of graphEditing.command.graph.eventBindings ?? []) {
         if (binding.canvasId === canvasId && selectedElementIds.has(binding.elementId)) {
           bindingIds.push(binding.id);
         }
       }
+      const slotBindingIds: string[] = [];
+      for (const binding of graphEditing.command.graph.slotEventBindings ?? []) {
+        if (selectedElementIds.has(binding.slotElementId)) slotBindingIds.push(binding.id);
+      }
       undoHistory.link(() => {
-        if (bindingIds.length > 0) {
+        if (bindingIds.length > 0 || slotBindingIds.length > 0) {
           graphEditing.command.commands.execute(
             composite({
               label: "Remove Element interactions",
-              commands: bindingIds.map((bindingId) => removeEventBinding(bindingId)),
+              commands: [
+                ...bindingIds.map((bindingId) => removeEventBinding(bindingId)),
+                ...slotBindingIds.map((bindingId) => removeSlotEventBinding(bindingId)),
+              ],
             }),
           );
         }
@@ -317,6 +373,32 @@ export function useCanvasWorkspaceSession({
     ],
   );
   const focused = resolveFocusedArtboard(artboards, requestedArtId);
+  const connectSlotCue = useCallback(
+    (sourceCueId: string, slotElementId: string, createNew: boolean, bindingId?: string) => {
+      if (!focused) return;
+      graphEditing.command.commands.execute(
+        slotCueBindingCommand({
+          graph: graphEditing.command.graph,
+          focused,
+          sourceCueId,
+          slotElementId,
+          createNew,
+          bindingId,
+        }),
+      );
+    },
+    [focused, graphEditing.command.commands, graphEditing.command.graph],
+  );
+  const addSlotCueBinding = useCallback(
+    (sourceCueId: string, slotElementId: string) =>
+      connectSlotCue(sourceCueId, slotElementId, false),
+    [connectSlotCue],
+  );
+  const createSlotCueBinding = useCallback(
+    (sourceCueId: string, slotElementId: string, bindingId?: string) =>
+      connectSlotCue(sourceCueId, slotElementId, true, bindingId),
+    [connectSlotCue],
+  );
 
   const placeBlock = useCallback(
     (blockId: string) => {
@@ -424,6 +506,11 @@ export function useCanvasWorkspaceSession({
       createEventBinding: createBinding,
       removeEventBinding: removeBinding,
       reorderEventBindings: reorderBindings,
+      addSlotCueBinding,
+      createSlotCueBinding,
+      setSlotEventBinding: changeSlotBinding,
+      removeSlotEventBinding: removeSlotBinding,
+      passCueValue,
     },
     assets: { imageUpload: handleImageUpload },
     camera: { change: onCameraChange },
@@ -438,12 +525,14 @@ export function useCanvasWorkspaceSession({
     cues: graphEditing.command.graph.cues ?? [],
     actions: graphEditing.command.graph.actions ?? [],
     eventBindings: graphEditing.command.graph.eventBindings ?? [],
+    slotEventBindings: graphEditing.command.graph.slotEventBindings ?? [],
+    graph: graphEditing.command.graph,
     shapes: graphEditing.command.graph.shapes ?? [],
     deviceQrImages,
     imageAssets: imageAssets.data ?? [],
     initialCamera,
     initialSelection,
-    pending: documents.isPending || draft.isPending,
-    documentsLoaded: documents.data !== undefined,
+    pending: openedDocuments === undefined || openedGraph === null,
+    documentsLoaded: openedDocuments !== undefined,
   };
 }

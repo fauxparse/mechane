@@ -772,3 +772,94 @@ export const InteractionAuthoring: Story = {
     />
   ),
 };
+
+const candidateBlock: Block = {
+  ...block,
+  id: "candidate-card",
+  name: "Candidate card",
+  variables: [
+    {
+      id: "candidate-input",
+      name: "candidate",
+      type: { kind: "shape", shapeId: candidateShape.id },
+      required: true,
+    },
+    { id: "votes-input", name: "votes", type: "number", required: false, defaultValue: 0 },
+    { id: "caption-input", name: "caption", type: "text", required: false, defaultValue: "" },
+  ],
+};
+const repeatVariables: SceneVariable[] = [
+  {
+    id: "candidates",
+    name: "candidates",
+    type: { kind: "array", of: { kind: "shape", shapeId: candidateShape.id } },
+  },
+  {
+    id: "other-candidates",
+    name: "other candidates",
+    type: { kind: "array", of: { kind: "shape", shapeId: candidateShape.id } },
+  },
+  { id: "caption", name: "Caption", type: "text", defaultValue: "Votes" },
+];
+const slotRoot: FrameElement = {
+  ...absoluteRoot,
+  id: "slot-root",
+  children: [
+    {
+      id: "candidate-slot",
+      type: "slot",
+      blockId: candidateBlock.id,
+      layoutMode: "auto",
+      sizing: {
+        width: { mode: "fixed", value: 572 },
+        height: { mode: "fixed", value: 93 },
+      },
+    },
+  ],
+};
+
+export const SlotRepetition: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard(slotRoot)}
+      initialSelection={{ artId: ART_ID, elementIds: ["candidate-slot"] }}
+      storyBlocks={[candidateBlock]}
+      storyVariables={repeatVariables}
+      storyShapes={[candidateShape]}
+    />
+  ),
+};
+
+export const RepeatedSlot: Story = {
+  render: () => (
+    <InspectorStory
+      initialArtboard={artboard({
+        ...slotRoot,
+        children: [
+          {
+            ...slotRoot.children?.[0],
+            id: "candidate-slot",
+            type: "slot",
+            blockId: candidateBlock.id,
+            expansion: { source: { kind: "variable", variableId: "candidates" } },
+            assignments: [
+              { variableId: "candidate-input", source: { kind: "runtimeItem" } },
+              {
+                variableId: "votes-input",
+                source: { kind: "runtimeItem", fieldPath: ["field_votes"] },
+              },
+              {
+                variableId: "caption-input",
+                source: { kind: "variable", variableId: "caption" },
+              },
+            ],
+          },
+        ],
+      })}
+      initialSelection={{ artId: ART_ID, elementIds: ["candidate-slot"] }}
+      storyBlocks={[candidateBlock]}
+      storyVariables={repeatVariables}
+      storyShapes={[candidateShape]}
+    />
+  ),
+};

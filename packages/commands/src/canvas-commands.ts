@@ -460,11 +460,15 @@ function workspaceSetter(
   switch (edit.edit.type) {
     case ARTBOARD_COMMAND_TYPES.move:
       return { key: `moveArtboard:${edit.canvasId}`, ids: [] };
-    case CANVAS_COMMAND_TYPES.updateElement:
+    case CANVAS_COMMAND_TYPES.updateElement: {
+      const properties = [
+        ...new Set([...Object.keys(edit.edit.properties), ...(edit.edit.unsetProperties ?? [])]),
+      ].sort();
       return {
-        key: `updateElement:${edit.canvasId}:${edit.edit.elementId}`,
+        key: `updateElement:${edit.canvasId}:${edit.edit.elementId}:${JSON.stringify(properties)}`,
         ids: [elementLifetime(edit.canvasId, edit.edit.elementId)],
       };
+    }
     case CANVAS_COMMAND_TYPES.reparentElement:
       return {
         key: `reparentElement:${edit.canvasId}:${edit.edit.elementId}`,

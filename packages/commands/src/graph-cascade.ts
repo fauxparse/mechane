@@ -164,11 +164,24 @@ export function deleteGraphElements(
 ): ShowGraphCommand {
   const scope = deletionScope(graph, nodeIds, edgeIds);
   const doomed = new Set(scope.nodes.map((node) => node.id));
-  const { cueIds, actionIds } = interactionDeletionIds(graph, doomed);
+  const { cueIds, actionIds: sceneActionIds } = interactionDeletionIds(graph, doomed);
+  // Navigate and Update edges are projections of Actions, rebuilt from them on every write, so an
+  // edge deleted in its own right is deleted by removing its Action — removing the edge alone
+  // lasts until the next read. An Action whose Cue is going anyway goes with the Cue.
+  const requestedEdgeIds = new Set(edgeIds);
+  const edgeActionIds = graph.edges.flatMap((edge) =>
+    requestedEdgeIds.has(edge.id) &&
+    (edge.kind === "navigate" || edge.kind === "update") &&
+    edge.actionId &&
+    !cueIds.includes(edge.cueId ?? "")
+      ? [edge.actionId]
+      : [],
+  );
+  const actionIds = [...new Set([...sceneActionIds, ...edgeActionIds])];
   const edgeIdsToRemove = scope.edgeIds.filter((edgeId) => {
     const edge = graph.edges.find((candidate) => candidate.id === edgeId);
     return (
-      edge?.kind !== "navigate" ||
+      (edge?.kind !== "navigate" && edge?.kind !== "update") ||
       (!cueIds.includes(edge.cueId ?? "") && !actionIds.includes(edge.actionId ?? ""))
     );
   });

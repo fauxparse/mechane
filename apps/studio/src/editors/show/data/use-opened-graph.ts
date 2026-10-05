@@ -1,5 +1,7 @@
 import { decodeShowGraphDocument, ShowGraphDocument } from "@mechane/graphql-schema";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
+
+import { type QueryRead, useOpenedQueryData } from "../../../api/use-opened-query-data";
 
 /**
  * The decoded graph and its opening version, captured once (#742, #750).
@@ -14,11 +16,12 @@ import { useEffect, useState } from "react";
  * save writes back a new version. Holding the opened graph means none of that
  * churn reaches the editor, and the stack resets only when this latch hands
  * over a genuinely new document.
+ *
+ * The cache only mirrors some edits, so a cached graph can be missing Nodes
+ * another editor saved; the latch therefore opens the graph the mount refetch
+ * returns, not the cached copy shown while it is in flight.
  */
-export function useOpenedShowGraph(document: unknown): ShowGraphDocument | null {
-  const [opened, setOpened] = useState<ShowGraphDocument | null>(null);
-  useEffect(() => {
-    if (document && !opened) setOpened(decodeShowGraphDocument(document));
-  }, [document, opened]);
-  return opened;
+export function useOpenedShowGraph(query: QueryRead<unknown>): ShowGraphDocument | null {
+  const document = useOpenedQueryData(query);
+  return useMemo(() => (document ? decodeShowGraphDocument(document) : null), [document]);
 }

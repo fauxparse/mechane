@@ -1,9 +1,16 @@
 import type { ImageInputOnUploadProps } from "@mechane/design-system";
+import type { CueValueSource } from "./commands/cue-value-binding";
 
 import type { NewElement } from "@mechane/commands";
 import type { Block } from "@mechane/domain/blocks";
-import type { Position, SceneVariable } from "@mechane/domain/graph";
-import type { Action, Cue, EventBinding, InteractionOwner } from "@mechane/domain/interactions";
+import type { Position, SceneVariable, ShowGraph } from "@mechane/domain/graph";
+import type {
+  Action,
+  Cue,
+  EventBinding,
+  InteractionOwner,
+  SlotEventBinding,
+} from "@mechane/domain/interactions";
 import type { ImageAssetReference, ResolvedImageValue, Shape } from "@mechane/domain/shapes";
 import type { ImageAsset } from "@mechane/graphql-schema";
 import type { CanvasArtboardDocument } from "../../api/canvas";
@@ -45,6 +52,8 @@ export interface CanvasWorkspaceEditorProps {
   cues?: readonly Cue[];
   actions?: readonly Action[];
   eventBindings?: readonly EventBinding[];
+  slotEventBindings?: readonly SlotEventBinding[];
+  graph?: ShowGraph;
   /** Every mutation the editor can cause, in domain terms. */
   readonly session: CanvasWorkspaceSession;
 }
@@ -110,6 +119,11 @@ export interface CanvasWorkspaceSession {
     createEventBinding?(binding: EventBinding): void;
     removeEventBinding?(bindingId: string): void;
     reorderEventBindings?(bindingIds: readonly string[]): void;
+    addSlotCueBinding?(sourceCueId: string, slotElementId: string): void;
+    setSlotEventBinding?(binding: SlotEventBinding): void;
+    removeSlotEventBinding?(bindingId: string): void;
+    createSlotCueBinding?(sourceCueId: string, slotElementId: string, bindingId?: string): void;
+    passCueValue?(bindingId: string, value: CueValueSource, parameterId?: string): void;
   };
   readonly assets: {
     imageUpload?(props: ImageInputOnUploadProps): void;

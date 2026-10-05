@@ -4,11 +4,12 @@ import { describe, expect, it } from "vitest";
 import type { EventBinding } from "@mechane/domain/interactions";
 import type { CanvasArtboardDocument } from "../../../../api/canvas";
 
-import type { CanvasInspectorModel } from "./canvas-inspector-types";
+import type { CanvasInspectorModel, CanvasInspectorProps } from "./canvas-inspector-types";
 import { CanvasInspectorProvider } from "./CanvasInspectorContext";
 import { InteractionSection } from "./InteractionSection";
 import { addInteraction } from "./interaction-actions";
 import { keypressUnavailableReason } from "./keypress-availability";
+import { useCanvasInspectorModel } from "./use-canvas-inspector-model";
 
 const element = { id: "button-vote", type: "rect" as const, name: "Vote" };
 const focused: CanvasArtboardDocument = {
@@ -92,6 +93,54 @@ describe("InteractionSection", () => {
 
     expect(html).toBe("");
   });
+});
+
+function InteractionInspector(props: CanvasInspectorProps) {
+  const inspector = useCanvasInspectorModel(props);
+  return inspector
+    ? createElement(
+        CanvasInspectorProvider,
+        { value: inspector },
+        createElement(InteractionSection),
+      )
+    : null;
+}
+
+it("shows a Block's authored tap interaction and its Cue through the inspector model", () => {
+  const block: CanvasArtboardDocument = {
+    ...focused,
+    artId: "block-vote",
+    kind: "block",
+    canvas: { kind: "block", root: focused.canvas.root },
+  };
+  const html = renderToStaticMarkup(
+    createElement(InteractionInspector, {
+      focused: block,
+      artboards: [block],
+      selection: { artId: block.artId, elementIds: [element.id] },
+      cues: [
+        {
+          id: "cue-block-vote",
+          name: "Vote submitted",
+          owner: { kind: "block", blockId: block.artId },
+          actionIds: [],
+        },
+      ],
+      eventBindings: [
+        {
+          id: "binding-block-vote",
+          canvasId: block.canvasId,
+          elementId: element.id,
+          eventKind: "tap",
+          cueId: "cue-block-vote",
+          position: 0,
+        },
+      ],
+    }),
+  );
+
+  expect(html).toContain('aria-label="Interaction Cue"');
+  expect(html).toContain("Vote submitted");
 });
 
 describe("addInteraction", () => {

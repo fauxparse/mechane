@@ -10,6 +10,7 @@ import { type FormulaScope, type FormulaType, absent } from "@mechane/domain/for
 import { formulaShapeTable, formulaType } from "@mechane/domain/formula-runtime";
 import type { SceneVariable } from "@mechane/domain/graph";
 import {
+  type PropertyFieldPath,
   type VariableReference,
   defaultPropertyValue,
   isPropertyConnection,
@@ -17,7 +18,7 @@ import {
   typeAtPath,
   valueAtPath,
 } from "@mechane/domain/property-values";
-import type { Shape, ShapeValue, Type } from "@mechane/domain/shapes";
+import { areTypesCompatible, type Shape, type ShapeValue, type Type } from "@mechane/domain/shapes";
 import type { PropertyInputConstraint, PropertyInputValue } from "@mechane/design-system";
 
 export type SizeConstraint = PropertyInputConstraint;
@@ -159,56 +160,205 @@ export const variableOptions = (
     });
   });
 
+/**
+ * A Slot input choice the inspector can persist: a Scene Variable path, or a field of the
+ * expansion's current item. `source` is what gets written back into the Slot's assignment
+ * when this option is chosen, and what `slotInputReference` reads back for display.
+ */
+export interface SlotInputOption extends VariableReference {
+  readonly source: Extract<SlotInputSource, { kind: "variable" | "runtimeItem" }>;
+}
+
+/**
+ * UI-only identity for the expansion's current item. Generated entity ids never contain a
+ * dash (see domain id.ts), so this cannot collide with a Variable id: a direct Variable
+ * choice and a current-item choice stay distinct wherever `(id, fieldPath)` identifies one.
+ */
+const CURRENT_ITEM_ID = "current-item";
+
+const isArrayType = (type: Type): type is { kind: "array"; of: Type } =>
+  typeof type === "object" && type.kind === "array";
+
+/** Field names along `fieldPath`, or null once the path stops resolving. */
+const fieldLabels = (
+  type: Type,
+  fieldPath: readonly string[],
+  shapes: readonly Shape[],
+): readonly string[] | null => {
+  const labels: string[] = [];
+  const fieldsByShapeId = new Map(
+    shapes.map((shape) => [shape.id, new Map(shape.fields.map((field) => [field.id, field]))]),
+  );
+  let current: Type = type;
+  for (const fieldId of fieldPath) {
+    if (typeof current !== "object" || current.kind !== "shape") return null;
+    const { shapeId } = current;
+    const field = fieldsByShapeId.get(shapeId)?.get(fieldId);
+    if (!field) return null;
+    labels.push(field.name);
+    current = field.type;
+  }
+  return labels;
+};
+
+/**
+ * Visits `root` and every path through its Shape fields, cycle-guarded the way
+ * `propertyFieldPaths` guards, handing each visited Type to `visit`.
+ */
+const visitFieldPaths = (
+  root: Type,
+  shapes: readonly Shape[],
+  visit: (field: PropertyFieldPath) => void,
+): void => {
+  const walk = (
+    type: Type,
+    fieldPath: readonly string[],
+    label: readonly string[],
+    shapeStack: ReadonlySet<string>,
+  ): void => {
+    visit({ fieldPath, type, label });
+    if (typeof type !== "object" || type.kind !== "shape" || shapeStack.has(type.shapeId)) return;
+    const shape = shapes.find((candidate) => candidate.id === type.shapeId);
+    if (!shape) return;
+    const nextShapeStack = new Set(shapeStack);
+    nextShapeStack.add(type.shapeId);
+    for (const field of shape.fields) {
+      walk(field.type, [...fieldPath, field.id], [...label, field.name], nextShapeStack);
+    }
+  };
+  walk(root, [], [], new Set());
+};
+
+/**
+ * Every parent Variable array a Slot can expand over: the Variable itself when it is an
+ * array, plus arrays nested in its Shape fields — `settings → candidates`. Expansion
+ * always reads a Variable path, so no literal source is ever offered.
+ */
+export const slotExpansionOptions = (
+  variables: readonly SceneVariable[],
+  shapes: readonly Shape[],
+): readonly SlotInputOption[] =>
+  variables.flatMap((variable) => {
+    if (!variable.type) return [];
+    const arrays: PropertyFieldPath[] = [];
+    // An array is a leaf: `typeAtPath` cannot read through one, so a deeper path
+    // would not resolve as an expansion source anyway.
+    visitFieldPaths(variable.type, shapes, (field) => {
+      if (isArrayType(field.type)) arrays.push(field);
+    });
+    return arrays.map((field): SlotInputOption => ({
+      ...variable,
+      name:
+        field.label.length > 0 ? `${variable.name} → ${field.label.join(" → ")}` : variable.name,
+      fieldPath: field.fieldPath,
+      fieldType: field.type,
+      source: { kind: "variable", variableId: variable.id, fieldPath: field.fieldPath },
+    }));
+  });
+
+/**
+ * The Variable a Slot expands over and its item Type, when the expansion reads a Variable
+ * path that resolves to an array. Anything else — a literal, a missing Variable, a path
+ * that stops resolving — leaves the expansion outside this editor's remit.
+ */
+const expansionItem = (
+  slot: SlotElement,
+  variables: readonly SceneVariable[],
+  shapes: readonly Shape[],
+): { readonly variable: SceneVariable; readonly itemType: Type } | null => {
+  const source = slot.expansion?.source;
+  if (source?.kind !== "variable") return null;
+  const variable = variables.find((candidate) => candidate.id === source.variableId);
+  if (!variable?.type) return null;
+  const arrayType = typeAtPath(variable.type, source.fieldPath ?? [], shapes);
+  return arrayType && isArrayType(arrayType) ? { variable, itemType: arrayType.of } : null;
+};
+
+/**
+ * The option a persisted assignment currently selects, for display. An assignment whose
+ * path no longer resolves still renders — labelled Unavailable — so a Slot never silently
+ * forgets what it was wired to; `slotInputOptions` simply stops offering that choice.
+ */
 export const slotInputReference = (
   slot: SlotElement,
   blockVariable: BlockVariable,
   source: SlotInputSource | undefined,
   variables: readonly SceneVariable[],
   shapes: readonly Shape[],
-): VariableReference | null => {
+): SlotInputOption | null => {
   if (source?.kind === "runtimeItem") {
     const expansion = slot.expansion?.source;
     if (expansion?.kind !== "variable") return null;
     const variable = variables.find((candidate) => candidate.id === expansion.variableId);
     if (!variable) return null;
+    const itemType = expansionItem(slot, variables, shapes)?.itemType;
+    const fieldPath = source.fieldPath ?? [];
+    const fieldType = itemType ? typeAtPath(itemType, fieldPath, shapes) : null;
+    const labels =
+      itemType && fieldPath.length > 0 ? fieldLabels(itemType, fieldPath, shapes) : null;
     return {
       ...variable,
-      type: blockVariable.type,
-      fieldPath: [],
-      fieldType: blockVariable.type,
+      id: CURRENT_ITEM_ID,
+      name:
+        fieldPath.length === 0
+          ? "Current item"
+          : `Current item → ${labels === null ? "Unavailable" : labels.join(" → ")}`,
+      type: fieldType ?? blockVariable.type,
+      fieldPath,
+      fieldType: fieldType ?? blockVariable.type,
+      source: { kind: "runtimeItem", fieldPath },
     };
   }
   if (source?.kind === "variable") {
+    const fieldPath = source.fieldPath ?? [];
     const reference = variableInput(
-      {
-        kind: "variable",
-        variableId: source.variableId,
-        fieldPath: source.fieldPath ?? [],
-      },
+      { kind: "variable", variableId: source.variableId, fieldPath },
       blockVariable.type,
       variables,
       shapes,
     );
-    return reference && "id" in reference && "name" in reference ? reference : null;
+    return reference && "id" in reference && "name" in reference
+      ? { ...reference, source: { kind: "variable", variableId: source.variableId, fieldPath } }
+      : null;
   }
   return null;
 };
 
+/**
+ * Everything a Block input can be wired to: the Scene's compatible Variable paths, plus —
+ * when the Slot expands over a resolvable Variable array — the current item and its
+ * compatible fields. Item compatibility follows the domain assignment rule
+ * (`areTypesCompatible`), so the inspector never offers a choice the runtime would
+ * reject as an `incompatibleInput`.
+ */
 export const slotInputOptions = (
   slot: SlotElement,
   blockVariable: BlockVariable,
   variables: readonly SceneVariable[],
   shapes: readonly Shape[],
-): readonly VariableReference[] => {
-  const options = variableOptions(blockVariable.type, variables, shapes);
-  const runtimeItem = slotInputReference(
-    slot,
-    blockVariable,
-    { kind: "runtimeItem" },
-    variables,
-    shapes,
+): readonly SlotInputOption[] => {
+  const direct = variableOptions(blockVariable.type, variables, shapes).map(
+    (option): SlotInputOption => ({
+      ...option,
+      source: { kind: "variable", variableId: option.id, fieldPath: option.fieldPath ?? [] },
+    }),
   );
-  return runtimeItem ? [runtimeItem, ...options] : options;
+  const expansion = expansionItem(slot, variables, shapes);
+  if (!expansion) return direct;
+  const items: SlotInputOption[] = [];
+  visitFieldPaths(expansion.itemType, shapes, (field) => {
+    if (!areTypesCompatible(field.type, blockVariable.type, shapes)) return;
+    items.push({
+      ...expansion.variable,
+      id: CURRENT_ITEM_ID,
+      name: field.label.length > 0 ? `Current item → ${field.label.join(" → ")}` : "Current item",
+      type: expansion.itemType,
+      fieldPath: field.fieldPath,
+      fieldType: field.type,
+      source: { kind: "runtimeItem", fieldPath: field.fieldPath },
+    });
+  });
+  return [...items, ...direct];
 };
 
 /**

@@ -20,6 +20,7 @@ const graph = {
   cues: [],
   actions: [],
   eventBindings: [],
+  slotEventBindings: [],
 } as unknown as Parameters<typeof patchShowGraphQueryData>[0];
 
 const reorder: GraphEdit = {
@@ -102,6 +103,7 @@ const shapesGraph = {
   cues: [],
   actions: [],
   eventBindings: [],
+  slotEventBindings: [],
   sourceFieldDefaults: [],
   shapes: [
     {

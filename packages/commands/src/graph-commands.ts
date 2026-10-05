@@ -55,6 +55,7 @@ import type {
   TransformerNode,
   TransformerTransform,
 } from "@mechane/domain/graph";
+import type { Action, Cue, EventBinding, SlotEventBinding } from "@mechane/domain/interactions";
 import { navigateEdgeActionId } from "@mechane/domain/interactions";
 import { typeAtPath } from "@mechane/domain/property-values";
 import {
@@ -132,6 +133,7 @@ export const GRAPH_COMMAND_TYPES = {
   duplicateBlock: "graph.duplicateBlock",
   removeBlock: "graph.removeBlock",
   addCue: "graph.addCue",
+  setCue: "graph.setCue",
   renameCue: "graph.renameCue",
   setCueActionOrder: "graph.setCueActionOrder",
   removeCue: "graph.removeCue",
@@ -143,10 +145,13 @@ export const GRAPH_COMMAND_TYPES = {
   setNavigateTarget: "graph.setNavigateTarget",
   removeAction: "graph.removeAction",
   addEventBinding: "graph.addEventBinding",
+  setEventBinding: "graph.setEventBinding",
   setEventBindingCue: "graph.setEventBindingCue",
   setEventBindingKey: "graph.setEventBindingKey",
   setEventBindingOrder: "graph.setEventBindingOrder",
   removeEventBinding: "graph.removeEventBinding",
+  setSlotEventBinding: "graph.setSlotEventBinding",
+  removeSlotEventBinding: "graph.removeSlotEventBinding",
 } as const;
 
 export class UnknownGraphTargetError extends Error {
@@ -2234,27 +2239,145 @@ export function duplicateBlock(
       ),
   });
 }
+/** One Block-owned Cue a Block deletion takes with it, and everything hanging off it. */
+type RemovedBlockCue = {
+  cue: Cue;
+  cueIndex: number;
+  actionIds: readonly string[];
+  actions: { action: Action; actionIndex: number }[];
+  eventBindings: { binding: EventBinding; bindingIndex: number }[];
+  slotEventBindings: { binding: SlotEventBinding; slotBindingIndex: number }[];
+};
+
 export function removeBlock(blockId: string, label = "Delete Block"): ShowGraphCommand {
-  return capturing<ShowGraph, { index: number; block: Block }, GraphEdit>({
+  return capturing<ShowGraph, { index: number; block: Block; cues: RemovedBlockCue[] }, GraphEdit>({
     type: GRAPH_COMMAND_TYPES.removeBlock,
     label,
     scope: "global",
     edits: [{ type: GRAPH_COMMAND_TYPES.removeBlock, blockId }],
-    restoreEdits: (captured) => [{ type: GRAPH_COMMAND_TYPES.addBlock, block: captured.block }],
+    // The Block before the interactions owned inside it, for the same reason
+    // a restored node precedes its edges: a Cue cannot be re-added to a
+    // Block that is not back yet.
+    restoreEdits: (captured) => [
+      { type: GRAPH_COMMAND_TYPES.addBlock, block: captured.block },
+      ...captured.cues.flatMap((cue): GraphEdit[] => [
+        { type: GRAPH_COMMAND_TYPES.addCue, cue: cue.cue },
+        ...cue.actions.flatMap(({ action }): GraphEdit[] =>
+          action.kind === "navigate"
+            ? [{ type: GRAPH_COMMAND_TYPES.addNavigateAction, action }]
+            : [{ type: GRAPH_COMMAND_TYPES.addUpdateAction, action }],
+        ),
+        ...cue.eventBindings.map(({ binding }) => ({
+          type: GRAPH_COMMAND_TYPES.addEventBinding,
+          binding,
+        })),
+        ...cue.slotEventBindings.map(({ binding }) => ({
+          type: GRAPH_COMMAND_TYPES.setSlotEventBinding,
+          binding,
+        })),
+      ]),
+    ],
     capture: (graph) => {
       const captured = blockAt(graph, blockId);
       if (blockIsReferenced(graph, blockId)) throw new BlockReferenceError(blockId);
-      return captured;
+      const cues = (graph.cues ?? []).flatMap((cue, cueIndex) =>
+        cue.owner.kind === "block" && cue.owner.blockId === blockId
+          ? [
+              {
+                cue,
+                cueIndex,
+                actionIds: [...cue.actionIds],
+                actions: (graph.actions ?? []).flatMap((action, actionIndex) =>
+                  action.cueId === cue.id ? [{ action, actionIndex }] : [],
+                ),
+                eventBindings: (graph.eventBindings ?? []).flatMap((binding, bindingIndex) =>
+                  binding.cueId === cue.id ? [{ binding, bindingIndex }] : [],
+                ),
+                // Relays into or out of the Block's Cues — the same
+                // either-end rule a direct Cue deletion applies.
+                slotEventBindings: (graph.slotEventBindings ?? []).flatMap(
+                  (binding, slotBindingIndex) =>
+                    binding.sourceCueId === cue.id || binding.targetCueId === cue.id
+                      ? [{ binding, slotBindingIndex }]
+                      : [],
+                ),
+              },
+            ]
+          : [],
+      );
+      return { ...captured, cues };
     },
-    apply: (graph) =>
-      withBlocks(
-        graph,
-        (graph.blocks ?? []).filter((block) => block.id !== blockId),
-      ),
+    apply: (graph) => {
+      const removedCueIds = new Set(
+        (graph.cues ?? [])
+          .filter((cue) => cue.owner.kind === "block" && cue.owner.blockId === blockId)
+          .map((cue) => cue.id),
+      );
+      if (removedCueIds.size === 0) {
+        return withBlocks(
+          graph,
+          (graph.blocks ?? []).filter((block) => block.id !== blockId),
+        );
+      }
+      return withInteractions(
+        withBlocks(
+          graph,
+          (graph.blocks ?? []).filter((block) => block.id !== blockId),
+        ),
+        {
+          cues: (graph.cues ?? []).filter((cue) => !removedCueIds.has(cue.id)),
+          actions: (graph.actions ?? []).filter((action) => !removedCueIds.has(action.cueId)),
+          eventBindings: (graph.eventBindings ?? []).filter(
+            (binding) => !removedCueIds.has(binding.cueId),
+          ),
+          slotEventBindings: (graph.slotEventBindings ?? []).filter(
+            (binding) =>
+              !removedCueIds.has(binding.sourceCueId) && !removedCueIds.has(binding.targetCueId),
+          ),
+        },
+      );
+    },
     restore: (graph, captured) => {
       const blocks = graph.blocks?.slice() ?? [];
       blocks.splice(Math.min(captured.index, blocks.length), 0, captured.block);
-      return withBlocks(graph, blocks);
+      if (captured.cues.length === 0) return withBlocks(graph, blocks);
+      let interactions = interactionsOf(graph);
+      for (const cue of captured.cues) {
+        const restoredCue: Cue = { ...cue.cue, actionIds: [...cue.actionIds] };
+        const cueIndex = Math.min(cue.cueIndex, interactions.cues.length);
+        interactions = {
+          ...interactions,
+          cues: [
+            ...interactions.cues.slice(0, cueIndex),
+            restoredCue,
+            ...interactions.cues.slice(cueIndex),
+          ],
+        };
+      }
+      const actions = [...interactions.actions];
+      const eventBindings = [...interactions.eventBindings];
+      const slotEventBindings = [...interactions.slotEventBindings];
+      for (const { action, actionIndex } of captured.cues
+        .flatMap((cue) => cue.actions)
+        .sort((left, right) => left.actionIndex - right.actionIndex)) {
+        actions.splice(Math.min(actionIndex, actions.length), 0, action);
+      }
+      for (const { binding, bindingIndex } of captured.cues
+        .flatMap((cue) => cue.eventBindings)
+        .sort((left, right) => left.bindingIndex - right.bindingIndex)) {
+        eventBindings.splice(Math.min(bindingIndex, eventBindings.length), 0, binding);
+      }
+      for (const { binding, slotBindingIndex } of captured.cues
+        .flatMap((cue) => cue.slotEventBindings)
+        .sort((left, right) => left.slotBindingIndex - right.slotBindingIndex)) {
+        slotEventBindings.splice(Math.min(slotBindingIndex, slotEventBindings.length), 0, binding);
+      }
+      return withInteractions(withBlocks(graph, blocks), {
+        ...interactions,
+        actions,
+        eventBindings,
+        slotEventBindings,
+      });
     },
   });
 }

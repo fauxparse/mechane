@@ -395,6 +395,8 @@ function renderElement({
       return createElement("div", {
         "data-element-id": element.id,
         "data-element-type": "slot",
+        "data-element-parent-id": parent?.id,
+        "data-element-rank": element.rank,
         "data-slot-diagnostic": slot.diagnostic.category,
         style,
       });
@@ -435,6 +437,8 @@ function renderElement({
       {
         "data-element-id": element.id,
         "data-element-type": "slot",
+        "data-element-parent-id": parent?.id,
+        "data-element-rank": element.rank,
         "data-element-painted": "false",
         style,
       },

@@ -32,7 +32,7 @@ function ShapesRoute() {
   });
   const draft = useShowGraph(showId, "draft");
   const save = useShowGraphEdits(showId, draft.data?.version);
-  const openedGraph = useOpenedShowGraph(draft.data)?.graph ?? null;
+  const openedGraph = useOpenedShowGraph(draft)?.graph ?? null;
   const editing = useGraphEditing(openedGraph, (edits) => save.enqueue(edits));
   const onImageUpload = ({
     file,

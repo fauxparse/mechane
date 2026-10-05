@@ -17,7 +17,8 @@ import {
   SidebarContent,
 } from "@mechane/design-system";
 import type { EdgeKind, GraphEdge, ShowGraph, ValuePath } from "@mechane/domain/graph";
-import type { UpdateOperation } from "@mechane/domain/interactions";
+import type { UpdateOperand, UpdateOperation } from "@mechane/domain/interactions";
+import { propertyFieldPaths, typeAtPath } from "@mechane/domain/property-values";
 import type { GraphInspectorEditing } from "../../commands/use-graph-editing";
 const KIND_LABEL: Record<EdgeKind, string> = {
   wiring: "Wiring",
@@ -85,6 +86,39 @@ function UpdateOperationSection({
       candidate.id === edge.actionId && candidate.kind === "update",
   );
   if (!action) return null;
+  const source = graph.nodes.find((node) => node.id === action.target.sourceId);
+  const targetType =
+    source?.kind === "source"
+      ? typeAtPath(source.type, action.target.fieldPath, graph.shapes ?? [])
+      : null;
+  const cue = graph.cues?.find((cue) => cue.id === action.cueId);
+  const values = (cue?.parameters ?? []).flatMap((parameter) => {
+    if (!targetType) return [];
+    const paths =
+      JSON.stringify(parameter.type) === JSON.stringify(targetType)
+        ? [{ fieldPath: [], type: parameter.type, label: [] }]
+        : propertyFieldPaths(parameter.type, targetType, graph.shapes ?? []);
+    return paths.flatMap((path) =>
+      JSON.stringify(path.type) === JSON.stringify(targetType)
+        ? [
+            {
+              key: JSON.stringify([parameter.id, path.fieldPath]),
+              label: [parameter.name, ...path.label].join("."),
+              operand: {
+                kind: "cueParameter",
+                parameterId: parameter.id,
+                fieldPath: path.fieldPath,
+              } satisfies UpdateOperand,
+            },
+          ]
+        : [],
+    );
+  });
+  const operand = action.operation.kind === "reset" ? null : action.operation.operand;
+  const currentValue =
+    operand?.kind === "cueParameter"
+      ? JSON.stringify([operand.parameterId, operand.fieldPath])
+      : null;
   return (
     <Section label="update">
       <SectionRow>
@@ -108,6 +142,36 @@ function UpdateOperationSection({
           </SelectContent>
         </Select>
       </SectionRow>
+      {action.operation.kind === "set" && (
+        <SectionRow className="grid-cols-[auto_minmax(0,1fr)] items-center">
+          <span className="text-xs text-muted-foreground">Value</span>
+          <Select
+            value={currentValue}
+            onValueChange={(key) => {
+              const value = values.find((value) => value.key === key);
+              if (value) editing.setUpdateOperand(action.id, value.operand);
+            }}
+          >
+            <SelectTrigger aria-label="Set value">
+              <SelectValue placeholder="Literal value">
+                {values.find((value) => value.key === currentValue)?.label}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {values.map((value) => (
+                <SelectItem key={value.key} value={value.key}>
+                  {value.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {values.length === 0 && (
+            <span className="col-span-2 text-xs text-muted-foreground">
+              Pass a compatible value into this Cue from its Element interaction first.
+            </span>
+          )}
+        </SectionRow>
+      )}
       {action.operation.kind === "adjust" ? (
         <SectionRow className="grid-cols-[auto_1fr] items-center">
           <label htmlFor={`update-adjustment-${action.id}`}>Amount</label>

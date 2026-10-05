@@ -161,23 +161,90 @@ describe("Canvas workspace commands", () => {
     expect(stack.state.artboards[1]?.position).toEqual({ x: 400, y: 0 });
   });
 
-  it("coalesces repeated setters without crossing element lifetimes", () => {
+  it("persists a Slot's repetition source and input assignment in the same batch", () => {
+    const initial: CanvasWorkspace = {
+      artboards: [
+        {
+          canvasId: "scene",
+          position: { x: 0, y: 0 },
+          canvas: {
+            root: {
+              id: "root",
+              type: "frame",
+              children: [{ id: "slot", type: "slot", blockId: "candidate-card" }],
+            },
+          },
+        },
+      ],
+    };
+    const edits: CanvasWorkspaceEdit[] = [
+      {
+        canvasId: "scene",
+        edit: {
+          type: "canvas.updateElement",
+          elementId: "slot",
+          properties: { expansion: { source: { kind: "variable", variableId: "candidates" } } },
+        },
+      },
+      {
+        canvasId: "scene",
+        edit: {
+          type: "canvas.updateElement",
+          elementId: "slot",
+          properties: {
+            assignments: [{ variableId: "candidate", source: { kind: "runtimeItem" } }],
+          },
+        },
+      },
+    ];
+    const saved = applyCanvasWorkspaceEdits(initial, coalesceCanvasWorkspaceEdits(edits));
+    expect(saved.artboards[0]?.canvas.root.children?.[0]).toMatchObject({
+      expansion: { source: { kind: "variable", variableId: "candidates" } },
+      assignments: [{ variableId: "candidate", source: { kind: "runtimeItem" } }],
+    });
+  });
+
+  it("keeps partial updates and unsets in order across an Element's lifetime", () => {
     const edits: CanvasWorkspaceEdit[] = [
       {
         canvasId: "scene_a",
-        edit: { type: "canvas.updateElement", elementId: "first", properties: { opacity: 0.1 } },
+        edit: {
+          type: "canvas.updateElement",
+          elementId: "first",
+          properties: { opacity: 0.1, fill: "#FFFFFF" },
+        },
       },
       {
         canvasId: "scene_a",
-        edit: { type: "canvas.updateElement", elementId: "first", properties: { opacity: 0.2 } },
-      },
-      { canvasId: "scene_a", edit: { type: "canvas.removeElement", elementId: "first" } },
-      {
-        canvasId: "scene_a",
-        edit: { type: "canvas.updateElement", elementId: "first", properties: { opacity: 0.3 } },
+        edit: {
+          type: "canvas.updateElement",
+          elementId: "first",
+          properties: { opacity: 0.2 },
+          unsetProperties: ["fill"],
+        },
       },
     ];
-    expect(coalesceCanvasWorkspaceEdits(edits)).toEqual([edits[1], edits[2], edits[3]]);
+    const saved = applyCanvasWorkspaceEdits(workspace, coalesceCanvasWorkspaceEdits(edits));
+    expect(saved.artboards[0]?.canvas.root.children?.[0]).toMatchObject({ opacity: 0.2 });
+    expect(saved.artboards[0]?.canvas.root.children?.[0]).not.toHaveProperty("fill");
+    const recreated = applyCanvasWorkspaceEdits(
+      workspace,
+      coalesceCanvasWorkspaceEdits([
+        ...edits,
+        { canvasId: "scene_a", edit: { type: "canvas.removeElement", elementId: "first" } },
+        {
+          canvasId: "scene_a",
+          edit: {
+            type: "canvas.addElement",
+            parentId: "root",
+            rank: "a",
+            element: { id: "first", type: "rect", opacity: 0.9 },
+          },
+        },
+      ]),
+    );
+    expect(recreated.artboards[0]?.canvas.root.children?.[0]).toMatchObject({ opacity: 0.9 });
+    expect(recreated.artboards[0]?.canvas.root.children?.[0]).not.toHaveProperty("fill");
   });
 
   it("replays dispatched edits to the same workspace state", () => {

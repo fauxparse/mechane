@@ -10,6 +10,7 @@ import type { ArtboardDocument } from "@mechane/graphql-schema";
 import { useQuery } from "@tanstack/react-query";
 
 import { GRAPHQL_ENDPOINT } from "./client";
+import { draftSavesSettled } from "./draft-saves";
 
 export interface CanvasArtboardDocument {
   readonly canvasId: string;
@@ -53,6 +54,7 @@ export function useCanvasWorkspace(showId: ShowId | null, state: "draft" | "publ
     // stack's base and clears undo, so returning to the window must not trigger one.
     refetchOnWindowFocus: false,
     queryFn: async () => {
+      if (state === "draft") await draftSavesSettled(showId as ShowId);
       const data = await graphqlRequest(GRAPHQL_ENDPOINT, GetShowCanvasesQuery, {
         showId: showId as ShowId,
         state,

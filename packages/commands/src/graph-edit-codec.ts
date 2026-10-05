@@ -50,6 +50,7 @@ import {
   type Action,
   type Cue,
   type EventBinding,
+  type SlotEventBinding,
   decodeEventBinding as decodeBinding,
   InvalidInteractionError,
 } from "@mechane/domain/interactions";
@@ -112,12 +113,16 @@ import {
   removeAction,
   removeCue,
   removeEventBinding,
+  removeSlotEventBinding,
   renameCue,
   setCueActionOrder,
+  setCue,
+  setEventBinding,
   setEventBindingCue,
   setEventBindingKey,
   setEventBindingOrder,
   setNavigateTarget,
+  setSlotEventBinding,
   setUpdateOperand,
   setUpdateOperation,
   setUpdateTarget,
@@ -343,6 +348,7 @@ export type GraphEdit =
   | { readonly type: typeof GRAPH_COMMAND_TYPES.duplicateBlock; readonly block: Block }
   | { readonly type: typeof GRAPH_COMMAND_TYPES.removeBlock; readonly blockId: string }
   | { readonly type: typeof GRAPH_COMMAND_TYPES.addCue; readonly cue: Cue }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.setCue; readonly cue: Cue }
   | {
       readonly type: typeof GRAPH_COMMAND_TYPES.renameCue;
       readonly cueId: string;
@@ -390,6 +396,7 @@ export type GraphEdit =
       readonly type: typeof GRAPH_COMMAND_TYPES.addEventBinding;
       readonly binding: EventBinding;
     }
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.setEventBinding; readonly binding: EventBinding }
   | {
       readonly type: typeof GRAPH_COMMAND_TYPES.setEventBindingCue;
       readonly bindingId: string;
@@ -404,7 +411,15 @@ export type GraphEdit =
       readonly type: typeof GRAPH_COMMAND_TYPES.setEventBindingOrder;
       readonly bindingIds: readonly string[];
     }
-  | { readonly type: typeof GRAPH_COMMAND_TYPES.removeEventBinding; readonly bindingId: string };
+  | { readonly type: typeof GRAPH_COMMAND_TYPES.removeEventBinding; readonly bindingId: string }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.setSlotEventBinding;
+      readonly binding: SlotEventBinding;
+    }
+  | {
+      readonly type: typeof GRAPH_COMMAND_TYPES.removeSlotEventBinding;
+      readonly bindingId: string;
+    };
 
 /** An edit that named a field its `type` needs, or named nothing at all. */
 export class GraphEditCodecError extends Error {
@@ -503,6 +518,9 @@ export interface FlatCue {
   sceneId?: string | null;
   blockId?: string | null;
   actionIds: string[];
+  parameters?:
+    | readonly { id: string; name: string; type: FlatType | null; position: number }[]
+    | null;
 }
 
 export interface FlatAction {
@@ -526,6 +544,15 @@ export interface FlatEventBinding {
   /** Per-kind payload; absent for kinds that take no parameters. */
   params?: Record<string, unknown> | null;
   parameterMappings?: unknown;
+}
+
+export interface FlatSlotEventBinding {
+  id: string;
+  slotElementId: string;
+  sourceCueId: string;
+  targetCueId: string;
+  position: number;
+  parameterMappings: unknown;
 }
 
 /** One edit as a flat record: the shape both adapters exchange. */
@@ -578,6 +605,7 @@ export interface FlatGraphEdit {
   cue?: FlatCue | null;
   action?: FlatAction | null;
   binding?: FlatEventBinding | null;
+  slotBinding?: FlatSlotEventBinding | null;
   key?: string | null;
   actionId?: string | null;
   bindingId?: string | null;
@@ -992,6 +1020,14 @@ function encodeCue(cue: Cue): FlatCue {
       ? { sceneId: cue.owner.sceneId, blockId: null }
       : { sceneId: null, blockId: cue.owner.blockId }),
     actionIds: [...cue.actionIds],
+    ...(cue.parameters
+      ? {
+          parameters: cue.parameters.map((parameter) => ({
+            ...parameter,
+            type: encodeType(parameter.type),
+          })),
+        }
+      : {}),
   };
 }
 
@@ -1005,12 +1041,26 @@ function decodeCue(flat: FlatCue): Cue {
   ) {
     throw new GraphEditCodecError("A Cue edit needs a valid cue.");
   }
+  const parameters = flat.parameters?.map((parameter) => {
+    if (
+      typeof parameter.id !== "string" ||
+      typeof parameter.name !== "string" ||
+      !Number.isInteger(parameter.position) ||
+      parameter.position < 0
+    ) {
+      throw new GraphEditCodecError("A Cue parameter needs an id, name, Type, and position.");
+    }
+    const type = decodeType(parameter.type);
+    if (!type) throw new GraphEditCodecError("A Cue parameter needs a Type.");
+    return { id: parameter.id, name: parameter.name, type, position: parameter.position };
+  });
   if (flat.ownerKind === "scene" && typeof flat.sceneId === "string" && flat.sceneId.length > 0) {
     return {
       id: flat.id,
       name: flat.name,
       owner: { kind: "scene", sceneId: flat.sceneId },
       actionIds: [...flat.actionIds],
+      ...(parameters ? { parameters } : {}),
     };
   }
   if (flat.ownerKind === "block" && typeof flat.blockId === "string" && flat.blockId.length > 0) {
@@ -1019,6 +1069,7 @@ function decodeCue(flat: FlatCue): Cue {
       name: flat.name,
       owner: { kind: "block", blockId: flat.blockId },
       actionIds: [...flat.actionIds],
+      ...(parameters ? { parameters } : {}),
     };
   }
   throw new GraphEditCodecError(`Cue "${flat.id}" needs exactly one valid owner.`);
@@ -1121,6 +1172,103 @@ function decodeEventBinding(flat: FlatEventBinding): EventBinding {
     }
     throw error;
   }
+}
+
+function encodeSlotEventBinding(binding: SlotEventBinding): FlatSlotEventBinding {
+  return {
+    id: binding.id,
+    slotElementId: binding.slotElementId,
+    sourceCueId: binding.sourceCueId,
+    targetCueId: binding.targetCueId,
+    position: binding.position,
+    parameterMappings: binding.parameterMappings.map((mapping) => ({
+      sourceParameterId: mapping.sourceParameterId,
+      targetParameterId: mapping.targetParameterId,
+      ...(mapping.sourceFieldPath ? { sourceFieldPath: [...mapping.sourceFieldPath] } : {}),
+    })),
+  };
+}
+
+/**
+ * Envelope shape only. Whether the Cues and Parameters a relay names exist
+ * and fit together is `assertValidInteractions`'s answer at the storage
+ * boundary — the same split `decodeEventBinding` takes, except the domain has
+ * no whole-binding decoder for Slot relays, so the field checks live here.
+ */
+function decodeSlotEventBinding(flat: FlatSlotEventBinding): SlotEventBinding {
+  if (!flat) throw new GraphEditCodecError("A Slot Event Binding edit needs a Binding.");
+  const { id, slotElementId, sourceCueId, targetCueId, position } = flat;
+  if (
+    typeof id !== "string" ||
+    id.length === 0 ||
+    typeof slotElementId !== "string" ||
+    slotElementId.length === 0 ||
+    typeof sourceCueId !== "string" ||
+    sourceCueId.length === 0 ||
+    typeof targetCueId !== "string" ||
+    targetCueId.length === 0 ||
+    !Number.isInteger(position) ||
+    position < 0
+  ) {
+    throw new GraphEditCodecError(
+      `A Slot Event Binding edit "${String(id)}" is missing required fields.`,
+    );
+  }
+  if (!Array.isArray(flat.parameterMappings)) {
+    throw new GraphEditCodecError(`A Slot Event Binding edit "${id}" needs parameter mappings.`);
+  }
+  const parameterMappings = flat.parameterMappings.map(
+    (entry: unknown): SlotEventBinding["parameterMappings"][number] => {
+      if (typeof entry !== "object" || entry === null) {
+        throw new GraphEditCodecError(
+          `A Slot Event Binding edit "${id}" has an invalid parameter mapping.`,
+        );
+      }
+      const sourceParameterId = Reflect.get(entry, "sourceParameterId");
+      const targetParameterId = Reflect.get(entry, "targetParameterId");
+      const sourceFieldPath = Reflect.get(entry, "sourceFieldPath");
+      if (
+        typeof sourceParameterId !== "string" ||
+        sourceParameterId.length === 0 ||
+        typeof targetParameterId !== "string" ||
+        targetParameterId.length === 0
+      ) {
+        throw new GraphEditCodecError(
+          `A Slot Event Binding edit "${id}" has an invalid parameter mapping.`,
+        );
+      }
+      if (
+        sourceFieldPath !== undefined &&
+        (!Array.isArray(sourceFieldPath) ||
+          sourceFieldPath.some((segment) => typeof segment !== "string"))
+      ) {
+        throw new GraphEditCodecError(
+          `A Slot Event Binding edit "${id}" has an invalid source field path.`,
+        );
+      }
+      return {
+        sourceParameterId,
+        targetParameterId,
+        ...(Array.isArray(sourceFieldPath)
+          ? {
+              sourceFieldPath: sourceFieldPath.map((segment: unknown) => {
+                if (typeof segment !== "string")
+                  throw new GraphEditCodecError("Invalid source field path.");
+                return segment;
+              }),
+            }
+          : {}),
+      };
+    },
+  );
+  return {
+    id,
+    slotElementId,
+    sourceCueId,
+    targetCueId,
+    position,
+    parameterMappings,
+  };
 }
 
 function decodeEventBindingKey(flat: FlatGraphEdit): string | null {
@@ -1980,6 +2128,38 @@ export const GRAPH_EDIT_CODECS: { [T in GraphEdit["type"]]: GraphEditCodec<T> } 
       bindingId: required(flat, "bindingId", flat.bindingId),
     }),
   },
+  [GRAPH_COMMAND_TYPES.setCue]: {
+    command: (edit) => setCue(edit.cue),
+    encode: (edit) => ({ type: edit.type, cue: encodeCue(edit.cue) }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.setCue,
+      cue: decodeCue(required(flat, "cue", flat.cue)),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.setEventBinding]: {
+    command: (edit) => setEventBinding(edit.binding),
+    encode: (edit) => ({ type: edit.type, binding: encodeEventBinding(edit.binding) }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.setEventBinding,
+      binding: decodeEventBinding(required(flat, "binding", flat.binding)),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.setSlotEventBinding]: {
+    command: (edit) => setSlotEventBinding(edit.binding),
+    encode: (edit) => ({ type: edit.type, slotBinding: encodeSlotEventBinding(edit.binding) }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.setSlotEventBinding,
+      binding: decodeSlotEventBinding(required(flat, "slotBinding", flat.slotBinding)),
+    }),
+  },
+  [GRAPH_COMMAND_TYPES.removeSlotEventBinding]: {
+    command: (edit) => removeSlotEventBinding(edit.bindingId),
+    encode: (edit) => ({ type: edit.type, bindingId: edit.bindingId }),
+    decode: (flat) => ({
+      type: GRAPH_COMMAND_TYPES.removeSlotEventBinding,
+      bindingId: required(flat, "bindingId", flat.bindingId),
+    }),
+  },
 };
 type GraphEditDescriptorRegistry = {
   [T in GraphEdit["type"]]: GraphEditDescriptor<T>;
@@ -2125,6 +2305,10 @@ export function structuralIds(edit: GraphEdit): readonly string[] {
     case GRAPH_COMMAND_TYPES.addNavigateAction:
       return [edit.action.id];
     case GRAPH_COMMAND_TYPES.removeEventBinding:
+      return [edit.bindingId];
+    case GRAPH_COMMAND_TYPES.setSlotEventBinding:
+      return [edit.binding.id];
+    case GRAPH_COMMAND_TYPES.removeSlotEventBinding:
       return [edit.bindingId];
     case GRAPH_COMMAND_TYPES.replaceSourceDefaults:
       return [...edit.before, ...edit.after].map((entry) => entry.nodeId);
