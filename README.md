@@ -254,12 +254,22 @@ fields lists common screen, phone, and tablet sizes. Choosing a preset sets
 fixed axes to its size and sets filled axes' minimums to it. The menu reads
 **Custom size** when the root matches no preset; the fields still take any size.
 
+## Canvas Artboard names
+
+Double-click a Scene or Block Artboard title in the Canvas editor to rename its
+owner. Enter or blur saves the name; Escape cancels. Each committed rename is
+one undo step, and the saved name survives reload.
+
 ## Local image storage
 
 MinIO runs at `http://localhost:9000` with its console at `http://localhost:9001`.
 The development bucket is `mechane`, and image URLs point directly to its public
 `mechane/blobs/` objects. Default local credentials are `minioadmin` /
 `minioadmin`; change them before using a shared or deployed environment.
+
+Image uploads in the Source table editor save the completed upload's asset id
+and exact revision. They do not wait for the image asset list to refresh before
+assigning the Field value.
 
 ## Custom Domains in development
 

@@ -82,7 +82,9 @@ export const ArrayTableCell = memo(function ArrayTableCell({
               return;
             }
             if (!isResolvedImageValue(next)) return;
-            const revision = imageAssets?.find((asset) => asset.assetId === next.assetId)?.revision;
+            const revision = isImageAssetReference(next)
+              ? next.revision
+              : imageAssets?.find((asset) => asset.assetId === next.assetId)?.revision;
             if (!revision) return;
             reportValidity(null);
             updateValue({ assetId: next.assetId, revision });

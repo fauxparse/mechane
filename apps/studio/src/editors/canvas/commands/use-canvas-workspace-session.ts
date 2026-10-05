@@ -18,6 +18,8 @@ import {
   addEventBinding,
   composite,
   findCanvasElement,
+  renameBlock,
+  renameNode,
   removeEventBinding,
   removeSlotEventBinding,
   setBlockVariables,
@@ -355,22 +357,16 @@ export function useCanvasWorkspaceSession({
     imageAssets: imageAssets.data ?? [],
   });
 
-  // An artboard's name belongs to the Scene or Block that owns the Canvas, so a rename is a
-  // Show-graph gesture. The graph stack owns the live name and the same save path as every
-  // Canvas edit; the undo coordinator above keeps both editor histories in order.
+  // The Canvas editor submits the completed name, so each rename is one graph undo entry.
   const renameArtboard = useCallback(
     (artId: string, name: string) => {
       if (!showId) return;
-      graphEditing.gestures.beginRename(artId);
-      graphEditing.gestures.renameTo(name);
-      graphEditing.gestures.commitRename();
+      const isBlock = graphEditing.command.graph.blocks?.some((block) => block.id === artId);
+      graphEditing.command.commands.execute(
+        isBlock ? renameBlock(artId, name) : renameNode(artId, name),
+      );
     },
-    [
-      graphEditing.gestures.beginRename,
-      graphEditing.gestures.commitRename,
-      graphEditing.gestures.renameTo,
-      showId,
-    ],
+    [graphEditing.command.commands, graphEditing.command.graph.blocks, showId],
   );
   const focused = resolveFocusedArtboard(artboards, requestedArtId);
   const connectSlotCue = useCallback(
